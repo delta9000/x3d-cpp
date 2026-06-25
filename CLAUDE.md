@@ -62,3 +62,9 @@ partial seams, list the ignored fields explicitly.
 `mise run ci` runs tests + golden + `conformance-gate` + build + cli-gate-regression.
 The wiki's strict gate is `mise run docs-build` (dead links / nav orphans). Drift that a
 gate *can't* catch (semantic staleness) is what `mise run docs-drift` is for.
+
+## Commit conventions
+
+Do **not** put `Claude-Session:` trailers or any `claude.ai/code/session_…` URLs in commit
+messages or PR bodies — this is a shared repo and that history is public to collaborators.
+Keep commit messages and PR bodies tool-agnostic.
