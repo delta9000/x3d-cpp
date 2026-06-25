@@ -139,7 +139,8 @@
     },
     {
       "findings": [
-        "PROTO-IS-001"
+        "PROTO-IS-001",
+        "PROTO-SHADOW"
       ],
       "levels": [
         1,
@@ -280,7 +281,8 @@
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "PROTO-IS-001"
+            "PROTO-IS-001",
+            "PROTO-SHADOW"
           ],
           "geometry": false,
           "interfaces": [
@@ -712,7 +714,8 @@
         "ENV-06",
         "ENV-07",
         "ENV-08",
-        "ENV-09"
+        "ENV-09",
+        "SENSOR-SWITCH"
       ],
       "levels": [
         1,
@@ -724,7 +727,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "22.4.1; 22.4.1, 22.4.3",
+          "clause": "22.4.1; 22.4.1, 22.4.3; 22.4, 22.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -732,7 +735,8 @@
             "ENV-04",
             "ENV-06",
             "ENV-07",
-            "ENV-08"
+            "ENV-08",
+            "SENSOR-SWITCH"
           ],
           "geometry": false,
           "interfaces": [
@@ -750,13 +754,14 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "22.4.2",
+          "clause": "22.4.2; 22.4, 22.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "ENV-01"
+            "ENV-01",
+            "SENSOR-SWITCH"
           ],
           "geometry": false,
           "interfaces": [
@@ -774,14 +779,15 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "22.4.3; 22.4.1, 22.4.3; 22.4.1",
+          "clause": "22.4.3; 22.4.1, 22.4.3; 22.4.1; 22.4, 22.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ENV-05",
             "ENV-06",
             "ENV-07",
-            "ENV-09"
+            "ENV-09",
+            "SENSOR-SWITCH"
           ],
           "geometry": false,
           "interfaces": [
@@ -1604,7 +1610,8 @@
     {
       "findings": [
         "EXT-001",
-        "EXT-003"
+        "EXT-003",
+        "EXTRUSION-SCP"
       ],
       "levels": [
         1,
@@ -1710,10 +1717,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "13.3.5.4.5",
           "exists": true,
           "extracts": "yes",
-          "findings": [],
+          "findings": [
+            "EXTRUSION-SCP"
+          ],
           "geometry": true,
           "interfaces": [
             "X3DGeometryNode",
@@ -1797,6 +1806,7 @@
         "ENV-03",
         "GEO-1",
         "GEO-2",
+        "GEOSYSTEM",
         "INTERP-02",
         "NAV-FLY-ROLL",
         "PIV-1",
@@ -1812,11 +1822,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.3.1",
+          "clause": "25.3.1; 25.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "GEO-2"
+            "GEO-2",
+            "GEOSYSTEM"
           ],
           "geometry": false,
           "interfaces": [
@@ -1874,10 +1885,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "25.2.3",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "GEOSYSTEM"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -1954,13 +1967,14 @@
         {
           "behaves": "inert",
           "behavioral": true,
-          "clause": "25.3.8; 22.4.1; 25",
+          "clause": "25.3.8; 22.4.1; 25; 25.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-GEO",
             "ENV-02",
-            "ENV-03"
+            "ENV-03",
+            "GEOSYSTEM"
           ],
           "geometry": false,
           "interfaces": [
@@ -2020,9 +2034,9 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2036,6 +2050,7 @@
             "BIND-08",
             "BIND-09",
             "GEO-1",
+            "GEOSYSTEM",
             "NAV-FLY-ROLL"
           ],
           "geometry": false,
@@ -2057,7 +2072,9 @@
       ]
     },
     {
-      "findings": [],
+      "findings": [
+        "SENSOR-SWITCH"
+      ],
       "levels": [
         1,
         2,
@@ -2110,10 +2127,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "22.4, 22.4.3",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "SENSOR-SWITCH"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -2164,7 +2183,8 @@
       "findings": [
         "HAN-1",
         "HAN-2",
-        "HAN-3"
+        "HAN-3",
+        "HANIM-DISP"
       ],
       "levels": [
         1,
@@ -2175,11 +2195,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.1",
+          "clause": "26.3.1; 26.3.1, 26.3.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "HAN-2"
+            "HAN-2",
+            "HANIM-DISP"
           ],
           "geometry": false,
           "interfaces": [
@@ -2257,10 +2278,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "26.3.1, 26.3.5",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "HANIM-DISP"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -2718,7 +2741,8 @@
       "findings": [
         "LAY-1",
         "LAY-2",
-        "LAY-3"
+        "LAY-3",
+        "VIEWPORT-CLIP"
       ],
       "levels": [
         1
@@ -2773,7 +2797,8 @@
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "LAY-3"
+            "LAY-3",
+            "VIEWPORT-CLIP"
           ],
           "geometry": false,
           "interfaces": [
@@ -2909,6 +2934,7 @@
     },
     {
       "findings": [
+        "ENVLIGHT-ORPHAN",
         "LGT-1"
       ],
       "levels": [
@@ -3284,9 +3310,11 @@
         "COL-2",
         "COL-3",
         "CONF-NAV-COLLISION",
+        "FOV-TYPE",
         "LOD-1",
         "NAV-FLY-ROLL",
-        "NAV-LOOKAT-SCALE"
+        "NAV-LOOKAT-SCALE",
+        "SENSOR-SWITCH"
       ],
       "levels": [
         1,
@@ -3348,11 +3376,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "23.4.3",
+          "clause": "23.4.3; 22.4, 22.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "LOD-1"
+            "LOD-1",
+            "SENSOR-SWITCH"
           ],
           "geometry": false,
           "interfaces": [
@@ -3395,9 +3424,9 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 23.4.5, 42.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3410,6 +3439,7 @@
             "BIND-07",
             "BIND-08",
             "BIND-09",
+            "FOV-TYPE",
             "NAV-FLY-ROLL"
           ],
           "geometry": false,
@@ -4709,6 +4739,7 @@
     {
       "findings": [
         "CONF-CRITIC-2",
+        "DO-CASCADE",
         "SCR-001",
         "SCR-002",
         "SCR-003",
@@ -4725,11 +4756,12 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1",
+          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-CRITIC-2",
+            "DO-CASCADE",
             "SCR-001",
             "SCR-002",
             "SCR-003",
@@ -4942,7 +4974,8 @@
         "MAT-006",
         "MAT-007",
         "MAT-008",
-        "MAT-009"
+        "MAT-009",
+        "UNLIT-EMISSIVE"
       ],
       "levels": [
         1,
@@ -5156,13 +5189,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.3.4; 12.4.5, 17.2.3; 12.4.2",
+          "clause": "12.3.4; 12.4.5, 17.2.3; 12.4.2; 12.4.10",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "MAT-005",
             "MAT-007",
-            "MAT-009"
+            "MAT-009",
+            "UNLIT-EMISSIVE"
           ],
           "geometry": false,
           "interfaces": [
@@ -5190,6 +5224,7 @@
     },
     {
       "findings": [
+        "MULTI-INHERIT",
         "SND-1",
         "SND-2",
         "SND-3",
@@ -5199,6 +5234,7 @@
         "SND-7",
         "SND-8",
         "SND-9",
+        "SND-GAIN-TYPE",
         "TDN-5"
       ],
       "levels": [
@@ -5231,12 +5267,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 16.4.5, 16.4.20, 16.4.14",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 16.4.5, 16.4.20, 16.4.14; 16.4.2, 18.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "MULTI-INHERIT",
             "SND-4",
             "TDN-5"
           ],
@@ -5488,13 +5525,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.17, 16.4.16, 16.4.13",
+          "clause": "16.4.17, 16.4.16, 16.4.13; 16.4.13",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "SND-3"
+            "SND-3",
+            "SND-GAIN-TYPE"
           ],
           "geometry": false,
           "interfaces": [
@@ -5764,6 +5802,7 @@
     },
     {
       "findings": [
+        "FOV-TYPE",
         "TPJ-1",
         "TPJ-2"
       ],
@@ -5797,10 +5836,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "42.4.2",
+          "clause": "42.4.2; 23.4.5, 42.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "FOV-TYPE",
             "TPJ-1",
             "TPJ-2"
           ],
@@ -5824,6 +5864,7 @@
     },
     {
       "findings": [
+        "MULTI-INHERIT",
         "TDN-5",
         "TXF-1",
         "TXF-2",
@@ -5863,12 +5904,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "MULTI-INHERIT",
             "TDN-5"
           ],
           "geometry": false,
@@ -6283,7 +6325,8 @@
         "TDN-3",
         "TDN-4",
         "TDN-6",
-        "TDN-7"
+        "TDN-7",
+        "TDN-8"
       ],
       "levels": [
         1
@@ -6293,7 +6336,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1",
+          "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6304,7 +6347,8 @@
             "TDN-3",
             "TDN-4",
             "TDN-6",
-            "TDN-7"
+            "TDN-7",
+            "TDN-8"
           ],
           "geometry": false,
           "interfaces": [
@@ -8781,6 +8825,185 @@
       "severity": "minor",
       "status": "open",
       "summary": "Geometry2D nodes absent from localGeometryBounds() \u2014 bboxes always empty."
+    },
+    {
+      "clause": "29.2.6, 4.4.8.3",
+      "id": "DO-CASCADE",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "19775-1 29.2.6 (\"shall be part of the current event cascade\") contradicts 19775-2 SAI 4.5.2 (\"generates no event ... not part of the event cascade\"); SAI governs the seam and matches the x3dom/implementor consensus. Policy (ADR-0029) - SaiContext::setField on another node mutates the field via the reflection setter (no postEvent, no ROUTE fan-out); self-writes to the Script's own outputOnly field keep the routable path. Site runtime/script/SaiContext.hpp:101; extend sai_context_test.cpp:107-127. 4.1 - unresolved upstream; engine adopts the SAI direction ahead of spec.",
+      "severity": "major",
+      "status": "open",
+      "summary": "directOutput cross-node write is injected as a routable cascade seed (19775-1 29.2.6) instead of a non-routable value mutation (SAI 19775-2 4.5.2)."
+    },
+    {
+      "clause": "23.4.5, 42.4.2",
+      "id": "FOV-TYPE",
+      "nodes": [
+        "OrthoViewpoint",
+        "TextureProjectorParallel"
+      ],
+      "note": "Do NOT retype MFFloat->SFVec4f (breaks ClassicVRML brackets vs the sfvec4fValue grammar; Mantis 1398/1468). Policy (ADR-0030) - keep MFFloat storage; add size==4 normalization (FOV_TUPLE_ARITY warning) + min<max ordering check (FOV_EXTENT_ORDER) applied to BOTH nodes; add a non-breaking SFVec4f convenience accessor. Sites OrthoViewpoint.hpp:111/177, TextureProjectorParallel.hpp:77. 4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView MFFloat (committee declined the retype for the same reason), so validate-don't-retype is correct.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "fieldOfView is the same 4-tuple but typed MFFloat (OrthoViewpoint) vs SFVec4f (TextureProjectorParallel); OrthoViewpoint arity/ordering unvalidated."
+    },
+    {
+      "clause": "13.3.5.4.5",
+      "id": "EXTRUSION-SCP",
+      "nodes": [
+        "Extrusion"
+      ],
+      "note": "Policy (ADR-0031) - with Y = unit spine tangent, set SCP Z = normalize(modelZ - (modelZ.Y)Y) (fallback modelX when Y is parallel to modelZ), X = normalize(YxZ), re-derive Z = XxY; cull when < 2 DISTINCT (coincident-collapsed) spine points. Site runtime/extract/MeshBuilder.hpp tessellateExtrusion() (ref-x-Y branch ~:1043-1049; count guard :951). 4.1 - partial; 4.1-CD added coincident/distinct-spine-point sections but the 2-point in-plane axes remain open (a Frenet-frame idea was floated, not adopted) \u2014 engine rule is a candidate ahead of spec.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "2-distinct-point Extrusion spine fixes the SCP plane normal but leaves in-plane X/Z free; single distinct point has no SCP. Browsers diverge (X3DOM Harrier wings reversed)."
+    },
+    {
+      "clause": "26.3.1, 26.3.5",
+      "component": "HAnim",
+      "id": "HANIM-DISP",
+      "nodes": [
+        "HAnimDisplacer",
+        "HAnimSegment"
+      ],
+      "note": "X3D defers to ISO/IEC 19774 6.6 which is also silent on whether evaluating a Displacer mutates coord.point. X_ITE applies in-shader (no mutation); Plesch's pointOutput_Tongue.x3d ROUTEs the displaced coord.point (needs mutation). Policy (ADR-0032) - a DisplacerSystem makes coord.point's current value the weighted sum (neutral pose retained internally, non-destructive) and emits point_changed on the Segment's Coordinate node. Deferred on the DisplacerSystem. Today only TransformSystem references HAnim; coordIndex/displacements/weight are loaded but never consumed. 4.1 - unresolved upstream (2025 thread left it open to browser interpretation); engine ahead of spec.",
+      "severity": "minor",
+      "status": "deferred",
+      "summary": "HAnimDisplacer is inert; displacement never applied to Segment coord.point and no point_changed emitted."
+    },
+    {
+      "clause": "8.4.1, 8.2.4.4",
+      "commit": "e92042e",
+      "id": "TDN-8",
+      "interfaces": [
+        "X3DTimeDependentNode"
+      ],
+      "nodes": [
+        "TimeSensor"
+      ],
+      "note": "Spec self-contradiction (Mantis 1106) - 8.4.1's wall-clock fraction formula vs 8.2.4.4 \"continues from its value when paused\". x3d-cpp already conforms - X3DTimeDependentSystem.hpp:226 sinceStart = now - timeBase, :321 timeBase += (resumeTime - pauseTime). Corollary of TDN-1/2/6. Follow-ups - retire the naive legacy seed TimeSensorBehavior.hpp:39; add a fraction-continuity regression test. 4.1 - partial upstream (added the 8.2.4.4 requirement, not the 8.4.1 formula); engine already implements the fix.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "fraction_changed continues from its paused value (paused-aware elapsed clock), not wall-clock now.",
+      "wave": 4
+    },
+    {
+      "clause": "4.4.4",
+      "id": "PROTO-SHADOW",
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "Policy (ADR-0033) - reject (quarantine + ProtoWarning BuiltinShadow) any ProtoDeclare/ ExternProtoDeclare whose name is in X3DNodeFactory::registry(); the built-in keeps the name. Default lenient (warn, scene loads); strict/conformance mode treats it as fatal. Sites ClassicVrmlReader.hpp:298/797, JsonReader.hpp:622/419. Consistent with the self-reference precaution (concepts.md:956) and the ADR-0001 ext-firewall. 4.1 - ALIGNED; the Mantis 1492 4.1 direction is built-in-takes-precedence (Seelig/X_ITE) flagged as an error/security consideration (Brutzman) \u2014 exactly this policy.",
+      "severity": "major",
+      "status": "open",
+      "summary": "PROTO reusing a built-in node name silently shadows the built-in (proto table resolved before factory; no collision check at registration) - a security hazard per Mantis 1492."
+    },
+    {
+      "clause": "25.2.3",
+      "component": "Geospatial",
+      "id": "GEOSYSTEM",
+      "interfaces": [
+        "X3DGeospatialObject"
+      ],
+      "nodes": [
+        "GeoCoordinate",
+        "GeoProximitySensor",
+        "GeoLocation",
+        "GeoViewpoint"
+      ],
+      "note": "Per ADR-0003 keep the value; add a geoSystem token validator (SRF GD|GDC|GC|GCC|UTM|WM + UTM Z<n>/optional S/ellipsoid/ordering grammar) emitting RangeDiagnostic-style warnings, never rejecting. N is undefined (only S exists; northern is the UTM default) \u2014 tolerate as a no-op northern alias + warning (Mantis 938). UOM cannot enforce (additionalEnumerationValuesAllowed = true). Also add the missing WM (Web Mercator) enumeration to geoSystemSpatialReferenceFrameValues. Site GeoCoordinate.hpp:111 setGeoSystemUnchecked. 4.1 - unresolved (4.1 UOM still lacks WM, enum still open); engine validator + WM add are ahead of spec.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning."
+    },
+    {
+      "clause": "16.4.13",
+      "component": "Sound",
+      "id": "SND-GAIN-TYPE",
+      "nodes": [
+        "ListenerPointSource"
+      ],
+      "note": "Upstream prose erratum, not an engine gap. The X3DUOM inherits SFFloat from X3DSoundSourceNode; x3d-cpp is correct (ListenerPointSource.cpp:84-95). Add a regression assert gain.type == SFFloat to pin against codegen drift. 4.1 - confirmed; 4.1 UOM still SFFloat.",
+      "severity": "low",
+      "status": "closed",
+      "summary": "gain typed SFInt32 in ISO prose vs SFFloat in X3DUOM; engine correct-by-UOM."
+    },
+    {
+      "clause": "16.4.2, 18.4.2",
+      "id": "MULTI-INHERIT",
+      "interfaces": [
+        "X3DSoundSourceNode"
+      ],
+      "nodes": [
+        "MovieTexture",
+        "AudioClip"
+      ],
+      "note": "UOM nominates one primary Inheritance + AdditionalInheritance; bindings emit every base public virtual (MovieTexture.hpp:40-42), the shared X3DNode collapses, and reflection accessors are qualified by declaring ancestor (MovieTexture.cpp:19,89,106). containerField defaults deterministic - MovieTexture=texture, AudioClip=source. No engine impact (see ADR-0004). 4.1 - confirmed; 4.1 did NOT do the X3DSoundSourceObject interface recast (still multiple inheritance), so the virtual-mixin approach remains the durable answer.",
+      "severity": "minor",
+      "status": "closed",
+      "summary": "MovieTexture declared under two abstract node types; engine handles it via ADR-0004 virtual mixins. AudioClip is the clean single-node pattern (named by association)."
+    },
+    {
+      "clause": "17.5 Table 17.6",
+      "component": "Lighting",
+      "id": "ENVLIGHT-ORPHAN",
+      "nodes": [
+        "X3DLightNode"
+      ],
+      "note": "For 4.0 the engine is correct (no EnvironmentLight in the 4.0 UOM); ensure conformance tooling derives expected nodes from the X3DUOM, not prose tables, so this stale row is not mis-flagged. 4.1 - FLIPS to an implementation task. The committee RESTORED EnvironmentLight as a full IBL node in 4.1 (fields ambientIntensity, color, diffuseCoefficients, diffuseTexture, specularTexture, global, intensity, on, origin, rotation, shadowIntensity, shadows). When x3d-cpp targets 4.1, regenerate from the 4.1 UOM and implement it (Holger Seelig already had an X_ITE impl the 4.0 removal stranded). Tracked here for the 4.1 bump.",
+      "severity": "low",
+      "status": "closed",
+      "summary": "EnvironmentLight orphaned in 4.0 Table 17.6 only; removed from the 4.0 body and X3DUOM. Engine correctly omits it for 4.0."
+    },
+    {
+      "clause": "12.4.10",
+      "component": "Shape",
+      "id": "UNLIT-EMISSIVE",
+      "nodes": [
+        "UnlitMaterial"
+      ],
+      "note": "shape.md:818 (note) is wrong vs shape.md:374 (\"defined in implementing nodes\"). UnlitMaterial declares emissiveColor directly, default 1 1 1; X3DOneSidedMaterialNode has no emissiveColor. x3d-cpp correct (UnlitMaterial.hpp:293/:44). Optional regression assert default == 1 1 1. 4.1 - confirmed; 4.1 UOM unchanged (direct field, 1 1 1; base still none).",
+      "severity": "low",
+      "status": "closed",
+      "summary": "ISO prose falsely calls emissiveColor inherited (base default 0 0 0); the base has no such field. UOM/engine correct - direct field, default 1 1 1."
+    },
+    {
+      "clause": "22.4, 22.4.3",
+      "id": "SENSOR-SWITCH",
+      "interfaces": [
+        "X3DEnvironmentalSensorNode"
+      ],
+      "nodes": [
+        "ProximitySensor",
+        "VisibilitySensor",
+        "TransformSensor",
+        "Switch",
+        "LOD"
+      ],
+      "note": "Today branch-blind - sensors enrolled by the full-graph walk (X3DSceneBridge.hpp:338) and ticked unconditionally (ViewDependentSystem.hpp:63-92) while rendering culls inactive branches (SceneExtractor.hpp:570-593). Policy (ADR-0034) - a sensor is in the ACTIVE transformation hierarchy iff some root->node path takes children[whichChoice] at every Switch and the selected level at every LOD (union over DEF/USE); tick only while active (active->inactive forces isActive=FALSE + exitTime once then suppress; inactive->active re-evaluates + enterTime). Script and time-dependent nodes are NOT gated (per 10.4.3). 4.1 - unresolved (open since 2009); engine adopts the Xj3D/Contact reading ahead of spec.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Environmental sensors in non-selected Switch children / inactive LOD levels are still ticked (active) instead of treated as removed from the transformation hierarchy."
+    },
+    {
+      "clause": "35.4.3",
+      "component": "Layering",
+      "id": "VIEWPORT-CLIP",
+      "interfaces": [
+        "X3DViewportNode"
+      ],
+      "nodes": [
+        "Viewport"
+      ],
+      "note": "Mantis 326. Policy (ADR-0035) - adopt glViewport (remap) semantics - sub-rect x=l*W, y=b*H, w=(r-l)*W, h=(t-b)*H; viewpoint aspect = w/h (from the sub-rect, not the surface); scissor to the rect; guard l<=r, b<=t. Expose a derived ViewportRegion{x,y,w,h,aspect} so renderers consume one struct. Today Viewport.hpp:87 stores the fractions only; no consumer in runtime/. Justified by the node name and 35.2.3/35.2.4 independent-view/CAD intent. 4.1 - unresolved (Mantis 326 still drifting in 2026); engine contract ahead of spec.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "clipBoundary remap-vs-clip semantics undefined; the runtime must define the sub-rect/aspect contract for renderers."
     }
   ],
   "meta": {
@@ -8903,13 +9126,12 @@
     ]
   },
   "summary": {
-    "closed_count": 90,
+    "closed_count": 95,
     "component_count": 36,
-    "deferred_count": 47,
-    "finding_count": 166,
+    "deferred_count": 48,
+    "finding_count": 179,
     "inert_behavioral_nodes": [
       "Analyser",
-      "AudioClip",
       "BufferAudioSource",
       "Convolver",
       "Delay",
@@ -8918,10 +9140,8 @@
       "GeoProximitySensor",
       "GeoTouchSensor",
       "LinePickSensor",
-      "ListenerPointSource",
       "LoadSensor",
       "MicrophoneSource",
-      "MovieTexture",
       "PointPickSensor",
       "PrimitivePickSensor",
       "ReceiverPdu",
@@ -8934,8 +9154,8 @@
     "open_by_severity": {
       "critical": 9,
       "low": 8,
-      "major": 33,
-      "minor": 26
+      "major": 36,
+      "minor": 31
     }
   },
   "unresolved_findings": []

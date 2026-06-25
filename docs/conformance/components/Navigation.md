@@ -6,9 +6,9 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 |------|-----|--------|---------|---------|----------|------------|
 | Billboard | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | Collision | 2 | ✓ | — | ◑ | COL-1, COL-2, COL-3, CONF-NAV-COLLISION | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DSensorNode |
-| LOD | 2 | ✓ | — | — | LOD-1 | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| LOD | 2 | ✓ | — | — | LOD-1, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | NavigationInfo | 1 | ✓ | — | ✓ | BIND-05, BIND-06 | X3DBindableNode, X3DChildNode |
-| OrthoViewpoint | 3 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| OrthoViewpoint | 3 | ✓ | — | ◑ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 | Viewpoint | 1 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, NAV-FLY-ROLL, NAV-LOOKAT-SCALE | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 | ViewpointGroup | 3 | ✓ | — | — | — | X3DChildNode |
 
@@ -20,6 +20,10 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
   - Needs a volume-sweep collision subsystem (post-v1). FLY ships collision-free.
 - **COL-3** [major/DEFERRED] — §23.4.2: Collision.enabled=FALSE must propagate through the descendant subtree to gate collision (overriding nested enabled=TRUE).
   - Only observable once the collision subsystem exists. See CONF-NAV-COLLISION.
+- **SENSOR-SWITCH** [major/OPEN] — §22.4, 22.4.3: Environmental sensors in non-selected Switch children / inactive LOD levels are still ticked (active) instead of treated as removed from the transformation hierarchy.
+  - Today branch-blind - sensors enrolled by the full-graph walk (X3DSceneBridge.hpp:338) and ticked unconditionally (ViewDependentSystem.hpp:63-92) while rendering culls inactive branches (SceneExtractor.hpp:570-593). Policy (ADR-0034) - a sensor is in the ACTIVE transformation hierarchy iff some root->node path takes children[whichChoice] at every Switch and the selected level at every LOD (union over DEF/USE); tick only while active (active->inactive forces isActive=FALSE + exitTime once then suppress; inactive->active re-evaluates + enterTime). Script and time-dependent nodes are NOT gated (per 10.4.3). 4.1 - unresolved (open since 2009); engine adopts the Xj3D/Contact reading ahead of spec.
+- **FOV-TYPE** [minor/OPEN] — §23.4.5, 42.4.2: fieldOfView is the same 4-tuple but typed MFFloat (OrthoViewpoint) vs SFVec4f (TextureProjectorParallel); OrthoViewpoint arity/ordering unvalidated.
+  - Do NOT retype MFFloat->SFVec4f (breaks ClassicVRML brackets vs the sfvec4fValue grammar; Mantis 1398/1468). Policy (ADR-0030) - keep MFFloat storage; add size==4 normalization (FOV_TUPLE_ARITY warning) + min<max ordering check (FOV_EXTENT_ORDER) applied to BOTH nodes; add a non-breaking SFVec4f convenience accessor. Sites OrthoViewpoint.hpp:111/177, TextureProjectorParallel.hpp:77. 4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView MFFloat (committee declined the retype for the same reason), so validate-don't-retype is correct.
 - **BIND-01** [critical/CLOSED `e3235ee`] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
   - CONF-VIEWNAV — needs a user-offset-state design (authored pose vs accumulated offset) before fixing BIND-01..08 as one cluster.
 - **BIND-02** [critical/CLOSED `95d1107`] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.

@@ -4,17 +4,17 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| GeoCoordinate | 1 | ✓ | — | — | GEO-2 | X3DCoordinateNode, X3DGeometricPropertyNode |
+| GeoCoordinate | 1 | ✓ | — | — | GEO-2, GEOSYSTEM | X3DCoordinateNode, X3DGeometricPropertyNode |
 | GeoElevationGrid | 1 | ✓ | ✓ | — | EXT-001, EXT-003, GEO-2 | X3DGeometryNode |
 | GeoLOD | 1 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode |
-| GeoLocation | 1 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| GeoLocation | 1 | ✓ | — | — | GEOSYSTEM | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | GeoMetadata | 1 | ✓ | — | — | — | X3DChildNode, X3DInfoNode, X3DUrlObject |
 | GeoOrigin | 1 | ✓ | — | — | — |  |
 | GeoPositionInterpolator | 1 | ✓ | — | ◑ | CONF-GEO, INTERP-02, PIV-1 | X3DChildNode, X3DInterpolatorNode |
-| GeoProximitySensor | 2 | ✓ | — | ✗ | CONF-GEO, ENV-02, ENV-03 | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| GeoProximitySensor | 2 | ✓ | — | ✗ | CONF-GEO, ENV-02, ENV-03, GEOSYSTEM | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 | GeoTouchSensor | 1 | ✓ | — | ✗ | TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
 | GeoTransform | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| GeoViewpoint | 1 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| GeoViewpoint | 1 | ✓ | — | ◑ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEOSYSTEM, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 
 ## Findings
 
@@ -27,6 +27,8 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 - **ENV-03** [minor/OPEN] — §22.4.1: centerOfRotation_changed never emitted.
 - **CONF-GEO** [minor/DEFERRED] — §25: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
   - Blocked on the GeoProjection seam (geoSystem/geoOrigin → local Cartesian). Drives ENV-02; GeoTouchSensor = TSN-1/2.
+- **GEOSYSTEM** [minor/OPEN] — §25.2.3: geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning.
+  - Per ADR-0003 keep the value; add a geoSystem token validator (SRF GD|GDC|GC|GCC|UTM|WM + UTM Z<n>/optional S/ellipsoid/ordering grammar) emitting RangeDiagnostic-style warnings, never rejecting. N is undefined (only S exists; northern is the UTM default) — tolerate as a no-op northern alias + warning (Mantis 938). UOM cannot enforce (additionalEnumerationValuesAllowed = true). Also add the missing WM (Web Mercator) enumeration to geoSystemSpatialReferenceFrameValues. Site GeoCoordinate.hpp:111 setGeoSystemUnchecked. 4.1 - unresolved (4.1 UOM still lacks WM, enum still open); engine validator + WM add are ahead of spec.
 - **BIND-01** [critical/CLOSED `e3235ee`] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
   - CONF-VIEWNAV — needs a user-offset-state design (authored pose vs accumulated offset) before fixing BIND-01..08 as one cluster.
 - **BIND-02** [critical/CLOSED `95d1107`] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.

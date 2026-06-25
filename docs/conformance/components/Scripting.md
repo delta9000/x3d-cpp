@@ -4,12 +4,14 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007 | X3DChildNode, X3DScriptNode, X3DUrlObject |
+| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, DO-CASCADE, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007 | X3DChildNode, X3DScriptNode, X3DUrlObject |
 
 ## Findings
 
 - **CONF-CRITIC-2** [major/DEFERRED] — §29.3.1: Script external-URL (@url in source) loading + auto-refresh interaction unimplemented.
   - Was BACKLOG CONF-CRITIC. Unblocked by the asset-resolver/IO seam (shipped 2026-06-23; see ADR-0023). Implement together with SCR-005.
+- **DO-CASCADE** [major/OPEN] — §29.2.6, 4.4.8.3: directOutput cross-node write is injected as a routable cascade seed (19775-1 29.2.6) instead of a non-routable value mutation (SAI 19775-2 4.5.2).
+  - 19775-1 29.2.6 ("shall be part of the current event cascade") contradicts 19775-2 SAI 4.5.2 ("generates no event ... not part of the event cascade"); SAI governs the seam and matches the x3dom/implementor consensus. Policy (ADR-0029) - SaiContext::setField on another node mutates the field via the reflection setter (no postEvent, no ROUTE fan-out); self-writes to the Script's own outputOnly field keep the routable path. Site runtime/script/SaiContext.hpp:101; extend sai_context_test.cpp:107-127. 4.1 - unresolved upstream; engine adopts the SAI direction ahead of spec.
 - **SCR-005** [minor/DEFERRED] — §29.3.1: autoRefresh/autoRefreshTimeLimit URL reload + re-initialize() absent.
   - Unblocked by the asset-resolver/IO seam (shipped 2026-06-23; see ADR-0023). Implement together with CONF-CRITIC-2.
 - **SCR-001** [major/FIXED `f2fd324`] — §29.2.5: prepareEvents() called exactly once per timestamp before ROUTE processing.

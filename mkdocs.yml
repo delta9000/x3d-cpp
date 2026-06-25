@@ -119,6 +119,13 @@ nav:
       - "ADR-0025: FontMetrics Second Backend + Swap-Test": decisions/0025-fontmetrics-second-backend-swap-test.md
       - "ADR-0026: Second AudioBackend (miniaudio) + Headless Swap-Test as Genericity Proof": decisions/0026-audiobackend-second-backend-swap-test.md
       - "ADR-0028: Shadow Visibility Seam (normative modulation + technique-defined visibility)": decisions/0028-shadow-visibility-seam.md
+      - "ADR-0029: directOutput Writes Are Non-Routable (SAI 4.5.2 Governs)": decisions/0029-directoutput-non-routable.md
+      - "ADR-0030: Validate fieldOfView as a Fixed 4-Tuple, Do Not Retype": decisions/0030-fieldofview-validate-not-retype.md
+      - "ADR-0031: Deterministic SCP Frames for Degenerate Extrusion Spines": decisions/0031-extrusion-degenerate-scp.md
+      - "ADR-0032: HAnimDisplacer Produces a Routable Derived coord.point": decisions/0032-hanimdisplacer-routable-coordpoint.md
+      - "ADR-0033: A PROTO May Not Shadow a Built-in Node Name (Security)": decisions/0033-proto-builtin-shadow-error.md
+      - "ADR-0034: Environmental Sensor Activation Under Switch/LOD": decisions/0034-sensor-switch-lod-activation.md
+      - "ADR-0035: Viewport.clipBoundary Uses glViewport (Remap) Semantics": decisions/0035-viewport-clipboundary-glviewport.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
