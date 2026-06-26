@@ -35,10 +35,10 @@ public:
 
   /**
    * @brief Get the default value for family
-   * @return std::vector<FontFamilyValues> The default value
+   * @return MFString The default value
    */
-  static std::vector<FontFamilyValues> getDefaultFamily() {
-    return std::vector<FontFamilyValues>{FontFamilyValues::SERIF};
+  static MFString getDefaultFamily() {
+    return std::vector<std::string>{"SERIF"};
   }
 
   /**
@@ -113,9 +113,9 @@ public:
    * @brief Gets the value of family. AccessType: inputOutput
    * @details Array of quoted font family names in preference order, browsers
    * use the first supported family.
-   * @return std::vector<FontFamilyValues> The current value of family.
+   * @return MFString The current value of family.
    */
-  std::vector<FontFamilyValues> getFamily() const { return _family; }
+  MFString getFamily() const { return _family; }
 
   /**
    * @brief Sets the value of family. AccessType: inputOutput
@@ -123,15 +123,9 @@ public:
    * use the first supported family.
    * @param value The new value for family.
    */
-  void setFamily(const std::vector<FontFamilyValues> &value) {
+  void setFamily(const MFString &value) { _family = value; }
 
-    _family = value;
-  }
-
-  void setFamily(std::vector<FontFamilyValues> &&value) {
-
-    _family = std::move(value);
-  }
+  void setFamily(MFString &&value) { _family = std::move(value); }
 
   /**
    * @brief Gets the value of horizontal. AccessType: inputOutput
@@ -331,8 +325,7 @@ private:
    * @brief Member variable for family.
    */
 
-  std::vector<FontFamilyValues> _family{
-      std::vector<FontFamilyValues>{FontFamilyValues::SERIF}};
+  MFString _family{std::vector<std::string>{"SERIF"}};
 
   /**
    * @brief Member variable for horizontal.

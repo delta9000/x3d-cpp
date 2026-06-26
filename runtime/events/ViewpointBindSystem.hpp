@@ -73,9 +73,10 @@ private:
 
   static bool isTeleport(X3DNode *nav) {
     if (!nav) return false;
-    for (auto tt : geombounds::getField<std::vector<NavigationTransitionTypeValues>>(
+    // transitionType is an open MFString vocabulary — match the token.
+    for (const auto &tt : geombounds::getField<std::vector<std::string>>(
              *nav, "transitionType", {}))
-      return tt == NavigationTransitionTypeValues::TELEPORT; // first wins
+      return tt == "TELEPORT"; // first wins
     return false;
   }
 

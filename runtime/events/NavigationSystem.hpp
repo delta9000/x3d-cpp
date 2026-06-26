@@ -141,18 +141,17 @@ private:
   static constexpr float kPitchLimit = kPi * 0.5f - 0.001f;
 
   // First recognized type wins (§23.4.4). ANY and unrecognized -> EXAMINE.
+  // NavigationInfo.type is an open MFString vocabulary, so match tokens (not a
+  // closed enum) and skip unrecognized/custom types per the spec.
   static Mode resolveMode(NavigationInfo *nav) {
     if (!nav) return Mode::Examine;
-    for (NavigationTypeValues t : nav->getType()) {
-      switch (t) {
-      case NavigationTypeValues::NONE:    return Mode::None;
-      case NavigationTypeValues::EXAMINE: return Mode::Examine;
-      case NavigationTypeValues::FLY:     return Mode::Fly;
-      case NavigationTypeValues::LOOKAT:  return Mode::Lookat;
-      case NavigationTypeValues::ANY:     return Mode::Examine; // sensible default
-      // WALK / EXPLORE not implemented (collision/niche) -> fall through to next.
-      default: break;
-      }
+    for (const std::string &t : nav->getType()) {
+      if (t == "NONE")    return Mode::None;
+      if (t == "EXAMINE") return Mode::Examine;
+      if (t == "FLY")     return Mode::Fly;
+      if (t == "LOOKAT")  return Mode::Lookat;
+      if (t == "ANY")     return Mode::Examine; // sensible default
+      // WALK / EXPLORE not implemented (collision/niche) -> try next token.
     }
     return Mode::Examine;
   }
@@ -423,12 +422,13 @@ private:
     return nav ? nav->getTransitionTime() : 1.0;
   }
   // First recognized transitionType wins; default LINEAR (§23.4.4).
+  // transitionType is an open MFString vocabulary — match tokens, skip unknown.
   static bool isTeleport(NavigationInfo *nav) {
     if (!nav) return false;
-    for (NavigationTransitionTypeValues tt : nav->getTransitionType()) {
-      if (tt == NavigationTransitionTypeValues::TELEPORT) return true;
-      if (tt == NavigationTransitionTypeValues::LINEAR) return false;
-      if (tt == NavigationTransitionTypeValues::ANIMATE) return false; // treat as LINEAR (NAV-EXTRA)
+    for (const std::string &tt : nav->getTransitionType()) {
+      if (tt == "TELEPORT") return true;
+      if (tt == "LINEAR") return false;
+      if (tt == "ANIMATE") return false; // treat as LINEAR (NAV-EXTRA)
     }
     return false;
   }

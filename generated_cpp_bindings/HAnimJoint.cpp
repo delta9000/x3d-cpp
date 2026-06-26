@@ -206,26 +206,17 @@ const FieldTable &HAnimJoint::fields() const {
     });
 
     t.push_back(FieldInfo{
-        "name", X3DFieldType::SFEnum, AccessType::InputOutput, "",
+        "name", X3DFieldType::SFString, AccessType::InputOutput, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(dynamic_cast<const HAnimJoint &>(n).getName());
         },
 
         [](X3DNode &n, const std::any &v) {
-          dynamic_cast<HAnimJoint &>(n).setName(
-              std::any_cast<HanimJointNameValues>(v));
+          dynamic_cast<HAnimJoint &>(n).setName(std::any_cast<SFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          return to_string(dynamic_cast<const HAnimJoint &>(n).getName());
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          HanimJointNameValues ev;
-          if (from_string(s, ev))
-            dynamic_cast<HAnimJoint &>(n).setName(ev);
-        }
+        nullptr, nullptr
 
     });
 

@@ -37,11 +37,9 @@ public:
 
   /**
    * @brief Get the default value for intersectionType
-   * @return IntersectionTypeValues The default value
+   * @return SFString The default value
    */
-  static IntersectionTypeValues getDefaultIntersectionType() {
-    return IntersectionTypeValues::BOUNDS;
-  }
+  static SFString getDefaultIntersectionType() { return "BOUNDS"; }
 
   /**
    * @brief Get the default value for matchCriterion
@@ -53,10 +51,10 @@ public:
 
   /**
    * @brief Get the default value for objectType
-   * @return std::vector<PickableObjectTypeValues> The default value
+   * @return MFString The default value
    */
-  static std::vector<PickableObjectTypeValues> getDefaultObjectType() {
-    return std::vector<PickableObjectTypeValues>{PickableObjectTypeValues::ALL};
+  static MFString getDefaultObjectType() {
+    return std::vector<std::string>{"ALL"};
   }
 
   /**
@@ -67,11 +65,9 @@ public:
 
   /**
    * @brief Get the default value for sortOrder
-   * @return PickSensorSortOrderValues The default value
+   * @return SFString The default value
    */
-  static PickSensorSortOrderValues getDefaultSortOrder() {
-    return PickSensorSortOrderValues::CLOSEST;
-  }
+  static SFString getDefaultSortOrder() { return "CLOSEST"; }
 
   /**
    * @brief Get the default container field value
@@ -96,17 +92,15 @@ public:
   /**
    * @brief Gets the value of intersectionType. AccessType: initializeOnly
    * @details
-   * @return IntersectionTypeValues The current value of intersectionType.
+   * @return SFString The current value of intersectionType.
    */
-  IntersectionTypeValues getIntersectionType() const {
-    return _intersectionType;
-  }
+  SFString getIntersectionType() const { return _intersectionType; }
   /**
    * @brief Data-layer write of intersectionType (reader/init ingest path).
    * @details intersectionType is initializeOnly: author-settable at parse
    *          time but not via runtime events. No public setIntersectionType().
    */
-  void setIntersectionTypeUnchecked(const IntersectionTypeValues &value) {
+  void setIntersectionTypeUnchecked(const SFString &value) {
     _intersectionType = value;
   }
 
@@ -133,27 +127,18 @@ public:
   /**
    * @brief Gets the value of objectType. AccessType: inputOutput
    * @details
-   * @return std::vector<PickableObjectTypeValues> The current value of
-   * objectType.
+   * @return MFString The current value of objectType.
    */
-  std::vector<PickableObjectTypeValues> getObjectType() const {
-    return _objectType;
-  }
+  MFString getObjectType() const { return _objectType; }
 
   /**
    * @brief Sets the value of objectType. AccessType: inputOutput
    * @details
    * @param value The new value for objectType.
    */
-  void setObjectType(const std::vector<PickableObjectTypeValues> &value) {
+  void setObjectType(const MFString &value) { _objectType = value; }
 
-    _objectType = value;
-  }
-
-  void setObjectType(std::vector<PickableObjectTypeValues> &&value) {
-
-    _objectType = std::move(value);
-  }
+  void setObjectType(MFString &&value) { _objectType = std::move(value); }
 
   /**
    * @brief Gets the value of pickedGeometry. AccessType: outputOnly
@@ -242,17 +227,15 @@ public:
   /**
    * @brief Gets the value of sortOrder. AccessType: initializeOnly
    * @details
-   * @return PickSensorSortOrderValues The current value of sortOrder.
+   * @return SFString The current value of sortOrder.
    */
-  PickSensorSortOrderValues getSortOrder() const { return _sortOrder; }
+  SFString getSortOrder() const { return _sortOrder; }
   /**
    * @brief Data-layer write of sortOrder (reader/init ingest path).
    * @details sortOrder is initializeOnly: author-settable at parse
    *          time but not via runtime events. No public setSortOrder().
    */
-  void setSortOrderUnchecked(const PickSensorSortOrderValues &value) {
-    _sortOrder = value;
-  }
+  void setSortOrderUnchecked(const SFString &value) { _sortOrder = value; }
 
   /**
    * @brief The X3D type name of this node (e.g. "X3DPickSensorNode").
@@ -286,7 +269,7 @@ private:
    * @brief Member variable for intersectionType.
    */
 
-  IntersectionTypeValues _intersectionType{IntersectionTypeValues::BOUNDS};
+  SFString _intersectionType{"BOUNDS"};
 
   /**
    * @brief Member variable for matchCriterion.
@@ -299,8 +282,7 @@ private:
    * @brief Member variable for objectType.
    */
 
-  std::vector<PickableObjectTypeValues> _objectType{
-      std::vector<PickableObjectTypeValues>{PickableObjectTypeValues::ALL}};
+  MFString _objectType{std::vector<std::string>{"ALL"}};
 
   /**
    * @brief Member variable for pickedGeometry.
@@ -324,7 +306,7 @@ private:
    * @brief Member variable for sortOrder.
    */
 
-  PickSensorSortOrderValues _sortOrder{PickSensorSortOrderValues::CLOSEST};
+  SFString _sortOrder{"CLOSEST"};
 };
 
 #endif // X3DPICKSENSORNODE_HPP
