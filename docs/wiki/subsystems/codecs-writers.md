@@ -137,36 +137,36 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
 
 ## How it is tested
 
-Tests live in `runtime/codecs/tests/`. All are registered as ctest targets.
+Tests live in `runtime/codecs/tests/`. Most are doctest cases compiled into the single `x3d_codecs_tests` ctest executable; `x3d_codec_roundtrip_audit` and `x3d_xml_script_field` are the two standalone ctest targets.
 
-| ctest target | What it covers |
+| doctest case | What it covers |
 |---|---|
-| `x3d_codec_roundtrip` | Full XML↔parse→write round-trip: reads an X3D-XML string, re-serializes, compares output |
-| `x3d_codec_roundtrip_audit` | Differential round-trip audit over a sample corpus; flags structural deviations |
-| `x3d_vrml_mf_bracket` | Verifies MF values are always bracketed in ClassicVRML output (AUD-A regression) |
-| `x3d_enum_quote` | Verifies `stripEnumQuotes` strips MFString-style quotes from enum wire values (AUD-D regression) |
-| `x3d_proto_roundtrip` | PROTO declaration + expansion round-trips through all three writers |
-| `x3d_proto_decl_body_roundtrip` | ProtoBody DEF/USE scope isolation across XML/VRML/JSON |
-| `x3d_proto_deep_is_roundtrip` | `IS` connections at arbitrary nesting depth survive round-trip |
-| `x3d_proto_is_json_vrml_roundtrip` | IS connections in JSON + VRML writers (PRF-1) |
-| `x3d_proto_writer_parity` | All three writers produce structurally equivalent PROTO output |
-| `x3d_proto_appinfo_json_roundtrip` | `appinfo`/`documentation` attributes on ProtoDeclare survive JSON round-trip |
-| `x3d_proto_extern_url_json_roundtrip` | ExternProtoDeclare `url` array survives JSON round-trip |
-| `x3d_proto_nested_instance_placement_roundtrip` | Case-A nested ProtoInstance placement inside ProtoBody (PRF-3) |
-| `x3d_nested_protoinstance_roundtrip` | Nested ProtoInstance round-trip (scene-level, non-expanded) |
-| `x3d_proto_instance_roundtrip` | ProtoInstance `fieldValue` overrides (scalar + node-valued) survive round-trip |
-| `x3d_proto_body_defscope` | ProtoBody DEF scope does not leak into the surrounding scene |
-| `x3d_initializeonly_read` | InitializeOnly fields written and re-read correctly |
-| `x3d_xml_proto_capture` | XML reader captures PROTO body nodes and writes them back via XmlWriter |
-| `x3d_xml_script_field` | Script `<field>` and CDATA source round-trip through XmlWriter |
-| `x3d_script_cdata_audit` | Script CDATA inline source survives all three writers |
-| `x3d_fval_extended` | Extended field-value IO: matrices, SFImage, MFImage, edge-case numeric formats |
-| `x3d_codec_conformance` | Conformance spot-checks: field default elision, DEF/USE identity, enum emit |
+| `roundtrip_test` | Full XML↔parse→write round-trip: reads an X3D-XML string, re-serializes, compares output |
+| `x3d_codec_roundtrip_audit` (standalone target) | Differential round-trip audit over a sample corpus; flags structural deviations |
+| `vrml_mf_bracket_test` | Verifies MF values are always bracketed in ClassicVRML output (AUD-A regression) |
+| `enum_quote_test` | Verifies `stripEnumQuotes` strips MFString-style quotes from enum wire values (AUD-D regression) |
+| `proto_roundtrip_test` | PROTO declaration + expansion round-trips through all three writers |
+| `proto_decl_body_roundtrip_test` | ProtoBody DEF/USE scope isolation across XML/VRML/JSON |
+| `proto_deep_is_roundtrip_test` | `IS` connections at arbitrary nesting depth survive round-trip |
+| `proto_is_json_vrml_roundtrip_test` | IS connections in JSON + VRML writers (PRF-1) |
+| `proto_writer_parity_test` | All three writers produce structurally equivalent PROTO output |
+| `proto_appinfo_json_roundtrip_test` | `appinfo`/`documentation` attributes on ProtoDeclare survive JSON round-trip |
+| `proto_extern_url_json_roundtrip_test` | ExternProtoDeclare `url` array survives JSON round-trip |
+| `proto_nested_instance_placement_roundtrip_test` | Case-A nested ProtoInstance placement inside ProtoBody (PRF-3) |
+| `nested_protoinstance_roundtrip_test` | Nested ProtoInstance round-trip (scene-level, non-expanded) |
+| `proto_instance_roundtrip_test` | ProtoInstance `fieldValue` overrides (scalar + node-valued) survive round-trip |
+| `proto_body_defscope_test` | ProtoBody DEF scope does not leak into the surrounding scene |
+| `initializeonly_read_test` | InitializeOnly fields written and re-read correctly |
+| `xml_proto_capture_test` | XML reader captures PROTO body nodes and writes them back via XmlWriter |
+| `x3d_xml_script_field` (standalone target) | Script `<field>` and CDATA source round-trip through XmlWriter |
+| `script_cdata_audit_test` | Script CDATA inline source survives all three writers |
+| `fval_extended_test` | Extended field-value IO: matrices, SFImage, MFImage, edge-case numeric formats |
+| `codec_conformance_test` | Conformance spot-checks: field default elision, DEF/USE identity, enum emit |
 
 Run the codec test suite with:
 
 ```
-ctest --preset dev -R "x3d_(codec|vrml|proto|enum|fval|xml_proto|xml_script|script_cdata|nested_proto|initializeonly)" --output-on-failure
+ctest --preset dev -R x3d_codecs_tests --output-on-failure
 ```
 
 Golden-file locks for the codec writers are tracked as per-milestone byte-identical assertions (historically in the deprecated `docs/superpowers/BACKLOG.md`). The conformance audit tool (`tools/corpus_audit.{hpp,cpp}`) exercises the full write→reparse cycle over the 17,719-file conformance archive as `x3d_corpus_audit` / `x3d_corpus_audit_smoke` (ctest targets in `tools/`). The `x3d_codec_roundtrip_audit` target in `runtime/codecs/tests/` is a separate, smaller differential audit over a sample corpus.

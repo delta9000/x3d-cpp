@@ -117,11 +117,11 @@ DynamicFieldStore &dynamicFieldStore();            // process-global store
 ## How it is tested
 
 - `ctest --preset dev -R x3d_event_scene_bridge` — the primary bridge test: validates ROUTE resolution, field-direction enforcement, type-mismatch rejection, author-field ROUTE endpoints, and PROTO-interface redirect.
-- `ctest --preset dev -R x3d_event_cascade` — route propagation (fan-out), loop-breaking, inputOnly-sink semantics; exercises the full `EventGraph::sinks()` path.
-- `ctest --preset dev -R x3d_cascade_conformance` — conformance scenarios that run routes across real parsed scenes.
-- `ctest --preset dev -R x3d_cascade_alias_audit` — `set_xxx` / `xxx_changed` alias resolution via `resolveFieldAlias`.
-- `ctest --preset dev -R x3d_cascade_dynamic_route` — dynamic `addRoute`/`deleteRoute` operations through `SaiContext` (SAI §4.3.7 path).
-- `ctest --preset dev -R x3d_dynamic_field` — `DynamicFieldStore` unit tests: `addAuthorField`, `effectiveFields`, type-mismatch drop counter (AUD-MEM-1), `getValue`/`setValue` contract.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_test`) — route propagation (fan-out), loop-breaking, inputOnly-sink semantics; exercises the full `EventGraph::sinks()` path.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_conformance_test`) — conformance scenarios that run routes across real parsed scenes.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_alias_audit_test`) — `set_xxx` / `xxx_changed` alias resolution via `resolveFieldAlias`.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_dynamic_route_test`) — dynamic `addRoute`/`deleteRoute` operations through `SaiContext` (SAI §4.3.7 path).
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `dynamic_field_test`) — `DynamicFieldStore` unit tests: `addAuthorField`, `effectiveFields`, type-mismatch drop counter (AUD-MEM-1), `getValue`/`setValue` contract.
 - `ctest --preset dev -R x3d_inline_routes` — Inline-internal ROUTE pre-resolution and direct registration path.
 
 ## Related specs and ADRs

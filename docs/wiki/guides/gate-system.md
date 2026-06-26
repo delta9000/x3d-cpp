@@ -205,7 +205,7 @@ to pages that do not yet exist in `nav:` — `--strict` will fail.
 mise run ci
 ```
 
-`ci` depends on `test`, `golden`, `conformance-gate`, `build`, and `cli-gate-regression` (in
+`ci` depends on `test`, `golden`, `conformance-gate`, `coverage-gate`, `build`, and `cli-gate-regression` (in
 that order, with the C++ build providing the compiled gate binaries). The DOCS gate
 (`docs-build`) is separate and should also be run before any wiki PR merge.
 

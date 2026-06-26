@@ -89,7 +89,7 @@ On button-down edge, the system picks the ray (`ctx.pick`), computes the target 
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_navigation` — ten cases, all driven entirely in code (no file fixtures):
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `navigation_test`) — ten cases, all driven entirely in code (no file fixtures):
   1. **EXAMINE** — drag orbits the eye; asserts distance-to-pivot is preserved and camera aims at pivot; authored `position` field is unchanged (BIND-01 invariant).
   2. **FLY** — forward key translates by `speed * dt` along the view direction; drag rotates the effective view direction; `speed = 0` locks position; authored `position` field is unchanged.
   3. **LOOKAT** — click on a 2×2×2 Box at the origin from z=10; asserts pose moves during transition, ends at a framing distance in front of the box, `centerOfRotation` is set to the bbox center, and `transitionComplete` is `TRUE`.

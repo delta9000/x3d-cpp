@@ -99,9 +99,9 @@ public:
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_key_state` — unit tests for `KeyState` in isolation and for the `X3DExecutionContext` keyboard seam (initial state, press/release, double-press revision bump, multiple keys, pointer+key revision independence). Source: `runtime/events/tests/key_state_test.cpp`.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `key_state_test`) — unit tests for `KeyState` in isolation and for the `X3DExecutionContext` keyboard seam (initial state, press/release, double-press revision bump, multiple keys, pointer+key revision independence). Source: `runtime/events/tests/key_state_test.cpp`.
 
-- `ctest --preset dev -R x3d_key_device_sensor` — behavioral-conformance tests for `KeyDeviceSensorSystem`, covering:
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `key_device_sensor_test`) — behavioral-conformance tests for `KeyDeviceSensorSystem`, covering:
   - KDS-2/5: `KeySensor` character key → `keyPress` + `isActive` lifecycle.
   - KDS-3: action keys (`actionKeyPress` / `actionKeyRelease`, Table 21.2 value `17` = UP).
   - KDS-4: modifier keys (`shiftKey` / `controlKey` / `altKey`).

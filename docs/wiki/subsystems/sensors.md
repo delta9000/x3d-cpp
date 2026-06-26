@@ -169,33 +169,33 @@ go through the cascade seam.
 
 The sensor families each have a dedicated test binary:
 
-- `ctest --preset dev -R x3d_event_timesensor` — `runtime/events/tests/timesensor_test.cpp`.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `timesensor_test`) — `runtime/events/tests/timesensor_test.cpp`.
   Full `TimeSensor`/`X3DTimeDependentNode` lifecycle: `enabled=false`, start gating,
   single-shot completion, looping wrap + `cycleTime` pulses, `stopTime` early
   deactivation, pause/resume (elapsed-time excludes the paused span), and the
   `cycleInterval <= 0` guard.
 
-- `ctest --preset dev -R x3d_event_timesensor_rtc` — `runtime/events/tests/timesensor_rtc_test.cpp`.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `timesensor_rtc_test`) — `runtime/events/tests/timesensor_rtc_test.cpp`.
   Four spec-conformance regressions:
   - **RTC-1**: `cycleInterval <= 0` with `loop=TRUE` must not crash (divide-by-zero guard).
   - **RTC-2**: looping sensor emits `fraction_changed == 1.0` at each exact cycle boundary.
   - **RTC-3**: `cycleTime` == `startTime + cycleIndex * cycleInterval` (NOT the tick's `now`).
   - **RTC-4**: `set_enabled FALSE` while active emits the final outputs BEFORE `isActive=FALSE`.
 
-- `ctest --preset dev -R x3d_pointing_sensor` — `runtime/events/tests/pointing_sensor_test.cpp`.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `pointing_sensor_test`) — `runtime/events/tests/pointing_sensor_test.cpp`.
   `PointingSensorSystem` over `TouchSensor` + `PlaneSensor`: `isOver` enter/leave,
   resolution to the lowest sensor on the path, nearest-geometry selection, hit-point/
   hit-normal in the sensor frame under a translated/rotated transform, `hitTexCoord`
   (barycentric + primitive), `isActive` + `touchTime` click semantics, grab exclusivity,
   and `enabled=FALSE` gate.
 
-- `ctest --preset dev -R x3d_key_device_sensor` — `runtime/events/tests/key_device_sensor_test.cpp`.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `key_device_sensor_test`) — `runtime/events/tests/key_device_sensor_test.cpp`.
   `KeyDeviceSensorSystem` over `KeySensor` and `StringSensor`:
   `keyPress`/`keyRelease` (UTF-8 char), `actionKeyPress`/`actionKeyRelease` (Table 21.2),
   `shiftKey`/`controlKey`/`altKey`, `isActive` lifecycle (§21.4.1); `enteredText`
   accumulator, `finalText`+reset, `deletionAllowed` (§21.4.2); enabled gate.
 
-- `ctest --preset dev -R x3d_view_dependent` — `runtime/scene/tests/view_dependent_test.cpp`.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `view_dependent_test`) — `runtime/scene/tests/view_dependent_test.cpp`.
   `ViewDependentSystem` covering: LOD level selection (`lodSelectLevel` step function,
   child-count clamping, `level_changed` event emission), `ProximitySensor` enter/exit +
   `position_changed`/`orientation_changed` change-gating (ENV-04), `VisibilitySensor`

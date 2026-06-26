@@ -104,7 +104,7 @@ X3D file
 
 ## How it is tested
 
-All ext tests are registered inside the `if(X3D_CPP_BUILD_EXT)` block in `CMakeLists.txt` and run only when `-DX3D_CPP_BUILD_EXT=ON` is set. They do not appear in, and do not affect, the standard `ctest 153/153` run (159 total `add_test` entries minus the 6 inside the `X3D_CPP_BUILD_EXT` block).
+All ext tests are compiled and registered only inside the `if(X3D_CPP_BUILD_EXT)` block in `CMakeLists.txt` and run only when `-DX3D_CPP_BUILD_EXT=ON` is set. They therefore do not appear in, and do not affect, the default `ctest` run.
 
 - **`stl_reader_test`** (`runtime/ext/tests/stl_reader_test.cpp`) — synthesizes a two-triangle binary STL in-memory and asserts: `vertex_count == 6`, `index_count == 0`, Position and Normal attributes present with correct per-vertex values, AABB computed correctly (`min=(0,0,0)`, `max=(3,1,0)`), and three malformed-input cases (buffer too short, truncated triangle data, null pointer) all return empty `PackedMesh` without crashing.
 
