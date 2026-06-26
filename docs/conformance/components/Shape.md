@@ -7,16 +7,18 @@ _Generated. Levels 1,2,3,4,5 · 10 nodes · profiles: Interchange, Interactive, 
 | AcousticProperties | 5 | ✓ | — | — | — | X3DAppearanceChildNode |
 | Appearance | 1 | ✓ | — | — | MAT-001, MAT-006, MAT-009 | X3DAppearanceNode |
 | FillProperties | 3 | ✓ | — | — | — | X3DAppearanceChildNode |
-| LineProperties | 2 | ✓ | — | — | — | X3DAppearanceChildNode |
+| LineProperties | 2 | ✓ | — | — | SEAM-LINEPOINT | X3DAppearanceChildNode |
 | Material | 1 | ✓ | — | — | MAT-002, MAT-003, MAT-004, MAT-005, MAT-006, MAT-007, MAT-009 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
 | PhysicalMaterial | 2 | ✓ | — | — | MAT-005, MAT-006, MAT-007, MAT-008, MAT-009 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
-| PointProperties | 5 | ✓ | — | — | — | X3DAppearanceChildNode |
+| PointProperties | 5 | ✓ | — | — | SEAM-LINEPOINT | X3DAppearanceChildNode |
 | Shape | 1 | ✓ | — | — | MAT-001 | X3DBoundedObject, X3DChildNode, X3DShapeNode |
 | TwoSidedMaterial | 4 | ✓ | — | — | — | X3DAppearanceChildNode, X3DMaterialNode |
 | UnlitMaterial | 1 | ✓ | — | — | MAT-005, MAT-007, MAT-009, UNLIT-EMISSIVE | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
 
 ## Findings
 
+- **SEAM-LINEPOINT** [minor/OPEN] — §12.4.6 (LineProperties), 12.4.8 (PointProperties): Line width and point size are unrepresentable on the seam — MeshData/MaterialDesc carry no lineWidth/pointSize, so every IndexedLineSet draws at 1px regardless of LineProperties.linewidthScaleFactor.
+  - Line/point funnel MeshBuilder.hpp:1690-1766 sets topology Lines/Points and per-vertex color but the descriptors have no width/size carrier. Fix: add lineWidth/pointSize (or a small LineProperties descriptor) so the GL glLineWidth/gl_PointSize path is feedable. (extraction-seam review.)
 - **MAT-001** [critical/CLOSED `c86b731`] — §12.4.2, 17.2.2.4: Appearance with material=NULL extracts a grey Phong material; spec mandates an UnlitMaterial white(1,1,1), lighting off, and the texture as emissive — a visibly wrong lit-grey surface.
   - materialOf() default branch must return Unlit emissive=(1,1,1) + texture in the Emissive slot, not Phong baseColor 0.8 grey.
 - **MAT-002** [major/CLOSED `c86b731`] — §12.4.5, 17.2.2.5: Material.shininessTexture (alpha) has no descriptor slot — consumers can't modulate per-pixel shininess.

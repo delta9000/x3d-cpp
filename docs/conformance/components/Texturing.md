@@ -9,7 +9,7 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
 | MultiTexture | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureNode |
 | MultiTextureCoordinate | 2 | ✓ | — | — | TXT-6 | X3DGeometricPropertyNode, X3DTextureCoordinateNode |
 | MultiTextureTransform | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureTransformNode |
-| PixelTexture | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode |
+| PixelTexture | 1 | ✓ | — | — | ENC-VRML-SFIMAGE | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode |
 | TextureCoordinate | 1 | ✓ | — | — | — | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
 | TextureCoordinateGenerator | 2 | ✓ | — | — | TXF-2 | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
 | TextureProperties | 2 | ✓ | — | — | — |  |
@@ -22,6 +22,8 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
   - Blocked on the media/duration_changed seam — audio sources beyond OscillatorSource are not built (SND-4); the time-dependent lifecycle for sound sources is also inert (SND-2).
 - **TXF-2** [major/DEFERRED] — §18.4.8: TextureCoordinateGenerator UVs (SPHERE/CAMERASPACE*) are view-dependent per-vertex and must be computed at render time — the descriptor is surfaced but no UVs are produced.
   - By-design render-time seam; ensure MeshData supplies the world/camera-frame normals the consumer needs. Documented.
+- **ENC-VRML-SFIMAGE** [major/OPEN] — §ISO 19776-2 5.3 (sfimageValue): ClassicVRML SFImage READER consumes only width and discards height/components/all pixel words — a 2x2 texture parses back as `2 0 0` (empty).
+  - Real scenes NetworkedCamera.x3d, examples/.../textured_text.x3d: `image='2 2 3 0 65280 255 16711680'` survives XML->JSON direct, the .x3dv even WRITES it correctly, but reading that .x3dv back yields `[2,0,0]` — every inline PixelTexture destroyed the instant the scene passes through ClassicVRML. Fix: the ClassicVRML SFImage parser must consume width*height pixel words after the `w h comp` header. (round-trip sweep, newly surfaced.)
 - **TXF-1** [minor/DEFERRED] — §18.4.10: TextureTransform matrix application order divergence (translate/center/rotate/scale/−center) — UVs transformed incorrectly for non-trivial transforms.
   - Verify TextureTransform2D against §18.4.10 right-to-left order T·C·R·S·(−C); fix + regression.
 - **TXF-3** [minor/DEFERRED] — §18.4.10: MatrixTextureTransform + MultiTextureTransform not handled (only the single TextureTransform).

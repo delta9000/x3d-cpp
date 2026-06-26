@@ -1658,3 +1658,294 @@
     struct. Today Viewport.hpp:87 stores the fractions only; no consumer in runtime/. Justified by the
     node name and 35.2.3/35.2.4 independent-view/CAD intent. 4.1 - unresolved (Mantis 326 still
     drifting in 2026); engine contract ahead of spec.
+
+# ══════════════════════════════════════════════════════════════════════════
+# SCOPED-AGENT-REVIEW WAVE (2026-06) — behavioral + encoding-round-trip gaps.
+# Multi-pass scoped agent reviews (semantics → subsystem breadth → engineering
+# quality → empirical sanitizer/fuzz/round-trip). Most entries are empirically
+# reproduced (ASan/UBSan, a 422-scene round-trip sweep, compiled probes).
+# Engineering/security/build/docs items are tracked in the GitHub Project, not here.
+# ══════════════════════════════════════════════════════════════════════════
+# ══ ENCODING ROUND-TRIP (ISO 19776) — proven by the 422-scene round-trip sweep ══
+# Sweep result: 378/422 round-trip byte-identical (89.6%); the 44 failures below.
+
+- id: ENC-VRML-STRING
+  nodes: [MetadataString]
+  interfaces: [X3DMetadataObject]
+  clause: "ISO 19776-2 5.3 (sfstringValue/mfstringValue)"
+  severity: major
+  status: open
+  summary: ClassicVRML writer does not escape '\"' or '\\' in SFString/MFString/META — embedded quote truncates the value and drops following fields; backslash is eaten and splits one MFString element into two.
+  note: >-
+    Proven on real corpus ConformanceNist/.../greyscale_jpg_diffuseColor.x3d: a META description
+    with an inner quote writes `META "description" "...adding a "red"..."` and re-reads truncated at
+    the inner quote, dropping the rest plus the next four <meta> lines. MFString probe: a 5-element
+    field with a backslash/quote becomes 6 elements. Fix: VrmlWriter must emit '"'->'\"' and
+    '\\'->'\\\\' on every SFString/MFString/META. Affects descriptions, licenses, any string-bearing
+    field through a .x3dv hop. (round-trip sweep; confirms an earlier static prediction.)
+
+- id: ENC-VRML-SFIMAGE
+  nodes: [PixelTexture]
+  component: Texturing
+  clause: "ISO 19776-2 5.3 (sfimageValue)"
+  severity: major
+  status: open
+  summary: ClassicVRML SFImage READER consumes only width and discards height/components/all pixel words — a 2x2 texture parses back as `2 0 0` (empty).
+  note: >-
+    Real scenes NetworkedCamera.x3d, examples/.../textured_text.x3d:
+    `image='2 2 3 0 65280 255 16711680'` survives XML->JSON direct, the .x3dv even WRITES it
+    correctly, but reading that .x3dv back yields `[2,0,0]` — every inline PixelTexture destroyed the
+    instant the scene passes through ClassicVRML. Fix: the ClassicVRML SFImage parser must consume
+    width*height pixel words after the `w h comp` header. (round-trip sweep, newly surfaced.)
+
+- id: ENC-JSON-UNIT
+  nodes: [WorldInfo]
+  component: Core
+  clause: "ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT"
+  severity: major
+  status: open
+  summary: X3D-JSON writer has no slot for UNIT declarations — <unit> is silently dropped on XML/VRML->JSON, so every angle/length value then means something different with no warning.
+  note: >-
+    Probe: `<unit category='angle' name='degrees' conversionFactor='0.0174533'/>` survives into
+    ClassicVRML (`UNIT angle degrees 0.0174533`) but is absent from the JSON and the round-trip XML.
+    JsonReader.hpp:111-119 READS "unit" back, so the asymmetry is the tell. Fix: emit the `unit`
+    array in JsonWriter.hpp writeHead, mirroring `meta`. (round-trip sweep, confirms a static prediction.)
+
+- id: ENC-PROTO-APPINFO
+  nodes: [ProtoDeclare, ExternProtoDeclare]
+  interfaces: [X3DPrototypeInstance]
+  clause: "ISO 19776-2; 19775-1 4.4.4"
+  severity: minor
+  status: open
+  summary: ProtoDeclare/ExternProtoDeclare `appinfo` and `documentation` attributes are dropped through the ClassicVRML hop — the most common drift in the sweep (31 of 44 scenes).
+  note: >-
+    XML->JSON direct keeps all appinfos (PajekVisualizationPrototypes.x3d); XML->VRML drops them to
+    zero. The whole Savage/KelpForest prototype-tooltip layer evaporates. Fix: carry
+    appinfo/documentation through the ClassicVRML path (X3D-Edit round-trips via comment/metadata
+    convention); at minimum keep them clean through JSON. (round-trip sweep.)
+
+- id: ENC-PROTO-CONNECT
+  nodes: [ProtoBody, connect]
+  interfaces: [X3DPrototypeInstance]
+  clause: "ISO 19776; 19775-1 4.4.4 (IS/connect)"
+  severity: major
+  status: open
+  summary: ProtoBody `<connect>` IS-wiring is dropped on round-trip (5 scenes) — the proto declares fine but no longer drives anything inside its body.
+  note: >-
+    CanopyPrototype.x3d, F18 wheel prototypes, PajekVisualizationPrototypes.x3d lose
+    `<connect nodeField=... protoField=.../>`. Distinct from PROTO-IS-001 (that was expansion-time
+    MFNode override propagation, now fixed) — this is SERIALIZATION dropping the connect element in a
+    writer. Fix: treat <connect>/IS as load-bearing in every encoder. (round-trip sweep.)
+
+- id: ENC-SFNODE-DEFAULT
+  nodes: [ProtoDeclare, field]
+  interfaces: [X3DPrototypeInstance]
+  clause: "ISO 19776; 19775-1 4.4.4"
+  severity: minor
+  status: open
+  summary: A proto `<field type='SFNode'>` default child node collapses to empty on round-trip — instances relying on the default get nothing.
+  note: >-
+    SeaStarHighResolutionPrototype.x3d, runtime/.../NewShape.wrl: an SFNode field whose default value
+    is an `<Appearance><Material/></Appearance>` re-serializes as `<field ... type='SFNode'/>`.
+    Fix: serialize SFNode field default children in all encodings. (round-trip sweep.)
+
+- id: ENC-CDATA-SCRIPT
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "ISO 19776-1 (CDATA); 19775-1 29"
+  severity: minor
+  status: open
+  summary: Script source containing the literal `]]>` is silently truncated (`if (a]]>b)` -> `if (ab)`) — the XML writer wraps source in one CDATA block without splitting.
+  note: >-
+    XmlWriter wraps el.text as `<![CDATA[ + text + ]]>` with no split; a `]]>` in JS source closes the
+    CDATA early. Partly an inherent XML limit, but the toolchain neither rejects nor preserves — it
+    eats characters. Fix: split on `]]>` into consecutive CDATA sections (`]]]]><![CDATA[>`).
+    (encoding review; confirmed by round-trip sweep.)
+
+- id: ENC-C14N-ATTR
+  nodes: [MetadataString]
+  component: Core
+  clause: "X3D Canonical Form (X3DC14N); W3C C14N attr normalization"
+  severity: minor
+  status: open
+  summary: X3DC14N attribute escaping omits tab/newline/CR (`&#x9; &#xA; &#xD;`) — a canonical file with multiline meta/MFString is non-portable (any conformant reader normalizes the raw tab/newline to a space).
+  note: >-
+    CanonicalXmlWriter canonEscape escapes only `& < > '`. Self-stable here (re-canonicalizing twice is
+    identical) but NOT portable/signable across conformant parsers, and likely caps the canon-gate T3
+    byte-exact rate. Fix: emit `&#x9;/&#xA;/&#xD;` in attribute values (pure superset for well-formed
+    text). (encoding review; confirmed non-portable by round-trip sweep.)
+
+- id: ENC-MFSTRING-READ
+  nodes: [MetadataString]
+  component: Core
+  clause: "ISO 19776-2 5.3 (mfstringValue)"
+  severity: minor
+  status: open
+  summary: MFString reader drops a backslash before any char other than '\"'/'\\' — `\\n`->`n`, `\\t`->`t`, Windows `c:\\new\\tex`->`c:newex`.
+  note: >-
+    FieldValueIO.hpp:172-177: on `\\` it copies buf[i+1] verbatim and advances 2. ISO 19776 defines
+    only `\"` and `\\` as escapes; X_ITE preserves an unknown `\x`. Own write->read is safe (writer
+    escapes `\`), but external/hand-authored MFString is mangled. Fix: for any `\x` other than `\"`/`\\`,
+    keep the backslash. (encoding review.)
+
+- id: ENC-JSON-CTRL
+  nodes: [MetadataString]
+  component: Core
+  clause: "ISO 19776-3; RFC 8259"
+  severity: minor
+  status: open
+  summary: X3D-JSON writer emits raw control chars (`\\b \\f`, any U+0000–001F) which RFC 8259 forbids; reader passes a lone surrogate through as malformed UTF-8.
+  note: >-
+    JsonWriter jstr escapes only `" \ \n \t \r`; strict consumers (and X3DJSAIL's JSON path) reject the
+    output. Fix: fall through to `\u00XX` for any byte < 0x20; optionally substitute U+FFFD for unpaired
+    surrogates on read. (encoding review.)
+
+# ══ BEHAVIORAL RUNTIME ══════════════════════════════════════════════════════
+
+- id: SCRIPT-EVENTIN
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2; 4.4.8.3"
+  severity: major
+  status: open
+  summary: A ROUTE into a Script eventIn/inputOutput (or set_url) is validated and registered but NEVER dispatched at tick time — the canonical sensor->Script->scene pattern is inert in production.
+  note: >-
+    X3DEventCascade.hpp:185-198 deliver() scans the STATIC fields() table; Script author fields live only
+    in effectiveFields()/the dynamic store, so the lookup misses and the event evaporates with no
+    diagnostic (buildRoutes resolved the sink via effectiveFields, X3DSceneBridge.hpp:74). Same
+    asymmetry silently drops `set_url` ROUTEs. eventsProcessed() also never fires in production
+    (gated on receivedEventThisTick). Fix: resolve delivery through effectiveFields() and forward
+    Script-field writes to ScriptSystem::deliverInputEvent. (event-model review; empirically confirmed —
+    `x3d sim` on a TouchSensor ROUTE produces nothing.)
+
+- id: TRANSFORMSENSOR-SCALE
+  nodes: [TransformSensor]
+  interfaces: [X3DEnvironmentalSensorNode]
+  clause: "22.4.5"
+  severity: major
+  status: open
+  summary: TransformSensor extracts orientation_changed from a scale-bearing relative matrix — a uniform 3x scale collapses the reported angle to 0; non-uniform scale can emit a NaN SFRotation into the route graph.
+  note: >-
+    ViewDependentSystem.hpp:278 `rotationFromMatrix(swInv * tw)`; rotationFromMatrix (Mat4.hpp:128) is
+    documented "assumes upper-left 3x3 is pure rotation (no scale)" but the relative matrix folds in both
+    hierarchies' scale. Probe: uniform-scale(3x)+90deg-about-X -> angle=0.000 (true 1.571). Fix: strip
+    scale (normalize the 3x3 columns / polar or TRS decompose) before rotationFromMatrix. (numeric probe.)
+
+- id: IMPORT-EXPORT-WIRE
+  nodes: [IMPORT, EXPORT, Inline]
+  clause: "9.4.2; 4.4.6"
+  severity: minor
+  status: open
+  summary: IMPORT/EXPORT statements parse and round-trip but are never wired to routing — a ROUTE to an imported name hits the unresolved-endpoint drop.
+  note: >-
+    scene.imports/exports are consumed only by the codecs; no event/routing code references them. Inline
+    DEF isolation (InlineExpand.hpp:176) is correct, but the spec's sanctioned cross-Inline escape hatch
+    is inert. Fix: at scene-bridge build, resolve each Import{inlineDEF, importedDEF, AS} against the named
+    Inline's exported DEF and register the alias before resolveRoutes. X_ITE supports this. (event-model review.)
+
+- id: SCRIPT-OUTPUTONLY-REEMIT
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2.4 (ECMAScript binding 19777-1)"
+  severity: low
+  status: open
+  summary: An explicit same-value assignment to a Script outputOnly field is suppressed — strict X3D semantics say an explicit eventOut assignment generates an event regardless of value.
+  note: >-
+    EcmaScriptBackend.cpp:906-912 readbackAuthorGlobals diffs against the stored value and skips if equal,
+    for BOTH inputOutput (correct) and outputOnly (a re-assert on two ticks fires once). Fix: track a
+    per-field "assigned this callback" flag for outputOnly, or document as an intentional X3DOM-aligned
+    optimization. (event-model review.)
+
+# ══ VALIDATION / DIAGNOSTICS CONFORMANCE ════════════════════════════════════
+
+- id: DIAG-UNKNOWN-NODE
+  nodes: [WorldInfo]
+  component: Core
+  clause: "ISO 19776-1; 19775-1 7"
+  severity: minor
+  status: open
+  summary: 'An unknown/misspelled node element is silently discarded with no diagnostic — `x3d validate` reports "valid: yes / no diagnostics" while deleting geometry.'
+  note: >-
+    XmlReader.hpp:157-158 (`unknown node type: skip`) and NodeBuilder.hpp:70 drop the element and collect
+    no warning. Violates the "the reported error message is precisely correct" standard by absence. Fix:
+    thread an unknown-element warning into doc (parallel to rangeWarnings/inlineWarnings) and surface it in
+    cmdValidate. (validation review.)
+
+- id: DIAG-PROFILE-COERCE
+  nodes: [WorldInfo]
+  component: Core
+  clause: "7.2.5.3 (profile)"
+  severity: minor
+  status: open
+  summary: An unknown/misspelled `profile=` token is silently coerced to Interchange and re-emitted as `profile='Interchange'` — validates against the wrong component table and rewrites authored metadata.
+  note: >-
+    X3DDocument.hpp:59 returns Profile::Interchange for any unrecognized string; cmdValidate then checks
+    exceedances against the wrong table and the writer rewrites the declared conformance class. Fix:
+    preserve the raw profile string for round-trip; emit a profile/error diagnostic when the token is not
+    one of the seven canonical names. (validation review.)
+
+- id: CONTAINERFIELD-FALSEPOS
+  nodes: [Coordinate, NurbsCurve]
+  clause: "ISO 19776-1 (containerField)"
+  severity: minor
+  status: open
+  summary: CONTAINERFIELD_MISMATCH warns whenever containerField != the child's own default, false-positiving on legal non-default overrides (e.g. <NurbsCurve><Coordinate containerField='controlPoint'/></NurbsCurve>).
+  note: >-
+    validate.py:76 compares only against the child default; the adjacent comment promises a parent-field
+    check that is unimplemented. Fix: resolve whether containerField names a valid SF/MFNode field on the
+    PARENT that accepts this node type before warning; add a NURBS controlPoint regression. (validation review.)
+
+# ══ EXTRACTION-SEAM COVERAGE (extraction-semantic axis) ═════════════════════
+# The renderer-agnostic seam is narrower than the node model; these nodes reach
+# no descriptor, so a consumer wired to the contract renders nothing.
+
+- id: SEAM-BACKGROUND
+  nodes: [Background, TextureBackground]
+  component: EnvironmentalEffects
+  clause: "24.4.2, 24.4.4"
+  severity: major
+  status: open
+  summary: BackgroundDesc surfaces only sky/ground gradient — the six panorama *Url faces, TextureBackground textures, and Background.transparency never reach the seam; the gallery skybox only works because the example reads the *Url fields straight off the node.
+  note: >-
+    background() SceneExtractor.hpp:351-363 + BackgroundDesc RenderItem.hpp:520-527 carry no panorama;
+    examples/cpu_raster/main.cpp:204-209 bypasses the seam via node reflection, masking the gap. Fix: put
+    the six *Url slots, transparency, and TextureBackground texture nodes on BackgroundDesc so the skybox
+    is reproducible from the contract. (extraction-seam review.)
+
+- id: SEAM-2D-NURBS
+  nodes: [Disk2D, Arc2D, Circle2D, Rectangle2D, NurbsCurve, NurbsPatchSurface]
+  component: Geometry2D
+  clause: "14 (Geometry2D), 27 (NURBS)"
+  severity: major
+  status: open
+  summary: The entire 2D-geometry component and all NURBS nodes are unrecognized by the mesh builder and render nothing — indistinguishable from a parser failure.
+  note: >-
+    recognizedGeometryType MeshBuilder.hpp:1242-1256 lists none of Disk2D/Arc2D/ArcClose2D/Circle2D/
+    Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D or NurbsCurve/NurbsPatchSurface/NurbsTrimmedSurface;
+    each falls to ++skippedGeometry_ (SceneExtractor.hpp:558). view3dscene/X_ITE tessellate these. Fix:
+    tessellate the 2D primitives (cheap trig fans) now; flag NURBS as a known gap. (extraction-seam review.)
+
+- id: SEAM-LINEPOINT
+  nodes: [LineProperties, PointProperties, IndexedLineSet, PointSet]
+  component: Shape
+  clause: "12.4.6 (LineProperties), 12.4.8 (PointProperties)"
+  severity: minor
+  status: open
+  summary: Line width and point size are unrepresentable on the seam — MeshData/MaterialDesc carry no lineWidth/pointSize, so every IndexedLineSet draws at 1px regardless of LineProperties.linewidthScaleFactor.
+  note: >-
+    Line/point funnel MeshBuilder.hpp:1690-1766 sets topology Lines/Points and per-vertex color but the
+    descriptors have no width/size carrier. Fix: add lineWidth/pointSize (or a small LineProperties
+    descriptor) so the GL glLineWidth/gl_PointSize path is feedable. (extraction-seam review.)
+
+- id: SEAM-TEXT-METRICS
+  nodes: [Text, FontStyle]
+  component: Text
+  clause: "15.4.2, 15.4.1"
+  severity: minor
+  status: open
+  summary: Text glyphs are stretched to the advance cell and ascender/descender are hard-coded — GlyphMetrics exposes only advanceEm + atlas UV, so the seam cannot place a proportional-font glyph at its true box even with a real atlas.
+  note: >-
+    buildTextMesh TextExtract.hpp:294-326 maps the glyph UV across the full advance-width quad; GlyphMetrics
+    FontMetrics.hpp:59-64 lacks bearing/size/top; vertical metrics fixed at 0.8/-0.2*size. Monospace stub is
+    fine; a real font is not. Fix: extend GlyphMetrics with {bearingX,sizeX,sizeY,top} and place the quad at
+    the actual glyph box. (extraction-seam review.)
