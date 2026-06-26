@@ -5,7 +5,7 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | Analyser | 2 | ✓ | — | ✗ | SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| AudioClip | 1 | ✓ | — | ✗ | SND-4, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
+| AudioClip | 1 | ✓ | — | ◑ | MULTI-INHERIT, SND-4, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
 | AudioDestination | 2 | ✓ | — | — | SND-7 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
 | BiquadFilter | 2 | ✓ | — | ◑ | SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | BufferAudioSource | 2 | ✓ | — | ✗ | SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
@@ -16,7 +16,7 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 | Delay | 2 | ✓ | — | ✗ | SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | DynamicsCompressor | 2 | ✓ | — | ✗ | SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | Gain | 2 | ✓ | — | ◑ | SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| ListenerPointSource | 2 | ✓ | — | ✗ | SND-3 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
+| ListenerPointSource | 2 | ✓ | — | ◑ | SND-3, SND-GAIN-TYPE | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | MicrophoneSource | 2 | ✓ | — | ✗ | SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | OscillatorSource | 2 | ✓ | — | ◑ | SND-1, SND-2, SND-9 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | PeriodicWave | 2 | ✓ | — | — | SND-9 | X3DChildNode, X3DSoundNode |
@@ -48,4 +48,8 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
   - Tied to the missing activation lifecycle (SND-2); the backend renders steady-state with no stop edge to tail from. Resolve alongside SND-2.
 - **SND-9** [minor/DEFERRED] — §16.4.15, 16.4.18: periodicWave ignored — OscillatorSource is always Sine; a referenced PeriodicWave (custom waveform via real/imag DFT terms) is not realized.
   - Spec-correct default (periodicWave NULL = sine), so not a bug — but custom waveforms are unsupported. The seam already carries a Waveform enum (Sine/Square/Sawtooth/Triangle); arbitrary PeriodicWave needs a DFT-coefficient param. Deferred.
+- **MULTI-INHERIT** [minor/CLOSED] — §16.4.2, 18.4.2: MovieTexture declared under two abstract node types; engine handles it via ADR-0004 virtual mixins. AudioClip is the clean single-node pattern (named by association).
+  - UOM nominates one primary Inheritance + AdditionalInheritance; bindings emit every base public virtual (MovieTexture.hpp:40-42), the shared X3DNode collapses, and reflection accessors are qualified by declaring ancestor (MovieTexture.cpp:19,89,106). containerField defaults deterministic - MovieTexture=texture, AudioClip=source. No engine impact (see ADR-0004). 4.1 - confirmed; 4.1 did NOT do the X3DSoundSourceObject interface recast (still multiple inheritance), so the virtual-mixin approach remains the durable answer.
+- **SND-GAIN-TYPE** [low/CLOSED] — §16.4.13: gain typed SFInt32 in ISO prose vs SFFloat in X3DUOM; engine correct-by-UOM.
+  - Upstream prose erratum, not an engine gap. The X3DUOM inherits SFFloat from X3DSoundSourceNode; x3d-cpp is correct (ListenerPointSource.cpp:84-95). Add a regression assert gain.type == SFFloat to pin against codegen drift. 4.1 - confirmed; 4.1 UOM still SFFloat.
 

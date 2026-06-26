@@ -13,7 +13,7 @@ _Generated. Levels 1,2,3,4,5 · 10 nodes · profiles: Interchange, Interactive, 
 | PointProperties | 5 | ✓ | — | — | — | X3DAppearanceChildNode |
 | Shape | 1 | ✓ | — | — | MAT-001 | X3DBoundedObject, X3DChildNode, X3DShapeNode |
 | TwoSidedMaterial | 4 | ✓ | — | — | — | X3DAppearanceChildNode, X3DMaterialNode |
-| UnlitMaterial | 1 | ✓ | — | — | MAT-005, MAT-007, MAT-009 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
+| UnlitMaterial | 1 | ✓ | — | — | MAT-005, MAT-007, MAT-009, UNLIT-EMISSIVE | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
 
 ## Findings
 
@@ -32,4 +32,6 @@ _Generated. Levels 1,2,3,4,5 · 10 nodes · profiles: Interchange, Interactive, 
   - Closed — TextureRef::Slot enum comment in RenderItem.hpp documents the ORM packing convention (glTF §3.9.4 / X3D §17); test pins single-slot MetallicRoughness emission.
 - **MAT-009** [low/CLOSED `954ad98`] — §12.4.2: Gamma/sRGB output encoding stance not documented or enforced — PoC consumer rendered in linear space.
   - Closed — PoC consumer (examples/poc_renderer/) uses GL_SRGB8_ALPHA8 for BaseColor/Emissive textures, applies linearToSRGB() at fragment output in pbr.frag and lit.frag; SDK emits colors in authored space (linear for Material scalars); gamma is consumer policy, documented in MaterialSystem.hpp and the Materials wiki page.
+- **UNLIT-EMISSIVE** [low/CLOSED] — §12.4.10: ISO prose falsely calls emissiveColor inherited (base default 0 0 0); the base has no such field. UOM/engine correct - direct field, default 1 1 1.
+  - shape.md:818 (note) is wrong vs shape.md:374 ("defined in implementing nodes"). UnlitMaterial declares emissiveColor directly, default 1 1 1; X3DOneSidedMaterialNode has no emissiveColor. x3d-cpp correct (UnlitMaterial.hpp:293/:44). Optional regression assert default == 1 1 1. 4.1 - confirmed; 4.1 UOM unchanged (direct field, 1 1 1; base still none).
 
