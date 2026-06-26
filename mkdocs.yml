@@ -126,6 +126,7 @@ nav:
       - "ADR-0033: A PROTO May Not Shadow a Built-in Node Name (Security)": decisions/0033-proto-builtin-shadow-error.md
       - "ADR-0034: Environmental Sensor Activation Under Switch/LOD": decisions/0034-sensor-switch-lod-activation.md
       - "ADR-0035: Viewport.clipBoundary Uses glViewport (Remap) Semantics": decisions/0035-viewport-clipboundary-glviewport.md
+      - "ADR-0036: Codec Round-Trip Fidelity Properties and Fault-Injected Oracles": decisions/0036-codec-roundtrip-fidelity-oracles.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
