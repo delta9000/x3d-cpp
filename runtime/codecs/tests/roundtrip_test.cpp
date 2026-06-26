@@ -11,6 +11,13 @@
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"
 
+// The JSON and ClassicVRML *readers* (X3DCodecs.hpp exposes the XML reader and
+// every writer, but the non-XML readers are pulled in explicitly) — needed to
+// parse those encodings back and prove the FULL cross-encoding cycle, not just
+// that the writers emit the right text.
+#include "parse/ClassicVrmlReader.hpp"
+#include "parse/JsonReader.hpp"
+
 // Concrete node types used by the sample scene.
 #include "Appearance.hpp"
 #include "Box.hpp"
@@ -203,4 +210,67 @@ TEST_CASE("roundtrip_test") {
   std::cerr << "\n" << failures << " CHECK((S)) FAILED\n";
   CHECK(false);
   return;
+}
+
+// The case above proves the XML round-trip and exercises the JSON/ClassicVRML
+// writers *writer-only* — it never parses those encodings back. A reader-side
+// regression that dropped a USE reference or a ROUTE in JsonReader or
+// ClassicVrmlReader would therefore pass unnoticed. This case closes that gap:
+// it drives the sample document through the FULL cross-encoding cycle
+//   model -> XML -> JSON -> ClassicVRML -> XML
+// parsing back at every hop, and asserts the two invariants that a lossy hop
+// would break: a DEF/USE node stays a single shared instance (USE is a shared
+// reference, ISO/IEC 19775-1 §4.4.3 — not a copy), and a ROUTE survives intact.
+TEST_CASE("roundtrip_test: USE + ROUTE survive XML->JSON->VRML->XML") {
+  codec::XmlReader xmlReader;
+  codec::XmlWriter xmlWriter;
+  codec::JsonReader jsonReader;
+  codec::JsonWriter jsonWriter;
+  codec::ClassicVrmlReader vrmlReader;
+  codec::VrmlWriter vrmlWriter;
+
+  runtime::X3DDocument doc0 = buildSampleDocument();
+
+  // Parse back at every hop, so each reader is on the hook, not just each writer.
+  const std::string xml0 = xmlWriter.writeDocument(doc0);
+  runtime::X3DDocument dx = xmlReader.readDocument(xml0);
+  const std::string json = jsonWriter.writeDocument(dx);
+  runtime::X3DDocument dj = jsonReader.readDocument(json);
+  const std::string vrml = vrmlWriter.writeDocument(dj);
+  runtime::X3DDocument dv = vrmlReader.readDocument(vrml);
+  const std::string xmlN = xmlWriter.writeDocument(dv);
+  runtime::X3DDocument dFinal = xmlReader.readDocument(xmlN);
+
+  // The USE token must be carried by EVERY intermediate encoding's text — if any
+  // reader silently expanded it into a copy, the next encoding would lose it.
+  CHECK(json.find("\"@USE\"") != std::string::npos);
+  CHECK(vrml.find("USE SharedApp") != std::string::npos);
+  CHECK(xmlN.find("USE=\"SharedApp\"") != std::string::npos);
+
+  // ...and after the whole cycle the DEF/USE-shared Appearance is still ONE node.
+  auto root = std::dynamic_pointer_cast<Transform>(dFinal.scene.rootNodes.at(0));
+  REQUIRE(root);
+  const auto &kids = root->getChildren();
+  REQUIRE(kids.size() == 2);
+  auto s1 = std::dynamic_pointer_cast<Shape>(kids[0]);
+  auto s2 = std::dynamic_pointer_cast<Shape>(kids[1]);
+  REQUIRE(s1);
+  REQUIRE(s2);
+  auto a1 = s1->getAppearance();
+  auto a2 = s2->getAppearance();
+  REQUIRE(a1);
+  REQUIRE(a2);
+  CHECK(a1.get() == a2.get()); // shared identity survived XML->JSON->VRML->XML
+
+  // The ROUTE must survive end-to-end with all four endpoints intact.
+  REQUIRE(dFinal.scene.routes.size() == 1);
+  const auto &r = dFinal.scene.routes[0];
+  CHECK(r.fromNode == "Clock");
+  CHECK(r.fromField == "fraction_changed");
+  CHECK(r.toNode == "Root");
+  CHECK(r.toField == "set_translation");
+
+  // The XML at the end of the cycle is a stable fixed point (idempotent).
+  const std::string xmlN2 = xmlWriter.writeDocument(xmlReader.readDocument(xmlN));
+  CHECK(canon(xmlN) == canon(xmlN2));
 }
