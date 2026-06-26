@@ -1864,7 +1864,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/initializeonly_read_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/codec_conformance_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/fval_extended_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/script_cdata_audit_test.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/script_cdata_audit_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/hanim_container_order_test.cpp")
     target_link_libraries(x3d_codecs_tests PRIVATE x3d_cpp::sdk)
     target_include_directories(x3d_codecs_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")

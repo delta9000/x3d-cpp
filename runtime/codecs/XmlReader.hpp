@@ -231,7 +231,7 @@ private:
       // routes to its correct slot rather than the parent's first node field.
       const std::string slot =
           childEl->attrOr("containerField", child->defaultContainerField());
-      attachChild(*node, table, slot, childEl->name, child);
+      attachChild(*node, table, slot, childEl->name, child, &scene);
     }
 
     return node;
@@ -609,7 +609,8 @@ private:
   static void attachChild(X3DNode &parent, const FieldTable &table,
                           const std::string &slot,
                           const std::string & /*childTypeName*/,
-                          const std::shared_ptr<X3DNode> &child) {
+                          const std::shared_ptr<X3DNode> &child,
+                          runtime::Scene *scene = nullptr) {
     const FieldInfo *target = nullptr;
     if (!slot.empty()) {
       for (const FieldInfo &f : table) {
@@ -676,6 +677,9 @@ private:
       vec.push_back(child);
       target->set(parent, std::any(vec));
     }
+
+    if (scene)
+      scene->recordChildField(&parent, target->x3dName);
   }
 
   static const FieldInfo *findField(const FieldTable &table,

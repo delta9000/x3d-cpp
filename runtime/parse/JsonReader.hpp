@@ -317,7 +317,7 @@ private:
         return;
       auto child = readNode(childWrapper, scene, currentProtoBody);
       if (child)
-        build::attachChild(node, slot, child);
+        build::attachChild(node, slot, child, &scene);
     };
     if (val.isArray()) {
       for (const auto &c : val.array)
