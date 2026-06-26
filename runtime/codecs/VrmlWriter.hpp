@@ -23,6 +23,7 @@
 #include "ProtoNameMaps.hpp"
 #include "X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
+#include "parse/NodeBuilder.hpp" // build::orderedChildFields (authored child order)
 
 #include <algorithm>
 #include <any>
@@ -398,10 +399,8 @@ private:
         continue;
       if (f.x3dName == "DEF" || f.x3dName == "USE" || f.x3dName == "IS")
         continue;
-      if (f.isNode()) {
-        writeNodeField(os, node, f, depth + 1);
-        continue;
-      }
+      if (f.isNode())
+        continue; // node-child fields emitted in authored order below
       // Value field.
       std::string text;
       std::string defText;
@@ -433,6 +432,11 @@ private:
       else
         os << f.x3dName << " " << vrmlBoolCase(f.type, text) << "\n";
     }
+
+    // Node-child fields, in authored order (round-trip fidelity); declaration
+    // order when nothing was recorded for this node.
+    for (const FieldInfo *cf : build::orderedChildFields(*node, scene_))
+      writeNodeField(os, node, *cf, depth + 1);
 
     // Task B: re-emit author (Script) field declarations captured by the reader
     // into the S1 store as `accessType FieldType name [default]` interface lines

@@ -23,6 +23,7 @@
 #include "Script.hpp" // Script::getSourceCode (inline source re-emit)
 #include "X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
+#include "parse/NodeBuilder.hpp" // build::orderedChildFields (authored child order)
 
 #include <algorithm>
 #include <any>
@@ -571,11 +572,12 @@ private:
           continue; // equals the type default -> omit
         members.push_back("\"@" + f.x3dName + "\": " + val);
       }
-      // Node child fields, grouped per containerField.
-      for (const FieldInfo &f : node->fields()) {
-        if (!f.isReadable() || !f.isNode())
+      // Node child fields, grouped per containerField, in authored order
+      // (round-trip fidelity); declaration order when nothing was recorded.
+      for (const FieldInfo *cf : build::orderedChildFields(*node, scene_)) {
+        if (!cf->isReadable())
           continue;
-        std::string child = jsonNodeField(node, f, depth + 1);
+        std::string child = jsonNodeField(node, *cf, depth + 1);
         if (!child.empty())
           members.push_back(child);
       }
