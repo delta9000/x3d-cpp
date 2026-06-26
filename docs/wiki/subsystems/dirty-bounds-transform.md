@@ -97,21 +97,23 @@ Key properties:
 
 ## How it is tested
 
-| ctest target | Covers |
+All of these are doctest cases compiled into the `x3d_geometry_scene` ctest executable.
+
+| doctest case | Covers |
 |---|---|
-| `x3d_dirty_tracker` | `DirtyTracker` flag OR-ing, first-transition-only list insertion, `clear()` |
-| `x3d_transform_system` | `buildIndex` + `worldTransform` for nested `Transform` chains; `propagate` incremental pass |
-| `x3d_transform_hanim_cadpart` | `HAnimHumanoid`, `HAnimJoint`, `CADPart` treated as transform-bearing nodes |
-| `x3d_geometry_bounds` | `localGeometryBounds` for each supported primitive and mesh type |
-| `x3d_bounds_system` | `buildBounds` post-order computation, author-bbox override, `propagate` bottom-up update |
-| `x3d_bounds_shared_subgraph` | USE/DEF sharing: a node reached by multiple paths gets one local AABB entry without multiplicative recompute; 30-second timeout |
-| `x3d_bounds_cycle` | Containment back-edge in `BoundsSystem::compute` is caught by the gray-set guard and does not overflow the stack; 30-second timeout |
-| `x3d_cycle_breaker` | `breakContainmentCycles` severs SFNode and MFNode back-edges; no effect on well-formed scenes; 30-second timeout |
+| `dirty_tracker_test` | `DirtyTracker` flag OR-ing, first-transition-only list insertion, `clear()` |
+| `transform_system_test` | `buildIndex` + `worldTransform` for nested `Transform` chains; `propagate` incremental pass |
+| `transform_system_hanim_cadpart_test` | `HAnimHumanoid`, `HAnimJoint`, `CADPart` treated as transform-bearing nodes |
+| `geometry_bounds_test` | `localGeometryBounds` for each supported primitive and mesh type |
+| `bounds_system_test` | `buildBounds` post-order computation, author-bbox override, `propagate` bottom-up update |
+| `bounds_shared_subgraph_test` | USE/DEF sharing: a node reached by multiple paths gets one local AABB entry without multiplicative recompute; 30-second timeout |
+| `bounds_cycle_test` | Containment back-edge in `BoundsSystem::compute` is caught by the gray-set guard and does not overflow the stack; 30-second timeout |
+| `cycle_breaker_test` | `breakContainmentCycles` severs SFNode and MFNode back-edges; no effect on well-formed scenes; 30-second timeout |
 
 Run the full group:
 
 ```
-ctest --preset dev -R "x3d_dirty_tracker|x3d_transform_system|x3d_transform_hanim_cadpart|x3d_geometry_bounds|x3d_bounds_system|x3d_bounds_shared_subgraph|x3d_bounds_cycle|x3d_cycle_breaker"
+ctest --preset dev -R x3d_geometry_scene
 ```
 
 There are no golden files for this subsystem — correctness is checked by assertion in each test binary.

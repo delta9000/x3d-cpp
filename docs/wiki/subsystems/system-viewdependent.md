@@ -29,7 +29,7 @@ The split between tick-time (LOD events, sensor edges) and render-time (Billboar
 | `runtime/scene/ViewDependentSystem.hpp` | `ViewDependentSystem` class (a `System`): `attach`, `update`, sensor/LOD tracking, observer seams |
 | `runtime/scene/Billboard.hpp` | `billboardLocalMatrix` free function (§23.4.1) + `viewdep::` math helpers (`sub`, `dot`, `cross`, `len`, `norm`); no `X3DExecutionContext` dependency |
 | `runtime/events/X3DSceneBridge.hpp` | `attachViewDependent(Scene&, X3DExecutionContext&)` — production wiring: scene walk + per-node `attach` call |
-| `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (24 test functions, one `main`); ctest target `x3d_view_dependent` |
+| `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (24 test functions, one `main`); doctest case `view_dependent_test` in the `x3d_geometry_scene` target |
 
 ## Interfaces and seams
 
@@ -96,7 +96,7 @@ int lodSelectLevel(const X3DNode &lod, float distToCenter);
 
 ## How it is tested
 
-- **`x3d_view_dependent`** (`ctest --preset dev -R x3d_view_dependent`) — 24 unit tests in `runtime/scene/tests/view_dependent_test.cpp` covering:
+- **`view_dependent_test`** (`ctest --preset dev -R x3d_geometry_scene`) — 24 unit tests in `runtime/scene/tests/view_dependent_test.cpp` covering:
   - `testBillboardAxis` / `testBillboardViewerAlign` — `billboardLocalMatrix` for axis-aligned and viewer-aligned modes; asserts the rotated local +Z points toward the viewer.
   - `testBillboardInExtractor` — Billboard rotation applied through `SceneExtractor::fullSnapshot`; the `RenderItem` world transform's +Z faces the viewer.
   - `testBillboardInPick` — Ray pick resolves against the view-rotated geometry (a ray that misses the un-rotated box hits the rotated one at the expected face).

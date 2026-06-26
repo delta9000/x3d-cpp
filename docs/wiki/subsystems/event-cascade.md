@@ -120,24 +120,24 @@ class EventCascade {
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_event_cascade` — route propagation, fan-out,
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_test`) — route propagation, fan-out,
   per-route loop-breaking, inputOnly delivery (`runtime/events/tests/cascade_test.cpp`).
 
-- `ctest --preset dev -R x3d_cascade_conformance` — RTC-5 (fan-in delivers
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_conformance_test`) — RTC-5 (fan-in delivers
   once per timestamp, cyclic re-drive broken by per-field cap) and RTC-6
   (tick re-evaluation loop terminates and resolves within one tick)
   (`runtime/events/tests/cascade_conformance_test.cpp`).
 
-- `ctest --preset dev -R x3d_cascade_alias_audit` — field-alias normalization:
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_alias_audit_test`) — field-alias normalization:
   `set_xxx` and `xxx_changed` aliases share the same per-field identity with the
   canonical `xxx` name, both in the ROUTE table and in the cascade's produced
   guard (`runtime/events/tests/cascade_alias_audit_test.cpp`).
 
-- `ctest --preset dev -R x3d_cascade_observer` — `setFieldObserver` fires for
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_observer_test`) — `setFieldObserver` fires for
   every delivered field (seed and routed), verifying the dirty-tracking feed
   (`runtime/events/tests/cascade_observer_test.cpp`).
 
-- `ctest --preset dev -R x3d_cascade_dynamic_route` — route added/removed
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_dynamic_route_test`) — route added/removed
   during an active cascade takes effect on the next cascade (mid-cascade mutation
   safety) (`runtime/events/tests/cascade_dynamic_route_test.cpp`).
 

@@ -100,9 +100,9 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_inline_expand` — composition (Inline → Group+Shape under a parent Transform), DEF isolation (child DEF "Geo" absent from parent `resolve()`), writer round-trip map entry set, `parseDocument` custom-resolver injection seam.
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_expand_test`) — composition (Inline → Group+Shape under a parent Transform), DEF isolation (child DEF "Geo" absent from parent `resolve()`), writer round-trip map entry set, `parseDocument` custom-resolver injection seam.
 - `ctest --preset dev -R x3d_inline_routes` — child-internal `TimeSensor → PositionInterpolator → Transform` ROUTE fires after a tick.
-- `ctest --preset dev -R x3d_inline_carriers` — `<IMPORT>`/`<EXPORT>` statement structs are parsed and accessible on `X3DDocument`.
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_carriers_test`) — `<IMPORT>`/`<EXPORT>` statement structs are parsed and accessible on `X3DDocument`.
 - `ctest --preset dev -R x3d_inline_cycle` — direct and indirect self-reference terminates with a diagnostic; no stack overflow or infinite loop.
 - `ctest --preset dev -R x3d_inline_containment_cycle` — the visited-set guard in the expansion walk handles containment-cycle nodes without recursing forever.
 - `ctest --preset dev -R x3d_inline_roundtrip` — parse-then-write a scene containing an Inline produces byte-identical output across XML, VRML, and JSON writers.

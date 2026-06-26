@@ -65,7 +65,7 @@ DamperSystem<TexCoordDamper2D, MFVec2f>    ChaserSystem<TexCoordChaser2D, MFVec2
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_event_followers` — behavioral-conformance tests (`runtime/events/tests/follower_conformance_test.cpp`). Covers `FollowerArith` ops (incl. `SFRotation` slerp + geodesic `dist`), `DamperSystem` IIR convergence and passthrough, `ChaserSystem` re-basing ramp and exact end-of-transition value, the initial-active `isActive` emission, MF element-wise reconciliation, and `attachFollowers` production wiring.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `follower_conformance_test`) — behavioral-conformance tests (`runtime/events/tests/follower_conformance_test.cpp`). Covers `FollowerArith` ops (incl. `SFRotation` slerp + geodesic `dist`), `DamperSystem` IIR convergence and passthrough, `ChaserSystem` re-basing ramp and exact end-of-transition value, the initial-active `isActive` emission, MF element-wise reconciliation, and `attachFollowers` production wiring.
 
 ## Related specs and ADRs
 

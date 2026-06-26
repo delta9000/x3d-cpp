@@ -168,17 +168,17 @@ The `tick(now)` implementation enforces two spec requirements:
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_m2b_tick` — `runtime/events/tests/m2b_tick_test.cpp`: verifies that `buildSceneGraph` + `tick` correctly compute world and local bounds for a translated Shape, and that a cascade-delivered field change updates them.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `m2b_tick_test`) — `runtime/events/tests/m2b_tick_test.cpp`: verifies that `buildSceneGraph` + `tick` correctly compute world and local bounds for a translated Shape, and that a cascade-delivered field change updates them.
 
 - `ctest --preset dev -R x3d_event_scene_bridge` — `runtime/events/tests/scene_bridge_test.cpp`: validates ROUTE resolution (DEF names to `FieldAddress`), rejection diagnostics (unknown field, wrong direction, type mismatch), silent skip of dangling DEFs, and an end-to-end parse + `buildFrom` + `tick` animation cycle (TimeSensor → PositionInterpolator → Transform).
 
-- `ctest --preset dev -R x3d_write_field` — `runtime/events/tests/write_field_test.cpp`: verifies `writeField` updates the field value and classifies dirty identically to a cascade-delivered event (M2C-3 regression).
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `write_field_test`) — `runtime/events/tests/write_field_test.cpp`: verifies `writeField` updates the field value and classifies dirty identically to a cascade-delivered event (M2C-3 regression).
 
-- `ctest --preset dev -R x3d_tick_audit` — `runtime/events/tests/tick_audit_test.cpp`: covers tick-loop correctness edge cases — empty context, timestamp persistence, recursive-tick guard, system ordering, quiescence detection under re-posting, and post-cascade hook ordering.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `tick_audit_test`) — `runtime/events/tests/tick_audit_test.cpp`: covers tick-loop correctness edge cases — empty context, timestamp persistence, recursive-tick guard, system ordering, quiescence detection under re-posting, and post-cascade hook ordering.
 
-- `ctest --preset dev -R x3d_cascade_observer` — `runtime/events/tests/cascade_observer_test.cpp`: exercises the cascade field-delivery observer (the `classifyDirty` seam).
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_observer_test`) — `runtime/events/tests/cascade_observer_test.cpp`: exercises the cascade field-delivery observer (the `classifyDirty` seam).
 
-- `ctest --preset dev -R x3d_cascade_conformance` — `runtime/events/tests/cascade_conformance_test.cpp`: conformance coverage for the cascade driving the context.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_conformance_test`) — `runtime/events/tests/cascade_conformance_test.cpp`: conformance coverage for the cascade driving the context.
 
 - Additional coverage via higher-level tests: `x3d_pointing_sensor_test`, `x3d_navigation_test`, `x3d_event_utility_test`, `x3d_key_device_sensor_test`, `x3d_viewpoint_bind_test`, and all scene and script tests exercise the context as their driver.
 

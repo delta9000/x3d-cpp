@@ -25,7 +25,7 @@ The system also provides the `HeadPose` seam through which a CAVE consumer can i
 | `runtime/events/NavigationSystem.hpp` | The `System` subclass — all four mode implementations, cross-tick state, vector helpers, LOOKAT transition state machine |
 | `runtime/events/HeadPose.hpp` | Pure-data struct: `position`, `orientation`, `revision`; set by the consumer for head-tracking |
 | `runtime/events/ViewpointOffset.hpp` | Per-viewpoint user offset (`Mat4 local`); navigation accumulates into this rather than the authored fields |
-| `runtime/events/tests/navigation_test.cpp` | Unit test (ctest target `x3d_navigation`): five cases covering all four modes |
+| `runtime/events/tests/navigation_test.cpp` | Unit test (doctest case `navigation_test` in the `x3d_events_tests` target): five cases covering all four modes |
 
 ## Interfaces and seams
 
