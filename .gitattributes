@@ -1,0 +1,15 @@
+# Linguist classification — keep generated/vendored code out of language stats
+# and collapsed in GitHub diffs. These are NOT hand-written source.
+
+# Vendored third-party libraries (kept in-tree, not authored here)
+third_party/**            linguist-vendored
+**/vendor/**              linguist-vendored
+
+# Generated from the X3D Unified Object Model by the code generator
+generated_cpp_bindings/** linguist-generated
+
+# Golden files & test fixtures (committed per ADR-0005)
+tests/fixtures/**         linguist-generated
+
+# Rendered gallery images (build output, not source)
+docs/images/**            linguist-generated
