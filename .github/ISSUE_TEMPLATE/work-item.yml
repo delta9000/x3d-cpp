@@ -1,0 +1,99 @@
+name: Work item (agent-ready)
+description: A scoped unit of work ready to hand to a coding agent. Encodes the Definition of Ready + Done.
+title: "<short imperative title>"
+labels: [work-item]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill every section. A card is **Ready** only when the Definition of Ready below is
+        satisfied — under-specified items are the top cause of agent failure. See the
+        [Card → Done Workflow](../../docs/wiki/guides/card-to-done-workflow.md).
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / why
+      description: What this unblocks and why it matters. Link the seam, finding(s), or design spec.
+      placeholder: "Seam: ScriptEngine. Proves the abstraction isn't Duktape-shaped. Source card: …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: anchors
+    attributes:
+      label: Anchors (file:line + interfaces)
+      description: Exact paths/symbols the work touches. Verify each exists before marking Ready.
+      placeholder: |
+        - runtime/script/ScriptEngine.hpp:NN  (abstract interface)
+        - runtime/script/EcmaScriptBackend.cpp (Duktape backend to mirror)
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria (testable)
+      description: Binary, checkable statements. For seam cards, the "2 backends + swap-test" DoD.
+      value: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+
+  - type: input
+    id: verify
+    attributes:
+      label: Verification command
+      description: The single check the agent runs to prove "done". The most important field.
+      placeholder: "mise run ci   (or: ctest -R x3d_scriptengine_swap   |   x3d sim fixtures/foo.x3d --json)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: docs
+    attributes:
+      label: Docs to update (same PR)
+      description: Which living docs this change must touch. Docs are part of the diff, not a follow-up.
+      placeholder: |
+        - docs/conformance/findings.yaml (flip SCR-* status) → mise run conformance
+        - docs/wiki/subsystems/system-script.md
+    validations:
+      required: true
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size (one PR?)
+      description: If larger than one PR, decompose into sub-items before marking Ready.
+      options: ["XS", "S", "M", "L (consider splitting)", "XL (must split or spec+ADR first)"]
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: dor
+    attributes:
+      label: Definition of Ready
+      options:
+        - label: Anchors verified to exist (ls/grep)
+          required: true
+        - label: Acceptance criteria are testable
+          required: true
+        - label: A runnable verification command is stated
+          required: true
+        - label: No blocking dependencies remain
+          required: true
+        - label: "Substantial work only: design spec + ADR written and human-approved"
+          required: false
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done (checked at merge)
+      options:
+        - label: Acceptance criteria met
+        - label: Tests added/updated; mise run ci green
+        - label: Living docs updated in this same PR
+        - label: Reviewed by a different agent/person than the author
+        - label: "PR links the card via Closes #N"

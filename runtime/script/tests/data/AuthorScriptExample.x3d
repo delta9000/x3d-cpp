@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Interchange" version="4.0">
+  <!--
+    A minimal file-authored Script fixture for the corpus end-to-end test
+    (runtime/script/tests/script_corpus_e2e_test.cpp). It is the self-contained
+    XML analogue of the real Savage CanopyExample.x3d the same test also loads:
+    author <field> children plus a <![CDATA[ecmascript:...]]> body. Before the
+    SCR-SAI-DYN S1 un-tabling this parsed to an INERT Script; now it parses ->
+    attaches -> initialize() runs -> delivering the inputOnly 'enabled' event
+    drives the handler, which writes the outputOnly 'status' author field. Unlike
+    the real corpus file (whose handler references an undeclared 'traceEnabled'
+    global from the surrounding prototype), this fixture's handler is closed over
+    only its own author fields, so the status write completes deterministically.
+  -->
+  <Scene>
+    <Group>
+      <Script DEF="AuthorScript">
+        <field accessType="initializeOnly" name="landed" type="SFInt32" value="-1"/>
+        <field accessType="inputOnly" name="enabled" type="SFBool"/>
+        <field accessType="outputOnly" name="status" type="SFBool"/>
+        <![CDATA[
+ecmascript:
+function enabled(value, timeStamp) {
+  if (value == true) {
+    if (landed == -1) { status = false; landed = 0; }
+    if (landed == 0)  { status = (status) ? false : true; }
+  }
+}
+        ]]>
+      </Script>
+    </Group>
+  </Scene>
+</X3D>

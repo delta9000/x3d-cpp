@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Interchange" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+  <head>
+    <meta name="title" content="textured_text.x3d"/>
+    <meta name="description" content="v1-closure PoC scene: an ImageTexture Box (resolved end-to-end via the TextureResolver seam), a PixelTexture quad (inline SFImage), and a Text node (glyph-quad mesh via the font-metrics seam). Proves textures + Text render through the PoC consumer."/>
+  </head>
+  <Scene>
+    <Viewpoint description="front" position="0 0 10" fieldOfView="0.785398"/>
+    <Background skyColor="0.10 0.12 0.18"/>
+
+    <!-- ImageTexture: resolved + decoded via the embedder TextureResolver seam.
+         checker.png is a 2x2 RGBA checker next to this scene file. -->
+    <Transform translation="-3 1.5 0">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="1 1 1"/>
+          <ImageTexture url="checker.png"/>
+        </Appearance>
+        <Box size="2 2 2"/>
+      </Shape>
+    </Transform>
+
+    <!-- PixelTexture: inline SFImage (2x2 RGBA), decoded by the PoC directly
+         (never routed through the resolver per the Source::Inline contract).
+         Header: width height numComponents, then one 0xRRGGBBAA word per texel,
+         row-major BOTTOM-UP. magenta/yellow over cyan/white. -->
+    <Transform translation="3 1.5 0">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="1 1 1"/>
+          <PixelTexture image="2 2 4 0x00FFFFFF 0xFFFFFFFF 0xFF00FFFF 0xFFFF00FF"/>
+        </Appearance>
+        <Box size="2 2 2"/>
+      </Shape>
+    </Transform>
+
+    <!-- Text: glyph-quad mesh synthesized from the font-metrics seam. With the
+         default monospace stub (no atlas UV) the glyphs render as flat
+         material-colored cells; with a real atlas resolver they sample it. -->
+    <Transform translation="0 -2 0">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="0.95 0.85 0.20"/>
+        </Appearance>
+        <Text string='"X3D" "Text"'>
+          <FontStyle family="SANS" size="1.0" justify="MIDDLE"/>
+        </Text>
+      </Shape>
+    </Transform>
+  </Scene>
+</X3D>

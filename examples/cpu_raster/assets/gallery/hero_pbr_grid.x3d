@@ -1,0 +1,30 @@
+<X3D profile="Immersive" version="4.0"><Scene>
+<Viewpoint position="0 0 21" fieldOfView="0.7"/>
+<Background skyColor="0.35 0.37 0.41"/>
+<DirectionalLight direction="-0.3 -0.4 -0.85" intensity="1"/>
+<Transform translation="-5.40 5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.0" roughness="0.05"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-2.70 5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.25" roughness="0.05"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="0.00 5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.5" roughness="0.05"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="2.70 5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.75" roughness="0.05"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="5.40 5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="1.0" roughness="0.05"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-5.40 2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.0" roughness="0.3"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-2.70 2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.25" roughness="0.3"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="0.00 2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.5" roughness="0.3"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="2.70 2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.75" roughness="0.3"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="5.40 2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="1.0" roughness="0.3"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-5.40 0.00 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.0" roughness="0.5"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-2.70 0.00 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.25" roughness="0.5"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="0.00 0.00 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.5" roughness="0.5"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="2.70 0.00 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.75" roughness="0.5"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="5.40 0.00 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="1.0" roughness="0.5"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-5.40 -2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.0" roughness="0.75"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-2.70 -2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.25" roughness="0.75"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="0.00 -2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.5" roughness="0.75"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="2.70 -2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.75" roughness="0.75"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="5.40 -2.70 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="1.0" roughness="0.75"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-5.40 -5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.0" roughness="0.95"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="-2.70 -5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.25" roughness="0.95"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="0.00 -5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.5" roughness="0.95"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="2.70 -5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="0.75" roughness="0.95"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+<Transform translation="5.40 -5.40 0"><Shape><Appearance><PhysicalMaterial baseColor="1 0.77 0.34" metallic="1.0" roughness="0.95"/></Appearance><Sphere radius="1.15"/></Shape></Transform>
+</Scene></X3D>

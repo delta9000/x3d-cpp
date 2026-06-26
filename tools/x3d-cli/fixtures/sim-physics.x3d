@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Full" version="4.0">
+  <head>
+    <meta name="description" content="sim physics fixture: a RigidBody falls under gravity; position_changed -> Transform.translation"/>
+  </head>
+  <Scene>
+    <!-- The renderable Transform the body's integrated position drives. -->
+    <Transform DEF="Faller">
+      <Shape>
+        <Box size="1 1 1"/>
+      </Shape>
+    </Transform>
+
+    <!-- §37 physics: one collection, one dynamic body starting at y=10. -->
+    <RigidBodyCollection DEF="World" gravity="0 -9.8 0">
+      <RigidBody DEF="Body" containerField="bodies" mass="1" position="0 10 0">
+        <CollidableShape containerField="geometry">
+          <Shape containerField="shape">
+            <Box size="1 1 1"/>
+          </Shape>
+        </CollidableShape>
+      </RigidBody>
+    </RigidBodyCollection>
+
+    <!-- The body reports its physics-updated position; route it to the Transform.
+         Source uses the base field name `position` (the spec-valid output side;
+         the `position_changed` alias resolves to the same field). -->
+    <ROUTE fromNode="Body" fromField="position" toNode="Faller" toField="translation"/>
+  </Scene>
+</X3D>

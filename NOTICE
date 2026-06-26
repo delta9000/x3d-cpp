@@ -1,0 +1,90 @@
+x3d-cpp-gen
+Copyright (c) 2026 Ben Sandbrook
+Licensed under the MIT License (see LICENSE).
+
+This product bundles or depends on third-party material as listed below. Each
+component remains under its own license; the terms below are reproduced /
+summarized to satisfy their attribution requirements.
+
+===============================================================================
+1. X3D specification data (Web3D Consortium) — BUNDLED
+===============================================================================
+
+The X3D Unified Object Model (X3DUOM) XML files used to drive code generation
+and conformance tests:
+
+    src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml
+    tests/fixtures/X3dUnifiedObjectModel-4.1.xml
+    tests/fixtures/uom/X3dUnifiedObjectModel-3.0.xml .. 3.3.xml
+
+are artifacts of the X3D Architecture International Standard (ISO/IEC 19775),
+published by the Web3D Consortium at https://www.web3d.org/specifications/ and
+made available royalty-free for any use. They are redistributed here under the
+Web3D Consortium open-source (BSD-style) license:
+https://www.web3d.org/x3d/content/examples/Basic/license.html
+
+    Copyright (c) the X3D / Web3D Consortium contributors. Redistribution and
+    use in source and binary forms, with or without modification, are permitted
+    provided that the copyright notice and conditions are retained and that the
+    names of the Web3D Consortium and its contributors are not used to endorse
+    or promote derived products without prior written permission.
+
+NOT bundled (size + per-file attribution): the X3D conformance example archive
+and the X3DJSAIL canonical reference fixtures derived from it. Point a local
+checkout at the X3D_CORPUS_DIR environment variable to run the corpus / gate
+suites; without it those tests skip cleanly.
+
+NOT bundled (fetched on demand by examples/cpu_raster/assets/kelp_flythrough/
+fetch_kelp.sh into a git-ignored exhibit/ dir): the "Kelp Forest Exhibit" X3D
+scene by Don Brutzman, Naval Postgraduate School (NPS) MOVES Institute
+(http://faculty.nps.edu/brutzman/kelp). Free use with credit to NPS MOVES per
+the scene's accessRights metadata. Used only by the optional kelp-flythrough
+example; no part of it is committed here.
+
+===============================================================================
+2. Vendored libraries
+===============================================================================
+
+  duktape           runtime/script/vendor/duktape/         MIT
+                    (see runtime/script/vendor/duktape/DUKTAPE_LICENSE.txt)
+  stb_image.h       examples/poc_renderer/third_party/     MIT OR Public Domain
+                    (PoC renderer; also TextureResolver decode Backend A,
+                     -DX3D_CPP_BUILD_STB=ON)
+  tinfl.h (miniz)   runtime/parse/tinfl.h                   Public Domain (Unlicense)
+  glad              third_party/glad/                       Apache-2.0 AND (WTFPL OR CC0-1.0)
+  doctest           runtime/test_support/doctest/           MIT  (test-only; v2.4.11)
+  wuffs (v0.3.4)    runtime/io/wuffs/vendor/wuffs-v0.3.c    Apache-2.0  (-DX3D_CPP_BUILD_WUFFS=ON)
+                    (see runtime/io/wuffs/vendor/WUFFS_LICENSE.txt; TextureResolver
+                     decode Backend B. Flag-gated OFF — the default build stays
+                     MIT / Public-Domain-clean.)
+  miniaudio         runtime/sound/miniaudio/vendor/          Public Domain (Unlicense) OR MIT-0
+  (v0.11.25)        miniaudio.h                              (-DX3D_CPP_BUILD_MINIAUDIO=ON)
+                    (see runtime/sound/miniaudio/vendor/MINIAUDIO_LICENSE.txt;
+                     AudioBackend miniaudio synthesis backend. Flag-gated OFF —
+                     the default build stays MIT / Public-Domain-clean.)
+  stb_truetype.h    runtime/io/stbtt/vendor/stb_truetype.h   MIT OR Public Domain  (-DX3D_CPP_BUILD_STBTT=ON)
+                    (see runtime/io/stbtt/vendor/STB_TRUETYPE_LICENSE.txt)
+  Liberation Fonts  runtime/io/tests/fixtures/font/*.ttf      OFL-1.1  (test fixtures)
+                    (see runtime/io/tests/fixtures/font/OFL.txt)
+
+===============================================================================
+3. Optional build-time dependencies (fetched / vcpkg-installed, not bundled)
+===============================================================================
+
+Each is pulled in only when its build flag is enabled; attribution applies to
+binaries you distribute that link it.
+
+  Jolt Physics      github.com/jrouwe/JoltPhysics           MIT          (-DX3D_CPP_BUILD_PHYSICS=ON)
+  GLFW              github.com/glfw/glfw                     zlib         (-DX3D_CPP_BUILD_POC=ON)
+  quickjs-ng        github.com/quickjs-ng/quickjs           MIT          (-DX3D_CPP_BUILD_QUICKJS=ON)
+  libcurl           curl.se (via vcpkg)                      curl/MIT-X   (-DX3D_CPP_BUILD_CURL=ON)
+  AWS SDK for C++   github.com/aws/aws-sdk-cpp (via vcpkg)   Apache-2.0   (-DX3D_CPP_BUILD_S3=ON)
+  FreeType          freetype.org (via vcpkg)                 FTL OR GPL-2.0  (-DX3D_CPP_BUILD_FREETYPE=ON)
+
+The AWS S3 backend (-DX3D_CPP_BUILD_S3=ON) pulls these transitive dependencies
+via vcpkg, each under its own license:
+
+    aws-crt-cpp, aws-c-* (common/cal/io/http/auth/s3/sdkutils/…)  Apache-2.0
+    aws-checksums, s2n-tls                                        Apache-2.0
+    OpenSSL 3.x                                                   Apache-2.0
+    zlib                                                          zlib

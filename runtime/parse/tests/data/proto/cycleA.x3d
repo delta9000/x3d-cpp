@@ -1,0 +1,4 @@
+<X3D profile='Interchange' version='4.0'><Scene>
+<ExternProtoDeclare name='PA' url='cycleB.x3d#PB'/>
+<ProtoInstance name='PA'/>
+</Scene></X3D>

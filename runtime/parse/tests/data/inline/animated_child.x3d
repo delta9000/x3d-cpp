@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Interchange" version="4.0"><head/><Scene>
+  <Transform DEF="Mover">
+    <Shape><Box/></Shape>
+  </Transform>
+  <TimeSensor DEF="Clock" cycleInterval="4" loop="true"/>
+  <PositionInterpolator DEF="Path" key="0 1"
+      keyValue="0 0 0  10 0 0"/>
+  <ROUTE fromNode="Clock" fromField="fraction_changed"
+         toNode="Path" toField="set_fraction"/>
+  <ROUTE fromNode="Path" fromField="value_changed"
+         toNode="Mover" toField="set_translation"/>
+</Scene></X3D>

@@ -1,0 +1,332 @@
+// {{ class_name }}.hpp
+#ifndef {{ class_name.upper() }}_HPP
+#define {{ class_name.upper() }}_HPP
+
+#include "X3Dtypes.hpp"
+#include "X3Denums.hpp"
+#include "X3DReflection.hpp"
+#include <algorithm>
+#include <any>
+#include <functional>
+#include <stdexcept>
+{% for dep in dependencies %}
+#include "{{ dep }}.hpp"
+{% endfor %}
+
+{% if namespace %}
+namespace {{ namespace }} {
+{% endif %}
+/**
+ * @class {{ class_name }}
+ * @brief {{ class_description }}
+ * @details {{ specification_url }}
+ */
+class {{ class_name }}{% if virtual_bases %} : {% for base in virtual_bases %}{% if not loop.first %}, {% endif %}public virtual {{ base }}{% endfor %}{% endif %} {
+public:
+    /**
+     * @brief Default constructor for {{ class_name }}
+     */
+    {{ class_name }}() = default;
+
+    {% if is_abstract %}
+    /**
+     * @brief Virtual destructor for {{ class_name }}
+     */
+    virtual ~{{ class_name }}() = default;
+    {% else %}
+    /**
+     * @brief Destructor for {{ class_name }}
+     */
+    ~{{ class_name }}() = default;
+    {% endif %}
+
+    {% for field in fields %}
+    {% if field.has_default and not field.is_event %}
+    /**
+     * @brief Get the default value for {{ field.x3d_name }}
+     * @return {{ field.cpp_type }} The default value
+     */
+    static {{ field.cpp_type }} getDefault{{ field.name_pascal }}() {
+        return {{ field.default_init_expr }};
+    }
+
+    {% endif %}
+    {% endfor %}
+
+    {% if container_field %}
+    /**
+     * @brief Get the container field type for this node
+     * @return std::string The container field type
+     */
+    static std::string getContainerFieldType() {
+        return "{{ container_field.type }}";
+    }
+
+    /**
+     * @brief Get the default container field value
+     * @return std::string The default container field value
+     */
+    static std::string getDefaultContainerField() {
+        return "{{ container_field.default }}";
+    }
+
+    {% if container_field.enumerations %}
+    /**
+     * @brief Check if a container field value is valid
+     * @param value The value to check
+     * @return bool True if the value is valid
+     */
+    static bool isValidContainerField(const std::string& value) {
+        static const std::vector<std::string> valid_values = {
+            {% for enum in container_field.enumerations %}"{{ enum }}"{% if not loop.last %}, {% endif %}{% endfor %}
+        };
+        return std::find(valid_values.begin(), valid_values.end(), value) != valid_values.end();
+    }
+    {% endif %}
+    {% else %}
+    /**
+     * @brief Get the default container field value
+     * @details No explicit containerField in the spec for this node; falls back
+     *          to the X3D default field "children".
+     * @return std::string The default container field value
+     */
+    static std::string getDefaultContainerField() {
+        return "children";
+    }
+    {% endif %}
+
+    {% if component %}
+    /**
+     * @brief Get the X3D component this node belongs to
+     * @return std::string The component name
+     */
+    static std::string componentName() {
+        return "{{ component.name }}";
+    }
+
+    {% if component.level is not none %}
+    /**
+     * @brief Get the X3D component support level for this node
+     * @return int The component level
+     */
+    static int componentLevel() {
+        return {{ component.level }};
+    }
+    {% endif %}
+    {% endif %}
+
+    {% for field in fields %}
+    {#- Getter: readable for inputOutput / initializeOnly / outputOnly. -#}
+    {% if field.is_readable %}
+    /**
+     * @brief Gets the value of {{ field.x3d_name }}. AccessType: {{ field.access_type }}
+     * @details {{ field.description }}
+     * @return {{ field.cpp_type }} The current value of {{ field.x3d_name }}.
+     */
+    {{ field.cpp_type }} {{ field.getter_name }}() const {
+        return {{ field.cpp_ident }};
+    }
+    {% endif %}
+
+    {#- outputOnly -> runtime write path (no public setter): emit an output value. -#}
+    {% if field.is_readonly %}
+    /**
+     * @brief Emit an output value on {{ field.x3d_name }}. AccessType: {{ field.access_type }}
+     * @details {{ field.description }}
+     *          outputOnly fields have no author-facing setter; a node's behavior
+     *          or the runtime calls this to produce an output event. The event
+     *          cascade reaches it through the reflected field table so producing
+     *          outputs is node-agnostic.
+     * @param value The value to emit.
+     */
+    void {{ field.emitter_name }}(const {{ field.cpp_type }}& value) {
+        {{ field.cpp_ident }} = value;
+    }
+    {% endif %}
+
+    {#- Allowed node types for SFNode/MFNode fields (from acceptableNodeTypes). -#}
+    {% if field.has_acceptable_node_types %}
+    /**
+     * @brief Acceptable node types for the {{ field.x3d_name }} field.
+     * @details Permitted X3D node types: {{ field.acceptable_node_types | join(", ") }}
+     * @return const std::vector<std::string>& The accepted node type names.
+     */
+    static const std::vector<std::string>& acceptable{{ field.name_pascal }}NodeTypes() {
+        static const std::vector<std::string> types = {
+            {% for t in field.acceptable_node_types %}"{{ t }}"{% if not loop.last %}, {% endif %}{% endfor %}
+        };
+        return types;
+    }
+    {% endif %}
+
+    {#- inputOnly -> EVENT API: dispatch to a registrable handler, no value member. -#}
+    {% if field.is_event %}
+    /**
+     * @brief Event handler invoked when an event is received on {{ field.x3d_name }}. AccessType: {{ field.access_type }}
+     * @details {{ field.description }}
+     *          Dispatches to the handler registered via {{ field.handler_setter_name }}();
+     *          a no-op if none is set. The event cascade reaches this through the
+     *          node's reflected field table, so routing is node-agnostic.
+     * @param value The value of the received event.
+     */
+    void {{ field.handler_name }}(const {{ field.cpp_type }}& value) {
+        if ({{ field.handler_member }}) {{ field.handler_member }}(value);
+    }
+
+    /**
+     * @brief Register the handler invoked when an event arrives on {{ field.x3d_name }}.
+     * @param handler Callback receiving the event value (replaces any prior handler).
+     */
+    void {{ field.handler_setter_name }}(std::function<void(const {{ field.cpp_type }}&)> handler) {
+        {{ field.handler_member }} = std::move(handler);
+    }
+    {% endif %}
+
+    {#- Setter (copy + move): only for inputOutput. -#}
+    {% if field.is_settable %}
+    /**
+     * @brief Sets the value of {{ field.x3d_name }}. AccessType: {{ field.access_type }}
+     * @details {{ field.description }}
+     * @param value The new value for {{ field.x3d_name }}.
+     */
+    void {{ field.setter_name }}(const {{ field.cpp_type }}& value) {
+        {% if field.has_constraints %}
+        {{ field.validator_name }}(value);
+        {% endif %}
+        {{ field.cpp_ident }} = value;
+    }
+
+    {% if field.needs_move_overload %}
+    void {{ field.setter_name }}({{ field.cpp_type }}&& value) {
+        {% if field.has_constraints %}
+        {{ field.validator_name }}(value);
+        {% endif %}
+        {{ field.cpp_ident }} = std::move(value);
+    }
+    {% endif %}
+
+    {#- Non-validating write for constrained fields: the lenient reader/data path. -#}
+    {% if field.has_constraints %}
+    /**
+     * @brief Non-validating write of {{ field.x3d_name }} (runtime/reader ingest path).
+     * @details Assigns without the range check {{ field.setter_name }}() enforces, so a
+     *          permissive reader keeps an out-of-range authored value rather than
+     *          reject the whole document. {{ field.setter_name }}() stays the
+     *          enforcement point for programmatic callers.
+     */
+    void {{ field.setter_unchecked_name }}(const {{ field.cpp_type }}& value) {
+        {{ field.cpp_ident }} = value;
+    }
+    {% endif %}
+    {% elif field.access_type == "initializeOnly" %}
+    {#- initializeOnly: data-layer write path only (no public typed setter). The
+        reader / PROTO expansion ingest path writes the field at initialization;
+        it is intentionally NOT a runtime/event setter (not a ROUTE sink). -#}
+    /**
+     * @brief Data-layer write of {{ field.x3d_name }} (reader/init ingest path).
+     * @details {{ field.x3d_name }} is initializeOnly: author-settable at parse
+     *          time but not via runtime events. No public set{{ field.name_pascal }}().
+     */
+    void {{ field.setter_unchecked_name }}(const {{ field.cpp_type }}& value) {
+        {{ field.cpp_ident }} = value;
+    }
+    {% endif %}
+    {% endfor %}
+
+    {% if emit_reflection %}
+    {#- ---- Runtime reflection: node-agnostic codecs walk these. ---- -#}
+    /**
+     * @brief The X3D type name of this node (e.g. "{{ class_name }}").
+     */
+    {{ "virtual " if is_root else "" }}std::string nodeTypeName() const{{ " override" if not is_root else "" }};
+
+    /**
+     * @brief This node's default containerField: the parent field it attaches
+     *        to when an X3D-XML element gives no explicit containerField. Virtual
+     *        so codecs can resolve it polymorphically through an X3DNode base
+     *        pointer (the static getDefaultContainerField() is not reachable that
+     *        way). Mirrors getDefaultContainerField().
+     */
+    {{ "virtual " if is_root else "" }}std::string defaultContainerField() const{{ " override" if not is_root else "" }};
+
+    /**
+     * @brief Reflected field table for this node (own + inherited fields).
+     * @details Built once (function-local static) from this node's descriptors.
+     *          Each FieldInfo carries type-erased get/set thunks bound to this
+     *          node's strongly-typed accessors so codecs need no per-node code.
+     */
+    {{ "virtual " if is_root else "" }}const FieldTable& fields() const{{ " override" if not is_root else "" }};
+
+    /**
+     * @brief Visitor double-dispatch entry point.
+     */
+    {{ "virtual " if is_root else "" }}void accept(NodeVisitor& visitor) const{{ " override" if not is_root else "" }};
+
+    {#- OWN + INHERITED constrained settable fields (same list fields() reflects),
+        so mixin-inherited constrained fields (e.g. X3DFogObject::color) are checked
+        too. Inherited entries base-qualify both the checker static and the getter. -#}
+    {% set _constrained = reflection_fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+    {% if is_root %}
+    /**
+     * @brief Append RangeDiagnostics for this node's own out-of-range constrained
+     *        fields. Base no-op; constrained nodes override. Traversal of children
+     *        is collectRangeWarnings()'s job, not this method's.
+     */
+    virtual void validateRanges(std::vector<RangeDiagnostic>& out) const;
+    {% elif _constrained %}
+    void validateRanges(std::vector<RangeDiagnostic>& out) const override;
+    {% endif %}
+    {% endif %}
+
+    {#- Non-throwing range checkers: protected so a derived node's validateRanges()
+        can reach a static inherited from an AbstractObjectType mixin via a
+        base-qualified call (e.g. X3DFogObject::checkRangesColor). Only emit the
+        protected: label when this class actually defines at least one such static. -#}
+    {% set _own_constrained = fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+    {% if _own_constrained %}
+protected:
+    {% for field in _own_constrained %}
+    /**
+     * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+     *        component. Used by validateRanges() to surface lenient-read values.
+     */
+    static void {{ field.range_checker_name }}(const {{ field.cpp_type }}& value,
+            const std::string& nodeType, const std::string& defName, std::vector<RangeDiagnostic>& out);
+    {% endfor %}
+    {% endif %}
+
+private:
+    {#- Shared validation helpers (used by both copy and move setters). -#}
+    {% for field in fields %}
+    {% if field.is_settable and field.has_constraints %}
+    static void {{ field.validator_name }}(const {{ field.cpp_type }}& value) {
+
+        {{ field.constraint_checks }}
+    }
+    {% endif %}
+    {% endfor %}
+
+    {#- Members: only for non-inputOnly fields, brace-initialized to spec default. -#}
+    {% for field in fields %}
+    {% if field.has_member %}
+    /**
+     * @brief Member variable for {{ field.x3d_name }}.
+     */
+    {% if field.has_default %}
+    {{ field.cpp_type }} {{ field.cpp_ident }}{ {{ field.default_init_expr }} };
+    {% else %}
+    {{ field.cpp_type }} {{ field.cpp_ident }}{};
+    {% endif %}
+    {% elif field.is_event %}
+    /**
+     * @brief Registered event handler for {{ field.x3d_name }} (inputOnly); empty until set.
+     */
+    std::function<void(const {{ field.cpp_type }}&)> {{ field.handler_member }}{};
+    {% endif %}
+    {% endfor %}
+};
+{% if namespace %}
+} // namespace {{ namespace }}
+{% endif %}
+
+#endif // {{ class_name.upper() }}_HPP

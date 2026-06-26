@@ -1,0 +1,24 @@
+#X3D V4.0 utf8
+PROFILE Interchange
+
+# A minimal file-authored Script fixture for the corpus end-to-end test
+# (runtime/script/tests/script_corpus_e2e_test.cpp). It is the ClassicVRML
+# analogue of the real Savage CanopyExample.x3d the same test loads: an author
+# interface (eventIn/eventOut + a field) plus an inline ecmascript body. Before
+# the SCR-SAI-DYN S1 un-tabling this parsed to an INERT Script (no author fields,
+# no captured source); now it parses -> attaches -> initialize() runs ->
+# delivering the inputOnly 'enabled' event drives the handler, which writes the
+# outputOnly 'status' author field, observable in the DynamicFieldStore.
+DEF AuthorScript Script {
+  initializeOnly SFInt32 landed -1
+  inputOnly      SFBool  enabled
+  outputOnly     SFBool  status
+  url [ "ecmascript:
+    function enabled(value, timeStamp) {
+      if (value == true) {
+        if (landed == -1) { status = false; landed = 0; }
+        if (landed == 0)  { status = (status) ? false : true; }
+      }
+    }
+  " ]
+}

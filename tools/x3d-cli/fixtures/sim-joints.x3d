@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Full" version="4.0">
+  <head>
+    <meta name="description" content="sim joints fixture: a RigidBody ball-jointed to a fixed world anchor at the origin swings under gravity; position_changed -> Bob.translation"/>
+  </head>
+  <Scene>
+    <!-- The renderable Transform the pendulum bob's integrated position drives. -->
+    <Transform DEF="Bob">
+      <Shape>
+        <Sphere radius="0.1"/>
+      </Shape>
+    </Transform>
+
+    <!-- §37 physics: one collection; one dynamic body 1 unit out from the anchor,
+         pinned to the world by a BallJoint (body2 unset => fixed world anchor). -->
+    <RigidBodyCollection DEF="World" gravity="0 -9.8 0">
+      <RigidBody DEF="Body" containerField="bodies" mass="1" position="1 0 0">
+        <CollidableShape containerField="geometry">
+          <Shape containerField="shape">
+            <Sphere radius="0.1"/>
+          </Shape>
+        </CollidableShape>
+      </RigidBody>
+      <BallJoint containerField="joints" anchorPoint="0 0 0">
+        <RigidBody USE="Body" containerField="body1"/>
+      </BallJoint>
+    </RigidBodyCollection>
+
+    <!-- The body reports its physics-updated position; route it to the Transform. -->
+    <ROUTE fromNode="Body" fromField="position" toNode="Bob" toField="translation"/>
+  </Scene>
+</X3D>

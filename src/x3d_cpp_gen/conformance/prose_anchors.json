@@ -1,0 +1,3098 @@
+{
+  "anchors": {
+    "AcousticProperties": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "AcousticProperties",
+      "section": "12.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "AcousticProperties"
+    },
+    "Analyser": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "Analyser",
+      "section": "16.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "Analyser"
+    },
+    "Anchor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "networking.md",
+      "fragment": "Anchor",
+      "section": "9.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/networking.html",
+      "title": "Anchor"
+    },
+    "Appearance": {
+      "abstract": false,
+      "ambiguous": [
+        {
+          "file": "shape.md",
+          "section": "12.4.2"
+        }
+      ],
+      "file": "text.md",
+      "fragment": "Appearance",
+      "section": "15.2.1.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/text.html",
+      "title": "Appearance"
+    },
+    "Arc2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry2D.md",
+      "fragment": "Arc2D",
+      "section": "14.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "title": "Arc2D"
+    },
+    "ArcClose2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry2D.md",
+      "fragment": "ArcClose2D",
+      "section": "14.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "title": "ArcClose2D"
+    },
+    "AudioClip": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "AudioClip",
+      "section": "16.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "AudioClip"
+    },
+    "AudioDestination": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "AudioDestination",
+      "section": "16.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "AudioDestination"
+    },
+    "Background": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalEffects.md",
+      "fragment": "Background",
+      "section": "24.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html",
+      "title": "Background"
+    },
+    "BallJoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "BallJoint",
+      "section": "37.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "BallJoint"
+    },
+    "Billboard": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "navigation.md",
+      "fragment": "Billboard",
+      "section": "23.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "title": "Billboard"
+    },
+    "BiquadFilter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "BiquadFilter",
+      "section": "16.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "BiquadFilter"
+    },
+    "BlendedVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "BlendedVolumeStyle",
+      "section": "41.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "BlendedVolumeStyle"
+    },
+    "BooleanFilter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "BooleanFilter",
+      "section": "30.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "BooleanFilter"
+    },
+    "BooleanSequencer": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "BooleanSequencer",
+      "section": "30.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "BooleanSequencer"
+    },
+    "BooleanToggle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "BooleanToggle",
+      "section": "30.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "BooleanToggle"
+    },
+    "BooleanTrigger": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "BooleanTrigger",
+      "section": "30.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "BooleanTrigger"
+    },
+    "BoundaryEnhancementVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "BoundaryEnhancementVolumeStyle",
+      "section": "41.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "BoundaryEnhancementVolumeStyle"
+    },
+    "BoundedPhysicsModel": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "BoundedPhysicsModel",
+      "section": "40.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "BoundedPhysicsModel"
+    },
+    "Box": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry3D.md",
+      "fragment": "Box",
+      "section": "13.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html",
+      "title": "Box"
+    },
+    "BufferAudioSource": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "BufferAudioSource",
+      "section": "16.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "BufferAudioSource"
+    },
+    "CADAssembly": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "CADGeometry.md",
+      "fragment": "CADAssembly",
+      "section": "32.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html",
+      "title": "CADAssembly"
+    },
+    "CADFace": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "CADGeometry.md",
+      "fragment": "CADFace",
+      "section": "32.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html",
+      "title": "CADFace"
+    },
+    "CADLayer": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "CADGeometry.md",
+      "fragment": "CADLayer",
+      "section": "32.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html",
+      "title": "CADLayer"
+    },
+    "CADPart": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "CADGeometry.md",
+      "fragment": "CADPart",
+      "section": "32.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html",
+      "title": "CADPart"
+    },
+    "CartoonVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "CartoonVolumeStyle",
+      "section": "41.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "CartoonVolumeStyle"
+    },
+    "ChannelMerger": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "ChannelMerger",
+      "section": "16.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "ChannelMerger"
+    },
+    "ChannelSelector": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "ChannelSelector",
+      "section": "16.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "ChannelSelector"
+    },
+    "ChannelSplitter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "ChannelSplitter",
+      "section": "16.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "ChannelSplitter"
+    },
+    "Circle2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry2D.md",
+      "fragment": "Circle2D",
+      "section": "14.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "title": "Circle2D"
+    },
+    "ClipPlane": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "ClipPlane",
+      "section": "11.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "ClipPlane"
+    },
+    "CollidableOffset": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "CollidableOffset",
+      "section": "37.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "CollidableOffset"
+    },
+    "CollidableShape": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "CollidableShape",
+      "section": "37.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "CollidableShape"
+    },
+    "Collision": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "navigation.md",
+      "fragment": "Collision",
+      "section": "23.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "title": "Collision"
+    },
+    "CollisionCollection": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "CollisionCollection",
+      "section": "37.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "CollisionCollection"
+    },
+    "CollisionSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "CollisionSensor",
+      "section": "37.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "CollisionSensor"
+    },
+    "CollisionSpace": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "CollisionSpace",
+      "section": "37.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "CollisionSpace"
+    },
+    "Color": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "Color",
+      "section": "11.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "Color"
+    },
+    "ColorChaser": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "ColorChaser",
+      "section": "39.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "ColorChaser"
+    },
+    "ColorDamper": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "ColorDamper",
+      "section": "39.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "ColorDamper"
+    },
+    "ColorInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "ColorInterpolator",
+      "section": "19.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "ColorInterpolator"
+    },
+    "ColorRGBA": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "ColorRGBA",
+      "section": "11.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "ColorRGBA"
+    },
+    "ComposedCubeMapTexture": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalTexturing.md",
+      "fragment": "ComposedCubeMapTexture",
+      "section": "34.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html",
+      "title": "ComposedCubeMapTexture"
+    },
+    "ComposedShader": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "ComposedShader",
+      "section": "31.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "ComposedShader"
+    },
+    "ComposedTexture3D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texture3D.md",
+      "fragment": "ComposedTexture3D",
+      "section": "33.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "title": "ComposedTexture3D"
+    },
+    "ComposedVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "ComposedVolumeStyle",
+      "section": "41.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "ComposedVolumeStyle"
+    },
+    "Cone": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry3D.md",
+      "fragment": "Cone",
+      "section": "13.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html",
+      "title": "Cone"
+    },
+    "ConeEmitter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "ConeEmitter",
+      "section": "40.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "ConeEmitter"
+    },
+    "Contact": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "Contact",
+      "section": "37.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "Contact"
+    },
+    "Contour2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "Contour2D",
+      "section": "27.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "Contour2D"
+    },
+    "ContourPolyline2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "ContourPolyline2D",
+      "section": "27.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "ContourPolyline2D"
+    },
+    "Convolver": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "Convolver",
+      "section": "16.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "Convolver"
+    },
+    "Coordinate": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "Coordinate",
+      "section": "11.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "Coordinate"
+    },
+    "CoordinateChaser": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "CoordinateChaser",
+      "section": "39.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "CoordinateChaser"
+    },
+    "CoordinateDamper": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "CoordinateDamper",
+      "section": "39.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "CoordinateDamper"
+    },
+    "CoordinateDouble": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "CoordinateDouble",
+      "section": "11.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "CoordinateDouble"
+    },
+    "CoordinateInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "CoordinateInterpolator",
+      "section": "19.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "CoordinateInterpolator"
+    },
+    "CoordinateInterpolator2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "CoordinateInterpolator2D",
+      "section": "19.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "CoordinateInterpolator2D"
+    },
+    "Cylinder": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry3D.md",
+      "fragment": "Cylinder",
+      "section": "13.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html",
+      "title": "Cylinder"
+    },
+    "CylinderSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "pointingDeviceSensor.md",
+      "fragment": "CylinderSensor",
+      "section": "20.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html",
+      "title": "CylinderSensor"
+    },
+    "DISEntityManager": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "dis.md",
+      "fragment": "DISEntityManager",
+      "section": "28.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html",
+      "title": "DISEntityManager"
+    },
+    "DISEntityTypeMapping": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "dis.md",
+      "fragment": "DISEntityTypeMapping",
+      "section": "28.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html",
+      "title": "DISEntityTypeMapping"
+    },
+    "Delay": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "Delay",
+      "section": "16.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "Delay"
+    },
+    "DirectionalLight": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "lighting.md",
+      "fragment": "DirectionalLight",
+      "section": "17.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/lighting.html",
+      "title": "DirectionalLight"
+    },
+    "Disk2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry2D.md",
+      "fragment": "Disk2D",
+      "section": "14.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "title": "Disk2D"
+    },
+    "DoubleAxisHingeJoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "DoubleAxisHingeJoint",
+      "section": "37.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "DoubleAxisHingeJoint"
+    },
+    "DynamicsCompressor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "DynamicsCompressor",
+      "section": "16.4.11",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "DynamicsCompressor"
+    },
+    "EaseInEaseOut": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "EaseInEaseOut",
+      "section": "19.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "EaseInEaseOut"
+    },
+    "EdgeEnhancementVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "EdgeEnhancementVolumeStyle",
+      "section": "41.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "EdgeEnhancementVolumeStyle"
+    },
+    "ElevationGrid": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry3D.md",
+      "fragment": "ElevationGrid",
+      "section": "13.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html",
+      "title": "ElevationGrid"
+    },
+    "EspduTransform": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "dis.md",
+      "fragment": "EspduTransform",
+      "section": "28.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html",
+      "title": "EspduTransform"
+    },
+    "ExplosionEmitter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "ExplosionEmitter",
+      "section": "40.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "ExplosionEmitter"
+    },
+    "Extrusion": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry3D.md",
+      "fragment": "Extrusion",
+      "section": "13.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html",
+      "title": "Extrusion"
+    },
+    "FillProperties": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "FillProperties",
+      "section": "12.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "FillProperties"
+    },
+    "FloatVertexAttribute": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "FloatVertexAttribute",
+      "section": "31.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "FloatVertexAttribute"
+    },
+    "Fog": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalEffects.md",
+      "fragment": "Fog",
+      "section": "24.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html",
+      "title": "Fog"
+    },
+    "FogCoordinate": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalEffects.md",
+      "fragment": "FogCoordinate",
+      "section": "24.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html",
+      "title": "FogCoordinate"
+    },
+    "FontStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "text.md",
+      "fragment": "FontStyle",
+      "section": "15.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/text.html",
+      "title": "FontStyle"
+    },
+    "ForcePhysicsModel": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "ForcePhysicsModel",
+      "section": "40.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "ForcePhysicsModel"
+    },
+    "Gain": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "Gain",
+      "section": "16.4.12",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "Gain"
+    },
+    "GeneratedCubeMapTexture": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalTexturing.md",
+      "fragment": "GeneratedCubeMapTexture",
+      "section": "34.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html",
+      "title": "GeneratedCubeMapTexture"
+    },
+    "GeoCoordinate": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoCoordinate",
+      "section": "25.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoCoordinate"
+    },
+    "GeoElevationGrid": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoElevationGrid",
+      "section": "25.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoElevationGrid"
+    },
+    "GeoLOD": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoLOD",
+      "section": "25.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoLOD"
+    },
+    "GeoLocation": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoLocation",
+      "section": "25.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoLocation"
+    },
+    "GeoMetadata": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoMetadata",
+      "section": "25.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoMetadata"
+    },
+    "GeoOrigin": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoOrigin",
+      "section": "25.3.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoOrigin"
+    },
+    "GeoPositionInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoPositionInterpolator",
+      "section": "25.3.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoPositionInterpolator"
+    },
+    "GeoProximitySensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoProximitySensor",
+      "section": "25.3.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoProximitySensor"
+    },
+    "GeoTouchSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoTouchSensor",
+      "section": "25.3.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoTouchSensor"
+    },
+    "GeoTransform": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoTransform",
+      "section": "25.3.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoTransform"
+    },
+    "GeoViewpoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geospatial.md",
+      "fragment": "GeoViewpoint",
+      "section": "25.3.11",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "title": "GeoViewpoint"
+    },
+    "Group": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "grouping.md",
+      "fragment": "Group",
+      "section": "10.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html",
+      "title": "Group"
+    },
+    "HAnimDisplacer": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "hanim.md",
+      "fragment": "HAnimDisplacer",
+      "section": "26.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html",
+      "title": "HAnimDisplacer"
+    },
+    "HAnimHumanoid": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "hanim.md",
+      "fragment": "HAnimHumanoid",
+      "section": "26.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html",
+      "title": "HAnimHumanoid"
+    },
+    "HAnimJoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "hanim.md",
+      "fragment": "HAnimJoint",
+      "section": "26.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html",
+      "title": "HAnimJoint"
+    },
+    "HAnimMotion": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "hanim.md",
+      "fragment": "HAnimMotion",
+      "section": "26.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html",
+      "title": "HAnimMotion"
+    },
+    "HAnimSegment": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "hanim.md",
+      "fragment": "HAnimSegment",
+      "section": "26.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html",
+      "title": "HAnimSegment"
+    },
+    "HAnimSite": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "hanim.md",
+      "fragment": "HAnimSite",
+      "section": "26.3.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html",
+      "title": "HAnimSite"
+    },
+    "ImageCubeMapTexture": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalTexturing.md",
+      "fragment": "ImageCubeMapTexture",
+      "section": "34.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html",
+      "title": "ImageCubeMapTexture"
+    },
+    "ImageTexture": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "ImageTexture",
+      "section": "18.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "ImageTexture"
+    },
+    "ImageTexture3D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texture3D.md",
+      "fragment": "ImageTexture3D",
+      "section": "33.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "title": "ImageTexture3D"
+    },
+    "IndexedFaceSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry3D.md",
+      "fragment": "IndexedFaceSet",
+      "section": "13.3.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html",
+      "title": "IndexedFaceSet"
+    },
+    "IndexedLineSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "IndexedLineSet",
+      "section": "11.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "IndexedLineSet"
+    },
+    "IndexedQuadSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "CADGeometry.md",
+      "fragment": "IndexedQuadSet",
+      "section": "32.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html",
+      "title": "IndexedQuadSet"
+    },
+    "IndexedTriangleFanSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "IndexedTriangleFanSet",
+      "section": "11.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "IndexedTriangleFanSet"
+    },
+    "IndexedTriangleSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "IndexedTriangleSet",
+      "section": "11.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "IndexedTriangleSet"
+    },
+    "IndexedTriangleStripSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "IndexedTriangleStripSet",
+      "section": "11.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "IndexedTriangleStripSet"
+    },
+    "Inline": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "networking.md",
+      "fragment": "Inline",
+      "section": "9.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/networking.html",
+      "title": "Inline"
+    },
+    "IntegerSequencer": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "IntegerSequencer",
+      "section": "30.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "IntegerSequencer"
+    },
+    "IntegerTrigger": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "IntegerTrigger",
+      "section": "30.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "IntegerTrigger"
+    },
+    "IsoSurfaceVolumeData": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "IsoSurfaceVolumeData",
+      "section": "41.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "IsoSurfaceVolumeData"
+    },
+    "KeySensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "keyDeviceSensor.md",
+      "fragment": "KeySensor",
+      "section": "21.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/keyDeviceSensor.html",
+      "title": "KeySensor"
+    },
+    "LOD": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "navigation.md",
+      "fragment": "LOD",
+      "section": "23.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "title": "LOD"
+    },
+    "Layer": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "layering.md",
+      "fragment": "Layer",
+      "section": "35.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layering.html",
+      "title": "Layer"
+    },
+    "LayerSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "layering.md",
+      "fragment": "LayerSet",
+      "section": "35.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layering.html",
+      "title": "LayerSet"
+    },
+    "Layout": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "layout.md",
+      "fragment": "Layout",
+      "section": "36.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layout.html",
+      "title": "Layout"
+    },
+    "LayoutGroup": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "layout.md",
+      "fragment": "LayoutGroup",
+      "section": "36.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layout.html",
+      "title": "LayoutGroup"
+    },
+    "LayoutLayer": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "layout.md",
+      "fragment": "LayoutLayer",
+      "section": "36.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layout.html",
+      "title": "LayoutLayer"
+    },
+    "LinePickSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "picking.md",
+      "fragment": "LinePickSensor",
+      "section": "38.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html",
+      "title": "LinePickSensor"
+    },
+    "LineProperties": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "LineProperties",
+      "section": "12.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "LineProperties"
+    },
+    "LineSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "LineSet",
+      "section": "11.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "LineSet"
+    },
+    "ListenerPointSource": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "ListenerPointSource",
+      "section": "16.4.13",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "ListenerPointSource"
+    },
+    "LoadSensor": {
+      "abstract": false,
+      "ambiguous": [
+        {
+          "file": "networking.md",
+          "section": "9.4.3"
+        }
+      ],
+      "file": "shaders.md",
+      "fragment": "LoadSensor",
+      "section": "31.2.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "LoadSensor"
+    },
+    "LocalFog": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalEffects.md",
+      "fragment": "LocalFog",
+      "section": "24.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html",
+      "title": "LocalFog"
+    },
+    "Material": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "Material",
+      "section": "12.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "Material"
+    },
+    "Matrix3VertexAttribute": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "Matrix3VertexAttribute",
+      "section": "31.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "Matrix3VertexAttribute"
+    },
+    "Matrix4VertexAttribute": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "Matrix4VertexAttribute",
+      "section": "31.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "Matrix4VertexAttribute"
+    },
+    "MetadataBoolean": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "MetadataBoolean",
+      "section": "7.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "MetadataBoolean"
+    },
+    "MetadataDouble": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "MetadataDouble",
+      "section": "7.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "MetadataDouble"
+    },
+    "MetadataFloat": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "MetadataFloat",
+      "section": "7.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "MetadataFloat"
+    },
+    "MetadataInteger": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "MetadataInteger",
+      "section": "7.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "MetadataInteger"
+    },
+    "MetadataSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "MetadataSet",
+      "section": "7.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "MetadataSet"
+    },
+    "MetadataString": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "MetadataString",
+      "section": "7.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "MetadataString"
+    },
+    "MicrophoneSource": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "MicrophoneSource",
+      "section": "16.4.14",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "MicrophoneSource"
+    },
+    "MotorJoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "MotorJoint",
+      "section": "37.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "MotorJoint"
+    },
+    "MovieTexture": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "MovieTexture",
+      "section": "18.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "MovieTexture"
+    },
+    "MultiTexture": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "MultiTexture",
+      "section": "18.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "MultiTexture"
+    },
+    "MultiTextureCoordinate": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "MultiTextureCoordinate",
+      "section": "18.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "MultiTextureCoordinate"
+    },
+    "MultiTextureTransform": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "MultiTextureTransform",
+      "section": "18.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "MultiTextureTransform"
+    },
+    "NavigationInfo": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "navigation.md",
+      "fragment": "NavigationInfo",
+      "section": "23.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "title": "NavigationInfo"
+    },
+    "Normal": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "Normal",
+      "section": "11.4.11",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "Normal"
+    },
+    "NormalInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "NormalInterpolator",
+      "section": "19.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "NormalInterpolator"
+    },
+    "NurbsCurve": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsCurve",
+      "section": "27.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsCurve"
+    },
+    "NurbsCurve2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsCurve2D",
+      "section": "27.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsCurve2D"
+    },
+    "NurbsOrientationInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsOrientationInterpolator",
+      "section": "27.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsOrientationInterpolator"
+    },
+    "NurbsPatchSurface": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsPatchSurface",
+      "section": "27.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsPatchSurface"
+    },
+    "NurbsPositionInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsPositionInterpolator",
+      "section": "27.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsPositionInterpolator"
+    },
+    "NurbsSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsSet",
+      "section": "27.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsSet"
+    },
+    "NurbsSurfaceInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsSurfaceInterpolator",
+      "section": "27.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsSurfaceInterpolator"
+    },
+    "NurbsSweptSurface": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsSweptSurface",
+      "section": "27.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsSweptSurface"
+    },
+    "NurbsSwungSurface": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsSwungSurface",
+      "section": "27.4.11",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsSwungSurface"
+    },
+    "NurbsTextureCoordinate": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsTextureCoordinate",
+      "section": "27.4.12",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsTextureCoordinate"
+    },
+    "NurbsTrimmedSurface": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "NurbsTrimmedSurface",
+      "section": "27.4.13",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "NurbsTrimmedSurface"
+    },
+    "OpacityMapVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "OpacityMapVolumeStyle",
+      "section": "41.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "OpacityMapVolumeStyle"
+    },
+    "OrientationChaser": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "OrientationChaser",
+      "section": "39.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "OrientationChaser"
+    },
+    "OrientationDamper": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "OrientationDamper",
+      "section": "39.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "OrientationDamper"
+    },
+    "OrientationInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "OrientationInterpolator",
+      "section": "19.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "OrientationInterpolator"
+    },
+    "OrthoViewpoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "navigation.md",
+      "fragment": "OrthoViewpoint",
+      "section": "23.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "title": "OrthoViewpoint"
+    },
+    "OscillatorSource": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "OscillatorSource",
+      "section": "16.4.15",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "OscillatorSource"
+    },
+    "PackagedShader": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "PackagedShader",
+      "section": "31.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "PackagedShader"
+    },
+    "ParticleSystem": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "ParticleSystem",
+      "section": "40.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "ParticleSystem"
+    },
+    "PeriodicWave": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "PeriodicWave",
+      "section": "16.4.16",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "PeriodicWave"
+    },
+    "PhysicalMaterial": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "PhysicalMaterial",
+      "section": "12.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "PhysicalMaterial"
+    },
+    "PickableGroup": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "picking.md",
+      "fragment": "PickableGroup",
+      "section": "38.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html",
+      "title": "PickableGroup"
+    },
+    "PixelTexture": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "PixelTexture",
+      "section": "18.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "PixelTexture"
+    },
+    "PixelTexture3D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texture3D.md",
+      "fragment": "PixelTexture3D",
+      "section": "33.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "title": "PixelTexture3D"
+    },
+    "PlaneSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "pointingDeviceSensor.md",
+      "fragment": "PlaneSensor",
+      "section": "20.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html",
+      "title": "PlaneSensor"
+    },
+    "PointEmitter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "PointEmitter",
+      "section": "40.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "PointEmitter"
+    },
+    "PointLight": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "lighting.md",
+      "fragment": "PointLight",
+      "section": "17.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/lighting.html",
+      "title": "PointLight"
+    },
+    "PointPickSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "picking.md",
+      "fragment": "PointPickSensor",
+      "section": "38.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html",
+      "title": "PointPickSensor"
+    },
+    "PointProperties": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "PointProperties",
+      "section": "12.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "PointProperties"
+    },
+    "PointSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "PointSet",
+      "section": "11.4.12",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "PointSet"
+    },
+    "Polyline2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry2D.md",
+      "fragment": "Polyline2D",
+      "section": "14.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "title": "Polyline2D"
+    },
+    "PolylineEmitter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "PolylineEmitter",
+      "section": "40.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "PolylineEmitter"
+    },
+    "Polypoint2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry2D.md",
+      "fragment": "Polypoint2D",
+      "section": "14.3.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "title": "Polypoint2D"
+    },
+    "PositionChaser": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "PositionChaser",
+      "section": "39.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "PositionChaser"
+    },
+    "PositionChaser2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "PositionChaser2D",
+      "section": "39.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "PositionChaser2D"
+    },
+    "PositionDamper": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "PositionDamper",
+      "section": "39.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "PositionDamper"
+    },
+    "PositionDamper2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "PositionDamper2D",
+      "section": "39.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "PositionDamper2D"
+    },
+    "PositionInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "PositionInterpolator",
+      "section": "19.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "PositionInterpolator"
+    },
+    "PositionInterpolator2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "PositionInterpolator2D",
+      "section": "19.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "PositionInterpolator2D"
+    },
+    "PrimitivePickSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "picking.md",
+      "fragment": "PrimitivePickSensor",
+      "section": "38.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html",
+      "title": "PrimitivePickSensor"
+    },
+    "ProgramShader": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "ProgramShader",
+      "section": "31.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "ProgramShader"
+    },
+    "ProjectionVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "ProjectionVolumeStyle",
+      "section": "41.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "ProjectionVolumeStyle"
+    },
+    "ProximitySensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalSensor.md",
+      "fragment": "ProximitySensor",
+      "section": "22.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalSensor.html",
+      "title": "ProximitySensor"
+    },
+    "QuadSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "CADGeometry.md",
+      "fragment": "QuadSet",
+      "section": "32.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html",
+      "title": "QuadSet"
+    },
+    "ReceiverPdu": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "dis.md",
+      "fragment": "ReceiverPdu",
+      "section": "28.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html",
+      "title": "ReceiverPdu"
+    },
+    "Rectangle2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry2D.md",
+      "fragment": "Rectangle2D",
+      "section": "14.3.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "title": "Rectangle2D"
+    },
+    "RigidBody": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "RigidBody",
+      "section": "37.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "RigidBody"
+    },
+    "RigidBodyCollection": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "RigidBodyCollection",
+      "section": "37.4.11",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "RigidBodyCollection"
+    },
+    "ScalarChaser": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "ScalarChaser",
+      "section": "39.4.11",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "ScalarChaser"
+    },
+    "ScalarDamper": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "ScalarDamper",
+      "section": "39.4.12",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "ScalarDamper"
+    },
+    "ScalarInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "ScalarInterpolator",
+      "section": "19.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "ScalarInterpolator"
+    },
+    "ScreenFontStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "layout.md",
+      "fragment": "ScreenFontStyle",
+      "section": "36.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layout.html",
+      "title": "ScreenFontStyle"
+    },
+    "ScreenGroup": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "layout.md",
+      "fragment": "ScreenGroup",
+      "section": "36.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layout.html",
+      "title": "ScreenGroup"
+    },
+    "Script": {
+      "abstract": false,
+      "ambiguous": [
+        {
+          "file": "glossary.md",
+          "section": "3.1.64"
+        }
+      ],
+      "file": "scripting.md",
+      "fragment": "Script",
+      "section": "29.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/scripting.html",
+      "title": "Script"
+    },
+    "SegmentedVolumeData": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "SegmentedVolumeData",
+      "section": "41.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "SegmentedVolumeData"
+    },
+    "ShadedVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "ShadedVolumeStyle",
+      "section": "41.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "ShadedVolumeStyle"
+    },
+    "ShaderPart": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "ShaderPart",
+      "section": "31.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "ShaderPart"
+    },
+    "ShaderProgram": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "ShaderProgram",
+      "section": "31.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "ShaderProgram"
+    },
+    "Shape": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "Shape",
+      "section": "12.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "Shape"
+    },
+    "SignalPdu": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "dis.md",
+      "fragment": "SignalPdu",
+      "section": "28.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html",
+      "title": "SignalPdu"
+    },
+    "SilhouetteEnhancementVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "SilhouetteEnhancementVolumeStyle",
+      "section": "41.4.11",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "SilhouetteEnhancementVolumeStyle"
+    },
+    "SingleAxisHingeJoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "SingleAxisHingeJoint",
+      "section": "37.4.12",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "SingleAxisHingeJoint"
+    },
+    "SliderJoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "SliderJoint",
+      "section": "37.4.13",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "SliderJoint"
+    },
+    "Sound": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "Sound",
+      "section": "16.4.17",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "Sound"
+    },
+    "SpatialSound": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "SpatialSound",
+      "section": "16.4.18",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "SpatialSound"
+    },
+    "Sphere": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry3D.md",
+      "fragment": "Sphere",
+      "section": "13.3.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html",
+      "title": "Sphere"
+    },
+    "SphereSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "pointingDeviceSensor.md",
+      "fragment": "SphereSensor",
+      "section": "20.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html",
+      "title": "SphereSensor"
+    },
+    "SplinePositionInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "SplinePositionInterpolator",
+      "section": "19.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "SplinePositionInterpolator"
+    },
+    "SplinePositionInterpolator2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "SplinePositionInterpolator2D",
+      "section": "19.4.11",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "SplinePositionInterpolator2D"
+    },
+    "SplineScalarInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "SplineScalarInterpolator",
+      "section": "19.4.12",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "SplineScalarInterpolator"
+    },
+    "SpotLight": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "lighting.md",
+      "fragment": "SpotLight",
+      "section": "17.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/lighting.html",
+      "title": "SpotLight"
+    },
+    "SquadOrientationInterpolator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "SquadOrientationInterpolator",
+      "section": "19.4.13",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "SquadOrientationInterpolator"
+    },
+    "StaticGroup": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "grouping.md",
+      "fragment": "StaticGroup",
+      "section": "10.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html",
+      "title": "StaticGroup"
+    },
+    "StreamAudioDestination": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "StreamAudioDestination",
+      "section": "16.4.19",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "StreamAudioDestination"
+    },
+    "StreamAudioSource": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "StreamAudioSource",
+      "section": "16.4.20",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "StreamAudioSource"
+    },
+    "StringSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "keyDeviceSensor.md",
+      "fragment": "StringSensor",
+      "section": "21.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/keyDeviceSensor.html",
+      "title": "StringSensor"
+    },
+    "SurfaceEmitter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "SurfaceEmitter",
+      "section": "40.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "SurfaceEmitter"
+    },
+    "Switch": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "grouping.md",
+      "fragment": "Switch",
+      "section": "10.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html",
+      "title": "Switch"
+    },
+    "TexCoordChaser2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "TexCoordChaser2D",
+      "section": "39.4.13",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "TexCoordChaser2D"
+    },
+    "TexCoordDamper2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "TexCoordDamper2D",
+      "section": "39.4.14",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "TexCoordDamper2D"
+    },
+    "Text": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "text.md",
+      "fragment": "Text",
+      "section": "15.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/text.html",
+      "title": "Text"
+    },
+    "TextureBackground": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalEffects.md",
+      "fragment": "TextureBackground",
+      "section": "24.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html",
+      "title": "TextureBackground"
+    },
+    "TextureCoordinate": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "TextureCoordinate",
+      "section": "18.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "TextureCoordinate"
+    },
+    "TextureCoordinate3D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texture3D.md",
+      "fragment": "TextureCoordinate3D",
+      "section": "33.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "title": "TextureCoordinate3D"
+    },
+    "TextureCoordinate4D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texture3D.md",
+      "fragment": "TextureCoordinate4D",
+      "section": "33.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "title": "TextureCoordinate4D"
+    },
+    "TextureCoordinateGenerator": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "TextureCoordinateGenerator",
+      "section": "18.4.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "TextureCoordinateGenerator"
+    },
+    "TextureProjector": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "textureProjection.md",
+      "fragment": "TextureProjector",
+      "section": "42.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/textureProjection.html",
+      "title": "TextureProjector"
+    },
+    "TextureProjectorParallel": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "textureProjection.md",
+      "fragment": "TextureProjectorParallel",
+      "section": "42.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/textureProjection.html",
+      "title": "TextureProjectorParallel"
+    },
+    "TextureProperties": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "TextureProperties",
+      "section": "18.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "TextureProperties"
+    },
+    "TextureTransform": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "TextureTransform",
+      "section": "18.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "TextureTransform"
+    },
+    "TextureTransform3D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texture3D.md",
+      "fragment": "TextureTransform3D",
+      "section": "33.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "title": "TextureTransform3D"
+    },
+    "TextureTransformMatrix3D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "texture3D.md",
+      "fragment": "TextureTransformMatrix3D",
+      "section": "33.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "title": "TextureTransformMatrix3D"
+    },
+    "TimeSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "time.md",
+      "fragment": "TimeSensor",
+      "section": "8.4.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/time.html",
+      "title": "TimeSensor"
+    },
+    "TimeTrigger": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "TimeTrigger",
+      "section": "30.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "TimeTrigger"
+    },
+    "ToneMappedVolumeStyle": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "ToneMappedVolumeStyle",
+      "section": "41.4.12",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "ToneMappedVolumeStyle"
+    },
+    "TouchSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "pointingDeviceSensor.md",
+      "fragment": "TouchSensor",
+      "section": "20.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html",
+      "title": "TouchSensor"
+    },
+    "Transform": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "grouping.md",
+      "fragment": "Transform",
+      "section": "10.4.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html",
+      "title": "Transform"
+    },
+    "TransformSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalSensor.md",
+      "fragment": "TransformSensor",
+      "section": "22.4.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalSensor.html",
+      "title": "TransformSensor"
+    },
+    "TransmitterPdu": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "dis.md",
+      "fragment": "TransmitterPdu",
+      "section": "28.3.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html",
+      "title": "TransmitterPdu"
+    },
+    "TriangleFanSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "TriangleFanSet",
+      "section": "11.4.13",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "TriangleFanSet"
+    },
+    "TriangleSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "TriangleSet",
+      "section": "11.4.14",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "TriangleSet"
+    },
+    "TriangleSet2D": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "geometry2D.md",
+      "fragment": "TriangleSet2D",
+      "section": "14.3.8",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "title": "TriangleSet2D"
+    },
+    "TriangleStripSet": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "TriangleStripSet",
+      "section": "11.4.15",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "TriangleStripSet"
+    },
+    "TwoSidedMaterial": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "TwoSidedMaterial",
+      "section": "12.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "TwoSidedMaterial (deprecated)"
+    },
+    "UniversalJoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "UniversalJoint",
+      "section": "37.4.14",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "UniversalJoint"
+    },
+    "UnlitMaterial": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "UnlitMaterial",
+      "section": "12.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "UnlitMaterial"
+    },
+    "Viewpoint": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "navigation.md",
+      "fragment": "Viewpoint",
+      "section": "23.4.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "title": "Viewpoint"
+    },
+    "ViewpointGroup": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "navigation.md",
+      "fragment": "ViewpointGroup",
+      "section": "23.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "title": "ViewpointGroup"
+    },
+    "Viewport": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "layering.md",
+      "fragment": "Viewport",
+      "section": "35.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layering.html",
+      "title": "Viewport"
+    },
+    "VisibilitySensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "environmentalSensor.md",
+      "fragment": "VisibilitySensor",
+      "section": "22.4.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalSensor.html",
+      "title": "VisibilitySensor"
+    },
+    "VolumeData": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "VolumeData",
+      "section": "41.4.13",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "VolumeData"
+    },
+    "VolumeEmitter": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "VolumeEmitter",
+      "section": "40.4.9",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "VolumeEmitter"
+    },
+    "VolumePickSensor": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "picking.md",
+      "fragment": "VolumePickSensor",
+      "section": "38.4.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html",
+      "title": "VolumePickSensor"
+    },
+    "WaveShaper": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "WaveShaper",
+      "section": "16.4.21",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "WaveShaper"
+    },
+    "WindPhysicsModel": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "WindPhysicsModel",
+      "section": "40.4.10",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "WindPhysicsModel"
+    },
+    "WorldInfo": {
+      "abstract": false,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "WorldInfo",
+      "section": "7.4.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "WorldInfo"
+    },
+    "X3DAppearanceChildNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "X3DAppearanceChildNode",
+      "section": "12.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "X3DAppearanceChildNode"
+    },
+    "X3DAppearanceNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "X3DAppearanceNode",
+      "section": "12.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "X3DAppearanceNode"
+    },
+    "X3DArrayField": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "fieldTypes.md",
+      "fragment": "X3DArrayField",
+      "section": "5.2.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fieldTypes.html",
+      "title": "X3DArrayField"
+    },
+    "X3DBackgroundNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "environmentalEffects.md",
+      "fragment": "X3DBackgroundNode",
+      "section": "24.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html",
+      "title": "X3DBackgroundNode"
+    },
+    "X3DBindableNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "X3DBindableNode",
+      "section": "7.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "X3DBindableNode"
+    },
+    "X3DBoundedObject": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "grouping.md",
+      "fragment": "X3DBoundedObject",
+      "section": "10.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html",
+      "title": "X3DBoundedObject"
+    },
+    "X3DChaserNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "X3DChaserNode",
+      "section": "39.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "X3DChaserNode"
+    },
+    "X3DChildNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "X3DChildNode",
+      "section": "7.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "X3DChildNode"
+    },
+    "X3DColorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "X3DColorNode",
+      "section": "11.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "X3DColorNode"
+    },
+    "X3DComposableVolumeRenderStyleNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "X3DComposableVolumeRenderStyleNode",
+      "section": "41.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "X3DComposableVolumeRenderStyleNode"
+    },
+    "X3DComposedGeometryNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "X3DComposedGeometryNode",
+      "section": "11.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "X3DComposedGeometryNode"
+    },
+    "X3DCoordinateNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "X3DCoordinateNode",
+      "section": "11.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "X3DCoordinateNode"
+    },
+    "X3DDamperNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "X3DDamperNode",
+      "section": "39.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "X3DDamperNode"
+    },
+    "X3DDragSensorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "pointingDeviceSensor.md",
+      "fragment": "X3DDragSensorNode",
+      "section": "20.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html",
+      "title": "X3DDragSensorNode"
+    },
+    "X3DEnvironmentTextureNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "environmentalTexturing.md",
+      "fragment": "X3DEnvironmentTextureNode",
+      "section": "34.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html",
+      "title": "X3DEnvironmentTextureNode"
+    },
+    "X3DEnvironmentalSensorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "environmentalSensor.md",
+      "fragment": "X3DEnvironmentalSensorNode",
+      "section": "22.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalSensor.html",
+      "title": "X3DEnvironmentalSensorNode"
+    },
+    "X3DField": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "fieldTypes.md",
+      "fragment": "X3DField",
+      "section": "5.2.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fieldTypes.html",
+      "title": "X3DField"
+    },
+    "X3DFogObject": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "environmentalEffects.md",
+      "fragment": "X3DFogObject",
+      "section": "24.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html",
+      "title": "X3DFogObject"
+    },
+    "X3DFollowerNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "followers.md",
+      "fragment": "X3DFollowerNode",
+      "section": "39.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "title": "X3DFollowerNode"
+    },
+    "X3DFontStyleNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "text.md",
+      "fragment": "X3DFontStyleNode",
+      "section": "15.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/text.html",
+      "title": "X3DFontStyleNode"
+    },
+    "X3DGeometricPropertyNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "X3DGeometricPropertyNode",
+      "section": "11.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "X3DGeometricPropertyNode"
+    },
+    "X3DGeometryNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "X3DGeometryNode",
+      "section": "11.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "X3DGeometryNode"
+    },
+    "X3DGroupingNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "grouping.md",
+      "fragment": "X3DGroupingNode",
+      "section": "10.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html",
+      "title": "X3DGroupingNode"
+    },
+    "X3DInfoNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "X3DInfoNode",
+      "section": "7.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "X3DInfoNode"
+    },
+    "X3DInterpolatorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "interpolators.md",
+      "fragment": "X3DInterpolatorNode",
+      "section": "19.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "title": "X3DInterpolatorNode"
+    },
+    "X3DKeyDeviceSensorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "keyDeviceSensor.md",
+      "fragment": "X3DKeyDeviceSensorNode",
+      "section": "21.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/keyDeviceSensor.html",
+      "title": "X3DKeyDeviceSensorNode"
+    },
+    "X3DLayerNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "layering.md",
+      "fragment": "X3DLayerNode",
+      "section": "35.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layering.html",
+      "title": "X3DLayerNode"
+    },
+    "X3DLayoutNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "layout.md",
+      "fragment": "X3DLayoutNode",
+      "section": "36.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layout.html",
+      "title": "X3DLayoutNode"
+    },
+    "X3DLightNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "lighting.md",
+      "fragment": "X3DLightNode",
+      "section": "17.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/lighting.html",
+      "title": "X3DLightNode"
+    },
+    "X3DMaterialNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "X3DMaterialNode",
+      "section": "12.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "X3DMaterialNode"
+    },
+    "X3DMetadataObject": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "X3DMetadataObject",
+      "section": "7.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "X3DMetadataObject"
+    },
+    "X3DNBodyCollidableNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "X3DNBodyCollidableNode",
+      "section": "37.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "X3DNBodyCollidableNode"
+    },
+    "X3DNBodyCollisionSpaceNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "X3DNBodyCollisionSpaceNode",
+      "section": "37.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "X3DNBodyCollisionSpaceNode"
+    },
+    "X3DNetworkSensorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "networking.md",
+      "fragment": "X3DNetworkSensorNode",
+      "section": "9.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/networking.html",
+      "title": "X3DNetworkSensorNode"
+    },
+    "X3DNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "X3DNode",
+      "section": "7.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "X3DNode"
+    },
+    "X3DNormalNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rendering.md",
+      "fragment": "X3DNormalNode",
+      "section": "11.3.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "title": "X3DNormalNode"
+    },
+    "X3DNurbsControlCurveNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "X3DNurbsControlCurveNode",
+      "section": "27.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "X3DNurbsControlCurveNode"
+    },
+    "X3DNurbsSurfaceGeometryNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "X3DNurbsSurfaceGeometryNode",
+      "section": "27.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "X3DNurbsSurfaceGeometryNode"
+    },
+    "X3DOneSidedMaterialNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "X3DOneSidedMaterialNode",
+      "section": "12.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "X3DOneSidedMaterialNode"
+    },
+    "X3DParametricGeometryNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "nurbs.md",
+      "fragment": "X3DParametricGeometryNode",
+      "section": "27.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "title": "X3DParametricGeometryNode"
+    },
+    "X3DParticleEmitterNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "X3DParticleEmitterNode",
+      "section": "40.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "X3DParticleEmitterNode"
+    },
+    "X3DParticlePhysicsModelNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "particleSystems.md",
+      "fragment": "X3DParticlePhysicsModelNode",
+      "section": "40.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "title": "X3DParticlePhysicsModelNode"
+    },
+    "X3DPickSensorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "picking.md",
+      "fragment": "X3DPickSensorNode",
+      "section": "38.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html",
+      "title": "X3DPickSensorNode"
+    },
+    "X3DPickableObject": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "picking.md",
+      "fragment": "X3DPickableObject",
+      "section": "38.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html",
+      "title": "X3DPickableObject"
+    },
+    "X3DPointingDeviceSensorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "pointingDeviceSensor.md",
+      "fragment": "X3DPointingDeviceSensorNode",
+      "section": "20.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html",
+      "title": "X3DPointingDeviceSensorNode"
+    },
+    "X3DProductStructureChildNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "CADGeometry.md",
+      "fragment": "X3DProductStructureChildNode",
+      "section": "32.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html",
+      "title": "X3DProductStructureChildNode"
+    },
+    "X3DProgrammableShaderObject": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "X3DProgrammableShaderObject",
+      "section": "31.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "X3DProgrammableShaderObject"
+    },
+    "X3DPrototypeInstance": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "X3DPrototypeInstance",
+      "section": "7.3.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "X3DPrototypeInstance"
+    },
+    "X3DRigidJointNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "rigidBodyPhysics.md",
+      "fragment": "X3DRigidJointNode",
+      "section": "37.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "title": "X3DRigidJointNode"
+    },
+    "X3DScriptNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "scripting.md",
+      "fragment": "X3DScriptNode",
+      "section": "29.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/scripting.html",
+      "title": "X3DScriptNode (abstract)"
+    },
+    "X3DSensorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "core.md",
+      "fragment": "X3DSensorNode",
+      "section": "7.3.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "title": "X3DSensorNode"
+    },
+    "X3DSequencerNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "X3DSequencerNode",
+      "section": "30.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "X3DSequencerNode"
+    },
+    "X3DShaderNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "X3DShaderNode",
+      "section": "31.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "X3DShaderNode"
+    },
+    "X3DShapeNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "shape.md",
+      "fragment": "X3DShapeNode",
+      "section": "12.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "title": "X3DShapeNode"
+    },
+    "X3DSingleTextureCoordinateNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "X3DSingleTextureCoordinateNode",
+      "section": "18.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "X3DSingleTextureCoordinateNode"
+    },
+    "X3DSingleTextureNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "X3DSingleTextureNode",
+      "section": "18.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "X3DSingleTextureNode"
+    },
+    "X3DSingleTextureTransformNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "X3DSingleTextureTransformNode",
+      "section": "18.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "X3DSingleTextureTransformNode"
+    },
+    "X3DSoundChannelNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "X3DSoundChannelNode",
+      "section": "16.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "X3DSoundChannelNode"
+    },
+    "X3DSoundDestinationNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "X3DSoundDestinationNode",
+      "section": "16.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "X3DSoundDestinationNode"
+    },
+    "X3DSoundNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "X3DSoundNode",
+      "section": "16.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "X3DSoundNode"
+    },
+    "X3DSoundProcessingNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "X3DSoundProcessingNode",
+      "section": "16.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "X3DSoundProcessingNode"
+    },
+    "X3DSoundSourceNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "sound.md",
+      "fragment": "X3DSoundSourceNode",
+      "section": "16.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "title": "X3DSoundSourceNode"
+    },
+    "X3DTexture2DNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "X3DTexture2DNode",
+      "section": "18.3.4",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "X3DTexture2DNode"
+    },
+    "X3DTexture3DNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "texture3D.md",
+      "fragment": "X3DTexture3DNode",
+      "section": "33.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "title": "X3DTexture3DNode"
+    },
+    "X3DTextureCoordinateNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "X3DTextureCoordinateNode",
+      "section": "18.3.5",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "X3DTextureCoordinateNode"
+    },
+    "X3DTextureNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "X3DTextureNode",
+      "section": "18.3.6",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "X3DTextureNode"
+    },
+    "X3DTextureProjectorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "textureProjection.md",
+      "fragment": "X3DTextureProjectorNode",
+      "section": "42.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/textureProjection.html",
+      "title": "X3DTextureProjectorNode"
+    },
+    "X3DTextureTransformNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "texturing.md",
+      "fragment": "X3DTextureTransformNode",
+      "section": "18.3.7",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "title": "X3DTextureTransformNode"
+    },
+    "X3DTimeDependentNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "time.md",
+      "fragment": "X3DTimeDependentNode",
+      "section": "8.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/time.html",
+      "title": "X3DTimeDependentNode"
+    },
+    "X3DTouchSensorNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "pointingDeviceSensor.md",
+      "fragment": "X3DTouchSensorNode",
+      "section": "20.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html",
+      "title": "X3DTouchSensorNode"
+    },
+    "X3DTriggerNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "eventUtilities.md",
+      "fragment": "X3DTriggerNode",
+      "section": "30.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "title": "X3DTriggerNode"
+    },
+    "X3DUrlObject": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "networking.md",
+      "fragment": "X3DUrlObject",
+      "section": "9.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/networking.html",
+      "title": "X3DUrlObject"
+    },
+    "X3DVertexAttributeNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "shaders.md",
+      "fragment": "X3DVertexAttributeNode",
+      "section": "31.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "title": "X3DVertexAttributeNode"
+    },
+    "X3DViewpointNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "navigation.md",
+      "fragment": "X3DViewpointNode",
+      "section": "23.3.1",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "title": "X3DViewpointNode"
+    },
+    "X3DViewportNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "layering.md",
+      "fragment": "X3DViewportNode",
+      "section": "35.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layering.html",
+      "title": "X3DViewportNode"
+    },
+    "X3DVolumeDataNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "X3DVolumeDataNode",
+      "section": "41.3.2",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "X3DVolumeDataNode"
+    },
+    "X3DVolumeRenderStyleNode": {
+      "abstract": true,
+      "ambiguous": [],
+      "file": "volume.md",
+      "fragment": "X3DVolumeRenderStyleNode",
+      "section": "41.3.3",
+      "sourceUrl": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "title": "X3DVolumeRenderStyleNode"
+    }
+  },
+  "fuzzy": {
+    "ROUTE": {
+      "file": "glossary.md",
+      "matchedAnchor": "Route",
+      "section": "3.1.62"
+    },
+    "field": {
+      "file": "glossary.md",
+      "matchedAnchor": "Field",
+      "section": "3.1.27"
+    }
+  },
+  "provenance": {
+    "anchoredCount": 336,
+    "builtFromManifests": [
+      "x3d-3.0",
+      "x3d-3.1",
+      "x3d-3.2",
+      "x3d-3.3",
+      "x3d-4.0",
+      "x3d-4.1"
+    ],
+    "fuzzyCount": 2,
+    "nodeCount": 364,
+    "proseCorpusHash": "1803e9e53e50eb0a4afc3d63642c7a245dd47c1c7366fdced964b9621b50eb8a",
+    "unanchoredCount": 26
+  },
+  "unanchored": [
+    "EXPORT",
+    "EnvironmentLight",
+    "ExternProtoDeclare",
+    "FontLibrary",
+    "HAnimPose",
+    "IMPORT",
+    "IS",
+    "InlineGeometry",
+    "ProtoBody",
+    "ProtoDeclare",
+    "ProtoInstance",
+    "ProtoInterface",
+    "RenderedTexture",
+    "Scene",
+    "SceneGraphStructureStatement",
+    "Tangent",
+    "X3D",
+    "X3DStatement",
+    "X3DTangentNode",
+    "X3DUrlOutputObject",
+    "component",
+    "connect",
+    "fieldValue",
+    "head",
+    "meta",
+    "unit"
+  ]
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Full" version="4.0">
+  <head>
+    <meta name="description" content="sim quadcopter: an open-loop flight — constant lift (rises) + constant roll torque, with an authored non-uniform inertia tensor governing the roll rate (§37 RigidBody.inertia)."/>
+  </head>
+  <Scene>
+    <!-- The renderable frame the body's pose drives. -->
+    <Transform DEF="QuadXform">
+      <Shape><Box size="1 0.2 1"/></Shape>
+    </Transform>
+
+    <RigidBodyCollection DEF="World" gravity="0 -9.8 0">
+      <RigidBody DEF="Quad" containerField="bodies" mass="1"
+                 position="0 1 0"
+                 inertia="0.01 0 0  0 0.02 0  0 0 0.01"
+                 forces="0 10 0"
+                 torques="0.02 0 0">
+        <CollidableShape containerField="geometry">
+          <Shape containerField="shape"><Box size="1 0.2 1"/></Shape>
+        </CollidableShape>
+      </RigidBody>
+    </RigidBodyCollection>
+
+    <ROUTE fromNode="Quad" fromField="position" toNode="QuadXform" toField="translation"/>
+    <ROUTE fromNode="Quad" fromField="orientation" toNode="QuadXform" toField="rotation"/>
+  </Scene>
+</X3D>

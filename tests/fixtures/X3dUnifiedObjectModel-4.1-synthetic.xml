@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC X3D Unified Object Model fixture, version 4.1 of X3D -->
+<!-- This file is NOT an official web3d.org artifact. It is a hand-authored,
+     minimal subset of the UOM structure used to prove the generator ingests a
+     DIFFERENT spec version with brand-new content (a new node + a new enum
+     member) purely via the existing data-driven path, with NO code changes. -->
+<X3dUnifiedObjectModel xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance"
+                       version="4.1"
+                       xsd:noNamespaceSchemaLocation="X3dUnifiedObjectModel.xsd">
+   <SimpleTypeEnumerations>
+      <!-- Existing 4.0 enum, but with one BRAND-NEW member ('superSharp') that
+           does NOT exist in the 4.0 spec. Proves new enum members flow through
+           the data-driven enum path with no code edits. -->
+      <SimpleType name="textureQualityChoices"
+                  baseType="xs:NMTOKEN"
+                  appinfo="textureQualityChoices are strictly allowed enumeration values. This list is bounded, no additional values are allowed.">
+         <enumeration value="low" appinfo="Low quality."/>
+         <enumeration value="medium" appinfo="Medium quality."/>
+         <enumeration value="high" appinfo="High quality."/>
+         <enumeration value="superSharp" appinfo="BRAND-NEW 4.1-only member not present in 4.0."/>
+      </SimpleType>
+   </SimpleTypeEnumerations>
+   <AbstractObjectTypes>
+      <AbstractObjectType name="X3DNode">
+         <InterfaceDefinition appinfo="X3DNode is the base node type for all nodes."
+                              specificationUrl="https://example.invalid/X3DNode"/>
+      </AbstractObjectType>
+   </AbstractObjectTypes>
+   <AbstractNodeTypes>
+      <AbstractNodeType name="X3DChildNode">
+         <InterfaceDefinition appinfo="Base type for all nodes that may be children."
+                              specificationUrl="https://example.invalid/X3DChildNode"/>
+         <Inheritance baseType="X3DNode"/>
+      </AbstractNodeType>
+   </AbstractNodeTypes>
+   <ConcreteNodes>
+      <!-- BRAND-NEW node that does NOT exist in 4.0, with inheritance + fields,
+           including one field typed by the new 'superSharp' enum member. -->
+      <ConcreteNode name="QuantumWidget">
+         <InterfaceDefinition appinfo="SYNTHETIC 4.1-only node proving multi-version ingestion."
+                              specificationUrl="https://example.invalid/QuantumWidget"/>
+         <componentInfo name="Synthetic" level="1"/>
+         <Inheritance baseType="X3DChildNode"/>
+         <field name="entangled" type="SFBool" accessType="inputOutput" default="false"
+                description="A new boolean field on the new node."/>
+         <field name="spin" type="SFInt32" accessType="inputOutput" default="0"
+                description="A new integer field on the new node."/>
+         <field name="quality" type="SFString" accessType="inputOutput" default="superSharp"
+                simpleType="textureQualityChoices"
+                description="Defaults to the brand-new 4.1-only enum member."/>
+      </ConcreteNode>
+   </ConcreteNodes>
+</X3dUnifiedObjectModel>

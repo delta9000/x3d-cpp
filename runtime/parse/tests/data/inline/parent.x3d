@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Interchange" version="4.0">
+  <head><meta name="title" content="parent"/></head>
+  <Scene>
+    <Transform DEF="Root">
+      <Inline DEF="Asset" url="child.x3d"/>
+    </Transform>
+  </Scene>
+</X3D>

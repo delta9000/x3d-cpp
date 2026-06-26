@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Interchange" version="4.0">
+  <head><meta name="title" content="child"/></head>
+  <Scene>
+    <Shape DEF="Geo"><Box size="1 1 1"/></Shape>
+  </Scene>
+</X3D>

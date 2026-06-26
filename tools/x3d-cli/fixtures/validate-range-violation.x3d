@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture: validate-range-violation.x3d
+     Material diffuseColor component > 1.0 — a clear range violation.
+     Expected: x3d validate exits 3, diagnostic mentions diffuseColor. -->
+<X3D profile="Interchange" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+  <head>
+    <meta name="title" content="validate-range-violation.x3d"/>
+    <meta name="description" content="Fixture: Material diffuseColor out-of-range."/>
+  </head>
+  <Scene>
+    <Shape>
+      <Appearance>
+        <Material DEF="BadMat" diffuseColor="1.5 0.0 0.0"/>
+      </Appearance>
+      <Box size="1 1 1"/>
+    </Shape>
+  </Scene>
+</X3D>

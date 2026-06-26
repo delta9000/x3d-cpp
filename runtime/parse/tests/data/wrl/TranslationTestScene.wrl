@@ -1,0 +1,33 @@
+#VRML V2.0 utf8
+
+WorldInfo { info "original scene:  TranslationTestScene.wrl" }
+
+PROTO Object [
+	exposedField SFFloat objectTransparency 0.5 
+]
+{
+   Shape {
+        appearance Appearance {
+                material Material {
+                        diffuseColor 0.6 0.8 1.00
+                        shininess 0.4
+                        transparency IS objectTransparency
+                }
+        }
+
+        geometry Text {
+        	string "TranslationTestScene"
+        	fontStyle FontStyle {
+        		justify [ "MIDDLE" "MIDDLE" ]
+        	}
+        }
+   }
+}
+
+DEF Null1 Billboard {}
+
+Object { objectTransparency .5 }
+
+DEF Null2 Group {}
+
+# comment on final line of TranslationTestScene.wrl

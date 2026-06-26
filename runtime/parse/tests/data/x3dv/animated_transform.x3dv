@@ -1,0 +1,29 @@
+#X3D V4.0 utf8
+PROFILE Interchange
+
+# A minimal animation graph used by scene_bridge_test:
+#   TimeSensor.fraction_changed -> PositionInterpolator.set_fraction
+#   PositionInterpolator.value_changed -> Transform.translation
+# Ticking the bridged execution context should drive Mover.translation along
+# the interpolator's keyValue curve.
+
+DEF Mover Transform {
+  children [
+    Shape {
+      geometry Box {}
+    }
+  ]
+}
+
+DEF Clock TimeSensor {
+  cycleInterval 4.0
+  loop TRUE
+}
+
+DEF Path PositionInterpolator {
+  key [ 0.0 0.5 1.0 ]
+  keyValue [ 0 0 0, 10 0 0, 0 0 0 ]
+}
+
+ROUTE Clock.fraction_changed TO Path.set_fraction
+ROUTE Path.value_changed TO Mover.translation

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Full" version="4.0">
+  <head>
+    <meta name="description" content="sim collision fixture: a dynamic box falls onto a fixed floor; a CollisionSensor reports the contact (§37 CONF-RBP)."/>
+  </head>
+  <Scene>
+    <RigidBodyCollection DEF="World" gravity="0 -9.8 0">
+      <RigidBody DEF="Floor" containerField="bodies" fixed="true" position="0 0 0">
+        <CollidableShape DEF="FloorColl" containerField="geometry">
+          <Shape containerField="shape"><Box size="10 1 10"/></Shape>
+        </CollidableShape>
+      </RigidBody>
+      <RigidBody DEF="Faller" containerField="bodies" mass="1" position="0 3 0">
+        <CollidableShape DEF="FallColl" containerField="geometry">
+          <Shape containerField="shape"><Box size="1 1 1"/></Shape>
+        </CollidableShape>
+      </RigidBody>
+    </RigidBodyCollection>
+
+    <CollisionSensor DEF="Sensor">
+      <CollisionCollection containerField="collider" bounce="0.2">
+        <CollidableShape USE="FloorColl" containerField="collidables"/>
+        <CollidableShape USE="FallColl" containerField="collidables"/>
+      </CollisionCollection>
+    </CollisionSensor>
+  </Scene>
+</X3D>

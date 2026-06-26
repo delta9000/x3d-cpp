@@ -1,0 +1,47 @@
+{
+  "X3D": {
+    "@profile": "Interactive",
+    "@version": "4.0",
+    "head": {
+
+    },
+    "Scene": {
+      "-children": [
+        { "WorldInfo": {
+          "@title": "Spinning Cube"
+        } },
+        { "NavigationInfo": {
+        } },
+        { "Viewpoint": {
+          "@description": "Default",
+          "@position": [0,2,6]
+        } },
+        { "Transform": {
+          "@DEF": "CubeTransform",
+          "-children": [
+            { "Shape": {
+              "-appearance": [
+                { "Box": {
+                } }
+              ]
+            } }
+          ]
+        } },
+        { "TimeSensor": {
+          "@DEF": "Clock",
+          "@cycleInterval": 4,
+          "@loop": true
+        } },
+        { "OrientationInterpolator": {
+          "@DEF": "Spinner",
+          "@key": [0,0.5,1],
+          "@keyValue": [0,1,0,0,0,1,0,3.14159012,0,1,0,6.28318024]
+        } }
+      ],
+      "ROUTE": [
+        { "@fromNode": "Clock", "@fromField": "fraction_changed", "@toNode": "Spinner", "@toField": "set_fraction" },
+        { "@fromNode": "Spinner", "@fromField": "value_changed", "@toNode": "CubeTransform", "@toField": "rotation" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,134 @@
+site_name: x3d-cpp-gen Knowledge Wiki
+site_description: Canonical knowledge home for the x3d-cpp-gen X3D domain runtime SDK.
+site_author: Ben Sandbrook
+repo_url: https://github.com/sandbrookvt/x3d-cpp-gen
+docs_dir: docs/wiki
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.annotate
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Knowledge Map: knowledge-map.md
+  - Coverage Manifest: coverage.md
+  - Seam-Status Matrix: seam-status.md
+  - Subsystems:
+      - Generator & Bindings:
+          - Generator Pipeline: subsystems/generator.md
+          - Jinja2 Emit Templates: subsystems/templates.md
+          - Generated Bindings: subsystems/generated-bindings.md
+          - Reflection Layer: subsystems/reflection.md
+      - Runtime Core:
+          - Scene Graph: subsystems/scene-graph.md
+          - Execution Context: subsystems/execution-context.md
+          - Dirty Tracking, Transforms, and Bounds: subsystems/dirty-bounds-transform.md
+          - Math Core: subsystems/math.md
+      - Codecs & Parse:
+          - Codec Writers: subsystems/codecs-writers.md
+          - Canonical XML Writer: subsystems/canonical-xml.md
+          - Parse Readers: subsystems/parse-readers.md
+          - PROTO/EXTERNPROTO Expansion: subsystems/proto-expand.md
+          - Inline Expansion: subsystems/inline-expand.md
+      - Event / Behavior Runtime:
+          - Event Cascade: subsystems/event-cascade.md
+          - ROUTEs: subsystems/routes.md
+          - Time System: subsystems/system-time.md
+          - Interpolator System: subsystems/system-interpolators.md
+          - Followers System: subsystems/system-followers.md
+          - EventUtility System: subsystems/system-eventutility.md
+          - View-Dependent System: subsystems/system-viewdependent.md
+          - Viewpoint Binding System: subsystems/system-viewpointbind.md
+          - Navigation System: subsystems/system-navigation.md
+          - Pointing-Device Sensor System: subsystems/system-pointing.md
+          - Key-Device Sensor System: subsystems/system-keydevice.md
+          - Script / SAI Runtime: subsystems/system-script-sai.md
+          - Sensor Layer Overview: subsystems/sensors.md
+          - Physics (RigidBody dynamics): subsystems/physics.md
+          - Sound (§16 audio graph): subsystems/sound.md
+      - Extract:
+          - Extraction Pipeline: subsystems/extract.md
+          - Texture, Material, and Light Extraction: subsystems/extract-textures.md
+          - Materials (§12 discriminated union + backMaterial): subsystems/materials.md
+          - Shaders (ComposedShader + binding plan): subsystems/shaders.md
+          - Text Extraction: subsystems/extract-text.md
+          - Topology Classification: subsystems/extract-topology.md
+      - Boundaries & Consumers:
+          - Ext Firewall: subsystems/ext-firewall.md
+          - Asset Resolver / IO Seam: subsystems/system-asset-io.md
+          - Texture Decode Seam: subsystems/system-texture-decode.md
+          - Font Metrics Seam: subsystems/system-font-metrics.md
+          - SDK Facade: subsystems/sdk-facade.md
+          - CLI Suite: subsystems/cli-suite.md
+          - Conformance Infrastructure: subsystems/conformance-infra.md
+  - Decisions (ADRs):
+      - "ADR-0001: Ext Firewall": decisions/0001-ext-firewall.md
+      - "ADR-0002: Event API for inputOnly Fields": decisions/0002-event-api-for-inputonly.md
+      - "ADR-0003: Throw on Range Violation": decisions/0003-throw-on-range.md
+      - "ADR-0004: Virtual Mixins for AbstractObjectTypes": decisions/0004-virtual-mixins.md
+      - "ADR-0005: Golden Files Committed to Git": decisions/0005-golden-files-in-git.md
+      - "ADR-0006: Generated Layer as Compiled Static Library": decisions/0006-compiled-static-lib.md
+      - "ADR-0007: Version-Inference Ladder": decisions/0007-version-inference-ladder.md
+      - "ADR-0008: Canonicalize Source-Provenance Handling": decisions/0008-canonicalize-source-provenance.md
+      - "ADR-0009: sim Uses Snapshot-Diff Field Tracing": decisions/0009-sim-snapshot-diff.md
+      - "ADR-0010: Differential CLI Gate as Baseline Regression": decisions/0010-differential-gate-regression.md
+      - "ADR-0011: ECS-Flavored Architecture, Not Full ECS": decisions/0011-ecs-flavored-not-ecs.md
+      - "ADR-0012: No External Math Library in the Core": decisions/0012-no-external-math-lib.md
+      - "ADR-0013: ECMAScript Engine Choice for Script/SAI": decisions/0013-js-engine-choice.md
+      - "ADR-0014: Dynamic Field Foundation for Script Author Fields": decisions/0014-dynamic-field-foundation.md
+      - "ADR-0015: Extraction as Pull over an Incremental Dirty Set": decisions/0015-extraction-pull-per-path.md
+      - "ADR-0016: Containment Cycles Severed Once at Scene Build": decisions/0016-cycle-breaker.md
+      - "ADR-0017: OBJ/glTF Ingestion via Parse-Time Inline Expansion": decisions/0017-inline-expansion-parse-time.md
+      - "ADR-0018: CAVE Cross-Process RenderDelta Wire Contract": decisions/0018-cave-cross-process-delta-contract.md
+      - "ADR-0019: Physics via a Flag-Gated Engine Backend": decisions/0019-physics-seam.md
+      - "ADR-0020: Sound via an Engine-Agnostic AudioBackend Seam": decisions/0020-sound-seam.md
+      - "ADR-0021: Material + Shader Design (discriminated union + vocab + introspection)": decisions/0021-material-shader-design.md
+      - "ADR-0022: Second ScriptEngine Backend (QuickJS) + Swap-Test as Genericity Proof": decisions/0022-scriptengine-second-backend-swap-test.md
+      - "ADR-0023: Second AssetResolver/IO Backend (S3 SDK) + Swap-Test as Genericity Proof": decisions/0023-assetresolver-second-backend-swap-test.md
+      - "ADR-0024: Second TextureResolver Backend (wuffs) + Decode Swap-Test as Genericity Proof": decisions/0024-textureresolver-second-backend-swap-test.md
+      - "ADR-0025: FontMetrics Second Backend + Swap-Test": decisions/0025-fontmetrics-second-backend-swap-test.md
+      - "ADR-0026: Second AudioBackend (miniaudio) + Headless Swap-Test as Genericity Proof": decisions/0026-audiobackend-second-backend-swap-test.md
+      - "ADR-0028: Shadow Visibility Seam (normative modulation + technique-defined visibility)": decisions/0028-shadow-visibility-seam.md
+  - Guides:
+      - Gate System: guides/gate-system.md
+      - Build and mise: guides/build-and-mise.md
+      - RAGs (Spec Prose Search): guides/rags.md
+      - Conformance Campaign: guides/conformance-campaign.md
+      - Add a CLI Command: guides/add-a-cli-command.md
+      - Workflow / Subagent Discipline: guides/workflow-subagent-discipline.md
+      - Card → Done Workflow: guides/card-to-done-workflow.md
+      - Golden Regeneration: guides/golden-regeneration.md
+  - Conventions:
+      - Overview: _conventions/CONVENTIONS.md
+      - ADR Template: _conventions/adr-template.md
+      - Subsystem Template: _conventions/subsystem-template.md

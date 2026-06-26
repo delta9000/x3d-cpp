@@ -1,0 +1,442 @@
+# CI for x3d-cpp-gen — the merge gate behind "Definition of Done".
+#
+# On every PR (and manual dispatch) the FAST, hermetic gates run as required
+# checks: pytest, golden drift, conformance-view drift, wiki strict build, and a
+# single-compiler C++ build + ctest.
+#
+# The heavy per-seam backend swap-tests (quickjs / assetresolver / texture /
+# audio / fontmetrics) each fetch+build a third-party backend, so they run ONLY
+# when their backend, the seam interface header, or the build system changed —
+# gated by the `changes` job's path detection (manual dispatch runs them all).
+# A `concurrency` group cancels superseded in-flight runs so rapid pushes to a
+# PR don't each pay full freight.
+#
+# The 4-compiler baseline matrix is expensive, so it stays manual
+# (workflow_dispatch) — run it before a release or when touching the build.
+#
+# NOTE: the five swap-test job names may be branch-protection "required" checks.
+# A path-skipped job reports the "skipped" conclusion, which GitHub treats as
+# passing — so PRs that don't touch a seam are not blocked waiting on it.
+#
+# See docs/wiki/guides/card-to-done-workflow.md (the DoD gate) and
+# docs/wiki/guides/gate-system.md (what each gate protects).
+#
+# Note: Forgejo Actions also reads .github/workflows, so mirroring picks up the
+# same pipeline (apt-based, no GitHub-only actions beyond checkout + setup-uv).
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel superseded runs: a new push to the same PR cancels the in-flight run
+# instead of paying for both. Keyed on the workflow + ref (PR merge ref), so
+# distinct PRs never cancel each other.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Detect which seam subsystems a PR touches so the heavy backend swap-tests run
+  # ONLY when their backend, the seam interface, or the build system changed. The
+  # fast hermetic gates (pytest/golden/conformance/wiki/cpp) always run. Plain
+  # git + bash (no third-party action) so the Forgejo mirror runs it unchanged.
+  # On workflow_dispatch (no base ref) every seam proof runs.
+  changes:
+    name: detect changed subsystems
+    runs-on: ubuntu-latest
+    outputs:
+      audio: ${{ steps.f.outputs.audio }}
+      quickjs: ${{ steps.f.outputs.quickjs }}
+      assets: ${{ steps.f.outputs.assets }}
+      texture: ${{ steps.f.outputs.texture }}
+      fontmetrics: ${{ steps.f.outputs.fontmetrics }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: f
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE:-}" ]; then
+            # Manual dispatch (no PR base): run every seam proof.
+            for k in audio quickjs assets texture fontmetrics; do
+              echo "$k=true" >> "$GITHUB_OUTPUT"
+            done
+            exit 0
+          fi
+          git fetch --no-tags --prune origin "$BASE"
+          base_sha="$(git merge-base HEAD "origin/$BASE")"
+          changed="$(git diff --name-only "$base_sha" HEAD)"
+          echo "changed vs $BASE ($base_sha):"; echo "$changed"
+          m() { echo "$changed" | grep -qE "$1"; }
+          # Build-system / workflow changes can break any backend build -> run all.
+          common='^CMakeLists\.txt$|^cmake/|^\.github/workflows/ci\.yml$'
+          out() { if m "$common" || m "$2"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
+          out audio       '^runtime/sound/'
+          out quickjs     '^runtime/script/'
+          out assets      '^runtime/io/(curl|s3)/|^runtime/io/tests/asset_resolver|^runtime/extract/AssetResolver\.hpp$'
+          out texture     '^runtime/io/(stb|wuffs)/|^runtime/io/tests/texture_decode|^runtime/extract/TextureResolver\.hpp$'
+          out fontmetrics '^runtime/io/(stbtt|freetype)/|^runtime/io/tests/font_metrics|^runtime/extract/FontMetrics\.hpp$'
+
+  python:
+    name: pytest (unit + golden tree)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format (golden formatting baseline)
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sync (incl dev group)
+        run: uv sync
+      - name: Run pytest
+        run: uv run pytest
+
+  golden:
+    name: golden drift gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format (must match the formatter that produced golden)
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sync
+        run: uv sync
+      - name: Check golden tree (regenerate + diff *.hpp)
+        run: ./scripts/check_golden.sh
+
+  conformance:
+    name: conformance-view gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      # Fails if findings.yaml schema is invalid or the committed generated view
+      # (INDEX.md / model.json / components/) drifted from findings.yaml.
+      - name: Check conformance view (schema + drift)
+        run: uv run python scripts/conformance_view.py check
+
+  docs:
+    name: wiki strict build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      # --strict fails on broken internal links / nav orphans.
+      - name: Build wiki (strict)
+        run: uv run --group docs mkdocs build --strict
+
+  cpp:
+    name: C++ build + ctest (gcc, PR fast gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-gcc-pr-${{ github.sha }}
+          restore-keys: ccache-gcc-pr-
+      - name: Configure
+        run: cmake -S . -B build -G Ninja
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -j "$(nproc)"
+
+  # Genericity proof — the permanent gate for the ScriptEngine seam (ADR-0022).
+  # Builds the flag-gated QuickJS backend (FetchContents quickjs-ng v0.15.1) and runs
+  # the dual-backend swap-test: identical fixtures through Duktape AND QuickJS must
+  # produce identical observable behavior. Off the fast `cpp` job (extra fetch+build)
+  # but on every PR, so a future change that breaks parity fails the merge.
+  quickjs-swap:
+    name: QuickJS seam swap-test
+    needs: changes
+    if: needs.changes.outputs.quickjs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-quickjs-${{ github.sha }}
+          restore-keys: ccache-quickjs-
+      - name: Configure (QuickJS backend ON — FetchContents quickjs-ng)
+        run: cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_QUICKJS=ON
+      # Build only the QuickJS swap-test targets — not the whole project. The
+      # `cpp` job covers the full build/ctest; this gate exists to prove the
+      # ScriptEngine seam, so building the rest here is wasted minutes.
+      - name: Build (QuickJS swap-test targets only)
+        run: cmake --build build --target x3d_quickjs_backend_test x3d_quickjs_swap
+      - name: Swap-test (Duktape vs QuickJS observable parity)
+        run: ctest --test-dir build --output-on-failure -R 'x3d_quickjs(_backend|_swap)'
+
+  # Genericity proof — the permanent gate for the AssetResolver/IO seam (ADR-0023).
+  # Builds the flag-gated libcurl HTTP + AWS S3 SDK backends and runs the
+  # dual-backend swap-test against a docker minio service: identical fixture
+  # bytes served through Backend A (libcurl HTTP) and Backend B (AWS S3 SDK)
+  # must yield byte-equal AssetResult.bytes. Off the fast `cpp` job (extra
+  # SDK install + docker service) but on every PR, so a future change that
+  # breaks parity fails the merge.
+  assetresolver-swap:
+    name: AssetResolver seam swap-test
+    needs: changes
+    if: needs.changes.outputs.assets == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # minio can't run as a `services:` container: the GH Actions service syntax
+      # has no way to pass the container COMMAND, but `minio/minio` needs
+      # `server /data` to start (with no command it prints usage and exits, so
+      # the health-check never goes green and the job aborts at "Initialize
+      # containers"). Start it as a plain docker step instead, where we control
+      # the command, then poll its health endpoint before the swap-test runs.
+      - name: Start minio (S3 fixture backend for the swap-test)
+        run: |
+          docker run -d --name minio \
+            -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data --console-address ':9001'
+          # Wait up to ~30s for minio to report live before continuing.
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:9000/minio/health/live; then
+              echo "minio is live"; exit 0
+            fi
+            echo "waiting for minio to come up ($i/30)..."; sleep 1
+          done
+          echo "minio did not become healthy in time"; docker logs minio; exit 1
+      - name: Install build tools (compiler, cmake, ninja, ccache, vcpkg deps)
+        run: |
+          sudo apt-get update
+          # Both backend libs come from vcpkg below (libcurl for Backend A, the
+          # AWS C++ SDK for Backend B), so no -dev packages from apt. From apt we
+          # only need: the toolchain, and curl/zip/unzip/tar/pkg-config as
+          # vcpkg's build prerequisites (the curl CLI also drives the minio
+          # health check above).
+          sudo apt-get install -y cmake ninja-build ccache g++ mold \
+            curl zip unzip tar pkg-config
+      # The AWS C++ SDK has no stock apt package, so install it via vcpkg.
+      # GitHub-hosted runners ship vcpkg at $VCPKG_INSTALLATION_ROOT; fall back
+      # to a shallow clone + bootstrap (e.g. on Forgejo Actions mirrors).
+      - name: Locate or bootstrap vcpkg
+        run: |
+          if [ -n "$VCPKG_INSTALLATION_ROOT" ] && [ -x "$VCPKG_INSTALLATION_ROOT/vcpkg" ]; then
+            echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+          else
+            git clone --depth 1 https://github.com/microsoft/vcpkg "$HOME/vcpkg"
+            "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+            echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+          fi
+      # Binary cache so the heavy aws-sdk-cpp build (+ curl/openssl deps) is
+      # built once and restored on later runs. Restored before `vcpkg install`.
+      - name: Cache vcpkg binary archives
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          # Encode the dep set in the key so it self-refreshes when the deps
+          # change (a fixed key is immutable — it would never pick up a new
+          # build). The prefix restore-keys still warm-restores the unchanged
+          # archives (openssl/curl/aws-c-*/zlib), so only changed ports rebuild.
+          # Bump alongside the `vcpkg install` line below.
+          key: vcpkg-${{ runner.os }}-curl-aws-sdk-cpp-core-s3
+          restore-keys: vcpkg-${{ runner.os }}-
+      - name: Install backend deps (libcurl + AWS C++ SDK S3) via vcpkg
+        # [core,s3]: the `core` pseudo-feature suppresses the aws-sdk-cpp port's
+        # default features (dynamodb, kinesis) which we don't use — building only
+        # the S3 client shortens the cold build.
+        run: '"$VCPKG_ROOT/vcpkg" install curl "aws-sdk-cpp[core,s3]" --triplet x64-linux'
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-assetresolver-${{ github.sha }}
+          restore-keys: ccache-assetresolver-
+      - name: Configure (libcurl + S3 backends ON)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=x64-linux
+      # Build only what the swap-test needs — not the whole project (~40
+      # unrelated test exes + examples). The `cpp` job already covers the full
+      # build/ctest; this gate exists to prove the seam, so building the rest
+      # here is wasted minutes.
+      - name: Build (AssetResolver swap-test targets only)
+        run: |
+          cmake --build build --target \
+            x3d_assetresolver_backend_a_test \
+            x3d_assetresolver_backend_b_test \
+            x3d_assetresolver_swap
+      - name: Swap-test (libcurl HTTP vs AWS S3 observable parity)
+        env:
+          X3D_S3_ENDPOINT: http://localhost:9000
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+        run: ctest --test-dir build --output-on-failure -R 'x3d_assetresolver(_backend|_swap)'
+
+  # Genericity proof — the permanent gate for the TextureResolver decode seam
+  # (ADR-0024). Builds the two flag-gated decode backends — Backend A (stb_image,
+  # vendored single header) and Backend B (wuffs, vendored single-file
+  # amalgamation) — and runs the dual-backend swap-test: each lossless fixture
+  # (PNG/BMP/GIF/TGA) decoded through stb AND wuffs must yield BYTE-EQUAL RGBA,
+  # plus Failed-parity on corrupt input. Unlike the AssetResolver gate this needs
+  # NO vcpkg, NO docker/minio, NO FetchContent — both decoders are vendored, so
+  # the gate is a sub-minute apt + scoped build. On every PR, so a future change
+  # that breaks decode parity fails the merge.
+  texture-swap:
+    name: TextureResolver decode seam swap-test
+    needs: changes
+    if: needs.changes.outputs.texture == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-texture-${{ github.sha }}
+          restore-keys: ccache-texture-
+      - name: Configure (stb + wuffs decode backends ON — both vendored)
+        run: cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON
+      # Build only the texture test binary — not the whole project. The `cpp` job
+      # covers the full build/ctest; this gate exists to prove the decode seam.
+      - name: Build (TextureResolver swap-test target only)
+        run: cmake --build build --target x3d_texture_tests
+      - name: Swap-test (stb_image vs wuffs byte-equal decode parity)
+        run: ctest --test-dir build --output-on-failure -R x3d_texture
+
+  # Genericity proof — the permanent gate for the Audio seam (ADR-0026).
+  # Builds the flag-gated miniaudio backend and runs the dual-backend swap-test:
+  # headless render, no audio device required. No vcpkg or docker needed.
+  audio-swap:
+    name: Audio seam swap-test
+    needs: changes
+    if: needs.changes.outputs.audio == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-audio-${{ github.sha }}
+          restore-keys: ccache-audio-
+      - name: Configure (miniaudio backend ON — fetched, headless)
+        run: cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_MINIAUDIO=ON
+      # Build only the audio swap-test binary — not the whole project. The `cpp`
+      # job covers the full build/ctest; this gate exists to prove the audio seam.
+      - name: Build (Audio swap-test target only)
+        run: cmake --build build --target x3d_sound_swaptest
+      - name: Swap-test (BuiltinDsp vs miniaudio, headless — no audio device)
+        run: ctest --test-dir build --output-on-failure -R x3d_sound_swaptest
+
+  # FontMetrics seam (ADR-0025): two independent backends — stb_truetype
+  # (vendored single header) and FreeType (vcpkg) — must return BIT-IDENTICAL
+  # advanceEm for the same glyph, plus Failed-parity on absent codepoints. stb is
+  # vendored; FreeType comes from vcpkg with a binary cache so the cold build is
+  # paid once. On every PR, so a future change that breaks metric parity fails.
+  fontmetrics-swap:
+    name: FontMetrics seam swap-test
+    needs: changes
+    if: needs.changes.outputs.fontmetrics == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold curl zip unzip tar
+      - name: Locate or bootstrap vcpkg
+        run: |
+          if [ -n "$VCPKG_INSTALLATION_ROOT" ] && [ -x "$VCPKG_INSTALLATION_ROOT/vcpkg" ]; then
+            echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+          else
+            git clone --depth 1 https://github.com/microsoft/vcpkg "$HOME/vcpkg"
+            "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+            echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+          fi
+      - name: Cache vcpkg binary archives
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          # Bump alongside the `vcpkg install` line below.
+          key: vcpkg-${{ runner.os }}-freetype
+          restore-keys: vcpkg-${{ runner.os }}-
+      - name: Install FreeType via vcpkg
+        run: '"$VCPKG_ROOT/vcpkg" install freetype --triplet x64-linux'
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-fontmetrics-${{ github.sha }}
+          restore-keys: ccache-fontmetrics-
+      - name: Configure (stbtt + FreeType backends ON)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_FREETYPE=ON \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=x64-linux
+      # Build only the FontMetrics test binary — the `cpp` job covers the full build.
+      - name: Build (FontMetrics swap-test target only)
+        run: cmake --build build --target x3d_text_tests
+      - name: Swap-test (stb_truetype vs FreeType exact-equal advanceEm)
+        run: ctest --test-dir build --output-on-failure -R x3d_text
+
+  # Heavy baseline matrix — pins oldest supported (GCC 11 / Clang 14) + current
+  # compilers. Manual only (the 4× build is too heavy for every PR push).
+  cpp-matrix:
+    name: C++ baseline matrix (${{ matrix.name }})
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: gcc-11,        os: ubuntu-22.04, apt: g++-11,  cc: gcc-11,  cxx: g++-11 }
+          - { name: clang-14,      os: ubuntu-22.04, apt: clang-14, cc: clang-14, cxx: clang++-14 }
+          - { name: gcc-default,   os: ubuntu-latest, apt: g++,    cc: gcc,     cxx: g++ }
+          - { name: clang-default, os: ubuntu-latest, apt: clang,  cc: clang,   cxx: clang++ }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache ${{ matrix.apt }}
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ matrix.name }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.name }}-
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: cmake -S . -B build -G Ninja
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -j "$(nproc)"

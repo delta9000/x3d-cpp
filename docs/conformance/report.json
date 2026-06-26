@@ -1,0 +1,350 @@
+{
+  "corpus": {
+    "root": "$X3D_CORPUS_DIR",
+    "x3dFilesFound": 16866
+  },
+  "errataApplied": {
+    "3.0": [
+      {
+        "attr": "accessType",
+        "corrected_in": "3.1",
+        "evidence": "X3dUnifiedObjectModel-3.0.xml Viewpoint.orientation accessType=initializeOnly vs 3.1 inputOutput; set_orientation + orientation_changed present as field-name enumerations in the same 3.0 UOM; 11 official 3.0 corpus files route through it.",
+        "field": "orientation",
+        "from": "initializeOnly",
+        "node": "Viewpoint",
+        "reason": "X3D 3.0 UOM erratum: X3DViewpointNode.orientation declared initializeOnly but is inputOutput \u2014 the field is routable (animated viewpoints) and carries set_orientation/orientation_changed event aliases.",
+        "to": "inputOutput",
+        "type": "SFRotation",
+        "version": "3.0"
+      },
+      {
+        "attr": "accessType",
+        "corrected_in": "3.1",
+        "evidence": "X3dUnifiedObjectModel-3.0.xml Viewpoint.orientation accessType=initializeOnly vs 3.1 inputOutput; set_orientation + orientation_changed present as field-name enumerations in the same 3.0 UOM; 11 official 3.0 corpus files route through it.",
+        "field": "orientation",
+        "from": "initializeOnly",
+        "node": "GeoViewpoint",
+        "reason": "X3D 3.0 UOM erratum: X3DViewpointNode.orientation declared initializeOnly but is inputOutput \u2014 the field is routable (animated viewpoints) and carries set_orientation/orientation_changed event aliases.",
+        "to": "inputOutput",
+        "type": "SFRotation",
+        "version": "3.0"
+      }
+    ]
+  },
+  "findingsByCode": {
+    "FIELD_UNKNOWN_FOR_NODE": {
+      "count": 95,
+      "files": 12
+    },
+    "NODE_UNKNOWN_FOR_VERSION": {
+      "count": 1715,
+      "files": 34
+    },
+    "ROUTE_ACCESS_ILLEGAL": {
+      "count": 23,
+      "files": 9
+    },
+    "ROUTE_ENDPOINT_UNKNOWN": {
+      "count": 20,
+      "files": 8
+    }
+  },
+  "perVersion": {
+    "3.0": {
+      "clean": 2381,
+      "cleanPct": 98.47,
+      "findingsByCode": {
+        "FIELD_UNKNOWN_FOR_NODE": 22,
+        "NODE_UNKNOWN_FOR_VERSION": 1701,
+        "ROUTE_ACCESS_ILLEGAL": 13,
+        "ROUTE_ENDPOINT_UNKNOWN": 8
+      },
+      "provenance": {
+        "nodeCount": 189,
+        "uomManifestHash": "336a5e2a31e5655c9cdf53f1b6df8483679dea2d37dbca679ea46663b757d3c1"
+      },
+      "validated": 2418
+    },
+    "3.1": {
+      "clean": 11478,
+      "cleanPct": 99.97,
+      "findingsByCode": {
+        "FIELD_UNKNOWN_FOR_NODE": 4,
+        "NODE_UNKNOWN_FOR_VERSION": 3
+      },
+      "provenance": {
+        "nodeCount": 222,
+        "uomManifestHash": "e88789ef02332cda661578b8b093e8d690a19908bbe8e54eb4d153d0be888c45"
+      },
+      "validated": 11481
+    },
+    "3.2": {
+      "clean": 867,
+      "cleanPct": 99.88,
+      "findingsByCode": {
+        "NODE_UNKNOWN_FOR_VERSION": 2
+      },
+      "provenance": {
+        "nodeCount": 298,
+        "uomManifestHash": "85bfa5318b44c32bc03f828eceae0d3fb460e0d2406fe0b7cf33303fd813e3ea"
+      },
+      "validated": 868
+    },
+    "3.3": {
+      "clean": 1382,
+      "cleanPct": 99.5,
+      "findingsByCode": {
+        "FIELD_UNKNOWN_FOR_NODE": 2,
+        "ROUTE_ACCESS_ILLEGAL": 3,
+        "ROUTE_ENDPOINT_UNKNOWN": 4
+      },
+      "provenance": {
+        "nodeCount": 320,
+        "uomManifestHash": "7427c924eed0bdbc72c4c20627d4a51e13276ac82444f5f08e86bc8ca9865521"
+      },
+      "validated": 1389
+    },
+    "4.0": {
+      "clean": 250,
+      "cleanPct": 96.9,
+      "findingsByCode": {
+        "FIELD_UNKNOWN_FOR_NODE": 67,
+        "NODE_UNKNOWN_FOR_VERSION": 9,
+        "ROUTE_ENDPOINT_UNKNOWN": 8
+      },
+      "provenance": {
+        "nodeCount": 338,
+        "uomManifestHash": "c3ce06dc5df4e2802dd7d94738e505dc959ec2e6eeb5f016a48ee79c20848e20"
+      },
+      "validated": 258
+    },
+    "4.1": {
+      "clean": 302,
+      "cleanPct": 99.67,
+      "findingsByCode": {
+        "ROUTE_ACCESS_ILLEGAL": 7
+      },
+      "provenance": {
+        "nodeCount": 346,
+        "uomManifestHash": "5c380d6dcade10528200f1c3d1400d5cc3544d826dff96334ffef253adf6c81a"
+      },
+      "validated": 303
+    }
+  },
+  "schemaVersion": 1,
+  "topUnknownFields": [
+    [
+      "OrientationInterpolator.keyValueQuaternions",
+      38
+    ],
+    [
+      "ImageTexture.flipVertically",
+      19
+    ],
+    [
+      "Shape.collision",
+      7
+    ],
+    [
+      "NurbsPatchSurface.ccw",
+      4
+    ],
+    [
+      "Transform.c",
+      4
+    ],
+    [
+      "Transform.d",
+      4
+    ],
+    [
+      "CADFace.rotation",
+      2
+    ],
+    [
+      "CADFace.translation",
+      2
+    ],
+    [
+      "NavigationInfo.experiment",
+      2
+    ],
+    [
+      "Transform.B",
+      2
+    ],
+    [
+      "Group.name",
+      1
+    ],
+    [
+      "IndexedTriangleSet.skinJoints0",
+      1
+    ],
+    [
+      "IndexedTriangleSet.skinWeights0",
+      1
+    ],
+    [
+      "WaveShaper.curve",
+      1
+    ],
+    [
+      "Background.groundTransparency",
+      1
+    ],
+    [
+      "Background.skyTransparency",
+      1
+    ],
+    [
+      "Transform.payload",
+      1
+    ],
+    [
+      "Transform.AB",
+      1
+    ],
+    [
+      "Transform.A",
+      1
+    ],
+    [
+      "Transform.encoder",
+      1
+    ],
+    [
+      "Text.someOtherString",
+      1
+    ]
+  ],
+  "topUnknownNodes": [
+    [
+      "XvlFace",
+      1413
+    ],
+    [
+      "XvlFaces",
+      79
+    ],
+    [
+      "XvlShell",
+      62
+    ],
+    [
+      "XvlShape",
+      51
+    ],
+    [
+      "XvlEdge",
+      45
+    ],
+    [
+      "XvlEdges",
+      7
+    ],
+    [
+      "Tangent",
+      5
+    ],
+    [
+      "ComposedCubeMapTexture",
+      4
+    ],
+    [
+      "ShaderPart",
+      4
+    ],
+    [
+      "XvlVertex",
+      4
+    ],
+    [
+      "XvlVertices",
+      3
+    ],
+    [
+      "SpinGroupTag",
+      3
+    ],
+    [
+      "FitToBoxTransform",
+      2
+    ],
+    [
+      "SmoothSurface",
+      2
+    ],
+    [
+      "ComposedShader",
+      2
+    ],
+    [
+      "QuadTree-USEchildren",
+      2
+    ],
+    [
+      "QuadTree-TagChildren",
+      2
+    ],
+    [
+      "CADLayer",
+      2
+    ],
+    [
+      "CADFace",
+      2
+    ],
+    [
+      "ValueTrigger",
+      2
+    ],
+    [
+      "PointProperties",
+      1
+    ],
+    [
+      "WheelSensor",
+      1
+    ],
+    [
+      "GamepadSensor",
+      1
+    ],
+    [
+      "NewTransformExample",
+      1
+    ],
+    [
+      "TwoSidedMaterial",
+      1
+    ],
+    [
+      "OrthoViewpoint",
+      1
+    ],
+    [
+      "ViewpointGroup",
+      1
+    ],
+    [
+      "LocalFog",
+      1
+    ],
+    [
+      "IndexedQuadSet",
+      1
+    ],
+    [
+      "MetadataBoolean",
+      1
+    ]
+  ],
+  "totals": {
+    "cleanPct": 99.66,
+    "parseError": 16,
+    "skippedNoManifest": 133,
+    "structurallyClean": 16660,
+    "validated": 16717
+  }
+}

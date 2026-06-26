@@ -1,0 +1,69 @@
+# X3D profile → {component: maxLevel} reference table.
+#
+# REVIEWED REFERENCE DATA (not auto-derived). Provenance: ISO/IEC 19775-1:2023
+# profile definitions (Interchange / Interactive / Immersive / Full). A node is
+# "in profile P" iff P includes the node's component at a level >= the node's
+# componentLevel(). `"*"` is a wildcard maxLevel for every component (Full).
+#
+# Correct a row here in one place; `mise run conformance` re-renders the views.
+# The major profiles are encoded; CAD/Medical/MPEG profiles are omitted until a
+# consumer needs them (add a key here when they do).
+
+profiles:
+  Interchange:
+    Core: 1
+    Time: 1
+    Networking: 2
+    Grouping: 1
+    Rendering: 3
+    Shape: 1
+    Geometry3D: 2
+    Lighting: 1
+    Texturing: 2
+    Interpolation: 2
+    Navigation: 1
+    EnvironmentalEffects: 1
+
+  Interactive:
+    Core: 1
+    Time: 1
+    Networking: 2
+    Grouping: 2
+    Rendering: 3
+    Shape: 1
+    Geometry3D: 3
+    Lighting: 2
+    Texturing: 2
+    Interpolation: 2
+    Navigation: 2
+    EnvironmentalEffects: 2
+    EnvironmentalSensor: 2
+    KeyDeviceSensor: 1
+    PointingDeviceSensor: 1
+    EventUtilities: 1
+
+  Immersive:
+    Core: 2
+    Time: 1
+    Networking: 3
+    Grouping: 2
+    Rendering: 3
+    Shape: 2
+    Geometry3D: 4
+    Geometry2D: 1
+    Lighting: 3
+    Texturing: 3
+    CubeMapTexturing: 1
+    Interpolation: 2
+    Navigation: 2
+    EnvironmentalEffects: 3
+    EnvironmentalSensor: 2
+    KeyDeviceSensor: 2
+    PointingDeviceSensor: 1
+    EventUtilities: 1
+    Sound: 1
+    Text: 1
+    Scripting: 1
+
+  Full:
+    "*": 9   # Full profile includes every component at every level

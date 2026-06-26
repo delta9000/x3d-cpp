@@ -1,0 +1,156 @@
+// Auto-generated value-asserting smoke test for the X3D C++ bindings.
+//
+// For every concrete node this test:
+//   1. default-constructs an instance (instantiation smoke test), and
+//   2. asserts that each readable field carrying a spec default returns exactly
+//      that default, by comparing the field's getter against the node's static
+//      getDefault<Name>() (both have identical return type, so the comparison is
+//      always type-correct and stays in lock-step with the generated headers).
+// A handful of well-known nodes additionally get explicit literal pins
+// (e.g. Box: size=={2,2,2}, solid==true).
+#include <cassert>
+#include <cmath>
+#include <cstddef>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+{% for node in concrete_nodes %}
+#include "{{ node.name }}.hpp"
+{% endfor %}
+
+#define TEST_ASSERT(condition, message)                                        \
+  do {                                                                         \
+    ++g_assertions_run;                                                        \
+    if (!(condition)) {                                                        \
+      std::cerr << "Assertion failed: " << message << std::endl;              \
+      g_all_tests_passed = false;                                             \
+    }                                                                          \
+  } while (0)
+
+static bool g_all_tests_passed = true;
+static long g_assertions_run = 0;
+
+// --- defaultsEqual: type-correct equality for default-value comparisons. ---
+// Generic fallback covers all scalar/string/vector/enum-class field types that
+// model operator==. The struct field types (which do not) get member-wise
+// overloads below.
+template <typename T>
+static bool defaultsEqual(const T& a, const T& b) {
+  return a == b;
+}
+
+static bool defaultsEqual(const SFVec2f& a, const SFVec2f& b) {
+  return a.x == b.x && a.y == b.y;
+}
+static bool defaultsEqual(const SFVec3f& a, const SFVec3f& b) {
+  return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+static bool defaultsEqual(const SFVec4f& a, const SFVec4f& b) {
+  return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+}
+static bool defaultsEqual(const SFVec2d& a, const SFVec2d& b) {
+  return a.x == b.x && a.y == b.y;
+}
+static bool defaultsEqual(const SFVec3d& a, const SFVec3d& b) {
+  return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+static bool defaultsEqual(const SFVec4d& a, const SFVec4d& b) {
+  return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+}
+static bool defaultsEqual(const SFColor& a, const SFColor& b) {
+  return a.r == b.r && a.g == b.g && a.b == b.b;
+}
+static bool defaultsEqual(const SFColorRGBA& a, const SFColorRGBA& b) {
+  return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
+}
+static bool defaultsEqual(const SFRotation& a, const SFRotation& b) {
+  return a.x == b.x && a.y == b.y && a.z == b.z && a.angle == b.angle;
+}
+template <std::size_t N>
+static bool matEqual(const double (&a)[N][N], const double (&b)[N][N]) {
+  for (std::size_t i = 0; i < N; ++i)
+    for (std::size_t j = 0; j < N; ++j)
+      if (a[i][j] != b[i][j]) return false;
+  return true;
+}
+template <std::size_t N>
+static bool matEqual(const float (&a)[N][N], const float (&b)[N][N]) {
+  for (std::size_t i = 0; i < N; ++i)
+    for (std::size_t j = 0; j < N; ++j)
+      if (a[i][j] != b[i][j]) return false;
+  return true;
+}
+static bool defaultsEqual(const SFMatrix3f& a, const SFMatrix3f& b) {
+  return matEqual(a.matrix, b.matrix);
+}
+static bool defaultsEqual(const SFMatrix4f& a, const SFMatrix4f& b) {
+  return matEqual(a.matrix, b.matrix);
+}
+static bool defaultsEqual(const SFMatrix3d& a, const SFMatrix3d& b) {
+  return matEqual(a.matrix, b.matrix);
+}
+static bool defaultsEqual(const SFMatrix4d& a, const SFMatrix4d& b) {
+  return matEqual(a.matrix, b.matrix);
+}
+static bool defaultsEqual(const SFImage& a, const SFImage& b) {
+  return a.width == b.width && a.height == b.height &&
+         a.numComponents == b.numComponents && a.data == b.data;
+}
+
+// Vector-of-struct overloads (MF* struct defaults): element-wise via the above.
+template <typename T>
+static bool defaultsEqual(const std::vector<T>& a, const std::vector<T>& b) {
+  if (a.size() != b.size()) return false;
+  for (std::size_t i = 0; i < a.size(); ++i)
+    if (!defaultsEqual(a[i], b[i])) return false;
+  return true;
+}
+
+// --- Per-node default-value checks. ---
+{% for n in nodes_ctx %}
+static void test_{{ n.name }}() {
+  std::cout << "\nTesting {{ n.name }}..." << std::endl;
+  try {
+    {{ n.name }} inst;  // instantiation smoke test
+    (void)inst;
+    {% for f in n.default_fields %}
+    TEST_ASSERT(
+        defaultsEqual(inst.{{ f.getter_name }}(), {{ n.name }}::getDefault{{ f.name_pascal }}()),
+        "{{ n.name }}.{{ f.x3d_name }} default mismatch");
+    {% endfor %}
+  } catch (const std::exception& e) {
+    std::cerr << "Failed to construct {{ n.name }}: " << e.what() << std::endl;
+    g_all_tests_passed = false;
+  }
+}
+{% endfor %}
+
+// --- Well-known explicit literal pins. ---
+{% for wk in well_known %}
+static void test_pin_{{ loop.index }}() {
+  {{ wk.node }} inst;
+  TEST_ASSERT({{ wk.expr }}, "{{ wk.desc }}");
+}
+{% endfor %}
+
+int main() {
+  {% for n in nodes_ctx %}
+  test_{{ n.name }}();
+  {% endfor %}
+
+  {% for wk in well_known %}
+  test_pin_{{ loop.index }}();
+  {% endfor %}
+
+  std::cout << "\nRan " << g_assertions_run << " default-value assertions."
+            << std::endl;
+
+  if (g_all_tests_passed) {
+    std::cout << "All tests passed successfully!" << std::endl;
+    return 0;
+  }
+  std::cerr << "\nSome tests failed." << std::endl;
+  return 1;
+}

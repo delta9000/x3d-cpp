@@ -1,0 +1,12 @@
+[
+  {"tick": 0, "t": 0.000000, "changes": []},
+  {"tick": 1, "t": 0.100000, "changes": []},
+  {"tick": 2, "t": 0.200000, "changes": []},
+  {"tick": 3, "t": 0.300000, "changes": []},
+  {"tick": 4, "t": 0.400000, "changes": [{"node": "Region", "field": "enterTime", "value": "0.40000000000000002"}, {"node": "Region", "field": "isActive", "value": "true"}]},
+  {"tick": 5, "t": 0.500000, "changes": []},
+  {"tick": 6, "t": 0.600000, "changes": []},
+  {"tick": 7, "t": 0.700000, "changes": [{"node": "Region", "field": "exitTime", "value": "0.70000000000000007"}, {"node": "Region", "field": "isActive", "value": "false"}]},
+  {"tick": 8, "t": 0.800000, "changes": []},
+  {"tick": 9, "t": 0.900000, "changes": []}
+]

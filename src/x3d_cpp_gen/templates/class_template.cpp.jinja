@@ -1,0 +1,136 @@
+// {{ class_name }}.cpp
+#include "{{ class_name }}.hpp"
+
+{% if namespace %}
+namespace {{ namespace }} {
+{% endif %}
+{% if emit_reflection %}
+std::string {{ class_name }}::nodeTypeName() const {
+    return "{{ class_name }}";
+}
+
+std::string {{ class_name }}::defaultContainerField() const {
+    return getDefaultContainerField();
+}
+
+const FieldTable& {{ class_name }}::fields() const {
+    static const FieldTable table = [] {
+        FieldTable t;
+        {% for field in reflection_fields %}
+        t.push_back(FieldInfo{
+            "{{ field.x3d_name }}",
+            X3DFieldType::{{ field.runtime_field_type }},
+            AccessType::{{ field.runtime_access }},
+            "{{ field.container_field_default }}",
+            {% if field.is_readable %}
+            [](const X3DNode& n) -> std::any {
+                return std::any(dynamic_cast<const {{ class_name }}&>(n).{{ field.getter_call }}());
+            },
+            {% else %}
+            nullptr,
+            {% endif %}
+            {% if field.has_data_setter %}
+            [](X3DNode& n, const std::any& v) {
+                dynamic_cast<{{ class_name }}&>(n).{{ field.reader_setter_call }}(std::any_cast<{{ field.cpp_type }}>(v));
+            },
+            {% elif field.is_event %}
+            [](X3DNode& n, const std::any& v) {
+                dynamic_cast<{{ class_name }}&>(n).{{ field.handler_call }}(std::any_cast<{{ field.cpp_type }}>(v));
+            },
+            {% elif field.is_readonly %}
+            [](X3DNode& n, const std::any& v) {
+                dynamic_cast<{{ class_name }}&>(n).{{ field.emitter_call }}(std::any_cast<{{ field.cpp_type }}>(v));
+            },
+            {% else %}
+            nullptr,
+            {% endif %}
+            {% if field.is_enum %}
+            {% if field.is_readable %}
+            [](const X3DNode& n) -> std::string {
+                {% if field.runtime_field_type == "MFEnum" %}
+                const auto& vec = dynamic_cast<const {{ class_name }}&>(n).{{ field.getter_call }}();
+                std::string out;
+                for (std::size_t i = 0; i < vec.size(); ++i) {
+                    if (i) out += ' ';
+                    out += to_string(vec[i]);
+                }
+                return out;
+                {% else %}
+                return to_string(dynamic_cast<const {{ class_name }}&>(n).{{ field.getter_call }}());
+                {% endif %}
+            },
+            {% else %}
+            nullptr,
+            {% endif %}
+            {% if field.has_data_setter %}
+            [](X3DNode& n, const std::string& s) {
+                {% if field.runtime_field_type == "MFEnum" %}
+                {{ field.cpp_type }} vec;
+                std::size_t i = 0;
+                while (i < s.size()) {
+                    while (i < s.size() && (s[i] == ' ' || s[i] == '\t' ||
+                           s[i] == '\n' || s[i] == '\r' || s[i] == ',')) ++i;
+                    std::size_t j = i;
+                    while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
+                           s[j] != '\n' && s[j] != '\r' && s[j] != ',') ++j;
+                    if (j > i) {
+                        {{ field.enum_cpp_name }} ev;
+                        if (from_string(s.substr(i, j - i), ev)) vec.push_back(ev);
+                    }
+                    i = j;
+                }
+                dynamic_cast<{{ class_name }}&>(n).{{ field.reader_setter_call }}(std::move(vec));
+                {% else %}
+                {{ field.enum_cpp_name }} ev;
+                if (from_string(s, ev)) dynamic_cast<{{ class_name }}&>(n).{{ field.reader_setter_call }}(ev);
+                {% endif %}
+            }
+            {% else %}
+            nullptr
+            {% endif %}
+            {% else %}
+            nullptr,
+            nullptr
+            {% endif %}
+        });
+        {% endfor %}
+        return t;
+    }();
+    return table;
+}
+
+void {{ class_name }}::accept(NodeVisitor& visitor) const {
+    if (!visitor.enter(*this)) {
+        return;
+    }
+    visitor.leave(*this);
+}
+
+{% set _constrained = reflection_fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+{% if is_root %}
+void {{ class_name }}::validateRanges(std::vector<RangeDiagnostic>& /*out*/) const {}
+{% elif _constrained %}
+void {{ class_name }}::validateRanges(std::vector<RangeDiagnostic>& out) const {
+    {% for field in _constrained %}
+    {{ field.range_checker_name }}({{ field.getter_call }}(), nodeTypeName(), "", out);
+    {% endfor %}
+}
+{% endif %}
+{% endif %}
+
+{#- checkRanges* definitions: emitted for any node declaring constrained own
+    fields, INDEPENDENT of emit_reflection — mixin object-types (e.g.
+    X3DFogObject, X3DUrlObject) declare these statics in their header even
+    though they do not participate in reflection, and derived nodes call them
+    base-qualified from validateRanges(). -#}
+{% set _own_constrained = fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+{% for field in _own_constrained %}
+void {{ class_name }}::{{ field.range_checker_name }}(const {{ field.cpp_type }}& value,
+        const std::string& nodeType, const std::string& defName,
+        std::vector<RangeDiagnostic>& out) {
+    {{ field.range_collect_body | indent(4) }}
+}
+{% endfor %}
+{% if namespace %}
+} // namespace {{ namespace }}
+{% endif %}

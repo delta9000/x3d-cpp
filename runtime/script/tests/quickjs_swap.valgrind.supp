@@ -1,0 +1,24 @@
+# Valgrind suppression for the U3 ScriptEngine swap-test (x3d_quickjs_swap).
+#
+# JUSTIFICATION (minimal + benign): the vendored Duktape 2.7.0 engine's bytecode
+# compiler calls realloc(ptr, 0) when a parse-pass buffer is reset to length 0
+# (duk__reset_func_for_pass2 / duk__reset_labels_to_length). C standard makes
+# realloc(p,0) implementation-defined, and modern Valgrind (>=3.x) flags it as
+# "realloc() with size 0". It is NOT a leak and NOT a use of freed/uninitialised
+# memory — the swap-test itself reports "in use at exit: 0 bytes ... no leaks are
+# possible". This is a pre-existing property of the vendored C engine (the same
+# context fires in the long-standing x3d_ecmascript_backend_test) and is wholly
+# inside Duktape's own allocator path, never in the seam or test code. The
+# QuickJS backend produces no such report. Suppressed so the swap-test runs
+# valgrind-clean without masking any real error (the context is pinned tightly to
+# Duktape's realloc wrapper + the two reset call sites).
+{
+   duktape-realloc-size-zero-pass2-reset
+   Memcheck:ReallocZero
+   fun:realloc
+   fun:duk_default_realloc_function
+   fun:duk_heap_mem_realloc_indirect
+   fun:duk_hbuffer_resize
+   ...
+   fun:duk__parse_func_body
+}

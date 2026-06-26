@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Interchange" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+  <head>
+    <meta name="title" content="triangle.x3d"/>
+    <meta name="description" content="Hand-written first-light triangle for the PoC renderer (M2.5 T9/T10). One IndexedFaceSet, one Viewpoint, a visible Background."/>
+  </head>
+  <Scene>
+    <!-- Pulled back on +Z looking down -Z (X3D default view direction). -->
+    <Viewpoint description="front" position="0 0 4" fieldOfView="0.785398"/>
+    <!-- A visible non-black background so a successful clear is obvious. -->
+    <Background skyColor="0.10 0.12 0.18"/>
+    <Shape>
+      <Appearance>
+        <Material diffuseColor="0.85 0.30 0.25"/>
+      </Appearance>
+      <!-- A single CCW triangle in the Z=0 plane, centered on the origin. -->
+      <IndexedFaceSet coordIndex="0 1 2 -1" solid="false">
+        <Coordinate point="-1 -1 0  1 -1 0  0 1 0"/>
+      </IndexedFaceSet>
+    </Shape>
+  </Scene>
+</X3D>

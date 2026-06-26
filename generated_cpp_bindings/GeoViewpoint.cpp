@@ -1,0 +1,428 @@
+// GeoViewpoint.cpp
+#include "GeoViewpoint.hpp"
+
+std::string GeoViewpoint::nodeTypeName() const { return "GeoViewpoint"; }
+
+std::string GeoViewpoint::defaultContainerField() const {
+  return getDefaultContainerField();
+}
+
+const FieldTable &GeoViewpoint::fields() const {
+  static const FieldTable table = [] {
+    FieldTable t;
+
+    t.push_back(FieldInfo{
+        "bindTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DBindableNode::getBindTime());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DBindableNode::emitBindTime(
+              std::any_cast<SFTime>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "centerOfRotation", X3DFieldType::SFVec3d, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoViewpoint &>(n).getCenterOfRotation());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).setCenterOfRotation(
+              std::any_cast<SFVec3d>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "description", X3DFieldType::SFString, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DViewpointNode::getDescription());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DViewpointNode::setDescription(
+              std::any_cast<SFString>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "farDistance", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DViewpointNode::getFarDistance());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DViewpointNode::setFarDistance(
+              std::any_cast<SFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "fieldOfView", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoViewpoint &>(n).getFieldOfView());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).setFieldOfView(
+              std::any_cast<SFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "geoOrigin", X3DFieldType::SFNode, AccessType::InitializeOnly,
+        "geoOrigin",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n).getGeoOrigin());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).setGeoOriginUnchecked(
+              std::any_cast<SFNode>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "geoSystem", X3DFieldType::MFString, AccessType::InitializeOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n).getGeoSystem());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).setGeoSystemUnchecked(
+              std::any_cast<MFString>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(
+        FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
+
+                  [](const X3DNode &n) -> std::any {
+                    return std::any(
+                        dynamic_cast<const GeoViewpoint &>(n).X3DNode::getIS());
+                  },
+
+                  [](X3DNode &n, const std::any &v) {
+                    dynamic_cast<GeoViewpoint &>(n).X3DNode::setIS(
+                        std::any_cast<SFNode>(v));
+                  },
+
+                  nullptr, nullptr
+
+        });
+
+    t.push_back(FieldInfo{
+        "isBound", X3DFieldType::SFBool, AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DBindableNode::getIsBound());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DBindableNode::emitIsBound(
+              std::any_cast<SFBool>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(
+        FieldInfo{"jump", X3DFieldType::SFBool, AccessType::InputOutput, "",
+
+                  [](const X3DNode &n) -> std::any {
+                    return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                                        .X3DViewpointNode::getJump());
+                  },
+
+                  [](X3DNode &n, const std::any &v) {
+                    dynamic_cast<GeoViewpoint &>(n).X3DViewpointNode::setJump(
+                        std::any_cast<SFBool>(v));
+                  },
+
+                  nullptr, nullptr
+
+        });
+
+    t.push_back(FieldInfo{
+        "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoViewpoint &>(n).X3DNode::getMetadata());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DNode::setMetadata(
+              std::any_cast<SFNode>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "navigationInfo", X3DFieldType::SFNode, AccessType::InputOutput,
+        "navigationInfo",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DViewpointNode::getNavigationInfo());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DViewpointNode::setNavigationInfo(
+              std::any_cast<SFNode>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "nearDistance", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DViewpointNode::getNearDistance());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DViewpointNode::setNearDistance(
+              std::any_cast<SFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "orientation", X3DFieldType::SFRotation, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DViewpointNode::getOrientation());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DViewpointNode::setOrientation(
+              std::any_cast<SFRotation>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "position", X3DFieldType::SFVec3d, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n).getPosition());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).setPosition(
+              std::any_cast<SFVec3d>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "retainUserOffsets", X3DFieldType::SFBool, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DViewpointNode::getRetainUserOffsets());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n)
+              .X3DViewpointNode::setRetainUserOffsets(std::any_cast<SFBool>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(
+        FieldInfo{"set_bind", X3DFieldType::SFBool, AccessType::InputOnly, "",
+
+                  nullptr,
+
+                  [](X3DNode &n, const std::any &v) {
+                    dynamic_cast<GeoViewpoint &>(n).X3DBindableNode::onSet_bind(
+                        std::any_cast<SFBool>(v));
+                  },
+
+                  nullptr, nullptr
+
+        });
+
+    t.push_back(FieldInfo{
+        "speedFactor", X3DFieldType::SFFloat, AccessType::InitializeOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoViewpoint &>(n).getSpeedFactor());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).setSpeedFactorUnchecked(
+              std::any_cast<SFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "viewAll", X3DFieldType::SFBool, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const GeoViewpoint &>(n)
+                              .X3DViewpointNode::getViewAll());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DViewpointNode::setViewAll(
+              std::any_cast<SFBool>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoViewpoint &>(n).X3DNode::getDEF());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DNode::setDEF(
+              std::any_cast<SFString>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoViewpoint &>(n).X3DNode::getUSE());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DNode::setUSE(
+              std::any_cast<SFString>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(FieldInfo{
+        "class", X3DFieldType::SFString, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoViewpoint &>(n).X3DNode::getClass_());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DNode::setClass_(
+              std::any_cast<SFString>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    t.push_back(
+        FieldInfo{"id", X3DFieldType::SFString, AccessType::InputOutput, "",
+
+                  [](const X3DNode &n) -> std::any {
+                    return std::any(
+                        dynamic_cast<const GeoViewpoint &>(n).X3DNode::getId());
+                  },
+
+                  [](X3DNode &n, const std::any &v) {
+                    dynamic_cast<GeoViewpoint &>(n).X3DNode::setId(
+                        std::any_cast<SFString>(v));
+                  },
+
+                  nullptr, nullptr
+
+        });
+
+    t.push_back(FieldInfo{
+        "style", X3DFieldType::SFString, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoViewpoint &>(n).X3DNode::getStyle());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoViewpoint &>(n).X3DNode::setStyle(
+              std::any_cast<SFString>(v));
+        },
+
+        nullptr, nullptr
+
+    });
+
+    return t;
+  }();
+  return table;
+}
+
+void GeoViewpoint::accept(NodeVisitor &visitor) const {
+  if (!visitor.enter(*this)) {
+    return;
+  }
+  visitor.leave(*this);
+}

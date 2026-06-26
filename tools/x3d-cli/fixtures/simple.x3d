@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Interchange" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+  <head>
+    <meta name="title" content="simple.x3d"/>
+    <meta name="description" content="Minimal fixture for x3d CLI tests."/>
+  </head>
+  <Scene>
+    <Shape DEF="S">
+      <Appearance>
+        <Material diffuseColor="1 0 0"/>
+      </Appearance>
+      <Box size="2 2 2"/>
+    </Shape>
+  </Scene>
+</X3D>

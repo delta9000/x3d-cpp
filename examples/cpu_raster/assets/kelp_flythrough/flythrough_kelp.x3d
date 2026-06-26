@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Immersive" version="4.0">
+  <head>
+    <meta name="title" content="flythrough_kelp.x3d"/>
+    <meta name="description" content="An animated guided-tour Viewpoint flying through the NPS/MOVES Kelp Forest Exhibit, for the headless cpu_raster --animate demo. The exhibit itself is third-party content fetched by fetch_kelp.sh; only this camera-tour wrapper is part of this repo."/>
+    <meta name="creator" content="x3d-cpp-gen (camera tour); exhibit by Don Brutzman / NPS MOVES Institute"/>
+    <meta name="reference" content="http://faculty.nps.edu/brutzman/kelp"/>
+    <meta name="rights" content="Exhibit: free use with credit to the Naval Postgraduate School (NPS) MOVES Institute. See README.md."/>
+  </head>
+  <Scene>
+    <!-- A bound Viewpoint animated through six of the exhibit's authored waypoints
+         (Monterey Bay Aquarium -> Side Windows -> Star Fish -> Pump House ->
+         Bird's Eye -> back), driven by a looping TimeSensor. 12 s seamless loop. -->
+    <Viewpoint DEF="Cam" position="0 -5 45" fieldOfView="0.85" description="flythrough"/>
+    <TimeSensor DEF="Tour" cycleInterval="12" loop="true"/>
+    <PositionInterpolator DEF="CamPos" key="0 0.2 0.4 0.6 0.8 1"
+        keyValue="0 -5 45  25 -4 15  14 -5.75 1  -5 1 0  0 19 -3.5  0 -5 45"/>
+    <OrientationInterpolator DEF="CamOri" key="0 0.2 0.4 0.6 0.8 1"
+        keyValue="0 0 1 0  0 1 0 0.9  0 1 0 1.25  0 1 0 1.3  1 0 0 -1.57  0 0 1 0"/>
+    <ROUTE fromNode="Tour" fromField="fraction_changed" toNode="CamPos" toField="set_fraction"/>
+    <ROUTE fromNode="Tour" fromField="fraction_changed" toNode="CamOri" toField="set_fraction"/>
+    <ROUTE fromNode="CamPos" fromField="value_changed" toNode="Cam" toField="position"/>
+    <ROUTE fromNode="CamOri" fromField="value_changed" toNode="Cam" toField="orientation"/>
+    <!-- Third-party exhibit, fetched into exhibit/ by fetch_kelp.sh (not committed). -->
+    <Inline url='"exhibit/KelpForestMain.x3d"'/>
+  </Scene>
+</X3D>

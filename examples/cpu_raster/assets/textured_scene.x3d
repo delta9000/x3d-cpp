@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Immersive" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+  <head>
+    <meta name="title" content="textured_scene.x3d"/>
+    <meta name="description" content="Texture-mapping test: primitives carrying procedurally generated ImageTextures (proc: urls resolved by the CPU rasterizer). Checker box, uv-grid sphere (orientation probe: red=U, green=V), brick cylinder, color-bars cone. One DirectionalLight so the textures are visible but shaded."/>
+  </head>
+  <Scene>
+    <Viewpoint description="front" position="0 0 9" fieldOfView="0.9"/>
+    <Background skyColor="0.08 0.10 0.16"/>
+    <DirectionalLight direction="-0.3 -0.4 -0.85" color="1 1 1" intensity="1"/>
+
+    <!-- Checkerboard box -->
+    <Transform translation="-3.2 0 0">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="1 1 1"/>
+          <ImageTexture url='"proc:checker"'/>
+        </Appearance>
+        <Box size="2 2 2"/>
+      </Shape>
+    </Transform>
+
+    <!-- UV-grid sphere (orientation probe) -->
+    <Transform translation="-0.6 0 0">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="1 1 1"/>
+          <ImageTexture url='"proc:uvgrid"'/>
+        </Appearance>
+        <Sphere radius="1.2"/>
+      </Shape>
+    </Transform>
+
+    <!-- Brick cylinder -->
+    <Transform translation="2.0 0 0">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="1 1 1"/>
+          <ImageTexture url='"proc:brick"'/>
+        </Appearance>
+        <Cylinder radius="1.0" height="2.4"/>
+      </Shape>
+    </Transform>
+
+    <!-- Color-bars cone -->
+    <Transform translation="4.4 0 0">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="1 1 1"/>
+          <ImageTexture url='"proc:bars"'/>
+        </Appearance>
+        <Cone bottomRadius="1.1" height="2.4"/>
+      </Shape>
+    </Transform>
+  </Scene>
+</X3D>

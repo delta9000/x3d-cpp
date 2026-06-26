@@ -1,0 +1,5 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/x3d_cppTargets.cmake")
+
+check_required_components(x3d_cpp)

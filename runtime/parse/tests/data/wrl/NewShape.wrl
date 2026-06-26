@@ -1,0 +1,74 @@
+#VRML V2.0 utf8
+
+WorldInfo { info "original scene:  NewShape.wrl" }
+
+NavigationInfo {
+	type [ "EXAMINE" "ANY" ]
+}
+
+PROTO NewShape [
+  field SFFloat newHeight 1
+  field SFFloat newRadius 2
+  field SFNode InitialAppearance Appearance {
+    material Material {
+      diffuseColor 1 0 0
+    }
+  }
+
+] {
+  Group {
+      children [
+      Transform {
+      	translation 2 1 0 children
+        DEF ConstrainedShape Shape {
+          appearance IS InitialAppearance
+          geometry DEF ConstrainedCylinder Cylinder {
+            height IS newHeight
+            radius IS newRadius
+          }
+        }
+      }
+      Transform {
+      	translation -2 1 0 children
+        DEF ConstrainedShape1 Shape {
+          appearance IS InitialAppearance
+          geometry DEF ConstrainedCylinder1 Cylinder {
+            height IS newHeight
+            radius IS newRadius
+          }
+        }
+      }
+      Transform {
+    	translation 0 -2 0
+    	children [
+		Shape {
+        		appearance IS InitialAppearance
+    			geometry Text {
+    				string [ "Test success:" "green cylinders" ]
+    				fontStyle FontStyle {
+    					justify [ "MIDDLE" "MIDDLE" ]
+    				}
+    			}
+    		}
+    	]
+      }
+    ]
+    }
+}
+
+DEF Null1 Switch { }
+
+DEF A
+NewShape {
+  newHeight 2
+  newRadius 1
+  InitialAppearance Appearance {
+    material Material {
+      diffuseColor 0 1 0
+    }
+  }
+}
+
+DEF Null2 Group { }
+
+# comment on final line of NewShape.wrl

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Interactive" version="4.0">
+  <head>
+    <meta name="description" content="sim behavioral fixture: ProximitySensor box region crossed by a viewer path"/>
+  </head>
+  <Scene>
+    <Viewpoint DEF="View" position="0 0 0"/>
+    <ProximitySensor DEF="Region" center="0 0 0" size="2 2 2"/>
+    <Shape>
+      <Box/>
+    </Shape>
+  </Scene>
+</X3D>

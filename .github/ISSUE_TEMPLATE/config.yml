@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Conformance gap (behavioral)
+    url: https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml
+    about: Behavioral / spec-conformance gaps live in findings.yaml (the gated source of truth), not as issues. Edit there, then `mise run conformance`.
+  - name: Card → Done workflow
+    url: https://github.com/delta9000/x3d-cpp/blob/main/docs/wiki/guides/card-to-done-workflow.md
+    about: How a Project card becomes documented, shipped work (Definition of Ready/Done, traceability).

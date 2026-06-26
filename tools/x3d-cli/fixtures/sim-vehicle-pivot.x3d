@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Full" version="4.0">
+  <head>
+    <meta name="description" content="sim vehicle skid-steer pivot: left wheels driven forward, right wheels backward (opposing torque) overpower lateral tyre grip and yaw the chassis in place (§37 friction)."/>
+  </head>
+  <Scene>
+    <Transform DEF="CarXform"><Shape><Box size="1 0.4 2"/></Shape></Transform>
+    <RigidBodyCollection DEF="World" gravity="0 -9.8 0">
+      <CollisionCollection containerField="collider" frictionCoefficients="1 1" appliedParameters='"BOUNCE" "FRICTION_COEFFICIENT-2"'>
+        <CollidableShape USE="GroundColl" containerField="collidables"/>
+      </CollisionCollection>
+      <RigidBody DEF="Ground" containerField="bodies" fixed="true" position="0 -0.5 0">
+        <CollidableShape DEF="GroundColl" containerField="geometry"><Shape containerField="shape"><Box size="50 1 50"/></Shape></CollidableShape>
+      </RigidBody>
+      <RigidBody DEF="Chassis" containerField="bodies" mass="5" position="0 0.5 0">
+        <CollidableShape containerField="geometry"><Shape containerField="shape"><Box size="1 0.4 2"/></Shape></CollidableShape>
+      </RigidBody>
+      <RigidBody DEF="WheelFL" containerField="bodies" mass="1" position="-0.6 0.4 0.8" orientation="0 0 1 -1.5708" torques="16 0 0">
+        <CollidableShape containerField="geometry"><Shape containerField="shape"><Cylinder radius="0.4" height="0.2"/></Shape></CollidableShape>
+      </RigidBody>
+      <RigidBody DEF="WheelFR" containerField="bodies" mass="1" position="0.6 0.4 0.8" orientation="0 0 1 -1.5708" torques="-16 0 0">
+        <CollidableShape containerField="geometry"><Shape containerField="shape"><Cylinder radius="0.4" height="0.2"/></Shape></CollidableShape>
+      </RigidBody>
+      <RigidBody DEF="WheelRL" containerField="bodies" mass="1" position="-0.6 0.4 -0.8" orientation="0 0 1 -1.5708" torques="16 0 0">
+        <CollidableShape containerField="geometry"><Shape containerField="shape"><Cylinder radius="0.4" height="0.2"/></Shape></CollidableShape>
+      </RigidBody>
+      <RigidBody DEF="WheelRR" containerField="bodies" mass="1" position="0.6 0.4 -0.8" orientation="0 0 1 -1.5708" torques="-16 0 0">
+        <CollidableShape containerField="geometry"><Shape containerField="shape"><Cylinder radius="0.4" height="0.2"/></Shape></CollidableShape>
+      </RigidBody>
+      <SingleAxisHingeJoint containerField="joints" axis="1 0 0" anchorPoint="-0.6 0.4 0.8"><RigidBody USE="WheelFL" containerField="body1"/><RigidBody USE="Chassis" containerField="body2"/></SingleAxisHingeJoint>
+      <SingleAxisHingeJoint containerField="joints" axis="1 0 0" anchorPoint="0.6 0.4 0.8"><RigidBody USE="WheelFR" containerField="body1"/><RigidBody USE="Chassis" containerField="body2"/></SingleAxisHingeJoint>
+      <SingleAxisHingeJoint containerField="joints" axis="1 0 0" anchorPoint="-0.6 0.4 -0.8"><RigidBody USE="WheelRL" containerField="body1"/><RigidBody USE="Chassis" containerField="body2"/></SingleAxisHingeJoint>
+      <SingleAxisHingeJoint containerField="joints" axis="1 0 0" anchorPoint="0.6 0.4 -0.8"><RigidBody USE="WheelRR" containerField="body1"/><RigidBody USE="Chassis" containerField="body2"/></SingleAxisHingeJoint>
+    </RigidBodyCollection>
+    <ROUTE fromNode="Chassis" fromField="orientation" toNode="CarXform" toField="rotation"/>
+  </Scene>
+</X3D>

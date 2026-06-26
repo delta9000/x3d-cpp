@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Interchange" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+  <head>
+    <meta name="title" content="transparent_scene.x3d"/>
+    <meta name="description" content="PoC B7 transparency + specular acceptance scene. An opaque green Box (back), a half-transparent red Box (transparency=0.5, must alpha-blend and sort back-to-front), and a glossy blue Box with a strong specularColor + high shininess (Blinn-Phong highlight). A single DirectionalLight so the specular highlight is deterministic, not the headlight."/>
+  </head>
+  <Scene>
+    <Viewpoint description="front" position="0 0 8" fieldOfView="0.785398"/>
+    <Background skyColor="0.05 0.06 0.10"/>
+    <DirectionalLight direction="-0.3 -0.4 -0.85" color="1 1 1" intensity="1"/>
+
+    <!-- Opaque green box, placed at the BACK (farthest from the camera). -->
+    <Transform translation="0 0 -2">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="0.20 0.70 0.35" ambientIntensity="0.2"/>
+        </Appearance>
+        <Box size="2 2 2"/>
+      </Shape>
+    </Transform>
+
+    <!-- Half-transparent red box in FRONT of the green one: this must draw in
+         the BLEND pass, back-to-front, with depth writes off. -->
+    <Transform translation="0 0 1">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="0.85 0.15 0.15" transparency="0.5" ambientIntensity="0.2"/>
+        </Appearance>
+        <Box size="1.6 1.6 1.6"/>
+      </Shape>
+    </Transform>
+
+    <!-- Glossy opaque blue box: strong specularColor + high shininess exercises
+         the new Blinn-Phong specular term. -->
+    <Transform translation="2.5 0 0">
+      <Shape>
+        <Appearance>
+          <Material diffuseColor="0.15 0.25 0.80" specularColor="1 1 1"
+                    shininess="0.9" ambientIntensity="0.15"/>
+        </Appearance>
+        <Box size="1.4 1.4 1.4"/>
+      </Shape>
+    </Transform>
+  </Scene>
+</X3D>

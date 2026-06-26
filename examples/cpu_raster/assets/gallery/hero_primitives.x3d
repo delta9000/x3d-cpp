@@ -1,0 +1,10 @@
+<X3D profile="Immersive" version="4.0"><Scene>
+<Background skyColor="0.30 0.34 0.42 0.52 0.57 0.66" skyAngle="1.5708" groundColor="0.12 0.12 0.14"/>
+<Viewpoint position="0.5 0.3 13.5" fieldOfView="0.72"/>
+<DirectionalLight direction="-0.3 -0.45 -0.7" color="1.0 0.98 0.92" intensity="1.1"/>
+<DirectionalLight direction="0.6 0.1 -0.3" color="0.6 0.68 0.85" intensity="0.55"/>
+<Transform translation="-2.4 2.2 0"><Shape><Appearance><Material diffuseColor="1 1 1"/><ImageTexture url='"proc:checker"'/></Appearance><Box size="2.6 2.6 2.6"/></Shape></Transform>
+<Transform translation="2.4 2.2 0"><Shape><Appearance><Material diffuseColor="1 1 1"/><ImageTexture url='"proc:uvgrid"'/></Appearance><Sphere radius="1.5"/></Shape></Transform>
+<Transform translation="-2.4 -2.2 0"><Shape><Appearance><Material diffuseColor="1 1 1"/><ImageTexture url='"proc:brick"'/></Appearance><Cone bottomRadius="1.5" height="3.0"/></Shape></Transform>
+<Transform translation="2.4 -2.2 0"><Shape><Appearance><Material diffuseColor="1 1 1"/><ImageTexture url='"proc:bars"'/></Appearance><Cylinder radius="1.4" height="3.0"/></Shape></Transform>
+</Scene></X3D>

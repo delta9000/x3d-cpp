@@ -1,0 +1,8 @@
+<X3D profile="Immersive" version="4.0"><Scene>
+<Background skyColor="0.02 0.02 0.05 0.10 0.10 0.18" skyAngle="1.5708" groundColor="0.02 0.02 0.03"/>
+<Viewpoint position="0 0 6"/>
+<DirectionalLight direction="1 -0.1 -0.4" color="1 0.1 0.1" intensity="1"/>
+<DirectionalLight direction="0 -1 -0.4" color="0.1 1 0.1" intensity="1"/>
+<DirectionalLight direction="-1 -0.1 -0.4" color="0.1 0.3 1" intensity="1"/>
+<Shape><Appearance><Material diffuseColor="0.9 0.9 0.9"/></Appearance><Sphere radius="2"/></Shape>
+</Scene></X3D>

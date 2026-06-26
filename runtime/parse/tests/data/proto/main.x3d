@@ -1,0 +1,4 @@
+<X3D profile='Interchange' version='4.0'><Scene>
+<ExternProtoDeclare name='ExtBox' url='shapes.x3d#ExtBox'/>
+<ProtoInstance name='ExtBox'/>
+</Scene></X3D>

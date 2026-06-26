@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "x3d-cpp-gen"
+version = "0.1.0"
+description = "Generate spec-correct C++ bindings from the X3D Unified Object Model."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ben Sandbrook", email = "sandbrookvt@gmail.com" }]
+dependencies = [
+    "lxml>=5.0",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+x3d-cpp-gen = "x3d_cpp_gen.cli:main"
+
+# --- Tests / dev dependencies (added by the pytest-suite stream) ---
+# Only this section was added; the core build config above is untouched.
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "tree-sitter>=0.23",
+    "tree-sitter-cpp>=0.23",
+]
+docs = [
+    "mkdocs-material>=9.7.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.hatch.build.targets.wheel]
+# src layout: map the package and ship all non-Python data (templates + XML).
+packages = ["src/x3d_cpp_gen"]
+artifacts = [
+    "src/x3d_cpp_gen/templates/*",
+    "src/x3d_cpp_gen/data/*",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/x3d_cpp_gen",
+    "pyproject.toml",
+    "README.md",
+]

@@ -1,0 +1,10 @@
+[
+  {"tick": 0, "t": 0.000000, "changes": []},
+  {"tick": 1, "t": 0.250000, "changes": [{"node": "Mover", "field": "translation", "value": "2.5 0 0"}]},
+  {"tick": 2, "t": 0.500000, "changes": [{"node": "Mover", "field": "translation", "value": "5 0 0"}]},
+  {"tick": 3, "t": 0.750000, "changes": [{"node": "Mover", "field": "translation", "value": "7.5 0 0"}]},
+  {"tick": 4, "t": 1.000000, "changes": [{"node": "Mover", "field": "translation", "value": "10 0 0"}]},
+  {"tick": 5, "t": 1.250000, "changes": [{"node": "Mover", "field": "translation", "value": "2.5 0 0"}]},
+  {"tick": 6, "t": 1.500000, "changes": [{"node": "Mover", "field": "translation", "value": "5 0 0"}]},
+  {"tick": 7, "t": 1.750000, "changes": [{"node": "Mover", "field": "translation", "value": "7.5 0 0"}]}
+]

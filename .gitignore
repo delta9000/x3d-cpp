@@ -1,0 +1,54 @@
+# Python caches / bytecode
+__pycache__/
+*.pyc
+
+# Editors / tools
+.idea/
+.aider*
+
+# Build / packaging
+build*/
+.venv/
+*.egg-info/
+
+# Compiler scratch
+test_exec
+*.o
+
+# Note: generated_cpp_bindings/ is GOLDEN and intentionally tracked.
+# Drop only the smoke-test artifacts produced during generation.
+generated_cpp_bindings/test.cpp
+generated_cpp_bindings/test_exec
+
+# Phase 5 multi-version: the real X3D 4.1 output is derived from the large
+# (2.6MB) UOM fixture and is NOT committed as golden. The small synthetic-4.1
+# output, by contrast, is small enough to commit if desired.
+generated_cpp_bindings_v41/
+
+# CTest scratch output
+Testing/
+tools/x3d-cli/.javacache/
+
+# X3DJSAIL canonical reference fixtures: derived from the X3D conformance
+# example archive (per-file Web3D attribution + ~7.5MB), NOT bundled.
+# Regenerate locally with `mise run canon-golden-gen` (needs a corpus + JDK>=25).
+tools/x3d-cli/goldens/canonical-goldens/
+
+# X3D test corpus fetched by `mise run corpus-fetch` (default location).
+# Pulled from the Web3D example archive on demand; never committed.
+.x3d-corpus/
+
+# MkDocs build output (the wiki is served/built on demand; never committed)
+site/
+
+# Subagent-driven-development scratch (ledger, briefs, reports, diffs)
+.superpowers/
+
+# Local git worktrees (git worktree add .worktrees/<branch>) — each is its own
+# checkout of another branch, never source of the main tree.
+.worktrees/
+
+# Machine-local mise overrides (private Tailscale hosts, local mirror paths).
+# RAG endpoints / prose-mirror dir differ per machine; never committed.
+mise.local.toml
+.claude/

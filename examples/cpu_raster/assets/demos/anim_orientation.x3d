@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Interchange" version="4.0"><head/><Scene>
+  <Viewpoint position="0 0 7" fieldOfView="0.8"/>
+  <Background skyColor="0.10 0.12 0.18"/>
+  <DirectionalLight direction="-0.3 -0.5 -0.8" intensity="1"/>
+  <Transform DEF="Spinner">
+    <Shape><Appearance><Material diffuseColor="1 1 1"/><ImageTexture url='"proc:uvgrid"'/></Appearance><Sphere radius="1.5"/></Shape>
+  </Transform>
+  <TimeSensor DEF="Clock" cycleInterval="4" loop="true"/>
+  <OrientationInterpolator DEF="Spin" key="0 0.25 0.5 0.75 1"
+      keyValue="1 0 0 0  1 0 0 1.5708  1 0 0 3.1416  1 0 0 4.7124  1 0 0 6.2832"/>
+  <ROUTE fromNode="Clock" fromField="fraction_changed" toNode="Spin" toField="set_fraction"/>
+  <ROUTE fromNode="Spin" fromField="value_changed" toNode="Spinner" toField="rotation"/>
+</Scene></X3D>

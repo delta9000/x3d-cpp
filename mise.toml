@@ -1,0 +1,239 @@
+# Dev task runner for x3d-cpp-gen.
+#
+#   mise run gen      regenerate the committed C++ bindings (headers + smoke test)
+#   mise run test     pytest (unit + full-tree golden drift)
+#   mise run golden   golden-drift gate (regenerate to a temp dir + diff)
+#   mise run build    cmake configure + build + ctest
+#   mise run ci       the whole pipeline locally (test, golden, conformance-gate,
+#                     build, cli-gate-regression — the last needs a test corpus)
+#   mise run corpus-fetch   fetch the X3D test corpus the differential gates need
+#
+# Tools are managed by uv; these tasks shell out to `uv run` so they work without
+# an activated venv.
+
+[tools]
+# uv provides the Python toolchain / project env. (Listed so `mise install`
+# bootstraps it; pinning omitted to use whatever uv resolves from pyproject.)
+uv = "latest"
+
+[tasks.sync]
+description = "Install/refresh the project env (incl dev group)."
+run = "uv sync"
+
+[tasks.gen]
+description = "Regenerate the committed C++ bindings (generated_cpp_bindings/) + the UOM-derived profile-fit tables (tools/x3d-cli/*.gen.inc)."
+run = """
+uv run x3d-cpp-gen --out generated_cpp_bindings
+uv run python scripts/gen_profile_tables.py
+"""
+
+[tasks.test]
+description = "Run the Python test suite (pytest)."
+depends = ["sync"]
+run = "uv run pytest"
+
+[tasks.golden]
+description = "Golden-drift gate: regenerate to a temp dir and diff *.hpp."
+depends = ["sync"]
+run = "scripts/check_golden.sh"
+
+[tasks.build]
+description = "Configure, build, and ctest the C++ side (Ninja + ccache, parallel ctest)."
+run = """
+cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev -j "$(nproc)"
+"""
+
+[tasks.poc]
+description = "Configure + build the out-of-SDK PoC OpenGL renderer (X3D_CPP_BUILD_POC=ON)."
+# Built into a SEPARATE build dir (build-poc/) so it never perturbs the dev
+# preset's build/ cache that golden/ctest rely on. Wayland prereqs: see
+# examples/poc_renderer/README.md. Run the binary yourself (needs a display):
+#   ./build-poc/examples/poc_renderer/x3d_poc_renderer
+run = """
+cmake -S . -B build-poc -G Ninja -DX3D_CPP_BUILD_POC=ON
+cmake --build build-poc --target x3d_poc_renderer
+"""
+
+[tasks.cpuraster]
+description = "Configure + build + ctest the out-of-SDK headless CPU rasterizer (X3D_CPP_BUILD_CPURASTER=ON). No GPU/GLFW; runs headless. PNG/JPEG textures are decoded by explicitly opting into the SDK's stb decode-seam backend (X3D_CPP_BUILD_STB=ON) — the example consumes a first-party seam rather than vendoring its own decoder. Render a PPM yourself, e.g.:  ./build-cpuraster/examples/cpu_raster/x3d_cpu_raster -o out.ppm  (or --frag shaders/author_lambert.frag to run author GLSL via the interpreter)."
+# Separate build dir (build-cpuraster/) so it never perturbs the dev preset's
+# build/ cache that golden/ctest rely on. X3D_CPP_BUILD_STB=ON wires the
+# TextureResolver decode seam (PNG/JPEG) that the example asks for.
+run = """
+cmake -S . -B build-cpuraster -G Ninja -DX3D_CPP_BUILD_CPURASTER=ON -DX3D_CPP_BUILD_STB=ON
+cmake --build build-cpuraster
+ctest --test-dir build-cpuraster -R x3d_cpuraster --output-on-failure
+"""
+
+[tasks.demos]
+description = "Render the interpolator demo scenes to WebM (docs/videos/demos/) + animated GIF heroes (docs/images/gallery/anim-*.gif). Needs ffmpeg (libvpx-vp9). Depends on the cpuraster build."
+run = """
+set -euo pipefail
+cmake -S . -B build-cpuraster -G Ninja -DX3D_CPP_BUILD_CPURASTER=ON -DX3D_CPP_BUILD_STB=ON
+cmake --build build-cpuraster
+command -v ffmpeg >/dev/null || { echo "demos: ffmpeg not found (install ffmpeg with libvpx-vp9)"; exit 1; }
+BIN=build-cpuraster/examples/cpu_raster/x3d_cpu_raster
+mkdir -p docs/videos/demos docs/images/gallery
+trap 'rm -rf "${work:-}"' EXIT
+# name:scene:duration — duration matches each scene's cycleInterval for a seamless loop.
+for entry in position:anim_position:4 orientation:anim_orientation:4 color:anim_color:4 dvd:anim_dvd:8; do
+  out="${entry%%:*}"; rest="${entry#*:}"; scene="${rest%%:*}"; dur="${rest##*:}"
+  work="$(mktemp -d)"
+  "$BIN" "examples/cpu_raster/assets/demos/${scene}.x3d" \
+      --animate --fps 30 --duration "$dur" -w 640 -H 360 --frames-dir "$work"
+  # Full-quality VP9 WebM.
+  ffmpeg -y -hide_banner -loglevel error -framerate 30 -i "$work/frame_%04d.ppm" \
+      -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 0 -crf 32 "docs/videos/demos/${out}.webm"
+  # Lean animated-GIF hero (480px, 20fps, per-clip palette) for inline README autoplay.
+  ffmpeg -y -hide_banner -loglevel error -i "$work/frame_%04d.ppm" \
+      -vf "fps=20,scale=480:-1:flags=lanczos,palettegen=stats_mode=full" "$work/pal.png"
+  ffmpeg -y -hide_banner -loglevel error -framerate 30 -i "$work/frame_%04d.ppm" -i "$work/pal.png" \
+      -lavfi "fps=20,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" \
+      "docs/images/gallery/anim-${out}.gif"
+  rm -rf "$work"
+  echo "wrote docs/videos/demos/${out}.webm + docs/images/gallery/anim-${out}.gif"
+done
+"""
+
+[tasks.demos-bless]
+description = "Regenerate the committed golden PPM frames for the interpolator demo regression test."
+run = """
+set -euo pipefail
+cmake -S . -B build-cpuraster -G Ninja -DX3D_CPP_BUILD_CPURASTER=ON -DX3D_CPP_BUILD_STB=ON
+cmake --build build-cpuraster
+mkdir -p examples/cpu_raster/tests/golden/demos
+X3D_CPURASTER_BLESS=1 build-cpuraster/examples/cpu_raster/x3d_cpuraster_demo_animation_test
+"""
+
+[tasks.kelp-flythrough]
+description = "Fetch the third-party NPS/MOVES Kelp Forest Exhibit (if needed) and render the guided-tour flythrough to kelp_flythrough.webm. Needs wget + ffmpeg. Exhibit is git-ignored (free use, credit NPS MOVES — see examples/cpu_raster/assets/kelp_flythrough/README.md)."
+run = """
+set -euo pipefail
+cmake -S . -B build-cpuraster -G Ninja -DX3D_CPP_BUILD_CPURASTER=ON -DX3D_CPP_BUILD_STB=ON
+cmake --build build-cpuraster
+command -v ffmpeg >/dev/null || { echo "kelp-flythrough: ffmpeg not found"; exit 1; }
+KD=examples/cpu_raster/assets/kelp_flythrough
+[ -f "$KD/exhibit/KelpForestMain.x3d" ] || "$KD/fetch_kelp.sh"
+work="$(mktemp -d)"; trap 'rm -rf "${work:-}"' EXIT
+build-cpuraster/examples/cpu_raster/x3d_cpu_raster "$KD/flythrough_kelp.x3d" \
+    --animate --fps 30 --duration 12 -w 800 -H 450 --frames-dir "$work"
+# Full-quality VP9 WebM.
+ffmpeg -y -hide_banner -loglevel error -framerate 30 -i "$work/frame_%04d.ppm" \
+    -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 0 -crf 33 docs/videos/demos/kelp_flythrough.webm
+# Lean animated-GIF hero for inline README autoplay (camera motion compresses
+# poorly, so keep it small: 360px, 12fps, 128-colour per-clip palette).
+ffmpeg -y -hide_banner -loglevel error -i "$work/frame_%04d.ppm" \
+    -vf "fps=12,scale=360:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff" "$work/pal.png"
+ffmpeg -y -hide_banner -loglevel error -framerate 30 -i "$work/frame_%04d.ppm" -i "$work/pal.png" \
+    -lavfi "fps=12,scale=360:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=none" docs/images/gallery/anim-kelp.gif
+echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-kelp.gif"
+"""
+
+[tasks.ci]
+description = "Run the whole pipeline locally: tests, golden gate, conformance gate, C++ build/ctest, cli differential regression gate."
+depends = ["test", "golden", "conformance-gate", "build", "cli-gate-regression"]
+
+[tasks.conformance]
+description = "Regenerate the conformance view (docs/conformance/: model.json + INDEX.md + components/). Edit judgments in docs/conformance/findings.yaml first."
+run = "uv run python scripts/conformance_view.py generate"
+
+[tasks.conformance-gate]
+description = "Conformance gate: validate findings.yaml schema + fail on drift of the generated view (mirrors golden)."
+run = "uv run python scripts/conformance_view.py check"
+
+[tasks.corpus-fetch]
+description = "Fetch the X3D test corpus (curated subset + Inline/EXTERNPROTO deps) from web3d.org into .x3d-corpus/ (or $X3D_CORPUS_DIR). ~9MB, seconds. Makes the corpus gates runnable."
+run = "scripts/fetch_corpus.sh"
+
+[tasks.corpus]
+description = "Corpus smoke: recursively sweep a corpus dir (parse->extract->tick) with categorized stats. Defaults to .x3d-corpus (the ~300-file subset from corpus-fetch); point X3D_CORPUS_DIR or pass an arg at a full archive checkout for exhaustive coverage: mise run corpus /path/to/archive"
+run = """
+cmake --preset dev
+cmake --build --preset dev --target x3d_corpus_sweep
+DIR="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
+./build/x3d_corpus_sweep "$DIR" --min-success-ratio 0.80
+"""
+
+[tasks.code-rag]
+description = "Code RAG: semantic search over the C++ runtime (query/symbol). e.g. mise run code-rag query \"how are bounds computed\""
+run = "uv run python scripts/code_rag.py {{arg(name='args', var=true)}}"
+
+[tasks.code-ingest]
+description = "(Re)build the x3d-cpp-code Qdrant collection from the C++ runtime."
+run = "uv run python scripts/code_rag.py ingest"
+
+[tasks.docs-ingest]
+description = "(Re)build the x3d-cpp-docs Qdrant collection from the living docs (wiki/sdk/conformance)."
+run = "uv run python scripts/docs_drift.py ingest"
+
+[tasks.docs-drift]
+description = "Advisory: RAG code changes against the docs and suggest pages that may be stale. No arg = uncommitted work (or HEAD if clean); or pass a commit. e.g. mise run docs-drift working"
+run = "uv run python scripts/docs_drift.py suggest {{arg(name='rev', default='auto')}}"
+
+[tasks.cli-golden-gen]
+description = "Run X3DJSAIL -validate over the curated corpus subset; commit fixtures (subset.txt, validate-verdicts.tsv). Requires JDK + corpus archive."
+run = """
+cmake --preset dev
+cmake --build --preset dev --target x3d_cli
+bash tools/x3d-cli/gen_golden.sh
+"""
+
+[tasks.cli-gate]
+description = "Java-free differential gate (informative mode): compare our validator verdicts to X3DJSAIL golden + convert roundtrip. Produces tools/x3d-cli/goldens/divergence-report.md."
+run = """
+cmake --preset dev
+cmake --build --preset dev --target x3d_cli_gate
+CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
+./build/x3d_cli_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens
+"""
+
+[tasks.cli-gate-regression]
+description = "REGRESSION gate (CI): both cli_gate + canon_gate in --gate mode. Fails if any baseline-PASS item now fails. Requires: corpus at default path + committed baselines."
+depends = ["build"]
+run = """
+CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
+echo "=== cli_gate regression gate ==="
+./build/x3d_cli_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens --gate
+echo "=== canon_gate regression gate ==="
+./build/x3d_canon_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens --gate
+"""
+
+[tasks.cli-gate-baseline]
+description = "Refresh committed baselines: runs cli_gate + canon_gate in --write-baseline mode. Run after accepting new divergences, then commit the updated baseline TSVs."
+run = """
+cmake --preset dev
+cmake --build --preset dev --target x3d_cli_gate x3d_canon_gate
+CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
+echo "=== Writing cli-gate baseline ==="
+./build/x3d_cli_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens --write-baseline
+echo "=== Writing canon-gate baseline ==="
+./build/x3d_canon_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens --write-baseline
+echo "Baselines updated. Review and commit tools/x3d-cli/goldens/cli-gate-baseline.tsv + canon-gate-baseline.tsv."
+"""
+
+[tasks.canon-golden-gen]
+description = "Generate X3DJSAIL -canonical reference fixtures for the canonical tiered gate. Requires JDK 25 + corpus archive. Writes to tools/x3d-cli/goldens/canonical-goldens/."
+run = """
+cmake --preset dev
+cmake --build --preset dev --target x3d_cli
+bash tools/x3d-cli/gen_canon_goldens.sh
+"""
+
+[tasks.canon-gate]
+description = "X3DC14N tiered gate: T1=idempotence (CI), T2=tolerant-diff vs X3DJSAIL, T3=byte-exact rate. Runs T1 always; T2/T3 need mise run canon-golden-gen first."
+run = """
+cmake --preset dev
+cmake --build --preset dev --target x3d_canon_gate
+CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
+./build/x3d_canon_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens
+"""
+
+[tasks.docs]
+description = "Serve the wiki locally with live-reload (mkdocs serve). Open http://127.0.0.1:8000 in a browser."
+run = "uv run --group docs mkdocs serve"
+
+[tasks.docs-build]
+description = "Build the wiki with --strict (fails on broken internal links / nav orphans). The wiki's golden gate."
+run = "uv run --group docs mkdocs build --strict"

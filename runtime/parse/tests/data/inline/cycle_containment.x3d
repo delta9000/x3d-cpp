@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Interchange" version="4.0"><head/><Scene>
+  <Transform DEF="A">
+    <Transform USE="A"/>
+  </Transform>
+</Scene></X3D>
