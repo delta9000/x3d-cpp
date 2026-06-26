@@ -129,7 +129,7 @@ Neither tool has a networked test in the test suite; both are manually smoked af
 
 ## Planned: project_rag (third pillar)
 
-A third RAG pillar is planned but not yet built: `project_rag` would index the project's own knowledge corpus — dated specs (`docs/superpowers/specs/`), plans, BACKLOG.md, conformance findings (`docs/conformance/findings.yaml`), and this wiki. The intended use is retrieval over the project's own accumulated design decisions and historical context, complementing `spec_rag` (ISO prose) and `code_rag` (C++ implementation). No timeline is committed.
+A third RAG pillar is planned but not yet built: `project_rag` would index the project's own knowledge corpus — dated specs (`docs/superpowers/specs/`), plans, the deprecated `BACKLOG.md`, conformance findings (`docs/conformance/findings.yaml`), and this wiki. The intended use is retrieval over the project's own accumulated design decisions and historical context, complementing `spec_rag` (ISO prose) and `code_rag` (C++ implementation). No timeline is committed.
 
 ---
 

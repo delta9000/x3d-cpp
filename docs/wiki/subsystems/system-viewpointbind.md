@@ -220,6 +220,6 @@ control), `test_pop_animates_over_transition_time`.
   `position`/`orientation` fields must not be mutated by navigation (BIND-01).
   §7.2.2 — general bindable node protocol (set_bind TRUE/FALSE, LIFO stack,
   isBound, bindTime on every transition).
-- `docs/superpowers/BACKLOG.md` — CONF-VIEWNAV Phase 2 conformance findings
+- `docs/conformance/findings.yaml` — CONF-VIEWNAV Phase 2 conformance findings
   BIND-01..BIND-08 (the finding set that drove the implementation split into
   BindingStack / BindingSystem / ViewpointBindSystem / ViewpointOffset).

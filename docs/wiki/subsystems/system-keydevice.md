@@ -122,4 +122,4 @@ public:
 - [Architecture](../architecture.md)
 - ISO/IEC 19775-1 §21 "Key device sensor component" — specifies `KeySensor` (§21.4.1), `StringSensor` (§21.4.2), action-key values (Table 21.2), and `X3DKeyDeviceSensorNode` abstract type.
 - ISO/IEC 19775-1 §4.4.8.3 — one event per field per timestamp rule (the basis for last-wins coalescing in `driveKeySensor`/`driveStringSensor`).
-- Backlog / campaign wave-4 context: `docs/superpowers/BACKLOG.md`
+- Backlog / campaign wave-4 context: `docs/superpowers/BACKLOG.md` (deprecated, historical)

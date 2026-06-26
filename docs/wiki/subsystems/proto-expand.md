@@ -128,4 +128,4 @@ Run the full proto suite: `ctest --preset dev -R "proto|externproto|protoinstanc
 - [Routes subsystem](../subsystems/routes.md) — how `resolvedProtoRoutes` integrates with the event graph
 - [Execution context subsystem](../subsystems/execution-context.md) — `X3DSceneBridge` consults `protoRedirects` when resolving external ROUTEs targeting proto instances
 - Normative reference: ISO/IEC 19775-1, §4.4 (PROTO semantics), Table 4.4 (IS access-type constraints) — cited throughout `runtime/X3DProtoExpand.hpp` inline comments
-- AUD-B round-trip fix (commit `8b888ee`): `ProtoInstance::expanded` flag + `Scene::expandedSources` writer redirect — see `docs/superpowers/BACKLOG.md`
+- AUD-B round-trip fix (commit `8b888ee`): `ProtoInstance::expanded` flag + `Scene::expandedSources` writer redirect — see `docs/superpowers/BACKLOG.md` (deprecated, historical)

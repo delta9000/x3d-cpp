@@ -192,4 +192,4 @@ The `tick(now)` implementation enforces two spec requirements:
 - [Script / SAI subsystem](../subsystems/system-script-sai.md)
 - Spec: `docs/superpowers/specs/2026-06-20-project-wiki-design.md`
 - ISO 19775-1 §4.4.8.3 (event model, per-tick evaluation order) and §29.2.4 (Script `eventsProcessed` timing) are the normative grounding for the tick loop and post-cascade hook ordering.
-- BACKLOG items: M2C-3 (writeField dirty seam), M2.5 (input seam), M2D (keyboard + nav), CONF-VIEWNAV (viewMatrix formula), RTC-5/RTC-6 (timestamp cap + quiescence loop) — all closed; see `docs/superpowers/BACKLOG.md`.
+- BACKLOG items: M2C-3 (writeField dirty seam), M2.5 (input seam), M2D (keyboard + nav), CONF-VIEWNAV (viewMatrix formula), RTC-5/RTC-6 (timestamp cap + quiescence loop) — all closed; see `docs/superpowers/BACKLOG.md` (deprecated, historical).

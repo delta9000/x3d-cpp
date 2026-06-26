@@ -172,7 +172,7 @@ ctest --test-dir build-font --output-on-failure -R x3d_text
 
 - Spec: ISO/IEC 19775-1:2023 §15 (Text component) — `§15.2.1.2` (solid=false, Z=0 plane), `§15.2.2.3` (direction and justification algorithm), `§15.4.1` (FontStyle: size, spacing, family, style, justify), `§15.4.2` (Text: string, length, maxExtent, textBounds, lineBounds, origin output fields).
 - Design spec: `docs/superpowers/specs/2026-06-16-v1-closure-roadmap-design.md` — T-TEXT track (§§ T-TEXT-1, T-TEXT-2, T-TEXT-3); all three tasks are CLOSED.
-- BACKLOG closure rows: `docs/superpowers/BACKLOG.md` § "T-TEXT — Text rendered via font-metrics seam" (T-TEXT-1..3 CLOSED; T-TEXT-D1 bidi/complex shaping and T-TEXT-D2 exact-bounds revisit remain OPEN as named deferrals).
+- BACKLOG closure rows: `docs/superpowers/BACKLOG.md` (deprecated, historical) § "T-TEXT — Text rendered via font-metrics seam" (T-TEXT-1..3 CLOSED; T-TEXT-D1 bidi/complex shaping and T-TEXT-D2 exact-bounds revisit remain OPEN as named deferrals).
 - [Extraction Pipeline](../subsystems/extract.md) — the parent extraction pipeline (`SceneExtractor`, `MeshBuilder`) that owns the dispatch hook wiring `Text` into this subsystem.
 - [Texture Extraction](../subsystems/extract-textures.md) — the parallel seam for texture/material extraction; shares the `MeshBuildOptions` struct and the same `SceneExtractor` dispatch pattern.
 - [Generated Bindings](../subsystems/generated-bindings.md) — source of the `Text` and `FontStyle` node types and their reflection descriptors consumed by the integration layer.

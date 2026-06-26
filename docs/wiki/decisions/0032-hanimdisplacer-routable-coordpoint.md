@@ -5,7 +5,7 @@ tags: [adr, hanim, displacer, events, headless, conformance]
 updated: 2026-06-25
 related:
   - ../architecture.md
-  - ../subsystems/hanim.md
+  - ../subsystems/event-cascade.md
   - ../../conformance/findings.yaml
 ---
 

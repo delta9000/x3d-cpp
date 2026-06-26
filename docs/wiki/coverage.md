@@ -25,7 +25,7 @@ Each row carries a stable slug so Waves 2–3 fill it deterministically:
 
 The Wave-1 vertical slice marks three rows `covered`: the [CLI Suite subsystem](subsystems/cli-suite.md), [ADR-0001 Ext Firewall](decisions/0001-ext-firewall.md), and the [Gate System guide](guides/gate-system.md). Everything else is `planned`.
 
-This manifest is derived from the directory structure under `runtime/`, `src/x3d_cpp_gen/`, and `tools/`; from the dated specs in `docs/superpowers/specs/`; from `docs/superpowers/BACKLOG.md`; and from the project auto-memory. The Wave-3 completeness critic re-derives it to catch anything new.
+This manifest is derived from the directory structure under `runtime/`, `src/x3d_cpp_gen/`, and `tools/`; from the dated specs in `docs/superpowers/specs/`; and from the project auto-memory. The Wave-3 completeness critic re-derives it to catch anything new.
 
 ---
 
@@ -79,7 +79,7 @@ Every top-level functional area gets one page. The canonical list follows the ar
 
 ## 2. Decisions (ADRs)
 
-One ADR per binding decision. Numbered sequentially; the slug is a short topic name. Harvested from the project auto-memory (decisions / modernization / build / cli-suite files), the dated specs, the BACKLOG, and notable commits.
+One ADR per binding decision. Numbered sequentially; the slug is a short topic name. Harvested from the project auto-memory (decisions / modernization / build / cli-suite files), the dated specs, and notable commits.
 
 | Status | Page slug | Decision | Grounding source |
 |---|---|---|---|

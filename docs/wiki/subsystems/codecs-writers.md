@@ -169,7 +169,7 @@ Run the codec test suite with:
 ctest --preset dev -R "x3d_(codec|vrml|proto|enum|fval|xml_proto|xml_script|script_cdata|nested_proto|initializeonly)" --output-on-failure
 ```
 
-Golden-file locks for the codec writers are part of the per-milestone byte-identical assertions tracked in the project BACKLOG (`docs/superpowers/BACKLOG.md`). The conformance audit tool (`tools/corpus_audit.{hpp,cpp}`) exercises the full write→reparse cycle over the 17,719-file conformance archive as `x3d_corpus_audit` / `x3d_corpus_audit_smoke` (ctest targets in `tools/`). The `x3d_codec_roundtrip_audit` target in `runtime/codecs/tests/` is a separate, smaller differential audit over a sample corpus.
+Golden-file locks for the codec writers are tracked as per-milestone byte-identical assertions (historically in the deprecated `docs/superpowers/BACKLOG.md`). The conformance audit tool (`tools/corpus_audit.{hpp,cpp}`) exercises the full write→reparse cycle over the 17,719-file conformance archive as `x3d_corpus_audit` / `x3d_corpus_audit_smoke` (ctest targets in `tools/`). The `x3d_codec_roundtrip_audit` target in `runtime/codecs/tests/` is a separate, smaller differential audit over a sample corpus.
 
 ## Related specs and ADRs
 

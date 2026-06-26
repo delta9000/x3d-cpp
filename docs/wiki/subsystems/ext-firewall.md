@@ -121,4 +121,4 @@ All ext tests are registered inside the `if(X3D_CPP_BUILD_EXT)` block in `CMakeL
 - [Extract subsystem](extract.md) — the extraction pipeline that calls the `externalGeometryResolver` seam
 - Dated design spec: `docs/superpowers/specs/2026-06-19-binary-geometry-extension-design.md` — consolidated design; cites ISO 19775-1 §4.4.5.1 and the EXTERNPROTO extension point
 - Dated spec: `docs/superpowers/specs/2026-06-18-binary-mesh-texture-abstractions.md` — earlier abstraction design that preceded the firewall split
-- Ingestion roadmap memory: `docs/superpowers/BACKLOG.md` — deferred items including the portable `.x3d` fallback baker (second slot in the EXTERNPROTO url list) and future codecs (PLY, OBJ single-mesh, glTF per-mesh)
+- Ingestion roadmap: the [GitHub Project](https://github.com/users/delta9000/projects/2) — deferred items including the portable `.x3d` fallback baker (second slot in the EXTERNPROTO url list) and future codecs (PLY, OBJ single-mesh, glTF per-mesh)

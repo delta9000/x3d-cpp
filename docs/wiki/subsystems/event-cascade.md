@@ -150,5 +150,5 @@ class EventCascade {
   semantics), §4.4.2.2 (inputOutput field aliases), §4.3.7 (SAI addRoute/deleteRoute)
 - ADR: [ADR-0009: sim snapshot-diff](../decisions/0009-sim-snapshot-diff.md) — why the single observer
   slot is reserved for dirty-tracking and the `x3d sim` tracer uses snapshot-diff
-- `docs/superpowers/BACKLOG.md` rows RTC-5 and RTC-6 — the conformance findings
+- `docs/superpowers/BACKLOG.md` (deprecated, historical) rows RTC-5 and RTC-6 — the conformance findings
   that drove the per-field cap and the re-evaluation loop

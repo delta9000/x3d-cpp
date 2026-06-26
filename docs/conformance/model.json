@@ -7772,7 +7772,7 @@
       "interfaces": [
         "X3DChaserNode"
       ],
-      "note": "ChaserSystem ships as a re-basing single-transition lerp (reaches destination `duration` after the last set_destination); for non-overlapping use this is spec-equivalent. The literal FIR ring-buffer / overlapping-transition superposition (multiple set_destination events within one duration window accumulating via independent taps) is not implemented \u2014 deferred, see FOL-OVL in BACKLOG.md.",
+      "note": "ChaserSystem ships as a re-basing single-transition lerp (reaches destination `duration` after the last set_destination); for non-overlapping use this is spec-equivalent. The literal FIR ring-buffer / overlapping-transition superposition (multiple set_destination events within one duration window accumulating via independent taps) is not implemented \u2014 deferred (tracked as FOL-OVL).",
       "severity": "minor",
       "status": "deferred",
       "summary": "Chaser FIR ring buffer (time-stamped set_destination events over the duration window) unimplemented.",

@@ -197,4 +197,4 @@ The view generator reads `docs/conformance/findings.yaml` for JUDGMENTS and quer
 - Behavioral conformance campaign methodology: `docs/superpowers/specs/2026-06-18-conformance-gap-register.md`
 - Behavioral audit workflow (fan-out protocol, adversarial verify, skeptic protocol): `docs/superpowers/specs/2026-06-18-conformance-audit-workflow-design.md`
 - Conformance view design (facts/judgments split, view generator, model.json schema): `docs/superpowers/specs/2026-06-19-conformance-view-design.md`
-- Engineering deferrals and milestone tracking: `docs/superpowers/BACKLOG.md`
+- Engineering deferrals and milestone tracking: the [GitHub Project](https://github.com/users/delta9000/projects/2)

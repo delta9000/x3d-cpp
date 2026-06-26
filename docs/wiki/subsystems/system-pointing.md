@@ -176,4 +176,4 @@ Spec grounding (ISO/IEC 19775-1:2023):
 
 M2.5 input-seam design: `docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md`
 
-M2D interaction-layer design (drag sensors + NavigationSystem): committed alongside `runtime/events/drag/` (see `docs/superpowers/BACKLOG.md` M2D-1 / M2D-3 entries).
+M2D interaction-layer design (drag sensors + NavigationSystem): committed alongside `runtime/events/drag/` (see the deprecated, historical `docs/superpowers/BACKLOG.md` M2D-1 / M2D-3 entries).

@@ -221,4 +221,4 @@ The sensor families each have a dedicated test binary:
 - ISO/IEC 19775-1 §22.4.1 — `ProximitySensor` inside-box test and `position_changed`/`orientation_changed` semantics.
 - ISO/IEC 19775-1 §22.4.2 — `TransformSensor` targetObject-AABB-in-sensor-box test (sensor-local box; position/orientation emitted relative to `center`).
 - ISO/IEC 19775-1 §22.4.3 — `VisibilitySensor` visibility test.
-- `docs/superpowers/BACKLOG.md` — M2.5 (input seam + TouchSensor), M2D (drag sensors + KeyState), M2e (view-dependent sensors + LOD); all closed.
+- `docs/superpowers/BACKLOG.md` (deprecated, historical) — M2.5 (input seam + TouchSensor), M2D (drag sensors + KeyState), M2e (view-dependent sensors + LOD); all closed.

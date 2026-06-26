@@ -44,7 +44,7 @@ every phase; skip phases that genuinely don't apply.
 | **Implement** | parallel or sequential per unit | Author / create the artifacts (new files, edits) |
 | **Review** | parallel, adversarial | Per-unit adversarial check: build + ctest + golden-untouched |
 | **Fix** | sequential per issue | Address review findings; re-review bound ≤ 2 rounds |
-| **Verify / Gate** | single consolidating agent | Golden byte-identical + full ctest + BACKLOG |
+| **Verify / Gate** | single consolidating agent | Golden byte-identical + full ctest + conformance-gate |
 
 The **review gate is mandatory** before the fix phase. Skipping it and fixing forward from
 implementation output alone has historically let subtle errors through that ctest caught only
