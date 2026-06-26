@@ -178,7 +178,7 @@ const FieldTable &NavigationInfo::fields() const {
     });
 
     t.push_back(FieldInfo{
-        "transitionType", X3DFieldType::MFEnum, AccessType::InputOutput, "",
+        "transitionType", X3DFieldType::MFString, AccessType::InputOutput, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(
@@ -187,89 +187,25 @@ const FieldTable &NavigationInfo::fields() const {
 
         [](X3DNode &n, const std::any &v) {
           dynamic_cast<NavigationInfo &>(n).setTransitionType(
-              std::any_cast<std::vector<NavigationTransitionTypeValues>>(v));
+              std::any_cast<MFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          const auto &vec =
-              dynamic_cast<const NavigationInfo &>(n).getTransitionType();
-          std::string out;
-          for (std::size_t i = 0; i < vec.size(); ++i) {
-            if (i)
-              out += ' ';
-            out += to_string(vec[i]);
-          }
-          return out;
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          std::vector<NavigationTransitionTypeValues> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              NavigationTransitionTypeValues ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
-          }
-          dynamic_cast<NavigationInfo &>(n).setTransitionType(std::move(vec));
-        }
+        nullptr, nullptr
 
     });
 
     t.push_back(FieldInfo{
-        "type", X3DFieldType::MFEnum, AccessType::InputOutput, "",
+        "type", X3DFieldType::MFString, AccessType::InputOutput, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(dynamic_cast<const NavigationInfo &>(n).getType());
         },
 
         [](X3DNode &n, const std::any &v) {
-          dynamic_cast<NavigationInfo &>(n).setType(
-              std::any_cast<std::vector<NavigationTypeValues>>(v));
+          dynamic_cast<NavigationInfo &>(n).setType(std::any_cast<MFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          const auto &vec = dynamic_cast<const NavigationInfo &>(n).getType();
-          std::string out;
-          for (std::size_t i = 0; i < vec.size(); ++i) {
-            if (i)
-              out += ' ';
-            out += to_string(vec[i]);
-          }
-          return out;
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          std::vector<NavigationTypeValues> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              NavigationTypeValues ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
-          }
-          dynamic_cast<NavigationInfo &>(n).setType(std::move(vec));
-        }
+        nullptr, nullptr
 
     });
 

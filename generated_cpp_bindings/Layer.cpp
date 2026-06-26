@@ -73,7 +73,7 @@ const FieldTable &Layer::fields() const {
     });
 
     t.push_back(FieldInfo{
-        "objectType", X3DFieldType::MFEnum, AccessType::InputOutput, "",
+        "objectType", X3DFieldType::MFString, AccessType::InputOutput, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(
@@ -82,42 +82,10 @@ const FieldTable &Layer::fields() const {
 
         [](X3DNode &n, const std::any &v) {
           dynamic_cast<Layer &>(n).X3DLayerNode::setObjectType(
-              std::any_cast<std::vector<PickableObjectTypeValues>>(v));
+              std::any_cast<MFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          const auto &vec =
-              dynamic_cast<const Layer &>(n).X3DLayerNode::getObjectType();
-          std::string out;
-          for (std::size_t i = 0; i < vec.size(); ++i) {
-            if (i)
-              out += ' ';
-            out += to_string(vec[i]);
-          }
-          return out;
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          std::vector<PickableObjectTypeValues> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              PickableObjectTypeValues ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
-          }
-          dynamic_cast<Layer &>(n).X3DLayerNode::setObjectType(std::move(vec));
-        }
+        nullptr, nullptr
 
     });
 

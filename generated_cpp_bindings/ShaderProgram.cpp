@@ -148,7 +148,7 @@ const FieldTable &ShaderProgram::fields() const {
     });
 
     t.push_back(FieldInfo{
-        "type", X3DFieldType::SFEnum, AccessType::InitializeOnly, "",
+        "type", X3DFieldType::SFString, AccessType::InitializeOnly, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(dynamic_cast<const ShaderProgram &>(n).getType());
@@ -156,18 +156,10 @@ const FieldTable &ShaderProgram::fields() const {
 
         [](X3DNode &n, const std::any &v) {
           dynamic_cast<ShaderProgram &>(n).setTypeUnchecked(
-              std::any_cast<ShaderPartTypeValues>(v));
+              std::any_cast<SFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          return to_string(dynamic_cast<const ShaderProgram &>(n).getType());
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          ShaderPartTypeValues ev;
-          if (from_string(s, ev))
-            dynamic_cast<ShaderProgram &>(n).setTypeUnchecked(ev);
-        }
+        nullptr, nullptr
 
     });
 

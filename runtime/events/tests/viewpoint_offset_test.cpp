@@ -72,7 +72,7 @@ void test_navigation_preserves_authored() {
   auto box = createX3DNode("Box");
   auto vp = std::make_shared<Viewpoint>(); vp->setPosition(SFVec3f{0, 0, 10});
   auto nav = std::make_shared<NavigationInfo>();
-  nav->setType(std::vector<NavigationTypeValues>{NavigationTypeValues::EXAMINE});
+  nav->setType(std::vector<std::string>{"EXAMINE"});
   Scene scene; scene.addRootNode(box); scene.addRootNode(vp); scene.addRootNode(nav);
   X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
   ctx.addSystem(std::make_shared<NavigationSystem>());
@@ -101,7 +101,7 @@ void test_navigation_preserves_authored() {
 void test_ortho_navigates() {
   auto vp = std::make_shared<OrthoViewpoint>(); vp->setPosition(SFVec3f{0, 0, 10});
   auto nav = std::make_shared<NavigationInfo>();
-  nav->setType(std::vector<NavigationTypeValues>{NavigationTypeValues::EXAMINE});
+  nav->setType(std::vector<std::string>{"EXAMINE"});
   Scene scene; scene.addRootNode(vp); scene.addRootNode(nav);
   X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
   ctx.addSystem(std::make_shared<NavigationSystem>());

@@ -45,10 +45,10 @@ public:
 
   /**
    * @brief Get the default value for forceOutput
-   * @return std::vector<ForceOutputValues> The default value
+   * @return MFString The default value
    */
-  static std::vector<ForceOutputValues> getDefaultForceOutput() {
-    return std::vector<ForceOutputValues>{ForceOutputValues::NONE};
+  static MFString getDefaultForceOutput() {
+    return std::vector<std::string>{"NONE"};
   }
 
   /**
@@ -126,24 +126,18 @@ public:
   /**
    * @brief Gets the value of forceOutput. AccessType: inputOutput
    * @details
-   * @return std::vector<ForceOutputValues> The current value of forceOutput.
+   * @return MFString The current value of forceOutput.
    */
-  std::vector<ForceOutputValues> getForceOutput() const { return _forceOutput; }
+  MFString getForceOutput() const { return _forceOutput; }
 
   /**
    * @brief Sets the value of forceOutput. AccessType: inputOutput
    * @details
    * @param value The new value for forceOutput.
    */
-  void setForceOutput(const std::vector<ForceOutputValues> &value) {
+  void setForceOutput(const MFString &value) { _forceOutput = value; }
 
-    _forceOutput = value;
-  }
-
-  void setForceOutput(std::vector<ForceOutputValues> &&value) {
-
-    _forceOutput = std::move(value);
-  }
+  void setForceOutput(MFString &&value) { _forceOutput = std::move(value); }
 
   /**
    * @brief The X3D type name of this node (e.g. "X3DRigidJointNode").
@@ -189,8 +183,7 @@ private:
    * @brief Member variable for forceOutput.
    */
 
-  std::vector<ForceOutputValues> _forceOutput{
-      std::vector<ForceOutputValues>{ForceOutputValues::NONE}};
+  MFString _forceOutput{std::vector<std::string>{"NONE"}};
 };
 
 #endif // X3DRIGIDJOINTNODE_HPP

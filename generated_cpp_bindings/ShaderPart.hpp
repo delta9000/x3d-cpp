@@ -34,11 +34,9 @@ public:
 
   /**
    * @brief Get the default value for type
-   * @return ShaderPartTypeValues The default value
+   * @return SFString The default value
    */
-  static ShaderPartTypeValues getDefaultType() {
-    return ShaderPartTypeValues::VERTEX;
-  }
+  static SFString getDefaultType() { return "VERTEX"; }
 
   /**
    * @brief Get the container field type for this node
@@ -90,15 +88,15 @@ public:
    * @brief Gets the value of type. AccessType: initializeOnly
    * @details type indicates whether this ShaderProgram is a vertex or fragment
    * (pixel) shader.
-   * @return ShaderPartTypeValues The current value of type.
+   * @return SFString The current value of type.
    */
-  ShaderPartTypeValues getType() const { return _type; }
+  SFString getType() const { return _type; }
   /**
    * @brief Data-layer write of type (reader/init ingest path).
    * @details type is initializeOnly: author-settable at parse
    *          time but not via runtime events. No public setType().
    */
-  void setTypeUnchecked(const ShaderPartTypeValues &value) { _type = value; }
+  void setTypeUnchecked(const SFString &value) { _type = value; }
 
   /**
    * @brief The X3D type name of this node (e.g. "ShaderPart").
@@ -140,7 +138,7 @@ private:
    * @brief Member variable for type.
    */
 
-  ShaderPartTypeValues _type{ShaderPartTypeValues::VERTEX};
+  SFString _type{"VERTEX"};
 };
 
 #endif // SHADERPART_HPP

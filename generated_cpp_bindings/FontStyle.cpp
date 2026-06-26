@@ -29,49 +29,17 @@ const FieldTable &FontStyle::fields() const {
     });
 
     t.push_back(FieldInfo{
-        "family", X3DFieldType::MFEnum, AccessType::InputOutput, "",
+        "family", X3DFieldType::MFString, AccessType::InputOutput, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(dynamic_cast<const FontStyle &>(n).getFamily());
         },
 
         [](X3DNode &n, const std::any &v) {
-          dynamic_cast<FontStyle &>(n).setFamily(
-              std::any_cast<std::vector<FontFamilyValues>>(v));
+          dynamic_cast<FontStyle &>(n).setFamily(std::any_cast<MFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          const auto &vec = dynamic_cast<const FontStyle &>(n).getFamily();
-          std::string out;
-          for (std::size_t i = 0; i < vec.size(); ++i) {
-            if (i)
-              out += ' ';
-            out += to_string(vec[i]);
-          }
-          return out;
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          std::vector<FontFamilyValues> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              FontFamilyValues ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
-          }
-          dynamic_cast<FontStyle &>(n).setFamily(std::move(vec));
-        }
+        nullptr, nullptr
 
     });
 

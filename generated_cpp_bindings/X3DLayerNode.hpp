@@ -35,10 +35,10 @@ public:
 
   /**
    * @brief Get the default value for objectType
-   * @return std::vector<PickableObjectTypeValues> The default value
+   * @return MFString The default value
    */
-  static std::vector<PickableObjectTypeValues> getDefaultObjectType() {
-    return std::vector<PickableObjectTypeValues>{PickableObjectTypeValues::ALL};
+  static MFString getDefaultObjectType() {
+    return std::vector<std::string>{"ALL"};
   }
 
   /**
@@ -82,27 +82,18 @@ public:
   /**
    * @brief Gets the value of objectType. AccessType: inputOutput
    * @details
-   * @return std::vector<PickableObjectTypeValues> The current value of
-   * objectType.
+   * @return MFString The current value of objectType.
    */
-  std::vector<PickableObjectTypeValues> getObjectType() const {
-    return _objectType;
-  }
+  MFString getObjectType() const { return _objectType; }
 
   /**
    * @brief Sets the value of objectType. AccessType: inputOutput
    * @details
    * @param value The new value for objectType.
    */
-  void setObjectType(const std::vector<PickableObjectTypeValues> &value) {
+  void setObjectType(const MFString &value) { _objectType = value; }
 
-    _objectType = value;
-  }
-
-  void setObjectType(std::vector<PickableObjectTypeValues> &&value) {
-
-    _objectType = std::move(value);
-  }
+  void setObjectType(MFString &&value) { _objectType = std::move(value); }
 
   /**
    * @brief Gets the value of pickable. AccessType: inputOutput
@@ -190,8 +181,7 @@ private:
    * @brief Member variable for objectType.
    */
 
-  std::vector<PickableObjectTypeValues> _objectType{
-      std::vector<PickableObjectTypeValues>{PickableObjectTypeValues::ALL}};
+  MFString _objectType{std::vector<std::string>{"ALL"}};
 
   /**
    * @brief Member variable for pickable.

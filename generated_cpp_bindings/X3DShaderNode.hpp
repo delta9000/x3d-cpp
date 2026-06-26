@@ -114,17 +114,15 @@ public:
   /**
    * @brief Gets the value of language. AccessType: initializeOnly
    * @details
-   * @return ShaderLanguageValues The current value of language.
+   * @return SFString The current value of language.
    */
-  ShaderLanguageValues getLanguage() const { return _language; }
+  SFString getLanguage() const { return _language; }
   /**
    * @brief Data-layer write of language (reader/init ingest path).
    * @details language is initializeOnly: author-settable at parse
    *          time but not via runtime events. No public setLanguage().
    */
-  void setLanguageUnchecked(const ShaderLanguageValues &value) {
-    _language = value;
-  }
+  void setLanguageUnchecked(const SFString &value) { _language = value; }
 
   /**
    * @brief The X3D type name of this node (e.g. "X3DShaderNode").
@@ -175,7 +173,7 @@ private:
    * @brief Member variable for language.
    */
 
-  ShaderLanguageValues _language{};
+  SFString _language{};
 };
 
 #endif // X3DSHADERNODE_HPP

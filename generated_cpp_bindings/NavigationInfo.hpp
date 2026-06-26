@@ -64,21 +64,18 @@ public:
 
   /**
    * @brief Get the default value for transitionType
-   * @return std::vector<NavigationTransitionTypeValues> The default value
+   * @return MFString The default value
    */
-  static std::vector<NavigationTransitionTypeValues>
-  getDefaultTransitionType() {
-    return std::vector<NavigationTransitionTypeValues>{
-        NavigationTransitionTypeValues::LINEAR};
+  static MFString getDefaultTransitionType() {
+    return std::vector<std::string>{"LINEAR"};
   }
 
   /**
    * @brief Get the default value for type
-   * @return std::vector<NavigationTypeValues> The default value
+   * @return MFString The default value
    */
-  static std::vector<NavigationTypeValues> getDefaultType() {
-    return std::vector<NavigationTypeValues>{NavigationTypeValues::EXAMINE,
-                                             NavigationTypeValues::ANY};
+  static MFString getDefaultType() {
+    return std::vector<std::string>{"EXAMINE", "ANY"};
   }
 
   /**
@@ -254,25 +251,18 @@ public:
   /**
    * @brief Gets the value of transitionType. AccessType: inputOutput
    * @details Camera transition between viewpoints.
-   * @return std::vector<NavigationTransitionTypeValues> The current value of
-   * transitionType.
+   * @return MFString The current value of transitionType.
    */
-  std::vector<NavigationTransitionTypeValues> getTransitionType() const {
-    return _transitionType;
-  }
+  MFString getTransitionType() const { return _transitionType; }
 
   /**
    * @brief Sets the value of transitionType. AccessType: inputOutput
    * @details Camera transition between viewpoints.
    * @param value The new value for transitionType.
    */
-  void
-  setTransitionType(const std::vector<NavigationTransitionTypeValues> &value) {
+  void setTransitionType(const MFString &value) { _transitionType = value; }
 
-    _transitionType = value;
-  }
-
-  void setTransitionType(std::vector<NavigationTransitionTypeValues> &&value) {
+  void setTransitionType(MFString &&value) {
 
     _transitionType = std::move(value);
   }
@@ -281,9 +271,9 @@ public:
    * @brief Gets the value of type. AccessType: inputOutput
    * @details Enter one or more quoted SFString values: "EXAMINE" "WALK" "FLY"
    * "LOOKAT" "EXPLORE" "ANY" "NONE".
-   * @return std::vector<NavigationTypeValues> The current value of type.
+   * @return MFString The current value of type.
    */
-  std::vector<NavigationTypeValues> getType() const { return _type; }
+  MFString getType() const { return _type; }
 
   /**
    * @brief Sets the value of type. AccessType: inputOutput
@@ -291,15 +281,9 @@ public:
    * "LOOKAT" "EXPLORE" "ANY" "NONE".
    * @param value The new value for type.
    */
-  void setType(const std::vector<NavigationTypeValues> &value) {
+  void setType(const MFString &value) { _type = value; }
 
-    _type = value;
-  }
-
-  void setType(std::vector<NavigationTypeValues> &&value) {
-
-    _type = std::move(value);
-  }
+  void setType(MFString &&value) { _type = std::move(value); }
 
   /**
    * @brief Gets the value of visibilityLimit. AccessType: inputOutput
@@ -462,16 +446,13 @@ private:
    * @brief Member variable for transitionType.
    */
 
-  std::vector<NavigationTransitionTypeValues> _transitionType{
-      std::vector<NavigationTransitionTypeValues>{
-          NavigationTransitionTypeValues::LINEAR}};
+  MFString _transitionType{std::vector<std::string>{"LINEAR"}};
 
   /**
    * @brief Member variable for type.
    */
 
-  std::vector<NavigationTypeValues> _type{std::vector<NavigationTypeValues>{
-      NavigationTypeValues::EXAMINE, NavigationTypeValues::ANY}};
+  MFString _type{std::vector<std::string>{"EXAMINE", "ANY"}};
 
   /**
    * @brief Member variable for visibilityLimit.

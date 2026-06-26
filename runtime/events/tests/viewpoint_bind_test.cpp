@@ -156,7 +156,7 @@ void test_bind_transition() {
 void test_per_viewpoint_navinfo_teleport() {
   auto nav0 = std::make_shared<NavigationInfo>(); nav0->setTransitionTime(5.0); // bound, slow LINEAR
   auto niB = std::make_shared<NavigationInfo>();
-  niB->setTransitionType(std::vector<NavigationTransitionTypeValues>{NavigationTransitionTypeValues::TELEPORT});
+  niB->setTransitionType(std::vector<std::string>{"TELEPORT"});
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 110});
   B->setNavigationInfo(std::static_pointer_cast<X3DNode>(niB));

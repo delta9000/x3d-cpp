@@ -287,9 +287,9 @@ public:
    * @brief Gets the value of name. AccessType: inputOutput
    * @details Unique name attribute must be defined so that HAnimJoint node can
    * be identified at run time for animation purposes.
-   * @return HanimJointNameValues The current value of name.
+   * @return SFString The current value of name.
    */
-  HanimJointNameValues getName() const { return _name; }
+  SFString getName() const { return _name; }
 
   /**
    * @brief Sets the value of name. AccessType: inputOutput
@@ -297,7 +297,9 @@ public:
    * be identified at run time for animation purposes.
    * @param value The new value for name.
    */
-  void setName(const HanimJointNameValues &value) { _name = value; }
+  void setName(const SFString &value) { _name = value; }
+
+  void setName(SFString &&value) { _name = std::move(value); }
 
   /**
    * @brief Acceptable node types for the removeChildren field.
@@ -639,7 +641,7 @@ private:
    * @brief Member variable for name.
    */
 
-  HanimJointNameValues _name{};
+  SFString _name{};
 
   /**
    * @brief Registered event handler for removeChildren (inputOnly); empty until

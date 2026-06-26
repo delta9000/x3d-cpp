@@ -143,7 +143,7 @@ const FieldTable &PackagedShader::fields() const {
     });
 
     t.push_back(FieldInfo{
-        "language", X3DFieldType::SFEnum, AccessType::InitializeOnly, "",
+        "language", X3DFieldType::SFString, AccessType::InitializeOnly, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(dynamic_cast<const PackagedShader &>(n)
@@ -152,20 +152,10 @@ const FieldTable &PackagedShader::fields() const {
 
         [](X3DNode &n, const std::any &v) {
           dynamic_cast<PackagedShader &>(n).X3DShaderNode::setLanguageUnchecked(
-              std::any_cast<ShaderLanguageValues>(v));
+              std::any_cast<SFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          return to_string(dynamic_cast<const PackagedShader &>(n)
-                               .X3DShaderNode::getLanguage());
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          ShaderLanguageValues ev;
-          if (from_string(s, ev))
-            dynamic_cast<PackagedShader &>(n)
-                .X3DShaderNode::setLanguageUnchecked(ev);
-        }
+        nullptr, nullptr
 
     });
 

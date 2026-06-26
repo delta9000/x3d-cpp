@@ -99,7 +99,7 @@ const FieldTable &ShadedVolumeStyle::fields() const {
     });
 
     t.push_back(FieldInfo{
-        "phaseFunction", X3DFieldType::SFEnum, AccessType::InitializeOnly, "",
+        "phaseFunction", X3DFieldType::SFString, AccessType::InitializeOnly, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(
@@ -108,19 +108,10 @@ const FieldTable &ShadedVolumeStyle::fields() const {
 
         [](X3DNode &n, const std::any &v) {
           dynamic_cast<ShadedVolumeStyle &>(n).setPhaseFunctionUnchecked(
-              std::any_cast<PhaseFunctionValues>(v));
+              std::any_cast<SFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          return to_string(
-              dynamic_cast<const ShadedVolumeStyle &>(n).getPhaseFunction());
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          PhaseFunctionValues ev;
-          if (from_string(s, ev))
-            dynamic_cast<ShadedVolumeStyle &>(n).setPhaseFunctionUnchecked(ev);
-        }
+        nullptr, nullptr
 
     });
 

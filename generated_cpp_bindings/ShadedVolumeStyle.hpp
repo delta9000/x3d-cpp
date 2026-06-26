@@ -51,11 +51,9 @@ public:
 
   /**
    * @brief Get the default value for phaseFunction
-   * @return PhaseFunctionValues The default value
+   * @return SFString The default value
    */
-  static PhaseFunctionValues getDefaultPhaseFunction() {
-    return PhaseFunctionValues::HENYEY_GREENSTEIN;
-  }
+  static SFString getDefaultPhaseFunction() { return "Henyey-Greenstein"; }
 
   /**
    * @brief Get the default value for shadows
@@ -141,15 +139,15 @@ public:
    * @brief Gets the value of phaseFunction. AccessType: initializeOnly
    * @details define scattering model for implementations using global
    * illumination (NONE or Henyey-Greenstein phase function).
-   * @return PhaseFunctionValues The current value of phaseFunction.
+   * @return SFString The current value of phaseFunction.
    */
-  PhaseFunctionValues getPhaseFunction() const { return _phaseFunction; }
+  SFString getPhaseFunction() const { return _phaseFunction; }
   /**
    * @brief Data-layer write of phaseFunction (reader/init ingest path).
    * @details phaseFunction is initializeOnly: author-settable at parse
    *          time but not via runtime events. No public setPhaseFunction().
    */
-  void setPhaseFunctionUnchecked(const PhaseFunctionValues &value) {
+  void setPhaseFunctionUnchecked(const SFString &value) {
     _phaseFunction = value;
   }
 
@@ -241,7 +239,7 @@ private:
    * @brief Member variable for phaseFunction.
    */
 
-  PhaseFunctionValues _phaseFunction{PhaseFunctionValues::HENYEY_GREENSTEIN};
+  SFString _phaseFunction{"Henyey-Greenstein"};
 
   /**
    * @brief Member variable for shadows.

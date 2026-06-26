@@ -68,11 +68,9 @@ public:
 
   /**
    * @brief Get the default value for geometryType
-   * @return ParticleSystemGeometryTypeValues The default value
+   * @return SFString The default value
    */
-  static ParticleSystemGeometryTypeValues getDefaultGeometryType() {
-    return ParticleSystemGeometryTypeValues::QUAD;
-  }
+  static SFString getDefaultGeometryType() { return "QUAD"; }
 
   /**
    * @brief Get the default value for lifetimeVariation
@@ -253,17 +251,15 @@ public:
   /**
    * @brief Gets the value of geometryType. AccessType: initializeOnly
    * @details specifies type of geometry used to represent individual particles.
-   * @return ParticleSystemGeometryTypeValues The current value of geometryType.
+   * @return SFString The current value of geometryType.
    */
-  ParticleSystemGeometryTypeValues getGeometryType() const {
-    return _geometryType;
-  }
+  SFString getGeometryType() const { return _geometryType; }
   /**
    * @brief Data-layer write of geometryType (reader/init ingest path).
    * @details geometryType is initializeOnly: author-settable at parse
    *          time but not via runtime events. No public setGeometryType().
    */
-  void setGeometryTypeUnchecked(const ParticleSystemGeometryTypeValues &value) {
+  void setGeometryTypeUnchecked(const SFString &value) {
     _geometryType = value;
   }
 
@@ -615,8 +611,7 @@ private:
    * @brief Member variable for geometryType.
    */
 
-  ParticleSystemGeometryTypeValues _geometryType{
-      ParticleSystemGeometryTypeValues::QUAD};
+  SFString _geometryType{"QUAD"};
 
   /**
    * @brief Member variable for isActive.

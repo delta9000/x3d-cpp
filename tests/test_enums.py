@@ -50,6 +50,25 @@ def test_open_vocabulary_is_not_an_enum():
     assert defs == {}
 
 
+def test_unbounded_appinfo_is_not_an_enum():
+    # Regression: the UOM marks open vocabularies with appinfo that contains the
+    # word "unbounded" — which itself contains the substring "bounded". A naive
+    # `"bounded" in appinfo` check misclassifies the open vocabulary as closed and
+    # emits a value-dropping SFEnum (this dropped HAnimJoint.name on round-trip,
+    # since the closed enum elided its default and rejected out-of-list names).
+    xml = """
+    <SimpleTypes>
+      <SimpleType name="hanimJointNameValues" baseType="xs:NMTOKEN"
+                  appinfo="CAESAR joint names for HAnimJoint nodes. This list is unbounded, additional enumeration values are allowed.">
+        <enumeration value="humanoid_root"/>
+        <enumeration value="sacroiliac"/>
+      </SimpleType>
+    </SimpleTypes>
+    """
+    defs = parse_enum_defs(_root(xml))
+    assert defs == {}, "an unbounded vocabulary must not become a closed enum"
+
+
 def test_sanitize_enum_members():
     assert _sanitize_enum_member('"BOUNCE"') == "BOUNCE"
     assert _sanitize_enum_member("UTF-8") == "UTF_8"

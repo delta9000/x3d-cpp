@@ -86,7 +86,7 @@ struct World {
   X3DExecutionContext ctx;
 };
 
-std::shared_ptr<World> makeWorld(std::vector<NavigationTypeValues> types,
+std::shared_ptr<World> makeWorld(std::vector<std::string> types,
                                  SFVec3f vpPos = {0,0,10}) {
   auto w = std::make_shared<World>();
   w->box = createX3DNode("Box"); setF(w->box, "size", std::any(SFVec3f{2,2,2}));
@@ -111,7 +111,7 @@ std::shared_ptr<World> makeWorld(std::vector<NavigationTypeValues> types,
 TEST_CASE("navigation_test") {
   // --- (1) EXAMINE drag orbits about centerOfRotation ----------------------
   {
-    auto w = makeWorld({NavigationTypeValues::EXAMINE}, {0,0,10});
+    auto w = makeWorld({"EXAMINE"}, {0,0,10});
     auto *vp = vpOf(w->ctx);
     check(vp != nullptr, "examine: viewpoint bound");
     SFVec3f cor = vp->getCenterOfRotation(); // default (0,0,0)
@@ -144,7 +144,7 @@ TEST_CASE("navigation_test") {
 
   // --- (2) FLY forward key + drag, speed-scaled ----------------------------
   {
-    auto w = makeWorld({NavigationTypeValues::FLY}, {0,0,10});
+    auto w = makeWorld({"FLY"}, {0,0,10});
     auto *vp = vpOf(w->ctx);
     auto *nav = navOf(w->ctx);
     nav->setSpeed(2.0f);
@@ -172,7 +172,7 @@ TEST_CASE("navigation_test") {
     check(feq(vp->getPosition().z, 10.0f), "fly: authored position pristine (BIND-01)");
 
     // speed == 0 locks position.
-    auto w2 = makeWorld({NavigationTypeValues::FLY}, {0,0,10});
+    auto w2 = makeWorld({"FLY"}, {0,0,10});
     navOf(w2->ctx)->setSpeed(0.0f);
     SFVec3f q0 = camPos(w2->ctx);
     w2->ctx.setKey(NavigationSystem::kKeyForward, true);
@@ -184,7 +184,7 @@ TEST_CASE("navigation_test") {
 
   // --- (3) LOOKAT animates toward target bbox + transitionComplete ---------
   {
-    auto w = makeWorld({NavigationTypeValues::LOOKAT}, {0,0,10});
+    auto w = makeWorld({"LOOKAT"}, {0,0,10});
     auto *vp = vpOf(w->ctx);
     auto *nav = navOf(w->ctx);
     nav->setTransitionTime(1.0);
@@ -221,7 +221,7 @@ TEST_CASE("navigation_test") {
 
   // --- (4) NONE is inert ----------------------------------------------------
   {
-    auto w = makeWorld({NavigationTypeValues::NONE}, {0,0,10});
+    auto w = makeWorld({"NONE"}, {0,0,10});
     SFVec3f p0 = camPos(w->ctx);
     SFVec3f f0 = camFwd(w->ctx);
     w->ctx.setPointerPresent(true);
@@ -238,7 +238,7 @@ TEST_CASE("navigation_test") {
 
   // --- (5) Switching type switches behavior (ANY -> EXAMINE) ---------------
   {
-    auto w = makeWorld({NavigationTypeValues::ANY}, {0,0,10});
+    auto w = makeWorld({"ANY"}, {0,0,10});
     SFVec3f p0 = camPos(w->ctx);
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,10},{0,0,-1}});
@@ -268,7 +268,7 @@ TEST_CASE("navigation_test") {
     setF(vp, "position", std::any(SFVec3f{0, 0, 10}));
     setF(vp, "fieldOfView", std::any(SFFloat{0.7853982f})); // pi/4
     auto nav = createX3DNode("NavigationInfo");
-    dynamic_cast<NavigationInfo &>(*nav).setType({NavigationTypeValues::LOOKAT});
+    dynamic_cast<NavigationInfo &>(*nav).setType({"LOOKAT"});
     dynamic_cast<NavigationInfo &>(*nav).setTransitionTime(0.0); // snap
 
     Scene scene;
@@ -312,7 +312,7 @@ TEST_CASE("navigation_test") {
   // right vector developed a y-component (roll). Fix: decompose to yaw/pitch
   // scalars, reconstruct q = Rpitch * Ryaw each step — right stays horizontal.
   {
-    auto w = makeWorld({NavigationTypeValues::FLY}, {0,0,10});
+    auto w = makeWorld({"FLY"}, {0,0,10});
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
     w->ctx.setPointerButton(true);
@@ -329,7 +329,7 @@ TEST_CASE("navigation_test") {
 
   // --- (8) FLY: no roll after combined yaw+pitch drag (NAV-FLY-ROLL) -----------
   {
-    auto w = makeWorld({NavigationTypeValues::FLY}, {0,0,10});
+    auto w = makeWorld({"FLY"}, {0,0,10});
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
     w->ctx.setPointerButton(true);
@@ -348,7 +348,7 @@ TEST_CASE("navigation_test") {
 
   // --- (9) FLY: pitch clamps at +/-90 deg, no flip (NAV-FLY-ROLL) -------------
   {
-    auto w = makeWorld({NavigationTypeValues::FLY}, {0,0,10});
+    auto w = makeWorld({"FLY"}, {0,0,10});
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
     w->ctx.setPointerButton(true);
@@ -369,7 +369,7 @@ TEST_CASE("navigation_test") {
   // Switching FLY -> NONE -> FLY should re-extract yaw/pitch from the current
   // effective orientation, not snap back to zero or carry stale scalars.
   {
-    auto w = makeWorld({NavigationTypeValues::FLY}, {0,0,10});
+    auto w = makeWorld({"FLY"}, {0,0,10});
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
     w->ctx.setPointerButton(true);
@@ -378,9 +378,9 @@ TEST_CASE("navigation_test") {
     SFVec3f f1 = camFwd(w->ctx);
 
     // Switch to NONE, then back to FLY.
-    navOf(w->ctx)->setType({NavigationTypeValues::NONE});
+    navOf(w->ctx)->setType({"NONE"});
     w->ctx.tick(0.016);
-    navOf(w->ctx)->setType({NavigationTypeValues::FLY});
+    navOf(w->ctx)->setType({"FLY"});
     w->ctx.tick(0.016);
 
     // Orientation should be preserved (re-decomposed, not reset).
@@ -412,7 +412,7 @@ TEST_CASE("navigation_geoviewpoint_examine") {
   setF(gvp, "position", std::any(SFVec3d{0,0,10}));          // double-precision
   setF(gvp, "centerOfRotation", std::any(SFVec3d{0,0,0}));
   auto nav = createX3DNode("NavigationInfo");
-  dynamic_cast<NavigationInfo &>(*nav).setType({NavigationTypeValues::EXAMINE});
+  dynamic_cast<NavigationInfo &>(*nav).setType({"EXAMINE"});
 
   Scene scene;
   scene.addRootNode(shape);

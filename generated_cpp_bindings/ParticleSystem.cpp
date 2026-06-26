@@ -197,7 +197,7 @@ const FieldTable &ParticleSystem::fields() const {
     });
 
     t.push_back(FieldInfo{
-        "geometryType", X3DFieldType::SFEnum, AccessType::InitializeOnly, "",
+        "geometryType", X3DFieldType::SFString, AccessType::InitializeOnly, "",
 
         [](const X3DNode &n) -> std::any {
           return std::any(
@@ -206,19 +206,10 @@ const FieldTable &ParticleSystem::fields() const {
 
         [](X3DNode &n, const std::any &v) {
           dynamic_cast<ParticleSystem &>(n).setGeometryTypeUnchecked(
-              std::any_cast<ParticleSystemGeometryTypeValues>(v));
+              std::any_cast<SFString>(v));
         },
 
-        [](const X3DNode &n) -> std::string {
-          return to_string(
-              dynamic_cast<const ParticleSystem &>(n).getGeometryType());
-        },
-
-        [](X3DNode &n, const std::string &s) {
-          ParticleSystemGeometryTypeValues ev;
-          if (from_string(s, ev))
-            dynamic_cast<ParticleSystem &>(n).setGeometryTypeUnchecked(ev);
-        }
+        nullptr, nullptr
 
     });
 
