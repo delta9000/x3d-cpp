@@ -118,6 +118,7 @@ nav:
       - "ADR-0024: Second TextureResolver Backend (wuffs) + Decode Swap-Test as Genericity Proof": decisions/0024-textureresolver-second-backend-swap-test.md
       - "ADR-0025: FontMetrics Second Backend + Swap-Test": decisions/0025-fontmetrics-second-backend-swap-test.md
       - "ADR-0026: Second AudioBackend (miniaudio) + Headless Swap-Test as Genericity Proof": decisions/0026-audiobackend-second-backend-swap-test.md
+      - "ADR-0027: Reference Lighting Evaluator (single normative §17 shading path)": decisions/0027-reference-lighting-evaluator.md
       - "ADR-0028: Shadow Visibility Seam (normative modulation + technique-defined visibility)": decisions/0028-shadow-visibility-seam.md
       - "ADR-0029: directOutput Writes Are Non-Routable (SAI 4.5.2 Governs)": decisions/0029-directoutput-non-routable.md
       - "ADR-0030: Validate fieldOfView as a Fixed 4-Tuple, Do Not Retype": decisions/0030-fieldofview-validate-not-retype.md

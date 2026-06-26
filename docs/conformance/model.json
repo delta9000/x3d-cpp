@@ -630,7 +630,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "inert",
           "behavioral": true,
           "clause": "7.2.2; 24.4.2",
           "exists": true,
@@ -692,7 +692,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "inert",
           "behavioral": true,
           "clause": "7.2.2; 24.4.5; 24.4.2, 24.4.4",
           "exists": true,
@@ -8481,17 +8481,19 @@
       "summary": "touchTime condition-3 (still-over-at-release pick re-resolution) not verified."
     },
     {
+      "behaves": "inert",
       "clause": "24.4.2",
       "id": "ENV-10",
       "nodes": [
         "Fog"
       ],
-      "note": "boundFog() declared at runtime/events/X3DExecutionContext.hpp:266 has zero production callers; ShaderUniformVocabulary.hpp:167-175 references a 'FogDesc' struct that does not exist; SceneExtractor has no fog readout. The EnvironmentalEffects.md matrix Behaves:\u2713 is false \u2014 correct the status and wire fog colour/type/range into the shader uniform path. (sweep 2026-06-25)",
+      "note": "boundFog() declared at runtime/events/X3DExecutionContext.hpp:266 has zero production callers; ShaderUniformVocabulary.hpp:167-175 references a 'FogDesc' struct that does not exist; SceneExtractor has no fog readout. `behaves: inert` forces the matrix to \u2717 (the closed binding-stack finding BIND-06 must not upgrade it to \u25d1). Fix = wire fog colour/type/range into the shader uniform path. (sweep 2026-06-25)",
       "severity": "major",
       "status": "open",
-      "summary": "Fog is inert \u2014 matrix marks 'Behaves \u2713' but no fog effect is rendered."
+      "summary": "Fog is inert \u2014 bound and round-tripped, but no fog effect reaches the shader."
     },
     {
+      "behaves": "inert",
       "clause": "24.4.5",
       "id": "ENV-11",
       "interfaces": [
@@ -8500,10 +8502,10 @@
       "nodes": [
         "TextureBackground"
       ],
-      "note": "Only binding-stack recognition exists (BindingSystem.hpp:80-85); the six face-texture fields (back/front/left/right/top/bottomTexture) are read nowhere in runtime/. Behaves identically to a plain Background. Correct the EnvironmentalEffects.md status; full skybox texturing tracking blocked on cube/sky texture render support. (sweep 2026-06-25)",
+      "note": "Only binding-stack recognition exists (BindingSystem.hpp:80-85); the six face-texture fields (back/front/left/right/top/bottomTexture) are read nowhere in runtime/. `behaves: inert` forces the matrix to \u2717 for the node's own feature; full skybox texturing tracking blocked on cube/sky texture render support. (sweep 2026-06-25)",
       "severity": "major",
       "status": "open",
-      "summary": "TextureBackground texture faces never read \u2014 matrix 'Behaves \u2713' is false."
+      "summary": "TextureBackground texture faces never read \u2014 renders identically to a plain Background."
     },
     {
       "clause": "25.3.11",
@@ -9476,6 +9478,7 @@
       "Delay",
       "DynamicsCompressor",
       "EspduTransform",
+      "Fog",
       "GeoProximitySensor",
       "GeoTouchSensor",
       "LinePickSensor",
@@ -9486,6 +9489,7 @@
       "ReceiverPdu",
       "SignalPdu",
       "StreamAudioSource",
+      "TextureBackground",
       "TransmitterPdu",
       "VolumePickSensor",
       "WaveShaper"
