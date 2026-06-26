@@ -19,7 +19,7 @@ The ROUTEs subsystem owns the data model and resolution pipeline for X3D event r
 2. **Field addressing** (`FieldAddress`): identity of a routable endpoint — a raw observer `(node*, field-name)` pair — used by the event cascade to fan out events without owning nodes.
 3. **Bridge and resolution** (`buildRoutes`): translates a parsed `Scene`'s DEF-name routes into typed, validated edges in an `EventGraph` held by an `X3DExecutionContext`. This step also handles PROTO-interface redirects, pre-resolved PROTO-body-internal routes, and pre-resolved Inline-internal routes.
 
-A critical feature of the bridge is that field lookup always consults the node's *effective* field table — the union of generated static fields and author-declared dynamic Script fields — so author `<field>` declarations on `Script` nodes are first-class ROUTE endpoints (S1).
+A critical feature of the bridge is that field lookup always consults the node's *effective* field table — the union of generated static fields and author-declared dynamic Script fields — so author `<field>` declarations on `Script` nodes are first-class ROUTE endpoints (S1). **Caveat:** this is the *resolution* path — a ROUTE *into* a Script eventIn/inputOutput is registered/validated but not yet dispatched at tick time (`SCRIPT-EVENTIN`, open); a Script's own `outputOnly`/`inputOutput` writes *do* drive the cascade.
 
 ## Key files
 

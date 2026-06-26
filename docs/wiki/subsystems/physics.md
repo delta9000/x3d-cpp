@@ -77,7 +77,7 @@ This is a **partial** §37 implementation, now covering the core dynamics: Box/S
 | `massDensityModel`, `finiteRotationAxis` | ❌ ignored | mass always shape+density derived; no finite-rotation integration |
 | `autoDisable`, `disableTime`, `disable*Speed` | ❌ ignored | no sleeping (Jolt sleep thresholds are global, not per-body) |
 
-**RigidBodyCollection — read:** `gravity`, `enabled`, `bodies`, `joints`. **Ignored:** `collider`, `iterations`, `errorCorrection`, `constantForceMix`, `contactSurfaceThickness`, `maxCorrectionSpeed`, `preferAccuracy`, `autoDisable` (all solver tuning → Jolt defaults).
+**RigidBodyCollection — read:** `gravity`, `enabled`, `bodies`, `joints`, `collider` (a `CollisionCollection` supplies per-contact friction/bounce → `setContactResponse`). **Ignored:** `iterations`, `errorCorrection`, `constantForceMix`, `contactSurfaceThickness`, `maxCorrectionSpeed`, `preferAccuracy`, `autoDisable` (all solver tuning → Jolt defaults).
 
 | Node / capability | Status |
 |---|---|

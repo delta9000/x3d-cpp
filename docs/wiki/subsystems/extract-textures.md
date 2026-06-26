@@ -126,4 +126,4 @@ RGBA8 pixels, bottom-left origin (GL convention). The SDK never calls this resol
 - Spec (binary mesh/texture abstractions): `docs/superpowers/specs/2026-06-18-binary-mesh-texture-abstractions.md`
 - Conformance findings MAT-001 through MAT-005 (all closed): `docs/conformance/findings.yaml`
 - Conformance finding TXF-1 (deferred — spec-ambiguous UV transform order): `docs/conformance/findings.yaml`
-- Conformance finding MAT-006 (deferred — `Appearance.backMaterial` two-sided extraction): `docs/conformance/findings.yaml`
+- Conformance finding MAT-006 (closed — `Appearance.backMaterial` two-sided extraction now reads via the same three-way dispatch as the front material): `docs/conformance/findings.yaml`
