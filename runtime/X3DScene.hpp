@@ -74,6 +74,23 @@ public:
   // round-trip on write. Scene-side so the generated X3DNode is untouched.
   std::unordered_map<X3DNode *, ProtoInstance> expandedSources;
 
+  // Authored child-field order (round-trip fidelity): per parent node, the order
+  // its node-child fields were first populated during read. Round-trip writers
+  // replay this so a node shared across fields (e.g. HAnimHumanoid skeleton vs
+  // joints) keeps its authored DEF placement instead of falling back to static
+  // field-declaration order. Absent/empty => writers use declaration order.
+  // Scene-side so the generated X3DNode is untouched (mirrors expandedSources).
+  std::unordered_map<const X3DNode *, std::vector<std::string>> childFieldOrder;
+
+  // Record `field` as authored on `parent` (first-touch order, de-duplicated).
+  void recordChildField(const X3DNode *parent, const std::string &field) {
+    if (!parent || field.empty()) return;
+    auto &order = childFieldOrder[parent];
+    for (const std::string &f : order)
+      if (f == field) return;
+    order.push_back(field);
+  }
+
   // IMPORT / EXPORT statements.
   std::vector<Import> imports;
   std::vector<Export> exports;

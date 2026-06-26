@@ -28,6 +28,7 @@
 #include "X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
 #include "XmlLite.hpp"
+#include "parse/NodeBuilder.hpp" // build::orderedChildFields (authored child order)
 
 #include <memory>
 #include <sstream>
@@ -232,10 +233,8 @@ private:
       if (f.x3dName == "sourceCode" && dynamic_cast<const Script *>(node.get()))
         continue;
 
-      if (f.isNode()) {
-        writeNodeField(*el, node, f);
-        continue;
-      }
+      if (f.isNode())
+        continue; // node-child fields emitted in authored order below
 
       // Value (attribute) field.
       std::string text;
@@ -266,6 +265,12 @@ private:
       // emit non-default empties (rare) too.
       el->setAttr(f.x3dName, text);
     }
+
+    // Node-child fields, in authored order (round-trip fidelity) so a node
+    // shared across fields keeps its authored DEF placement; declaration order
+    // when nothing was recorded for this node.
+    for (const FieldInfo *cf : x3d::codec::build::orderedChildFields(*node, scene_))
+      writeNodeField(*el, node, *cf);
 
     // Scene-level nested ProtoInstances: any un-expanded ProtoInstance whose
     // parent is THIS node (scene.protoInstances, !expanded, parent==node) must

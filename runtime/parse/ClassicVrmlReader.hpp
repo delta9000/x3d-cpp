@@ -578,7 +578,7 @@ private:
       auto child =
           parseNode(tok, scene, currentProtoBody, parentShared, slot);
       if (child)
-        build::attachChild(parent, slot, child);
+        build::attachChild(parent, slot, child, &scene);
       return;
     }
     // MFNode: `[ node* ]` (or, for resilience, a single bare node).
@@ -597,7 +597,7 @@ private:
         auto child =
             parseNode(tok, scene, currentProtoBody, parentShared, slot);
         if (child)
-          build::attachChild(parent, slot, child);
+          build::attachChild(parent, slot, child, &scene);
       }
       expectPunct(tok, ']', "MFNode list close");
     } else if (!tok.peek().isPunct('}') && !tok.peek().isPunct(']')) {
@@ -608,7 +608,7 @@ private:
       auto child =
           parseNode(tok, scene, currentProtoBody, parentShared, slot);
       if (child)
-        build::attachChild(parent, slot, child);
+        build::attachChild(parent, slot, child, &scene);
     }
   }
 

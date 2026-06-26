@@ -107,9 +107,11 @@ inline void applyField(X3DNode &node, std::string_view x3dName,
 ///   3) failing that, the "children" node field if present;
 ///   4) failing that, the first writable node field (best-effort).
 /// `slot` is the explicit containerField/field-name the syntax supplied (may be
-/// empty). SFNode sets; MFNode appends.
+/// empty). SFNode sets; MFNode appends. When `scene` is supplied, the resolved
+/// field is recorded in authored order so round-trip writers preserve it.
 inline void attachChild(X3DNode &parent, std::string_view slot,
-                        const std::shared_ptr<X3DNode> &child) {
+                        const std::shared_ptr<X3DNode> &child,
+                        runtime::Scene *scene = nullptr) {
   const FieldTable &table = parent.fields();
   const FieldInfo *target = nullptr;
   if (!slot.empty()) {
@@ -155,6 +157,45 @@ inline void attachChild(X3DNode &parent, std::string_view slot,
     vec.push_back(child);
     target->set(parent, std::any(vec));
   }
+
+  if (scene)
+    scene->recordChildField(&parent, target->x3dName);
+}
+
+/// Node-child fields of `node`, ordered by the authored child-field order
+/// recorded in `scene` (when present), then any remaining node-child fields in
+/// static declaration order. Round-trip writers iterate this instead of the raw
+/// field table so a node shared across fields keeps its authored DEF placement
+/// (e.g. HAnimHumanoid.skeleton holds the hierarchy, joints holds the USE).
+/// With no scene / no recorded order this is exactly declaration order.
+inline std::vector<const FieldInfo *>
+orderedChildFields(const X3DNode &node, const runtime::Scene *scene) {
+  const FieldTable &table = node.fields();
+  std::vector<const FieldInfo *> out;
+  if (scene) {
+    auto it = scene->childFieldOrder.find(&node);
+    if (it != scene->childFieldOrder.end()) {
+      for (const std::string &fname : it->second)
+        for (const FieldInfo &f : table)
+          if (f.isNode() && f.isReadable() && f.x3dName == fname) {
+            out.push_back(&f);
+            break;
+          }
+    }
+  }
+  for (const FieldInfo &f : table) {
+    if (!f.isNode() || !f.isReadable())
+      continue; // skip set-only InputOnly sinks (addChildren/removeChildren)
+    bool have = false;
+    for (const FieldInfo *p : out)
+      if (p == &f) {
+        have = true;
+        break;
+      }
+    if (!have)
+      out.push_back(&f);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
