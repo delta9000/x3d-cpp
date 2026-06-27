@@ -5,6 +5,7 @@
 //   * ClassicVRML — parseNode<->parseNodeBody<->applyNodeField recursion.
 // Both SIGSEGV'd with no diagnostic. The shared nesting cap turns that into a
 // catchable std::runtime_error while leaving legitimate nesting untouched.
+#include "ClassicVrmlReader.hpp" // direct reader reuse (depth_ is a member)
 #include "JsonLite.hpp"
 #include "X3DParse.hpp" // codec::parseDocument front door (content-sniffs VRML)
 
@@ -42,4 +43,18 @@ TEST_CASE("vrml_rejects_pathological_nesting") {
 
 TEST_CASE("vrml_allows_legitimate_nesting") {
   CHECK_NOTHROW((void)x3d::codec::parseDocument(nestedVrml(50)));
+}
+
+TEST_CASE("vrml_reader_depth_counter_resets_after_a_rejected_parse") {
+  // The reader holds its nesting counter as a member, and readDocument is a
+  // public API an embedder can call repeatedly on one instance. If a rejected
+  // (too-deep) parse leaked even one count, it would accumulate and eventually
+  // reject valid documents. Reuse ONE reader: a rejected parse must not poison
+  // the counter for a subsequent at-the-cap-boundary document.
+  x3d::codec::ClassicVrmlReader reader;
+  CHECK_THROWS_AS((void)reader.readDocument(nestedVrml(2000)),
+                  std::runtime_error);
+  // 1000 levels is the deepest the cap accepts; it must still parse on the same
+  // reused reader (pre-fix the leaked count tips this exactly over the cap).
+  CHECK_NOTHROW((void)reader.readDocument(nestedVrml(1000)));
 }

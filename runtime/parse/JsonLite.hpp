@@ -84,18 +84,6 @@ private:
   std::size_t i_ = 0;
   std::size_t depth_ = 0; // SEC-1: value nesting depth (DoS guard).
 
-  // RAII counter: bounds parseValue<->parseArray/parseObject recursion and
-  // restores depth_ on return so sibling values do not accumulate depth.
-  struct DepthGuard {
-    std::size_t &d;
-    explicit DepthGuard(std::size_t &depth) : d(depth) {
-      if (++d > kMaxNestingDepth)
-        throw std::runtime_error("JsonLite: nesting too deep (>" +
-                                 std::to_string(kMaxNestingDepth) + ")");
-    }
-    ~DepthGuard() { --d; }
-  };
-
   [[noreturn]] void fail(const std::string &msg) const {
     throw std::runtime_error("JsonLite: " + msg + " at offset " +
                              std::to_string(i_));
@@ -121,7 +109,7 @@ private:
   char peek() const { return i_ < s_.size() ? s_[i_] : '\0'; }
 
   std::unique_ptr<Value> parseValue() {
-    DepthGuard guard(depth_); // SEC-1: bound recursive value nesting.
+    NestingGuard guard(depth_, "JsonLite"); // SEC-1: bound recursive value nesting.
     skipWs();
     if (i_ >= s_.size())
       fail("unexpected end of input");
