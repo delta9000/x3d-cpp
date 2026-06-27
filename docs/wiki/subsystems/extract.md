@@ -76,8 +76,21 @@ Aabb bounds = ex.sceneWorldBounds();
 // Coverage signal: geometry types the builder could not tessellate.
 const std::map<std::string,int>& gaps = ex.skippedGeometryCounts();
 
+// DoS signal (#21): true if this walk hit MeshBuildOptions.maxWalkVisits and
+// stopped early — the RenderDelta is then a PARTIAL view of a pathologically
+// wide (acyclic "doubling DAG") scene. See ADR-0037.
+bool partial = ex.budgetExceeded();
+
 } // namespace x3d::runtime::extract
 ```
+
+The walk is bounded by a per-snapshot **`WalkBudget`** (`runtime/RecursionLimits.hpp`,
+default `kMaxGraphWalkVisits` = 1'000'000, overridable via
+`MeshBuildOptions.maxWalkVisits`) shared across light collection and the geometry
+walk. An acyclic graph that fans out to `2^depth` paths emits one RenderItem
+**per path** (intentional for USE-instancing), so the walk cannot dedupe — the
+budget caps the node-visits and `budgetExceeded()` flags a partial result. See
+[ADR-0037](../decisions/0037-graph-walk-traversal-budget.md).
 
 **`RenderDelta`** is the single authoritative change channel:
 
@@ -188,6 +201,7 @@ The full conformance extraction oracle is exercised by `x3d_extract_oracle_test`
 ## Related specs and ADRs
 
 - [ADR-0015: Extraction pull per path](../decisions/0015-extraction-pull-per-path.md) — the core design decision: pull-based dirty-set read, per-path identity, geometry/material node-keyed
+- [ADR-0037: Graph-walk traversal budget](../decisions/0037-graph-walk-traversal-budget.md) — bounds an acyclic "doubling DAG" fan-out: a `WalkBudget` node-visit cap on the per-path walk + light collection, surfaced as `budgetExceeded()`
 - [ADR-0001: Ext Firewall](../decisions/0001-ext-firewall.md) — keeps binary/external geometry behind the `externalGeometryResolver` seam, out of the spec-correct core
 - [Texture extraction](extract-textures.md) — `TextureExtract`, `MaterialSystem`, `LightSystem`, `TextureResolver`, `AssetResolver`
 - [Text extraction](extract-text.md) — `buildTextMesh`, `FontMetrics`, glyph-quad layout
