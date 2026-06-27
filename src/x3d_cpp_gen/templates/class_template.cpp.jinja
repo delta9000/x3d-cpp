@@ -1,8 +1,9 @@
 // {{ class_name }}.cpp
-#include "{{ class_name }}.hpp"
+#include "x3d/nodes/{{ class_name }}.hpp"
 
 {% if namespace %}
 namespace {{ namespace }} {
+using namespace x3d::core;
 {% endif %}
 {% if emit_reflection %}
 std::string {{ class_name }}::nodeTypeName() const {

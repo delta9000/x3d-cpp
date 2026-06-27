@@ -79,7 +79,11 @@ class CppHeaderBackend:
 
     def emit(self, nodes: Dict[str, X3DNode],
              dependency_graph: Dict[str, List[str]], out_dir: str) -> None:
-        os.makedirs(out_dir, exist_ok=True)
+        # Node headers/sources land under x3d/nodes/ so the include spelling is
+        # uniform in-tree and installed ("x3d/nodes/<Name>.hpp"); the core
+        # vocabulary headers live alongside under x3d/core/ (written by the CLI).
+        nodes_dir = os.path.join(out_dir, "x3d", "nodes")
+        os.makedirs(nodes_dir, exist_ok=True)
         emitted_files: List[str] = []
 
         # Map each class to the set of field names it DECLARES itself (own
@@ -172,7 +176,7 @@ class CppHeaderBackend:
                 namespace=self.namespace,
             )
 
-            output_file = os.path.join(out_dir, f"{node.name}.hpp")
+            output_file = os.path.join(nodes_dir, f"{node.name}.hpp")
             with open(output_file, 'w') as f:
                 f.write(rendered_code)
             print(f"Generated {output_file}")
@@ -186,7 +190,7 @@ class CppHeaderBackend:
                 emit_reflection=emit_reflection,
                 namespace=self.namespace,
             )
-            source_file = os.path.join(out_dir, f"{node.name}.cpp")
+            source_file = os.path.join(nodes_dir, f"{node.name}.cpp")
             with open(source_file, 'w') as f:
                 f.write(source_code)
             print(f"Generated {source_file}")
