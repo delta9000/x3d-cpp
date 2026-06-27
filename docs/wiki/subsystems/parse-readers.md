@@ -19,6 +19,17 @@ related:
 
 The parse frontend turns raw X3D bytes — in any of four encodings (XML, Classic VRML, VRML97, JSON) and optionally gzip-compressed — into the runtime document model (`x3d::runtime::X3DDocument`). It owns encoding detection, version inference, node and field population via the reflection layer, DEF/USE identity, ROUTE capture, PROTO/EXTERNPROTO structural capture, IMPORT/EXPORT, and Script author-field capture (`SCR-SAI-DYN S1`). After the document is built it triggers PROTO/Inline expansion through injectable resolver seams. Unknown node types and unknown field names are skipped gracefully (lenient-read policy); only genuinely unrecoverable malformation throws.
 
+**Input-hardening (DoS guards).** The recursive-descent readers descend
+attacker-controlled structure, so each caps nesting depth against a shared
+ceiling (`runtime/RecursionLimits.hpp`, `x3d::kMaxNestingDepth` = 1000): the XML
+tokenizer (`parseElement`↔`parseContent`), JSON (`parseValue`↔`parseArray`/
+`parseObject`), and ClassicVRML/VRML97 (`parseNode`↔`parseNodeBody`) throw
+`std::runtime_error` past the cap instead of overrunning the native stack
+(SEC-1). Independently, `SFImage`/`PixelTexture` pixel parsing clamps
+`numComponents` to the spec range `[0,4]` before unpacking, so a hostile token
+cannot trigger a signed-shift overflow or a multi-GB allocation (SEC-2).
+Legitimate documents nest far below the cap and are unaffected.
+
 The subsystem boundary is everything under `runtime/parse/`. The entry point for consumers is `parseFile()` / `parseDocument()` in `runtime/parse/X3DParse.hpp`. The concrete reader implementations are all header-only in `namespace x3d::codec`.
 
 ## Key files
@@ -136,6 +147,8 @@ Encoding sniffByExtension(std::string_view path);
 - `ctest --preset dev -R x3d_inline_routes` — Routes from within an Inline's sub-scene resolve correctly after expansion (`inline_routes_test.cpp`).
 - `ctest --preset dev -R x3d_inline_cycle` — Inline self-reference / mutual cycle terminates (thread-local active-file guard) (`inline_cycle_test.cpp`).
 - `ctest --preset dev -R x3d_inline_containment_cycle` — Containment-cycle defense-in-depth post inline expansion (`inline_containment_cycle_test.cpp`).
+- `ctest --preset dev -R x3d_codecs_tests` (doctest cases: `xml_*_nesting`, `sfimage_*`) — XML deep-nesting cap (SEC-1) and `SFImage` `numComponents` clamp (SEC-2) (`xml_depth_guard_test.cpp`, `sfimage_overflow_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest cases: `json_*_nesting`, `vrml_*_nesting`) — JSON and ClassicVRML deep-nesting caps reject pathological input and keep legitimate nesting (SEC-1) (`parser_depth_guard_test.cpp`).
 
 Test data fixtures (`.x3d`, `.x3dv`, `.wrl`, `.json`, `.gz` samples) live in `runtime/parse/tests/data/`.
 
