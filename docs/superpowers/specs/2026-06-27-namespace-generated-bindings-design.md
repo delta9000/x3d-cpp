@@ -42,6 +42,18 @@ so the two are done together.
    146 runtime files vs. ~76 for the most-used node), and a `SFVec3f` is **not** a node —
    so a single `x3d::nodes` would be both semantically wrong and the maximum-churn choice.
 
+4. **Qualification policy is asymmetric** (resolved during planning). The two namespaces
+   are *not* referenced the same way by consumers:
+   - **`x3d::core`** (a small, stable vocabulary set): a `using namespace x3d::core;` is
+     allowed, but only inside a named namespace block in headers (never global) or at file
+     scope in `.cpp`/test TUs. Pulling in a curated vocabulary set wholesale is idiomatic.
+   - **`x3d::nodes`** (685 types): **no blanket `using namespace x3d::nodes;`** — that would
+     re-flatten the namespace we just built. Consumers qualify explicitly (`x3d::nodes::Foo`),
+     or, in heavy dispatch/visitor files that touch many node types (`SceneExtractor` ~37,
+     `GeometryBounds` ~15), use a per-file alias `namespace xn = x3d::nodes;`. Generated node
+     headers reference sibling node types unqualified (same namespace). This supersedes any
+     earlier "fully qualify everywhere" wording; the external API is identical either way.
+
 ## Architecture
 
 ```
@@ -57,9 +69,10 @@ use the **same** spelling: `#include "x3d/nodes/Transform.hpp"`, `#include "x3d/
 **Cross-namespace seam.** The one coupling is `SFNode = std::shared_ptr<X3DNode>`:
 `x3d/core/X3Dtypes.hpp` forward-declares `namespace x3d::nodes { class X3DNode; }`, then
 defines `namespace x3d::core { using SFNode = std::shared_ptr<nodes::X3DNode>; }`. Node
-headers in `x3d::nodes` reference the vocabulary via explicit `x3d::core::` qualification —
-generated code is free to be verbose, and explicit qualification avoids any `using namespace`
-leak in a header.
+headers in `x3d::nodes` reach the vocabulary via a `using namespace x3d::core;` placed
+**inside** their `namespace x3d::nodes { }` block (scoped to that namespace, never global —
+see the asymmetric qualification policy). Sibling node types resolve unqualified within the
+shared `x3d::nodes` namespace.
 
 **X3D string identity is unchanged.** `nodeTypeName()` still returns `"Transform"`; the
 factory/registry string→type maps, parsing, and serialization are semantically untouched.
@@ -93,12 +106,13 @@ focused change in `src/x3d_cpp_gen/`:
 
 ### C. Consumer migration (the bulk — clean break)
 
-- **84** non-generated files include a generated header by bare name → update those includes
-  to `x3d/core/…` / `x3d/nodes/…`.
-- **~200** reference sites get qualified. Header-only consumers (most of `runtime/`) **fully
-  qualify** (`x3d::core::SFVec3f`, `x3d::nodes::Transform`) — a `using` in a header would leak
-  into every including TU. `.cpp` and test files may take a file-scope `using namespace x3d::core;`
-  / `x3d::nodes;`.
+- **~110** non-generated files (test dirs dominate) include a generated header by bare name →
+  update those includes to `x3d/core/…` / `x3d/nodes/…` (scripted).
+- Reference sites get qualified **per the asymmetric policy**: `using namespace x3d::core;`
+  for the vocabulary (scoped inside the file's named namespace in headers; file scope in
+  `.cpp`/tests), and for nodes **explicit `x3d::nodes::Foo`** — with a per-file
+  `namespace xn = x3d::nodes;` alias only in the heavy dispatch/visitor files (`SceneExtractor`
+  ~37 node types, `GeometryBounds` ~15). No blanket `using namespace x3d::nodes;` in any header.
 - `include/x3d/sdk.hpp`: update its includes; add `namespace core = x3d::core;` and
   `namespace nodes = x3d::nodes;` inside `namespace x3d::sdk` so the "one façade namespace"
   story still holds for embedders.
