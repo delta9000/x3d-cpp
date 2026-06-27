@@ -31,6 +31,8 @@
 #include <vector>
 
 namespace x3d::cpuraster {
+using namespace x3d::core;  // SFColor etc. (ADR-0039 namespaces)
+using namespace x3d::nodes; // X3DNode (ADR-0039 namespaces)
 
 namespace rt = x3d::runtime;
 

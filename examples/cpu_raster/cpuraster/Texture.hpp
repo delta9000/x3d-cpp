@@ -22,6 +22,7 @@
 #include <vector>
 
 namespace x3d::cpuraster {
+using namespace x3d::core; // SFImage etc. (ADR-0039 moved core types into x3d::core)
 
 class Texture {
 public:
