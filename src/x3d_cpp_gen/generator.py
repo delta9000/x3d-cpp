@@ -154,14 +154,15 @@ def generate_special_structs() -> str:
 
 def gen_types_header() -> str:
     """Generates the header file for the X3D types."""
-    header = """#ifndef X3D_TYPES_HPP
-#define X3D_TYPES_HPP
+    header = """#pragma once
 
 #include <vector>
 #include <memory>
 #include <string>
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
+
+namespace x3d::core {
 
 """
 
@@ -170,8 +171,15 @@ class X3DNode;
 
     # Generate the type definitions. Skip tautological self-typedefs
     # (typedef X X;) which are ill-formed for struct names and redundant.
+    # SFNode/MFNode point at the nodes-namespace X3DNode.
     for field_type, cpp_type in FIELD_TYPE_MAPPING.items():
         if cpp_type == field_type:
+            continue
+        if field_type == "SFNode":
+            header += "using SFNode = std::shared_ptr<nodes::X3DNode>;\n"
+            continue
+        if field_type == "MFNode":
+            header += "using MFNode = std::vector<std::shared_ptr<nodes::X3DNode>>;\n"
             continue
         header += f"typedef {cpp_type} {field_type};\n"
 
@@ -181,7 +189,7 @@ class X3DNode;
         header += f"typedef {XS_TYPES[item][1]} {XS_TYPES[item][0]};\n"
 
     header += "\n"
-    header += "\n#endif\n"
+    header += "\n} // namespace x3d::core\n"
     return header
 
 def write_types_header(output_dir: str) -> None:
@@ -201,13 +209,14 @@ def gen_enums_header(enum_defs) -> str:
     generated node headers can unconditionally ``#include "X3Denums.hpp"``.
     """
     lines = [
-        "#ifndef X3D_ENUMS_HPP",
-        "#define X3D_ENUMS_HPP",
+        "#pragma once",
         "",
         "// Auto-generated C++ 'enum class' definitions for the bounded X3D",
         "// SimpleType enumerations (closed vocabularies) in the UOM spec.",
         "",
         "#include <string>",
+        "",
+        "namespace x3d::core {",
         "",
     ]
     for name in sorted(enum_defs):
@@ -250,7 +259,7 @@ def gen_enums_header(enum_defs) -> str:
         lines.append("}")
         lines.append("")
 
-    lines.append("#endif // X3D_ENUMS_HPP")
+    lines.append("} // namespace x3d::core")
     lines.append("")
     return "\n".join(lines)
 
