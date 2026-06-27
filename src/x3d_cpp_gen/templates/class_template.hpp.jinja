@@ -1,20 +1,20 @@
 // {{ class_name }}.hpp
-#ifndef {{ class_name.upper() }}_HPP
-#define {{ class_name.upper() }}_HPP
+#pragma once
 
-#include "X3Dtypes.hpp"
-#include "X3Denums.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/core/X3Dtypes.hpp"
+#include "x3d/core/X3Denums.hpp"
+#include "x3d/core/X3DReflection.hpp"
 #include <algorithm>
 #include <any>
 #include <functional>
 #include <stdexcept>
 {% for dep in dependencies %}
-#include "{{ dep }}.hpp"
+#include "x3d/nodes/{{ dep }}.hpp"
 {% endfor %}
 
 {% if namespace %}
 namespace {{ namespace }} {
+using namespace x3d::core;
 {% endif %}
 /**
  * @class {{ class_name }}
@@ -328,5 +328,3 @@ private:
 {% if namespace %}
 } // namespace {{ namespace }}
 {% endif %}
-
-#endif // {{ class_name.upper() }}_HPP
