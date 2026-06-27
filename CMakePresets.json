@@ -27,13 +27,14 @@
     {
       "name": "san",
       "displayName": "San (ASan + UBSan)",
-      "description": "Address + UndefinedBehavior sanitizer build for parser tests + corpus sweep. Same flags the GitHub Actions `cpp-san` job uses. ctest under this preset runs every ctest against sanitized binaries — crashes / UB failures fail the gate. WERROR is OFF — the ci preset is the warning-enforcement gate; this one is purely for memory bugs.",
+      "description": "Address + UndefinedBehavior sanitizer build for parser tests + corpus sweep. Same flags the GitHub Actions `cpp-san` job uses. ctest under this preset runs every ctest against sanitized binaries — crashes / UB failures fail the gate. WERROR is OFF — the ci preset is the warning-enforcement gate; this one is purely for memory bugs. Per-header isolation checks are OFF here: those are compile-only self-containment tests already gated by the `cpp`/`ci` jobs; running the ~800 of them under ASan/UBSan instrumentation adds no runtime bug-finding and dominated the job's wall-clock.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-san",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "X3D_CPP_SAN": "ON"
+        "X3D_CPP_SAN": "ON",
+        "X3D_CPP_PER_HEADER_CHECKS": "OFF"
       }
     },
     {
