@@ -1,9 +1,9 @@
 // initializeonly_read_test.cpp — initializeOnly fields must load from a document.
 #include "X3DParse.hpp"
 #include "XmlWriter.hpp"
-#include "Box.hpp"
-#include "Sphere.hpp"
-#include "IndexedFaceSet.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/Sphere.hpp"
+#include "x3d/nodes/IndexedFaceSet.hpp"
 #include "doctest/doctest.h"
 #include <cstdio>
 #include <functional>

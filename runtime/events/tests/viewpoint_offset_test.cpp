@@ -13,12 +13,12 @@
 #include "ViewpointOffset.hpp"
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include "Mat4.hpp"
-#include "NavigationInfo.hpp"
-#include "OrthoViewpoint.hpp"
-#include "Viewpoint.hpp"
+#include "x3d/nodes/NavigationInfo.hpp"
+#include "x3d/nodes/OrthoViewpoint.hpp"
+#include "x3d/nodes/Viewpoint.hpp"
 
 #include <any>
 #include <cmath>

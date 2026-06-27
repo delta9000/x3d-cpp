@@ -15,12 +15,12 @@
 
 #include "X3DExecutionContext.hpp"
 
-#include "CollidableShape.hpp"
-#include "CollisionCollection.hpp"
-#include "CollisionSensor.hpp"
-#include "CollisionSpace.hpp"
-#include "Contact.hpp"
-#include "RigidBody.hpp"
+#include "x3d/nodes/CollidableShape.hpp"
+#include "x3d/nodes/CollisionCollection.hpp"
+#include "x3d/nodes/CollisionSensor.hpp"
+#include "x3d/nodes/CollisionSpace.hpp"
+#include "x3d/nodes/Contact.hpp"
+#include "x3d/nodes/RigidBody.hpp"
 
 #include <algorithm>
 #include <any>

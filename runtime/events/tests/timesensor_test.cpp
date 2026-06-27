@@ -23,7 +23,7 @@
 #include "TimeSensorSystem.hpp"
 #include "X3DExecutionContext.hpp"
 
-#include "TimeSensor.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
 
 #include <cmath>
 #include <iostream>

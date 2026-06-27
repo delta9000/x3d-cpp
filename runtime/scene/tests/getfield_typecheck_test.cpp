@@ -2,7 +2,7 @@
 // absent (default is correct) from one that is present but of the wrong type
 // (a caller-side contract violation that getField must surface, not hide).
 #include "GeometryBounds.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "doctest/doctest.h"
 #include <any>
 #include <string>

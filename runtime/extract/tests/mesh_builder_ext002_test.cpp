@@ -1,7 +1,7 @@
 // mesh_builder_ext002_test.cpp — EXT-002: with colorPerVertex=FALSE, fan/strip
 // sets apply ONE color per FAN/STRIP (§11.3.2/§11.4.13/§11.4.15), not per triangle.
 #include "MeshBuilder.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include <any>
 #include "doctest/doctest.h"
 #include <iostream>

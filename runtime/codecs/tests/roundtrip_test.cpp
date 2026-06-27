@@ -19,12 +19,12 @@
 #include "parse/JsonReader.hpp"
 
 // Concrete node types used by the sample scene.
-#include "Appearance.hpp"
-#include "Box.hpp"
-#include "Material.hpp"
-#include "Shape.hpp"
-#include "TimeSensor.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/Appearance.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/Material.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <cctype>
 #include <iostream>

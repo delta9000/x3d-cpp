@@ -19,7 +19,7 @@
 #include "MeshBuilder.hpp"
 #include "TextureExtract.hpp"
 
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

@@ -12,8 +12,8 @@
 #ifndef X3D_RUNTIME_EXTRACT_X3D_FIELD_VALUE_HPP
 #define X3D_RUNTIME_EXTRACT_X3D_FIELD_VALUE_HPP
 
-#include "X3DReflection.hpp"  // X3DFieldType
-#include "X3Dtypes.hpp"       // SF* value types
+#include "x3d/core/X3DReflection.hpp"  // X3DFieldType
+#include "x3d/core/X3Dtypes.hpp"       // SF* value types
 #include <variant>
 
 namespace x3d::runtime::extract {

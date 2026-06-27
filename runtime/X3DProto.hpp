@@ -12,7 +12,7 @@
 #ifndef X3D_RUNTIME_PROTO_HPP
 #define X3D_RUNTIME_PROTO_HPP
 
-#include "X3DReflection.hpp" // AccessType, X3DFieldType
+#include "x3d/core/X3DReflection.hpp" // AccessType, X3DFieldType
 #include "X3DRoute.hpp"
 
 #include <any>

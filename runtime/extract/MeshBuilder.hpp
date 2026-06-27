@@ -72,8 +72,8 @@
 #include "RecursionLimits.hpp" // #21: kMaxGraphWalkVisits (walk budget default)
 #include "RenderItem.hpp"     // MeshData
 #include "TextExtract.hpp"    // T-TEXT: buildTextMesh (Text branch)
-#include "X3DNode.hpp"
-#include "X3Dtypes.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 
 #include <algorithm>
 #include <array>

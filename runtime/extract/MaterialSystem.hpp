@@ -31,8 +31,8 @@
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField
 #include "RenderItem.hpp"     // MaterialDesc / TextureRef / SamplerParams
 #include "TextureExtract.hpp" // extendedSamplerOf (§18.4.9 sampler descriptor)
-#include "X3DNode.hpp"
-#include "X3Dtypes.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 
 #include <algorithm>
 #include <memory>

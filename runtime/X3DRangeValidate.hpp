@@ -6,7 +6,7 @@
 #ifndef X3D_RANGE_VALIDATE_HPP
 #define X3D_RANGE_VALIDATE_HPP
 
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include <any>
 #include <memory>

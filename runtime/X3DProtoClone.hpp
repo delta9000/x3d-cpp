@@ -2,9 +2,9 @@
 #ifndef X3D_RUNTIME_PROTO_CLONE_HPP
 #define X3D_RUNTIME_PROTO_CLONE_HPP
 
-#include "X3DNode.hpp"
-#include "X3DNodeFactory.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
 #include <any>
 #include <functional>

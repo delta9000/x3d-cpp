@@ -2,8 +2,8 @@
 #include "X3DDocument.hpp"
 #include "X3DProto.hpp"
 #include "X3DProtoClone.hpp"
-#include "X3DNodeFactory.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/core/X3DReflection.hpp"
 #include <any>
 #include "doctest/doctest.h"
 using namespace x3d::runtime;

@@ -7,7 +7,7 @@
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "DynamicField.hpp"
-#include "Script.hpp"
+#include "x3d/nodes/Script.hpp"
 #include "X3DScene.hpp"
 
 #include <any>

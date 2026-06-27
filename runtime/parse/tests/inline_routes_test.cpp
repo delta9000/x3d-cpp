@@ -10,7 +10,7 @@
 #include "x3d/sdk.hpp"
 #include "TimeSensorSystem.hpp"
 #include "InterpolatorRegistration.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/Transform.hpp"
 #include <cassert>
 #include <cmath>
 #include <iostream>

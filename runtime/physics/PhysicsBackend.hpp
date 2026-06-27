@@ -13,7 +13,7 @@
 #ifndef X3D_RUNTIME_PHYSICS_BACKEND_HPP
 #define X3D_RUNTIME_PHYSICS_BACKEND_HPP
 
-#include "X3Dtypes.hpp"  // SFVec3f, SFRotation — the runtime's own field types
+#include "x3d/core/X3Dtypes.hpp"  // SFVec3f, SFRotation — the runtime's own field types
 
 #include <cstdint>
 #include <vector>

@@ -2,7 +2,7 @@
 // it delivers (the dirty-tracking feed).
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "doctest/doctest.h"
 #include <string>
 #include <vector>

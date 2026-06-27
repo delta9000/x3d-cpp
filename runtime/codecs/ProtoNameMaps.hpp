@@ -7,7 +7,7 @@
 #ifndef X3D_PROTO_NAME_MAPS_HPP
 #define X3D_PROTO_NAME_MAPS_HPP
 
-#include "X3DReflection.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
 namespace x3d::codec {
 

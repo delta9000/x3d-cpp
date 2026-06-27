@@ -3,7 +3,7 @@
 // XML/ClassicVRML readers) so a JSON document with a proto expands like the
 // others.
 #include "X3DParse.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

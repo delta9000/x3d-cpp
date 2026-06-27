@@ -18,7 +18,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
-#include "X3DTimeDependentNode.hpp"
+#include "x3d/nodes/X3DTimeDependentNode.hpp"
 
 #include <any>
 #include <cmath>

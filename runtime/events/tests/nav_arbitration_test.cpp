@@ -4,7 +4,7 @@
 #include "NavigationSystem.hpp"
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
-#include "Viewpoint.hpp"
+#include "x3d/nodes/Viewpoint.hpp"
 #include "Ray.hpp"
 #include <any>
 #include <iostream>

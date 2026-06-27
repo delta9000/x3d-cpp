@@ -1,6 +1,6 @@
 // m2d_tick_test.cpp — pick + viewMatrix via the context.
 #include "X3DExecutionContext.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp"
 #include <any>

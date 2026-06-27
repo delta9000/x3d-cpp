@@ -44,11 +44,11 @@
 
 #include "X3DExecutionContext.hpp"
 
-#include "AudioDestination.hpp"
-#include "BiquadFilter.hpp"
-#include "Gain.hpp"
-#include "OscillatorSource.hpp"
-#include "SpatialSound.hpp"
+#include "x3d/nodes/AudioDestination.hpp"
+#include "x3d/nodes/BiquadFilter.hpp"
+#include "x3d/nodes/Gain.hpp"
+#include "x3d/nodes/OscillatorSource.hpp"
+#include "x3d/nodes/SpatialSound.hpp"
 
 #include <cmath>
 #include <cstdio>

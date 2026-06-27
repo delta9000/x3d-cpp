@@ -16,7 +16,7 @@
 //   4) A degenerate 1-wide axis guards the s/t along that axis to 0 (no div0).
 #include "MeshBuilder.hpp"
 
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

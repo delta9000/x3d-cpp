@@ -5,10 +5,10 @@
 #include "X3DExecutionContext.hpp"
 #include "PointingSensorSystem.hpp"
 #include "X3DDocument.hpp"
-#include "Box.hpp"
-#include "Group.hpp"
-#include "Shape.hpp"
-#include "TouchSensor.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/Group.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/TouchSensor.hpp"
 #include "Ray.hpp"
 #include <any>
 #include <iostream>

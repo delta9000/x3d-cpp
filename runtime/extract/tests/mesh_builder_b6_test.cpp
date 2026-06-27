@@ -24,7 +24,7 @@
 //   5) Authored Normal node WINS: creaseAngle is ignored when a Normal is present.
 #include "MeshBuilder.hpp"
 
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

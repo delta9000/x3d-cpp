@@ -1,8 +1,8 @@
 #include "InlineExpand.hpp"
 #include "X3DDocument.hpp"
 #include "X3DScene.hpp"
-#include "X3DNodeFactory.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/core/X3DReflection.hpp"
 #include "X3DParse.hpp"
 #include "doctest/doctest.h"
 #include <iostream>

@@ -23,14 +23,14 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
 
-#include "EaseInEaseOut.hpp"
-#include "ScalarInterpolator.hpp"
-#include "SplinePositionInterpolator.hpp"
-#include "SplineScalarInterpolator.hpp"
-#include "SquadOrientationInterpolator.hpp"
+#include "x3d/nodes/EaseInEaseOut.hpp"
+#include "x3d/nodes/ScalarInterpolator.hpp"
+#include "x3d/nodes/SplinePositionInterpolator.hpp"
+#include "x3d/nodes/SplineScalarInterpolator.hpp"
+#include "x3d/nodes/SquadOrientationInterpolator.hpp"
 
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode definition
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include <cmath>

@@ -10,7 +10,7 @@
 #include "X3DActiveNode.hpp"
 #include "X3DExecutionContext.hpp"
 
-#include "TimeSensor.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
 
 #include <any>
 #include <cmath>

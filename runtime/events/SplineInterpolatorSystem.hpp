@@ -15,8 +15,8 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
-#include "EaseInEaseOut.hpp"
-#include "SquadOrientationInterpolator.hpp"
+#include "x3d/nodes/EaseInEaseOut.hpp"
+#include "x3d/nodes/SquadOrientationInterpolator.hpp"
 
 #include <any>
 

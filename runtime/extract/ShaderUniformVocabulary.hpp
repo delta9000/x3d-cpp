@@ -12,7 +12,7 @@
 #ifndef X3D_RUNTIME_EXTRACT_SHADER_UNIFORM_VOCABULARY_HPP
 #define X3D_RUNTIME_EXTRACT_SHADER_UNIFORM_VOCABULARY_HPP
 
-#include "X3DReflection.hpp"  // X3DFieldType
+#include "x3d/core/X3DReflection.hpp"  // X3DFieldType
 #include <cstdint>
 #include <string_view>
 

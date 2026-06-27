@@ -7,7 +7,7 @@
 #include "X3DParse.hpp"
 #include "X3DSceneBridge.hpp"
 #include "X3DExecutionContext.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <cmath>
 #include <iostream>

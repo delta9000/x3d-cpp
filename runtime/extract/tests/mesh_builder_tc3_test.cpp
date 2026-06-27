@@ -24,7 +24,7 @@
 //      coincident spine does not divide by zero (no NaN/inf in texcoords).
 #include "MeshBuilder.hpp"
 
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

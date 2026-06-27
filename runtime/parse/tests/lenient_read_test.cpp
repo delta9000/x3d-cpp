@@ -8,7 +8,7 @@
 
 #include "X3DParse.hpp"
 
-#include "Material.hpp"
+#include "x3d/nodes/Material.hpp"
 
 #include <any>
 #include <iostream>

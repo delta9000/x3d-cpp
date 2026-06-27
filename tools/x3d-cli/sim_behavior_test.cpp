@@ -21,7 +21,7 @@
 #include "sim_runtime.hpp"
 #include "sim_tracer.hpp"
 
-#include "Transform.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <cassert>
 #include <cmath>

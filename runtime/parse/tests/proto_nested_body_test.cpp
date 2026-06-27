@@ -3,7 +3,7 @@
 // instantiation and land inside the outer primary's cloned subtree — verified
 // end-to-end through the XML and ClassicVRML front doors.
 #include "X3DParse.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

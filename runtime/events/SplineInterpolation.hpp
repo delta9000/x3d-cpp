@@ -21,7 +21,7 @@
 
 #include "Interpolation.hpp" // Quat, slerp, quatFromRotation, rotationFromQuat
 
-#include "X3Dtypes.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 
 #include <algorithm>
 #include <cmath>

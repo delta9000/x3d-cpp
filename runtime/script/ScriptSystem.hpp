@@ -38,10 +38,10 @@
 #include "ScriptEngine.hpp"
 
 #include "X3DExecutionContext.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/core/X3DReflection.hpp"
 #include "X3DSystem.hpp"
 
-#include "Script.hpp"
+#include "x3d/nodes/Script.hpp"
 
 #include <any>
 #include <memory>

@@ -14,7 +14,7 @@
 #ifndef X3D_RUNTIME_INTERPOLATION_HPP
 #define X3D_RUNTIME_INTERPOLATION_HPP
 
-#include "X3Dtypes.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 
 #include <algorithm>
 #include <cmath>

@@ -17,8 +17,8 @@
 #ifndef X3D_RUNTIME_CYCLE_BREAKER_HPP
 #define X3D_RUNTIME_CYCLE_BREAKER_HPP
 
-#include "X3DNode.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/core/X3DReflection.hpp"
 #include "X3DScene.hpp"
 
 #include <any>

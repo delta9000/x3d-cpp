@@ -15,7 +15,7 @@
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"
 
-#include "Script.hpp"
+#include "x3d/nodes/Script.hpp"
 
 #include <iostream>
 #include <memory>

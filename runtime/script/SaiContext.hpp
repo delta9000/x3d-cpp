@@ -24,9 +24,9 @@
 #include "DynamicField.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DFieldAddress.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
-#include "Script.hpp"  // Script::getDirectOutput()
+#include "x3d/nodes/Script.hpp"  // Script::getDirectOutput()
 
 #include <any>
 #include <optional>

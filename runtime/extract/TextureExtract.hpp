@@ -39,8 +39,8 @@
 #include "RenderItem.hpp"         // MeshData / TextureRef
 #include "TextureResolver.hpp"    // TextureResolver / TexturePixelResult
 #include "TextureTransform2D.hpp" // TextureTransform2DParams / Extended sampler / TexCoordGen
-#include "X3DNode.hpp"
-#include "X3Dtypes.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 
 #include <memory>
 #include <string>

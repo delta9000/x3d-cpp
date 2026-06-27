@@ -48,7 +48,7 @@
 #include "FieldValueIO.hpp" // parseInt/parseDouble (x3d::codec)
 #include "JsonLite.hpp"     // x3d::json::parse, Value
 #include "NodeBuilder.hpp"  // build::beginNode/applyField/attachChild/etc.
-#include "Script.hpp"       // Script::setSourceCode (inline source capture)
+#include "x3d/nodes/Script.hpp"       // Script::setSourceCode (inline source capture)
 #include "X3DReader.hpp"
 #include "X3DRuntime.hpp"
 

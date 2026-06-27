@@ -21,8 +21,8 @@
 
 #include "SaiContext.hpp"
 #include "X3DExecutionContext.hpp"
-#include "Script.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/Script.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <any>
 #include <cmath>

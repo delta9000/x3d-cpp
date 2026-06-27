@@ -11,8 +11,8 @@
 #include "FieldValueIO.hpp"
 #include "VrmlWriter.hpp"
 
-#include "PixelTexture.hpp"    // SFImage field + SFBool repeatS/repeatT
-#include "WorldInfo.hpp"       // SFString title for VRML escaping test
+#include "x3d/nodes/PixelTexture.hpp"    // SFImage field + SFBool repeatS/repeatT
+#include "x3d/nodes/WorldInfo.hpp"       // SFString title for VRML escaping test
 #include "X3DRuntime.hpp"
 
 #include <any>

@@ -8,13 +8,13 @@
 
 #include "X3DExecutionContext.hpp"
 
-#include "Box.hpp"
-#include "CollidableShape.hpp"
-#include "CollisionCollection.hpp"
-#include "RigidBody.hpp"
-#include "RigidBodyCollection.hpp"
-#include "Shape.hpp"
-#include "X3Denums.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/CollidableShape.hpp"
+#include "x3d/nodes/CollisionCollection.hpp"
+#include "x3d/nodes/RigidBody.hpp"
+#include "x3d/nodes/RigidBodyCollection.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/core/X3Denums.hpp"
 
 #include <cstdio>
 #include <memory>

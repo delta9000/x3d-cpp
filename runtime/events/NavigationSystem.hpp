@@ -36,7 +36,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
-#include "NavigationInfo.hpp" // getType/getSpeed/getTransition*; emitTransitionComplete
+#include "x3d/nodes/NavigationInfo.hpp" // getType/getSpeed/getTransition*; emitTransitionComplete
 
 #include <cmath>
 #include <optional>

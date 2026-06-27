@@ -20,8 +20,8 @@
 #include "DynamicField.hpp" // author-field re-emit (SCR-SAI-DYN S1)
 #include "FieldValueIO.hpp"
 #include "ProtoNameMaps.hpp"
-#include "Script.hpp" // Script::getSourceCode (inline source re-emit)
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/Script.hpp" // Script::getSourceCode (inline source re-emit)
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
 #include "parse/NodeBuilder.hpp" // build::orderedChildFields (authored child order)
 

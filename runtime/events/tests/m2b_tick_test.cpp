@@ -2,7 +2,7 @@
 // of a translated Shape>Box are correct, and changing the box via the cascade
 // updates them.
 #include "X3DExecutionContext.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp"
 #include <any>

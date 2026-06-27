@@ -4,7 +4,7 @@
 #define X3D_RUNTIME_EVENT_GRAPH_HPP
 
 #include "X3DFieldAddress.hpp"
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include <string>
 #include <unordered_map>

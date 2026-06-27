@@ -4,8 +4,8 @@
 #include "BindingStack.hpp"
 #include "BindingSystem.hpp"
 #include "X3DExecutionContext.hpp"
-#include "X3DBindableNode.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DBindableNode.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp"
 #include <any>

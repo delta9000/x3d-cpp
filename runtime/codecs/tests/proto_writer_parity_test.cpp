@@ -4,7 +4,7 @@
 #include "X3DParse.hpp"
 #include "JsonWriter.hpp"
 #include "VrmlWriter.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
 
 #include "doctest/doctest.h"

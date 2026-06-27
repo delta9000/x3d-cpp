@@ -25,8 +25,8 @@
 #include "DynamicField.hpp"
 #include "FieldValueIO.hpp"
 #include "ProtoNameMaps.hpp"
-#include "Script.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/Script.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
 #include "XmlLite.hpp"
 

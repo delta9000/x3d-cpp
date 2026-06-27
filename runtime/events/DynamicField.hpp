@@ -21,8 +21,8 @@
 #ifndef X3D_RUNTIME_DYNAMIC_FIELD_HPP
 #define X3D_RUNTIME_DYNAMIC_FIELD_HPP
 
-#include "X3DNode.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
 #include <any>
 #include <memory>

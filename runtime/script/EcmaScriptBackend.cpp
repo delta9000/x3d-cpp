@@ -7,8 +7,8 @@
 
 #include "DynamicField.hpp" // author-field store (S1 un-tabling, design §3.5)
 #include "SaiContext.hpp"   // post author outputs into the cascade
-#include "X3DNode.hpp"      // SFNode wrapping (X3DNode*)
-#include "X3Dtypes.hpp"     // SF*/MF* concrete C++ types
+#include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
+#include "x3d/core/X3Dtypes.hpp"     // SF*/MF* concrete C++ types
 
 #include <iostream>  // diagnostics
 #include <stdexcept>

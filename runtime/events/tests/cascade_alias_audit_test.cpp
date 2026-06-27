@@ -16,8 +16,8 @@
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
 
-#include "PositionInterpolator.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/PositionInterpolator.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <any>
 #include <iostream>

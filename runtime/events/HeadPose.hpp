@@ -6,7 +6,7 @@
 #ifndef X3D_RUNTIME_HEAD_POSE_HPP
 #define X3D_RUNTIME_HEAD_POSE_HPP
 
-#include "X3Dtypes.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 
 namespace x3d::runtime {
 

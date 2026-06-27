@@ -14,16 +14,16 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
 
-#include "BooleanFilter.hpp"
-#include "BooleanSequencer.hpp"
-#include "BooleanToggle.hpp"
-#include "BooleanTrigger.hpp"
-#include "IntegerSequencer.hpp"
-#include "IntegerTrigger.hpp"
-#include "TimeTrigger.hpp"
+#include "x3d/nodes/BooleanFilter.hpp"
+#include "x3d/nodes/BooleanSequencer.hpp"
+#include "x3d/nodes/BooleanToggle.hpp"
+#include "x3d/nodes/BooleanTrigger.hpp"
+#include "x3d/nodes/IntegerSequencer.hpp"
+#include "x3d/nodes/IntegerTrigger.hpp"
+#include "x3d/nodes/TimeTrigger.hpp"
 
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include <iostream>

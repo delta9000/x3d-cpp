@@ -4,7 +4,7 @@
 #define X3D_RUNTIME_GEOMETRY_BOUNDS_HPP
 
 #include "Aabb.hpp"
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include <algorithm>
 #include <any>
 #include <cassert>

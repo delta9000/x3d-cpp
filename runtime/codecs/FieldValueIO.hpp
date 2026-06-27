@@ -14,7 +14,7 @@
 #ifndef X3D_FIELD_VALUE_IO_HPP
 #define X3D_FIELD_VALUE_IO_HPP
 
-#include "X3DNode.hpp" // pulls in X3Dtypes.hpp + X3DReflection.hpp
+#include "x3d/nodes/X3DNode.hpp" // pulls in X3Dtypes.hpp + X3DReflection.hpp
 
 #include <algorithm>
 #include <any>

@@ -19,8 +19,8 @@
 #include "X3DRuntime.hpp"
 #include "X3DSceneBridge.hpp"
 
-#include "Script.hpp"
-#include "TimeSensor.hpp"
+#include "x3d/nodes/Script.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
 
 #include <iostream>
 #include <memory>

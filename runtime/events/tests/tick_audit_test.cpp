@@ -16,7 +16,7 @@
 #include "X3DEventGraph.hpp"
 #include "X3DSystem.hpp"
 
-#include "Transform.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <any>
 #include <iostream>

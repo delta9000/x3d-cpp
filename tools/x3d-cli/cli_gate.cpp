@@ -38,9 +38,9 @@
 #include "Encoding.hpp"
 
 // Generated node headers for conformance checks (mirrors x3d_cli.cpp).
-#include "Coordinate.hpp"
-#include "IndexedFaceSet.hpp"
-#include "IndexedLineSet.hpp"
+#include "x3d/nodes/Coordinate.hpp"
+#include "x3d/nodes/IndexedFaceSet.hpp"
+#include "x3d/nodes/IndexedLineSet.hpp"
 
 #include <algorithm>
 #include <any>
