@@ -12,3 +12,13 @@ def test_generated_node_header_is_namespaced(tmp_path):
     assert "using namespace x3d::core;" in appearance
     # core header landed in the core subdir:
     assert (out / "x3d" / "core" / "X3Dtypes.hpp").exists()
+
+
+def test_factory_and_registry_namespaced(tmp_path):
+    out = tmp_path / "gen"
+    import subprocess, sys
+    subprocess.run([sys.executable, "-m", "x3d_cpp_gen.cli", "--out", str(out)], check=True)
+    fac = (out / "x3d" / "nodes" / "X3DNodeFactory.hpp").read_text()
+    assert "#pragma once" in fac
+    assert "namespace x3d::nodes {" in fac
+    assert "class X3DNode;" in fac  # forward-decl now lives inside x3d::nodes
