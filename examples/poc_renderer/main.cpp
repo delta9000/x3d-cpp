@@ -28,8 +28,10 @@
 //   author-shader: ComposedShader dispatch via ShaderBindingPlan vocabulary.
 //   Gamma/sRGB: LINEARtoSRGB at fragment output; sRGB texture internal format.
 //
-// The M0 GATE is configure+build+LINK. The GUI is run by the user on a real
-// Wayland session; this file is never executed headless in CI.
+// The M0 GATE is configure+build+LINK. The interactive GUI is run by the user on
+// a real Wayland session, but CI's `examples-gate` (and `mise run validate-examples`)
+// now also exercise the GL pipeline headlessly: the --screenshot path runs under
+// Xvfb + mesa software GL (llvmpipe), so a renderer-side break can no longer hide.
 //
 // USAGE:  x3d_poc_renderer [--headless] [scene.x3d]
 //   With no scene argument it loads the bundled assets/triangle.x3d (first-light).

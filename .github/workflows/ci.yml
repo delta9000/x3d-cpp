@@ -506,6 +506,39 @@ jobs:
       - name: Swap-test (stb_truetype vs FreeType exact-equal advanceEm)
         run: ctest --test-dir build --output-on-failure -R x3d_text
 
+  # The out-of-SDK renderer CONSUMERS — examples/cpu_raster/ (headless CPU raster)
+  # and examples/poc_renderer/ (OpenGL) — are OFF by default and built only via
+  # `mise run cpuraster` / `mise run poc`, so the `cpp` gate never compiles them.
+  # An SDK-wide refactor (e.g. ADR-0039's x3d::core / x3d::nodes namespace move)
+  # silently rotted BOTH until someone ran an example by hand. This gate builds
+  # both, runs their --headless probes, and exercises the real GL pipeline
+  # headlessly under Xvfb + mesa software GL (llvmpipe) — the closest proof that
+  # the renderer-agnostic extraction seam still works for an external consumer.
+  # Unconditional (every PR): the drift it catches comes from arbitrary public-API
+  # changes, not one path-gated seam. Mirrors `mise run validate-examples` (both
+  # call scripts/validate-examples.sh).
+  examples-gate:
+    name: Example consumers (cpu_raster + poc, headless GL)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools + GLFW build deps + headless GL (Xvfb + mesa)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build ccache g++ mold \
+            libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            xvfb libgl1-mesa-dri mesa-utils
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-examples-${{ github.sha }}
+          restore-keys: ccache-examples-
+      - name: Build both examples + headless probes + Xvfb GL smoke
+        run: scripts/validate-examples.sh
+
   # Heavy baseline matrix — pins oldest supported (GCC 11 / Clang 14) + current
   # compilers. Manual only (the 4× build is too heavy for every PR push).
   cpp-matrix:
