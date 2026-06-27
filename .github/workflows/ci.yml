@@ -64,6 +64,7 @@ jobs:
       quickjs: ${{ steps.f.outputs.quickjs }}
       assets: ${{ steps.f.outputs.assets }}
       fontmetrics: ${{ steps.f.outputs.fontmetrics }}
+      code: ${{ steps.f.outputs.code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -74,8 +75,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${BASE:-}" ]; then
-            # Manual dispatch (no PR base): run every seam proof.
-            for k in audio quickjs assets fontmetrics; do
+            # Manual dispatch (no PR base): run every seam proof + the C++ jobs.
+            for k in audio quickjs assets fontmetrics code; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -95,8 +96,18 @@ jobs:
           out audio       '^runtime/sound/'
           out quickjs     '^runtime/script/'
           out assets      '^runtime/io/(curl|s3)/|^runtime/io/tests/asset_resolver|^runtime/extract/AssetResolver\.hpp$|^runtime/parse/(X3DParse|X3DProtoResolver|JsonReader|ClassicVrmlReader|Vrml97Dialect)\.hpp$|^runtime/InlineExpand\.hpp$|^runtime/ext/(ExtResolver|ExternalGeometry)\.hpp$|^runtime/extract/TextureExtract\.hpp$'
-          # texture is unconditional — see texture-swap job below.
+          # texture is broad by design (see texture-swap) — gated only on `code`.
           out fontmetrics '^runtime/io/(stbtt|freetype)/|^runtime/io/tests/font_metrics|^runtime/extract/FontMetrics\.hpp$|^runtime/extract/(TextLayout|TextExtract|MeshBuilder|RenderItem)\.hpp$'
+          # code: gates the heavy C++ jobs (cpp-san, cpp-fuzz, texture-swap). True
+          # for ANY non-docs change; skip ONLY when every changed file is docs
+          # (docs/**, *.md, mkdocs.yml). Fail-safe toward running: an empty diff or
+          # any unrecognized path runs the jobs. The fast `cpp` gate stays
+          # always-on (cheap, and the stable required status check).
+          if [ -z "$changed" ] || echo "$changed" | grep -qvE '^docs/|\.md$|^mkdocs\.yml$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
 
   python:
     name: pytest (unit + golden tree)
@@ -188,6 +199,8 @@ jobs:
   # because the separate sanitized build dir can't share ccache objects with it.
   cpp-san:
     name: C++ sanitizer gate (ASan + UBSan)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -214,6 +227,8 @@ jobs:
   # keeps PR cost low while still re-exercising the parser against mutated input.
   cpp-fuzz:
     name: C++ fuzz gate (libFuzzer parseDocument)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -380,13 +395,16 @@ jobs:
   # NO vcpkg, NO docker/minio, NO FetchContent — both decoders are vendored, so
   # the gate is a sub-minute apt + scoped build.
   #
-  # UNCONDITIONAL on every PR (no `needs: changes`, no path filter). Texture
-  # decode parity is the closest thing the SDK has to a byte-exact rendering
-  # guarantee — the dual-backend comparison catches lossy decode regressions a
-  # path-gated run would silently miss if the change happened outside the
-  # texture code. Vendored + hermetic keeps the cost under ~2 min per PR.
+  # Runs on every CODE PR (gated on `code`, not on a texture path filter):
+  # texture decode parity is the closest thing the SDK has to a byte-exact
+  # rendering guarantee, and the dual-backend comparison catches lossy decode
+  # regressions a seam-path-gated run would silently miss if the change happened
+  # outside the texture code. Only docs-only PRs skip it (they cannot regress
+  # decode). Vendored + hermetic keeps the cost under ~2 min per PR.
   texture-swap:
     name: TextureResolver decode seam swap-test
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
