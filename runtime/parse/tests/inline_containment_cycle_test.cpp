@@ -17,5 +17,13 @@ int main(int argc, char** argv) {
   // If we reach here the fix is working — infinite recursion was prevented.
   std::cout << "inline_containment_cycle_test OK (terminated, scene roots="
             << doc.scene.rootNodes.size() << ")\n";
+
+  // The raw parse intentionally returns the cyclic graph (A USEs itself, so a
+  // shared_ptr containment cycle A -> A persists); sanitization is a separate,
+  // downstream step that real consumers get at X3DExecutionContext construction.
+  // This parse-layer test never builds a context, so sever the back-edge here
+  // (the runtime's own sanitizer) — otherwise the self-cycle keeps the node
+  // alive past scope exit and LeakSanitizer (san build) flags the leak.
+  x3d::runtime::breakContainmentCycles(doc.scene);
   return 0;
 }

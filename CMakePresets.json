@@ -23,6 +23,32 @@
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "X3D_CPP_WERROR": "ON"
       }
+    },
+    {
+      "name": "san",
+      "displayName": "San (ASan + UBSan)",
+      "description": "Address + UndefinedBehavior sanitizer build for parser tests + corpus sweep. Same flags the GitHub Actions `cpp-san` job uses. ctest under this preset runs every ctest against sanitized binaries — crashes / UB failures fail the gate. WERROR is OFF — the ci preset is the warning-enforcement gate; this one is purely for memory bugs.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-san",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "X3D_CPP_SAN": "ON"
+      }
+    },
+    {
+      "name": "fuzz",
+      "displayName": "Fuzz (Clang + libFuzzer + ASan + UBSan)",
+      "description": "libFuzzer harness for parseDocument (Clang-only — `-fsanitize=fuzzer`). Build with `cmake --preset fuzz && cmake --build build-fuzz --target x3d_parse_fuzz`. Run `./build-fuzz/x3d_parse_fuzz corpus/` to explore, or `--max_total_time=60` for a bounded CI smoke. WERROR is OFF — Clang has additional default warnings (e.g. -Wmissing-braces in the generated code) that don't reflect actual bugs and would block the fuzz gate.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-fuzz",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "X3D_CPP_FUZZ": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -33,6 +59,14 @@
     {
       "name": "ci",
       "configurePreset": "ci"
+    },
+    {
+      "name": "san",
+      "configurePreset": "san"
+    },
+    {
+      "name": "fuzz",
+      "configurePreset": "fuzz"
     }
   ],
   "testPresets": [
@@ -45,6 +79,12 @@
     {
       "name": "ci",
       "configurePreset": "ci",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "san",
+      "configurePreset": "san",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error", "stopOnFailure": false }
     }

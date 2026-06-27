@@ -64,6 +64,11 @@ TEST_CASE("scene_extractor_terminates_on_containment_cycle") {
   extract::RenderDelta snap = ex.fullSnapshot(); // pre-fix: SIGSEGV
   // Reaching here proves the walk terminated; the one real Box Shape is emitted.
   CHECK(snap.added.size() == 1);
+
+  // Teardown hygiene: the walk above ran on the UNSANITIZED cycle on purpose;
+  // now sever the A->B->A back-edge so the scene's shared_ptrs are collectible
+  // (the cycle would otherwise leak — caught by LeakSanitizer under the san preset).
+  breakContainmentCycles(scene);
 }
 
 TEST_CASE("pick_system_terminates_on_containment_cycle") {
@@ -75,6 +80,8 @@ TEST_CASE("pick_system_terminates_on_containment_cycle") {
 
   PickResult hit = ps.pickClosest(Ray{{0, 0, 10}, {0, 0, -1}}, bs); // pre-fix: SIGSEGV
   CHECK(hit.hit); // the Box at the origin is picked, and the walk terminated.
+
+  breakContainmentCycles(scene); // teardown: sever A->B->A so the scene is collectible
 }
 
 TEST_CASE("pick_worldOf_terminates_on_containment_cycle") {
@@ -87,4 +94,6 @@ TEST_CASE("pick_worldOf_terminates_on_containment_cycle") {
   Mat4 w = ps.worldOf(stranger.get()); // pre-fix: SIGSEGV
   // Not found -> identity, and the search terminated.
   CHECK(w.transformPoint({1, 2, 3}).x == doctest::Approx(1.0f));
+
+  breakContainmentCycles(scene); // teardown: sever A->B->A so the scene is collectible
 }

@@ -46,7 +46,7 @@ correctness-first posture.
 ## The `ci` preset (local mirror of the GitHub Actions gate)
 
 `CMakePresets.json` defines a second preset, `ci`, that mirrors what the
-[GitHub Actions workflow](../../../../.github/workflows/ci.yml) `cpp` job does —
+GitHub Actions workflow (`.github/workflows/ci.yml`) `cpp` job does —
 per-header isolation checks **ON** (the ~800 per-header ctests), no other overrides:
 
 | Property | Value |
@@ -238,6 +238,8 @@ ctest --preset dev -j "$(nproc)"
 | `mise run cli-gate` | Informative (non-failing) differential gate: produces `tools/x3d-cli/goldens/divergence-report.md`. |
 | `mise run canon-gate` | Informative tiered canonicalize gate (T1 idempotence + T2 tolerant-diff + T3 byte-exact rate). |
 | `mise run cli-gate-baseline` | Refresh the committed baseline TSVs after accepting new intentional divergences. |
+| `mise run build-san` | Sanitizer gate (BLD-2): rebuild every target with ASan + UBSan (`san` preset) and run every ctest against the sanitized binaries. Mirrors the GitHub Actions `cpp-san` job. **Not** part of `mise run ci` — run it explicitly. |
+| `mise run build-fuzz` | Build the libFuzzer harness for `parseDocument` (`fuzz` preset, Clang-only). Run the binary directly to fuzz; the `cpp-fuzz` job runs a bounded smoke. |
 
 ### Corpus tasks
 
@@ -338,6 +340,56 @@ mise run build-ci
 # or:
 cmake --preset ci && cmake --build --preset ci
 ```
+
+---
+
+## Sanitizer and fuzz gates (BLD-2)
+
+The green doctest run proves behavior but misses the memory/UB bug classes the
+parser-hardening work (SEC-1/2, MEM-1) is meant to foreclose: use-after-free,
+leaks, signed overflow, OOB reads. Two extra build modes — both **separate from
+`mise run ci`** — close that gap. Each runs as its own GitHub Actions job
+(`cpp-san`, `cpp-fuzz`) on every PR.
+
+### `san` preset — ASan + UBSan
+
+`X3D_CPP_SAN=ON` adds `-fsanitize=address,undefined -fno-omit-frame-pointer
+-fno-sanitize-recover=all` to **every** project target (`CMakeLists.txt`), so the
+first sanitizer error aborts the run. `RelWithDebInfo` keeps line-accurate traces.
+WERROR is OFF here — the `ci` preset owns warning enforcement; this preset is
+purely for memory/UB.
+
+```bash
+mise run build-san        # cmake --preset san && build && ctest --preset san
+```
+
+The separate `build-san/` dir is intentional: its objects carry sanitizer flags
+and are **not** ccache-compatible with the `dev`/`ci` presets, so don't expect a
+shared warm cache.
+
+### `fuzz` preset — libFuzzer over `parseDocument`
+
+`X3D_CPP_FUZZ=ON` (Clang-only) builds `x3d_parse_fuzz`, a libFuzzer harness that
+drives `sdk::parseDocument` with mutated bytes across all four encodings
+(XML/JSON/VRML/sniff). The harness swallows the parser's soft-failure exceptions
+(the "never panic" contract) and asserts only that no input crashes, leaks, or
+trips UB — the ASan/UBSan signal handlers are what catch a regression.
+
+The instrumentation must be **compile-time**: `-fsanitize=fuzzer,address,undefined`
+on the harness target's compile options (not just link). `fuzzer` at compile time
+inserts the SanitizerCoverage edge feedback libFuzzer mutates against — without it
+the fuzzer runs blind and finds nothing — and the SDK is header-only, so
+instrumenting that one TU instruments the whole inlined parse path.
+
+```bash
+mise run build-fuzz                              # build the harness
+./build-fuzz/x3d_parse_fuzz -max_total_time=60   # bounded smoke (CI runs this)
+./build-fuzz/x3d_parse_fuzz corpus/              # explore from a seed corpus
+```
+
+A crash writes a `crash-<hash>` reproducer in the cwd and exits nonzero (failing
+the gate). The CI job runs a 60-second bounded smoke — regression coverage, not an
+exhaustive campaign.
 
 ---
 

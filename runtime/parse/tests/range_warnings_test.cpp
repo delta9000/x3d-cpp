@@ -71,16 +71,22 @@ TEST_CASE("range_warnings_test") {
   //     no cycle guard and stack-overflowed on such corpus files.
   {
     auto g = std::make_shared<Group>();
+    FieldInfo *childrenSet = nullptr;
     for (const FieldInfo &f : g->fields()) {
       if (f.x3dName == "children" && f.set) {
         std::vector<std::shared_ptr<X3DNode>> kids{g}; // self-reference -> cycle
         f.set(*g, std::any(kids));
+        childrenSet = const_cast<FieldInfo *>(&f);
         break;
       }
     }
     std::vector<RangeDiagnostic> cyc;
     collectRangeWarnings(*g, cyc); // must terminate, not stack-overflow
     CHECK((cyc.empty()));
+    // Break the self-cycle before g goes out of scope (caught by ASan/LSan
+    // under the san preset).
+    if (childrenSet)
+      childrenSet->set(*g, std::any(std::vector<std::shared_ptr<X3DNode>>{}));
   }
 
   std::cout << "range_warnings_test OK\n";

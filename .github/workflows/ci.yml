@@ -179,6 +179,62 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure -j "$(nproc)"
 
+  # Sanitizer gate (BLD-2). Rebuilds the whole project with ASan + UBSan
+  # (-fno-sanitize-recover=all, so the first error aborts) and runs every ctest
+  # against the sanitized binaries — the green doctest run misses the memory/UB
+  # bugs (use-after-free, leaks, signed overflow) that the parser-hardening work
+  # (SEC-1/2, MEM-1) is meant to foreclose. Mirrors `mise run build-san` exactly
+  # via the `san` preset. Unconditional on every PR; off the fast `cpp` job
+  # because the separate sanitized build dir can't share ccache objects with it.
+  cpp-san:
+    name: C++ sanitizer gate (ASan + UBSan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-san-${{ github.sha }}
+          restore-keys: ccache-san-
+      - name: Configure (ASan + UBSan via the `san` preset)
+        run: cmake --preset san
+      - name: Build (sanitized)
+        run: cmake --build --preset san
+      - name: Test (every ctest under ASan + UBSan)
+        run: ctest --preset san --output-on-failure -j "$(nproc)"
+
+  # Fuzz gate (BLD-2). Builds the libFuzzer harness for sdk::parseDocument
+  # (Clang-only — the `-fsanitize=fuzzer` coverage instrumentation + ASan/UBSan
+  # are compiled into the header-only parse path) and runs a short bounded smoke.
+  # A crash, leak, or UB found in the time budget fails the job (libFuzzer exits
+  # nonzero). This is regression coverage, not an exhaustive campaign — the bound
+  # keeps PR cost low while still re-exercising the parser against mutated input.
+  cpp-fuzz:
+    name: C++ fuzz gate (libFuzzer parseDocument)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Clang + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache clang
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-fuzz-${{ github.sha }}
+          restore-keys: ccache-fuzz-
+      - name: Configure + build the libFuzzer harness (`fuzz` preset)
+        run: |
+          cmake --preset fuzz
+          cmake --build --preset fuzz --target x3d_parse_fuzz
+      # Bounded smoke: 60s of coverage-guided mutation. libFuzzer returns nonzero
+      # (and writes a crash-<hash> reproducer) on any ASan/UBSan finding, failing
+      # the gate. -print_final_stats surfaces coverage/exec counts in the log.
+      - name: Fuzz (bounded 60s smoke)
+        run: ./build-fuzz/x3d_parse_fuzz -max_total_time=60 -print_final_stats=1
+
   # Genericity proof — the permanent gate for the ScriptEngine seam (ADR-0022).
   # Builds the flag-gated QuickJS backend (FetchContents quickjs-ng v0.15.1) and runs
   # the dual-backend swap-test: identical fixtures through Duktape AND QuickJS must
