@@ -30,6 +30,8 @@
 using namespace x3d;
 using namespace x3d::runtime;
 using x3d::runtime::test::MockScriptEngine;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 namespace {
 

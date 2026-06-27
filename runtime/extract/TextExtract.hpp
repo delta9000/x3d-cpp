@@ -52,6 +52,8 @@
 
 namespace x3d::runtime::extract {
 
+using namespace x3d::core;
+
 namespace text_detail {
 
 // Read an SFEnum/MFEnum field's X3D token string via the node-agnostic

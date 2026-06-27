@@ -27,6 +27,7 @@
 #include <cmath>
 
 namespace x3d::cpuraster::glsl {
+using namespace x3d::core;
 
 // ---------------------------------------------------------------------------
 // Scalar helpers (GLSL-named so ports read 1:1). These also overload for the

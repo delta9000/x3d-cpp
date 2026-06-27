@@ -13,7 +13,8 @@
 #include <iostream>
 #include <memory>
 
-using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 static int failures = 0;
@@ -33,7 +34,7 @@ TEST_CASE("standard_runtime_test") {
       "<ROUTE fromNode='PI' fromField='value_changed' toNode='T' toField='translation'/>"
       "</Scene></X3D>";
 
-  auto doc = codec::parseDocument(xml);
+  auto doc = x3d::codec::parseDocument(xml);
   Scene &scene = doc.getScene();
   X3DExecutionContext ctx;
   ctx.buildSceneGraph(scene);

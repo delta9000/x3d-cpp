@@ -6,6 +6,7 @@
 #include <cmath>
 #include <vector>
 namespace x3d::runtime {
+using namespace x3d::core;
 template <typename T> struct FollowerArith;
 
 template <> struct FollowerArith<float> {

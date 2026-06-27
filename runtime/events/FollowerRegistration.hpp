@@ -29,6 +29,9 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+namespace xn = x3d::nodes;
+
 /**
  * @brief Build one System per follower node type (14 total: 7 types × Damper + Chaser).
  *
@@ -43,20 +46,20 @@ namespace x3d::runtime {
  */
 inline std::vector<std::shared_ptr<System>> makeFollowerSystems() {
   std::vector<std::shared_ptr<System>> s;
-  s.push_back(std::make_shared<DamperSystem<ScalarDamper, float>>());
-  s.push_back(std::make_shared<ChaserSystem<ScalarChaser, float>>());
-  s.push_back(std::make_shared<DamperSystem<PositionDamper, SFVec3f>>());
-  s.push_back(std::make_shared<ChaserSystem<PositionChaser, SFVec3f>>());
-  s.push_back(std::make_shared<DamperSystem<PositionDamper2D, SFVec2f>>());
-  s.push_back(std::make_shared<ChaserSystem<PositionChaser2D, SFVec2f>>());
-  s.push_back(std::make_shared<DamperSystem<ColorDamper, SFColor>>());
-  s.push_back(std::make_shared<ChaserSystem<ColorChaser, SFColor>>());
-  s.push_back(std::make_shared<DamperSystem<OrientationDamper, SFRotation>>());
-  s.push_back(std::make_shared<ChaserSystem<OrientationChaser, SFRotation>>());
-  s.push_back(std::make_shared<DamperSystem<CoordinateDamper, MFVec3f>>());
-  s.push_back(std::make_shared<ChaserSystem<CoordinateChaser, MFVec3f>>());
-  s.push_back(std::make_shared<DamperSystem<TexCoordDamper2D, MFVec2f>>());
-  s.push_back(std::make_shared<ChaserSystem<TexCoordChaser2D, MFVec2f>>());
+  s.push_back(std::make_shared<DamperSystem<xn::ScalarDamper, float>>());
+  s.push_back(std::make_shared<ChaserSystem<xn::ScalarChaser, float>>());
+  s.push_back(std::make_shared<DamperSystem<xn::PositionDamper, SFVec3f>>());
+  s.push_back(std::make_shared<ChaserSystem<xn::PositionChaser, SFVec3f>>());
+  s.push_back(std::make_shared<DamperSystem<xn::PositionDamper2D, SFVec2f>>());
+  s.push_back(std::make_shared<ChaserSystem<xn::PositionChaser2D, SFVec2f>>());
+  s.push_back(std::make_shared<DamperSystem<xn::ColorDamper, SFColor>>());
+  s.push_back(std::make_shared<ChaserSystem<xn::ColorChaser, SFColor>>());
+  s.push_back(std::make_shared<DamperSystem<xn::OrientationDamper, SFRotation>>());
+  s.push_back(std::make_shared<ChaserSystem<xn::OrientationChaser, SFRotation>>());
+  s.push_back(std::make_shared<DamperSystem<xn::CoordinateDamper, MFVec3f>>());
+  s.push_back(std::make_shared<ChaserSystem<xn::CoordinateChaser, MFVec3f>>());
+  s.push_back(std::make_shared<DamperSystem<xn::TexCoordDamper2D, MFVec2f>>());
+  s.push_back(std::make_shared<ChaserSystem<xn::TexCoordChaser2D, MFVec2f>>());
   return s;
 }
 

@@ -7,9 +7,10 @@
 #include <functional>
 #include <string>
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
+using x3d::nodes::X3DNode;
 
 /**
  * @brief A field endpoint for an event ROUTE: (node, field-name).

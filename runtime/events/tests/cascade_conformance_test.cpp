@@ -32,6 +32,9 @@
 
 using namespace x3d;
 using namespace x3d::runtime;
+using namespace x3d::core;
+
+namespace xn = x3d::nodes;
 
 namespace {
 
@@ -46,7 +49,7 @@ void check(bool cond, const std::string &what) {
   }
 }
 
-SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
+SFVec3f tr(const std::shared_ptr<xn::Transform> &t) { return t->getTranslation(); }
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
 }
@@ -55,9 +58,9 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
 // timestamp. The per-ROUTE guard does not catch this — the two edges have
 // distinct sources — so without the per-field cap the sink is written twice.
 void test_rtc5_fanin_delivers_once() {
-  auto a = std::make_shared<Transform>();
-  auto b = std::make_shared<Transform>();
-  auto z = std::make_shared<Transform>();
+  auto a = std::make_shared<xn::Transform>();
+  auto b = std::make_shared<xn::Transform>();
+  auto z = std::make_shared<xn::Transform>();
 
   EventGraph graph;
   graph.addRoute({a.get(), "translation"}, {z.get(), "translation"});
@@ -85,8 +88,8 @@ void test_rtc5_fanin_delivers_once() {
 // on a node that is also part of a cycle previously double-drove the loop; the
 // per-field cap breaks it. Each (node,field) must be produced exactly once.
 void test_rtc5_cyclic_redrive_broken() {
-  auto a = std::make_shared<Transform>();
-  auto b = std::make_shared<Transform>();
+  auto a = std::make_shared<xn::Transform>();
+  auto b = std::make_shared<xn::Transform>();
 
   EventGraph graph;
   graph.addRoute({a.get(), "translation"}, {b.get(), "translation"});
@@ -139,7 +142,7 @@ private:
 // reads the STALE value (the producer + cascade run after it) and lags a frame.
 class ConsumerSystem : public System {
 public:
-  explicit ConsumerSystem(Transform *mid) : mid_(mid) {}
+  explicit ConsumerSystem(xn::Transform *mid) : mid_(mid) {}
   void attach(X3DNode *, X3DExecutionContext &) override {}
   void update(double, X3DExecutionContext &ctx) override {
     (void)ctx;
@@ -150,7 +153,7 @@ public:
   int passes() const { return passes_; }
 
 private:
-  Transform *mid_;
+  xn::Transform *mid_;
   SFVec3f observed_{0, 0, 0};
   int passes_ = 0;
 };
@@ -160,8 +163,8 @@ private:
 // systems pass after the cascade delivered into mid.translation, so the
 // earlier-ordered consumer sees the fresh value on the second pass.
 void test_rtc6_reeval_within_one_tick() {
-  auto src = std::make_shared<Transform>();
-  auto mid = std::make_shared<Transform>();
+  auto src = std::make_shared<xn::Transform>();
+  auto mid = std::make_shared<xn::Transform>();
 
   X3DExecutionContext ctx;
   ctx.addRoute({src.get(), "translation"}, {mid.get(), "translation"});
@@ -185,8 +188,8 @@ void test_rtc6_reeval_within_one_tick() {
 // loop did not terminate this test would hang rather than fail; reaching the
 // assertions at all proves termination.)
 void test_rtc6_terminates_under_per_field_cap() {
-  auto src = std::make_shared<Transform>();
-  auto mid = std::make_shared<Transform>();
+  auto src = std::make_shared<xn::Transform>();
+  auto mid = std::make_shared<xn::Transform>();
 
   X3DExecutionContext ctx;
   ctx.addRoute({src.get(), "translation"}, {mid.get(), "translation"});

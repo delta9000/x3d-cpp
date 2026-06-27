@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 
+using namespace x3d::core;
 using namespace x3d;
 
 static const FieldInfo *fieldByName(const X3DNode &n, const std::string &name) {

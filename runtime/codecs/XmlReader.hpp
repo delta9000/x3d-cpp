@@ -34,6 +34,9 @@
 
 namespace x3d::codec {
 
+using namespace x3d::core;
+using x3d::nodes::X3DNodeFactory;
+
 /// Emit a non-fatal reader diagnostic. The XML path historically threw on any
 /// surprise; under the project's "lenient read" policy a recovery must stay
 /// visible rather than be silent, so we surface it on stderr. (A richer
@@ -194,7 +197,7 @@ private:
     // effectiveFields) and the CDATA body into Script.sourceCode. An inline
     // ecmascript:/javascript:/vrmlscript: scheme in `url` (read above as an
     // attribute) is left intact so ScriptSystem's url decode still applies.
-    if (auto *script = dynamic_cast<Script *>(node.get()))
+    if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
       captureScriptAuthorFields(el, *node, *script);
 
     // Recurse children into node fields by containerField.
@@ -250,7 +253,7 @@ private:
   /// own seeding contract. The CDATA body is set as sourceCode only when present
   /// (an empty body leaves the slot untouched so a url-only Script is unchanged).
   static void captureScriptAuthorFields(const xml::Element &el, X3DNode &node,
-                                        Script &script) {
+                                        x3d::nodes::Script &script) {
     std::vector<runtime::AuthorFieldDecl> decls;
     for (const auto &c : el.children) {
       if (c->name != "field")

@@ -20,6 +20,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
  * @brief Full TimeSensor lifecycle as a time-driven System.
  * @details Derives the shared clock machine from X3DTimeDependentSystem and
@@ -32,31 +34,31 @@ namespace x3d::runtime {
  */
 class TimeSensorSystem : public X3DTimeDependentSystem {
 public:
-  void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    if (dynamic_cast<TimeSensor *>(node)) {
+  void attach(x3d::nodes::X3DNode *node, X3DExecutionContext &ctx) override {
+    if (dynamic_cast<x3d::nodes::TimeSensor *>(node)) {
       X3DTimeDependentSystem::attach(node, ctx);
     }
   }
 
 protected:
-  bool readEnabled(X3DTimeDependentNode *node) const override {
+  bool readEnabled(x3d::nodes::X3DTimeDependentNode *node) const override {
     return sensor(node)->getEnabled();
   }
-  bool readLoop(X3DTimeDependentNode *node) const override {
+  bool readLoop(x3d::nodes::X3DTimeDependentNode *node) const override {
     return sensor(node)->getLoop();
   }
-  double readCycleInterval(X3DTimeDependentNode *node) const override {
+  double readCycleInterval(x3d::nodes::X3DTimeDependentNode *node) const override {
     return sensor(node)->getCycleInterval();
   }
 
-  void emitCycleOutputs(X3DTimeDependentNode *node, double frac, double now,
+  void emitCycleOutputs(x3d::nodes::X3DTimeDependentNode *node, double frac, double now,
                         double elapsed, X3DExecutionContext &ctx) override {
     (void)elapsed; // elapsedTime is emitted by the base.
     emit<SFTime>(ctx, node, "time", static_cast<SFTime>(now));
     emit<SFFloat>(ctx, node, "fraction_changed", static_cast<SFFloat>(frac));
   }
 
-  void emitCycleTime(X3DTimeDependentNode *node, double cycleStart,
+  void emitCycleTime(x3d::nodes::X3DTimeDependentNode *node, double cycleStart,
                      X3DExecutionContext &ctx) override {
     // Spec 8.4.1: cycleTime == time at the beginning of the current cycle
     // (startTime + cycleIndex*cycleInterval), supplied by the base (RTC-3).
@@ -64,8 +66,8 @@ protected:
   }
 
 private:
-  static TimeSensor *sensor(X3DTimeDependentNode *node) {
-    return dynamic_cast<TimeSensor *>(node);
+  static x3d::nodes::TimeSensor *sensor(x3d::nodes::X3DTimeDependentNode *node) {
+    return dynamic_cast<x3d::nodes::TimeSensor *>(node);
   }
 };
 

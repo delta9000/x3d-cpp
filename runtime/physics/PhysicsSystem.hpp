@@ -57,6 +57,9 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+namespace xn = x3d::nodes;
+
 /**
  * @brief Drives §37 rigid-body dynamics through an abstract PhysicsBackend.
  * @details A time-driven System: attach() walks each RigidBodyCollection into a
@@ -88,11 +91,11 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     (void)ctx;
     if (!backend_) return;
-    if (auto *sensor = dynamic_cast<CollisionSensor *>(node)) {
+    if (auto *sensor = dynamic_cast<xn::CollisionSensor *>(node)) {
       reporter_.addSensor(sensor);
       return;
     }
-    auto *collection = dynamic_cast<RigidBodyCollection *>(node);
+    auto *collection = dynamic_cast<xn::RigidBodyCollection *>(node);
     if (!collection) return;
     if (!collection->getEnabled()) return;
 
@@ -101,10 +104,10 @@ public:
 
     // RigidBody* -> BodyHandle, for resolving joints' body1/body2 below. Scoped
     // to this collection (each world owns its own bodies + joints).
-    std::unordered_map<const RigidBody *, BodyHandle> handleFor;
+    std::unordered_map<const xn::RigidBody *, BodyHandle> handleFor;
 
     for (const auto &bodyNode : collection->getBodies()) {
-      auto *body = dynamic_cast<RigidBody *>(bodyNode.get());
+      auto *body = dynamic_cast<xn::RigidBody *>(bodyNode.get());
       if (!body) continue;
 
       // §37: a RigidBody with enabled=FALSE "is not part of the calculations."
@@ -162,7 +165,7 @@ public:
     // (CONF-RBP-SOLVER).
     float contactFriction = -1.0f, contactRestitution = -1.0f;
     if (auto *cc =
-            dynamic_cast<CollisionCollection *>(collection->getCollider().get())) {
+            dynamic_cast<xn::CollisionCollection *>(collection->getCollider().get())) {
       const auto ap = cc->getAppliedParameters();
       const bool useFriction =
           std::find(ap.begin(), ap.end(),
@@ -309,7 +312,7 @@ public:
 private:
   /// Per-enrolled-body mapping: the RigidBody node and its backend handles.
   struct Mapped {
-    RigidBody *body;
+    xn::RigidBody *body;
     WorldHandle world;
     BodyHandle handle;
   };
@@ -378,31 +381,31 @@ private:
    *          from size/2; Sphere -> radius. Returns false if no Box/Sphere is
    *          found (the caller skips + notes it).
    */
-  static bool shapeForBody(const RigidBody &body, ShapeDesc &out,
+  static bool shapeForBody(const xn::RigidBody &body, ShapeDesc &out,
                            SFNode *outShape = nullptr) {
     for (const auto &geomNode : body.getGeometry()) {
-      auto *collidable = dynamic_cast<CollidableShape *>(geomNode.get());
+      auto *collidable = dynamic_cast<xn::CollidableShape *>(geomNode.get());
       if (!collidable) continue;
-      auto *shapeNode = dynamic_cast<Shape *>(collidable->getShape().get());
+      auto *shapeNode = dynamic_cast<xn::Shape *>(collidable->getShape().get());
       if (!shapeNode) continue;
       X3DNode *geom = shapeNode->getGeometry().get();
-      if (auto *box = dynamic_cast<Box *>(geom)) {
+      if (auto *box = dynamic_cast<xn::Box *>(geom)) {
         const SFVec3f s = box->getSize();
         out = ShapeDesc::box(SFVec3f{s.x * 0.5f, s.y * 0.5f, s.z * 0.5f});
         if (outShape) *outShape = geomNode;
         return true;
       }
-      if (auto *sphere = dynamic_cast<Sphere *>(geom)) {
+      if (auto *sphere = dynamic_cast<xn::Sphere *>(geom)) {
         out = ShapeDesc::sphere(sphere->getRadius());
         if (outShape) *outShape = geomNode;
         return true;
       }
-      if (auto *cyl = dynamic_cast<Cylinder *>(geom)) {
+      if (auto *cyl = dynamic_cast<xn::Cylinder *>(geom)) {
         out = ShapeDesc::cylinder(cyl->getRadius(), cyl->getHeight() * 0.5f);
         if (outShape) *outShape = geomNode;
         return true;
       }
-      if (auto *cone = dynamic_cast<Cone *>(geom)) {
+      if (auto *cone = dynamic_cast<xn::Cone *>(geom)) {
         // Jolt has no cone primitive; use the cone's analytic AABB as a Box
         // collider (bottomRadius × height × bottomRadius). Approximate but keeps
         // the body in the simulation instead of dropping it.
@@ -423,9 +426,9 @@ private:
    */
   static BodyHandle resolveBody(
       const SFNode &node,
-      const std::unordered_map<const RigidBody *, BodyHandle> &handleFor) {
+      const std::unordered_map<const xn::RigidBody *, BodyHandle> &handleFor) {
     if (!node) return kInvalidBodyHandle;
-    auto *rb = dynamic_cast<const RigidBody *>(node.get());
+    auto *rb = dynamic_cast<const xn::RigidBody *>(node.get());
     if (!rb) return kInvalidBodyHandle;
     auto it = handleFor.find(rb);
     return it == handleFor.end() ? kInvalidBodyHandle : it->second;
@@ -444,10 +447,10 @@ private:
    *          to the world. Unsupported joint types are skipped + noted on stderr.
    */
   void attachJoints(
-      const RigidBodyCollection &collection, WorldHandle world,
-      const std::unordered_map<const RigidBody *, BodyHandle> &handleFor) {
+      const xn::RigidBodyCollection &collection, WorldHandle world,
+      const std::unordered_map<const xn::RigidBody *, BodyHandle> &handleFor) {
     for (const auto &jointNode : collection.getJoints()) {
-      auto *joint = dynamic_cast<X3DRigidJointNode *>(jointNode.get());
+      auto *joint = dynamic_cast<xn::X3DRigidJointNode *>(jointNode.get());
       if (!joint) continue;
 
       BodyHandle a = resolveBody(joint->getBody1(), handleFor);
@@ -466,12 +469,12 @@ private:
 
       const std::string &kind = joint->nodeTypeName();
       if (kind == "BallJoint") {
-        auto *bj = dynamic_cast<BallJoint *>(joint);
+        auto *bj = dynamic_cast<xn::BallJoint *>(joint);
         if (!bj) continue;
         desc.kind = ConstraintDesc::Kind::Ball;
         desc.anchor = bj->getAnchorPoint();
       } else if (kind == "SingleAxisHingeJoint") {
-        auto *hj = dynamic_cast<SingleAxisHingeJoint *>(joint);
+        auto *hj = dynamic_cast<xn::SingleAxisHingeJoint *>(joint);
         if (!hj) continue;
         desc.kind = ConstraintDesc::Kind::Hinge;
         desc.anchor = hj->getAnchorPoint();
@@ -479,7 +482,7 @@ private:
         desc.minLimit = hj->getMinAngle();
         desc.maxLimit = hj->getMaxAngle();
       } else if (kind == "SliderJoint") {
-        auto *sj = dynamic_cast<SliderJoint *>(joint);
+        auto *sj = dynamic_cast<xn::SliderJoint *>(joint);
         if (!sj) continue;
         desc.kind = ConstraintDesc::Kind::Slider;
         // SliderJoint has no anchorPoint; the slider rides body1's center.
@@ -500,12 +503,12 @@ private:
   /// The world-space position of a joint's body1 (its anchor when none is
   /// authored, e.g. SliderJoint). Falls back to the origin if unresolved.
   static SFVec3f aPosition(
-      const X3DRigidJointNode *joint,
-      const std::unordered_map<const RigidBody *, BodyHandle> &handleFor) {
+      const xn::X3DRigidJointNode *joint,
+      const std::unordered_map<const xn::RigidBody *, BodyHandle> &handleFor) {
     (void)handleFor;
-    if (auto *rb = dynamic_cast<const RigidBody *>(joint->getBody1().get()))
+    if (auto *rb = dynamic_cast<const xn::RigidBody *>(joint->getBody1().get()))
       return rb->getPosition();
-    if (auto *rb = dynamic_cast<const RigidBody *>(joint->getBody2().get()))
+    if (auto *rb = dynamic_cast<const xn::RigidBody *>(joint->getBody2().get()))
       return rb->getPosition();
     return SFVec3f{0, 0, 0};
   }

@@ -14,6 +14,8 @@
 #include <memory>
 #include <vector>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {

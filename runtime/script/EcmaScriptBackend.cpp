@@ -13,6 +13,8 @@
 #include <iostream>  // diagnostics
 #include <stdexcept>
 
+using namespace x3d::core;
+
 namespace x3d::runtime {
 
 namespace {

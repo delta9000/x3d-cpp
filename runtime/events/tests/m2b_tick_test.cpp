@@ -10,6 +10,8 @@
 #include <cmath>
 #include <memory>
 #include <vector>
+using namespace x3d::core;
+using namespace x3d::nodes;
 using namespace x3d::runtime;
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 static void setF(const std::shared_ptr<X3DNode>& n, const char* nm, std::any v) {

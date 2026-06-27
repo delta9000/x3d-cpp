@@ -11,6 +11,8 @@
 
 namespace x3d::codec {
 
+using namespace x3d::core;
+
 /// Returns the X3D type-name string for a field type (e.g. SFVec3f -> "SFVec3f").
 /// SFEnum -> "SFString", MFEnum -> "MFString" (X3D has no enum field type;
 /// proto interfaces declare them as strings).

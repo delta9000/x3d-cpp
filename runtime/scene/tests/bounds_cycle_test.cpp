@@ -21,6 +21,8 @@
 #include <memory>
 #include <vector>
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 static void setF(const std::shared_ptr<X3DNode>& n, const char* name, std::any v) {
   for (auto& f : n->fields()) if (f.x3dName == name && f.set) { f.set(*n, std::move(v)); return; }

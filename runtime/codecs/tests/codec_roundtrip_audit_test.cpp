@@ -37,6 +37,7 @@
 #include <vector>
 
 using namespace x3d;
+using namespace x3d::core;
 using namespace x3d::runtime;
 
 namespace {
@@ -113,7 +114,7 @@ std::size_t countScripts(const std::vector<std::shared_ptr<X3DNode>> &roots,
     if (cur->nodeTypeName() == "Script") {
       ++n;
       if (outSourceCode) {
-        auto s = std::dynamic_pointer_cast<Script>(cur);
+        auto s = std::dynamic_pointer_cast<x3d::nodes::Script>(cur);
         if (s)
           outSourceCode->push_back(s->getSourceCode());
       }

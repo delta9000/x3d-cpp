@@ -85,6 +85,7 @@
 #include <vector>
 
 namespace x3d::runtime::extract {
+using namespace x3d::core;
 
 // ---------------------------------------------------------------------------
 // GEO-PROJECTION SEAM (B5). The SDK does NO geodesy itself — coordinate-reference

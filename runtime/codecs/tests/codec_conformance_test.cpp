@@ -24,6 +24,8 @@
 
 using namespace x3d;
 using namespace x3d::codec;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 namespace {
 

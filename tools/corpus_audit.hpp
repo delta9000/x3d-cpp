@@ -43,6 +43,8 @@
 namespace x3d::audit {
 
 namespace sdk = x3d::sdk;
+using namespace x3d::core;    // SFVec3f, X3DFieldType, SFNode, ...
+using x3d::nodes::X3DNode;   // complete node base; shadows ::X3DNode fwd decl in ScriptEngine.hpp
 
 // ───────────────────────────────────────────────────────────────────────────
 // Finding — one audit failure. `signature` is a STABLE dedup key (check +

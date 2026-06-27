@@ -46,6 +46,8 @@
 using namespace x3d;
 using x3d::codec::Encoding;
 using x3d::codec::JsonReader;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 namespace {
 

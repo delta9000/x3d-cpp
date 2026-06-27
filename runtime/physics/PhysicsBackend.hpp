@@ -20,6 +20,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
  * @brief Opaque handle a backend returns from createWorld() to identify one
  *        physics world (one RigidBodyCollection). Zero is the invalid handle.

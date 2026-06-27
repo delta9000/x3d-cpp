@@ -11,14 +11,17 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 
+using namespace x3d::core;
+using namespace x3d::nodes;
+
 TEST_CASE("generated node classes live in x3d::nodes") {
-    x3d::nodes::Transform t;
+    Transform t;
     CHECK(t.nodeTypeName() == "Transform");
 }
 
 TEST_CASE("value vocabulary lives in x3d::core") {
-    x3d::core::SFVec3f v{1.f, 2.f, 3.f};
-    x3d::core::SFNode n = nullptr;
+    SFVec3f v{1.f, 2.f, 3.f};
+    SFNode n = nullptr;
     CHECK(n == nullptr);
     (void)v;
 }

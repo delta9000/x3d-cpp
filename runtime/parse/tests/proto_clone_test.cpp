@@ -6,7 +6,9 @@
 #include "x3d/core/X3DReflection.hpp"
 #include <any>
 #include "doctest/doctest.h"
+using namespace x3d::core;
 using namespace x3d::runtime;
+using namespace x3d::nodes;
 
 static const FieldInfo *fieldByName(const X3DNode &n, const std::string &name) {
   for (const auto &f : n.fields()) if (f.x3dName == name) return &f;

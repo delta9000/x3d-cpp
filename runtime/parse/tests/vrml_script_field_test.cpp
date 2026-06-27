@@ -28,11 +28,13 @@
 #include <memory>
 #include <string>
 
-using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
 using x3d::codec::ClassicVrmlReader;
 using x3d::codec::Vrml97Reader;
 using x3d::codec::VrmlWriter;
 using x3d::runtime::effectiveFields;
+namespace runtime = x3d::runtime;
 
 namespace {
 

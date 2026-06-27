@@ -33,6 +33,8 @@
 
 using namespace x3d;
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 // (kids removed: dead — no callers in this audit.)
 

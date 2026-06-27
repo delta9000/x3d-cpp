@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 using namespace x3d::runtime;
+using namespace x3d::nodes;
 
 static std::vector<std::shared_ptr<X3DNode>> kids(const std::shared_ptr<X3DNode>& p) {
   for (auto& f : p->fields())

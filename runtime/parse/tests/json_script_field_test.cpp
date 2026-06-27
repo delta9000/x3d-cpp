@@ -30,6 +30,7 @@
 
 using namespace x3d;
 using namespace x3d::runtime;
+using namespace x3d::core;
 
 namespace {
 
@@ -114,7 +115,7 @@ void parsesDeclsAndSource() {
   }
 
   // Inline source captured into Script.sourceCode.
-  auto *s = dynamic_cast<Script *>(script.get());
+  auto *s = dynamic_cast<x3d::nodes::Script *>(script.get());
   check(s != nullptr, "node downcasts to Script");
   if (s) {
     const std::string src = s->getSourceCode();
@@ -150,7 +151,7 @@ void roundTrips() {
           "round-trip: 'scale' default 2 2 2 survives");
   }
 
-  auto *s = dynamic_cast<Script *>(script.get());
+  auto *s = dynamic_cast<x3d::nodes::Script *>(script.get());
   check(s != nullptr, "round-trip: node downcasts to Script");
   if (s) {
     const std::string src = s->getSourceCode();

@@ -1,5 +1,5 @@
 // X3DTimeDependentSystem.hpp
-// Reusable time-dependent lifecycle (X3DTimeDependentNode) as a System base.
+// Reusable time-dependent lifecycle (x3d::nodes::X3DTimeDependentNode) as a System base.
 // Implements the X3D clock state machine shared by every time-dependent node
 // (TimeSensor here; AudioClip/MovieTexture/Sound layer on later): enabled
 // gating, startTime/stopTime activation, loop + cycle accounting, and
@@ -26,8 +26,10 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
- * @brief Base System implementing the X3DTimeDependentNode clock lifecycle.
+ * @brief Base System implementing the x3d::nodes::X3DTimeDependentNode clock lifecycle.
  * @details Time-driven: `attach` enrolls a node; `update(now, ctx)` runs the
  *          per-node state machine each tick. The base owns the edges common to
  *          every time-dependent node — activation gating
@@ -44,7 +46,7 @@ class X3DTimeDependentSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     (void)ctx;
-    if (auto *tdn = dynamic_cast<X3DTimeDependentNode *>(node)) {
+    if (auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node)) {
       state_.emplace(tdn, State{});
     }
   }
@@ -80,28 +82,28 @@ protected:
   };
 
   // --- timing reads (overridable for nodes that spell these differently) ---
-  virtual bool readEnabled(X3DTimeDependentNode *node) const {
+  virtual bool readEnabled(x3d::nodes::X3DTimeDependentNode *node) const {
     (void)node;
-    return true; // base X3DTimeDependentNode has no `enabled`; default on.
+    return true; // base x3d::nodes::X3DTimeDependentNode has no `enabled`; default on.
   }
-  virtual bool readLoop(X3DTimeDependentNode *node) const {
+  virtual bool readLoop(x3d::nodes::X3DTimeDependentNode *node) const {
     (void)node;
     return false;
   }
-  virtual double readCycleInterval(X3DTimeDependentNode *node) const {
+  virtual double readCycleInterval(x3d::nodes::X3DTimeDependentNode *node) const {
     (void)node;
     return 1.0;
   }
-  double readStartTime(X3DTimeDependentNode *node) const {
+  double readStartTime(x3d::nodes::X3DTimeDependentNode *node) const {
     return node->getStartTime();
   }
-  double readStopTime(X3DTimeDependentNode *node) const {
+  double readStopTime(x3d::nodes::X3DTimeDependentNode *node) const {
     return node->getStopTime();
   }
-  double readPauseTime(X3DTimeDependentNode *node) const {
+  double readPauseTime(x3d::nodes::X3DTimeDependentNode *node) const {
     return node->getPauseTime();
   }
-  double readResumeTime(X3DTimeDependentNode *node) const {
+  double readResumeTime(x3d::nodes::X3DTimeDependentNode *node) const {
     return node->getResumeTime();
   }
 
@@ -117,7 +119,7 @@ protected:
    *          fraction_changed/time (TimeSensor) etc. elapsedTime is emitted by
    *          the base, so a derived system need not re-emit it.
    */
-  virtual void emitCycleOutputs(X3DTimeDependentNode *node, double frac,
+  virtual void emitCycleOutputs(x3d::nodes::X3DTimeDependentNode *node, double frac,
                                 double now, double elapsed,
                                 X3DExecutionContext &ctx) {
     (void)node;
@@ -137,7 +139,7 @@ protected:
    *          very first, at activation). Default no-op; TimeSensor emits its
    *          cycleTime outputOnly here.
    */
-  virtual void emitCycleTime(X3DTimeDependentNode *node, double cycleStart,
+  virtual void emitCycleTime(x3d::nodes::X3DTimeDependentNode *node, double cycleStart,
                              X3DExecutionContext &ctx) {
     (void)node;
     (void)cycleStart;
@@ -155,7 +157,7 @@ private:
   /**
    * @brief Run one tick of the lifecycle for a single node.
    */
-  void advance(X3DTimeDependentNode *node, State &st, double now,
+  void advance(x3d::nodes::X3DTimeDependentNode *node, State &st, double now,
                X3DExecutionContext &ctx) {
     const bool enabled = readEnabled(node);
     // 8.2.4.3: an active node ignores set_startTime — use the value snapshotted
@@ -263,7 +265,7 @@ private:
     emitCycleOutputs(node, frac, now, elapsed, ctx);
   }
 
-  void activate(X3DTimeDependentNode *node, State &st, double startTime,
+  void activate(x3d::nodes::X3DTimeDependentNode *node, State &st, double startTime,
                 double now, X3DExecutionContext &ctx) {
     st.active = true;
     st.paused = false;
@@ -278,7 +280,7 @@ private:
     emitCycleTime(node, startTime, ctx);
   }
 
-  void deactivate(X3DTimeDependentNode *node, State &st, double now,
+  void deactivate(x3d::nodes::X3DTimeDependentNode *node, State &st, double now,
                   double cycle, X3DExecutionContext &ctx) {
     (void)now;
     (void)cycle;
@@ -291,7 +293,7 @@ private:
     emit<SFBool>(ctx, node, "isActive", false);
   }
 
-  void handlePauseResume(X3DTimeDependentNode *node, State &st, double now,
+  void handlePauseResume(x3d::nodes::X3DTimeDependentNode *node, State &st, double now,
                          X3DExecutionContext &ctx) {
     const double pauseTime = readPauseTime(node);
     const double resumeTime = readResumeTime(node);
@@ -332,7 +334,7 @@ private:
   // tick because sinceStart >= cycle is immediately true).
   static double guardCycle(double cycle) { return cycle > 0.0 ? cycle : 1.0; }
 
-  double effectiveCycle(X3DTimeDependentNode *node) const {
+  double effectiveCycle(x3d::nodes::X3DTimeDependentNode *node) const {
     return readCycleInterval(node);
   }
 
@@ -366,7 +368,7 @@ private:
     return f;
   }
 
-  std::unordered_map<X3DTimeDependentNode *, State> state_;
+  std::unordered_map<x3d::nodes::X3DTimeDependentNode *, State> state_;
 };
 
 } // namespace x3d::runtime

@@ -17,6 +17,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
  * @brief Drives a TimeSensor's fraction_changed output from the clock.
  * @details Each tick computes the cycle fraction `(now - startTime)/cycleInterval`.
@@ -26,7 +28,7 @@ namespace x3d::runtime {
  */
 class TimeSensorBehavior : public ActiveNode {
 public:
-  explicit TimeSensorBehavior(TimeSensor *sensor) : sensor_(sensor) {}
+  explicit TimeSensorBehavior(x3d::nodes::TimeSensor *sensor) : sensor_(sensor) {}
 
   void update(double now, X3DExecutionContext &ctx) override {
     if (!sensor_) {
@@ -49,7 +51,7 @@ public:
   }
 
 private:
-  TimeSensor *sensor_;
+  x3d::nodes::TimeSensor *sensor_;
 };
 
 } // namespace x3d::runtime

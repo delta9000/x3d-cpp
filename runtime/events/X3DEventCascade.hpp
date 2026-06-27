@@ -16,6 +16,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
  * @brief Drives a single-timestamp event cascade over an EventGraph.
  * @details `postEvent` seeds one or more initial field events; `process`
@@ -53,7 +55,7 @@ public:
    * @brief Seed an initial event: deliver `value` to (node, field) and cascade.
    * @details The event is queued; call `process()` to run the cascade.
    */
-  void postEvent(X3DNode *node, const std::string &field, std::any value) {
+  void postEvent(x3d::nodes::X3DNode *node, const std::string &field, std::any value) {
     // A direct post is a SEED (routed=false): it always delivers (last-wins) and
     // is exempt from the per-field cap. Fan-out within process() enqueues ROUTED
     // deliveries, which the cap can drop.

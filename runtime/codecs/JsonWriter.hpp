@@ -35,6 +35,8 @@
 #include <vector>
 
 namespace x3d::codec {
+using namespace x3d::core;
+using x3d::nodes::X3DNodeFactory;
 
 /// Serializes the runtime document model to X3D-JSON.
 class JsonWriter {
@@ -871,7 +873,7 @@ private:
   /// the canonical X3D-JSON "#sourceText" array, one element per source line so
   /// the JsonReader recovers it. Returns "" when the Script has no inline body.
   std::string jsonScriptSource(const X3DNode &node) {
-    const auto *script = dynamic_cast<const Script *>(&node);
+    const auto *script = dynamic_cast<const x3d::nodes::Script *>(&node);
     if (!script)
       return "";
     const std::string src = script->getSourceCode();

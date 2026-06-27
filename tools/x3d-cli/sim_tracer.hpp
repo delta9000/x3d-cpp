@@ -42,6 +42,9 @@
 
 namespace x3d::sim {
 
+using namespace x3d::core;
+using x3d::nodes::X3DNode;
+
 /// One traced field change in a tick.
 struct FieldChange {
   std::string node;   ///< DEF name or "<Type>#<index>"

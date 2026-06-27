@@ -31,6 +31,7 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 /**
  * @brief One contact resolved to scene nodes, ready to report.
@@ -64,7 +65,7 @@ struct ResolvedContact {
 class ContactReporter {
 public:
   /** @brief Enroll a CollisionSensor to watch (idempotent per pointer). */
-  void addSensor(CollisionSensor *sensor) {
+  void addSensor(x3d::nodes::CollisionSensor *sensor) {
     if (sensor &&
         std::find(sensors_.begin(), sensors_.end(), sensor) == sensors_.end())
       sensors_.push_back(sensor);
@@ -73,13 +74,13 @@ public:
   /** @brief Build + emit this frame's contact outputs for every sensor. */
   void report(const std::vector<ResolvedContact> &contacts,
               X3DExecutionContext &ctx) {
-    for (CollisionSensor *sensor : sensors_) {
+    for (x3d::nodes::CollisionSensor *sensor : sensors_) {
       reportSensor(sensor, contacts, ctx);
     }
   }
 
 private:
-  void reportSensor(CollisionSensor *sensor,
+  void reportSensor(x3d::nodes::CollisionSensor *sensor,
                     const std::vector<ResolvedContact> &contacts,
                     X3DExecutionContext &ctx) {
     // Gate: a disabled sensor / null collider / disabled collection reports
@@ -87,7 +88,7 @@ private:
     // transition so a downstream route sees the sensor go quiet.
     auto *collection =
         sensor->getEnabled()
-            ? dynamic_cast<CollisionCollection *>(sensor->getCollider().get())
+            ? dynamic_cast<x3d::nodes::CollisionCollection *>(sensor->getCollider().get())
             : nullptr;
     if (!collection || !collection->getEnabled()) {
       setActive(sensor, false, ctx);
@@ -143,9 +144,9 @@ private:
                           std::unordered_set<const X3DNode *> &out) {
     for (const SFNode &n : nodes) {
       if (!n) continue;
-      if (auto *shape = dynamic_cast<CollidableShape *>(n.get())) {
+      if (auto *shape = dynamic_cast<x3d::nodes::CollidableShape *>(n.get())) {
         out.insert(shape);
-      } else if (auto *space = dynamic_cast<CollisionSpace *>(n.get())) {
+      } else if (auto *space = dynamic_cast<x3d::nodes::CollisionSpace *>(n.get())) {
         if (visitedSpaces_.insert(space).second)
           collectCollidables(space->getCollidables(), out);
       }
@@ -159,8 +160,8 @@ private:
 
   /// Build one Contact: geometry from the engine, response from the collection.
   static SFNode makeContact(const ResolvedContact &c,
-                            const CollisionCollection &col) {
-    auto contact = std::make_shared<Contact>();
+                            const x3d::nodes::CollisionCollection &col) {
+    auto contact = std::make_shared<x3d::nodes::Contact>();
     contact->setPosition(c.position);
     contact->setContactNormal(c.normal);
     contact->setDepth(c.depth);
@@ -187,7 +188,7 @@ private:
   }
 
   /// Emit isActive only when it changes (per-sensor previous state).
-  void setActive(CollisionSensor *sensor, bool active,
+  void setActive(x3d::nodes::CollisionSensor *sensor, bool active,
                  X3DExecutionContext &ctx) {
     bool &prev = active_[sensor];  // value-initialises to false on first lookup
     if (prev == active) return;
@@ -195,8 +196,8 @@ private:
     ctx.postEvent(sensor, "isActive", std::any(SFBool(active)));
   }
 
-  std::vector<CollisionSensor *> sensors_;
-  std::unordered_map<CollisionSensor *, bool> active_;
+  std::vector<x3d::nodes::CollisionSensor *> sensors_;
+  std::unordered_map<x3d::nodes::CollisionSensor *, bool> active_;
   std::unordered_set<const X3DNode *> visitedSpaces_;  // scratch for flatten
 };
 

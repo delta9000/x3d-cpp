@@ -44,6 +44,8 @@
 using namespace x3d;
 using x3d::codec::ClassicVrmlReader;
 using x3d::codec::Encoding;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 namespace {
 

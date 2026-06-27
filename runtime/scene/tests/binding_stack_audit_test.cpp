@@ -13,6 +13,7 @@
 #include <cmath>
 #include <vector>
 using namespace x3d::runtime;
+using namespace x3d::nodes;
 
 static X3DBindableNode* bnd(const std::shared_ptr<X3DNode>& n) {
   return dynamic_cast<X3DBindableNode*>(n.get());

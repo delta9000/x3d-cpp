@@ -38,7 +38,8 @@
 #include <sstream>
 #include <string>
 
-using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 namespace {
@@ -153,7 +154,7 @@ void test_load_and_tick() {
   std::string text = readFile(g_dataDir + "/animated_transform.x3dv");
   check(!text.empty(), "fixture animated_transform.x3dv loaded");
 
-  runtime::X3DDocument doc = codec::parseDocument(text);
+  X3DDocument doc = x3d::codec::parseDocument(text);
   Scene &scene = doc.scene;
 
   check(scene.routes.size() == 2, "two ROUTEs parsed from the document");
@@ -206,7 +207,6 @@ void test_load_and_tick() {
 // A ROUTE whose sink is an initializeOnly field must be rejected: the field is
 // now data-layer writable, but initializeOnly is not a routable event sink.
 void testInitializeOnlyNotRoutableSink() {
-  using namespace x3d::runtime;
   Scene scene;
   auto ts = createX3DNode("TimeSensor");
   auto sphere = createX3DNode("Sphere");
@@ -234,7 +234,6 @@ void testInitializeOnlyNotRoutableSink() {
 //     rejected as unknown fields;
 //   - a body-internal ROUTE is registered directly from resolvedProtoRoutes.
 void testProtoRouteRedirect() {
-  using namespace x3d::runtime;
   Scene scene;
 
   auto decl = std::make_shared<ProtoDeclaration>();

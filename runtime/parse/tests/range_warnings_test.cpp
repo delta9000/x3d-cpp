@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 TEST_CASE("range_warnings_test") {
   // (a) a Material with an out-of-range specularColor component reports it.

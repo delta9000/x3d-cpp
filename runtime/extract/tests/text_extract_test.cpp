@@ -28,6 +28,8 @@
 
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 static bool feq(float a, float b, float eps = 1e-4f) {
   return std::fabs(a - b) < eps;

@@ -8,7 +8,10 @@
 #include <cstdio>
 #include <functional>
 #include <memory>
-using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
+namespace runtime = x3d::runtime;
+namespace codec = x3d::codec;
 
 template <class T>
 static std::shared_ptr<T> findFirst(const runtime::Scene &scene, const char *type) {

@@ -6,9 +6,10 @@
 #include <memory>
 #include <string>
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
+using x3d::nodes::X3DNode;
 
 /**
  * @brief An event ROUTE connecting one node's output field to another's input.

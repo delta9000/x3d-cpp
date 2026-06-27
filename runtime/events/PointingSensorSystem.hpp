@@ -47,6 +47,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
  * @brief Drives pointing-device sensors (TouchSensor + drag sensors) from the
  *        input seam.
@@ -81,7 +83,7 @@ public:
       // if the grabbed sensor is disabled mid-drag, deactivate it (isActive
       // FALSE, drop isOver) and release the grab without further drag output.
       // (DS-2)
-      auto *activeSensor = dynamic_cast<X3DSensorNode *>(active_);
+      auto *activeSensor = dynamic_cast<x3d::nodes::X3DSensorNode *>(active_);
       if (activeSensor && !activeSensor->getEnabled()) {
         emitActive(ctx, active_, false);
         if (over_ == active_) {
@@ -206,8 +208,8 @@ private:
     return isTouchSensor(n) || isDragSensor(n);
   }
 
-  static TouchSensor *asTouch(X3DNode *n) {
-    return dynamic_cast<TouchSensor *>(n);
+  static x3d::nodes::TouchSensor *asTouch(X3DNode *n) {
+    return dynamic_cast<x3d::nodes::TouchSensor *>(n);
   }
 
   // ---- sensor resolution ----------------------------------------------------
@@ -221,7 +223,7 @@ private:
     if (!isPointingSensor(n))
       return nullptr;
     auto *sensor =
-        dynamic_cast<X3DSensorNode *>(const_cast<X3DNode *>(n));
+        dynamic_cast<x3d::nodes::X3DSensorNode *>(const_cast<X3DNode *>(n));
     if (!sensor || !sensor->getEnabled())
       return nullptr;
     return const_cast<X3DNode *>(n);
@@ -290,13 +292,13 @@ private:
   static void emitActive(X3DExecutionContext &ctx, X3DNode *s, bool v) {
     ctx.postEvent(s, "isActive", std::any(SFBool{v}));
   }
-  static void emitTouch(X3DExecutionContext &ctx, TouchSensor *ts, double now) {
+  static void emitTouch(X3DExecutionContext &ctx, x3d::nodes::TouchSensor *ts, double now) {
     ctx.postEvent(ts, "touchTime", std::any(SFTime{now}));
   }
 
   // hitPoint/hitNormal in the sensor's coordinate frame; hitTexCoord raw
   // (surface attribute, NOT spatially transformed) — §5.1 of the M2.5 design.
-  static void emitHit(X3DExecutionContext &ctx, TouchSensor *ts,
+  static void emitHit(X3DExecutionContext &ctx, x3d::nodes::TouchSensor *ts,
                       const PickResult &pick) {
     const Mat4 M = ctx.worldOf(ts);
     const Mat4 inv = M.inverse();
@@ -326,9 +328,9 @@ private:
                  const Ray &activationRay) {
     const Mat4 M_world = ctx.worldOf(s);
     Mat4 M_sensor = M_world;
-    if (auto *p = dynamic_cast<PlaneSensor *>(s))
+    if (auto *p = dynamic_cast<x3d::nodes::PlaneSensor *>(s))
       M_sensor = M_world * Mat4::rotation(p->getAxisRotation());
-    else if (auto *c = dynamic_cast<CylinderSensor *>(s))
+    else if (auto *c = dynamic_cast<x3d::nodes::CylinderSensor *>(s))
       M_sensor = M_world * Mat4::rotation(c->getAxisRotation());
     // SphereSensor has no axisRotation: frame is the parent world matrix.
 
@@ -338,11 +340,11 @@ private:
     dragBearingDirLocal_ = inv.transformDirection(activationRay.direction);
     // Initialize the held last-value to the sensor's current offset so that a
     // deactivation with no intervening motion (autoOffset) is a no-op.
-    if (auto *p = dynamic_cast<PlaneSensor *>(s))
+    if (auto *p = dynamic_cast<x3d::nodes::PlaneSensor *>(s))
       lastTranslation_ = p->getOffset();
-    else if (auto *sp = dynamic_cast<SphereSensor *>(s))
+    else if (auto *sp = dynamic_cast<x3d::nodes::SphereSensor *>(s))
       lastRotation_ = sp->getOffset();
-    else if (auto *c = dynamic_cast<CylinderSensor *>(s))
+    else if (auto *c = dynamic_cast<x3d::nodes::CylinderSensor *>(s))
       lastAngle_ = c->getOffset();
   }
 
@@ -352,7 +354,7 @@ private:
   // valid value (spec-allowed, §20.4.x) — the drag math already returns the
   // held value, so we still emit it for a continuous output stream.
   void emitDragMotion(X3DExecutionContext &ctx, X3DNode *s, const Ray &ray) {
-    if (auto *p = dynamic_cast<PlaneSensor *>(s)) {
+    if (auto *p = dynamic_cast<x3d::nodes::PlaneSensor *>(s)) {
       PlaneDragResult res =
           planeDrag(dragFrame_, dragP0Local_, ray, p->getOffset(),
                     p->getMinPosition(), p->getMaxPosition());
@@ -360,13 +362,13 @@ private:
       ctx.postEvent(s, "translation_changed",
                     std::any(SFVec3f{res.translation}));
       lastTranslation_ = res.translation;
-    } else if (auto *sp = dynamic_cast<SphereSensor *>(s)) {
+    } else if (auto *sp = dynamic_cast<x3d::nodes::SphereSensor *>(s)) {
       SphereDragResult res =
           sphereDrag(dragFrame_, dragP0Local_, ray, sp->getOffset());
       ctx.postEvent(s, "trackPoint_changed", std::any(SFVec3f{res.trackPoint}));
       ctx.postEvent(s, "rotation_changed", std::any(SFRotation{res.rotation}));
       lastRotation_ = res.rotation;
-    } else if (auto *c = dynamic_cast<CylinderSensor *>(s)) {
+    } else if (auto *c = dynamic_cast<x3d::nodes::CylinderSensor *>(s)) {
       CylinderDragResult res =
           cylinderDrag(dragFrame_, dragP0Local_, dragBearingDirLocal_, ray,
                        c->getDiskAngle(), c->getOffset(), c->getMinAngle(),
@@ -381,13 +383,13 @@ private:
   // offset_changed (posting to the inputOutput `offset` field updates the
   // stored value and fans out the implicit offset_changed ROUTEs). §20.2.2.
   void emitDragDeactivate(X3DExecutionContext &ctx, X3DNode *s) {
-    if (auto *p = dynamic_cast<PlaneSensor *>(s)) {
+    if (auto *p = dynamic_cast<x3d::nodes::PlaneSensor *>(s)) {
       if (p->getAutoOffset())
         ctx.postEvent(s, "offset", std::any(SFVec3f{lastTranslation_}));
-    } else if (auto *sp = dynamic_cast<SphereSensor *>(s)) {
+    } else if (auto *sp = dynamic_cast<x3d::nodes::SphereSensor *>(s)) {
       if (sp->getAutoOffset())
         ctx.postEvent(s, "offset", std::any(SFRotation{lastRotation_}));
-    } else if (auto *c = dynamic_cast<CylinderSensor *>(s)) {
+    } else if (auto *c = dynamic_cast<x3d::nodes::CylinderSensor *>(s)) {
       if (c->getAutoOffset())
         ctx.postEvent(s, "offset", std::any(SFFloat{lastAngle_}));
     }

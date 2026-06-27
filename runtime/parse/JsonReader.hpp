@@ -56,6 +56,7 @@
 #include <string>
 
 namespace x3d::codec {
+using namespace x3d::core;
 
 /// Parses X3D-JSON into the runtime document model. The inverse of JsonWriter.
 class JsonReader : public X3DReader {
@@ -578,11 +579,11 @@ private:
     // Fallback: an inline ecmascript:/javascript:/vrmlscript: scheme in @url
     // (the url field is already set on the node from applyJsonField).
     if (source.empty()) {
-      if (auto *script = dynamic_cast<Script *>(node.get()))
+      if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
         source = decodeInlineUrl(script->getUrl());
     }
     if (!source.empty()) {
-      if (auto *script = dynamic_cast<Script *>(node.get()))
+      if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
         script->setSourceCode(source);
     }
   }

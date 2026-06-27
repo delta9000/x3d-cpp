@@ -24,6 +24,8 @@
 #include <cmath>
 #include <iostream>
 
+using namespace x3d::core;
+
 namespace sdk = x3d::sdk;
 
 static const char *kScene = R"X3D(<?xml version="1.0" encoding="UTF-8"?>

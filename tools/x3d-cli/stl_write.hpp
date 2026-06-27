@@ -39,6 +39,8 @@
 
 namespace x3d::cli {
 
+using namespace x3d::core;  // SFVec3f
+
 // ---------------------------------------------------------------------------
 // writeStlBinary
 //

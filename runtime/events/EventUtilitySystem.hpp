@@ -29,12 +29,13 @@
 #include <unordered_map>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 /// §30.4.4 BooleanTrigger: any set_triggerTime -> triggerTrue=TRUE.
 class BooleanTriggerSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    auto *n = dynamic_cast<BooleanTrigger *>(node);
+    auto *n = dynamic_cast<x3d::nodes::BooleanTrigger *>(node);
     if (!n) return;
     n->setOnSet_triggerTimeHandler([&ctx, n](const SFTime &) {
       ctx.postEvent(n, "triggerTrue", std::any(SFBool{true}));
@@ -46,7 +47,7 @@ public:
 class IntegerTriggerSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    auto *n = dynamic_cast<IntegerTrigger *>(node);
+    auto *n = dynamic_cast<x3d::nodes::IntegerTrigger *>(node);
     if (!n) return;
     n->setOnSet_booleanHandler([&ctx, n](const SFBool &v) {
       if (!v) return; // honored only on TRUE
@@ -59,7 +60,7 @@ public:
 class TimeTriggerSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    auto *n = dynamic_cast<TimeTrigger *>(node);
+    auto *n = dynamic_cast<x3d::nodes::TimeTrigger *>(node);
     if (!n) return;
     n->setOnSet_booleanHandler([&ctx, n](const SFBool &) {
       ctx.postEvent(n, "triggerTime", std::any(SFTime{ctx.now()}));
@@ -72,7 +73,7 @@ public:
 class BooleanFilterSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    auto *n = dynamic_cast<BooleanFilter *>(node);
+    auto *n = dynamic_cast<x3d::nodes::BooleanFilter *>(node);
     if (!n) return;
     n->setOnSet_booleanHandler([&ctx, n](const SFBool &v) {
       if (v) ctx.postEvent(n, "inputTrue", std::any(SFBool{true}));
@@ -87,7 +88,7 @@ public:
 class BooleanToggleSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    auto *n = dynamic_cast<BooleanToggle *>(node);
+    auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node);
     if (!n) return;
     n->setOnSet_booleanHandler([&ctx, n](const SFBool &v) {
       if (!v) return; // FALSE has no effect (§30.4.3)

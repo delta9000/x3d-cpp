@@ -17,6 +17,7 @@
 #include <string_view>
 
 namespace x3d::runtime::extract::vocab {
+using namespace x3d::core;
 
 enum class UniformSource : uint8_t {
   ModelViewMatrix, ProjectionMatrix, NormalMatrix, ModelViewProjectionMatrix,

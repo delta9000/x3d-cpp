@@ -1,5 +1,5 @@
 // ScriptSystem.hpp
-// The System that makes Script nodes run: it owns each enrolled Script's
+// The System that makes x3d::nodes::Script nodes run: it owns each enrolled x3d::nodes::Script's
 // lifecycle (load / initialize / shutdown), holds its in-process SAI surface,
 // and threads its events through the X3DExecutionContext cascade in the exact
 // order ISO/IEC 19775-1 §29.2 mandates.
@@ -26,9 +26,9 @@
 // FALSE may defer them to the batch flush (a permitted, spec-sanctioned delay).
 //
 // CODEGEN-FREE: this layer needs no generator change. inputOnly author-field
-// dispatch is driven through ScriptSystem::deliverInputEvent (the seam a Script
+// dispatch is driven through ScriptSystem::deliverInputEvent (the seam a x3d::nodes::Script
 // inputOnly handler / the cascade calls), which forwards to engine.invoke — it
-// does not require a per-field reflection thunk on the Script class. set_url is
+// does not require a per-field reflection thunk on the x3d::nodes::Script class. set_url is
 // delivered through ScriptSystem::setUrl (the inputOnly handler for url), so the
 // reload (shutdown + load + initialize) is observed without a codegen hook.
 #ifndef X3D_RUNTIME_SCRIPT_SYSTEM_HPP
@@ -50,10 +50,12 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
- * @brief Drives Script-node lifecycle + event delivery through the cascade.
+ * @brief Drives x3d::nodes::Script-node lifecycle + event delivery through the cascade.
  * @details One ScriptSystem backs one *language* engine (the ScriptEngine seam);
- *          it enrolls Script nodes via attach() and owns their per-script SAI
+ *          it enrolls x3d::nodes::Script nodes via attach() and owns their per-script SAI
  *          surface + load handle. It is a System so the context drives its
  *          prepareEvents phase each tick; the eventsProcessed phase is driven by
  *          the post-cascade hook installed by addScriptSystem().
@@ -62,7 +64,7 @@ class ScriptSystem : public System {
 public:
   /**
    * @brief Construct with the backend engine and browser identity.
-   * @param engine The language backend (e.g. ECMAScript). Shared so a test can
+   * @param engine The language backend (e.g. ECMAx3d::nodes::Script). Shared so a test can
    *        inspect the recorded calls and so the context can retain the system.
    * @param browserName Reported to scripts via SaiContext::getName().
    * @param browserVersion Reported via SaiContext::getVersion().
@@ -75,7 +77,7 @@ public:
   /**
    * @brief Teardown: shut down every still-loaded script (§29.2.3, SCR-002).
    * @details Destroying the ScriptSystem (e.g. with its execution context) is
-   *          the "world unloaded/replaced" case where each Script's shutdown()
+   *          the "world unloaded/replaced" case where each x3d::nodes::Script's shutdown()
    *          must run. Done before the engine member is destroyed. Node-level
    *          deletion (dynamic SAI) remains deferred.
    */
@@ -94,15 +96,15 @@ public:
   // --------------------------------------------------------------------------
 
   /**
-   * @brief Enroll a Script node; load + initialize it if load=TRUE.
+   * @brief Enroll a x3d::nodes::Script node; load + initialize it if load=TRUE.
    * @details Per §29.2.3, initialize() runs before the script's first event, so
-   *          we load+initialize at enroll time when the Script's load field is
+   *          we load+initialize at enroll time when the x3d::nodes::Script's load field is
    *          TRUE (the default) and a usable url is present. load=FALSE defers
    *          loading until the author flips load (delivered as a set_load event;
    *          re-attach / a future set_load handler triggers the load then).
    */
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    Script *script = dynamic_cast<Script *>(node);
+    x3d::nodes::Script *script = dynamic_cast<x3d::nodes::Script *>(node);
     if (!script) return;
     Entry *e = entryFor(script);
     if (!e) {
@@ -174,23 +176,23 @@ public:
   }
 
   // --------------------------------------------------------------------------
-  // Event delivery seam (called from the cascade / a Script inputOnly handler).
+  // Event delivery seam (called from the cascade / a x3d::nodes::Script inputOnly handler).
   // --------------------------------------------------------------------------
 
   /**
-   * @brief Deliver one inputOnly author event to a Script (§29.2.2).
+   * @brief Deliver one inputOnly author event to a x3d::nodes::Script (§29.2.2).
    * @details mustEvaluate=TRUE: invoke immediately (eager). mustEvaluate=FALSE:
    *          may be deferred to the batch flush (runEventsProcessed) — a
    *          permitted delay (§29.4.1). Either way the script is marked as having
    *          received an event so eventsProcessed() fires this cascade, and the
    *          last-event timestamp is tracked for eventsProcessed()'s outputs.
-   * @param script The receiving Script.
+   * @param script The receiving x3d::nodes::Script.
    * @param eventName The inputOnly author field name (the handler dispatched to).
    * @param value Boxed event value (concrete C++ type per `type`).
    * @param type The field's type tag (so the backend can marshal `value`).
    * @param timestamp The event's timestamp; the script's outputs carry it.
    */
-  void deliverInputEvent(Script *script, const std::string &eventName,
+  void deliverInputEvent(x3d::nodes::Script *script, const std::string &eventName,
                          std::any value, X3DFieldType type, double timestamp) {
     Entry *e = entryFor(script);
     if (!e || e->handle == kInvalidScriptHandle) return;
@@ -211,7 +213,7 @@ public:
    *          external url (no recognized inline scheme) leaves the script with no
    *          executable content (async fetch is deferred — SCR-ASYNC/SCR-REFRESH).
    */
-  void setUrl(Script *script, const MFString &newUrl,
+  void setUrl(x3d::nodes::Script *script, const MFString &newUrl,
               X3DExecutionContext &ctx) {
     Entry *e = entryFor(script);
     if (!e) {
@@ -229,13 +231,13 @@ public:
   }
 
   /** @brief The SAI surface for a script (null if not enrolled). */
-  SaiContext *saiFor(Script *script) {
+  SaiContext *saiFor(x3d::nodes::Script *script) {
     Entry *e = entryFor(script);
     return e ? &e->sai : nullptr;
   }
 
   /** @brief The load handle for a script (kInvalidScriptHandle if unloaded). */
-  ScriptHandle handleFor(Script *script) {
+  ScriptHandle handleFor(x3d::nodes::Script *script) {
     Entry *e = entryFor(script);
     return e ? e->handle : kInvalidScriptHandle;
   }
@@ -263,15 +265,15 @@ public:
 
   /**
    * @brief The script's executable body: sourceCode if non-empty, else url.
-   * @details §3.3 of the design (file-authored Script un-tabling): readers write
+   * @details §3.3 of the design (file-authored x3d::nodes::Script un-tabling): readers write
    *          an inline `<![CDATA[...]]>` block / JSON source member / VRML body
-   *          into Script.sourceCode, so prefer it. When sourceCode is empty (the
+   *          into x3d::nodes::Script.sourceCode, so prefer it. When sourceCode is empty (the
    *          programmatic / inline-url path) fall back to the existing url inline
    *          scheme decode (ecmascript:/javascript:/vrmlscript:). An external url
    *          with no recognized inline scheme still yields empty (the script
    *          stays inert until content arrives — async fetch deferred).
    */
-  static std::string scriptSource(const Script &script) {
+  static std::string scriptSource(const x3d::nodes::Script &script) {
     const SFString &src = script.getSourceCode();
     if (!src.empty()) return src;
     return decodeInlineSource(script.getUrl());
@@ -287,11 +289,11 @@ private:
 
   /// Per-enrolled-script state: its SAI surface, load handle, and tick flags.
   struct Entry {
-    Entry(X3DExecutionContext &ctx, Script &script, const std::string &name,
+    Entry(X3DExecutionContext &ctx, x3d::nodes::Script &script, const std::string &name,
           const std::string &version)
         : script(&script), sai(ctx, script, name, version) {}
 
-    Script *script;
+    x3d::nodes::Script *script;
     SaiContext sai;
     ScriptHandle handle = kInvalidScriptHandle;
     bool receivedEventThisTick = false;
@@ -299,14 +301,14 @@ private:
     std::vector<DeferredEvent> deferred;
   };
 
-  Entry *entryFor(Script *script) {
+  Entry *entryFor(x3d::nodes::Script *script) {
     for (auto &up : scripts_)
       if (up->script == script) return up.get();
     return nullptr;
   }
 
   /**
-   * @brief Load (decode source + engine.load) then initialize a Script.
+   * @brief Load (decode source + engine.load) then initialize a x3d::nodes::Script.
    * @details No-op if already loaded. Sources from sourceCode (the reader-CDATA
    *          path, §3.3) else the inline url; an external/empty source yields no
    *          handle (the script is inert until content arrives — deferred async).

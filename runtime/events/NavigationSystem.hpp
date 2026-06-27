@@ -44,6 +44,8 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
+using x3d::nodes::NavigationInfo;
 
 /**
  * @brief Interactive navigation: mutate the bound Viewpoint from the input seam.

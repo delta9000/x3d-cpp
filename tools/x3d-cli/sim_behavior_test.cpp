@@ -29,6 +29,8 @@
 #include <string>
 #include <vector>
 
+using namespace x3d::core;
+
 namespace {
 
 // Build + wire a scene's full runtime; returns the live context (the doc must
@@ -51,7 +53,7 @@ void testInterpolatorMidCycle(const std::string &dir) {
 
   auto mover = doc.scene.resolve("Mover");
   assert(mover && "Mover DEF must resolve");
-  auto *xf = dynamic_cast<Transform *>(mover.get());
+  auto *xf = dynamic_cast<x3d::nodes::Transform *>(mover.get());
   assert(xf && "Mover must be a Transform");
   const SFVec3f tr = xf->getTranslation();
   std::cout << "  [interp] Mover.translation at t=0.5 = (" << tr.x << ", "

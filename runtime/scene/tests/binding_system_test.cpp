@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 using namespace x3d::runtime;
+using namespace x3d::nodes;
 
 static X3DBindableNode* bindable(const std::shared_ptr<X3DNode>& n) {
   return dynamic_cast<X3DBindableNode*>(n.get());

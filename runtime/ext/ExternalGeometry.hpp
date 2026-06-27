@@ -26,6 +26,8 @@
 
 namespace x3d::runtime::ext {
 
+using namespace x3d::core;
+
 /**
  * @class ExternalGeometry
  * @brief A pure-reference geometry leaf node for the x3d-cpp-gen extension layer.

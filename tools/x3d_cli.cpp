@@ -55,6 +55,8 @@
 namespace fs = std::filesystem;
 namespace sdk = x3d::sdk;
 
+using namespace x3d::core;
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 namespace {
@@ -564,14 +566,14 @@ static void walkForCoordCheck(const X3DNode &node,
     const std::string typeName = node.nodeTypeName();
 
     if (typeName == "IndexedFaceSet") {
-        const auto *ifs = dynamic_cast<const IndexedFaceSet *>(&node);
+        const auto *ifs = dynamic_cast<const x3d::nodes::IndexedFaceSet *>(&node);
         if (ifs) {
             const auto coordNode = ifs->getCoord();
             const auto &coordIdx = ifs->getCoordIndex();
             if (coordNode && coordIdx.empty()) {
                 // Only flag when the Coordinate actually has point data;
                 // an empty Coordinate element (no points) is not an error.
-                const auto *coord = dynamic_cast<const Coordinate *>(coordNode.get());
+                const auto *coord = dynamic_cast<const x3d::nodes::Coordinate *>(coordNode.get());
                 if (coord && !coord->getPoint().empty()) {
                     std::string msg = "IndexedFaceSet has Coordinate with "
                                     + std::to_string(coord->getPoint().size())
@@ -582,12 +584,12 @@ static void walkForCoordCheck(const X3DNode &node,
             }
         }
     } else if (typeName == "IndexedLineSet") {
-        const auto *ils = dynamic_cast<const IndexedLineSet *>(&node);
+        const auto *ils = dynamic_cast<const x3d::nodes::IndexedLineSet *>(&node);
         if (ils) {
             const auto coordNode = ils->getCoord();
             const auto &coordIdx = ils->getCoordIndex();
             if (coordNode && coordIdx.empty()) {
-                const auto *coord = dynamic_cast<const Coordinate *>(coordNode.get());
+                const auto *coord = dynamic_cast<const x3d::nodes::Coordinate *>(coordNode.get());
                 if (coord && !coord->getPoint().empty()) {
                     std::string msg = "IndexedLineSet has Coordinate with "
                                     + std::to_string(coord->getPoint().size())

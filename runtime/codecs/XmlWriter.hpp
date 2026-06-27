@@ -37,6 +37,9 @@
 #include <unordered_set>
 
 namespace x3d::codec {
+using namespace x3d::core;
+using x3d::nodes::X3DNodeFactory;
+using x3d::nodes::Script;
 
 /// Serializes the runtime document model to X3D-XML.
 class XmlWriter {
@@ -230,7 +233,7 @@ private:
       // SCR-SAI-DYN (S1): a Script's sourceCode is re-emitted as a <![CDATA[]]>
       // body (below), not as a flat attribute, so the inline source round-trips
       // through the same channel the reader captures it from.
-      if (f.x3dName == "sourceCode" && dynamic_cast<const Script *>(node.get()))
+      if (f.x3dName == "sourceCode" && dynamic_cast<const x3d::nodes::Script *>(node.get()))
         continue;
 
       if (f.isNode())
@@ -307,7 +310,7 @@ private:
     // DynamicFieldStore) and its inline source body so a captured Script
     // round-trips read -> write -> reparse. Done last so author <field>s follow
     // any node children, matching the authoring convention.
-    if (const auto *script = dynamic_cast<const Script *>(node.get()))
+    if (const auto *script = dynamic_cast<const x3d::nodes::Script *>(node.get()))
       writeScriptAuthorFields(*el, *script);
     return el;
   }

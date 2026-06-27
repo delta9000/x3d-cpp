@@ -50,6 +50,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 namespace {
 
 // ---------------------------------------------------------------------------
@@ -165,7 +167,7 @@ JSValue pushNode(JSContext *ctx, const SFNode &node) {
   return obj;
 }
 
-X3DNode *extractNode(JSContext *ctx, JSValueConst v) {
+x3d::nodes::X3DNode *extractNode(JSContext *ctx, JSValueConst v) {
   if (JS_IsNull(v) || JS_IsUndefined(v) || !JS_IsObject(v)) return nullptr;
   JsValue lo(ctx, JS_GetPropertyStr(ctx, v, kNodePtrLoKey));
   JsValue hi(ctx, JS_GetPropertyStr(ctx, v, kNodePtrHiKey));
@@ -175,7 +177,7 @@ X3DNode *extractNode(JSContext *ctx, JSValueConst v) {
   JS_ToUint32(ctx, &hiBits, hi.get());
   const auto bits = (static_cast<uint64_t>(hiBits) << 32) |
                     static_cast<uint64_t>(loBits);
-  return reinterpret_cast<X3DNode *>(static_cast<uintptr_t>(bits));
+  return reinterpret_cast<x3d::nodes::X3DNode *>(static_cast<uintptr_t>(bits));
 }
 
 // ---------------------------------------------------------------------------
@@ -665,7 +667,7 @@ struct QuickJsBackend::Impl {
   // One loaded script's per-context state (the Duktape Entry model).
   struct Entry {
     JSContext *ctx = nullptr;   // owned; freed in shutdown()/destructor
-    X3DNode *node = nullptr;    // owning Script node (not owned here)
+    x3d::nodes::X3DNode *node = nullptr;    // owning Script node (not owned here)
     SaiContext *sai = nullptr;  // SAI surface (not owned here)
   };
 
@@ -818,8 +820,8 @@ JSValue browser_addRoute(JSContext *ctx, JSValueConst, int argc,
                          JSValueConst *argv) {
   SaiContext *sai = saiOf(ctx);
   if (!sai || argc < 4) return JS_UNDEFINED;
-  X3DNode *from = extractNode(ctx, argv[0]);
-  X3DNode *to = extractNode(ctx, argv[2]);
+  x3d::nodes::X3DNode *from = extractNode(ctx, argv[0]);
+  x3d::nodes::X3DNode *to = extractNode(ctx, argv[2]);
   const char *fromField = JS_ToCString(ctx, argv[1]);
   const char *toField = JS_ToCString(ctx, argv[3]);
   JSValue result = JS_UNDEFINED;
@@ -837,8 +839,8 @@ JSValue browser_deleteRoute(JSContext *ctx, JSValueConst, int argc,
                             JSValueConst *argv) {
   SaiContext *sai = saiOf(ctx);
   if (!sai || argc < 4) return JS_UNDEFINED;
-  X3DNode *from = extractNode(ctx, argv[0]);
-  X3DNode *to = extractNode(ctx, argv[2]);
+  x3d::nodes::X3DNode *from = extractNode(ctx, argv[0]);
+  x3d::nodes::X3DNode *to = extractNode(ctx, argv[2]);
   const char *fromField = JS_ToCString(ctx, argv[1]);
   const char *toField = JS_ToCString(ctx, argv[3]);
   JSValue result = JS_UNDEFINED;

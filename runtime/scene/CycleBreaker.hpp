@@ -28,6 +28,7 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 // Sever every containment back-edge so `scene` becomes a DAG. Returns the number
 // of edges removed (0 for any well-formed scene -> a no-op on valid content).
