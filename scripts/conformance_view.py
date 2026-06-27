@@ -122,10 +122,14 @@ def detect_system_targets(text: str, is_system_file: bool = False) -> set[str]:
     compares (e.g. ViewDependentSystem wires via nodeTypeName() equality) — scoped
     to System files so codec/reader string compares don't masquerade as wiring.
     """
+    # Node types may be written qualified (x3d::nodes::Foo) or via a per-file
+    # alias (xn::Foo) after the ADR-0039 namespace split, or bare where a
+    # `using namespace` is in scope. Tolerate an optional namespace prefix and
+    # capture the final identifier.
     targets: set[str] = set()
-    for m in re.finditer(r"dynamic_cast<\s*([A-Za-z0-9_]+)\s*\*>", text):
+    for m in re.finditer(r"dynamic_cast<\s*(?:[A-Za-z0-9_]+::)*([A-Za-z0-9_]+)\s*\*>", text):
         targets.add(m.group(1))
-    for m in re.finditer(r"[A-Za-z0-9_]*System<\s*([A-Za-z0-9_]+)", text):
+    for m in re.finditer(r"[A-Za-z0-9_]*System<\s*(?:[A-Za-z0-9_]+::)*([A-Za-z0-9_]+)", text):
         targets.add(m.group(1))
     if is_system_file:
         for m in re.finditer(r'==\s*"([A-Z][A-Za-z0-9]+)"', text):
@@ -236,13 +240,19 @@ def build_model(repo: pathlib.Path) -> dict:
     conf_dir = repo / "docs" / "conformance"
 
     # 1. nodes (exists) + concrete/abstract
+    # Generated headers moved under x3d/{core,nodes}/ (ADR-0039 namespace split);
+    # the prior flat glob saw both node and foundation headers, so glob both subdirs
+    # to preserve the same file set.
     nodes: dict[str, NodeFact] = {}
-    for hpp in sorted(bindings.glob("*.hpp")):
+    gen_headers = sorted([*(bindings / "x3d" / "nodes").glob("*.hpp"),
+                          *(bindings / "x3d" / "core").glob("*.hpp")])
+    for hpp in gen_headers:
         name = hpp.stem
         nodes[name] = parse_node_header(name, _read(hpp))
 
     # 2. registry: node -> interfaces
-    registry = parse_registry_table(_read(bindings / "X3DInterfaceRegistry.cpp"))
+    registry = parse_registry_table(
+        _read(bindings / "x3d" / "nodes" / "X3DInterfaceRegistry.cpp"))
     all_ifaces = set().union(*registry.values()) if registry else set()
 
     # 3. System wiring (concrete + abstract-expansion)
