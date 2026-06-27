@@ -1889,6 +1889,16 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     set_tests_properties(x3d_geometry_scene PROPERTIES TIMEOUT 120)
 endif()
 
+# --- Namespace taxonomy lock (ADR-0039): pin x3d::core / x3d::nodes placement ---
+if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
+    add_executable(x3d_namespace_taxonomy
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/tests/namespace_taxonomy_test.cpp")
+    target_link_libraries(x3d_namespace_taxonomy PRIVATE x3d_cpp::sdk)
+    target_include_directories(x3d_namespace_taxonomy PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
+    add_test(NAME x3d_namespace_taxonomy COMMAND x3d_namespace_taxonomy)
+endif()
+
 # --- doctest grouped binary: codecs tests (19 cases, one link) ---
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_codecs_tests
