@@ -399,46 +399,8 @@ const profile_fit::ProfileDef *findMinimalProfile(const ComponentUsage &usage) {
     return nullptr; // usage has a component not in Full (e.g. unknown type)
 }
 
-// Nodes from usage that are NOT allowed in a given profile.
-// Returns list of "TypeName (Component:Level)" strings.
-std::vector<std::string> profileExceedances(const ComponentUsage &usage,
-                                             const ProfileDef &prof,
-                                             const sdk::Scene &scene) {
-    // Collect exceeding (component, level) pairs.
-    std::vector<std::pair<std::string,int>> exceeding;
-    for (const auto &[comp, lvl] : usage) {
-        if (!allowedInProfile(prof, comp, lvl))
-            exceeding.push_back({comp, lvl});
-    }
-    if (exceeding.empty()) return {};
-
-    // For each exceeding (component, level), find node type names that
-    // contributed to that component at that level (to give user-visible names).
-    const auto &table = nodeComponentTable();
-    std::vector<std::string> result;
-    for (const auto &[comp, lvl] : exceeding) {
-        // Gather node type names that map to this component+level.
-        std::vector<std::string> types;
-        for (const auto &[tname, cl] : table) {
-            if (cl.first == comp && cl.second == lvl)
-                types.push_back(tname);
-        }
-        // Also walk actual scene nodes to get concrete names encountered.
-        // Simpler: just list the (component:level) and any matching type names.
-        std::string msg = comp + ":" + std::to_string(lvl);
-        if (!types.empty()) {
-            // Filter to only types actually in the scene (walk usage mapping).
-            // We don't have per-node tracking here, so list component+level.
-            // We do a second pass: collect actual node type names in the scene
-            // that map to this component.
-            msg += " (e.g. " + types[0];
-            if (types.size() > 1) msg += ", ...";
-            msg += ")";
-        }
-        result.push_back(msg);
-    }
-    return result;
-}
+// (profileExceedances removed: dead — no callers after the profile-fit emit
+// was inlined directly into the CLI flag path.)
 
 // Find which node type names from the scene map to a given component.
 std::vector<std::string> nodeTypeNamesForComponent(const sdk::Scene &scene,
@@ -786,7 +748,6 @@ int cmdValidate(const std::vector<std::string> &args) {
 
     if (declProf) {
         // Walk scene to find nodes that exceed the declared profile.
-        const auto &table = profile_fit::nodeComponentTable();
         for (const auto &[comp, lvl] : usage) {
             if (!profile_fit::allowedInProfile(*declProf, comp, lvl)) {
                 // Which node types in the scene use this component?

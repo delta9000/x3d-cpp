@@ -75,15 +75,6 @@ static std::string extOf(const std::string &p) {
     return toLower(fs::path(p).extension().string());
 }
 
-// Read a whole text file into a string.
-static std::string readFile(const std::string &path) {
-    std::ifstream f(path);
-    if (!f) throw std::runtime_error("cannot open: " + path);
-    std::ostringstream ss;
-    ss << f.rdbuf();
-    return ss.str();
-}
-
 // ── Golden verdict loading ─────────────────────────────────────────────────
 
 struct GoldenVerdict {
@@ -119,16 +110,7 @@ static std::vector<GoldenVerdict> loadVerdicts(const std::string &tsvPath) {
     return out;
 }
 
-static std::vector<std::string> loadSubset(const std::string &txtPath) {
-    std::vector<std::string> out;
-    std::ifstream f(txtPath);
-    if (!f) throw std::runtime_error("cannot open subset.txt: " + txtPath);
-    std::string line;
-    while (std::getline(f, line)) {
-        if (!line.empty()) out.push_back(line);
-    }
-    return out;
-}
+// (loadSubset removed: dead — no callers after the gate stopped reading subset.txt)
 
 // ── Conformance checks (mirrors conformance_checks namespace in x3d_cli.cpp) ─
 
@@ -374,7 +356,7 @@ static std::string encFamily(const std::string &ext) {
 // ── Markdown report ───────────────────────────────────────────────────────────
 
 static void writeReport(const std::string &outPath,
-                        const std::vector<GoldenVerdict> &verdicts,
+                        [[maybe_unused]] const std::vector<GoldenVerdict> &verdicts,
                         const std::vector<std::pair<GoldenVerdict, std::pair<std::string, std::string>>> &divergences,
                         const std::vector<ConvertResult> &convertResults,
                         int totalValidate, int agree, int parseFailOurs) {

@@ -36,9 +36,7 @@ void check(bool c, const std::string &w) {
   else std::cout << "ok: " << w << "\n";
 }
 bool feq(float a, float b, float e = 1e-3f) { return std::fabs(a - b) < e; }
-void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields()) if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
+// (setF removed: dead — the test uses the public reflection API directly.)
 
 // (1) offset moves the effective camera; authored fields stay pristine.
 void test_offset_moves_camera() {

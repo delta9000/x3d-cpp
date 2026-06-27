@@ -77,15 +77,6 @@ static sdk::X3DDocument parseXml(const std::string &xml) {
     return sdk::parseDocument(xml, sdk::Encoding::XML);
 }
 
-// Write a temporary file and return its path.
-static std::string writeTempFile(const std::string &content, const std::string &suffix) {
-    std::string path = (fs::temp_directory_path() /
-                        ("x3d_canon_test_" + suffix)).string();
-    std::ofstream f(path);
-    f << content;
-    return path;
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 // T1: XML prolog.

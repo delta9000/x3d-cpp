@@ -176,7 +176,12 @@ void test_load_and_tick() {
   }
 
   // cycleInterval 4.0, loop TRUE; key 0/0.5/1 -> value (0,0,0)/(10,0,0)/(0,0,0).
+  // The deprecation shim wraps an ActiveNode in a one-node System; new code
+  // should implement System directly. Tracked for migration.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   ctx.addActiveNode(std::make_shared<TimeSensorBehavior>(clock.get()));
+#pragma GCC diagnostic pop
   InterpolatorSystem<PositionInterpolator, SFVec3f> interpSys(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); });
   interpSys.attach(path.get(), ctx);

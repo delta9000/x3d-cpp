@@ -87,6 +87,21 @@ target_include_directories(x3d_cpp INTERFACE
 target_compile_features(x3d_cpp INTERFACE cxx_std_20)
 
 # ---------------------------------------------------------------------------
+# Project-wide warning policy. -Wall -Wextra applied to every target we own;
+# vendored TUs (Jolt, quickjs, stb, wuffs, stb_truetype) suppress with their own
+# `target_compile_options(... PRIVATE -w)` later in this file so they don't pull
+# in this baseline. X3D_CPP_WERROR (default OFF) promotes warnings to errors
+# for the merge gate — the `ci` CMake preset flips it ON so local `mise run ci`
+# matches the GitHub Actions fast gate.
+# ---------------------------------------------------------------------------
+add_compile_options(-Wall -Wextra)
+option(X3D_CPP_WERROR "Treat compiler warnings as errors (the merge gate enables this via the ci preset)" OFF)
+if(X3D_CPP_WERROR)
+    add_compile_options(-Werror)
+    message(STATUS "x3d_cpp: X3D_CPP_WERROR=ON -> warnings treated as errors")
+endif()
+
+# ---------------------------------------------------------------------------
 # Compiled node library (C1): the generated *.cpp (per-node out-of-line
 # reflection/validate definitions + the X3DNodeFactory registry) are compiled
 # ONCE here instead of re-instantiated in every consumer TU. Consumers link

@@ -316,6 +316,31 @@ and the ccache hit rate for the core build if they shared a directory.
 
 ---
 
+## Warning policy
+
+Project targets compile with `-Wall -Wextra` by default (added via
+`add_compile_options` in `CMakeLists.txt` so every target we own picks it up
+transitively). Vendored TUs (Jolt, quickjs-ng, stb_image, wuffs, stb_truetype)
+suppress with their own `target_compile_options(... PRIVATE -w)` so they don't
+contaminate the project's signal.
+
+The `X3D_CPP_WERROR` option promotes warnings to errors. The `ci` preset
+flips it ON, the `dev` preset leaves it OFF (fast iteration). The GitHub Actions
+fast gate (`cpp` job + `cpp-matrix` job) pass `-DX3D_CPP_WERROR=ON` explicitly.
+A latent warning introduced in a PR fails the merge.
+
+```bash
+# Default (dev preset): warnings shown but don't fail.
+cmake --preset dev && cmake --build --preset dev
+
+# Merge gate (ci preset): warnings fail the build.
+mise run build-ci
+# or:
+cmake --preset ci && cmake --build --preset ci
+```
+
+---
+
 ## vcpkg manifest (third-party backend deps)
 
 The repo's third-party backend deps for the seam swap-tests (`libcurl` for the

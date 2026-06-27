@@ -951,7 +951,8 @@ private:
   // matching the "carry structure, skip what the model can't hold" tolerance of
   // the codecs.
   // -------------------------------------------------------------------------
-  void consumeInterfaceDeclaration(VrmlTokenizer &tok, runtime::Scene &scene,
+  void consumeInterfaceDeclaration(VrmlTokenizer &tok,
+                                   [[maybe_unused]] runtime::Scene &scene,
                                    X3DNode &node) {
     std::string accessTok = expectWord(tok, "interface accessType");
     AccessType access = accessTypeFromString(accessTok);

@@ -91,7 +91,7 @@ static void test_damper() {
   // determinism: two identical runs match.
   auto run=[&](){ auto n=std::make_shared<ScalarDamper>(); n->setOrderUnchecked(3); n->setTauUnchecked(0.3);
     DamperSystem<ScalarDamper,float> s; s.attach(n.get(),ctx); n->onSet_destination(1.0f);
-    for(double t=0.1;t<=2.0;t+=0.1) s.update(t,ctx); return n->getValue_changed(); };
+    for(double t=0.1;t<=2.0;t+=0.1) { s.update(t,ctx); } return n->getValue_changed(); };
   XCHECK(feq(run(), run(), 1e-6f), "damper deterministic");
 
   // initial-transition path: initialValue != initialDestination => isActive TRUE on attach.
@@ -155,7 +155,7 @@ static void test_chaser() {
   // determinism.
   auto run=[&](){ auto n=std::make_shared<ScalarChaser>(); n->setDurationUnchecked(1.0);
     ChaserSystem<ScalarChaser,float> s; s.attach(n.get(),ctx); n->onSet_destination(1.0f);
-    for(double t=0.0;t<=1.0;t+=0.1) s.update(t,ctx); return n->getValue_changed(); };
+    for(double t=0.0;t<=1.0;t+=0.1) { s.update(t,ctx); } return n->getValue_changed(); };
   XCHECK(feq(run(), run(), 1e-6f), "chaser deterministic");
 
   // initial-transition path: initialValue != initialDestination => isActive TRUE on attach.

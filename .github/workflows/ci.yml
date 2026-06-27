@@ -170,8 +170,10 @@ jobs:
           path: ~/.cache/ccache
           key: ccache-gcc-pr-${{ github.sha }}
           restore-keys: ccache-gcc-pr-
+      # X3D_CPP_WERROR=ON mirrors the local ci preset: warnings become errors,
+      # so a latent warning introduced in a PR fails the merge gate here.
       - name: Configure
-        run: cmake -S . -B build -G Ninja
+        run: cmake -S . -B build -G Ninja -DX3D_CPP_WERROR=ON
       - name: Build
         run: cmake --build build
       - name: Test
@@ -458,7 +460,9 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
-        run: cmake -S . -B build -G Ninja
+        # WERROR=ON across the matrix too — the goal is identical gate, all
+        # compilers should agree the codebase is warning-clean.
+        run: cmake -S . -B build -G Ninja -DX3D_CPP_WERROR=ON
       - name: Build
         run: cmake --build build
       - name: Test

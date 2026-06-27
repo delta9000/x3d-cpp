@@ -16,11 +16,12 @@
     {
       "name": "ci",
       "displayName": "CI (mirrors the GitHub Actions cpp job)",
-      "description": "Local mirror of the GitHub Actions fast gate: per-header isolation checks ON (the ~800 per-header ctests), no preset-specific cache overrides otherwise. Use `mise run build-ci` to drive the same gate locally before pushing.",
+      "description": "Local mirror of the GitHub Actions fast gate: per-header isolation checks ON (the ~800 per-header ctests), X3D_CPP_WERROR=ON (warnings become errors, the merge gate). Use `mise run build-ci` to drive the same gate locally before pushing.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-ci",
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "X3D_CPP_WERROR": "ON"
       }
     }
   ],
