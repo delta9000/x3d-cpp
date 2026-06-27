@@ -17,8 +17,10 @@
 #include <vector>
 
 {% for node in concrete_nodes %}
-#include "{{ node.name }}.hpp"
+#include "x3d/nodes/{{ node.name }}.hpp"
 {% endfor %}
+
+using namespace x3d::core;
 
 #define TEST_ASSERT(condition, message)                                        \
   do {                                                                         \
@@ -113,11 +115,11 @@ static bool defaultsEqual(const std::vector<T>& a, const std::vector<T>& b) {
 static void test_{{ n.name }}() {
   std::cout << "\nTesting {{ n.name }}..." << std::endl;
   try {
-    {{ n.name }} inst;  // instantiation smoke test
+    x3d::nodes::{{ n.name }} inst;  // instantiation smoke test
     (void)inst;
     {% for f in n.default_fields %}
     TEST_ASSERT(
-        defaultsEqual(inst.{{ f.getter_name }}(), {{ n.name }}::getDefault{{ f.name_pascal }}()),
+        defaultsEqual(inst.{{ f.getter_name }}(), x3d::nodes::{{ n.name }}::getDefault{{ f.name_pascal }}()),
         "{{ n.name }}.{{ f.x3d_name }} default mismatch");
     {% endfor %}
   } catch (const std::exception& e) {
@@ -130,7 +132,7 @@ static void test_{{ n.name }}() {
 // --- Well-known explicit literal pins. ---
 {% for wk in well_known %}
 static void test_pin_{{ loop.index }}() {
-  {{ wk.node }} inst;
+  x3d::nodes::{{ wk.node }} inst;
   TEST_ASSERT({{ wk.expr }}, "{{ wk.desc }}");
 }
 {% endfor %}

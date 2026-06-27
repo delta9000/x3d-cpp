@@ -297,11 +297,13 @@ def write_node_factory(output_dir: str, nodes: Dict[str, X3DNode]) -> None:
     from x3d_cpp_gen.emit.factory import (
         gen_node_factory_header, gen_node_factory_source,
     )
-    hdr = os.path.join(output_dir, "X3DNodeFactory.hpp")
+    nodes_dir = os.path.join(output_dir, "x3d", "nodes")
+    os.makedirs(nodes_dir, exist_ok=True)
+    hdr = os.path.join(nodes_dir, "X3DNodeFactory.hpp")
     with open(hdr, "w") as f:
         f.write(gen_node_factory_header(nodes))
     print(f"Generated X3D node factory header file at {hdr}")
-    src = os.path.join(output_dir, "X3DNodeFactory.cpp")
+    src = os.path.join(nodes_dir, "X3DNodeFactory.cpp")
     with open(src, "w") as f:
         f.write(gen_node_factory_source(nodes))
     print(f"Generated X3D node factory source file at {src}")
@@ -313,11 +315,13 @@ def write_interface_registry(output_dir: str, nodes: Dict[str, X3DNode],
     from x3d_cpp_gen.emit.registry import (
         gen_interface_registry_header, gen_interface_registry_source,
     )
-    hdr = os.path.join(output_dir, "X3DInterfaceRegistry.hpp")
+    nodes_dir = os.path.join(output_dir, "x3d", "nodes")
+    os.makedirs(nodes_dir, exist_ok=True)
+    hdr = os.path.join(nodes_dir, "X3DInterfaceRegistry.hpp")
     with open(hdr, "w") as f:
         f.write(gen_interface_registry_header(nodes))
     print(f"Generated X3D interface registry header at {hdr}")
-    src = os.path.join(output_dir, "X3DInterfaceRegistry.cpp")
+    src = os.path.join(nodes_dir, "X3DInterfaceRegistry.cpp")
     with open(src, "w") as f:
         f.write(gen_interface_registry_source(nodes, dependency_graph))
     print(f"Generated X3D interface registry source at {src}")
@@ -421,7 +425,9 @@ def generate_test_file(nodes: Dict[str, X3DNode], output_dir: str,
         nodes_ctx=nodes_ctx,
         well_known=well_known,
     )
-    test_file_path = os.path.join(output_dir, "test.cpp")
+    nodes_dir = os.path.join(output_dir, "x3d", "nodes")
+    os.makedirs(nodes_dir, exist_ok=True)
+    test_file_path = os.path.join(nodes_dir, "test.cpp")
 
     with open(test_file_path, 'w') as f:
         f.write(test_code)
