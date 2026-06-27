@@ -113,18 +113,20 @@ def test_synthetic_41_generates_and_emits_new_content(tmp_path):
     enum_defs = parse_enum_definitions(str(SYNTHETIC_41))
     out = tmp_path / "v41syn"
     out.mkdir()
-    write_types_header(str(out))
-    write_enums_header(str(out), enum_defs)
+    core_dir = out / "x3d" / "core"
+    core_dir.mkdir(parents=True, exist_ok=True)
+    write_types_header(str(core_dir))
+    write_enums_header(str(core_dir), enum_defs)
     generate_cpp_bindings(nodes, graph, str(out),
                           clang_format="", enum_defs=enum_defs)
 
-    qw_hpp = out / "QuantumWidget.hpp"
+    qw_hpp = out / "x3d" / "nodes" / "QuantumWidget.hpp"
     assert qw_hpp.exists()
     text = qw_hpp.read_text()
     assert "class QuantumWidget" in text
     assert "public virtual X3DChildNode" in text
 
-    enums_text = (out / "X3Denums.hpp").read_text()
+    enums_text = (out / "x3d" / "core" / "X3Denums.hpp").read_text()
     assert "SUPERSHARP" in enums_text
 
 
@@ -135,11 +137,13 @@ def test_synthetic_41_namespace_isolation(tmp_path):
     graph = build_dependency_graph(nodes)
     out = tmp_path / "v41ns"
     out.mkdir()
-    write_types_header(str(out))
-    write_enums_header(str(out), {})
+    core_dir = out / "x3d" / "core"
+    core_dir.mkdir(parents=True, exist_ok=True)
+    write_types_header(str(core_dir))
+    write_enums_header(str(core_dir), {})
     generate_cpp_bindings(nodes, graph, str(out), clang_format="",
                           enum_defs={}, namespace="x3d::v4_1")
-    text = (out / "QuantumWidget.hpp").read_text()
+    text = (out / "x3d" / "nodes" / "QuantumWidget.hpp").read_text()
     assert "namespace x3d::v4_1 {" in text
     assert "} // namespace x3d::v4_1" in text
 

@@ -27,17 +27,27 @@ def rendered(tmp_path_factory):
     graph = build_dependency_graph(nodes)
     enum_defs = parse_enum_definitions(str(SPEC))
     out = tmp_path_factory.mktemp("out")
-    write_types_header(str(out))
-    write_enums_header(str(out), enum_defs)
+    core_dir = out / "x3d" / "core"
+    core_dir.mkdir(parents=True, exist_ok=True)
+    write_types_header(str(core_dir))
+    write_enums_header(str(core_dir), enum_defs)
     backend = CppHeaderBackend(clang_format="", enum_defs=enum_defs)
     backend.emit(nodes, graph, str(out))
     return out
 
 
+# Headers that live under x3d/core/ (all others go to x3d/nodes/).
+_CORE_HEADERS = {"X3Dtypes.hpp", "X3Denums.hpp", "X3DReflection.hpp"}
+
+
 def _read(rendered, name):
     # Collapse runs of whitespace so assertions are robust to clang-format /
     # Jinja indentation differences.
-    raw = (rendered / name).read_text()
+    if name in _CORE_HEADERS:
+        path = rendered / "x3d" / "core" / name
+    else:
+        path = rendered / "x3d" / "nodes" / name
+    raw = path.read_text()
     return raw, " ".join(raw.split())
 
 

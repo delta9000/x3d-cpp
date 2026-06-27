@@ -185,4 +185,5 @@ def test_gen_enums_header_emits_enum_class():
     assert "enum class AlphaModeChoices {" in hdr
     assert "AUTO," in hdr
     assert "enum class JustifyChoices {" in hdr
-    assert "#ifndef X3D_ENUMS_HPP" in hdr
+    assert "#pragma once" in hdr
+    assert "namespace x3d::core {" in hdr

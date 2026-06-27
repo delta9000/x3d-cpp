@@ -22,11 +22,15 @@ GOLDEN_DIR = REPO_ROOT / "generated_cpp_bindings"
 # holds when it is available. Skip (rather than fail) if it is missing.
 HAVE_CLANG_FORMAT = shutil.which("clang-format") is not None
 
+# Headers under x3d/core/ (everything else is under x3d/nodes/).
+_CORE_HEADERS = {"X3Dtypes.hpp", "X3Denums.hpp", "X3DReflection.hpp"}
+
 
 @pytest.mark.skipif(not HAVE_CLANG_FORMAT, reason="clang-format not installed")
 @pytest.mark.parametrize("header", ["Box.hpp", "X3Dtypes.hpp"])
 def test_generated_header_matches_golden(tmp_path, header):
-    golden = GOLDEN_DIR / header
+    subdir = Path("x3d") / ("core" if header in _CORE_HEADERS else "nodes")
+    golden = GOLDEN_DIR / subdir / header
     assert golden.exists(), f"golden header missing: {golden}"
 
     nodes = parse_x3d_model(str(SPEC), FIELD_TYPE_MAPPING, XS_TYPES)
@@ -35,10 +39,13 @@ def test_generated_header_matches_golden(tmp_path, header):
 
     out = tmp_path / "out"
     out.mkdir()
-    write_types_header(str(out))
-    generate_cpp_bindings(nodes, graph, str(out), clang_format="clang-format")
+    core_dir = out / "x3d" / "core"
+    core_dir.mkdir(parents=True, exist_ok=True)
+    write_types_header(str(core_dir))
+    generate_cpp_bindings(nodes, graph, str(out), clang_format="clang-format",
+                          namespace="x3d::nodes")
 
-    produced = out / header
+    produced = out / subdir / header
     assert produced.exists(), f"generator did not emit {header}"
     assert produced.read_bytes() == golden.read_bytes(), (
         f"{header} differs from committed golden output"

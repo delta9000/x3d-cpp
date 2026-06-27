@@ -21,9 +21,9 @@ def test_factory_header_has_no_node_includes():
 
 def test_factory_source_includes_concrete_nodes_and_defines_registry():
     src = gen_node_factory_source(_two_nodes())
-    assert '#include "X3DNodeFactory.hpp"' in src
-    assert '#include "Box.hpp"' in src                       # concrete included
-    assert '#include "X3DGeometryNode.hpp"' not in src       # abstract excluded
+    assert '#include "x3d/nodes/X3DNodeFactory.hpp"' in src
+    assert '#include "x3d/nodes/Box.hpp"' in src                       # concrete included
+    assert '#include "x3d/nodes/X3DGeometryNode.hpp"' not in src       # abstract excluded
     assert "X3DNodeFactory::registry()" in src               # out-of-line def
     assert "std::make_shared<Box>()" in src
 
@@ -37,8 +37,8 @@ def test_node_header_declares_fields_without_inline_body(tmp_path):
     out.mkdir()
     subprocess.run([sys.executable, "-m", "x3d_cpp_gen.cli",
                     "--out", str(out), "--no-test"], check=True)
-    box_h = (out / "Box.hpp").read_text()
-    box_c = (out / "Box.cpp").read_text()
+    box_h = (out / "x3d" / "nodes" / "Box.hpp").read_text()
+    box_c = (out / "x3d" / "nodes" / "Box.cpp").read_text()
     # Header DECLARES fields() but does NOT inline its FieldTable body.
     # (clang-format's default PointerAlignment: Right renders "FieldTable &".)
     assert "const FieldTable &fields() const override;" in box_h
