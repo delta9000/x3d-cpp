@@ -1,8 +1,8 @@
 ---
 title: Generated Bindings
 summary: The committed, golden-locked generated C++ node bindings that are the output artifact of the generator pipeline.
-tags: [subsystem, generated, bindings, golden]
-updated: 2026-06-20
+tags: [subsystem, generated, bindings, golden, namespace]
+updated: 2026-06-27
 related:
   - ../architecture.md
   - ../subsystems/generator.md
@@ -10,6 +10,7 @@ related:
   - ../subsystems/scene-graph.md
   - ../decisions/0005-golden-files-in-git.md
   - ../decisions/0006-compiled-static-lib.md
+  - ../decisions/0039-generated-binding-namespaces.md
   - ../guides/gate-system.md
 ---
 
@@ -21,18 +22,37 @@ related:
 
 The bindings are **not built by hand and not re-generated at compile time.** They are generated once by the Python generator (`mise run gen`) and then committed to git. That commit is the golden artifact; the `mise run golden` gate detects any generator-or-template drift before it lands.
 
+## Namespaces and header layout (ADR-0039)
+
+The generated types live in **two namespaces**, mirrored by two header subdirectories under
+`generated_cpp_bindings/`:
+
+- **`x3d::core`** → `generated_cpp_bindings/x3d/core/` — the value/reflection vocabulary
+  (`X3Dtypes.hpp`, `X3Denums.hpp`, `X3DReflection.hpp`): `SF*/MF*` types, `FieldInfo`/
+  `FieldTable`/`NodeVisitor`/`RangeDiagnostic`/`X3DFieldType`/`AccessType`, and the bounded enums.
+- **`x3d::nodes`** → `generated_cpp_bindings/x3d/nodes/` — the `X3DNode` base, every abstract
+  `X3D*Node`, all concrete node classes, the node factory, and the interface registry.
+
+Headers use `#pragma once` and include each other (and are included by consumers) with a uniform
+in-tree-and-installed spelling: `#include "x3d/core/X3Dtypes.hpp"`, `#include "x3d/nodes/Transform.hpp"`
+(the in-tree include base is `generated_cpp_bindings/`). The one cross-namespace seam is
+`x3d::core::SFNode = std::shared_ptr<x3d::nodes::X3DNode>`. Consumers qualify **asymmetrically**:
+a `using namespace x3d::core;` for the small vocabulary set (scoped, never global), but explicit
+`x3d::nodes::Foo` (or a per-file `namespace xn = x3d::nodes;` alias in heavy dispatch files) for
+node types — no blanket `using namespace x3d::nodes`. `ctest x3d_namespace_taxonomy` pins this.
+
 ## Key files
 
 | File / directory | Role |
 |---|---|
-| `generated_cpp_bindings/X3Dtypes.hpp` | All X3D SF*/MF* C++ type aliases and struct definitions (`SFVec3f`, `SFColor`, `SFNode = std::shared_ptr<X3DNode>`, `MFNode`, etc.) |
-| `generated_cpp_bindings/X3Denums.hpp` | All bounded X3D enumeration vocabularies as `enum class` (e.g. `AlphaModeChoices`, `AccessTypeChoices`), with `to_string`/`from_string` support |
-| `generated_cpp_bindings/X3DReflection.hpp` | Shared reflection infrastructure: `X3DFieldType`, `AccessType`, `FieldInfo`, `FieldTable`, `RangeDiagnostic`, `NodeVisitor` |
-| `generated_cpp_bindings/X3DNode.hpp` / `.cpp` | Base class for all instantiable nodes: `metadata`, `DEF`/`USE`/`class`/`id`/`style` fields; virtual `nodeTypeName()`, `defaultContainerField()`, `fields()`, `accept()`, `validateRanges()` |
-| `generated_cpp_bindings/<NodeName>.hpp` / `.cpp` | One pair per concrete X3D node (e.g. `Appearance.hpp`/`.cpp`, `Box.hpp`/`.cpp`). 260 concrete node pairs. Each `.hpp` holds the class declaration with typed getters/setters and range-throwing validators; each `.cpp` holds the out-of-line `fields()` FieldTable (with thunks), `accept()`, `validateRanges()`, and `checkRanges*` statics. |
-| `generated_cpp_bindings/X3D<AbstractName>.hpp` / `.cpp` | 77 abstract-node and mixin-interface pairs (e.g. `X3DGeometryNode`, `X3DBoundedObject`, `X3DGroupingNode`) using `public virtual` inheritance, plus 6 shared-infrastructure headers (`X3Dtypes`, `X3Denums`, `X3DReflection`, `X3DNode`, `X3DNodeFactory`, `X3DInterfaceRegistry`) = 83 `X3D*.hpp` total |
-| `generated_cpp_bindings/X3DNodeFactory.hpp` / `.cpp` | Name-to-constructor registry: `X3DNodeFactory::create(typeName)` and free function `createX3DNode(typeName)` |
-| `generated_cpp_bindings/X3DInterfaceRegistry.hpp` / `.cpp` | Queryable node-type → transitive interface set: `InterfaceId` enum, `X3DInterfaceRegistry::interfacesOf()`, `nodeImplements()`, `nodesImplementing()` |
+| `x3d/core/X3Dtypes.hpp` | (`namespace x3d::core`) All X3D SF*/MF* C++ type aliases and struct definitions (`SFVec3f`, `SFColor`, `SFNode = std::shared_ptr<x3d::nodes::X3DNode>`, `MFNode`, etc.) |
+| `x3d/core/X3Denums.hpp` | (`namespace x3d::core`) All bounded X3D enumeration vocabularies as `enum class` (e.g. `AlphaModeChoices`, `AccessTypeChoices`), with `to_string`/`from_string` support |
+| `x3d/core/X3DReflection.hpp` | (`namespace x3d::core`) Shared reflection infrastructure: `X3DFieldType`, `AccessType`, `FieldInfo`, `FieldTable`, `RangeDiagnostic`, `NodeVisitor` |
+| `x3d/nodes/X3DNode.hpp` / `.cpp` | (`namespace x3d::nodes`) Base class for all instantiable nodes: `metadata`, `DEF`/`USE`/`class`/`id`/`style` fields; virtual `nodeTypeName()`, `defaultContainerField()`, `fields()`, `accept()`, `validateRanges()` |
+| `x3d/nodes/<NodeName>.hpp` / `.cpp` | (`namespace x3d::nodes`) One pair per concrete X3D node (e.g. `Appearance.hpp`/`.cpp`, `Box.hpp`/`.cpp`). 260 concrete node pairs. Each `.hpp` holds the class declaration with typed getters/setters and range-throwing validators; each `.cpp` holds the out-of-line `fields()` FieldTable (with thunks), `accept()`, `validateRanges()`, and `checkRanges*` statics. |
+| `x3d/nodes/X3D<AbstractName>.hpp` / `.cpp` | (`namespace x3d::nodes`) 77 abstract-node and mixin-interface pairs (e.g. `X3DGeometryNode`, `X3DBoundedObject`, `X3DGroupingNode`) using `public virtual` inheritance. The 3 shared-infrastructure vocabulary headers (`X3Dtypes`, `X3Denums`, `X3DReflection`) live under `x3d/core/`; the factory + interface registry live under `x3d/nodes/` |
+| `x3d/nodes/X3DNodeFactory.hpp` / `.cpp` | (`namespace x3d::nodes`) Name-to-constructor registry: `X3DNodeFactory::create(typeName)` and free function `createX3DNode(typeName)` |
+| `x3d/nodes/X3DInterfaceRegistry.hpp` / `.cpp` | (`namespace x3d::nodes`) Queryable node-type → transitive interface set: `InterfaceId` enum, `X3DInterfaceRegistry::interfacesOf()`, `nodeImplements()`, `nodesImplementing()` |
 
 Total: 343 `.hpp` + 341 `.cpp` = 684 source files in the directory.
 
