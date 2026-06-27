@@ -172,12 +172,44 @@ inline SurfaceSample evalSurface(const std::vector<SFVec3f>& cp,
   return SurfaceSample{ Pt, nrm, SFVec2f{0,0} };
 }
 
-// Resolve weights + u/v knots (open clamped here; closed wrap added in Task 4).
 inline SurfaceDef prepareSurface(const SurfaceDef& in) {
   SurfaceDef s = in;
   if ((int)s.w.size() != s.uDim * s.vDim) s.w.assign(s.uDim * s.vDim, 1.0);
-  if ((int)s.uKnot.size() != s.uDim + s.uOrder) s.uKnot = clampedKnots(s.uDim, s.uOrder);
-  if ((int)s.vKnot.size() != s.vDim + s.vOrder) s.vKnot = clampedKnots(s.vDim, s.vOrder);
+
+  // u-direction periodic wrap: append first (uOrder-1) columns of every row.
+  if (s.uClosed && s.uDim >= 2) {
+    int pu = s.uOrder - 1, nu = s.uDim + pu;
+    std::vector<SFVec3f> cp2(nu * s.vDim);
+    std::vector<double>  w2(nu * s.vDim);
+    for (int j = 0; j < s.vDim; ++j)
+      for (int i = 0; i < nu; ++i) {
+        int src = (i < s.uDim ? i : i - s.uDim) + j * s.uDim;
+        cp2[i + j * nu] = s.cp[src];
+        w2[i + j * nu]  = s.w[src];
+      }
+    s.cp = std::move(cp2); s.w = std::move(w2); s.uDim = nu;
+    s.uKnot = periodicKnots(s.uDim, s.uOrder);
+  } else if ((int)s.uKnot.size() != s.uDim + s.uOrder) {
+    s.uKnot = clampedKnots(s.uDim, s.uOrder);
+  }
+
+  // v-direction periodic wrap: append first (vOrder-1) rows (uDim may have grown).
+  if (s.vClosed && s.vDim >= 2) {
+    int pv = s.vOrder - 1, nv = s.vDim + pv;
+    std::vector<SFVec3f> cp2(s.uDim * nv);
+    std::vector<double>  w2(s.uDim * nv);
+    for (int j = 0; j < nv; ++j) {
+      int srcj = (j < s.vDim ? j : j - s.vDim);
+      for (int i = 0; i < s.uDim; ++i) {
+        cp2[i + j * s.uDim] = s.cp[i + srcj * s.uDim];
+        w2[i + j * s.uDim]  = s.w[i + srcj * s.uDim];
+      }
+    }
+    s.cp = std::move(cp2); s.w = std::move(w2); s.vDim = nv;
+    s.vKnot = periodicKnots(s.vDim, s.vOrder);
+  } else if ((int)s.vKnot.size() != s.vDim + s.vOrder) {
+    s.vKnot = clampedKnots(s.vDim, s.vOrder);
+  }
   return s;
 }
 

@@ -138,3 +138,24 @@ TEST_CASE("nurbs_surface_analytic_normal_matches_finite_difference") {
   double dot = an.x*fd.x + an.y*fd.y + an.z*fd.z;
   CHECK(std::fabs(dot) > 0.999); // same direction (sign may differ)
 }
+
+TEST_CASE("nurbs_surface_closed_cylinder") {
+  // Open square profile in XZ, swept along +Y, uClosed => a closed tube. The
+  // u-seam vertices must coincide and normals stay continuous across it.
+  nurbs::SurfaceDef s;
+  s.uDim = 4; s.vDim = 2; s.uOrder = 3; s.vOrder = 2; s.uClosed = true;
+  // v=0 ring (y=0), then v=1 ring (y=4); u fastest
+  s.cp = {{1,0,0},{0,0,1},{-1,0,0},{0,0,-1},
+          {1,4,0},{0,4,1},{-1,4,0},{0,4,-1}};
+  auto g = nurbs::tessellateSurface(s, 16, 1);
+  CHECK(g.size() == (16+1)*(1+1));
+  int gw = 16 + 1;
+  // u-seam: first and last column of each v-row coincide (closed in u)
+  for (int b=0;b<=1;++b){
+    auto& a0 = g[b*gw + 0];
+    auto& a1 = g[b*gw + 16];
+    CHECK((feq(a0.p.x,a1.p.x,1e-5) && feq(a0.p.y,a1.p.y,1e-5) && feq(a0.p.z,a1.p.z,1e-5)));
+    double ndot = a0.n.x*a1.n.x + a0.n.y*a1.n.y + a0.n.z*a1.n.z;
+    CHECK(ndot > 0.99); // continuous normal across the seam
+  }
+}
