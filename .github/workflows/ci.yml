@@ -4,10 +4,18 @@
 # checks: pytest, golden drift, conformance-view drift, wiki strict build, and a
 # single-compiler C++ build + ctest.
 #
-# The heavy per-seam backend swap-tests (quickjs / assetresolver / texture /
-# audio / fontmetrics) each fetch+build a third-party backend, so they run ONLY
-# when their backend, the seam interface header, or the build system changed —
-# gated by the `changes` job's path detection (manual dispatch runs them all).
+# The per-seam backend swap-tests fall into two groups:
+#   - **texture-swap** is UNCONDITIONAL on every PR — both decoders are vendored
+#     and the gate is hermetic + <2 min. Byte-equal decode parity is the
+#     closest thing the SDK has to a render-correctness guarantee, so it runs
+#     every time.
+#   - The remaining four swap-tests (quickjs / assetresolver / audio /
+#     fontmetrics) each fetch+build a third-party backend (and assetresolver
+#     also brings up docker/minio + the AWS SDK), so they run ONLY when their
+#     backend, the seam interface header, the build system, or a CONSUMING
+#     subsystem changed — gated by the `changes` job's regex detection
+#     (manual dispatch runs them all).
+#
 # A `concurrency` group cancels superseded in-flight runs so rapid pushes to a
 # PR don't each pay full freight.
 #
@@ -16,7 +24,8 @@
 #
 # NOTE: the five swap-test job names may be branch-protection "required" checks.
 # A path-skipped job reports the "skipped" conclusion, which GitHub treats as
-# passing — so PRs that don't touch a seam are not blocked waiting on it.
+# passing — so PRs that don't touch a path-gated seam are not blocked waiting
+# on it. (texture-swap is never skipped.)
 #
 # See docs/wiki/guides/card-to-done-workflow.md (the DoD gate) and
 # docs/wiki/guides/gate-system.md (what each gate protects).
@@ -41,10 +50,12 @@ concurrency:
 
 jobs:
   # Detect which seam subsystems a PR touches so the heavy backend swap-tests run
-  # ONLY when their backend, the seam interface, or the build system changed. The
-  # fast hermetic gates (pytest/golden/conformance/wiki/cpp) always run. Plain
-  # git + bash (no third-party action) so the Forgejo mirror runs it unchanged.
-  # On workflow_dispatch (no base ref) every seam proof runs.
+  # ONLY when their backend, the seam interface, the build system, OR a
+  # consuming subsystem changed. The fast hermetic gates (pytest/golden/
+  # conformance/wiki/cpp) always run. The texture-swap gate is unconditional
+  # (vendored, hermetic, <2 min) — see below. Plain git + bash (no third-party
+  # action) so the Forgejo mirror runs it unchanged. On workflow_dispatch (no
+  # base ref) every seam proof runs.
   changes:
     name: detect changed subsystems
     runs-on: ubuntu-latest
@@ -52,7 +63,6 @@ jobs:
       audio: ${{ steps.f.outputs.audio }}
       quickjs: ${{ steps.f.outputs.quickjs }}
       assets: ${{ steps.f.outputs.assets }}
-      texture: ${{ steps.f.outputs.texture }}
       fontmetrics: ${{ steps.f.outputs.fontmetrics }}
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +75,7 @@ jobs:
           set -euo pipefail
           if [ -z "${BASE:-}" ]; then
             # Manual dispatch (no PR base): run every seam proof.
-            for k in audio quickjs assets texture fontmetrics; do
+            for k in audio quickjs assets fontmetrics; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -78,11 +88,15 @@ jobs:
           # Build-system / workflow changes can break any backend build -> run all.
           common='^CMakeLists\.txt$|^cmake/|^\.github/workflows/ci\.yml$'
           out() { if m "$common" || m "$2"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
+          # Each regex covers: (a) the seam interface header, (b) the backend
+          # implementation dirs, (c) the swap-test TU, and (d) the consumer
+          # subsystem files that drive the seam. Without (d) a refactor of a
+          # consuming subsystem would merge green without re-proving parity.
           out audio       '^runtime/sound/'
           out quickjs     '^runtime/script/'
-          out assets      '^runtime/io/(curl|s3)/|^runtime/io/tests/asset_resolver|^runtime/extract/AssetResolver\.hpp$'
-          out texture     '^runtime/io/(stb|wuffs)/|^runtime/io/tests/texture_decode|^runtime/extract/TextureResolver\.hpp$'
-          out fontmetrics '^runtime/io/(stbtt|freetype)/|^runtime/io/tests/font_metrics|^runtime/extract/FontMetrics\.hpp$'
+          out assets      '^runtime/io/(curl|s3)/|^runtime/io/tests/asset_resolver|^runtime/extract/AssetResolver\.hpp$|^runtime/parse/(X3DParse|X3DProtoResolver|JsonReader|ClassicVrmlReader|Vrml97Dialect)\.hpp$|^runtime/InlineExpand\.hpp$|^runtime/ext/(ExtResolver|ExternalGeometry)\.hpp$|^runtime/extract/TextureExtract\.hpp$'
+          # texture is unconditional — see texture-swap job below.
+          out fontmetrics '^runtime/io/(stbtt|freetype)/|^runtime/io/tests/font_metrics|^runtime/extract/FontMetrics\.hpp$|^runtime/extract/(TextLayout|TextExtract|MeshBuilder|RenderItem)\.hpp$'
 
   python:
     name: pytest (unit + golden tree)
@@ -156,12 +170,70 @@ jobs:
           path: ~/.cache/ccache
           key: ccache-gcc-pr-${{ github.sha }}
           restore-keys: ccache-gcc-pr-
+      # X3D_CPP_WERROR=ON mirrors the local ci preset: warnings become errors,
+      # so a latent warning introduced in a PR fails the merge gate here.
       - name: Configure
-        run: cmake -S . -B build -G Ninja
+        run: cmake -S . -B build -G Ninja -DX3D_CPP_WERROR=ON
       - name: Build
         run: cmake --build build
       - name: Test
         run: ctest --test-dir build --output-on-failure -j "$(nproc)"
+
+  # Sanitizer gate (BLD-2). Rebuilds the whole project with ASan + UBSan
+  # (-fno-sanitize-recover=all, so the first error aborts) and runs every ctest
+  # against the sanitized binaries — the green doctest run misses the memory/UB
+  # bugs (use-after-free, leaks, signed overflow) that the parser-hardening work
+  # (SEC-1/2, MEM-1) is meant to foreclose. Mirrors `mise run build-san` exactly
+  # via the `san` preset. Unconditional on every PR; off the fast `cpp` job
+  # because the separate sanitized build dir can't share ccache objects with it.
+  cpp-san:
+    name: C++ sanitizer gate (ASan + UBSan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-san-${{ github.sha }}
+          restore-keys: ccache-san-
+      - name: Configure (ASan + UBSan via the `san` preset)
+        run: cmake --preset san
+      - name: Build (sanitized)
+        run: cmake --build --preset san
+      - name: Test (every ctest under ASan + UBSan)
+        run: ctest --preset san --output-on-failure -j "$(nproc)"
+
+  # Fuzz gate (BLD-2). Builds the libFuzzer harness for sdk::parseDocument
+  # (Clang-only — the `-fsanitize=fuzzer` coverage instrumentation + ASan/UBSan
+  # are compiled into the header-only parse path) and runs a short bounded smoke.
+  # A crash, leak, or UB found in the time budget fails the job (libFuzzer exits
+  # nonzero). This is regression coverage, not an exhaustive campaign — the bound
+  # keeps PR cost low while still re-exercising the parser against mutated input.
+  cpp-fuzz:
+    name: C++ fuzz gate (libFuzzer parseDocument)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Clang + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache clang
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-fuzz-${{ github.sha }}
+          restore-keys: ccache-fuzz-
+      - name: Configure + build the libFuzzer harness (`fuzz` preset)
+        run: |
+          cmake --preset fuzz
+          cmake --build --preset fuzz --target x3d_parse_fuzz
+      # Bounded smoke: 60s of coverage-guided mutation. libFuzzer returns nonzero
+      # (and writes a crash-<hash> reproducer) on any ASan/UBSan finding, failing
+      # the gate. -print_final_stats surfaces coverage/exec counts in the log.
+      - name: Fuzz (bounded 60s smoke)
+        run: ./build-fuzz/x3d_parse_fuzz -max_total_time=60 -print_final_stats=1
 
   # Genericity proof — the permanent gate for the ScriptEngine seam (ADR-0022).
   # Builds the flag-gated QuickJS backend (FetchContents quickjs-ng v0.15.1) and runs
@@ -256,18 +328,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/vcpkg/archives
-          # Encode the dep set in the key so it self-refreshes when the deps
-          # change (a fixed key is immutable — it would never pick up a new
-          # build). The prefix restore-keys still warm-restores the unchanged
-          # archives (openssl/curl/aws-c-*/zlib), so only changed ports rebuild.
-          # Bump alongside the `vcpkg install` line below.
-          key: vcpkg-${{ runner.os }}-curl-aws-sdk-cpp-core-s3
+          # Encode the manifest baseline in the key so it self-refreshes when the
+          # baseline (or declared deps) change (a fixed key is immutable — it would
+          # never pick up a new build). The prefix restore-keys still warm-restore
+          # the unchanged archives (openssl/curl/aws-c-*/zlib), so only changed
+          # ports rebuild. Bump alongside the vcpkg.json baseline.
+          key: vcpkg-${{ runner.os }}-manifest-01f602195983451bc83e72f4214af2cbc495aa94
           restore-keys: vcpkg-${{ runner.os }}-
-      - name: Install backend deps (libcurl + AWS C++ SDK S3) via vcpkg
-        # [core,s3]: the `core` pseudo-feature suppresses the aws-sdk-cpp port's
-        # default features (dynamodb, kinesis) which we don't use — building only
-        # the S3 client shortens the cold build.
-        run: '"$VCPKG_ROOT/vcpkg" install curl "aws-sdk-cpp[core,s3]" --triplet x64-linux'
+      - name: "Install backend deps (vcpkg.json manifest: curl + aws-sdk-cpp)"
+        # Manifest mode (vcpkg.json in repo root, builtin-baseline pinned) installs
+        # exactly the ports declared for this job — for the assetresolver swap,
+        # that's curl and aws-sdk-cpp[core,s3]. The `[core,s3]` features on
+        # aws-sdk-cpp suppress unused sub-clients (dynamodb, kinesis) and keep the
+        # cold build tight.
+        run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
       - name: ccache cache
         uses: actions/cache@v4
         with:
@@ -304,12 +378,15 @@ jobs:
   # (PNG/BMP/GIF/TGA) decoded through stb AND wuffs must yield BYTE-EQUAL RGBA,
   # plus Failed-parity on corrupt input. Unlike the AssetResolver gate this needs
   # NO vcpkg, NO docker/minio, NO FetchContent — both decoders are vendored, so
-  # the gate is a sub-minute apt + scoped build. On every PR, so a future change
-  # that breaks decode parity fails the merge.
+  # the gate is a sub-minute apt + scoped build.
+  #
+  # UNCONDITIONAL on every PR (no `needs: changes`, no path filter). Texture
+  # decode parity is the closest thing the SDK has to a byte-exact rendering
+  # guarantee — the dual-backend comparison catches lossy decode regressions a
+  # path-gated run would silently miss if the change happened outside the
+  # texture code. Vendored + hermetic keeps the cost under ~2 min per PR.
   texture-swap:
     name: TextureResolver decode seam swap-test
-    needs: changes
-    if: needs.changes.outputs.texture == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -384,11 +461,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/vcpkg/archives
-          # Bump alongside the `vcpkg install` line below.
-          key: vcpkg-${{ runner.os }}-freetype
+          # Encode the manifest baseline in the key so it self-refreshes when the
+          # baseline (or declared deps) change. Same key family as the
+          # assetresolver job so a single archive cache serves both.
+          key: vcpkg-${{ runner.os }}-manifest-01f602195983451bc83e72f4214af2cbc495aa94
           restore-keys: vcpkg-${{ runner.os }}-
-      - name: Install FreeType via vcpkg
-        run: '"$VCPKG_ROOT/vcpkg" install freetype --triplet x64-linux'
+      - name: "Install backend deps (vcpkg.json manifest: freetype)"
+        # Manifest mode installs the declared port for this job — for the
+        # fontmetrics swap, that's freetype.
+        run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
       - name: ccache cache
         uses: actions/cache@v4
         with:
@@ -435,7 +516,9 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
-        run: cmake -S . -B build -G Ninja
+        # WERROR=ON across the matrix too — the goal is identical gate, all
+        # compilers should agree the codebase is warning-clean.
+        run: cmake -S . -B build -G Ninja -DX3D_CPP_WERROR=ON
       - name: Build
         run: cmake --build build
       - name: Test

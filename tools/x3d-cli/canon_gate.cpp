@@ -66,14 +66,6 @@ static std::string readFile(const std::string &path) {
     return ss.str();
 }
 
-static void writeFile(const std::string &path, const std::string &content) {
-    // Create parent dirs.
-    fs::create_directories(fs::path(path).parent_path());
-    std::ofstream f(path, std::ios::binary | std::ios::trunc);
-    if (!f) throw std::runtime_error("cannot write: " + path);
-    f << content;
-}
-
 static std::string toLower(std::string s) {
     for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
@@ -519,7 +511,7 @@ int main(int argc, char **argv) {
 
     // ── TIER 2 + 3: Differential vs X3DJSAIL goldens ─────────────────────────
     bool goldensExist = fs::is_directory(canonGoldDir);
-    int t2total = 0, t2pass = 0, t2fail_count = 0, t3exact = 0;
+    int t2total = 0, t2pass = 0, t3exact = 0;
     if (!goldensExist) {
         std::cout << "=== TIER 2/3: Skipped (no canonical goldens at " << canonGoldDir << ") ===\n";
         std::cout << "Run 'mise run canon-golden-gen' to generate X3DJSAIL reference fixtures.\n\n";
@@ -563,7 +555,6 @@ int main(int argc, char **argv) {
                 ++t2pass;
                 currentState["canon-t2:" + rel] = "PASS";
             } else {
-                ++t2fail_count;
                 t2failures.push_back({rel, reason});
                 currentState["canon-t2:" + rel] = "FAIL";
             }

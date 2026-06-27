@@ -61,7 +61,12 @@ void test_animation_chain() {
   X3DExecutionContext ctx;
   ctx.addRoute({ts.get(), "fraction_changed"}, {interp.get(), "set_fraction"});
   ctx.addRoute({interp.get(), "value_changed"}, {target.get(), "translation"});
+  // The deprecation shim wraps an ActiveNode in a one-node System; new code
+  // should implement System directly. Tracked for migration.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   ctx.addActiveNode(std::make_shared<TimeSensorBehavior>(ts.get()));
+#pragma GCC diagnostic pop
   InterpolatorSystem<PositionInterpolator, SFVec3f> interpSys(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); });
   interpSys.attach(interp.get(), ctx);

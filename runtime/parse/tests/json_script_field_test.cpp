@@ -51,9 +51,12 @@ std::shared_ptr<X3DNode> firstScript(const X3DDocument &doc) {
   return nullptr;
 }
 
-const FieldInfo *effectiveByName(const X3DNode &n, const std::string &name) {
-  static FieldTable table; // keep the temporary alive for the returned pointer
-  table = effectiveFields(n);
+// Search a caller-owned FieldTable. The table MUST outlive the returned pointer:
+// effectiveFields() returns a fresh FieldTable by value, so callers keep it in a
+// local and take pointers into it. (An earlier version searched a single shared
+// `static` table reassigned on every call — holding two results across a second
+// call then read freed memory; ASan flagged the use-after-free.)
+const FieldInfo *byName(const FieldTable &table, const std::string &name) {
   for (const auto &f : table)
     if (f.x3dName == name)
       return &f;
@@ -86,7 +89,8 @@ void parsesDeclsAndSource() {
   check(dynamicFieldStore().hasAuthorFields(*script),
         "Script has author fields in the dynamic store");
 
-  const FieldInfo *fraction = effectiveByName(*script, "fraction");
+  const FieldTable fields = effectiveFields(*script);
+  const FieldInfo *fraction = byName(fields, "fraction");
   check(fraction != nullptr, "author field 'fraction' visible in effectiveFields");
   if (fraction) {
     check(fraction->type == X3DFieldType::SFFloat, "'fraction' type SFFloat");
@@ -95,7 +99,7 @@ void parsesDeclsAndSource() {
     check(!fraction->get, "'fraction' (inputOnly) has no get thunk");
   }
 
-  const FieldInfo *scale = effectiveByName(*script, "scale");
+  const FieldInfo *scale = byName(fields, "scale");
   check(scale != nullptr, "author field 'scale' visible in effectiveFields");
   if (scale) {
     check(scale->type == X3DFieldType::SFVec3f, "'scale' type SFVec3f");
@@ -132,8 +136,9 @@ void roundTrips() {
   if (!script)
     return;
 
-  const FieldInfo *fraction = effectiveByName(*script, "fraction");
-  const FieldInfo *scale = effectiveByName(*script, "scale");
+  const FieldTable fields = effectiveFields(*script);
+  const FieldInfo *fraction = byName(fields, "fraction");
+  const FieldInfo *scale = byName(fields, "scale");
   check(fraction != nullptr && fraction->access == AccessType::InputOnly,
         "round-trip: 'fraction' inputOnly decl survives");
   check(scale != nullptr && scale->type == X3DFieldType::SFVec3f &&

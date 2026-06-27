@@ -83,7 +83,7 @@ TEST_CASE("mem_safety_audit_test") {
   {
     dynamicFieldStore().clear();
 
-    const void *oldAddr = nullptr;
+    [[maybe_unused]] const void *oldAddr = nullptr;
     {
       auto script = std::make_shared<Script>();
       oldAddr = script.get();

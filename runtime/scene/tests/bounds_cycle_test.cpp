@@ -62,5 +62,13 @@ TEST_CASE("bounds_cycle_test") {
   CHECK((!rb.empty));
   CHECK((std::isfinite(rb.min.x) && std::isfinite(rb.max.x)));
   CHECK((feq(rb.min.x, -1) && feq(rb.max.x, 1)));   // = the Box bounds
+
+  // Teardown hygiene: the assertions above deliberately keep the containment
+  // cycles intact (proving BoundsSystem's in-progress guard is cycle-safe), but
+  // those shared_ptr back-edges (b -> a, selfie -> selfie) would keep the nodes
+  // alive past scope exit -> LeakSanitizer leak. Sever them now that bounds are
+  // checked.
+  setF(b, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{}));
+  setF(selfie, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{}));
   return;
 }

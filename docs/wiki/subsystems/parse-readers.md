@@ -149,6 +149,7 @@ Encoding sniffByExtension(std::string_view path);
 - `ctest --preset dev -R x3d_inline_containment_cycle` — Containment-cycle defense-in-depth post inline expansion (`inline_containment_cycle_test.cpp`).
 - `ctest --preset dev -R x3d_codecs_tests` (doctest cases: `xml_*_nesting`, `sfimage_*`) — XML deep-nesting cap (SEC-1) and `SFImage` `numComponents` clamp (SEC-2) (`xml_depth_guard_test.cpp`, `sfimage_overflow_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest cases: `json_*_nesting`, `vrml_*_nesting`) — JSON and ClassicVRML deep-nesting caps reject pathological input and keep legitimate nesting (SEC-1) (`parser_depth_guard_test.cpp`).
+- `cmake --preset fuzz && ./build-fuzz/x3d_parse_fuzz` — libFuzzer harness (`parse_fuzz.cpp`) drives `sdk::parseDocument` with mutated bytes across all four encodings under ASan + UBSan; asserts the "never panic" contract (no crash/leak/UB on any input). Built Clang-only; the `cpp-fuzz` CI job runs a bounded smoke. See [Build and mise tasks → Sanitizer and fuzz gates](../guides/build-and-mise.md#sanitizer-and-fuzz-gates-bld-2).
 
 Test data fixtures (`.x3d`, `.x3dv`, `.wrl`, `.json`, `.gz` samples) live in `runtime/parse/tests/data/`.
 

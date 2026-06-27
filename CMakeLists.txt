@@ -87,6 +87,38 @@ target_include_directories(x3d_cpp INTERFACE
 target_compile_features(x3d_cpp INTERFACE cxx_std_20)
 
 # ---------------------------------------------------------------------------
+# Project-wide warning policy. -Wall -Wextra applied to every target we own;
+# vendored TUs (Jolt, quickjs, stb, wuffs, stb_truetype) suppress with their own
+# `target_compile_options(... PRIVATE -w)` later in this file so they don't pull
+# in this baseline. X3D_CPP_WERROR (default OFF) promotes warnings to errors
+# for the merge gate — the `ci` CMake preset flips it ON so local `mise run ci`
+# matches the GitHub Actions fast gate.
+# ---------------------------------------------------------------------------
+add_compile_options(-Wall -Wextra)
+option(X3D_CPP_WERROR "Treat compiler warnings as errors (the merge gate enables this via the ci preset)" OFF)
+if(X3D_CPP_WERROR)
+    add_compile_options(-Werror)
+    message(STATUS "x3d_cpp: X3D_CPP_WERROR=ON -> warnings treated as errors")
+endif()
+
+# ---------------------------------------------------------------------------
+# Sanitizer gates (BLD-2). X3D_CPP_SAN enables AddressSanitizer + UndefinedBehavior
+# Sanitizer for every project target — the green doctest run misses the kind of
+# memory/UB bugs that SEC-1/2 + MEM-3/4 in the project backlog expose. The `san`
+# CMake preset flips it ON; the `cpp-san` GitHub Actions job uses the same.
+# X3D_CPP_FUZZ additionally enables the libFuzzer harness for parseDocument
+# (Clang-only). The two options compose — `san` is the test gate, `fuzz` is the
+# explore-time harness.
+# ---------------------------------------------------------------------------
+option(X3D_CPP_SAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer for every project target" OFF)
+if(X3D_CPP_SAN)
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
+    add_link_options(-fsanitize=address,undefined)
+    message(STATUS "x3d_cpp: X3D_CPP_SAN=ON -> ASan + UBSan enabled (-fno-sanitize-recover=all)")
+endif()
+option(X3D_CPP_FUZZ "Build the libFuzzer harness for parseDocument (requires Clang)" OFF)
+
+# ---------------------------------------------------------------------------
 # Compiled node library (C1): the generated *.cpp (per-node out-of-line
 # reflection/validate definitions + the X3DNodeFactory registry) are compiled
 # ONCE here instead of re-instantiated in every consumer TU. Consumers link
@@ -2073,4 +2105,33 @@ if(X3D_CPP_BUILD_MINIAUDIO)
         add_test(NAME x3d_sound_swaptest COMMAND x3d_sound_swaptest)
         set_tests_properties(x3d_sound_swaptest PROPERTIES TIMEOUT 120)
     endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# BLD-2: libFuzzer harness for parseDocument (Clang-only). Builds only when
+# X3D_CPP_FUZZ=ON and the compiler is Clang (libFuzzer requires the
+# `-fsanitize=fuzzer` driver, which is GCC 14+ but most reliable on Clang).
+# The fuzz preset sets both; the `cpp-fuzz` CI job uses the same. The
+# harness itself catches all exceptions and just asserts the parser doesn't
+# crash — the ASan/UBSan signal handlers are what actually catch the bug.
+# ---------------------------------------------------------------------------
+if(X3D_CPP_FUZZ)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR "X3D_CPP_FUZZ requires Clang (libFuzzer driver). Detected: ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+    add_executable(x3d_parse_fuzz
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parse_fuzz.cpp")
+    target_link_libraries(x3d_parse_fuzz PRIVATE x3d_cpp::sdk)
+    # COMPILE-time instrumentation is what makes the harness useful: `fuzzer`
+    # inserts SanitizerCoverage (the edge feedback libFuzzer mutates against —
+    # without it the fuzzer runs blind and finds nothing), and `address,undefined`
+    # insert the ASan/UBSan checks that actually catch the memory/UB bugs. The
+    # SDK is header-only, so parseDocument inlines into this one TU — instrumenting
+    # it instruments the whole parse path. (The fuzz preset deliberately does NOT
+    # set X3D_CPP_SAN globally, so these flags are scoped to the harness target.)
+    target_compile_options(x3d_parse_fuzz PRIVATE
+        -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
+    # Link the libFuzzer driver + ASan/UBSan runtimes so the fuzzer can run + signal.
+    target_link_options(x3d_parse_fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
+    message(STATUS "x3d_cpp: X3D_CPP_FUZZ=ON -> x3d_parse_fuzz built with libFuzzer + ASan + UBSan")
 endif()

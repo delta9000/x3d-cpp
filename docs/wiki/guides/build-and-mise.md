@@ -43,6 +43,30 @@ The preset is intentionally unoptimized — asserts are not disabled, NDEBUG is 
 the test suite does not depend on any optimization flag. That is correct for the project's
 correctness-first posture.
 
+## The `ci` preset (local mirror of the GitHub Actions gate)
+
+`CMakePresets.json` defines a second preset, `ci`, that mirrors what the
+GitHub Actions workflow (`.github/workflows/ci.yml`) `cpp` job does —
+per-header isolation checks **ON** (the ~800 per-header ctests), no other overrides:
+
+| Property | Value |
+|---|---|
+| Generator | Ninja |
+| Build directory | `build-ci/` (separate from `build/` so the dev preset's warm cache stays warm) |
+| `X3D_CPP_PER_HEADER_CHECKS` | default = `ON` |
+| Build type | None |
+
+Use it before pushing to make sure the local pipeline matches the merge gate:
+
+```bash
+mise run build-ci        # configure + build + ctest with per-header checks ON
+# or
+cmake --preset ci && cmake --build --preset ci && ctest --preset ci -j "$(nproc)"
+```
+
+`mise run ci` (the full local pipeline) depends on `build-ci` rather than `build`, so
+running `mise run ci` is the same gate as a PR push.
+
 ---
 
 ## `mise run build` — the standard local workflow
@@ -65,6 +89,9 @@ ctest --preset dev -j "$(nproc)"
 3. **Test** — runs all ctests in parallel across all logical cores. With `X3D_CPP_PER_HEADER_CHECKS`
    off, the dev preset runs the behavior/integration suite only (not the ~800 per-header
    isolation tests).
+
+For the same gate the merge uses (per-header checks ON), use `mise run build-ci` or
+`mise run ci` instead.
 
 ---
 
@@ -193,7 +220,8 @@ ctest --preset dev -j "$(nproc)"
 
 | Task | What it does |
 |---|---|
-| `mise run build` | Configure + build + ctest (behavior suite). The standard local workflow. |
+| `mise run build` | Configure + build + ctest (behavior suite). The standard local workflow. Uses the `dev` preset (per-header checks OFF, fast). |
+| `mise run build-ci` | Same as `build` but uses the `ci` preset (per-header isolation checks ON, mirrors the GitHub Actions gate). Use before pushing. |
 | `mise run gen` | Re-run the Python generator: `uv run x3d-cpp-gen --out generated_cpp_bindings`. Use this after changing a template or emitter. |
 | `mise run golden` | Golden-drift gate: regenerates to a temp dir and diffs `*.hpp`/`*.cpp` against the committed tree. Fails on any drift. |
 | `mise run test` | Run the Python test suite (`uv run pytest`). Depends on `sync`. |
@@ -210,6 +238,8 @@ ctest --preset dev -j "$(nproc)"
 | `mise run cli-gate` | Informative (non-failing) differential gate: produces `tools/x3d-cli/goldens/divergence-report.md`. |
 | `mise run canon-gate` | Informative tiered canonicalize gate (T1 idempotence + T2 tolerant-diff + T3 byte-exact rate). |
 | `mise run cli-gate-baseline` | Refresh the committed baseline TSVs after accepting new intentional divergences. |
+| `mise run build-san` | Sanitizer gate (BLD-2): rebuild every target with ASan + UBSan (`san` preset) and run every ctest against the sanitized binaries. Mirrors the GitHub Actions `cpp-san` job. **Not** part of `mise run ci` — run it explicitly. |
+| `mise run build-fuzz` | Build the libFuzzer harness for `parseDocument` (`fuzz` preset, Clang-only). Run the binary directly to fuzz; the `cpp-fuzz` job runs a bounded smoke. |
 
 ### Corpus tasks
 
@@ -285,3 +315,106 @@ and the ccache hit rate for the core build if they shared a directory.
 ## See also
 
 - [Gate System](gate-system.md) — the four CI gates (golden / conformance / CLI regression / docs) in detail
+
+---
+
+## Warning policy
+
+Project targets compile with `-Wall -Wextra` by default (added via
+`add_compile_options` in `CMakeLists.txt` so every target we own picks it up
+transitively). Vendored TUs (Jolt, quickjs-ng, stb_image, wuffs, stb_truetype)
+suppress with their own `target_compile_options(... PRIVATE -w)` so they don't
+contaminate the project's signal.
+
+The `X3D_CPP_WERROR` option promotes warnings to errors. The `ci` preset
+flips it ON, the `dev` preset leaves it OFF (fast iteration). The GitHub Actions
+fast gate (`cpp` job + `cpp-matrix` job) pass `-DX3D_CPP_WERROR=ON` explicitly.
+A latent warning introduced in a PR fails the merge.
+
+```bash
+# Default (dev preset): warnings shown but don't fail.
+cmake --preset dev && cmake --build --preset dev
+
+# Merge gate (ci preset): warnings fail the build.
+mise run build-ci
+# or:
+cmake --preset ci && cmake --build --preset ci
+```
+
+---
+
+## Sanitizer and fuzz gates (BLD-2)
+
+The green doctest run proves behavior but misses the memory/UB bug classes the
+parser-hardening work (SEC-1/2, MEM-1) is meant to foreclose: use-after-free,
+leaks, signed overflow, OOB reads. Two extra build modes — both **separate from
+`mise run ci`** — close that gap. Each runs as its own GitHub Actions job
+(`cpp-san`, `cpp-fuzz`) on every PR.
+
+### `san` preset — ASan + UBSan
+
+`X3D_CPP_SAN=ON` adds `-fsanitize=address,undefined -fno-omit-frame-pointer
+-fno-sanitize-recover=all` to **every** project target (`CMakeLists.txt`), so the
+first sanitizer error aborts the run. `RelWithDebInfo` keeps line-accurate traces.
+WERROR is OFF here — the `ci` preset owns warning enforcement; this preset is
+purely for memory/UB.
+
+```bash
+mise run build-san        # cmake --preset san && build && ctest --preset san
+```
+
+The separate `build-san/` dir is intentional: its objects carry sanitizer flags
+and are **not** ccache-compatible with the `dev`/`ci` presets, so don't expect a
+shared warm cache.
+
+### `fuzz` preset — libFuzzer over `parseDocument`
+
+`X3D_CPP_FUZZ=ON` (Clang-only) builds `x3d_parse_fuzz`, a libFuzzer harness that
+drives `sdk::parseDocument` with mutated bytes across all four encodings
+(XML/JSON/VRML/sniff). The harness swallows the parser's soft-failure exceptions
+(the "never panic" contract) and asserts only that no input crashes, leaks, or
+trips UB — the ASan/UBSan signal handlers are what catch a regression.
+
+The instrumentation must be **compile-time**: `-fsanitize=fuzzer,address,undefined`
+on the harness target's compile options (not just link). `fuzzer` at compile time
+inserts the SanitizerCoverage edge feedback libFuzzer mutates against — without it
+the fuzzer runs blind and finds nothing — and the SDK is header-only, so
+instrumenting that one TU instruments the whole inlined parse path.
+
+```bash
+mise run build-fuzz                              # build the harness
+./build-fuzz/x3d_parse_fuzz -max_total_time=60   # bounded smoke (CI runs this)
+./build-fuzz/x3d_parse_fuzz corpus/              # explore from a seed corpus
+```
+
+A crash writes a `crash-<hash>` reproducer in the cwd and exits nonzero (failing
+the gate). The CI job runs a 60-second bounded smoke — regression coverage, not an
+exhaustive campaign.
+
+---
+
+## vcpkg manifest (third-party backend deps)
+
+The repo's third-party backend deps for the seam swap-tests (`libcurl` for the
+AssetResolver Backend A, `aws-sdk-cpp[core,s3]` for Backend B, `freetype` for
+FontMetrics Backend B) come from [vcpkg](https://github.com/microsoft/vcpkg) in CI.
+The dep set and the vcpkg port-catalog pin live in a single source of truth:
+
+```
+vcpkg.json    # name, version-string, builtin-baseline, dependencies[]
+```
+
+The `builtin-baseline` is a vcpkg commit SHA — when bumped (and the cache key in
+`.github/workflows/ci.yml` is bumped alongside it), `vcpkg install` resolves every
+declared port to the exact versions from that catalog commit. CI uses manifest mode
+(`vcpkg install --triplet x64-linux` with no port args) so the dep list in the
+manifest is the single source of truth — no per-job duplication.
+
+For local swap-test runs you still need vcpkg on `PATH` and the manifest in the cwd:
+```bash
+cmake -S . -B build -G Ninja \
+    -DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON \
+    -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+```
+The CMake configure automatically reads `vcpkg.json` (via the toolchain file) and
+links the declared ports.

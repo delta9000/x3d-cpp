@@ -204,22 +204,6 @@ void checkDefUseIdentity(const std::string &label, const Scene &scene) {
   }
 }
 
-// Canonicalise XML for whitespace-insensitive comparison.
-std::string canonXml(const std::string &s) {
-  std::string out;
-  bool inSpace = false;
-  for (char c : s) {
-    if (std::isspace(static_cast<unsigned char>(c))) {
-      inSpace = true;
-    } else {
-      if (inSpace && !out.empty()) out += ' ';
-      inSpace = false;
-      out += c;
-    }
-  }
-  return out;
-}
-
 } // namespace
 
 int main(int argc, char **argv) {

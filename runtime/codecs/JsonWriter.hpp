@@ -333,7 +333,7 @@ private:
   }
 
   /// Emit one proto interface `field` as a JSON object.
-  std::string jsonProtoField(const runtime::ProtoField &f, int depth) {
+  std::string jsonProtoField(const runtime::ProtoField &f, [[maybe_unused]] int depth) {
     std::ostringstream os;
     os << "{ \"@name\": " << jstr(f.name)
        << ", \"@type\": " << jstr(fieldTypeName(f.type))

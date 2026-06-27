@@ -34,15 +34,7 @@
 using namespace x3d;
 using namespace x3d::runtime;
 
-// Helper: get Group's children field as a vector of shared_ptr.
-static std::vector<std::shared_ptr<X3DNode>> kids(const std::shared_ptr<X3DNode> &p) {
-  for (const auto &f : p->fields()) {
-    if (f.x3dName == "children" && f.get) {
-      return std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-    }
-  }
-  return {};
-}
+// (kids removed: dead — no callers in this audit.)
 
 static void setChildren(const std::shared_ptr<X3DNode> &p,
                         const std::vector<std::shared_ptr<X3DNode>> &v) {

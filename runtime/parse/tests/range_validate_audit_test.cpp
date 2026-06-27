@@ -172,8 +172,11 @@ TEST_CASE("range_validate_audit_test") {
     std::vector<std::shared_ptr<X3DNode>> kids{g};
     fchildren->set(*g, std::any(kids));
     std::vector<RangeDiagnostic> cyc;
-    collectRangeWarnings(*g, cyc);
+    collectRangeWarnings(*g, cyc); // terminates + no diagnostics for the cycle itself
     CHECK((cyc.empty())); // terminates + no diagnostics for the cycle itself
+    // Break the self-cycle before the local g goes out of scope (caught by
+    // ASan/LSan under the san preset).
+    fchildren->set(*g, std::any(std::vector<std::shared_ptr<X3DNode>>{}));
   }
   // (3b) longer true cycle A -> B -> A
   {
@@ -188,6 +191,11 @@ TEST_CASE("range_validate_audit_test") {
     std::vector<RangeDiagnostic> cyc;
     collectRangeWarnings(*a, cyc); // must terminate, no infinite recursion
     CHECK((cyc.empty()));
+    // Break the shared_ptr cycle before the local shared_ptrs go out of scope;
+    // otherwise A->B->A via the children fields keeps the nodes alive forever
+    // (caught by ASan/LSan under the san preset).
+    fa->set(*a, std::any(std::vector<std::shared_ptr<X3DNode>>{}));
+    fb->set(*b, std::any(std::vector<std::shared_ptr<X3DNode>>{}));
   }
   // (3c) USE/DEF diamond — shared child visited per-usage-site
   {
