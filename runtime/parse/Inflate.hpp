@@ -22,6 +22,8 @@
 
 #include "tinfl.h"
 
+#include "../RecursionLimits.hpp" // x3d::kMaxDecompressedBytes (SEC-5 cap)
+
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -56,7 +58,8 @@ inline std::uint32_t crc32(const unsigned char *data, std::size_t len) {
 /// Inflate a gzip (RFC 1952) stream to its decompressed bytes. `compressed`
 /// must begin with the gzip magic. Throws std::runtime_error on a malformed
 /// header, truncated body, DEFLATE failure, or CRC32/ISIZE mismatch.
-inline std::string inflateGzip(std::string_view compressed) {
+inline std::string inflateGzip(std::string_view compressed,
+                               std::size_t maxOut = kMaxDecompressedBytes) {
   const auto *p = reinterpret_cast<const unsigned char *>(compressed.data());
   const std::size_t n = compressed.size();
 
@@ -130,6 +133,11 @@ inline std::string inflateGzip(std::string_view compressed) {
   std::size_t cap = expected_isize ? expected_isize : (deflate_len * 4 + 64);
   if (cap < 64)
     cap = 64;
+  // SEC-5: never reserve past the decompressed-size ceiling. ISIZE is attacker-
+  // controlled and can claim ~4 GiB, so clamp the initial reservation; the grow
+  // loop below stops at the same ceiling rather than doubling toward OOM.
+  if (cap > maxOut)
+    cap = maxOut;
 
   for (;;) {
     tinfl_init(&decomp);
@@ -146,7 +154,14 @@ inline std::string inflateGzip(std::string_view compressed) {
       break;
     }
     if (st == TINFL_STATUS_HAS_MORE_OUTPUT) {
-      cap *= 2; // output buffer too small; grow and retry from the start.
+      // SEC-5: the stream wants more than `cap` bytes. If we are already at the
+      // ceiling the decompressed output exceeds the policy limit — reject it as
+      // a decompression bomb rather than doubling the buffer toward OOM.
+      if (cap >= maxOut)
+        throw std::runtime_error(
+            "inflateGzip: decompressed size exceeds the kMaxDecompressedBytes "
+            "cap (possible gzip decompression bomb)");
+      cap = cap > maxOut / 2 ? maxOut : cap * 2; // grow, clamped to the ceiling
       continue;
     }
     throw std::runtime_error(

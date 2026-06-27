@@ -30,6 +30,18 @@ namespace x3d {
 
 inline constexpr std::size_t kMaxNestingDepth = 1000;
 
+// Ceiling on the number of bytes a single gzip stream may inflate to (SEC-5).
+// The front-end transparently inflates gzip-magic input (parseFile), but the
+// decompressed size is attacker-controlled: a tiny "decompression bomb" expands
+// to gigabytes, and the gzip ISIZE footer (a 32-bit hint) can be forged large to
+// drive a huge up-front allocation — either way an unbounded-memory DoS. inflate
+// caps both the initial reservation and the grow-and-retry loop at this limit and
+// throws past it. 256 MiB is far above any legitimate X3D payload (real scenes
+// inflate to at most tens of MB) yet bounds the pathological case to a finite
+// allocation; an embedder parsing on a tight memory budget can lower it via the
+// inflateGzip `maxOut` parameter.
+inline constexpr std::size_t kMaxDecompressedBytes = 256u * 1024u * 1024u;
+
 // RAII recursion-depth counter shared by the parser front-ends. Construct one at
 // the top of each recursive parse step against a per-parser `depth_` member; it
 // throws std::runtime_error when entering a level past kMaxNestingDepth and
