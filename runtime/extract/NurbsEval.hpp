@@ -160,7 +160,9 @@ inline SurfaceSample evalSurface(const std::vector<SFVec3f>& cp,
       Vx+=nV*hx; Vy+=nV*hy; Vz+=nV*hz; Vw+=nV*hw;
     }
   }
-  double inv = 1.0 / Sw;
+  // Guard the rational denominator: author weights should be > 0, but a
+  // degenerate/zero weight set must not emit NaN/inf (which would poison the AABB).
+  double inv = std::abs(Sw) > 1e-20 ? 1.0 / Sw : 0.0;
   SFVec3f Pt{ (float)(Sx*inv), (float)(Sy*inv), (float)(Sz*inv) };
   double dUx=(Ux-Uw*Sx*inv)*inv, dUy=(Uy-Uw*Sy*inv)*inv, dUz=(Uz-Uw*Sz*inv)*inv;
   double dVx=(Vx-Vw*Sx*inv)*inv, dVy=(Vy-Vw*Sy*inv)*inv, dVz=(Vz-Vw*Sz*inv)*inv;
@@ -176,8 +178,21 @@ inline SurfaceDef prepareSurface(const SurfaceDef& in) {
   SurfaceDef s = in;
   if ((int)s.w.size() != s.uDim * s.vDim) s.w.assign(s.uDim * s.vDim, 1.0);
 
+  // Periodic wrap only when the boundary control points DIFFER (mirrors the
+  // curve's `endsDiffer` guard). An author-supplied already-closed net (column 0
+  // == last column, or row 0 == last row) is left as a clamped loop — wrapping it
+  // would duplicate the coincident boundary into zero-area sliver triangles.
+  auto uEndsDiffer = [&]() {
+    for (int j = 0; j < s.vDim; ++j) {
+      const SFVec3f& a = s.cp[0 + j * s.uDim];
+      const SFVec3f& b = s.cp[(s.uDim - 1) + j * s.uDim];
+      if (a.x != b.x || a.y != b.y || a.z != b.z) return true;
+    }
+    return false;
+  };
+
   // u-direction periodic wrap: append first (uOrder-1) columns of every row.
-  if (s.uClosed && s.uDim >= 2) {
+  if (s.uClosed && s.uDim >= 2 && uEndsDiffer()) {
     int pu = s.uOrder - 1, nu = s.uDim + pu;
     std::vector<SFVec3f> cp2(nu * s.vDim);
     std::vector<double>  w2(nu * s.vDim);
@@ -194,7 +209,15 @@ inline SurfaceDef prepareSurface(const SurfaceDef& in) {
   }
 
   // v-direction periodic wrap: append first (vOrder-1) rows (uDim may have grown).
-  if (s.vClosed && s.vDim >= 2) {
+  auto vEndsDiffer = [&]() {
+    for (int i = 0; i < s.uDim; ++i) {
+      const SFVec3f& a = s.cp[i + 0 * s.uDim];
+      const SFVec3f& b = s.cp[i + (s.vDim - 1) * s.uDim];
+      if (a.x != b.x || a.y != b.y || a.z != b.z) return true;
+    }
+    return false;
+  };
+  if (s.vClosed && s.vDim >= 2 && vEndsDiffer()) {
     int pv = s.vOrder - 1, nv = s.vDim + pv;
     std::vector<SFVec3f> cp2(s.uDim * nv);
     std::vector<double>  w2(s.uDim * nv);
@@ -235,7 +258,8 @@ inline std::vector<SFVec3f> tessellateCurve(const CurveDef& in, int segments) {
       double wi = c.w[idx], nb = N[a] * wi;
       x += nb*c.cp[idx].x; y += nb*c.cp[idx].y; z += nb*c.cp[idx].z; w += nb;
     }
-    out.push_back(SFVec3f{ (float)(x/w), (float)(y/w), (float)(z/w) });
+    double inv = std::abs(w) > 1e-20 ? 1.0 / w : 0.0; // guard degenerate weights
+    out.push_back(SFVec3f{ (float)(x*inv), (float)(y*inv), (float)(z*inv) });
   }
   return out;
 }

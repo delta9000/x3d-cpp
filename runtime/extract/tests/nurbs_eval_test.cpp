@@ -123,7 +123,7 @@ TEST_CASE("nurbs_surface_analytic_normal_matches_finite_difference") {
       nurbs::detail::clampedKnots(3,3), nurbs::detail::clampedKnots(3,3),
       3,3,3,3,u,v).p;
   };
-  const double h=1e-4;
+  const float h=1e-4f; // float => (P().x-P().x)/(2*h) stays float (ci preset -Werror=narrowing)
   // check an interior sample (a=4,b=4 in a 9x9 grid => u=v=0.5)
   auto an = g[4*9 + 4].n;
   SFVec3f du{ (P(0.5+h,0.5).x-P(0.5-h,0.5).x)/(2*h),
@@ -137,6 +137,24 @@ TEST_CASE("nurbs_surface_analytic_normal_matches_finite_difference") {
   fd.x/=l; fd.y/=l; fd.z/=l;
   double dot = an.x*fd.x + an.y*fd.y + an.z*fd.z;
   CHECK(std::fabs(dot) > 0.999); // same direction (sign may differ)
+}
+
+TEST_CASE("nurbs_surface_already_closed_net_not_wrapped") {
+  // Author supplies a net whose first u-column == last u-column (already closed)
+  // AND sets uClosed. The coincident-boundary guard must SKIP the periodic wrap
+  // (wrapping would duplicate the seam into zero-area sliver triangles). Proof:
+  // the uClosed result is identical to the unwrapped (uClosed=false) result.
+  nurbs::SurfaceDef base;
+  base.uDim = 3; base.vDim = 2; base.uOrder = 3; base.vOrder = 2;
+  base.cp = {{1,0,0},{0,1,0},{1,0,0},   // v=0: col0 == col2
+             {1,1,0},{0,1,1},{1,1,0}};  // v=1: col0 == col2
+  auto open   = base;  open.uClosed = false;
+  auto closed = base;  closed.uClosed = true;
+  auto go = nurbs::tessellateSurface(open, 5, 2);
+  auto gc = nurbs::tessellateSurface(closed, 5, 2);
+  REQUIRE(go.size() == gc.size());
+  for (size_t k = 0; k < go.size(); ++k)
+    CHECK((feq(go[k].p.x,gc[k].p.x) && feq(go[k].p.y,gc[k].p.y) && feq(go[k].p.z,gc[k].p.z)));
 }
 
 TEST_CASE("nurbs_surface_closed_cylinder") {
