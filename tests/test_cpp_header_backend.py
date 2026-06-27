@@ -30,3 +30,31 @@ def test_format_stops_cleanly_when_clang_format_is_missing(monkeypatch, capsys):
 
     assert result is None
     assert "skipping formatting" in capsys.readouterr().out
+
+
+def test_format_skips_when_formatter_is_disabled(monkeypatch):
+    called = False
+
+    def fake_run(args, capture_output, text):
+        nonlocal called
+        called = True
+        return subprocess.CompletedProcess(args=args, returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    assert CppHeaderBackend._format(["out/A.hpp"], None) is None
+    assert not called
+
+
+def test_format_skips_empty_batches(monkeypatch):
+    called = False
+
+    def fake_run(args, capture_output, text):
+        nonlocal called
+        called = True
+        return subprocess.CompletedProcess(args=args, returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    assert CppHeaderBackend._format([], "clang-format") == "clang-format"
+    assert not called

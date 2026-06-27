@@ -208,8 +208,8 @@ class CppHeaderBackend:
                                    capture_output=True, text=True)
             if result.returncode != 0:
                 print(f"WARNING: {clang_format} failed on {len(output_files)} files "
-                      f"(exit {result.returncode}); files processed before the "
-                      f"failure may already be formatted.\n"
+                      f"(exit {result.returncode}); batch formatting did not "
+                      f"complete successfully.\n"
                       f"{result.stderr}")
         except FileNotFoundError:
             print(f"WARNING: '{clang_format}' not found; skipping formatting. "
