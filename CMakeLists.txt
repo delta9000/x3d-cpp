@@ -1865,6 +1865,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/codec_conformance_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/fval_extended_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/sfimage_overflow_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/xml_depth_guard_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/script_cdata_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/uom_type_pin_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/hanim_container_order_test.cpp")
@@ -1891,7 +1892,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/range_warnings_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/range_validate_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/version_floor_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_audit_test.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_audit_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parser_depth_guard_test.cpp")
     target_link_libraries(x3d_parse_tests PRIVATE x3d_cpp::sdk)
     target_include_directories(x3d_parse_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
