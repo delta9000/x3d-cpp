@@ -1,13 +1,14 @@
 ---
 title: Extraction Pipeline
 summary: SceneExtractor → MeshBuilder → PackedMesh + RenderItem — the pull-based geometry extraction seam for renderers.
-tags: [subsystem, extract, scene-extractor, mesh-builder, packed-mesh, render-item]
-updated: 2026-06-20
+tags: [subsystem, extract, scene-extractor, mesh-builder, packed-mesh, render-item, nurbs]
+updated: 2026-06-27
 related:
   - ../architecture.md
   - ../subsystems/extract-textures.md
   - ../subsystems/extract-topology.md
   - ../decisions/0015-extraction-pull-per-path.md
+  - ../decisions/0040-nurbs-tessellation-first-party.md
 ---
 
 # Extraction Pipeline
@@ -40,6 +41,7 @@ to what actually changed, not to scene size.
 | `runtime/extract/MaterialSystem.hpp` | Appearance → `MaterialDesc` mapping (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/LightSystem.hpp` | World-resolved `LightDesc` collection (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/Topology.hpp` | `Topology` enum: `Triangles`, `Lines`, `Points` (see [Topology](extract-topology.md)) |
+| `runtime/extract/NurbsEval.hpp` | Node-free NURBS math unit (`x3d::runtime::extract::nurbs`): Cox–de Boor basis, rational (weighted) curve/surface eval, periodic/closed handling, analytic surface normals — plain arrays, no X3D-node dependency (see [NURBS](#nurbs)) |
 
 ## Interfaces and seams
 
@@ -138,7 +140,33 @@ Geometry types handled:
 - **Analytic primitives (T4):** `Box`, `Sphere`, `Cone`, `Cylinder` — parametric tessellation driven by `MeshBuildOptions` density knobs
 - **Extrusion (B3):** SCP-frame sweep with `beginCap`/`endCap`, implicit TC3 texcoords
 - **Line/point topology (B4):** `IndexedLineSet`, `LineSet`, `PointSet` — `MeshData.topology = Lines/Points`, always unlit, `solid=false`
+- **NURBS (NRB-1):** `NurbsCurve` → `Topology::Lines`, `NurbsPatchSurface` → `Topology::Triangles` with analytic normals + implicit `(u,v)` texcoords (see [NURBS](#nurbs))
 - **Text (T-TEXT):** delegated to `buildTextMesh` (see [Text extraction](extract-text.md)); sets `MeshData.isGlyphMesh = true`
+
+### NURBS
+
+`NurbsEval.hpp` is a first-party, node-free math unit (namespace
+`x3d::runtime::extract::nurbs`) that evaluates NURBS curves and surfaces over plain
+arrays — Cox–de Boor basis, rational (weighted) homogeneous accumulation, periodic
+`closed`/`uClosed`/`vClosed` wrap, and analytic surface normals via the quotient rule
+(`∂S/∂u = (A_u − w_u·S)/w`, `n = normalize(S_u × S_v)` — no `creaseAngle` post-pass).
+Sampling spans the valid domain `[knot[order−1], knot[numCP]]`; authored knot vectors of
+the wrong length default to clamped-uniform; weights of the wrong length default to all-1.
+Two thin `MeshBuilder` arms read the X3D fields and call it:
+
+- **`NurbsCurve`** → resolves the `controlPoint` child, reads `knot`/`weight`/`order`/
+  `tessellation`/`closed`, calls `tessellateCurve`, and emits expanded line-pair
+  positions as `Topology::Lines` (`solid=false`, unlit — the B4 convention).
+- **`NurbsPatchSurface`** → resolves the control net + `u*/v*` fields, calls
+  `tessellateSurface`, and emits two triangles per grid cell as `Topology::Triangles`
+  with populated analytic normals and implicit normalized `(u,v)` texcoords.
+
+Both flip to `true` in `recognizedGeometryType()` (kept in lockstep with the dispatch).
+`GeometryBounds.hpp` gives them control-point convex-hull AABB bounds (a NURBS
+curve/surface lies within the AABB of its control net). The still-deferred NURBS nodes
+(`NurbsTrimmedSurface`/`NurbsSweptSurface`/`NurbsSwungSurface`, NRB-3) stay unrecognized
+and continue to route through the `externalGeometryResolver` fallback. The "first-party,
+not a seam" rationale and the deferral set are in [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md).
 
 ### Seam points
 
@@ -203,6 +231,7 @@ The full conformance extraction oracle is exercised by `x3d_extract_oracle_test`
 - [ADR-0015: Extraction pull per path](../decisions/0015-extraction-pull-per-path.md) — the core design decision: pull-based dirty-set read, per-path identity, geometry/material node-keyed
 - [ADR-0037: Graph-walk traversal budget](../decisions/0037-graph-walk-traversal-budget.md) — bounds an acyclic "doubling DAG" fan-out: a `WalkBudget` node-visit cap on the per-path walk + light collection, surfaced as `budgetExceeded()`
 - [ADR-0001: Ext Firewall](../decisions/0001-ext-firewall.md) — keeps binary/external geometry behind the `externalGeometryResolver` seam, out of the spec-correct core
+- [ADR-0040: NURBS tessellation first-party](../decisions/0040-nurbs-tessellation-first-party.md) — `NurbsEval.hpp` curve+patch math is first-party (I/O-free, spec-prescribed), not a swap-tested seam; the resolver stays the unrecognized-geometry fallback for the deferred NURBS nodes
 - [Texture extraction](extract-textures.md) — `TextureExtract`, `MaterialSystem`, `LightSystem`, `TextureResolver`, `AssetResolver`
 - [Text extraction](extract-text.md) — `buildTextMesh`, `FontMetrics`, glyph-quad layout
 - [Topology classification](extract-topology.md) — `Topology` enum and consumer contract

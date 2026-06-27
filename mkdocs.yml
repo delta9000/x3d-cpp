@@ -131,6 +131,7 @@ nav:
       - "ADR-0037: Graph-Walk Traversal Budget for Acyclic Fan-Out": decisions/0037-graph-walk-traversal-budget.md
       - "ADR-0038: Default Local Resolver Confines Includes to the Source Subtree": decisions/0038-local-resolver-path-confinement.md
       - "ADR-0039: Generated Bindings Live in x3d::core + x3d::nodes": decisions/0039-generated-binding-namespaces.md
+      - "ADR-0040: NURBS Curve + Patch Tessellation is First-Party": decisions/0040-nurbs-tessellation-first-party.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
