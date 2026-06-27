@@ -8,7 +8,7 @@
 #ifndef X3D_RUNTIME_PICK_SYSTEM_HPP
 #define X3D_RUNTIME_PICK_SYSTEM_HPP
 
-#include "Billboard.hpp"      // billboardLocalMatrix (§23.4.1, M2e)
+#include "x3d/nodes/Billboard.hpp"      // billboardLocalMatrix (§23.4.1, M2e)
 #include "BoundsSystem.hpp"
 #include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField, localGeometryBounds
@@ -18,7 +18,7 @@
 #include "Ray.hpp"
 #include "RenderItem.hpp"  // extract::PathKey (root→hit node chain)
 #include "TransformSystem.hpp"
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
 #include <algorithm>

@@ -7,9 +7,9 @@
 #define X3D_RUNTIME_BINDING_SYSTEM_HPP
 
 #include "BindingStack.hpp"
-#include "X3DBindableNode.hpp"
-#include "X3DInterfaceRegistry.hpp"
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DBindableNode.hpp"
+#include "x3d/nodes/X3DInterfaceRegistry.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
 #include <any>

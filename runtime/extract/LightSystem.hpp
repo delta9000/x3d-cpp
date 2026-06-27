@@ -30,7 +30,7 @@
 #include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "RenderItem.hpp"      // LightDesc
 #include "TransformSystem.hpp" // localMatrix (static; per-path re-accumulation)
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
 #include <any>

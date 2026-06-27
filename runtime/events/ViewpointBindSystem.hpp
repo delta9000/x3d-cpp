@@ -16,7 +16,7 @@
 #include "ViewpointOffset.hpp"
 #include "X3DExecutionContext.hpp"
 
-#include "NavigationInfo.hpp" // NavigationTransitionTypeValues
+#include "x3d/nodes/NavigationInfo.hpp" // NavigationTransitionTypeValues
 
 #include <memory>
 

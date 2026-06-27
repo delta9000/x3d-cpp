@@ -10,7 +10,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 #include "DirtyTracker.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode
 #include <any>

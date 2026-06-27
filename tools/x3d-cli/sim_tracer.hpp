@@ -28,8 +28,8 @@
 #define X3D_SIM_TRACER_HPP
 
 #include "FieldValueIO.hpp"      // x3d::codec::formatValue
-#include "X3DNode.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/core/X3DReflection.hpp"
 #include "X3DScene.hpp"
 
 #include <algorithm>

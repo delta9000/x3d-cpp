@@ -1,8 +1,8 @@
 // m2c_tick_test.cpp — end-to-end: buildSceneGraph default-binds the first Viewpoint;
 // a set_bind event delivered through tick switches the bound node and fires isBound.
 #include "X3DExecutionContext.hpp"
-#include "X3DBindableNode.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DBindableNode.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp"
 #include <any>

@@ -18,15 +18,15 @@
 // audit; the rest overlap (intentionally) with proto_expand_test.cpp /
 // scene_bridge_test.cpp to lock down end-to-end behavior in one place.
 
-#include "BooleanTrigger.hpp"
+#include "x3d/nodes/BooleanTrigger.hpp"
 #include "Encoding.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DParse.hpp"
 #include "X3DSceneBridge.hpp"
 
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DProtoExpand.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
 #include <any>
 #include <cassert>

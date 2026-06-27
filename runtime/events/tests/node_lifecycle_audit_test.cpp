@@ -20,11 +20,11 @@
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp"
 #include "CycleBreaker.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DProtoExpand.hpp"
 
-#include "Group.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/Group.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include "doctest/doctest.h"
 #include <iostream>

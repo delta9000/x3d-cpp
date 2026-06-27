@@ -39,7 +39,7 @@
 #include "NodeBuilder.hpp"  // build:: helpers (findField, applyField, ...)
 #include "RecursionLimits.hpp" // SEC-1: kMaxNestingDepth (DoS guard)
 #include "VrmlTokenizer.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DReader.hpp"
 #include "X3DRuntime.hpp"
 

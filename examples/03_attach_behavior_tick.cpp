@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 #include "x3d/sdk.hpp"
 
-#include "X3Dtypes.hpp" // SFRotation (the value type we write)
+#include "x3d/core/X3Dtypes.hpp" // SFRotation (the value type we write)
 
 #include <any>
 #include <cmath>

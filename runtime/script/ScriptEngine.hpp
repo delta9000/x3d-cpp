@@ -11,7 +11,7 @@
 #ifndef X3D_RUNTIME_SCRIPT_ENGINE_HPP
 #define X3D_RUNTIME_SCRIPT_ENGINE_HPP
 
-#include "X3DReflection.hpp"  // X3DFieldType (type tag carried alongside values)
+#include "x3d/core/X3DReflection.hpp"  // X3DFieldType (type tag carried alongside values)
 
 #include <any>
 #include <cstdint>

@@ -1,6 +1,6 @@
 // geometry_bounds_test.cpp
 #include "GeometryBounds.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include <any>
 #include "doctest/doctest.h"
 #include <cmath>

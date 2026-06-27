@@ -20,7 +20,7 @@
 #include "JsonWriter.hpp"
 #include "X3DParse.hpp"
 
-#include "Script.hpp"
+#include "x3d/nodes/Script.hpp"
 
 #include <any>
 #include <cassert>

@@ -43,7 +43,7 @@
 #include "TextureResolver.hpp" // TexturePixelResult (resolved-pixel seam, T-TEX)
 #include "TextureTransform2D.hpp" // ExtendedSamplerParams / TexCoordGenDesc (T-TEX §18.4.8/9)
 #include "Topology.hpp"        // Topology enum (moved out of RenderItem.hpp, Phase 1)
-#include "X3Dtypes.hpp"        // SFVec2f, SFVec3f, SFColor, SFColorRGBA, SFImage, MF*
+#include "x3d/core/X3Dtypes.hpp"        // SFVec2f, SFVec3f, SFColor, SFColorRGBA, SFImage, MF*
 #include "X3DFieldValue.hpp"   // X3DFieldValue discriminated union (Phase 3)
 #include <cstddef>
 #include <cstdint>

@@ -6,7 +6,7 @@
 #define X3D_RUNTIME_MAT4_HPP
 
 #include "Interpolation.hpp" // Quat, quatFromRotation
-#include "X3Dtypes.hpp"      // SFVec3f, SFRotation
+#include "x3d/core/X3Dtypes.hpp"      // SFVec3f, SFRotation
 
 #include <array>
 #include <cmath>

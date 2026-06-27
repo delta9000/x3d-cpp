@@ -25,7 +25,7 @@
 #include "X3DParse.hpp"
 #include "X3DRuntime.hpp"
 
-#include "Script.hpp"
+#include "x3d/nodes/Script.hpp"
 
 #include <fstream>
 #include <iostream>

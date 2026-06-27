@@ -1,6 +1,6 @@
 // runtime/scene/tests/interface_registry_test.cpp
-#include "X3DInterfaceRegistry.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DInterfaceRegistry.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include "doctest/doctest.h"
 #include <iostream>

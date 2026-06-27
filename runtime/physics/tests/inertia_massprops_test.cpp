@@ -4,11 +4,11 @@
 #include "PhysicsBackend.hpp"
 #include "PhysicsSystem.hpp"
 #include "X3DExecutionContext.hpp"
-#include "Box.hpp"
-#include "CollidableShape.hpp"
-#include "RigidBody.hpp"
-#include "RigidBodyCollection.hpp"
-#include "Shape.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/CollidableShape.hpp"
+#include "x3d/nodes/RigidBody.hpp"
+#include "x3d/nodes/RigidBodyCollection.hpp"
+#include "x3d/nodes/Shape.hpp"
 
 #include <cstdio>
 #include <memory>

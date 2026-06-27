@@ -21,8 +21,8 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
 
-#include "Script.hpp"
-#include "TimeSensor.hpp"
+#include "x3d/nodes/Script.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
 #include "X3DScene.hpp"
 
 #include <any>

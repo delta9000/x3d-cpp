@@ -21,7 +21,7 @@
 #include "DynamicField.hpp"  // S1: author-field decls to re-emit (Task B)
 #include "FieldValueIO.hpp"
 #include "ProtoNameMaps.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
 #include "parse/NodeBuilder.hpp" // build::orderedChildFields (authored child order)
 

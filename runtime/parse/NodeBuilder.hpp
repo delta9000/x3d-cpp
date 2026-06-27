@@ -30,7 +30,7 @@
 
 #include "FieldValueIO.hpp"   // parseValue, tokenize (x3d::codec)
 #include "VrmlTokenizer.hpp"  // VrmlTokenizer, VrmlToken
-#include "X3DNodeFactory.hpp" // X3DNodeFactory::create
+#include "x3d/nodes/X3DNodeFactory.hpp" // X3DNodeFactory::create
 #include "X3DRuntime.hpp"     // runtime::Scene
 
 #include <memory>

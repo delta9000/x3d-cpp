@@ -26,22 +26,22 @@
 
 #include "Vrml97Dialect.hpp"
 #include "Vrml97Reader.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DParse.hpp"
 #include "X3DRuntime.hpp"
 
 // Concrete node types asserted on.
-#include "Appearance.hpp"
-#include "Cylinder.hpp"
-#include "Group.hpp"
-#include "LOD.hpp"
-#include "Material.hpp"
-#include "OrientationInterpolator.hpp"
-#include "Shape.hpp"
-#include "Switch.hpp"
-#include "TimeSensor.hpp"
-#include "Transform.hpp"
-#include "WorldInfo.hpp"
+#include "x3d/nodes/Appearance.hpp"
+#include "x3d/nodes/Cylinder.hpp"
+#include "x3d/nodes/Group.hpp"
+#include "x3d/nodes/LOD.hpp"
+#include "x3d/nodes/Material.hpp"
+#include "x3d/nodes/OrientationInterpolator.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/Switch.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
+#include "x3d/nodes/Transform.hpp"
+#include "x3d/nodes/WorldInfo.hpp"
 
 #include <cmath>
 #include <fstream>

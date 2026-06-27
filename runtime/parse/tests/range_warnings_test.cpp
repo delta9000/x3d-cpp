@@ -4,10 +4,10 @@
 // keeps (the owed "+ warnings" half of the lenient-read policy).
 #include "X3DRangeValidate.hpp"
 
-#include "Appearance.hpp"
-#include "Group.hpp"
-#include "Material.hpp"
-#include "Shape.hpp"
+#include "x3d/nodes/Appearance.hpp"
+#include "x3d/nodes/Group.hpp"
+#include "x3d/nodes/Material.hpp"
+#include "x3d/nodes/Shape.hpp"
 #include "X3DParse.hpp"
 
 #include <any>

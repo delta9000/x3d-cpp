@@ -14,8 +14,8 @@
 // generated accessor to SFFloat so a codegen change reintroducing SFInt32 fails
 // to compile here.
 
-#include "ListenerPointSource.hpp"
-#include "X3Dtypes.hpp"
+#include "x3d/nodes/ListenerPointSource.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 
 #include <type_traits>
 #include <utility>

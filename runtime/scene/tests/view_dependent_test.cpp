@@ -3,11 +3,11 @@
 #include "SceneExtractor.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp" // production attachViewDependent
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode
 #include "X3DFieldAddress.hpp" // FieldAddress for ROUTE-based change-gate test
-#include "TransformSensor.hpp"
+#include "x3d/nodes/TransformSensor.hpp"
 #include "Aabb.hpp"
 #include "TransformSystem.hpp"
 #include <any>

@@ -39,8 +39,8 @@
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField
 #include "RenderItem.hpp"     // MeshData
 #include "TextLayout.hpp"     // computeTextLayout + FontStyleParams/TextParams
-#include "X3DNode.hpp"
-#include "X3Dtypes.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 
 #include <algorithm>
 #include <any>

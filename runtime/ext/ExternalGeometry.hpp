@@ -16,9 +16,9 @@
 #ifndef X3D_RUNTIME_EXT_EXTERNAL_GEOMETRY_HPP
 #define X3D_RUNTIME_EXT_EXTERNAL_GEOMETRY_HPP
 
-#include "X3DNode.hpp"       // X3DNode, NodeVisitor (on x3d_cpp include path)
-#include "X3DReflection.hpp" // FieldTable, FieldInfo, X3DFieldType, AccessType
-#include "X3Dtypes.hpp"      // MFString, SFVec3f, SFString
+#include "x3d/nodes/X3DNode.hpp"       // X3DNode, NodeVisitor (on x3d_cpp include path)
+#include "x3d/core/X3DReflection.hpp" // FieldTable, FieldInfo, X3DFieldType, AccessType
+#include "x3d/core/X3Dtypes.hpp"      // MFString, SFVec3f, SFString
 
 #include <any>
 #include <string>

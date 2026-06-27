@@ -26,10 +26,10 @@
 #include "X3DParse.hpp"
 #include "X3DRuntime.hpp"
 
-#include "PositionInterpolator.hpp"
-#include "TimeSensor.hpp"
-#include "Transform.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/PositionInterpolator.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
+#include "x3d/nodes/Transform.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DProtoExpand.hpp"
 
 #include <fstream>

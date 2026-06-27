@@ -21,7 +21,7 @@
 //      recognized (legitimately empty, not an unsupported drop).
 #include "MeshBuilder.hpp"
 
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

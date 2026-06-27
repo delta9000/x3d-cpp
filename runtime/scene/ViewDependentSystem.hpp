@@ -6,7 +6,7 @@
 #ifndef X3D_RUNTIME_VIEW_DEPENDENT_SYSTEM_HPP
 #define X3D_RUNTIME_VIEW_DEPENDENT_SYSTEM_HPP
 
-#include "Billboard.hpp"
+#include "x3d/nodes/Billboard.hpp"
 #include "GeometryBounds.hpp"
 #include "Mat4.hpp"
 #include "X3DExecutionContext.hpp"

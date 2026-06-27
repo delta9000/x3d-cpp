@@ -8,7 +8,7 @@
 #include "RenderItem.hpp"
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 
 #include <any>

@@ -9,7 +9,7 @@
 #ifndef X3D_RUNTIME_DOCUMENT_HPP
 #define X3D_RUNTIME_DOCUMENT_HPP
 
-#include "X3DNode.hpp" // generated base node (complete type)
+#include "x3d/nodes/X3DNode.hpp" // generated base node (complete type)
 
 #include "X3DHeader.hpp"
 #include "X3DScene.hpp"

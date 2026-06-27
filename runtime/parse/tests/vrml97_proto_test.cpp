@@ -7,7 +7,7 @@
 // -> Vrml97Reader -> expandScene, identical to the json_proto_test pattern.
 // This is unambiguous AND exercises the full sniff+dispatch path.
 #include "X3DParse.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

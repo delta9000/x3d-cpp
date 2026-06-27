@@ -16,11 +16,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 #include "corpus_audit.hpp"
 
-#include "Appearance.hpp"
-#include "Box.hpp"
-#include "Material.hpp"
-#include "Shape.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/Appearance.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/Material.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <iostream>
 #include <memory>

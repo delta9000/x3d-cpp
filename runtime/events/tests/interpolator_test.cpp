@@ -13,14 +13,14 @@
 #include "Interpolation.hpp"
 #include "X3DExecutionContext.hpp"
 
-#include "ColorInterpolator.hpp"
-#include "CoordinateInterpolator.hpp"
-#include "CoordinateInterpolator2D.hpp"
-#include "NormalInterpolator.hpp"
-#include "OrientationInterpolator.hpp"
-#include "PositionInterpolator.hpp"
-#include "PositionInterpolator2D.hpp"
-#include "ScalarInterpolator.hpp"
+#include "x3d/nodes/ColorInterpolator.hpp"
+#include "x3d/nodes/CoordinateInterpolator.hpp"
+#include "x3d/nodes/CoordinateInterpolator2D.hpp"
+#include "x3d/nodes/NormalInterpolator.hpp"
+#include "x3d/nodes/OrientationInterpolator.hpp"
+#include "x3d/nodes/PositionInterpolator.hpp"
+#include "x3d/nodes/PositionInterpolator2D.hpp"
+#include "x3d/nodes/ScalarInterpolator.hpp"
 
 #include <any>
 #include <cmath>

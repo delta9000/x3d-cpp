@@ -3,7 +3,7 @@
 // world transforms update and the sibling D is NOT re-propagated.
 #include "TransformSystem.hpp"
 #include "DirtyTracker.hpp"
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode definition
 #include "doctest/doctest.h"

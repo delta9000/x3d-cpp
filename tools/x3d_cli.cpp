@@ -23,9 +23,9 @@
 #include "x3d/sdk.hpp"
 
 // Generated node headers needed for concrete-type validation checks.
-#include "Coordinate.hpp"
-#include "IndexedFaceSet.hpp"
-#include "IndexedLineSet.hpp"
+#include "x3d/nodes/Coordinate.hpp"
+#include "x3d/nodes/IndexedFaceSet.hpp"
+#include "x3d/nodes/IndexedLineSet.hpp"
 
 // STL writer (binary-STL export; core, NOT ext-gated).
 #include "stl_write.hpp"

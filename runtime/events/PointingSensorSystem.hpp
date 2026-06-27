@@ -36,11 +36,11 @@
 #include "drag/PlaneDrag.hpp"    // pure PlaneSensor drag math (U1)
 #include "drag/SphereDrag.hpp"   // pure SphereSensor drag math (U1)
 
-#include "CylinderSensor.hpp"        // emit* + accessors (generated)
-#include "PlaneSensor.hpp"           // emit* + accessors (generated)
-#include "SphereSensor.hpp"          // emit* + accessors (generated)
-#include "TouchSensor.hpp"           // emit* + nodeTypeName/getEnabled (generated)
-#include "X3DSensorNode.hpp"         // getEnabled (generic enabled probe)
+#include "x3d/nodes/CylinderSensor.hpp"        // emit* + accessors (generated)
+#include "x3d/nodes/PlaneSensor.hpp"           // emit* + accessors (generated)
+#include "x3d/nodes/SphereSensor.hpp"          // emit* + accessors (generated)
+#include "x3d/nodes/TouchSensor.hpp"           // emit* + nodeTypeName/getEnabled (generated)
+#include "x3d/nodes/X3DSensorNode.hpp"         // getEnabled (generic enabled probe)
 
 #include <cmath>
 #include <string>

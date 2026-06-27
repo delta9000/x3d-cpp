@@ -20,7 +20,7 @@
 #define X3D_CPURASTER_GLSL_HPP
 
 #include "Mat4.hpp"     // x3d::runtime::Mat4 (column-major, GL-native)
-#include "X3Dtypes.hpp" // SFVec2f/3f/4f, SFColor, SFColorRGBA
+#include "x3d/core/X3Dtypes.hpp" // SFVec2f/3f/4f, SFColor, SFColorRGBA
 
 #include <algorithm>
 #include <array>

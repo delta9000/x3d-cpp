@@ -23,15 +23,15 @@
 #include "X3DDocument.hpp" // inline Scene::addRootNode
 #include "X3DExecutionContext.hpp"
 
-#include "Box.hpp"
-#include "Coordinate.hpp"
-#include "Group.hpp"
-#include "IndexedFaceSet.hpp"
-#include "PlaneSensor.hpp"
-#include "Shape.hpp"
-#include "TextureCoordinate.hpp"
-#include "TouchSensor.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/Coordinate.hpp"
+#include "x3d/nodes/Group.hpp"
+#include "x3d/nodes/IndexedFaceSet.hpp"
+#include "x3d/nodes/PlaneSensor.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/TextureCoordinate.hpp"
+#include "x3d/nodes/TouchSensor.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <any>
 #include <cmath>

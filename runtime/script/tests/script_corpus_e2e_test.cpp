@@ -37,7 +37,7 @@
 #include "SaiContext.hpp"
 #include "X3DExecutionContext.hpp"
 
-#include "Script.hpp"
+#include "x3d/nodes/Script.hpp"
 
 #include "X3DScene.hpp"
 #include "X3DProtoExpand.hpp"

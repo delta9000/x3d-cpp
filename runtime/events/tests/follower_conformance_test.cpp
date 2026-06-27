@@ -5,10 +5,10 @@
 #include "FollowerArith.hpp"
 #include "FollowerRegistration.hpp"
 #include "FollowerSystem.hpp"
-#include "PositionChaser.hpp"
-#include "PositionDamper.hpp"
-#include "ScalarChaser.hpp"
-#include "ScalarDamper.hpp"
+#include "x3d/nodes/PositionChaser.hpp"
+#include "x3d/nodes/PositionDamper.hpp"
+#include "x3d/nodes/ScalarChaser.hpp"
+#include "x3d/nodes/ScalarDamper.hpp"
 #include "X3DExecutionContext.hpp"
 #include <cmath>
 #include <cstdio>

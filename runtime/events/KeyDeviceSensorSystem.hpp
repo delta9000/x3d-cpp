@@ -19,8 +19,8 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
-#include "KeySensor.hpp"
-#include "StringSensor.hpp"
+#include "x3d/nodes/KeySensor.hpp"
+#include "x3d/nodes/StringSensor.hpp"
 
 #include <any>
 #include <optional>

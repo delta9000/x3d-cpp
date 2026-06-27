@@ -4,11 +4,11 @@
 #include "PhysicsBackend.hpp"
 #include "ContactReporter.hpp"
 #include "X3DExecutionContext.hpp"
-#include "CollisionSensor.hpp"
-#include "CollisionCollection.hpp"
-#include "CollidableShape.hpp"
-#include "RigidBody.hpp"
-#include "Contact.hpp"
+#include "x3d/nodes/CollisionSensor.hpp"
+#include "x3d/nodes/CollisionCollection.hpp"
+#include "x3d/nodes/CollidableShape.hpp"
+#include "x3d/nodes/RigidBody.hpp"
+#include "x3d/nodes/Contact.hpp"
 #include <cstdio>
 #include <memory>
 

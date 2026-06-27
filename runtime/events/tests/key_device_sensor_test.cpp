@@ -16,14 +16,14 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
 
-#include "KeySensor.hpp"
-#include "StringSensor.hpp"
-#include "TimeSensor.hpp"
+#include "x3d/nodes/KeySensor.hpp"
+#include "x3d/nodes/StringSensor.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
 
 #include "X3DFieldAddress.hpp"
 
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <iostream>
 #include <memory>

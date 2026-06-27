@@ -16,7 +16,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DTimeDependentSystem.hpp"
 
-#include "TimeSensor.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
 
 namespace x3d::runtime {
 

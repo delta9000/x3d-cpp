@@ -16,7 +16,7 @@
 //   5) Toggling caps off keeps texcoords parallel to positions (no orphans).
 #include "MeshBuilder.hpp"
 
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

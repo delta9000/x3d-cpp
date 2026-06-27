@@ -20,12 +20,12 @@
 #include "ViewDependentSystem.hpp"
 #include "ViewpointBindSystem.hpp"
 
-#include "BooleanSequencer.hpp"
-#include "IntegerSequencer.hpp"
+#include "x3d/nodes/BooleanSequencer.hpp"
+#include "x3d/nodes/IntegerSequencer.hpp"
 
 #include "DynamicField.hpp"
-#include "X3DNode.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/core/X3DReflection.hpp"
 #include "X3DScene.hpp"
 
 #include <cstddef>

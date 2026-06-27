@@ -10,7 +10,7 @@
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
 
-#include "Transform.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <any>
 #include <iostream>

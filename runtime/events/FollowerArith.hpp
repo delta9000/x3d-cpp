@@ -1,7 +1,7 @@
 #ifndef X3D_RUNTIME_FOLLOWER_ARITH_HPP
 #define X3D_RUNTIME_FOLLOWER_ARITH_HPP
 #include "Interpolation.hpp" // slerpRotation, Quat, quatFromRotation
-#include "X3Dtypes.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 #include <algorithm>
 #include <cmath>
 #include <vector>

@@ -22,13 +22,13 @@
 #include "X3DRuntime.hpp"
 
 // Concrete node types used by the sample scene / collectFieldValue checks.
-#include "Appearance.hpp"
-#include "Box.hpp"
-#include "Contour2D.hpp"
-#include "Material.hpp"
-#include "NurbsTrimmedSurface.hpp"
-#include "Shape.hpp"
-#include "Transform.hpp"
+#include "x3d/nodes/Appearance.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/Contour2D.hpp"
+#include "x3d/nodes/Material.hpp"
+#include "x3d/nodes/NurbsTrimmedSurface.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/Transform.hpp"
 
 #include <fstream>
 #include <iostream>

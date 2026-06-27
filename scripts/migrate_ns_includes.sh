@@ -21,13 +21,13 @@ NODES_DIR='generated_cpp_bindings/x3d/nodes'
 for root in "$@"; do
   # core headers: #include "X3Dtypes.hpp" -> #include "x3d/core/X3Dtypes.hpp"
   for h in $CORE; do
-    grep -rIl --include='*.hpp' --include='*.cpp' "#include \"$h.hpp\"" "$root" 2>/dev/null \
+    { grep -rIl --include='*.hpp' --include='*.cpp' "#include \"$h.hpp\"" "$root" 2>/dev/null || true; } \
       | xargs -r sed -i "s|#include \"$h.hpp\"|#include \"x3d/core/$h.hpp\"|g"
   done
   # node headers: any include of a CapitalizedName.hpp that exists under x3d/nodes/
   while IFS= read -r f; do
     base=$(basename "$f" .hpp)
-    grep -rIl --include='*.hpp' --include='*.cpp' "#include \"$base.hpp\"" "$root" 2>/dev/null \
+    { grep -rIl --include='*.hpp' --include='*.cpp' "#include \"$base.hpp\"" "$root" 2>/dev/null || true; } \
       | xargs -r sed -i "s|#include \"$base.hpp\"|#include \"x3d/nodes/$base.hpp\"|g"
   done < <(find "$NODES_DIR" -maxdepth 1 -name '*.hpp')
 done

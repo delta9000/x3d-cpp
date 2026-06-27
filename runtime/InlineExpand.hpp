@@ -14,9 +14,9 @@
 
 #include "X3DScene.hpp"
 #include "X3DProtoExpand.hpp"
-#include "X3DNode.hpp"
-#include "X3DNodeFactory.hpp"
-#include "X3DReflection.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/core/X3DReflection.hpp"
 
 #include <any>
 #include <functional>

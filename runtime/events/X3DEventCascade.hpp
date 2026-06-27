@@ -6,7 +6,7 @@
 
 #include "X3DEventGraph.hpp"
 #include "X3DFieldAddress.hpp"
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include <any>
 #include <deque>

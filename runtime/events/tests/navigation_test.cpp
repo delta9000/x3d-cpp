@@ -22,13 +22,13 @@
 #include "NavigationSystem.hpp"
 #include "X3DDocument.hpp" // inline Scene::addRootNode
 #include "X3DExecutionContext.hpp"
-#include "X3DNodeFactory.hpp" // createX3DNode
+#include "x3d/nodes/X3DNodeFactory.hpp" // createX3DNode
 
-#include "Box.hpp"
-#include "NavigationInfo.hpp"
-#include "Shape.hpp"
-#include "Transform.hpp"
-#include "Viewpoint.hpp"
+#include "x3d/nodes/Box.hpp"
+#include "x3d/nodes/NavigationInfo.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/Transform.hpp"
+#include "x3d/nodes/Viewpoint.hpp"
 
 #include <any>
 #include <cmath>

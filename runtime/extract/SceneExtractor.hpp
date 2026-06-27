@@ -57,7 +57,7 @@
 #define X3D_RUNTIME_EXTRACT_SCENE_EXTRACTOR_HPP
 
 #include "Aabb.hpp"
-#include "Billboard.hpp"           // billboardLocalMatrix (§23.4.1, M2e) + viewdep
+#include "x3d/nodes/Billboard.hpp"           // billboardLocalMatrix (§23.4.1, M2e) + viewdep
 #include "GeometryBounds.hpp"      // geombounds::getField/getNode/hasField
 #include "LightSystem.hpp"         // extract::LightSystem (T6)
 #include "Mat4.hpp"
@@ -71,7 +71,7 @@
 #include "TransformSystem.hpp"     // localMatrix (static; per-path re-accumulation)
 #include "ViewDependentSystem.hpp" // lodSelectLevel (§23.4.3, M2e)
 #include "X3DExecutionContext.hpp" // camera/background/light pull surfaces
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
 #include <any>

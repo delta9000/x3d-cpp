@@ -19,7 +19,7 @@
 //      normal, so the primitives compose under the SAME cull rule as meshes.
 #include "MeshBuilder.hpp"
 
-#include "X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include "doctest/doctest.h"

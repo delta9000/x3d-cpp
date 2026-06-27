@@ -9,7 +9,7 @@
 
 #include "DirtyTracker.hpp"
 #include "Mat4.hpp"
-#include "X3DNode.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
 #include <any>
