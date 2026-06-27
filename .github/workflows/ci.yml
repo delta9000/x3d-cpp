@@ -335,7 +335,7 @@ jobs:
           # ports rebuild. Bump alongside the vcpkg.json baseline.
           key: vcpkg-${{ runner.os }}-manifest-01f602195983451bc83e72f4214af2cbc495aa94
           restore-keys: vcpkg-${{ runner.os }}-
-      - name: Install backend deps (vcpkg.json manifest: curl + aws-sdk-cpp)
+      - name: "Install backend deps (vcpkg.json manifest: curl + aws-sdk-cpp)"
         # Manifest mode (vcpkg.json in repo root, builtin-baseline pinned) installs
         # exactly the ports declared for this job — for the assetresolver swap,
         # that's curl and aws-sdk-cpp[core,s3]. The `[core,s3]` features on
@@ -466,7 +466,7 @@ jobs:
           # assetresolver job so a single archive cache serves both.
           key: vcpkg-${{ runner.os }}-manifest-01f602195983451bc83e72f4214af2cbc495aa94
           restore-keys: vcpkg-${{ runner.os }}-
-      - name: Install backend deps (vcpkg.json manifest: freetype)
+      - name: "Install backend deps (vcpkg.json manifest: freetype)"
         # Manifest mode installs the declared port for this job — for the
         # fontmetrics swap, that's freetype.
         run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
