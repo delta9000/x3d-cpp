@@ -99,7 +99,9 @@ TEST_CASE("nurbs_curve_bezier_reduction") {
 
 TEST_CASE("nurbs_curve_exact_unit_circle") {
   // Rational quadratic, 9 control points, weights cos45 on the corners.
-  // Machine-verified: every sample satisfies x^2+y^2 == 1.
+  // Verified in double precision to 2.2e-16; here points are stored as SFVec3f
+  // (float), so the achievable radius error is ~1 float ulp (~6e-8). Tolerance
+  // 1e-6 is the float-correct bound (the math is exact; only storage is float).
   const double s = std::sqrt(2.0)/2.0;
   nurbs::CurveDef c;
   c.cp = {{1,0,0},{1,1,0},{0,1,0},{-1,1,0},{-1,0,0},
@@ -109,7 +111,7 @@ TEST_CASE("nurbs_curve_exact_unit_circle") {
   c.order = 3;
   auto pts = nurbs::tessellateCurve(c, 64);
   CHECK(pts.size() == 65);
-  for (auto& p : pts) CHECK(feq((double)p.x*p.x + (double)p.y*p.y, 1.0, 1e-9));
+  for (auto& p : pts) CHECK(feq((double)p.x*p.x + (double)p.y*p.y, 1.0, 1e-6));
 }
 ```
 
