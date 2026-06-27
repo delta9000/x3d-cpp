@@ -36,8 +36,10 @@ static double fillRatio(const cr::Framebuffer &fb, int &inkOut) {
       g::vec4 c = fb.colorAt(x, y);
       if (c.x + c.y + c.z > 0.15f) { // non-black background.
         ++ink;
-        if (x < minx) minx = x; if (x > maxx) maxx = x;
-        if (y < miny) miny = y; if (y > maxy) maxy = y;
+        if (x < minx) minx = x;
+        if (x > maxx) maxx = x;
+        if (y < miny) miny = y;
+        if (y > maxy) maxy = y;
       }
     }
   inkOut = ink;

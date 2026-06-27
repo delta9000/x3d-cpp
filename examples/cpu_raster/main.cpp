@@ -47,6 +47,8 @@
 
 namespace ex = x3d::runtime::extract;
 namespace cr = x3d::cpuraster;
+using namespace x3d::core;   // MFString etc. (ADR-0039 namespaces)
+using namespace x3d::nodes;  // X3DNode (ADR-0039 namespaces)
 
 namespace {
 
