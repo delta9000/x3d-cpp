@@ -3,11 +3,11 @@
 // observable pull channel, skippedGeometryCounts() -> map<nodeTypeName,count>.
 //
 // Proves the load-bearing DISTINCTION:
-//   1) A Shape over a NurbsPatchSurface (an UNRECOGNIZED geometry type, still
+//   1) A Shape over a NurbsTrimmedSurface (an UNRECOGNIZED geometry type, still
 //      unsupported) is dropped AND increments
-//      skippedGeometryCounts()["NurbsPatchSurface"]. (Extrusion became a
+//      skippedGeometryCounts()["NurbsTrimmedSurface"]. (Extrusion became a
 //      RECOGNIZED, drawable type at B3 and Text at T-TEXT, so the canonical
-//      "unsupported" example moved to NurbsPatchSurface.)
+//      "unsupported" example moved to NurbsTrimmedSurface.)
 //   2) A Shape over an empty-coordIndex IndexedFaceSet (a RECOGNIZED type that
 //      legitimately tessellates to nothing) is dropped but does NOT appear in the
 //      map — legitimate emptiness is not a coverage gap.
@@ -61,11 +61,11 @@ static std::shared_ptr<X3DNode> makeTriShape() {
   return shape;
 }
 
-// A Shape over a NurbsPatchSurface — an UNRECOGNIZED geometry type (no
+// A Shape over a NurbsTrimmedSurface — an UNRECOGNIZED geometry type (no
 // MeshBuilder arm). Extrusion became recognized + drawable at B3 and Text at
-// T-TEXT, so NurbsPatchSurface is now the canonical still-unsupported example.
+// T-TEXT, so NurbsTrimmedSurface is now the canonical still-unsupported example.
 static std::shared_ptr<X3DNode> makeUnsupportedShape() {
-  auto ex = createX3DNode("NurbsPatchSurface");
+  auto ex = createX3DNode("NurbsTrimmedSurface");
   auto shape = createX3DNode("Shape");
   setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(ex)));
   return shape;
@@ -93,12 +93,12 @@ TEST_CASE("scene_extractor_b2_test") {
   CHECK((extract::recognizedGeometryType("ElevationGrid")));
   CHECK((extract::recognizedGeometryType("Extrusion"))); // recognized at B3.
   CHECK((extract::recognizedGeometryType("Text")));       // recognized at T-TEXT.
-  CHECK((!extract::recognizedGeometryType("NurbsPatchSurface")));
+  CHECK((!extract::recognizedGeometryType("NurbsTrimmedSurface")));
 
   // buildLocalMesh sets `recognized` per the same oracle, independent of emptiness.
   {
     bool rec = true;
-    auto ex = createX3DNode("NurbsPatchSurface");
+    auto ex = createX3DNode("NurbsTrimmedSurface");
     auto m = extract::buildLocalMesh(ex.get(), extract::MeshBuildOptions{}, &rec);
     CHECK((m.indices.empty() && !rec)); // unrecognized -> empty + recognized=false.
 
@@ -111,7 +111,7 @@ TEST_CASE("scene_extractor_b2_test") {
     CHECK((m2.indices.empty() && rec)); // recognized-but-empty -> recognized=true.
   }
 
-  // === 1) NurbsPatchSurface increments the count; empty IFS does NOT ========
+  // === 1) NurbsTrimmedSurface increments the count; empty IFS does NOT ========
   {
     auto root = createX3DNode("Group");
     addChild(root, makeUnsupportedShape()); // unsupported -> counted.
@@ -129,8 +129,8 @@ TEST_CASE("scene_extractor_b2_test") {
     CHECK((snap.added.size() == 1));
 
     const auto &counts = ex.skippedGeometryCounts();
-    // NurbsPatchSurface counted exactly once...
-    auto it = counts.find("NurbsPatchSurface");
+    // NurbsTrimmedSurface counted exactly once...
+    auto it = counts.find("NurbsTrimmedSurface");
     CHECK((it != counts.end() && it->second == 1));
     // ...and the legitimately-empty IFS is NOT a coverage gap.
     CHECK((counts.find("IndexedFaceSet") == counts.end()));
@@ -150,11 +150,11 @@ TEST_CASE("scene_extractor_b2_test") {
     ctx.buildSceneGraph(scene);
     extract::SceneExtractor ex(ctx, scene);
     ex.fullSnapshot();
-    CHECK((ex.skippedGeometryCounts().at("NurbsPatchSurface") == 2));
+    CHECK((ex.skippedGeometryCounts().at("NurbsTrimmedSurface") == 2));
 
     // === 3) fullSnapshot() recounts from scratch (map cleared each full walk) =
     ex.fullSnapshot();
-    CHECK((ex.skippedGeometryCounts().at("NurbsPatchSurface") == 2)); // not 4.
+    CHECK((ex.skippedGeometryCounts().at("NurbsTrimmedSurface") == 2)); // not 4.
   }
 
   return;

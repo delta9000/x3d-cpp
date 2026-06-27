@@ -79,7 +79,7 @@ TEST_CASE("scene_extractor_audit_test") {
     auto root = createX3DNode("Group");
     addChild(root, makeTriShape()); // supported
 
-    auto unsupported = createX3DNode("NurbsPatchSurface");
+    auto unsupported = createX3DNode("NurbsTrimmedSurface");
     auto badShape = createX3DNode("Shape");
     setF(badShape, "geometry", std::any(std::shared_ptr<X3DNode>(unsupported)));
     addChild(root, badShape);
@@ -94,8 +94,8 @@ TEST_CASE("scene_extractor_audit_test") {
     // Only the TriangleSet emits; unsupported is skipped silently.
     CHECK((snap.added.size() == 1));
     const auto &counts = ex.skippedGeometryCounts();
-    CHECK((counts.find("NurbsPatchSurface") != counts.end()));
-    CHECK((counts.at("NurbsPatchSurface") == 1));
+    CHECK((counts.find("NurbsTrimmedSurface") != counts.end()));
+    CHECK((counts.at("NurbsTrimmedSurface") == 1));
   }
 
   // === 3) World transform accumulation under scaling + rotation =============

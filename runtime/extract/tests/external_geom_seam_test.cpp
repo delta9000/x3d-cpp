@@ -55,10 +55,10 @@ static PackedMesh makeTrianglePacked() {
 }
 
 TEST_CASE("external_geom_seam_test") {
-  // === 0) Confirm NurbsPatchSurface yields recognized==false ===================
+  // A NurbsTrimmedSurface (still unrecognized) triggers the resolver
   {
     bool rec = true;
-    auto nurbs = createX3DNode("NurbsPatchSurface");
+    auto nurbs = createX3DNode("NurbsTrimmedSurface");
     auto mesh = buildLocalMesh(nurbs.get(), MeshBuildOptions{}, &rec);
     CHECK((!rec && mesh.indices.empty())); // still unrecognized
   }
@@ -66,7 +66,7 @@ TEST_CASE("external_geom_seam_test") {
   // === 1) Resolver NOT installed → NurbsPatchSurface still skipped (no change) =
   {
     auto root = createX3DNode("Group");
-    auto nurbs = createX3DNode("NurbsPatchSurface");
+    auto nurbs = createX3DNode("NurbsTrimmedSurface");
     auto shape = createX3DNode("Shape");
     setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
     addChild(root, shape);
@@ -83,7 +83,7 @@ TEST_CASE("external_geom_seam_test") {
   // === 2) Resolver installed → non-empty PackedMesh → RenderItem Packed emitted
   {
     auto root = createX3DNode("Group");
-    auto nurbs = createX3DNode("NurbsPatchSurface");
+    auto nurbs = createX3DNode("NurbsTrimmedSurface");
     auto shape = createX3DNode("Shape");
     setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
     addChild(root, shape);
@@ -108,7 +108,7 @@ TEST_CASE("external_geom_seam_test") {
   // === 3) Resolver returning empty PackedMesh → Pending → NOT emitted ==========
   {
     auto root = createX3DNode("Group");
-    auto nurbs = createX3DNode("NurbsPatchSurface");
+    auto nurbs = createX3DNode("NurbsTrimmedSurface");
     auto shape = createX3DNode("Shape");
     setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
     addChild(root, shape);
