@@ -33,6 +33,14 @@ different `proc:` texture, so the per-primitive texture-coordinate generation
 reads off the surface — checker on the box faces, lat/long on the sphere, brick
 up the cone, rainbow bars around the cylinder.
 
+![Utah teapot — 32 NURBS patches](docs/images/gallery/teapot-nurbs.png)
+
+The **Utah teapot** (Martin Newell, 1975 — [public domain](http://www.holmes3d.net/graphics/teapot/)),
+its 32 bicubic Bézier patches expressed as order-4 `NurbsPatchSurface` nodes — a Bézier
+patch *is* a NURBS patch (clamped knots, unit weights). Tessellated with **analytic
+normals** (the cross product of the surface partial derivatives), so the ceramic shading
+runs smoothly across all 32 patch seams. Scene: `assets/gallery/hero_teapot_nurbs.x3d`.
+
 Reproduce them with `mise run cpuraster`, then render any scene under
 `examples/cpu_raster/assets/` (e.g. `… assets/models/lion_head/lion_head_lit.x3d -o lion.png`).
 
