@@ -11,14 +11,16 @@
 ## Global Constraints
 
 - **Two namespaces, no shim.** `x3d::core` = `SF*/MF*` value types + reflection primitives (`FieldInfo`/`FieldTable`/`NodeVisitor`/`RangeDiagnostic`/`X3DFieldType`/`AccessType`) + bounded enums. `x3d::nodes` = `X3DNode` base + all abstract `X3D*Node` + all concrete node classes + the factory + the interface registry. No compatibility shim, no transitional global `using namespace`.
-- **No global-namespace pollution.** Generated and consumer headers may use `using namespace x3d::core;` / `x3d::nodes;` only **inside** a named namespace block (`x3d::nodes`, `x3d::runtime`, …) — never at global/file scope in a header. `.cpp` and test TUs may use file-scope using-directives.
+- **Asymmetric qualification (the two namespaces are not treated alike):**
+  - **`x3d::core` (vocabulary, ~40 stable types):** a `using namespace x3d::core;` is allowed, but only **inside** a named namespace block (`x3d::nodes`, `x3d::runtime`, …) in headers, or at file scope in `.cpp`/test TUs — never at global scope. Pulling in a small curated vocabulary set is idiomatic.
+  - **`x3d::nodes` (685 types): NO blanket `using namespace x3d::nodes;` anywhere.** A blanket directive re-flattens the namespace we just built. Instead: **explicit `x3d::nodes::Foo`** in files that touch a few node types; a **per-file alias `namespace xn = x3d::nodes;` then `xn::Foo`** in heavy dispatch/visitor files (`SceneExtractor`, `GeometryBounds`, codecs — 15–37 node types each). Generated node headers reference sibling node types unqualified (same `x3d::nodes` namespace) and need no nodes directive. Leaf test TUs may use a file-scope `using namespace x3d::nodes;` (non-propagating) where it keeps a test readable.
 - **Header path spelling is uniform:** `#include "x3d/core/X3Dtypes.hpp"`, `#include "x3d/nodes/Transform.hpp"` — identical in-tree and installed (in-tree include base is `generated_cpp_bindings/`).
 - **X3D string identity is preserved.** `nodeTypeName()` still returns `"Transform"`; factory/registry string keys, parsing, and serialization are unchanged. The *behavioral* goldens/conformance view must not change; only the *binding-hash* golden is re-blessed.
 - **Include guards:** generated headers use `#pragma once` (replaces bare `APPEARANCE_HPP` macros — kills macro pollution).
 - **Green bar = `mise run ci`** (test + golden + conformance-gate + coverage-gate + build-ci with per-header isolation ON + cli-gate-regression). Docs strict gate = `mise run docs-build`.
 - **Commit conventions:** no `Claude-Session:` trailers or `claude.ai/code/session_…` URLs in commits/PR.
 
-> **Spec deviations to confirm before execution:** The approved spec said node/consumer headers would *fully qualify* (`x3d::core::SFVec3f`). This plan instead uses **scoped using-directives inside named namespaces** (never global) for generated node headers (Task 2) and consumer headers (Tasks 7–11). Same external API; ~100× less churn; global namespace still clean. If you want literal full-qualification instead, Tasks 2 and 7–11 change substantially — confirm before starting.
+> **Qualification policy (resolved during planning, supersedes the spec's "fully qualify" wording):** The two namespaces are handled asymmetrically — `using namespace x3d::core;` for the small vocabulary set (scoped, never global), but **explicit `x3d::nodes::` / per-file `xn` alias for the 685 node types — no blanket nodes directive.** This keeps node references self-documenting and collision-safe (the point of namespacing) while keeping the pervasive vocabulary churn to one directive line per file. The external API is identical either way (`x3d::core::SFVec3f` / `x3d::nodes::Transform` for outside callers). See the Global Constraints "Asymmetric qualification" rule — it governs every consumer task.
 
 ---
 
@@ -373,10 +375,13 @@ git commit -m "scripts: add namespaced-include migration helper"
 
 ## Tasks 7–11: Consumer migration by dependency layer
 
-> Each task applies the **same recipe** to one layer. The layers are ordered bottom-up so each compiles once the layers beneath it are migrated. The recipe per file:
+> Each task applies the **same recipe** to one layer, following the "Asymmetric qualification" constraint. The layers are ordered bottom-up so each compiles once the layers beneath it are migrated. The recipe per file:
 > 1. Run `scripts/migrate_ns_includes.sh <layer-dir>` to fix include paths.
-> 2. For each **header** in the layer that references generated types: inside its existing `namespace x3d::runtime {` (or `x3d::codec`, `x3d::runtime::extract`, …) block, add as the first two lines `using namespace x3d::core;` and (if it names node types) `using namespace x3d::nodes;`. If a file has no enclosing namespace, wrap its generated-type usage or qualify explicitly.
-> 3. For each **.cpp / test** TU: add file-scope `using namespace x3d::core;` and `using namespace x3d::nodes;` after the includes.
+> 2. **Vocabulary (`x3d::core`):** for each file that names value/reflection types (`SFVec3f`, `SFNode`, `FieldTable`, …), add `using namespace x3d::core;` — inside the file's existing `namespace x3d::runtime {` (or `x3d::codec`, …) block for a **header**, or at file scope (after includes) for a **.cpp/test**.
+> 3. **Nodes (`x3d::nodes`) — NO blanket directive:**
+>    - File touches **few** node types → qualify explicitly: `x3d::nodes::Transform`.
+>    - File touches **many** node types (dispatch/visitor/codec — e.g. `SceneExtractor`, `GeometryBounds`) → add a per-file alias `namespace xn = x3d::nodes;` (inside the enclosing namespace for a header; at file scope for a .cpp) and prefix uses `xn::Transform`.
+>    - Leaf **test** TU that reads better flat → a file-scope `using namespace x3d::nodes;` is acceptable (non-propagating).
 > 4. Build that layer's target(s) + run its tests.
 > 5. Commit.
 
@@ -393,13 +398,9 @@ For precision, restrict to this layer:
 git ls-files 'runtime/*.hpp' 'runtime/*.cpp' | xargs -r bash -c 'scripts/migrate_ns_includes.sh "$@"' _
 ```
 
-- [ ] **Step 2: Add scoped using-directives**
+- [ ] **Step 2: Qualify per the asymmetric rule**
 
-In each modified `runtime/*.hpp`, locate the `namespace x3d::runtime {` line and insert directly after it:
-```cpp
-  using namespace x3d::core;
-  using namespace x3d::nodes;
-```
+In each modified `runtime/*.hpp`, locate the `namespace x3d::runtime {` line and insert directly after it `using namespace x3d::core;` (these files use vocabulary types densely). For node types — these document-model headers reference **few** node types each (`X3DDocument` ~2) — qualify explicitly with `x3d::nodes::` at the use sites; do **not** add a `using namespace x3d::nodes;`. (No file in this layer crosses the "many node types" threshold; the `xn` alias is not needed here.)
 
 - [ ] **Step 3: Build the document-model headers**
 
@@ -426,7 +427,7 @@ git commit -m "migrate(runtime-core): x3d::core/x3d::nodes qualification + inclu
 
 ### Task 9: `runtime/extract`, `events`, `scene`, `script`, `sound`, `physics`, `parse`, `math`, `ext` (non-test)
 
-- [ ] **Step 1–5:** Apply the recipe to each subsystem dir's non-test `*.hpp`/`*.cpp`. These open `namespace x3d::runtime` / `x3d::runtime::extract`. After each, build and grep-clean. Commit per subsystem (e.g. `migrate(extract): …`) — these are independent enough to split or batch as one `migrate(runtime-subsystems): …` commit.
+- [ ] **Step 1–5:** Apply the recipe to each subsystem dir's non-test `*.hpp`/`*.cpp`. These open `namespace x3d::runtime` / `x3d::runtime::extract`. **This layer holds the heavy dispatch files** — `runtime/extract/SceneExtractor.hpp` (~37 node types) and `runtime/scene/GeometryBounds.hpp` (~15) get the per-file `namespace xn = x3d::nodes;` alias (inside their enclosing namespace) and `xn::` prefixes, plus `using namespace x3d::core;` for vocabulary. Lighter files in the layer qualify nodes explicitly. After each, build and grep-clean. Commit per subsystem (e.g. `migrate(extract): …`) or batch as one `migrate(runtime-subsystems): …` commit.
 
 ### Task 10: `include/x3d/sdk.hpp` façade
 
@@ -466,14 +467,9 @@ Run: `cmake --build build --target x3d_sdk_facade_test 2>&1 | grep error: | head
 git ls-files '*/tests/*.cpp' | xargs -r bash -c 'scripts/migrate_ns_includes.sh "$@"' _
 ```
 
-- [ ] **Step 2: Add file-scope using-directives to each test TU**
+- [ ] **Step 2: Qualify each test TU**
 
-For each test `.cpp` that names generated types, insert after the last `#include`:
-```cpp
-using namespace x3d::core;
-using namespace x3d::nodes;
-```
-(Test TUs are standalone `main()`s, so file-scope using-directives are safe.)
+For each test `.cpp` that names vocabulary types, insert `using namespace x3d::core;` after the last `#include`. For node types, test TUs are leaf `main()`s (non-propagating), so a file-scope `using namespace x3d::nodes;` is acceptable here where it keeps the test readable; a heavy fixture may instead use `namespace xn = x3d::nodes;`. This is the one place a nodes directive is allowed (no header propagation).
 
 - [ ] **Step 3: Build everything (dev preset)**
 
@@ -561,4 +557,4 @@ gh pr create --title "api: namespace generated bindings — x3d::core + x3d::nod
 
 **Type consistency:** `x3d::core::{SFVec3f,SFNode,FieldTable,NodeVisitor}`, `x3d::nodes::{X3DNode,Transform,Appearance,X3DNodeFactory,createX3DNode}`, `using SFNode = std::shared_ptr<nodes::X3DNode>` used consistently across Tasks 1, 2, 3, 5, 10.
 
-**Known risk carried forward:** the spec-deviation banner (scoped using-directives vs literal full-qualification) must be confirmed before Task 2. The per-layer migration assumes each consumer file opens a single enclosing `x3d::*` namespace; files that don't (or that re-open multiple) need the explicit-qualify fallback noted in the recipe — the Task-12 dev build surfaces these.
+**Qualification policy:** resolved to the asymmetric rule (vocabulary directive + explicit/alias nodes, no blanket nodes directive) — see Global Constraints; governs Tasks 7–12. The per-layer migration assumes each consumer file opens a single enclosing `x3d::*` namespace; files that don't (or that re-open multiple) need the explicit-qualify fallback — the Task-12 dev build surfaces these. The "many node types" alias threshold is a judgment call per file; `SceneExtractor`/`GeometryBounds` are the known heavy ones (Task 9), but the dev build will reveal any other file where explicit qualification is too noisy to be worth it.
