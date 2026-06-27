@@ -130,6 +130,7 @@ nav:
       - "ADR-0036: Codec Round-Trip Fidelity Properties and Fault-Injected Oracles": decisions/0036-codec-roundtrip-fidelity-oracles.md
       - "ADR-0037: Graph-Walk Traversal Budget for Acyclic Fan-Out": decisions/0037-graph-walk-traversal-budget.md
       - "ADR-0038: Default Local Resolver Confines Includes to the Source Subtree": decisions/0038-local-resolver-path-confinement.md
+      - "ADR-0039: Generated Bindings Live in x3d::core + x3d::nodes": decisions/0039-generated-binding-namespaces.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
