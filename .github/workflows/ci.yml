@@ -4,10 +4,18 @@
 # checks: pytest, golden drift, conformance-view drift, wiki strict build, and a
 # single-compiler C++ build + ctest.
 #
-# The heavy per-seam backend swap-tests (quickjs / assetresolver / texture /
-# audio / fontmetrics) each fetch+build a third-party backend, so they run ONLY
-# when their backend, the seam interface header, or the build system changed —
-# gated by the `changes` job's path detection (manual dispatch runs them all).
+# The per-seam backend swap-tests fall into two groups:
+#   - **texture-swap** is UNCONDITIONAL on every PR — both decoders are vendored
+#     and the gate is hermetic + <2 min. Byte-equal decode parity is the
+#     closest thing the SDK has to a render-correctness guarantee, so it runs
+#     every time.
+#   - The remaining four swap-tests (quickjs / assetresolver / audio /
+#     fontmetrics) each fetch+build a third-party backend (and assetresolver
+#     also brings up docker/minio + the AWS SDK), so they run ONLY when their
+#     backend, the seam interface header, the build system, or a CONSUMING
+#     subsystem changed — gated by the `changes` job's regex detection
+#     (manual dispatch runs them all).
+#
 # A `concurrency` group cancels superseded in-flight runs so rapid pushes to a
 # PR don't each pay full freight.
 #
@@ -16,7 +24,8 @@
 #
 # NOTE: the five swap-test job names may be branch-protection "required" checks.
 # A path-skipped job reports the "skipped" conclusion, which GitHub treats as
-# passing — so PRs that don't touch a seam are not blocked waiting on it.
+# passing — so PRs that don't touch a path-gated seam are not blocked waiting
+# on it. (texture-swap is never skipped.)
 #
 # See docs/wiki/guides/card-to-done-workflow.md (the DoD gate) and
 # docs/wiki/guides/gate-system.md (what each gate protects).
@@ -41,10 +50,12 @@ concurrency:
 
 jobs:
   # Detect which seam subsystems a PR touches so the heavy backend swap-tests run
-  # ONLY when their backend, the seam interface, or the build system changed. The
-  # fast hermetic gates (pytest/golden/conformance/wiki/cpp) always run. Plain
-  # git + bash (no third-party action) so the Forgejo mirror runs it unchanged.
-  # On workflow_dispatch (no base ref) every seam proof runs.
+  # ONLY when their backend, the seam interface, the build system, OR a
+  # consuming subsystem changed. The fast hermetic gates (pytest/golden/
+  # conformance/wiki/cpp) always run. The texture-swap gate is unconditional
+  # (vendored, hermetic, <2 min) — see below. Plain git + bash (no third-party
+  # action) so the Forgejo mirror runs it unchanged. On workflow_dispatch (no
+  # base ref) every seam proof runs.
   changes:
     name: detect changed subsystems
     runs-on: ubuntu-latest
@@ -52,7 +63,6 @@ jobs:
       audio: ${{ steps.f.outputs.audio }}
       quickjs: ${{ steps.f.outputs.quickjs }}
       assets: ${{ steps.f.outputs.assets }}
-      texture: ${{ steps.f.outputs.texture }}
       fontmetrics: ${{ steps.f.outputs.fontmetrics }}
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +75,7 @@ jobs:
           set -euo pipefail
           if [ -z "${BASE:-}" ]; then
             # Manual dispatch (no PR base): run every seam proof.
-            for k in audio quickjs assets texture fontmetrics; do
+            for k in audio quickjs assets fontmetrics; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -78,11 +88,15 @@ jobs:
           # Build-system / workflow changes can break any backend build -> run all.
           common='^CMakeLists\.txt$|^cmake/|^\.github/workflows/ci\.yml$'
           out() { if m "$common" || m "$2"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
+          # Each regex covers: (a) the seam interface header, (b) the backend
+          # implementation dirs, (c) the swap-test TU, and (d) the consumer
+          # subsystem files that drive the seam. Without (d) a refactor of a
+          # consuming subsystem would merge green without re-proving parity.
           out audio       '^runtime/sound/'
           out quickjs     '^runtime/script/'
-          out assets      '^runtime/io/(curl|s3)/|^runtime/io/tests/asset_resolver|^runtime/extract/AssetResolver\.hpp$'
-          out texture     '^runtime/io/(stb|wuffs)/|^runtime/io/tests/texture_decode|^runtime/extract/TextureResolver\.hpp$'
-          out fontmetrics '^runtime/io/(stbtt|freetype)/|^runtime/io/tests/font_metrics|^runtime/extract/FontMetrics\.hpp$'
+          out assets      '^runtime/io/(curl|s3)/|^runtime/io/tests/asset_resolver|^runtime/extract/AssetResolver\.hpp$|^runtime/parse/(X3DParse|X3DProtoResolver|JsonReader|ClassicVrmlReader|Vrml97Dialect)\.hpp$|^runtime/InlineExpand\.hpp$|^runtime/ext/(ExtResolver|ExternalGeometry)\.hpp$|^runtime/extract/TextureExtract\.hpp$'
+          # texture is unconditional — see texture-swap job below.
+          out fontmetrics '^runtime/io/(stbtt|freetype)/|^runtime/io/tests/font_metrics|^runtime/extract/FontMetrics\.hpp$|^runtime/extract/(TextLayout|TextExtract|MeshBuilder|RenderItem)\.hpp$'
 
   python:
     name: pytest (unit + golden tree)
@@ -306,12 +320,15 @@ jobs:
   # (PNG/BMP/GIF/TGA) decoded through stb AND wuffs must yield BYTE-EQUAL RGBA,
   # plus Failed-parity on corrupt input. Unlike the AssetResolver gate this needs
   # NO vcpkg, NO docker/minio, NO FetchContent — both decoders are vendored, so
-  # the gate is a sub-minute apt + scoped build. On every PR, so a future change
-  # that breaks decode parity fails the merge.
+  # the gate is a sub-minute apt + scoped build.
+  #
+  # UNCONDITIONAL on every PR (no `needs: changes`, no path filter). Texture
+  # decode parity is the closest thing the SDK has to a byte-exact rendering
+  # guarantee — the dual-backend comparison catches lossy decode regressions a
+  # path-gated run would silently miss if the change happened outside the
+  # texture code. Vendored + hermetic keeps the cost under ~2 min per PR.
   texture-swap:
     name: TextureResolver decode seam swap-test
-    needs: changes
-    if: needs.changes.outputs.texture == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
