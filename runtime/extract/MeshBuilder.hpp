@@ -68,6 +68,7 @@
 #include "AssetResolver.hpp"  // AssetResolver (binary-geometry seam)
 #include "FontMetrics.hpp"   // T-TEXT: font-metrics seam (Text branch)
 #include "GeometryBounds.hpp" // geombounds::getField/getNode
+#include "NurbsEval.hpp"
 #include "PackedMesh.hpp"     // PackedMesh (Phase 1 binary geometry)
 #include "RecursionLimits.hpp" // #21: kMaxGraphWalkVisits (walk budget default)
 #include "RenderItem.hpp"     // MeshData
@@ -1261,7 +1262,9 @@ inline bool recognizedGeometryType(const std::string &t) {
       t == "IndexedQuadSet" || t == "TriangleFanSet" || t == "TriangleStripSet" ||
       t == "QuadSet" ||
       // B4 line/point sets (Topology::Lines / Topology::Points; always unlit)
-      t == "IndexedLineSet" || t == "LineSet" || t == "PointSet";
+      t == "IndexedLineSet" || t == "LineSet" || t == "PointSet" ||
+      // NURBS (T5): curve -> Lines, patch surface -> Triangles
+      t == "NurbsCurve" || t == "NurbsPatchSurface";
 }
 
 // buildLocalMesh — extract LOCAL-frame triangle geometry from `geom`.
@@ -1294,6 +1297,72 @@ inline MeshData buildLocalMesh(const X3DNode *geom,
   // ccw / solid carried verbatim (X3DComposedGeometryNode defaults true).
   mesh.ccw = geombounds::getField<SFBool>(*geom, "ccw", true);
   mesh.solid = geombounds::getField<SFBool>(*geom, "solid", true);
+
+  if (t == "NurbsCurve") {
+    auto cpNode = geombounds::getNode(*geom, "controlPoint");
+    if (!cpNode) return mesh;                       // recognized, empty
+    nurbs::CurveDef c;
+    c.cp     = geombounds::getPointsLenient(*cpNode, "point");
+    c.w      = geombounds::getField<std::vector<double>>(*geom, "weight", {});
+    c.knot   = geombounds::getField<std::vector<double>>(*geom, "knot", {});
+    c.order  = geombounds::getField<SFInt32>(*geom, "order", 3);
+    c.closed = geombounds::getField<SFBool>(*geom, "closed", false);
+    if ((int)c.cp.size() < c.order) return mesh;    // recognized, empty
+    int segs = nurbs::tessellationToSegments(
+        geombounds::getField<SFInt32>(*geom, "tessellation", 0), (int)c.cp.size());
+    auto pts = nurbs::tessellateCurve(c, segs);
+    if (pts.size() < 2) return mesh;
+    for (std::size_t k = 0; k + 1 < pts.size(); ++k) {
+      mesh.positions.push_back(pts[k]);
+      mesh.positions.push_back(pts[k + 1]);
+    }
+    mesh.indices.resize(mesh.positions.size());
+    for (std::uint32_t i = 0; i < mesh.indices.size(); ++i) mesh.indices[i] = i;
+    mesh.topology = Topology::Lines;
+    mesh.solid = false;
+    return mesh;
+  }
+
+  if (t == "NurbsPatchSurface") {
+    auto cpNode = geombounds::getNode(*geom, "controlPoint");
+    if (!cpNode) return mesh;
+    nurbs::SurfaceDef s;
+    s.cp      = geombounds::getPointsLenient(*cpNode, "point");
+    s.w       = geombounds::getField<std::vector<double>>(*geom, "weight", {});
+    s.uKnot   = geombounds::getField<std::vector<double>>(*geom, "uKnot", {});
+    s.vKnot   = geombounds::getField<std::vector<double>>(*geom, "vKnot", {});
+    s.uDim    = geombounds::getField<SFInt32>(*geom, "uDimension", 0);
+    s.vDim    = geombounds::getField<SFInt32>(*geom, "vDimension", 0);
+    s.uOrder  = geombounds::getField<SFInt32>(*geom, "uOrder", 3);
+    s.vOrder  = geombounds::getField<SFInt32>(*geom, "vOrder", 3);
+    s.uClosed = geombounds::getField<SFBool>(*geom, "uClosed", false);
+    s.vClosed = geombounds::getField<SFBool>(*geom, "vClosed", false);
+    if (s.uDim < s.uOrder || s.vDim < s.vOrder ||
+        (int)s.cp.size() < s.uDim * s.vDim) return mesh;   // recognized, empty
+    int uSeg = nurbs::tessellationToSegments(
+        geombounds::getField<SFInt32>(*geom, "uTessellation", 0), s.uDim);
+    int vSeg = nurbs::tessellationToSegments(
+        geombounds::getField<SFInt32>(*geom, "vTessellation", 0), s.vDim);
+    auto grid = nurbs::tessellateSurface(s, uSeg, vSeg);
+    if (grid.empty()) return mesh;
+    int gw = uSeg + 1;
+    for (int j = 0; j < vSeg; ++j)
+      for (int i = 0; i < uSeg; ++i) {
+        const nurbs::SurfaceSample* quad[6] = {
+            &grid[j*gw + i],         &grid[j*gw + (i+1)],     &grid[(j+1)*gw + (i+1)],
+            &grid[j*gw + i],         &grid[(j+1)*gw + (i+1)], &grid[(j+1)*gw + i] };
+        for (auto* v : quad) {
+          mesh.positions.push_back(v->p);
+          mesh.normals.push_back(v->n);
+          mesh.texcoords.push_back(v->uv);
+        }
+      }
+    mesh.indices.resize(mesh.positions.size());
+    for (std::uint32_t k = 0; k < mesh.indices.size(); ++k) mesh.indices[k] = k;
+    mesh.topology = Topology::Triangles;
+    mesh.hasNormals = true;
+    return mesh;   // mesh.solid was carried from getField at the top
+  }
 
   // T-TEXT: Text carries NO coord node — its glyph-quad mesh is synthesized from
   // the §15 layout engine + the embedder's FontMetrics seam (held on opt). The

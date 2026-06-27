@@ -1340,14 +1340,24 @@
   summary: "3D textures have zero extraction — yield no TextureRef (white fallback)."
   note: "runtime/ references X3DTexture3DNode subtypes only in generated bindings; MaterialSystem/SceneExtractor texture dispatch does not recognise them, so Appearance.texture with a 3D texture renders white with no error. Blocked on 3D-texture sampling support in the render seam. (sweep 2026-06-25)"
 - id: NRB-1
-  nodes: [NurbsCurve, NurbsPatchSurface, NurbsSweptSurface, NurbsSwungSurface, NurbsTrimmedSurface]
+  nodes: [NurbsCurve, NurbsPatchSurface]
+  component: NURBS
+  clause: "27.4"
+  severity: major
+  status: fixed
+  commit: 5ddbe5d
+  summary: "NurbsCurve → Lines and NurbsPatchSurface → Triangles now tessellate in extract."
+  note: "Resolved for curve + patch by the first-party NURBS math unit runtime/extract/NurbsEval.hpp (Cox–de Boor + rational eval + analytic normals + periodic closed/uClosed/vClosed handling), wired into two MeshBuilder arms; recognizedGeometryType() now returns true for both. Clamped-uniform default knots, control-point convex-hull bounds. The still-deferred trimmed/swept/swung surfaces move to NRB-3. See ADR-0040. (NURBS curve+patch wave 2026-06-27)"
+- id: NRB-3
+  nodes: [NurbsSweptSurface, NurbsSwungSurface, NurbsTrimmedSurface]
   interfaces: [X3DNurbsSurfaceGeometryNode]
   component: NURBS
   clause: "27.4"
   severity: major
   status: deferred
-  summary: "NURBS geometry nodes absent from recognizedGeometryType() — extract inert."
-  note: "runtime/extract/MeshBuilder.hpp:1239-1252 omits all NURBS surfaces; external_geom_seam_test.cpp confirms NurbsPatchSurface → recognized=false. Blocked on a NURBS tessellation subsystem. (sweep 2026-06-25)"
+  behaves: inert
+  summary: "Trimmed/swept/swung NURBS surfaces still absent from recognizedGeometryType() — extract inert."
+  note: "The curve + patch slice shipped first-party (NRB-1, ADR-0040). NurbsTrimmedSurface/NurbsSweptSurface/NurbsSwungSurface remain unrecognized: trimmed surfaces need 2D contour-loop clipping and swept/swung need profile-sweep eval — both follow-up cards. They continue to route through MeshBuildOptions::externalGeometryResolver (the unrecognized-geometry fallback) and are the canonical unrecognized specimen in external_geom_seam_test.cpp + scene_extractor_audit_test.cpp. (NURBS curve+patch wave 2026-06-27)"
 - id: NRB-2
   nodes: [NurbsOrientationInterpolator, NurbsPositionInterpolator, NurbsSurfaceInterpolator]
   component: NURBS

@@ -27,6 +27,7 @@ engineering / planning deferrals in the
 | Picking engine | ray cast + closest hit; exact for Sphere/Box/Cone/Cylinder + indexed/triangle meshes; AABB proxy for the long tail |
 | Extraction → render feed | full snapshot + incremental delta; meshes, materials, lights (scoped), camera, background, scene bounds |
 | Mesh primitives + sets | Box/Sphere/Cone/Cylinder, IFS/ITS/TriangleSet/strip/fan, ElevationGrid, Extrusion, IndexedLineSet/LineSet/PointSet. **Caveat:** ElevationGrid/GeoElevationGrid use auto flat normals only — authored `color`/`normal` (and `colorPerVertex`/`normalPerVertex`) are dropped (EXT-001); the 8 §14 2D primitives are not extracted (G2D-1, see deferred) |
+| NURBS curve + patch | `NurbsCurve` → line mesh, `NurbsPatchSurface` → triangle mesh with analytic normals + implicit `(u,v)` texcoords, via the first-party I/O-free `runtime/extract/NurbsEval.hpp` (Cox–de Boor + rational eval; full periodic `closed`/`uClosed`/`vClosed`; clamped-uniform default knots; control-point convex-hull bounds; ADR-0040, closes NRB-1 for curve+patch). **Caveat:** trimmed/swept/swung surfaces, NURBS interpolators, authored `NurbsTextureCoordinate`, and double-precision CAD fidelity are deferred (NRB-2/NRB-3, see deferred) — they route through the `externalGeometryResolver` fallback |
 | Normals | flat + creaseAngle smoothing (lattice-adjacency) |
 | Texture coordinates | default per-primitive (§13), authored TextureCoordinate(Generator), TextureTransform |
 | Texture descriptors | `TextureRef` (url/repeat/sampler/texCoordMapping multi-UV), resolved RGBA via the `TextureResolver` seam; ORM channel-packing documented (MAT-007, MAT-008) |
@@ -51,7 +52,7 @@ breadth. Each is tracked as a card in the
 | EXPLORE mode; ANIMATE transition curve; MPEG-object LOOKAT | Not in the Core/Interchange minimum; spline curve + media-object seam have no corpus coverage. |
 | Pick-sensor nodes (Line/Point/Primitive/VolumePickSensor) | Read `pickingGeometry`/`pickTarget`, distinct from the pointer-device seam; no current consumer (the pick *engine* ships). |
 | Full / dynamic SAI (`createX3DFromString`, runtime node add/remove) | Dynamic structural mutation needs incremental re-indexing; no current consumer. |
-| NURBS geometry | Lowest-impact corpus slice. |
+| NURBS trimmed/swept/swung surfaces + interpolators | Curve + patch ship in v1 (see *In v1*, ADR-0040). The remaining NURBS surfaces (`NurbsTrimmedSurface`/`NurbsSweptSurface`/`NurbsSwungSurface`) need 2D contour-loop clipping or profile-sweep eval (NRB-3); the three NURBS interpolators (NRB-2) and authored `NurbsTextureCoordinate` are also deferred. Lowest-impact corpus slice. |
 | 2D geometry (Arc2D, ArcClose2D, Circle2D, Disk2D, Polyline2D, Polypoint2D, Rectangle2D, TriangleSet2D) | All 8 §14 Geometry2D nodes are absent from `recognizedGeometryType()` — extraction silently drops them (G2D-1). |
 | Geospatial (full projection) | Geo-accurate bounds/anchoring need the GEO coordinate projection; flat-fallback ships. |
 | Layering / Layout (per-layer binding + view volumes) | Needs binding stacks + view-dependent eval keyed by layer. |

@@ -87,5 +87,22 @@ TEST_CASE("geometry_bounds_test") {
   setF(geg, "height", std::any(MFDouble{0, 1, 2, 3, 4, 5}));
   Aabb gg = localGeometryBounds(geg.get());
   CHECK((feq(gg.max.x, 4) && feq(gg.max.z, 5) && feq(gg.max.y, 5)));
+
+  // NurbsCurve / NurbsPatchSurface: AABB over control points (convex hull).
+  {
+    auto cc = createX3DNode("Coordinate");
+    setF(cc, "point", std::any(std::vector<SFVec3f>{{-2,0,0},{0,5,0},{3,0,1}}));
+    auto nc = createX3DNode("NurbsCurve");
+    setF(nc, "controlPoint", std::any(std::shared_ptr<X3DNode>(cc)));
+    Aabb b = localGeometryBounds(nc.get());
+    CHECK((feq(b.min.x,-2) && feq(b.max.x,3) && feq(b.max.y,5) && feq(b.max.z,1)));
+
+    auto cs = createX3DNode("Coordinate");
+    setF(cs, "point", std::any(std::vector<SFVec3f>{{0,0,0},{1,0,0},{0,1,4}}));
+    auto np = createX3DNode("NurbsPatchSurface");
+    setF(np, "controlPoint", std::any(std::shared_ptr<X3DNode>(cs)));
+    Aabb p = localGeometryBounds(np.get());
+    CHECK((feq(p.min.x,0) && feq(p.max.x,1) && feq(p.max.y,1) && feq(p.max.z,4)));
+  }
   return;
 }
