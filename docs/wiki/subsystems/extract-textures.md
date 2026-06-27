@@ -122,7 +122,7 @@ RGBA8 pixels, bottom-left origin (GL convention). The SDK never calls this resol
 
 - [ADR-0015: Extraction Pull Per Path](../decisions/0015-extraction-pull-per-path.md)
 - Spec (v1-closure extraction design): `docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md`
-- Spec (T-TEX closure): `docs/superpowers/specs/2026-06-16-v1-closure-design.md`
+- Spec (T-TEX closure): `docs/superpowers/specs/2026-06-16-v1-closure-roadmap-design.md`
 - Spec (binary mesh/texture abstractions): `docs/superpowers/specs/2026-06-18-binary-mesh-texture-abstractions.md`
 - Conformance findings MAT-001 through MAT-005 (all closed): `docs/conformance/findings.yaml`
 - Conformance finding TXF-1 (deferred — spec-ambiguous UV transform order): `docs/conformance/findings.yaml`

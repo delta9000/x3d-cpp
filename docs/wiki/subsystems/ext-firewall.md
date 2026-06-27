@@ -114,6 +114,8 @@ All ext tests are compiled and registered only inside the `if(X3D_CPP_BUILD_EXT)
 
 - **`external_geometry_e2e_test`** (`runtime/ext/tests/external_geometry_e2e_test.cpp`) — Round 2 lazy materialization proof: builds a `Group → Shape → ExternalGeometry(url="m.stl")` scene programmatically, wires `makeExternalGeometryResolver` with a counting stub that returns a known two-triangle binary STL, runs `SceneExtractor::fullSnapshot()`, and asserts: (1) PACKED — one `RenderItem` with `geometry_ext.kind == Packed`, `vertex_count == 6`, and the known v0 position `(1,2,3)`; (2) CACHE — a second extract reuses the cached `PackedMesh` and the stub byte-provider was called exactly once; (3) PENDING — an unresolvable URL results in no `RenderItem` emitted, no crash.
 
+- Two further ext-gated tests round out the suite: **`x3d_stl_write_test`** (binary-STL write path) and **`x3d_extract_oracle_test`** (differential extraction oracle), both in `runtime/ext/tests/`.
+
 ## Related specs and ADRs
 
 - [ADR-0001: External-Code Firewall](../decisions/0001-ext-firewall.md) — the rationale, four-layer firewall design, trade-offs, and CMake target structure

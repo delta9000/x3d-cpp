@@ -160,7 +160,7 @@ git commit -m "chore(gate): accept new baseline divergences — <reason>"
 `cli-gate-baseline` runs both harnesses with `--write-baseline`, overwriting the committed
 TSVs. The commit locks the new allowed set as the regression floor.
 
-**Generating fresh X3DJSAIL golden fixtures** (requires JDK 25 and the corpus archive):
+**Generating fresh X3DJSAIL golden fixtures** (requires a JDK + the corpus archive; `canon-golden-gen` specifically needs JDK 25):
 
 ```bash
 mise run cli-golden-gen    # validate verdicts via X3DJSAIL -validate
