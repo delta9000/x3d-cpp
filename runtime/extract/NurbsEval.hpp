@@ -263,5 +263,11 @@ inline std::vector<SurfaceSample> tessellateSurface(const SurfaceDef& in,
   return out;
 }
 
+// X3D tessellation field -> segment count. >0: that many; <0: |t|*numCP; 0: 2*numCP.
+inline int tessellationToSegments(int tess, int numCP) {
+  int segs = tess > 0 ? tess : (tess < 0 ? (-tess) * numCP : 2 * numCP);
+  return segs < 1 ? 1 : segs;
+}
+
 } // namespace x3d::runtime::extract::nurbs
 #endif

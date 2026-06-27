@@ -2000,7 +2000,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_ext002_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/shader_binding_plan_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/castshadow_extract_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/nurbs_eval_test.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/nurbs_eval_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_test.cpp")
     target_link_libraries(x3d_extract_tests PRIVATE x3d_cpp::sdk)
     target_include_directories(x3d_extract_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
