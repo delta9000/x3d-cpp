@@ -5,12 +5,22 @@
     {
       "name": "dev",
       "displayName": "Dev (Ninja + ccache, unoptimized)",
-      "description": "Fast iteration: Ninja scheduling, ccache object reuse, no -O (compile-test/behavior suite needs neither optimization nor NDEBUG).",
+      "description": "Fast iteration: Ninja scheduling, ccache object reuse, no -O (compile-test/behavior suite needs neither optimization nor NDEBUG). Per-header isolation checks OFF — the ~800 per-header ctests are the slow part of a cold run; use the `ci` preset for the full gate.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "X3D_CPP_PER_HEADER_CHECKS": "OFF"
+      }
+    },
+    {
+      "name": "ci",
+      "displayName": "CI (mirrors the GitHub Actions cpp job)",
+      "description": "Local mirror of the GitHub Actions fast gate: per-header isolation checks ON (the ~800 per-header ctests), no preset-specific cache overrides otherwise. Use `mise run build-ci` to drive the same gate locally before pushing.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-ci",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     }
   ],
@@ -18,12 +28,22 @@
     {
       "name": "dev",
       "configurePreset": "dev"
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci"
     }
   ],
   "testPresets": [
     {
       "name": "dev",
       "configurePreset": "dev",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error", "stopOnFailure": false }
     }

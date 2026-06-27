@@ -43,6 +43,30 @@ The preset is intentionally unoptimized — asserts are not disabled, NDEBUG is 
 the test suite does not depend on any optimization flag. That is correct for the project's
 correctness-first posture.
 
+## The `ci` preset (local mirror of the GitHub Actions gate)
+
+`CMakePresets.json` defines a second preset, `ci`, that mirrors what the
+[GitHub Actions workflow](../../../../.github/workflows/ci.yml) `cpp` job does —
+per-header isolation checks **ON** (the ~800 per-header ctests), no other overrides:
+
+| Property | Value |
+|---|---|
+| Generator | Ninja |
+| Build directory | `build-ci/` (separate from `build/` so the dev preset's warm cache stays warm) |
+| `X3D_CPP_PER_HEADER_CHECKS` | default = `ON` |
+| Build type | None |
+
+Use it before pushing to make sure the local pipeline matches the merge gate:
+
+```bash
+mise run build-ci        # configure + build + ctest with per-header checks ON
+# or
+cmake --preset ci && cmake --build --preset ci && ctest --preset ci -j "$(nproc)"
+```
+
+`mise run ci` (the full local pipeline) depends on `build-ci` rather than `build`, so
+running `mise run ci` is the same gate as a PR push.
+
 ---
 
 ## `mise run build` — the standard local workflow
@@ -65,6 +89,9 @@ ctest --preset dev -j "$(nproc)"
 3. **Test** — runs all ctests in parallel across all logical cores. With `X3D_CPP_PER_HEADER_CHECKS`
    off, the dev preset runs the behavior/integration suite only (not the ~800 per-header
    isolation tests).
+
+For the same gate the merge uses (per-header checks ON), use `mise run build-ci` or
+`mise run ci` instead.
 
 ---
 
@@ -193,7 +220,8 @@ ctest --preset dev -j "$(nproc)"
 
 | Task | What it does |
 |---|---|
-| `mise run build` | Configure + build + ctest (behavior suite). The standard local workflow. |
+| `mise run build` | Configure + build + ctest (behavior suite). The standard local workflow. Uses the `dev` preset (per-header checks OFF, fast). |
+| `mise run build-ci` | Same as `build` but uses the `ci` preset (per-header isolation checks ON, mirrors the GitHub Actions gate). Use before pushing. |
 | `mise run gen` | Re-run the Python generator: `uv run x3d-cpp-gen --out generated_cpp_bindings`. Use this after changing a template or emitter. |
 | `mise run golden` | Golden-drift gate: regenerates to a temp dir and diffs `*.hpp`/`*.cpp` against the committed tree. Fails on any drift. |
 | `mise run test` | Run the Python test suite (`uv run pytest`). Depends on `sync`. |

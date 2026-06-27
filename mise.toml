@@ -38,11 +38,23 @@ depends = ["sync"]
 run = "scripts/check_golden.sh"
 
 [tasks.build]
-description = "Configure, build, and ctest the C++ side (Ninja + ccache, parallel ctest)."
+description = "Configure, build, and ctest the C++ side (Ninja + ccache, parallel ctest) — dev preset (per-header checks OFF, fast)."
 run = """
 cmake --preset dev
 cmake --build --preset dev
 ctest --preset dev -j "$(nproc)"
+"""
+
+# build-ci: same as `build` but uses the `ci` CMake preset (per-header isolation
+# checks ON, mirrors the GitHub Actions fast gate). Used by `mise run ci` so the
+# local pipeline doesn't run a weaker gate than the merge. Separate build dir
+# (build-ci/) so the dev preset's build/ cache stays warm for fast iteration.
+[tasks.build-ci]
+description = "Configure, build, and ctest the C++ side using the `ci` preset (mirrors GitHub Actions: per-header isolation checks ON)."
+run = """
+cmake --preset ci
+cmake --build --preset ci
+ctest --preset ci -j "$(nproc)"
 """
 
 [tasks.poc]
@@ -132,8 +144,8 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 """
 
 [tasks.ci]
-description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest, cli differential regression gate."
-depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build", "cli-gate-regression"]
+description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest (ci preset — per-header checks ON, mirrors GitHub Actions), cli differential regression gate."
+depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression"]
 
 [tasks.coverage-gate]
 description = "ADR coverage gate: cross-check docs/wiki/decisions/*.md against the Decisions table in coverage.md (no file unrowed, no row dangling, contiguous numbering)."
