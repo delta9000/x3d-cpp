@@ -256,18 +256,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/vcpkg/archives
-          # Encode the dep set in the key so it self-refreshes when the deps
-          # change (a fixed key is immutable — it would never pick up a new
-          # build). The prefix restore-keys still warm-restores the unchanged
-          # archives (openssl/curl/aws-c-*/zlib), so only changed ports rebuild.
-          # Bump alongside the `vcpkg install` line below.
-          key: vcpkg-${{ runner.os }}-curl-aws-sdk-cpp-core-s3
+          # Encode the manifest baseline in the key so it self-refreshes when the
+          # baseline (or declared deps) change (a fixed key is immutable — it would
+          # never pick up a new build). The prefix restore-keys still warm-restore
+          # the unchanged archives (openssl/curl/aws-c-*/zlib), so only changed
+          # ports rebuild. Bump alongside the vcpkg.json baseline.
+          key: vcpkg-${{ runner.os }}-manifest-01f602195983451bc83e72f4214af2cbc495aa94
           restore-keys: vcpkg-${{ runner.os }}-
-      - name: Install backend deps (libcurl + AWS C++ SDK S3) via vcpkg
-        # [core,s3]: the `core` pseudo-feature suppresses the aws-sdk-cpp port's
-        # default features (dynamodb, kinesis) which we don't use — building only
-        # the S3 client shortens the cold build.
-        run: '"$VCPKG_ROOT/vcpkg" install curl "aws-sdk-cpp[core,s3]" --triplet x64-linux'
+      - name: Install backend deps (vcpkg.json manifest: curl + aws-sdk-cpp)
+        # Manifest mode (vcpkg.json in repo root, builtin-baseline pinned) installs
+        # exactly the ports declared for this job — for the assetresolver swap,
+        # that's curl and aws-sdk-cpp[core,s3]. The `[core,s3]` features on
+        # aws-sdk-cpp suppress unused sub-clients (dynamodb, kinesis) and keep the
+        # cold build tight.
+        run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
       - name: ccache cache
         uses: actions/cache@v4
         with:
@@ -384,11 +386,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/vcpkg/archives
-          # Bump alongside the `vcpkg install` line below.
-          key: vcpkg-${{ runner.os }}-freetype
+          # Encode the manifest baseline in the key so it self-refreshes when the
+          # baseline (or declared deps) change. Same key family as the
+          # assetresolver job so a single archive cache serves both.
+          key: vcpkg-${{ runner.os }}-manifest-01f602195983451bc83e72f4214af2cbc495aa94
           restore-keys: vcpkg-${{ runner.os }}-
-      - name: Install FreeType via vcpkg
-        run: '"$VCPKG_ROOT/vcpkg" install freetype --triplet x64-linux'
+      - name: Install backend deps (vcpkg.json manifest: freetype)
+        # Manifest mode installs the declared port for this job — for the
+        # fontmetrics swap, that's freetype.
+        run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
       - name: ccache cache
         uses: actions/cache@v4
         with:

@@ -1,0 +1,14 @@
+{
+  "name": "x3d-cpp",
+  "version-string": "0.1.0",
+  "builtin-baseline": "01f602195983451bc83e72f4214af2cbc495aa94",
+  "description": "Headless, renderer-agnostic X3D domain-runtime SDK. Pinned vcpkg baseline (2024.05.24) so CI installs deterministic ports for the AssetResolver backend swap-test (libcurl + AWS S3 SDK) and the FontMetrics swap-test (FreeType).",
+  "dependencies": [
+    "curl",
+    "freetype",
+    {
+      "name": "aws-sdk-cpp",
+      "features": ["core", "s3"]
+    }
+  ]
+}

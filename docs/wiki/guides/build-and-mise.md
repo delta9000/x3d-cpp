@@ -313,3 +313,31 @@ and the ccache hit rate for the core build if they shared a directory.
 ## See also
 
 - [Gate System](gate-system.md) — the four CI gates (golden / conformance / CLI regression / docs) in detail
+
+---
+
+## vcpkg manifest (third-party backend deps)
+
+The repo's third-party backend deps for the seam swap-tests (`libcurl` for the
+AssetResolver Backend A, `aws-sdk-cpp[core,s3]` for Backend B, `freetype` for
+FontMetrics Backend B) come from [vcpkg](https://github.com/microsoft/vcpkg) in CI.
+The dep set and the vcpkg port-catalog pin live in a single source of truth:
+
+```
+vcpkg.json    # name, version-string, builtin-baseline, dependencies[]
+```
+
+The `builtin-baseline` is a vcpkg commit SHA — when bumped (and the cache key in
+`.github/workflows/ci.yml` is bumped alongside it), `vcpkg install` resolves every
+declared port to the exact versions from that catalog commit. CI uses manifest mode
+(`vcpkg install --triplet x64-linux` with no port args) so the dep list in the
+manifest is the single source of truth — no per-job duplication.
+
+For local swap-test runs you still need vcpkg on `PATH` and the manifest in the cwd:
+```bash
+cmake -S . -B build -G Ninja \
+    -DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON \
+    -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+```
+The CMake configure automatically reads `vcpkg.json` (via the toolchain file) and
+links the declared ports.
