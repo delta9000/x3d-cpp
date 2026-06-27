@@ -198,8 +198,8 @@ class CppHeaderBackend:
     def _format(output_files: List[str], clang_format: Optional[str]):
         """Run clang-format once over all emitted files, if requested.
 
-        If clang-format is unavailable, print a warning once and skip formatting
-        for the entire batch so generation can still complete.
+        If clang-format is unavailable, print a warning and skip formatting for
+        the entire batch so generation can still complete.
         """
         if not clang_format or not output_files:
             return clang_format

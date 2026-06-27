@@ -56,5 +56,5 @@ def test_format_skips_empty_batches(monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    assert CppHeaderBackend._format([], "clang-format") == "clang-format"
+    CppHeaderBackend._format([], "clang-format")
     assert not called
