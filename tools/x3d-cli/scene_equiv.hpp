@@ -39,6 +39,9 @@
 
 namespace x3d_cli {
 
+using namespace x3d::core;    // X3DFieldType, SFVec3f, SFBool, etc.
+using x3d::nodes::X3DNode;   // complete node base
+
 namespace detail {
 
 // Tolerance for floating-point comparisons.

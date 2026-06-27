@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
 

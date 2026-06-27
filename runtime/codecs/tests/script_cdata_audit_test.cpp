@@ -22,6 +22,7 @@
 #include <string>
 
 using namespace x3d;
+using namespace x3d::nodes;
 
 namespace {
 

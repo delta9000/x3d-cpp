@@ -54,6 +54,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
  * @brief Drives the §16 Sound audio graph through an abstract AudioBackend.
  * @details attach() walks an AudioDestination's `children` graph into backend
@@ -90,7 +92,7 @@ public:
     (void)ctx;
     if (!backend_) return;
 
-    if (auto *dest = dynamic_cast<AudioDestination *>(node)) {
+    if (auto *dest = dynamic_cast<x3d::nodes::AudioDestination *>(node)) {
       NodeParams dp;
       dp.maxChannelCount = dest->getMaxChannelCount();
       NodeHandle destHandle = backend_->createNode(NodeKind::Destination, dp);
@@ -102,7 +104,7 @@ public:
       return;
     }
 
-    if (auto *ss = dynamic_cast<SpatialSound *>(node)) {
+    if (auto *ss = dynamic_cast<x3d::nodes::SpatialSound *>(node)) {
       // SpatialSound: create a synthetic Destination + Panner, wire the
       // SpatialSound's audio children through the Panner.
       NodeParams dp;
@@ -131,7 +133,7 @@ public:
    *          SoundSystem does NOT take ownership — the listener's lifetime must
    *          exceed the SoundSystem's.
    */
-  void setListener(ListenerPointSource *listener) { listener_ = listener; }
+  void setListener(x3d::nodes::ListenerPointSource *listener) { listener_ = listener; }
 
   /**
    * @brief Render one AudioDestination's graph to a stereo interleaved buffer.
@@ -193,14 +195,14 @@ private:
     if (!node) return kInvalidNodeHandle;
 
     NodeHandle handle = kInvalidNodeHandle;
-    if (auto *osc = dynamic_cast<OscillatorSource *>(node)) {
+    if (auto *osc = dynamic_cast<x3d::nodes::OscillatorSource *>(node)) {
       NodeParams p;
       p.frequency = osc->getFrequency();
       p.detune = osc->getDetune();
       p.gain = osc->getGain();
       p.waveform = Waveform::Sine;  // §16 OscillatorSource has no authored type
       handle = backend_->createNode(NodeKind::Oscillator, p);
-    } else if (auto *biq = dynamic_cast<BiquadFilter *>(node)) {
+    } else if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) {
       NodeParams p;
       p.frequency = biq->getFrequency();
       p.q = biq->getQualityFactor();
@@ -208,7 +210,7 @@ private:
       p.gain = biq->getGain();
       p.filterType = mapFilterType(biq->getType());
       handle = backend_->createNode(NodeKind::Biquad, p);
-    } else if (auto *gain = dynamic_cast<Gain *>(node)) {
+    } else if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) {
       NodeParams p;
       p.gain = gain->getGain();
       handle = backend_->createNode(NodeKind::Gain, p);
@@ -237,24 +239,24 @@ private:
 
   /** @brief A §16 node's `children` (its INPUTS), empty for an OscillatorSource. */
   static MFNode childrenOf(X3DNode *node) {
-    if (auto *biq = dynamic_cast<BiquadFilter *>(node)) return biq->getChildren();
-    if (auto *gain = dynamic_cast<Gain *>(node)) return gain->getChildren();
-    if (auto *ss = dynamic_cast<SpatialSound *>(node)) return ss->getChildren();
+    if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) return biq->getChildren();
+    if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) return gain->getChildren();
+    if (auto *ss = dynamic_cast<x3d::nodes::SpatialSound *>(node)) return ss->getChildren();
     return MFNode{};  // OscillatorSource is a leaf source (no inputs)
   }
 
   /** @brief Push a node's current animatable fields to the backend (per tick). */
   void pushParams(X3DNode *node, NodeHandle handle) {
-    if (auto *osc = dynamic_cast<OscillatorSource *>(node)) {
+    if (auto *osc = dynamic_cast<x3d::nodes::OscillatorSource *>(node)) {
       backend_->setParam(handle, Param::Frequency, osc->getFrequency());
       backend_->setParam(handle, Param::Detune, osc->getDetune());
       backend_->setParam(handle, Param::Gain, osc->getGain());
-    } else if (auto *biq = dynamic_cast<BiquadFilter *>(node)) {
+    } else if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) {
       backend_->setParam(handle, Param::Frequency, biq->getFrequency());
       backend_->setParam(handle, Param::Q, biq->getQualityFactor());
       backend_->setParam(handle, Param::Detune, biq->getDetune());
       backend_->setParam(handle, Param::Gain, biq->getGain());
-    } else if (auto *gain = dynamic_cast<Gain *>(node)) {
+    } else if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) {
       backend_->setParam(handle, Param::Gain, gain->getGain());
     }
     // AudioDestination has no per-tick animatable scalar in v1.
@@ -295,8 +297,8 @@ private:
    *          NodeParams. All spatial DSP (distance model, azimuth, pan law)
    *          is performed INSIDE the backend from these positions.
    */
-  static NodeParams buildPannerParams(SpatialSound *ss,
-                                      ListenerPointSource *listener) {
+  static NodeParams buildPannerParams(x3d::nodes::SpatialSound *ss,
+                                      x3d::nodes::ListenerPointSource *listener) {
     NodeParams p;
 
     // Source position: SpatialSound.location (SFVec3f).
@@ -376,7 +378,7 @@ private:
   std::vector<NodeHandle> destinations_;
   // Optional listener (null if scene has none). Resolved to forward/up vectors
   // in buildPannerParams (plumbing only — no spatial DSP here).
-  ListenerPointSource *listener_ = nullptr;
+  x3d::nodes::ListenerPointSource *listener_ = nullptr;
 };
 
 } // namespace x3d::runtime

@@ -52,6 +52,8 @@
 #include <string>
 
 using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
 using x3d::codec::Encoding;
 using x3d::codec::Vrml97Reader;
 

@@ -17,6 +17,7 @@
 #include <variant>
 
 namespace x3d::runtime::extract {
+using namespace x3d::core;
 
 // Discriminated union covering the scalar + matrix SF field types used in
 // author-shader <field> declarations (ComposedShader, Script, etc.).

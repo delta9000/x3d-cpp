@@ -33,6 +33,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 // AUD-MEM-1: validate that a boxed std::any value matches its declared X3DFieldType.
 inline bool anyMatchesFieldType(const std::any &value, X3DFieldType type) {
   switch (type) {

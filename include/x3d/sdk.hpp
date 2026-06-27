@@ -73,8 +73,8 @@ using x3d::runtime::Component;           ///< { name, level }
 using x3d::runtime::Unit;                ///< { category, name, conversionFactor }
 using x3d::runtime::Meta;                ///< { name, content }
 using x3d::runtime::Route;               ///< { fromNode, fromField, toNode, toField } (DEF-name strings)
-using ::X3DNode;                         ///< generated node base (fields(), get/set, getDEF/setDEF) — global ns
-using ::RangeDiagnostic;                 ///< one out-of-range value kept by the lenient read path — global ns
+using x3d::nodes::X3DNode;               ///< generated node base (fields(), get/set, getDEF/setDEF) — x3d::nodes
+using x3d::core::RangeDiagnostic;        ///< one out-of-range value kept by the lenient read path — x3d::core
 using x3d::runtime::ProtoWarning;        ///< a PROTO/EXTERNPROTO expansion diagnostic
 
 // Serialization — reflection-driven writers (writeDocument(doc) -> std::string).

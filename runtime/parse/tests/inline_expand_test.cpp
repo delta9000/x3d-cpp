@@ -9,6 +9,7 @@
 #include <memory>
 
 using namespace x3d::runtime;
+using namespace x3d::core;
 
 // Helper: build a Scene whose single root is a DEF'd Shape (stands in for a
 // loaded child asset). Returns the scene; registers the Shape under DEF "Geo".

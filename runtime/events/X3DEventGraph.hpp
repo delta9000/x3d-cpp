@@ -12,6 +12,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /// Resolve inputOutput field aliases per ISO/IEC 19775-1 §4.4.2.2.
 /// An inputOutput field named `xxx` can be referred to as `set_xxx` (input side)
 /// or `xxx_changed` (output side).  Returns the base name when the alias maps

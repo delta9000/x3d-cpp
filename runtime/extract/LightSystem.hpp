@@ -40,6 +40,7 @@
 #include <vector>
 
 namespace x3d::runtime::extract {
+using namespace x3d::core;
 
 class LightSystem {
 public:

@@ -13,6 +13,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 struct Mat4 {
   std::array<float, 16> m{}; // column-major; default zero
 

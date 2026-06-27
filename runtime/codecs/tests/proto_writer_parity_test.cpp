@@ -12,6 +12,8 @@
 #include <string>
 
 using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 // ---------------------------------------------------------------------------
 // Test: mixed scalar + node fieldValues must produce a SINGLE "fieldValue"

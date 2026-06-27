@@ -30,32 +30,34 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
+namespace xn = x3d::nodes;
 
 /// Build the full interpolator System set (single source of truth for the list).
 inline std::vector<std::shared_ptr<System>> makeInterpolatorSystems() {
   std::vector<std::shared_ptr<System>> systems;
   // Linear interpolators (§19.4.1-9).
-  systems.push_back(std::make_shared<InterpolatorSystem<ScalarInterpolator, float>>(
+  systems.push_back(std::make_shared<InterpolatorSystem<xn::ScalarInterpolator, float>>(
       [](const float &a, const float &b, float t) { return lerpf(a, b, t); }));
-  systems.push_back(std::make_shared<InterpolatorSystem<PositionInterpolator, SFVec3f>>(
+  systems.push_back(std::make_shared<InterpolatorSystem<xn::PositionInterpolator, SFVec3f>>(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); }));
-  systems.push_back(std::make_shared<InterpolatorSystem<PositionInterpolator2D, SFVec2f>>(
+  systems.push_back(std::make_shared<InterpolatorSystem<xn::PositionInterpolator2D, SFVec2f>>(
       [](const SFVec2f &a, const SFVec2f &b, float t) { return lerpVec2(a, b, t); }));
-  systems.push_back(std::make_shared<InterpolatorSystem<ColorInterpolator, SFColor>>(
+  systems.push_back(std::make_shared<InterpolatorSystem<xn::ColorInterpolator, SFColor>>(
       [](const SFColor &a, const SFColor &b, float t) { return lerpColorHsv(a, b, t); }));
-  systems.push_back(std::make_shared<InterpolatorSystem<OrientationInterpolator, SFRotation>>(
+  systems.push_back(std::make_shared<InterpolatorSystem<xn::OrientationInterpolator, SFRotation>>(
       [](const SFRotation &a, const SFRotation &b, float t) { return slerpRotation(a, b, t); }));
-  systems.push_back(std::make_shared<MultiInterpolatorSystem<CoordinateInterpolator, SFVec3f>>(
+  systems.push_back(std::make_shared<MultiInterpolatorSystem<xn::CoordinateInterpolator, SFVec3f>>(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); }));
-  systems.push_back(std::make_shared<MultiInterpolatorSystem<CoordinateInterpolator2D, SFVec2f>>(
+  systems.push_back(std::make_shared<MultiInterpolatorSystem<xn::CoordinateInterpolator2D, SFVec2f>>(
       [](const SFVec2f &a, const SFVec2f &b, float t) { return lerpVec2(a, b, t); }));
-  systems.push_back(std::make_shared<MultiInterpolatorSystem<NormalInterpolator, SFVec3f>>(
+  systems.push_back(std::make_shared<MultiInterpolatorSystem<xn::NormalInterpolator, SFVec3f>>(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return slerpNormal(a, b, t); }));
   // Non-linear interpolators (§19.2.4 Hermite spline, §19.4.13 Squad) + the
   // §19.4.4 EaseInEaseOut fraction modifier (INTERP-01).
-  systems.push_back(std::make_shared<SplineInterpolatorSystem<SplinePositionInterpolator, SFVec3f>>());
-  systems.push_back(std::make_shared<SplineInterpolatorSystem<SplinePositionInterpolator2D, SFVec2f>>());
-  systems.push_back(std::make_shared<SplineInterpolatorSystem<SplineScalarInterpolator, float>>());
+  systems.push_back(std::make_shared<SplineInterpolatorSystem<xn::SplinePositionInterpolator, SFVec3f>>());
+  systems.push_back(std::make_shared<SplineInterpolatorSystem<xn::SplinePositionInterpolator2D, SFVec2f>>());
+  systems.push_back(std::make_shared<SplineInterpolatorSystem<xn::SplineScalarInterpolator, float>>());
   systems.push_back(std::make_shared<SquadOrientationInterpolatorSystem>());
   systems.push_back(std::make_shared<EaseInEaseOutSystem>());
   return systems;

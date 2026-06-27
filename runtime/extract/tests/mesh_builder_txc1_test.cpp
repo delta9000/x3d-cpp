@@ -44,6 +44,8 @@
 
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 static constexpr float EPS = 1e-4f;
 static const float PI = 3.14159265358979323846f;

@@ -38,6 +38,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
  * @brief One rejected ROUTE plus a human-readable reason.
  * @details `index` is the position of the offending route in `Scene.routes`
@@ -387,8 +389,8 @@ inline void attachEventUtilities(Scene &scene, X3DExecutionContext &ctx) {
       std::make_shared<TimeTriggerSystem>(),
       std::make_shared<BooleanFilterSystem>(),
       std::make_shared<BooleanToggleSystem>(),
-      std::make_shared<SequencerSystem<BooleanSequencer, SFBool>>(),
-      std::make_shared<SequencerSystem<IntegerSequencer, SFInt32>>(),
+      std::make_shared<SequencerSystem<x3d::nodes::BooleanSequencer, SFBool>>(),
+      std::make_shared<SequencerSystem<x3d::nodes::IntegerSequencer, SFInt32>>(),
   };
   for (auto &sys : systems) {
     detail::forEachNode(scene, [&](X3DNode *n) { sys->attach(n, ctx); });

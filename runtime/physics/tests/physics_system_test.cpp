@@ -41,6 +41,8 @@
 #include <tuple>
 #include <utility>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 static const SFRotation kNoRot{0, 0, 1, 0};

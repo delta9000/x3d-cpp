@@ -13,7 +13,9 @@
 #include "doctest/doctest.h"
 #include <cmath>
 #include <memory>
+using namespace x3d::core;
 using namespace x3d::runtime;
+using namespace x3d::nodes;
 
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 

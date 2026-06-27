@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 TEST_CASE("cascade_observer_test") {
   auto a = createX3DNode("TimeSensor");

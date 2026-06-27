@@ -8,7 +8,7 @@
 #ifndef X3D_RUNTIME_PICK_SYSTEM_HPP
 #define X3D_RUNTIME_PICK_SYSTEM_HPP
 
-#include "x3d/nodes/Billboard.hpp"      // billboardLocalMatrix (§23.4.1, M2e)
+#include "Billboard.hpp"      // billboardLocalMatrix (§23.4.1, M2e)
 #include "BoundsSystem.hpp"
 #include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField, localGeometryBounds
@@ -32,6 +32,7 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 struct PickResult {
   bool hit = false;

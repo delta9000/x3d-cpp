@@ -64,6 +64,8 @@
 namespace fs = std::filesystem;
 namespace sdk = x3d::sdk;
 
+using namespace x3d::core;
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 static std::string toLower(std::string s) {
@@ -145,20 +147,20 @@ static bool walkCoordCheck(const X3DNode &node,
 
     const std::string typeName = node.nodeTypeName();
     if (typeName == "IndexedFaceSet") {
-        const auto *ifs = dynamic_cast<const IndexedFaceSet *>(&node);
+        const auto *ifs = dynamic_cast<const x3d::nodes::IndexedFaceSet *>(&node);
         if (ifs && ifs->getCoordIndex().empty()) {
             auto coordNode = ifs->getCoord();
             if (coordNode) {
-                const auto *coord = dynamic_cast<const Coordinate *>(coordNode.get());
+                const auto *coord = dynamic_cast<const x3d::nodes::Coordinate *>(coordNode.get());
                 if (coord && !coord->getPoint().empty()) { visited.erase(&node); return true; }
             }
         }
     } else if (typeName == "IndexedLineSet") {
-        const auto *ils = dynamic_cast<const IndexedLineSet *>(&node);
+        const auto *ils = dynamic_cast<const x3d::nodes::IndexedLineSet *>(&node);
         if (ils && ils->getCoordIndex().empty()) {
             auto coordNode = ils->getCoord();
             if (coordNode) {
-                const auto *coord = dynamic_cast<const Coordinate *>(coordNode.get());
+                const auto *coord = dynamic_cast<const x3d::nodes::Coordinate *>(coordNode.get());
                 if (coord && !coord->getPoint().empty()) { visited.erase(&node); return true; }
             }
         }

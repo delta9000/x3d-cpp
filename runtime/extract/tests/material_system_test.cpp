@@ -19,8 +19,10 @@
 #include <string>
 #include <vector>
 
+using namespace x3d::core;
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
+using namespace x3d::nodes;
 
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-5f; }
 

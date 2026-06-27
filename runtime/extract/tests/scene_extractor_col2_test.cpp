@@ -15,6 +15,8 @@
 #include <vector>
 
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
   for (auto &f : n->fields())

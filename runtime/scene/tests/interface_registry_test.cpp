@@ -5,6 +5,8 @@
 #include "doctest/doctest.h"
 #include <iostream>
 
+using namespace x3d::nodes;
+
 TEST_CASE("interface_registry_test") {
   // String-keyed queries.
   CHECK((X3DInterfaceRegistry::nodeImplements("TimeSensor",

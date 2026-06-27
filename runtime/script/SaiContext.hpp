@@ -33,9 +33,11 @@
 #include <stdexcept>
 #include <string>
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
+
+using namespace x3d::core;
 
 /**
  * @brief In-process SAI surface for one Script node's backend.
@@ -57,7 +59,7 @@ public:
    * @param name Browser name reported by getName() (e.g. "x3d-cpp-gen").
    * @param version Browser version reported by getVersion().
    */
-  SaiContext(X3DExecutionContext &ctx, Script &scriptNode, std::string name,
+  SaiContext(X3DExecutionContext &ctx, x3d::nodes::Script &scriptNode, std::string name,
              std::string version)
       : ctx_(ctx), script_(scriptNode), name_(std::move(name)),
         version_(std::move(version)) {}
@@ -153,7 +155,7 @@ public:
   const std::string &log() const { return log_; }
 
   /** @brief The owning Script node. */
-  Script &script() const { return script_; }
+  x3d::nodes::Script &script() const { return script_; }
 
   /** @brief The execution context this SAI acts on. */
   X3DExecutionContext &context() const { return ctx_; }
@@ -181,7 +183,7 @@ private:
   }
 
   X3DExecutionContext &ctx_;
-  Script &script_;
+  x3d::nodes::Script &script_;
   std::string name_;
   std::string version_;
   double frameRate_ = 0.0;

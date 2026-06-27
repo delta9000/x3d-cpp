@@ -15,6 +15,7 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 namespace geombounds {
 
 // Outcome of a reflection field read. Distinguishes a genuinely absent field

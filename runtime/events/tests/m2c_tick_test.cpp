@@ -9,6 +9,8 @@
 #include "doctest/doctest.h"
 #include <memory>
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
 static X3DBindableNode* bnd(const std::shared_ptr<X3DNode>& n) {
   return dynamic_cast<X3DBindableNode*>(n.get());
 }

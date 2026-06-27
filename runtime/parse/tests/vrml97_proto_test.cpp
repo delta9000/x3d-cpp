@@ -15,6 +15,8 @@
 #include <string>
 
 using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 static const FieldInfo *fieldByName(const X3DNode &n, const std::string &name) {
   for (const auto &f : n.fields()) if (f.x3dName == name) return &f;

@@ -29,13 +29,14 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 class KeyDeviceSensorSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     (void)ctx;
-    if (auto *k = dynamic_cast<KeySensor *>(node)) keySensors_.push_back(k);
-    else if (auto *s = dynamic_cast<StringSensor *>(node)) stringSensors_.push_back(s);
+    if (auto *k = dynamic_cast<x3d::nodes::KeySensor *>(node)) keySensors_.push_back(k);
+    else if (auto *s = dynamic_cast<x3d::nodes::StringSensor *>(node)) stringSensors_.push_back(s);
   }
 
   void update(double now, X3DExecutionContext &ctx) override {
@@ -50,7 +51,7 @@ public:
   }
 
 private:
-  static void driveKeySensor(KeySensor *k,
+  static void driveKeySensor(x3d::nodes::KeySensor *k,
                              const std::vector<KeyState::KeyEvent> &events,
                              X3DExecutionContext &ctx) {
     // Coalesce to one net event per output field per tick: a field reached by
@@ -78,7 +79,7 @@ private:
     if (isActive) ctx.postEvent(k, "isActive", std::any(SFBool{*isActive}));
   }
 
-  void driveStringSensor(StringSensor *s,
+  void driveStringSensor(x3d::nodes::StringSensor *s,
                          const std::vector<KeyState::KeyEvent> &events,
                          X3DExecutionContext &ctx) {
     auto &st = strings_[s];
@@ -123,9 +124,9 @@ private:
     bool active = false;
   };
 
-  std::vector<KeySensor *> keySensors_;
-  std::vector<StringSensor *> stringSensors_;
-  std::unordered_map<StringSensor *, StringState> strings_;
+  std::vector<x3d::nodes::KeySensor *> keySensors_;
+  std::vector<x3d::nodes::StringSensor *> stringSensors_;
+  std::unordered_map<x3d::nodes::StringSensor *, StringState> strings_;
 };
 
 } // namespace x3d::runtime

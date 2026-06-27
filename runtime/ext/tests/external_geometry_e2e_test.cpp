@@ -36,6 +36,8 @@
 #include <string>
 #include <vector>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
 using x3d::runtime::ext::ExternalGeometry;

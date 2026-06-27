@@ -7,6 +7,8 @@
 #include <any>
 #include "doctest/doctest.h"
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
 using x3d::codec::noopProtoResolver;
 
 static const FieldInfo *fieldByName(const X3DNode &n, const std::string &name) {

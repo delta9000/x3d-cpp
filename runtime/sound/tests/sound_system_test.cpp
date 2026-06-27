@@ -38,6 +38,8 @@
 #include <vector>
 
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
 using x3d::test::rms;
 using x3d::test::goertzel;
 

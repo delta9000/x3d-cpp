@@ -53,6 +53,8 @@ using x3d::codec::ClassicVrmlReader;
 using x3d::codec::Encoding;
 using x3d::codec::JsonReader;
 using x3d::codec::Vrml97Reader;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 namespace {
 

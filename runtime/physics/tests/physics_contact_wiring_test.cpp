@@ -19,6 +19,8 @@
 #include <cstdio>
 #include <memory>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 static int g_failures = 0;

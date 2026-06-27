@@ -30,7 +30,7 @@
 
 #include "FieldValueIO.hpp"   // parseValue, tokenize (x3d::codec)
 #include "VrmlTokenizer.hpp"  // VrmlTokenizer, VrmlToken
-#include "x3d/nodes/X3DNodeFactory.hpp" // X3DNodeFactory::create
+#include "x3d/nodes/X3DNodeFactory.hpp" // x3d::nodes::X3DNodeFactory::create
 #include "X3DRuntime.hpp"     // runtime::Scene
 
 #include <memory>
@@ -38,6 +38,7 @@
 #include <string_view>
 
 namespace x3d::codec::build {
+using namespace x3d::core;
 
 // ---------------------------------------------------------------------------
 // FieldInfo lookup helpers (lifted verbatim from XmlReader).
@@ -66,8 +67,8 @@ inline bool isNodeField(const FieldTable &table, std::string_view name) {
 
 /// Instantiate a node by type name. Returns null for an unknown type so the
 /// caller can skip it (consistent with XmlReader).
-inline std::shared_ptr<X3DNode> beginNode(std::string_view typeName) {
-  return X3DNodeFactory::create(std::string(typeName));
+inline std::shared_ptr<x3d::nodes::X3DNode> beginNode(std::string_view typeName) {
+  return x3d::nodes::X3DNodeFactory::create(std::string(typeName));
 }
 
 // ---------------------------------------------------------------------------
@@ -79,7 +80,7 @@ inline std::shared_ptr<X3DNode> beginNode(std::string_view typeName) {
 /// parseValue + set. Read-only (outputOnly/initializeOnly) fields and unknown
 /// names are silently skipped. DEF is handled here too (it is a normal SFString
 /// field on every node) so callers need no special case for it.
-inline void applyField(X3DNode &node, std::string_view x3dName,
+inline void applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
                        const std::string &wire) {
   const FieldInfo *f = findField(node.fields(), x3dName);
   if (!f)
@@ -109,8 +110,8 @@ inline void applyField(X3DNode &node, std::string_view x3dName,
 /// `slot` is the explicit containerField/field-name the syntax supplied (may be
 /// empty). SFNode sets; MFNode appends. When `scene` is supplied, the resolved
 /// field is recorded in authored order so round-trip writers preserve it.
-inline void attachChild(X3DNode &parent, std::string_view slot,
-                        const std::shared_ptr<X3DNode> &child,
+inline void attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,
+                        const std::shared_ptr<x3d::nodes::X3DNode> &child,
                         runtime::Scene *scene = nullptr) {
   const FieldTable &table = parent.fields();
   const FieldInfo *target = nullptr;
@@ -153,7 +154,7 @@ inline void attachChild(X3DNode &parent, std::string_view slot,
     target->set(parent, std::any(child));
   } else { // MFNode: append to the existing vector
     std::any cur = target->get(parent);
-    auto vec = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(cur);
+    auto vec = std::any_cast<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>>(cur);
     vec.push_back(child);
     target->set(parent, std::any(vec));
   }
@@ -169,7 +170,7 @@ inline void attachChild(X3DNode &parent, std::string_view slot,
 /// (e.g. HAnimHumanoid.skeleton holds the hierarchy, joints holds the USE).
 /// With no scene / no recorded order this is exactly declaration order.
 inline std::vector<const FieldInfo *>
-orderedChildFields(const X3DNode &node, const runtime::Scene *scene) {
+orderedChildFields(const x3d::nodes::X3DNode &node, const runtime::Scene *scene) {
   const FieldTable &table = node.fields();
   std::vector<const FieldInfo *> out;
   if (scene) {
@@ -206,14 +207,14 @@ orderedChildFields(const X3DNode &node, const runtime::Scene *scene) {
 /// called BEFORE recursing into the node's children, so a USE nested inside the
 /// subtree resolves to this same shared_ptr.
 inline void defineDef(runtime::Scene &scene, std::string_view def,
-                      const std::shared_ptr<X3DNode> &node) {
+                      const std::shared_ptr<x3d::nodes::X3DNode> &node) {
   if (!def.empty())
     scene.define(std::string(def), node);
 }
 
 /// Resolve a USE name to the shared node previously registered under that DEF,
 /// or null if unknown (tolerated; the caller skips).
-inline std::shared_ptr<X3DNode> resolveUse(runtime::Scene &scene,
+inline std::shared_ptr<x3d::nodes::X3DNode> resolveUse(runtime::Scene &scene,
                                            std::string_view name) {
   return scene.resolve(std::string(name));
 }

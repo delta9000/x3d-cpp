@@ -19,6 +19,7 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 /**
  * @brief X3D profile identifiers (the `profile` attribute of <X3D>).
@@ -110,7 +111,7 @@ public:
 // Scene member definitions that require the complete X3DNode type.
 // ---------------------------------------------------------------------------
 
-inline void Scene::addRootNode(std::shared_ptr<X3DNode> node) {
+inline void Scene::addRootNode(std::shared_ptr<x3d::nodes::X3DNode> node) {
   if (node) {
     const std::string def = node->getDEF();
     if (!def.empty()) {

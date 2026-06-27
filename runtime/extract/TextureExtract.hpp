@@ -47,13 +47,14 @@
 #include <vector>
 
 namespace x3d::runtime::extract {
+using namespace x3d::core;
 
 namespace texextract {
 
 // Read an SFEnum field as its X3D token string via FieldInfo::getEnumString, so
 // this stays decoupled from the generated enum-class type (same idiom as
 // matsys::getEnumToken). Returns dflt if absent / not an enum / unreadable.
-inline std::string enumToken(const X3DNode &n, const char *name,
+inline std::string enumToken(const x3d::nodes::X3DNode &n, const char *name,
                              const std::string &dflt) {
   for (const auto &f : n.fields())
     if (f.x3dName == name) {
@@ -127,7 +128,7 @@ inline TexCoordGenMode genModeFromToken(const std::string &t) {
 //     scale/translation SFVec2f+SFFloat fields. (A 3D MatrixTextureTransform /
 //     TextureTransform3D is out of v1 scope — surfaced as identity; documented.)
 // ---------------------------------------------------------------------------
-inline TextureTransform2DParams textureTransformParamsOf(const X3DNode *appearance) {
+inline TextureTransform2DParams textureTransformParamsOf(const x3d::nodes::X3DNode *appearance) {
   TextureTransform2DParams p; // identity by default.
   if (!appearance) return p;
   auto tt = geombounds::getNode(*appearance, "textureTransform");
@@ -183,7 +184,7 @@ inline void applyTextureTransformToMesh(MeshData &mesh,
 //     back-derived from the boundary modes so a legacy bool-only consumer still
 //     sees a sensible REPEAT vs non-REPEAT value.
 // ---------------------------------------------------------------------------
-inline ExtendedSamplerParams extendedSamplerOf(const std::shared_ptr<X3DNode> &texNode) {
+inline ExtendedSamplerParams extendedSamplerOf(const std::shared_ptr<x3d::nodes::X3DNode> &texNode) {
   using namespace texextract;
   ExtendedSamplerParams s;
   if (!texNode) return s;
@@ -228,7 +229,7 @@ inline ExtendedSamplerParams extendedSamplerOf(const std::shared_ptr<X3DNode> &t
 // Sets *has=true only when a generator is present; otherwise *has=false and the
 // returned (default-Sphere) descriptor must be ignored.
 // ---------------------------------------------------------------------------
-inline TexCoordGenDesc texCoordGenOf(const X3DNode *geom, bool *has) {
+inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has) {
   using namespace texextract;
   TexCoordGenDesc d;
   if (has) *has = false;
@@ -282,8 +283,8 @@ inline void resolveTextureRefs(std::vector<TextureRef> &refs,
 // SamplerParams on each ref still stands).
 // ---------------------------------------------------------------------------
 inline void enrichTextureRefs(std::vector<TextureRef> &refs,
-                              const std::vector<std::shared_ptr<X3DNode>> &texNodes,
-                              const X3DNode *geom) {
+                              const std::vector<std::shared_ptr<x3d::nodes::X3DNode>> &texNodes,
+                              const x3d::nodes::X3DNode *geom) {
   bool hasGen = false;
   TexCoordGenDesc gen = texCoordGenOf(geom, &hasGen);
   for (std::size_t i = 0; i < refs.size(); ++i) {

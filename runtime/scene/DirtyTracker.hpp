@@ -8,9 +8,10 @@
 #include <unordered_map>
 #include <vector>
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
+using x3d::nodes::X3DNode;
 
 enum DirtyFlags : unsigned {
   DirtyNone           = 0,

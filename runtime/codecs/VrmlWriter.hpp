@@ -35,6 +35,8 @@
 #include <vector>
 
 namespace x3d::codec {
+using namespace x3d::core;
+using x3d::nodes::X3DNodeFactory;
 
 /// Serializes the runtime document model to ClassicVRML.
 class VrmlWriter {

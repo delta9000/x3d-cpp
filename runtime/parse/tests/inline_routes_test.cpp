@@ -16,6 +16,9 @@
 #include <iostream>
 #include <string>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
+
 int main(int argc, char** argv) {
   assert(argc >= 2 && "pass the inline fixtures dir as argv[1]");
   std::string dir = argv[1];

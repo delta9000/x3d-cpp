@@ -22,6 +22,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 class ViewpointBindSystem {
 public:
   void onPostCascade(X3DExecutionContext &ctx) {

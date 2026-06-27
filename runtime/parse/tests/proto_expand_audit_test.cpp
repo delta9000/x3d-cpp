@@ -37,6 +37,9 @@
 #include <vector>
 
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
+namespace xn = x3d::nodes;
 using x3d::codec::noopProtoResolver;
 
 static int failures = 0;
@@ -468,7 +471,7 @@ static void clonePreservesInputOnlyTest() {
   // handler must fire, proving the cloned body node is fully wired.
   auto raw = primary.get();
   // Cast to register handler.
-  auto btPtr = std::dynamic_pointer_cast<class BooleanTrigger>(primary);
+  auto btPtr = std::dynamic_pointer_cast<class xn::BooleanTrigger>(primary);
   check(btPtr != nullptr, "clone: primary downcasts to BooleanTrigger");
   if (btPtr) {
     int fired = 0;

@@ -18,9 +18,10 @@
 #ifndef X3D_RUNTIME_SYSTEM_HPP
 #define X3D_RUNTIME_SYSTEM_HPP
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
+using x3d::nodes::X3DNode;
 
 class X3DExecutionContext;
 

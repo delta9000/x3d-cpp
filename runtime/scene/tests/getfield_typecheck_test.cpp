@@ -9,6 +9,8 @@
 
 using namespace x3d::runtime;
 using namespace x3d::runtime::geombounds;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 TEST_CASE("readField classifies absent / ok / type-mismatch") {
   auto box = createX3DNode("Box"); // Box.size is SFVec3f with a default present

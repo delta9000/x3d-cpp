@@ -20,6 +20,7 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 class TransformSystem {
 public:

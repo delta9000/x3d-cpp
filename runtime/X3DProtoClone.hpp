@@ -14,6 +14,7 @@
 #include <vector>
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 /// A fallback creator for node types not registered in the generated
 /// X3DNodeFactory (e.g. hand-written x3d::runtime::ext extension nodes).
@@ -25,7 +26,7 @@ namespace x3d::runtime {
 /// Must be set at single-threaded setup time before parsing begins.
 /// Concurrent writes (install()-during-deepClone) are not synchronized.
 using FallbackNodeCreator =
-    std::function<std::shared_ptr<X3DNode>(const std::string &)>;
+    std::function<std::shared_ptr<x3d::nodes::X3DNode>(const std::string &)>;
 
 inline FallbackNodeCreator &fallbackNodeCreator() {
   static FallbackNodeCreator f;
@@ -34,14 +35,14 @@ inline FallbackNodeCreator &fallbackNodeCreator() {
 
 /// Deep-clone a node tree. `cloneMap` (original ptr -> clone) preserves
 /// intra-tree DEF/USE shared identity: a node referenced twice clones once.
-inline std::shared_ptr<X3DNode>
-deepClone(const std::shared_ptr<X3DNode> &src,
-          std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> &cloneMap) {
+inline std::shared_ptr<x3d::nodes::X3DNode>
+deepClone(const std::shared_ptr<x3d::nodes::X3DNode> &src,
+          std::unordered_map<const x3d::nodes::X3DNode *, std::shared_ptr<x3d::nodes::X3DNode>> &cloneMap) {
   if (!src) return nullptr;
   auto it = cloneMap.find(src.get());
   if (it != cloneMap.end()) return it->second;       // USE: same clone
 
-  std::shared_ptr<X3DNode> dst = X3DNodeFactory::create(src->nodeTypeName());
+  std::shared_ptr<x3d::nodes::X3DNode> dst = x3d::nodes::X3DNodeFactory::create(src->nodeTypeName());
   // On factory miss, consult the opt-in ext-populated hook (only set when the
   // ext module is installed; absent by default — degrades gracefully to nullptr).
   if (!dst && fallbackNodeCreator())
@@ -53,12 +54,12 @@ deepClone(const std::shared_ptr<X3DNode> &src,
   for (const FieldInfo &f : src->fields()) {
     if (!f.get || !f.set) continue;                    // event-only/read-only
     if (f.type == X3DFieldType::SFNode) {
-      auto child = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*src));
+      auto child = std::any_cast<std::shared_ptr<x3d::nodes::X3DNode>>(f.get(*src));
       f.set(*dst, std::any(deepClone(child, cloneMap)));
     } else if (f.type == X3DFieldType::MFNode) {
       auto kids =
-          std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*src));
-      std::vector<std::shared_ptr<X3DNode>> out;
+          std::any_cast<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>>(f.get(*src));
+      std::vector<std::shared_ptr<x3d::nodes::X3DNode>> out;
       out.reserve(kids.size());
       for (auto &k : kids) out.push_back(deepClone(k, cloneMap));
       f.set(*dst, std::any(std::move(out)));
@@ -69,8 +70,8 @@ deepClone(const std::shared_ptr<X3DNode> &src,
   return dst;
 }
 
-inline std::shared_ptr<X3DNode> deepClone(const std::shared_ptr<X3DNode> &src) {
-  std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> m;
+inline std::shared_ptr<x3d::nodes::X3DNode> deepClone(const std::shared_ptr<x3d::nodes::X3DNode> &src) {
+  std::unordered_map<const x3d::nodes::X3DNode *, std::shared_ptr<x3d::nodes::X3DNode>> m;
   return deepClone(src, m);
 }
 

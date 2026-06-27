@@ -87,6 +87,8 @@
 
 namespace x3d::runtime::extract {
 
+using namespace x3d::core;
+
 // ---------------------------------------------------------------------------
 // RenderItem — the per-PATH stored record. IDENTITY is the PathKey; GEOMETRY and
 // MATERIAL are content/node-keyed and legitimately shared across placements.

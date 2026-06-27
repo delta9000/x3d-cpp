@@ -10,6 +10,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 struct HeadPose {
   SFVec3f position{0, 0, 0};
   SFRotation orientation{0, 0, 1, 0};

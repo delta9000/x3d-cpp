@@ -30,6 +30,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 // --- value-type vector ops for the spline value types -----------------------
 inline float vadd(float a, float b) { return a + b; }
 inline float vsub(float a, float b) { return a - b; }

@@ -26,6 +26,9 @@
 #include <memory>
 #include <string>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
+
 namespace audit = x3d::audit;
 namespace sdk = x3d::sdk;
 

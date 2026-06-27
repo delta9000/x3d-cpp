@@ -8,6 +8,7 @@
 #include <cstdio>
 
 using namespace x3d;
+using namespace x3d::core;
 
 TEST_CASE("xml_proto_capture_test") {
   const char *xml =

@@ -26,7 +26,10 @@
 #include <memory>
 #include <string>
 
-using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
+namespace runtime = x3d::runtime;
+namespace codec = x3d::codec;
 
 namespace {
 
@@ -53,7 +56,7 @@ std::shared_ptr<Script> findScript(const runtime::Scene &scene) {
 
 // Locate an author FieldInfo on a node by name via effectiveFields. `tableOut`
 // owns the temporary FieldTable so the returned pointer stays valid.
-const FieldInfo *authorField(const X3DNode &node, const std::string &name,
+const FieldInfo *authorField(const x3d::nodes::X3DNode &node, const std::string &name,
                              FieldTable &tableOut) {
   tableOut = runtime::effectiveFields(node);
   for (const FieldInfo &f : tableOut) {

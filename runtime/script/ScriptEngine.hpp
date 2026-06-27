@@ -17,9 +17,10 @@
 #include <cstdint>
 #include <string>
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
+using namespace x3d::core;
 
 class SaiContext;
 

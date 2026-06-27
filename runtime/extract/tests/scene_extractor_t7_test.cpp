@@ -26,6 +26,8 @@
 #include <memory>
 #include <vector>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }

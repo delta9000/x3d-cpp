@@ -41,6 +41,9 @@
 #include <unordered_set>
 
 namespace x3d::codec {
+using namespace x3d::core;
+using x3d::nodes::X3DNodeFactory;
+using x3d::nodes::Script;
 
 // ---------------------------------------------------------------------------
 // X3DC14N attribute escaping (single-quote context):
@@ -494,7 +497,7 @@ private:
             if (!f.isReadable()) continue;
             if (f.x3dName == "DEF" || f.x3dName == "USE") continue;
             if (f.x3dName == "IS") continue;
-            if (f.x3dName == "sourceCode" && dynamic_cast<const Script *>(node.get()))
+            if (f.x3dName == "sourceCode" && dynamic_cast<const x3d::nodes::Script *>(node.get()))
                 continue;
 
             if (f.isNode()) {
@@ -542,7 +545,7 @@ private:
 
         if (bodyIsc_) attachIsBlocks(*el, node, *bodyIsc_);
 
-        if (const auto *script = dynamic_cast<const Script *>(node.get()))
+        if (const auto *script = dynamic_cast<const x3d::nodes::Script *>(node.get()))
             writeScriptAuthorFields(*el, *script);
 
         return el;

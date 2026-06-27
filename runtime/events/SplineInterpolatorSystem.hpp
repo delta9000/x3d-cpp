@@ -44,7 +44,7 @@ public:
 class SquadOrientationInterpolatorSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    auto *interp = dynamic_cast<SquadOrientationInterpolator *>(node);
+    auto *interp = dynamic_cast<x3d::nodes::SquadOrientationInterpolator *>(node);
     if (!interp) return;
     interp->setOnSet_fractionHandler([&ctx, interp](const SFFloat &fraction) {
       if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
@@ -60,7 +60,7 @@ public:
 class EaseInEaseOutSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    auto *ease = dynamic_cast<EaseInEaseOut *>(node);
+    auto *ease = dynamic_cast<x3d::nodes::EaseInEaseOut *>(node);
     if (!ease) return;
     ease->setOnSet_fractionHandler([&ctx, ease](const SFFloat &fraction) {
       ctx.postEvent(ease, "modifiedFraction_changed",

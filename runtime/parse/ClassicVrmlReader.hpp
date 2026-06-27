@@ -50,6 +50,7 @@
 #include <vector>
 
 namespace x3d::codec {
+using namespace x3d::core;
 
 /// Reads X3D ClassicVRML (.x3dv) into the runtime document model.
 class ClassicVrmlReader : public X3DReader {

@@ -8,9 +8,10 @@
 #include <functional>
 #include <vector>
 
-class X3DNode;
+namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
+using x3d::nodes::X3DNode;
 
 // BIND-09: kind of the latest viewpoint bind transition. Set by BindingSystem
 // when a viewpoint stack mutation emits a bound/unbound transition; read by

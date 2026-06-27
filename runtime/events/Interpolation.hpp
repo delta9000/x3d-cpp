@@ -23,6 +23,8 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+
 /**
  * @brief Bracketing indices and in-segment parameter for a fraction over key[].
  * @details `lo`/`hi` bracket `fraction` in the monotonic key array; `t` is the

@@ -27,6 +27,7 @@
 #include <vector>
 
 namespace x3d::codec {
+using namespace x3d::core;
 
 // AUD-D: SFEnum/MFEnum values arrive on the wire with MFString-style quoting
 // (e.g. NavigationInfo type='"FLY" "EXAMINE"'), but the generated setEnumString

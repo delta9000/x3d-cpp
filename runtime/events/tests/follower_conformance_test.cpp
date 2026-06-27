@@ -16,6 +16,8 @@
 #include <vector>
 using namespace x3d::runtime;
 using namespace x3d;
+using namespace x3d::core;
+using namespace x3d::nodes;
 static int g_fail = 0;
 #define XCHECK(c, m) do{ if(!(c)){ std::fprintf(stderr,"FAIL: %s (%s:%d)\n",m,__FILE__,__LINE__); ++g_fail; } }while(0)
 static bool feq(float a, float b, float e=1e-4f){ return std::fabs(a-b) < e; }
@@ -114,7 +116,6 @@ static void test_damper() {
 }
 
 static void test_chaser() {
-  using namespace x3d::runtime;
   X3DExecutionContext ctx;
   // D=1 step 0->1: reaches exactly 1.0 at t=1.0, ~0.5 at t=0.5.
   auto sc = std::make_shared<ScalarChaser>();
@@ -264,7 +265,6 @@ static void test_mf_followers() {
 }
 
 static void test_wiring() {
-  using namespace x3d::runtime;
   // makeFollowerSystems registers all 14 (sanity: non-empty, attaches a damper).
   auto systems = makeFollowerSystems();
   XCHECK(systems.size() == 14, "makeFollowerSystems registers all 14 follower systems");

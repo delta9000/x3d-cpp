@@ -27,6 +27,9 @@
 
 namespace x3d::runtime {
 
+using namespace x3d::core;
+using x3d::nodes::X3DNodeFactory;
+
 // Re-export findField at the x3d::runtime level so callers (including the test)
 // can use ::x3d::runtime::findField without needing to know about proto_detail.
 inline const FieldInfo *findField(const X3DNode &n, const std::string &name) {

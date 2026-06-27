@@ -44,6 +44,8 @@
 #include <string>
 #include <vector>
 
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 namespace {
 

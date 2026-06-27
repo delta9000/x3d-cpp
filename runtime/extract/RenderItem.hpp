@@ -53,9 +53,12 @@
 #include <string>
 #include <vector>
 
-class X3DNode; // forward decl; descriptors key side-table identity by raw ptr.
+namespace x3d::nodes { class X3DNode; } // forward decl; descriptors key side-table identity by raw ptr.
 
 namespace x3d::runtime::extract {
+
+using namespace x3d::core;
+using x3d::nodes::X3DNode;
 
 // ---------------------------------------------------------------------------
 // PathKey — the per-PATH identity of a renderable placement.

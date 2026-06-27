@@ -14,6 +14,8 @@
 #include <memory>
 
 using namespace x3d::runtime;
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 static int g_failures = 0;
 #define CHECK(cond, msg)                                                        \
