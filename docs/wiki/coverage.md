@@ -25,7 +25,7 @@ Each row carries a stable slug so Waves 2–3 fill it deterministically:
 
 The Wave-1 vertical slice marks three rows `covered`: the [CLI Suite subsystem](subsystems/cli-suite.md), [ADR-0001 Ext Firewall](decisions/0001-ext-firewall.md), and the [Gate System guide](guides/gate-system.md). Everything else is `planned`.
 
-This manifest is derived from the directory structure under `runtime/`, `src/x3d_cpp_gen/`, and `tools/`; from the dated specs in `docs/superpowers/specs/`; from `docs/superpowers/BACKLOG.md`; and from the project auto-memory. The Wave-3 completeness critic re-derives it to catch anything new.
+This manifest is derived from the directory structure under `runtime/`, `src/x3d_cpp_gen/`, and `tools/`; from the dated specs in `docs/superpowers/specs/`; and from the project auto-memory. The Wave-3 completeness critic re-derives it to catch anything new.
 
 ---
 
@@ -79,7 +79,7 @@ Every top-level functional area gets one page. The canonical list follows the ar
 
 ## 2. Decisions (ADRs)
 
-One ADR per binding decision. Numbered sequentially; the slug is a short topic name. Harvested from the project auto-memory (decisions / modernization / build / cli-suite files), the dated specs, the BACKLOG, and notable commits.
+One ADR per binding decision. Numbered sequentially; the slug is a short topic name. Harvested from the project auto-memory (decisions / modernization / build / cli-suite files), the dated specs, and notable commits.
 
 | Status | Page slug | Decision | Grounding source |
 |---|---|---|---|
@@ -107,9 +107,18 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0022-scriptengine-second-backend-swap-test.md` | An interface is *proven generic* only when a second independent backend runs identical fixtures to identical observable behavior, gated in CI — established by adding a QuickJS ScriptEngine backend alongside Duktape + the CI-gated `x3d_quickjs_swap` test; the binding pattern for every seam card | `2026-06-22-scriptengine-quickjs-design.md` |
 | covered | `decisions/0023-assetresolver-second-backend-swap-test.md` | The genericity-proof pattern applied to the AssetResolver/IO seam: a second backend (AWS S3 SDK) alongside libcurl HTTP + the CI-gated `x3d_assetresolver_swap` byte-equal test; freezes the seam `[STABLE]` and unblocks the LoadSensor / http-EXTERNPROTO / script-fetch findings | `2026-06-23-assetresolver-http-design.md` |
 | covered | `decisions/0024-textureresolver-second-backend-swap-test.md` | The genericity-proof pattern applied to the TextureResolver decode seam: a second decoder (wuffs) alongside stb_image + the CI-gated `x3d_texture_tests` byte-equal swap-test over PNG/BMP/GIF/TGA; completes the fetch+decode texture pipeline (thesis-completion + memory-safe decode) | `2026-06-23-textureresolver-decode-design.md` |
-| covered | `decisions/0026-audiobackend-second-backend-swap-test.md` | The genericity-proof pattern applied to the AudioBackend DSP engine seam: a second backend (miniaudio, vendored single-header, flag-gated) alongside BuiltinDspBackend + the CI-gated headless `x3d_sound_swaptest`; synthesis proven numerically (RMS ±2%, Goertzel ±5%) and spatial proven structurally (ear-sign, symmetry, monotonic distance falloff); HRTF/Doppler/ellipsoid deferred (SND-3 partial) | `2026-06-24-audio-seam-genericity-design.md` |
 | covered | `decisions/0025-fontmetrics-second-backend-swap-test.md` | The genericity-proof pattern applied to the FontMetrics seam: a second backend (FreeType) alongside stb_truetype + the CI-gated `x3d_text_tests` exact-equal advanceEm swap-test over Liberation fixtures (PLAIN style) | `2026-06-24-fontmetrics-seam-genericity-design.md` |
 | covered | `decisions/0026-audiobackend-second-backend-swap-test.md` | The genericity-proof pattern applied to the AudioBackend DSP engine seam: a second backend (miniaudio, vendored single-header, flag-gated) alongside BuiltinDspBackend + the CI-gated headless `x3d_sound_swaptest`; synthesis proven numerically (RMS ±2%, Goertzel ±5%) and spatial proven structurally (ear-sign, symmetry, monotonic distance falloff); HRTF/Doppler/ellipsoid deferred (SND-3 partial) | `2026-06-24-audio-seam-genericity-design.md` |
+| covered | `decisions/0027-reference-lighting-evaluator.md` | A single reference lighting evaluator owns the spec-normative §17 shading path (per-light ambient/diffuse/specular + the `shadowTest` modulation) and the until-now-unpinned color-space / ambient conventions; the named home of the modulation ADR-0028 references. Proposed | ADR-0028 dependency; reference-consumer `MaterialShader` (PoC + cpu_raster); rendering findings (GitHub Project) |
+| covered | `decisions/0028-shadow-visibility-seam.md` | Shadows split at the SDK boundary: the §17 modulation is normative (reference evaluator, ADR-0027) while shadow *generation* is a `ShadowQuery` seam with a first-party CPU ray-cast default proven on structural invariants; `castShadow` surfaced on RenderItem. Proposed | §17 (ISO/IEC 19775-1); ADR-0026 invariant-proof pattern; `castshadow_extract_test` |
+| covered | `decisions/0029-directoutput-non-routable.md` | A `directOutput` Script write to another node mutates the target field but does not seed the event cascade; only a Script's own outputOnly writes are routable (SAI 4.5.2) | `docs/conformance/findings.yaml`; SAI §4.5.2 |
+| covered | `decisions/0030-fieldofview-validate-not-retype.md` | `OrthoViewpoint.fieldOfView` keeps MFFloat (retyping to SFVec4f breaks ClassicVRML); validated as a fixed SFVec4f-semantics 4-tuple, shared with TextureProjectorParallel | `docs/conformance/findings.yaml` |
+| covered | `decisions/0031-extrusion-degenerate-scp.md` | For an underdetermined Extrusion spine (≤2 distinct points), in-plane SCP axes align to the local coordinate system; spines with <2 distinct points render nothing — deterministic degenerate handling | `docs/conformance/findings.yaml` |
+| covered | `decisions/0032-hanimdisplacer-routable-coordpoint.md` | A Segment's `coord.point` reflects the weighted Displacer sum and emits `point_changed`; the neutral pose is retained internally and never destructively overwritten (headless runtime) | `docs/conformance/findings.yaml` |
+| covered | `decisions/0033-proto-builtin-shadow-error.md` | A ProtoDeclare/ExternProtoDeclare whose name collides with a built-in node type is rejected (quarantined + diagnostic); the built-in keeps precedence. Lenient by default, fatal in strict mode (security) | `docs/conformance/findings.yaml`; ext-firewall |
+| covered | `decisions/0034-sensor-switch-lod-activation.md` | An environmental sensor reachable only via a non-selected Switch child or inactive LOD level is treated as removed from the hierarchy (deactivated); Script + time-dependent nodes are not gated | `docs/conformance/findings.yaml` |
+| covered | `decisions/0035-viewport-clipboundary-glviewport.md` | `clipBoundary` is the sub-region the layer view is mapped (rescaled) into, aspect derived from the sub-region; exposes a derived `ViewportRegion{x,y,w,h,aspect}` renderer contract (glViewport remap semantics) | `docs/conformance/findings.yaml` |
+| covered | `decisions/0036-codec-roundtrip-fidelity-oracles.md` | Names the structural properties a codec round-trip must preserve (DEF/USE/ROUTE survival, authored containerField placement, idempotence) and requires any asserting oracle be proven to fail under injected faults before it is trusted | `2026-06-26 codec round-trip fidelity work` |
 
 ## 3. Guides
 
@@ -141,12 +150,16 @@ Top-level live trackers (a tracker is a page that tracks an ongoing, cross-cutti
 | Category | Total | Covered | Planned |
 |---|---|---|---|
 | Subsystems | 41 | 41 | 0 |
-| Decisions (ADRs) | 26 | 26 | 0 |
+| Decisions (ADRs) | 36 | 36 | 0 |
 | Guides | 8 | 8 | 0 |
 | Trackers | 1 | 1 | 0 |
-| **Total** | **76** | **76** | **0** |
+| **Total** | **86** | **86** | **0** |
 
-Wave 1 delivered 3 `covered` rows (the vertical slice). Wave 2 filled all subsystem + decision rows (ADR-0001..0017). Wave 3 filled all guide rows and ran the completeness critic, which independently re-derived the target set and found one genuine gap: ADR-0018 (CAVE cross-process delta contract), now added and filled. The wiki-physics wave added ADR-0019 + the Physics subsystem page. The wiki-sound wave added ADR-0020 + the Sound subsystem page. The followers-runtime wave (§39) added the Followers subsystem page. The material-shader wave (2026-06-21) added ADR-0021 + the Materials and Shaders subsystem pages (+3 rows). The scriptengine-quickjs wave (2026-06-22..23) added ADR-0022 (second-backend swap-test = genericity proof) + the new top-level **Seam-Status Matrix** tracker (`seam-status.md`). The seam-genericity waves (2026-06-23) added ADR-0023 + the **Asset Resolver / IO Seam** subsystem page (libcurl + S3) and ADR-0024 + the **Texture Decode Seam** subsystem page (stb_image + wuffs), bringing both seams GREEN. The 2026-06-24 seam waves added ADR-0025 + the **Font Metrics Seam** subsystem page (stb_truetype + FreeType), and ADR-0026 (AudioBackend second backend + headless swap-test), bringing both FontMetrics and Audio seams GREEN. No rows remain `planned`.
+> ADR coverage (`decisions/*.md` ⇄ this table) is enforced by `mise run coverage-gate`
+> (`scripts/coverage_gate.py`), which fails CI on any ADR file missing a row or any
+> row pointing at a missing file. Keep the two in lock-step.
+
+Wave 1 delivered 3 `covered` rows (the vertical slice). Wave 2 filled all subsystem + decision rows (ADR-0001..0017). Wave 3 filled all guide rows and ran the completeness critic, which independently re-derived the target set and found one genuine gap: ADR-0018 (CAVE cross-process delta contract), now added and filled. The wiki-physics wave added ADR-0019 + the Physics subsystem page. The wiki-sound wave added ADR-0020 + the Sound subsystem page. The followers-runtime wave (§39) added the Followers subsystem page. The material-shader wave (2026-06-21) added ADR-0021 + the Materials and Shaders subsystem pages (+3 rows). The scriptengine-quickjs wave (2026-06-22..23) added ADR-0022 (second-backend swap-test = genericity proof) + the new top-level **Seam-Status Matrix** tracker (`seam-status.md`). The seam-genericity waves (2026-06-23) added ADR-0023 + the **Asset Resolver / IO Seam** subsystem page (libcurl + S3) and ADR-0024 + the **Texture Decode Seam** subsystem page (stb_image + wuffs), bringing both seams GREEN. The 2026-06-24 seam waves added ADR-0025 + the **Font Metrics Seam** subsystem page (stb_truetype + FreeType), and ADR-0026 (AudioBackend second backend + headless swap-test), bringing both FontMetrics and Audio seams GREEN. The 2026-06-24..26 rendering + conformance-campaign waves added ADR-0027 (reference lighting evaluator, Proposed) and ADR-0028 (shadow visibility seam, Proposed) plus the per-finding conformance decisions ADR-0029..0036 (directOutput non-routable, fieldOfView validation, degenerate Extrusion SCP, HAnimDisplacer routable coord.point, PROTO built-in shadow rejection, sensor activation under Switch/LOD, Viewport.clipBoundary glViewport semantics, and codec round-trip fidelity oracles). No rows remain `planned`.
 
 ---
 

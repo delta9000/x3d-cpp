@@ -157,26 +157,26 @@ void attachViewpointBind(X3DExecutionContext &ctx);
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_binding_stack` — pure stack logic: push, pop,
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `binding_stack_test`) — pure stack logic: push, pop,
   move-to-top, already-top no-op, non-top removal, empty-stack unbind, event
   emission order (`runtime/scene/tests/binding_stack_test.cpp`).
 
-- `ctest --preset dev -R x3d_binding_system` — enrol scene, default-bind,
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `binding_system_test`) — enrol scene, default-bind,
   `set_bind TRUE/FALSE` fired through wired handler, `isBound` delivered via
   `ctx.process()`, category independence (`runtime/scene/tests/binding_system_test.cpp`).
 
-- `ctest --preset dev -R x3d_binding_stack_audit` — AUD-BIND-STACK regression:
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `binding_stack_audit_test`) — AUD-BIND-STACK regression:
   empty-stack unbind, rapid bind/unbind transitions, `bindTime` fractional-second
   precision, `isBound`-before-`bindTime` event ordering, re-binding top is no-op
   (`runtime/scene/tests/binding_stack_audit_test.cpp`).
 
-- `ctest --preset dev -R x3d_viewpoint_offset` — CONF-VIEWNAV Phase 1 / user-offset
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `viewpoint_offset_test`) — CONF-VIEWNAV Phase 1 / user-offset
   model: offset moves effective camera without touching authored fields (BIND-01);
   head-pose composition; EXAMINE navigation leaves authored position/orientation
   byte-unchanged; `OrthoViewpoint` navigates (BIND-03); `rotationFromMatrix`
   round-trip (`runtime/events/tests/viewpoint_offset_test.cpp`).
 
-- `ctest --preset dev -R x3d_viewpoint_bind` — CONF-VIEWNAV Phase 2 / bind-time
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `viewpoint_bind_test`) — CONF-VIEWNAV Phase 2 / bind-time
   offset rules: `jump=false` keeps effective view continuous (BIND-04);
   `jump=true` + `retainUserOffsets=false` snaps to authored pose (BIND-07/08);
   `retainUserOffsets=true` preserves stored offset on rebind; BIND-02 NavigationInfo
@@ -220,6 +220,6 @@ control), `test_pop_animates_over_transition_time`.
   `position`/`orientation` fields must not be mutated by navigation (BIND-01).
   §7.2.2 — general bindable node protocol (set_bind TRUE/FALSE, LIFO stack,
   isBound, bindTime on every transition).
-- `docs/superpowers/BACKLOG.md` — CONF-VIEWNAV Phase 2 conformance findings
+- `docs/conformance/findings.yaml` — CONF-VIEWNAV Phase 2 conformance findings
   BIND-01..BIND-08 (the finding set that drove the implementation split into
   BindingStack / BindingSystem / ViewpointBindSystem / ViewpointOffset).

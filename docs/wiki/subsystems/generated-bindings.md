@@ -34,7 +34,7 @@ The bindings are **not built by hand and not re-generated at compile time.** The
 | `generated_cpp_bindings/X3DNodeFactory.hpp` / `.cpp` | Name-to-constructor registry: `X3DNodeFactory::create(typeName)` and free function `createX3DNode(typeName)` |
 | `generated_cpp_bindings/X3DInterfaceRegistry.hpp` / `.cpp` | Queryable node-type → transitive interface set: `InterfaceId` enum, `X3DInterfaceRegistry::interfacesOf()`, `nodeImplements()`, `nodesImplementing()` |
 
-Total: 343 `.hpp` + 340 `.cpp` = 683 source files in the directory.
+Total: 343 `.hpp` + 341 `.cpp` = 684 source files in the directory.
 
 ## Interfaces and seams
 

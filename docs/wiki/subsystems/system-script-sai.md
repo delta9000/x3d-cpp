@@ -161,7 +161,7 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 - `ctest --preset dev -R x3d_script_author_runtime` (`runtime/script/tests/script_author_runtime_test.cpp`) — end-to-end: author fields via `DynamicFieldStore` + `Script.sourceCode` → `ScriptSystem` → `EcmaScriptBackend` → author outputOnly write fans out via ROUTE to a real target node.
 - `ctest --preset dev -R x3d_script_corpus_e2e` (`runtime/script/tests/script_corpus_e2e_test.cpp`) — real-reader paths (XML, ClassicVRML) over `AuthorScriptExample.x3d`/`.x3dv` + the real Savage `CanopyExample.x3d`; previously-inert scripts now dispatch their handlers.
-- `ctest --preset dev -R x3d_script_cdata_audit` — CDATA capture audit over the corpus.
+- `ctest --preset dev -R x3d_codecs_tests` (doctest case: `script_cdata_audit_test`) — CDATA capture audit over the corpus.
 
 ## Related specs and ADRs
 

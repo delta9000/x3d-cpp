@@ -5,7 +5,7 @@ tags: [adr, scripting, event-cascade, sai, directoutput, conformance]
 updated: 2026-06-25
 related:
   - ../architecture.md
-  - ../subsystems/scripting.md
+  - ../subsystems/system-script-sai.md
   - ../../conformance/findings.yaml
 ---
 

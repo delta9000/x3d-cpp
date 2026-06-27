@@ -106,13 +106,13 @@ The math module has no upward dependencies. It sits at the bottom of the depende
 
 ## How it is tested
 
-Five dedicated unit-test executables cover the math module. All are registered with CTest and pass without golden files (assert-based, self-contained):
+Five doctest case files cover the math module, all compiled into the `x3d_geometry_scene` ctest executable; they pass without golden files (assert-based, self-contained):
 
-- `ctest --preset dev -R x3d_mat4` — identity, translation, scale, rotation (90° about Z), matrix multiply order, `transformMatrix` with center offset, `transformMatrix` with translation+scale.
-- `ctest --preset dev -R x3d_mat4_inverse` — round-trip `M * M.inverse() ≈ I` for a translate+rotate+scale matrix; `transformDirection` ignores translation; `transformPoint` does not; singular (all-zero) matrix returns `identity()`; `Ray::pointAt` parametric evaluation.
-- `ctest --preset dev -R x3d_aabb` — empty union identity, `fromCenterSize`, `center()`, `size()`, `unionWith` grows extents correctly, `transformed` with 45° Z rotation, empty box stays empty after transform.
-- `ctest --preset dev -R x3d_intersect` — `rayAabb` (front face hit, miss, origin-inside); `raySphere` (hit, miss, zero radius); `rayTriangle` (hit, outside); `rayCone` (lateral surface, corner AABB miss, bottom cap, `side`/`bottom` flag combinations, degenerate inputs); `rayCylinder` (lateral hit, height miss, top cap, bottom cap, flag combinations, degenerate inputs).
-- `ctest --preset dev -R x3d_vec_math_audit` — edge-case audit covering: `quatFromRotation` with zero-axis fallback; `rotationFromQuat` with near-zero vector; singular-matrix inversion (all-zero + zero-scale component + pure translation round-trip); slerp antipodal quaternions; `transformMatrix` precision round-trip; `rayTriangle`/`rayTriangleBary` degenerate triangles (collinear, collapsed edge, ray parallel to plane); `slerpNormal` with parallel and antipodal vectors.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `mat4_test`) — identity, translation, scale, rotation (90° about Z), matrix multiply order, `transformMatrix` with center offset, `transformMatrix` with translation+scale.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `mat4_inverse_test`) — round-trip `M * M.inverse() ≈ I` for a translate+rotate+scale matrix; `transformDirection` ignores translation; `transformPoint` does not; singular (all-zero) matrix returns `identity()`; `Ray::pointAt` parametric evaluation.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `aabb_test`) — empty union identity, `fromCenterSize`, `center()`, `size()`, `unionWith` grows extents correctly, `transformed` with 45° Z rotation, empty box stays empty after transform.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `intersect_test`) — `rayAabb` (front face hit, miss, origin-inside); `raySphere` (hit, miss, zero radius); `rayTriangle` (hit, outside); `rayCone` (lateral surface, corner AABB miss, bottom cap, `side`/`bottom` flag combinations, degenerate inputs); `rayCylinder` (lateral hit, height miss, top cap, bottom cap, flag combinations, degenerate inputs).
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `vec_math_audit_test`) — edge-case audit covering: `quatFromRotation` with zero-axis fallback; `rotationFromQuat` with near-zero vector; singular-matrix inversion (all-zero + zero-scale component + pure translation round-trip); slerp antipodal quaternions; `transformMatrix` precision round-trip; `rayTriangle`/`rayTriangleBary` degenerate triangles (collinear, collapsed edge, ray parallel to plane); `slerpNormal` with parallel and antipodal vectors.
 
 ## Related specs and ADRs
 

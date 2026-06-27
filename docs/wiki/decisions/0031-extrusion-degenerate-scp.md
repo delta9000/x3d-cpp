@@ -5,7 +5,7 @@ tags: [adr, geometry, extrusion, scp, determinism, conformance]
 updated: 2026-06-25
 related:
   - ../architecture.md
-  - ../subsystems/mesh-extract.md
+  - ../subsystems/extract.md
   - ../../conformance/findings.yaml
 ---
 

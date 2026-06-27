@@ -104,21 +104,21 @@ IS-connection forwarding follows ISO/IEC 19775-1 Table 4.4. An `inputOutput` bod
 
 The test suite is split between unit tests that exercise `expandInstance`/`expandScene` directly and round-trip tests that confirm the expanded scene survives serialization:
 
-| ctest target | What it covers |
+| ctest target (doctest case) | What it covers |
 |---|---|
-| `x3d_proto_clone` | `deepClone` — field-by-field copy, DEF/USE shared-identity preservation, SFNode/MFNode recursion (`runtime/parse/tests/proto_clone_test.cpp`) |
-| `x3d_proto_expand` | `expandInstance`/`expandScene` — field forwarding, IS-connection wiring, scene-root splice, EXTERN no-op with noop resolver, two independent instances (`runtime/parse/tests/proto_expand_test.cpp`) |
+| `x3d_parse_tests` (`proto_clone_test`) | `deepClone` — field-by-field copy, DEF/USE shared-identity preservation, SFNode/MFNode recursion (`runtime/parse/tests/proto_clone_test.cpp`) |
+| `x3d_parse_tests` (`proto_expand_test`) | `expandInstance`/`expandScene` — field forwarding, IS-connection wiring, scene-root splice, EXTERN no-op with noop resolver, two independent instances (`runtime/parse/tests/proto_expand_test.cpp`) |
 | `x3d_proto_expand_audit` | Audit suite: recursion-limit guard, Table 4.4 access-type validation, bad-any-cast leniency, empty-body warning, EXTERN unresolved warning, MFNode forwarding, nested body instance expansion (`runtime/parse/tests/proto_expand_audit_test.cpp`) |
 | `x3d_proto_front_door` | End-to-end XML parse → `parseDocument` → expansion → scene check (`runtime/parse/tests/proto_front_door_test.cpp`) |
-| `x3d_proto_nested_body` | Nested `ProtoInstance` inside a body: correct per-instance expansion and attachment (`runtime/parse/tests/proto_nested_body_test.cpp`) |
-| `x3d_vrml97_proto` | PROTO capture + expansion via the VRML97 reader (`runtime/parse/tests/vrml97_proto_test.cpp`) |
-| `x3d_proto_roundtrip` | XML round-trip: parse → expand → re-serialize → reparse (`runtime/codecs/tests/proto_roundtrip_test.cpp`) |
-| `x3d_proto_instance_roundtrip` | Un-expanded instance re-emitted via `expandedSources` / `expanded` flag (AUD-B) (`runtime/codecs/tests/proto_instance_roundtrip_test.cpp`) |
-| `x3d_nested_protoinstance_roundtrip` | Nested instance round-trip via the SDK façade (`runtime/codecs/tests/nested_protoinstance_roundtrip_test.cpp`) |
-| `x3d_proto_writer_parity` | Writer parity across XML/VRML/JSON for proto declarations and instances (`runtime/codecs/tests/proto_writer_parity_test.cpp`) |
-| `x3d_xml_proto_capture` | XML reader captures `ProtoDeclaration`, `ExternProtoDeclaration`, and `ProtoInstance` records faithfully (`runtime/codecs/tests/xml_proto_capture_test.cpp`) |
+| `x3d_parse_tests` (`proto_nested_body_test`) | Nested `ProtoInstance` inside a body: correct per-instance expansion and attachment (`runtime/parse/tests/proto_nested_body_test.cpp`) |
+| `x3d_parse_tests` (`vrml97_proto_test`) | PROTO capture + expansion via the VRML97 reader (`runtime/parse/tests/vrml97_proto_test.cpp`) |
+| `x3d_codecs_tests` (`proto_roundtrip_test`) | XML round-trip: parse → expand → re-serialize → reparse (`runtime/codecs/tests/proto_roundtrip_test.cpp`) |
+| `x3d_codecs_tests` (`proto_instance_roundtrip_test`) | Un-expanded instance re-emitted via `expandedSources` / `expanded` flag (AUD-B) (`runtime/codecs/tests/proto_instance_roundtrip_test.cpp`) |
+| `x3d_codecs_tests` (`nested_protoinstance_roundtrip_test`) | Nested instance round-trip via the SDK façade (`runtime/codecs/tests/nested_protoinstance_roundtrip_test.cpp`) |
+| `x3d_codecs_tests` (`proto_writer_parity_test`) | Writer parity across XML/VRML/JSON for proto declarations and instances (`runtime/codecs/tests/proto_writer_parity_test.cpp`) |
+| `x3d_codecs_tests` (`xml_proto_capture_test`) | XML reader captures `ProtoDeclaration`, `ExternProtoDeclaration`, and `ProtoInstance` records faithfully (`runtime/codecs/tests/xml_proto_capture_test.cpp`) |
 
-Run the full proto suite: `ctest --preset dev -R "proto|externproto|protoinstance"`.
+Run the full proto suite: `ctest --preset dev -R "x3d_(parse_tests|codecs_tests|proto_front_door|proto_expand_audit)"`.
 
 ## Related specs and ADRs
 
@@ -128,4 +128,4 @@ Run the full proto suite: `ctest --preset dev -R "proto|externproto|protoinstanc
 - [Routes subsystem](../subsystems/routes.md) — how `resolvedProtoRoutes` integrates with the event graph
 - [Execution context subsystem](../subsystems/execution-context.md) — `X3DSceneBridge` consults `protoRedirects` when resolving external ROUTEs targeting proto instances
 - Normative reference: ISO/IEC 19775-1, §4.4 (PROTO semantics), Table 4.4 (IS access-type constraints) — cited throughout `runtime/X3DProtoExpand.hpp` inline comments
-- AUD-B round-trip fix (commit `8b888ee`): `ProtoInstance::expanded` flag + `Scene::expandedSources` writer redirect — see `docs/superpowers/BACKLOG.md`
+- AUD-B round-trip fix (commit `8b888ee`): `ProtoInstance::expanded` flag + `Scene::expandedSources` writer redirect — see `docs/superpowers/BACKLOG.md` (deprecated, historical)

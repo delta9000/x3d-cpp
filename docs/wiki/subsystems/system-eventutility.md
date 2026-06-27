@@ -134,7 +134,7 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
 
 ## How it is tested
 
-- **`ctest --preset dev -R x3d_event_utility`** — the primary behavioral
+- **`ctest --preset dev -R x3d_events_tests`** (doctest case: `event_utility_test`) — the primary behavioral
   conformance test (`runtime/events/tests/event_utility_test.cpp`). Covers all
   seven node types and 16 conformance IDs:
   - TRIG-1/2: `BooleanTrigger` emits `triggerTrue=TRUE`; `IntegerTrigger`

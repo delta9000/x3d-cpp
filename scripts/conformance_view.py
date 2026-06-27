@@ -62,6 +62,11 @@ SEVERITIES = {"critical", "major", "minor", "low"}
 STATUSES = {"open", "deferred", "fixed", "closed"}
 OPEN_STATUSES = {"open", "deferred"}
 DONE_STATUSES = {"fixed", "closed"}
+# Optional per-finding override of the derived "behaves" axis. The derivation
+# infers inertness only from "no System wired it"; a node can also be inert for a
+# reason the wiring heuristic can't see (declared-but-uncalled, no shader path).
+# An OPEN finding may assert `behaves: inert` to force ✗ — see classify_behaves.
+BEHAVES_OVERRIDES = {"inert"}
 SEVERITY_ORDER = {"critical": 0, "major": 1, "minor": 2, "low": 3}
 
 GLYPH = {
@@ -150,6 +155,9 @@ def validate_finding(f: dict) -> list[str]:
         errs.append(f"bad status {f.get('status')!r} (want {sorted(STATUSES)})")
     if not f.get("nodes") and not f.get("interfaces"):
         errs.append("must tag at least one node or interface")
+    bo = f.get("behaves")
+    if bo is not None and bo not in BEHAVES_OVERRIDES:
+        errs.append(f"bad behaves override {bo!r} (want {sorted(BEHAVES_OVERRIDES)})")
     return errs
 
 
@@ -172,6 +180,11 @@ def classify_behaves(behavioral: bool, wired: bool, findings: list[dict]) -> str
         return "n/a"
     open_f = [f for f in findings if f.get("status") in OPEN_STATUSES]
     done_f = [f for f in findings if f.get("status") in DONE_STATUSES]
+    # An OPEN finding may explicitly assert the node renders nothing. That is
+    # authoritative: a closed finding on an UNRELATED concern (e.g. BIND-06 on
+    # binding-stack detach) must not flip an inert node up to "partial".
+    if any(f.get("behaves") == "inert" for f in open_f):
+        return "inert"
     effective_wired = wired or bool(done_f)  # a closed finding asserts it's done
     if not effective_wired:
         return "inert"

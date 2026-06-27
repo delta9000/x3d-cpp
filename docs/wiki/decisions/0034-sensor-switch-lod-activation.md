@@ -5,7 +5,7 @@ tags: [adr, sensors, switch, lod, traversal, conformance]
 updated: 2026-06-25
 related:
   - ../architecture.md
-  - ../subsystems/view-dependent.md
+  - ../subsystems/system-viewdependent.md
   - ../../conformance/findings.yaml
 ---
 

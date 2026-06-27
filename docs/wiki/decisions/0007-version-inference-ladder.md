@@ -142,7 +142,7 @@ specifies a `VERSION_MAPPED_FROM_VRML97` stamp for conformance reports
   known profiles; an unknown profile name falls through to the bare 3.0 floor.
   The table must be maintained when new profiles appear in later spec revisions.
 - **`VERSION_MAPPED_FROM_VRML97` stamp not yet wired into the conformance report**
-  (logged as VP2-L1 in `docs/superpowers/BACKLOG.md`). The floor is applied
+  (logged as VP2-L1 in the deprecated, historical `docs/superpowers/BACKLOG.md`). The floor is applied
   correctly in C++; the report-level stamp is a follow-up.
 - **VRML97 node/field dialect mapping** (the `Vrml97Dialect` rename table in
   `runtime/parse/Vrml97Dialect.hpp`) covers the known 606-file corpus. Any
@@ -156,4 +156,4 @@ specifies a `VERSION_MAPPED_FROM_VRML97` stamp for conformance reports
 
 Design record: `docs/superpowers/specs/2026-06-13-m3-versioning-design.md` (§1, §8, §9b VP-2).
 Implementation plan: `docs/superpowers/plans/2026-06-16-m3-vp2-version-inference.md`.
-Backlog follow-ups (VP2-L1/L2): `docs/superpowers/BACKLOG.md`.
+Backlog follow-ups (VP2-L1/L2): the [GitHub Project](https://github.com/users/delta9000/projects/2).

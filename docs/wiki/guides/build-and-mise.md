@@ -164,7 +164,7 @@ fallback to the system default is graceful — the build never breaks on a fresh
 
 ## Per-header isolation tests
 
-`CMakeLists.txt` line 194 declares:
+`CMakeLists.txt` declares the `X3D_CPP_PER_HEADER_CHECKS` option:
 
 ```cmake
 option(X3D_CPP_PER_HEADER_CHECKS "Compile each header in isolation as a ctest" ON)

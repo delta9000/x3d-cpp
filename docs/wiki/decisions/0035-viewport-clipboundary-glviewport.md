@@ -5,7 +5,6 @@ tags: [adr, layering, viewport, renderer-contract, conformance]
 updated: 2026-06-25
 related:
   - ../architecture.md
-  - ../subsystems/layering.md
   - ../../conformance/findings.yaml
 ---
 

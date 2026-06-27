@@ -25,9 +25,9 @@ The Time System advances time-dependent nodes one tick at a time and emits their
 | `runtime/events/TimeSensorSystem.hpp` | Concrete `X3DTimeDependentSystem` for `TimeSensor`. Guards `attach` to `TimeSensor*`, reads `enabled`/`loop`/`cycleInterval`, and implements `emitCycleOutputs` (→ `fraction_changed`, `time`) and `emitCycleTime` (→ `cycleTime`). |
 | `runtime/events/TimeSensorBehavior.hpp` | Earlier, minimal `ActiveNode` seed: drives `fraction_changed` only, over one cycle (or looped), with no `isActive`/pause/`cycleTime`/`elapsedTime` support. Used by `animation_test`; superseded by `TimeSensorSystem`. |
 | `runtime/events/X3DSystem.hpp` | `System` base class — defines `attach(node, ctx)` and the default no-op `update(now, ctx)`. `X3DTimeDependentSystem` inherits from `System`. |
-| `runtime/events/tests/timesensor_test.cpp` | Lifecycle edge-case test suite (ctest target `x3d_event_timesensor`). |
-| `runtime/events/tests/timesensor_rtc_test.cpp` | Regression suite for four spec-conformance bugs RTC-1..RTC-4 (ctest target `x3d_event_timesensor_rtc`). |
-| `runtime/events/tests/animation_test.cpp` | End-to-end animation chain test using `TimeSensorBehavior` (ctest target `x3d_event_animation`). |
+| `runtime/events/tests/timesensor_test.cpp` | Lifecycle edge-case test suite (doctest case `timesensor_test` in the `x3d_events_tests` target). |
+| `runtime/events/tests/timesensor_rtc_test.cpp` | Regression suite for four spec-conformance bugs RTC-1..RTC-4 (doctest case `timesensor_rtc_test` in the `x3d_events_tests` target). |
+| `runtime/events/tests/animation_test.cpp` | End-to-end animation chain test using `TimeSensorBehavior` (doctest case `animation_test` in the `x3d_events_tests` target). |
 
 ## Interfaces and seams
 
@@ -76,13 +76,13 @@ State lives in the system, never on the node — the node and its reflection `Fi
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_event_timesensor` — `runtime/events/tests/timesensor_test.cpp`. Full lifecycle edge cases: `enabled=false`, start gating, single-shot completion, looping wrap + `cycleTime` pulses, `stopTime` early deactivation, pause/resume (`elapsedTime` excludes the paused span), `cycleInterval <= 0` guard, `set_startTime` ignored while active (TDN-4), `loop=FALSE` finishes the current cycle not immediately (TDN-3/TDN-7), strict `resumeTime > pauseTime` requirement (TDN-6), `pauseTime_changed`/`resumeTime_changed` ROUTE fire (TDN-1/TDN-2), and re-activation guard (no auto-restart after completion).
-- `ctest --preset dev -R x3d_event_timesensor_rtc` — `runtime/events/tests/timesensor_rtc_test.cpp`. Four spec-conformance regression fixes:
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `timesensor_test`) — `runtime/events/tests/timesensor_test.cpp`. Full lifecycle edge cases: `enabled=false`, start gating, single-shot completion, looping wrap + `cycleTime` pulses, `stopTime` early deactivation, pause/resume (`elapsedTime` excludes the paused span), `cycleInterval <= 0` guard, `set_startTime` ignored while active (TDN-4), `loop=FALSE` finishes the current cycle not immediately (TDN-3/TDN-7), strict `resumeTime > pauseTime` requirement (TDN-6), `pauseTime_changed`/`resumeTime_changed` ROUTE fire (TDN-1/TDN-2), and re-activation guard (no auto-restart after completion).
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `timesensor_rtc_test`) — `runtime/events/tests/timesensor_rtc_test.cpp`. Four spec-conformance regression fixes:
   - **RTC-1**: `cycleInterval <= 0` with `loop=TRUE` must not crash (divide-by-zero guard: `guardCycle` returns `1.0` for `<= 0`).
   - **RTC-2**: A looping sensor emits `fraction_changed == 1.0` at each exact cycle-boundary tick (spec §8.4.1 boundary rule: `if (f==0 && now>startTime) fraction_changed=1`).
   - **RTC-3**: `cycleTime` value equals `startTime + cycleIndex * cycleInterval` (the cycle-start time), not the tick's `now`.
   - **RTC-4**: `set_enabled FALSE` while active emits the final `time`/`fraction_changed`/`elapsedTime` outputs **before** `isActive=FALSE`.
-- `ctest --preset dev -R x3d_event_animation` — `runtime/events/tests/animation_test.cpp`. End-to-end chain test: `TimeSensorBehavior` → `PositionInterpolator` → `Transform.translation`, confirming the full clock → cascade → interpolator → field-write pipeline.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `animation_test`) — `runtime/events/tests/animation_test.cpp`. End-to-end chain test: `TimeSensorBehavior` → `PositionInterpolator` → `Transform.translation`, confirming the full clock → cascade → interpolator → field-write pipeline.
 
 ## Related specs and ADRs
 

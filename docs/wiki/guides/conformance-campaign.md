@@ -236,7 +236,7 @@ another without reading the clause.
 
 ## Reading the INDEX.md bug picture
 
-The top of `docs/conformance/INDEX.md` shows:
+The top of `docs/conformance/INDEX.md` shows a generated summary like (illustrative — exact counts move as `findings.yaml` evolves):
 
 ```
 Open/deferred gaps: 16 critical, 15 major, 15 minor, 3 low (36 deferred) · closed: 59

@@ -115,24 +115,24 @@ Encoding sniffByExtension(std::string_view path);
 ## How it is tested
 
 - `ctest --preset dev -R x3d_parse_reader` — multi-encoding integration smoke (XML via `XmlReaderAdapter`, Classic VRML, VRML97, JSON); round-trip invariants over small representative fixtures in `runtime/parse/tests/data/`.
-- `ctest --preset dev -R x3d_parse_lex` — `VrmlTokenizer` unit tests covering punctuation, quoted strings, comment skipping, BOM handling, two-token lookahead (`encoding_lex_audit_test.cpp`).
-- `ctest --preset dev -R x3d_reader_audit` — differential reader audit over the full conformance corpus (`reader_audit_test.cpp`).
-- `ctest --preset dev -R x3d_version_floor` — version-inference ladder: VRML97 header floored to 3.0, sub-3.0 legacy headers, `#X3D V4` round-trips (`version_floor_test.cpp`).
-- `ctest --preset dev -R x3d_lenient_read` — unknown node/field skip; outputOnly/inputOnly field guards; graceful recovery from malformed brace/bracket structure (`lenient_read_test.cpp`).
-- `ctest --preset dev -R x3d_range_warnings` — out-of-range field values collected into `doc.rangeWarnings` without throwing (`range_warnings_test.cpp`).
-- `ctest --preset dev -R x3d_proto_expand` — PROTO expansion integration via `parseDocument` (`proto_expand_test.cpp`).
-- `ctest --preset dev -R x3d_proto_clone` — ProtoDeclaration deep-clone correctness (`proto_clone_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `encoding_lex_audit_test`) — `VrmlTokenizer` unit tests covering punctuation, quoted strings, comment skipping, BOM handling, two-token lookahead (`encoding_lex_audit_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `reader_audit_test`) — differential reader audit over the full conformance corpus (`reader_audit_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `version_floor_test`) — version-inference ladder: VRML97 header floored to 3.0, sub-3.0 legacy headers, `#X3D V4` round-trips (`version_floor_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `lenient_read_test`) — unknown node/field skip; outputOnly/inputOnly field guards; graceful recovery from malformed brace/bracket structure (`lenient_read_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `range_warnings_test`) — out-of-range field values collected into `doc.rangeWarnings` without throwing (`range_warnings_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `proto_expand_test`) — PROTO expansion integration via `parseDocument` (`proto_expand_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `proto_clone_test`) — ProtoDeclaration deep-clone correctness (`proto_clone_test.cpp`).
 - `ctest --preset dev -R x3d_proto_front_door` — EXTERNPROTO cross-file resolution through the default `localFileProtoResolver` (`proto_front_door_test.cpp`).
-- `ctest --preset dev -R x3d_proto_nested_body` — ProtoBody DEF scoping; IS-connection capture; nested PROTO instances (`proto_nested_body_test.cpp`).
-- `ctest --preset dev -R x3d_json_proto` — JSON PROTO/ExternProtoDeclare/ProtoInstance capture and round-trip (`json_proto_test.cpp`).
-- `ctest --preset dev -R x3d_vrml97_proto` — VRML97-specific PROTO parsing (`vrml97_proto_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `proto_nested_body_test`) — ProtoBody DEF scoping; IS-connection capture; nested PROTO instances (`proto_nested_body_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `json_proto_test`) — JSON PROTO/ExternProtoDeclare/ProtoInstance capture and round-trip (`json_proto_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `vrml97_proto_test`) — VRML97-specific PROTO parsing (`vrml97_proto_test.cpp`).
 - `ctest --preset dev -R x3d_proto_expand_audit` — corpus-wide PROTO expansion invariants (`proto_expand_audit_test.cpp`).
-- `ctest --preset dev -R x3d_proto_nested_instance_placement_roundtrip` — parent/containerField linkage of nested ProtoInstances survives a parse → expand → re-emit round-trip.
+- `ctest --preset dev -R x3d_codecs_tests` (doctest case: `proto_nested_instance_placement_roundtrip_test`) — parent/containerField linkage of nested ProtoInstances survives a parse → expand → re-emit round-trip.
 - `ctest --preset dev -R x3d_vrml_script_field` — VRML/Classic VRML Script author-field capture into DynamicFieldStore (`vrml_script_field_test.cpp`).
 - `ctest --preset dev -R x3d_json_script_field` — JSON Script author-field capture + `#sourceText` / inline-URL source extraction (`json_script_field_test.cpp`).
-- `ctest --preset dev -R x3d_inline_expand` — Inline node expansion via `localFileInlineResolver` (parse-time seam) (`inline_expand_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_expand_test`) — Inline node expansion via `localFileInlineResolver` (parse-time seam) (`inline_expand_test.cpp`).
 - `ctest --preset dev -R x3d_inline_roundtrip` — Inline-expanded scenes survive a write → re-parse round-trip (`inline_roundtrip_test.cpp`).
-- `ctest --preset dev -R x3d_inline_carriers` — Inline load=TRUE/FALSE carrier semantics (`inline_carriers_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_carriers_test`) — Inline load=TRUE/FALSE carrier semantics (`inline_carriers_test.cpp`).
 - `ctest --preset dev -R x3d_inline_routes` — Routes from within an Inline's sub-scene resolve correctly after expansion (`inline_routes_test.cpp`).
 - `ctest --preset dev -R x3d_inline_cycle` — Inline self-reference / mutual cycle terminates (thread-local active-file guard) (`inline_cycle_test.cpp`).
 - `ctest --preset dev -R x3d_inline_containment_cycle` — Containment-cycle defense-in-depth post inline expansion (`inline_containment_cycle_test.cpp`).

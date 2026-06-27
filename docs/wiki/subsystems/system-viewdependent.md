@@ -17,7 +17,7 @@ related:
 The View-Dependent System is the runtime subsystem that re-evaluates every scene-graph node whose correct behavior depends on the current viewer pose. It runs once per tick from the bound `Viewpoint` and is responsible for three distinct behaviors:
 
 1. **LOD level selection** — computes eye-to-center distance in each LOD node's local frame, applies the §23.4.3 step function, clamps to the child count, and fires `level_changed` on transitions.
-2. **Environmental sensor edge detection** — evaluates `ProximitySensor` (viewer-in-box, §22.4.1), `VisibilitySensor` (box-in-cone, §22.4.3), and `TransformSensor` (targetObject-AABB-in-sensor-box, §22.4.2); fires `isActive`/`enterTime`/`exitTime` on enter and exit edges and `position_changed`/`orientation_changed` while inside (Proximity + Transform). Change-gated (ENV-04: emit only on actual change) and disable-deactivates (ENV-07: a disabled active sensor fires exit).
+2. **Environmental sensor edge detection** — evaluates `ProximitySensor` (viewer-in-box, §22.4.1), `VisibilitySensor` (box-in-cone, §22.4.3), and `TransformSensor` (targetObject-AABB-in-sensor-box, §22.4.2); fires `isActive`/`enterTime`/`exitTime` on enter and exit edges and `position_changed`/`orientation_changed` while inside (Proximity + Transform). Change-gated (ENV-04: emit only on actual change) and disable-deactivates (ENV-07: a disabled active sensor fires exit). **Gap:** sensors reachable only through a non-selected `Switch` child or inactive `LOD` level are still evaluated — per ADR-0034 they should be treated as removed from the hierarchy (`SENSOR-SWITCH`, open).
 3. **Billboard rotation math** — a standalone, header-only helper that computes the local rotation matrix that faces a Billboard node toward the viewer; consumed directly by `SceneExtractor` and `PickSystem` during their per-path walks.
 
 The split between tick-time (LOD events, sensor edges) and render-time (Billboard rotation, LOD child selection for rendering) is intentional and documented: the `ViewDependentSystem` class owns the event side; the free function `billboardLocalMatrix` and the inline `lodSelectLevel` are used at extract/pick time. This avoids a dependency cycle between `SceneExtractor`, `PickSystem`, and the execution context.
@@ -29,7 +29,7 @@ The split between tick-time (LOD events, sensor edges) and render-time (Billboar
 | `runtime/scene/ViewDependentSystem.hpp` | `ViewDependentSystem` class (a `System`): `attach`, `update`, sensor/LOD tracking, observer seams |
 | `runtime/scene/Billboard.hpp` | `billboardLocalMatrix` free function (§23.4.1) + `viewdep::` math helpers (`sub`, `dot`, `cross`, `len`, `norm`); no `X3DExecutionContext` dependency |
 | `runtime/events/X3DSceneBridge.hpp` | `attachViewDependent(Scene&, X3DExecutionContext&)` — production wiring: scene walk + per-node `attach` call |
-| `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (24 test functions, one `main`); ctest target `x3d_view_dependent` |
+| `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (24 test functions, one `main`); doctest case `view_dependent_test` in the `x3d_geometry_scene` target |
 
 ## Interfaces and seams
 
@@ -96,7 +96,7 @@ int lodSelectLevel(const X3DNode &lod, float distToCenter);
 
 ## How it is tested
 
-- **`x3d_view_dependent`** (`ctest --preset dev -R x3d_view_dependent`) — 24 unit tests in `runtime/scene/tests/view_dependent_test.cpp` covering:
+- **`view_dependent_test`** (`ctest --preset dev -R x3d_geometry_scene`) — 24 unit tests in `runtime/scene/tests/view_dependent_test.cpp` covering:
   - `testBillboardAxis` / `testBillboardViewerAlign` — `billboardLocalMatrix` for axis-aligned and viewer-aligned modes; asserts the rotated local +Z points toward the viewer.
   - `testBillboardInExtractor` — Billboard rotation applied through `SceneExtractor::fullSnapshot`; the `RenderItem` world transform's +Z faces the viewer.
   - `testBillboardInPick` — Ray pick resolves against the view-rotated geometry (a ray that misses the un-rotated box hits the rotated one at the expected face).

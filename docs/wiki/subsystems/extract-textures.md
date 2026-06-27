@@ -112,18 +112,18 @@ RGBA8 pixels, bottom-left origin (GL convention). The SDK never calls this resol
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_material_system` — unit tests for `materialOf()` and `texturesOf()`: all three material model branches, null-appearance and null-material cases, PixelTexture inline, MultiTexture channel expansion, and material-slot precedence over legacy `Appearance.texture` (D6). Source: `runtime/extract/tests/material_system_test.cpp`.
-- `ctest --preset dev -R x3d_texture_extract` — T-TEX v1 end-to-end coverage: authored `TextureCoordinate` wins over §13 default projection; `TextureTransform` center/rotation/scale/translation bake (§18.4.10); `extendedSamplerOf` with and without `TextureProperties` (§18.4.9); `TextureCoordinateGenerator` mode/parameter descriptor (§18.4.8); `resolveTextureRefs` MFString fallback order + Inline skip. Source: `runtime/extract/tests/texture_extract_test.cpp`.
-- `ctest --preset dev -R x3d_light_system` — `LightSystem::collect` unit tests: DirectionalLight/PointLight/SpotLight field reads; world-frame direction and location; `global` flag default differences per light type; `on==false` skip; `scopeRoot` assignment. Source: `runtime/extract/tests/light_system_test.cpp`.
-- `ctest --preset dev -R x3d_texture_desc` — `TextureDesc` struct, `PixelFormat` compressed/uncompressed predicate, `MipLevelDesc` accessors. Source: `runtime/extract/tests/texture_desc_test.cpp`.
+- `ctest --preset dev -R x3d_extract_tests` (doctest case: `material_system_test`) — unit tests for `materialOf()` and `texturesOf()`: all three material model branches, null-appearance and null-material cases, PixelTexture inline, MultiTexture channel expansion, and material-slot precedence over legacy `Appearance.texture` (D6). Source: `runtime/extract/tests/material_system_test.cpp`.
+- `ctest --preset dev -R x3d_extract_tests` (doctest case: `texture_extract_test`) — T-TEX v1 end-to-end coverage: authored `TextureCoordinate` wins over §13 default projection; `TextureTransform` center/rotation/scale/translation bake (§18.4.10); `extendedSamplerOf` with and without `TextureProperties` (§18.4.9); `TextureCoordinateGenerator` mode/parameter descriptor (§18.4.8); `resolveTextureRefs` MFString fallback order + Inline skip. Source: `runtime/extract/tests/texture_extract_test.cpp`.
+- `ctest --preset dev -R x3d_extract_tests` (doctest case: `light_system_test`) — `LightSystem::collect` unit tests: DirectionalLight/PointLight/SpotLight field reads; world-frame direction and location; `global` flag default differences per light type; `on==false` skip; `scopeRoot` assignment. Source: `runtime/extract/tests/light_system_test.cpp`.
+- `ctest --preset dev -R x3d_extract_tests` (doctest case: `texture_desc_test`) — `TextureDesc` struct, `PixelFormat` compressed/uncompressed predicate, `MipLevelDesc` accessors. Source: `runtime/extract/tests/texture_desc_test.cpp`.
 - `ctest --preset dev -R x3d_extract_oracle_test` — STL round-trip oracle using `SceneExtractor` (exercises the `materialOf` integration path indirectly via extraction). Requires `X3D_CPP_BUILD_EXT`. Source: `tools/x3d-cli/extract_oracle_test.cpp`.
 
 ## Related specs and ADRs
 
 - [ADR-0015: Extraction Pull Per Path](../decisions/0015-extraction-pull-per-path.md)
 - Spec (v1-closure extraction design): `docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md`
-- Spec (T-TEX closure): `docs/superpowers/specs/2026-06-16-v1-closure-design.md`
+- Spec (T-TEX closure): `docs/superpowers/specs/2026-06-16-v1-closure-roadmap-design.md`
 - Spec (binary mesh/texture abstractions): `docs/superpowers/specs/2026-06-18-binary-mesh-texture-abstractions.md`
 - Conformance findings MAT-001 through MAT-005 (all closed): `docs/conformance/findings.yaml`
 - Conformance finding TXF-1 (deferred — spec-ambiguous UV transform order): `docs/conformance/findings.yaml`
-- Conformance finding MAT-006 (deferred — `Appearance.backMaterial` two-sided extraction): `docs/conformance/findings.yaml`
+- Conformance finding MAT-006 (closed — `Appearance.backMaterial` two-sided extraction now reads via the same three-way dispatch as the front material): `docs/conformance/findings.yaml`

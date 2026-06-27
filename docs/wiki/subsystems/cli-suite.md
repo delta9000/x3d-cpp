@@ -38,7 +38,7 @@ coverage over the CLI as a whole.
 | `tools/x3d-cli/scene_equiv.hpp` | `x3d_cli::sceneEquivalent()` — reflection-based scene comparison for the convert round-trip gate |
 | `tools/x3d-cli/cli_gate.cpp` | Differential validation gate: validate-diff vs X3DJSAIL + convert round-trip |
 | `tools/x3d-cli/canon_gate.cpp` | X3DC14N tiered gate: idempotence (T1) + tolerant diff vs X3DJSAIL (T2) + byte-exact (T3) |
-| `tools/x3d-cli/goldens/` | Committed gate artifacts: `subset.txt`, `validate-verdicts.tsv`, `cli-gate-baseline.tsv`, `canon-gate-baseline.tsv`, `canonical-goldens/`, golden sim traces |
+| `tools/x3d-cli/goldens/` | Committed gate artifacts: `subset.txt`, `validate-verdicts.tsv`, `cli-gate-baseline.tsv`, `canon-gate-baseline.tsv`, golden sim traces. (`canonical-goldens/` is generated on demand by `mise run canon-golden-gen` — needs JDK 25 — and is not committed.) |
 
 ## The five commands
 

@@ -104,7 +104,7 @@ X3D file
 
 ## How it is tested
 
-All ext tests are registered inside the `if(X3D_CPP_BUILD_EXT)` block in `CMakeLists.txt` and run only when `-DX3D_CPP_BUILD_EXT=ON` is set. They do not appear in, and do not affect, the standard `ctest 153/153` run (159 total `add_test` entries minus the 6 inside the `X3D_CPP_BUILD_EXT` block).
+All ext tests are compiled and registered only inside the `if(X3D_CPP_BUILD_EXT)` block in `CMakeLists.txt` and run only when `-DX3D_CPP_BUILD_EXT=ON` is set. They therefore do not appear in, and do not affect, the default `ctest` run.
 
 - **`stl_reader_test`** (`runtime/ext/tests/stl_reader_test.cpp`) — synthesizes a two-triangle binary STL in-memory and asserts: `vertex_count == 6`, `index_count == 0`, Position and Normal attributes present with correct per-vertex values, AABB computed correctly (`min=(0,0,0)`, `max=(3,1,0)`), and three malformed-input cases (buffer too short, truncated triangle data, null pointer) all return empty `PackedMesh` without crashing.
 
@@ -114,6 +114,8 @@ All ext tests are registered inside the `if(X3D_CPP_BUILD_EXT)` block in `CMakeL
 
 - **`external_geometry_e2e_test`** (`runtime/ext/tests/external_geometry_e2e_test.cpp`) — Round 2 lazy materialization proof: builds a `Group → Shape → ExternalGeometry(url="m.stl")` scene programmatically, wires `makeExternalGeometryResolver` with a counting stub that returns a known two-triangle binary STL, runs `SceneExtractor::fullSnapshot()`, and asserts: (1) PACKED — one `RenderItem` with `geometry_ext.kind == Packed`, `vertex_count == 6`, and the known v0 position `(1,2,3)`; (2) CACHE — a second extract reuses the cached `PackedMesh` and the stub byte-provider was called exactly once; (3) PENDING — an unresolvable URL results in no `RenderItem` emitted, no crash.
 
+- Two further ext-gated tests round out the suite: **`x3d_stl_write_test`** (binary-STL write path) and **`x3d_extract_oracle_test`** (differential extraction oracle), both in `runtime/ext/tests/`.
+
 ## Related specs and ADRs
 
 - [ADR-0001: External-Code Firewall](../decisions/0001-ext-firewall.md) — the rationale, four-layer firewall design, trade-offs, and CMake target structure
@@ -121,4 +123,4 @@ All ext tests are registered inside the `if(X3D_CPP_BUILD_EXT)` block in `CMakeL
 - [Extract subsystem](extract.md) — the extraction pipeline that calls the `externalGeometryResolver` seam
 - Dated design spec: `docs/superpowers/specs/2026-06-19-binary-geometry-extension-design.md` — consolidated design; cites ISO 19775-1 §4.4.5.1 and the EXTERNPROTO extension point
 - Dated spec: `docs/superpowers/specs/2026-06-18-binary-mesh-texture-abstractions.md` — earlier abstraction design that preceded the firewall split
-- Ingestion roadmap memory: `docs/superpowers/BACKLOG.md` — deferred items including the portable `.x3d` fallback baker (second slot in the EXTERNPROTO url list) and future codecs (PLY, OBJ single-mesh, glTF per-mesh)
+- Ingestion roadmap: the [GitHub Project](https://github.com/users/delta9000/projects/2) — deferred items including the portable `.x3d` fallback baker (second slot in the EXTERNPROTO url list) and future codecs (PLY, OBJ single-mesh, glTF per-mesh)

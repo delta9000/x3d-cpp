@@ -127,15 +127,15 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 
 - **Hermite spline** (`SplineInterpolation.hpp`): implements the §19.2.4 algorithm — Hermite basis (h00, h01, h10, h11), per-segment F+/F- non-uniform-interval tangent scaling, optional author `keyVelocity` (size 2 = endpoints only, size N = per-key), `normalizeVelocity` chord-length scaling, closed-loop key/value wrap, and open-curve zero-tangent endpoint overrides.
 
-- **SquadOrientationInterpolator**: Shoemake Squad in quaternion space (§19.4.13). N=2 reduces to plain SLERP, matching `OrientationInterpolator`.
+- **SquadOrientationInterpolator**: Shoemake Squad in quaternion space (§19.4.13). N=2 reduces to plain SLERP, matching `OrientationInterpolator`. (`normalizeVelocity` is currently read by nothing — `INTERP-03`, open.)
 
 - **EaseInEaseOut** (§19.4.4): the ten-step algorithm; the eased local fraction is remapped to the global key domain so the output is directly usable as a downstream interpolator's `set_fraction`.
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_event_interpolators` — per-type linear interpolator cascade tests (`runtime/events/tests/interpolator_test.cpp`). Covers all eight linear types: Scalar, Position, Position2D, Color (HSV midpoint), Orientation (SLERP angle), Coordinate (multi-point), CoordinateInterpolator2D, and Normal (unit-sphere SLERP). Each drives fractions at 0, 0.5, 1, and one off-key value; a final scene test fans one fraction to three interpolators simultaneously.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `interpolator_test`) — per-type linear interpolator cascade tests (`runtime/events/tests/interpolator_test.cpp`). Covers all eight linear types: Scalar, Position, Position2D, Color (HSV midpoint), Orientation (SLERP angle), Coordinate (multi-point), CoordinateInterpolator2D, and Normal (unit-sphere SLERP). Each drives fractions at 0, 0.5, 1, and one off-key value; a final scene test fans one fraction to three interpolators simultaneously.
 
-- `ctest --preset dev -R x3d_interpolator_conformance` — behavioral conformance tests (`runtime/events/tests/interpolator_conformance_test.cpp`). Closes INTERP-02 (empty-key guard: sentinel value held after `set_fraction`; re-enabled after non-empty key assigned), INTERP-01 (Hermite scalar 2-key and 3-key exact values; author `keyVelocity` endpoint form; SplinePositionInterpolator component values; Squad N=2 reduces to SLERP; EaseInEaseOut three piecewise regions; S>1 rescaling path), and PIV-1 (`attachInterpolators` wires ScalarInterpolator and SplinePositionInterpolator via scene-walk, no manual per-node attach). All expected values are hand-computed from the normative §19.2.4 Hermite basis and §19.4.4 algorithm.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `interpolator_conformance_test`) — behavioral conformance tests (`runtime/events/tests/interpolator_conformance_test.cpp`). Closes INTERP-02 (empty-key guard: sentinel value held after `set_fraction`; re-enabled after non-empty key assigned), INTERP-01 (Hermite scalar 2-key and 3-key exact values; author `keyVelocity` endpoint form; SplinePositionInterpolator component values; Squad N=2 reduces to SLERP; EaseInEaseOut three piecewise regions; S>1 rescaling path), and PIV-1 (`attachInterpolators` wires ScalarInterpolator and SplinePositionInterpolator via scene-walk, no manual per-node attach). All expected values are hand-computed from the normative §19.2.4 Hermite basis and §19.4.4 algorithm.
 
 ## Related specs and ADRs
 

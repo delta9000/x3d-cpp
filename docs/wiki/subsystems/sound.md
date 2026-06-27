@@ -139,7 +139,7 @@ ctest --test-dir build-audio -R x3d_sound
 ```
 
 **Synthesis tier** (both backends, same graph):
-- Same `OscillatorSource → BiquadFilter → Gain → AudioDestination` fixture (440 Hz, 8 kHz lowpass, gain 0.5, 4096 frames, 48 kHz).
+- Fixtures (both backends, 4096 frames @ 48 kHz): a 440 Hz tone (`OscillatorSource → AudioDestination`) and a lowpass chain (`OscillatorSource → BiquadFilter → AudioDestination`, 1 kHz cutoff), plus an 8 kHz-tone stopband probe (both backends attenuate it to <2% of the passband).
 - RMS ratio A/B within ±2%.
 - Goertzel at 440 Hz ratio within ±5%.
 - F2 (2nd harmonic, in-band) ratio within ±15% — intentionally wide to accommodate the RBJ-vs-independent-derivation filter-law delta at the filter knee.
@@ -151,7 +151,7 @@ ctest --test-dir build-audio -R x3d_sound
 - Monotonic distance falloff at 5 distances per model (Linear, Inverse, Exponential).
 - Energy allowed to differ by up to ±40% between backends — equal-power vs. amplitude+1/d laws agree on physical invariants, not on exact numbers.
 
-CI gate: `.github/workflows/ci.yml` `sound-swaptest` job (`-DX3D_CPP_BUILD_MINIAUDIO=ON`).
+CI gate: `.github/workflows/ci.yml` `audio-swap` job (`-DX3D_CPP_BUILD_MINIAUDIO=ON`).
 
 ## Related specs and ADRs
 

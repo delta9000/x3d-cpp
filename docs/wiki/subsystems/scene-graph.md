@@ -114,23 +114,23 @@ int severed = x3d::runtime::breakContainmentCycles(scene);
 
 ## How it is tested
 
-Unit tests live in `runtime/scene/tests/`. All registered as ctest targets:
+Unit tests live in `runtime/scene/tests/`, all compiled into the `x3d_geometry_scene` ctest executable:
 
-- `ctest --preset dev -R x3d_dirty_tracker` — `DirtyTracker` mark/clear/flag semantics.
-- `ctest --preset dev -R x3d_transform_system` — `TransformSystem` world-transform index and incremental propagation via a synthetic scene.
-- `ctest --preset dev -R x3d_transform_hanim_cadpart` — `HAnimHumanoid`, `HAnimJoint`, `CADPart` TRS frames.
-- `ctest --preset dev -R x3d_bounds_system` — `BoundsSystem` leaf geometry, shape hierarchy, post-order build.
-- `ctest --preset dev -R x3d_bounds_shared_subgraph` — DEF/USE shared subgraph: a USE-shared node must not produce multiplicative recompute; bounds are path-independent.
-- `ctest --preset dev -R x3d_bounds_cycle` — defense-in-depth cycle guard inside `BoundsSystem::compute`.
-- `ctest --preset dev -R x3d_cycle_breaker` — `breakContainmentCycles` severs back-edges; well-formed scenes return 0.
-- `ctest --preset dev -R x3d_geometry_bounds` — `localGeometryBounds` type dispatch for each primitive and mesh variant.
-- `ctest --preset dev -R x3d_pick_system` — `PickSystem` analytic narrow phase (Sphere/Cone/Cylinder), mesh narrow phase, AABB fallback, Billboard-pick pose.
-- `ctest --preset dev -R x3d_binding_stack` — `BindingStack` push/pop/bind/unbind protocol.
-- `ctest --preset dev -R x3d_binding_system` — `BindingSystem` scene enrolment + default-bind.
-- `ctest --preset dev -R x3d_bind_time_conformance` — `bindTime` fires on both bind and unbind transitions (ISO/IEC 19775-1 §23.3.1).
-- `ctest --preset dev -R x3d_binding_stack_audit` — extended audit of bind/unbind ordering edge cases.
-- `ctest --preset dev -R x3d_interface_registry` — `X3DInterfaceRegistry` (used by `BindingSystem::category`).
-- `ctest --preset dev -R x3d_view_dependent` — `ViewDependentSystem` LOD `level_changed`, `ProximitySensor`, `VisibilitySensor`, `TransformSensor` enter/exit (24 tests).
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `dirty_tracker_test`) — `DirtyTracker` mark/clear/flag semantics.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `transform_system_test`) — `TransformSystem` world-transform index and incremental propagation via a synthetic scene.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `transform_system_hanim_cadpart_test`) — `HAnimHumanoid`, `HAnimJoint`, `CADPart` TRS frames.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `bounds_system_test`) — `BoundsSystem` leaf geometry, shape hierarchy, post-order build.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `bounds_shared_subgraph_test`) — DEF/USE shared subgraph: a USE-shared node must not produce multiplicative recompute; bounds are path-independent.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `bounds_cycle_test`) — defense-in-depth cycle guard inside `BoundsSystem::compute`.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `cycle_breaker_test`) — `breakContainmentCycles` severs back-edges; well-formed scenes return 0.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `geometry_bounds_test`) — `localGeometryBounds` type dispatch for each primitive and mesh variant.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `pick_system_test`) — `PickSystem` analytic narrow phase (Sphere/Cone/Cylinder), mesh narrow phase, AABB fallback, Billboard-pick pose.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `binding_stack_test`) — `BindingStack` push/pop/bind/unbind protocol.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `binding_system_test`) — `BindingSystem` scene enrolment + default-bind.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `bind_time_conformance_test`) — `bindTime` fires on both bind and unbind transitions (ISO/IEC 19775-1 §23.3.1).
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `binding_stack_audit_test`) — extended audit of bind/unbind ordering edge cases.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `interface_registry_test`) — `X3DInterfaceRegistry` (used by `BindingSystem::category`).
+- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `view_dependent_test`) — `ViewDependentSystem` LOD `level_changed`, `ProximitySensor`, `VisibilitySensor`, `TransformSensor` enter/exit (24 tests).
 
 The scene model is also exercised end-to-end by the corpus sweep (`mise run corpus`, `x3d_corpus_smoke`) — 17,719 files, 0 crashes — which first surfaced the containment-cycle stack overflow that motivated `CycleBreaker`.
 

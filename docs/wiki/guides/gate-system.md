@@ -160,7 +160,7 @@ git commit -m "chore(gate): accept new baseline divergences — <reason>"
 `cli-gate-baseline` runs both harnesses with `--write-baseline`, overwriting the committed
 TSVs. The commit locks the new allowed set as the regression floor.
 
-**Generating fresh X3DJSAIL golden fixtures** (requires JDK 25 and the corpus archive):
+**Generating fresh X3DJSAIL golden fixtures** (requires a JDK + the corpus archive; `canon-golden-gen` specifically needs JDK 25):
 
 ```bash
 mise run cli-golden-gen    # validate verdicts via X3DJSAIL -validate
@@ -205,7 +205,7 @@ to pages that do not yet exist in `nav:` — `--strict` will fail.
 mise run ci
 ```
 
-`ci` depends on `test`, `golden`, `conformance-gate`, `build`, and `cli-gate-regression` (in
+`ci` depends on `test`, `golden`, `conformance-gate`, `coverage-gate`, `doc-ctest-gate`, `build`, and `cli-gate-regression` (in
 that order, with the C++ build providing the compiled gate binaries). The DOCS gate
 (`docs-build`) is separate and should also be run before any wiki PR merge.
 

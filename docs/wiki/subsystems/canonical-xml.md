@@ -131,4 +131,4 @@ In-wiki:
 Cited paths (out-of-wiki — not hyperlinked per CONVENTIONS):
 
 - `docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md` — the dated design spec that drove the X3DC14N rule set and the canon-gate tiers
-- `docs/superpowers/BACKLOG.md` — conformance backlog; canon-gate wired as a pre-merge gate per the ADR-0010 decision
+- `docs/conformance/findings.yaml` — conformance findings; canon-gate wired as a pre-merge gate per the ADR-0010 decision

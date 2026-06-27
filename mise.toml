@@ -132,8 +132,16 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 """
 
 [tasks.ci]
-description = "Run the whole pipeline locally: tests, golden gate, conformance gate, C++ build/ctest, cli differential regression gate."
-depends = ["test", "golden", "conformance-gate", "build", "cli-gate-regression"]
+description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest, cli differential regression gate."
+depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build", "cli-gate-regression"]
+
+[tasks.coverage-gate]
+description = "ADR coverage gate: cross-check docs/wiki/decisions/*.md against the Decisions table in coverage.md (no file unrowed, no row dangling, contiguous numbering)."
+run = "python scripts/coverage_gate.py"
+
+[tasks.doc-ctest-gate]
+description = "Doc ctest-command gate: every `ctest -R x3d_*` in docs/wiki must match a real add_test(NAME …) target (doctest case names are not ctest targets)."
+run = "python scripts/doc_ctest_gate.py"
 
 [tasks.conformance]
 description = "Regenerate the conformance view (docs/conformance/: model.json + INDEX.md + components/). Edit judgments in docs/conformance/findings.yaml first."

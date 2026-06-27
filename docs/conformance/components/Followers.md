@@ -22,7 +22,7 @@ _Generated. Levels 1 · 14 nodes · profiles: Full._
 ## Findings
 
 - **FOL-5** [minor/DEFERRED] — §39.3.1: Chaser FIR ring buffer (time-stamped set_destination events over the duration window) unimplemented.
-  - ChaserSystem ships as a re-basing single-transition lerp (reaches destination `duration` after the last set_destination); for non-overlapping use this is spec-equivalent. The literal FIR ring-buffer / overlapping-transition superposition (multiple set_destination events within one duration window accumulating via independent taps) is not implemented — deferred, see FOL-OVL in BACKLOG.md.
+  - ChaserSystem ships as a re-basing single-transition lerp (reaches destination `duration` after the last set_destination); for non-overlapping use this is spec-equivalent. The literal FIR ring-buffer / overlapping-transition superposition (multiple set_destination events within one duration window accumulating via independent taps) is not implemented — deferred (tracked as FOL-OVL).
 - **FOL-1** [critical/FIXED] — §39.3.1, 39.3.2, 39.3.3: No follower System — chasers (FIR) / dampers (IIR) never advance value_changed per tick. Whole family inert.
   - Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred.
 - **FOL-2** [critical/FIXED] — §39.3.3: set_destination must drive isActive TRUE + begin per-tick value_changed emission toward the destination — unimplemented.

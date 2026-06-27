@@ -743,7 +743,7 @@
   status: deferred
   wave: 3
   summary: Chaser FIR ring buffer (time-stamped set_destination events over the duration window) unimplemented.
-  note: "ChaserSystem ships as a re-basing single-transition lerp (reaches destination `duration` after the last set_destination); for non-overlapping use this is spec-equivalent. The literal FIR ring-buffer / overlapping-transition superposition (multiple set_destination events within one duration window accumulating via independent taps) is not implemented — deferred, see FOL-OVL in BACKLOG.md."
+  note: "ChaserSystem ships as a re-basing single-transition lerp (reaches destination `duration` after the last set_destination); for non-overlapping use this is spec-equivalent. The literal FIR ring-buffer / overlapping-transition superposition (multiple set_destination events within one duration window accumulating via independent taps) is not implemented — deferred (tracked as FOL-OVL)."
 - id: FOL-6
   interfaces: [X3DDamperNode]
   clause: "39.3.2"
@@ -1235,16 +1235,18 @@
   clause: "24.4.2"
   severity: major
   status: open
-  summary: "Fog is inert — matrix marks 'Behaves ✓' but no fog effect is rendered."
-  note: "boundFog() declared at runtime/events/X3DExecutionContext.hpp:266 has zero production callers; ShaderUniformVocabulary.hpp:167-175 references a 'FogDesc' struct that does not exist; SceneExtractor has no fog readout. The EnvironmentalEffects.md matrix Behaves:✓ is false — correct the status and wire fog colour/type/range into the shader uniform path. (sweep 2026-06-25)"
+  behaves: inert
+  summary: "Fog is inert — bound and round-tripped, but no fog effect reaches the shader."
+  note: "boundFog() declared at runtime/events/X3DExecutionContext.hpp:266 has zero production callers; ShaderUniformVocabulary.hpp:167-175 references a 'FogDesc' struct that does not exist; SceneExtractor has no fog readout. `behaves: inert` forces the matrix to ✗ (the closed binding-stack finding BIND-06 must not upgrade it to ◑). Fix = wire fog colour/type/range into the shader uniform path. (sweep 2026-06-25)"
 - id: ENV-11
   nodes: [TextureBackground]
   interfaces: [X3DBackgroundNode]
   clause: "24.4.5"
   severity: major
   status: open
-  summary: "TextureBackground texture faces never read — matrix 'Behaves ✓' is false."
-  note: "Only binding-stack recognition exists (BindingSystem.hpp:80-85); the six face-texture fields (back/front/left/right/top/bottomTexture) are read nowhere in runtime/. Behaves identically to a plain Background. Correct the EnvironmentalEffects.md status; full skybox texturing tracking blocked on cube/sky texture render support. (sweep 2026-06-25)"
+  behaves: inert
+  summary: "TextureBackground texture faces never read — renders identically to a plain Background."
+  note: "Only binding-stack recognition exists (BindingSystem.hpp:80-85); the six face-texture fields (back/front/left/right/top/bottomTexture) are read nowhere in runtime/. `behaves: inert` forces the matrix to ✗ for the node's own feature; full skybox texturing tracking blocked on cube/sky texture render support. (sweep 2026-06-25)"
 - id: GEO-1
   nodes: [GeoViewpoint]
   component: Geospatial

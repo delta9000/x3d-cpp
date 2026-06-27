@@ -142,7 +142,7 @@ public:
 
 - **`tests/test_descriptors.py`** — unit tests for `build_descriptor()`: verifies accessor names, default expressions, constraint-check bodies, `reader_setter_call` routing (constrained vs. unconstrained, `initializeOnly`), move-overload eligibility, `outputOnly` / `inputOnly` role predicates, and `_render_range_collect`.
 
-- **`tests/test_interface_registry.py`** — tests `interface_ids()`, `interfaces_of()`, `gen_interface_registry_header()`, `gen_interface_registry_source()`: checks that the `InterfaceId` enum contains all expected abstract types (the actual count is >60), that `TimeSensor` implements both `X3DTimeDependentNode` and `X3DSensorNode`, and that transitive closure is computed correctly (e.g. `MovieTexture` reaches `X3DChildNode` transitively).
+- **`tests/test_interface_registry.py`** — tests `interface_ids()`, `interfaces_of()`, `gen_interface_registry_header()`, `gen_interface_registry_source()`: checks that the `InterfaceId` enum contains all expected abstract types (78 enumerators), that `TimeSensor` implements both `X3DTimeDependentNode` and `X3DSensorNode`, and that transitive closure is computed correctly (e.g. `MovieTexture` reaches `X3DChildNode` transitively).
 
 - **`tests/test_emission.py`** — integration tests over a fully-rendered output directory: `test_reflection_header_defines_range_diagnostic()` checks the `RangeDiagnostic` struct; `test_node_emits_checkranges_and_validateranges()` confirms that `Material` emits `checkRangesSpecularColor` in its header and `out.push_back(RangeDiagnostic{…})` in its `.cpp`.
 
@@ -150,7 +150,7 @@ public:
 
 - **`scripts/check_golden.sh`** — called by `test_check_golden_script_passes()` in the same file; the conformance gate runs this as an additional drift check.
 
-- **C++ ctest** — the compiled golden files are exercised by the full runtime ctest suite (104+ tests as of the corpus-sweep milestone), which links `x3d_cpp_nodes` and exercises factory creation, field get/set thunks, and visitor dispatch indirectly through every codec and extraction test.
+- **C++ ctest** — the compiled golden files are exercised by the full runtime ctest suite (50 registered ctest targets, each a grouped doctest binary covering many cases), which links `x3d_cpp_nodes` and exercises factory creation, field get/set thunks, and visitor dispatch indirectly through every codec and extraction test.
 
 ## Related specs and ADRs
 

@@ -25,7 +25,7 @@ The system also provides the `HeadPose` seam through which a CAVE consumer can i
 | `runtime/events/NavigationSystem.hpp` | The `System` subclass — all four mode implementations, cross-tick state, vector helpers, LOOKAT transition state machine |
 | `runtime/events/HeadPose.hpp` | Pure-data struct: `position`, `orientation`, `revision`; set by the consumer for head-tracking |
 | `runtime/events/ViewpointOffset.hpp` | Per-viewpoint user offset (`Mat4 local`); navigation accumulates into this rather than the authored fields |
-| `runtime/events/tests/navigation_test.cpp` | Unit test (ctest target `x3d_navigation`): five cases covering all four modes |
+| `runtime/events/tests/navigation_test.cpp` | Unit test (doctest case `navigation_test` in the `x3d_events_tests` target): five cases covering all four modes |
 
 ## Interfaces and seams
 
@@ -89,7 +89,7 @@ On button-down edge, the system picks the ray (`ctx.pick`), computes the target 
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_navigation` — ten cases, all driven entirely in code (no file fixtures):
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `navigation_test`) — ten cases, all driven entirely in code (no file fixtures):
   1. **EXAMINE** — drag orbits the eye; asserts distance-to-pivot is preserved and camera aims at pivot; authored `position` field is unchanged (BIND-01 invariant).
   2. **FLY** — forward key translates by `speed * dt` along the view direction; drag rotates the effective view direction; `speed = 0` locks position; authored `position` field is unchanged.
   3. **LOOKAT** — click on a 2×2×2 Box at the origin from z=10; asserts pose moves during transition, ends at a framing distance in front of the box, `centerOfRotation` is set to the bbox center, and `transitionComplete` is `TRUE`.
