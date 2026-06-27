@@ -80,6 +80,11 @@ namespace {
 using x3d::runtime::Mat4;
 using x3d::runtime::Aabb;
 namespace ex = x3d::runtime::extract;
+// ADR-0039 moved the value types to x3d::core and the node types to x3d::nodes.
+// This out-of-SDK consumer names SFVec3f/SFColor/SFImage/X3DNode &c. unqualified,
+// so pull both namespaces in (scoped to this anonymous namespace).
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 // --------------------------------------------------------------------------
 // Small GL helpers. PoC-local; nothing here belongs in the SDK.
