@@ -8,7 +8,7 @@ template no longer makes any type decisions; it only walks precomputed
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -195,7 +195,7 @@ class CppHeaderBackend:
         self._format(emitted_files, self.clang_format)
 
     @staticmethod
-    def _format(output_files: List[str], clang_format):
+    def _format(output_files: List[str], clang_format: Optional[str]):
         """Run clang-format once over all emitted files, if requested.
 
         If clang-format is unavailable, print a warning once and skip formatting
@@ -208,8 +208,8 @@ class CppHeaderBackend:
                                    capture_output=True, text=True)
             if result.returncode != 0:
                 print(f"WARNING: {clang_format} failed on {len(output_files)} files "
-                      f"(exit {result.returncode}); some files may have been "
-                      f"formatted before the failure.\n"
+                      f"(exit {result.returncode}); files processed before the "
+                      f"failure may already be formatted.\n"
                       f"{result.stderr}")
         except FileNotFoundError:
             print(f"WARNING: '{clang_format}' not found; skipping formatting. "
