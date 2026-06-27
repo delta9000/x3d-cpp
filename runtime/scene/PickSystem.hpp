@@ -97,8 +97,9 @@ public:
     // searched in O(nodes), not O(paths). worldOf returns the FIRST-found
     // placement, so pruning already-explored subtrees never changes the result.
     std::unordered_set<const X3DNode *> visited;
+    bool incomplete = false;
     for (X3DNode *r : roots_)
-      if (worldOfRec(r, Mat4::identity(), target, out, visited)) break;
+      if (worldOfRec(r, Mat4::identity(), target, out, visited, incomplete)) break;
     return out;
   }
 
@@ -384,23 +385,34 @@ private:
   // compute the bound Viewpoint's world frame, and injecting view-dependent
   // billboard orientation here would feed camera pose back into the very
   // computation that defines it.
+  // `incomplete` is set true if this subtree was NOT fully explored (a descendant
+  // hit the depth cap). Such a subtree is NOT memoized — `target` could still lie
+  // within it via a shallower path that stays under the cap.
   bool worldOfRec(const X3DNode *n, const Mat4 &worldM, const X3DNode *target,
                   Mat4 &out, std::unordered_set<const X3DNode *> &visited,
-                  std::size_t depth = 0) const {
+                  bool &incomplete, std::size_t depth = 0) const {
     // MEM-1: a hard depth cap stops a USE-cyclic / pathologically deep graph from
-    // overrunning the stack when `target` is absent (full traversal). worldOf()
-    // returns identity on a miss, so bailing here is the existing not-found path.
-    if (depth >= kMaxNestingDepth) return false;
-    // #21: skip a subtree already explored without finding `target`. A node is
-    // only re-reached after its first exploration fully returned (DFS), so if it
-    // returned false then, `target` is provably not under it. The first path that
-    // reaches `target` is unaffected, so worldOf's first-found result is preserved.
-    if (!visited.insert(n).second) return false;
+    // overrunning the stack when `target` is absent (full traversal). The cap also
+    // breaks containment cycles (a node re-reached before it completes recurses to
+    // the cap, then stops). Mark this exploration incomplete so an ancestor is not
+    // memoized on the strength of a truncated subtree.
+    if (depth >= kMaxNestingDepth) { incomplete = true; return false; }
+    // #21: skip a subtree already FULLY explored without finding `target`. A
+    // completed false return proves `target` is not under `n`; a depth-truncated
+    // one does not, so only complete subtrees are inserted below.
+    if (visited.count(n)) return false;
     Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
     if (n == target) { out = here; return true; }
     bool found = false;
-    forEachChild(n, [&](const X3DNode *c) { if (!found && worldOfRec(c, here, target, out, visited, depth + 1)) found = true; });
-    return found;
+    bool childIncomplete = false;
+    forEachChild(n, [&](const X3DNode *c) {
+      if (!found && worldOfRec(c, here, target, out, visited, childIncomplete, depth + 1))
+        found = true;
+    });
+    if (found) return true;
+    if (childIncomplete) incomplete = true; // truncated -> do NOT memoize n
+    else visited.insert(n);                 // fully explored, target absent -> memoize
+    return false;
   }
 
   template <class F>

@@ -78,6 +78,35 @@ TEST_CASE("worldof_finds_present_target_in_wide_dag") {
   CHECK(w.transformPoint({0, 0, 0}).x == doctest::Approx(7.0f));
 }
 
+TEST_CASE("worldof_depth_truncated_subtree_is_not_falsely_memoized") {
+  // The memoization must not collude with the MEM-1 depth cap. A node `P` is
+  // reachable BOTH near the cap (where its subtree truncates unexplored) AND
+  // shallowly (where the target IS findable). Marking `P` visited on the deep,
+  // truncated path would wrongly prune the shallow path and lose the target.
+  auto target = createX3DNode("Transform");
+  setF(target, "translation", std::any(SFVec3f{5, 0, 0}));
+  auto p = createX3DNode("Group");
+  addChild(p, target); // target is one level under P
+
+  // A 998-Group chain places P at depth 999 (under root), so P is explored but its
+  // child `target` sits at depth 1000 == kMaxNestingDepth and is truncated.
+  std::shared_ptr<X3DNode> chain = p;
+  for (int i = 0; i < 998; ++i) {
+    auto g = createX3DNode("Group");
+    addChild(g, chain);
+    chain = g;
+  }
+  auto root = createX3DNode("Group");
+  addChild(root, chain); // deep path FIRST — truncates P's subtree
+  addChild(root, p);     // shallow path: target findable at depth 2
+  Scene scene;
+  scene.addRootNode(root);
+  PickSystem ps; ps.build(scene);
+
+  Mat4 w = ps.worldOf(target.get());
+  CHECK(w.transformPoint({0, 0, 0}).x == doctest::Approx(5.0f)); // found via shallow path
+}
+
 // A Shape with a unit Box, for the per-path emitters below.
 static std::shared_ptr<X3DNode> makeBoxShape() {
   auto box = createX3DNode("Box");
@@ -88,9 +117,10 @@ static std::shared_ptr<X3DNode> makeBoxShape() {
 }
 
 TEST_CASE("scene_extractor_budget_bounds_doubling_dag") {
-  // 2^22 paths to one Shape would emit ~4M RenderItems unbounded. A small
-  // per-snapshot budget stops the walk early, latches budgetExceeded(), and caps
-  // the emitted item count.
+  // 2^22 paths to one Shape: the extractor's exponential cost here is the WALK
+  // (2^22 node-visits), not emission — every path reuses the same node pointers,
+  // so all paths share one PathKey and emit() interns them to a single
+  // RenderItem. The small budget stops the walk early and latches budgetExceeded.
   Scene scene;
   scene.addRootNode(makeDoublingDag(22, makeBoxShape()));
   X3DExecutionContext ctx;
@@ -99,8 +129,11 @@ TEST_CASE("scene_extractor_budget_bounds_doubling_dag") {
   extract::SceneExtractor ex(ctx, scene, opts);
   extract::RenderDelta snap = ex.fullSnapshot();
 
-  CHECK(ex.budgetExceeded());
-  CHECK(ex.itemCount() <= 10'000);
+  CHECK(ex.budgetExceeded());        // the walk was bounded, not run to 2^22
+  // Light collection runs first in fullSnapshot and shares the budget, so on this
+  // (light-less but exponentially wide) scene it can consume the budget before the
+  // geometry walk starts — both outcomes (0, or 1 interned item) are bounded.
+  CHECK(ex.itemCount() <= 1);
 }
 
 TEST_CASE("scene_extractor_budget_untouched_by_a_small_scene") {
