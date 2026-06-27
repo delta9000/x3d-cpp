@@ -80,7 +80,7 @@ class CppHeaderBackend:
     def emit(self, nodes: Dict[str, X3DNode],
              dependency_graph: Dict[str, List[str]], out_dir: str) -> None:
         os.makedirs(out_dir, exist_ok=True)
-        clang_format = self.clang_format
+        emitted_files: List[str] = []
 
         # Map each class to the set of field names it DECLARES itself (own
         # fields). A node only emits accessors for its own fields; inherited
@@ -176,8 +176,7 @@ class CppHeaderBackend:
             with open(output_file, 'w') as f:
                 f.write(rendered_code)
             print(f"Generated {output_file}")
-
-            clang_format = self._format(output_file, clang_format)
+            emitted_files.append(output_file)
 
             source_code = self._source_template.render(
                 class_name=node.name,
@@ -191,18 +190,20 @@ class CppHeaderBackend:
             with open(source_file, 'w') as f:
                 f.write(source_code)
             print(f"Generated {source_file}")
-            clang_format = self._format(source_file, clang_format)
+            emitted_files.append(source_file)
+
+        self._format(emitted_files, self.clang_format)
 
     @staticmethod
-    def _format(output_file: str, clang_format):
-        """Run clang-format in place, degrading gracefully if it is missing."""
-        if not clang_format:
+    def _format(output_files: List[str], clang_format):
+        """Run clang-format once over all emitted files, if requested."""
+        if not clang_format or not output_files:
             return clang_format
         try:
-            result = subprocess.run([clang_format, "-i", output_file],
-                                    capture_output=True, text=True)
+            result = subprocess.run([clang_format, "-i", *output_files],
+                                   capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"WARNING: {clang_format} failed on {output_file} "
+                print(f"WARNING: {clang_format} failed on {len(output_files)} files "
                       f"(exit {result.returncode}); leaving file unformatted.\n"
                       f"{result.stderr}")
         except FileNotFoundError:
