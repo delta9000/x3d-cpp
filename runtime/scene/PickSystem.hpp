@@ -10,6 +10,7 @@
 
 #include "Billboard.hpp"      // billboardLocalMatrix (§23.4.1, M2e)
 #include "BoundsSystem.hpp"
+#include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField, localGeometryBounds
 #include "Intersect.hpp"
 #include "Mat4.hpp"
@@ -295,6 +296,13 @@ private:
                 const BoundsSystem &bounds, const SFVec3f &cameraPos,
                 const SFVec3f &cameraUp, extract::PathKey &path,
                 PickResult &best) const {
+    // MEM-1: bound the pick walk so an unsanitized graph (USE-cyclic or
+    // pathologically deep) cannot stack-overflow. `path` is the live root→n
+    // ancestor chain; a depth cap plus a path-membership test before descending
+    // breaks back-edges (the runtime twin of SEC-1).
+    if (path.size() >= kMaxNestingDepth) return;
+    for (const X3DNode *ancestor : path)
+      if (ancestor == n) return; // n is its own ancestor: containment cycle.
     path.push_back(n); // accumulate the root→this-node chain (PathKey).
     Mat4 childM = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
     // M2e: Billboard contributes a view-dependent local rotation, exactly as the
@@ -357,11 +365,16 @@ private:
   // compute the bound Viewpoint's world frame, and injecting view-dependent
   // billboard orientation here would feed camera pose back into the very
   // computation that defines it.
-  bool worldOfRec(const X3DNode *n, const Mat4 &worldM, const X3DNode *target, Mat4 &out) const {
+  bool worldOfRec(const X3DNode *n, const Mat4 &worldM, const X3DNode *target,
+                  Mat4 &out, std::size_t depth = 0) const {
+    // MEM-1: a hard depth cap stops a USE-cyclic / pathologically deep graph from
+    // overrunning the stack when `target` is absent (full traversal). worldOf()
+    // returns identity on a miss, so bailing here is the existing not-found path.
+    if (depth >= kMaxNestingDepth) return false;
     Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
     if (n == target) { out = here; return true; }
     bool found = false;
-    forEachChild(n, [&](const X3DNode *c) { if (!found && worldOfRec(c, here, target, out)) found = true; });
+    forEachChild(n, [&](const X3DNode *c) { if (!found && worldOfRec(c, here, target, out, depth + 1)) found = true; });
     return found;
   }
 

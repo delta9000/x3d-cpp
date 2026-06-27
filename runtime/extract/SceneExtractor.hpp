@@ -64,6 +64,7 @@
 #include "MaterialSystem.hpp"      // extract::materialOf (T5)
 #include "MeshBuilder.hpp"         // extract::buildLocalMesh (all types, T2/T3/T4)
 #include "PackedMesh.hpp"          // PackedMesh (Phase 1 binary geometry)
+#include "RecursionLimits.hpp"     // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "RenderItem.hpp"          // RenderItem descriptors + RenderDelta
 #include "TextureExtract.hpp"      // T-TEX: TextureTransform bake + resolver + sampler enrich
 #include "TextureResolver.hpp"     // TextureResolver seam (embedder-supplied decode)
@@ -494,6 +495,15 @@ private:
   void walk(const X3DNode *n, const Mat4 &worldM, PathKey &path,
             RenderDelta &delta) {
     if (!n) return;
+    // MEM-1: bound the walk so an unsanitized graph (USE-cyclic or pathologically
+    // deep, the runtime twin of SEC-1) cannot stack-overflow the extractor. The
+    // path is the live root->n ancestor chain, so a hard depth cap plus a
+    // path-membership test before descending breaks back-edges. (The normal
+    // pipeline severs cycles in buildSceneGraph; this keeps walk() self-safe when
+    // an embedder drives it directly.)
+    if (path.size() >= kMaxNestingDepth) return;
+    for (const X3DNode *ancestor : path)
+      if (ancestor == n) return; // n is its own ancestor: containment cycle.
     // X3D 4.0 visibility: a node with visible=FALSE (and its subtree) is not displayed.
     if (geombounds::hasField(*n, "visible") &&
         !geombounds::getField<bool>(*n, "visible", true))
