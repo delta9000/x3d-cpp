@@ -37,6 +37,7 @@
 #include "Encoding.hpp"
 #include "FieldValueIO.hpp" // parseValue, parseInt, parseDouble (x3d::codec)
 #include "NodeBuilder.hpp"  // build:: helpers (findField, applyField, ...)
+#include "RecursionLimits.hpp" // SEC-1: kMaxNestingDepth (DoS guard)
 #include "VrmlTokenizer.hpp"
 #include "X3DNodeFactory.hpp"
 #include "X3DReader.hpp"
@@ -128,6 +129,8 @@ protected:
   }
 
 private:
+  std::size_t depth_ = 0; // SEC-1: node nesting depth (DoS guard).
+
   // -------------------------------------------------------------------------
   // Header line.
   // -------------------------------------------------------------------------
@@ -279,6 +282,7 @@ private:
       runtime::ProtoBody *currentProtoBody = nullptr,
       const std::shared_ptr<X3DNode> &parentNode = nullptr,
       const std::string &parentField = std::string()) {
+    NestingGuard guard(depth_, "ClassicVRML"); // SEC-1: bound recursive node nesting.
     std::string def;
     if (tok.peek().isWord("USE")) {
       tok.next();

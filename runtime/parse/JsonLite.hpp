@@ -17,6 +17,8 @@
 #ifndef X3D_JSON_LITE_HPP
 #define X3D_JSON_LITE_HPP
 
+#include "RecursionLimits.hpp"
+
 #include <cctype>
 #include <cstdint>
 #include <memory>
@@ -80,6 +82,7 @@ public:
 private:
   const std::string &s_;
   std::size_t i_ = 0;
+  std::size_t depth_ = 0; // SEC-1: value nesting depth (DoS guard).
 
   [[noreturn]] void fail(const std::string &msg) const {
     throw std::runtime_error("JsonLite: " + msg + " at offset " +
@@ -106,6 +109,7 @@ private:
   char peek() const { return i_ < s_.size() ? s_[i_] : '\0'; }
 
   std::unique_ptr<Value> parseValue() {
+    NestingGuard guard(depth_, "JsonLite"); // SEC-1: bound recursive value nesting.
     skipWs();
     if (i_ >= s_.size())
       fail("unexpected end of input");

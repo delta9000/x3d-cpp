@@ -16,6 +16,7 @@
 
 #include "X3DNode.hpp" // pulls in X3Dtypes.hpp + X3DReflection.hpp
 
+#include <algorithm>
 #include <any>
 #include <charconv>
 #include <cmath>
@@ -307,13 +308,20 @@ inline SFImage parseImageFrom(const std::vector<std::string> &t,
   if (i < t.size()) img.width = parseInt(t[i++]);
   if (i < t.size()) img.height = parseInt(t[i++]);
   if (i < t.size()) img.numComponents = parseInt(t[i++]);
-  const int nc = img.numComponents;
+  // SEC-2: X3D §5.3.6 caps numComponents at [0,4]. A hostile token can claim a
+  // huge (or negative) count; clamping BEFORE the unpack loop bounds the output
+  // byte count and keeps the shift amount in range (the old `8 * b` overflowed
+  // a signed int for large b, UB). Width/height only ever consume one pixel
+  // token apiece, so the pixel loop is already bounded by the token stream.
+  const int nc = std::clamp(img.numComponents, 0, 4);
+  img.numComponents = nc;
   const std::size_t pixels = static_cast<std::size_t>(img.width) *
                              static_cast<std::size_t>(img.height);
   for (std::size_t p = 0; p < pixels && i < t.size(); ++p) {
     unsigned long packed = parseImagePixel(t[i++]);
     for (int b = nc - 1; b >= 0; --b) {
-      img.data.push_back(static_cast<unsigned char>((packed >> (8 * b)) & 0xFF));
+      img.data.push_back(static_cast<unsigned char>(
+          (packed >> (8u * static_cast<unsigned>(b))) & 0xFFu));
     }
   }
   return img;

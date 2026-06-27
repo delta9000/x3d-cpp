@@ -27,6 +27,7 @@
 
 #include "GeometryBounds.hpp"  // geombounds::getField/getNode/hasField
 #include "Mat4.hpp"            // transformDirection/transformPoint
+#include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "RenderItem.hpp"      // LightDesc
 #include "TransformSystem.hpp" // localMatrix (static; per-path re-accumulation)
 #include "X3DNode.hpp"
@@ -83,8 +84,12 @@ private:
   }
 
   void walk(const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
-            std::vector<LightDesc> &out) {
+            std::vector<LightDesc> &out, std::size_t depth = 0) {
     if (!n) return;
+    // MEM-1: a hard depth cap keeps light collection from stack-overflowing on a
+    // USE-cyclic / pathologically deep graph (this walk runs before the
+    // extractor's own walk in fullSnapshot, so it must be self-safe too).
+    if (depth >= kMaxNestingDepth) return;
     Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
 
     bool isLight = false;
@@ -105,11 +110,11 @@ private:
       if (!f.get) continue;
       if (f.type == X3DFieldType::SFNode) {
         auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
-        if (c) walk(c.get(), here, childScope, out);
+        if (c) walk(c.get(), here, childScope, out, depth + 1);
       } else if (f.type == X3DFieldType::MFNode) {
         for (const auto &c :
              std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*n)))
-          if (c) walk(c.get(), here, childScope, out);
+          if (c) walk(c.get(), here, childScope, out, depth + 1);
       }
     }
   }

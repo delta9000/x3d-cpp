@@ -2,7 +2,7 @@
 title: "ADR-0016: Containment Cycles Severed Once at Scene Build"
 summary: Containment cycles in the scene graph are severed once in buildSceneGraph via breakContainmentCycles, converting the graph to a DAG before any recursive walker touches it.
 tags: [adr, cycle-breaker, containment-cycle, dag, stack-overflow, bounds, scene-graph]
-updated: 2026-06-20
+updated: 2026-06-26
 related:
   - ../architecture.md
   - ../subsystems/dirty-bounds-transform.md
@@ -54,6 +54,23 @@ We decided to run a single DFS sanitizer, `breakContainmentCycles(scene)` (`runt
 - The sanitizer operates by **mutation** (severing edges in-place). If a future caller needs to preserve the original pointer graph (e.g. to re-serialize malformed input faithfully), it must snapshot the graph before calling `buildSceneGraph`. Current writers read from the parsed `Scene` before `buildSceneGraph` is called, so there is no conflict today.
 - `BoundsSystem`'s defense-in-depth guard (the `computing_` set) means `BoundsSystem::compute` silently contributes zero geometry for the back-reference node. This is the correct behavior (the back-reference adds no geometry not already accounted for by the legitimate forward path), but it is not surfaced as a warning. A future diagnostic pass could report severed edges if needed.
 
+## Follow-up — self-guarding standalone walkers (MEM-1, 2026-06-26)
+
+`breakContainmentCycles` protects every walker reached **through**
+`buildSceneGraph`. But `PickSystem` (`build` + `pickClosest`/`worldOf`) and
+`SceneExtractor` (`fullSnapshot`) are public APIs an embedder can drive on a raw
+`Scene` *without* the up-front sanitizer — and `BoundsSystem`/`TransformSystem`
+carry their own cycle guards while these did not, so a USE-cyclic or
+pathologically deep scene SIGSEGV'd at extraction/pick time. Mirroring
+`BoundsSystem`'s `computing_` defense-in-depth, the recursive walkers now
+self-guard: `SceneExtractor::walk` and `PickSystem::pickNode` carry the live
+root→node `PathKey`, so they take a hard depth cap (`x3d::kMaxNestingDepth`,
+`runtime/RecursionLimits.hpp`) plus a path-membership test before descending;
+`PickSystem::worldOfRec` and `LightSystem::walk` (no path accumulator) take the
+depth cap alone. The `buildSceneGraph` invariant is unchanged — this only makes
+the walkers safe when invoked directly. Pinned by
+`runtime/scene/tests/walker_cycle_guard_test.cpp`.
+
 ## Related
 
 - [Architecture](../architecture.md)
@@ -62,5 +79,6 @@ We decided to run a single DFS sanitizer, `breakContainmentCycles(scene)` (`runt
 - Primary implementation: `runtime/scene/CycleBreaker.hpp`
 - Call site: `runtime/events/X3DExecutionContext.hpp` (`buildSceneGraph`, line 77)
 - Defense-in-depth guard: `runtime/scene/BoundsSystem.hpp` (`compute`, `computing_` set)
-- Regression tests: `runtime/scene/tests/cycle_breaker_test.cpp`, `runtime/scene/tests/bounds_cycle_test.cpp`
+- Standalone-walker self-guards (MEM-1): `runtime/extract/SceneExtractor.hpp` (`walk`), `runtime/extract/LightSystem.hpp` (`walk`), `runtime/scene/PickSystem.hpp` (`pickNode`/`worldOfRec`), shared cap `runtime/RecursionLimits.hpp`
+- Regression tests: `runtime/scene/tests/cycle_breaker_test.cpp`, `runtime/scene/tests/bounds_cycle_test.cpp`, `runtime/scene/tests/walker_cycle_guard_test.cpp`
 - Discovery context: v1.0 confidence step (`ec9bc83`/`a67bf6a`), corpus sweep over 17,719 files

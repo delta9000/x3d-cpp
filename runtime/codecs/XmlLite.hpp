@@ -13,6 +13,8 @@
 #ifndef X3D_XML_LITE_HPP
 #define X3D_XML_LITE_HPP
 
+#include "RecursionLimits.hpp"
+
 #include <cctype>
 #include <cstdint>
 #include <iostream>
@@ -169,6 +171,7 @@ public:
 private:
   std::string src_;
   std::size_t pos_ = 0;
+  std::size_t depth_ = 0; // SEC-1: element nesting depth (DoS guard).
 
   static bool isSpace(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
@@ -243,6 +246,7 @@ private:
 
   std::unique_ptr<Element> parseElement() {
     // Precondition: src_[pos_] == '<' and not a comment/PI/decl.
+    NestingGuard guard(depth_, "XML"); // SEC-1: bound parseElement<->parseContent.
     ++pos_; // consume '<'
     auto el = std::make_unique<Element>();
     el->name = parseName();
