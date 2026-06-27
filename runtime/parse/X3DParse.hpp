@@ -20,6 +20,7 @@
 #include "Inflate.hpp"
 #include "JsonReader.hpp"
 #include "NodeBuilder.hpp"
+#include "PathConfine.hpp"
 #include "Vrml97Dialect.hpp"
 #include "Vrml97Reader.hpp"
 #include "VrmlTokenizer.hpp"
@@ -78,7 +79,21 @@ inline std::unique_ptr<X3DReader> makeReader(Encoding enc) {
 // Forward declarations: parseDocument's default resolver is localFileProtoResolver,
 // which calls parseFile, which calls parseDocument — a definition cycle broken by
 // declaring the latter two ahead of parseDocument's signature.
-inline runtime::X3DDocument parseFile(const std::string &path);
+inline runtime::X3DDocument parseFile(const std::string &path,
+                                      const std::string &confineRoot = "");
+namespace detail {
+/// Confinement root for the default local resolvers (ADR-0038, SEC-3). The
+/// outermost parseFile/parseDocument sets it (default: the top-level file's own
+/// directory; a trusted tool may widen it); nested re-parses driven by the
+/// resolvers inherit it, so `../` confinement is measured against one stable
+/// root rather than narrowing per hop. Empty when parsing from memory with no
+/// base — the confine helper then falls back to the per-call baseUrl.
+inline std::string &activeConfineRoot() {
+  static thread_local std::string r;
+  return r;
+}
+} // namespace detail
+
 inline std::shared_ptr<runtime::ProtoDeclaration>
 localFileProtoResolver(const std::vector<std::string> &urls,
                        const std::string &baseUrl);
@@ -100,7 +115,23 @@ inline runtime::X3DDocument
 parseDocument(const std::string &text, Encoding hint = Encoding::Unknown,
               const std::string &baseUrl = "",
               const ProtoDeclarationResolver &resolver = localFileProtoResolver,
-              const runtime::InlineResolver &inlineResolver = localFileInlineResolver) {
+              const runtime::InlineResolver &inlineResolver = localFileInlineResolver,
+              const std::string &confineRoot = "") {
+  // Establish the SEC-3 confinement root (ADR-0038) for the default resolvers on
+  // the outermost entry; nested re-parses inherit it. When reached via parseFile
+  // the root is already set (so this is a no-op); a direct parseDocument call
+  // from a tool handling a trusted content tree passes the tree root here.
+  const bool outermostConfine = detail::activeConfineRoot().empty();
+  struct ConfineRootScope {
+    bool owns;
+    ~ConfineRootScope() {
+      if (owns)
+        detail::activeConfineRoot().clear();
+    }
+  } confineScope{outermostConfine};
+  if (outermostConfine && !(confineRoot.empty() && baseUrl.empty()))
+    detail::activeConfineRoot() =
+        !confineRoot.empty() ? confineRoot : baseUrl;
   // Strip a leading UTF-8 BOM up front so every reader sees BOM-free bytes. The
   // bundled XmlLite byte-level parser does not skip a BOM (it expects '<' or
   // ASCII space at the head), so a BOM-prefixed XML document would otherwise be
@@ -150,9 +181,15 @@ localFileProtoResolver(const std::vector<std::string> &urls,
     if (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0 ||
         url.rfind("urn:", 0) == 0)
       continue; // embedder override territory; default resolver stays local
-    std::string path = url;
-    if (!baseUrl.empty() && !path.empty() && path.front() != '/')
-      path = baseUrl + "/" + path; // resolve relative to the source's directory
+    // SEC-3: confine the resolved path to the source file's directory subtree
+    // (reject absolute urls and `../` escapes) — the default local resolver
+    // never reads arbitrary files. SEC-4: the returned path is canonical, so it
+    // is a stable cycle-guard key that spelling variants cannot alias past.
+    auto confined =
+        confineLocalIncludePath(url, baseUrl, detail::activeConfineRoot());
+    if (!confined)
+      continue; // absolute / escaping / unresolvable -> skip this candidate
+    const std::string path = std::move(*confined);
     if (std::find(activeFiles.begin(), activeFiles.end(), path) !=
         activeFiles.end())
       continue; // cycle: this file is already being resolved up the stack
@@ -213,7 +250,27 @@ localFileInlineResolver(const std::vector<std::string> &urls,
 /// inflated in memory before sniffing, so a `.wrl.gz` / `.x3d.gz` / `.x3dv.gz`
 /// payload parses transparently. Throws std::runtime_error if the file cannot
 /// be opened, the gzip stream is corrupt, or its encoding cannot be determined.
-inline runtime::X3DDocument parseFile(const std::string &path) {
+///
+/// `confineRoot` bounds where the default Inline/EXTERNPROTO resolvers may read
+/// (SEC-3, ADR-0038). Empty (the default) confines includes to this file's own
+/// directory — a tight, secure default that blocks `../` cross-directory reads.
+/// A tool parsing a TRUSTED content tree passes the tree root so that `../`
+/// references which stay within it resolve; absolute paths and escapes above
+/// the root are rejected either way. Only the OUTERMOST parseFile establishes
+/// the root; nested re-parses driven by the resolvers inherit it.
+inline runtime::X3DDocument parseFile(const std::string &path,
+                                      const std::string &confineRoot) {
+  // Establish the confinement root on the outermost call; inner resolver-driven
+  // re-parses (activeConfineRoot already set) inherit it and restore nothing.
+  const bool outermostConfine = detail::activeConfineRoot().empty();
+  struct ConfineRootScope {
+    bool owns;
+    ~ConfineRootScope() {
+      if (owns)
+        detail::activeConfineRoot().clear();
+    }
+  } confineScope{outermostConfine};
+
   std::ifstream in(path, std::ios::binary);
   if (!in)
     throw std::runtime_error("parseFile: cannot open file: " + path);
@@ -237,6 +294,12 @@ inline runtime::X3DDocument parseFile(const std::string &path) {
   std::string base;
   if (auto slash = path.find_last_of("/\\"); slash != std::string::npos)
     base = path.substr(0, slash);
+  // Default the confinement root to this top-level file's directory (secure
+  // per-file default) unless a trusted caller widened it. `.` when base is empty
+  // (a bare filename) so the root is never the empty "fall back to baseUrl" key.
+  if (outermostConfine)
+    detail::activeConfineRoot() =
+        !confineRoot.empty() ? confineRoot : (base.empty() ? std::string(".") : base);
   return parseDocument(bytes, enc, base);
 }
 

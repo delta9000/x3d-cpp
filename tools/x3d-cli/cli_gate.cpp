@@ -194,10 +194,14 @@ static bool hasIndexedGeomCoordIssue(const sdk::X3DDocument &doc) {
 
 // ── Our validate logic (mirrors cmdValidate in x3d_cli.cpp) ─────────────────
 // Returns "VALID" or "INVALID", and populates reason on INVALID.
-static std::string ourValidate(const std::string &path, std::string &reason) {
+static std::string ourValidate(const std::string &path, std::string &reason,
+                               const std::string &confineRoot) {
     sdk::X3DDocument doc;
     try {
-        doc = sdk::parseFile(path);
+        // The corpus is a TRUSTED content tree, so confine includes to its root
+        // (not each file's own dir) — real X3D content uses `../` cross-directory
+        // EXTERNPROTO refs (e.g. Savage's ../../Tools/...). See ADR-0038.
+        doc = sdk::parseFile(path, confineRoot);
     } catch (const std::exception &e) {
         reason = "parse-fail: ";
         reason += e.what();
@@ -303,7 +307,8 @@ static ConvertResult testConvert(const std::string &relpath,
                                  const std::string &absPath,
                                  const sdk::X3DDocument &src,
                                  const std::string &fromEnc,
-                                 const std::string &toEnc) {
+                                 const std::string &toEnc,
+                                 const std::string &confineRoot) {
     ConvertResult r;
     r.relpath = relpath;
     r.fromEnc = fromEnc;
@@ -327,7 +332,12 @@ static ConvertResult testConvert(const std::string &relpath,
     sdk::X3DDocument rt;
     const std::string base = fs::path(absPath).parent_path().string();
     try {
-        rt = sdk::parseDocument(serialized, parseHint(toEnc), base);
+        // Confine to the trusted corpus root (matches the source parse), so a
+        // `../` cross-directory EXTERNPROTO resolves symmetrically on both sides
+        // of the round-trip (ADR-0038).
+        rt = sdk::parseDocument(serialized, parseHint(toEnc), base,
+                                x3d::codec::localFileProtoResolver,
+                                x3d::codec::localFileInlineResolver, confineRoot);
     } catch (const std::exception &e) {
         r.why = "reparse-fail (" + toEnc + "): " + std::string(e.what());
         return r;
@@ -584,7 +594,7 @@ int main(int argc, char **argv) {
         if (!fs::exists(absPath)) continue;
 
         std::string ourReason;
-        std::string ourV = ourValidate(absPath, ourReason);
+        std::string ourV = ourValidate(absPath, ourReason, corpusRoot);
 
         std::string itemKey = "validate:" + gv.relpath;
         bool itemPass = false;
@@ -646,7 +656,7 @@ int main(int argc, char **argv) {
         // Parse source.
         sdk::X3DDocument srcDoc;
         try {
-            srcDoc = sdk::parseFile(absPath);
+            srcDoc = sdk::parseFile(absPath, corpusRoot); // trusted corpus tree
         } catch (...) {
             continue; // skip files that don't parse
         }
@@ -657,7 +667,7 @@ int main(int argc, char **argv) {
 
         for (const auto &toEnc : kEncodings) {
             if (toEnc == fromEnc) continue;
-            auto r = testConvert(gv.relpath, absPath, srcDoc, fromEnc, toEnc);
+            auto r = testConvert(gv.relpath, absPath, srcDoc, fromEnc, toEnc, corpusRoot);
             std::string itemKey = "convert:" + gv.relpath + ":" + fromEnc + "->" + toEnc;
             currentState[itemKey] = r.ok ? "PASS" : "FAIL";
             if (r.ok) ++rtOk;

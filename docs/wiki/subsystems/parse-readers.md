@@ -30,6 +30,22 @@ tokenizer (`parseElement`↔`parseContent`), JSON (`parseValue`↔`parseArray`/
 cannot trigger a signed-shift overflow or a multi-GB allocation (SEC-2).
 Legitimate documents nest far below the cap and are unaffected.
 
+The file front door is hardened against the same adversary. Gzip input is
+inflated with a decompressed-size ceiling (`kMaxDecompressedBytes`, default
+256 MiB) clamping both the initial reservation and the grow loop, so a
+decompression bomb or a forged ISIZE footer cannot drive an OOM (SEC-5,
+`Inflate.hpp`). The default `Inline`/`EXTERNPROTO` resolvers canonicalize a
+file-like `url` and confine it to a configurable root — `parseFile`/
+`parseDocument` default it to the source file's own directory (a secure default
+for untrusted input: absolute urls and `../` cross-directory reads like
+`url='/etc/passwd'` are rejected, SEC-3), while a tool parsing a **trusted** tree
+passes a wider `confineRoot` so legitimate `../` references within it resolve
+(the conformance CLI gate does this with the corpus root). Either way the
+canonical path keys the cross-file cycle guard, so spelling aliases (`./a.x3d`
+vs `a.x3d`) cannot defeat it (SEC-4). See `runtime/parse/PathConfine.hpp` and
+[ADR-0038](../decisions/0038-local-resolver-path-confinement.md). Embedders
+needing remote/non-filesystem access supply their own resolver.
+
 The subsystem boundary is everything under `runtime/parse/`. The entry point for consumers is `parseFile()` / `parseDocument()` in `runtime/parse/X3DParse.hpp`. The concrete reader implementations are all header-only in `namespace x3d::codec`.
 
 ## Key files
@@ -149,6 +165,8 @@ Encoding sniffByExtension(std::string_view path);
 - `ctest --preset dev -R x3d_inline_containment_cycle` — Containment-cycle defense-in-depth post inline expansion (`inline_containment_cycle_test.cpp`).
 - `ctest --preset dev -R x3d_codecs_tests` (doctest cases: `xml_*_nesting`, `sfimage_*`) — XML deep-nesting cap (SEC-1) and `SFImage` `numComponents` clamp (SEC-2) (`xml_depth_guard_test.cpp`, `sfimage_overflow_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest cases: `json_*_nesting`, `vrml_*_nesting`) — JSON and ClassicVRML deep-nesting caps reject pathological input and keep legitimate nesting (SEC-1) (`parser_depth_guard_test.cpp`).
+- `ctest --preset dev -R x3d_inflate_bomb` — gzip decompressed-size cap: output past `maxOut` throws while a legitimate stream still inflates (SEC-5) (`inflate_bomb_test.cpp`).
+- `ctest --preset dev -R x3d_path_confine` — `confineLocalIncludePath` blocks absolute/`../`-escape Inline/EXTERNPROTO urls and de-aliases the cycle-guard key (SEC-3/SEC-4) (`path_confine_test.cpp`).
 - `cmake --preset fuzz && ./build-fuzz/x3d_parse_fuzz` — libFuzzer harness (`parse_fuzz.cpp`) drives `sdk::parseDocument` with mutated bytes across all four encodings under ASan + UBSan; asserts the "never panic" contract (no crash/leak/UB on any input). Built Clang-only; the `cpp-fuzz` CI job runs a bounded smoke. See [Build and mise tasks → Sanitizer and fuzz gates](../guides/build-and-mise.md#sanitizer-and-fuzz-gates-bld-2).
 
 Test data fixtures (`.x3d`, `.x3dv`, `.wrl`, `.json`, `.gz` samples) live in `runtime/parse/tests/data/`.

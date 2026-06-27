@@ -1453,6 +1453,13 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_inflate_bomb PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_inflate_bomb COMMAND x3d_inflate_bomb)
 
+    # SEC-3/SEC-4: confineLocalIncludePath rejects path-traversal/absolute reads
+    # and de-aliases the cycle-guard key.
+    add_executable(x3d_path_confine
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/path_confine_test.cpp")
+    target_link_libraries(x3d_path_confine PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_path_confine COMMAND x3d_path_confine)
+
     # Regression: expandInlines walk must not stack-overflow on containment cycles
     # (USE-shared or self-referential nodes). Guard mirrors sibling system walkers.
     add_executable(x3d_inline_containment_cycle
