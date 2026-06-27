@@ -8,7 +8,7 @@
     "freetype",
     {
       "name": "aws-sdk-cpp",
-      "features": ["core", "s3"]
+      "features": ["s3"]
     }
   ]
 }
