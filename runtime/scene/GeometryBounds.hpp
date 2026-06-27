@@ -146,6 +146,8 @@ inline Aabb localGeometryBounds(const X3DNode *geom) {
     float h = getField<float>(*geom, "height", 2.0f);
     return Aabb::fromCenterSize({0,0,0}, {2*r, h, 2*r});
   }
+  if (t == "NurbsCurve" || t == "NurbsPatchSurface")
+    return pointsBounds(getNode(*geom, "controlPoint"));
   // Generic mesh: any geometry carrying a Coordinate via "coord" or "controlPoint".
   if (hasField(*geom, "coord"))
     return pointsBounds(getNode(*geom, "coord"));
