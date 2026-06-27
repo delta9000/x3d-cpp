@@ -125,7 +125,7 @@ option(X3D_CPP_FUZZ "Build the libFuzzer harness for parseDocument (requires Cla
 # this transitively via x3d_cpp::x3d_cpp.
 # ---------------------------------------------------------------------------
 file(GLOB X3D_CPP_NODE_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/*.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/*.cpp")
 add_library(x3d_cpp_nodes STATIC ${X3D_CPP_NODE_SOURCES})
 add_library(x3d_cpp::nodes ALIAS x3d_cpp_nodes)
 
@@ -143,7 +143,7 @@ add_library(x3d_cpp::nodes ALIAS x3d_cpp_nodes)
 # link error.
 set_target_properties(x3d_cpp_nodes PROPERTIES UNITY_BUILD ON)
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/test.cpp"
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 target_link_libraries(x3d_cpp_nodes PUBLIC x3d_cpp)
 target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
@@ -175,8 +175,8 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
     FILES_MATCHING PATTERN "*.hpp")
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/"
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/x3d"
     FILES_MATCHING PATTERN "*.hpp")
 
 # The hand-written runtime document-model headers install into the same flat
