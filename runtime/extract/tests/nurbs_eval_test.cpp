@@ -58,3 +58,35 @@ TEST_CASE("nurbs_curve_exact_unit_circle") {
   CHECK(pts.size() == 65);
   for (auto& p : pts) CHECK(feq((double)p.x*p.x + (double)p.y*p.y, 1.0, 1e-6));
 }
+
+TEST_CASE("nurbs_curve_closed_periodic") {
+  // Square control net, degree 2, closed. Verified against a reference closed
+  // spline: wrapping order-1 points + uniform knots traces a smooth closed loop.
+  nurbs::CurveDef c;
+  c.cp = {{0,0,0},{1,0,0},{1,1,0},{0,1,0}};
+  c.order = 3;
+  c.closed = true;
+  auto pts = nurbs::tessellateCurve(c, 12);
+  CHECK(pts.size() == 13);
+  // closed loop: first sample == last sample
+  CHECK((feq(pts.front().x, pts.back().x) && feq(pts.front().y, pts.back().y)));
+  // golden start points (machine-verified): (0.5,0), (0.7778,0.0556), (0.9444,0.2222)
+  CHECK((feq(pts[0].x,0.5,1e-4)    && feq(pts[0].y,0.0,1e-4)));
+  CHECK((feq(pts[1].x,0.77778,1e-4) && feq(pts[1].y,0.05556,1e-4)));
+  CHECK((feq(pts[2].x,0.94444,1e-4) && feq(pts[2].y,0.22222,1e-4)));
+  // C1 across the seam: the seam vertex must be no more "kinked" than the
+  // vertex diametrically opposite it. By the square's symmetry those two
+  // chord-turning values are IDENTICAL (verified == to 1e-16) for a correct
+  // periodic basis; a C0 kink at the seam would make the seam value far smaller.
+  // (An absolute "tangent ~ 1" check is wrong here: adjacent chords straddle the
+  // true tangent by the curvature, capping the dot at ~0.923 at every vertex.)
+  auto turnDot = [&](int prev, int v, int next){
+    SFVec3f a{pts[v].x-pts[prev].x, pts[v].y-pts[prev].y, 0};
+    SFVec3f b{pts[next].x-pts[v].x, pts[next].y-pts[v].y, 0};
+    double la=std::sqrt(a.x*a.x+a.y*a.y), lb=std::sqrt(b.x*b.x+b.y*b.y);
+    return (a.x*b.x+a.y*b.y)/(la*lb);
+  };
+  double seam = turnDot(11, 12, 1); // incoming pts[11]->pts[12](==pts[0]), outgoing ->pts[1]
+  double opp  = turnDot(5, 6, 7);   // diametrically opposite (top-mid) smooth vertex
+  CHECK(feq(seam, opp, 1e-3));      // seam as smooth as the symmetric opposite vertex
+}
