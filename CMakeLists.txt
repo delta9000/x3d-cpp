@@ -1825,6 +1825,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/bounds_cycle_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/cycle_breaker_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/walker_cycle_guard_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/walker_budget_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/pick_system_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/interface_registry_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/scene_extractor_test.cpp"

@@ -160,10 +160,14 @@ public:
     entryMatrix_.clear();
     skippedGeometry_.clear(); // B2: recount unsupported drops for this full walk.
 
+    // #21: one node-visit budget shared across this snapshot's light collection
+    // and geometry walk, bounding an acyclic "doubling DAG" fan-out.
+    walkBudget_ = WalkBudget(meshOptions_.maxWalkVisits);
+
     // M25-5: collect all active lights once per snapshot. emit() uses this to
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
-    lights_ = ls.collect(scene_);
+    lights_ = ls.collect(scene_, walkBudget_);
 
     RenderDelta delta;
     for (const auto &root : scene_.rootNodes) {
@@ -215,6 +219,10 @@ public:
            "one-delta-per-tick contract violated: delta() called twice without "
            "an intervening tick() advance (tick() clears the dirty set)");
     lastDeltaNow_ = now;
+
+    // #21: fresh node-visit budget for this tick's incremental re-walks (a dirty
+    // subtree can also be a wide acyclic fan-out).
+    walkBudget_ = WalkBudget(meshOptions_.maxWalkVisits);
 
     RenderDelta delta;
     const DirtyTracker &dirty = ctx_.dirtyTracker();
@@ -391,6 +399,12 @@ public:
     return skippedGeometry_;
   }
 
+  // #21: true if the last fullSnapshot()/delta() walk (geometry OR light
+  // collection) hit maxWalkVisits and stopped early — i.e. the returned
+  // RenderDelta is a PARTIAL view of a pathologically wide (acyclic "doubling
+  // DAG") scene. A graceful, non-throwing signal; reset at the start of each walk.
+  bool budgetExceeded() const { return walkBudget_.tripped; }
+
 private:
   using DepMap = std::unordered_map<const X3DNode *, std::vector<RenderItemId>>;
 
@@ -495,6 +509,11 @@ private:
   void walk(const X3DNode *n, const Mat4 &worldM, PathKey &path,
             RenderDelta &delta) {
     if (!n) return;
+    // #21: bound total node-visits so an acyclic fan-out ("doubling DAG") that
+    // escapes the MEM-1 cycle/depth guards cannot emit per-path without limit.
+    // On exhaustion spend() latches; the partial result is surfaced by
+    // budgetExceeded().
+    if (!walkBudget_.spend()) return;
     // MEM-1: bound the walk so an unsanitized graph (USE-cyclic or pathologically
     // deep, the runtime twin of SEC-1) cannot stack-overflow the extractor. The
     // path is the live root->n ancestor chain, so a hard depth cap plus a
@@ -884,6 +903,11 @@ private:
   // geometry was an UNRECOGNIZED type. Ordered map (std::map) so skippedGeometry
   // Counts() iterates deterministically (a coverage report is reproducible).
   std::map<std::string, int> skippedGeometry_;
+
+  // #21: per-walk node-visit budget (set from meshOptions_.maxWalkVisits at the
+  // start of fullSnapshot()/delta()). Latches `tripped` when exhausted; surfaced
+  // by budgetExceeded().
+  WalkBudget walkBudget_;
 
   // One-delta-per-tick contract state. snapped_ gates delta() on a prior
   // fullSnapshot(); lastDeltaNow_ is the clock value of the last full/delta read,

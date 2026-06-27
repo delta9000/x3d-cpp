@@ -43,13 +43,22 @@ namespace x3d::runtime::extract {
 
 class LightSystem {
 public:
-  // One full walk; returns every active (on==true) light, world-resolved.
+  // One full walk; returns every active (on==true) light, world-resolved. The
+  // self-budgeted overload caps the fan-out with a fresh default budget.
   std::vector<LightDesc> collect(const Scene &scene) {
+    WalkBudget budget(kMaxGraphWalkVisits);
+    return collect(scene, budget);
+  }
+
+  // #21: collect against a shared node-visit budget — the extractor threads the
+  // SAME budget through light collection and its geometry walk, so one snapshot
+  // ceiling covers both. `budget.tripped` reports an early stop.
+  std::vector<LightDesc> collect(const Scene &scene, WalkBudget &budget) {
     std::vector<LightDesc> out;
     for (const auto &root : scene.rootNodes) {
       if (!root) continue;
       // A root light has no enclosing grouping node => scopeRoot null.
-      walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, out);
+      walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, out, budget);
     }
     return out;
   }
@@ -84,8 +93,13 @@ private:
   }
 
   void walk(const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
-            std::vector<LightDesc> &out, std::size_t depth = 0) {
+            std::vector<LightDesc> &out, WalkBudget &budget,
+            std::size_t depth = 0) {
     if (!n) return;
+    // #21: bound total node-visits so a wide acyclic ("doubling DAG") light
+    // fan-out collects a bounded number of LightDescs (the shared budget makes
+    // the extractor report the trip via budgetExceeded()).
+    if (!budget.spend()) return;
     // MEM-1: a hard depth cap keeps light collection from stack-overflowing on a
     // USE-cyclic / pathologically deep graph (this walk runs before the
     // extractor's own walk in fullSnapshot, so it must be self-safe too).
@@ -110,11 +124,11 @@ private:
       if (!f.get) continue;
       if (f.type == X3DFieldType::SFNode) {
         auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
-        if (c) walk(c.get(), here, childScope, out, depth + 1);
+        if (c) walk(c.get(), here, childScope, out, budget, depth + 1);
       } else if (f.type == X3DFieldType::MFNode) {
         for (const auto &c :
              std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*n)))
-          if (c) walk(c.get(), here, childScope, out, depth + 1);
+          if (c) walk(c.get(), here, childScope, out, budget, depth + 1);
       }
     }
   }
