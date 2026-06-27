@@ -303,14 +303,21 @@ TEST_CASE("nurbs_curve_closed_periodic") {
   CHECK((feq(pts[0].x,0.5,1e-4)    && feq(pts[0].y,0.0,1e-4)));
   CHECK((feq(pts[1].x,0.77778,1e-4) && feq(pts[1].y,0.05556,1e-4)));
   CHECK((feq(pts[2].x,0.94444,1e-4) && feq(pts[2].y,0.22222,1e-4)));
-  // C1 continuity across the seam: forward tangent at end ~ tangent at start
-  SFVec3f tStart{pts[1].x-pts[0].x, pts[1].y-pts[0].y, 0};
-  SFVec3f tEnd  {pts[pts.size()-1].x-pts[pts.size()-2].x,
-                 pts[pts.size()-1].y-pts[pts.size()-2].y, 0};
-  double ls=std::sqrt(tStart.x*tStart.x+tStart.y*tStart.y);
-  double le=std::sqrt(tEnd.x*tEnd.x+tEnd.y*tEnd.y);
-  double dot=(tStart.x*tEnd.x+tStart.y*tEnd.y)/(ls*le);
-  CHECK(dot > 0.99); // tangents aligned at the seam
+  // C1 across the seam: the seam vertex must be no more "kinked" than the
+  // vertex diametrically opposite it. By the square's symmetry those two
+  // chord-turning values are IDENTICAL (verified == to 1e-16) for a correct
+  // periodic basis; a C0 kink at the seam would make the seam value far smaller.
+  // (An absolute "tangent ~ 1" check is wrong here: adjacent chords straddle the
+  // true tangent by the curvature, capping the dot at ~0.923 at every vertex.)
+  auto turnDot = [&](int prev, int v, int next){
+    SFVec3f a{pts[v].x-pts[prev].x, pts[v].y-pts[prev].y, 0};
+    SFVec3f b{pts[next].x-pts[v].x, pts[next].y-pts[v].y, 0};
+    double la=std::sqrt(a.x*a.x+a.y*a.y), lb=std::sqrt(b.x*b.x+b.y*b.y);
+    return (a.x*b.x+a.y*b.y)/(la*lb);
+  };
+  double seam = turnDot(11, 12, 1); // incoming pts[11]->pts[12](==pts[0]), outgoing ->pts[1]
+  double opp  = turnDot(5, 6, 7);   // diametrically opposite (top-mid) smooth vertex
+  CHECK(feq(seam, opp, 1e-3));      // seam as smooth as the symmetric opposite vertex
 }
 ```
 
