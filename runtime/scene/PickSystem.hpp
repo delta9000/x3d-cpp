@@ -28,6 +28,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace x3d::runtime {
@@ -44,6 +45,9 @@ struct PickResult {
   extract::PathKey path;
   SFVec3f normal{0,0,0};
   SFVec2f texCoord{0,0};
+  // #21: true if the pick walk hit maxVisits and stopped early — the result is a
+  // partial best-so-far over a pathologically wide (acyclic "doubling DAG") scene.
+  bool budgetExceeded = false;
 };
 
 // Narrow-phase result: entry parameter t plus the LOCAL-frame surface normal
@@ -71,11 +75,17 @@ public:
   // geometry.
   PickResult pickClosest(const Ray &worldRay, const BoundsSystem &bounds,
                          const SFVec3f &cameraPos = {0, 0, 0},
-                         const SFVec3f &cameraUp = {0, 1, 0}) const {
+                         const SFVec3f &cameraUp = {0, 1, 0},
+                         std::size_t maxVisits = kMaxGraphWalkVisits) const {
     PickResult best;
     extract::PathKey path;
+    // #21: pickNode tests geometry per path (each placement has its own world
+    // frame), so it cannot memoize like worldOf — a node-visit budget bounds an
+    // acyclic ("doubling DAG") fan-out and flags the partial result.
+    WalkBudget budget(maxVisits);
     for (X3DNode *r : roots_)
-      pickNode(r, Mat4::identity(), worldRay, bounds, cameraPos, cameraUp, path, best);
+      pickNode(r, Mat4::identity(), worldRay, bounds, cameraPos, cameraUp, path, best, budget);
+    best.budgetExceeded = budget.tripped;
     return best;
   }
 
@@ -83,7 +93,12 @@ public:
   // matrices). Identity if not found. Used for camera pose in viewMatrix.
   Mat4 worldOf(const X3DNode *target) const {
     Mat4 out = Mat4::identity();
-    for (X3DNode *r : roots_) if (worldOfRec(r, Mat4::identity(), target, out)) break;
+    // #21: memoize fully-explored subtrees so a wide (acyclic "doubling") DAG is
+    // searched in O(nodes), not O(paths). worldOf returns the FIRST-found
+    // placement, so pruning already-explored subtrees never changes the result.
+    std::unordered_set<const X3DNode *> visited;
+    for (X3DNode *r : roots_)
+      if (worldOfRec(r, Mat4::identity(), target, out, visited)) break;
     return out;
   }
 
@@ -295,7 +310,11 @@ private:
   void pickNode(const X3DNode *n, const Mat4 &worldM, const Ray &worldRay,
                 const BoundsSystem &bounds, const SFVec3f &cameraPos,
                 const SFVec3f &cameraUp, extract::PathKey &path,
-                PickResult &best) const {
+                PickResult &best, WalkBudget &budget) const {
+    // #21: bound total node-visits so an acyclic ("doubling DAG") fan-out cannot
+    // test geometry per-path without limit (the partial best-so-far is flagged
+    // via PickResult.budgetExceeded).
+    if (!budget.spend()) return;
     // MEM-1: bound the pick walk so an unsanitized graph (USE-cyclic or
     // pathologically deep) cannot stack-overflow. `path` is the live root→n
     // ancestor chain; a depth cap plus a path-membership test before descending
@@ -337,7 +356,7 @@ private:
       }
     }
     forEachChild(n, [&](const X3DNode *c) {
-      pickNode(c, childM, worldRay, bounds, cameraPos, cameraUp, path, best);
+      pickNode(c, childM, worldRay, bounds, cameraPos, cameraUp, path, best, budget);
     });
     path.pop_back();
   }
@@ -366,15 +385,21 @@ private:
   // billboard orientation here would feed camera pose back into the very
   // computation that defines it.
   bool worldOfRec(const X3DNode *n, const Mat4 &worldM, const X3DNode *target,
-                  Mat4 &out, std::size_t depth = 0) const {
+                  Mat4 &out, std::unordered_set<const X3DNode *> &visited,
+                  std::size_t depth = 0) const {
     // MEM-1: a hard depth cap stops a USE-cyclic / pathologically deep graph from
     // overrunning the stack when `target` is absent (full traversal). worldOf()
     // returns identity on a miss, so bailing here is the existing not-found path.
     if (depth >= kMaxNestingDepth) return false;
+    // #21: skip a subtree already explored without finding `target`. A node is
+    // only re-reached after its first exploration fully returned (DFS), so if it
+    // returned false then, `target` is provably not under it. The first path that
+    // reaches `target` is unaffected, so worldOf's first-found result is preserved.
+    if (!visited.insert(n).second) return false;
     Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
     if (n == target) { out = here; return true; }
     bool found = false;
-    forEachChild(n, [&](const X3DNode *c) { if (!found && worldOfRec(c, here, target, out, depth + 1)) found = true; });
+    forEachChild(n, [&](const X3DNode *c) { if (!found && worldOfRec(c, here, target, out, visited, depth + 1)) found = true; });
     return found;
   }
 

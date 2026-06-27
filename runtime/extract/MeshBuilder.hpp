@@ -69,6 +69,7 @@
 #include "FontMetrics.hpp"   // T-TEXT: font-metrics seam (Text branch)
 #include "GeometryBounds.hpp" // geombounds::getField/getNode
 #include "PackedMesh.hpp"     // PackedMesh (Phase 1 binary geometry)
+#include "RecursionLimits.hpp" // #21: kMaxGraphWalkVisits (walk budget default)
 #include "RenderItem.hpp"     // MeshData
 #include "TextExtract.hpp"    // T-TEXT: buildTextMesh (Text branch)
 #include "X3DNode.hpp"
@@ -142,6 +143,13 @@ struct MeshBuildOptions {
   // signals Ready and triggers emitPacked(). Null by default (no ext, firewall
   // intact). Core-typed only: PackedMesh + X3DNode* + AssetResolver, no ext type.
   std::function<PackedMesh(const X3DNode*, AssetResolver)> externalGeometryResolver{};
+
+  // #21: ceiling on node-visits per fullSnapshot() walk (extractor + light
+  // collection). Bounds an acyclic "doubling DAG" fan-out (2^depth paths) that
+  // would otherwise emit billions of RenderItems/LightDescs. Default is far above
+  // any legitimate placement count; raise it for a genuinely huge scene (and
+  // check SceneExtractor::budgetExceeded() to detect truncation).
+  std::size_t maxWalkVisits = kMaxGraphWalkVisits;
 };
 
 namespace mesh_detail {

@@ -52,6 +52,38 @@ struct NestingGuard {
   NestingGuard &operator=(const NestingGuard &) = delete;
 };
 
+// Ceiling on the number of node-visits a single scene-graph traversal may make
+// (#21). The MEM-1 depth/cycle guards make the extractor/pick/light walks
+// crash-proof, but an *acyclic* "doubling DAG" (G0->[G1,G1], G1->[G2,G2], ...)
+// fans out to 2^depth distinct paths while staying shallow and back-edge-free —
+// per-path emission then explodes into a CPU/memory DoS. The default is far above
+// any legitimate placement count (real scenes have far fewer than a million
+// RenderItems) yet bounds the pathological fan-out to a finite, fast walk.
+inline constexpr std::size_t kMaxGraphWalkVisits = 1'000'000;
+
+// Per-traversal node-visit budget for the per-path emitters (SceneExtractor::walk,
+// LightSystem::walk, PickSystem::pickNode). Each visit calls spend() once; when
+// the budget is exhausted spend() latches `tripped` and returns false so the
+// walker stops descending and returns a partial result (the caller surfaces
+// `tripped` via budgetExceeded()/PickResult.budgetExceeded — a non-throwing
+// signal, matching the extractor's existing read-path contract). Per-path
+// emission is intentional for USE-instancing, so this is a policy ceiling, not a
+// memoization (which would wrongly collapse legitimate instancing).
+struct WalkBudget {
+  std::size_t remaining = 0;
+  bool tripped = false;
+  WalkBudget() = default;
+  explicit WalkBudget(std::size_t cap) : remaining(cap) {}
+  bool spend() {
+    if (remaining == 0) {
+      tripped = true;
+      return false;
+    }
+    --remaining;
+    return true;
+  }
+};
+
 } // namespace x3d
 
 #endif // X3D_RECURSION_LIMITS_HPP
