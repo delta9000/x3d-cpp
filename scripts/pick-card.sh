@@ -12,7 +12,6 @@ set -euo pipefail
 OWNER=delta9000
 PROJECT=2
 REPO=delta9000/x3d-cpp
-REPO_ID=R_kgDOTCOeXw   # gh repo view delta9000/x3d-cpp --json id
 
 items_json() { gh project item-list "$PROJECT" --owner "$OWNER" --format json --limit 200; }
 
@@ -28,15 +27,20 @@ fi
 
 QUERY="${1:?usage: pick-card.sh \"<card title>\"  (or --list)}"
 
+# Resolve the repo's GraphQL node id at runtime (a hardcoded id silently goes
+# stale if the repo is recreated/transferred — the draft→issue convert then
+# fails with "Could not resolve to a node with the global id ...").
+REPO_ID=$(gh repo view "$REPO" --json id -q .id)
+
 # Resolve the card by title substring (case-insensitive); must be unique.
-read -r ITEM_ID CONTENT_TYPE TITLE < <(items_json | python3 -c '
+read -r ITEM_ID CONTENT_TYPE TITLE < <(items_json | Q="$QUERY" python3 -c '
 import json,sys,os
 q=os.environ["Q"].lower()
 m=[it for it in json.load(sys.stdin)["items"] if q in it["title"].lower()]
 if len(m)==0: sys.exit("no card matches: "+os.environ["Q"])
 if len(m)>1: sys.exit("ambiguous ("+str(len(m))+" matches); be more specific:\n  "+"\n  ".join(i["title"] for i in m))
 it=m[0]; print(it["id"], it.get("content",{}).get("type","DraftIssue"), it["title"])
-' Q="$QUERY") || { echo "$ITEM_ID" >&2; exit 1; }
+') || { echo "$ITEM_ID" >&2; exit 1; }
 
 SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40)
 BRANCH="feat/${SLUG}"
