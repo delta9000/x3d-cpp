@@ -16,9 +16,13 @@ test_exec
 *.o
 
 # Note: generated_cpp_bindings/ is GOLDEN and intentionally tracked.
-# Drop only the smoke-test artifacts produced during generation.
+# Drop only the smoke-test artifacts produced during generation. Post ADR-0039
+# the generator emits these under x3d/nodes/; keep the old flat paths too for
+# any pre-split working tree.
 generated_cpp_bindings/test.cpp
 generated_cpp_bindings/test_exec
+generated_cpp_bindings/x3d/nodes/test.cpp
+generated_cpp_bindings/x3d/nodes/test_exec
 
 # Phase 5 multi-version: the real X3D 4.1 output is derived from the large
 # (2.6MB) UOM fixture and is NOT committed as golden. The small synthetic-4.1
