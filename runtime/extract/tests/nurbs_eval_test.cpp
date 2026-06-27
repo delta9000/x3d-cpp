@@ -90,3 +90,51 @@ TEST_CASE("nurbs_curve_closed_periodic") {
   double opp  = turnDot(5, 6, 7);   // diametrically opposite (top-mid) smooth vertex
   CHECK(feq(seam, opp, 1e-3));      // seam as smooth as the symmetric opposite vertex
 }
+
+TEST_CASE("nurbs_surface_planar_normals") {
+  // Bilinear (order 2x2) patch over a planar z=0 grid => every normal is +Z,
+  // every point lies on z=0.
+  nurbs::SurfaceDef s;
+  s.uDim = 2; s.vDim = 2; s.uOrder = 2; s.vOrder = 2;
+  s.cp = {{0,0,0},{2,0,0},   // v=0 row (u fastest)
+          {0,3,0},{2,3,0}};  // v=1 row
+  auto g = nurbs::tessellateSurface(s, 3, 3);
+  CHECK(g.size() == 16);
+  for (auto& sm : g) {
+    CHECK(feq(sm.p.z, 0.0, 1e-6));
+    CHECK((feq(std::fabs(sm.n.z), 1.0, 1e-6))); // unit +/-Z
+    CHECK((feq(sm.n.x,0,1e-6) && feq(sm.n.y,0,1e-6)));
+  }
+}
+
+TEST_CASE("nurbs_surface_analytic_normal_matches_finite_difference") {
+  // Curved bicubic-ish patch: analytic normal must match a central-difference
+  // normal computed from the point evaluator alone.
+  nurbs::SurfaceDef s;
+  s.uDim = 3; s.vDim = 3; s.uOrder = 3; s.vOrder = 3;
+  s.cp = {{0,0,0},{1,0,1},{2,0,0},
+          {0,1,1},{1,1,2},{2,1,1},
+          {0,2,0},{1,2,1},{2,2,0}};
+  auto g = nurbs::tessellateSurface(s, 8, 8);
+  // central-difference point sampler over the SAME prepared surface
+  auto P = [&](double u,double v){
+    return nurbs::detail::evalSurface(
+      nurbs::detail::prepareSurface(s).cp, nurbs::detail::prepareSurface(s).w,
+      nurbs::detail::clampedKnots(3,3), nurbs::detail::clampedKnots(3,3),
+      3,3,3,3,u,v).p;
+  };
+  const double h=1e-4;
+  // check an interior sample (a=4,b=4 in a 9x9 grid => u=v=0.5)
+  auto an = g[4*9 + 4].n;
+  SFVec3f du{ (P(0.5+h,0.5).x-P(0.5-h,0.5).x)/(2*h),
+              (P(0.5+h,0.5).y-P(0.5-h,0.5).y)/(2*h),
+              (P(0.5+h,0.5).z-P(0.5-h,0.5).z)/(2*h) };
+  SFVec3f dv{ (P(0.5,0.5+h).x-P(0.5,0.5-h).x)/(2*h),
+              (P(0.5,0.5+h).y-P(0.5,0.5-h).y)/(2*h),
+              (P(0.5,0.5+h).z-P(0.5,0.5-h).z)/(2*h) };
+  SFVec3f fd{ du.y*dv.z-du.z*dv.y, du.z*dv.x-du.x*dv.z, du.x*dv.y-du.y*dv.x };
+  double l=std::sqrt(fd.x*fd.x+fd.y*fd.y+fd.z*fd.z);
+  fd.x/=l; fd.y/=l; fd.z/=l;
+  double dot = an.x*fd.x + an.y*fd.y + an.z*fd.z;
+  CHECK(std::fabs(dot) > 0.999); // same direction (sign may differ)
+}

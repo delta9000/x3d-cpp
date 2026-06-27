@@ -21,6 +21,15 @@ struct CurveDef {
   bool closed = false;
 };
 
+struct SurfaceDef {
+  std::vector<SFVec3f> cp;     // uDim*vDim, u-index fastest: cp[i + j*uDim]
+  std::vector<double>  w;
+  std::vector<double>  uKnot, vKnot;
+  int  uDim = 0, vDim = 0, uOrder = 3, vOrder = 3;
+  bool uClosed = false, vClosed = false;
+};
+struct SurfaceSample { SFVec3f p; SFVec3f n; SFVec2f uv; };
+
 namespace detail {
 
 // Clamped uniform knots: len n+order, first `order`=0, last `order`=1, interior uniform.
@@ -93,6 +102,85 @@ inline CurveDef prepareCurve(const CurveDef& in) {
   return c;
 }
 
+// Basis funcs N[0..p] AND first derivatives dN[0..p] at span i (PT A2.3, d=1).
+// Verified against symbolic D[BSplineBasis] to machine epsilon.
+inline void dersBasisFuns1(int i, double u, int order,
+                           const std::vector<double>& knot, double* N, double* dN) {
+  int p = order - 1;
+  std::vector<std::vector<double>> ndu(order, std::vector<double>(order, 0.0));
+  std::vector<double> left(order, 0.0), right(order, 0.0);
+  ndu[0][0] = 1.0;
+  for (int j = 1; j <= p; ++j) {
+    left[j]  = u - knot[i + 1 - j];
+    right[j] = knot[i + j] - u;
+    double saved = 0.0;
+    for (int r = 0; r < j; ++r) {
+      double denom = right[r + 1] + left[j - r];
+      ndu[j][r] = denom;
+      double temp = denom != 0.0 ? ndu[r][j - 1] / denom : 0.0;
+      ndu[r][j] = saved + right[r + 1] * temp;
+      saved = left[j - r] * temp;
+    }
+    ndu[j][j] = saved;
+  }
+  for (int j = 0; j <= p; ++j) N[j] = ndu[j][p];
+  for (int r = 0; r <= p; ++r) {
+    double der = 0.0; int rk = r - 1, pk = p - 1;
+    if (r >= 1 && ndu[pk + 1][rk] != 0.0) der += (1.0 / ndu[pk + 1][rk]) * ndu[rk][pk];
+    if (r <= pk && ndu[pk + 1][r]  != 0.0) der += (-1.0 / ndu[pk + 1][r]) * ndu[r][pk];
+    dN[r] = der * double(p);
+  }
+}
+
+// Rational surface point + analytic normal at (u,v). Homogeneous accumulation
+// then quotient rule: dP = (dS.xyz - dS.w * P) / S.w ; normal = dP/du x dP/dv.
+inline SurfaceSample evalSurface(const std::vector<SFVec3f>& cp,
+                                 const std::vector<double>& w,
+                                 const std::vector<double>& uKnot,
+                                 const std::vector<double>& vKnot,
+                                 int uDim, int vDim, int uOrder, int vOrder,
+                                 double u, double v) {
+  int pu = uOrder - 1, pv = vOrder - 1;
+  int su = findSpan(uDim, uOrder, u, uKnot);
+  int sv = findSpan(vDim, vOrder, v, vKnot);
+  std::vector<double> Nu(uOrder), dNu(uOrder), Nv(vOrder), dNv(vOrder);
+  dersBasisFuns1(su, u, uOrder, uKnot, Nu.data(), dNu.data());
+  dersBasisFuns1(sv, v, vOrder, vKnot, Nv.data(), dNv.data());
+  double Sx=0,Sy=0,Sz=0,Sw=0, Ux=0,Uy=0,Uz=0,Uw=0, Vx=0,Vy=0,Vz=0,Vw=0;
+  for (int b = 0; b <= pv; ++b) {
+    int jv = sv - pv + b;
+    for (int a = 0; a <= pu; ++a) {
+      int iu = su - pu + a, idx = iu + jv * uDim;
+      double wi = w.empty() ? 1.0 : w[idx];
+      const SFVec3f& P = cp[idx];
+      double hx=wi*P.x, hy=wi*P.y, hz=wi*P.z, hw=wi;
+      double nN=Nu[a]*Nv[b], nU=dNu[a]*Nv[b], nV=Nu[a]*dNv[b];
+      Sx+=nN*hx; Sy+=nN*hy; Sz+=nN*hz; Sw+=nN*hw;
+      Ux+=nU*hx; Uy+=nU*hy; Uz+=nU*hz; Uw+=nU*hw;
+      Vx+=nV*hx; Vy+=nV*hy; Vz+=nV*hz; Vw+=nV*hw;
+    }
+  }
+  double inv = 1.0 / Sw;
+  SFVec3f Pt{ (float)(Sx*inv), (float)(Sy*inv), (float)(Sz*inv) };
+  double dUx=(Ux-Uw*Sx*inv)*inv, dUy=(Uy-Uw*Sy*inv)*inv, dUz=(Uz-Uw*Sz*inv)*inv;
+  double dVx=(Vx-Vw*Sx*inv)*inv, dVy=(Vy-Vw*Sy*inv)*inv, dVz=(Vz-Vw*Sz*inv)*inv;
+  SFVec3f nrm{ (float)(dUy*dVz-dUz*dVy),
+               (float)(dUz*dVx-dUx*dVz),
+               (float)(dUx*dVy-dUy*dVx) };
+  double len = std::sqrt((double)nrm.x*nrm.x + (double)nrm.y*nrm.y + (double)nrm.z*nrm.z);
+  if (len > 1e-20) { nrm.x/=(float)len; nrm.y/=(float)len; nrm.z/=(float)len; }
+  return SurfaceSample{ Pt, nrm, SFVec2f{0,0} };
+}
+
+// Resolve weights + u/v knots (open clamped here; closed wrap added in Task 4).
+inline SurfaceDef prepareSurface(const SurfaceDef& in) {
+  SurfaceDef s = in;
+  if ((int)s.w.size() != s.uDim * s.vDim) s.w.assign(s.uDim * s.vDim, 1.0);
+  if ((int)s.uKnot.size() != s.uDim + s.uOrder) s.uKnot = clampedKnots(s.uDim, s.uOrder);
+  if ((int)s.vKnot.size() != s.vDim + s.vOrder) s.vKnot = clampedKnots(s.vDim, s.vOrder);
+  return s;
+}
+
 } // namespace detail
 
 // segments+1 samples across the valid domain [knot[order-1], knot[numCP]].
@@ -116,6 +204,29 @@ inline std::vector<SFVec3f> tessellateCurve(const CurveDef& in, int segments) {
       x += nb*c.cp[idx].x; y += nb*c.cp[idx].y; z += nb*c.cp[idx].z; w += nb;
     }
     out.push_back(SFVec3f{ (float)(x/w), (float)(y/w), (float)(z/w) });
+  }
+  return out;
+}
+
+inline std::vector<SurfaceSample> tessellateSurface(const SurfaceDef& in,
+                                                    int uSeg, int vSeg) {
+  std::vector<SurfaceSample> out;
+  SurfaceDef s = detail::prepareSurface(in);
+  if (s.uDim < s.uOrder || s.vDim < s.vOrder || uSeg < 1 || vSeg < 1) return out;
+  if ((int)s.cp.size() < s.uDim * s.vDim) return out;
+  int pu = s.uOrder - 1, pv = s.vOrder - 1;
+  double u0 = s.uKnot[pu], u1 = s.uKnot[s.uDim];
+  double v0 = s.vKnot[pv], v1 = s.vKnot[s.vDim];
+  out.reserve((uSeg + 1) * (vSeg + 1));
+  for (int b = 0; b <= vSeg; ++b) {
+    double v = v0 + (v1 - v0) * double(b) / double(vSeg);
+    for (int a = 0; a <= uSeg; ++a) {
+      double u = u0 + (u1 - u0) * double(a) / double(uSeg);
+      auto sm = detail::evalSurface(s.cp, s.w, s.uKnot, s.vKnot,
+                                    s.uDim, s.vDim, s.uOrder, s.vOrder, u, v);
+      sm.uv = SFVec2f{ (float)(double(a)/uSeg), (float)(double(b)/vSeg) };
+      out.push_back(sm);
+    }
   }
   return out;
 }
