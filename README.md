@@ -107,16 +107,27 @@ ctx.buildFrom(doc.getScene());
 
 sdk::SceneExtractor ex(ctx, doc.getScene());
 sdk::RenderDelta f0 = ex.fullSnapshot();              // upload f0.added (meshes/materials/lights)
+const auto t0 = std::chrono::steady_clock::now();     // monotonic clock start
 while (running) {
+  double now = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();  // seconds since start
   ctx.tick(now);                                      // advance time, routes, scripts, behaviors
   sdk::RenderDelta d = ex.delta();                    // apply d.added / removed / updated*
 }
 ```
 
 The SDK does **no** file IO, image decoding, or rasterization — those are
-embedder-supplied **seams** (`AssetResolver`, `TextureResolver`, `FontMetrics`,
-`ScriptEngine`, …), each proven swappable by a second backend. See
-[`docs/sdk/`](docs/sdk/).
+embedder-supplied **seams**: *ports* in the ports-and-adapters sense, where the
+IO-free core owns the interface and you supply the backend (`AssetResolver`,
+`TextureResolver`, `FontMetrics`, `ScriptEngine`, …), each proven swappable by a
+second backend. See [`docs/sdk/`](docs/sdk/).
+
+For a downstream-style CMake project that does not depend on the source tree,
+see [`examples/embed_minimal/`](examples/embed_minimal/). It uses only:
+
+```cmake
+find_package(x3d_cpp CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE x3d_cpp::sdk)
+```
 
 ### 3. Render it headless (the gallery above)
 

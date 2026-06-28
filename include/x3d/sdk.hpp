@@ -11,8 +11,11 @@
 //   • Extract  — a SceneExtractor that turns the live graph into renderer-ready
 //                RenderItems (meshes/materials/lights/camera/background) + deltas.
 //   • Seams    — embedder-supplied IO callbacks: AssetResolver, TextureResolver,
-//                FontMetrics, GeoProjection, ScriptEngine. The SDK does NO file
-//                IO, decoding, or rasterization — that stays in the embedder.
+//                FontMetrics, GeoProjection, ScriptEngine. A seam is a PORT (the
+//                ports-and-adapters / SPI sense): the IO-free core owns the
+//                interface, the embedder supplies the backend (adapter). The SDK
+//                does NO file IO, decoding, or rasterization — that stays in the
+//                embedder.
 //
 // Stability: symbols are marked [STABLE] (frozen pre-v2, breaking change = major)
 // or [EXPERIMENTAL] (shape may evolve; embedder wiring still maturing). See
@@ -27,6 +30,7 @@
 //   ctx.buildFrom(doc.scene);
 //   sdk::SceneExtractor ex(ctx, doc.scene);
 //   sdk::RenderDelta f0 = ex.fullSnapshot();          // upload f0.added
+//   // each frame, with `now` = seconds since start (any monotonic clock):
 //   while (running) { ctx.tick(now); auto d = ex.delta(); /* apply d */ }
 // ─────────────────────────────────────────────────────────────────────────────
 #ifndef X3D_SDK_HPP
@@ -88,7 +92,8 @@ using x3d::codec::CanonicalXmlWriter;    ///< X3D Canonical Form (X3DC14N) seria
 //   ctx.buildSceneGraph(doc.scene);   // index transforms/bindings/pick tree
 //   ctx.buildFrom(doc.scene);         // resolve DEF-named ROUTEs + IS redirects
 //   ctx.addSystem(...) / ctx.addScriptSystem(...);  // before the first tick()
-// Then once per frame: set inputs, ctx.tick(now), read the pull surface.
+// Then once per frame: set inputs, ctx.tick(now) [now = seconds since start],
+// read the pull surface.
 using x3d::runtime::X3DExecutionContext;
 using x3d::runtime::BridgeResult;        ///< { routesAdded, rejected[] } returned by buildFrom
 using x3d::runtime::RouteError;          ///< { index, reason } a single rejected ROUTE
