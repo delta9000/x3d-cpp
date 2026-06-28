@@ -91,7 +91,13 @@ class EventCascade {
 - **Field delivery via reflection** — `EventCascade::deliver` (private) walks
   `node->fields()` and calls `info.set(*node, value)` for the matching entry.
   Any node with a reflection table (`X3DNode::fields()`) is automatically
-  deliverable; no cascade-specific registration is needed.
+  deliverable; no cascade-specific registration is needed. When the static table
+  has no match, `deliver` falls back to the node's **author fields** in
+  `dynamicFieldStore()` (`authorFields()`) and writes through their synthesized
+  `set` thunk. This is what lets a ROUTE whose sink is a `<field>` on a Script /
+  ComposedShader actually deliver: `buildRoutes` resolves such sinks via
+  `effectiveFields()` (static ∪ author), so without this fallback the edge
+  validated but evaporated at delivery (see finding `SCRIPT-EVENTIN`).
 
 - **Field observer / dirty-tracking feed** — `setFieldObserver` installs a
   single callback invoked after each successful delivery. `X3DExecutionContext`
