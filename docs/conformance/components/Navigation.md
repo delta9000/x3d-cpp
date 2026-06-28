@@ -6,7 +6,7 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 |------|-----|--------|---------|---------|----------|------------|
 | Billboard | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | Collision | 2 | ✓ | — | ◑ | COL-1, COL-2, COL-3, CONF-NAV-COLLISION | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DSensorNode |
-| LOD | 2 | ✓ | — | — | LOD-1, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| LOD | 2 | ✓ | — | — | LOD-1, LOD-DELTA-1, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | NavigationInfo | 1 | ✓ | — | ✓ | BIND-05, BIND-06 | X3DBindableNode, X3DChildNode |
 | OrthoViewpoint | 3 | ✓ | — | ◑ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 | Viewpoint | 1 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, NAV-FLY-ROLL, NAV-LOOKAT-SCALE | X3DBindableNode, X3DChildNode, X3DViewpointNode |
@@ -43,6 +43,8 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 - **COL-2** [major/CLOSED `2b84a99`] — §23.4.2: Collision.proxy geometry must NOT be emitted as a visible render item (collision-only geometry).
   - Extraction fix — skip the proxy field in SceneExtractor; independent of the collision subsystem.
 - **LOD-1** [minor/CLOSED `2b84a99`] — §23.4.3: When children.size() < range.size()+1, level_changed must report the index of the child actually rendered (clamp), not the raw range bin.
+- **LOD-DELTA-1** [minor/FIXED] — §23.4.3: LOD active-level changes were invisible to the incremental delta() channel — the rendered level is computed from the camera, not a settable field, so it never reaches classifyDirty. Incremental consumers (the OpenGL PoC) stayed on the stale level while full-snapshot consumers (cpuraster, which re-extracts every frame) swapped.
+  - View-dependent sibling of SW-DELTA-1 (settable-field active-child). Fix: ViewDependentSystem calls X3DExecutionContext::markActiveChildChanged(lod) when the announced level flips, so delta() re-walks the LOD subtree and swaps the active child. Regression: scene_extractor_t8_test.cpp case 6 (move Viewpoint d=10 -> d=1 -> swap). RESIDUAL (deferred): ViewDependentSystem's per-node level uses worldTransform(node) = the FIRST-PATH (identity-if-unknown) transform (the M2C-1 per-node-event / per-path-render split), so an LOD under an ANIMATED PARENT TRANSFORM or a multi-path USE is not detected and stays stale in delta() — the accurate level is computed per-path only in the extractor walk. Same per-path view-dependent gap as Billboard orientation (deferred, classifyDirty M2c/M2d note). Found by differential testing: poc --animate (incremental delta) vs cpuraster --animate (full snapshot).
 - **BIND-09** [minor/CLOSED] — §23.3.1: Pop (unbind/delete) does not apply the §23.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind.
   - Needs push-vs-pop signaling from BindingSystem to distinguish rule 5.1 (reset) from 6.3 (restore stored offset). Per-node offset persists; only the reset-on-rebind path differs. CAVE doesn't exercise viewpoint stacks.
 - **NAV-LOOKAT-SCALE** [low/CLOSED] — §23.4.4: LOOKAT framing distance mixes a world-space radius with a local-frame eye placement, so a non-uniformly-scaled ancestor Transform mis-sizes the framed object.

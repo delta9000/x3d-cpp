@@ -3345,6 +3345,7 @@
         "CONF-NAV-COLLISION",
         "FOV-TYPE",
         "LOD-1",
+        "LOD-DELTA-1",
         "NAV-FLY-ROLL",
         "NAV-LOOKAT-SCALE",
         "SENSOR-SWITCH"
@@ -3414,6 +3415,7 @@
           "extracts": "n/a",
           "findings": [
             "LOD-1",
+            "LOD-DELTA-1",
             "SENSOR-SWITCH"
           ],
           "geometry": false,
@@ -8138,6 +8140,18 @@
       "wave": 4
     },
     {
+      "clause": "23.4.3",
+      "component": "Navigation",
+      "id": "LOD-DELTA-1",
+      "nodes": [
+        "LOD"
+      ],
+      "note": "View-dependent sibling of SW-DELTA-1 (settable-field active-child). Fix: ViewDependentSystem calls X3DExecutionContext::markActiveChildChanged(lod) when the announced level flips, so delta() re-walks the LOD subtree and swaps the active child. Regression: scene_extractor_t8_test.cpp case 6 (move Viewpoint d=10 -> d=1 -> swap). RESIDUAL (deferred): ViewDependentSystem's per-node level uses worldTransform(node) = the FIRST-PATH (identity-if-unknown) transform (the M2C-1 per-node-event / per-path-render split), so an LOD under an ANIMATED PARENT TRANSFORM or a multi-path USE is not detected and stays stale in delta() \u2014 the accurate level is computed per-path only in the extractor walk. Same per-path view-dependent gap as Billboard orientation (deferred, classifyDirty M2c/M2d note). Found by differential testing: poc --animate (incremental delta) vs cpuraster --animate (full snapshot).",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "LOD active-level changes were invisible to the incremental delta() channel \u2014 the rendered level is computed from the camera, not a settable field, so it never reaches classifyDirty. Incremental consumers (the OpenGL PoC) stayed on the stale level while full-snapshot consumers (cpuraster, which re-extracts every frame) swapped."
+    },
+    {
       "clause": "23.3.1",
       "id": "BIND-09",
       "nodes": [
@@ -9513,10 +9527,10 @@
     ]
   },
   "summary": {
-    "closed_count": 98,
+    "closed_count": 99,
     "component_count": 36,
     "deferred_count": 48,
-    "finding_count": 203,
+    "finding_count": 204,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",

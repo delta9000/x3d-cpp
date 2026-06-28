@@ -994,6 +994,14 @@
   wave: 4
   commit: 2b84a99
   summary: When children.size() < range.size()+1, level_changed must report the index of the child actually rendered (clamp), not the raw range bin.
+- id: LOD-DELTA-1
+  nodes: [LOD]
+  component: Navigation
+  clause: "23.4.3"
+  severity: minor
+  status: fixed
+  summary: "LOD active-level changes were invisible to the incremental delta() channel — the rendered level is computed from the camera, not a settable field, so it never reaches classifyDirty. Incremental consumers (the OpenGL PoC) stayed on the stale level while full-snapshot consumers (cpuraster, which re-extracts every frame) swapped."
+  note: "View-dependent sibling of SW-DELTA-1 (settable-field active-child). Fix: ViewDependentSystem calls X3DExecutionContext::markActiveChildChanged(lod) when the announced level flips, so delta() re-walks the LOD subtree and swaps the active child. Regression: scene_extractor_t8_test.cpp case 6 (move Viewpoint d=10 -> d=1 -> swap). RESIDUAL (deferred): ViewDependentSystem's per-node level uses worldTransform(node) = the FIRST-PATH (identity-if-unknown) transform (the M2C-1 per-node-event / per-path-render split), so an LOD under an ANIMATED PARENT TRANSFORM or a multi-path USE is not detected and stays stale in delta() — the accurate level is computed per-path only in the extractor walk. Same per-path view-dependent gap as Billboard orientation (deferred, classifyDirty M2c/M2d note). Found by differential testing: poc --animate (incremental delta) vs cpuraster --animate (full snapshot)."
 
 # ── CONF-VIEWNAV review follow-ons (2026-06-19, deferred minors) ─────────────
 - id: BIND-09

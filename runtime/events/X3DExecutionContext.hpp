@@ -230,6 +230,16 @@ public:
 
   /// Pull surface (read after tick): the per-node dirty set for this tick.
   const DirtyTracker &dirtyTracker() const { return dirty_; }
+  /// Mark a grouping node's ACTIVE-CHILD selection as changed so the next
+  /// delta() re-walks its subtree. View-dependent selection — an LOD level
+  /// computed from the camera each tick — is not a settable field, so it never
+  /// flows through the cascade's field observer (classifyDirty). Without this,
+  /// only full-snapshot consumers see the swap; incremental delta() consumers
+  /// (e.g. the OpenGL PoC) stay on the stale level. The settable-field analogue
+  /// is Switch.whichChoice -> DirtyChildren in classifyDirty (SW-DELTA-1).
+  void markActiveChildChanged(X3DNode *n) {
+    if (n) dirty_.markDirty(n, DirtyChildren | DirtyBounds);
+  }
   /// Pull surface: world transform of a Transform node (identity if unknown).
   Mat4 worldTransform(const X3DNode *n) const {
     return transforms_.worldTransform(n);
