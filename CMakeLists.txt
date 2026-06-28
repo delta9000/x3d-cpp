@@ -70,26 +70,29 @@ add_library(x3d_cpp::x3d_cpp ALIAS x3d_cpp)
 # Route, PROTO, IMPORT/EXPORT) is header-only too and includes the generated
 # nodes by bare name, so it joins the same include interface. Use BUILD_INTERFACE
 # for in-tree consumers and INSTALL_INTERFACE for installed consumers.
-target_include_directories(x3d_cpp INTERFACE
+# The hand-written runtime/ subdirs that make up the PUBLIC SDK surface — every
+# directory x3d/sdk.hpp transitively includes by bare name. This ONE list drives
+# the build-interface include dirs, the install-interface include dirs, AND the
+# install() rules further down, so the three can never drift apart.
+#
+# Internal reference backends are deliberately absent: runtime/io (curl/s3/stb/
+# wuffs/freetype/...), runtime/physics (Jolt), and runtime/ext (external geometry).
+# They implement seams the embedder supplies as std::function callbacks, are not
+# part of the v1 façade, and pull vendored third-party deps — so they are neither
+# on the public include path nor installed. The façade (include/x3d/sdk.hpp) is
+# the one, well-trod entry point; see docs/sdk/README.md.
+set(X3D_CPP_RUNTIME_PUBLIC_SUBDIRS codecs events math scene parse extract script sound)
+
+set(_x3d_cpp_interface_includes
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/events>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/math>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/script>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/codecs>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/events>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/math>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/scene>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/parse>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/extract>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/script>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/sound>")
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>")
+foreach(_sub IN LISTS X3D_CPP_RUNTIME_PUBLIC_SUBDIRS)
+    list(APPEND _x3d_cpp_interface_includes
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/${_sub}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/${_sub}>")
+endforeach()
+target_include_directories(x3d_cpp INTERFACE ${_x3d_cpp_interface_includes})
 
 # The generated code targets C++20 (designated initializers, etc.).
 target_compile_features(x3d_cpp INTERFACE cxx_std_20)
@@ -180,35 +183,67 @@ install(TARGETS x3d_cpp x3d_cpp_nodes x3d_cpp_sdk
     EXPORT x3d_cppTargets
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 
+# Non-public artifacts that must never reach the installed include tree. Kept
+# byte-for-byte in sync with the leak-gate in scripts/verify_install_embed.sh so
+# the install rules and the gate can't disagree about what counts as private.
+set(_x3d_install_excludes
+    PATTERN "tests" EXCLUDE
+    PATTERN "fixtures" EXCLUDE
+    PATTERN "test_support" EXCLUDE
+    PATTERN "vendor" EXCLUDE
+    PATTERN "*TestSupport.*" EXCLUDE
+    PATTERN "*test_support*" EXCLUDE)
+
+# The SDK is IO-free: it ships seam INTERFACES + core systems, never a concrete
+# backend. Top-level reference backends (io/physics/ext) are kept out simply by
+# their absence from X3D_CPP_RUNTIME_PUBLIC_SUBDIRS; these reference backends live
+# NESTED inside the otherwise-public sound/ subdir, so they're excluded by name.
+# sound/ therefore ships only AudioBackend.hpp (the seam) + SoundSystem.hpp (the
+# core System) — the miniaudio (device-IO) and builtin-DSP reference backends, and
+# the RecordingBackend test double, all stay out. Kept in sync with the reference-
+# backend leak check in scripts/verify_install_embed.sh.
+set(_x3d_runtime_backend_excludes
+    PATTERN "miniaudio" EXCLUDE          # reference AudioBackend over a real device
+    PATTERN "dsp" EXCLUDE                # reference built-in software DSP backend
+    PATTERN "RecordingBackend.hpp" EXCLUDE)  # op-recording test double (tests only)
+
 # The curated façade header (include/x3d/sdk.hpp) installs preserving its x3d/
 # subdir so installed consumers `#include "x3d/sdk.hpp"`.
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
     FILES_MATCHING
         PATTERN "*.hpp"
-        PATTERN "tests" EXCLUDE)
+        ${_x3d_install_excludes})
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/x3d"
     FILES_MATCHING
         PATTERN "*.hpp"
-        PATTERN "tests" EXCLUDE)
+        ${_x3d_install_excludes})
 
-# The hand-written runtime headers install preserving their source layout. The
-# exported target exposes the matching subdirs as install-interface include dirs,
-# so umbrella includes such as "X3DCodecs.hpp" and source-relative includes such
-# as parse/Inflate.hpp -> ../RecursionLimits.hpp both resolve for consumers.
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runtime/"
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
-    FILES_MATCHING
-        PATTERN "*.hpp"
-        # tinfl.h is the bundled public-domain DEFLATE decompressor (C header,
-        # included by parse/Inflate.hpp); it must install alongside the headers.
-        PATTERN "*.h"
-        PATTERN "tests" EXCLUDE
-        PATTERN "test_support" EXCLUDE
-        PATTERN "*TestSupport.*" EXCLUDE
-        PATTERN "vendor" EXCLUDE)
+# The hand-written runtime document model. Root-level headers (X3DDocument,
+# X3DExecutionContext, X3DRuntime, ...) install flat; each PUBLIC subdir installs
+# to its matching include/x3d_cpp/<sub>/, mirroring the install-interface include
+# dirs above. Both are driven by the SAME X3D_CPP_RUNTIME_PUBLIC_SUBDIRS list, so
+# the include path and the shipped headers stay in lockstep — and the internal
+# backends (io/physics/ext, plus nested reference backends) are never installed.
+file(GLOB _x3d_runtime_root_headers CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/*.hpp")
+install(FILES ${_x3d_runtime_root_headers}
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp")
+foreach(_sub IN LISTS X3D_CPP_RUNTIME_PUBLIC_SUBDIRS)
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runtime/${_sub}/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/${_sub}"
+        FILES_MATCHING
+            PATTERN "*.hpp"
+            # parse/tinfl.h (bundled public-domain DEFLATE decompressor, included
+            # by parse/Inflate.hpp) is the only public non-.hpp header; allow *.h
+            # so it ships with parse/. Vendored *.h (e.g. script/vendor/duktape)
+            # is held out by the vendor EXCLUDE below.
+            PATTERN "*.h"
+            ${_x3d_install_excludes}
+            ${_x3d_runtime_backend_excludes})
+endforeach()
 
 install(EXPORT x3d_cppTargets
     FILE x3d_cppTargets.cmake
@@ -1630,10 +1665,23 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/sdk_facade_test.cpp")
     target_link_libraries(x3d_sdk_facade PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_sdk_facade COMMAND x3d_sdk_facade)
-    add_test(NAME x3d_install_embed_smoke
-        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/verify_install_embed.sh"
-                "${CMAKE_CURRENT_BINARY_DIR}"
-                "${CMAKE_CURRENT_BINARY_DIR}/install-embed-smoke")
+    # Installed-package embed smoke: install THIS build, then configure/build/run
+    # examples/embed_minimal against it via find_package(x3d_cpp), so a broken
+    # export or a missing installed header fails CI on the actual embedder path.
+    # The parent generator is forwarded so the downstream configure matches it.
+    #
+    # Skipped under X3D_CPP_SAN: the sanitizer build instruments the installed
+    # archive globally (add_compile/link_options -fsanitize), but the downstream
+    # example builds plain — linking it against the instrumented archive fails
+    # with undefined __asan_*/__ubsan_* symbols. Install wiring is orthogonal to
+    # sanitizers, so the dev/CI fast gate already proves it.
+    if(NOT X3D_CPP_SAN)
+        add_test(NAME x3d_install_embed_smoke
+            COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/verify_install_embed.sh"
+                    "${CMAKE_CURRENT_BINARY_DIR}"
+                    "${CMAKE_CURRENT_BINARY_DIR}/install-embed-smoke"
+                    "${CMAKE_GENERATOR}")
+    endif()
 
     # T-SOUND: the §16 Sound seam (runtime/sound/). The AudioBackend seam +
     # SoundSystem are CORE, header-only, DSP-free (mirrors PhysicsBackend +
