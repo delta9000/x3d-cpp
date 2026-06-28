@@ -1858,15 +1858,18 @@
   clause: "29.2; 4.4.8.3"
   severity: major
   status: open
-  summary: A ROUTE into a Script eventIn/inputOutput (or set_url) is validated and registered but NEVER dispatched at tick time — the canonical sensor->Script->scene pattern is inert in production.
+  summary: A ROUTE into a Script eventIn/inputOutput now lands in the author-field store, but the write is not auto-forwarded to the script engine — the canonical sensor->Script->scene pattern still needs embedder wiring at tick time.
   note: >-
-    X3DEventCascade.hpp:185-198 deliver() scans the STATIC fields() table; Script author fields live only
-    in effectiveFields()/the dynamic store, so the lookup misses and the event evaporates with no
-    diagnostic (buildRoutes resolved the sink via effectiveFields, X3DSceneBridge.hpp:74). Same
-    asymmetry silently drops `set_url` ROUTEs. eventsProcessed() also never fires in production
-    (gated on receivedEventThisTick). Fix: resolve delivery through effectiveFields() and forward
-    Script-field writes to ScriptSystem::deliverInputEvent. (event-model review; empirically confirmed —
-    `x3d sim` on a TouchSensor ROUTE produces nothing.)
+    PARTIALLY ADDRESSED. deliver() (X3DEventCascade.hpp) used to scan only the STATIC fields() table;
+    Script/ComposedShader author fields live in effectiveFields()/the dynamic store, so the lookup
+    missed and the event evaporated (buildRoutes resolved the sink via effectiveFields,
+    X3DSceneBridge.hpp:74). deliver() now FALLS BACK to dynamicFieldStore().authorFields() when the
+    static table misses, so a routed value (incl. `set_url`) reaches the author field's store entry
+    (regression: cascade_author_field_test). REMAINING: nothing in the SDK forwards that stored write
+    to ScriptSystem::deliverInputEvent, and eventsProcessed() is still gated on receivedEventThisTick,
+    so the script function does not auto-run — the embedder must poll author-input fields post-cascade
+    and call deliverInputEvent (the x3d-bgfx browser does this). Full fix: an in-SDK bridge from a
+    Script author-field write to ScriptSystem::deliverInputEvent. (event-model review.)
 
 - id: TRANSFORMSENSOR-SCALE
   nodes: [TransformSensor]

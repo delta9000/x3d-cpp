@@ -1024,6 +1024,11 @@ if(X3D_CPP_BUILD_TESTS)
     add_test(NAME x3d_xml_script_field
         COMMAND x3d_xml_script_field
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/data")
+    #   A'. XML ComposedShader capture (author <field>s + ShaderPart source)
+    add_executable(x3d_xml_composed_shader
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/xml_composed_shader_test.cpp")
+    target_link_libraries(x3d_xml_composed_shader PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_xml_composed_shader COMMAND x3d_xml_composed_shader)
     #   B. ClassicVRML / VRML97 capture
     add_executable(x3d_vrml_script_field
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/vrml_script_field_test.cpp")
@@ -2195,6 +2200,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/timesensor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/timesensor_rtc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_dynamic_route_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_author_field_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/slerp_normal_test.cpp")
     target_link_libraries(x3d_events_tests PRIVATE x3d_cpp::sdk)
     target_include_directories(x3d_events_tests PRIVATE

@@ -25,6 +25,8 @@
 #include "FieldAliases.hpp"
 #include "FieldValueIO.hpp"
 #include "x3d/nodes/Script.hpp"
+#include "x3d/nodes/ShaderPart.hpp"
+#include "x3d/nodes/X3DProgrammableShaderObject.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
 #include "XmlLite.hpp"
@@ -202,6 +204,19 @@ private:
     if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
       captureScriptAuthorFields(el, *node, *script);
 
+    // Phase-3 ComposedShader: an X3DProgrammableShaderObject (ComposedShader,
+    // ProgramShader, …) carries author <field> uniform declarations just like
+    // Script — capture them into the DynamicFieldStore. Its GLSL lives in child
+    // ShaderPart nodes, whose inline <![CDATA[...]]> body (collected into
+    // Element.text by XmlLite) is the source. Previously the XML reader captured
+    // these only for Script, so ComposedShader reached the runtime sourceless.
+    else if (dynamic_cast<x3d::nodes::X3DProgrammableShaderObject *>(node.get()))
+      captureAuthorFieldDecls(el, *node);
+    if (auto *part = dynamic_cast<x3d::nodes::ShaderPart *>(node.get())) {
+      if (!el.text.empty())
+        part->setSourceCode(el.text);
+    }
+
     // Recurse children into node fields by containerField.
     for (const auto &childEl : el.children) {
       // Author <field> declarations on a Script are captured above (into the
@@ -254,8 +269,11 @@ private:
   /// input/outputOnly, which carry no persistent value), mirroring the store's
   /// own seeding contract. The CDATA body is set as sourceCode only when present
   /// (an empty body leaves the slot untouched so a url-only Script is unchanged).
-  static void captureScriptAuthorFields(const xml::Element &el, X3DNode &node,
-                                        x3d::nodes::Script &script) {
+  /// Capture an element's author <field name accessType type value> children
+  /// into the per-node DynamicFieldStore. Shared by every
+  /// X3DProgrammableShaderObject (Script, ComposedShader, ProgramShader, …) so
+  /// their author-declared uniforms/inputs resolve via effectiveFields.
+  static void captureAuthorFieldDecls(const xml::Element &el, X3DNode &node) {
     std::vector<runtime::AuthorFieldDecl> decls;
     for (const auto &c : el.children) {
       if (c->name != "field")
@@ -276,6 +294,11 @@ private:
     }
     if (!decls.empty())
       runtime::dynamicFieldStore().addAuthorFields(node, decls);
+  }
+
+  static void captureScriptAuthorFields(const xml::Element &el, X3DNode &node,
+                                        x3d::nodes::Script &script) {
+    captureAuthorFieldDecls(el, node);
 
     // CDATA body -> sourceCode, stored VERBATIM. The XML writer emits
     // sourceCode inside <![CDATA[...]]> with the surrounding indentation OUTSIDE

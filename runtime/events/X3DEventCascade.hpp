@@ -6,6 +6,7 @@
 
 #include "X3DEventGraph.hpp"
 #include "X3DFieldAddress.hpp"
+#include "DynamicField.hpp"   // author-field (Script) delivery fallback
 #include "x3d/nodes/X3DNode.hpp"
 
 #include <any>
@@ -189,6 +190,19 @@ private:
       return;
     }
     for (const auto &info : addr.node->fields()) {
+      if (info.x3dName == addr.field) {
+        if (info.set) {
+          info.set(*addr.node, value);
+          if (observer_) observer_(addr);
+        }
+        return;
+      }
+    }
+    // Author fields (e.g. a Script node's <field> children) are not in the static
+    // fields() table — they live in the per-node dynamic-field store. Fall back to
+    // it so ROUTEs into a Script's inputOnly/inputOutput fields actually deliver
+    // (the embedder's ScriptSystem then picks the value up post-cascade).
+    for (FieldInfo &info : dynamicFieldStore().authorFields(*addr.node)) {
       if (info.x3dName == addr.field) {
         if (info.set) {
           info.set(*addr.node, value);
