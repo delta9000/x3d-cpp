@@ -3,7 +3,8 @@
 A headless, renderer-agnostic X3D domain runtime. You load an X3D document, tick
 a runtime, and pull renderer-ready descriptors out the other side. The SDK does
 no windowing, no GPU work, and no file/network/font IO — those are the embedder's
-job, wired through small callback seams.
+job, wired through small callback **seams** (ports; defined under
+[The seams](#the-seams-embedder-supplied-io) below).
 
 One include, one namespace:
 
@@ -59,7 +60,10 @@ sdk::X3DExecutionContext ctx;
 ctx.buildSceneGraph(doc.scene);   // index transforms, binding stacks, pick tree
 ctx.buildFrom(doc.scene);         // resolve DEF-named ROUTEs + IS redirects
 
-// once per frame:
+const auto t0 = std::chrono::steady_clock::now();   // monotonic clock start
+
+// once per frame — `now` is seconds since start (any monotonic clock):
+double now = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
 ctx.setPointer(worldRay);
 ctx.setPointerButton(down);
 ctx.tick(now);                    // advance clock, run systems, drain cascade
@@ -88,7 +92,9 @@ for (auto id : f0.added) {
     const sdk::RenderItem &ri = ex.item(id);      // ri.mesh, ri.material, ri.worldTransform
 }
 
+const auto t0 = std::chrono::steady_clock::now();
 while (running) {
+    double now = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();  // seconds since start
     ctx.tick(now);
     sdk::RenderDelta d = ex.delta();              // incremental: what changed this tick
     // d.updatedTransform / d.updatedGeometry / d.added / d.removed
@@ -118,6 +124,12 @@ There is no internal threading and no hidden IO on the tick path. If your asset
 or font seams are async, return `Pending` and retry on a later frame.
 
 ## The seams (embedder-supplied IO)
+
+A **seam is a port** — in the ports-and-adapters (hexagonal) sense, a.k.a. a
+Service Provider Interface (SPI): the IO-free core defines a frozen interface, and
+the embedder supplies the *adapter* (here called a *backend*) that does the actual
+IO. Every seam is proven backend-agnostic by a second independent implementation
+plus a swap-test, so the contract — not any one backend — is what's frozen.
 
 The core is IO-free. Decoding and rasterization live in the embedder, supplied as
 `std::function` callbacks. All seams are **experimental** in v1 — the shapes are
