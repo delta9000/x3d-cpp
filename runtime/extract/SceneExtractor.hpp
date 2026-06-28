@@ -674,8 +674,8 @@ private:
     // both are in UV space. (2) Attach the geometry-borne TextureCoordinateGenerator
     // descriptor (§18.4.8) to each material texture ref. (3) Thread the embedder's
     // TextureResolver onto each Url ref's resolvedPixels (Inline/Movie skipped).
-    applyTextureTransformToMesh(
-        mesh, textureTransformParamsOf(appearance ? appearance.get() : nullptr));
+    applyTextureTransformsToMesh(
+        mesh, textureTransformParamsListOf(appearance ? appearance.get() : nullptr));
     enrichTextureRefs(material.textures, /*texNodes=*/{}, geom);
     resolveTextureRefs(material.textures, textureResolver_);
 

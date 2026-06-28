@@ -479,6 +479,7 @@ struct AttrResolvers {
   std::vector<SFVec3f> normals;     // authored Normal.vector
   std::vector<SFColorRGBA> colors;  // promoted (Color->RGBA) or ColorRGBA
   std::vector<SFVec2f> texcoords;   // authored TextureCoordinate.point
+  std::vector<std::vector<SFVec2f>> texcoordSets;
 
   std::vector<int> normalIndex;
   std::vector<int> colorIndex;
@@ -520,6 +521,50 @@ struct AttrResolvers {
   }
 };
 
+inline std::vector<SFVec2f> texturePoints2D(const X3DNode &tc) {
+  using namespace ::x3d::runtime::geombounds;
+  const std::string type = tc.nodeTypeName();
+  if (type == "MultiTextureCoordinate") {
+    const auto children = getField<MFNode>(tc, "texCoord", {});
+    for (const auto &child : children) {
+      if (!child) continue;
+      auto points = texturePoints2D(*child);
+      if (!points.empty()) return points;
+    }
+    return {};
+  }
+  if (type == "TextureCoordinate3D") {
+    std::vector<SFVec2f> out;
+    auto points = getField<std::vector<SFVec3f>>(tc, "point", {});
+    out.reserve(points.size());
+    for (const auto &p : points) out.push_back(SFVec2f{p.x, p.y});
+    return out;
+  }
+  if (type == "TextureCoordinate4D") {
+    std::vector<SFVec2f> out;
+    auto points = getField<std::vector<SFVec4f>>(tc, "point", {});
+    out.reserve(points.size());
+    for (const auto &p : points) {
+      const float invW = (p.w != 0.0f) ? (1.0f / p.w) : 1.0f;
+      out.push_back(SFVec2f{p.x * invW, p.y * invW});
+    }
+    return out;
+  }
+  return getField<std::vector<SFVec2f>>(tc, "point", {});
+}
+
+inline std::vector<std::vector<SFVec2f>> texturePointSets2D(const X3DNode &tc) {
+  using namespace ::x3d::runtime::geombounds;
+  if (tc.nodeTypeName() != "MultiTextureCoordinate")
+    return {texturePoints2D(tc)};
+  std::vector<std::vector<SFVec2f>> out;
+  const auto children = getField<MFNode>(tc, "texCoord", {});
+  out.reserve(children.size());
+  for (const auto &child : children)
+    out.push_back(child ? texturePoints2D(*child) : std::vector<SFVec2f>{});
+  return out;
+}
+
 // Build the attribute resolvers from a geometry node's child attribute nodes.
 inline AttrResolvers buildAttrs(const X3DNode &geom) {
   using namespace ::x3d::runtime::geombounds;
@@ -545,7 +590,13 @@ inline AttrResolvers buildAttrs(const X3DNode &geom) {
   }
 
   if (auto tc = getNode(geom, "texCoord")) {
-    a.texcoords = getField<std::vector<SFVec2f>>(*tc, "point", {});
+    a.texcoordSets = texturePointSets2D(*tc);
+    for (const auto &set : a.texcoordSets) {
+      if (!set.empty()) {
+        a.texcoords = set;
+        break;
+      }
+    }
     a.hasTexCoord = !a.texcoords.empty();
   }
 
@@ -1630,6 +1681,8 @@ inline MeshData buildLocalMesh(const X3DNode *geom,
 
     // TexCoords: per-vertex only (texCoordIndex or coordIndex fallback).
     if (attrs.hasTexCoord) {
+      if (!attrs.texcoordSets.empty() && mesh.texcoordSets.empty())
+        mesh.texcoordSets.resize(attrs.texcoordSets.size());
       const auto pickT = [&](const Corner &cr) -> SFVec2f {
         int s = AttrResolvers::pickIndex(attrs.texcoords, attrs.texCoordIndex,
                                          /*perVertex=*/true, cr);
@@ -1638,6 +1691,17 @@ inline MeshData buildLocalMesh(const X3DNode *geom,
       mesh.texcoords.push_back(pickT(ca));
       mesh.texcoords.push_back(pickT(cb));
       mesh.texcoords.push_back(pickT(cc));
+      for (std::size_t setIndex = 0; setIndex < attrs.texcoordSets.size(); ++setIndex) {
+        const auto &set = attrs.texcoordSets[setIndex];
+        const auto pickSetT = [&](const Corner &cr) -> SFVec2f {
+          int s = AttrResolvers::pickIndex(set, attrs.texCoordIndex,
+                                           /*perVertex=*/true, cr);
+          return s < 0 ? SFVec2f{0.0f, 0.0f} : set[s];
+        };
+        mesh.texcoordSets[setIndex].push_back(pickSetT(ca));
+        mesh.texcoordSets[setIndex].push_back(pickSetT(cb));
+        mesh.texcoordSets[setIndex].push_back(pickSetT(cc));
+      }
     }
   };
 
@@ -1892,6 +1956,8 @@ inline MeshData buildLocalMesh(const X3DNode *geom,
   if (!attrs.hasTexCoord && mesh.topology == Topology::Triangles &&
       !mesh.positions.empty())
     generateDefaultTexCoords(mesh);
+  if (mesh.texcoordSets.empty() && !mesh.texcoords.empty())
+    mesh.texcoordSets.push_back(mesh.texcoords);
 
   mesh.hasNormals = !mesh.normals.empty();
   mesh.hasColors = !mesh.colors.empty();

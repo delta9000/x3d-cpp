@@ -8414,9 +8414,9 @@
       "nodes": [
         "TextureTransform"
       ],
-      "note": "MultiTexture family deferred (T-TEX-D1); MatrixTextureTransform is a small add when needed.",
+      "note": "Fixed for the generated model's available nodes: MultiTextureTransform now yields one TextureTransform2DParams per child and SceneExtractor applies transforms to matching MeshData.texcoordSets; TextureTransformMatrix3D projects its 4x4 transform over (s,t,0,1) onto the current 2D seam. TextureMatrixTransform appears in profile prose, but the generated concrete node is TextureTransformMatrix3D. Covered by texture_extract_test.",
       "severity": "minor",
-      "status": "deferred",
+      "status": "fixed",
       "summary": "MatrixTextureTransform + MultiTextureTransform not handled (only the single TextureTransform)."
     },
     {
@@ -8801,9 +8801,9 @@
       "nodes": [
         "MultiTextureCoordinate"
       ],
-      "note": "runtime/extract/MeshBuilder.hpp:537-538 reads getField<MFVec2f>(*tc,\"point\",{}); MultiTextureCoordinate has no 'point' (only MFNode 'texCoord'), so multi-UV extraction is lost to generateDefaultTexCoords(). Related to TXF-3 (MultiTextureTransform). Same getField mismatch class. (sweep 2026-06-25)",
+      "note": "Fixed: MeshBuilder now unwraps MultiTextureCoordinate.texCoord children, preserves all channels in MeshData.texcoordSets, mirrors the first usable channel to legacy MeshData.texcoords, and emits fixed-width fallback (0,0) corners for empty channels. Covered by texture_extract_test.",
       "severity": "low",
-      "status": "open",
+      "status": "fixed",
       "summary": "MultiTextureCoordinate silently falls back to default UVs (no 'point' field)."
     },
     {
@@ -8826,9 +8826,9 @@
       "nodes": [
         "TextureProjectorParallel"
       ],
-      "note": "Settled follow-up to TPJ-1. The published ISO/IEC 19775-1:2023 \u00a742.4.2 misspells the inherited field as 'shadowsIntensity' (verified against the web3d IS text; it is a spec erratum, see TPJ-1). The canonical field is and stays 'shadowIntensity' \u2014 no rename. But a file hand-authored against the literal spec text may write 'shadowsIntensity', and the strict reader currently drops it silently. DECISION: on read, accept 'shadowsIntensity' as a tolerant alias mapping to TextureProjectorParallel's inherited shadowIntensity; always emit the canonical 'shadowIntensity' on write. Low priority \u2014 real toolchains author from the UOM (correct spelling), so this only affects spec-literal hand-authoring. (settled 2026-06-25)",
+      "note": "Fixed with reader-only FieldAliases.hpp: XML, ClassicVRML, VRML97, and JSON accept 'shadowsIntensity' on TextureProjectorParallel and map it to canonical shadowIntensity. Writers remain canonical and continue emitting 'shadowIntensity'. Covered by reader_audit_test field-alias coverage.",
       "severity": "low",
-      "status": "deferred",
+      "status": "fixed",
       "summary": "Accept 'shadowsIntensity' as a tolerant input alias for spec-literal files."
     },
     {
@@ -8890,9 +8890,9 @@
         "TextureCoordinate3D",
         "TextureCoordinate4D"
       ],
-      "note": "texCoordGenOf() (runtime/extract/TextureExtract.hpp:227-238) dispatches only TextureCoordinateGenerator; nothing reads MFVec3f/MFVec4f point data from 3D/4D coord nodes, so geometry falls through to default \u00a713 UV projection. (sweep 2026-06-25)",
+      "note": "Fixed: MeshBuilder reads TextureCoordinate3D MFVec3f and TextureCoordinate4D MFVec4f point arrays. On the current 2D MeshData seam it uses the spec-permitted implementation-dependent 2D-texture fallback: (s,t) for 3D and homogeneous (s/w,t/w) for 4D. Covered by texture_extract_test.",
       "severity": "minor",
-      "status": "open",
+      "status": "fixed",
       "summary": "TextureCoordinate3D/4D point arrays are never extracted."
     },
     {
@@ -9583,9 +9583,9 @@
     ]
   },
   "summary": {
-    "closed_count": 103,
+    "closed_count": 107,
     "component_count": 36,
-    "deferred_count": 48,
+    "deferred_count": 46,
     "finding_count": 208,
     "inert_behavioral_nodes": [
       "Analyser",
@@ -9612,9 +9612,9 @@
     ],
     "open_by_severity": {
       "critical": 9,
-      "low": 9,
+      "low": 7,
       "major": 44,
-      "minor": 43
+      "minor": 41
     }
   },
   "unresolved_findings": []

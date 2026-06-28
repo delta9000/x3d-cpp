@@ -35,6 +35,7 @@
 
 #include "DynamicField.hpp"  // S1: AuthorFieldDecl + dynamicFieldStore() (Task B)
 #include "Encoding.hpp"
+#include "FieldAliases.hpp"
 #include "FieldValueIO.hpp" // parseValue, parseInt, parseDouble (x3d::codec)
 #include "NodeBuilder.hpp"  // build:: helpers (findField, applyField, ...)
 #include "RecursionLimits.hpp" // SEC-1: kMaxNestingDepth (DoS guard)
@@ -507,6 +508,9 @@ private:
       int fieldLine = t.line;
       std::string rawName = expectWord(tok, "field name");
       std::string name = mapFieldName(nodeType, rawName);
+      std::string_view canonicalName =
+          canonicalInputFieldName(nodeType.empty() ? node.nodeTypeName() : nodeType,
+                                  name);
 
       // `name IS protoField` — proto interface mapping. Inside a PROTO body
       // (currentProtoBody non-null) record an IsConnection binding this body
@@ -521,7 +525,7 @@ private:
         continue;
       }
 
-      const FieldInfo *f = build::findField(table, name);
+      const FieldInfo *f = build::findField(table, canonicalName);
       if (!f) {
         // Unknown field: skip its value (a node, a bracketed list, or a run).
         warn("unknown field '" + rawName + "' on " +
@@ -545,7 +549,7 @@ private:
       // Value field: gather the value tokens, hand the wire string to
       // parseValue + set (read-only fields skipped by applyField).
       std::string wire = build::collectFieldValue(tok, f->type);
-      build::applyField(node, name, wire);
+      build::applyField(node, canonicalName, wire);
     }
   }
 

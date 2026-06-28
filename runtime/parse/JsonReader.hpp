@@ -45,6 +45,7 @@
 #define X3D_PARSE_JSON_READER_HPP
 
 #include "DynamicField.hpp" // AuthorFieldDecl + dynamicFieldStore() (S1)
+#include "FieldAliases.hpp"
 #include "FieldValueIO.hpp" // parseInt/parseDouble (x3d::codec)
 #include "JsonLite.hpp"     // x3d::json::parse, Value
 #include "NodeBuilder.hpp"  // build::beginNode/applyField/attachChild/etc.
@@ -766,11 +767,13 @@ private:
   /// skipped. DEF (a normal SFString field on every node) flows through here.
   void applyJsonField(X3DNode &node, const std::string &x3dName,
                       const json::Value &val) {
-    const FieldInfo *f = build::findField(node.fields(), x3dName);
+    std::string_view canonicalName =
+        canonicalInputFieldName(node.nodeTypeName(), x3dName);
+    const FieldInfo *f = build::findField(node.fields(), canonicalName);
     if (!f)
       return; // unknown field: ignore
     std::string wire = jsonToWire(val, f->type);
-    build::applyField(node, x3dName, wire);
+    build::applyField(node, canonicalName, wire);
   }
 
   /// Convert a parsed JSON value to the space-/quote-delimited X3D wire string

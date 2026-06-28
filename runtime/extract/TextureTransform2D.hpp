@@ -38,6 +38,11 @@ struct TextureTransform2DParams {
     float scaleT      = 1.0f;  // TextureTransform.scale.y
     float translationS = 0.0f; // TextureTransform.translation.x
     float translationT = 0.0f; // TextureTransform.translation.y
+    bool hasMatrix = false;
+    std::array<float, 9> matrix{
+        1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 1.0f};
 };
 
 // ---------------------------------------------------------------------------
@@ -59,6 +64,14 @@ inline std::array<float, 2> applyTextureTransform(
     float s, float t,
     const TextureTransform2DParams& p) noexcept
 {
+    if (p.hasMatrix) {
+        const float w = p.matrix[6] * s + p.matrix[7] * t + p.matrix[8];
+        const float invW = (w != 0.0f) ? (1.0f / w) : 1.0f;
+        return {
+            (p.matrix[0] * s + p.matrix[1] * t + p.matrix[2]) * invW,
+            (p.matrix[3] * s + p.matrix[4] * t + p.matrix[5]) * invW};
+    }
+
     // Step 1: apply translation
     float s1 = s + p.translationS;
     float t1 = t + p.translationT;
@@ -88,7 +101,8 @@ inline std::array<float, 2> applyTextureTransform(
 inline bool isIdentityTextureTransform(
     const TextureTransform2DParams& p) noexcept
 {
-    return p.centerS     == 0.0f && p.centerT     == 0.0f
+    return !p.hasMatrix
+        && p.centerS     == 0.0f && p.centerT     == 0.0f
         && p.rotation    == 0.0f
         && p.scaleS      == 1.0f && p.scaleT      == 1.0f
         && p.translationS == 0.0f && p.translationT == 0.0f;
@@ -120,6 +134,8 @@ inline bool isIdentityTextureTransform(
 inline std::array<float, 9> makeTextureTransform3x3(
     const TextureTransform2DParams& p) noexcept
 {
+    if (p.hasMatrix) return p.matrix;
+
     float cs = std::cos(p.rotation);
     float ss = std::sin(p.rotation);
 

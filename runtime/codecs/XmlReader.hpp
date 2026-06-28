@@ -22,6 +22,7 @@
 #define X3D_XML_READER_HPP
 
 #include "DynamicField.hpp"
+#include "FieldAliases.hpp"
 #include "FieldValueIO.hpp"
 #include "x3d/nodes/Script.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -170,7 +171,8 @@ private:
         continue; // structural, consumed by the parent
       if (key == "USE")
         continue; // handled above
-      const FieldInfo *f = findField(table, key);
+      std::string fieldName(canonicalInputFieldName(el.name, key));
+      const FieldInfo *f = findField(table, fieldName);
       if (!f)
         continue; // unknown attribute: ignore
       applyAttribute(*node, *f, val);

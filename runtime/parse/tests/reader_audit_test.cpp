@@ -41,6 +41,7 @@
 #include "x3d/nodes/Group.hpp"
 #include "x3d/nodes/Material.hpp"
 #include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/TextureProjectorParallel.hpp"
 #include "x3d/nodes/Transform.hpp"
 
 #include <cmath>
@@ -821,6 +822,63 @@ void testRouteCaptureAllEncodings() {
   }
 }
 
+void testTextureProjectorParallelShadowIntensityAliasAllEncodings() {
+  auto checkProjector = [](const runtime::X3DDocument &doc,
+                           const std::string &label) {
+    check(doc.scene.rootNodes.size() == 1, label + ": one root node");
+    auto projector = doc.scene.rootNodes.empty()
+                         ? nullptr
+                         : as<TextureProjectorParallel>(doc.scene.rootNodes[0]);
+    check(static_cast<bool>(projector),
+          label + ": root is TextureProjectorParallel");
+    if (projector)
+      check(approx(projector->getShadowIntensity(), 0.25),
+            label + ": shadowsIntensity aliases shadowIntensity");
+  };
+
+  {
+    const std::string xml =
+        "<X3D profile='Full' version='4.0'><Scene>"
+        "<TextureProjectorParallel shadowsIntensity='0.25'/>"
+        "</Scene></X3D>";
+    checkProjector(codec::parseDocument(xml, Encoding::XML),
+                   "field-alias: XML TextureProjectorParallel");
+  }
+
+  {
+    const std::string vrml =
+        "#X3D V4.0 utf8\n"
+        "PROFILE Full\n"
+        "TextureProjectorParallel { shadowsIntensity 0.25 }\n";
+    checkProjector(ClassicVrmlReader{}.readDocument(vrml),
+                   "field-alias: ClassicVRML TextureProjectorParallel");
+  }
+
+  {
+    const std::string vrml =
+        "#VRML V2.0 utf8\n"
+        "TextureProjectorParallel { shadowsIntensity 0.25 }\n";
+    checkProjector(Vrml97Reader{}.readDocument(vrml),
+                   "field-alias: VRML97 TextureProjectorParallel");
+  }
+
+  {
+    const std::string json = R"({
+      "X3D": {
+        "@profile": "Full",
+        "@version": "4.0",
+        "Scene": {
+          "-children": [
+            { "TextureProjectorParallel": { "@shadowsIntensity": 0.25 } }
+          ]
+        }
+      }
+    })";
+    checkProjector(JsonReader{}.readDocument(json),
+                   "field-alias: JSON TextureProjectorParallel");
+  }
+}
+
 } // namespace
 
 TEST_CASE("reader_audit_test") {
@@ -839,6 +897,8 @@ TEST_CASE("reader_audit_test") {
   testExternProtoUrlAllEncodings();
   std::cout << "===== AUD-PARSE-READERS: ROUTE capture =====\n";
   testRouteCaptureAllEncodings();
+  std::cout << "===== AUD-PARSE-READERS: field aliases =====\n";
+  testTextureProjectorParallelShadowIntensityAliasAllEncodings();
 
   CHECK(failures == 0);
   if (failures == 0) {
