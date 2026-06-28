@@ -62,6 +62,25 @@ check that the asset is drawable, independent of the on-screen visual verify:
 The same check runs in the default `mise run build` ctest path as
 `x3d_poc_triangle_asset` (no GL, so it needs no display).
 
+### Headless GL validation (Xvfb + software mesa)
+
+The **real** GL pipeline is also exercised without a display via the `--screenshot`
+path, which renders a few frames, reads the framebuffer back with `glReadPixels`,
+writes a PPM, and exits. CI's `examples-gate` job and `mise run validate-examples`
+run it under `xvfb-run` with mesa's software rasterizer (llvmpipe), mirroring the
+sibling `../x3d-render` validation approach:
+
+```sh
+mise run validate-examples   # builds cpu_raster + poc, runs both probes + the GL smoke
+# or directly:
+xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIBRARY_NAME=mesa \
+  ./build-poc/examples/poc_renderer/x3d_poc_renderer --screenshot out.ppm scene.x3d
+```
+
+`__GLX_VENDOR_LIBRARY_NAME=mesa` forces the software vendor on boxes that also have
+a GPU GLX driver (NVIDIA's libGL ignores `LIBGL_ALWAYS_SOFTWARE`); a GPU-less CI
+runner lands on llvmpipe automatically.
+
 GLFW (>=3.4) is fetched via `FetchContent` (native Wayland on, X11 on as an
 XWayland safety net). The glad core-3.3 loader is committed pre-generated at
 `third_party/glad/` (real `src/glad.c` + `include/glad/gl.h` +
@@ -105,5 +124,6 @@ under XWayland. (GLFW picks Wayland automatically on a Wayland session.)
     per-vertex-`Color` triangle.
 - **M4 (T13):** textures via an asset resolver. *Deferred/optional.*
 
-The build/link is the CI gate; the GUI is run by a human on a real Wayland
-session (no display in CI).
+Build/link + the headless `--headless` and Xvfb `--screenshot` smokes are the CI
+gate (`examples-gate`); the interactive GUI is still run by a human on a real
+Wayland session for on-screen visual verification.

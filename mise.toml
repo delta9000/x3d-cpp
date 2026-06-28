@@ -94,6 +94,10 @@ cmake -S . -B build-poc -G Ninja -DX3D_CPP_BUILD_POC=ON
 cmake --build build-poc --target x3d_poc_renderer
 """
 
+[tasks.validate-examples]
+description = "Build + headless-validate BOTH out-of-SDK renderer consumers (cpu_raster + poc_renderer) that `mise run ci` never compiles — so SDK-wide refactors (e.g. ADR-0039 namespaces) can't silently rot them. Runs each --headless probe and the real OpenGL pipeline headlessly under Xvfb + mesa software GL. Needs: xvfb, mesa-dri, and GLFW's X11/Wayland build deps. Mirrors CI's examples-gate (both call scripts/validate-examples.sh)."
+run = "scripts/validate-examples.sh"
+
 [tasks.cpuraster]
 description = "Configure + build + ctest the out-of-SDK headless CPU rasterizer (X3D_CPP_BUILD_CPURASTER=ON). No GPU/GLFW; runs headless. PNG/JPEG textures are decoded by explicitly opting into the SDK's stb decode-seam backend (X3D_CPP_BUILD_STB=ON) — the example consumes a first-party seam rather than vendoring its own decoder. Render a PPM yourself, e.g.:  ./build-cpuraster/examples/cpu_raster/x3d_cpu_raster -o out.ppm  (or --frag shaders/author_lambert.frag to run author GLSL via the interpreter)."
 # Separate build dir (build-cpuraster/) so it never perturbs the dev preset's

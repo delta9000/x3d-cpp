@@ -28,8 +28,10 @@
 //   author-shader: ComposedShader dispatch via ShaderBindingPlan vocabulary.
 //   Gamma/sRGB: LINEARtoSRGB at fragment output; sRGB texture internal format.
 //
-// The M0 GATE is configure+build+LINK. The GUI is run by the user on a real
-// Wayland session; this file is never executed headless in CI.
+// The M0 GATE is configure+build+LINK. The interactive GUI is run by the user on
+// a real Wayland session, but CI's `examples-gate` (and `mise run validate-examples`)
+// now also exercise the GL pipeline headlessly: the --screenshot path runs under
+// Xvfb + mesa software GL (llvmpipe), so a renderer-side break can no longer hide.
 //
 // USAGE:  x3d_poc_renderer [--headless] [scene.x3d]
 //   With no scene argument it loads the bundled assets/triangle.x3d (first-light).
@@ -80,6 +82,11 @@ namespace {
 using x3d::runtime::Mat4;
 using x3d::runtime::Aabb;
 namespace ex = x3d::runtime::extract;
+// ADR-0039 moved the value types to x3d::core and the node types to x3d::nodes.
+// This out-of-SDK consumer names SFVec3f/SFColor/SFImage/X3DNode &c. unqualified,
+// so pull both namespaces in (scoped to this anonymous namespace).
+using namespace x3d::core;
+using namespace x3d::nodes;
 
 // --------------------------------------------------------------------------
 // Small GL helpers. PoC-local; nothing here belongs in the SDK.
@@ -636,10 +643,20 @@ int main(int argc, char **argv) {
   std::string scenePath;
   std::string screenshotPath; // --screenshot <path>: render a few frames, dump a
                               // PPM via glReadPixels, then exit (GL acceptance).
+  // --animate <dir>: drive the event graph at a FIXED dt (frame/fps) and dump
+  // every frame as <dir>/frame_NNNN.ppm, then exit. Deterministic capture of the
+  // realtime GL loop (interpolators/sequencers/ROUTEs) for headless demo reels.
+  bool animate = false;
+  int animFps = 30;
+  double animDuration = 4.0;
+  std::string framesDir;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     if (a == "--headless") headless = true;
     else if (a == "--screenshot" && i + 1 < argc) screenshotPath = argv[++i];
+    else if (a == "--animate" && i + 1 < argc) { animate = true; framesDir = argv[++i]; }
+    else if (a == "--fps" && i + 1 < argc) animFps = std::atoi(argv[++i]);
+    else if (a == "--duration" && i + 1 < argc) animDuration = std::atof(argv[++i]);
     else if (scenePath.empty()) scenePath = a;
   }
   if (scenePath.empty())
@@ -852,7 +869,7 @@ int main(int argc, char **argv) {
   glfwMakeContextCurrent(win);
   // vsync on for interactive use; OFF for the --screenshot acceptance path so a
   // GPU swap chain under a headless X server (Xvfb) does not block on vblank.
-  glfwSwapInterval(screenshotPath.empty() ? 1 : 0);
+  glfwSwapInterval((screenshotPath.empty() && !animate) ? 1 : 0);
 
   if (!gladLoadGL(reinterpret_cast<GLADloadfunc>(glfwGetProcAddress))) {
     std::fprintf(stderr, "[poc] gladLoadGL failed\n");
@@ -1134,8 +1151,16 @@ int main(int argc, char **argv) {
   // ----------------------------------------------------------------------
   double t0 = glfwGetTime();
   int frameNo = 0;
+  int animFrame = 0;
+  const int animTotal = static_cast<int>(animDuration * animFps + 0.5);
   while (!glfwWindowShouldClose(win)) {
-    double now = glfwGetTime() - t0;
+    // --animate advances time at a FIXED dt so the capture is deterministic and
+    // loop-seamless (independent of the software-GL frame rate under Xvfb). Start
+    // at +dt (not 0): the bring-up tick(0.0) already consumed t=0, and delta()
+    // enforces a strictly-increasing time per tick (as the interactive path gets
+    // for free from glfwGetTime()).
+    double now = animate ? static_cast<double>(animFrame + 1) / animFps
+                         : glfwGetTime() - t0;
     // Feed the cursor ray into the SDK seam BEFORE tick, unprojected against the
     // PREVIOUS frame's camera (the image the user is pointing at). Keys + mouse
     // buttons arrive via glfw callbacks (fired during glfwPollEvents below).
@@ -1642,6 +1667,21 @@ int main(int argc, char **argv) {
 
       glBindVertexArray(0);
       glDisable(GL_CULL_FACE); // leave a clean default for the next frame.
+    }
+
+    // --animate: dump every frame as <dir>/frame_NNNN.ppm at the fixed dt, then
+    // exit after duration*fps frames. The realtime GL loop (interpolators,
+    // sequencers, ROUTEs) captured headlessly into a demo reel.
+    if (animate) {
+      int sw = 0, sh = 0;
+      glfwGetFramebufferSize(win, &sw, &sh);
+      char tail[24];
+      std::snprintf(tail, sizeof tail, "/frame_%04d.ppm", animFrame + 1);
+      writeFramebufferPPM(framesDir + tail, sw, sh);
+      glfwSwapBuffers(win);
+      glfwPollEvents();
+      if (++animFrame >= animTotal) break;
+      continue;
     }
 
     // --screenshot: render a few warm-up frames (so a Pending texture/atlas has

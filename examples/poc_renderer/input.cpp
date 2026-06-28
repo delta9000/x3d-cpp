@@ -4,6 +4,10 @@
 #include <array>
 #include <cmath>
 
+// ADR-0039: the value types (SFVec3f &c.) now live in x3d::core, not the global
+// namespace. This consumer uses them unqualified, so pull the namespace in.
+using namespace x3d::core;
+
 int glfwToX3DNavKey(int glfwKey) {
   using NS = x3d::runtime::NavigationSystem;
   switch (glfwKey) {
@@ -19,7 +23,7 @@ x3d::runtime::Ray pocUnproject(double cx, double cy, int w, int h,
                                const x3d::runtime::Mat4 &view,
                                const x3d::runtime::Mat4 &proj) {
   using x3d::runtime::Mat4;
-  // SFVec3f is in the global namespace (X3Dtypes.hpp).
+  // SFVec3f lives in x3d::core (ADR-0039), pulled in via the file-scope using above.
   // Pixel → NDC. glfw cursor origin is top-left, +y down; NDC +y is up.
   const float ndcX = 2.0f * static_cast<float>(cx) / static_cast<float>(w) - 1.0f;
   const float ndcY = 1.0f - 2.0f * static_cast<float>(cy) / static_cast<float>(h);
