@@ -47,6 +47,10 @@
 #include <glad/gl.h>     // MUST precede GLFW so GLFW does not pull in <GL/gl.h>.
 #include <GLFW/glfw3.h>
 
+#include "imgui.h"                   // Dear ImGui overlay (PoC-owned).
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include "stb_image.h"   // B8 texture decode (PoC-owned; the SDK never decodes).
 
 #include "AssetResolver.hpp"        // B8 asset-resolver seam (the bytes path)
@@ -982,6 +986,7 @@ int main(int argc, char **argv) {
   // vsync on for interactive use; OFF for the --screenshot acceptance path so a
   // GPU swap chain under a headless X server (Xvfb) does not block on vblank.
   glfwSwapInterval((screenshotPath.empty() && !animate) ? 1 : 0);
+  const bool uiEnabled = screenshotPath.empty() && !animate;
 
   if (!gladLoadGL(reinterpret_cast<GLADloadfunc>(glfwGetProcAddress))) {
     std::fprintf(stderr, "[poc] gladLoadGL failed\n");
@@ -1017,6 +1022,14 @@ int main(int argc, char **argv) {
   InputBridge input(ctx, win, navSys);
   Mat4 lastView = Mat4::identity();
   Mat4 lastProj = Mat4::identity();
+
+  if (uiEnabled) {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(win, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+  }
 
   // ----------------------------------------------------------------------
   // 3. Shaders.
@@ -1296,9 +1309,13 @@ int main(int argc, char **argv) {
   // 5. Render loop.
   // ----------------------------------------------------------------------
   double t0 = glfwGetTime();
+  double lastFrameClock = t0;
   int frameNo = 0;
   int animFrame = 0;
   const int animTotal = static_cast<int>(animDuration * animFps + 0.5);
+  bool showDiagnostics = true;
+  bool showImGuiDemo = false;
+  bool wireframe = false;
   while (!glfwWindowShouldClose(win)) {
     // --animate advances time at a FIXED dt so the capture is deterministic and
     // loop-seamless (independent of the software-GL frame rate under Xvfb). Start
@@ -1307,6 +1324,10 @@ int main(int argc, char **argv) {
     // for free from glfwGetTime()).
     double now = animate ? static_cast<double>(animFrame + 1) / animFps
                          : glfwGetTime() - t0;
+    const double frameClock = glfwGetTime();
+    const double frameDt = animate ? (1.0 / static_cast<double>(animFps))
+                                   : (frameClock - lastFrameClock);
+    lastFrameClock = frameClock;
     // MovieTexture media time: the PoC render clock drives decode (loop wrap / the
     // X3DTimeDependentSystem lifecycle is a follow-up; the decoder clamps to the
     // last frame at EOF so a non-looping clip holds, not blanks). --screenshot
@@ -1827,6 +1848,7 @@ int main(int argc, char **argv) {
                 [](const auto &a, const auto &b) { return a.first < b.first; });
 
       // OPAQUE pass: depth writes on, blending off.
+      glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
       glDisable(GL_BLEND);
       glDepthMask(GL_TRUE);
       for (ex::RenderItemId id : opaqueItems) drawItem(id);
@@ -1843,6 +1865,53 @@ int main(int argc, char **argv) {
 
       glBindVertexArray(0);
       glDisable(GL_CULL_FACE); // leave a clean default for the next frame.
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // keep ImGui/textured quads solid.
+    }
+
+    if (uiEnabled) {
+      // F1 toggles the diagnostics panel (edge-triggered). F1 is not a nav key,
+      // so polling it here never collides with the InputBridge key mapping.
+      static bool f1Prev = false;
+      const bool f1Now = glfwGetKey(win, GLFW_KEY_F1) == GLFW_PRESS;
+      if (f1Now && !f1Prev) showDiagnostics = !showDiagnostics;
+      f1Prev = f1Now;
+
+      ImGui_ImplOpenGL3_NewFrame();
+      ImGui_ImplGlfw_NewFrame();
+      ImGui::NewFrame();
+
+      if (showDiagnostics) {
+        ImGui::SetNextWindowPos(ImVec2(12.0f, 12.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("x3d-cpp PoC", &showDiagnostics,
+                         ImGuiWindowFlags_AlwaysAutoResize)) {
+          ImGui::TextUnformatted(scenePath.c_str());
+          ImGui::Separator();
+          ImGui::Text("frame %.2f ms (%.1f fps)", frameDt * 1000.0,
+                      frameDt > 0.0 ? 1.0 / frameDt : 0.0);
+          ImGui::Text("render items %zu", extractor.itemCount());
+          ImGui::Text("gpu meshes %zu", gpuMeshes.size());
+          ImGui::Text("textures %zu",
+                      texCache.byUrl.size() + texCache.byInlineNode.size());
+          ImGui::Text("time %.3f", now);
+          ImGui::Separator();
+          ImGui::Checkbox("Wireframe", &wireframe);
+          ImGui::Checkbox("ImGui demo", &showImGuiDemo);
+          ImGui::Text("TAB cycles navigation mode");
+          ImGui::Text("F1 toggles this panel");
+        }
+        ImGui::End();
+      }
+      if (showImGuiDemo) ImGui::ShowDemoWindow(&showImGuiDemo);
+
+      ImGui::Render();
+      ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+      // Hand this frame's capture intent to the input bridge so the camera/nav
+      // and the overlay don't both consume the same mouse/keyboard event. The
+      // callbacks fire in glfwPollEvents below (after this), so they see it.
+      const ImGuiIO &io = ImGui::GetIO();
+      input.setUiCapture(io.WantCaptureMouse, io.WantCaptureKeyboard);
     }
 
     // --animate: dump every frame as <dir>/frame_NNNN.ppm at the fixed dt, then
@@ -1884,6 +1953,11 @@ int main(int argc, char **argv) {
   // ----------------------------------------------------------------------
   // 6. Teardown.
   // ----------------------------------------------------------------------
+  if (uiEnabled) {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+  }
   for (auto &kv : gpuMeshes) {
     glDeleteVertexArrays(1, &kv.second.vao);
     glDeleteBuffers(1, &kv.second.vbo);

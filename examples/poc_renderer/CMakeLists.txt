@@ -12,6 +12,7 @@
 # Dependencies:
 #   * GLFW (>=3.4) via FetchContent — Wayland ON (native), X11 ON as an XWayland
 #     safety net. GLFW's own examples/tests/docs are OFF (we only want the lib).
+#   * Dear ImGui via FetchContent — linked only into this optional PoC target.
 #   * glad core-3.3 — PRE-GENERATED real sources committed at
 #     ../../third_party/glad/ (NOT a generator FetchContent). Built here as a
 #     tiny static lib.
@@ -44,6 +45,18 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glfw)
 
 # --------------------------------------------------------------------------
+# Dear ImGui overlay. ImGui ships no top-level CMake target, so build the core
+# sources plus the GLFW/OpenGL3 backends as a tiny static lib local to the PoC.
+# --------------------------------------------------------------------------
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG        v1.91.9b
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(imgui)
+
+# --------------------------------------------------------------------------
 # glad core-3.3 loader — PRE-GENERATED sources committed in-repo. Built as a
 # tiny static lib so the loader's translation unit is compiled exactly once.
 #
@@ -58,6 +71,26 @@ add_library(poc_glad STATIC "${GLAD_DIR}/src/glad.c")
 target_include_directories(poc_glad PUBLIC "${GLAD_DIR}/include")
 # glad needs dlopen for gladLoadGL(glfwGetProcAddress) at runtime.
 target_link_libraries(poc_glad PUBLIC ${CMAKE_DL_LIBS})
+
+add_library(poc_imgui STATIC
+    "${imgui_SOURCE_DIR}/imgui.cpp"
+    "${imgui_SOURCE_DIR}/imgui_demo.cpp"
+    "${imgui_SOURCE_DIR}/imgui_draw.cpp"
+    "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+    "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp")
+target_include_directories(poc_imgui PUBLIC
+    "${imgui_SOURCE_DIR}"
+    "${imgui_SOURCE_DIR}/backends")
+target_link_libraries(poc_imgui PUBLIC glfw poc_glad)
+# ImGui's opengl3 backend uses its own bundled GL loader (imgui_impl_opengl3_loader.h)
+# since 1.82 and ignores the old IMGUI_IMPL_OPENGL_LOADER_* macros — so we set none.
+target_compile_definitions(poc_imgui PUBLIC GLFW_INCLUDE_NONE)
+target_compile_features(poc_imgui PUBLIC cxx_std_20)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(poc_imgui PRIVATE -w)
+endif()
 
 # --------------------------------------------------------------------------
 # The PoC renderer executable. Links the INTERFACE SDK alias + glfw + glad +
@@ -85,6 +118,7 @@ target_link_libraries(x3d_poc_renderer
         x3d_plmpeg         # MovieDecoder backend A (pl_mpeg) for MovieTexture (ADR-0041)
         glfw
         poc_glad
+        poc_imgui
         poc_stb_image
         Threads::Threads
         ${CMAKE_DL_LIBS})
@@ -112,7 +146,7 @@ target_compile_definitions(x3d_poc_renderer PRIVATE
     "X3D_POC_FONT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/fonts\"")
 
 message(STATUS "x3d_cpp: PoC renderer target x3d_poc_renderer configured "
-               "(GLFW Wayland+X11, glad core-3.3)")
+               "(GLFW Wayland+X11, glad core-3.3, Dear ImGui overlay)")
 
 # Pure input-layer unit test (no GL context; only needs the GLFW + SDK headers).
 add_executable(x3d_poc_input
