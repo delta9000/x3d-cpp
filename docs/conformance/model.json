@@ -9419,10 +9419,10 @@
       "nodes": [
         "Extrusion"
       ],
-      "note": "Verified render_items=0 via poc --headless on ConformanceNist Geometry/Extrusion/{default_extrusion,test_simpleorient}. Distinct from EXTRUSION-SCP (cross-section ORIENTATION, not zero output). tessellateExtrusion (MeshBuilder.hpp) emits nothing for these inputs \u2014 root-cause the cull (likely the <2-distinct-spine-point guard or default closed crossSection handling) for a default crossSection + straight spine.",
+      "note": "Root cause was the GENERATOR, not the extractor: the MF-struct default emitter (src/x3d_cpp_gen/emit/defaults.py) collapsed any multi-element array default to its FIRST element, so the generated Extrusion binding defaulted crossSection to a single point {1,1} and spine to {0,0,0} (instead of the 5-point unit square and the 2-point segment). An UNauthored crossSection/spine therefore arrived at tessellateExtrusion as size 1 and was culled by the ns>=2/nc>=2 guard. Fixed by chunking the flat scalar list into element-sized groups (covered by tests/test_default_expr.py) and regenerating Extrusion.hpp; the extractor's .empty() spec-default fallback stays as a safety net, and an AUTHORED 1-point spine still culls (the documented \"< 2 spine points => empty\" contract, mesh_builder_b3_test.cpp).",
       "severity": "major",
-      "status": "open",
-      "summary": "Extrusion with default/simple fields extracts NO geometry (render_items=0) \u2014 default_extrusion.x3d and test_simpleorient.x3d render blank (reproduces in cpu_raster too, so it is an SDK extraction gap, not poc-specific)."
+      "status": "fixed",
+      "summary": "Extrusion with default/simple fields extracts NO geometry (render_items=0) \u2014 default_extrusion.x3d and test_simpleorient.x3d render blank. FIXED: now render (default_extrusion = unit box, test_simpleorient = oriented square swept along the spine)."
     },
     {
       "clause": "13.3.4",
@@ -9431,10 +9431,10 @@
       "nodes": [
         "ElevationGrid"
       ],
-      "note": "Verified render_items=0 via poc --headless on ConformanceNist Geometry/ElevationGrid/{test_xSpacing,test_zSpacing}. Distinct from EXT-003 (winding, fixed) and EXT-001 (color/normal ignored). The spacing fields specifically zero the output \u2014 check height-array length vs xDimension/zDimension sizing / guard in emitHeightGrid().",
+      "note": "Not a spacing bug: test_{x,z}Spacing author only ONE dimension (xDimension=12, height=24 values) and OMIT the other, leaving zDimension at its 0 default so the xd>=2 && zd>=2 guard in the ElevationGrid dispatch (MeshBuilder.hpp) zeroed the output. Per spec both dimensions are required, but the NIST reference renders expect inference. Fixed by deriving the missing dimension from height.size() when it divides evenly by the authored dimension (conservative \u2014 only fires when a dimension is < 2 and the height array is an exact multiple of the other). Deliberate, documented leniency.",
       "severity": "major",
-      "status": "open",
-      "summary": "ElevationGrid with non-default xSpacing/zSpacing extracts NO geometry (render_items=0) \u2014 test_xSpacing.x3d, test_zSpacing.x3d render blank, while test_color (default spacing) extracts fine."
+      "status": "fixed",
+      "summary": "ElevationGrid with non-default xSpacing/zSpacing extracts NO geometry (render_items=0) \u2014 test_xSpacing.x3d, test_zSpacing.x3d render blank, while test_color (default spacing) extracts fine. FIXED: both now render 3 grids each."
     },
     {
       "clause": "13.3.6, 18.4.10",
@@ -9443,10 +9443,10 @@
       "nodes": [
         "Sphere"
       ],
-      "note": "ANOMALY needing root-cause: MeshBuilder.hpp:673 states default UVs are ALWAYS generated for analytic primitives, yet the sphere reports empty texcoords here while Box/texture.x3d textures correctly. Determine whether the sphere ring/segment emit path drops texcoords (vs Box) or this scene's config suppresses them.",
+      "note": "Mischaracterized originally: the sphere DOES carry texcoords (tessellateSphere emits them). The real cause is the no-Material case \u2014 an Appearance with an ImageTexture but no Material is unlit per spec (\u00a712.2.5), so the extractor correctly surfaces MaterialModel::Unlit with the image on the EMISSIVE slot (MaterialSystem.hpp). The PoC's UNLIT shader had no texcoord/sampler at all, so the texture was never sampled (Box/texture.x3d has a <Material/> -> Phong path, which is why it worked). Fixed PoC-side: added aTexCoord + sampler2D to unlit.vert/unlit.frag and bound the {Emissive,BaseColor,Diffuse} slot in the unlit draw path. SDK extraction was already spec-correct.",
       "severity": "major",
-      "status": "open",
-      "summary": "Sphere with an ImageTexture renders untextured \u2014 texture resolves (resolved_textures=1) but the sphere carries no texcoords (textured_items=0), so the decal never applies (Geometry/Sphere/texture.x3d: grey sphere vs the VTS-decal reference)."
+      "status": "fixed",
+      "summary": "Sphere with an ImageTexture (and NO Material) rendered untextured (flat white) \u2014 Geometry/Sphere/texture.x3d. FIXED: the VTS decal now applies (upright, vertically centred per the scene description)."
     },
     {
       "clause": "23.4.1",
@@ -9583,7 +9583,7 @@
     ]
   },
   "summary": {
-    "closed_count": 99,
+    "closed_count": 102,
     "component_count": 36,
     "deferred_count": 49,
     "finding_count": 208,
@@ -9613,7 +9613,7 @@
     "open_by_severity": {
       "critical": 9,
       "low": 9,
-      "major": 48,
+      "major": 45,
       "minor": 43
     }
   },
