@@ -81,9 +81,11 @@ void test_navigation_preserves_authored() {
   const SFRotation authOri = vp->getOrientation();
   ctx.setPointerPresent(true);
   ctx.setPointer(Ray{{0, 0, 10}, {0, 0, -1}});
+  ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
   ctx.setPointerButton(true);
   ctx.tick(0.0);
   ctx.setPointer(Ray{{0.3f, 0, 10}, {0, 0, -1}});
+  ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
   ctx.tick(0.016);
 
   SFVec3f p = vp->getPosition();
@@ -108,9 +110,11 @@ void test_ortho_navigates() {
   SFVec3f e0 = ctx.cameraWorldPosition();
   ctx.setPointerPresent(true);
   ctx.setPointer(Ray{{0, 0, 10}, {0, 0, -1}});
+  ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
   ctx.setPointerButton(true);
   ctx.tick(0.0);
   ctx.setPointer(Ray{{0.3f, 0, 10}, {0, 0, -1}});
+  ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
   ctx.tick(0.016);
   SFVec3f e1 = ctx.cameraWorldPosition();
   check(std::fabs(e1.x - e0.x) > 1e-3f || std::fabs(e1.z - e0.z) > 1e-3f,

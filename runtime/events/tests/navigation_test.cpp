@@ -124,10 +124,12 @@ TEST_CASE("navigation_test") {
     // Begin a drag: press, then move the pointer horizontally.
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,10},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
     w->ctx.tick(0.0);
     // Horizontal drag (dx > 0).
     w->ctx.setPointer(Ray{{0.3f,0,10},{0,0,-1}}); // consumer reports motion
+    w->ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
     w->ctx.tick(0.016);
 
     SFVec3f p1 = camPos(w->ctx);
@@ -165,9 +167,11 @@ TEST_CASE("navigation_test") {
     SFVec3f f0 = camFwd(w->ctx);
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
     w->ctx.tick(1.0);
     w->ctx.setPointer(Ray{{0.3f,0,0},{0,0,-1}});
+    w->ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
     w->ctx.tick(1.016);
     SFVec3f f1 = camFwd(w->ctx);
     check(dist(f0, f1) > 1e-3f, "fly: drag rotates the view direction");
@@ -202,6 +206,7 @@ TEST_CASE("navigation_test") {
     // Click on the box to trigger LOOKAT.
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,10},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
     w->ctx.tick(0.0);   // click registered -> LOOKAT begins at t0=0
     w->ctx.setPointerButton(false);
@@ -228,9 +233,11 @@ TEST_CASE("navigation_test") {
     SFVec3f f0 = camFwd(w->ctx);
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,10},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
     w->ctx.tick(0.0);
     w->ctx.setPointer(Ray{{0.5f,0.5f,10},{0,0,-1}});
+    w->ctx.setPointerScreen(0.5f, 0.5f); // mirror nav drag onto the screen pointer
     w->ctx.tick(0.016);
     w->ctx.setKey(NavigationSystem::kKeyForward, true);
     w->ctx.tick(1.0);
@@ -244,9 +251,11 @@ TEST_CASE("navigation_test") {
     SFVec3f p0 = camPos(w->ctx);
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,10},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
     w->ctx.tick(0.0);
     w->ctx.setPointer(Ray{{0.3f,0,10},{0,0,-1}});
+    w->ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
     w->ctx.tick(0.016);
     check(dist(p0, camPos(w->ctx)) > 1e-3f, "any: behaves as EXAMINE (effective eye orbits on drag)");
   }
@@ -296,6 +305,7 @@ TEST_CASE("navigation_test") {
     // Click on the box to trigger LOOKAT.
     ctx.setPointerPresent(true);
     ctx.setPointer(Ray{{0,0,10},{0,0,-1}});
+    ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     ctx.setPointerButton(true);
     ctx.tick(1.0);   // LOOKAT fires (transitionTime=0 -> completes same tick)
     ctx.setPointerButton(false);
@@ -317,11 +327,13 @@ TEST_CASE("navigation_test") {
     auto w = makeWorld({"FLY"}, {0,0,10});
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
 
     // 10 yaw-only drag steps.
     for (int i = 1; i <= 10; ++i) {
       w->ctx.setPointer(Ray{{0.05f * i, 0, 0},{0,0,-1}});
+      w->ctx.setPointerScreen(0.05f * i, 0); // mirror nav drag onto the screen pointer
       w->ctx.tick(0.016);
     }
     SFVec3f right = w->ctx.viewMatrix().inverse().transformDirection(SFVec3f{1,0,0});
@@ -334,13 +346,16 @@ TEST_CASE("navigation_test") {
     auto w = makeWorld({"FLY"}, {0,0,10});
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
 
     // Alternating yaw and pitch drags.
     for (int i = 0; i < 5; ++i) {
       w->ctx.setPointer(Ray{{0.05f, 0, 0},{0,0,-1}});      // yaw
+      w->ctx.setPointerScreen(0.05f, 0); // mirror nav drag onto the screen pointer
       w->ctx.tick(0.016);
       w->ctx.setPointer(Ray{{0.05f, 0.05f, 0},{0,0,-1}});  // + pitch
+      w->ctx.setPointerScreen(0.05f, 0.05f); // mirror nav drag onto the screen pointer
       w->ctx.tick(0.016);
     }
     SFVec3f right = w->ctx.viewMatrix().inverse().transformDirection(SFVec3f{1,0,0});
@@ -353,12 +368,15 @@ TEST_CASE("navigation_test") {
     auto w = makeWorld({"FLY"}, {0,0,10});
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
     // Extreme downward drag -> pitches up to +90 clamp. (Drag convention: dy<0
     // pitches up.) Should clamp, not flip through the pole.
     w->ctx.setPointer(Ray{{0, 0, 0},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.tick(0.016);  // establish drag baseline
     w->ctx.setPointer(Ray{{0, -5.0f, 0},{0,0,-1}});
+    w->ctx.setPointerScreen(0, -5.0f); // mirror nav drag onto the screen pointer
     w->ctx.tick(0.016);  // actual drag: dy=-5 -> pitch += +5pi -> clamped
     SFVec3f fwd = camFwd(w->ctx);
     check(fwd.y > 0.99f,
@@ -374,8 +392,10 @@ TEST_CASE("navigation_test") {
     auto w = makeWorld({"FLY"}, {0,0,10});
     w->ctx.setPointerPresent(true);
     w->ctx.setPointer(Ray{{0,0,0},{0,0,-1}});
+    w->ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
     w->ctx.setPointerButton(true);
     w->ctx.setPointer(Ray{{0.3f, 0, 0},{0,0,-1}});
+    w->ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
     w->ctx.tick(0.016);
     SFVec3f f1 = camFwd(w->ctx);
 
@@ -392,6 +412,7 @@ TEST_CASE("navigation_test") {
 
     // Further yaw should add to the current yaw, not reset to zero.
     w->ctx.setPointer(Ray{{0.6f, 0, 0},{0,0,-1}});
+    w->ctx.setPointerScreen(0.6f, 0); // mirror nav drag onto the screen pointer
     w->ctx.tick(0.016);
     SFVec3f f3 = camFwd(w->ctx);
     check(dist(f2, f3) > 1e-3f,
@@ -431,9 +452,11 @@ TEST_CASE("navigation_geoviewpoint_examine") {
   // EXAMINE drag exercises poseOf()+cor() on the GeoViewpoint.
   ctx.setPointerPresent(true);
   ctx.setPointer(Ray{{0,0,10},{0,0,-1}});
+  ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
   ctx.setPointerButton(true);
   ctx.tick(0.0);
   ctx.setPointer(Ray{{0.3f,0,10},{0,0,-1}});
+  ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
   ctx.tick(0.016);
   CHECK(dist(p0, camPos(ctx)) > 1e-3f); // orbited about the pivot
 }

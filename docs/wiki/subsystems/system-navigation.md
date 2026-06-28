@@ -61,7 +61,7 @@ struct HeadPose {
 
 - **`X3DExecutionContext::boundNavigationInfo()`** — returns the bound `NavigationInfo`. Navigation reads `getType()` to resolve the active mode (first recognized value wins, §23.4.4), `getSpeed()` for FLY translation scaling, and `getTransitionTime()`/`getTransitionType()` for LOOKAT animation. It calls `ctx.postEvent(nav, "transitionComplete", …)` at the end of a LOOKAT transition.
 
-- **`X3DExecutionContext::pointerState()`** — `PointerState` struct: `present`, `buttonDown`, `ray` (world-space `Ray`), and `revision`. Navigation uses the ray *origin* as a screen-proxy coordinate to form drag deltas across ticks. See [Pointing System](../subsystems/system-pointing.md) for how the consumer populates this.
+- **`X3DExecutionContext::pointerState()`** — `PointerState` struct: `present`, `buttonDown`, `ray` (world-space `Ray`, used for picking/LOOKAT), `screenX`/`screenY` (normalized cursor, x right / y up), and `revision`. Navigation forms its drag deltas from `screenX`/`screenY` — the camera-independent screen cursor the consumer feeds via `ctx.setPointerScreen(x, y)` — **not** from the ray. The ray is recomputed from the camera each frame, so using it would feed orbit back on itself (a single click spins the view) and scale rotation by the scene's near-plane size. See [Pointing System](../subsystems/system-pointing.md) for how the consumer populates this.
 
 - **`X3DExecutionContext::keyState()`** — `KeyState` holding set via `ctx.setKey(kKey*, bool)`. FLY mode polls `ks.isHeld(kKeyForward)` etc. each tick. See [Key-Device Sensor System](../subsystems/system-keydevice.md).
 
@@ -77,7 +77,7 @@ struct HeadPose {
 
 ### EXAMINE orbit algorithm
 
-Drag deltas in screen-proxy units drive a yaw (about world +Y) and pitch (about the local right vector, clamped near the poles). The eye is rotated about `centerOfRotation`; `commitEye` recomputes the offset so the effective local eye becomes the new position/orientation pair. Angular sensitivity: one screen-proxy unit of drag maps to `π` radians (`kRotScale`).
+Drag deltas in normalized-screen units drive a yaw (about world +Y) and pitch (about the local right vector, clamped near the poles). The eye is rotated about `centerOfRotation`; `commitEye` recomputes the offset so the effective local eye becomes the new position/orientation pair. Angular sensitivity: dragging one full screen unit (the whole viewport width/height) maps to `π` radians (`kRotScale`) — scene-scale independent, since the screen cursor is normalized.
 
 ### FLY flight algorithm
 

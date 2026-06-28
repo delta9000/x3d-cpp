@@ -45,8 +45,10 @@ static Mat4 dragAndView(X3DExecutionContext &ctx) {
   ctx.setPointerPresent(true);
   ctx.setPointerButton(true);
   ctx.setPointer(Ray{{0, 0, 10}, {0, 0, -1}});
+  ctx.setPointerScreen(0, 0); // mirror nav drag onto the screen pointer
   ctx.tick(1.0); // establishes lastPx_/lastPy_ (dragActive_ becomes true)
   ctx.setPointer(Ray{{0.3f, 0, 10}, {0, 0, -1}}); // move in x ⇒ dx != 0
+  ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
   ctx.tick(2.0);
   return ctx.viewMatrix();
 }

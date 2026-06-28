@@ -297,6 +297,11 @@ public:
   /// Set whether the pointer is present (inside the view / active input region).
   void setPointerPresent(bool present) { pointer_.setPresent(present); }
 
+  /// Set the normalized cursor position (x rightward, y upward, ~[0,1] across
+  /// the view). This is the camera-independent signal NavigationSystem uses for
+  /// EXAMINE/FLY drag — feed raw cursor pixels divided by the framebuffer size.
+  void setPointerScreen(float x, float y) { pointer_.setScreen(x, y); }
+
   /// Read-only access to the current pointer snapshot (for PointingSensorSystem).
   const PointerState &pointerState() const { return pointer_; }
 

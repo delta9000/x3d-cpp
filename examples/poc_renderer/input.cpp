@@ -101,5 +101,12 @@ void InputBridge::feedPointerRay(const x3d::runtime::Mat4 &view,
   if (captureMouse_) return; // overlay owns the cursor — don't pick into the scene.
   double cx = 0, cy = 0;
   glfwGetCursorPos(win_, &cx, &cy);
+  // World ray for picking / pointing-device sensors.
   ctx_.setPointer(pocUnproject(cx, cy, w, h, view, proj));
+  // Camera-INDEPENDENT normalized cursor for navigation drag (x right, y up).
+  // NavigationSystem derives its EXAMINE/FLY drag from this, not the world ray —
+  // feeding the ray there made a single click spin the camera (the ray moves as
+  // the camera rotates, so the drag fed back on itself and scaled with scene size).
+  ctx_.setPointerScreen(static_cast<float>(cx) / static_cast<float>(w),
+                        1.0f - static_cast<float>(cy) / static_cast<float>(h));
 }
