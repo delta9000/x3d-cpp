@@ -65,7 +65,8 @@ public:
    * @return MFVec2f The default value
    */
   static MFVec2f getDefaultCrossSection() {
-    return std::vector<SFVec2f>{SFVec2f{1, 1}};
+    return std::vector<SFVec2f>{SFVec2f{1, 1}, SFVec2f{1, -1}, SFVec2f{-1, -1},
+                                SFVec2f{-1, 1}, SFVec2f{1, 1}};
   }
 
   /**
@@ -101,7 +102,7 @@ public:
    * @return MFVec3f The default value
    */
   static MFVec3f getDefaultSpine() {
-    return std::vector<SFVec3f>{SFVec3f{0, 0, 0}};
+    return std::vector<SFVec3f>{SFVec3f{0, 0, 0}, SFVec3f{0, 1, 0}};
   }
 
   /**
@@ -424,7 +425,9 @@ private:
    * @brief Member variable for crossSection.
    */
 
-  MFVec2f _crossSection{std::vector<SFVec2f>{SFVec2f{1, 1}}};
+  MFVec2f _crossSection{std::vector<SFVec2f>{SFVec2f{1, 1}, SFVec2f{1, -1},
+                                             SFVec2f{-1, -1}, SFVec2f{-1, 1},
+                                             SFVec2f{1, 1}}};
 
   /**
    * @brief Member variable for endCap.
@@ -476,7 +479,7 @@ private:
    * @brief Member variable for spine.
    */
 
-  MFVec3f _spine{std::vector<SFVec3f>{SFVec3f{0, 0, 0}}};
+  MFVec3f _spine{std::vector<SFVec3f>{SFVec3f{0, 0, 0}, SFVec3f{0, 1, 0}}};
 };
 
 } // namespace x3d::nodes

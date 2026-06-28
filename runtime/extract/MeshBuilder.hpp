@@ -1377,11 +1377,21 @@ inline MeshData buildLocalMesh(const X3DNode *geom,
   // synthesized from the height grid. Handle it before the coord guard, with its
   // own funnel that pushes synthesized vertices (+ flat normals).
   if (t == "ElevationGrid") {
-    const int xd = geombounds::getField<int>(*geom, "xDimension", 0);
-    const int zd = geombounds::getField<int>(*geom, "zDimension", 0);
+    int xd = geombounds::getField<int>(*geom, "xDimension", 0);
+    int zd = geombounds::getField<int>(*geom, "zDimension", 0);
     const float xs = geombounds::getField<float>(*geom, "xSpacing", 1.0f);
     const float zs = geombounds::getField<float>(*geom, "zSpacing", 1.0f);
     const auto h = geombounds::getField<std::vector<float>>(*geom, "height", {});
+    // Some conformance scenes (ConformanceNist ElevationGrid/test_{x,z}Spacing)
+    // author only ONE dimension and leave the other at its 0 default, relying on
+    // the renderer to infer it from height.size(). Both are required per spec, but
+    // the NIST reference renders expect the inference, so derive the missing
+    // dimension from the height array when it divides evenly.
+    const std::size_t hn = h.size();
+    if (zd < 2 && xd >= 2 && hn > 0 && hn % static_cast<std::size_t>(xd) == 0)
+      zd = static_cast<int>(hn / static_cast<std::size_t>(xd));
+    else if (xd < 2 && zd >= 2 && hn > 0 && hn % static_cast<std::size_t>(zd) == 0)
+      xd = static_cast<int>(hn / static_cast<std::size_t>(zd));
     if (xd >= 2 && zd >= 2 &&
         static_cast<std::size_t>(xd) * static_cast<std::size_t>(zd) <= h.size()) {
       // Lattice-index-retaining emission (B5). Synthesize each lattice vertex
@@ -1511,6 +1521,11 @@ inline MeshData buildLocalMesh(const X3DNode *geom,
   // lattice-index-retaining form (for B6). creaseAngle deferred to B6.
   if (t == "Extrusion") {
     // X3D spec defaults: crossSection = unit square (closed), spine = origin+up.
+    // The generated binding now carries these full multi-point defaults, so an
+    // UNauthored field already arrives complete; the .empty() fallback stays as a
+    // safety net. An AUTHORED degenerate (1-point) crossSection/spine is left
+    // as-is so tessellateExtrusion's ns>=2/nc>=2 guard culls it (the documented
+    // "< 2 spine points => empty" contract).
     std::vector<SFVec2f> crossSection =
         geombounds::getField<std::vector<SFVec2f>>(*geom, "crossSection", {});
     if (crossSection.empty())

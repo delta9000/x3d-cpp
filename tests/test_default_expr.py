@@ -82,6 +82,20 @@ def test_mfvec3f_single_element():
     assert expr("MFVec3f", "1 2 3") == "std::vector<SFVec3f>{SFVec3f{1, 2, 3}}"
 
 
+def test_mfvec3f_multi_element():
+    # MULTI-element defaults must emit EVERY element, not just the first
+    # (Extrusion.spine = the 2-point segment [0 0 0, 0 1 0]).
+    assert (expr("MFVec3f", "0 0 0 0 1 0")
+            == "std::vector<SFVec3f>{SFVec3f{0, 0, 0}, SFVec3f{0, 1, 0}}")
+
+
+def test_mfvec2f_multi_element_crosssection():
+    # Extrusion.crossSection default = the closed 5-point unit square.
+    assert (expr("MFVec2f", "1 1 1 -1 -1 -1 -1 1 1 1")
+            == "std::vector<SFVec2f>{SFVec2f{1, 1}, SFVec2f{1, -1}, "
+               "SFVec2f{-1, -1}, SFVec2f{-1, 1}, SFVec2f{1, 1}}")
+
+
 # tokenize_mfstring (quote-aware splitting)
 
 def test_tokenize_quoted_multiword():

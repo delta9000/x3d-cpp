@@ -1998,4 +1998,63 @@
     buildTextMesh TextExtract.hpp:294-326 maps the glyph UV across the full advance-width quad; GlyphMetrics
     FontMetrics.hpp:59-64 lacks bearing/size/top; vertical metrics fixed at 0.8/-0.2*size. Monospace stub is
     fine; a real font is not. Fix: extend GlyphMetrics with {bearingX,sizeX,sizeY,top} and place the quad at
-    the actual glyph box. (extraction-seam review.)
+    the actual glyph box. (extraction-seam review.) Visual sweep 2026-06-27 CONFIRMED now that the poc wires a
+    real stb_truetype atlas: set_length_comp/set_length_exp render the length-compressed strings as bars.
+
+# ── Visual conformance sweep (poc renderer vs Web3D/NIST front refs, 2026-06-27) ──
+# Surfaced by scripts/visual_conformance_sweep.py: poc `--front` screenshots compared
+# against the ConformanceNist `*-front.jpg` references, vision-model scored. Each item
+# count below is verified by `poc --headless` on the named scene.
+- id: VIS-EXTRUSION-EMPTY
+  nodes: [Extrusion]
+  component: Geometry3D
+  clause: "13.3.5"
+  severity: major
+  status: fixed
+  summary: "Extrusion with default/simple fields extracts NO geometry (render_items=0) — default_extrusion.x3d and test_simpleorient.x3d render blank. FIXED: now render (default_extrusion = unit box, test_simpleorient = oriented square swept along the spine)."
+  note: >-
+    Root cause was the GENERATOR, not the extractor: the MF-struct default emitter (src/x3d_cpp_gen/emit/defaults.py)
+    collapsed any multi-element array default to its FIRST element, so the generated Extrusion binding defaulted
+    crossSection to a single point {1,1} and spine to {0,0,0} (instead of the 5-point unit square and the 2-point segment).
+    An UNauthored crossSection/spine therefore arrived at tessellateExtrusion as size 1 and was culled by the ns>=2/nc>=2
+    guard. Fixed by chunking the flat scalar list into element-sized groups (covered by tests/test_default_expr.py) and
+    regenerating Extrusion.hpp; the extractor's .empty() spec-default fallback stays as a safety net, and an AUTHORED
+    1-point spine still culls (the documented "< 2 spine points => empty" contract, mesh_builder_b3_test.cpp).
+- id: VIS-ELEV-SPACING-EMPTY
+  nodes: [ElevationGrid]
+  component: Geometry3D
+  clause: "13.3.4"
+  severity: major
+  status: fixed
+  summary: "ElevationGrid with non-default xSpacing/zSpacing extracts NO geometry (render_items=0) — test_xSpacing.x3d, test_zSpacing.x3d render blank, while test_color (default spacing) extracts fine. FIXED: both now render 3 grids each."
+  note: >-
+    Not a spacing bug: test_{x,z}Spacing author only ONE dimension (xDimension=12, height=24 values) and OMIT the other,
+    leaving zDimension at its 0 default so the xd>=2 && zd>=2 guard in the ElevationGrid dispatch (MeshBuilder.hpp) zeroed
+    the output. Per spec both dimensions are required, but the NIST reference renders expect inference. Fixed by deriving the
+    missing dimension from height.size() when it divides evenly by the authored dimension (conservative — only fires when a
+    dimension is < 2 and the height array is an exact multiple of the other). Deliberate, documented leniency.
+- id: VIS-SPHERE-NOUV
+  nodes: [Sphere]
+  component: Texturing
+  clause: "13.3.6, 18.4.10"
+  severity: major
+  status: fixed
+  summary: "Sphere with an ImageTexture (and NO Material) rendered untextured (flat white) — Geometry/Sphere/texture.x3d. FIXED: the VTS decal now applies (upright, vertically centred per the scene description)."
+  note: >-
+    Mischaracterized originally: the sphere DOES carry texcoords (tessellateSphere emits them). The real cause is the
+    no-Material case — an Appearance with an ImageTexture but no Material is unlit per spec (§12.2.5), so the extractor
+    correctly surfaces MaterialModel::Unlit with the image on the EMISSIVE slot (MaterialSystem.hpp). The PoC's UNLIT shader
+    had no texcoord/sampler at all, so the texture was never sampled (Box/texture.x3d has a <Material/> -> Phong path, which
+    is why it worked). Fixed PoC-side: added aTexCoord + sampler2D to unlit.vert/unlit.frag and bound the
+    {Emissive,BaseColor,Diffuse} slot in the unlit draw path. SDK extraction was already spec-correct.
+- id: VIS-MOVIE-DECODE
+  nodes: [MovieTexture]
+  component: Texturing
+  clause: "23.4.1"
+  severity: major
+  status: deferred
+  summary: "MovieTexture frames are never decoded — TextureRef::Source::Movie is surfaced but no consumer decode path exists, so movie-textured scenes render the white/last fallback (blank) across the conformance set."
+  note: >-
+    Design captured in ADR-0041 (MovieDecoder seam: ship pl_mpeg/MPEG-1 + Theora + WebM/VP8-9 by default, leave
+    FFmpeg/GStreamer/H.26x to implementors). Deferred until the seam lands. Complements TDN-5 (MovieTexture
+    time-lifecycle). Also the root of many "missing objects" mismatches in the *_complex_movietexture grids.

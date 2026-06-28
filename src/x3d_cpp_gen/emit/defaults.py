@@ -170,12 +170,19 @@ def default_expr_for(x3d_type: X3DType, default: Optional[str]) -> Optional[str]
                 for v in _scalar_list(d)]
         return "std::vector<bool>{" + ", ".join(vals) + "}"
     if x3d_type in _MF_STRUCT_ELEM:
-        struct, count, floaty = _MF_STRUCT_ELEM[x3d_type]
+        struct, count, _floaty = _MF_STRUCT_ELEM[x3d_type]
         vals = _scalar_list(d)
-        if not vals:
+        if len(vals) < count:
             return f"std::vector<{struct}>{{}}"
-        elem = _struct_literal(struct, count, floaty, d)
-        return f"std::vector<{struct}>{{{elem}}}"
+        # Chunk the flat scalar list into element-sized groups so a MULTI-element
+        # default (e.g. Extrusion.crossSection = the 5-point square, spine = the
+        # 2-point segment) emits every element, not just the first. Trailing
+        # scalars that do not fill a whole element are dropped.
+        elems = [
+            f"{struct}{{" + ", ".join(vals[i:i + count]) + "}"
+            for i in range(0, len(vals) - len(vals) % count, count)
+        ]
+        return f"std::vector<{struct}>{{" + ", ".join(elems) + "}"
     if TypeRegistry.is_multi(x3d_type):
         # Remaining MF types (e.g. MFNode/MFImage/MFMatrix*) value-initialize.
         return None

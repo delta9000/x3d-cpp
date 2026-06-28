@@ -1043,6 +1043,8 @@ int main(int argc, char **argv) {
   const GLint uUnlitProj = unlitProg ? glGetUniformLocation(unlitProg, "uProjection") : -1;
   const GLint uUnlitBaseColor = unlitProg ? glGetUniformLocation(unlitProg, "uBaseColor") : -1;
   const GLint uUnlitHasColors = unlitProg ? glGetUniformLocation(unlitProg, "uHasColors") : -1;
+  const GLint uUnlitTexture = unlitProg ? glGetUniformLocation(unlitProg, "uTexture") : -1;
+  const GLint uUnlitHasTexture = unlitProg ? glGetUniformLocation(unlitProg, "uHasTexture") : -1;
 
   // ---- Phase 5.3 PBR program (lit.vert / pbr.frag) -------------------------
   GLuint pvs = compileShader(GL_VERTEX_SHADER,
@@ -1412,6 +1414,20 @@ int main(int argc, char **argv) {
           glUniformMatrix4fv(uUnlitModel, 1, GL_FALSE, it.worldTransform.m.data());
           glUniform4f(uUnlitBaseColor, c.r, c.g, c.b, c.a);
           glUniform1i(uUnlitHasColors, g.hasColors ? 1 : 0);
+          // A textured Appearance with NO Material is Unlit with the image on the
+          // Emissive slot (§12.2.5); also covers UnlitMaterial.emissiveTexture and
+          // any Diffuse/BaseColor texture that lands on the unlit path. srgb=false:
+          // raw passthrough to match unlit's no-gamma direct color output.
+          if (g.hasTexcoords && !g.isGlyphMesh) {
+            GLuint ut = resolveTexRef(
+                findTexSlot(mat, {ex::TextureRef::Slot::Emissive,
+                                  ex::TextureRef::Slot::BaseColor,
+                                  ex::TextureRef::Slot::Diffuse}),
+                texCache, assetResolver, /*srgb=*/false);
+            bindTex(0, uUnlitTexture, uUnlitHasTexture, ut);
+          } else {
+            bindTex(0, uUnlitTexture, uUnlitHasTexture, 0);
+          }
           glDisable(GL_CULL_FACE); // lines/points/normal-less always double-sided.
 
         // ----------------------------------------------------------------
