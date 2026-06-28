@@ -158,3 +158,11 @@ target_compile_features(x3d_poc_input PRIVATE cxx_std_20)
 # GLFW from pulling in the system <GL/gl.h> — same reason as the renderer target.
 target_compile_definitions(x3d_poc_input PRIVATE GLFW_INCLUDE_NONE)
 add_test(NAME x3d_poc_input COMMAND x3d_poc_input)
+
+# Pure draw-math unit test (no GL context; verifies the optimized normal matrix
+# matches a full 4x4 inverse-transpose reference).
+add_executable(x3d_poc_draw_math
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/draw_math_test.cpp")
+target_link_libraries(x3d_poc_draw_math PRIVATE x3d_cpp::x3d_cpp)
+target_compile_features(x3d_poc_draw_math PRIVATE cxx_std_20)
+add_test(NAME x3d_poc_draw_math COMMAND x3d_poc_draw_math)
