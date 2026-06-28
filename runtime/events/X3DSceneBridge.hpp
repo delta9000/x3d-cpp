@@ -451,8 +451,13 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx) {
  *          Call after `buildSceneGraph(scene)`.
  */
 inline std::shared_ptr<NavigationSystem>
-attachInteractive(Scene & /*scene*/, X3DExecutionContext &ctx) {
-  ctx.addSystem(std::make_shared<PointingSensorSystem>()); // claims pointer first
+attachInteractive(Scene &scene, X3DExecutionContext &ctx) {
+  auto pss = std::make_shared<PointingSensorSystem>();
+  // One-time inventory pass: lets the system skip the per-tick whole-scene pick
+  // when the scene holds no pointing-device sensors (the common static-exhibit
+  // case). Sensors still resolve live from the pick path; this only counts them.
+  detail::forEachNode(scene, [&](X3DNode *n) { pss->attach(n, ctx); });
+  ctx.addSystem(pss); // claims pointer first
   auto nav = std::make_shared<NavigationSystem>();
   ctx.addSystem(nav);                                      // reads pointer after
   return nav;

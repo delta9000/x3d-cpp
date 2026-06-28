@@ -2051,6 +2051,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_extract_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_item_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_delta_perf_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/material_system_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_mapping_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_orm_test.cpp"
@@ -2115,6 +2116,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/tick_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pointer_state_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pointing_sensor_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pointing_sensor_skip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pointer_arbitration_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/standard_runtime_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/nav_arbitration_test.cpp"

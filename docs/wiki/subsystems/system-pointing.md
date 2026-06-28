@@ -58,6 +58,15 @@ The `Ray` carries a world-space origin and direction. The consumer is responsibl
 
 `PointerState` is a plain struct owned by `X3DExecutionContext`. `PointingSensorSystem` reads it via `ctx.pointerState()` each tick and skips processing when `ps.revision == lastRevision_`.
 
+> **No-sensor pick skip.** `ctx.pick(ps.ray)` is a whole-scene ray walk; a consumer
+> that re-feeds the pointer every frame (the OpenGL PoC does) would otherwise run it
+> on every tick. `attachInteractive` takes a one-time inventory pass (`attach` over
+> every scene node) and, when it finds **zero** pointing-device sensors, the system
+> skips the pick entirely — the pick could never resolve to a sensor. The skip is
+> conservative: if the inventory was never taken (a test that registers the system
+> directly via `addSystem`), the system picks exactly as before. Regression:
+> `runtime/events/tests/pointing_sensor_skip_test.cpp`.
+
 ```cpp
 struct PointerState {
     Ray  ray;
