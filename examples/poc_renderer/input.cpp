@@ -65,6 +65,9 @@ void InputBridge::onKey(GLFWwindow *win, int key, int, int action, int) {
   auto *self = static_cast<InputBridge *>(glfwGetWindowUserPointer(win));
   if (!self) return;
   const bool down = (action != GLFW_RELEASE); // PRESS or REPEAT ⇒ held
+  // UI overlay owns the keyboard: swallow presses (mode-cycle + nav keys), but
+  // never a release — a key held before the overlay grabbed focus must still lift.
+  if (self->captureKeyboard_ && down) return;
   // Dev mode-cycle key: TAB cycles Examine→Fly→Lookat.
   if (key == GLFW_KEY_TAB && action == GLFW_PRESS && self->nav_) {
     using M = x3d::runtime::NavigationSystem::Mode;
@@ -79,8 +82,11 @@ void InputBridge::onKey(GLFWwindow *win, int key, int, int action, int) {
 void InputBridge::onMouseButton(GLFWwindow *win, int button, int action, int) {
   auto *self = static_cast<InputBridge *>(glfwGetWindowUserPointer(win));
   if (!self) return;
-  if (button == GLFW_MOUSE_BUTTON_LEFT)
-    self->ctx_.setPointerButton(action == GLFW_PRESS);
+  if (button != GLFW_MOUSE_BUTTON_LEFT) return;
+  // UI overlay owns the cursor: swallow the press (don't activate the scene
+  // pointing device), but always forward the release so it can't latch.
+  if (self->captureMouse_ && action == GLFW_PRESS) return;
+  self->ctx_.setPointerButton(action == GLFW_PRESS);
 }
 
 void InputBridge::onCursorEnter(GLFWwindow *win, int entered) {
@@ -92,6 +98,7 @@ void InputBridge::onCursorEnter(GLFWwindow *win, int entered) {
 void InputBridge::feedPointerRay(const x3d::runtime::Mat4 &view,
                                  const x3d::runtime::Mat4 &proj, int w, int h) {
   if (w <= 0 || h <= 0) return;
+  if (captureMouse_) return; // overlay owns the cursor — don't pick into the scene.
   double cx = 0, cy = 0;
   glfwGetCursorPos(win_, &cx, &cy);
   ctx_.setPointer(pocUnproject(cx, cy, w, h, view, proj));

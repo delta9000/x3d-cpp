@@ -25,6 +25,10 @@ configures, compiles, or links any of it.
   `extractor.sceneWorldBounds()`). Lights are the extractor's world-resolved
   `LightDesc` directionals; when a scene authors none, the bound
   `NavigationInfo` headlight (default true) supplies a camera-space fallback.
+- an interactive Dear ImGui diagnostics overlay for frame timing, render-item
+  counts, texture-cache counts, runtime time, a wireframe toggle, and the ImGui
+  demo window; **F1** toggles the panel. It is disabled for `--headless`, `--screenshot`, and `--animate`
+  so CI captures stay deterministic.
 
 With no argument it loads the bundled `assets/triangle.x3d` (first-light).
 
@@ -81,9 +85,9 @@ xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIB
 a GPU GLX driver (NVIDIA's libGL ignores `LIBGL_ALWAYS_SOFTWARE`); a GPU-less CI
 runner lands on llvmpipe automatically.
 
-GLFW (>=3.4) is fetched via `FetchContent` (native Wayland on, X11 on as an
-XWayland safety net). The glad core-3.3 loader is committed pre-generated at
-`third_party/glad/` (real `src/glad.c` + `include/glad/gl.h` +
+GLFW (>=3.4) and Dear ImGui are fetched via `FetchContent` (GLFW native Wayland
+on, X11 on as an XWayland safety net). The glad core-3.3 loader is committed
+pre-generated at `third_party/glad/` (real `src/glad.c` + `include/glad/gl.h` +
 `include/KHR/khrplatform.h`), so there is no generator step at build time.
 
 ## Arch / Wayland prerequisites

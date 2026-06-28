@@ -32,6 +32,14 @@ public:
   void feedPointerRay(const x3d::runtime::Mat4 &view,
                       const x3d::runtime::Mat4 &proj, int w, int h);
 
+  // Per-frame UI capture gate: when the ImGui overlay owns the mouse/keyboard
+  // this frame, the bridge swallows that device input so the camera/nav and the
+  // overlay don't both consume it. Default false ⇒ no overlay ⇒ original path.
+  void setUiCapture(bool mouse, bool keyboard) {
+    captureMouse_ = mouse;
+    captureKeyboard_ = keyboard;
+  }
+
 private:
   static void onKey(GLFWwindow *, int key, int sc, int action, int mods);
   static void onMouseButton(GLFWwindow *, int button, int action, int mods);
@@ -41,4 +49,6 @@ private:
   GLFWwindow *win_;
   std::shared_ptr<x3d::runtime::NavigationSystem> nav_;
   int modeIndex_ = 0; // cycles Examine→Fly→Lookat on the mode key (TAB)
+  bool captureMouse_ = false;    // ImGui owns the cursor this frame
+  bool captureKeyboard_ = false; // ImGui owns the keyboard this frame
 };
