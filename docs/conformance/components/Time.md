@@ -4,7 +4,7 @@ _Generated. Levels 1 · 1 nodes · profiles: Interchange, Interactive, Immersive
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| TimeSensor | 1 | ✓ | — | ◑ | CONF-CRITIC-1, CONF-TDN1V, TDN-1, TDN-2, TDN-3, TDN-4, TDN-6, TDN-7, TDN-8 | X3DChildNode, X3DSensorNode, X3DTimeDependentNode |
+| TimeSensor | 1 | ✓ | — | ◑ | CONF-CRITIC-1, CONF-TDN1V, TDN-1, TDN-2, TDN-3, TDN-4, TDN-6, TDN-7, TDN-8, TIME-ORIGIN-1 | X3DChildNode, X3DSensorNode, X3DTimeDependentNode |
 
 ## Findings
 
@@ -20,4 +20,6 @@ _Generated. Levels 1 · 1 nodes · profiles: Interchange, Interactive, Immersive
 - **TDN-7** [minor/FIXED `3b842d0`] — §8.4.1: Final time emitted at the exact cycle boundary; no auto-restart after completion.
 - **TDN-8** [minor/FIXED `e92042e`] — §8.4.1, 8.2.4.4: fraction_changed continues from its paused value (paused-aware elapsed clock), not wall-clock now.
   - Spec self-contradiction (Mantis 1106) - 8.4.1's wall-clock fraction formula vs 8.2.4.4 "continues from its value when paused". x3d-cpp already conforms - X3DTimeDependentSystem.hpp:226 sinceStart = now - timeBase, :321 timeBase += (resumeTime - pauseTime). Corollary of TDN-1/2/6. Follow-ups - retire the naive legacy seed TimeSensorBehavior.hpp:39; add a fraction-continuity regression test. 4.1 - partial upstream (added the 8.2.4.4 requirement, not the 8.4.1 formula); engine already implements the fix.
+- **TIME-ORIGIN-1** [minor/CLOSED] — §8.2.1: By design: the time origin is the consumer's choice (the `now` fed to tick()), not baked into the SDK. App-relative feeding yields Castle's timeOriginAtLoad behaviour; strict epoch feeding yields literal SFTime semantics.
+  - X3D SFTime is normatively seconds since the Unix epoch (8.2.1), so a strict reading makes startTime=0 mean 1970. The SDK never reads a wall clock; every time-dependent system reads only the `now` passed to X3DExecutionContext::tick(now), so the embedder picks the origin. Both bundled renderers feed app-relative time (OpenGL PoC: glfwGetTime(); cpuraster --animate: frame/fps), starting ~0 at load — so startTime=0 behaves as "at load", matching Castle Game Engine's NavigationInfo.timeOriginAtLoad extension by default (https://castle-engine.io/x3d_time_origin_considered_uncomfortable). A consumer needing literal spec semantics feeds epoch `now`. CONSEQUENCE / nuance: a file authoring an absolute startTime phases differently under app-relative vs epoch feeding (for startTime<=now loops this only shifts phase, not whether they animate). This is a deliberate contract, documented in docs/wiki/subsystems/system-time.md ("Time origin"). No code change — recorded so the matrix does not later flag it as an unhandled epoch gap.
 

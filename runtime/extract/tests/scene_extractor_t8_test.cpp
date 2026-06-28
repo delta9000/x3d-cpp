@@ -255,5 +255,50 @@ TEST_CASE("scene_extractor_t8_test") {
     }
   }
 
+  // === 5) Switch.whichChoice change yields added/removed (incremental delta) ==
+  //        Regression: whichChoice was classified DirtyField, which delta()
+  //        ignores for a grouping node (it is in neither geomDeps_ nor
+  //        materialDeps_), so incremental consumers (the OpenGL PoC) never saw
+  //        the active-child swap — only full-snapshot consumers (cpuraster) did.
+  //        classifyDirty now maps whichChoice -> DirtyChildren -> subtree re-walk.
+  {
+    auto sw = createX3DNode("Switch");
+    auto shape0 = makeTriShape();
+    auto shape1 = makeTriShape();
+    addChild(sw, shape0);
+    addChild(sw, shape1);
+    setF(sw, "whichChoice", std::any(SFInt32{0})); // show child 0.
+    Scene scene;
+    scene.addRootNode(sw);
+    X3DExecutionContext ctx;
+    ctx.buildSceneGraph(scene);
+    extract::SceneExtractor ex(ctx, scene);
+    auto snap = ex.fullSnapshot();
+    CHECK((snap.added.size() == 1)); // only the active child (0) is drawn.
+    extract::RenderItemId id0 = snap.added[0];
+
+    // Flip to child 1: child 0's placement must be REMOVED, child 1's ADDED.
+    ctx.postEvent(sw.get(), "whichChoice", std::any(SFInt32{1}));
+    ctx.tick(1.0);
+    auto d = ex.delta();
+    CHECK((d.added.size() == 1)); // child 1's new placement.
+    CHECK((d.added[0] != id0));   // a genuinely new RenderItemId.
+    bool removedId0 = false;
+    for (extract::RenderItemId id : d.removed)
+      if (id == id0) removedId0 = true;
+    CHECK((removedId0)); // child 0's placement is gone.
+
+    // And flipping to whichChoice = -1 removes everything (draw nothing).
+    extract::RenderItemId id1 = d.added[0];
+    ctx.postEvent(sw.get(), "whichChoice", std::any(SFInt32{-1}));
+    ctx.tick(2.0);
+    auto d2 = ex.delta();
+    CHECK((d2.added.empty()));
+    bool removedId1 = false;
+    for (extract::RenderItemId id : d2.removed)
+      if (id == id1) removedId1 = true;
+    CHECK((removedId1));
+  }
+
   return;
 }

@@ -2099,7 +2099,8 @@
     },
     {
       "findings": [
-        "SENSOR-SWITCH"
+        "SENSOR-SWITCH",
+        "SW-DELTA-1"
       ],
       "levels": [
         1,
@@ -2153,11 +2154,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "22.4, 22.4.3",
+          "clause": "10.3.10; 22.4, 22.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "SENSOR-SWITCH"
+            "SENSOR-SWITCH",
+            "SW-DELTA-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6384,7 +6386,8 @@
         "TDN-4",
         "TDN-6",
         "TDN-7",
-        "TDN-8"
+        "TDN-8",
+        "TIME-ORIGIN-1"
       ],
       "levels": [
         1
@@ -6394,7 +6397,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4",
+          "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6406,7 +6409,8 @@
             "TDN-4",
             "TDN-6",
             "TDN-7",
-            "TDN-8"
+            "TDN-8",
+            "TIME-ORIGIN-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -7843,6 +7847,18 @@
       "wave": 4
     },
     {
+      "clause": "10.3.10",
+      "component": "Grouping",
+      "id": "SW-DELTA-1",
+      "nodes": [
+        "Switch"
+      ],
+      "note": "Root cause: X3DExecutionContext::classifyDirty mapped a whichChoice field change to DirtyField, but a Switch is in neither geomDeps_ nor materialDeps_, so SceneExtractor::delta() ignored it (no subtree re-walk). The extractor already reads whichChoice on a full walk \u2014 only the incremental channel was affected (the prior 'Switch audited clean' note covered fullSnapshot only). Fix: classifyDirty maps whichChoice -> DirtyChildren, so delta() re-walks the Switch subtree and emits removed(old child)+added(new child). Regression: scene_extractor_t8_test.cpp case 5 (flip 0->1->-1). Surfaced via a Switch+IntegerSequencer demo rendered through the OpenGL PoC's incremental delta() path.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Switch.whichChoice change was invisible to the incremental delta() channel \u2014 a runtime change of whichChoice swapped the active child for full-snapshot consumers (cpuraster) but NOT for incremental ones (the OpenGL PoC), which stayed on the old child."
+    },
+    {
       "clause": "23.4.2",
       "id": "COL-1",
       "nodes": [
@@ -8966,6 +8982,20 @@
       "wave": 4
     },
     {
+      "clause": "8.2.1",
+      "id": "TIME-ORIGIN-1",
+      "interfaces": [
+        "X3DTimeDependentNode"
+      ],
+      "nodes": [
+        "TimeSensor"
+      ],
+      "note": "X3D SFTime is normatively seconds since the Unix epoch (8.2.1), so a strict reading makes startTime=0 mean 1970. The SDK never reads a wall clock; every time-dependent system reads only the `now` passed to X3DExecutionContext::tick(now), so the embedder picks the origin. Both bundled renderers feed app-relative time (OpenGL PoC: glfwGetTime(); cpuraster --animate: frame/fps), starting ~0 at load \u2014 so startTime=0 behaves as \"at load\", matching Castle Game Engine's NavigationInfo.timeOriginAtLoad extension by default (https://castle-engine.io/x3d_time_origin_considered_uncomfortable). A consumer needing literal spec semantics feeds epoch `now`. CONSEQUENCE / nuance: a file authoring an absolute startTime phases differently under app-relative vs epoch feeding (for startTime<=now loops this only shifts phase, not whether they animate). This is a deliberate contract, documented in docs/wiki/subsystems/system-time.md (\"Time origin\"). No code change \u2014 recorded so the matrix does not later flag it as an unhandled epoch gap.",
+      "severity": "minor",
+      "status": "closed",
+      "summary": "By design: the time origin is the consumer's choice (the `now` fed to tick()), not baked into the SDK. App-relative feeding yields Castle's timeOriginAtLoad behaviour; strict epoch feeding yields literal SFTime semantics."
+    },
+    {
       "clause": "4.4.4",
       "id": "PROTO-SHADOW",
       "nodes": [
@@ -9483,10 +9513,10 @@
     ]
   },
   "summary": {
-    "closed_count": 96,
+    "closed_count": 98,
     "component_count": 36,
     "deferred_count": 48,
-    "finding_count": 201,
+    "finding_count": 203,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",

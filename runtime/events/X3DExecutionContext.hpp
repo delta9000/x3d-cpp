@@ -388,6 +388,14 @@ private:
     bool isTransformNode = TransformSystem::isTransform(a.node);
     for (const char *f : kChildren)
       if (a.field == f) flags = DirtyChildren;
+    // Switch.whichChoice selects the active child: changing it is an active-CHILD
+    // change for extraction, so it must trigger a subtree re-walk (DirtyChildren)
+    // — not a plain DirtyField, which delta() ignores for a grouping node (it is
+    // in neither geomDeps_ nor materialDeps_). Without this, incremental delta()
+    // consumers (e.g. the OpenGL PoC) never see the swap; only full-snapshot
+    // consumers (cpuraster) do. The extractor already reads whichChoice on a full
+    // walk, so this only fixes the INCREMENTAL channel.
+    if (a.field == "whichChoice") flags = DirtyChildren;
     if (isTransformNode)
       for (const char *f : kTRS)
         if (a.field == f) flags = DirtyLocalTransform;
