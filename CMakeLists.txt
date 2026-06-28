@@ -599,9 +599,12 @@ endif()
 # ---------------------------------------------------------------------------
 option(X3D_CPP_BUILD_STBTT "Build stb_truetype FontMetrics backend (OFF default)" OFF)
 
-if(X3D_CPP_BUILD_STBTT)
+# The PoC renderer consumes the stbtt glyph atlas (StbttGlyphAtlas) to render
+# Text, so build this backend whenever the PoC is on, not only on explicit opt-in.
+if(X3D_CPP_BUILD_STBTT OR X3D_CPP_BUILD_POC)
     add_library(x3d_stbtt STATIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/stbtt/StbttFontMetrics.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/stbtt/StbttFontMetrics.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/stbtt/StbttGlyphAtlas.cpp")
     target_link_libraries(x3d_stbtt PUBLIC x3d_cpp::x3d_cpp)
     target_include_directories(x3d_stbtt PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/stbtt")
@@ -649,7 +652,7 @@ if(TARGET x3d_stbtt AND TARGET x3d_freetype AND X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
     target_compile_definitions(x3d_text_tests PRIVATE
-        FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/fixtures/font")
+        FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/third_party/fonts")
     add_test(NAME x3d_text_tests COMMAND x3d_text_tests)
     set_tests_properties(x3d_text_tests PROPERTIES TIMEOUT 120)
 endif()

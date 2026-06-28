@@ -81,6 +81,7 @@ add_executable(x3d_poc_renderer
 target_link_libraries(x3d_poc_renderer
     PRIVATE
         x3d_cpp::x3d_cpp
+        x3d_stbtt          # T-TEXT glyph atlas (StbttGlyphAtlas) for Text rendering
         glfw
         poc_glad
         poc_stb_image
@@ -100,7 +101,9 @@ target_compile_features(x3d_poc_renderer PRIVATE cxx_std_20)
 # hand-written triangle scene + GLSL without a working-directory dance.
 target_compile_definitions(x3d_poc_renderer PRIVATE
     "X3D_POC_ASSET_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/assets\""
-    "X3D_POC_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/shaders\"")
+    "X3D_POC_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/shaders\""
+    # Bundled Liberation faces (shared with the SDK text tests; SIL OFL).
+    "X3D_POC_FONT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/fonts\"")
 
 message(STATUS "x3d_cpp: PoC renderer target x3d_poc_renderer configured "
                "(GLFW Wayland+X11, glad core-3.3)")

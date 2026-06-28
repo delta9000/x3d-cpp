@@ -62,10 +62,12 @@ example; no part of it is committed here.
                     (see runtime/sound/miniaudio/vendor/MINIAUDIO_LICENSE.txt;
                      AudioBackend miniaudio synthesis backend. Flag-gated OFF —
                      the default build stays MIT / Public-Domain-clean.)
-  stb_truetype.h    runtime/io/stbtt/vendor/stb_truetype.h   MIT OR Public Domain  (-DX3D_CPP_BUILD_STBTT=ON)
+  stb_truetype.h    runtime/io/stbtt/vendor/stb_truetype.h   MIT OR Public Domain  (-DX3D_CPP_BUILD_STBTT=ON or -DX3D_CPP_BUILD_POC=ON)
                     (see runtime/io/stbtt/vendor/STB_TRUETYPE_LICENSE.txt)
-  Liberation Fonts  runtime/io/tests/fixtures/font/*.ttf      OFL-1.1  (test fixtures)
-                    (see runtime/io/tests/fixtures/font/OFL.txt)
+  Liberation Fonts  third_party/fonts/*.ttf                   OFL-1.1
+                    (see third_party/fonts/OFL.txt; SERIF/SANS/TYPEWRITER faces
+                     shared by the SDK text tests AND the PoC renderer's glyph
+                     atlas (-DX3D_CPP_BUILD_POC=ON))
 
 ===============================================================================
 3. Optional build-time dependencies (fetched / vcpkg-installed, not bundled)
