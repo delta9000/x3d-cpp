@@ -179,12 +179,15 @@ sdk::SceneExtractor ex(ctx, doc.scene, /*meshOptions=*/{}, proc);
 // <ImageTexture url="proc:checker"/> now samples the generated checkerboard.
 ```
 
-What ships in the box today is only the inert side (the monospace stub, a
-fail-by-default `TextureResolver`). The proven full backends — FreeType/stb fonts,
-stb/wuffs texture decode, QuickJS/Duktape scripts, miniaudio audio — live in the
-source tree as reference adapters; surfacing them to installed embedders (one
-labeled file per seam, built via `find_package`) is the queued reference-consumer
-work.
+The shipped defaults aren't inert: `makeMonospaceStub` produces real fixed-pitch
+Text layout (advanceEm = 0.6), and the geo seam flat-falls-back to a real planar
+(geographically unanchored) grid — basic but functional. Only the Texture and
+Asset resolvers default to no-ops (`makeNullTextureResolver` always fails → white
+fallback). What's *not* in the installed package is the rich IO — FreeType/stb
+fonts, stb/wuffs texture decode, QuickJS/Duktape scripts, miniaudio audio. Those
+live in the source tree as reference adapters; surfacing them to installed
+embedders (one labeled file per seam, built via `find_package`) is the queued
+reference-consumer work.
 
 ## Capability matrix
 
