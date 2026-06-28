@@ -17,6 +17,7 @@
 
 #include "X3DDocument.hpp" // Scene::addRootNode definition.
 #include "X3DExecutionContext.hpp"
+#include "ViewDependentSystem.hpp" // LOD level tracking (case 6)
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 
@@ -253,6 +254,94 @@ TEST_CASE("scene_extractor_t8_test") {
         if (id == id0) removedId0 = true;
       CHECK((removedId0));
     }
+  }
+
+  // === 5) Switch.whichChoice change yields added/removed (incremental delta) ==
+  //        Regression: whichChoice was classified DirtyField, which delta()
+  //        ignores for a grouping node (it is in neither geomDeps_ nor
+  //        materialDeps_), so incremental consumers (the OpenGL PoC) never saw
+  //        the active-child swap — only full-snapshot consumers (cpuraster) did.
+  //        classifyDirty now maps whichChoice -> DirtyChildren -> subtree re-walk.
+  {
+    auto sw = createX3DNode("Switch");
+    auto shape0 = makeTriShape();
+    auto shape1 = makeTriShape();
+    addChild(sw, shape0);
+    addChild(sw, shape1);
+    setF(sw, "whichChoice", std::any(SFInt32{0})); // show child 0.
+    Scene scene;
+    scene.addRootNode(sw);
+    X3DExecutionContext ctx;
+    ctx.buildSceneGraph(scene);
+    extract::SceneExtractor ex(ctx, scene);
+    auto snap = ex.fullSnapshot();
+    CHECK((snap.added.size() == 1)); // only the active child (0) is drawn.
+    extract::RenderItemId id0 = snap.added[0];
+
+    // Flip to child 1: child 0's placement must be REMOVED, child 1's ADDED.
+    ctx.postEvent(sw.get(), "whichChoice", std::any(SFInt32{1}));
+    ctx.tick(1.0);
+    auto d = ex.delta();
+    CHECK((d.added.size() == 1)); // child 1's new placement.
+    CHECK((d.added[0] != id0));   // a genuinely new RenderItemId.
+    bool removedId0 = false;
+    for (extract::RenderItemId id : d.removed)
+      if (id == id0) removedId0 = true;
+    CHECK((removedId0)); // child 0's placement is gone.
+
+    // And flipping to whichChoice = -1 removes everything (draw nothing).
+    extract::RenderItemId id1 = d.added[0];
+    ctx.postEvent(sw.get(), "whichChoice", std::any(SFInt32{-1}));
+    ctx.tick(2.0);
+    auto d2 = ex.delta();
+    CHECK((d2.added.empty()));
+    bool removedId1 = false;
+    for (extract::RenderItemId id : d2.removed)
+      if (id == id1) removedId1 = true;
+    CHECK((removedId1));
+  }
+
+  // === 6) LOD level change (camera motion) yields added/removed via delta() ===
+  //        View-dependent sibling of SW-DELTA-1 (see LOD-DELTA-1). The rendered
+  //        LOD level is computed from the camera, not a settable field, so it
+  //        never reaches classifyDirty. ViewDependentSystem marks the LOD subtree
+  //        dirty when its level flips, so delta() re-walks and swaps the active
+  //        child. Covers the camera-motion case; LOD under an animated parent
+  //        transform / multi-path USE is per-path and remains deferred.
+  {
+    auto lod = createX3DNode("LOD");
+    setF(lod, "range", std::any(std::vector<SFFloat>{5.0f})); // d<5->lvl0, >=5->lvl1
+    auto s0 = makeTriShape();
+    auto s1 = makeTriShape();
+    addChild(lod, s0);
+    addChild(lod, s1);
+    auto vp = createX3DNode("Viewpoint");
+    setF(vp, "position", std::any(SFVec3f{0, 0, 10})); // d=10 -> level 1 (far child)
+    Scene scene;
+    scene.addRootNode(vp);
+    scene.addRootNode(lod);
+    X3DExecutionContext ctx;
+    ctx.buildSceneGraph(scene); // binds the Viewpoint
+    auto vds = std::make_shared<ViewDependentSystem>();
+    vds->attach(lod.get(), ctx);
+    ctx.addSystem(vds);
+
+    extract::SceneExtractor ex(ctx, scene);
+    auto snap = ex.fullSnapshot(); // far -> exactly the level-1 child
+    CHECK((snap.added.size() == 1));
+    extract::RenderItemId idFar = snap.added[0];
+
+    // Move the camera close (d=1 -> level 0): the level flip marks the LOD dirty
+    // so delta() swaps far-child -> near-child.
+    setF(vp, "position", std::any(SFVec3f{0, 0, 1}));
+    ctx.tick(1.0);
+    auto d = ex.delta();
+    CHECK((d.added.size() == 1));
+    CHECK((d.added[0] != idFar));
+    bool removedFar = false;
+    for (extract::RenderItemId id : d.removed)
+      if (id == idFar) removedFar = true;
+    CHECK((removedFar));
   }
 
   return;

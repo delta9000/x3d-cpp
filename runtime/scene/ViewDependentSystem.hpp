@@ -82,6 +82,10 @@ public:
       if (lvl != last) {
         last = lvl;
         ctx.postEvent(node, "level_changed", std::any(static_cast<SFInt32>(lvl)));
+        // The rendered LOD level is computed (camera distance), not a settable
+        // field, so it never reaches classifyDirty — mark the subtree dirty so
+        // incremental delta() re-walks the LOD and swaps the active child.
+        ctx.markActiveChildChanged(node);
         if (levelHook_) levelHook_(node, lvl);
       }
     }

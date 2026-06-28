@@ -230,6 +230,16 @@ public:
 
   /// Pull surface (read after tick): the per-node dirty set for this tick.
   const DirtyTracker &dirtyTracker() const { return dirty_; }
+  /// Mark a grouping node's ACTIVE-CHILD selection as changed so the next
+  /// delta() re-walks its subtree. View-dependent selection — an LOD level
+  /// computed from the camera each tick — is not a settable field, so it never
+  /// flows through the cascade's field observer (classifyDirty). Without this,
+  /// only full-snapshot consumers see the swap; incremental delta() consumers
+  /// (e.g. the OpenGL PoC) stay on the stale level. The settable-field analogue
+  /// is Switch.whichChoice -> DirtyChildren in classifyDirty (SW-DELTA-1).
+  void markActiveChildChanged(X3DNode *n) {
+    if (n) dirty_.markDirty(n, DirtyChildren | DirtyBounds);
+  }
   /// Pull surface: world transform of a Transform node (identity if unknown).
   Mat4 worldTransform(const X3DNode *n) const {
     return transforms_.worldTransform(n);
@@ -388,6 +398,14 @@ private:
     bool isTransformNode = TransformSystem::isTransform(a.node);
     for (const char *f : kChildren)
       if (a.field == f) flags = DirtyChildren;
+    // Switch.whichChoice selects the active child: changing it is an active-CHILD
+    // change for extraction, so it must trigger a subtree re-walk (DirtyChildren)
+    // — not a plain DirtyField, which delta() ignores for a grouping node (it is
+    // in neither geomDeps_ nor materialDeps_). Without this, incremental delta()
+    // consumers (e.g. the OpenGL PoC) never see the swap; only full-snapshot
+    // consumers (cpuraster) do. The extractor already reads whichChoice on a full
+    // walk, so this only fixes the INCREMENTAL channel.
+    if (a.field == "whichChoice") flags = DirtyChildren;
     if (isTransformNode)
       for (const char *f : kTRS)
         if (a.field == f) flags = DirtyLocalTransform;

@@ -775,8 +775,9 @@
 # KeySensor/StringSensor System + a KeyState char-seam extension, mirroring
 # EventUtilities). GeoTouchSensor (TSN), LoadSensor (NSN), Collision-volume (COL-1/3),
 # DIS PDUs (NSN-10) = deferred (blocked on geo-projection / asset-resolver-IO /
-# collision-subsystem / DIS-transport seams). Switch audited clean (whichChoice handled
-# in the extractor). LOD-1 + COL-2 = small open fixes.
+# collision-subsystem / DIS-transport seams). Switch audited clean in the extractor's
+# FULL walk; the incremental delta() whichChoice gap was found later + fixed (SW-DELTA-1).
+# LOD-1 + COL-2 = small open fixes.
 
 # X3DTouchSensorNode (§20/§25) — TouchSensor audited clean; GeoTouchSensor inert (geo)
 - id: TSN-1
@@ -796,7 +797,16 @@
   summary: hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.
   note: Blocked on the GeoProjection seam (ECEF→geodetic). See CONF-GEO.
 
-# X3DGroupingNode active-child (§10/§23) — Switch clean; LOD partial; Collision inert
+# X3DGroupingNode active-child (§10/§23) — Switch full-snapshot clean, incremental
+# delta() fixed (SW-DELTA-1); LOD partial; Collision inert
+- id: SW-DELTA-1
+  nodes: [Switch]
+  component: Grouping
+  clause: "10.3.10"
+  severity: major
+  status: fixed
+  summary: "Switch.whichChoice change was invisible to the incremental delta() channel — a runtime change of whichChoice swapped the active child for full-snapshot consumers (cpuraster) but NOT for incremental ones (the OpenGL PoC), which stayed on the old child."
+  note: "Root cause: X3DExecutionContext::classifyDirty mapped a whichChoice field change to DirtyField, but a Switch is in neither geomDeps_ nor materialDeps_, so SceneExtractor::delta() ignored it (no subtree re-walk). The extractor already reads whichChoice on a full walk — only the incremental channel was affected (the prior 'Switch audited clean' note covered fullSnapshot only). Fix: classifyDirty maps whichChoice -> DirtyChildren, so delta() re-walks the Switch subtree and emits removed(old child)+added(new child). Regression: scene_extractor_t8_test.cpp case 5 (flip 0->1->-1). Surfaced via a Switch+IntegerSequencer demo rendered through the OpenGL PoC's incremental delta() path."
 - id: COL-1
   nodes: [Collision]
   clause: "23.4.2"
@@ -984,6 +994,14 @@
   wave: 4
   commit: 2b84a99
   summary: When children.size() < range.size()+1, level_changed must report the index of the child actually rendered (clamp), not the raw range bin.
+- id: LOD-DELTA-1
+  nodes: [LOD]
+  component: Navigation
+  clause: "23.4.3"
+  severity: minor
+  status: fixed
+  summary: "LOD active-level changes were invisible to the incremental delta() channel — the rendered level is computed from the camera, not a settable field, so it never reaches classifyDirty. Incremental consumers (the OpenGL PoC) stayed on the stale level while full-snapshot consumers (cpuraster, which re-extracts every frame) swapped."
+  note: "View-dependent sibling of SW-DELTA-1 (settable-field active-child). Fix: ViewDependentSystem calls X3DExecutionContext::markActiveChildChanged(lod) when the announced level flips, so delta() re-walks the LOD subtree and swaps the active child. Regression: scene_extractor_t8_test.cpp case 6 (move Viewpoint d=10 -> d=1 -> swap). RESIDUAL (deferred): ViewDependentSystem's per-node level uses worldTransform(node) = the FIRST-PATH (identity-if-unknown) transform (the M2C-1 per-node-event / per-path-render split), so an LOD under an ANIMATED PARENT TRANSFORM or a multi-path USE is not detected and stays stale in delta() — the accurate level is computed per-path only in the extractor walk. Same per-path view-dependent gap as Billboard orientation (deferred, classifyDirty M2c/M2d note). Found by differential testing: poc --animate (incremental delta) vs cpuraster --animate (full snapshot)."
 
 # ── CONF-VIEWNAV review follow-ons (2026-06-19, deferred minors) ─────────────
 - id: BIND-09
@@ -1557,6 +1575,26 @@
     pauseTime). Corollary of TDN-1/2/6. Follow-ups - retire the naive legacy seed
     TimeSensorBehavior.hpp:39; add a fraction-continuity regression test. 4.1 - partial upstream
     (added the 8.2.4.4 requirement, not the 8.4.1 formula); engine already implements the fix.
+- id: TIME-ORIGIN-1
+  nodes: [TimeSensor]
+  interfaces: [X3DTimeDependentNode]
+  clause: "8.2.1"
+  severity: minor
+  status: closed
+  summary: "By design: the time origin is the consumer's choice (the `now` fed to tick()), not baked into the SDK. App-relative feeding yields Castle's timeOriginAtLoad behaviour; strict epoch feeding yields literal SFTime semantics."
+  note: >-
+    X3D SFTime is normatively seconds since the Unix epoch (8.2.1), so a strict reading makes
+    startTime=0 mean 1970. The SDK never reads a wall clock; every time-dependent system reads
+    only the `now` passed to X3DExecutionContext::tick(now), so the embedder picks the origin.
+    Both bundled renderers feed app-relative time (OpenGL PoC: glfwGetTime(); cpuraster --animate:
+    frame/fps), starting ~0 at load — so startTime=0 behaves as "at load", matching Castle Game
+    Engine's NavigationInfo.timeOriginAtLoad extension by default
+    (https://castle-engine.io/x3d_time_origin_considered_uncomfortable). A consumer needing literal
+    spec semantics feeds epoch `now`. CONSEQUENCE / nuance: a file authoring an absolute startTime
+    phases differently under app-relative vs epoch feeding (for startTime<=now loops this only
+    shifts phase, not whether they animate). This is a deliberate contract, documented in
+    docs/wiki/subsystems/system-time.md ("Time origin"). No code change — recorded so the matrix
+    does not later flag it as an unhandled epoch gap.
 - id: PROTO-SHADOW
   nodes: [ProtoInstance]
   clause: "4.4.4"

@@ -74,6 +74,37 @@ State lives in the system, never on the node — the node and its reflection `Fi
 - **Interpolator downstream** — `fraction_changed` from `TimeSensorSystem` is the canonical clock signal that drives interpolators. See [Interpolator System](../subsystems/system-interpolators.md).
 - **Sensor layer** — `TimeSensorSystem` is one of the sensor-like systems registered through the `System`/`X3DActiveNode` pattern. See [Sensors](../subsystems/sensors.md).
 
+## Time origin (absolute epoch vs. application-relative)
+
+X3D's `SFTime` is normatively defined as **seconds since the Unix epoch** (00:00:00
+GMT, 1 Jan 1970), so a strict reading makes `startTime=0` mean *1970* and treats a
+`loop=TRUE` `TimeSensor` as having run since the epoch. Castle Game Engine documents
+why that is awkward in practice — huge time values lose precision in shaders, you
+cannot pause, and `startTime=0` is not "now" — and adds a `NavigationInfo.timeOriginAtLoad`
+extension so `startTime=0` means *application load*
+(see [the Castle write-up](https://castle-engine.io/x3d_time_origin_considered_uncomfortable)).
+
+**This SDK does not bake a time origin in.** `TimeSensorSystem` (and every other
+time-dependent system) reads time only via the `now` value the embedder passes to
+`X3DExecutionContext::tick(now)` — it never calls a wall clock itself. The *consumer*
+chooses the origin:
+
+- **Application-relative (the default for our renderers).** Both bundled consumers
+  feed `now` starting at ≈0 at load — the OpenGL PoC feeds `glfwGetTime()`, the CPU
+  rasterizer's `--animate` feeds `frame / fps`. With this feeding, `startTime=0`
+  behaves as *at load* — i.e., x3d-cpp gets Castle's `timeOriginAtLoad` behaviour for
+  free, which is why authored loop animations begin immediately and stay in
+  float-friendly ranges. Pausing/scrubbing is just "stop advancing / rewind `now`".
+- **Absolute epoch (strict conformance).** A consumer that needs literal spec
+  semantics — e.g. a file authoring an absolute `startTime` as a real wall-clock
+  instant — feeds Unix-epoch `now`. The SDK honours whatever it is given.
+
+**Strict-conformance nuance:** because the origin is the consumer's choice, a file
+that authors an absolute `startTime` will *phase differently* under application-relative
+feeding than under epoch feeding. For loop animations with `startTime <= now` this only
+shifts the phase, not whether they animate; it matters only for content keyed to an
+absolute instant. This is a deliberate contract, not a bug — see finding `TIME-ORIGIN-1`.
+
 ## How it is tested
 
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `timesensor_test`) — `runtime/events/tests/timesensor_test.cpp`. Full lifecycle edge cases: `enabled=false`, start gating, single-shot completion, looping wrap + `cycleTime` pulses, `stopTime` early deactivation, pause/resume (`elapsedTime` excludes the paused span), `cycleInterval <= 0` guard, `set_startTime` ignored while active (TDN-4), `loop=FALSE` finishes the current cycle not immediately (TDN-3/TDN-7), strict `resumeTime > pauseTime` requirement (TDN-6), `pauseTime_changed`/`resumeTime_changed` ROUTE fire (TDN-1/TDN-2), and re-activation guard (no auto-restart after completion).
