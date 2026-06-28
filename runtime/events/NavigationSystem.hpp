@@ -15,13 +15,16 @@
 //            LOOKAT frame-and-animate to a picked object's bbox center.
 //   §23.4.6  Viewpoint position/orientation/centerOfRotation/fieldOfView.
 //
-// The pointer-drag delta is taken from the change in the consumer-supplied
-// pointer bearing across ticks (the seam carries a world Ray; for navigation we
-// use the ray ORIGIN's screen-plane proxy — the consumer reports pointer motion
-// by moving the ray, and no projection params cross the seam). Keys are opaque
-// ints; this System maps a small fixed set (kKey*) to FLY movement, matching
-// Annex G.3's informative arrow-key mapping. The consumer chooses which native
-// key codes it forwards as these values.
+// The pointer-drag delta is the change in the consumer-supplied NORMALIZED
+// SCREEN cursor (PointerState::screenX/Y) across ticks — a camera-independent
+// signal, so no projection params cross the seam. It is deliberately NOT derived
+// from the world Ray: the ray is recomputed from the camera each frame, so the
+// same cursor maps to a different world point as the camera turns — feeding that
+// back into rotation spins the view on a single click and scales the rotation by
+// the scene's near-plane size. The world Ray stays for picking only. Keys are
+// opaque ints; this System maps a small fixed set (kKey*) to FLY movement,
+// matching Annex G.3's informative arrow-key mapping. The consumer chooses which
+// native key codes it forwards as these values.
 //
 // Codegen-free: reads/writes Viewpoint + NavigationInfo through the existing
 // generated accessors + ctx.writeField/postEvent. namespace x3d::runtime.
@@ -92,7 +95,13 @@ public:
     lastMode_ = mode;
     lastFlyVp_ = vp;
 
-    // Pointer drag delta in screen-proxy units (consumer-reported ray origin).
+    // Pointer drag delta from the NORMALIZED SCREEN cursor (PointerState::screenX/
+    // Y), NOT the world ray. The world ray is recomputed from the camera each
+    // frame, so using it would make the same cursor map to a different reference
+    // as the camera rotates — a positive-feedback loop that spins the view on a
+    // single click, scaled by the scene's near-plane size. The screen cursor is
+    // camera-independent, so a still cursor never self-navigates and a drag gives
+    // the same rotation at any scene scale. (The world ray stays for picking.)
     const PointerState &ps = ctx.pointerState();
     const bool pointerChanged = ps.revision != lastPointerRev_;
     lastPointerRev_ = ps.revision;
@@ -101,9 +110,9 @@ public:
     // do not also drag-navigate this tick.
     const bool dragging = ps.present && ps.buttonDown && !ctx.pointerConsumedBySensor();
     if (dragging) {
-      if (dragActive_) { dx = ps.ray.origin.x - lastPx_; dy = ps.ray.origin.y - lastPy_; }
-      lastPx_ = ps.ray.origin.x;
-      lastPy_ = ps.ray.origin.y;
+      if (dragActive_) { dx = ps.screenX - lastPx_; dy = ps.screenY - lastPy_; }
+      lastPx_ = ps.screenX;
+      lastPy_ = ps.screenY;
       dragActive_ = true;
     } else {
       dragActive_ = false;
@@ -135,9 +144,10 @@ public:
 
 private:
   static constexpr float kPi = 3.14159265358979323846f;
-  // Angular sensitivity: a full screen-proxy unit of drag ~ pi/2 radians. Browser
-  // -defined; the spec only mandates "tied to pointer, no damping" (§23.4.4).
-  static constexpr float kRotScale = kPi; // radians per unit of drag delta
+  // Angular sensitivity: dragging a full normalized screen unit (the whole
+  // viewport width/height) orbits kPi radians. Browser-defined; the spec only
+  // mandates "tied to pointer, no damping" (§23.4.4).
+  static constexpr float kRotScale = kPi; // radians per unit of normalized screen drag
   // NAV-FLY-ROLL: clamp pitch just shy of +/-90 deg so asin() stays defined
   // and the camera never flips through the pole.
   static constexpr float kPitchLimit = kPi * 0.5f - 0.001f;

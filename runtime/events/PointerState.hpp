@@ -21,8 +21,18 @@ namespace x3d::runtime {
  *          generated when the pointer moves).
  */
 struct PointerState {
-    /// Current world-space bearing supplied by the consumer (renderer).
+    /// Current world-space bearing supplied by the consumer (renderer). Used for
+    /// picking / pointing-device sensors — NOT for navigation drag (the ray moves
+    /// with the camera, so it can't be a stable drag reference; see screenX/Y).
     Ray ray{};
+
+    /// Normalized cursor position in the viewport, supplied by the consumer:
+    /// x rightward, y upward, nominally [0,1] across the view. This is the
+    /// camera-INDEPENDENT signal NavigationSystem uses for EXAMINE/FLY drag, so a
+    /// drag produces the same rotation regardless of scene scale and a still
+    /// cursor never self-navigates as the camera turns.
+    float screenX = 0.0f;
+    float screenY = 0.0f;
 
     /// True while the primary pointer button is depressed.
     bool buttonDown = false;
@@ -49,6 +59,12 @@ struct PointerState {
 
     void setPresent(bool p) {
         present = p;
+        ++revision;
+    }
+
+    void setScreen(float x, float y) {
+        screenX = x;
+        screenY = y;
         ++revision;
     }
 };
