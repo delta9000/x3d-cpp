@@ -143,6 +143,49 @@ usable but may gain fields.
 | Geo | `sdk::GeoProjection` | geographic coordinate → local Cartesian, supplied via `MeshBuildOptions::geoProjection`. Empty = flat-fallback (unanchored). |
 | Script | `sdk::ScriptEngine` | a language backend (e.g. ECMAScript). Wrap in `sdk::ScriptSystem`, register with `ctx.addScriptSystem(ss)`. `SaiContext` is the backend↔runtime channel. |
 
+### Implementing a seam
+
+A seam impl is just a value you hand the SDK: a `std::function` you assign
+(Asset/Texture/Font/Geo) or, for Script, an abstract class you subclass. Two
+minimal ports:
+
+**1 — wire a shipped canonical.** The one seam impl that ships ready-to-use in the
+installed package is the monospace `FontMetrics` stub (also the default). Opting
+in explicitly is one line — it lets `Text` lay out as fixed-width glyph cells with
+no font backend:
+
+```cpp
+sdk::MeshBuildOptions opts;
+opts.fontMetrics = sdk::makeMonospaceStub();      // shipped canonical FontMetrics port
+sdk::SceneExtractor ex(ctx, doc.scene, opts);
+```
+
+**2 — write a contrived one (no IO).** A reduced version of cpu_raster's `proc:`
+texture seam: it handles only `proc:` urls by *generating* pixels — no file, no
+decoder — and fails everything else so a real decoder can be chained behind it.
+This is the `TextureResolver` port reduced to its essence:
+
+```cpp
+sdk::TextureResolver proc = [](const std::string &url) {
+  if (url.rfind("proc:", 0) != 0)                 // not a proc: url -> not ours
+    return sdk::TexturePixelResult::makeFailed();
+  sdk::TexturePixels px;
+  px.width = px.height = 2;
+  px.rgba = { 255,0,255,255,  0,0,0,255,          // bottom row: magenta, black   (RGBA8,
+              0,0,0,255,  255,0,255,255 };         // top row:    black, magenta    origin bottom-left)
+  return sdk::TexturePixelResult::makeReady(std::move(px));
+};
+sdk::SceneExtractor ex(ctx, doc.scene, /*meshOptions=*/{}, proc);
+// <ImageTexture url="proc:checker"/> now samples the generated checkerboard.
+```
+
+What ships in the box today is only the inert side (the monospace stub, a
+fail-by-default `TextureResolver`). The proven full backends — FreeType/stb fonts,
+stb/wuffs texture decode, QuickJS/Duktape scripts, miniaudio audio — live in the
+source tree as reference adapters; surfacing them to installed embedders (one
+labeled file per seam, built via `find_package`) is the queued reference-consumer
+work.
+
 ## Capability matrix
 
 See [v1-capabilities.md](v1-capabilities.md) for what works in v1 and what is
