@@ -55,6 +55,7 @@
 #include "RenderItem.hpp"          // extract descriptors
 #include "SceneExtractor.hpp"      // T7a minimal extractor
 #include "ShaderBindingPlan.hpp"   // Phase 5 author-shader vocab dispatch
+#include "StbttGlyphAtlas.hpp"     // T-TEXT glyph atlas (x3d_stbtt io backend)
 #include "TextureResolver.hpp"     // T-TEX decoded-pixel seam (the consumer decode)
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
@@ -228,6 +229,7 @@ struct GpuMesh {
   bool hasNormals = false; // false => route to the unlit program (B4 contract).
   bool hasColors = false; // per-vertex Color present => overrides Material diffuse.
   bool hasTexcoords = false; // B8: authored TextureCoordinate present => sampleable.
+  bool isGlyphMesh = false;  // T-TEXT: texcoords index the font atlas, not a material slot.
   // B7: the mesh's LOCAL-frame centroid (mean of positions). Transformed by the
   // per-path worldTransform at draw time to get a world-space sort key for the
   // back-to-front transparency pass. Cheap to keep here (computed once on upload).
@@ -242,6 +244,7 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
   g.hasNormals = m.hasNormals;
   g.hasColors = m.hasColors;
   g.hasTexcoords = !m.texcoords.empty();
+  g.isGlyphMesh = m.isGlyphMesh;
 
   // LOCAL-frame centroid for the B7 transparency back-to-front sort.
   if (!m.positions.empty()) {
@@ -423,7 +426,10 @@ ex::AssetResolver makeLocalFileResolver(const std::string &sceneDir) {
 // loop binds the GPU texture WITHOUT re-running the resolver itself.
 //
 // Pixel format contract (TextureResolver.hpp): RGBA8, tightly packed, origin
-// bottom-left = GL convention => NO vertical flip (X3D texcoords already match).
+// bottom-left = GL convention. stb_image decodes rows TOP-first, but GL treats
+// the first row as the texture's BOTTOM, so we flip on load to land bottom-up
+// (without this, file textures render vertically mirrored: see ConformanceNist
+// Geometry/Box/texture.x3d, where the VTS decal appeared upside-down).
 // http(s)/data: URIs and missing files => Failed (the PoC falls back to white);
 // a real async backend would return Pending here without blocking the frame.
 ex::TextureResolver makeLocalTextureResolver(const std::string &sceneDir) {
@@ -440,7 +446,7 @@ ex::TextureResolver makeLocalTextureResolver(const std::string &sceneDir) {
     if (bytes.empty()) return ex::TexturePixelResult::makeFailed();
 
     int w = 0, h = 0, comp = 0;
-    stbi_set_flip_vertically_on_load(0); // X3D bottom-left = GL; no flip (B8).
+    stbi_set_flip_vertically_on_load(1); // top-first decode -> GL bottom-up rows.
     unsigned char *px = stbi_load_from_memory(
         bytes.data(), static_cast<int>(bytes.size()), &w, &h, &comp, 4);
     if (!px || w <= 0 || h <= 0) {
@@ -454,6 +460,35 @@ ex::TextureResolver makeLocalTextureResolver(const std::string &sceneDir) {
     stbi_image_free(px);
     return ex::TexturePixelResult::makeReady(std::move(out));
   };
+}
+
+// Map the X3D font families (SERIF / SANS / TYPEWRITER, §15.4.1) to TTF paths
+// for the glyph atlas. Resolution order per family: env override
+// (X3D_POC_FONT_SERIF/SANS/TYPEWRITER) -> bundled assets/fonts/ -> a few common
+// system locations. Only families whose file exists are added; an empty map
+// leaves the SDK's monospace stub in place (Text falls back to blank cells).
+std::map<std::string, std::string> resolveFontFaces() {
+  // Bundled Liberation faces (third_party/fonts/, shared with the SDK text
+  // tests; SIL OFL). X3D_POC_FONT_DIR overrides the directory; each family also
+  // takes a per-family env override (X3D_POC_FONT_SERIF/SANS/TYPEWRITER).
+  const char *dirEnv = std::getenv("X3D_POC_FONT_DIR");
+  const std::string dir = std::string(dirEnv && *dirEnv ? dirEnv : X3D_POC_FONT_DIR) + "/";
+  struct Fam { const char *key; const char *env; const char *file; };
+  const Fam fams[] = {
+    {"SERIF", "X3D_POC_FONT_SERIF", "LiberationSerif-Regular.ttf"},
+    {"SANS", "X3D_POC_FONT_SANS", "LiberationSans-Regular.ttf"},
+    {"TYPEWRITER", "X3D_POC_FONT_TYPEWRITER", "LiberationMono-Regular.ttf"},
+  };
+  const auto exists = [](const std::string &p) {
+    std::ifstream f(p, std::ios::binary);
+    return static_cast<bool>(f);
+  };
+  std::map<std::string, std::string> out;
+  for (const Fam &fam : fams) {
+    if (const char *e = std::getenv(fam.env); e && exists(e)) { out[fam.key] = e; continue; }
+    if (const std::string a = dir + fam.file; exists(a)) out[fam.key] = a;
+  }
+  return out;
 }
 
 // Upload one decoded RGBA8 image to a GL texture; wrap + mipmap from sampler.
@@ -650,9 +685,15 @@ int main(int argc, char **argv) {
   int animFps = 30;
   double animDuration = 4.0;
   std::string framesDir;
+  // --front: ignore any authored Viewpoint and frame the scene from a canonical
+  // straight-on front camera (eye on +Z, looking down -Z, bounding-sphere fit).
+  // Mirrors how the Web3D/NIST conformance set generates its `*-front.jpg`
+  // reference views, so screenshots line up apples-to-apples for the visual sweep.
+  bool frontView = false;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     if (a == "--headless") headless = true;
+    else if (a == "--front") frontView = true;
     else if (a == "--screenshot" && i + 1 < argc) screenshotPath = argv[++i];
     else if (a == "--animate" && i + 1 < argc) { animate = true; framesDir = argv[++i]; }
     else if (a == "--fps" && i + 1 < argc) animFps = std::atoi(argv[++i]);
@@ -707,7 +748,15 @@ int main(int argc, char **argv) {
   // render flat-colored until an embedder supplies an atlas via the seam.)
   ex::TextureResolver textureResolver =
       makeLocalTextureResolver(dirOf(scenePath));
-  ex::SceneExtractor extractor(ctx, scene, /*meshOptions=*/{}, textureResolver);
+
+  // T-TEXT: bake a glyph atlas (stb_truetype, via the SDK's x3d_stbtt io module)
+  // and wire it into the FontMetrics seam so Text renders real letterforms. The
+  // CPU bake needs no GL; the atlas texture is uploaded later (GL path only).
+  // If no font is found, fontMetrics is null and the SDK's monospace stub stands.
+  auto glyphAtlas = x3d::runtime::io::stbtt::makeStbttGlyphAtlas(resolveFontFaces());
+  ex::MeshBuildOptions meshOptions;
+  if (glyphAtlas.fontMetrics) meshOptions.fontMetrics = glyphAtlas.fontMetrics;
+  ex::SceneExtractor extractor(ctx, scene, meshOptions, textureResolver);
 
   // ----------------------------------------------------------------------
   // 1b. Headless probe (T10 build-side acceptance). Extract once and report
@@ -949,6 +998,27 @@ int main(int argc, char **argv) {
   // B8 + Phase 5.2 texture uniforms (diffuse/normal/emissive/specular).
   const GLint uHasTexture = phongProg ? glGetUniformLocation(phongProg, "uHasTexture") : -1;
   const GLint uTexture = phongProg ? glGetUniformLocation(phongProg, "uTexture") : -1;
+  // T-TEXT: when set, uTexture is the font coverage atlas (sample .r as alpha).
+  const GLint uGlyphAtlas = phongProg ? glGetUniformLocation(phongProg, "uGlyphAtlas") : -1;
+
+  // T-TEXT: upload the baked glyph coverage atlas as an R8 texture (rows already
+  // bottom-up, so no flip). Bound on unit 0 only for glyph-mesh draws.
+  GLuint glyphAtlasTex = 0;
+  if (glyphAtlas.atlas.ok) {
+    glGenTextures(1, &glyphAtlasTex);
+    glBindTexture(GL_TEXTURE_2D, glyphAtlasTex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, glyphAtlas.atlas.width,
+                 glyphAtlas.atlas.height, 0, GL_RED, GL_UNSIGNED_BYTE,
+                 glyphAtlas.atlas.coverage.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    std::fprintf(stderr, "[poc] glyph atlas %dx%d uploaded\n",
+                 glyphAtlas.atlas.width, glyphAtlas.atlas.height);
+  }
   // Phase 5.2 extended texture slots.
   const GLint uHasNormalTex   = phongProg ? glGetUniformLocation(phongProg, "uHasNormalTex") : -1;
   const GLint uNormalTex      = phongProg ? glGetUniformLocation(phongProg, "uNormalTex") : -1;
@@ -1076,9 +1146,11 @@ int main(int argc, char **argv) {
   // is identity (eye at origin), which mis-frames any large/offset model (e.g. the
   // SanCarlos cathedral spans 97 units centered at z=-23.5 — most of it would sit
   // behind/far from an origin camera). Frame the bounding sphere from a 3/4 angle.
-  const bool noAuthoredViewpoint = (ctx.boundViewpoint() == nullptr);
+  // --front forces the canonical front fit camera even when a Viewpoint IS
+  // authored, so every scene lines up with the NIST `*-front.jpg` reference.
+  const bool useFitCamera = (frontView || ctx.boundViewpoint() == nullptr);
   Mat4 fitView = Mat4::identity();
-  if (noAuthoredViewpoint && !sceneBounds.empty) {
+  if (useFitCamera && !sceneBounds.empty) {
     SFVec3f c = {(sceneBounds.min.x + sceneBounds.max.x) * 0.5f,
                  (sceneBounds.min.y + sceneBounds.max.y) * 0.5f,
                  (sceneBounds.min.z + sceneBounds.max.z) * 0.5f};
@@ -1086,11 +1158,16 @@ int main(int argc, char **argv) {
     float radius = 0.5f * std::sqrt(sz.x*sz.x + sz.y*sz.y + sz.z*sz.z);
     float fov = extractor.camera().fieldOfView;            // X3D min-dimension FOV
     float dist = radius / std::sin((std::max)(0.1f, fov) * 0.5f) * 1.25f; // margin
-    SFVec3f dir = v3norm({0.45f, 0.35f, 1.0f});            // front, slightly up/right
+    // Straight-on front for --front (matches NIST front view); otherwise a 3/4
+    // angle that reveals depth for the default "no Viewpoint" framing.
+    SFVec3f dir = frontView ? SFVec3f{0.0f, 0.0f, 1.0f}
+                            : v3norm({0.45f, 0.35f, 1.0f}); // front, slightly up/right
     SFVec3f eye = v3add(c, v3mul(dir, dist));
     fitView = lookAt(eye, c, {0.0f, 1.0f, 0.0f});
-    std::fprintf(stderr, "[poc] no Viewpoint authored -> view-all camera "
-                 "(center %.1f %.1f %.1f, dist %.1f)\n", c.x, c.y, c.z, dist);
+    std::fprintf(stderr, "[poc] %s -> view-all camera "
+                 "(center %.1f %.1f %.1f, dist %.1f)\n",
+                 frontView ? "--front" : "no Viewpoint authored",
+                 c.x, c.y, c.z, dist);
   }
 
   // Background clear color from the bound Background (first skyColor), else a
@@ -1219,7 +1296,7 @@ int main(int argc, char **argv) {
       ex::CameraDesc cam = extractor.camera();
       // Use the view-all framing when the scene authored no Viewpoint, else the
       // bound Viewpoint's view matrix from the SDK.
-      const Mat4 view = (noAuthoredViewpoint && !sceneBounds.empty)
+      const Mat4 view = (useFitCamera && !sceneBounds.empty)
                             ? fitView : cam.viewMatrix;
       const float aspect = static_cast<float>(w) / static_cast<float>(h);
 
@@ -1372,7 +1449,17 @@ int main(int argc, char **argv) {
           // Normal scale.
           if (uNormalScale >= 0) glUniform1f(uNormalScale, mat.normalScale);
 
-          if (g.hasTexcoords) {
+          if (g.isGlyphMesh && glyphAtlasTex) {
+            // T-TEXT: texcoords index the font coverage atlas; bind it on unit 0
+            // and flag the shader to read .r as alpha-tested glyph coverage with
+            // the material color. No material texture slots apply to glyph meshes.
+            bindTex(0, uTexture, uHasTexture, glyphAtlasTex);
+            if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 1);
+            bindTex(1, uNormalTex,   uHasNormalTex,   0);
+            bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);
+            bindTex(3, uSpecularTex, uHasSpecularTex, 0);
+          } else if (g.hasTexcoords) {
+            if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 0);
             // Unit 0: diffuse/base color (sRGB — driver decodes to linear).
             GLuint t0 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Diffuse,
                                                          ex::TextureRef::Slot::BaseColor}),
@@ -1391,6 +1478,7 @@ int main(int argc, char **argv) {
                                       texCache, assetResolver, /*srgb=*/true);
             bindTex(3, uSpecularTex, uHasSpecularTex, t3);
           } else {
+            if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 0);
             bindTex(0, uTexture,     uHasTexture,     0);
             bindTex(1, uNormalTex,   uHasNormalTex,   0);
             bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);

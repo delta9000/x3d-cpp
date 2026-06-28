@@ -40,7 +40,8 @@ uniform int  uHasColors;     // 1 => per-vertex vColor overrides uDiffuse.rgb.
 
 // ---- Texture slots (all optional — shader guards on Has* flags) -------------
 uniform int       uHasTexture;   // 0: diffuse slot absent.
-uniform sampler2D uTexture;      // unit 0: diffuse / base-color.
+uniform sampler2D uTexture;      // unit 0: diffuse / base-color (or glyph atlas).
+uniform int       uGlyphAtlas;   // 1: uTexture is a font coverage atlas (.r = alpha).
 
 uniform int       uHasNormalTex; // 0: no normal map.
 uniform sampler2D uNormalTex;    // unit 1: tangent-space normal map.
@@ -78,7 +79,11 @@ void main() {
     // ---- Base color from diffuse slot ± per-vertex Color -------------------
     vec3 base  = (uHasColors != 0) ? vColor.rgb : uDiffuse.rgb;
     float alpha = uDiffuse.a;
-    if (uHasTexture != 0) {
+    if (uGlyphAtlas != 0) {
+        // Font atlas: single-channel coverage in .r. Keep the material color and
+        // alpha-test on coverage (no blending in the PoC's opaque depth pass).
+        if (texture(uTexture, vTexCoord).r < 0.5) discard;
+    } else if (uHasTexture != 0) {
         vec4 texel = texture(uTexture, vTexCoord);
         base  *= texel.rgb;
         alpha *= texel.a;
