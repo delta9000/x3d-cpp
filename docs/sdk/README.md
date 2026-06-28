@@ -19,6 +19,19 @@ find_package(x3d_cpp CONFIG REQUIRED)
 target_link_libraries(my_app PRIVATE x3d_cpp::sdk)
 ```
 
+Build a third-party project against an installed SDK by putting the install
+prefix on `CMAKE_PREFIX_PATH`:
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=/path/to/x3d-cpp/install
+cmake --build build
+```
+
+The smallest complete downstream project lives in
+[`examples/embed_minimal/`](../../examples/embed_minimal/). It includes only
+`x3d/sdk.hpp`, links only `x3d_cpp::sdk`, parses a built-in X3D scene, builds
+the runtime context, and extracts one render snapshot.
+
 ## The three layers
 
 ### 1. Load
@@ -130,6 +143,7 @@ Runnable, headless, built + run as ctests (`X3D_CPP_BUILD_EXAMPLES=ON`):
 - `examples/01_load_validate_convert.cpp` — load, report conformance, convert to all encodings.
 - `examples/02_extract_render_feed.cpp` — extract render items + camera + lights (the renderer-feed path).
 - `examples/03_attach_behavior_tick.cpp` — register a custom `System` and drive ticks.
+- `examples/embed_minimal/` — installed-package smoke project for embedders using `find_package(x3d_cpp)`.
 
 `examples/poc_renderer/` is a full out-of-SDK OpenGL consumer (off by default,
 `X3D_CPP_BUILD_POC=ON`).

@@ -118,6 +118,14 @@ embedder-supplied **seams** (`AssetResolver`, `TextureResolver`, `FontMetrics`,
 `ScriptEngine`, …), each proven swappable by a second backend. See
 [`docs/sdk/`](docs/sdk/).
 
+For a downstream-style CMake project that does not depend on the source tree,
+see [`examples/embed_minimal/`](examples/embed_minimal/). It uses only:
+
+```cmake
+find_package(x3d_cpp CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE x3d_cpp::sdk)
+```
+
 ### 3. Render it headless (the gallery above)
 
 The [`examples/cpu_raster/`](examples/cpu_raster/) reference consumer turns the

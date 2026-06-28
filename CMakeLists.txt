@@ -81,7 +81,15 @@ target_include_directories(x3d_cpp INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/script>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>")
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/codecs>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/events>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/math>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/scene>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/parse>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/extract>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/script>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/sound>")
 
 # The generated code targets C++20 (designated initializers, etc.).
 target_compile_features(x3d_cpp INTERFACE cxx_std_20)
@@ -141,7 +149,9 @@ add_library(x3d_cpp::nodes ALIAS x3d_cpp_nodes)
 # it). It must stay OUT of the unity merge — otherwise its main() lands in a
 # real node TU and every consumer linking the archive hits a duplicate-main
 # link error.
-set_target_properties(x3d_cpp_nodes PROPERTIES UNITY_BUILD ON)
+set_target_properties(x3d_cpp_nodes PROPERTIES
+    EXPORT_NAME nodes
+    UNITY_BUILD ON)
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/test.cpp"
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
@@ -157,6 +167,7 @@ target_link_libraries(x3d_cpp INTERFACE x3d_cpp_nodes)
 # ---------------------------------------------------------------------------
 add_library(x3d_cpp_sdk INTERFACE)
 add_library(x3d_cpp::sdk ALIAS x3d_cpp_sdk)
+set_target_properties(x3d_cpp_sdk PROPERTIES EXPORT_NAME sdk)
 target_include_directories(x3d_cpp_sdk INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>")
@@ -173,37 +184,31 @@ install(TARGETS x3d_cpp x3d_cpp_nodes x3d_cpp_sdk
 # subdir so installed consumers `#include "x3d/sdk.hpp"`.
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
-    FILES_MATCHING PATTERN "*.hpp")
+    FILES_MATCHING
+        PATTERN "*.hpp"
+        PATTERN "tests" EXCLUDE)
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/x3d"
-    FILES_MATCHING PATTERN "*.hpp")
+    FILES_MATCHING
+        PATTERN "*.hpp"
+        PATTERN "tests" EXCLUDE)
 
-# The hand-written runtime document-model headers install into the same flat
-# include dir so installed consumers see them by bare name too. The codecs/
-# subdirectory (XML/JSON/VRML codecs + bundled XmlLite) installs flat as well so
-# `#include "X3DCodecs.hpp"` resolves for installed consumers.
+# The hand-written runtime headers install preserving their source layout. The
+# exported target exposes the matching subdirs as install-interface include dirs,
+# so umbrella includes such as "X3DCodecs.hpp" and source-relative includes such
+# as parse/Inflate.hpp -> ../RecursionLimits.hpp both resolve for consumers.
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runtime/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
-    FILES_MATCHING PATTERN "*.hpp")
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/"
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
-    FILES_MATCHING PATTERN "*.hpp")
-# The event-system runtime (cascade engine, execution context, reference
-# behaviors) installs flat as well so `#include "X3DExecutionContext.hpp"`
-# resolves for installed consumers.
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/"
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
-    FILES_MATCHING PATTERN "*.hpp")
-# The unified parsing front-end (X3DReader interface, encoding sniffing, shared
-# NodeBuilder + VrmlTokenizer, XmlReaderAdapter, X3DParse front door) installs
-# flat as well so `#include "X3DParse.hpp"` resolves for installed consumers.
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/"
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
-    FILES_MATCHING PATTERN "*.hpp"
-    # tinfl.h is the bundled public-domain DEFLATE decompressor (C header,
-    # included by Inflate.hpp); it must install alongside the .hpp front-end.
-    PATTERN "*.h")
+    FILES_MATCHING
+        PATTERN "*.hpp"
+        # tinfl.h is the bundled public-domain DEFLATE decompressor (C header,
+        # included by parse/Inflate.hpp); it must install alongside the headers.
+        PATTERN "*.h"
+        PATTERN "tests" EXCLUDE
+        PATTERN "test_support" EXCLUDE
+        PATTERN "*TestSupport.*" EXCLUDE
+        PATTERN "vendor" EXCLUDE)
 
 install(EXPORT x3d_cppTargets
     FILE x3d_cppTargets.cmake
@@ -784,7 +789,8 @@ if(X3D_CPP_BUILD_TESTS)
 
     # Collect all generated headers. CONFIGURE_DEPENDS re-globs on rebuild if
     # the set of headers changes.
-    file(GLOB X3D_CPP_HEADERS CONFIGURE_DEPENDS "${X3D_CPP_HEADER_DIR}/*.hpp")
+    file(GLOB_RECURSE X3D_CPP_HEADERS CONFIGURE_DEPENDS
+        "${X3D_CPP_HEADER_DIR}/x3d/*.hpp")
     list(LENGTH X3D_CPP_HEADERS X3D_CPP_HEADER_COUNT)
     message(STATUS "x3d_cpp: found ${X3D_CPP_HEADER_COUNT} generated headers to compile-test")
 
@@ -824,8 +830,8 @@ if(X3D_CPP_BUILD_TESTS)
     set(X3D_CPP_ALL_HEADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/x3d_cpp_all_headers.cpp")
     set(_x3d_all_content "// Auto-generated by CMake. Includes every generated header.\n")
     foreach(_hdr IN LISTS X3D_CPP_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME)
-        string(APPEND _x3d_all_content "#include \"${_hdr_name}\"\n")
+        file(RELATIVE_PATH _hdr_rel "${X3D_CPP_HEADER_DIR}" "${_hdr}")
+        string(APPEND _x3d_all_content "#include \"${_hdr_rel}\"\n")
     endforeach()
     # Pull in the full runtime document model + the node-agnostic codecs on top
     # of the generated nodes.
@@ -854,10 +860,10 @@ if(X3D_CPP_BUILD_TESTS)
     #     build of just that object.
     if(X3D_CPP_PER_HEADER_CHECKS)
     foreach(_hdr IN LISTS X3D_CPP_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
+        file(RELATIVE_PATH _hdr_rel "${X3D_CPP_HEADER_DIR}" "${_hdr}")
+        string(REGEX REPLACE "[^A-Za-z0-9_]" "_" _hdr_name "${_hdr_rel}")
         set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
+        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_rel}\"\n")
 
         set(_tgt "x3d_syntax_${_hdr_name}")
         add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
@@ -1624,6 +1630,10 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/sdk_facade_test.cpp")
     target_link_libraries(x3d_sdk_facade PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_sdk_facade COMMAND x3d_sdk_facade)
+    add_test(NAME x3d_install_embed_smoke
+        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/verify_install_embed.sh"
+                "${CMAKE_CURRENT_BINARY_DIR}"
+                "${CMAKE_CURRENT_BINARY_DIR}/install-embed-smoke")
 
     # T-SOUND: the §16 Sound seam (runtime/sound/). The AudioBackend seam +
     # SoundSystem are CORE, header-only, DSP-free (mirrors PhysicsBackend +
