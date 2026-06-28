@@ -63,6 +63,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DParse.hpp"            // x3d::codec::parseFile
 #include "X3DSceneBridge.hpp"     // BridgeResult + buildFrom + attachInteractive
+#include "draw_math.hpp"          // renderer-side hot-path normal-matrix helper
 #include "input.hpp"              // InputBridge + unproject + keycode map
 
 #include <algorithm> // std::sort (B7 back-to-front transparency sort)
@@ -304,23 +305,6 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
 
   glBindVertexArray(0);
   return g;
-}
-
-// 3x3 normal matrix = inverse-transpose of (view*model)'s upper-left 3x3, packed
-// column-major for glUniformMatrix3fv. Built from the full 4x4 inverse so non-
-// uniform scale on the per-path world transform does not skew the shading normal.
-// Returns the 9 floats in column-major order (GL_FALSE transpose at upload).
-std::array<float, 9> normalMatrix3(const Mat4 &viewModel) {
-  const Mat4 inv = viewModel.inverse();
-  // inv is column-major: element (row r, col c) = inv.m[c*4+r]. We want the
-  // TRANSPOSE of inv's upper-left 3x3, also returned column-major. Transpose of
-  // a column-major 3x3 means out column c = inv row c => out[c*3+r] = inv(c,r)
-  // = inv.m[r*4 + c].
-  std::array<float, 9> out{};
-  for (int c = 0; c < 3; ++c)
-    for (int r = 0; r < 3; ++r)
-      out[c * 3 + r] = inv.m[r * 4 + c];
-  return out;
 }
 
 // Transform a world-space direction into eye space by the view matrix (w=0).
@@ -1515,8 +1499,7 @@ int main(int argc, char **argv) {
           }
           // Per-path model + eye-space normal matrix.
           glUniformMatrix4fv(uModel, 1, GL_FALSE, it.worldTransform.m.data());
-          Mat4 viewModel = view * it.worldTransform;
-          std::array<float, 9> nrm = normalMatrix3(viewModel);
+          std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
           glUniformMatrix3fv(uNormalMat, 1, GL_FALSE, nrm.data());
 
           // Material: diffuse(rgb)+alpha, emissive, ambient.
@@ -1586,8 +1569,7 @@ int main(int argc, char **argv) {
             boundProg = pbrProg;
           }
           glUniformMatrix4fv(uPbrModel, 1, GL_FALSE, it.worldTransform.m.data());
-          Mat4 viewModel = view * it.worldTransform;
-          std::array<float, 9> nrm = normalMatrix3(viewModel);
+          std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
           glUniformMatrix3fv(uPbrNormalMat, 1, GL_FALSE, nrm.data());
 
           // PBR material params.
@@ -1710,7 +1692,7 @@ int main(int argc, char **argv) {
 
           // Upload each vocab entry the author declared.
           Mat4 viewModel = view * it.worldTransform;
-          std::array<float, 9> nrm = normalMatrix3(viewModel);
+          std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
           for (const auto &e : plan.entries) {
             if (e.unrecognized) continue; // already diagnosed above
             const int loc = e.location;
