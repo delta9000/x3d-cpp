@@ -13,6 +13,7 @@
 #include "X3DScene.hpp"
 
 #include <any>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -24,6 +25,15 @@ using namespace x3d::core;
 
 class TransformSystem {
 public:
+  /// Diagnostic counter: number of localMatrix() TRS recompositions performed
+  /// process-wide. localMatrix() is non-trivial — five reflective field scans
+  /// plus a quaternion compose — so incremental consumers must memoize shared
+  /// ancestors instead of recomposing them once per dependent render item. Tests
+  /// snapshot this around delta() to assert the re-accumulation stays
+  /// O(distinct transforms), not O(items * depth).
+  static inline std::uint64_t localMatrixCalls_ = 0;
+  static std::uint64_t localMatrixCallCount() { return localMatrixCalls_; }
+
   /// Build the Transform hierarchy index + initial world transforms from a Scene.
   void buildIndex(const Scene &scene) {
     parent_.clear(); children_.clear(); world_.clear(); walked_.clear();
@@ -95,6 +105,7 @@ public:
   // Read a transform-bearing node's local matrix from its TRS fields via
   // reflection. Public so BoundsSystem/PickSystem/LightSystem can reuse it.
   static Mat4 localMatrix(const X3DNode *n) {
+    ++localMatrixCalls_;
     return transformMatrix(getVec(n, "translation"), getRot(n, "rotation"),
                            getVec(n, "scale"), getVec(n, "center"),
                            getRot(n, "scaleOrientation"));

@@ -180,6 +180,16 @@ not a seam" rationale and the deferral set are in [ADR-0040](../decisions/0040-n
 
 - **`DirtyTracker` (runtime dependency)** — `delta()` reads `changedNodes()` and `flags(n)` exactly once per tick. Dirty flags consumed: `DirtyLocalTransform | DirtyWorldTransform` → transform re-accumulation; `DirtyField` → geometry content re-extract or material re-read; `DirtyChildren` → subtree re-walk from the cached entry matrix. See [Dirty/bounds/transform](dirty-bounds-transform.md).
 
+> **Per-`delta()` transform memoization.** The transform re-accumulation walks each
+> dirty item's full root→leaf `PathKey`, but `TransformSystem::localMatrix` (five
+> reflective field reads + a quaternion compose) and `isTransform` are memoized in
+> a per-`delta()` node cache, and each item is re-accumulated only once even when
+> several dirty ancestors flag it. A shared ancestor of *N* dirty items is therefore
+> recomposed once, not *N* times — the re-accumulation stays O(distinct transforms),
+> not O(items × depth). The memo is path-independent (a node's local matrix depends
+> only on its own fields), so the per-path product — and thus DEF/USE instancing —
+> stays exact. Regression: `runtime/extract/tests/scene_extractor_delta_perf_test.cpp`.
+
 - **`TransformSystem::localMatrix` (runtime dependency)** — called per path-ancestor during transform re-accumulation in `reaccumulateWorld()` and during the DFS `walk()`. The extractor never reads `TransformSystem::world_` (the first-path-only table); every world matrix is re-accumulated path-by-path. See [Dirty/bounds/transform](dirty-bounds-transform.md).
 
 ### Threading contract

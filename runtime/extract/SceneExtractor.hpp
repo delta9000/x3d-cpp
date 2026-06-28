@@ -229,6 +229,9 @@ public:
     RenderDelta delta;
     const DirtyTracker &dirty = ctx_.dirtyTracker();
     std::unordered_set<RenderItemId> transformSeen, geomSeen, materialSeen;
+    // Shared across every reaccumulateWorld() in this delta() so a transform that
+    // sits on the path of many dirty items is recomposed once, not once per item.
+    LocalXfCache localXf;
 
     for (const X3DNode *n : dirty.changedNodes()) {
       const unsigned f = dirty.flags(n);
@@ -236,8 +239,13 @@ public:
       // --- transform: re-accumulate worldM along each dependent's PathKey -----
       if (f & (DirtyLocalTransform | DirtyWorldTransform)) {
         for (RenderItemId id : depsOf(transformDeps_, n)) {
-          reaccumulateWorld(id);
-          if (transformSeen.insert(id).second) delta.updatedTransform.push_back(id);
+          // Dedup the re-accumulation itself: propagate() flags every node in a
+          // dirtied subtree, so the same item is reached via several dirty
+          // ancestors — but its full-path world matrix only needs computing once.
+          if (transformSeen.insert(id).second) {
+            reaccumulateWorld(id, localXf);
+            delta.updatedTransform.push_back(id);
+          }
         }
       }
 
@@ -428,13 +436,38 @@ private:
   // incremental, per-path-correct staleness fix: it NEVER reads
   // ctx.worldTransform()/TransformSystem.world_ (the M2C-1 first-path table), so
   // a USE-shared placement under two Transforms updates each placement correctly.
-  void reaccumulateWorld(RenderItemId id) {
+  // Per-node memo for one delta(): isTransform() allocates a type-name string and
+  // localMatrix() does five reflective field scans + a quaternion compose, so a
+  // dirty ancestor shared by every dependent item would otherwise be recomposed
+  // O(items * depth) times. Field values are stable between the end of tick()'s
+  // cascade and the next tick(), so caching per delta() is safe; localMatrix is a
+  // function of the node's OWN fields (path-independent), so the cache stays
+  // correct under DEF/USE instancing — only the accumulated product differs by
+  // path, and that product is still formed fresh per PathKey below.
+  struct LocalXf {
+    bool isXform;
+    Mat4 local;
+  };
+  using LocalXfCache = std::unordered_map<const X3DNode *, LocalXf>;
+
+  const LocalXf &localXfOf(const X3DNode *n, LocalXfCache &cache) {
+    auto it = cache.find(n);
+    if (it != cache.end()) return it->second;
+    LocalXf v;
+    v.isXform = isTransform(n);
+    v.local = v.isXform ? TransformSystem::localMatrix(n) : Mat4::identity();
+    return cache.emplace(n, v).first->second;
+  }
+
+  void reaccumulateWorld(RenderItemId id, LocalXfCache &cache) {
     RenderItem &rec = items_[id];
     Mat4 w = Mat4::identity();
     // The PathKey is root..leaf; the leaf Shape itself is not a Transform, but a
     // defensive isTransform() guard keeps this identical to the walk() idiom.
-    for (const X3DNode *n : rec.path)
-      if (isTransform(n)) w = w * TransformSystem::localMatrix(n);
+    for (const X3DNode *n : rec.path) {
+      const LocalXf &x = localXfOf(n, cache);
+      if (x.isXform) w = w * x.local;
+    }
     rec.worldTransform = w;
   }
 
