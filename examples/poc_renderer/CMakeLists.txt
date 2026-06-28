@@ -101,6 +101,11 @@ target_compile_features(x3d_poc_renderer PRIVATE cxx_std_20)
 # Surface the asset/shaders dir to the binary so it can find the bundled
 # hand-written triangle scene + GLSL without a working-directory dance.
 target_compile_definitions(x3d_poc_renderer PRIVATE
+    # glad is THE GL loader; GLFW must never pull in the system <GL/gl.h> (it isn't
+    # present on a runtime-only mesa install, e.g. CI). Defining this on the target
+    # — not per-file — protects every TU regardless of include order, so a new file
+    # that includes <GLFW/glfw3.h> without glad first can't reintroduce the break.
+    GLFW_INCLUDE_NONE
     "X3D_POC_ASSET_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/assets\""
     "X3D_POC_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/shaders\""
     # Bundled Liberation faces (shared with the SDK text tests; SIL OFL).
@@ -115,4 +120,7 @@ add_executable(x3d_poc_input
     "${CMAKE_CURRENT_SOURCE_DIR}/input.cpp")
 target_link_libraries(x3d_poc_input PRIVATE x3d_cpp::x3d_cpp glfw)
 target_compile_features(x3d_poc_input PRIVATE cxx_std_20)
+# No GL loader here at all (input.cpp uses only the GLFW window/input API), so keep
+# GLFW from pulling in the system <GL/gl.h> — same reason as the renderer target.
+target_compile_definitions(x3d_poc_input PRIVATE GLFW_INCLUDE_NONE)
 add_test(NAME x3d_poc_input COMMAND x3d_poc_input)
