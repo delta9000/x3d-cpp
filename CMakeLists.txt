@@ -645,6 +645,30 @@ if(X3D_CPP_BUILD_PLMPEG OR X3D_CPP_BUILD_POC)
 endif()
 
 # ---------------------------------------------------------------------------
+# MovieDecoder seam — Backend B (libtheora/libogg). ADR-0041.
+# The SECOND independent backend — it makes the seam GENERIC (one frozen interface,
+# two format-partitioned codecs) via the shared semantics-contract test. Theora is
+# a Xiph BSD codec and royalty-free, so it joins the default-shippable tier
+# (flag-gated OFF). libtheora/libogg are NOT single-header; they are found via
+# pkg-config and linked PRIVATE to the one TU (the FreeType backend-B pattern), so
+# no codec header leaks to consumers.
+# Build: cmake --preset dev -DX3D_CPP_BUILD_THEORA=ON  (needs libtheora-dev + libogg-dev)
+# ---------------------------------------------------------------------------
+option(X3D_CPP_BUILD_THEORA "Build libtheora MovieDecoder backend (OFF default)" OFF)
+
+if(X3D_CPP_BUILD_THEORA)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(THEORADEC REQUIRED IMPORTED_TARGET theoradec)
+    add_library(x3d_theora STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/theora/TheoraMovieDecoder.cpp")
+    target_link_libraries(x3d_theora PUBLIC x3d_cpp::x3d_cpp)
+    # theoradec.pc pulls in libogg transitively; both stay PRIVATE to this TU.
+    target_link_libraries(x3d_theora PRIVATE PkgConfig::THEORADEC)
+    target_include_directories(x3d_theora PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/theora")
+endif()
+
+# ---------------------------------------------------------------------------
 # FontMetrics seam — Backend B (FreeType). ADR-0025 / U2.
 # FreeType is NOT single-header; it is provided via vcpkg (find_package). Its
 # headers are PRIVATE to the one TU (FreetypeFontMetrics.cpp), so no FreeType
@@ -713,25 +737,35 @@ if(TARGET x3d_stb AND TARGET x3d_wuffs AND X3D_CPP_BUILD_TESTS)
 endif()
 
 # ---------------------------------------------------------------------------
-# MovieDecoder seam — Backend A semantics-contract test (ADR-0041). One doctest
-# binary drives a self-made raw MPEG-1 elementary stream (the NIST-corpus shape)
-# through pl_mpeg and asserts the observable seam behavior (Ready dims + tight
-# RGBA, EOF-holds-last, backward-seek rewind, Pending/Failed parity). Hermetic +
-# offline (a committed 686-byte fixture). Build: -DX3D_CPP_BUILD_PLMPEG=ON
-# Run: ctest -R x3d_movie
+# MovieDecoder seam — genericity proof (ADR-0041). One doctest binary runs the
+# SAME semantics-contract (runContract) against each backend's OWN reference clip:
+# pl_mpeg / MPEG-1 (Backend A, a 686-byte raw elementary stream — the NIST corpus
+# shape) and, when built, libtheora / Ogg-Theora (Backend B). Two backends passing
+# the identical contract (Ready dims + tight opaque RGBA, EOF-holds-last, backward-
+# seek rewind, Pending/Failed/garbage parity) is what makes the seam GENERIC.
+# Hermetic + offline (committed fixtures). Run: ctest -R x3d_movie
 # ---------------------------------------------------------------------------
 if(TARGET x3d_plmpeg AND X3D_CPP_BUILD_TESTS)
     enable_testing()
     add_executable(x3d_movie_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/tests/movie_decoder_tests.cpp")
-    # Talks ONLY through the seam factory (decoder-free header); no pl_mpeg header.
+    # Talks ONLY through the seam factories (decoder-free headers); no codec header.
     target_link_libraries(x3d_movie_tests PRIVATE x3d_plmpeg)
     target_include_directories(x3d_movie_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
     target_compile_definitions(x3d_movie_tests PRIVATE
-        FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/tests/fixtures")
+        PLMPEG_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/tests/fixtures")
+    # Backend B joins the SAME binary when built -> the genericity proof runs both.
+    if(TARGET x3d_theora)
+        target_link_libraries(x3d_movie_tests PRIVATE x3d_theora)
+        target_include_directories(x3d_movie_tests PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/theora")
+        target_compile_definitions(x3d_movie_tests PRIVATE
+            X3D_MOVIE_HAVE_THEORA=1
+            THEORA_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/theora/tests/fixtures")
+    endif()
     add_test(NAME x3d_movie_tests COMMAND x3d_movie_tests)
     set_tests_properties(x3d_movie_tests PROPERTIES TIMEOUT 120)
 endif()

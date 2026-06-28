@@ -16,14 +16,23 @@ related:
 
 ## Status
 
-Accepted (2026-06-27). Backend A has landed: the frozen seam
-(`runtime/extract/MovieDecoder.hpp`) plus the pl_mpeg backend
-(`runtime/io/plmpeg/`, the flag-gated `x3d_plmpeg` target) wired into the PoC
-renderer, which plays the entire Web3D/NIST conformance MovieTexture corpus (raw
-MPEG-1 elementary streams). A per-backend semantics-contract test
-(`x3d_movie_tests`) guards the seam behavior. Theora and WebM follow as
-additional backends behind the same frozen seam; the genericity row stays
-NOT-YET-PROVEN until a second backend passes the contract test.
+Accepted (2026-06-27). The seam is PROVEN GENERIC — two independent backends
+behind the frozen `runtime/extract/MovieDecoder.hpp`:
+
+- **Backend A** — pl_mpeg / MPEG-1 (`runtime/io/plmpeg/`, `x3d_plmpeg`), wired
+  into the PoC renderer; plays the entire Web3D/NIST conformance MovieTexture
+  corpus (raw MPEG-1 elementary streams).
+- **Backend B** — libtheora/libogg / Ogg-Theora (`runtime/io/theora/`,
+  `x3d_theora`), a Xiph BSD royalty-free codec (system libs, the FreeType
+  backend-B pattern).
+
+Both pass the SAME semantics-contract (`x3d_movie_tests`, `runContract`) against
+their own reference clips — Pending/Ready/EOF-hold/backward-seek/Failed parity.
+Two backends agreeing on the observable seam behavior is the genericity proof
+(contract-parity, not bit-swap — codecs partition by format, so no two backends
+decode the same input). The seam-status row is now STABLE. WebM/VP8-9 and AV1 may
+join the ship tier later for modern content; FFmpeg/GStreamer/H.26x plug into the
+same seam downstream.
 
 Implementation note (discovered during Backend A): the NIST `.mpg` files are
 **raw elementary video streams** (they start with a `0x000001B3` sequence header,

@@ -87,6 +87,9 @@ binaries you distribute that link it.
   libcurl           curl.se (via vcpkg)                      curl/MIT-X   (-DX3D_CPP_BUILD_CURL=ON)
   AWS SDK for C++   github.com/aws/aws-sdk-cpp (via vcpkg)   Apache-2.0   (-DX3D_CPP_BUILD_S3=ON)
   FreeType          freetype.org (via vcpkg)                 FTL OR GPL-2.0  (-DX3D_CPP_BUILD_FREETYPE=ON)
+  libtheora+libogg  xiph.org (system / pkg-config)           BSD-3-Clause (Xiph)  (-DX3D_CPP_BUILD_THEORA=ON)
+                    MovieDecoder Backend B — Ogg/Theora video (royalty-free Xiph
+                    codec). Linked PRIVATE to the one TU; default build unaffected.
 
 The AWS S3 backend (-DX3D_CPP_BUILD_S3=ON) pulls these transitive dependencies
 via vcpkg, each under its own license:

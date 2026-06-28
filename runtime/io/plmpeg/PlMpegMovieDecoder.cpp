@@ -47,16 +47,47 @@ struct PlmVideoDeleter {
 using PlmPtr = std::unique_ptr<plm_t, PlmDeleter>;
 using PlmVideoPtr = std::unique_ptr<plm_video_t, PlmVideoDeleter>;
 
-// Per-URL decoder context. Exactly one of {plm, video} is set; `failed` marks a
-// URL we already tried and could not open so we never re-resolve it every frame.
+// Per-URL decoder context. Exactly one path is used: `plm` (program stream, seeks
+// natively) or `video` over the retained `rawBytes` (raw elementary stream). For
+// the raw path a backward seek REBUILDS `video` from rawBytes — plm_video_rewind
+// does not recover after the stream has hit EOF, so a fresh decoder is the robust
+// rewind (the same approach as the Theora backend). `failed` marks a URL we
+// already tried and could not open so we never re-resolve it every frame.
 struct Context {
-  PlmPtr plm;            // program-stream path
-  PlmVideoPtr video;     // raw-elementary-video path
-  double lastDecodedTime = -1.0; // media time of `lastFrame` (raw path)
-  bool haveFrame = false;        // raw path has produced at least one frame
-  VideoFrame lastFrame;          // cached last frame (raw path repeat / EOF hold)
+  PlmPtr plm;                          // program-stream path
+  std::vector<std::uint8_t> rawBytes;  // raw path: retained for rebuild-on-rewind
+  PlmVideoPtr video;                   // raw-elementary-video path
+  double lastDecodedTime = -1.0;       // media time of `lastFrame` (raw path)
+  bool haveFrame = false;              // raw path has produced at least one frame
+  VideoFrame lastFrame;                // cached last frame (raw path repeat / EOF hold)
   bool failed = false;
 };
+
+// (Re)create a raw-video decoder over a FRESH malloc'd COPY of `bytes` that the
+// decoder owns (free_when_done=1). The Context keeps `bytes` as an untouched master
+// so it can rebuild on a backward seek; each decoder gets its own buffer, so there
+// is no shared-memory aliasing between the old and new decoder during a rebuild.
+// Returns nullptr on a malformed stream.
+PlmVideoPtr makeRawVideo(const std::vector<std::uint8_t> &bytes) {
+  const std::size_t n = bytes.size();
+  auto *buf = static_cast<std::uint8_t *>(std::malloc(n));
+  if (!buf) return nullptr;
+  std::memcpy(buf, bytes.data(), n);
+  plm_buffer_t *pbuf =
+      plm_buffer_create_with_memory(buf, n, /*free_when_done=*/1);
+  plm_video_t *vid =
+      pbuf ? plm_video_create_with_buffer(pbuf, /*destroy_when_done=*/1) : nullptr;
+  if (!vid || plm_video_get_width(vid) <= 0 || plm_video_get_height(vid) <= 0) {
+    if (vid)
+      plm_video_destroy(vid); // frees buf
+    else if (pbuf)
+      plm_buffer_destroy(pbuf); // frees buf
+    else
+      std::free(buf);
+    return nullptr;
+  }
+  return PlmVideoPtr(vid);
+}
 
 // First start code in the first few KB: 0xBA => program stream, 0xB3 => raw video
 // elementary stream. A program stream's first start code is the pack header, which
@@ -118,38 +149,27 @@ MovieDecoder makePlMpegMovieDecoder(AssetResolver resolver) {
       }
 
       const char kind = detectStreamKind(asset.bytes);
-      // pl_mpeg takes ownership of the buffer (free_when_done=1): hand it a
-      // malloc'd copy it can free() on destroy.
-      const std::size_t n = asset.bytes.size();
-      auto *buf = static_cast<std::uint8_t *>(std::malloc(n));
-      if (!buf) {
-        (*cache)[url].failed = true;
-        return FrameResult::makeFailed();
-      }
-      std::memcpy(buf, asset.bytes.data(), n);
-
       Context ctx;
       if (kind == 'V') {
-        plm_buffer_t *pbuf =
-            plm_buffer_create_with_memory(buf, n, /*free_when_done=*/1);
-        plm_video_t *vid =
-            pbuf ? plm_video_create_with_buffer(pbuf, /*destroy_when_done=*/1)
-                 : nullptr;
-        if (!vid || plm_video_get_width(vid) <= 0 ||
-            plm_video_get_height(vid) <= 0) {
-          if (vid)
-            plm_video_destroy(vid);
-          else if (pbuf)
-            plm_buffer_destroy(pbuf); // frees buf
-          else
-            std::free(buf);
+        // Raw elementary video: retain the bytes (rebuild-on-rewind) and borrow
+        // them into the decoder (free_when_done=0).
+        ctx.rawBytes = std::move(asset.bytes);
+        ctx.video = makeRawVideo(ctx.rawBytes);
+        if (!ctx.video) {
           ctx.failed = true;
           (*cache)[url] = std::move(ctx);
           return FrameResult::makeFailed();
         }
-        ctx.video.reset(vid);
       } else {
-        // Program stream (or unknown: let the demuxer try).
+        // Program stream (or unknown: let the demuxer try). pl_mpeg takes ownership
+        // of the buffer (free_when_done=1): hand it a malloc'd copy.
+        const std::size_t n = asset.bytes.size();
+        auto *buf = static_cast<std::uint8_t *>(std::malloc(n));
+        if (!buf) {
+          (*cache)[url].failed = true;
+          return FrameResult::makeFailed();
+        }
+        std::memcpy(buf, asset.bytes.data(), n);
         plm_t *plm = plm_create_with_memory(buf, n, /*free_when_done=*/1);
         if (!plm || plm_get_width(plm) <= 0 || plm_get_height(plm) <= 0) {
           if (plm)
@@ -187,15 +207,17 @@ MovieDecoder makePlMpegMovieDecoder(AssetResolver resolver) {
     }
 
     // ---- Raw-elementary path: sequential decode to media time. ----
-    plm_video_t *vid = ctx.video.get();
-    if (!vid) return FrameResult::makeFailed();
-
-    // Seeking backwards (e.g. a loop wrap or a re-render): rewind and replay.
+    // Seeking backwards (loop wrap / re-render): REBUILD the decoder from the
+    // retained bytes. plm_video_rewind does not recover after the stream has hit
+    // EOF, so a fresh decoder is the reliable rewind.
     if (t + 1e-9 < ctx.lastDecodedTime) {
-      plm_video_rewind(vid);
+      ctx.video = makeRawVideo(ctx.rawBytes);
       ctx.lastDecodedTime = -1.0;
       ctx.haveFrame = false;
+      if (!ctx.video) return FrameResult::makeFailed();
     }
+    plm_video_t *vid = ctx.video.get();
+    if (!vid) return FrameResult::makeFailed();
 
     // Decode forward while the NEXT frame's time is still <= t; the decoder's
     // internal time is the time of the frame about to be decoded. Convert only the
