@@ -119,40 +119,89 @@ inline TexCoordGenMode genModeFromToken(const std::string &t) {
 
 } // namespace texextract
 
+inline TextureTransform2DParams textureTransformParamsOfNode(const x3d::nodes::X3DNode &tt) {
+  TextureTransform2DParams p; // identity by default.
+  const std::string t = tt.nodeTypeName();
+  if (t == "MultiTextureTransform") {
+    const auto children =
+        geombounds::getField<MFNode>(tt, "textureTransform", {});
+    for (const auto &child : children) {
+      if (!child) continue;
+      const auto childType = child->nodeTypeName();
+      if (childType == "TextureTransform" || childType == "TextureTransform2D" ||
+          childType == "TextureTransformMatrix3D")
+        return textureTransformParamsOfNode(*child);
+    }
+    return p;
+  }
+
+  if (t == "TextureTransformMatrix3D") {
+    const SFMatrix4f m = geombounds::getField<SFMatrix4f>(tt, "matrix", {});
+    p.hasMatrix = true;
+    p.matrix = {
+        m.matrix[0][0], m.matrix[0][1], m.matrix[0][3],
+        m.matrix[1][0], m.matrix[1][1], m.matrix[1][3],
+        m.matrix[3][0], m.matrix[3][1], m.matrix[3][3]};
+    return p;
+  }
+
+  if (t != "TextureTransform" && t != "TextureTransform2D") return p;
+
+  const SFVec2f center =
+      geombounds::getField<SFVec2f>(tt, "center", SFVec2f{0.0f, 0.0f});
+  const SFVec2f scale =
+      geombounds::getField<SFVec2f>(tt, "scale", SFVec2f{1.0f, 1.0f});
+  const SFVec2f translation =
+      geombounds::getField<SFVec2f>(tt, "translation", SFVec2f{0.0f, 0.0f});
+  p.centerS = center.x;
+  p.centerT = center.y;
+  p.rotation = geombounds::getField<float>(tt, "rotation", 0.0f);
+  p.scaleS = scale.x;
+  p.scaleT = scale.y;
+  p.translationS = translation.x;
+  p.translationT = translation.y;
+  return p;
+}
+
 // ---------------------------------------------------------------------------
 // textureTransformParamsOf — read Appearance.textureTransform into the pure
 // TextureTransform2DParams field bag (§18.4.10).
 //
 //   * appearance == nullptr / no textureTransform / null node => identity.
 //   * A 2D TextureTransform / TextureTransform2D node => its center/rotation/
-//     scale/translation SFVec2f+SFFloat fields. (A 3D MatrixTextureTransform /
-//     TextureTransform3D is out of v1 scope — surfaced as identity; documented.)
+//     scale/translation SFVec2f+SFFloat fields.
+//   * MultiTextureTransform => first usable contained transform for legacy
+//     callers; use textureTransformParamsListOf() for per-channel transforms.
+//   * TextureTransformMatrix3D => project the 4x4 transform over (s,t,0,1) onto
+//     the same 2D seam.
 // ---------------------------------------------------------------------------
 inline TextureTransform2DParams textureTransformParamsOf(const x3d::nodes::X3DNode *appearance) {
   TextureTransform2DParams p; // identity by default.
   if (!appearance) return p;
   auto tt = geombounds::getNode(*appearance, "textureTransform");
   if (!tt) return p;
-  const std::string t = tt->nodeTypeName();
-  // Only the 2D TextureTransform carries the scalar field bag this baker uses.
-  // A MultiTextureTransform / MatrixTextureTransform / TextureTransform3D is not
-  // a single-(s,t) transform — leave identity (documented v1 narrowing).
-  if (t != "TextureTransform" && t != "TextureTransform2D") return p;
+  return textureTransformParamsOfNode(*tt);
+}
 
-  const SFVec2f center =
-      geombounds::getField<SFVec2f>(*tt, "center", SFVec2f{0.0f, 0.0f});
-  const SFVec2f scale =
-      geombounds::getField<SFVec2f>(*tt, "scale", SFVec2f{1.0f, 1.0f});
-  const SFVec2f translation =
-      geombounds::getField<SFVec2f>(*tt, "translation", SFVec2f{0.0f, 0.0f});
-  p.centerS = center.x;
-  p.centerT = center.y;
-  p.rotation = geombounds::getField<float>(*tt, "rotation", 0.0f);
-  p.scaleS = scale.x;
-  p.scaleT = scale.y;
-  p.translationS = translation.x;
-  p.translationT = translation.y;
-  return p;
+inline std::vector<TextureTransform2DParams>
+textureTransformParamsListOfNode(const x3d::nodes::X3DNode &tt) {
+  if (tt.nodeTypeName() != "MultiTextureTransform")
+    return {textureTransformParamsOfNode(tt)};
+  std::vector<TextureTransform2DParams> out;
+  const auto children = geombounds::getField<MFNode>(tt, "textureTransform", {});
+  out.reserve(children.size());
+  for (const auto &child : children)
+    out.push_back(child ? textureTransformParamsOfNode(*child)
+                        : TextureTransform2DParams{});
+  return out;
+}
+
+inline std::vector<TextureTransform2DParams>
+textureTransformParamsListOf(const x3d::nodes::X3DNode *appearance) {
+  if (!appearance) return {};
+  auto tt = geombounds::getNode(*appearance, "textureTransform");
+  if (!tt) return {};
+  return textureTransformParamsListOfNode(*tt);
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +219,24 @@ inline void applyTextureTransformToMesh(MeshData &mesh,
     uv.x = r[0];
     uv.y = r[1];
   }
+}
+
+inline void applyTextureTransformsToMesh(
+    MeshData &mesh, const std::vector<TextureTransform2DParams> &params) {
+  if (params.empty()) return;
+  if (mesh.texcoordSets.empty() && !mesh.texcoords.empty())
+    mesh.texcoordSets.push_back(mesh.texcoords);
+  for (std::size_t i = 0; i < params.size() && i < mesh.texcoordSets.size(); ++i) {
+    if (isIdentityTextureTransform(params[i])) continue;
+    for (SFVec2f &uv : mesh.texcoordSets[i]) {
+      const std::array<float, 2> r =
+          applyTextureTransform(uv.x, uv.y, params[i]);
+      uv.x = r[0];
+      uv.y = r[1];
+    }
+  }
+  if (!mesh.texcoordSets.empty())
+    mesh.texcoords = mesh.texcoordSets[0];
 }
 
 // ---------------------------------------------------------------------------

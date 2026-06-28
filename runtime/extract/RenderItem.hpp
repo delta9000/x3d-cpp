@@ -162,6 +162,7 @@ struct MeshData {
   std::vector<std::uint32_t> indices; // always populated (0..N-1 when expanded).
   std::vector<SFVec3f> normals;
   std::vector<SFVec2f> texcoords;
+  std::vector<std::vector<SFVec2f>> texcoordSets;
   std::vector<SFColorRGBA> colors;
 
   // LATTICE-INDEX-RETAINING form (B5/B6). For lattice-derived geometry
