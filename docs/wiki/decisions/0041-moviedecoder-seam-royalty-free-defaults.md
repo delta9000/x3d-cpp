@@ -161,8 +161,20 @@ in one), so Backend A is the cheapest possible first proof.
   dimensions — with pixel output checked against that backend's own golden, not
   cross-codec. This is a deliberate, documented deviation: the seam is generic
   (one interface, many format-backends compose) even though it is not
-  bit-exact-swappable the way the font/texture seams are. The seam-status row stays
-  NOT-YET-PROVEN until ≥2 backends pass the contract test under a CI gate.
+  bit-exact-swappable the way the font/texture seams are. The seam-status row is
+  STABLE once ≥2 backends pass the contract test under a CI gate (done: pl_mpeg +
+  libtheora).
+- **Pluggability is enforced, not asserted.** `runContract` (`x3d_movie_tests`)
+  runs the SAME contract against four plugs: pl_mpeg, libtheora, a FROM-SCRATCH
+  std-only backend written against only the public header (no codec — proves the
+  interface carries zero codec coupling), and the multi-format COMPOSER. The
+  composer (`runtime/extract/MultiFormatMovieDecoder.hpp`, the
+  `MultiFormatTextureResolver` analog) sniffs the container magic once per URL and
+  dispatches to the registered backend, so backends *compose* behind one seam and a
+  downstream registers its own (WebM, H.264/FFmpeg, OS-native) without touching the
+  core. The suite also asserts each backend rejects a FOREIGN container as `Failed`
+  (so the magic-sniff route — and any consumer — can trust `Failed`) and that
+  truncated input never crashes.
 - **NOTICE / gating.** Each shipped backend is added to `NOTICE` as a flag-gated
   bundled dependency (the wuffs/miniaudio pattern) and stays OFF in the default
   preset. pl_mpeg → `-DX3D_CPP_BUILD_PLMPEG=ON` (consumed by the PoC like
