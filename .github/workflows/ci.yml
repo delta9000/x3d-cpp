@@ -529,7 +529,7 @@ jobs:
             cmake ninja-build ccache g++ mold \
             libwayland-dev libxkbcommon-dev wayland-protocols extra-cmake-modules \
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
-            xvfb libgl1-mesa-dri mesa-utils
+            xvfb libgl1-mesa-dri mesa-utils libgl-dev
       - name: ccache cache
         uses: actions/cache@v4
         with:
