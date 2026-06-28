@@ -197,6 +197,18 @@ run = "uv run python scripts/conformance_view.py check"
 description = "Fetch the X3D test corpus (curated subset + Inline/EXTERNPROTO deps) from web3d.org into .x3d-corpus/ (or $X3D_CORPUS_DIR). ~9MB, seconds. Makes the corpus gates runnable."
 run = "scripts/fetch_corpus.sh"
 
+[tasks.conformance-nist-fetch]
+description = "Fetch the full Web3D X3D Conformance (NIST) example set (763 .x3d) into .x3d-corpus/x3d-code/ for the poc-renderer sweep. ~366MB download (.x3d alone is a few MB). Add --textures to also pull PNG/JPEG for the GL pass."
+run = "scripts/fetch_conformance_nist.sh {{arg(name='args', default='', var=true)}}"
+
+[tasks.poc-conformance-sweep]
+description = "Sweep the Conformance (NIST) set through the OpenGL PoC renderer: a headless parse+extract probe per scene (add --gl for the real GL pipeline under xvfb+mesa), bucketed by section + failure signature. Diagnostic (always exits 0) — surfaces zero-render-item scenes and parser/extractor gaps. Run conformance-nist-fetch + `mise run poc` first. e.g. mise run poc-conformance-sweep -- --gl --section Geometry"
+run = """
+cmake -S . -B build-poc -G Ninja -DX3D_CPP_BUILD_POC=ON >/dev/null
+cmake --build build-poc --target x3d_poc_renderer
+python3 scripts/poc_conformance_sweep.py {{arg(name='args', default='', var=true)}}
+"""
+
 [tasks.corpus]
 description = "Corpus smoke: recursively sweep a corpus dir (parse->extract->tick) with categorized stats. Defaults to .x3d-corpus (the ~300-file subset from corpus-fetch); point X3D_CORPUS_DIR or pass an arg at a full archive checkout for exhaustive coverage: mise run corpus /path/to/archive"
 run = """
