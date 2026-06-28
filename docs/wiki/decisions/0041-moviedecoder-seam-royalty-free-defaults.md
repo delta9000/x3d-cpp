@@ -16,11 +16,30 @@ related:
 
 ## Status
 
-Proposed (2026-06-27). No code yet — this ADR fixes the seam shape and the
-ship-vs-plug-in licensing line so they get reviewed before implementation. The
-intended first slice is Backend A (pl_mpeg, MPEG-1) wired into the PoC renderer,
-which also covers the entire Web3D/NIST conformance MovieTexture corpus (all
-`.mpg`). Theora and WebM follow as additional backends behind the frozen seam.
+Accepted (2026-06-27). The seam is PROVEN GENERIC — two independent backends
+behind the frozen `runtime/extract/MovieDecoder.hpp`:
+
+- **Backend A** — pl_mpeg / MPEG-1 (`runtime/io/plmpeg/`, `x3d_plmpeg`), wired
+  into the PoC renderer; plays the entire Web3D/NIST conformance MovieTexture
+  corpus (raw MPEG-1 elementary streams).
+- **Backend B** — libtheora/libogg / Ogg-Theora (`runtime/io/theora/`,
+  `x3d_theora`), a Xiph BSD royalty-free codec (system libs, the FreeType
+  backend-B pattern).
+
+Both pass the SAME semantics-contract (`x3d_movie_tests`, `runContract`) against
+their own reference clips — Pending/Ready/EOF-hold/backward-seek/Failed parity.
+Two backends agreeing on the observable seam behavior is the genericity proof
+(contract-parity, not bit-swap — codecs partition by format, so no two backends
+decode the same input). The seam-status row is now STABLE. WebM/VP8-9 and AV1 may
+join the ship tier later for modern content; FFmpeg/GStreamer/H.26x plug into the
+same seam downstream.
+
+Implementation note (discovered during Backend A): the NIST `.mpg` files are
+**raw elementary video streams** (they start with a `0x000001B3` sequence header,
+no MPEG-PS system layer), which pl_mpeg's high-level `plm_t` demuxer reports as
+zero streams. The backend therefore detects the stream shape and drives the
+low-level `plm_video_t` directly for elementary streams (sequential decode +
+rewind-on-backward), keeping `plm_t` + seek for true program streams.
 
 ## Context
 
@@ -142,8 +161,20 @@ in one), so Backend A is the cheapest possible first proof.
   dimensions — with pixel output checked against that backend's own golden, not
   cross-codec. This is a deliberate, documented deviation: the seam is generic
   (one interface, many format-backends compose) even though it is not
-  bit-exact-swappable the way the font/texture seams are. The seam-status row stays
-  NOT-YET-PROVEN until ≥2 backends pass the contract test under a CI gate.
+  bit-exact-swappable the way the font/texture seams are. The seam-status row is
+  STABLE once ≥2 backends pass the contract test under a CI gate (done: pl_mpeg +
+  libtheora).
+- **Pluggability is enforced, not asserted.** `runContract` (`x3d_movie_tests`)
+  runs the SAME contract against four plugs: pl_mpeg, libtheora, a FROM-SCRATCH
+  std-only backend written against only the public header (no codec — proves the
+  interface carries zero codec coupling), and the multi-format COMPOSER. The
+  composer (`runtime/extract/MultiFormatMovieDecoder.hpp`, the
+  `MultiFormatTextureResolver` analog) sniffs the container magic once per URL and
+  dispatches to the registered backend, so backends *compose* behind one seam and a
+  downstream registers its own (WebM, H.264/FFmpeg, OS-native) without touching the
+  core. The suite also asserts each backend rejects a FOREIGN container as `Failed`
+  (so the magic-sniff route — and any consumer — can trust `Failed`) and that
+  truncated input never crashes.
 - **NOTICE / gating.** Each shipped backend is added to `NOTICE` as a flag-gated
   bundled dependency (the wuffs/miniaudio pattern) and stays OFF in the default
   preset. pl_mpeg → `-DX3D_CPP_BUILD_PLMPEG=ON` (consumed by the PoC like

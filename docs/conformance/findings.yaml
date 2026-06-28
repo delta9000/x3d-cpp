@@ -2052,9 +2052,12 @@
   component: Texturing
   clause: "23.4.1"
   severity: major
-  status: deferred
-  summary: "MovieTexture frames are never decoded — TextureRef::Source::Movie is surfaced but no consumer decode path exists, so movie-textured scenes render the white/last fallback (blank) across the conformance set."
+  status: fixed
+  summary: "MovieTexture frames were never decoded — TextureRef::Source::Movie was surfaced but no consumer decode path existed, so movie-textured scenes rendered the white/last fallback (blank). FIXED for MPEG-1: the MovieDecoder seam + pl_mpeg Backend A play the video onto geometry (the whole NIST corpus is MPEG-1)."
   note: >-
-    Design captured in ADR-0041 (MovieDecoder seam: ship pl_mpeg/MPEG-1 + Theora + WebM/VP8-9 by default, leave
-    FFmpeg/GStreamer/H.26x to implementors). Deferred until the seam lands. Complements TDN-5 (MovieTexture
-    time-lifecycle). Also the root of many "missing objects" mismatches in the *_complex_movietexture grids.
+    Implemented per ADR-0041: the MovieDecoder seam (runtime/extract/MovieDecoder.hpp) + Backend A pl_mpeg
+    (runtime/io/plmpeg/, flag-gated x3d_plmpeg) wired into the PoC, which decodes the current media-time frame and uploads
+    it as the texture each tick. The NIST .mpg files are RAW elementary video streams (no MPEG-PS system layer), so the
+    backend drives pl_mpeg's low-level plm_video_t directly for those (plm_t + seek for program streams). Verified by the
+    x3d_movie_tests semantics-contract test and by rendering Appearance/Appearance/movietexture.x3d (the VTS card plays on
+    box/sphere/cone/cylinder). Theora/WebM remain follow-ups; MovieTexture time-lifecycle nuance tracked by TDN-5.
