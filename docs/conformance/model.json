@@ -1637,7 +1637,9 @@
       "findings": [
         "EXT-001",
         "EXT-003",
-        "EXTRUSION-SCP"
+        "EXTRUSION-SCP",
+        "VIS-ELEV-SPACING-EMPTY",
+        "VIS-EXTRUSION-EMPTY"
       ],
       "levels": [
         1,
@@ -1725,7 +1727,8 @@
           "findings": [
             "EXT-001",
             "EXT-003",
-            "TXF-2"
+            "TXF-2",
+            "VIS-ELEV-SPACING-EMPTY"
           ],
           "geometry": true,
           "interfaces": [
@@ -1743,11 +1746,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "13.3.5.4.5",
+          "clause": "13.3.5.4.5; 13.3.5",
           "exists": true,
           "extracts": "yes",
           "findings": [
-            "EXTRUSION-SCP"
+            "EXTRUSION-SCP",
+            "VIS-EXTRUSION-EMPTY"
           ],
           "geometry": true,
           "interfaces": [
@@ -1788,11 +1792,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.10",
+          "clause": "18.4.10; 13.3.6, 18.4.10",
           "exists": true,
           "extracts": "yes",
           "findings": [
-            "TXF-1"
+            "TXF-1",
+            "VIS-SPHERE-NOUV"
           ],
           "geometry": true,
           "interfaces": [
@@ -5929,7 +5934,9 @@
         "TXF-1",
         "TXF-2",
         "TXF-3",
-        "TXT-6"
+        "TXT-6",
+        "VIS-MOVIE-DECODE",
+        "VIS-SPHERE-NOUV"
       ],
       "levels": [
         1,
@@ -5966,12 +5973,13 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 23.4.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "MULTI-INHERIT",
-            "TDN-5"
+            "TDN-5",
+            "VIS-MOVIE-DECODE"
           ],
           "geometry": false,
           "interfaces": [
@@ -9399,10 +9407,58 @@
         "Text",
         "FontStyle"
       ],
-      "note": "buildTextMesh TextExtract.hpp:294-326 maps the glyph UV across the full advance-width quad; GlyphMetrics FontMetrics.hpp:59-64 lacks bearing/size/top; vertical metrics fixed at 0.8/-0.2*size. Monospace stub is fine; a real font is not. Fix: extend GlyphMetrics with {bearingX,sizeX,sizeY,top} and place the quad at the actual glyph box. (extraction-seam review.)",
+      "note": "buildTextMesh TextExtract.hpp:294-326 maps the glyph UV across the full advance-width quad; GlyphMetrics FontMetrics.hpp:59-64 lacks bearing/size/top; vertical metrics fixed at 0.8/-0.2*size. Monospace stub is fine; a real font is not. Fix: extend GlyphMetrics with {bearingX,sizeX,sizeY,top} and place the quad at the actual glyph box. (extraction-seam review.) Visual sweep 2026-06-27 CONFIRMED now that the poc wires a real stb_truetype atlas: set_length_comp/set_length_exp render the length-compressed strings as bars.",
       "severity": "minor",
       "status": "open",
       "summary": "Text glyphs are stretched to the advance cell and ascender/descender are hard-coded \u2014 GlyphMetrics exposes only advanceEm + atlas UV, so the seam cannot place a proportional-font glyph at its true box even with a real atlas."
+    },
+    {
+      "clause": "13.3.5",
+      "component": "Geometry3D",
+      "id": "VIS-EXTRUSION-EMPTY",
+      "nodes": [
+        "Extrusion"
+      ],
+      "note": "Verified render_items=0 via poc --headless on ConformanceNist Geometry/Extrusion/{default_extrusion,test_simpleorient}. Distinct from EXTRUSION-SCP (cross-section ORIENTATION, not zero output). tessellateExtrusion (MeshBuilder.hpp) emits nothing for these inputs \u2014 root-cause the cull (likely the <2-distinct-spine-point guard or default closed crossSection handling) for a default crossSection + straight spine.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Extrusion with default/simple fields extracts NO geometry (render_items=0) \u2014 default_extrusion.x3d and test_simpleorient.x3d render blank (reproduces in cpu_raster too, so it is an SDK extraction gap, not poc-specific)."
+    },
+    {
+      "clause": "13.3.4",
+      "component": "Geometry3D",
+      "id": "VIS-ELEV-SPACING-EMPTY",
+      "nodes": [
+        "ElevationGrid"
+      ],
+      "note": "Verified render_items=0 via poc --headless on ConformanceNist Geometry/ElevationGrid/{test_xSpacing,test_zSpacing}. Distinct from EXT-003 (winding, fixed) and EXT-001 (color/normal ignored). The spacing fields specifically zero the output \u2014 check height-array length vs xDimension/zDimension sizing / guard in emitHeightGrid().",
+      "severity": "major",
+      "status": "open",
+      "summary": "ElevationGrid with non-default xSpacing/zSpacing extracts NO geometry (render_items=0) \u2014 test_xSpacing.x3d, test_zSpacing.x3d render blank, while test_color (default spacing) extracts fine."
+    },
+    {
+      "clause": "13.3.6, 18.4.10",
+      "component": "Texturing",
+      "id": "VIS-SPHERE-NOUV",
+      "nodes": [
+        "Sphere"
+      ],
+      "note": "ANOMALY needing root-cause: MeshBuilder.hpp:673 states default UVs are ALWAYS generated for analytic primitives, yet the sphere reports empty texcoords here while Box/texture.x3d textures correctly. Determine whether the sphere ring/segment emit path drops texcoords (vs Box) or this scene's config suppresses them.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Sphere with an ImageTexture renders untextured \u2014 texture resolves (resolved_textures=1) but the sphere carries no texcoords (textured_items=0), so the decal never applies (Geometry/Sphere/texture.x3d: grey sphere vs the VTS-decal reference)."
+    },
+    {
+      "clause": "23.4.1",
+      "component": "Texturing",
+      "id": "VIS-MOVIE-DECODE",
+      "nodes": [
+        "MovieTexture"
+      ],
+      "note": "Design captured in ADR-0041 (MovieDecoder seam: ship pl_mpeg/MPEG-1 + Theora + WebM/VP8-9 by default, leave FFmpeg/GStreamer/H.26x to implementors). Deferred until the seam lands. Complements TDN-5 (MovieTexture time-lifecycle). Also the root of many \"missing objects\" mismatches in the *_complex_movietexture grids.",
+      "severity": "major",
+      "status": "deferred",
+      "summary": "MovieTexture frames are never decoded \u2014 TextureRef::Source::Movie is surfaced but no consumer decode path exists, so movie-textured scenes render the white/last fallback (blank) across the conformance set."
     }
   ],
   "meta": {
@@ -9529,8 +9585,8 @@
   "summary": {
     "closed_count": 99,
     "component_count": 36,
-    "deferred_count": 48,
-    "finding_count": 204,
+    "deferred_count": 49,
+    "finding_count": 208,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -9557,7 +9613,7 @@
     "open_by_severity": {
       "critical": 9,
       "low": 9,
-      "major": 44,
+      "major": 48,
       "minor": 43
     }
   },

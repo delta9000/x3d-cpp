@@ -5,7 +5,7 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | ImageTexture | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
-| MovieTexture | 3 | ✓ | — | ◑ | MULTI-INHERIT, TDN-5 | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
+| MovieTexture | 3 | ✓ | — | ◑ | MULTI-INHERIT, TDN-5, VIS-MOVIE-DECODE | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
 | MultiTexture | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureNode |
 | MultiTextureCoordinate | 2 | ✓ | — | — | TXT-6 | X3DGeometricPropertyNode, X3DTextureCoordinateNode |
 | MultiTextureTransform | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureTransformNode |
@@ -24,6 +24,10 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
   - By-design render-time seam; ensure MeshData supplies the world/camera-frame normals the consumer needs. Documented.
 - **ENC-VRML-SFIMAGE** [major/OPEN] — §ISO 19776-2 5.3 (sfimageValue): ClassicVRML SFImage READER consumes only width and discards height/components/all pixel words — a 2x2 texture parses back as `2 0 0` (empty).
   - Real scenes NetworkedCamera.x3d, examples/.../textured_text.x3d: `image='2 2 3 0 65280 255 16711680'` survives XML->JSON direct, the .x3dv even WRITES it correctly, but reading that .x3dv back yields `[2,0,0]` — every inline PixelTexture destroyed the instant the scene passes through ClassicVRML. Fix: the ClassicVRML SFImage parser must consume width*height pixel words after the `w h comp` header. (round-trip sweep, newly surfaced.)
+- **VIS-SPHERE-NOUV** [major/OPEN] — §13.3.6, 18.4.10: Sphere with an ImageTexture renders untextured — texture resolves (resolved_textures=1) but the sphere carries no texcoords (textured_items=0), so the decal never applies (Geometry/Sphere/texture.x3d: grey sphere vs the VTS-decal reference).
+  - ANOMALY needing root-cause: MeshBuilder.hpp:673 states default UVs are ALWAYS generated for analytic primitives, yet the sphere reports empty texcoords here while Box/texture.x3d textures correctly. Determine whether the sphere ring/segment emit path drops texcoords (vs Box) or this scene's config suppresses them.
+- **VIS-MOVIE-DECODE** [major/DEFERRED] — §23.4.1: MovieTexture frames are never decoded — TextureRef::Source::Movie is surfaced but no consumer decode path exists, so movie-textured scenes render the white/last fallback (blank) across the conformance set.
+  - Design captured in ADR-0041 (MovieDecoder seam: ship pl_mpeg/MPEG-1 + Theora + WebM/VP8-9 by default, leave FFmpeg/GStreamer/H.26x to implementors). Deferred until the seam lands. Complements TDN-5 (MovieTexture time-lifecycle). Also the root of many "missing objects" mismatches in the *_complex_movietexture grids.
 - **TXF-1** [minor/DEFERRED] — §18.4.10: TextureTransform matrix application order divergence (translate/center/rotate/scale/−center) — UVs transformed incorrectly for non-trivial transforms.
   - Verify TextureTransform2D against §18.4.10 right-to-left order T·C·R·S·(−C); fix + regression.
 - **TXF-3** [minor/DEFERRED] — §18.4.10: MatrixTextureTransform + MultiTextureTransform not handled (only the single TextureTransform).
