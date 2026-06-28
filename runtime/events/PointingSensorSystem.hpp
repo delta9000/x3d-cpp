@@ -61,13 +61,28 @@ using namespace x3d::core;
  */
 class PointingSensorSystem : public System {
 public:
-  // Pointing sensors are resolved live from the pick path each tick; there is
-  // no per-node enrollment to do here (attach is a no-op). A sensor only needs
-  // to exist in the scene graph the context's PickSystem was built over.
-  void attach(X3DNode * /*node*/, X3DExecutionContext & /*ctx*/) override {}
+  // Pointing sensors are resolved live from the pick path each tick, so attach()
+  // does no per-node enrollment — but it DOES take a one-time inventory: a scene
+  // with zero pointing-device sensors can never resolve a pick to one, so the
+  // per-motion whole-scene pick (the dominant per-tick cost on large static
+  // scenes) is pure waste there and is skipped in update(). The inventory only
+  // suppresses the pick when the bridge actually ran the per-node pass; if attach
+  // was never called (a test that registers the system directly), inventoried_
+  // stays false and the system picks exactly as before — conservative by default.
+  void attach(X3DNode *node, X3DExecutionContext & /*ctx*/) override {
+    inventoried_ = true;
+    if (isPointingSensor(node))
+      ++sensorCount_;
+  }
 
   void update(double now, X3DExecutionContext &ctx) override {
     const PointerState &ps = ctx.pointerState();
+
+    // 0. A fully-inventoried scene with no pointing-device sensors can never
+    //    resolve a pick to a sensor — skip the whole-scene pick entirely (the
+    //    §20 resolution below is a no-op there, but the pick is not).
+    if (inventoried_ && sensorCount_ == 0)
+      return;
 
     // 1. No events when the pointer state is unchanged since the last tick
     //    (§20.4.4 — over/hit events are generated only on pointer motion, not
@@ -417,6 +432,8 @@ private:
   X3DNode *active_ = nullptr;           // grabbed (isActive) sensor, if any
   bool pressWasOver_ = false;           // was over at the moment of activation
   bool buttonWasDown_ = false;          // for button-DOWN edge detection
+  bool inventoried_ = false;            // did attach() scan the scene?
+  int sensorCount_ = 0;                 // pointing-device sensors found by attach()
 
   // Drag activation state (frozen at activation; valid only while a drag sensor
   // owns the grab). §20.2.2: the local sensor coordinate system in effect at

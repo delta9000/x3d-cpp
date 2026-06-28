@@ -23,6 +23,7 @@
 #include "X3DSystem.hpp"
 
 #include <any>
+#include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
 #include <memory>
 #include <string>
@@ -350,7 +351,15 @@ public:
   /// Closest pick along a world-space ray (PickResult.hit == false on a miss).
   /// Threads the live viewer pose so geometry under a Billboard is picked in the
   /// view-rotated frame (matches the extractor's per-path billboard rotation).
+  // Diagnostic: number of whole-scene picks performed via pick() process-wide.
+  // Pointing-sensor resolution picks the scene on every pointer motion, so a
+  // scene with no pointing-device sensors should never incur one; tests snapshot
+  // this around tick() to assert PointingSensorSystem skips the pick entirely.
+  static inline std::uint64_t pickCalls_ = 0;
+  static std::uint64_t pickCallCount() { return pickCalls_; }
+
   PickResult pick(const Ray &worldRay) const {
+    ++pickCalls_;
     return pick_.pickClosest(worldRay, bounds_, cameraWorldPosition(),
                              cameraWorldUp());
   }
