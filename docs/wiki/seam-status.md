@@ -45,7 +45,7 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | **FontMetrics** | **STABLE** | stb_truetype (StbttFontMetrics) | FreeType (FreetypeFontMetrics) | `x3d_text_tests` ✓ | thesis-completion (no findings) |
 | **TextureResolver** | **STABLE** | stb_image (StbTextureResolver) | wuffs v0.3.4 (WuffsTextureResolver) | `x3d_texture_tests` ✓ | thesis-completion (no findings) |
 | GeoProjection | EXPERIMENTAL | flat-fallback | — pending | — | — |
-| MovieDecoder | PROPOSED | pl_mpeg / MPEG-1 (planned, [ADR-0041](decisions/0041-moviedecoder-seam-royalty-free-defaults.md)) | — Theora / WebM planned | — (per-backend contract test, not bit-swap — see ADR-0041) | MovieTexture conformance blanks |
+| MovieDecoder | NOT-YET-PROVEN | pl_mpeg / MPEG-1 (PlMpegMovieDecoder, [ADR-0041](decisions/0041-moviedecoder-seam-royalty-free-defaults.md)) | — Theora / WebM planned | `x3d_movie_tests` ✓ (per-backend contract test, not bit-swap — see ADR-0041) | MovieTexture conformance blanks (fixed for MPEG-1) |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer / CAVE (1) | — pending | — | — |
 
 Legend: **GREEN** = interface frozen + ≥2 independent backends + a CI-gated swap-test.

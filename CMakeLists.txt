@@ -618,6 +618,33 @@ if(X3D_CPP_BUILD_STBTT OR X3D_CPP_BUILD_POC)
 endif()
 
 # ---------------------------------------------------------------------------
+# MovieDecoder seam — Backend A (pl_mpeg, MPEG-1). ADR-0041.
+# option() -> an isolated STATIC lib (x3d_plmpeg) whose single TU is
+# PlMpegMovieDecoder.cpp; pl_mpeg.h is included PRIVATE so the codec meets the
+# seam in ONE TU and never leaks. MPEG-1 is royalty-free + pl_mpeg is MIT, so it
+# ships default-OFF (encumbered codecs plug into the same seam downstream).
+# Build: cmake --preset dev -DX3D_CPP_BUILD_PLMPEG=ON
+# ---------------------------------------------------------------------------
+option(X3D_CPP_BUILD_PLMPEG "Build pl_mpeg MovieDecoder backend (OFF default)" OFF)
+
+# The PoC renderer consumes the pl_mpeg decoder to play MovieTextures, so build
+# this backend whenever the PoC is on, not only on explicit opt-in.
+if(X3D_CPP_BUILD_PLMPEG OR X3D_CPP_BUILD_POC)
+    add_library(x3d_plmpeg STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/PlMpegMovieDecoder.cpp")
+    target_link_libraries(x3d_plmpeg PUBLIC x3d_cpp::x3d_cpp)
+    target_include_directories(x3d_plmpeg PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg")
+    # pl_mpeg.h is PRIVATE: only PlMpegMovieDecoder.cpp needs it; the factory
+    # returns a std::function exchanging std types (decoder-free header).
+    target_include_directories(x3d_plmpeg PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/vendor")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(x3d_plmpeg PRIVATE -w)  # pl_mpeg is warning-noisy.
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # FontMetrics seam — Backend B (FreeType). ADR-0025 / U2.
 # FreeType is NOT single-header; it is provided via vcpkg (find_package). Its
 # headers are PRIVATE to the one TU (FreetypeFontMetrics.cpp), so no FreeType
@@ -683,6 +710,30 @@ if(TARGET x3d_stb AND TARGET x3d_wuffs AND X3D_CPP_BUILD_TESTS)
         FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/fixtures/texture")
     add_test(NAME x3d_texture_tests COMMAND x3d_texture_tests)
     set_tests_properties(x3d_texture_tests PROPERTIES TIMEOUT 120)
+endif()
+
+# ---------------------------------------------------------------------------
+# MovieDecoder seam — Backend A semantics-contract test (ADR-0041). One doctest
+# binary drives a self-made raw MPEG-1 elementary stream (the NIST-corpus shape)
+# through pl_mpeg and asserts the observable seam behavior (Ready dims + tight
+# RGBA, EOF-holds-last, backward-seek rewind, Pending/Failed parity). Hermetic +
+# offline (a committed 686-byte fixture). Build: -DX3D_CPP_BUILD_PLMPEG=ON
+# Run: ctest -R x3d_movie
+# ---------------------------------------------------------------------------
+if(TARGET x3d_plmpeg AND X3D_CPP_BUILD_TESTS)
+    enable_testing()
+    add_executable(x3d_movie_tests
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/tests/movie_decoder_tests.cpp")
+    # Talks ONLY through the seam factory (decoder-free header); no pl_mpeg header.
+    target_link_libraries(x3d_movie_tests PRIVATE x3d_plmpeg)
+    target_include_directories(x3d_movie_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
+    target_compile_definitions(x3d_movie_tests PRIVATE
+        FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/tests/fixtures")
+    add_test(NAME x3d_movie_tests COMMAND x3d_movie_tests)
+    set_tests_properties(x3d_movie_tests PROPERTIES TIMEOUT 120)
 endif()
 
 # ---------------------------------------------------------------------------

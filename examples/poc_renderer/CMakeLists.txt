@@ -82,6 +82,7 @@ target_link_libraries(x3d_poc_renderer
     PRIVATE
         x3d_cpp::x3d_cpp
         x3d_stbtt          # T-TEXT glyph atlas (StbttGlyphAtlas) for Text rendering
+        x3d_plmpeg         # MovieDecoder backend A (pl_mpeg) for MovieTexture (ADR-0041)
         glfw
         poc_glad
         poc_stb_image

@@ -16,11 +16,21 @@ related:
 
 ## Status
 
-Proposed (2026-06-27). No code yet — this ADR fixes the seam shape and the
-ship-vs-plug-in licensing line so they get reviewed before implementation. The
-intended first slice is Backend A (pl_mpeg, MPEG-1) wired into the PoC renderer,
-which also covers the entire Web3D/NIST conformance MovieTexture corpus (all
-`.mpg`). Theora and WebM follow as additional backends behind the frozen seam.
+Accepted (2026-06-27). Backend A has landed: the frozen seam
+(`runtime/extract/MovieDecoder.hpp`) plus the pl_mpeg backend
+(`runtime/io/plmpeg/`, the flag-gated `x3d_plmpeg` target) wired into the PoC
+renderer, which plays the entire Web3D/NIST conformance MovieTexture corpus (raw
+MPEG-1 elementary streams). A per-backend semantics-contract test
+(`x3d_movie_tests`) guards the seam behavior. Theora and WebM follow as
+additional backends behind the same frozen seam; the genericity row stays
+NOT-YET-PROVEN until a second backend passes the contract test.
+
+Implementation note (discovered during Backend A): the NIST `.mpg` files are
+**raw elementary video streams** (they start with a `0x000001B3` sequence header,
+no MPEG-PS system layer), which pl_mpeg's high-level `plm_t` demuxer reports as
+zero streams. The backend therefore detects the stream shape and drives the
+low-level `plm_video_t` directly for elementary streams (sequential decode +
+rewind-on-backward), keeping `plm_t` + seek for true program streams.
 
 ## Context
 

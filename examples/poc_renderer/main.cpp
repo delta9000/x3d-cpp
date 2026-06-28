@@ -52,6 +52,8 @@
 #include "AssetResolver.hpp"        // B8 asset-resolver seam (the bytes path)
 #include "GeometryBounds.hpp"      // geombounds::getField (Background skyColor read)
 #include "Mat4.hpp"                 // x3d::runtime::Mat4 (column-major, GL-native)
+#include "MovieDecoder.hpp"         // MovieTexture frame-decode seam (ADR-0041)
+#include "PlMpegMovieDecoder.hpp"   // MovieDecoder backend A (x3d_plmpeg io backend)
 #include "RenderItem.hpp"          // extract descriptors
 #include "SceneExtractor.hpp"      // T7a minimal extractor
 #include "ShaderBindingPlan.hpp"   // Phase 5 author-shader vocab dispatch
@@ -564,6 +566,45 @@ const ex::TextureRef *findTexSlot(const ex::MaterialDesc &mat,
   return nullptr;
 }
 
+// MovieTexture decode state (ADR-0041). The MovieDecoder owns per-URL codec
+// contexts; here we own ONE persistent GL texture per movie URL that we RE-UPLOAD
+// each frame — unlike a still image, a movie frame changes every tick, so the
+// upload-once Url cache does not apply.
+struct MovieState {
+  ex::MovieDecoder decoder;
+  double mediaTime = 0.0;                            // seconds into the clip, this frame.
+  std::unordered_map<std::string, GLuint> texByUrl;  // 0 = not yet created.
+};
+
+// Create-or-update a GL texture from a decoded movie frame (bottom-left RGBA8 per
+// the seam contract, so no flip). Frame dimensions are constant per clip: allocate
+// on the first frame, then glTexSubImage2D-update on every subsequent frame.
+GLuint uploadMovieFrame(GLuint tex, const ex::VideoFrame &f, bool repeatS,
+                        bool repeatT, bool srgb) {
+  const GLint internalFmt = srgb ? GL_SRGB8_ALPHA8 : GL_RGBA;
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  if (tex == 0) {
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFmt, static_cast<GLsizei>(f.width),
+                 static_cast<GLsizei>(f.height), 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 f.rgba.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+                    repeatS ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+                    repeatT ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  } else {
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLsizei>(f.width),
+                    static_cast<GLsizei>(f.height), GL_RGBA, GL_UNSIGNED_BYTE,
+                    f.rgba.data());
+  }
+  glBindTexture(GL_TEXTURE_2D, 0);
+  return tex;
+}
+
 // Resolve+upload (or fetch cached) a SINGLE TextureRef. Returns a GL texture id,
 // or 0 when there is no usable texture this frame (Pending / Failed / no slot).
 // This is the shared resolution core; per-program bind helpers call it with a
@@ -571,9 +612,31 @@ const ex::TextureRef *findTexSlot(const ex::MaterialDesc &mat,
 // Phase 5.5: srgb=true → GL_SRGB8_ALPHA8 (color textures: BaseColor/Diffuse/
 // Emissive); srgb=false → GL_RGBA (data textures: Normal/MetallicRoughness/
 // Occlusion/Specular — linear space, no driver decode).
+// `movie` (when non-null) routes Source::Movie refs through the MovieDecoder seam.
 GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &cache,
-                     const ex::AssetResolver &resolver, bool srgb = false) {
+                     const ex::AssetResolver &resolver, bool srgb = false,
+                     MovieState *movie = nullptr) {
   if (!pick) return 0;
+
+  // MovieTexture (ADR-0041): decode this frame's image via the MovieDecoder seam
+  // and (re)upload it. Pending holds the previously uploaded frame; Failed falls
+  // through the url fallback list (and ultimately to the white fallback).
+  if (pick->source == ex::TextureRef::Source::Movie) {
+    if (!movie || !movie->decoder) return 0;
+    for (const std::string &url : pick->url) {
+      if (url.empty()) continue;
+      ex::FrameResult fr = movie->decoder(url, movie->mediaTime);
+      if (fr.pending()) {
+        auto it = movie->texByUrl.find(url);
+        return it != movie->texByUrl.end() ? it->second : 0;
+      }
+      if (fr.failed()) continue;
+      GLuint &tex = movie->texByUrl[url];
+      tex = uploadMovieFrame(tex, fr.frame, pick->repeatS, pick->repeatT, srgb);
+      return tex;
+    }
+    return 0;
+  }
 
   if (pick->source == ex::TextureRef::Source::Inline) {
     const void *key = &pick->inlinePixels;
@@ -1224,6 +1287,10 @@ int main(int argc, char **argv) {
   // a resolver that returns Pending without blocking the frame.
   ex::AssetResolver assetResolver = makeLocalFileResolver(dirOf(scenePath));
   TextureCache texCache;
+  // MovieTexture decode (ADR-0041): Backend A (pl_mpeg) wired to the same
+  // local-file resolver. mediaTime is set each frame from the render clock below.
+  MovieState movieState;
+  movieState.decoder = x3d::runtime::io::plmpeg::makePlMpegMovieDecoder(assetResolver);
 
   // ----------------------------------------------------------------------
   // 5. Render loop.
@@ -1240,6 +1307,11 @@ int main(int argc, char **argv) {
     // for free from glfwGetTime()).
     double now = animate ? static_cast<double>(animFrame + 1) / animFps
                          : glfwGetTime() - t0;
+    // MovieTexture media time: the PoC render clock drives decode (loop wrap / the
+    // X3DTimeDependentSystem lifecycle is a follow-up; the decoder clamps to the
+    // last frame at EOF so a non-looping clip holds, not blanks). --screenshot
+    // captures ~t=0 -> the clip's first frame.
+    movieState.mediaTime = now;
     // Feed the cursor ray into the SDK seam BEFORE tick, unprojected against the
     // PREVIOUS frame's camera (the image the user is pointing at). Keys + mouse
     // buttons arrive via glfw callbacks (fired during glfwPollEvents below).
@@ -1423,7 +1495,7 @@ int main(int argc, char **argv) {
                 findTexSlot(mat, {ex::TextureRef::Slot::Emissive,
                                   ex::TextureRef::Slot::BaseColor,
                                   ex::TextureRef::Slot::Diffuse}),
-                texCache, assetResolver, /*srgb=*/false);
+                texCache, assetResolver, /*srgb=*/false, &movieState);
             bindTex(0, uUnlitTexture, uUnlitHasTexture, ut);
           } else {
             bindTex(0, uUnlitTexture, uUnlitHasTexture, 0);
@@ -1479,7 +1551,7 @@ int main(int argc, char **argv) {
             // Unit 0: diffuse/base color (sRGB — driver decodes to linear).
             GLuint t0 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Diffuse,
                                                          ex::TextureRef::Slot::BaseColor}),
-                                      texCache, assetResolver, /*srgb=*/true);
+                                      texCache, assetResolver, /*srgb=*/true, &movieState);
             bindTex(0, uTexture, uHasTexture, t0);
             // Unit 1: normal map (linear — data texture, no sRGB decode).
             GLuint t1 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
@@ -1487,7 +1559,7 @@ int main(int argc, char **argv) {
             bindTex(1, uNormalTex, uHasNormalTex, t1);
             // Unit 2: emissive texture (sRGB).
             GLuint t2 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
-                                      texCache, assetResolver, /*srgb=*/true);
+                                      texCache, assetResolver, /*srgb=*/true, &movieState);
             bindTex(2, uEmissiveTex, uHasEmissiveTex, t2);
             // Unit 3: specular texture (sRGB).
             GLuint t3 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Specular}),
@@ -1540,7 +1612,7 @@ int main(int argc, char **argv) {
             // driver linearises on sample; pbr.frag reads the linearised value
             // directly — no double-decode).
             GLuint t0 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::BaseColor}),
-                                      texCache, assetResolver, /*srgb=*/true);
+                                      texCache, assetResolver, /*srgb=*/true, &movieState);
             bindTex(0, uPbrBaseColorTex, uPbrHasBaseColorTex, t0);
             // Unit 1: normal map (linear — data texture, no sRGB decode).
             GLuint t1 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
@@ -1548,7 +1620,7 @@ int main(int argc, char **argv) {
             bindTex(1, uPbrNormalTex, uPbrHasNormalTex, t1);
             // Unit 2: emissive (sRGB).
             GLuint t2 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
-                                      texCache, assetResolver, /*srgb=*/true);
+                                      texCache, assetResolver, /*srgb=*/true, &movieState);
             bindTex(2, uPbrEmissiveTex, uPbrHasEmissiveTex, t2);
             // Unit 3: ORM metallic-roughness (linear — no sRGB decode).
             GLuint t3 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::MetallicRoughness}),

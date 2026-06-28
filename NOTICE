@@ -68,6 +68,11 @@ example; no part of it is committed here.
                     (see third_party/fonts/OFL.txt; SERIF/SANS/TYPEWRITER faces
                      shared by the SDK text tests AND the PoC renderer's glyph
                      atlas (-DX3D_CPP_BUILD_POC=ON))
+  pl_mpeg           runtime/io/plmpeg/vendor/pl_mpeg.h        MIT  (-DX3D_CPP_BUILD_PLMPEG=ON or -DX3D_CPP_BUILD_POC=ON)
+                    (see runtime/io/plmpeg/vendor/PL_MPEG_LICENSE.txt; MovieDecoder
+                     Backend A — MPEG-1 video (royalty-free, patents expired).
+                     Flag-gated OFF; the default build stays MIT / Public-Domain-
+                     and patent-clean (ADR-0041).)
 
 ===============================================================================
 3. Optional build-time dependencies (fetched / vcpkg-installed, not bundled)
