@@ -1,119 +1,168 @@
 #!/usr/bin/env python3
-# Hierarchy showcase: a nested transform tree (root -> 3 arms -> moons), one shared
-# knot mesh instanced throughout, authored in USD and glTF to show x3d_asset_import
-# preserves the scene graph (nested <Transform>, plus DEF/USE when a mesh is reused).
+# Hierarchy showcase: a nested transform tree with a DISTINCT primitive per level —
+# box hub -> sphere arms -> cone moons — authored in glTF and USD to show
+# x3d_asset_import preserves the scene graph (nested <Transform>). A different shape
+# (and colour) at each level makes the parent -> child nesting read at a glance.
 # OBJ is intentionally omitted: the format has no node transforms / parenting.
-# License-clean: geometry is generated here (no third-party assets).
+# License-clean: all geometry is generated here (no third-party assets).
 import base64, json, math, os, struct
 
 OUT = os.path.dirname(os.path.abspath(__file__))
-P, Q, NSEG, NRING, TUBE = 2, 3, 96, 14, 0.42
 
-def cl(t):
-    r = 2.0 + math.cos(Q*t); return (r*math.cos(P*t), r*math.sin(P*t), math.sin(Q*t))
-def sub(a,b): return (a[0]-b[0],a[1]-b[1],a[2]-b[2])
-def add(a,b): return (a[0]+b[0],a[1]+b[1],a[2]+b[2])
-def mul(a,s): return (a[0]*s,a[1]*s,a[2]*s)
-def dot(a,b): return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
-def crs(a,b): return (a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0])
 def nrm(a):
-    l=math.sqrt(dot(a,a)) or 1.0; return (a[0]/l,a[1]/l,a[2]/l)
+    l = math.sqrt(sum(c*c for c in a)) or 1.0
+    return tuple(c/l for c in a)
 
-# ---- build one unit-ish knot (positions, normals, tris) ---------------------
-C=[cl(2*math.pi*i/NSEG) for i in range(NSEG)]
-T=[nrm(sub(C[(i+1)%NSEG],C[(i-1)%NSEG])) for i in range(NSEG)]
-Nf=[None]*NSEG; Bf=[None]*NSEG
-seed=(0,0,1) if abs(T[0][2])<0.9 else (0,1,0)
-Nf[0]=nrm(sub(seed,mul(T[0],dot(seed,T[0])))); Bf[0]=crs(T[0],Nf[0])
-for i in range(1,NSEG):
-    Nf[i]=nrm(sub(Nf[i-1],mul(T[i],dot(Nf[i-1],T[i])))); Bf[i]=crs(T[i],Nf[i])
-nr=nrm(sub(Nf[0],mul(T[0],dot(Nf[0],T[0]))))
-res=math.atan2(dot(crs(Nf[NSEG-1],nr),T[0]),dot(Nf[NSEG-1],nr))
-POS,NOR,TRI=[],[],[]
-for i in range(NSEG):
-    phi=-res*i/NSEG
-    for j in range(NRING):
-        a=2*math.pi*j/NRING+phi
-        d=nrm(add(mul(Nf[i],math.cos(a)),mul(Bf[i],math.sin(a))))
-        POS.append(mul(add(C[i],mul(d,TUBE)),0.34)); NOR.append(d)
-for i in range(NSEG):
-    for j in range(NRING):
-        a=i*NRING+j; b=i*NRING+(j+1)%NRING
-        c=((i+1)%NSEG)*NRING+j; e=((i+1)%NSEG)*NRING+(j+1)%NRING
-        TRI+=[(a,c,b),(b,c,e)]
+# ---- primitive meshes: return (positions, normals, tris) --------------------
+def box():
+    faces = [((1,0,0),[(1,-1,-1),(1,1,-1),(1,1,1),(1,-1,1)]),
+             ((-1,0,0),[(-1,-1,1),(-1,1,1),(-1,1,-1),(-1,-1,-1)]),
+             ((0,1,0),[(-1,1,-1),(-1,1,1),(1,1,1),(1,1,-1)]),
+             ((0,-1,0),[(-1,-1,1),(-1,-1,-1),(1,-1,-1),(1,-1,1)]),
+             ((0,0,1),[(-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)]),
+             ((0,0,-1),[(1,-1,-1),(-1,-1,-1),(-1,1,-1),(1,1,-1)])]
+    P,N,T=[],[],[]
+    for n,q in faces:
+        b=len(P)
+        for v in q: P.append(v); N.append(n)
+        T+=[(b,b+1,b+2),(b,b+2,b+3)]
+    return P,N,T
 
-# ---- the hierarchy: (name, translate, rotateY-deg, scale, [children]) -------
-def node(name,tx,ry,s,kids): return dict(name=name,t=tx,ry=ry,s=s,kids=kids)
+def sphere(rings=20, segs=28):
+    P,N,T=[],[],[]
+    for i in range(rings+1):
+        v=i/rings; theta=v*math.pi
+        for j in range(segs+1):
+            u=j/segs; phi=u*2*math.pi
+            p=(math.sin(theta)*math.cos(phi), math.cos(theta), math.sin(theta)*math.sin(phi))
+            P.append(p); N.append(p)  # unit sphere: normal == position
+    for i in range(rings):
+        for j in range(segs):
+            a=i*(segs+1)+j; b=a+1; c=a+segs+1; d=c+1
+            T+=[(a,b,c),(b,d,c)]   # CCW when viewed from outside
+    return P,N,T
+
+def cone(segs=36):
+    P,N,T=[],[],[]
+    apex_y, base_y, r = 1.0, -1.0, 1.0
+    # side: one apex vertex per segment (so each side face has a proper normal)
+    for j in range(segs):
+        a0=2*math.pi*j/segs; a1=2*math.pi*(j+1)/segs; am=(a0+a1)/2
+        b0=(r*math.cos(a0), base_y, r*math.sin(a0))
+        b1=(r*math.cos(a1), base_y, r*math.sin(a1))
+        ap=(0.0, apex_y, 0.0)
+        # face normal (points outward/up along the slanted side)
+        sn=nrm((math.cos(am)*(apex_y-base_y), r, math.sin(am)*(apex_y-base_y)))
+        base=len(P)
+        P+= [ap,b0,b1]; N+=[sn,sn,sn]
+        T.append((base,base+2,base+1))   # CCW from outside
+    # base cap
+    cbase=len(P); P.append((0.0,base_y,0.0)); N.append((0,-1,0))
+    ring0=len(P)
+    for j in range(segs):
+        a=2*math.pi*j/segs
+        P.append((r*math.cos(a),base_y,r*math.sin(a))); N.append((0,-1,0))
+    for j in range(segs):
+        T.append((cbase, ring0+j, ring0+(j+1)%segs))   # CCW from below (base points -Y)
+    return P,N,T
+
+MESHES=[box(), sphere(), cone()]           # 0=box 1=sphere 2=cone
+COLORS=[(0.55,0.58,0.66),(0.90,0.62,0.22),(0.20,0.62,0.66)]  # slate / amber / teal
+
+# ---- hierarchy node: one mesh (or None) + one axis-angle rotation + translate/scale.
+# Applied order (matches USD xformOpOrder + glTF T*R*S): translate, then rotate, then scale.
+def n(mesh, t=(0,0,0), axis='Y', deg=0.0, s=1.0, kids=()):
+    return dict(m=mesh, t=t, axis=axis, deg=float(deg), s=s, kids=list(kids))
+
+# Four-level transform tree, built so the rotation at each pivot actually MOVES its
+# subtree (translate lives on a *child* of the rotating pivot, not the pivot itself —
+# otherwise a rotation just spins a shape in place). This is the round-trip proof:
+# each cone moon inherits box <- pivot-fan <- sphere-offset before its own offset.
+#   Root  = box hub (mesh)
+#    +-- Pivot   (rotateZ = fan angle; no mesh) — swings the whole arm in the view plane
+#         +-- Sphere  (translate out +X; mesh) — the arm, carrying its moon
+#              +-- Moon (translate further +X, rotateZ -90 to aim apex outward; cone mesh)
 arms=[]
-for k in range(3):
-    moon=node(f"Moon{k}",(2.7,0,0),40, 0.55, [])          # grandchild
-    arms.append(node(f"Arm{k}",(3.6,0,0), k*120, 0.7, [moon]))
-root=node("Orrery",(0,0,0),0,1.0,[node("Hub",(0,0,0),0,1.0,[])]+arms)
-
-# ================= USD =======================================================
-def usd_xform(nd, indent, mesh_at):
-    pad="  "*indent
-    s=nd["s"]
-    xf=(f'{pad}def Xform "{nd["name"]}" (){{\n'
-        f'{pad}  float3 xformOp:translate = ({nd["t"][0]}, {nd["t"][1]}, {nd["t"][2]})\n'
-        f'{pad}  float xformOp:rotateY = {nd["ry"]}\n'
-        f'{pad}  float3 xformOp:scale = ({s}, {s}, {s})\n'
-        f'{pad}  uniform token[] xformOpOrder = ["xformOp:translate","xformOp:rotateY","xformOp:scale"]\n')
-    if mesh_at:  # instance the shared knot here via an internal reference
-        xf+=f'{pad}  def "Knot" ( prepend references = </Proto/Knot> ) {{}}\n'
-    for c in nd["kids"]: xf+=usd_xform(c,indent+1,True)
-    xf+=f'{pad}}}\n'; return xf
-pts=", ".join(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f})" for p in POS)
-cnts=", ".join("3" for _ in TRI)
-fvi=", ".join(str(i) for t in TRI for i in t)
-nrms=", ".join(f"({n[0]:.4f}, {n[1]:.4f}, {n[2]:.4f})" for n in NOR)
-with open(f"{OUT}/scene.usda","w") as f:
-    f.write('#usda 1.0\n( defaultPrim = "Orrery" upAxis = "Y" )\n')
-    f.write('# Hierarchy showcase (license-clean). One knot mesh referenced through a\n')
-    f.write('# nested Xform tree: Orrery -> {Hub, Arm0..2 -> Moon0..2}.\n')
-    # prototype mesh (not itself drawn; referenced by the Xform tree)
-    f.write('def "Proto" ( active = false ) {\n')
-    f.write('  def Mesh "Knot" ( prepend apiSchemas = ["MaterialBindingAPI"] ) {\n')
-    f.write(f'    int[] faceVertexCounts = [{cnts}]\n')
-    f.write(f'    int[] faceVertexIndices = [{fvi}]\n')
-    f.write(f'    point3f[] points = [{pts}]\n')
-    f.write(f'    normal3f[] normals = [{nrms}] ( interpolation = "vertex" )\n')
-    f.write('    rel material:binding = </Proto/Mat>\n  }\n')
-    f.write('  def Material "Mat" {\n    token outputs:surface.connect = </Proto/Mat/S.outputs:surface>\n')
-    f.write('    def Shader "S" {\n      uniform token info:id = "UsdPreviewSurface"\n')
-    f.write('      color3f inputs:diffuseColor = (0.85, 0.55, 0.25)\n')
-    f.write('      float inputs:metallic = 0.1\n      float inputs:roughness = 0.45\n      token outputs:surface\n    }\n  }\n}\n')
-    f.write(usd_xform(root,0,False))
+for fan in (90, 210, 330):   # three spokes 120 deg apart, in the view plane
+    moon   = n(2, t=(2.15,0,0), axis='Z', deg=-90, s=0.55)        # cone moon (grandchild)
+    sphere = n(1, t=(3.4,0,0),  axis='Y', deg=0,   s=0.9, kids=[moon])  # sphere arm (child)
+    pivot  = n(None, t=(0,0,0), axis='Z', deg=fan, s=1.0, kids=[sphere]) # spoke pivot
+    arms.append(pivot)
+root = n(0, t=(0,0,0), axis='Y', deg=0, s=1.0, kids=arms)          # box hub at the centre
 
 # ================= glTF ======================================================
-pos_b=b"".join(struct.pack("<3f",*p) for p in POS)
-nrm_b=b"".join(struct.pack("<3f",*n) for n in NOR)
-idx=[i for t in TRI for i in t]; idx_b=b"".join(struct.pack("<I",i) for i in idx)
-pad=lambda b:b+b"\x00"*((4-len(b)%4)%4); pos_b,nrm_b=pad(pos_b),pad(nrm_b)
-blob=pos_b+nrm_b+pad(idx_b)
-mn=[min(p[i] for p in POS) for i in range(3)]; mx=[max(p[i] for p in POS) for i in range(3)]
-gnodes=[];
-def rot_y_quat(deg):
-    a=math.radians(deg)/2; return [0,math.sin(a),0,math.cos(a)]
-def emit_gnode(nd, mesh_here):
-    idx_self=len(gnodes); gnodes.append(None); child_ids=[]
-    for c in nd["kids"]: child_ids.append(emit_gnode(c,True))
-    g={"name":nd["name"],"translation":list(map(float,nd["t"])),
-       "rotation":rot_y_quat(nd["ry"]),"scale":[nd["s"]]*3}
-    if mesh_here: g["mesh"]=0
-    if child_ids: g["children"]=child_ids
-    gnodes[idx_self]=g; return idx_self
-root_id=emit_gnode(root,False)
-gltf={"asset":{"version":"2.0","generator":"showcase gen_hier.py"},
- "scene":0,"scenes":[{"nodes":[root_id]}],"nodes":gnodes,
- "materials":[{"name":"amber","pbrMetallicRoughness":{"baseColorFactor":[0.85,0.55,0.25,1.0],"metallicFactor":0.1,"roughnessFactor":0.45}}],
- "meshes":[{"name":"knot","primitives":[{"attributes":{"POSITION":0,"NORMAL":1},"indices":2,"material":0}]}],
- "buffers":[{"byteLength":len(blob),"uri":"data:application/octet-stream;base64,"+base64.b64encode(blob).decode()}],
- "bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":len(pos_b),"target":34962},
-   {"buffer":0,"byteOffset":len(pos_b),"byteLength":len(nrm_b),"target":34962},
-   {"buffer":0,"byteOffset":len(pos_b)+len(nrm_b),"byteLength":len(idx_b),"target":34963}],
- "accessors":[{"bufferView":0,"componentType":5126,"count":len(POS),"type":"VEC3","min":mn,"max":mx},
-   {"bufferView":1,"componentType":5126,"count":len(NOR),"type":"VEC3"},
-   {"bufferView":2,"componentType":5125,"count":len(idx),"type":"SCALAR"}]}
+blob=bytearray(); bufViews=[]; accessors=[]
+def add_mesh(P,N,TRI):
+    global blob
+    def acc_of(bytez, comp, count, typ, mn=None, mx=None, target=34962):
+        off=len(blob); blob.extend(bytez); blob.extend(b"\x00"*((4-len(blob)%4)%4))
+        bufViews.append({"buffer":0,"byteOffset":off,"byteLength":len(bytez),"target":target})
+        a={"bufferView":len(bufViews)-1,"componentType":comp,"count":count,"type":typ}
+        if mn: a["min"]=mn; a["max"]=mx
+        accessors.append(a); return len(accessors)-1
+    pos_b=b"".join(struct.pack("<3f",*p) for p in P)
+    nrm_b=b"".join(struct.pack("<3f",*v) for v in N)
+    idx=[i for t in TRI for i in t]; idx_b=b"".join(struct.pack("<I",i) for i in idx)
+    mn=[min(p[i] for p in P) for i in range(3)]; mx=[max(p[i] for p in P) for i in range(3)]
+    pa=acc_of(pos_b,5126,len(P),"VEC3",mn,mx)
+    na=acc_of(nrm_b,5126,len(N),"VEC3")
+    ia=acc_of(idx_b,5125,len(idx),"SCALAR",target=34963)
+    return pa,na,ia
+gmeshes=[]
+for mi,(P,N,TRI) in enumerate(MESHES):
+    pa,na,ia=add_mesh(P,N,TRI)
+    gmeshes.append({"primitives":[{"attributes":{"POSITION":pa,"NORMAL":na},"indices":ia,"material":mi}]})
+gnodes=[]
+def quat(axis, deg):
+    a=math.radians(deg)/2; s=math.sin(a)
+    return {'X':[s,0,0,math.cos(a)],'Y':[0,s,0,math.cos(a)],'Z':[0,0,s,math.cos(a)]}[axis]
+def emit(nd):
+    idx=len(gnodes); gnodes.append(None); ch=[emit(c) for c in nd["kids"]]
+    g={"translation":list(map(float,nd["t"])),"rotation":quat(nd["axis"],nd["deg"]),"scale":[nd["s"]]*3}
+    if nd["m"] is not None: g["mesh"]=nd["m"]
+    if ch: g["children"]=ch
+    gnodes[idx]=g; return idx
+root_id=emit(root)
+gltf={"asset":{"version":"2.0","generator":"showcase gen_hier.py"},"scene":0,
+ "scenes":[{"nodes":[root_id]}],"nodes":gnodes,"meshes":gmeshes,
+ "materials":[{"pbrMetallicRoughness":{"baseColorFactor":[c[0],c[1],c[2],1.0],
+     "metallicFactor":0.1,"roughnessFactor":0.5}} for c in COLORS],
+ "buffers":[{"byteLength":len(blob),"uri":"data:application/octet-stream;base64,"+base64.b64encode(bytes(blob)).decode()}],
+ "bufferViews":bufViews,"accessors":accessors}
 with open(f"{OUT}/scene.gltf","w") as f: json.dump(gltf,f)
-print(f"hierarchy: {len(gnodes)} glTF nodes; knot {len(POS)} verts {len(TRI)} tris")
+
+# ================= USD =======================================================
+def mesh_prim(name, P, N, TRI, color):
+    pts=", ".join(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f})" for p in P)
+    nrms=", ".join(f"({v[0]:.4f}, {v[1]:.4f}, {v[2]:.4f})" for v in N)
+    cnts=", ".join("3" for _ in TRI); fvi=", ".join(str(i) for t in TRI for i in t)
+    return (f'  def "{name}" ( active = false ) {{\n'
+            f'    def Mesh "Geom" ( prepend apiSchemas = ["MaterialBindingAPI"] ) {{\n'
+            f'      int[] faceVertexCounts = [{cnts}]\n      int[] faceVertexIndices = [{fvi}]\n'
+            f'      point3f[] points = [{pts}]\n      normal3f[] normals = [{nrms}] ( interpolation = "vertex" )\n'
+            f'      rel material:binding = </Protos/{name}/M>\n    }}\n'
+            f'    def Material "M" {{\n      token outputs:surface.connect = </Protos/{name}/M/S.outputs:surface>\n'
+            f'      def Shader "S" {{\n        uniform token info:id = "UsdPreviewSurface"\n'
+            f'        color3f inputs:diffuseColor = ({color[0]}, {color[1]}, {color[2]})\n'
+            f'        float inputs:metallic = 0.1\n        float inputs:roughness = 0.5\n        token outputs:surface\n      }}\n    }}\n  }}\n')
+PROTO_NAMES=["Box","Sphere","Cone"]
+def usd_node(nd, name, indent):
+    pad="  "*indent; s=nd["s"]; ax=nd["axis"]
+    body=(f'{pad}def Xform "{name}" (){{\n'
+          f'{pad}  float3 xformOp:translate = ({nd["t"][0]}, {nd["t"][1]}, {nd["t"][2]})\n'
+          f'{pad}  float xformOp:rotate{ax} = {nd["deg"]}\n'
+          f'{pad}  float3 xformOp:scale = ({s}, {s}, {s})\n'
+          f'{pad}  uniform token[] xformOpOrder = ["xformOp:translate","xformOp:rotate{ax}","xformOp:scale"]\n')
+    if nd["m"] is not None:
+        body+=f'{pad}  def "Shape" ( prepend references = </Protos/{PROTO_NAMES[nd["m"]]}/Geom> ) {{}}\n'
+    for i,c in enumerate(nd["kids"]): body+=usd_node(c,f"{name}_{i}",indent+1)
+    return body+f'{pad}}}\n'
+with open(f"{OUT}/scene.usda","w") as f:
+    f.write('#usda 1.0\n( defaultPrim = "Root" upAxis = "Y" )\n')
+    f.write('# Hierarchy showcase (license-clean): box hub -> sphere arms -> cone moons.\n')
+    f.write('def "Protos" ( active = false ) {\n')
+    for mi,(P,N,TRI) in enumerate(MESHES): f.write(mesh_prim(PROTO_NAMES[mi],P,N,TRI,COLORS[mi]))
+    f.write('}\n')
+    f.write(usd_node(root,"Root",0))
+print(f"hierarchy: {len(gnodes)} glTF nodes; box+sphere+cone; "
+      f"{sum(len(m[2]) for m in MESHES)} tris total")

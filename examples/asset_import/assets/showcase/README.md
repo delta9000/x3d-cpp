@@ -43,27 +43,42 @@ The montage above was composited from three such renders under one three-point r
 
 ## Hierarchy
 
-[`gen_hier.py`](gen_hier.py) authors a **nested transform tree** — `Orrery → {Hub,
-Arm0..2 @120° → Moon0..2}` — with one shared knot mesh, in glTF and USD, to show the
-converter preserves the scene graph. OBJ is omitted: the format has no node
-transforms or parenting.
+[`gen_hier.py`](gen_hier.py) authors a **nested transform tree** with a distinct
+primitive per level — **box hub → 3 sphere arms → 3 cone moons** — in glTF and USD,
+to show the converter preserves the scene graph. A different shape (and colour) at
+each depth makes the parent → child → grandchild nesting read at a glance. OBJ is
+omitted: the format has no node transforms or parenting.
 
 ![hierarchy](hierarchy.png)
 
-The emitted X3D mirrors the source tree as nested `<Transform>`s, and the reused mesh
-becomes one `DEF` + `USE` references (instancing) rather than duplicated geometry:
+The tree is built so the rotation at each spoke actually *moves* its subtree: the
+translate lives on a **child** of the rotating pivot, not the pivot itself (otherwise
+a rotation just spins a shape in place). Each cone therefore inherits
+`box ← spoke-fan ← sphere-offset` before its own offset, so the moons pointing
+radially outward are the visible proof the inherited transforms survived the
+round-trip.
+
+The emitted X3D mirrors the source tree as nested `<Transform>`s (four levels deep),
+and the sphere and cone — each reused three times — become one `DEF` + two `USE`
+references (instancing) rather than duplicated geometry:
 
 ```xml
-<Transform>                                  <!-- Orrery -->
-  <Transform><Shape DEF="Mesh0"/></Transform>          <!-- Hub -->
-  <Transform rotation="0 1 0 0"        translation="3.6 0 0">   <!-- Arm0 -->
-    <Shape USE="Mesh0"/>
-    <Transform rotation="0 1 0 0.698" translation="2.7 0 0"><Shape USE="Mesh0"/></Transform>  <!-- Moon0 -->
+<Transform>                                     <!-- box hub (root) -->
+  <Shape DEF="BoxMesh"/>
+  <Transform rotation="0 0 1 1.571">            <!-- spoke pivot @ 90° -->
+    <Transform translation="3.4 0 0">           <!-- sphere arm -->
+      <Shape DEF="SphereMesh"/>
+      <Transform translation="2.15 0 0" rotation="0 0 1 -1.571">  <!-- cone moon -->
+        <Shape DEF="ConeMesh"/>
+      </Transform>
+    </Transform>
   </Transform>
-  <Transform rotation="0 1 0 2.094" translation="3.6 0 0"> … </Transform>   <!-- Arm1 @120° -->
-  <Transform rotation="0 1 0 4.189" translation="3.6 0 0"> … </Transform>   <!-- Arm2 @240° -->
+  <Transform rotation="0 0 1 3.665"> … <Shape USE="SphereMesh"/> … <Shape USE="ConeMesh"/> … </Transform>
+  <Transform rotation="0 0 1 5.760"> … <Shape USE="SphereMesh"/> … <Shape USE="ConeMesh"/> … </Transform>
 </Transform>
 ```
+
+(DEF names above are illustrative; the converter numbers them `Mesh0…N`.)
 
 ```sh
 python3 gen_hier.py                       # writes scene.gltf + scene.usda
