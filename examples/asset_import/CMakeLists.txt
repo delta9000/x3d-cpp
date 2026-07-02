@@ -9,11 +9,13 @@ target_link_libraries(x3d_authoring_smoke PRIVATE x3d_cpp::authoring)
 add_test(NAME x3d_assetimport_authoring_smoke COMMAND x3d_authoring_smoke)
 
 # ---------------------------------------------------------------------------
-# ImportScene IR + ImportSource seam — compile-only test stub (Task 3).
-# Fleshed out with a real fixture-backed ImportSource in Task 4.
+# ImportScene IR + ImportSource seam, backed by the dependency-free
+# FixtureSource (Task 4) — synthetic scenes for CI without assimp and for
+# every emit test (Tasks 5-8).
 # ---------------------------------------------------------------------------
 add_executable(x3d_assetimport_fixture_source
     "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixture_source.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixture_source_test.cpp")
 target_include_directories(x3d_assetimport_fixture_source PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
