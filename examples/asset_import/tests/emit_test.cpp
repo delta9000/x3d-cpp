@@ -15,3 +15,17 @@ TEST_CASE("emit_cube_produces_shape_with_indexed_triangle_set") {
   CHECK(xml.find("<Coordinate") != std::string::npos);
   CHECK(xml.find("<Normal") != std::string::npos);
 }
+
+TEST_CASE("emit_phong_material_when_no_pbr") {
+  ImportScene s = FixtureSource{}.load("cube");     // cube material has no pbr
+  const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
+  CHECK(xml.find("<Material") != std::string::npos);
+  CHECK(xml.find("<PhysicalMaterial") == std::string::npos);
+}
+
+TEST_CASE("emit_physical_material_when_pbr_present") {
+  ImportScene s = FixtureSource{}.load("cube");
+  s.materials[0].pbr = PbrParams{{0.2f, 0.4f, 0.8f, 1.0f}, 0.0f, 0.5f};
+  const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
+  CHECK(xml.find("<PhysicalMaterial") != std::string::npos);
+}

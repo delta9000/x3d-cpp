@@ -1,12 +1,17 @@
 #include "emit.hpp"
 
+#include "x3d/nodes/Appearance.hpp"
 #include "x3d/nodes/ColorRGBA.hpp"
 #include "x3d/nodes/Coordinate.hpp"
 #include "x3d/nodes/IndexedTriangleSet.hpp"
+#include "x3d/nodes/Material.hpp"
 #include "x3d/nodes/Normal.hpp"
+#include "x3d/nodes/PhysicalMaterial.hpp"
 #include "x3d/nodes/Shape.hpp"
 #include "x3d/nodes/TextureCoordinate.hpp"
 #include "x3d/nodes/Transform.hpp"
+
+#include <algorithm>
 
 namespace x3d::asset_import {
 
@@ -14,10 +19,48 @@ namespace {
 using namespace x3d::core;
 using namespace x3d::nodes;
 
+// The checked X3D setters throw std::out_of_range outside [0,1]; the IR
+// carries values from arbitrary importers (assimp shininess in particular
+// runs ~0..1000), so every component gets clamped before it reaches a
+// setter.
+float clamp01(float v) { return std::clamp(v, 0.0f, 1.0f); }
+SFColor clampColor(const Vec3& c) {
+  return SFColor{clamp01(c.x), clamp01(c.y), clamp01(c.z)};
+}
+
+// Builds the Appearance for one ImportMaterial: PhysicalMaterial (X3D 4.0
+// PBR) when the material carries `pbr`, else Material (Phong).
+SFNode buildAppearance(const ImportMaterial& mat) {
+  auto appearance = std::make_shared<Appearance>();
+
+  if (mat.pbr) {
+    const PbrParams& pbr = *mat.pbr;
+    auto material = std::make_shared<PhysicalMaterial>();
+    material->setBaseColor(
+        SFColor{clamp01(pbr.baseColor.x), clamp01(pbr.baseColor.y), clamp01(pbr.baseColor.z)});
+    material->setMetallic(clamp01(pbr.metallic));
+    material->setRoughness(clamp01(pbr.roughness));
+    material->setEmissiveColor(clampColor(mat.emissive));
+    material->setTransparency(clamp01(1.0f - pbr.baseColor.w));
+    appearance->setMaterial(material);
+  } else {
+    auto material = std::make_shared<Material>();
+    material->setDiffuseColor(clampColor(mat.diffuse));
+    material->setSpecularColor(clampColor(mat.specular));
+    material->setEmissiveColor(clampColor(mat.emissive));
+    material->setShininess(clamp01(mat.shininess / 128.0f));
+    material->setTransparency(clamp01(1.0f - mat.opacity));
+    appearance->setMaterial(material);
+  }
+
+  return appearance;
+}
+
 // Builds a Shape (IndexedTriangleSet + Coordinate, plus Normal/TexCoord/Color
-// when the mesh carries them) from one ImportMesh. Geometry-only: no
-// Appearance/material wiring yet (later tasks).
-std::shared_ptr<Shape> buildShape(const ImportMesh& m, const EmitOptions& opts) {
+// when the mesh carries them) from one ImportMesh, plus its Appearance
+// (Material/PhysicalMaterial) resolved via ImportMesh::materialIndex.
+std::shared_ptr<Shape> buildShape(const ImportMesh& m, const ImportScene& scene,
+                                   const EmitOptions& opts) {
   auto its = std::make_shared<IndexedTriangleSet>();
 
   MFInt32 idx(m.indices.begin(), m.indices.end());
@@ -62,6 +105,12 @@ std::shared_ptr<Shape> buildShape(const ImportMesh& m, const EmitOptions& opts) 
 
   auto shape = std::make_shared<Shape>();
   shape->setGeometry(its);
+
+  if (m.materialIndex >= 0 &&
+      static_cast<std::size_t>(m.materialIndex) < scene.materials.size()) {
+    shape->setAppearance(buildAppearance(scene.materials[m.materialIndex]));
+  }
+
   return shape;
 }
 
@@ -84,7 +133,7 @@ x3d::runtime::X3DDocument emit(const ImportScene& scene, const EmitOptions& opts
     for (int meshIndex : root.meshIndices) {
       if (meshIndex < 0 || static_cast<std::size_t>(meshIndex) >= scene.meshes.size())
         continue;
-      children.push_back(buildShape(scene.meshes[meshIndex], opts));
+      children.push_back(buildShape(scene.meshes[meshIndex], scene, opts));
     }
     transform->setChildren(children);
     doc.scene.addRootNode(transform);
