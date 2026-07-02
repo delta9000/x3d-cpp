@@ -163,6 +163,22 @@ target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
 # Consumers that link the header interface also link the compiled definitions.
 target_link_libraries(x3d_cpp INTERFACE x3d_cpp_nodes)
 
+# ── Authoring slim target: node reflection + writers + range-validate only ──
+# INTERFACE facade over the compiled node library plus the authoring-only
+# headers (document model, range-validate, codec writers). Deliberately omits
+# the parse/execution/extract include dirs so consumers cannot reach those APIs.
+add_library(x3d_cpp_authoring INTERFACE)
+add_library(x3d_cpp::authoring ALIAS x3d_cpp_authoring)
+target_link_libraries(x3d_cpp_authoring INTERFACE x3d_cpp::nodes)
+target_include_directories(x3d_cpp_authoring INTERFACE
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>")
+target_compile_features(x3d_cpp_authoring INTERFACE cxx_std_20)
+install(TARGETS x3d_cpp_authoring EXPORT x3d_cppTargets)
+
 # ---------------------------------------------------------------------------
 # T-SDK: the curated embedder façade. A thin INTERFACE target that adds the
 # include/ path (so consumers write #include "x3d/sdk.hpp") on top of the full
@@ -292,6 +308,11 @@ option(X3D_CPP_PER_HEADER_CHECKS "Compile each header in isolation as a ctest" O
 # Build it with:  cmake --preset dev -DX3D_CPP_BUILD_POC=ON
 # ---------------------------------------------------------------------------
 option(X3D_CPP_BUILD_POC "Build the PoC OpenGL renderer" OFF)
+
+# Asset-import consumer + authoring footprint smoke (examples/asset_import/).
+# OFF by default; Task 11 finalizes the subdirectory wiring. The authoring
+# footprint smoke test is registered at the end of this file when this is ON.
+option(X3D_CPP_BUILD_ASSET_IMPORT "Build the asset-import consumer" OFF)
 
 # ---------------------------------------------------------------------------
 # Headless CPU rasterizer (examples/cpu_raster/). OUT-of-SDK consumer, OFF by
@@ -592,6 +613,16 @@ endif()
 # Build with: cmake --preset dev -DX3D_CPP_BUILD_STB=ON
 # ---------------------------------------------------------------------------
 option(X3D_CPP_BUILD_STB "Build stb_image TextureResolver decode backend (OFF default)" OFF)
+
+# ---------------------------------------------------------------------------
+# assimp ImportSource backend for the asset-import consumer. Gated OFF by
+# default (system-only dependency; not vendored). When ON, the
+# AssimpSource.cpp backend is compiled into x3d_asset_import and the
+# assimp_source_test runs against a committed tiny .obj fixture.
+# Build with: cmake -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_ASSIMP=ON
+# ---------------------------------------------------------------------------
+option(X3D_CPP_BUILD_ASSIMP "Build the assimp ImportSource backend for asset_import (OFF default)" OFF)
+option(X3D_CPP_BUILD_USD "Build the USD ImportSource backend for asset_import (OFF default)" OFF)
 
 if(X3D_CPP_BUILD_STB)
     add_library(x3d_stb STATIC
@@ -1932,6 +1963,16 @@ endif()
 if(X3D_CPP_BUILD_CPURASTER)
     enable_testing() # so the rasterizer's ctests register even when BUILD_TESTS is OFF.
     add_subdirectory(examples/cpu_raster)
+endif()
+
+# ---------------------------------------------------------------------------
+# Asset-import consumer — conditional, OFF by default. See
+# examples/asset_import/CMakeLists.txt for the authoring footprint smoke and
+# the ImportScene IR tests. Task 11 finalizes the full subdirectory.
+# ---------------------------------------------------------------------------
+if(X3D_CPP_BUILD_ASSET_IMPORT)
+    enable_testing() # register ctests even when BUILD_TESTS is OFF.
+    add_subdirectory(examples/asset_import)
 endif()
 
 # ---------------------------------------------------------------------------

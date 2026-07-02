@@ -14,6 +14,7 @@ build*/
 # Compiler scratch
 test_exec
 *.o
+*.os
 
 # Note: generated_cpp_bindings/ is GOLDEN and intentionally tracked.
 # Drop only the smoke-test artifacts produced during generation. Post ADR-0039

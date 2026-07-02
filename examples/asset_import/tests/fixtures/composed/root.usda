@@ -1,0 +1,28 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    # `add references` (not prepend/append) exercises the ListEditQual::Add path
+    # our vendored tinyusdz patch enables. The referenced piece.usda defers its
+    # geometry to a subLayer, so this also exercises recursive subLayer
+    # composition of a referenced asset.
+    def Xform "InstanceA" (
+        add references = @./piece.usda@
+    )
+    {
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Xform "InstanceB" (
+        add references = @./piece.usda@
+    )
+    {
+        double3 xformOp:translate = (2, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}

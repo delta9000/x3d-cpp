@@ -50,6 +50,13 @@ example; no part of it is committed here.
   stb_image.h       examples/poc_renderer/third_party/     MIT OR Public Domain
                     (PoC renderer; also TextureResolver decode Backend A,
                      -DX3D_CPP_BUILD_STB=ON)
+  stb_image_write.h examples/cpu_raster/third_party/       MIT OR Public Domain
+                    examples/asset_import/third_party/
+                    (PNG/JPEG encode; cpu_raster export + asset_import
+                     texture re-encode)
+  assimp (v6.0)    NOT bundled (github.com/assimp/assimp)  BSD-3-Clause
+                    (asset_import ImportSource backend;
+                     -DX3D_CPP_BUILD_ASSIMP=ON)
   tinfl.h (miniz)   runtime/parse/tinfl.h                   Public Domain (Unlicense)
   glad              third_party/glad/                       Apache-2.0 AND (WTFPL OR CC0-1.0)
   doctest           runtime/test_support/doctest/           MIT  (test-only; v2.4.11)
@@ -90,6 +97,11 @@ binaries you distribute that link it.
   libtheora+libogg  xiph.org (system / pkg-config)           BSD-3-Clause (Xiph)  (-DX3D_CPP_BUILD_THEORA=ON)
                     MovieDecoder Backend B — Ogg/Theora video (royalty-free Xiph
                     codec). Linked PRIVATE to the one TU; default build unaffected.
+  tinyusdz          github.com/lighttransport/tinyusdz       Apache-2.0   (-DX3D_CPP_BUILD_USD=ON)
+                    (asset_import USD/USDZ ImportSource backend; fetched via
+                     FetchContent and patched at configure time — see
+                     examples/asset_import/patches/. Flag-gated OFF; the default
+                     build does not link it.)
 
 The AWS S3 backend (-DX3D_CPP_BUILD_S3=ON) pulls these transitive dependencies
 via vcpkg, each under its own license:

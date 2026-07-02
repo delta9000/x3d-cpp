@@ -125,6 +125,35 @@ int main() {
     CHECK(near(o.x, 2.0f));
   }
 
+  // ---- 11. UsdPreviewSurface fidelity uniforms seeded with spec defaults ----
+  // Regression guard for the portable usd_preview_surface.frag seam: before the
+  // slot/fidelity binding was added, these names were undefined and the author
+  // shader would throw and fall back to the flat material color.
+  {
+    g::vec4 o = run("void main(){ FragColor = vec4(uIor, float(uHasNormalTex),"
+                    " uOcclusionStrength, float(uUseSpecularWorkflow)); }", f, disc);
+    CHECK(!disc && near(o.x, 1.5f) && near(o.y, 0.0f) && near(o.z, 1.0f) &&
+          near(o.w, 0.0f));
+  }
+
+  // ---- 12. non-base texture slots are bound + sampleable by author GLSL ----
+  // The interpreter used to bind only the base-color sampler; the metallic-
+  // roughness (and normal/emissive/occlusion) slots now reach author shaders.
+  {
+    ex::MaterialDesc m;
+    ex::TextureRef t;
+    t.slot = ex::TextureRef::Slot::MetallicRoughness;
+    t.source = ex::TextureRef::Source::Inline;
+    t.inlinePixels = x3d::core::SFImage{1, 1, 3, {0, 128, 255}}; // R occl,G rough,B metal
+    m.textures.push_back(t);
+    FragmentInput tf = f;
+    tf.texcoord = {0.5f, 0.5f};
+    g::vec4 o = run("void main(){ FragColor = vec4(float(uHasMetallicRoughnessTex),"
+                    " texture(uMetallicRoughnessTex, vTexCoord).b, 0.0, 1.0); }",
+                    tf, disc, {}, m);
+    CHECK(!disc && near(o.x, 1.0f) && o.y > 0.9f); // flag set; B (metallic) ~ 1.0
+  }
+
   if (failures) { std::fprintf(stderr, "glsl_interp_test: %d failure(s)\n", failures); return 1; }
   std::printf("glsl_interp_test: OK\n");
   return 0;
