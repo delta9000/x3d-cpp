@@ -90,6 +90,7 @@ nav:
           - Font Metrics Seam: subsystems/system-font-metrics.md
           - SDK Facade: subsystems/sdk-facade.md
           - CLI Suite: subsystems/cli-suite.md
+          - Asset Import: subsystems/asset-import.md
           - Conformance Infrastructure: subsystems/conformance-infra.md
   - Decisions (ADRs):
       - "ADR-0001: Ext Firewall": decisions/0001-ext-firewall.md
@@ -133,6 +134,7 @@ nav:
       - "ADR-0039: Generated Bindings Live in x3d::core + x3d::nodes": decisions/0039-generated-binding-namespaces.md
       - "ADR-0040: NURBS Curve + Patch Tessellation is First-Party": decisions/0040-nurbs-tessellation-first-party.md
       - "ADR-0041: MovieDecoder Seam — Royalty-Free Codecs Ship": decisions/0041-moviedecoder-seam-royalty-free-defaults.md
+      - "ADR-0042: Slim Authoring Target & Ingestion Pipeline": decisions/0042-authoring-target.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

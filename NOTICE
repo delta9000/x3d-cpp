@@ -54,7 +54,7 @@ example; no part of it is committed here.
                     examples/asset_import/third_party/
                     (PNG/JPEG encode; cpu_raster export + asset_import
                      texture re-encode)
-  assimp (v6.0)    NOT bundled (system pkg)                BSD-3-Clause
+  assimp (v6.0)    NOT bundled (github.com/assimp/assimp)  BSD-3-Clause
                     (asset_import ImportSource backend;
                      -DX3D_CPP_BUILD_ASSIMP=ON)
   tinfl.h (miniz)   runtime/parse/tinfl.h                   Public Domain (Unlicense)
