@@ -3,13 +3,17 @@
 #include "x3d/nodes/Appearance.hpp"
 #include "x3d/nodes/ColorRGBA.hpp"
 #include "x3d/nodes/Coordinate.hpp"
+#include "x3d/nodes/DirectionalLight.hpp"
 #include "x3d/nodes/IndexedTriangleSet.hpp"
 #include "x3d/nodes/Material.hpp"
 #include "x3d/nodes/Normal.hpp"
 #include "x3d/nodes/PhysicalMaterial.hpp"
+#include "x3d/nodes/PointLight.hpp"
 #include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/SpotLight.hpp"
 #include "x3d/nodes/TextureCoordinate.hpp"
 #include "x3d/nodes/Transform.hpp"
+#include "x3d/nodes/Viewpoint.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -204,6 +208,63 @@ SFNode getOrBuildMeshShape(int meshIndex, const ImportScene& scene, const EmitOp
   return shape;
 }
 
+// Builds one X3D light node from an ImportLight. The IR already carries
+// world-space direction/position; we clamp intensity to [0,1] (the X3D
+// light intensity range) before the range-checked setters.
+SFNode buildLight(const ImportLight& l) {
+  switch (l.kind) {
+    case ImportLight::Kind::Dir: {
+      auto light = std::make_shared<DirectionalLight>();
+      light->setDirection(SFVec3f{l.direction.x, l.direction.y, l.direction.z});
+      light->setColor(clampColor(l.color));
+      light->setIntensity(clamp01(l.intensity));
+      light->setGlobal(true);
+      return light;
+    }
+    case ImportLight::Kind::Point: {
+      auto light = std::make_shared<PointLight>();
+      light->setLocation(SFVec3f{l.position.x, l.position.y, l.position.z});
+      light->setColor(clampColor(l.color));
+      light->setIntensity(clamp01(l.intensity));
+      light->setAttenuationUnchecked(
+          SFVec3f{l.attenuation.x, l.attenuation.y, l.attenuation.z});
+      light->setRadiusUnchecked(l.radius);
+      light->setGlobal(true);
+      return light;
+    }
+    case ImportLight::Kind::Spot: {
+      auto light = std::make_shared<SpotLight>();
+      light->setLocation(SFVec3f{l.position.x, l.position.y, l.position.z});
+      light->setDirection(SFVec3f{l.direction.x, l.direction.y, l.direction.z});
+      light->setColor(clampColor(l.color));
+      light->setIntensity(clamp01(l.intensity));
+      light->setAttenuationUnchecked(
+          SFVec3f{l.attenuation.x, l.attenuation.y, l.attenuation.z});
+      light->setRadiusUnchecked(l.radius);
+      light->setCutOffAngleUnchecked(l.cutOffAngle);
+      light->setBeamWidthUnchecked(l.beamWidth);
+      light->setGlobal(true);
+      return light;
+    }
+  }
+  // Unreachable but keeps the compiler happy across all compilers.
+  return std::make_shared<DirectionalLight>();
+}
+
+// Builds one Viewpoint from an ImportCamera. Position and orientation come
+// from the camera's world matrix (column-major): translation = column 3,
+// rotation = the rotation part via decomposeTRS.
+SFNode buildViewpoint(const ImportCamera& cam) {
+  auto vp = std::make_shared<Viewpoint>();
+  const Trs trs = decomposeTRS(cam.world);
+  vp->setPosition(trs.translation);
+  vp->setOrientation(trs.rotation);
+  vp->setFieldOfView(cam.yfov);
+  vp->setNearDistance(cam.znear);
+  vp->setFarDistance(cam.zfar);
+  return vp;
+}
+
 // Recursively emits one ImportNode (and its childIndices subtree) as a
 // Transform: TRS decomposed from the node's localTransform, its own meshes'
 // Shapes plus its children's Transforms as the group's children.
@@ -240,6 +301,15 @@ x3d::runtime::X3DDocument emit(const ImportScene& scene, const EmitOptions& opts
   x3d::runtime::X3DDocument doc;
   doc.version = "4.0";
   doc.profile = x3d::runtime::Profile::Interchange;
+
+  // Cameras and lights are world-space in the IR and live at the scene root;
+  // emit them first so they precede the geometry root Transform.
+  for (const ImportCamera& cam : scene.cameras) {
+    doc.scene.addRootNode(buildViewpoint(cam));
+  }
+  for (const ImportLight& light : scene.lights) {
+    doc.scene.addRootNode(buildLight(light));
+  }
 
   if (scene.rootNode >= 0 &&
       static_cast<std::size_t>(scene.rootNode) < scene.nodes.size()) {

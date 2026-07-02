@@ -46,3 +46,31 @@ TEST_CASE("emit_shared_mesh_uses_def_use") {
   const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
   CHECK(xml.find("USE=") != std::string::npos);
 }
+
+TEST_CASE("emit_camera_and_lights") {
+  ImportScene s = FixtureSource{}.load("lit");
+  const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
+  CHECK(xml.find("<Viewpoint") != std::string::npos);
+  // DirectionalLight/PointLight/SpotLight all contain "Light".
+  CHECK(xml.find("Light") != std::string::npos);
+}
+
+TEST_CASE("emit_point_and_spot_lights") {
+  ImportScene s = FixtureSource{}.load("lit");
+  // Replace the directional light with one of each other kind.
+  s.lights.clear();
+  ImportLight point;
+  point.kind = ImportLight::Kind::Point;
+  point.position = {0, 5, 0};
+  point.attenuation = {1, 0.1f, 0};
+  s.lights.push_back(point);
+  ImportLight spot = point;
+  spot.kind = ImportLight::Kind::Spot;
+  spot.direction = {0, -1, 0};
+  spot.cutOffAngle = 0.5f;
+  spot.beamWidth = 0.3f;
+  s.lights.push_back(spot);
+  const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
+  CHECK(xml.find("<PointLight") != std::string::npos);
+  CHECK(xml.find("<SpotLight") != std::string::npos);
+}
