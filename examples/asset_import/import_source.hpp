@@ -16,6 +16,11 @@ struct Mat4 { std::array<float, 16> m{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1}; };
 
 enum class AlphaMode { Opaque, Mask, Blend };
 
+// UsdPreviewSurface opacityMode (openusd spec_usdpreviewsurface): Transparent
+// attenuates only the diffuse term (specular still glints at opacity 0);
+// Presence scales the whole lit result (the glTF BLEND equivalent).
+enum class OpacityMode { Transparent, Presence };
+
 struct PbrParams { Vec4 baseColor{1,1,1,1}; float metallic = 1.0f; float roughness = 1.0f; };
 
 // A texture reference: either an external path (relative to the model dir) OR an
@@ -48,6 +53,18 @@ struct ImportMaterial {
   AlphaMode alpha = AlphaMode::Opaque;
   std::optional<PbrParams> pbr;
   TextureSlots textures;
+
+  // UsdPreviewSurface-grade fields (openusd spec_usdpreviewsurface). These carry
+  // fidelity that the X3D PhysicalMaterial node cannot model (no ior/clearcoat/
+  // specular-workflow/opacityMode) — so they survive the X3D emit only via the
+  // specialized `--emit-glsl` path, which bakes them into a portable fragment
+  // shader. Defaults match the UsdPreviewSurface spec fallbacks.
+  bool useSpecularWorkflow = false;  // true → use `specular` as F0, ignore metallic
+  float ior = 1.5f;                  // dielectric index of refraction (drives F0)
+  float clearcoat = 0.0f;            // weight of a second white specular lobe
+  float clearcoatRoughness = 0.01f;
+  float opacityThreshold = 0.0f;     // >0 → alpha-test cutout (→ AlphaMode::Mask)
+  OpacityMode opacityMode = OpacityMode::Transparent;
 };
 struct ImportNode {
   std::string name;

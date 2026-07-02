@@ -97,6 +97,11 @@ binaries you distribute that link it.
   libtheora+libogg  xiph.org (system / pkg-config)           BSD-3-Clause (Xiph)  (-DX3D_CPP_BUILD_THEORA=ON)
                     MovieDecoder Backend B — Ogg/Theora video (royalty-free Xiph
                     codec). Linked PRIVATE to the one TU; default build unaffected.
+  tinyusdz          github.com/lighttransport/tinyusdz       Apache-2.0   (-DX3D_CPP_BUILD_USD=ON)
+                    (asset_import USD/USDZ ImportSource backend; fetched via
+                     FetchContent and patched at configure time — see
+                     examples/asset_import/patches/. Flag-gated OFF; the default
+                     build does not link it.)
 
 The AWS S3 backend (-DX3D_CPP_BUILD_S3=ON) pulls these transitive dependencies
 via vcpkg, each under its own license:

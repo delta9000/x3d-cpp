@@ -142,6 +142,11 @@ target_compile_definitions(x3d_poc_renderer PRIVATE
     GLFW_INCLUDE_NONE
     "X3D_POC_ASSET_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/assets\""
     "X3D_POC_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/shaders\""
+    # Swap-test seam (U1-U4): the portable UsdPreviewSurface shader lives in the
+    # sibling cpu_raster example so ONE source can be validated both by the CPU
+    # rasterizer's GlslInterpreter and here on real desktop GL. Opt-in only via
+    # --pbr-shader / X3D_POC_PBR_SHADER; default path (pbr.frag) is unaffected.
+    "X3D_POC_PORTABLE_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../cpu_raster/shaders\""
     # Bundled Liberation faces (shared with the SDK text tests; SIL OFL).
     "X3D_POC_FONT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/fonts\"")
 

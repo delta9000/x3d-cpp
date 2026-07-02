@@ -582,6 +582,7 @@ option(X3D_CPP_BUILD_STB "Build stb_image TextureResolver decode backend (OFF de
 # Build with: cmake -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_ASSIMP=ON
 # ---------------------------------------------------------------------------
 option(X3D_CPP_BUILD_ASSIMP "Build the assimp ImportSource backend for asset_import (OFF default)" OFF)
+option(X3D_CPP_BUILD_USD "Build the USD ImportSource backend for asset_import (OFF default)" OFF)
 
 if(X3D_CPP_BUILD_STB)
     add_library(x3d_stb STATIC

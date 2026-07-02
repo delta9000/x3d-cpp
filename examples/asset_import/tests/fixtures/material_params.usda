@@ -1,0 +1,41 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    upAxis = "Y"
+)
+
+# A single triangle bound to a UsdPreviewSurface that authors the fidelity inputs
+# our ImportMaterial now carries (specular workflow, ior, clearcoat, opacity +
+# opacityThreshold). Used by usd_source_test to prove these survive extraction and
+# that AlphaMode is derived from the opacity signals.
+def Xform "World"
+{
+    def Mesh "Tri" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        int[] faceVertexCounts = [3]
+        int[] faceVertexIndices = [0, 1, 2]
+        point3f[] points = [(0, 0, 0), (1, 0, 0), (0, 1, 0)]
+        rel material:binding = </World/Mat>
+    }
+
+    def Material "Mat"
+    {
+        token outputs:surface.connect = </World/Mat/Surface.outputs:surface>
+
+        def Shader "Surface"
+        {
+            uniform token info:id = "UsdPreviewSurface"
+            color3f inputs:diffuseColor = (0.2, 0.4, 0.6)
+            int inputs:useSpecularWorkflow = 1
+            color3f inputs:specularColor = (0.9, 0.8, 0.7)
+            float inputs:ior = 1.4
+            float inputs:clearcoat = 0.7
+            float inputs:clearcoatRoughness = 0.2
+            float inputs:opacity = 0.5
+            float inputs:opacityThreshold = 0.3
+            token outputs:surface
+        }
+    }
+}

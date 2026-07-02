@@ -105,6 +105,13 @@ Trs decomposeTRS(const Mat4& mat) {
 // runs ~0..1000), so every component gets clamped before it reaches a
 // setter.
 float clamp01(float v) { return std::clamp(v, 0.0f, 1.0f); }
+float clamp11(float v) { return std::clamp(v, -1.0f, 1.0f); }
+SFVec3f clampNormal(const Vec3& n) {
+  float len = std::sqrt(n.x * n.x + n.y * n.y + n.z * n.z);
+  if (len < 1e-6f) return SFVec3f{0.0f, 0.0f, 1.0f};
+  float invLen = 1.0f / len;
+  return SFVec3f{clamp11(n.x * invLen), clamp11(n.y * invLen), clamp11(n.z * invLen)};
+}
 SFColor clampColor(const Vec3& c) {
   return SFColor{clamp01(c.x), clamp01(c.y), clamp01(c.z)};
 }
@@ -226,7 +233,7 @@ std::shared_ptr<Shape> buildShape(const ImportMesh& m, const ImportScene& scene,
     auto normal = std::make_shared<Normal>();
     MFVec3f nv;
     nv.reserve(m.normals.size());
-    for (const auto& n : m.normals) nv.push_back(SFVec3f{n.x, n.y, n.z});
+    for (const auto& n : m.normals) nv.push_back(clampNormal(n));
     normal->setVector(nv);
     its->setNormal(normal);
   }

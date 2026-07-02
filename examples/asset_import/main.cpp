@@ -1,5 +1,6 @@
 #include "emit.hpp"
 #include "fixture_source.hpp"
+#include "glsl_emit.hpp"
 #include "texture_pipeline.hpp"
 #include "x3d/authoring.hpp"
 #include "x3d/sdk.hpp"
@@ -7,6 +8,10 @@
 
 #ifdef X3D_ASSET_IMPORT_HAVE_ASSIMP
 #include "assimp_source.hpp"
+#endif
+
+#ifdef X3D_ASSET_IMPORT_HAVE_USD
+#include "usd_source.hpp"
 #endif
 
 #include <iostream>
@@ -46,11 +51,28 @@ int countNodes(const x3d::runtime::Scene& scene) {
   return count;
 }
 
+// Turns a material name into a filesystem-safe stem: keep alnum/-/_, replace
+// everything else with '_'. Falls back to a positional name when the
+// material name is empty or collapses to nothing usable.
+std::string sanitizeMaterialStem(const std::string& name, int index) {
+  std::string stem;
+  for (char c : name) {
+    if (std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_') {
+      stem += c;
+    } else {
+      stem += '_';
+    }
+  }
+  if (stem.empty()) stem = "material_" + std::to_string(index);
+  return stem;
+}
+
 int main(int argc, char** argv) {
   const std::string usageMsg =
       "usage: x3d_asset_import <input> [-o <output>] [--format xml|json|vrml|canonical]\n"
       "                        [--assets-dir <dir>] [--no-textures] [--recompress]\n"
-      "                        [--profile auto|interchange|immersive|full] [--verify] [--stats]\n";
+      "                        [--profile auto|interchange|immersive|full] [--verify] [--stats]\n"
+      "                        [--emit-glsl <dir>]\n";
 
   std::string input;
   std::string outPath;
@@ -61,6 +83,7 @@ int main(int argc, char** argv) {
   std::string profileSelect = "auto";
   bool verify = false;
   bool printStats = false;
+  std::string emitGlslDir;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -108,6 +131,12 @@ int main(int argc, char** argv) {
       verify = true;
     } else if (arg == "--stats") {
       printStats = true;
+    } else if (arg == "--emit-glsl") {
+      if (i + 1 >= argc) {
+        std::cerr << "error: --emit-glsl option requires an argument\n";
+        return 1;
+      }
+      emitGlslDir = argv[++i];
     } else if (arg[0] == '-') {
       std::cerr << "error: unknown option: " << arg << "\n" << usageMsg;
       return 1;
@@ -135,17 +164,66 @@ int main(int argc, char** argv) {
       std::string name = input.substr(8);
       scene = source->load(name);
     } else {
-#ifdef X3D_ASSET_IMPORT_HAVE_ASSIMP
-      source = std::make_unique<AssimpSource>();
-      scene = source->load(input);
+      bool isUsd = false;
+      size_t dot = input.find_last_of('.');
+      if (dot != std::string::npos) {
+        std::string ext = input.substr(dot);
+        for (auto& c : ext) c = std::tolower(c);
+        if (ext == ".usd" || ext == ".usda" || ext == ".usdc" || ext == ".usdz") {
+          isUsd = true;
+        }
+      }
+      
+      if (isUsd) {
+#ifdef X3D_ASSET_IMPORT_HAVE_USD
+        source = std::make_unique<UsdSource>();
+        scene = source->load(input);
 #else
-      std::cerr << "error: rebuild with -DX3D_CPP_BUILD_ASSIMP=ON to import real asset files\n";
-      return 1;
+        std::cerr << "error: rebuild with -DX3D_CPP_BUILD_USD=ON to import USD/USDA/USDC/USDZ files\n";
+        return 1;
 #endif
+      } else {
+#ifdef X3D_ASSET_IMPORT_HAVE_ASSIMP
+        source = std::make_unique<AssimpSource>();
+        scene = source->load(input);
+#else
+        std::cerr << "error: rebuild with -DX3D_CPP_BUILD_ASSIMP=ON to import real asset files\n";
+        return 1;
+#endif
+      }
     }
   } catch (const std::exception& e) {
     std::cerr << "error: failed to load input '" << input << "': " << e.what() << "\n";
     return 2;
+  }
+
+  // 1b. --emit-glsl: one portable, self-contained fragment shader per
+  // material with UsdPreviewSurface fidelity params baked in as `const`.
+  // Standalone from the X3D emit path below — the only channel that can
+  // carry ior/clearcoat/specular-workflow/opacityMode faithfully, since the
+  // X3D PhysicalMaterial node can't model them (see ImportMaterial).
+  if (!emitGlslDir.empty()) {
+    std::error_code ec;
+    std::filesystem::create_directories(emitGlslDir, ec);
+    if (ec) {
+      std::cerr << "error: failed to create --emit-glsl directory '" << emitGlslDir << "': " << ec.message() << "\n";
+      return 2;
+    }
+    int written = 0;
+    for (int mi = 0; mi < static_cast<int>(scene.materials.size()); ++mi) {
+      const ImportMaterial& mat = scene.materials[mi];
+      std::string stem = sanitizeMaterialStem(mat.name, mi);
+      std::filesystem::path fragPath = std::filesystem::path(emitGlslDir) / (stem + ".frag");
+      std::ofstream fragOfs(fragPath, std::ios::binary);
+      if (!fragOfs) {
+        std::cerr << "error: failed to open --emit-glsl output for writing: " << fragPath.string() << "\n";
+        return 2;
+      }
+      fragOfs << emitMaterialGlsl(mat);
+      fragOfs.close();
+      ++written;
+    }
+    std::cerr << "emit-glsl: wrote " << written << " shader(s) to " << emitGlslDir << "\n";
   }
 
   // 2. Derive Default Output Path & Format
