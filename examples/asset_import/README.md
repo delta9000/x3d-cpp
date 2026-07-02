@@ -100,6 +100,17 @@ canonical shader runs byte-identically in the CPU rasterizer's GLSL interpreter
 (`x3d_cpu_raster --frag`) and on desktop OpenGL (`x3d_poc_renderer --pbr-shader`).
 See [ADR-0043](../../docs/wiki/decisions/0043-usd-material-portable-glsl-seam.md).
 
+## Showcase
+
+[`assets/showcase/`](assets/showcase/) converts one cube authored in **OBJ**, **glTF**,
+and **USD** through the three backends, showing the format-agnostic pipeline and the
+material-model mapping (OBJ → Phong `Material`; glTF & USD → `PhysicalMaterial`):
+
+![OBJ / glTF / USD conversion showcase](assets/showcase/showcase.png)
+
+All showcase assets are authored in-repo (license-clean). See its
+[README](assets/showcase/README.md) for the regenerate/convert/render recipe.
+
 ## Example models & licensing
 
 **Only bundle assets whose license permits redistribution in an MIT project

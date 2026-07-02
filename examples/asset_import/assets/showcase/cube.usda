@@ -1,0 +1,22 @@
+#usda 1.0
+( defaultPrim = "World" upAxis = "Y" )
+# Authored cube for the x3d_asset_import showcase (license-clean).
+def Xform "World" {
+  def Mesh "Cube" ( prepend apiSchemas = ["MaterialBindingAPI"] ) {
+    int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    int[] faceVertexIndices = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]
+    point3f[] points = [(1, -1, -1), (1, 1, -1), (1, 1, 1), (1, -1, 1), (-1, -1, 1), (-1, 1, 1), (-1, 1, -1), (-1, -1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, 1, -1), (-1, -1, 1), (-1, -1, -1), (1, -1, -1), (1, -1, 1), (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1), (1, -1, -1), (-1, -1, -1), (-1, 1, -1), (1, 1, -1)]
+    normal3f[] normals = [(1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, -1, 0), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, -1), (0, 0, -1), (0, 0, -1), (0, 0, -1)] ( interpolation = "vertex" )
+    rel material:binding = </World/Mat>
+  }
+  def Material "Mat" {
+    token outputs:surface.connect = </World/Mat/S.outputs:surface>
+    def Shader "S" {
+      uniform token info:id = "UsdPreviewSurface"
+      color3f inputs:diffuseColor = (0.13, 0.62, 0.65)
+      float inputs:metallic = 0.1
+      float inputs:roughness = 0.5
+      token outputs:surface
+    }
+  }
+}
