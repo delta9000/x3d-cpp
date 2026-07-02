@@ -99,3 +99,65 @@ else()
     message(STATUS "asset_import: assimp backend disabled "
                    "(-DX3D_CPP_BUILD_ASSIMP=ON to enable).")
 endif()
+
+# ---------------------------------------------------------------------------
+# final target: x3d_asset_import (Task 11)
+# ---------------------------------------------------------------------------
+set(ASSET_IMPORT_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/emit.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixture_source.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/texture_pipeline.cpp"
+)
+set(ASSET_IMPORT_LIBS
+    x3d_cpp::authoring
+    x3d_cpp::sdk
+)
+if(TARGET x3d_stb)
+    list(APPEND ASSET_IMPORT_LIBS x3d_stb)
+endif()
+
+if(X3D_CPP_BUILD_ASSIMP)
+    find_package(assimp CONFIG QUIET)
+    if(TARGET assimp::assimp)
+        list(APPEND ASSET_IMPORT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/assimp_source.cpp")
+        list(APPEND ASSET_IMPORT_LIBS assimp::assimp)
+        set(HAVE_ASSIMP 1)
+    else()
+        set(HAVE_ASSIMP 0)
+    endif()
+else()
+    set(HAVE_ASSIMP 0)
+endif()
+
+add_executable(x3d_asset_import ${ASSET_IMPORT_SOURCES})
+target_link_libraries(x3d_asset_import PRIVATE ${ASSET_IMPORT_LIBS})
+target_compile_features(x3d_asset_import PRIVATE cxx_std_20)
+target_include_directories(x3d_asset_import PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../tools"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/io/stb"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/extract"
+)
+if(HAVE_ASSIMP)
+    target_compile_definitions(x3d_asset_import PRIVATE X3D_ASSET_IMPORT_HAVE_ASSIMP=1)
+endif()
+
+# ---------------------------------------------------------------------------
+# round-trip test: x3d_assetimport_roundtrip (Task 11)
+# ---------------------------------------------------------------------------
+add_executable(x3d_assetimport_roundtrip
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/emit.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixture_source.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/roundtrip_test.cpp"
+)
+target_include_directories(x3d_assetimport_roundtrip PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support"
+)
+target_link_libraries(x3d_assetimport_roundtrip PRIVATE x3d_cpp::sdk x3d_cpp::authoring)
+target_compile_features(x3d_assetimport_roundtrip PRIVATE cxx_std_20)
+add_test(NAME x3d_assetimport_roundtrip COMMAND x3d_assetimport_roundtrip)
+
