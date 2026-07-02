@@ -1,0 +1,3 @@
+# Material for tri.obj (referenced by default mtlname convention).
+newmtl tri_mat
+Kd 0.8 0.2 0.2

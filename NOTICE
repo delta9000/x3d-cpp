@@ -54,6 +54,9 @@ example; no part of it is committed here.
                     examples/asset_import/third_party/
                     (PNG/JPEG encode; cpu_raster export + asset_import
                      texture re-encode)
+  assimp (v6.0)    NOT bundled (system pkg)                BSD-3-Clause
+                    (asset_import ImportSource backend;
+                     -DX3D_CPP_BUILD_ASSIMP=ON)
   tinfl.h (miniz)   runtime/parse/tinfl.h                   Public Domain (Unlicense)
   glad              third_party/glad/                       Apache-2.0 AND (WTFPL OR CC0-1.0)
   doctest           runtime/test_support/doctest/           MIT  (test-only; v2.4.11)

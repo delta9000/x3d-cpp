@@ -574,6 +574,15 @@ endif()
 # ---------------------------------------------------------------------------
 option(X3D_CPP_BUILD_STB "Build stb_image TextureResolver decode backend (OFF default)" OFF)
 
+# ---------------------------------------------------------------------------
+# assimp ImportSource backend for the asset-import consumer. Gated OFF by
+# default (system-only dependency; not vendored). When ON, the
+# AssimpSource.cpp backend is compiled into x3d_asset_import and the
+# assimp_source_test runs against a committed tiny .obj fixture.
+# Build with: cmake -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_ASSIMP=ON
+# ---------------------------------------------------------------------------
+option(X3D_CPP_BUILD_ASSIMP "Build the assimp ImportSource backend for asset_import (OFF default)" OFF)
+
 if(X3D_CPP_BUILD_STB)
     add_library(x3d_stb STATIC
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/stb/StbTextureResolver.cpp")
