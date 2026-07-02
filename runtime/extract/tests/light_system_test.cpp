@@ -136,5 +136,36 @@ TEST_CASE("light_system_test") {
     CHECK((feq(L.attenuation.x, 0.0f) && feq(L.attenuation.y, 1.0f)));
   }
 
+  // --- X3D 4.0 §17.3.1 shadow controls: defaults + authored (all types) ----
+  {
+    // Default: shadows FALSE, shadowIntensity 1 (spec X3DLightNode defaults).
+    auto dl = createX3DNode("DirectionalLight");
+    Scene scene;
+    scene.addRootNode(dl);
+    X3DExecutionContext ctx;
+    ctx.buildSceneGraph(scene);
+    extract::LightSystem ls;
+    auto lights = ls.collect(scene);
+    CHECK((lights.size() == 1));
+    CHECK((lights[0].shadows == false));
+    CHECK((feq(lights[0].shadowIntensity, 1.0f)));
+  }
+  {
+    // Authored: a SpotLight opts into shadows at reduced intensity.
+    auto sl = createX3DNode("SpotLight");
+    setF(sl, "shadows", std::any(true));
+    setF(sl, "shadowIntensity", std::any(0.6f));
+    Scene scene;
+    scene.addRootNode(sl);
+    X3DExecutionContext ctx;
+    ctx.buildSceneGraph(scene);
+    extract::LightSystem ls;
+    auto lights = ls.collect(scene);
+    CHECK((lights.size() == 1));
+    CHECK((lights[0].type == extract::LightDesc::Type::Spot));
+    CHECK((lights[0].shadows == true));
+    CHECK((feq(lights[0].shadowIntensity, 0.6f)));
+  }
+
   return;
 }

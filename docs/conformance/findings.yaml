@@ -1447,9 +1447,9 @@
   component: Lighting
   clause: "17.3.1"
   severity: minor
-  status: open
-  summary: "shadows / shadowIntensity absent from LightDesc — extraction can't drive shadows."
-  note: "§17.3.1 defines shadows (SFBool) + shadowIntensity (SFFloat) on every light. LightDesc (runtime/extract/RenderItem.hpp:473-491) has neither member; LightSystem::makeLight (LightSystem.hpp:120-156) reads neither. May tie into main's ADR-0028 shadow seam — check before wiring. (sweep 2026-06-25)"
+  status: fixed
+  summary: "shadows / shadowIntensity now extracted onto LightDesc."
+  note: "§17.3.1 defines shadows (SFBool, default FALSE) + shadowIntensity (SFFloat, default 1, [0,1]) on every light. FIXED: LightDesc (runtime/extract/RenderItem.hpp) gained bool shadows + float shadowIntensity members; LightSystem::makeLight reads both in the shared X3DLightNode block via getField, so all three light types carry them. Consumers can now honor authored shadow-casting + darkness (a downstream renderer chooses the technique). (sweep 2026-06-25; resolved 2026-07-02)"
 - id: SHDR-1
   nodes: [FloatVertexAttribute, Matrix3VertexAttribute, Matrix4VertexAttribute]
   interfaces: [X3DVertexAttributeNode]

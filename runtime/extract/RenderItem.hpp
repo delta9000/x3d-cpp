@@ -490,6 +490,10 @@ struct LightDesc {
   float beamWidth = 1.5708f; // Spot.
   float cutOffAngle = 0.7854f; // Spot.
 
+  // X3D 4.0 §17.3.1 X3DLightNode shadow controls (all three light types).
+  bool shadows = false;          // authored: does this light cast shadows?
+  float shadowIntensity = 1.0f;  // [0,1]: 0 = no visible shadow, 1 = full-dark.
+
   bool global = false;                 // authored; carried not promoted.
   const X3DNode *scopeRoot = nullptr;  // enclosing grouping node for scoping.
 };
