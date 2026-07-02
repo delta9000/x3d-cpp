@@ -47,8 +47,13 @@ inline std::string urlForRef(const TexturePlan& plan, const TextureRef& ref) {
 // decoded (via the x3d_stb seam) and re-encoded as PNG (stb_image_write).
 //
 // Returns the plan mapping each texture key to its relative URL.
+//
+// `outFileDir` is the directory of the emitted X3D document. When given, texture
+// URLs are made relative to it (so `--assets-dir` pointing anywhere still resolves
+// from the output file); when empty, URLs use the default `assets/` prefix.
 TexturePlan planTextures(const ImportScene& scene, const std::string& outDir,
-                         const std::string& modelDir, bool recompress);
+                         const std::string& modelDir, bool recompress,
+                         const std::string& outFileDir = "");
 
 }  // namespace x3d::asset_import
 

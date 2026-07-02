@@ -160,13 +160,24 @@ bool reencodePng(const TextureResolver& resolver, const std::string& decodePath,
 }  // namespace
 
 TexturePlan planTextures(const ImportScene& scene, const std::string& outDir,
-                         const std::string& modelDir, bool recompress) {
+                         const std::string& modelDir, bool recompress,
+                         const std::string& outFileDir) {
   TexturePlan plan;
 
   const std::filesystem::path assetsDir =
       std::filesystem::path(outDir) / "assets";
   std::error_code ec;
   std::filesystem::create_directories(assetsDir, ec);
+
+  // URL prefix: the assets dir made relative to the output document's directory,
+  // so the emitted `url` resolves regardless of where `--assets-dir` points.
+  // Defaults to "assets" (the common case: textures next to the output file).
+  std::string urlPrefix = "assets";
+  if (!outFileDir.empty()) {
+    const auto rel = std::filesystem::absolute(assetsDir).lexically_relative(
+        std::filesystem::absolute(outFileDir));
+    if (!rel.empty()) urlPrefix = rel.generic_string();
+  }
 
   // Lazy-init the decode seam (only needed on the re-encode path).
   TextureResolver resolver;
@@ -208,7 +219,7 @@ TexturePlan planTextures(const ImportScene& scene, const std::string& outDir,
         // Write the original bytes through (no decode/encode round-trip).
         const std::string outPath = outBase + "." + ext;
         if (!writeFile(outPath, bytes)) continue;
-        relUrl = "assets/" + hashHex + "." + ext;
+        relUrl = urlPrefix + "/" + hashHex + "." + ext;
       } else {
         // Decode via the seam, re-encode as PNG.
         std::string decodePath;
@@ -229,7 +240,7 @@ TexturePlan planTextures(const ImportScene& scene, const std::string& outDir,
           std::filesystem::remove(tempPath, rmErr);
         }
         if (!ok) continue;
-        relUrl = "assets/" + hashHex + ".png";
+        relUrl = urlPrefix + "/" + hashHex + ".png";
       }
 
       fileByHash[hash] = relUrl;

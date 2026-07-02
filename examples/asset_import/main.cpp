@@ -74,6 +74,28 @@ int main(int argc, char** argv) {
       "                        [--profile auto|interchange|immersive|full] [--verify] [--stats]\n"
       "                        [--emit-glsl <dir>]\n";
 
+  const std::string helpMsg =
+      "x3d_asset_import — convert 3D assets to X3D 4.0\n\n"
+      + usageMsg +
+      "\nThe input selects the backend automatically:\n"
+      "  fixture:<name>            built-in synthetic scene (e.g. fixture:cube) — always available\n"
+      "  *.usd .usda .usdc .usdz   USD / USDZ                (build with -DX3D_CPP_BUILD_USD=ON)\n"
+      "  *.obj .gltf .glb .fbx …   40+ formats via assimp    (build with -DX3D_CPP_BUILD_ASSIMP=ON)\n"
+      "\noptions:\n"
+      "  -o <path>              output file (default: <input-stem>.x3d)\n"
+      "  --format <fmt>         xml | json | vrml | canonical (default: from -o extension, else xml)\n"
+      "  --assets-dir <dir>     write textures under <dir>/assets/; URLs stay relative to the output\n"
+      "  --no-textures          skip texture extraction\n"
+      "  --recompress           re-encode web-safe textures to PNG (default: pass through)\n"
+      "  --profile <p>          auto | interchange | immersive | full (default: auto)\n"
+      "  --emit-glsl <dir>      write one portable UsdPreviewSurface .frag per material\n"
+      "  --verify               re-parse the output and check node/route counts\n"
+      "  --stats                print import statistics\n"
+      "  -h, --help             show this help\n"
+      "\nexamples:\n"
+      "  x3d_asset_import fixture:cube -o cube.x3d --stats\n"
+      "  x3d_asset_import model.usdz -o out/model.x3d --assets-dir out --verify\n";
+
   std::string input;
   std::string outPath;
   std::string format;
@@ -249,13 +271,9 @@ int main(int argc, char** argv) {
   }
 
   // 3. Plan textures
-  std::string outDir = ".";
-  if (!assetsDir.empty()) {
-    outDir = assetsDir;
-  } else {
-    outDir = std::filesystem::path(outPath).parent_path().string();
-    if (outDir.empty()) outDir = ".";
-  }
+  std::string outFileDir = std::filesystem::path(outPath).parent_path().string();
+  if (outFileDir.empty()) outFileDir = ".";
+  std::string outDir = assetsDir.empty() ? outFileDir : assetsDir;
 
   std::string modelDir = "";
   if (input.rfind("fixture:", 0) != 0) {
@@ -264,7 +282,7 @@ int main(int argc, char** argv) {
 
   TexturePlan plan;
   if (!noTextures) {
-    plan = planTextures(scene, outDir, modelDir, recompress);
+    plan = planTextures(scene, outDir, modelDir, recompress, outFileDir);
   }
 
   // 4. Emit Document Model
@@ -348,6 +366,14 @@ int main(int argc, char** argv) {
   }
   ofs << content;
   ofs.close();
+
+  // Always tell the user what was written and where (feedback without --stats).
+  std::cerr << "wrote " << outPath << " (" << countNodes(doc.scene) << " nodes";
+  if (!noTextures && !plan.urlByKey.empty()) {
+    std::cerr << ", " << plan.urlByKey.size() << " texture(s) -> "
+              << (std::filesystem::path(outDir) / "assets").string();
+  }
+  std::cerr << ")\n";
 
   // 9. Verify re-parse
   if (verify) {
