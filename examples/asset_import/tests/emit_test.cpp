@@ -29,3 +29,20 @@ TEST_CASE("emit_physical_material_when_pbr_present") {
   const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
   CHECK(xml.find("<PhysicalMaterial") != std::string::npos);
 }
+
+TEST_CASE("emit_nested_hierarchy_nests_transforms") {
+  ImportScene s = FixtureSource{}.load("hierarchy"); // parent node with a child node
+  const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
+  // A Transform containing another Transform.
+  auto first = xml.find("<Transform");
+  auto second = xml.find("<Transform", first + 1);
+  CHECK(second != std::string::npos);
+}
+
+TEST_CASE("emit_shared_mesh_uses_def_use") {
+  ImportScene s = FixtureSource{}.load("cube");
+  s.nodes.push_back(s.nodes[s.rootNode]);   // second node reuses mesh 0
+  s.nodes[s.rootNode].childIndices.push_back((int)s.nodes.size() - 1);
+  const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
+  CHECK(xml.find("USE=") != std::string::npos);
+}
