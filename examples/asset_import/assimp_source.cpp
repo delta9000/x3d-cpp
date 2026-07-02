@@ -230,13 +230,12 @@ int walkNode(const aiNode* node, ImportScene& scene) {
   const int myIndex = static_cast<int>(scene.nodes.size());
   scene.nodes.push_back(std::move(ir));
 
-  ImportNode& me = scene.nodes[myIndex];
   for (unsigned i = 0; i < node->mNumMeshes; ++i) {
-    me.meshIndices.push_back(static_cast<int>(node->mMeshes[i]));
+    scene.nodes[myIndex].meshIndices.push_back(static_cast<int>(node->mMeshes[i]));
   }
   for (unsigned i = 0; i < node->mNumChildren; ++i) {
     const int childIndex = walkNode(node->mChildren[i], scene);
-    me.childIndices.push_back(childIndex);
+    scene.nodes[myIndex].childIndices.push_back(childIndex);
   }
   return myIndex;
 }
