@@ -24,8 +24,8 @@ see [asset-import](../subsystems/asset-import.md)) reliably carries geometry, bu
 the question of *how much material data survives, and how to render it in realtime*
 was unresolved. An earlier investigation concluded "materials are stubs all the way
 down — only geometry carries over." A per-parameter audit found that conclusion was
-an artifact of a **stale, textureless `DamagedHelmet.x3d`** left in the tree;
-re-converting the real `.usdz` with current code extracts all five PBR texture slots
+an artifact of a **stale, textureless converted `.x3d`** left in the tree;
+re-converting the source `.usdz` with current code extracts all five PBR texture slots
 plus scalars correctly. Materials **do** port. The real limits are a stack of four
 distinct ceilings, and naming them is the substance of this decision.
 
@@ -109,8 +109,8 @@ a swap-test — see the seam-status matrix):
 ### Positive
 - **One shader, two backends, proven.** The same source renders in the CPU
   interpreter and desktop GL; the CPU path matches the native fixed-function PBR to
-  < 1/255 MAD, and the full `USDZ → X3D → interpreter` loop renders the real
-  DamagedHelmet with normal/MR/occlusion maps landing.
+  < 1/255 MAD, and the full `USDZ → X3D → interpreter` loop renders a real textured
+  USDZ with normal/MR/occlusion maps landing.
 - **Honest fidelity story.** Two rendering paths with clearly stated ceilings: the
   `USD → X3D → renderer` path is glTF-MR-faithful; `--emit-glsl` is the escape hatch
   for full UsdPreviewSurface fidelity.

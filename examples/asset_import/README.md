@@ -114,17 +114,14 @@ All showcase assets are authored in-repo (license-clean). See its
 
 ## Example models & licensing
 
-**Only bundle assets whose license permits redistribution in an MIT project
-(CC0, or CC-BY *with* attribution). Do not vendor NonCommercial (NC),
-NoDerivatives (ND), or share-alike-incompatible assets** — the SDK is MIT and is
-used commercially, so an NC/ND asset would restrict downstream users. Third-party
-build/runtime dependencies are attributed in the root [`NOTICE`](../../NOTICE).
+This repo is MIT, so keep every committed asset MIT-clean to redistribute:
+**CC0, or CC-BY with attribution.** Avoid NonCommercial, NoDerivatives, or otherwise
+MIT-incompatible licenses. Third-party build/runtime dependencies are attributed in
+the root [`NOTICE`](../../NOTICE).
 
 - Committed textured-PBR demo: [`../cpu_raster/assets/models/lion_head/`](../cpu_raster/assets/models/lion_head/)
   (**CC0**, with a regeneration recipe).
-- The Khronos/USD-WG **DamagedHelmet** used while developing the USD material path
-  is **CC BY-NC** ("Battle Damaged Sci-fi Helmet - PBR" by theblueturtle_) — a
-  handy local test asset, but **not vendored here**: the NonCommercial clause is
-  incompatible with an MIT repo. Convert it locally from a copy you fetch yourself;
-  do not commit the `.usdz`, the converted `.x3d`, its textures, or renders of it.
-- For a committed USD demo, convert a CC0 / permissive USDZ.
+- The [conversion showcase](assets/showcase/) meshes are generated in-repo, so they
+  carry no external license.
+- To try USD/USDZ on a downloaded model, convert it from a local copy; only commit
+  an asset once you've confirmed its license is CC0 or CC-BY.

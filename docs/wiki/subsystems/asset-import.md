@@ -97,7 +97,7 @@ out in [ADR-0043](../decisions/0043-usd-material-portable-glsl-seam.md):
    render path stays metallic-roughness while the extras engage only when a host binds
    real values. At spec defaults the interpreter output is pixel-parity (< 1/255 MAD)
    with the native fixed-function PBR; the full `USDZ → X3D → interpreter` loop renders
-   the real DamagedHelmet with normal/MR/occlusion maps landing.
+   a real textured USDZ with normal/MR/occlusion maps landing.
 4. **X3D material-model ceiling** — the X3D `PhysicalMaterial` node models only
    glTF-metallic-roughness (no `ior`/`clearcoat`/specular-workflow/`opacityMode`), so
    the `USD → X3D → renderer` path is capped there. The `--emit-glsl` mode carries full
