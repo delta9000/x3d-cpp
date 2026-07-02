@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
     if (arg == "-h" || arg == "--help") {
-      std::cout << usageMsg;
+      std::cout << helpMsg;
       return 0;
     } else if (arg == "-o") {
       if (i + 1 >= argc) {
