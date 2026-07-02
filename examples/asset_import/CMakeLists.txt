@@ -6,7 +6,10 @@
 add_executable(x3d_authoring_smoke
     "${CMAKE_CURRENT_SOURCE_DIR}/footprint/authoring_smoke.cpp")
 target_link_libraries(x3d_authoring_smoke PRIVATE x3d_cpp::authoring)
+target_compile_options(x3d_authoring_smoke PRIVATE -ffunction-sections -fdata-sections)
+target_link_options(x3d_authoring_smoke PRIVATE -Wl,--gc-sections -Wl,-Map=$<TARGET_FILE:x3d_authoring_smoke>.map)
 add_test(NAME x3d_assetimport_authoring_smoke COMMAND x3d_authoring_smoke)
+
 
 # ---------------------------------------------------------------------------
 # ImportScene IR + ImportSource seam, backed by the dependency-free

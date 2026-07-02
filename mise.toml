@@ -109,6 +109,18 @@ cmake --build build-cpuraster
 ctest --test-dir build-cpuraster -R x3d_cpuraster --output-on-failure
 """
 
+[tasks.asset-import]
+description = "Configure + build + ctest the out-of-SDK asset-import consumer (no assimp; fixture backend). Add -DX3D_CPP_BUILD_ASSIMP=ON locally for real formats."
+run = """
+cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON
+cmake --build build-asset-import
+ctest --test-dir build-asset-import -R x3d_assetimport --output-on-failure
+"""
+
+[tasks.authoring-footprint]
+description = "Authoring slim-target footprint gate: symbol scan (no excluded subsystems) + .text size baseline."
+run = "scripts/authoring-footprint.sh"
+
 [tasks.demos]
 description = "Render the interpolator demo scenes to WebM (docs/videos/demos/) + animated GIF heroes (docs/images/gallery/anim-*.gif). Needs ffmpeg (libvpx-vp9). Depends on the cpuraster build."
 run = """
@@ -175,7 +187,7 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 
 [tasks.ci]
 description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest (ci preset — per-header checks ON, mirrors GitHub Actions), cli differential regression gate."
-depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression"]
+depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
 
 [tasks.coverage-gate]
 description = "ADR coverage gate: cross-check docs/wiki/decisions/*.md against the Decisions table in coverage.md (no file unrowed, no row dangling, contiguous numbering)."
