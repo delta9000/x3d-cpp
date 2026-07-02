@@ -55,7 +55,46 @@ for i in range(NSEG):
         b = i*NRING + (j+1) % NRING
         c = ((i+1) % NSEG)*NRING + j
         e = ((i+1) % NSEG)*NRING + (j+1) % NRING
-        tris += [(a, c, b), (b, c, e)]
+        tris += [(a, b, c), (b, e, c)]  # CCW when viewed from outside the tube
+
+# per-vertex UVs: u wraps around the tube, v runs along the length (tiled so the
+# knurl reads as fine surface detail rather than one stretched decal).
+U_TILE, V_TILE = 2.0, 34.0
+uvs = [(j/NRING*U_TILE, i/NSEG*V_TILE) for i in range(NSEG) for j in range(NRING)]
+
+# ---- procedural knurl base-color texture (license-clean; stdlib PNG, no PIL) --
+# A diamond knurl (two diagonal gratings) tinted per material, so the glTF and USD
+# knots exercise the converter's full texture pipeline: extract -> re-encode PNG ->
+# emit `url` -> the CPU rasterizer samples it. OBJ stays an untextured Phong material.
+import zlib
+def write_png(path, w, h, px):            # px: flat list of (r,g,b) 0..255, top-left
+    raw = bytearray()
+    for y in range(h):
+        raw.append(0)                     # filter type 0 (None) per scanline
+        for x in range(w):
+            raw += bytes(px[y*w + x])
+    def chunk(typ, data):
+        return (struct.pack(">I", len(data)) + typ + data +
+                struct.pack(">I", zlib.crc32(typ + data) & 0xffffffff))
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)   # 8-bit truecolour RGB
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
+                + chunk(b"IDAT", zlib.compress(bytes(raw), 9)) + chunk(b"IEND", b""))
+
+def knurl(w, h, tint):
+    out = []
+    for y in range(h):
+        for x in range(w):
+            u, v = x/w, y/h
+            ridge = 0.5*(math.cos(2*math.pi*(u+v)*4) + math.cos(2*math.pi*(u-v)*4))
+            g = 0.60 + 0.40 * (0.5*(ridge+1.0))**0.6      # bright ridges, darker valleys
+            out.append(tuple(min(255, int(255*g*t)) for t in tint))
+    return out
+TEX = 96
+write_png(f"{OUT}/knot_gold.png", TEX, TEX, knurl(TEX, TEX, (0.98, 0.80, 0.34)))
+write_png(f"{OUT}/knot_teal.png", TEX, TEX, knurl(TEX, TEX, (0.38, 0.92, 0.86)))
+def png_data_uri(path):
+    return "data:image/png;base64," + base64.b64encode(open(path, "rb").read()).decode()
 
 # ---- OBJ + MTL (warm copper) ------------------------------------------------
 with open(f"{OUT}/knot.mtl", "w") as f:
@@ -69,41 +108,50 @@ with open(f"{OUT}/knot.obj", "w") as f:
     f.write("usemtl copper\n")
     for a, b, c in tris: f.write(f"f {a+1}//{a+1} {b+1}//{b+1} {c+1}//{c+1}\n")
 
-# ---- glTF 2.0 (gold; self-contained, embedded buffer) -----------------------
+# ---- glTF 2.0 (gold metallic + knurl texture; self-contained, embedded) -----
 pos_b = b"".join(struct.pack("<3f", *p) for p in positions)
 nrm_b = b"".join(struct.pack("<3f", *n) for n in normals)
+uv_b  = b"".join(struct.pack("<2f", *t) for t in uvs)
 idx = [i for t in tris for i in t]
 idx_b = b"".join(struct.pack("<I", i) for i in idx)  # uint32 indices
 pad = lambda b: b + b"\x00"*((4-len(b) % 4) % 4)
-pos_b, nrm_b = pad(pos_b), pad(nrm_b)
-blob = pos_b + nrm_b + pad(idx_b)
+pos_b, nrm_b, uv_b = pad(pos_b), pad(nrm_b), pad(uv_b)
+blob = pos_b + nrm_b + uv_b + pad(idx_b)
+off_n, off_uv, off_i = len(pos_b), len(pos_b)+len(nrm_b), len(pos_b)+len(nrm_b)+len(uv_b)
 mn = [min(p[i] for p in positions) for i in range(3)]
 mx = [max(p[i] for p in positions) for i in range(3)]
 gltf = {
  "asset": {"version": "2.0", "generator": "x3d_asset_import showcase gen.py"},
  "scene": 0, "scenes": [{"nodes": [0]}], "nodes": [{"mesh": 0, "name": "knot"}],
  "materials": [{"name": "gold", "pbrMetallicRoughness": {
-     "baseColorFactor": [0.95, 0.72, 0.18, 1.0], "metallicFactor": 0.1, "roughnessFactor": 0.5}}],
- "meshes": [{"name": "knot", "primitives": [{"attributes": {"POSITION": 0, "NORMAL": 1},
-     "indices": 2, "material": 0}]}],
+     "baseColorTexture": {"index": 0}, "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+     "metallicFactor": 0.45, "roughnessFactor": 0.32}}],
+ "textures": [{"source": 0, "sampler": 0}],
+ "images": [{"uri": png_data_uri(f"{OUT}/knot_gold.png"), "mimeType": "image/png"}],
+ "samplers": [{"wrapS": 10497, "wrapT": 10497}],  # 10497 == REPEAT
+ "meshes": [{"name": "knot", "primitives": [{"attributes":
+     {"POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2}, "indices": 3, "material": 0}]}],
  "buffers": [{"byteLength": len(blob),
      "uri": "data:application/octet-stream;base64," + base64.b64encode(blob).decode()}],
  "bufferViews": [
-     {"buffer": 0, "byteOffset": 0, "byteLength": len(pos_b), "target": 34962},
-     {"buffer": 0, "byteOffset": len(pos_b), "byteLength": len(nrm_b), "target": 34962},
-     {"buffer": 0, "byteOffset": len(pos_b)+len(nrm_b), "byteLength": len(idx_b), "target": 34963}],
+     {"buffer": 0, "byteOffset": 0,      "byteLength": len(pos_b), "target": 34962},
+     {"buffer": 0, "byteOffset": off_n,  "byteLength": len(nrm_b), "target": 34962},
+     {"buffer": 0, "byteOffset": off_uv, "byteLength": len(uv_b),  "target": 34962},
+     {"buffer": 0, "byteOffset": off_i,  "byteLength": len(idx_b), "target": 34963}],
  "accessors": [
      {"bufferView": 0, "componentType": 5126, "count": len(positions), "type": "VEC3", "min": mn, "max": mx},
      {"bufferView": 1, "componentType": 5126, "count": len(normals), "type": "VEC3"},
-     {"bufferView": 2, "componentType": 5125, "count": len(idx), "type": "SCALAR"}],
+     {"bufferView": 2, "componentType": 5126, "count": len(uvs), "type": "VEC2"},
+     {"bufferView": 3, "componentType": 5125, "count": len(idx), "type": "SCALAR"}],
 }
 with open(f"{OUT}/knot.gltf", "w") as f: json.dump(gltf, f)
 
-# ---- USDA (teal UsdPreviewSurface) ------------------------------------------
+# ---- USDA (teal metallic + knurl texture via UsdUVTexture) ------------------
 pts = ", ".join(f"({p[0]:.5f}, {p[1]:.5f}, {p[2]:.5f})" for p in positions)
 counts = ", ".join("3" for _ in tris)
 fvi = ", ".join(str(i) for t in tris for i in t)
 nrm = ", ".join(f"({n[0]:.5f}, {n[1]:.5f}, {n[2]:.5f})" for n in normals)
+st = ", ".join(f"({t[0]:.5f}, {t[1]:.5f})" for t in uvs)
 with open(f"{OUT}/knot.usda", "w") as f:
     f.write(f'''#usda 1.0
 ( defaultPrim = "World" upAxis = "Y" )
@@ -114,16 +162,30 @@ def Xform "World" {{
     int[] faceVertexIndices = [{fvi}]
     point3f[] points = [{pts}]
     normal3f[] normals = [{nrm}] ( interpolation = "vertex" )
+    texCoord2f[] primvars:st = [{st}] ( interpolation = "vertex" )
     rel material:binding = </World/Mat>
   }}
   def Material "Mat" {{
     token outputs:surface.connect = </World/Mat/S.outputs:surface>
     def Shader "S" {{
       uniform token info:id = "UsdPreviewSurface"
-      color3f inputs:diffuseColor = (0.13, 0.62, 0.65)
-      float inputs:metallic = 0.1
-      float inputs:roughness = 0.5
+      color3f inputs:diffuseColor.connect = </World/Mat/Tex.outputs:rgb>
+      float inputs:metallic = 0.45
+      float inputs:roughness = 0.32
       token outputs:surface
+    }}
+    def Shader "Tex" {{
+      uniform token info:id = "UsdUVTexture"
+      asset inputs:file = @./knot_teal.png@
+      float2 inputs:st.connect = </World/Mat/Reader.outputs:result>
+      token inputs:wrapS = "repeat"
+      token inputs:wrapT = "repeat"
+      float3 outputs:rgb
+    }}
+    def Shader "Reader" {{
+      uniform token info:id = "UsdPrimvarReader_float2"
+      token inputs:varname = "st"
+      float2 outputs:result
     }}
   }}
 }}

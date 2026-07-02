@@ -1,28 +1,35 @@
 # Conversion showcase — OBJ · glTF · USD → X3D
 
-One (2,3) torus knot (~6.7k verts / 13.4k tris, smooth-shaded), authored in three
-source formats, run through `x3d_asset_import` to show that a single converter +
-material pipeline handles all three backends and maps each to the right X3D 4.0
-material node.
+One (2,3) torus knot (~6.7k verts / 13.4k tris, smooth-shaded, UV-mapped), authored
+in three source formats, run through `x3d_asset_import` to show that a single
+converter + material pipeline handles all three backends and maps each to the right
+X3D 4.0 material node.
 
 ![showcase](showcase.png)
 
 | Source | Backend | Material | X3D node |
 |---|---|---|---|
-| `knot.obj` + `knot.mtl` | assimp (`-DX3D_CPP_BUILD_ASSIMP=ON`) | copper `Kd`/`Ks` | `Material` (Phong) |
-| `knot.gltf` (self-contained, embedded buffer) | assimp | gold metallic-roughness | `PhysicalMaterial` |
-| `knot.usda` | tinyusdz (`-DX3D_CPP_BUILD_USD=ON`) | teal UsdPreviewSurface | `PhysicalMaterial` |
+| `knot.obj` + `knot.mtl` | assimp (`-DX3D_CPP_BUILD_ASSIMP=ON`) | copper `Kd`/`Ks`, untextured | `Material` (Phong) |
+| `knot.gltf` (self-contained, embedded buffer + texture) | assimp | gold metallic-roughness + `baseColorTexture` | `PhysicalMaterial` |
+| `knot.usda` | tinyusdz (`-DX3D_CPP_BUILD_USD=ON`) | teal `UsdPreviewSurface` + `UsdUVTexture` diffuse | `PhysicalMaterial` |
 
-OBJ carries no PBR, so it imports as a Phong `Material`; glTF and USD both carry
-metallic-roughness and map to `PhysicalMaterial`.
+OBJ carries no PBR, so it imports as a smooth Phong `Material`; glTF and USD both
+carry metallic-roughness **plus a base-colour texture**, map to `PhysicalMaterial`,
+and exercise the full texture pipeline (extract → re-encode PNG → emit `url` → the
+CPU rasterizer samples it). The metallic knurl detail and specular highlight in the
+gold/teal knots — versus the flat copper — are the visible PBR difference. (The CPU
+rasterizer is headlight-lit with no image-based lighting, so metals are kept at a
+moderate `metallic ≈ 0.45` where the specular response reads without going near-black.)
 
 ## License
 
-The mesh is generated procedurally by [`gen.py`](gen.py) (a parametric torus knot
-with rotation-minimizing frames) — no third-party models — so the showcase is free
-of asset-licensing constraints (see the
+Everything is generated procedurally by [`gen.py`](gen.py) — the mesh (a parametric
+torus knot with rotation-minimizing frames) and the knurl base-colour textures (a
+stdlib PNG writer, no PIL) — so there are no third-party models or images and the
+showcase is free of asset-licensing constraints (see the
 [asset-licensing policy](../../README.md#example-models--licensing)). The generated
-`knot.*` assets are `.gitignore`d (regenerable; not vendored, to keep the repo lean).
+`knot.*` sources and `knot_gold.png` / `knot_teal.png` textures are `.gitignore`d
+(regenerable; not vendored, to keep the repo lean).
 
 ## Regenerate + convert + render
 
