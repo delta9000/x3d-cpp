@@ -102,9 +102,10 @@ See [ADR-0043](../../docs/wiki/decisions/0043-usd-material-portable-glsl-seam.md
 
 ## Showcase
 
-[`assets/showcase/`](assets/showcase/) converts one cube authored in **OBJ**, **glTF**,
-and **USD** through the three backends, showing the format-agnostic pipeline and the
-material-model mapping (OBJ → Phong `Material`; glTF & USD → `PhysicalMaterial`):
+[`assets/showcase/`](assets/showcase/) converts one procedural torus knot authored in
+**OBJ**, **glTF**, and **USD** through the three backends, showing the format-agnostic
+pipeline and the material-model mapping (OBJ → Phong `Material`; glTF & USD →
+`PhysicalMaterial`):
 
 ![OBJ / glTF / USD conversion showcase](assets/showcase/showcase.png)
 

@@ -1,83 +1,115 @@
 #!/usr/bin/env python3
-# Generate a license-clean cube in OBJ+MTL, glTF 2.0, and USDA — each with a
-# distinct PBR material — to showcase the x3d_asset_import converter across the
-# three backends (assimp OBJ / assimp glTF / tinyusdz USD). All authored here,
-# so there are no third-party asset licensing concerns.
-import base64, json, os, struct
+# Generate a license-clean (p,q) torus knot in OBJ+MTL, glTF 2.0, and USDA — each
+# with a distinct PBR material — to showcase the x3d_asset_import converter across
+# the three backends (assimp OBJ / assimp glTF / tinyusdz USD). The mesh is authored
+# procedurally here, so there are no third-party asset licensing concerns.
+import base64, json, math, os, struct
 
 OUT = os.path.dirname(os.path.abspath(__file__))
+P, Q = 2, 3            # (2,3) torus knot (trefoil)
+NSEG, NRING = 240, 28  # samples along the knot / around the tube
+TUBE = 0.42
+SCALE = 0.62
 
-# ---- shared flat-shaded cube (24 verts, per-face normals, 12 tris) ----------
-# faces: +X,-X,+Y,-Y,+Z,-Z
-faces = [
-    ((1,0,0),  [(1,-1,-1),(1,1,-1),(1,1,1),(1,-1,1)]),
-    ((-1,0,0), [(-1,-1,1),(-1,1,1),(-1,1,-1),(-1,-1,-1)]),
-    ((0,1,0),  [(-1,1,-1),(-1,1,1),(1,1,1),(1,1,-1)]),
-    ((0,-1,0), [(-1,-1,1),(-1,-1,-1),(1,-1,-1),(1,-1,1)]),
-    ((0,0,1),  [(-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)]),
-    ((0,0,-1), [(1,-1,-1),(-1,-1,-1),(-1,1,-1),(1,1,-1)]),
-]
+def centerline(t):
+    r = 2.0 + math.cos(Q * t)
+    return (r * math.cos(P * t), r * math.sin(P * t), math.sin(Q * t))
+
+def sub(a, b): return (a[0]-b[0], a[1]-b[1], a[2]-b[2])
+def add(a, b): return (a[0]+b[0], a[1]+b[1], a[2]+b[2])
+def mul(a, s): return (a[0]*s, a[1]*s, a[2]*s)
+def dot(a, b): return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
+def cross(a, b): return (a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0])
+def norm(a):
+    l = math.sqrt(dot(a, a)) or 1.0
+    return (a[0]/l, a[1]/l, a[2]/l)
+
+# centerline samples + unit tangents (central difference, periodic)
+C = [centerline(2*math.pi*i/NSEG) for i in range(NSEG)]
+T = [norm(sub(C[(i+1) % NSEG], C[(i-1) % NSEG])) for i in range(NSEG)]
+
+# rotation-minimizing (parallel-transport) frames
+Nf = [None]*NSEG; Bf = [None]*NSEG
+seed = (0, 0, 1) if abs(T[0][2]) < 0.9 else (0, 1, 0)
+Nf[0] = norm(sub(seed, mul(T[0], dot(seed, T[0]))))
+Bf[0] = cross(T[0], Nf[0])
+for i in range(1, NSEG):
+    n = sub(Nf[i-1], mul(T[i], dot(Nf[i-1], T[i])))  # project prev normal onto new plane
+    Nf[i] = norm(n); Bf[i] = cross(T[i], Nf[i])
+# closure: measure residual twist wrapping back to frame 0, distribute it linearly
+nres = norm(sub(Nf[0], mul(T[0], dot(Nf[0], T[0]))))
+resid = math.atan2(dot(cross(Nf[NSEG-1], nres), T[0]), dot(Nf[NSEG-1], nres))
+
 positions, normals, tris = [], [], []
-for n, quad in faces:
-    b = len(positions)
-    for v in quad:
-        positions.append(v); normals.append(n)
-    tris += [(b,b+1,b+2),(b,b+2,b+3)]
+for i in range(NSEG):
+    phi = -resid * i / NSEG
+    for j in range(NRING):
+        a = 2*math.pi*j/NRING + phi
+        d = norm(add(mul(Nf[i], math.cos(a)), mul(Bf[i], math.sin(a))))  # radial = normal
+        positions.append(mul(add(C[i], mul(d, TUBE)), SCALE))
+        normals.append(d)
+# watertight grid, periodic in both directions (no caps)
+for i in range(NSEG):
+    for j in range(NRING):
+        a = i*NRING + j
+        b = i*NRING + (j+1) % NRING
+        c = ((i+1) % NSEG)*NRING + j
+        e = ((i+1) % NSEG)*NRING + (j+1) % NRING
+        tris += [(a, c, b), (b, c, e)]
 
-# ---- OBJ + MTL (warm copper-ish) --------------------------------------------
-with open(f"{OUT}/cube.mtl","w") as f:
+# ---- OBJ + MTL (warm copper) ------------------------------------------------
+with open(f"{OUT}/knot.mtl", "w") as f:
     f.write("# Authored for the x3d_asset_import showcase (license-clean).\n")
-    f.write("newmtl copper\nKd 0.72 0.38 0.20\nKs 0.9 0.6 0.4\nNs 120\n")
-with open(f"{OUT}/cube.obj","w") as f:
-    f.write("# Authored cube for the x3d_asset_import showcase (license-clean).\n")
-    f.write("mtllib cube.mtl\no cube\n")
-    for p in positions: f.write(f"v {p[0]} {p[1]} {p[2]}\n")
-    for n in normals:   f.write(f"vn {n[0]} {n[1]} {n[2]}\n")
+    f.write("newmtl copper\nKd 0.72 0.38 0.20\nKs 0.9 0.6 0.4\nNs 90\n")
+with open(f"{OUT}/knot.obj", "w") as f:
+    f.write("# Authored (2,3) torus knot for the showcase (license-clean).\n")
+    f.write("mtllib knot.mtl\no knot\n")
+    for p in positions: f.write(f"v {p[0]:.5f} {p[1]:.5f} {p[2]:.5f}\n")
+    for n in normals:   f.write(f"vn {n[0]:.5f} {n[1]:.5f} {n[2]:.5f}\n")
     f.write("usemtl copper\n")
-    for a,b,c in tris:  f.write(f"f {a+1}//{a+1} {b+1}//{b+1} {c+1}//{c+1}\n")
+    for a, b, c in tris: f.write(f"f {a+1}//{a+1} {b+1}//{b+1} {c+1}//{c+1}\n")
 
-# ---- glTF 2.0 (metallic gold; self-contained, embedded buffer) --------------
-pos_bytes = b"".join(struct.pack("<3f",*p) for p in positions)
-nrm_bytes = b"".join(struct.pack("<3f",*n) for n in normals)
+# ---- glTF 2.0 (gold; self-contained, embedded buffer) -----------------------
+pos_b = b"".join(struct.pack("<3f", *p) for p in positions)
+nrm_b = b"".join(struct.pack("<3f", *n) for n in normals)
 idx = [i for t in tris for i in t]
-idx_bytes = b"".join(struct.pack("<H",i) for i in idx)
-# pad each section to 4-byte alignment
-def pad(b): return b + b"\x00"*((4-len(b)%4)%4)
-pos_bytes, nrm_bytes = pad(pos_bytes), pad(nrm_bytes)
-blob = pos_bytes + nrm_bytes + pad(idx_bytes)
+idx_b = b"".join(struct.pack("<I", i) for i in idx)  # uint32 indices
+pad = lambda b: b + b"\x00"*((4-len(b) % 4) % 4)
+pos_b, nrm_b = pad(pos_b), pad(nrm_b)
+blob = pos_b + nrm_b + pad(idx_b)
 mn = [min(p[i] for p in positions) for i in range(3)]
 mx = [max(p[i] for p in positions) for i in range(3)]
 gltf = {
- "asset":{"version":"2.0","generator":"x3d_asset_import showcase gen.py"},
- "scenes":[{"nodes":[0]}], "scene":0, "nodes":[{"mesh":0,"name":"cube"}],
- "materials":[{"name":"gold","pbrMetallicRoughness":{
-     "baseColorFactor":[0.95,0.72,0.18,1.0],"metallicFactor":0.1,"roughnessFactor":0.5}}],
- "meshes":[{"name":"cube","primitives":[{"attributes":{"POSITION":0,"NORMAL":1},
-     "indices":2,"material":0}]}],
- "buffers":[{"byteLength":len(blob),
-     "uri":"data:application/octet-stream;base64,"+base64.b64encode(blob).decode()}],
- "bufferViews":[
-     {"buffer":0,"byteOffset":0,"byteLength":len(pos_bytes),"target":34962},
-     {"buffer":0,"byteOffset":len(pos_bytes),"byteLength":len(nrm_bytes),"target":34962},
-     {"buffer":0,"byteOffset":len(pos_bytes)+len(nrm_bytes),"byteLength":len(idx_bytes),"target":34963}],
- "accessors":[
-     {"bufferView":0,"componentType":5126,"count":len(positions),"type":"VEC3","min":mn,"max":mx},
-     {"bufferView":1,"componentType":5126,"count":len(normals),"type":"VEC3"},
-     {"bufferView":2,"componentType":5123,"count":len(idx),"type":"SCALAR"}],
+ "asset": {"version": "2.0", "generator": "x3d_asset_import showcase gen.py"},
+ "scene": 0, "scenes": [{"nodes": [0]}], "nodes": [{"mesh": 0, "name": "knot"}],
+ "materials": [{"name": "gold", "pbrMetallicRoughness": {
+     "baseColorFactor": [0.95, 0.72, 0.18, 1.0], "metallicFactor": 0.1, "roughnessFactor": 0.5}}],
+ "meshes": [{"name": "knot", "primitives": [{"attributes": {"POSITION": 0, "NORMAL": 1},
+     "indices": 2, "material": 0}]}],
+ "buffers": [{"byteLength": len(blob),
+     "uri": "data:application/octet-stream;base64," + base64.b64encode(blob).decode()}],
+ "bufferViews": [
+     {"buffer": 0, "byteOffset": 0, "byteLength": len(pos_b), "target": 34962},
+     {"buffer": 0, "byteOffset": len(pos_b), "byteLength": len(nrm_b), "target": 34962},
+     {"buffer": 0, "byteOffset": len(pos_b)+len(nrm_b), "byteLength": len(idx_b), "target": 34963}],
+ "accessors": [
+     {"bufferView": 0, "componentType": 5126, "count": len(positions), "type": "VEC3", "min": mn, "max": mx},
+     {"bufferView": 1, "componentType": 5126, "count": len(normals), "type": "VEC3"},
+     {"bufferView": 2, "componentType": 5125, "count": len(idx), "type": "SCALAR"}],
 }
-with open(f"{OUT}/cube.gltf","w") as f: json.dump(gltf,f,indent=1)
+with open(f"{OUT}/knot.gltf", "w") as f: json.dump(gltf, f)
 
-# ---- USDA (UsdPreviewSurface, teal metallic) --------------------------------
-pts = ", ".join(f"({p[0]}, {p[1]}, {p[2]})" for p in positions)
+# ---- USDA (teal UsdPreviewSurface) ------------------------------------------
+pts = ", ".join(f"({p[0]:.5f}, {p[1]:.5f}, {p[2]:.5f})" for p in positions)
 counts = ", ".join("3" for _ in tris)
 fvi = ", ".join(str(i) for t in tris for i in t)
-nrm = ", ".join(f"({n[0]}, {n[1]}, {n[2]})" for n in normals)
-with open(f"{OUT}/cube.usda","w") as f:
+nrm = ", ".join(f"({n[0]:.5f}, {n[1]:.5f}, {n[2]:.5f})" for n in normals)
+with open(f"{OUT}/knot.usda", "w") as f:
     f.write(f'''#usda 1.0
 ( defaultPrim = "World" upAxis = "Y" )
-# Authored cube for the x3d_asset_import showcase (license-clean).
+# Authored (2,3) torus knot for the showcase (license-clean).
 def Xform "World" {{
-  def Mesh "Cube" ( prepend apiSchemas = ["MaterialBindingAPI"] ) {{
+  def Mesh "Knot" ( prepend apiSchemas = ["MaterialBindingAPI"] ) {{
     int[] faceVertexCounts = [{counts}]
     int[] faceVertexIndices = [{fvi}]
     point3f[] points = [{pts}]
@@ -96,4 +128,5 @@ def Xform "World" {{
   }}
 }}
 ''')
-print("generated:", ", ".join(sorted(os.listdir(OUT))))
+print(f"generated {len(positions)} verts, {len(tris)} tris:",
+      ", ".join(sorted(f for f in os.listdir(OUT) if f.startswith("knot"))))
