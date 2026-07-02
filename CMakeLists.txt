@@ -1893,16 +1893,13 @@ if(X3D_CPP_BUILD_CPURASTER)
 endif()
 
 # ---------------------------------------------------------------------------
-# Asset-import authoring footprint smoke — conditional, OFF by default. Builds a
-# tiny consumer against ONLY x3d_cpp::authoring to prove the slim surface links
-# and serializes a scene. Task 11 finalizes the full asset-import subdirectory.
+# Asset-import consumer — conditional, OFF by default. See
+# examples/asset_import/CMakeLists.txt for the authoring footprint smoke and
+# the ImportScene IR tests. Task 11 finalizes the full subdirectory.
 # ---------------------------------------------------------------------------
 if(X3D_CPP_BUILD_ASSET_IMPORT)
-    enable_testing() # register the smoke ctest even when BUILD_TESTS is OFF.
-    add_executable(x3d_authoring_smoke
-        "${CMAKE_CURRENT_SOURCE_DIR}/examples/asset_import/footprint/authoring_smoke.cpp")
-    target_link_libraries(x3d_authoring_smoke PRIVATE x3d_cpp::authoring)
-    add_test(NAME x3d_assetimport_authoring_smoke COMMAND x3d_authoring_smoke)
+    enable_testing() # register ctests even when BUILD_TESTS is OFF.
+    add_subdirectory(examples/asset_import)
 endif()
 
 # ---------------------------------------------------------------------------
