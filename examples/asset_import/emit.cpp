@@ -4,6 +4,7 @@
 #include "x3d/nodes/ColorRGBA.hpp"
 #include "x3d/nodes/Coordinate.hpp"
 #include "x3d/nodes/DirectionalLight.hpp"
+#include "x3d/nodes/ImageTexture.hpp"
 #include "x3d/nodes/IndexedTriangleSet.hpp"
 #include "x3d/nodes/Material.hpp"
 #include "x3d/nodes/Normal.hpp"
@@ -108,9 +109,75 @@ SFColor clampColor(const Vec3& c) {
   return SFColor{clamp01(c.x), clamp01(c.y), clamp01(c.z)};
 }
 
+// Builds an ImageTexture for one resolved TextureRef, or nullptr if the plan
+// has no URL for it (unresolved/failed decode). ImageTexture.url carries the
+// single resolved relative path under assets/.
+SFNode buildImageTexture(const TexturePlan& plan, const TextureRef& ref) {
+  const std::string url = urlForRef(plan, ref);
+  if (url.empty()) return nullptr;
+  auto tex = std::make_shared<ImageTexture>();
+  tex->setUrl(MFString{url});
+  tex->setRepeatSUnchecked(true);
+  tex->setRepeatTUnchecked(true);
+  return tex;
+}
+
+// Wires a Phong (Material) material's TextureSlots into the matching setters,
+// looking URLs up in the plan. Slots with no plan URL are skipped.
+void wireTextures(const ImportMaterial& mat, const TexturePlan& plan,
+                   Material& material) {
+  if (mat.textures.baseColor) {
+    if (auto t = buildImageTexture(plan, *mat.textures.baseColor))
+      material.setDiffuseTexture(t);
+  }
+  if (mat.textures.normal) {
+    if (auto t = buildImageTexture(plan, *mat.textures.normal))
+      material.setNormalTexture(t);
+  }
+  if (mat.textures.emissive) {
+    if (auto t = buildImageTexture(plan, *mat.textures.emissive))
+      material.setEmissiveTexture(t);
+  }
+  if (mat.textures.occlusion) {
+    if (auto t = buildImageTexture(plan, *mat.textures.occlusion))
+      material.setOcclusionTexture(t);
+  }
+  if (mat.textures.specular) {
+    if (auto t = buildImageTexture(plan, *mat.textures.specular))
+      material.setSpecularTexture(t);
+  }
+}
+
+// PBR variant: baseColor -> baseTexture, metallicRoughness -> its slot.
+void wireTexturesPbr(const ImportMaterial& mat, const TexturePlan& plan,
+                      PhysicalMaterial& material) {
+  if (mat.textures.baseColor) {
+    if (auto t = buildImageTexture(plan, *mat.textures.baseColor))
+      material.setBaseTexture(t);
+  }
+  if (mat.textures.normal) {
+    if (auto t = buildImageTexture(plan, *mat.textures.normal))
+      material.setNormalTexture(t);
+  }
+  if (mat.textures.emissive) {
+    if (auto t = buildImageTexture(plan, *mat.textures.emissive))
+      material.setEmissiveTexture(t);
+  }
+  if (mat.textures.occlusion) {
+    if (auto t = buildImageTexture(plan, *mat.textures.occlusion))
+      material.setOcclusionTexture(t);
+  }
+  if (mat.textures.metallicRoughness) {
+    if (auto t = buildImageTexture(plan, *mat.textures.metallicRoughness))
+      material.setMetallicRoughnessTexture(t);
+  }
+}
+
 // Builds the Appearance for one ImportMaterial: PhysicalMaterial (X3D 4.0
-// PBR) when the material carries `pbr`, else Material (Phong).
-SFNode buildAppearance(const ImportMaterial& mat) {
+// PBR) when the material carries `pbr`, else Material (Phong). When a
+// TexturePlan is supplied, the material's TextureSlots are resolved to
+// ImageTexture URLs and assigned to the matching slot setters.
+SFNode buildAppearance(const ImportMaterial& mat, const EmitOptions& opts) {
   auto appearance = std::make_shared<Appearance>();
 
   if (mat.pbr) {
@@ -122,6 +189,7 @@ SFNode buildAppearance(const ImportMaterial& mat) {
     material->setRoughness(clamp01(pbr.roughness));
     material->setEmissiveColor(clampColor(mat.emissive));
     material->setTransparency(clamp01(1.0f - pbr.baseColor.w));
+    if (opts.textures) wireTexturesPbr(mat, *opts.textures, *material);
     appearance->setMaterial(material);
   } else {
     auto material = std::make_shared<Material>();
@@ -130,6 +198,7 @@ SFNode buildAppearance(const ImportMaterial& mat) {
     material->setEmissiveColor(clampColor(mat.emissive));
     material->setShininess(clamp01(mat.shininess / 128.0f));
     material->setTransparency(clamp01(1.0f - mat.opacity));
+    if (opts.textures) wireTextures(mat, *opts.textures, *material);
     appearance->setMaterial(material);
   }
 
@@ -188,7 +257,7 @@ std::shared_ptr<Shape> buildShape(const ImportMesh& m, const ImportScene& scene,
 
   if (m.materialIndex >= 0 &&
       static_cast<std::size_t>(m.materialIndex) < scene.materials.size()) {
-    shape->setAppearance(buildAppearance(scene.materials[m.materialIndex]));
+    shape->setAppearance(buildAppearance(scene.materials[m.materialIndex], opts));
   }
 
   return shape;

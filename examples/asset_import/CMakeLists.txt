@@ -39,3 +39,30 @@ target_include_directories(x3d_assetimport_emit PRIVATE
 target_link_libraries(x3d_assetimport_emit PRIVATE x3d_cpp::authoring)
 target_compile_features(x3d_assetimport_emit PRIVATE cxx_std_20)
 add_test(NAME x3d_assetimport_emit COMMAND x3d_assetimport_emit)
+
+# ---------------------------------------------------------------------------
+# Texture pipeline (Task 9): decode/dedup/re-encode ImportScene textures into
+# <outDir>/assets/, returning a TexturePlan emit() threads into ImageTexture
+# slots. Decodes through the x3d_stb seam; re-encodes PNG via the vendored
+# stb_image_write.h. Only available when -DX3D_CPP_BUILD_STB=ON.
+# ---------------------------------------------------------------------------
+if(TARGET x3d_stb)
+    add_executable(x3d_assetimport_texture
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/texture_pipeline.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/emit.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixture_source.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/texture_pipeline_test.cpp")
+    target_include_directories(x3d_assetimport_texture PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/extract"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/io/stb")
+    target_link_libraries(x3d_assetimport_texture PRIVATE x3d_stb x3d_cpp::authoring)
+    target_compile_features(x3d_assetimport_texture PRIVATE cxx_std_20)
+    add_test(NAME x3d_assetimport_texture COMMAND x3d_assetimport_texture)
+else()
+    message(STATUS "asset_import: x3d_stb not built (-DX3D_CPP_BUILD_STB=ON); "
+                   "skipping the texture_pipeline test target.")
+endif()
