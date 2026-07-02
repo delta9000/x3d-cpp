@@ -40,3 +40,32 @@ build-cpuraster/examples/cpu_raster/x3d_cpu_raster /tmp/knot_gltf.x3d -o /tmp/kn
 ```
 
 The montage above was composited from three such renders under one three-point rig.
+
+## Hierarchy
+
+[`gen_hier.py`](gen_hier.py) authors a **nested transform tree** — `Orrery → {Hub,
+Arm0..2 @120° → Moon0..2}` — with one shared knot mesh, in glTF and USD, to show the
+converter preserves the scene graph. OBJ is omitted: the format has no node
+transforms or parenting.
+
+![hierarchy](hierarchy.png)
+
+The emitted X3D mirrors the source tree as nested `<Transform>`s, and the reused mesh
+becomes one `DEF` + `USE` references (instancing) rather than duplicated geometry:
+
+```xml
+<Transform>                                  <!-- Orrery -->
+  <Transform><Shape DEF="Mesh0"/></Transform>          <!-- Hub -->
+  <Transform rotation="0 1 0 0"        translation="3.6 0 0">   <!-- Arm0 -->
+    <Shape USE="Mesh0"/>
+    <Transform rotation="0 1 0 0.698" translation="2.7 0 0"><Shape USE="Mesh0"/></Transform>  <!-- Moon0 -->
+  </Transform>
+  <Transform rotation="0 1 0 2.094" translation="3.6 0 0"> … </Transform>   <!-- Arm1 @120° -->
+  <Transform rotation="0 1 0 4.189" translation="3.6 0 0"> … </Transform>   <!-- Arm2 @240° -->
+</Transform>
+```
+
+```sh
+python3 gen_hier.py                       # writes scene.gltf + scene.usda
+"$BIN" examples/asset_import/assets/showcase/scene.gltf -o /tmp/hier.x3d --stats
+```
