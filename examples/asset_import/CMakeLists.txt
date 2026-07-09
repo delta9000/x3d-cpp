@@ -27,6 +27,19 @@ target_compile_features(x3d_assetimport_fixture_source PRIVATE cxx_std_20)
 add_test(NAME x3d_assetimport_fixture_source COMMAND x3d_assetimport_fixture_source)
 
 # ---------------------------------------------------------------------------
+# BackendRegistry: pure priority/name selection over ImportSource backends.
+# Unit-tested with fake backends — no concrete backend build gate required.
+# ---------------------------------------------------------------------------
+add_executable(x3d_assetimport_backend_registry
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/backend_registry_test.cpp")
+target_include_directories(x3d_assetimport_backend_registry PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support")
+target_compile_features(x3d_assetimport_backend_registry PRIVATE cxx_std_20)
+add_test(NAME x3d_assetimport_backend_registry COMMAND x3d_assetimport_backend_registry)
+
+# ---------------------------------------------------------------------------
 # emit(): ImportScene IR -> x3d::runtime::X3DDocument, geometry core (Task 5).
 # Links ONLY x3d_cpp::authoring — proves the consumer never needs parse/
 # execution/extract/sdk to build a document from scratch.
