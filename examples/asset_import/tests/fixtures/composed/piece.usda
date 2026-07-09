@@ -1,0 +1,10 @@
+#usda 1.0
+(
+    # The real geometry is deferred to a subLayer — mirrors OpenChessSet's
+    # *_payload.usd -> *_geom.usd pattern. LoadAsset must recursively composite
+    # this subLayer when the layer is pulled in via a reference.
+    subLayers = [
+        @./geom.usda@
+    ]
+    defaultPrim = "Piece"
+)

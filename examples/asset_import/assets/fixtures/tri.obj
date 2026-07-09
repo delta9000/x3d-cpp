@@ -1,0 +1,16 @@
+# A tiny single-triangle OBJ for the assimp ImportSource backend test.
+# 3 unique positions, 1 face, CCW winding. assimp triangulates (already
+# triangles) and normalizes the sidecar .mtl into an ImportMaterial.
+# Used by assimp_source_test (Task 10).
+
+mtllib tri.mtl
+o tri
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 0.5 1.0 0.0
+vt 0.0 0.0
+vt 1.0 0.0
+vt 0.5 1.0
+vn 0.0 0.0 1.0
+usemtl tri_mat
+f 1/1/1 2/2/2 3/3/3

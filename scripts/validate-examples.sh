@@ -45,4 +45,46 @@ if [ ! -s "$SHOT" ]; then
   exit 1
 fi
 echo "OK: GL pipeline produced a $(stat -c%s "$SHOT")-byte frame ($SHOT)"
-echo "== examples validated: cpu_raster + poc_renderer compile and run headless =="
+
+echo "== build asset_import (no assimp) =="
+cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
+cmake --build build-asset-import --target x3d_asset_import
+
+TMP_DIR="$(mktemp -d)"
+AI=build-asset-import/examples/asset_import/x3d_asset_import
+
+echo "== run asset_import (fixture) =="
+"$AI" fixture:cube -o "$TMP_DIR/cube.x3d" --verify --stats
+
+if [ ! -s "$TMP_DIR/cube.x3d" ]; then
+  echo "FAIL: cube.x3d missing or empty" >&2
+  exit 1
+fi
+
+echo "== run authoring footprint gate =="
+bash scripts/authoring-footprint.sh
+
+# Guard the assimp path
+echo "== probe assimp availability =="
+HAS_ASSIMP=0
+if pkg-config --exists assimp; then
+  HAS_ASSIMP=1
+fi
+
+if [ "$HAS_ASSIMP" -eq 1 ]; then
+  echo "assimp available, building with assimp..."
+  cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_ASSIMP=ON >/dev/null
+  cmake --build build-asset-import --target x3d_asset_import
+  
+  echo "== run asset_import (assimp) =="
+  "$AI" examples/asset_import/assets/fixtures/tri.obj -o "$TMP_DIR/tri.x3d" --verify --stats
+  if [ ! -s "$TMP_DIR/tri.x3d" ]; then
+    echo "FAIL: tri.x3d missing or empty" >&2
+    exit 1
+  fi
+else
+  echo "assimp not available; skipping assimp job"
+fi
+
+echo "== examples validated: cpu_raster + poc_renderer + asset_import compile and run headless =="
+

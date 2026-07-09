@@ -957,7 +957,6 @@ private:
 inline std::unordered_map<std::string, Value>
 seedUniforms(const x3d::runtime::extract::MaterialDesc &m,
              const std::vector<EyeLight> &lights, const MaterialTextures &tx) {
-  namespace ex = x3d::runtime::extract;
   std::unordered_map<std::string, Value> u;
   u["uDiffuse"] = Value::v4(glsl::vec4(m.toRGBA()));
   u["uBaseColor"] = Value::v4({m.physical.baseColor.r, m.physical.baseColor.g,
@@ -983,8 +982,34 @@ seedUniforms(const x3d::runtime::extract::MaterialDesc &m,
   }
   Value dv; dv.t = VT::Array; dv.arr = dirArr; u["uLightDirEye"] = dv;
   Value cv; cv.t = VT::Array; cv.arr = colArr; u["uLightColor"] = cv;
-  // Samplers.
+  u["uOcclusionStrength"] = Value::flt(m.physical.occlusionStrength);
+  // UsdPreviewSurface fidelity params: the X3D PhysicalMaterial node cannot carry
+  // these, so the direct render path seeds the spec-default fallbacks (metallic
+  // workflow, ior 1.5, no clearcoat, opacityMode transparent). At these values the
+  // portable shader is bit-parity with the native fixed-function PBR; only the
+  // asset-import --emit-glsl path (which bakes constants) exercises the extras.
+  u["uUseSpecularWorkflow"] = Value::integer(0);
+  u["uSpecularColor"] = Value::v3(glsl::vec3(m.phong.specular));
+  u["uIor"] = Value::flt(1.5f);
+  u["uClearcoat"] = Value::flt(0.0f);
+  u["uClearcoatRoughness"] = Value::flt(0.01f);
+  u["uOpacityMode"] = Value::integer(0);
+  u["uOpacityThreshold"] = Value::flt(m.alphaCutoff);
+  // Texture slots. Every sampler pointer is bound unconditionally (the pointer is
+  // stable even when the Texture is empty); the paired uHas*Tex flag tells the
+  // shader whether to sample, so an author shader that guards on the flag never
+  // reads an invalid slot. uTexture is retained as the legacy base-color alias.
   if (tx.base.valid()) u["uTexture"] = Value::samp(&tx.base);
+  u["uBaseColorTex"] = Value::samp(&tx.base);
+  u["uNormalTex"] = Value::samp(&tx.normal);
+  u["uEmissiveTex"] = Value::samp(&tx.emissive);
+  u["uMetallicRoughnessTex"] = Value::samp(&tx.mr);
+  u["uOcclusionTex"] = Value::samp(&tx.occlusion);
+  u["uHasBaseColorTex"] = Value::integer(tx.base.valid() ? 1 : 0);
+  u["uHasNormalTex"] = Value::integer(tx.normal.valid() ? 1 : 0);
+  u["uHasEmissiveTex"] = Value::integer(tx.emissive.valid() ? 1 : 0);
+  u["uHasMetallicRoughnessTex"] = Value::integer(tx.mr.valid() ? 1 : 0);
+  u["uHasOcclusionTex"] = Value::integer(tx.occlusion.valid() ? 1 : 0);
   return u;
 }
 

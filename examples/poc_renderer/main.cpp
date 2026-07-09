@@ -741,6 +741,15 @@ int main(int argc, char **argv) {
   // Mirrors how the Web3D/NIST conformance set generates its `*-front.jpg`
   // reference views, so screenshots line up apples-to-apples for the visual sweep.
   bool frontView = false;
+  // --pbr-shader <name> (or X3D_POC_PBR_SHADER env var): swap the PBR fragment
+  // program's source file. "pbr.frag" (the default, also what an unset/empty
+  // value resolves to) loads poc's native shaders/pbr.frag exactly as before —
+  // byte-identical to pre-flag behavior. Any other name is looked up in the
+  // sibling cpu_raster example's shaders dir (X3D_POC_PORTABLE_SHADER_DIR), so
+  // the SAME usd_preview_surface.frag source that runs in the CPU rasterizer's
+  // GLSL interpreter can also be swap-tested on real desktop GL here.
+  std::string pbrShaderName;
+  if (const char *e = std::getenv("X3D_POC_PBR_SHADER"); e && *e) pbrShaderName = e;
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
     if (a == "--headless") headless = true;
@@ -749,6 +758,7 @@ int main(int argc, char **argv) {
     else if (a == "--animate" && i + 1 < argc) { animate = true; framesDir = argv[++i]; }
     else if (a == "--fps" && i + 1 < argc) animFps = std::atoi(argv[++i]);
     else if (a == "--duration" && i + 1 < argc) animDuration = std::atof(argv[++i]);
+    else if (a == "--pbr-shader" && i + 1 < argc) pbrShaderName = argv[++i];
     else if (scenePath.empty()) scenePath = a;
   }
   if (scenePath.empty())
@@ -1107,10 +1117,21 @@ int main(int argc, char **argv) {
   const GLint uUnlitHasTexture = unlitProg ? glGetUniformLocation(unlitProg, "uHasTexture") : -1;
 
   // ---- Phase 5.3 PBR program (lit.vert / pbr.frag) -------------------------
+  // Swap-test seam: --pbr-shader / X3D_POC_PBR_SHADER selects an alternate
+  // fragment source (e.g. the portable usd_preview_surface.frag) from the
+  // sibling cpu_raster shaders dir; empty/"pbr.frag" resolves to the native
+  // path below, unchanged.
+  const bool usePortablePbrShader = !pbrShaderName.empty() && pbrShaderName != "pbr.frag";
+  const std::string pbrFragPath = usePortablePbrShader
+      ? std::string(X3D_POC_PORTABLE_SHADER_DIR) + "/" + pbrShaderName
+      : shaderDir + "/pbr.frag";
+  if (usePortablePbrShader)
+    std::fprintf(stderr, "[poc] PBR fragment shader override: %s\n", pbrFragPath.c_str());
   GLuint pvs = compileShader(GL_VERTEX_SHADER,
                              readTextFile(shaderDir + "/lit.vert"), "lit.vert(pbr)");
+  const std::string pbrFragLabel = pbrShaderName.empty() ? "pbr.frag" : pbrShaderName;
   GLuint pfs = compileShader(GL_FRAGMENT_SHADER,
-                             readTextFile(shaderDir + "/pbr.frag"), "pbr.frag");
+                             readTextFile(pbrFragPath), pbrFragLabel.c_str());
   GLuint pbrProg = (pvs && pfs) ? linkProgram(pvs, pfs) : 0;
   if (pvs) glDeleteShader(pvs);
   if (pfs) glDeleteShader(pfs);
@@ -1145,6 +1166,20 @@ int main(int argc, char **argv) {
   const GLint uPbrHasOcclusionTex = pbrProg ? glGetUniformLocation(pbrProg, "uHasOcclusionTex") : -1;
   const GLint uPbrNormalScale     = pbrProg ? glGetUniformLocation(pbrProg, "uNormalScale") : -1;
   const GLint uPbrOcclusionStrength = pbrProg ? glGetUniformLocation(pbrProg, "uOcclusionStrength") : -1;
+  // UsdPreviewSurface fidelity uniforms (swap-test seam host contract): pbr.frag
+  // doesn't declare these, so the locations resolve to -1 there and every
+  // glUniform* call below is a no-op guarded by `>= 0`. When the portable
+  // usd_preview_surface.frag is active, binding these to the spec defaults is
+  // what keeps it bit-parity with the native metallic-roughness path (an
+  // unbound sampler/uniform on real GL defaults to 0, which would otherwise
+  // e.g. turn uIor=0 into a mirror F0 of 1.0 — see uUsdIor default below).
+  const GLint uUsdUseSpecularWorkflow = pbrProg ? glGetUniformLocation(pbrProg, "uUseSpecularWorkflow") : -1;
+  const GLint uUsdSpecularColor       = pbrProg ? glGetUniformLocation(pbrProg, "uSpecularColor") : -1;
+  const GLint uUsdIor                 = pbrProg ? glGetUniformLocation(pbrProg, "uIor") : -1;
+  const GLint uUsdClearcoat           = pbrProg ? glGetUniformLocation(pbrProg, "uClearcoat") : -1;
+  const GLint uUsdClearcoatRoughness  = pbrProg ? glGetUniformLocation(pbrProg, "uClearcoatRoughness") : -1;
+  const GLint uUsdOpacityMode         = pbrProg ? glGetUniformLocation(pbrProg, "uOpacityMode") : -1;
+  const GLint uUsdOpacityThreshold    = pbrProg ? glGetUniformLocation(pbrProg, "uOpacityThreshold") : -1;
 
   // ---- Phase 5.4 author-shader cache (ComposedShader, compiled on demand) ---
   // Key: combined VS+FS source string. Value: linked GL program (or 0 = failed).
@@ -1609,6 +1644,20 @@ int main(int argc, char **argv) {
           if (uPbrNormalScale >= 0) glUniform1f(uPbrNormalScale, mat.normalScale);
           if (uPbrOcclusionStrength >= 0)
             glUniform1f(uPbrOcclusionStrength, ph.occlusionStrength);
+
+          // UsdPreviewSurface fidelity defaults (host contract — see uUsdIor
+          // comment above). X3D PhysicalMaterial carries none of these, so we
+          // always bind the spec fallbacks: metallic workflow, ior=1.5 (->
+          // dielectric F0=0.04, matching pbr.frag's hardcoded 0.04), no
+          // clearcoat, opacityMode "transparent" (matches pbr.frag's plain
+          // alpha-out behavior). No-ops on pbr.frag (locations are -1).
+          if (uUsdUseSpecularWorkflow >= 0) glUniform1i(uUsdUseSpecularWorkflow, 0);
+          if (uUsdSpecularColor       >= 0) glUniform3f(uUsdSpecularColor, 0.0f, 0.0f, 0.0f);
+          if (uUsdIor                 >= 0) glUniform1f(uUsdIor, 1.5f);
+          if (uUsdClearcoat           >= 0) glUniform1f(uUsdClearcoat, 0.0f);
+          if (uUsdClearcoatRoughness  >= 0) glUniform1f(uUsdClearcoatRoughness, 0.01f);
+          if (uUsdOpacityMode         >= 0) glUniform1i(uUsdOpacityMode, 0);
+          if (uUsdOpacityThreshold    >= 0) glUniform1f(uUsdOpacityThreshold, mat.alphaCutoff);
 
           if (g.hasTexcoords) {
             // Unit 0: base color (sRGB; uploaded as GL_SRGB8_ALPHA8 so the
