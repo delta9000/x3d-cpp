@@ -8843,10 +8843,10 @@
         "PointLight",
         "SpotLight"
       ],
-      "note": "\u00a717.3.1 defines shadows (SFBool) + shadowIntensity (SFFloat) on every light. LightDesc (runtime/extract/RenderItem.hpp:473-491) has neither member; LightSystem::makeLight (LightSystem.hpp:120-156) reads neither. May tie into main's ADR-0028 shadow seam \u2014 check before wiring. (sweep 2026-06-25)",
+      "note": "\u00a717.3.1 defines shadows (SFBool, default FALSE) + shadowIntensity (SFFloat, default 1, [0,1]) on every light. FIXED: LightDesc (runtime/extract/RenderItem.hpp) gained bool shadows + float shadowIntensity members; LightSystem::makeLight reads both in the shared X3DLightNode block via getField, so all three light types carry them. Consumers can now honor authored shadow-casting + darkness (a downstream renderer chooses the technique). (sweep 2026-06-25; resolved 2026-07-02)",
       "severity": "minor",
-      "status": "open",
-      "summary": "shadows / shadowIntensity absent from LightDesc \u2014 extraction can't drive shadows."
+      "status": "fixed",
+      "summary": "shadows / shadowIntensity now extracted onto LightDesc."
     },
     {
       "clause": "31.4.2",
@@ -9585,7 +9585,7 @@
     ]
   },
   "summary": {
-    "closed_count": 107,
+    "closed_count": 108,
     "component_count": 36,
     "deferred_count": 46,
     "finding_count": 208,
@@ -9616,7 +9616,7 @@
       "critical": 9,
       "low": 7,
       "major": 44,
-      "minor": 41
+      "minor": 40
     }
   },
   "unresolved_findings": []

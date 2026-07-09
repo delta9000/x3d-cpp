@@ -148,6 +148,11 @@ private:
     L.ambientIntensity =
         geombounds::getField<float>(n, "ambientIntensity", 0.0f);
 
+    // X3D 4.0 §17.3.1 shadow controls (X3DLightNode, all three types).
+    L.shadows = geombounds::getField<bool>(n, "shadows", false);
+    L.shadowIntensity =
+        geombounds::getField<float>(n, "shadowIntensity", 1.0f);
+
     // CARRIED authored global — verified defaults differ by type, so the
     // fallback matches the spec for THIS node type (never blanket-promoted).
     bool defaultGlobal = (type != LightDesc::Type::Directional);
