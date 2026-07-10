@@ -1,3 +1,4 @@
+#include "backend_registry.hpp"
 #include "emit.hpp"
 #include "fixture_source.hpp"
 #include "glsl_emit.hpp"
@@ -67,21 +68,66 @@ std::string sanitizeMaterialStem(const std::string& name, int index) {
   return stem;
 }
 
+// Assemble the backend registry. Registration is explicit (no static-init
+// order dependence) and gated per backend by its build macro. `priority`
+// inspects the whole input, so the "fixture:" prefix and file extensions
+// resolve through one uniform path. glTF is claimed by both cgltf (100, the
+// default) and assimp (10, the broader-format fallback).
+static void registerBuiltinBackends(BackendRegistry& reg) {
+  [[maybe_unused]] auto extIs = [](const std::string& in,
+                                   std::initializer_list<const char*> exts) {
+    auto d = in.find_last_of('.');
+    if (d == std::string::npos) return false;
+    std::string e = in.substr(d);
+    for (auto& c : e) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (const char* x : exts)
+      if (e == x) return true;
+    return false;
+  };
+  reg.add({"fixture",
+           [](const std::string& in) { return in.rfind("fixture:", 0) == 0 ? 100 : -1; },
+           [] { return std::unique_ptr<ImportSource>(std::make_unique<FixtureSource>()); }});
+#ifdef X3D_ASSET_IMPORT_HAVE_CGLTF
+  reg.add({"cgltf",
+           [extIs](const std::string& in) { return extIs(in, {".gltf", ".glb"}) ? 100 : -1; },
+           [] { return std::unique_ptr<ImportSource>(std::make_unique<CgltfSource>()); }});
+#endif
+#ifdef X3D_ASSET_IMPORT_HAVE_ASSIMP
+  reg.add({"assimp",
+           [extIs](const std::string& in) {
+             if (extIs(in, {".gltf", ".glb"})) return 10;
+             if (extIs(in, {".obj", ".fbx", ".dae", ".ply", ".stl", ".3ds"})) return 50;
+             return -1;
+           },
+           [] { return std::unique_ptr<ImportSource>(std::make_unique<AssimpSource>()); }});
+#endif
+#ifdef X3D_ASSET_IMPORT_HAVE_USD
+  reg.add({"usd",
+           [extIs](const std::string& in) {
+             return extIs(in, {".usd", ".usda", ".usdc", ".usdz"}) ? 100 : -1;
+           },
+           [] { return std::unique_ptr<ImportSource>(std::make_unique<UsdSource>()); }});
+#endif
+}
+
 int main(int argc, char** argv) {
   const std::string usageMsg =
       "usage: x3d_asset_import <input> [-o <output>] [--format xml|json|vrml|canonical]\n"
       "                        [--assets-dir <dir>] [--no-textures] [--recompress]\n"
       "                        [--profile auto|interchange|immersive|full] [--verify] [--stats]\n"
-      "                        [--emit-glsl <dir>]\n";
+      "                        [--emit-glsl <dir>] [--backend cgltf|assimp|usd|fixture]\n";
 
   const std::string helpMsg =
       "x3d_asset_import — convert 3D assets to X3D 4.0\n\n"
       + usageMsg +
-      "\nThe input selects the backend automatically:\n"
+      "\nThe input selects the backend automatically (highest-priority match wins):\n"
       "  fixture:<name>            built-in synthetic scene (e.g. fixture:cube) — always available\n"
-      "  *.usd .usda .usdc .usdz   USD / USDZ                (build with -DX3D_CPP_BUILD_USD=ON)\n"
-      "  *.obj .gltf .glb .fbx …   40+ formats via assimp    (build with -DX3D_CPP_BUILD_ASSIMP=ON)\n"
+      "  *.gltf .glb               glTF via cgltf              (default; build with -DX3D_CPP_BUILD_CGLTF=ON)\n"
+      "  *.usd .usda .usdc .usdz   USD / USDZ                  (build with -DX3D_CPP_BUILD_USD=ON)\n"
+      "  *.obj .fbx .dae …         40+ formats via assimp      (build with -DX3D_CPP_BUILD_ASSIMP=ON;\n"
+      "                            also handles .gltf/.glb as a lower-priority fallback)\n"
       "\noptions:\n"
+      "  --backend <name>       force a backend: cgltf | assimp | usd | fixture (default: auto by input)\n"
       "  -o <path>              output file (default: <input-stem>.x3d)\n"
       "  --format <fmt>         xml | json | vrml | canonical (default: from -o extension, else xml)\n"
       "  --assets-dir <dir>     write textures under <dir>/assets/; URLs stay relative to the output\n"
@@ -106,6 +152,7 @@ int main(int argc, char** argv) {
   bool verify = false;
   bool printStats = false;
   std::string emitGlslDir;
+  std::string backendFlag;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -159,6 +206,12 @@ int main(int argc, char** argv) {
         return 1;
       }
       emitGlslDir = argv[++i];
+    } else if (arg == "--backend") {
+      if (i + 1 >= argc) {
+        std::cerr << "error: --backend option requires an argument\n";
+        return 1;
+      }
+      backendFlag = argv[++i];
     } else if (arg[0] == '-') {
       std::cerr << "error: unknown option: " << arg << "\n" << usageMsg;
       return 1;
@@ -178,42 +231,29 @@ int main(int argc, char** argv) {
   }
 
   // 1. Select Backend & Load
+  BackendRegistry reg;
+  registerBuiltinBackends(reg);
+  const ImportBackend* backend =
+      backendFlag.empty() ? reg.select(input) : reg.byName(backendFlag);
+  if (!backend) {
+    std::cerr << "error: no import backend for '" << input << "'.\n";
+    if (!backendFlag.empty())
+      std::cerr << "  unknown --backend '" << backendFlag << "'.\n";
+    std::cerr << "  available backends:";
+    for (const auto& n : reg.names()) std::cerr << ' ' << n;
+    std::cerr << "\n  (glTF needs cgltf [default] or assimp; USD needs -DX3D_CPP_BUILD_USD=ON;"
+                 " other formats need -DX3D_CPP_BUILD_ASSIMP=ON)\n";
+    return 1;
+  }
+
   std::unique_ptr<ImportSource> source;
   ImportScene scene;
   try {
-    if (input.rfind("fixture:", 0) == 0) {
-      source = std::make_unique<FixtureSource>();
-      std::string name = input.substr(8);
-      scene = source->load(name);
-    } else {
-      bool isUsd = false;
-      size_t dot = input.find_last_of('.');
-      if (dot != std::string::npos) {
-        std::string ext = input.substr(dot);
-        for (auto& c : ext) c = std::tolower(c);
-        if (ext == ".usd" || ext == ".usda" || ext == ".usdc" || ext == ".usdz") {
-          isUsd = true;
-        }
-      }
-      
-      if (isUsd) {
-#ifdef X3D_ASSET_IMPORT_HAVE_USD
-        source = std::make_unique<UsdSource>();
-        scene = source->load(input);
-#else
-        std::cerr << "error: rebuild with -DX3D_CPP_BUILD_USD=ON to import USD/USDA/USDC/USDZ files\n";
-        return 1;
-#endif
-      } else {
-#ifdef X3D_ASSET_IMPORT_HAVE_ASSIMP
-        source = std::make_unique<AssimpSource>();
-        scene = source->load(input);
-#else
-        std::cerr << "error: rebuild with -DX3D_CPP_BUILD_ASSIMP=ON to import real asset files\n";
-        return 1;
-#endif
-      }
-    }
+    source = backend->make();
+    // FixtureSource::load expects the name AFTER the "fixture:" prefix; every
+    // other backend takes the path verbatim.
+    std::string loadArg = input.rfind("fixture:", 0) == 0 ? input.substr(8) : input;
+    scene = source->load(loadArg);
   } catch (const std::exception& e) {
     std::cerr << "error: failed to load input '" << input << "': " << e.what() << "\n";
     return 2;
