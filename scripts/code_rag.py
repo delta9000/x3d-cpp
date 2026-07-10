@@ -18,8 +18,9 @@ you already have the name.
 
 SOURCE TIERS: query searches `runtime` code only by default (the clause-walk's "find the
 implementation" case — test bodies are prose-rich and otherwise out-rank dense impl). Add
-`--source test` to include tests as corroboration, repeat `--source` to combine tiers, or
-`--all` for everything incl. the generated bindings.
+`--source example` for the out-of-SDK consumers under examples/ (cpu_raster, poc_renderer,
+asset_import), `--source test` to include tests as corroboration, repeat `--source` to
+combine tiers, or `--all` for every tier (runtime + example + test + generated).
 
 PLUGGABLE BACKENDS (configure via environment variables — bring your own
 self-hosted services; no default points at a remote host):
@@ -76,13 +77,15 @@ def _tag(rel):
         return "generated"
     if "tests" in parts:
         return "test"
+    if parts[0] == "examples":
+        return "example"
     return "runtime"
 
 
 def scope(root=REPO, only=None):
     root = pathlib.Path(root)
     roots = [root / "runtime", root / "include" / "x3d", root / "tools",
-             root / "generated_cpp_bindings"]
+             root / "generated_cpp_bindings", root / "examples"]
     out = []
     for base in roots:
         if not base.exists():
@@ -352,8 +355,11 @@ def _dedup_by_symbol(results, k):
     return ranked[:k]
 
 
-def query(q, k=8, sources=("runtime",), include_generated=False):
-    src_list = list(sources) + (["generated"] if include_generated else [])
+ALL_TIERS = ("runtime", "example", "test", "generated")
+
+
+def query(q, k=8, sources=("runtime",), all_tiers=False):
+    src_list = list(ALL_TIERS) if all_tiers else list(sources)
     v = embed([q], "query")[0]
     body = {"vector": v, "limit": k * 4, "with_payload": True,
             "filter": {"must": [{"key": "source", "match": {"any": src_list}}]}}
@@ -367,8 +373,9 @@ def query(q, k=8, sources=("runtime",), include_generated=False):
         print(f"\n[{h['score']:.3f}] {p['file']}:{p['start_line']}  "
               f"{p['symbol']}  ({p['kind']}, {p['source']})")
         print("  " + snippet[:500] + ("…" if len(snippet) > 500 else ""))
-    print("\n# searched runtime code only (default). add tests: --source test   "
-          "| all tiers (incl generated): --all   | exact symbol: code_rag.py symbol <Name>")
+    print("\n# searched runtime code only (default). other tiers: --source example|test   "
+          "| all tiers (runtime+example+test+generated): --all   "
+          "| exact symbol: code_rag.py symbol <Name>")
 
 
 def cmd_symbol(name):
