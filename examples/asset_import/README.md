@@ -13,16 +13,21 @@ has the full data-flow and X3D mapping table.
 
 ## Backends
 
-The backend is chosen from the input argument:
+The backend is resolved by a priority `BackendRegistry` (highest-priority match
+for the input wins; `--backend <name>` forces one). More than one backend can
+claim a file type — glTF is claimed by both cgltf (default) and assimp (fallback):
 
-| Input | Backend | Build flag | Formats |
-|---|---|---|---|
-| `fixture:<name>` (e.g. `fixture:cube`) | `FixtureSource` | always on | synthetic scenes (dependency-free; CI + tests) |
-| `*.usd` `*.usda` `*.usdc` `*.usdz` | `UsdSource` (tinyusdz) | `-DX3D_CPP_BUILD_USD=ON` | USD / USDZ, incl. composed references/payloads/subLayers and UsdPreviewSurface materials |
-| anything else (e.g. `*.obj`, `*.gltf`, `*.fbx`) | `AssimpSource` | `-DX3D_CPP_BUILD_ASSIMP=ON` | 40+ formats via Assimp |
+| Input | Backend | Priority | Build flag | Formats |
+|---|---|---|---|---|
+| `fixture:<name>` (e.g. `fixture:cube`) | `FixtureSource` | 100 | always on | synthetic scenes (dependency-free; CI + tests) |
+| `*.gltf` `*.glb` | `CgltfSource` (cgltf) | 100 | `-DX3D_CPP_BUILD_CGLTF=ON` (default) | glTF 2.0 — PBR, textures (external / GLB / data-URI), hierarchy, cameras, `KHR_lights_punctual` |
+| `*.usd` `*.usda` `*.usdc` `*.usdz` | `UsdSource` (tinyusdz) | 100 | `-DX3D_CPP_BUILD_USD=ON` | USD / USDZ, incl. composed references/payloads/subLayers and UsdPreviewSurface materials |
+| `*.obj` `*.fbx` `*.dae` … | `AssimpSource` | 50 | `-DX3D_CPP_BUILD_ASSIMP=ON` | 40+ formats via Assimp |
+| `*.gltf` `*.glb` (fallback) | `AssimpSource` | 10 | `-DX3D_CPP_BUILD_ASSIMP=ON` | glTF via Assimp (`--backend assimp` to force) |
 
-Both real backends are **OFF by default**; the default build ships only the
-fixture backend, so it stays dependency-clean.
+**cgltf** is a single MIT header (no heavy deps) and is **ON by default**, so glTF
+works out of the box. **assimp** and **USD** stay **OFF by default**; without them
+the default build ships the fixture + cgltf backends and stays lightweight.
 
 ## Build
 
