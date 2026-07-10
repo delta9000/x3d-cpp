@@ -7,6 +7,10 @@
 #include "x3d/sdk.hpp"
 #include "x3d-cli/profile_fit.hpp"
 
+#ifdef X3D_ASSET_IMPORT_HAVE_CGLTF
+#include "cgltf_source.hpp"
+#endif
+
 #ifdef X3D_ASSET_IMPORT_HAVE_ASSIMP
 #include "assimp_source.hpp"
 #endif
