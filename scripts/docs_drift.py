@@ -47,8 +47,11 @@ DOC_TASK = ("Given a description of a code change, retrieve the documentation "
 # Living-doc roots (relative to repo). docs/superpowers/ is excluded on purpose.
 DOC_ROOTS = ("docs/wiki", "docs/sdk", "docs/conformance")
 # Changed-code roots that have docs worth checking. generated bindings are
-# machine-emitted (their "doc" is the generator), so they are excluded.
-CODE_ROOTS = ("runtime/", "tools/", "include/x3d/")
+# machine-emitted (their "doc" is the generator), so they are excluded; so is
+# vendored third-party code (not ours to document). examples/ is included so the
+# out-of-SDK consumers (cpu_raster, poc_renderer, asset_import) are drift-checked
+# against their subsystem pages — they ship documented behavior too.
+CODE_ROOTS = ("runtime/", "tools/", "include/x3d/", "examples/")
 CODE_SUFFIXES = (".hpp", ".cpp", ".h")
 
 MAX_PER_FILE = 6  # cap suggestions per changed file (advisory worklist, not a dump)
@@ -74,7 +77,9 @@ def _is_doc(path):
 def _is_code(path):
     return (path.endswith(CODE_SUFFIXES)
             and any(path.startswith(r) for r in CODE_ROOTS)
-            and "generated_cpp_bindings" not in path)
+            and "generated_cpp_bindings" not in path
+            and "/third_party/" not in path
+            and "/vendor/" not in path)
 
 
 # Pseudo-revs meaning "the uncommitted working tree (staged + unstaged + untracked)
