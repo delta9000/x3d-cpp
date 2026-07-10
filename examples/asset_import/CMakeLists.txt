@@ -27,6 +27,19 @@ target_compile_features(x3d_assetimport_fixture_source PRIVATE cxx_std_20)
 add_test(NAME x3d_assetimport_fixture_source COMMAND x3d_assetimport_fixture_source)
 
 # ---------------------------------------------------------------------------
+# BackendRegistry: pure priority/name selection over ImportSource backends.
+# Unit-tested with fake backends — no concrete backend build gate required.
+# ---------------------------------------------------------------------------
+add_executable(x3d_assetimport_backend_registry
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/backend_registry_test.cpp")
+target_include_directories(x3d_assetimport_backend_registry PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support")
+target_compile_features(x3d_assetimport_backend_registry PRIVATE cxx_std_20)
+add_test(NAME x3d_assetimport_backend_registry COMMAND x3d_assetimport_backend_registry)
+
+# ---------------------------------------------------------------------------
 # emit(): ImportScene IR -> x3d::runtime::X3DDocument, geometry core (Task 5).
 # Links ONLY x3d_cpp::authoring — proves the consumer never needs parse/
 # execution/extract/sdk to build a document from scratch.
@@ -101,6 +114,54 @@ if(X3D_CPP_BUILD_ASSIMP)
 else()
     message(STATUS "asset_import: assimp backend disabled "
                    "(-DX3D_CPP_BUILD_ASSIMP=ON to enable).")
+endif()
+
+# ---------------------------------------------------------------------------
+# cgltf ImportSource backend: gated behind X3D_CPP_BUILD_CGLTF (default ON).
+# Header-only (vendored third_party/cgltf.h); the load test drives the
+# committed twobox.glb fixture through the full ImportScene surface.
+# ---------------------------------------------------------------------------
+if(X3D_CPP_BUILD_CGLTF)
+    add_executable(x3d_assetimport_cgltf
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cgltf_source.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/cgltf_source_test.cpp")
+    target_include_directories(x3d_assetimport_cgltf PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support")
+    target_compile_definitions(x3d_assetimport_cgltf PRIVATE
+        X3D_ASSET_IMPORT_HAVE_CGLTF=1
+        X3D_ASSET_IMPORT_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/fixtures")
+    target_compile_features(x3d_assetimport_cgltf PRIVATE cxx_std_20)
+    add_test(NAME x3d_assetimport_cgltf COMMAND x3d_assetimport_cgltf)
+else()
+    message(STATUS "asset_import: cgltf backend disabled "
+                   "(-DX3D_CPP_BUILD_CGLTF=ON to enable).")
+endif()
+
+# ---------------------------------------------------------------------------
+# Backend swap-test (seam genericity, U1-U4): loads the SAME twobox.glb through
+# both cgltf and assimp and asserts their ImportScenes agree on structural
+# invariants. Compiles only when BOTH backends are available.
+# ---------------------------------------------------------------------------
+if(X3D_CPP_BUILD_CGLTF AND X3D_CPP_BUILD_ASSIMP)
+    find_package(assimp CONFIG QUIET)
+    if(TARGET assimp::assimp)
+        add_executable(x3d_assetimport_backend_swap
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/cgltf_source.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assimp_source.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/backend_swap_test.cpp")
+        target_include_directories(x3d_assetimport_backend_swap PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support")
+        target_link_libraries(x3d_assetimport_backend_swap PRIVATE assimp::assimp)
+        target_compile_definitions(x3d_assetimport_backend_swap PRIVATE
+            X3D_ASSET_IMPORT_HAVE_CGLTF=1 X3D_ASSET_IMPORT_HAVE_ASSIMP=1
+            X3D_ASSET_IMPORT_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/fixtures")
+        target_compile_features(x3d_assetimport_backend_swap PRIVATE cxx_std_20)
+        add_test(NAME x3d_assetimport_backend_swap COMMAND x3d_assetimport_backend_swap)
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -217,6 +278,13 @@ else()
     set(HAVE_USD 0)
 endif()
 
+if(X3D_CPP_BUILD_CGLTF)
+    list(APPEND ASSET_IMPORT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cgltf_source.cpp")
+    set(HAVE_CGLTF 1)
+else()
+    set(HAVE_CGLTF 0)
+endif()
+
 add_executable(x3d_asset_import ${ASSET_IMPORT_SOURCES})
 target_link_libraries(x3d_asset_import PRIVATE ${ASSET_IMPORT_LIBS})
 target_compile_features(x3d_asset_import PRIVATE cxx_std_20)
@@ -234,6 +302,9 @@ endif()
 if(HAVE_USD)
     target_compile_definitions(x3d_asset_import PRIVATE X3D_ASSET_IMPORT_HAVE_USD=1)
     target_include_directories(x3d_asset_import PRIVATE "${tinyusdz_SOURCE_DIR}/src")
+endif()
+if(HAVE_CGLTF)
+    target_compile_definitions(x3d_asset_import PRIVATE X3D_ASSET_IMPORT_HAVE_CGLTF=1)
 endif()
 
 # ---------------------------------------------------------------------------

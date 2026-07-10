@@ -46,8 +46,22 @@ The subsystem decouples the importer from the scene generator through the `Impor
 
 - **`ImportScene` POD IR** ([import_source.hpp](file:///home/ben/code/x3d-cpp/examples/asset_import/import_source.hpp)): A backend-agnostic intermediate representation representing nodes, mesh geometry (vertices, normals, UVs, indices), materials, lights, cameras, and embedded texture bytes. No third-party types leak past this boundary.
 - **`FixtureSource`** ([fixture_source.cpp](file:///home/ben/code/x3d-cpp/examples/asset_import/fixture_source.cpp)): A dependency-free synthetic scene generator used for unit tests and CI testing when assimp is absent.
+- **`CgltfSource`** ([cgltf_source.cpp](file:///home/ben/code/x3d-cpp/examples/asset_import/cgltf_source.cpp)): A glTF 2.0 (`.gltf`/`.glb`) backend built on the vendored, header-only [cgltf](https://github.com/jkuhlmann/cgltf) parser (MIT). It walks the parsed document into the IR — meshes, PBR metallic-roughness materials, textures (external URI, GLB bin buffer-view, and base64 `data:` URI), node hierarchy with TRS, perspective cameras, and `KHR_lights_punctual` lights. Guarded by `X3D_ASSET_IMPORT_HAVE_CGLTF`; **built by default** (`X3D_CPP_BUILD_CGLTF=ON`), so glTF is a first-class path with no assimp requirement.
 - **`AssimpSource`** ([assimp_source.cpp](file:///home/ben/code/x3d-cpp/examples/asset_import/assimp_source.cpp)): A backend that wraps the Assimp library. It parses 40+ standard 3D formats, triangulates meshes, computes missing normals, and maps them to the intermediate representation. Guarded by `X3D_ASSET_IMPORT_HAVE_ASSIMP`.
 - **`UsdSource`** ([usd_source.cpp](file:///home/ben/code/x3d-cpp/examples/asset_import/usd_source.cpp)): A USD/USDZ backend wrapping vendored tinyusdz (tydra `RenderScene`). It composes references/payloads/subLayers, resolves in-archive USDZ assets, and extracts a full **UsdPreviewSurface** material (scalars + one-hop `UsdUVTexture` connections). Guarded by `X3D_CPP_BUILD_USD`. See [ADR-0043](../decisions/0043-usd-material-portable-glsl-seam.md) for the material-fidelity ceilings and the portable-GLSL seam.
+
+### Backend selection — priority registry
+
+Backends are resolved by a pure [`BackendRegistry`](file:///home/ben/code/x3d-cpp/examples/asset_import/backend_registry.hpp) rather than a hardcoded extension map, so more than one backend can claim the same file type. Each backend declares a `priority(input)` (inspecting the whole input, so the `fixture:` prefix and file extensions share one path); `select()` picks the highest positive score, and `--backend <name>` forces a specific backend regardless of priority.
+
+| Input | Default backend | Priority | Notes |
+| --- | --- | --- | --- |
+| `fixture:<name>` | `FixtureSource` | 100 | always available |
+| `*.gltf`, `*.glb` | `CgltfSource` | 100 | assimp also claims these at priority 10 (fallback) |
+| `*.usd/.usda/.usdc/.usdz` | `UsdSource` | 100 | needs `-DX3D_CPP_BUILD_USD=ON` |
+| `*.obj/.fbx/.dae/…` | `AssimpSource` | 50 | needs `-DX3D_CPP_BUILD_ASSIMP=ON` |
+
+Because cgltf outranks assimp for glTF, a bare `x3d_asset_import model.glb` uses cgltf; `--backend assimp model.glb` forces the assimp path. The seam's genericity is proven by a tolerant `cgltf`-vs-`assimp` differential swap-test ([backend_swap_test.cpp](file:///home/ben/code/x3d-cpp/examples/asset_import/tests/backend_swap_test.cpp)) over a committed `twobox.glb` — see [ADR-0044](../decisions/0044-asset-import-backend-selection.md).
 
 ## X3D 4.0 Mapping Table
 

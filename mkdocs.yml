@@ -136,6 +136,7 @@ nav:
       - "ADR-0041: MovieDecoder Seam — Royalty-Free Codecs Ship": decisions/0041-moviedecoder-seam-royalty-free-defaults.md
       - "ADR-0042: Slim Authoring Target & Ingestion Pipeline": decisions/0042-authoring-target.md
       - "ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam": decisions/0043-usd-material-portable-glsl-seam.md
+      - "ADR-0044: Asset-Import Backend Selection — Priority Registry & cgltf glTF Path": decisions/0044-asset-import-backend-selection.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

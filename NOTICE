@@ -57,6 +57,9 @@ example; no part of it is committed here.
   assimp (v6.0)    NOT bundled (github.com/assimp/assimp)  BSD-3-Clause
                     (asset_import ImportSource backend;
                      -DX3D_CPP_BUILD_ASSIMP=ON)
+  cgltf.h (v1.14)   examples/asset_import/third_party/       MIT
+                    (© Johannes Kuhlmann; asset_import glTF ImportSource
+                     backend; -DX3D_CPP_BUILD_CGLTF=ON, default ON)
   tinfl.h (miniz)   runtime/parse/tinfl.h                   Public Domain (Unlicense)
   glad              third_party/glad/                       Apache-2.0 AND (WTFPL OR CC0-1.0)
   doctest           runtime/test_support/doctest/           MIT  (test-only; v2.4.11)
