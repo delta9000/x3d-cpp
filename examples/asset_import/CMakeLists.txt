@@ -140,6 +140,31 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
+# Backend swap-test (seam genericity, U1-U4): loads the SAME twobox.glb through
+# both cgltf and assimp and asserts their ImportScenes agree on structural
+# invariants. Compiles only when BOTH backends are available.
+# ---------------------------------------------------------------------------
+if(X3D_CPP_BUILD_CGLTF AND X3D_CPP_BUILD_ASSIMP)
+    find_package(assimp CONFIG QUIET)
+    if(TARGET assimp::assimp)
+        add_executable(x3d_assetimport_backend_swap
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/cgltf_source.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assimp_source.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/backend_swap_test.cpp")
+        target_include_directories(x3d_assetimport_backend_swap PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support")
+        target_link_libraries(x3d_assetimport_backend_swap PRIVATE assimp::assimp)
+        target_compile_definitions(x3d_assetimport_backend_swap PRIVATE
+            X3D_ASSET_IMPORT_HAVE_CGLTF=1 X3D_ASSET_IMPORT_HAVE_ASSIMP=1
+            X3D_ASSET_IMPORT_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/fixtures")
+        target_compile_features(x3d_assetimport_backend_swap PRIVATE cxx_std_20)
+        add_test(NAME x3d_assetimport_backend_swap COMMAND x3d_assetimport_backend_swap)
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # USD ImportSource backend: gated behind X3D_CPP_BUILD_USD.
 # Compiles/links tinyusdz static library when the option is ON.
 # ---------------------------------------------------------------------------

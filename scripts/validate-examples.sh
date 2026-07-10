@@ -46,9 +46,9 @@ if [ ! -s "$SHOT" ]; then
 fi
 echo "OK: GL pipeline produced a $(stat -c%s "$SHOT")-byte frame ($SHOT)"
 
-echo "== build asset_import (no assimp) =="
-cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
-cmake --build build-asset-import --target x3d_asset_import
+echo "== build asset_import (cgltf default, no assimp) =="
+cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
+cmake --build build-asset-import --target x3d_asset_import x3d_assetimport_cgltf
 
 TMP_DIR="$(mktemp -d)"
 AI=build-asset-import/examples/asset_import/x3d_asset_import
@@ -58,6 +58,14 @@ echo "== run asset_import (fixture) =="
 
 if [ ! -s "$TMP_DIR/cube.x3d" ]; then
   echo "FAIL: cube.x3d missing or empty" >&2
+  exit 1
+fi
+
+echo "== run asset_import (cgltf glTF, default lightweight path) =="
+ctest --test-dir build-asset-import -R x3d_assetimport_cgltf --output-on-failure
+"$AI" examples/asset_import/assets/fixtures/twobox.glb -o "$TMP_DIR/twobox.x3d" --assets-dir "$TMP_DIR" --verify --stats
+if [ ! -s "$TMP_DIR/twobox.x3d" ]; then
+  echo "FAIL: twobox.x3d missing or empty" >&2
   exit 1
 fi
 
@@ -72,16 +80,19 @@ if pkg-config --exists assimp; then
 fi
 
 if [ "$HAS_ASSIMP" -eq 1 ]; then
-  echo "assimp available, building with assimp..."
-  cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_ASSIMP=ON >/dev/null
-  cmake --build build-asset-import --target x3d_asset_import
-  
+  echo "assimp available, building with cgltf + assimp..."
+  cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=ON >/dev/null
+  cmake --build build-asset-import --target x3d_asset_import x3d_assetimport_backend_swap
+
   echo "== run asset_import (assimp) =="
   "$AI" examples/asset_import/assets/fixtures/tri.obj -o "$TMP_DIR/tri.x3d" --verify --stats
   if [ ! -s "$TMP_DIR/tri.x3d" ]; then
     echo "FAIL: tri.x3d missing or empty" >&2
     exit 1
   fi
+
+  echo "== run backend swap-test (cgltf vs assimp — ImportSource seam genericity) =="
+  ctest --test-dir build-asset-import -R x3d_assetimport_backend_swap --output-on-failure
 else
   echo "assimp not available; skipping assimp job"
 fi
