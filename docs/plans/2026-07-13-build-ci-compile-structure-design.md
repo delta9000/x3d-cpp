@@ -1,7 +1,7 @@
 # Build and CI Compile-Structure Design
 
-**Date:** 2026-07-13  
-**Status:** Approved for planning  
+**Date:** 2026-07-13
+**Status:** Approved for planning
 **Scope:** CMake target structure, C++ compile topology, Python generator tests, and GitHub Actions policy
 
 ## 1. Problem
