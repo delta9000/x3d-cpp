@@ -7,6 +7,7 @@ project(x3d_cpp
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/X3DTargetPurpose.cmake")
 
 # ---------------------------------------------------------------------------
 # ccache: reuse cached object output across rebuilds. The generated headers
@@ -934,6 +935,7 @@ if(X3D_CPP_BUILD_TESTS)
 
         set(_tgt "x3d_syntax_${_hdr_name}")
         add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
+        x3d_set_target_purpose("${_tgt}" compile-contract)
         target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
 
         add_test(NAME "compile_${_hdr_name}"
@@ -953,6 +955,7 @@ if(X3D_CPP_BUILD_TESTS)
 
         set(_tgt "x3d_syntax_runtime_${_hdr_name}")
         add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
+        x3d_set_target_purpose("${_tgt}" compile-contract)
         target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
 
         add_test(NAME "compile_runtime_${_hdr_name}"
@@ -972,6 +975,7 @@ if(X3D_CPP_BUILD_TESTS)
 
         set(_tgt "x3d_syntax_codec_${_hdr_name}")
         add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
+        x3d_set_target_purpose("${_tgt}" compile-contract)
         target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
 
         add_test(NAME "compile_codec_${_hdr_name}"
@@ -1089,6 +1093,7 @@ if(X3D_CPP_BUILD_TESTS)
 
         set(_tgt "x3d_syntax_event_${_hdr_name}")
         add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
+        x3d_set_target_purpose("${_tgt}" compile-contract)
         target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
 
         add_test(NAME "compile_event_${_hdr_name}"
@@ -1517,6 +1522,7 @@ if(X3D_CPP_BUILD_TESTS)
 
         set(_tgt "x3d_syntax_parse_${_hdr_name}")
         add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
+        x3d_set_target_purpose("${_tgt}" compile-contract)
         target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
 
         add_test(NAME "compile_parse_${_hdr_name}"
@@ -2357,3 +2363,117 @@ if(X3D_CPP_FUZZ)
     target_link_options(x3d_parse_fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
     message(STATUS "x3d_cpp: X3D_CPP_FUZZ=ON -> x3d_parse_fuzz built with libFuzzer + ASan + UBSan")
 endif()
+
+# ---------------------------------------------------------------------------
+# Target purpose inventory. Primary purpose answers why each repository-owned
+# target exists; test-suite membership is a separate property added in the
+# aggregate-target phase. Optional names are kept in the inventory even when
+# their feature flag is off so enabling a backend cannot create an unclassified
+# target later.
+# ---------------------------------------------------------------------------
+function(_x3d_classify_present_targets purpose)
+    foreach(_target IN LISTS ARGN)
+        if(TARGET "${_target}")
+            x3d_set_target_purpose("${_target}" "${purpose}")
+        endif()
+    endforeach()
+endfunction()
+
+_x3d_classify_present_targets(production
+    x3d_cpp
+    x3d_cpp_nodes
+    x3d_cpp_authoring
+    x3d_cpp_sdk
+    x3d_ecmascript_backend
+    x3d_cli)
+
+_x3d_classify_present_targets(compile-contract
+    x3d_cpp_all_headers)
+
+_x3d_classify_present_targets(behavior
+    x3d_codec_roundtrip_audit
+    x3d_xml_script_field
+    x3d_xml_composed_shader
+    x3d_vrml_script_field
+    x3d_json_script_field
+    x3d_contact_reporter
+    x3d_physics_contact_wiring
+    x3d_inertia_massprops
+    x3d_contact_response
+    x3d_event_scene_bridge
+    x3d_sai_context
+    x3d_script_system
+    x3d_ecmascript_backend_test
+    x3d_ecmascript_corpus_smoke_test
+    x3d_script_author_runtime
+    x3d_script_corpus_e2e
+    x3d_parse_reader
+    x3d_classic_vrml_reader
+    x3d_proto_front_door
+    x3d_proto_expand_audit
+    x3d_inline_roundtrip
+    x3d_inline_routes
+    x3d_inline_cycle
+    x3d_inflate_bomb
+    x3d_path_confine
+    x3d_inline_containment_cycle
+    x3d_vrml97_reader
+    x3d_json_reader
+    x3d_sdk_facade
+    x3d_sound_system
+    x3d_corpus_sweep
+    x3d_corpus_audit
+    x3d_corpus_audit_selftest
+    x3d_sim_behavior_test
+    x3d_scene_equiv_test
+    x3d_gate_baseurl_roundtrip_test
+    x3d_canonicalize_unit_test
+    x3d_geometry_scene_tests
+    x3d_namespace_taxonomy
+    x3d_codecs_tests
+    x3d_parse_tests
+    x3d_extract_tests
+    x3d_events_tests)
+
+_x3d_classify_present_targets(opt-in
+    x3d_physics_jolt
+    x3d_physics_jolt_test
+    x3d_physics_system_test
+    x3d_quickjs
+    x3d_quickjs_backend_test
+    x3d_curl
+    x3d_assetresolver_backend_a_test
+    x3d_s3
+    x3d_assetresolver_backend_b_test
+    x3d_assetresolver_swap
+    x3d_stb
+    x3d_wuffs
+    x3d_stbtt
+    x3d_plmpeg
+    x3d_theora
+    x3d_freetype
+    x3d_text_tests
+    x3d_texture_tests
+    x3d_movie_tests
+    x3d_example_01_load_validate_convert
+    x3d_example_02_extract_render_feed
+    x3d_example_03_attach_behavior_tick
+    x3d_quickjs_swap
+    x3d_cli_gate
+    x3d_canon_gate
+    x3d_cpp_ext
+    x3d_ext_stl_reader
+    x3d_stl_write_test
+    x3d_extract_oracle_test
+    x3d_ext_external_geometry_node
+    x3d_ext_external_geometry_roundtrip
+    x3d_ext_external_geometry_e2e
+    x3d_miniaudio
+    x3d_sound_swaptest
+    x3d_parse_fuzz)
+
+_x3d_classify_present_targets(internal
+    x3d_duktape
+    x3d_s3_testsupport)
+
+x3d_validate_target_purposes()
