@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -59,13 +58,15 @@ def labels_for(test: dict[str, object]) -> set[str]:
 
 
 def ctest_commands(build_dir: Path) -> dict[str, Path]:
+    commands: dict[str, Path] = {}
     testfile = (build_dir / "CTestTestfile.cmake").read_text()
-    return {
-        name: Path(command)
-        for name, command in re.findall(
-            r'^add_test\("([^"]+)" "([^"]+)"', testfile, re.MULTILINE
-        )
-    }
+    for line in testfile.splitlines():
+        if not line.startswith("add_test(") or not line.endswith(")"):
+            continue
+        arguments = shlex.split(line[len("add_test(") : -1])
+        if len(arguments) >= 2:
+            commands[arguments[0]] = Path(arguments[1])
+    return commands
 
 
 def query_target_inputs(build_dir: Path, target: str) -> set[str]:
@@ -116,6 +117,22 @@ def normal_ctest_executable_targets(build_dir: Path) -> set[str]:
     # be built by the behavior/sanitizer aggregate.
     targets.add("x3d_cli")
     return targets
+
+
+def test_ctest_commands_accept_quoted_and_unquoted_test_names(
+    tmp_path: Path,
+) -> None:
+    # Older CMake releases leave safe test names unquoted, while newer releases
+    # quote them. Both forms describe the same generated test command.
+    (tmp_path / "CTestTestfile.cmake").write_text(
+        'add_test(x3d_cpp_all_headers "/build/x3d_cpp_all_headers")\n'
+        'add_test("x3d_header_isolation" "/usr/bin/cmake" "--build")\n'
+    )
+
+    assert ctest_commands(tmp_path) == {
+        "x3d_cpp_all_headers": Path("/build/x3d_cpp_all_headers"),
+        "x3d_header_isolation": Path("/usr/bin/cmake"),
+    }
 
 
 def test_behavior_and_sanitizer_aggregates_cover_normal_ctest_executables(
