@@ -1,10 +1,20 @@
-import subprocess, sys, pathlib
+import subprocess
+import sys
 
 
 def test_generated_node_header_is_namespaced(tmp_path):
     out = tmp_path / "gen"
-    subprocess.run([sys.executable, "-m", "x3d_cpp_gen.cli",
-                    "--out", str(out)], check=True)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "x3d_cpp_gen.cli",
+            "--out",
+            str(out),
+            "--no-test",
+        ],
+        check=True,
+    )
     appearance = (out / "x3d" / "nodes" / "Appearance.hpp").read_text()
     assert "#pragma once" in appearance
     assert '#include "x3d/core/X3Dtypes.hpp"' in appearance
@@ -16,8 +26,17 @@ def test_generated_node_header_is_namespaced(tmp_path):
 
 def test_factory_and_registry_namespaced(tmp_path):
     out = tmp_path / "gen"
-    import subprocess, sys
-    subprocess.run([sys.executable, "-m", "x3d_cpp_gen.cli", "--out", str(out)], check=True)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "x3d_cpp_gen.cli",
+            "--out",
+            str(out),
+            "--no-test",
+        ],
+        check=True,
+    )
     fac = (out / "x3d" / "nodes" / "X3DNodeFactory.hpp").read_text()
     assert "#pragma once" in fac
     assert "namespace x3d::nodes {" in fac
