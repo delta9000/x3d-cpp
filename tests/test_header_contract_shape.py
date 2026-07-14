@@ -125,7 +125,7 @@ def test_header_contract_keeps_one_translation_unit_per_header(
     assert len(actual_sources) == len(contract_headers())
 
 
-def test_header_contract_graph_does_not_build_node_runtime(
+def test_header_contract_graph_does_not_build_compiled_runtimes(
     configured_ci: Path,
 ) -> None:
     commands = run_checked(
@@ -137,8 +137,13 @@ def test_header_contract_graph_does_not_build_node_runtime(
         "x3d_compile_contracts",
     )
 
-    assert "x3d_cpp_nodes.dir" not in commands
-    assert "libx3d_cpp_nodes" not in commands
+    for target in (
+        "x3d_cpp_nodes",
+        "x3d_cpp_authoring_runtime",
+        "x3d_cpp_runtime",
+    ):
+        assert f"{target}.dir" not in commands
+        assert f"lib{target}" not in commands
 
 
 def test_ci_behavior_and_header_contract_jobs_are_scoped() -> None:

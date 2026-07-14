@@ -146,7 +146,7 @@ if(X3D_CPP_FUZZ)
     if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         message(FATAL_ERROR "X3D_CPP_FUZZ requires Clang (libFuzzer driver). Detected: ${CMAKE_CXX_COMPILER_ID}")
     endif()
-    # Parsing and node reflection now live in compiled DSOs. Instrument every
+    # Parsing and node reflection now live in compiled libraries. Instrument every
     # target built for the fuzz graph with coverage and sanitizers, but keep the
     # libFuzzer main out of the libraries; x3d_parse_fuzz owns the driver below.
     add_compile_options(
