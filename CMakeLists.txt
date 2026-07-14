@@ -951,7 +951,7 @@ if(X3D_CPP_BUILD_TESTS)
     file(GENERATE OUTPUT "${X3D_CPP_ALL_HEADERS_CPP}" CONTENT "${_x3d_all_content}")
 
     add_executable(x3d_cpp_all_headers "${X3D_CPP_ALL_HEADERS_CPP}")
-    target_link_libraries(x3d_cpp_all_headers PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_cpp_all_headers PRIVATE x3d_cpp::headers)
     add_test(NAME x3d_cpp_all_headers COMMAND x3d_cpp_all_headers)
 
     # (2) Header-isolation contract. Keep one generated translation unit per
@@ -1000,7 +1000,7 @@ if(X3D_CPP_BUILD_TESTS)
         add_library(x3d_header_isolation OBJECT EXCLUDE_FROM_ALL
             ${X3D_CPP_HEADER_ISOLATION_SOURCES})
         x3d_set_target_purpose(x3d_header_isolation compile-contract)
-        target_link_libraries(x3d_header_isolation PRIVATE x3d_cpp::x3d_cpp)
+        target_link_libraries(x3d_header_isolation PRIVATE x3d_cpp::headers)
         add_test(NAME x3d_header_isolation
             COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
                     --target x3d_header_isolation --config "$<CONFIG>")
@@ -2540,12 +2540,12 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_parse_tests
         x3d_extract_tests
         x3d_events_tests)
+    if(NOT X3D_CPP_SAN)
+        list(APPEND _x3d_behavior_tests x3d_install_embed_smoke)
+    endif()
     set_tests_properties(${_x3d_behavior_tests} PROPERTIES LABELS behavior)
 
     set(_x3d_compile_contract_tests x3d_cpp_all_headers)
-    if(NOT X3D_CPP_SAN)
-        list(APPEND _x3d_compile_contract_tests x3d_install_embed_smoke)
-    endif()
     if(X3D_CPP_PER_HEADER_CHECKS)
         list(APPEND _x3d_compile_contract_tests x3d_header_isolation)
     endif()

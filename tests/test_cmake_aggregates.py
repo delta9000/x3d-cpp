@@ -164,7 +164,7 @@ def test_compile_contract_aggregate_and_ctest_labels_are_complete(
     tests = {test["name"]: test for test in ctest_model(configured_ci)["tests"]}
     assert labels_for(tests["x3d_cpp_all_headers"]) == {"compile-contract"}
     assert labels_for(tests["x3d_header_isolation"]) == {"compile-contract"}
-    assert labels_for(tests["x3d_install_embed_smoke"]) == {"compile-contract"}
+    assert labels_for(tests["x3d_install_embed_smoke"]) == {"behavior"}
 
     commands = ctest_commands(configured_ci)
     for test_name, test in tests.items():
