@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -98,6 +99,25 @@ def test_compiled_runtime_layers_follow_static_node_opt_out(
         artifacts = library_artifacts(build_dir, stem)
         assert f"{stem}.a" in artifacts
         assert f"{stem}.so" not in artifacts
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows searches beside DLLs")
+def test_installed_shared_layers_find_sibling_dependencies(
+    configured_ci: Path,
+) -> None:
+    install_script = (configured_ci / "cmake_install.cmake").read_text(
+        encoding="utf-8"
+    )
+    sibling_rpath = "@loader_path" if sys.platform == "darwin" else "$ORIGIN"
+    sections = install_script.split("endif()")
+
+    for stem in ("libx3d_cpp_authoring_runtime", "libx3d_cpp_runtime"):
+        assert any(
+            stem in section
+            and "RPATH_CHECK" in section
+            and sibling_rpath in section
+            for section in sections
+        ), stem
 
 
 def test_facades_link_only_their_owned_runtime_layer(

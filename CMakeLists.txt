@@ -241,6 +241,11 @@ target_link_libraries(x3d_cpp_runtime PUBLIC x3d_cpp::authoring_runtime)
 target_compile_features(x3d_cpp_runtime PUBLIC cxx_std_20)
 
 if(X3D_CPP_SHARED_NODES)
+    if(APPLE)
+        set(_x3d_runtime_install_rpath "@loader_path")
+    elseif(UNIX)
+        set(_x3d_runtime_install_rpath "$ORIGIN")
+    endif()
     foreach(_runtime_target IN ITEMS
             x3d_cpp_authoring_runtime
             x3d_cpp_runtime)
@@ -248,7 +253,14 @@ if(X3D_CPP_SHARED_NODES)
             VERSION "${PROJECT_VERSION}"
             SOVERSION "${PROJECT_VERSION_MAJOR}"
             WINDOWS_EXPORT_ALL_SYMBOLS ON)
+        # Each installed DSO resolves the next implementation layer beside
+        # itself. Executable RUNPATH is not inherited for indirect dependencies.
+        if(DEFINED _x3d_runtime_install_rpath)
+            set_property(TARGET ${_runtime_target} PROPERTY
+                INSTALL_RPATH "${_x3d_runtime_install_rpath}")
+        endif()
     endforeach()
+    unset(_x3d_runtime_install_rpath)
 endif()
 
 # Consumers of the complete interface receive all compiled definitions through
