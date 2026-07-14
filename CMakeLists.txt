@@ -219,7 +219,8 @@ add_library(x3d_cpp_runtime ${_x3d_node_library_type}
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/ClassicVrmlReader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/JsonReader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/Vrml97Reader.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/XmlReaderAdapter.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/XmlReaderAdapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/MeshBuilder.cpp")
 add_library(x3d_cpp::runtime ALIAS x3d_cpp_runtime)
 set_target_properties(x3d_cpp_runtime PROPERTIES EXPORT_NAME runtime)
 target_link_libraries(x3d_cpp_runtime PUBLIC x3d_cpp::authoring_runtime)

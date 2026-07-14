@@ -17,6 +17,7 @@
 //      is NULL (one texcoord per expanded position).
 //   5) Line/point sets get NO generated texcoords (spec carries none).
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
 

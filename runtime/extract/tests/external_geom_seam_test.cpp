@@ -4,6 +4,7 @@
 // RenderItem's geometry_ext.kind == Packed.
 #include "SceneExtractor.hpp"
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "PackedMesh.hpp"
 #include "RenderItem.hpp"
 #include "X3DDocument.hpp"

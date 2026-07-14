@@ -30,6 +30,7 @@ RUNTIME_SOURCES = {
         "XmlReaderAdapter.cpp",
     )
 }
+MESH_RUNTIME_SOURCE = (REPO_ROOT / "runtime" / "extract" / "MeshBuilder.cpp").resolve()
 
 
 def run_checked(*command: str) -> str:
@@ -151,3 +152,19 @@ def test_parser_implementations_compile_once_in_runtime_layer(
     assert {Path(entry["file"]).resolve() for entry in entries} == RUNTIME_SOURCES
     assert len(entries) == len(RUNTIME_SOURCES)
     assert all("x3d_cpp_runtime.dir" in entry["command"] for entry in entries)
+
+
+def test_mesh_implementation_compiles_once_in_runtime_layer(
+    configured_ci: Path,
+) -> None:
+    commands = json.loads(
+        (configured_ci / "compile_commands.json").read_text(encoding="utf-8")
+    )
+    entries = [
+        entry
+        for entry in commands
+        if Path(entry["file"]).resolve() == MESH_RUNTIME_SOURCE
+    ]
+
+    assert len(entries) == 1
+    assert "x3d_cpp_runtime.dir" in entries[0]["command"]

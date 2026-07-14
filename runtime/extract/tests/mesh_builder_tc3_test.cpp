@@ -23,6 +23,7 @@
 //   5) Zero-extent guards: a degenerate single-point-repeated cross-section /
 //      coincident spine does not divide by zero (no NaN/inf in texcoords).
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
 

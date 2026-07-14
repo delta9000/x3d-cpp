@@ -1,5 +1,6 @@
 // mesh_builder_nurbs_test.cpp — NurbsCurve/NurbsPatchSurface -> MeshData.
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include <any>
 #include "doctest/doctest.h"

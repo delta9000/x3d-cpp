@@ -15,6 +15,7 @@
 //      and too-short coord arrays never read out of bounds; they drop the bad
 //      primitive and keep the valid ones.
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"

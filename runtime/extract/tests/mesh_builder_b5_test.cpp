@@ -20,6 +20,7 @@
 //   5) Degenerate/short-height grids are guarded (empty mesh, no OOB read).
 #include "MeshBuilder.hpp"
 
+#include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>

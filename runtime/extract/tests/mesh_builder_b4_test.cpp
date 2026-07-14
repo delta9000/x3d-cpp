@@ -20,6 +20,7 @@
 //      point array yields an empty mesh with NO OOB read, and the type stays
 //      recognized (legitimately empty, not an unsupported drop).
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
 

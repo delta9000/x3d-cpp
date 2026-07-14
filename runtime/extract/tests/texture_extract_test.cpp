@@ -20,6 +20,7 @@
 //      TextureRef::resolvedPixels (Url goes through the resolver; Inline does NOT).
 #include "MaterialSystem.hpp"
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "TextureExtract.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
