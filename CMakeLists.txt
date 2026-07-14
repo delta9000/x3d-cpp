@@ -921,67 +921,56 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_cpp_all_headers PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_cpp_all_headers COMMAND x3d_cpp_all_headers)
 
-    # (2) Per-header syntax-only compile tests. Each header is compiled in
-    #     isolation with -fsyntax-only so a regression is pinned to one file.
-    #     Built as a per-header OBJECT library so it inherits the interface
-    #     include dir + cxx_std_20, then registered as a ctest that drives the
-    #     build of just that object.
+    # (2) Header-isolation contract. Keep one generated translation unit per
+    #     public header so diagnostics remain pinned to the exact include, but
+    #     put all of those sources in one OBJECT library. This removes hundreds
+    #     of CMake/Ninja/CTest targets without weakening header self-containment.
     if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_HEADERS)
-        file(RELATIVE_PATH _hdr_rel "${X3D_CPP_HEADER_DIR}" "${_hdr}")
-        string(REGEX REPLACE "[^A-Za-z0-9_]" "_" _hdr_name "${_hdr_rel}")
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax/${_hdr_name}.cpp")
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_rel}\"\n")
+        set(X3D_CPP_HEADER_ISOLATION_SOURCES)
 
-        set(_tgt "x3d_syntax_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        x3d_set_target_purpose("${_tgt}" compile-contract)
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
+        function(_x3d_add_header_isolation_source group include_root header)
+            file(RELATIVE_PATH _header_include "${include_root}" "${header}")
+            string(REGEX REPLACE
+                "[^A-Za-z0-9_]" "_" _source_name "${_header_include}")
+            set(_source_dir
+                "${CMAKE_CURRENT_BINARY_DIR}/header_isolation/${group}")
+            file(MAKE_DIRECTORY "${_source_dir}")
+            set(_source "${_source_dir}/${_source_name}.cpp")
+            file(GENERATE OUTPUT "${_source}"
+                CONTENT "#include \"${_header_include}\"\n")
+            set(X3D_CPP_HEADER_ISOLATION_SOURCES
+                ${X3D_CPP_HEADER_ISOLATION_SOURCES} "${_source}"
+                PARENT_SCOPE)
+        endfunction()
 
-        add_test(NAME "compile_${_hdr_name}"
+        foreach(_hdr IN LISTS X3D_CPP_HEADERS)
+            _x3d_add_header_isolation_source(
+                generated "${X3D_CPP_HEADER_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_RUNTIME_HEADERS)
+            _x3d_add_header_isolation_source(
+                runtime "${X3D_CPP_RUNTIME_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_CODEC_HEADERS)
+            _x3d_add_header_isolation_source(
+                codecs "${X3D_CPP_CODEC_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_EVENT_HEADERS)
+            _x3d_add_header_isolation_source(
+                events "${X3D_CPP_EVENT_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_PARSE_HEADERS)
+            _x3d_add_header_isolation_source(
+                parse "${X3D_CPP_PARSE_DIR}" "${_hdr}")
+        endforeach()
+
+        add_library(x3d_header_isolation OBJECT EXCLUDE_FROM_ALL
+            ${X3D_CPP_HEADER_ISOLATION_SOURCES})
+        x3d_set_target_purpose(x3d_header_isolation compile-contract)
+        target_link_libraries(x3d_header_isolation PRIVATE x3d_cpp::x3d_cpp)
+        add_test(NAME x3d_header_isolation
             COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
-    endif()
-
-    # (3) Per-runtime-header syntax-only compile tests, mirroring (2) for the
-    #     hand-written document model.
-    if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_RUNTIME_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax_runtime/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
-
-        set(_tgt "x3d_syntax_runtime_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        x3d_set_target_purpose("${_tgt}" compile-contract)
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
-
-        add_test(NAME "compile_runtime_${_hdr_name}"
-            COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
-    endif()
-
-    # (4) Per-codec-header syntax-only compile tests, mirroring (2)/(3) for the
-    #     hand-written codecs (XML/JSON/VRML) and bundled XmlLite.
-    if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_CODEC_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax_codecs/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
-
-        set(_tgt "x3d_syntax_codec_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        x3d_set_target_purpose("${_tgt}" compile-contract)
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
-
-        add_test(NAME "compile_codec_${_hdr_name}"
-            COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
+                    --target x3d_header_isolation --config "$<CONFIG>")
     endif()
 
     # (5) Stage C codec integration test: build the sample scene, round-trip it
@@ -1082,27 +1071,7 @@ if(X3D_CPP_BUILD_TESTS)
     #   E. RTC-5 + RTC-6 cascade conformance — registered below alongside the
     #      other event-cascade integration tests (see x3d_cascade_conformance).
 
-    # (6) Per-event-header syntax-only compile tests, mirroring (2)/(3)/(4) for
-    #     the event-system runtime.
-    if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_EVENT_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax_events/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
-
-        set(_tgt "x3d_syntax_event_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        x3d_set_target_purpose("${_tgt}" compile-contract)
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
-
-        add_test(NAME "compile_event_${_hdr_name}"
-            COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
-    endif()
-
-    # (7) Event-system integration tests, built and RUN (not just compiled):
+    # (3) Event-system integration tests, built and RUN (not just compiled):
     #     - cascade_test: route propagation, fan-out, loop-breaking, inputOnly
     #       handler delivery, outputOnly emit cascading.
     #     - animation_test: a TimeSensor -> PositionInterpolator -> Transform
@@ -1511,27 +1480,7 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_script_corpus_e2e
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data")
 
-    # (8) Per-parse-header syntax-only compile tests, mirroring (2)/(3)/(4)/(6)
-    #     for the unified parsing front-end.
-    if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_PARSE_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax_parse/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
-
-        set(_tgt "x3d_syntax_parse_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        x3d_set_target_purpose("${_tgt}" compile-contract)
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
-
-        add_test(NAME "compile_parse_${_hdr_name}"
-            COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
-    endif()
-
-    # (9) Parse front-end integration test (WS-A), built and RUN (not just
+    # (4) Parse front-end integration test (WS-A), built and RUN (not just
     #     compiled): encoding sniffing (extension + content + override + gzip),
     #     the shared VrmlTokenizer, NodeBuilder::collectFieldValue value
     #     round-trips, and the XmlReaderAdapter / parseDocument front door

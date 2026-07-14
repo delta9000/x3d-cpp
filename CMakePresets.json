@@ -5,7 +5,7 @@
     {
       "name": "dev",
       "displayName": "Dev (Ninja + ccache, unoptimized)",
-      "description": "Fast iteration: Ninja scheduling, ccache object reuse, no -O (compile-test/behavior suite needs neither optimization nor NDEBUG). Per-header isolation checks OFF — the ~800 per-header ctests are the slow part of a cold run; use the `ci` preset for the full gate.",
+      "description": "Fast iteration: Ninja scheduling, ccache object reuse, no -O (compile-contract/behavior suites need neither optimization nor NDEBUG). Header isolation is OFF; use the `ci` preset for the full one-TU-per-header contract.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
@@ -16,7 +16,7 @@
     {
       "name": "ci",
       "displayName": "CI (mirrors the GitHub Actions cpp job)",
-      "description": "Local mirror of the GitHub Actions fast gate: per-header isolation checks ON (the ~800 per-header ctests), X3D_CPP_WERROR=ON (warnings become errors, the merge gate). Use `mise run build-ci` to drive the same gate locally before pushing.",
+      "description": "Local mirror of the GitHub Actions C++ gates: header isolation ON as one object target with one TU per public header, X3D_CPP_WERROR=ON (warnings become errors, the merge gate). Use `mise run build-ci` to drive the same gate locally before pushing.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-ci",
       "cacheVariables": {
