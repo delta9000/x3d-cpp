@@ -211,6 +211,9 @@ def test_unresolved_findings_flagged():
 def test_real_repo_generates_clean():
     model = cv.build_model(REPO)
     assert model["summary"]["component_count"] > 20
+    # Extraction facts live with MeshBuilder's implementation, whether that is
+    # inline in the header or compiled in the adjacent source file.
+    assert "Box" in model["meta"]["extractable_geometry"]
     # Every committed finding must resolve to a real node/interface.
     assert model["unresolved_findings"] == [], (
         "stale findings reference unknown nodes/interfaces: "
