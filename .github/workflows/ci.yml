@@ -5,15 +5,15 @@
 # single-compiler C++ build + ctest.
 #
 # The per-seam backend swap-tests fall into two groups:
-#   - **texture-swap** is UNCONDITIONAL on every PR — both decoders are vendored
-#     and the gate is hermetic + <2 min. Byte-equal decode parity is the
+#   - **texture-swap** runs on every C++ PR — both decoders are vendored and the
+#     gate is hermetic + <2 min. Byte-equal decode parity is the
 #     closest thing the SDK has to a render-correctness guarantee, so it runs
 #     every time.
 #   - The remaining four swap-tests (quickjs / assetresolver / audio /
 #     fontmetrics) each fetch+build a third-party backend (and assetresolver
 #     also brings up docker/minio + the AWS SDK), so they run ONLY when their
 #     backend, the seam interface header, the build system, or a CONSUMING
-#     subsystem changed — gated by the `changes` job's regex detection
+#     subsystem changed — gated by the `changes` job's path classifier
 #     (manual dispatch runs them all).
 #
 # A `concurrency` group cancels superseded in-flight runs so rapid pushes to a
@@ -51,11 +51,10 @@ concurrency:
 jobs:
   # Detect which seam subsystems a PR touches so the heavy backend swap-tests run
   # ONLY when their backend, the seam interface, the build system, OR a
-  # consuming subsystem changed. The fast hermetic gates (pytest/golden/
-  # conformance/wiki/cpp) always run. The texture-swap gate is unconditional
-  # (vendored, hermetic, <2 min) — see below. Plain git + bash (no third-party
-  # action) so the Forgejo mirror runs it unchanged. On workflow_dispatch (no
-  # base ref) every seam proof runs.
+  # consuming subsystem changed. Python/golden/conformance/wiki always run;
+  # C++ jobs use the classifier's `cpp` output. Plain git + Python 3 (no
+  # third-party action) keeps the Forgejo mirror compatible. On manual dispatch
+  # every class is requested.
   changes:
     name: detect changed subsystems
     runs-on: ubuntu-latest
@@ -64,7 +63,9 @@ jobs:
       quickjs: ${{ steps.f.outputs.quickjs }}
       assets: ${{ steps.f.outputs.assets }}
       fontmetrics: ${{ steps.f.outputs.fontmetrics }}
-      code: ${{ steps.f.outputs.code }}
+      cpp: ${{ steps.f.outputs.cpp }}
+      generator: ${{ steps.f.outputs.generator }}
+      docs: ${{ steps.f.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -75,39 +76,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${BASE:-}" ]; then
-            # Manual dispatch (no PR base): run every seam proof + the C++ jobs.
-            for k in audio quickjs assets fontmetrics code; do
-              echo "$k=true" >> "$GITHUB_OUTPUT"
-            done
+            python3 scripts/classify_ci_changes.py --all >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git fetch --no-tags --prune origin "$BASE"
           base_sha="$(git merge-base HEAD "origin/$BASE")"
           changed="$(git diff --name-only "$base_sha" HEAD)"
           echo "changed vs $BASE ($base_sha):"; echo "$changed"
-          m() { echo "$changed" | grep -qE "$1"; }
-          # Build-system / workflow changes can break any backend build -> run all.
-          common='^CMakeLists\.txt$|^cmake/|^\.github/workflows/ci\.yml$'
-          out() { if m "$common" || m "$2"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
-          # Each regex covers: (a) the seam interface header, (b) the backend
-          # implementation dirs, (c) the swap-test TU, and (d) the consumer
-          # subsystem files that drive the seam. Without (d) a refactor of a
-          # consuming subsystem would merge green without re-proving parity.
-          out audio       '^runtime/sound/'
-          out quickjs     '^runtime/script/'
-          out assets      '^runtime/io/(curl|s3)/|^runtime/io/tests/asset_resolver|^runtime/extract/AssetResolver\.hpp$|^runtime/parse/(X3DParse|X3DProtoResolver|JsonReader|ClassicVrmlReader|Vrml97Dialect)\.hpp$|^runtime/InlineExpand\.hpp$|^runtime/ext/(ExtResolver|ExternalGeometry)\.hpp$|^runtime/extract/TextureExtract\.hpp$'
-          # texture is broad by design (see texture-swap) — gated only on `code`.
-          out fontmetrics '^runtime/io/(stbtt|freetype)/|^runtime/io/tests/font_metrics|^runtime/extract/FontMetrics\.hpp$|^runtime/extract/(TextLayout|TextExtract|MeshBuilder|RenderItem)\.hpp$'
-          # code: gates the heavy C++ jobs (cpp-san, cpp-fuzz, texture-swap). True
-          # for ANY non-docs change; skip ONLY when every changed file is docs
-          # (docs/**, *.md, mkdocs.yml). Fail-safe toward running: an empty diff or
-          # any unrecognized path runs the jobs. The fast `cpp` gate stays
-          # always-on (cheap, and the stable required status check).
-          if [ -z "$changed" ] || echo "$changed" | grep -qvE '^docs/|\.md$|^mkdocs\.yml$'; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "code=false" >> "$GITHUB_OUTPUT"
-          fi
+          printf '%s\n' "$changed" | python3 scripts/classify_ci_changes.py >> "$GITHUB_OUTPUT"
 
   python:
     name: pytest (unit + golden tree)
@@ -170,6 +146,10 @@ jobs:
 
   cpp:
     name: C++ build + ctest (gcc, PR fast gate)
+    needs: changes
+    # If this display name is configured as a required branch-protection check,
+    # confirm the host accepts path-skipped jobs before enabling that requirement.
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -198,7 +178,7 @@ jobs:
   cpp-san:
     name: C++ sanitizer gate (ASan + UBSan)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -226,7 +206,7 @@ jobs:
   cpp-fuzz:
     name: C++ fuzz gate (libFuzzer parseDocument)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -393,7 +373,7 @@ jobs:
   # NO vcpkg, NO docker/minio, NO FetchContent — both decoders are vendored, so
   # the gate is a sub-minute apt + scoped build.
   #
-  # Runs on every CODE PR (gated on `code`, not on a texture path filter):
+  # Runs on every C++ PR (gated on `cpp`, not on a texture path filter):
   # texture decode parity is the closest thing the SDK has to a byte-exact
   # rendering guarantee, and the dual-backend comparison catches lossy decode
   # regressions a seam-path-gated run would silently miss if the change happened
@@ -402,7 +382,7 @@ jobs:
   texture-swap:
     name: TextureResolver decode seam swap-test
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -512,11 +492,13 @@ jobs:
   # both, runs their --headless probes, and exercises the real GL pipeline
   # headlessly under Xvfb + mesa software GL (llvmpipe) — the closest proof that
   # the renderer-agnostic extraction seam still works for an external consumer.
-  # Unconditional (every PR): the drift it catches comes from arbitrary public-API
+  # Runs on every C++ PR: the drift it catches comes from arbitrary public-API
   # changes, not one path-gated seam. Mirrors `mise run validate-examples` (both
   # call scripts/validate-examples.sh).
   examples-gate:
     name: Example consumers (cpu_raster + poc, headless GL)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
