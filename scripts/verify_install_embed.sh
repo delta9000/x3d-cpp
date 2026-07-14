@@ -72,3 +72,4 @@ cmake -S "$product_src" -B "$product_build" -G "$generator" \
   -DCMAKE_PREFIX_PATH="$prefix"
 cmake --build "$product_build"
 "$product_build/x3d_embed_minimal"
+"$product_build/x3d_embed_authoring"
