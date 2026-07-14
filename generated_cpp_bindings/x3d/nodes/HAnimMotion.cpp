@@ -493,4 +493,10 @@ void HAnimMotion::checkRangesStartFrame(const SFInt32 &value,
                                   "startFrame below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createHAnimMotion() {
+  return std::make_shared<HAnimMotion>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

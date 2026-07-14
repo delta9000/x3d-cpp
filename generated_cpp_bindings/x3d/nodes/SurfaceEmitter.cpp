@@ -265,4 +265,10 @@ void SurfaceEmitter::validateRanges(std::vector<RangeDiagnostic> &out) const {
       X3DParticleEmitterNode::getVariation(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSurfaceEmitter() {
+  return std::make_shared<SurfaceEmitter>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

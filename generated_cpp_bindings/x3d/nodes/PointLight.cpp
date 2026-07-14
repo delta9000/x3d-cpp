@@ -354,4 +354,10 @@ void PointLight::checkRangesRadius(const SFFloat &value,
                                   "radius below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createPointLight() {
+  return std::make_shared<PointLight>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

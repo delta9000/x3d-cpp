@@ -165,4 +165,10 @@ void MultiTextureTransform::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMultiTextureTransform() {
+  return std::make_shared<MultiTextureTransform>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

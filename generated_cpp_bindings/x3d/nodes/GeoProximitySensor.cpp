@@ -396,4 +396,10 @@ void GeoProximitySensor::validateRanges(
       X3DEnvironmentalSensorNode::getSize(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createGeoProximitySensor() {
+  return std::make_shared<GeoProximitySensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

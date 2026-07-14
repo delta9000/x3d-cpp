@@ -261,4 +261,10 @@ void NurbsOrientationInterpolator::checkRangesOrder(
                                   "order below minimum of 2"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createNurbsOrientationInterpolator() {
+  return std::make_shared<NurbsOrientationInterpolator>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

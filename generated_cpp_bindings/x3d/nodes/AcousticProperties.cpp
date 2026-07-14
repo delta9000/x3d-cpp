@@ -306,4 +306,10 @@ void AcousticProperties::checkRangesSpecular(
                                   "specular above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createAcousticProperties() {
+  return std::make_shared<AcousticProperties>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

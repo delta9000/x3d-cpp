@@ -268,4 +268,10 @@ void NurbsSet::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createNurbsSet() {
+  return std::make_shared<NurbsSet>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

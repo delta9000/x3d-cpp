@@ -247,4 +247,10 @@ void ColorInterpolator::checkRangesKeyValue(const MFColor &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createColorInterpolator() {
+  return std::make_shared<ColorInterpolator>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

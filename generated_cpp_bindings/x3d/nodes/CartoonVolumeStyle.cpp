@@ -319,4 +319,10 @@ void CartoonVolumeStyle::checkRangesParallelColor(
                                   "parallelColor.a above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCartoonVolumeStyle() {
+  return std::make_shared<CartoonVolumeStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -163,4 +163,10 @@ void CoordinateDouble::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCoordinateDouble() {
+  return std::make_shared<CoordinateDouble>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

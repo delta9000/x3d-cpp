@@ -614,4 +614,10 @@ void TwoSidedMaterial::checkRangesTransparency(
                                   "transparency above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTwoSidedMaterial() {
+  return std::make_shared<TwoSidedMaterial>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -301,4 +301,10 @@ void PositionDamper2D::validateRanges(std::vector<RangeDiagnostic> &out) const {
                                 out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createPositionDamper2D() {
+  return std::make_shared<PositionDamper2D>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

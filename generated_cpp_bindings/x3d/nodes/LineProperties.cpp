@@ -210,4 +210,10 @@ void LineProperties::checkRangesLinetype(const SFInt32 &value,
                                   "linetype below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createLineProperties() {
+  return std::make_shared<LineProperties>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -462,4 +462,10 @@ void GeoElevationGrid::checkRangesYScale(const SFFloat &value,
                                   "yScale below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createGeoElevationGrid() {
+  return std::make_shared<GeoElevationGrid>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

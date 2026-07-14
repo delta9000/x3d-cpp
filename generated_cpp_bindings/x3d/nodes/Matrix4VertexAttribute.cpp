@@ -182,4 +182,10 @@ void Matrix4VertexAttribute::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMatrix4VertexAttribute() {
+  return std::make_shared<Matrix4VertexAttribute>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

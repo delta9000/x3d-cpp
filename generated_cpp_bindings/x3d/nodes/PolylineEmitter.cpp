@@ -340,4 +340,10 @@ void PolylineEmitter::checkRangesDirection(const SFVec3f &value,
                                   "direction.z above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createPolylineEmitter() {
+  return std::make_shared<PolylineEmitter>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

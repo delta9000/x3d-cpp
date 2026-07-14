@@ -541,4 +541,10 @@ void SpatialSound::checkRangesRolloffFactor(const SFFloat &value,
                                   "rolloffFactor below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSpatialSound() {
+  return std::make_shared<SpatialSound>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

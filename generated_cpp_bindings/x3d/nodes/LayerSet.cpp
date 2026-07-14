@@ -215,4 +215,10 @@ void LayerSet::checkRangesOrder(const MFInt32 &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createLayerSet() {
+  return std::make_shared<LayerSet>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

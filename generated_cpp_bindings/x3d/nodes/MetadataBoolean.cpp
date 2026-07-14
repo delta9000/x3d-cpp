@@ -194,4 +194,10 @@ void MetadataBoolean::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMetadataBoolean() {
+  return std::make_shared<MetadataBoolean>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

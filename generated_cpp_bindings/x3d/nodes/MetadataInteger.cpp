@@ -195,4 +195,10 @@ void MetadataInteger::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMetadataInteger() {
+  return std::make_shared<MetadataInteger>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

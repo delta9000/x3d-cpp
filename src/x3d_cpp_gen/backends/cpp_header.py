@@ -188,6 +188,7 @@ class CppHeaderBackend:
                 reflection_fields=reflection_descriptors,
                 is_root=is_root,
                 emit_reflection=emit_reflection,
+                is_abstract=node.is_abstract,
                 namespace=self.namespace,
             )
             source_file = os.path.join(nodes_dir, f"{node.name}.cpp")

@@ -334,4 +334,10 @@ void VolumePickSensor::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createVolumePickSensor() {
+  return std::make_shared<VolumePickSensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

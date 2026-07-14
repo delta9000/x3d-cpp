@@ -459,4 +459,10 @@ void TextureProjector::checkRangesFieldOfView(
                                   "fieldOfView above maximum of 3.1416"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTextureProjector() {
+  return std::make_shared<TextureProjector>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -301,4 +301,10 @@ void CoordinateDamper::validateRanges(std::vector<RangeDiagnostic> &out) const {
                                 out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCoordinateDamper() {
+  return std::make_shared<CoordinateDamper>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

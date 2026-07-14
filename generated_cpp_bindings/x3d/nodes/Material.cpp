@@ -673,4 +673,10 @@ void Material::checkRangesTransparency(const SFFloat &value,
                                   "transparency above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMaterial() {
+  return std::make_shared<Material>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

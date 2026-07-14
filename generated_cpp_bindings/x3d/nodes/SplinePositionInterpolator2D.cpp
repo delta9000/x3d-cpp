@@ -263,4 +263,10 @@ void SplinePositionInterpolator2D::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSplinePositionInterpolator2D() {
+  return std::make_shared<SplinePositionInterpolator2D>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

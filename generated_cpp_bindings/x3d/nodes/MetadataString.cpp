@@ -195,4 +195,10 @@ void MetadataString::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMetadataString() {
+  return std::make_shared<MetadataString>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

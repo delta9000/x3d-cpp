@@ -55,7 +55,7 @@ def gen_node_factory_header(nodes: Dict[str, X3DNode]) -> str:
 
 
 def gen_node_factory_source(nodes: Dict[str, X3DNode]) -> str:
-    """Render ``X3DNodeFactory.cpp``: includes concrete nodes + defines the registry."""
+    """Render ``X3DNodeFactory.cpp`` using per-node creator functions."""
     concrete: List[str] = sorted(
         n.name for n in nodes.values() if not n.is_abstract
     )
@@ -64,18 +64,19 @@ def gen_node_factory_source(nodes: Dict[str, X3DNode]) -> str:
     lines.append("// Auto-generated: the registry definition (compiled once into the node lib).")
     lines.append('#include "x3d/nodes/X3DNodeFactory.hpp"')
     lines.append("")
-    lines.append('#include "x3d/nodes/X3DNode.hpp"')
-    for name in concrete:
-        lines.append(f'#include "x3d/nodes/{name}.hpp"')
-    lines.append("")
     lines.append("namespace x3d::nodes {")
+    lines.append("")
+    lines.append("namespace factory_detail {")
+    for name in concrete:
+        lines.append(f"std::shared_ptr<X3DNode> create{name}();")
+    lines.append("} // namespace factory_detail")
     lines.append("")
     lines.append("const std::unordered_map<std::string, X3DNodeFactory::Creator>&")
     lines.append("X3DNodeFactory::registry() {")
     lines.append("    static const std::unordered_map<std::string, Creator> reg = {")
     for name in concrete:
         lines.append(
-            f'        {{"{name}", [] {{ return std::make_shared<{name}>(); }}}},'
+            f'        {{"{name}", &factory_detail::create{name}}},'
         )
     lines.append("    };")
     lines.append("    return reg;")

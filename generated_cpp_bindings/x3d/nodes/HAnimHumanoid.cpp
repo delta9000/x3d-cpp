@@ -670,4 +670,10 @@ void HAnimHumanoid::checkRangesLoa(const SFInt32 &value,
         RangeDiagnostic{nodeType, defName, "loa", "loa above maximum of 4"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createHAnimHumanoid() {
+  return std::make_shared<HAnimHumanoid>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

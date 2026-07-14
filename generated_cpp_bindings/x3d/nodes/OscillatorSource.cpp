@@ -376,4 +376,10 @@ void OscillatorSource::checkRangesFrequency(const SFFloat &value,
                                   "frequency below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createOscillatorSource() {
+  return std::make_shared<OscillatorSource>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

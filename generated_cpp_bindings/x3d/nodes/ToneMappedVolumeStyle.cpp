@@ -288,4 +288,10 @@ void ToneMappedVolumeStyle::checkRangesWarmColor(
                                   "warmColor.a above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createToneMappedVolumeStyle() {
+  return std::make_shared<ToneMappedVolumeStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -338,4 +338,10 @@ void ConeEmitter::checkRangesDirection(const SFVec3f &value,
                                   "direction.z above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createConeEmitter() {
+  return std::make_shared<ConeEmitter>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

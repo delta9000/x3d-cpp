@@ -329,4 +329,10 @@ void SliderJoint::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSliderJoint() {
+  return std::make_shared<SliderJoint>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

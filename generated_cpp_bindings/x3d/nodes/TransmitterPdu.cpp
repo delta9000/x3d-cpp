@@ -1033,4 +1033,10 @@ void TransmitterPdu::checkRangesWriteInterval(
                                   "writeInterval below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTransmitterPdu() {
+  return std::make_shared<TransmitterPdu>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

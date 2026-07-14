@@ -323,4 +323,10 @@ void ProximitySensor::validateRanges(std::vector<RangeDiagnostic> &out) const {
       X3DEnvironmentalSensorNode::getSize(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createProximitySensor() {
+  return std::make_shared<ProximitySensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

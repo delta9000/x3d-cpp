@@ -708,4 +708,10 @@ void SignalPdu::checkRangesWriteInterval(const SFTime &value,
                                   "writeInterval below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSignalPdu() {
+  return std::make_shared<SignalPdu>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

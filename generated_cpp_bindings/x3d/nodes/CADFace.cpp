@@ -238,4 +238,8 @@ void CADFace::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCADFace() { return std::make_shared<CADFace>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

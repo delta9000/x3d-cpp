@@ -303,4 +303,10 @@ void OrientationDamper::validateRanges(
                                 out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createOrientationDamper() {
+  return std::make_shared<OrientationDamper>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

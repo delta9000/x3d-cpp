@@ -2,533 +2,534 @@
 // Auto-generated: the registry definition (compiled once into the node lib).
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
-#include "x3d/nodes/X3DNode.hpp"
-#include "x3d/nodes/AcousticProperties.hpp"
-#include "x3d/nodes/Analyser.hpp"
-#include "x3d/nodes/Anchor.hpp"
-#include "x3d/nodes/Appearance.hpp"
-#include "x3d/nodes/Arc2D.hpp"
-#include "x3d/nodes/ArcClose2D.hpp"
-#include "x3d/nodes/AudioClip.hpp"
-#include "x3d/nodes/AudioDestination.hpp"
-#include "x3d/nodes/Background.hpp"
-#include "x3d/nodes/BallJoint.hpp"
-#include "x3d/nodes/Billboard.hpp"
-#include "x3d/nodes/BiquadFilter.hpp"
-#include "x3d/nodes/BlendedVolumeStyle.hpp"
-#include "x3d/nodes/BooleanFilter.hpp"
-#include "x3d/nodes/BooleanSequencer.hpp"
-#include "x3d/nodes/BooleanToggle.hpp"
-#include "x3d/nodes/BooleanTrigger.hpp"
-#include "x3d/nodes/BoundaryEnhancementVolumeStyle.hpp"
-#include "x3d/nodes/BoundedPhysicsModel.hpp"
-#include "x3d/nodes/Box.hpp"
-#include "x3d/nodes/BufferAudioSource.hpp"
-#include "x3d/nodes/CADAssembly.hpp"
-#include "x3d/nodes/CADFace.hpp"
-#include "x3d/nodes/CADLayer.hpp"
-#include "x3d/nodes/CADPart.hpp"
-#include "x3d/nodes/CartoonVolumeStyle.hpp"
-#include "x3d/nodes/ChannelMerger.hpp"
-#include "x3d/nodes/ChannelSelector.hpp"
-#include "x3d/nodes/ChannelSplitter.hpp"
-#include "x3d/nodes/Circle2D.hpp"
-#include "x3d/nodes/ClipPlane.hpp"
-#include "x3d/nodes/CollidableOffset.hpp"
-#include "x3d/nodes/CollidableShape.hpp"
-#include "x3d/nodes/Collision.hpp"
-#include "x3d/nodes/CollisionCollection.hpp"
-#include "x3d/nodes/CollisionSensor.hpp"
-#include "x3d/nodes/CollisionSpace.hpp"
-#include "x3d/nodes/Color.hpp"
-#include "x3d/nodes/ColorChaser.hpp"
-#include "x3d/nodes/ColorDamper.hpp"
-#include "x3d/nodes/ColorInterpolator.hpp"
-#include "x3d/nodes/ColorRGBA.hpp"
-#include "x3d/nodes/ComposedCubeMapTexture.hpp"
-#include "x3d/nodes/ComposedShader.hpp"
-#include "x3d/nodes/ComposedTexture3D.hpp"
-#include "x3d/nodes/ComposedVolumeStyle.hpp"
-#include "x3d/nodes/Cone.hpp"
-#include "x3d/nodes/ConeEmitter.hpp"
-#include "x3d/nodes/Contact.hpp"
-#include "x3d/nodes/Contour2D.hpp"
-#include "x3d/nodes/ContourPolyline2D.hpp"
-#include "x3d/nodes/Convolver.hpp"
-#include "x3d/nodes/Coordinate.hpp"
-#include "x3d/nodes/CoordinateChaser.hpp"
-#include "x3d/nodes/CoordinateDamper.hpp"
-#include "x3d/nodes/CoordinateDouble.hpp"
-#include "x3d/nodes/CoordinateInterpolator.hpp"
-#include "x3d/nodes/CoordinateInterpolator2D.hpp"
-#include "x3d/nodes/Cylinder.hpp"
-#include "x3d/nodes/CylinderSensor.hpp"
-#include "x3d/nodes/DISEntityManager.hpp"
-#include "x3d/nodes/DISEntityTypeMapping.hpp"
-#include "x3d/nodes/Delay.hpp"
-#include "x3d/nodes/DirectionalLight.hpp"
-#include "x3d/nodes/Disk2D.hpp"
-#include "x3d/nodes/DoubleAxisHingeJoint.hpp"
-#include "x3d/nodes/DynamicsCompressor.hpp"
-#include "x3d/nodes/EaseInEaseOut.hpp"
-#include "x3d/nodes/EdgeEnhancementVolumeStyle.hpp"
-#include "x3d/nodes/ElevationGrid.hpp"
-#include "x3d/nodes/EspduTransform.hpp"
-#include "x3d/nodes/ExplosionEmitter.hpp"
-#include "x3d/nodes/Extrusion.hpp"
-#include "x3d/nodes/FillProperties.hpp"
-#include "x3d/nodes/FloatVertexAttribute.hpp"
-#include "x3d/nodes/Fog.hpp"
-#include "x3d/nodes/FogCoordinate.hpp"
-#include "x3d/nodes/FontStyle.hpp"
-#include "x3d/nodes/ForcePhysicsModel.hpp"
-#include "x3d/nodes/Gain.hpp"
-#include "x3d/nodes/GeneratedCubeMapTexture.hpp"
-#include "x3d/nodes/GeoCoordinate.hpp"
-#include "x3d/nodes/GeoElevationGrid.hpp"
-#include "x3d/nodes/GeoLOD.hpp"
-#include "x3d/nodes/GeoLocation.hpp"
-#include "x3d/nodes/GeoMetadata.hpp"
-#include "x3d/nodes/GeoOrigin.hpp"
-#include "x3d/nodes/GeoPositionInterpolator.hpp"
-#include "x3d/nodes/GeoProximitySensor.hpp"
-#include "x3d/nodes/GeoTouchSensor.hpp"
-#include "x3d/nodes/GeoTransform.hpp"
-#include "x3d/nodes/GeoViewpoint.hpp"
-#include "x3d/nodes/Group.hpp"
-#include "x3d/nodes/HAnimDisplacer.hpp"
-#include "x3d/nodes/HAnimHumanoid.hpp"
-#include "x3d/nodes/HAnimJoint.hpp"
-#include "x3d/nodes/HAnimMotion.hpp"
-#include "x3d/nodes/HAnimSegment.hpp"
-#include "x3d/nodes/HAnimSite.hpp"
-#include "x3d/nodes/ImageCubeMapTexture.hpp"
-#include "x3d/nodes/ImageTexture.hpp"
-#include "x3d/nodes/ImageTexture3D.hpp"
-#include "x3d/nodes/IndexedFaceSet.hpp"
-#include "x3d/nodes/IndexedLineSet.hpp"
-#include "x3d/nodes/IndexedQuadSet.hpp"
-#include "x3d/nodes/IndexedTriangleFanSet.hpp"
-#include "x3d/nodes/IndexedTriangleSet.hpp"
-#include "x3d/nodes/IndexedTriangleStripSet.hpp"
-#include "x3d/nodes/Inline.hpp"
-#include "x3d/nodes/IntegerSequencer.hpp"
-#include "x3d/nodes/IntegerTrigger.hpp"
-#include "x3d/nodes/IsoSurfaceVolumeData.hpp"
-#include "x3d/nodes/KeySensor.hpp"
-#include "x3d/nodes/LOD.hpp"
-#include "x3d/nodes/Layer.hpp"
-#include "x3d/nodes/LayerSet.hpp"
-#include "x3d/nodes/Layout.hpp"
-#include "x3d/nodes/LayoutGroup.hpp"
-#include "x3d/nodes/LayoutLayer.hpp"
-#include "x3d/nodes/LinePickSensor.hpp"
-#include "x3d/nodes/LineProperties.hpp"
-#include "x3d/nodes/LineSet.hpp"
-#include "x3d/nodes/ListenerPointSource.hpp"
-#include "x3d/nodes/LoadSensor.hpp"
-#include "x3d/nodes/LocalFog.hpp"
-#include "x3d/nodes/Material.hpp"
-#include "x3d/nodes/Matrix3VertexAttribute.hpp"
-#include "x3d/nodes/Matrix4VertexAttribute.hpp"
-#include "x3d/nodes/MetadataBoolean.hpp"
-#include "x3d/nodes/MetadataDouble.hpp"
-#include "x3d/nodes/MetadataFloat.hpp"
-#include "x3d/nodes/MetadataInteger.hpp"
-#include "x3d/nodes/MetadataSet.hpp"
-#include "x3d/nodes/MetadataString.hpp"
-#include "x3d/nodes/MicrophoneSource.hpp"
-#include "x3d/nodes/MotorJoint.hpp"
-#include "x3d/nodes/MovieTexture.hpp"
-#include "x3d/nodes/MultiTexture.hpp"
-#include "x3d/nodes/MultiTextureCoordinate.hpp"
-#include "x3d/nodes/MultiTextureTransform.hpp"
-#include "x3d/nodes/NavigationInfo.hpp"
-#include "x3d/nodes/Normal.hpp"
-#include "x3d/nodes/NormalInterpolator.hpp"
-#include "x3d/nodes/NurbsCurve.hpp"
-#include "x3d/nodes/NurbsCurve2D.hpp"
-#include "x3d/nodes/NurbsOrientationInterpolator.hpp"
-#include "x3d/nodes/NurbsPatchSurface.hpp"
-#include "x3d/nodes/NurbsPositionInterpolator.hpp"
-#include "x3d/nodes/NurbsSet.hpp"
-#include "x3d/nodes/NurbsSurfaceInterpolator.hpp"
-#include "x3d/nodes/NurbsSweptSurface.hpp"
-#include "x3d/nodes/NurbsSwungSurface.hpp"
-#include "x3d/nodes/NurbsTextureCoordinate.hpp"
-#include "x3d/nodes/NurbsTrimmedSurface.hpp"
-#include "x3d/nodes/OpacityMapVolumeStyle.hpp"
-#include "x3d/nodes/OrientationChaser.hpp"
-#include "x3d/nodes/OrientationDamper.hpp"
-#include "x3d/nodes/OrientationInterpolator.hpp"
-#include "x3d/nodes/OrthoViewpoint.hpp"
-#include "x3d/nodes/OscillatorSource.hpp"
-#include "x3d/nodes/PackagedShader.hpp"
-#include "x3d/nodes/ParticleSystem.hpp"
-#include "x3d/nodes/PeriodicWave.hpp"
-#include "x3d/nodes/PhysicalMaterial.hpp"
-#include "x3d/nodes/PickableGroup.hpp"
-#include "x3d/nodes/PixelTexture.hpp"
-#include "x3d/nodes/PixelTexture3D.hpp"
-#include "x3d/nodes/PlaneSensor.hpp"
-#include "x3d/nodes/PointEmitter.hpp"
-#include "x3d/nodes/PointLight.hpp"
-#include "x3d/nodes/PointPickSensor.hpp"
-#include "x3d/nodes/PointProperties.hpp"
-#include "x3d/nodes/PointSet.hpp"
-#include "x3d/nodes/Polyline2D.hpp"
-#include "x3d/nodes/PolylineEmitter.hpp"
-#include "x3d/nodes/Polypoint2D.hpp"
-#include "x3d/nodes/PositionChaser.hpp"
-#include "x3d/nodes/PositionChaser2D.hpp"
-#include "x3d/nodes/PositionDamper.hpp"
-#include "x3d/nodes/PositionDamper2D.hpp"
-#include "x3d/nodes/PositionInterpolator.hpp"
-#include "x3d/nodes/PositionInterpolator2D.hpp"
-#include "x3d/nodes/PrimitivePickSensor.hpp"
-#include "x3d/nodes/ProgramShader.hpp"
-#include "x3d/nodes/ProjectionVolumeStyle.hpp"
-#include "x3d/nodes/ProtoInstance.hpp"
-#include "x3d/nodes/ProximitySensor.hpp"
-#include "x3d/nodes/QuadSet.hpp"
-#include "x3d/nodes/ReceiverPdu.hpp"
-#include "x3d/nodes/Rectangle2D.hpp"
-#include "x3d/nodes/RigidBody.hpp"
-#include "x3d/nodes/RigidBodyCollection.hpp"
-#include "x3d/nodes/ScalarChaser.hpp"
-#include "x3d/nodes/ScalarDamper.hpp"
-#include "x3d/nodes/ScalarInterpolator.hpp"
-#include "x3d/nodes/ScreenFontStyle.hpp"
-#include "x3d/nodes/ScreenGroup.hpp"
-#include "x3d/nodes/Script.hpp"
-#include "x3d/nodes/SegmentedVolumeData.hpp"
-#include "x3d/nodes/ShadedVolumeStyle.hpp"
-#include "x3d/nodes/ShaderPart.hpp"
-#include "x3d/nodes/ShaderProgram.hpp"
-#include "x3d/nodes/Shape.hpp"
-#include "x3d/nodes/SignalPdu.hpp"
-#include "x3d/nodes/SilhouetteEnhancementVolumeStyle.hpp"
-#include "x3d/nodes/SingleAxisHingeJoint.hpp"
-#include "x3d/nodes/SliderJoint.hpp"
-#include "x3d/nodes/Sound.hpp"
-#include "x3d/nodes/SpatialSound.hpp"
-#include "x3d/nodes/Sphere.hpp"
-#include "x3d/nodes/SphereSensor.hpp"
-#include "x3d/nodes/SplinePositionInterpolator.hpp"
-#include "x3d/nodes/SplinePositionInterpolator2D.hpp"
-#include "x3d/nodes/SplineScalarInterpolator.hpp"
-#include "x3d/nodes/SpotLight.hpp"
-#include "x3d/nodes/SquadOrientationInterpolator.hpp"
-#include "x3d/nodes/StaticGroup.hpp"
-#include "x3d/nodes/StreamAudioDestination.hpp"
-#include "x3d/nodes/StreamAudioSource.hpp"
-#include "x3d/nodes/StringSensor.hpp"
-#include "x3d/nodes/SurfaceEmitter.hpp"
-#include "x3d/nodes/Switch.hpp"
-#include "x3d/nodes/TexCoordChaser2D.hpp"
-#include "x3d/nodes/TexCoordDamper2D.hpp"
-#include "x3d/nodes/Text.hpp"
-#include "x3d/nodes/TextureBackground.hpp"
-#include "x3d/nodes/TextureCoordinate.hpp"
-#include "x3d/nodes/TextureCoordinate3D.hpp"
-#include "x3d/nodes/TextureCoordinate4D.hpp"
-#include "x3d/nodes/TextureCoordinateGenerator.hpp"
-#include "x3d/nodes/TextureProjector.hpp"
-#include "x3d/nodes/TextureProjectorParallel.hpp"
-#include "x3d/nodes/TextureProperties.hpp"
-#include "x3d/nodes/TextureTransform.hpp"
-#include "x3d/nodes/TextureTransform3D.hpp"
-#include "x3d/nodes/TextureTransformMatrix3D.hpp"
-#include "x3d/nodes/TimeSensor.hpp"
-#include "x3d/nodes/TimeTrigger.hpp"
-#include "x3d/nodes/ToneMappedVolumeStyle.hpp"
-#include "x3d/nodes/TouchSensor.hpp"
-#include "x3d/nodes/Transform.hpp"
-#include "x3d/nodes/TransformSensor.hpp"
-#include "x3d/nodes/TransmitterPdu.hpp"
-#include "x3d/nodes/TriangleFanSet.hpp"
-#include "x3d/nodes/TriangleSet.hpp"
-#include "x3d/nodes/TriangleSet2D.hpp"
-#include "x3d/nodes/TriangleStripSet.hpp"
-#include "x3d/nodes/TwoSidedMaterial.hpp"
-#include "x3d/nodes/UniversalJoint.hpp"
-#include "x3d/nodes/UnlitMaterial.hpp"
-#include "x3d/nodes/Viewpoint.hpp"
-#include "x3d/nodes/ViewpointGroup.hpp"
-#include "x3d/nodes/Viewport.hpp"
-#include "x3d/nodes/VisibilitySensor.hpp"
-#include "x3d/nodes/VolumeData.hpp"
-#include "x3d/nodes/VolumeEmitter.hpp"
-#include "x3d/nodes/VolumePickSensor.hpp"
-#include "x3d/nodes/WaveShaper.hpp"
-#include "x3d/nodes/WindPhysicsModel.hpp"
-#include "x3d/nodes/WorldInfo.hpp"
-
 namespace x3d::nodes {
+
+namespace factory_detail {
+std::shared_ptr<X3DNode> createAcousticProperties();
+std::shared_ptr<X3DNode> createAnalyser();
+std::shared_ptr<X3DNode> createAnchor();
+std::shared_ptr<X3DNode> createAppearance();
+std::shared_ptr<X3DNode> createArc2D();
+std::shared_ptr<X3DNode> createArcClose2D();
+std::shared_ptr<X3DNode> createAudioClip();
+std::shared_ptr<X3DNode> createAudioDestination();
+std::shared_ptr<X3DNode> createBackground();
+std::shared_ptr<X3DNode> createBallJoint();
+std::shared_ptr<X3DNode> createBillboard();
+std::shared_ptr<X3DNode> createBiquadFilter();
+std::shared_ptr<X3DNode> createBlendedVolumeStyle();
+std::shared_ptr<X3DNode> createBooleanFilter();
+std::shared_ptr<X3DNode> createBooleanSequencer();
+std::shared_ptr<X3DNode> createBooleanToggle();
+std::shared_ptr<X3DNode> createBooleanTrigger();
+std::shared_ptr<X3DNode> createBoundaryEnhancementVolumeStyle();
+std::shared_ptr<X3DNode> createBoundedPhysicsModel();
+std::shared_ptr<X3DNode> createBox();
+std::shared_ptr<X3DNode> createBufferAudioSource();
+std::shared_ptr<X3DNode> createCADAssembly();
+std::shared_ptr<X3DNode> createCADFace();
+std::shared_ptr<X3DNode> createCADLayer();
+std::shared_ptr<X3DNode> createCADPart();
+std::shared_ptr<X3DNode> createCartoonVolumeStyle();
+std::shared_ptr<X3DNode> createChannelMerger();
+std::shared_ptr<X3DNode> createChannelSelector();
+std::shared_ptr<X3DNode> createChannelSplitter();
+std::shared_ptr<X3DNode> createCircle2D();
+std::shared_ptr<X3DNode> createClipPlane();
+std::shared_ptr<X3DNode> createCollidableOffset();
+std::shared_ptr<X3DNode> createCollidableShape();
+std::shared_ptr<X3DNode> createCollision();
+std::shared_ptr<X3DNode> createCollisionCollection();
+std::shared_ptr<X3DNode> createCollisionSensor();
+std::shared_ptr<X3DNode> createCollisionSpace();
+std::shared_ptr<X3DNode> createColor();
+std::shared_ptr<X3DNode> createColorChaser();
+std::shared_ptr<X3DNode> createColorDamper();
+std::shared_ptr<X3DNode> createColorInterpolator();
+std::shared_ptr<X3DNode> createColorRGBA();
+std::shared_ptr<X3DNode> createComposedCubeMapTexture();
+std::shared_ptr<X3DNode> createComposedShader();
+std::shared_ptr<X3DNode> createComposedTexture3D();
+std::shared_ptr<X3DNode> createComposedVolumeStyle();
+std::shared_ptr<X3DNode> createCone();
+std::shared_ptr<X3DNode> createConeEmitter();
+std::shared_ptr<X3DNode> createContact();
+std::shared_ptr<X3DNode> createContour2D();
+std::shared_ptr<X3DNode> createContourPolyline2D();
+std::shared_ptr<X3DNode> createConvolver();
+std::shared_ptr<X3DNode> createCoordinate();
+std::shared_ptr<X3DNode> createCoordinateChaser();
+std::shared_ptr<X3DNode> createCoordinateDamper();
+std::shared_ptr<X3DNode> createCoordinateDouble();
+std::shared_ptr<X3DNode> createCoordinateInterpolator();
+std::shared_ptr<X3DNode> createCoordinateInterpolator2D();
+std::shared_ptr<X3DNode> createCylinder();
+std::shared_ptr<X3DNode> createCylinderSensor();
+std::shared_ptr<X3DNode> createDISEntityManager();
+std::shared_ptr<X3DNode> createDISEntityTypeMapping();
+std::shared_ptr<X3DNode> createDelay();
+std::shared_ptr<X3DNode> createDirectionalLight();
+std::shared_ptr<X3DNode> createDisk2D();
+std::shared_ptr<X3DNode> createDoubleAxisHingeJoint();
+std::shared_ptr<X3DNode> createDynamicsCompressor();
+std::shared_ptr<X3DNode> createEaseInEaseOut();
+std::shared_ptr<X3DNode> createEdgeEnhancementVolumeStyle();
+std::shared_ptr<X3DNode> createElevationGrid();
+std::shared_ptr<X3DNode> createEspduTransform();
+std::shared_ptr<X3DNode> createExplosionEmitter();
+std::shared_ptr<X3DNode> createExtrusion();
+std::shared_ptr<X3DNode> createFillProperties();
+std::shared_ptr<X3DNode> createFloatVertexAttribute();
+std::shared_ptr<X3DNode> createFog();
+std::shared_ptr<X3DNode> createFogCoordinate();
+std::shared_ptr<X3DNode> createFontStyle();
+std::shared_ptr<X3DNode> createForcePhysicsModel();
+std::shared_ptr<X3DNode> createGain();
+std::shared_ptr<X3DNode> createGeneratedCubeMapTexture();
+std::shared_ptr<X3DNode> createGeoCoordinate();
+std::shared_ptr<X3DNode> createGeoElevationGrid();
+std::shared_ptr<X3DNode> createGeoLOD();
+std::shared_ptr<X3DNode> createGeoLocation();
+std::shared_ptr<X3DNode> createGeoMetadata();
+std::shared_ptr<X3DNode> createGeoOrigin();
+std::shared_ptr<X3DNode> createGeoPositionInterpolator();
+std::shared_ptr<X3DNode> createGeoProximitySensor();
+std::shared_ptr<X3DNode> createGeoTouchSensor();
+std::shared_ptr<X3DNode> createGeoTransform();
+std::shared_ptr<X3DNode> createGeoViewpoint();
+std::shared_ptr<X3DNode> createGroup();
+std::shared_ptr<X3DNode> createHAnimDisplacer();
+std::shared_ptr<X3DNode> createHAnimHumanoid();
+std::shared_ptr<X3DNode> createHAnimJoint();
+std::shared_ptr<X3DNode> createHAnimMotion();
+std::shared_ptr<X3DNode> createHAnimSegment();
+std::shared_ptr<X3DNode> createHAnimSite();
+std::shared_ptr<X3DNode> createImageCubeMapTexture();
+std::shared_ptr<X3DNode> createImageTexture();
+std::shared_ptr<X3DNode> createImageTexture3D();
+std::shared_ptr<X3DNode> createIndexedFaceSet();
+std::shared_ptr<X3DNode> createIndexedLineSet();
+std::shared_ptr<X3DNode> createIndexedQuadSet();
+std::shared_ptr<X3DNode> createIndexedTriangleFanSet();
+std::shared_ptr<X3DNode> createIndexedTriangleSet();
+std::shared_ptr<X3DNode> createIndexedTriangleStripSet();
+std::shared_ptr<X3DNode> createInline();
+std::shared_ptr<X3DNode> createIntegerSequencer();
+std::shared_ptr<X3DNode> createIntegerTrigger();
+std::shared_ptr<X3DNode> createIsoSurfaceVolumeData();
+std::shared_ptr<X3DNode> createKeySensor();
+std::shared_ptr<X3DNode> createLOD();
+std::shared_ptr<X3DNode> createLayer();
+std::shared_ptr<X3DNode> createLayerSet();
+std::shared_ptr<X3DNode> createLayout();
+std::shared_ptr<X3DNode> createLayoutGroup();
+std::shared_ptr<X3DNode> createLayoutLayer();
+std::shared_ptr<X3DNode> createLinePickSensor();
+std::shared_ptr<X3DNode> createLineProperties();
+std::shared_ptr<X3DNode> createLineSet();
+std::shared_ptr<X3DNode> createListenerPointSource();
+std::shared_ptr<X3DNode> createLoadSensor();
+std::shared_ptr<X3DNode> createLocalFog();
+std::shared_ptr<X3DNode> createMaterial();
+std::shared_ptr<X3DNode> createMatrix3VertexAttribute();
+std::shared_ptr<X3DNode> createMatrix4VertexAttribute();
+std::shared_ptr<X3DNode> createMetadataBoolean();
+std::shared_ptr<X3DNode> createMetadataDouble();
+std::shared_ptr<X3DNode> createMetadataFloat();
+std::shared_ptr<X3DNode> createMetadataInteger();
+std::shared_ptr<X3DNode> createMetadataSet();
+std::shared_ptr<X3DNode> createMetadataString();
+std::shared_ptr<X3DNode> createMicrophoneSource();
+std::shared_ptr<X3DNode> createMotorJoint();
+std::shared_ptr<X3DNode> createMovieTexture();
+std::shared_ptr<X3DNode> createMultiTexture();
+std::shared_ptr<X3DNode> createMultiTextureCoordinate();
+std::shared_ptr<X3DNode> createMultiTextureTransform();
+std::shared_ptr<X3DNode> createNavigationInfo();
+std::shared_ptr<X3DNode> createNormal();
+std::shared_ptr<X3DNode> createNormalInterpolator();
+std::shared_ptr<X3DNode> createNurbsCurve();
+std::shared_ptr<X3DNode> createNurbsCurve2D();
+std::shared_ptr<X3DNode> createNurbsOrientationInterpolator();
+std::shared_ptr<X3DNode> createNurbsPatchSurface();
+std::shared_ptr<X3DNode> createNurbsPositionInterpolator();
+std::shared_ptr<X3DNode> createNurbsSet();
+std::shared_ptr<X3DNode> createNurbsSurfaceInterpolator();
+std::shared_ptr<X3DNode> createNurbsSweptSurface();
+std::shared_ptr<X3DNode> createNurbsSwungSurface();
+std::shared_ptr<X3DNode> createNurbsTextureCoordinate();
+std::shared_ptr<X3DNode> createNurbsTrimmedSurface();
+std::shared_ptr<X3DNode> createOpacityMapVolumeStyle();
+std::shared_ptr<X3DNode> createOrientationChaser();
+std::shared_ptr<X3DNode> createOrientationDamper();
+std::shared_ptr<X3DNode> createOrientationInterpolator();
+std::shared_ptr<X3DNode> createOrthoViewpoint();
+std::shared_ptr<X3DNode> createOscillatorSource();
+std::shared_ptr<X3DNode> createPackagedShader();
+std::shared_ptr<X3DNode> createParticleSystem();
+std::shared_ptr<X3DNode> createPeriodicWave();
+std::shared_ptr<X3DNode> createPhysicalMaterial();
+std::shared_ptr<X3DNode> createPickableGroup();
+std::shared_ptr<X3DNode> createPixelTexture();
+std::shared_ptr<X3DNode> createPixelTexture3D();
+std::shared_ptr<X3DNode> createPlaneSensor();
+std::shared_ptr<X3DNode> createPointEmitter();
+std::shared_ptr<X3DNode> createPointLight();
+std::shared_ptr<X3DNode> createPointPickSensor();
+std::shared_ptr<X3DNode> createPointProperties();
+std::shared_ptr<X3DNode> createPointSet();
+std::shared_ptr<X3DNode> createPolyline2D();
+std::shared_ptr<X3DNode> createPolylineEmitter();
+std::shared_ptr<X3DNode> createPolypoint2D();
+std::shared_ptr<X3DNode> createPositionChaser();
+std::shared_ptr<X3DNode> createPositionChaser2D();
+std::shared_ptr<X3DNode> createPositionDamper();
+std::shared_ptr<X3DNode> createPositionDamper2D();
+std::shared_ptr<X3DNode> createPositionInterpolator();
+std::shared_ptr<X3DNode> createPositionInterpolator2D();
+std::shared_ptr<X3DNode> createPrimitivePickSensor();
+std::shared_ptr<X3DNode> createProgramShader();
+std::shared_ptr<X3DNode> createProjectionVolumeStyle();
+std::shared_ptr<X3DNode> createProtoInstance();
+std::shared_ptr<X3DNode> createProximitySensor();
+std::shared_ptr<X3DNode> createQuadSet();
+std::shared_ptr<X3DNode> createReceiverPdu();
+std::shared_ptr<X3DNode> createRectangle2D();
+std::shared_ptr<X3DNode> createRigidBody();
+std::shared_ptr<X3DNode> createRigidBodyCollection();
+std::shared_ptr<X3DNode> createScalarChaser();
+std::shared_ptr<X3DNode> createScalarDamper();
+std::shared_ptr<X3DNode> createScalarInterpolator();
+std::shared_ptr<X3DNode> createScreenFontStyle();
+std::shared_ptr<X3DNode> createScreenGroup();
+std::shared_ptr<X3DNode> createScript();
+std::shared_ptr<X3DNode> createSegmentedVolumeData();
+std::shared_ptr<X3DNode> createShadedVolumeStyle();
+std::shared_ptr<X3DNode> createShaderPart();
+std::shared_ptr<X3DNode> createShaderProgram();
+std::shared_ptr<X3DNode> createShape();
+std::shared_ptr<X3DNode> createSignalPdu();
+std::shared_ptr<X3DNode> createSilhouetteEnhancementVolumeStyle();
+std::shared_ptr<X3DNode> createSingleAxisHingeJoint();
+std::shared_ptr<X3DNode> createSliderJoint();
+std::shared_ptr<X3DNode> createSound();
+std::shared_ptr<X3DNode> createSpatialSound();
+std::shared_ptr<X3DNode> createSphere();
+std::shared_ptr<X3DNode> createSphereSensor();
+std::shared_ptr<X3DNode> createSplinePositionInterpolator();
+std::shared_ptr<X3DNode> createSplinePositionInterpolator2D();
+std::shared_ptr<X3DNode> createSplineScalarInterpolator();
+std::shared_ptr<X3DNode> createSpotLight();
+std::shared_ptr<X3DNode> createSquadOrientationInterpolator();
+std::shared_ptr<X3DNode> createStaticGroup();
+std::shared_ptr<X3DNode> createStreamAudioDestination();
+std::shared_ptr<X3DNode> createStreamAudioSource();
+std::shared_ptr<X3DNode> createStringSensor();
+std::shared_ptr<X3DNode> createSurfaceEmitter();
+std::shared_ptr<X3DNode> createSwitch();
+std::shared_ptr<X3DNode> createTexCoordChaser2D();
+std::shared_ptr<X3DNode> createTexCoordDamper2D();
+std::shared_ptr<X3DNode> createText();
+std::shared_ptr<X3DNode> createTextureBackground();
+std::shared_ptr<X3DNode> createTextureCoordinate();
+std::shared_ptr<X3DNode> createTextureCoordinate3D();
+std::shared_ptr<X3DNode> createTextureCoordinate4D();
+std::shared_ptr<X3DNode> createTextureCoordinateGenerator();
+std::shared_ptr<X3DNode> createTextureProjector();
+std::shared_ptr<X3DNode> createTextureProjectorParallel();
+std::shared_ptr<X3DNode> createTextureProperties();
+std::shared_ptr<X3DNode> createTextureTransform();
+std::shared_ptr<X3DNode> createTextureTransform3D();
+std::shared_ptr<X3DNode> createTextureTransformMatrix3D();
+std::shared_ptr<X3DNode> createTimeSensor();
+std::shared_ptr<X3DNode> createTimeTrigger();
+std::shared_ptr<X3DNode> createToneMappedVolumeStyle();
+std::shared_ptr<X3DNode> createTouchSensor();
+std::shared_ptr<X3DNode> createTransform();
+std::shared_ptr<X3DNode> createTransformSensor();
+std::shared_ptr<X3DNode> createTransmitterPdu();
+std::shared_ptr<X3DNode> createTriangleFanSet();
+std::shared_ptr<X3DNode> createTriangleSet();
+std::shared_ptr<X3DNode> createTriangleSet2D();
+std::shared_ptr<X3DNode> createTriangleStripSet();
+std::shared_ptr<X3DNode> createTwoSidedMaterial();
+std::shared_ptr<X3DNode> createUniversalJoint();
+std::shared_ptr<X3DNode> createUnlitMaterial();
+std::shared_ptr<X3DNode> createViewpoint();
+std::shared_ptr<X3DNode> createViewpointGroup();
+std::shared_ptr<X3DNode> createViewport();
+std::shared_ptr<X3DNode> createVisibilitySensor();
+std::shared_ptr<X3DNode> createVolumeData();
+std::shared_ptr<X3DNode> createVolumeEmitter();
+std::shared_ptr<X3DNode> createVolumePickSensor();
+std::shared_ptr<X3DNode> createWaveShaper();
+std::shared_ptr<X3DNode> createWindPhysicsModel();
+std::shared_ptr<X3DNode> createWorldInfo();
+} // namespace factory_detail
 
 const std::unordered_map<std::string, X3DNodeFactory::Creator>&
 X3DNodeFactory::registry() {
     static const std::unordered_map<std::string, Creator> reg = {
-        {"AcousticProperties", [] { return std::make_shared<AcousticProperties>(); }},
-        {"Analyser", [] { return std::make_shared<Analyser>(); }},
-        {"Anchor", [] { return std::make_shared<Anchor>(); }},
-        {"Appearance", [] { return std::make_shared<Appearance>(); }},
-        {"Arc2D", [] { return std::make_shared<Arc2D>(); }},
-        {"ArcClose2D", [] { return std::make_shared<ArcClose2D>(); }},
-        {"AudioClip", [] { return std::make_shared<AudioClip>(); }},
-        {"AudioDestination", [] { return std::make_shared<AudioDestination>(); }},
-        {"Background", [] { return std::make_shared<Background>(); }},
-        {"BallJoint", [] { return std::make_shared<BallJoint>(); }},
-        {"Billboard", [] { return std::make_shared<Billboard>(); }},
-        {"BiquadFilter", [] { return std::make_shared<BiquadFilter>(); }},
-        {"BlendedVolumeStyle", [] { return std::make_shared<BlendedVolumeStyle>(); }},
-        {"BooleanFilter", [] { return std::make_shared<BooleanFilter>(); }},
-        {"BooleanSequencer", [] { return std::make_shared<BooleanSequencer>(); }},
-        {"BooleanToggle", [] { return std::make_shared<BooleanToggle>(); }},
-        {"BooleanTrigger", [] { return std::make_shared<BooleanTrigger>(); }},
-        {"BoundaryEnhancementVolumeStyle", [] { return std::make_shared<BoundaryEnhancementVolumeStyle>(); }},
-        {"BoundedPhysicsModel", [] { return std::make_shared<BoundedPhysicsModel>(); }},
-        {"Box", [] { return std::make_shared<Box>(); }},
-        {"BufferAudioSource", [] { return std::make_shared<BufferAudioSource>(); }},
-        {"CADAssembly", [] { return std::make_shared<CADAssembly>(); }},
-        {"CADFace", [] { return std::make_shared<CADFace>(); }},
-        {"CADLayer", [] { return std::make_shared<CADLayer>(); }},
-        {"CADPart", [] { return std::make_shared<CADPart>(); }},
-        {"CartoonVolumeStyle", [] { return std::make_shared<CartoonVolumeStyle>(); }},
-        {"ChannelMerger", [] { return std::make_shared<ChannelMerger>(); }},
-        {"ChannelSelector", [] { return std::make_shared<ChannelSelector>(); }},
-        {"ChannelSplitter", [] { return std::make_shared<ChannelSplitter>(); }},
-        {"Circle2D", [] { return std::make_shared<Circle2D>(); }},
-        {"ClipPlane", [] { return std::make_shared<ClipPlane>(); }},
-        {"CollidableOffset", [] { return std::make_shared<CollidableOffset>(); }},
-        {"CollidableShape", [] { return std::make_shared<CollidableShape>(); }},
-        {"Collision", [] { return std::make_shared<Collision>(); }},
-        {"CollisionCollection", [] { return std::make_shared<CollisionCollection>(); }},
-        {"CollisionSensor", [] { return std::make_shared<CollisionSensor>(); }},
-        {"CollisionSpace", [] { return std::make_shared<CollisionSpace>(); }},
-        {"Color", [] { return std::make_shared<Color>(); }},
-        {"ColorChaser", [] { return std::make_shared<ColorChaser>(); }},
-        {"ColorDamper", [] { return std::make_shared<ColorDamper>(); }},
-        {"ColorInterpolator", [] { return std::make_shared<ColorInterpolator>(); }},
-        {"ColorRGBA", [] { return std::make_shared<ColorRGBA>(); }},
-        {"ComposedCubeMapTexture", [] { return std::make_shared<ComposedCubeMapTexture>(); }},
-        {"ComposedShader", [] { return std::make_shared<ComposedShader>(); }},
-        {"ComposedTexture3D", [] { return std::make_shared<ComposedTexture3D>(); }},
-        {"ComposedVolumeStyle", [] { return std::make_shared<ComposedVolumeStyle>(); }},
-        {"Cone", [] { return std::make_shared<Cone>(); }},
-        {"ConeEmitter", [] { return std::make_shared<ConeEmitter>(); }},
-        {"Contact", [] { return std::make_shared<Contact>(); }},
-        {"Contour2D", [] { return std::make_shared<Contour2D>(); }},
-        {"ContourPolyline2D", [] { return std::make_shared<ContourPolyline2D>(); }},
-        {"Convolver", [] { return std::make_shared<Convolver>(); }},
-        {"Coordinate", [] { return std::make_shared<Coordinate>(); }},
-        {"CoordinateChaser", [] { return std::make_shared<CoordinateChaser>(); }},
-        {"CoordinateDamper", [] { return std::make_shared<CoordinateDamper>(); }},
-        {"CoordinateDouble", [] { return std::make_shared<CoordinateDouble>(); }},
-        {"CoordinateInterpolator", [] { return std::make_shared<CoordinateInterpolator>(); }},
-        {"CoordinateInterpolator2D", [] { return std::make_shared<CoordinateInterpolator2D>(); }},
-        {"Cylinder", [] { return std::make_shared<Cylinder>(); }},
-        {"CylinderSensor", [] { return std::make_shared<CylinderSensor>(); }},
-        {"DISEntityManager", [] { return std::make_shared<DISEntityManager>(); }},
-        {"DISEntityTypeMapping", [] { return std::make_shared<DISEntityTypeMapping>(); }},
-        {"Delay", [] { return std::make_shared<Delay>(); }},
-        {"DirectionalLight", [] { return std::make_shared<DirectionalLight>(); }},
-        {"Disk2D", [] { return std::make_shared<Disk2D>(); }},
-        {"DoubleAxisHingeJoint", [] { return std::make_shared<DoubleAxisHingeJoint>(); }},
-        {"DynamicsCompressor", [] { return std::make_shared<DynamicsCompressor>(); }},
-        {"EaseInEaseOut", [] { return std::make_shared<EaseInEaseOut>(); }},
-        {"EdgeEnhancementVolumeStyle", [] { return std::make_shared<EdgeEnhancementVolumeStyle>(); }},
-        {"ElevationGrid", [] { return std::make_shared<ElevationGrid>(); }},
-        {"EspduTransform", [] { return std::make_shared<EspduTransform>(); }},
-        {"ExplosionEmitter", [] { return std::make_shared<ExplosionEmitter>(); }},
-        {"Extrusion", [] { return std::make_shared<Extrusion>(); }},
-        {"FillProperties", [] { return std::make_shared<FillProperties>(); }},
-        {"FloatVertexAttribute", [] { return std::make_shared<FloatVertexAttribute>(); }},
-        {"Fog", [] { return std::make_shared<Fog>(); }},
-        {"FogCoordinate", [] { return std::make_shared<FogCoordinate>(); }},
-        {"FontStyle", [] { return std::make_shared<FontStyle>(); }},
-        {"ForcePhysicsModel", [] { return std::make_shared<ForcePhysicsModel>(); }},
-        {"Gain", [] { return std::make_shared<Gain>(); }},
-        {"GeneratedCubeMapTexture", [] { return std::make_shared<GeneratedCubeMapTexture>(); }},
-        {"GeoCoordinate", [] { return std::make_shared<GeoCoordinate>(); }},
-        {"GeoElevationGrid", [] { return std::make_shared<GeoElevationGrid>(); }},
-        {"GeoLOD", [] { return std::make_shared<GeoLOD>(); }},
-        {"GeoLocation", [] { return std::make_shared<GeoLocation>(); }},
-        {"GeoMetadata", [] { return std::make_shared<GeoMetadata>(); }},
-        {"GeoOrigin", [] { return std::make_shared<GeoOrigin>(); }},
-        {"GeoPositionInterpolator", [] { return std::make_shared<GeoPositionInterpolator>(); }},
-        {"GeoProximitySensor", [] { return std::make_shared<GeoProximitySensor>(); }},
-        {"GeoTouchSensor", [] { return std::make_shared<GeoTouchSensor>(); }},
-        {"GeoTransform", [] { return std::make_shared<GeoTransform>(); }},
-        {"GeoViewpoint", [] { return std::make_shared<GeoViewpoint>(); }},
-        {"Group", [] { return std::make_shared<Group>(); }},
-        {"HAnimDisplacer", [] { return std::make_shared<HAnimDisplacer>(); }},
-        {"HAnimHumanoid", [] { return std::make_shared<HAnimHumanoid>(); }},
-        {"HAnimJoint", [] { return std::make_shared<HAnimJoint>(); }},
-        {"HAnimMotion", [] { return std::make_shared<HAnimMotion>(); }},
-        {"HAnimSegment", [] { return std::make_shared<HAnimSegment>(); }},
-        {"HAnimSite", [] { return std::make_shared<HAnimSite>(); }},
-        {"ImageCubeMapTexture", [] { return std::make_shared<ImageCubeMapTexture>(); }},
-        {"ImageTexture", [] { return std::make_shared<ImageTexture>(); }},
-        {"ImageTexture3D", [] { return std::make_shared<ImageTexture3D>(); }},
-        {"IndexedFaceSet", [] { return std::make_shared<IndexedFaceSet>(); }},
-        {"IndexedLineSet", [] { return std::make_shared<IndexedLineSet>(); }},
-        {"IndexedQuadSet", [] { return std::make_shared<IndexedQuadSet>(); }},
-        {"IndexedTriangleFanSet", [] { return std::make_shared<IndexedTriangleFanSet>(); }},
-        {"IndexedTriangleSet", [] { return std::make_shared<IndexedTriangleSet>(); }},
-        {"IndexedTriangleStripSet", [] { return std::make_shared<IndexedTriangleStripSet>(); }},
-        {"Inline", [] { return std::make_shared<Inline>(); }},
-        {"IntegerSequencer", [] { return std::make_shared<IntegerSequencer>(); }},
-        {"IntegerTrigger", [] { return std::make_shared<IntegerTrigger>(); }},
-        {"IsoSurfaceVolumeData", [] { return std::make_shared<IsoSurfaceVolumeData>(); }},
-        {"KeySensor", [] { return std::make_shared<KeySensor>(); }},
-        {"LOD", [] { return std::make_shared<LOD>(); }},
-        {"Layer", [] { return std::make_shared<Layer>(); }},
-        {"LayerSet", [] { return std::make_shared<LayerSet>(); }},
-        {"Layout", [] { return std::make_shared<Layout>(); }},
-        {"LayoutGroup", [] { return std::make_shared<LayoutGroup>(); }},
-        {"LayoutLayer", [] { return std::make_shared<LayoutLayer>(); }},
-        {"LinePickSensor", [] { return std::make_shared<LinePickSensor>(); }},
-        {"LineProperties", [] { return std::make_shared<LineProperties>(); }},
-        {"LineSet", [] { return std::make_shared<LineSet>(); }},
-        {"ListenerPointSource", [] { return std::make_shared<ListenerPointSource>(); }},
-        {"LoadSensor", [] { return std::make_shared<LoadSensor>(); }},
-        {"LocalFog", [] { return std::make_shared<LocalFog>(); }},
-        {"Material", [] { return std::make_shared<Material>(); }},
-        {"Matrix3VertexAttribute", [] { return std::make_shared<Matrix3VertexAttribute>(); }},
-        {"Matrix4VertexAttribute", [] { return std::make_shared<Matrix4VertexAttribute>(); }},
-        {"MetadataBoolean", [] { return std::make_shared<MetadataBoolean>(); }},
-        {"MetadataDouble", [] { return std::make_shared<MetadataDouble>(); }},
-        {"MetadataFloat", [] { return std::make_shared<MetadataFloat>(); }},
-        {"MetadataInteger", [] { return std::make_shared<MetadataInteger>(); }},
-        {"MetadataSet", [] { return std::make_shared<MetadataSet>(); }},
-        {"MetadataString", [] { return std::make_shared<MetadataString>(); }},
-        {"MicrophoneSource", [] { return std::make_shared<MicrophoneSource>(); }},
-        {"MotorJoint", [] { return std::make_shared<MotorJoint>(); }},
-        {"MovieTexture", [] { return std::make_shared<MovieTexture>(); }},
-        {"MultiTexture", [] { return std::make_shared<MultiTexture>(); }},
-        {"MultiTextureCoordinate", [] { return std::make_shared<MultiTextureCoordinate>(); }},
-        {"MultiTextureTransform", [] { return std::make_shared<MultiTextureTransform>(); }},
-        {"NavigationInfo", [] { return std::make_shared<NavigationInfo>(); }},
-        {"Normal", [] { return std::make_shared<Normal>(); }},
-        {"NormalInterpolator", [] { return std::make_shared<NormalInterpolator>(); }},
-        {"NurbsCurve", [] { return std::make_shared<NurbsCurve>(); }},
-        {"NurbsCurve2D", [] { return std::make_shared<NurbsCurve2D>(); }},
-        {"NurbsOrientationInterpolator", [] { return std::make_shared<NurbsOrientationInterpolator>(); }},
-        {"NurbsPatchSurface", [] { return std::make_shared<NurbsPatchSurface>(); }},
-        {"NurbsPositionInterpolator", [] { return std::make_shared<NurbsPositionInterpolator>(); }},
-        {"NurbsSet", [] { return std::make_shared<NurbsSet>(); }},
-        {"NurbsSurfaceInterpolator", [] { return std::make_shared<NurbsSurfaceInterpolator>(); }},
-        {"NurbsSweptSurface", [] { return std::make_shared<NurbsSweptSurface>(); }},
-        {"NurbsSwungSurface", [] { return std::make_shared<NurbsSwungSurface>(); }},
-        {"NurbsTextureCoordinate", [] { return std::make_shared<NurbsTextureCoordinate>(); }},
-        {"NurbsTrimmedSurface", [] { return std::make_shared<NurbsTrimmedSurface>(); }},
-        {"OpacityMapVolumeStyle", [] { return std::make_shared<OpacityMapVolumeStyle>(); }},
-        {"OrientationChaser", [] { return std::make_shared<OrientationChaser>(); }},
-        {"OrientationDamper", [] { return std::make_shared<OrientationDamper>(); }},
-        {"OrientationInterpolator", [] { return std::make_shared<OrientationInterpolator>(); }},
-        {"OrthoViewpoint", [] { return std::make_shared<OrthoViewpoint>(); }},
-        {"OscillatorSource", [] { return std::make_shared<OscillatorSource>(); }},
-        {"PackagedShader", [] { return std::make_shared<PackagedShader>(); }},
-        {"ParticleSystem", [] { return std::make_shared<ParticleSystem>(); }},
-        {"PeriodicWave", [] { return std::make_shared<PeriodicWave>(); }},
-        {"PhysicalMaterial", [] { return std::make_shared<PhysicalMaterial>(); }},
-        {"PickableGroup", [] { return std::make_shared<PickableGroup>(); }},
-        {"PixelTexture", [] { return std::make_shared<PixelTexture>(); }},
-        {"PixelTexture3D", [] { return std::make_shared<PixelTexture3D>(); }},
-        {"PlaneSensor", [] { return std::make_shared<PlaneSensor>(); }},
-        {"PointEmitter", [] { return std::make_shared<PointEmitter>(); }},
-        {"PointLight", [] { return std::make_shared<PointLight>(); }},
-        {"PointPickSensor", [] { return std::make_shared<PointPickSensor>(); }},
-        {"PointProperties", [] { return std::make_shared<PointProperties>(); }},
-        {"PointSet", [] { return std::make_shared<PointSet>(); }},
-        {"Polyline2D", [] { return std::make_shared<Polyline2D>(); }},
-        {"PolylineEmitter", [] { return std::make_shared<PolylineEmitter>(); }},
-        {"Polypoint2D", [] { return std::make_shared<Polypoint2D>(); }},
-        {"PositionChaser", [] { return std::make_shared<PositionChaser>(); }},
-        {"PositionChaser2D", [] { return std::make_shared<PositionChaser2D>(); }},
-        {"PositionDamper", [] { return std::make_shared<PositionDamper>(); }},
-        {"PositionDamper2D", [] { return std::make_shared<PositionDamper2D>(); }},
-        {"PositionInterpolator", [] { return std::make_shared<PositionInterpolator>(); }},
-        {"PositionInterpolator2D", [] { return std::make_shared<PositionInterpolator2D>(); }},
-        {"PrimitivePickSensor", [] { return std::make_shared<PrimitivePickSensor>(); }},
-        {"ProgramShader", [] { return std::make_shared<ProgramShader>(); }},
-        {"ProjectionVolumeStyle", [] { return std::make_shared<ProjectionVolumeStyle>(); }},
-        {"ProtoInstance", [] { return std::make_shared<ProtoInstance>(); }},
-        {"ProximitySensor", [] { return std::make_shared<ProximitySensor>(); }},
-        {"QuadSet", [] { return std::make_shared<QuadSet>(); }},
-        {"ReceiverPdu", [] { return std::make_shared<ReceiverPdu>(); }},
-        {"Rectangle2D", [] { return std::make_shared<Rectangle2D>(); }},
-        {"RigidBody", [] { return std::make_shared<RigidBody>(); }},
-        {"RigidBodyCollection", [] { return std::make_shared<RigidBodyCollection>(); }},
-        {"ScalarChaser", [] { return std::make_shared<ScalarChaser>(); }},
-        {"ScalarDamper", [] { return std::make_shared<ScalarDamper>(); }},
-        {"ScalarInterpolator", [] { return std::make_shared<ScalarInterpolator>(); }},
-        {"ScreenFontStyle", [] { return std::make_shared<ScreenFontStyle>(); }},
-        {"ScreenGroup", [] { return std::make_shared<ScreenGroup>(); }},
-        {"Script", [] { return std::make_shared<Script>(); }},
-        {"SegmentedVolumeData", [] { return std::make_shared<SegmentedVolumeData>(); }},
-        {"ShadedVolumeStyle", [] { return std::make_shared<ShadedVolumeStyle>(); }},
-        {"ShaderPart", [] { return std::make_shared<ShaderPart>(); }},
-        {"ShaderProgram", [] { return std::make_shared<ShaderProgram>(); }},
-        {"Shape", [] { return std::make_shared<Shape>(); }},
-        {"SignalPdu", [] { return std::make_shared<SignalPdu>(); }},
-        {"SilhouetteEnhancementVolumeStyle", [] { return std::make_shared<SilhouetteEnhancementVolumeStyle>(); }},
-        {"SingleAxisHingeJoint", [] { return std::make_shared<SingleAxisHingeJoint>(); }},
-        {"SliderJoint", [] { return std::make_shared<SliderJoint>(); }},
-        {"Sound", [] { return std::make_shared<Sound>(); }},
-        {"SpatialSound", [] { return std::make_shared<SpatialSound>(); }},
-        {"Sphere", [] { return std::make_shared<Sphere>(); }},
-        {"SphereSensor", [] { return std::make_shared<SphereSensor>(); }},
-        {"SplinePositionInterpolator", [] { return std::make_shared<SplinePositionInterpolator>(); }},
-        {"SplinePositionInterpolator2D", [] { return std::make_shared<SplinePositionInterpolator2D>(); }},
-        {"SplineScalarInterpolator", [] { return std::make_shared<SplineScalarInterpolator>(); }},
-        {"SpotLight", [] { return std::make_shared<SpotLight>(); }},
-        {"SquadOrientationInterpolator", [] { return std::make_shared<SquadOrientationInterpolator>(); }},
-        {"StaticGroup", [] { return std::make_shared<StaticGroup>(); }},
-        {"StreamAudioDestination", [] { return std::make_shared<StreamAudioDestination>(); }},
-        {"StreamAudioSource", [] { return std::make_shared<StreamAudioSource>(); }},
-        {"StringSensor", [] { return std::make_shared<StringSensor>(); }},
-        {"SurfaceEmitter", [] { return std::make_shared<SurfaceEmitter>(); }},
-        {"Switch", [] { return std::make_shared<Switch>(); }},
-        {"TexCoordChaser2D", [] { return std::make_shared<TexCoordChaser2D>(); }},
-        {"TexCoordDamper2D", [] { return std::make_shared<TexCoordDamper2D>(); }},
-        {"Text", [] { return std::make_shared<Text>(); }},
-        {"TextureBackground", [] { return std::make_shared<TextureBackground>(); }},
-        {"TextureCoordinate", [] { return std::make_shared<TextureCoordinate>(); }},
-        {"TextureCoordinate3D", [] { return std::make_shared<TextureCoordinate3D>(); }},
-        {"TextureCoordinate4D", [] { return std::make_shared<TextureCoordinate4D>(); }},
-        {"TextureCoordinateGenerator", [] { return std::make_shared<TextureCoordinateGenerator>(); }},
-        {"TextureProjector", [] { return std::make_shared<TextureProjector>(); }},
-        {"TextureProjectorParallel", [] { return std::make_shared<TextureProjectorParallel>(); }},
-        {"TextureProperties", [] { return std::make_shared<TextureProperties>(); }},
-        {"TextureTransform", [] { return std::make_shared<TextureTransform>(); }},
-        {"TextureTransform3D", [] { return std::make_shared<TextureTransform3D>(); }},
-        {"TextureTransformMatrix3D", [] { return std::make_shared<TextureTransformMatrix3D>(); }},
-        {"TimeSensor", [] { return std::make_shared<TimeSensor>(); }},
-        {"TimeTrigger", [] { return std::make_shared<TimeTrigger>(); }},
-        {"ToneMappedVolumeStyle", [] { return std::make_shared<ToneMappedVolumeStyle>(); }},
-        {"TouchSensor", [] { return std::make_shared<TouchSensor>(); }},
-        {"Transform", [] { return std::make_shared<Transform>(); }},
-        {"TransformSensor", [] { return std::make_shared<TransformSensor>(); }},
-        {"TransmitterPdu", [] { return std::make_shared<TransmitterPdu>(); }},
-        {"TriangleFanSet", [] { return std::make_shared<TriangleFanSet>(); }},
-        {"TriangleSet", [] { return std::make_shared<TriangleSet>(); }},
-        {"TriangleSet2D", [] { return std::make_shared<TriangleSet2D>(); }},
-        {"TriangleStripSet", [] { return std::make_shared<TriangleStripSet>(); }},
-        {"TwoSidedMaterial", [] { return std::make_shared<TwoSidedMaterial>(); }},
-        {"UniversalJoint", [] { return std::make_shared<UniversalJoint>(); }},
-        {"UnlitMaterial", [] { return std::make_shared<UnlitMaterial>(); }},
-        {"Viewpoint", [] { return std::make_shared<Viewpoint>(); }},
-        {"ViewpointGroup", [] { return std::make_shared<ViewpointGroup>(); }},
-        {"Viewport", [] { return std::make_shared<Viewport>(); }},
-        {"VisibilitySensor", [] { return std::make_shared<VisibilitySensor>(); }},
-        {"VolumeData", [] { return std::make_shared<VolumeData>(); }},
-        {"VolumeEmitter", [] { return std::make_shared<VolumeEmitter>(); }},
-        {"VolumePickSensor", [] { return std::make_shared<VolumePickSensor>(); }},
-        {"WaveShaper", [] { return std::make_shared<WaveShaper>(); }},
-        {"WindPhysicsModel", [] { return std::make_shared<WindPhysicsModel>(); }},
-        {"WorldInfo", [] { return std::make_shared<WorldInfo>(); }},
+        {"AcousticProperties", &factory_detail::createAcousticProperties},
+        {"Analyser", &factory_detail::createAnalyser},
+        {"Anchor", &factory_detail::createAnchor},
+        {"Appearance", &factory_detail::createAppearance},
+        {"Arc2D", &factory_detail::createArc2D},
+        {"ArcClose2D", &factory_detail::createArcClose2D},
+        {"AudioClip", &factory_detail::createAudioClip},
+        {"AudioDestination", &factory_detail::createAudioDestination},
+        {"Background", &factory_detail::createBackground},
+        {"BallJoint", &factory_detail::createBallJoint},
+        {"Billboard", &factory_detail::createBillboard},
+        {"BiquadFilter", &factory_detail::createBiquadFilter},
+        {"BlendedVolumeStyle", &factory_detail::createBlendedVolumeStyle},
+        {"BooleanFilter", &factory_detail::createBooleanFilter},
+        {"BooleanSequencer", &factory_detail::createBooleanSequencer},
+        {"BooleanToggle", &factory_detail::createBooleanToggle},
+        {"BooleanTrigger", &factory_detail::createBooleanTrigger},
+        {"BoundaryEnhancementVolumeStyle", &factory_detail::createBoundaryEnhancementVolumeStyle},
+        {"BoundedPhysicsModel", &factory_detail::createBoundedPhysicsModel},
+        {"Box", &factory_detail::createBox},
+        {"BufferAudioSource", &factory_detail::createBufferAudioSource},
+        {"CADAssembly", &factory_detail::createCADAssembly},
+        {"CADFace", &factory_detail::createCADFace},
+        {"CADLayer", &factory_detail::createCADLayer},
+        {"CADPart", &factory_detail::createCADPart},
+        {"CartoonVolumeStyle", &factory_detail::createCartoonVolumeStyle},
+        {"ChannelMerger", &factory_detail::createChannelMerger},
+        {"ChannelSelector", &factory_detail::createChannelSelector},
+        {"ChannelSplitter", &factory_detail::createChannelSplitter},
+        {"Circle2D", &factory_detail::createCircle2D},
+        {"ClipPlane", &factory_detail::createClipPlane},
+        {"CollidableOffset", &factory_detail::createCollidableOffset},
+        {"CollidableShape", &factory_detail::createCollidableShape},
+        {"Collision", &factory_detail::createCollision},
+        {"CollisionCollection", &factory_detail::createCollisionCollection},
+        {"CollisionSensor", &factory_detail::createCollisionSensor},
+        {"CollisionSpace", &factory_detail::createCollisionSpace},
+        {"Color", &factory_detail::createColor},
+        {"ColorChaser", &factory_detail::createColorChaser},
+        {"ColorDamper", &factory_detail::createColorDamper},
+        {"ColorInterpolator", &factory_detail::createColorInterpolator},
+        {"ColorRGBA", &factory_detail::createColorRGBA},
+        {"ComposedCubeMapTexture", &factory_detail::createComposedCubeMapTexture},
+        {"ComposedShader", &factory_detail::createComposedShader},
+        {"ComposedTexture3D", &factory_detail::createComposedTexture3D},
+        {"ComposedVolumeStyle", &factory_detail::createComposedVolumeStyle},
+        {"Cone", &factory_detail::createCone},
+        {"ConeEmitter", &factory_detail::createConeEmitter},
+        {"Contact", &factory_detail::createContact},
+        {"Contour2D", &factory_detail::createContour2D},
+        {"ContourPolyline2D", &factory_detail::createContourPolyline2D},
+        {"Convolver", &factory_detail::createConvolver},
+        {"Coordinate", &factory_detail::createCoordinate},
+        {"CoordinateChaser", &factory_detail::createCoordinateChaser},
+        {"CoordinateDamper", &factory_detail::createCoordinateDamper},
+        {"CoordinateDouble", &factory_detail::createCoordinateDouble},
+        {"CoordinateInterpolator", &factory_detail::createCoordinateInterpolator},
+        {"CoordinateInterpolator2D", &factory_detail::createCoordinateInterpolator2D},
+        {"Cylinder", &factory_detail::createCylinder},
+        {"CylinderSensor", &factory_detail::createCylinderSensor},
+        {"DISEntityManager", &factory_detail::createDISEntityManager},
+        {"DISEntityTypeMapping", &factory_detail::createDISEntityTypeMapping},
+        {"Delay", &factory_detail::createDelay},
+        {"DirectionalLight", &factory_detail::createDirectionalLight},
+        {"Disk2D", &factory_detail::createDisk2D},
+        {"DoubleAxisHingeJoint", &factory_detail::createDoubleAxisHingeJoint},
+        {"DynamicsCompressor", &factory_detail::createDynamicsCompressor},
+        {"EaseInEaseOut", &factory_detail::createEaseInEaseOut},
+        {"EdgeEnhancementVolumeStyle", &factory_detail::createEdgeEnhancementVolumeStyle},
+        {"ElevationGrid", &factory_detail::createElevationGrid},
+        {"EspduTransform", &factory_detail::createEspduTransform},
+        {"ExplosionEmitter", &factory_detail::createExplosionEmitter},
+        {"Extrusion", &factory_detail::createExtrusion},
+        {"FillProperties", &factory_detail::createFillProperties},
+        {"FloatVertexAttribute", &factory_detail::createFloatVertexAttribute},
+        {"Fog", &factory_detail::createFog},
+        {"FogCoordinate", &factory_detail::createFogCoordinate},
+        {"FontStyle", &factory_detail::createFontStyle},
+        {"ForcePhysicsModel", &factory_detail::createForcePhysicsModel},
+        {"Gain", &factory_detail::createGain},
+        {"GeneratedCubeMapTexture", &factory_detail::createGeneratedCubeMapTexture},
+        {"GeoCoordinate", &factory_detail::createGeoCoordinate},
+        {"GeoElevationGrid", &factory_detail::createGeoElevationGrid},
+        {"GeoLOD", &factory_detail::createGeoLOD},
+        {"GeoLocation", &factory_detail::createGeoLocation},
+        {"GeoMetadata", &factory_detail::createGeoMetadata},
+        {"GeoOrigin", &factory_detail::createGeoOrigin},
+        {"GeoPositionInterpolator", &factory_detail::createGeoPositionInterpolator},
+        {"GeoProximitySensor", &factory_detail::createGeoProximitySensor},
+        {"GeoTouchSensor", &factory_detail::createGeoTouchSensor},
+        {"GeoTransform", &factory_detail::createGeoTransform},
+        {"GeoViewpoint", &factory_detail::createGeoViewpoint},
+        {"Group", &factory_detail::createGroup},
+        {"HAnimDisplacer", &factory_detail::createHAnimDisplacer},
+        {"HAnimHumanoid", &factory_detail::createHAnimHumanoid},
+        {"HAnimJoint", &factory_detail::createHAnimJoint},
+        {"HAnimMotion", &factory_detail::createHAnimMotion},
+        {"HAnimSegment", &factory_detail::createHAnimSegment},
+        {"HAnimSite", &factory_detail::createHAnimSite},
+        {"ImageCubeMapTexture", &factory_detail::createImageCubeMapTexture},
+        {"ImageTexture", &factory_detail::createImageTexture},
+        {"ImageTexture3D", &factory_detail::createImageTexture3D},
+        {"IndexedFaceSet", &factory_detail::createIndexedFaceSet},
+        {"IndexedLineSet", &factory_detail::createIndexedLineSet},
+        {"IndexedQuadSet", &factory_detail::createIndexedQuadSet},
+        {"IndexedTriangleFanSet", &factory_detail::createIndexedTriangleFanSet},
+        {"IndexedTriangleSet", &factory_detail::createIndexedTriangleSet},
+        {"IndexedTriangleStripSet", &factory_detail::createIndexedTriangleStripSet},
+        {"Inline", &factory_detail::createInline},
+        {"IntegerSequencer", &factory_detail::createIntegerSequencer},
+        {"IntegerTrigger", &factory_detail::createIntegerTrigger},
+        {"IsoSurfaceVolumeData", &factory_detail::createIsoSurfaceVolumeData},
+        {"KeySensor", &factory_detail::createKeySensor},
+        {"LOD", &factory_detail::createLOD},
+        {"Layer", &factory_detail::createLayer},
+        {"LayerSet", &factory_detail::createLayerSet},
+        {"Layout", &factory_detail::createLayout},
+        {"LayoutGroup", &factory_detail::createLayoutGroup},
+        {"LayoutLayer", &factory_detail::createLayoutLayer},
+        {"LinePickSensor", &factory_detail::createLinePickSensor},
+        {"LineProperties", &factory_detail::createLineProperties},
+        {"LineSet", &factory_detail::createLineSet},
+        {"ListenerPointSource", &factory_detail::createListenerPointSource},
+        {"LoadSensor", &factory_detail::createLoadSensor},
+        {"LocalFog", &factory_detail::createLocalFog},
+        {"Material", &factory_detail::createMaterial},
+        {"Matrix3VertexAttribute", &factory_detail::createMatrix3VertexAttribute},
+        {"Matrix4VertexAttribute", &factory_detail::createMatrix4VertexAttribute},
+        {"MetadataBoolean", &factory_detail::createMetadataBoolean},
+        {"MetadataDouble", &factory_detail::createMetadataDouble},
+        {"MetadataFloat", &factory_detail::createMetadataFloat},
+        {"MetadataInteger", &factory_detail::createMetadataInteger},
+        {"MetadataSet", &factory_detail::createMetadataSet},
+        {"MetadataString", &factory_detail::createMetadataString},
+        {"MicrophoneSource", &factory_detail::createMicrophoneSource},
+        {"MotorJoint", &factory_detail::createMotorJoint},
+        {"MovieTexture", &factory_detail::createMovieTexture},
+        {"MultiTexture", &factory_detail::createMultiTexture},
+        {"MultiTextureCoordinate", &factory_detail::createMultiTextureCoordinate},
+        {"MultiTextureTransform", &factory_detail::createMultiTextureTransform},
+        {"NavigationInfo", &factory_detail::createNavigationInfo},
+        {"Normal", &factory_detail::createNormal},
+        {"NormalInterpolator", &factory_detail::createNormalInterpolator},
+        {"NurbsCurve", &factory_detail::createNurbsCurve},
+        {"NurbsCurve2D", &factory_detail::createNurbsCurve2D},
+        {"NurbsOrientationInterpolator", &factory_detail::createNurbsOrientationInterpolator},
+        {"NurbsPatchSurface", &factory_detail::createNurbsPatchSurface},
+        {"NurbsPositionInterpolator", &factory_detail::createNurbsPositionInterpolator},
+        {"NurbsSet", &factory_detail::createNurbsSet},
+        {"NurbsSurfaceInterpolator", &factory_detail::createNurbsSurfaceInterpolator},
+        {"NurbsSweptSurface", &factory_detail::createNurbsSweptSurface},
+        {"NurbsSwungSurface", &factory_detail::createNurbsSwungSurface},
+        {"NurbsTextureCoordinate", &factory_detail::createNurbsTextureCoordinate},
+        {"NurbsTrimmedSurface", &factory_detail::createNurbsTrimmedSurface},
+        {"OpacityMapVolumeStyle", &factory_detail::createOpacityMapVolumeStyle},
+        {"OrientationChaser", &factory_detail::createOrientationChaser},
+        {"OrientationDamper", &factory_detail::createOrientationDamper},
+        {"OrientationInterpolator", &factory_detail::createOrientationInterpolator},
+        {"OrthoViewpoint", &factory_detail::createOrthoViewpoint},
+        {"OscillatorSource", &factory_detail::createOscillatorSource},
+        {"PackagedShader", &factory_detail::createPackagedShader},
+        {"ParticleSystem", &factory_detail::createParticleSystem},
+        {"PeriodicWave", &factory_detail::createPeriodicWave},
+        {"PhysicalMaterial", &factory_detail::createPhysicalMaterial},
+        {"PickableGroup", &factory_detail::createPickableGroup},
+        {"PixelTexture", &factory_detail::createPixelTexture},
+        {"PixelTexture3D", &factory_detail::createPixelTexture3D},
+        {"PlaneSensor", &factory_detail::createPlaneSensor},
+        {"PointEmitter", &factory_detail::createPointEmitter},
+        {"PointLight", &factory_detail::createPointLight},
+        {"PointPickSensor", &factory_detail::createPointPickSensor},
+        {"PointProperties", &factory_detail::createPointProperties},
+        {"PointSet", &factory_detail::createPointSet},
+        {"Polyline2D", &factory_detail::createPolyline2D},
+        {"PolylineEmitter", &factory_detail::createPolylineEmitter},
+        {"Polypoint2D", &factory_detail::createPolypoint2D},
+        {"PositionChaser", &factory_detail::createPositionChaser},
+        {"PositionChaser2D", &factory_detail::createPositionChaser2D},
+        {"PositionDamper", &factory_detail::createPositionDamper},
+        {"PositionDamper2D", &factory_detail::createPositionDamper2D},
+        {"PositionInterpolator", &factory_detail::createPositionInterpolator},
+        {"PositionInterpolator2D", &factory_detail::createPositionInterpolator2D},
+        {"PrimitivePickSensor", &factory_detail::createPrimitivePickSensor},
+        {"ProgramShader", &factory_detail::createProgramShader},
+        {"ProjectionVolumeStyle", &factory_detail::createProjectionVolumeStyle},
+        {"ProtoInstance", &factory_detail::createProtoInstance},
+        {"ProximitySensor", &factory_detail::createProximitySensor},
+        {"QuadSet", &factory_detail::createQuadSet},
+        {"ReceiverPdu", &factory_detail::createReceiverPdu},
+        {"Rectangle2D", &factory_detail::createRectangle2D},
+        {"RigidBody", &factory_detail::createRigidBody},
+        {"RigidBodyCollection", &factory_detail::createRigidBodyCollection},
+        {"ScalarChaser", &factory_detail::createScalarChaser},
+        {"ScalarDamper", &factory_detail::createScalarDamper},
+        {"ScalarInterpolator", &factory_detail::createScalarInterpolator},
+        {"ScreenFontStyle", &factory_detail::createScreenFontStyle},
+        {"ScreenGroup", &factory_detail::createScreenGroup},
+        {"Script", &factory_detail::createScript},
+        {"SegmentedVolumeData", &factory_detail::createSegmentedVolumeData},
+        {"ShadedVolumeStyle", &factory_detail::createShadedVolumeStyle},
+        {"ShaderPart", &factory_detail::createShaderPart},
+        {"ShaderProgram", &factory_detail::createShaderProgram},
+        {"Shape", &factory_detail::createShape},
+        {"SignalPdu", &factory_detail::createSignalPdu},
+        {"SilhouetteEnhancementVolumeStyle", &factory_detail::createSilhouetteEnhancementVolumeStyle},
+        {"SingleAxisHingeJoint", &factory_detail::createSingleAxisHingeJoint},
+        {"SliderJoint", &factory_detail::createSliderJoint},
+        {"Sound", &factory_detail::createSound},
+        {"SpatialSound", &factory_detail::createSpatialSound},
+        {"Sphere", &factory_detail::createSphere},
+        {"SphereSensor", &factory_detail::createSphereSensor},
+        {"SplinePositionInterpolator", &factory_detail::createSplinePositionInterpolator},
+        {"SplinePositionInterpolator2D", &factory_detail::createSplinePositionInterpolator2D},
+        {"SplineScalarInterpolator", &factory_detail::createSplineScalarInterpolator},
+        {"SpotLight", &factory_detail::createSpotLight},
+        {"SquadOrientationInterpolator", &factory_detail::createSquadOrientationInterpolator},
+        {"StaticGroup", &factory_detail::createStaticGroup},
+        {"StreamAudioDestination", &factory_detail::createStreamAudioDestination},
+        {"StreamAudioSource", &factory_detail::createStreamAudioSource},
+        {"StringSensor", &factory_detail::createStringSensor},
+        {"SurfaceEmitter", &factory_detail::createSurfaceEmitter},
+        {"Switch", &factory_detail::createSwitch},
+        {"TexCoordChaser2D", &factory_detail::createTexCoordChaser2D},
+        {"TexCoordDamper2D", &factory_detail::createTexCoordDamper2D},
+        {"Text", &factory_detail::createText},
+        {"TextureBackground", &factory_detail::createTextureBackground},
+        {"TextureCoordinate", &factory_detail::createTextureCoordinate},
+        {"TextureCoordinate3D", &factory_detail::createTextureCoordinate3D},
+        {"TextureCoordinate4D", &factory_detail::createTextureCoordinate4D},
+        {"TextureCoordinateGenerator", &factory_detail::createTextureCoordinateGenerator},
+        {"TextureProjector", &factory_detail::createTextureProjector},
+        {"TextureProjectorParallel", &factory_detail::createTextureProjectorParallel},
+        {"TextureProperties", &factory_detail::createTextureProperties},
+        {"TextureTransform", &factory_detail::createTextureTransform},
+        {"TextureTransform3D", &factory_detail::createTextureTransform3D},
+        {"TextureTransformMatrix3D", &factory_detail::createTextureTransformMatrix3D},
+        {"TimeSensor", &factory_detail::createTimeSensor},
+        {"TimeTrigger", &factory_detail::createTimeTrigger},
+        {"ToneMappedVolumeStyle", &factory_detail::createToneMappedVolumeStyle},
+        {"TouchSensor", &factory_detail::createTouchSensor},
+        {"Transform", &factory_detail::createTransform},
+        {"TransformSensor", &factory_detail::createTransformSensor},
+        {"TransmitterPdu", &factory_detail::createTransmitterPdu},
+        {"TriangleFanSet", &factory_detail::createTriangleFanSet},
+        {"TriangleSet", &factory_detail::createTriangleSet},
+        {"TriangleSet2D", &factory_detail::createTriangleSet2D},
+        {"TriangleStripSet", &factory_detail::createTriangleStripSet},
+        {"TwoSidedMaterial", &factory_detail::createTwoSidedMaterial},
+        {"UniversalJoint", &factory_detail::createUniversalJoint},
+        {"UnlitMaterial", &factory_detail::createUnlitMaterial},
+        {"Viewpoint", &factory_detail::createViewpoint},
+        {"ViewpointGroup", &factory_detail::createViewpointGroup},
+        {"Viewport", &factory_detail::createViewport},
+        {"VisibilitySensor", &factory_detail::createVisibilitySensor},
+        {"VolumeData", &factory_detail::createVolumeData},
+        {"VolumeEmitter", &factory_detail::createVolumeEmitter},
+        {"VolumePickSensor", &factory_detail::createVolumePickSensor},
+        {"WaveShaper", &factory_detail::createWaveShaper},
+        {"WindPhysicsModel", &factory_detail::createWindPhysicsModel},
+        {"WorldInfo", &factory_detail::createWorldInfo},
     };
     return reg;
 }

@@ -224,4 +224,10 @@ void LocalFog::validateRanges(std::vector<RangeDiagnostic> &out) const {
                                            nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createLocalFog() {
+  return std::make_shared<LocalFog>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

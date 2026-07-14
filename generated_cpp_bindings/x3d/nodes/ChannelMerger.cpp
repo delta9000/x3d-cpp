@@ -287,4 +287,10 @@ void ChannelMerger::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createChannelMerger() {
+  return std::make_shared<ChannelMerger>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

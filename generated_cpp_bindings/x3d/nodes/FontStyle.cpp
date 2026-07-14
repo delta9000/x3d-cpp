@@ -317,4 +317,10 @@ void FontStyle::checkRangesSpacing(const SFFloat &value,
                                   "spacing below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createFontStyle() {
+  return std::make_shared<FontStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

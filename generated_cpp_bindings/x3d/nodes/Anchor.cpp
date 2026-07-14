@@ -361,4 +361,8 @@ void Anchor::validateRanges(std::vector<RangeDiagnostic> &out) const {
       X3DUrlObject::getAutoRefreshTimeLimit(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createAnchor() { return std::make_shared<Anchor>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

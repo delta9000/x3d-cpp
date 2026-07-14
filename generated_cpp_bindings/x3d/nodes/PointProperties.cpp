@@ -248,4 +248,10 @@ void PointProperties::checkRangesPointSizeScaleFactor(
                                   "pointSizeScaleFactor below minimum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createPointProperties() {
+  return std::make_shared<PointProperties>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

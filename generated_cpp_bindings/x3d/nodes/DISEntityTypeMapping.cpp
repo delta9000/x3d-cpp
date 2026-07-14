@@ -363,4 +363,10 @@ void DISEntityTypeMapping::validateRanges(
       X3DUrlObject::getAutoRefreshTimeLimit(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createDISEntityTypeMapping() {
+  return std::make_shared<DISEntityTypeMapping>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

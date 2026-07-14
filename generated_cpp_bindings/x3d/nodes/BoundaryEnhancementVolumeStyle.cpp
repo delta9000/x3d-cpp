@@ -266,4 +266,10 @@ void BoundaryEnhancementVolumeStyle::checkRangesRetainedOpacity(
                                   "retainedOpacity above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createBoundaryEnhancementVolumeStyle() {
+  return std::make_shared<BoundaryEnhancementVolumeStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

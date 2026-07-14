@@ -231,4 +231,10 @@ void TextureTransform::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTextureTransform() {
+  return std::make_shared<TextureTransform>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

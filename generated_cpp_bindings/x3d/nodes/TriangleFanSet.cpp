@@ -353,4 +353,10 @@ void TriangleFanSet::checkRangesFanCount(const MFInt32 &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTriangleFanSet() {
+  return std::make_shared<TriangleFanSet>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

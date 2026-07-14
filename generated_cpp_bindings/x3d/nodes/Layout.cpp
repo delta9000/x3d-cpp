@@ -353,4 +353,8 @@ void Layout::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createLayout() { return std::make_shared<Layout>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

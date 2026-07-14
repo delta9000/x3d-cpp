@@ -516,4 +516,10 @@ void CollisionCollection::checkRangesSoftnessErrorCorrection(
                         "softnessErrorCorrection above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCollisionCollection() {
+  return std::make_shared<CollisionCollection>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

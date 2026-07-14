@@ -503,4 +503,8 @@ void Contact::checkRangesSoftnessErrorCorrection(
                         "softnessErrorCorrection above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createContact() { return std::make_shared<Contact>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

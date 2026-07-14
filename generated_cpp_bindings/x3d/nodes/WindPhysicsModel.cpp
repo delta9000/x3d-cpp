@@ -270,4 +270,10 @@ void WindPhysicsModel::checkRangesTurbulence(
                                   "turbulence above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createWindPhysicsModel() {
+  return std::make_shared<WindPhysicsModel>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

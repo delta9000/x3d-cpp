@@ -259,4 +259,10 @@ void PositionChaser::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createPositionChaser() {
+  return std::make_shared<PositionChaser>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -374,4 +374,10 @@ void NavigationInfo::checkRangesVisibilityLimit(
                                   "visibilityLimit below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createNavigationInfo() {
+  return std::make_shared<NavigationInfo>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -351,4 +351,10 @@ void IsoSurfaceVolumeData::checkRangesSurfaceTolerance(
                                   "surfaceTolerance below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createIsoSurfaceVolumeData() {
+  return std::make_shared<IsoSurfaceVolumeData>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

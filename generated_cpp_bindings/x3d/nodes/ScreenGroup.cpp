@@ -261,4 +261,10 @@ void ScreenGroup::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createScreenGroup() {
+  return std::make_shared<ScreenGroup>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -294,4 +294,10 @@ void ImageTexture::validateRanges(std::vector<RangeDiagnostic> &out) const {
       X3DUrlObject::getAutoRefreshTimeLimit(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createImageTexture() {
+  return std::make_shared<ImageTexture>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

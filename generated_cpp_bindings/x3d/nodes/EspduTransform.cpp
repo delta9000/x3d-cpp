@@ -1756,4 +1756,10 @@ void EspduTransform::checkRangesWriteInterval(
                                   "writeInterval below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createEspduTransform() {
+  return std::make_shared<EspduTransform>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

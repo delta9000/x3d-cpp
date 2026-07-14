@@ -216,4 +216,10 @@ void NurbsSweptSurface::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createNurbsSweptSurface() {
+  return std::make_shared<NurbsSweptSurface>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

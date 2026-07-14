@@ -440,4 +440,10 @@ void UniversalJoint::checkRangesStop2ErrorCorrection(
                                   "stop2ErrorCorrection above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createUniversalJoint() {
+  return std::make_shared<UniversalJoint>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

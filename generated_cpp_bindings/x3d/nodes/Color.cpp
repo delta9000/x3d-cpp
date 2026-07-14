@@ -183,4 +183,8 @@ void Color::checkRangesColor(const MFColor &value, const std::string &nodeType,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createColor() { return std::make_shared<Color>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes
