@@ -40,7 +40,7 @@
     {
       "name": "fuzz",
       "displayName": "Fuzz (Clang + libFuzzer + ASan + UBSan)",
-      "description": "libFuzzer harness for parseDocument (Clang-only — `-fsanitize=fuzzer`). Build with `cmake --preset fuzz && cmake --build build-fuzz --target x3d_parse_fuzz`. Run `./build-fuzz/x3d_parse_fuzz corpus/` to explore, or `--max_total_time=60` for a bounded CI smoke. WERROR is OFF — Clang has additional default warnings (e.g. -Wmissing-braces in the generated code) that don't reflect actual bugs and would block the fuzz gate.",
+      "description": "libFuzzer harness for parseDocument (Clang-only). Compiled node/runtime layers use fuzzer-no-link coverage plus ASan/UBSan; the harness owns the libFuzzer driver. Build with `cmake --preset fuzz && cmake --build build-fuzz --target x3d_parse_fuzz`. Run `./build-fuzz/x3d_parse_fuzz corpus/` to explore, or `--max_total_time=60` for a bounded CI smoke. WERROR is OFF — Clang has additional default warnings (e.g. -Wmissing-braces in the generated code) that don't reflect actual bugs and would block the fuzz gate.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-fuzz",
       "cacheVariables": {

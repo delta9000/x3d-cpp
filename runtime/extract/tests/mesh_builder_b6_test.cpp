@@ -23,6 +23,7 @@
 //      stays byte-identical to the pre-B6 flat output.
 //   5) Authored Normal node WINS: creaseAngle is ignored when a Normal is present.
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
 

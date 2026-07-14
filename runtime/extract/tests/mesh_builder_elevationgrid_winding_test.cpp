@@ -9,6 +9,7 @@
 // default back-face cull (solid=TRUE) erases the terrain when viewed from above.
 // That was the Kelp Forest RockFloor "holes" regression.
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
 

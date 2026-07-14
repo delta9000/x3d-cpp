@@ -125,7 +125,7 @@ def test_header_contract_keeps_one_translation_unit_per_header(
     assert len(actual_sources) == len(contract_headers())
 
 
-def test_header_contract_graph_does_not_build_node_runtime(
+def test_header_contract_graph_does_not_build_compiled_runtimes(
     configured_ci: Path,
 ) -> None:
     commands = run_checked(
@@ -137,8 +137,13 @@ def test_header_contract_graph_does_not_build_node_runtime(
         "x3d_compile_contracts",
     )
 
-    assert "x3d_cpp_nodes.dir" not in commands
-    assert "libx3d_cpp_nodes" not in commands
+    for target in (
+        "x3d_cpp_nodes",
+        "x3d_cpp_authoring_runtime",
+        "x3d_cpp_runtime",
+    ):
+        assert f"{target}.dir" not in commands
+        assert f"lib{target}" not in commands
 
 
 def test_ci_behavior_and_header_contract_jobs_are_scoped() -> None:
@@ -209,3 +214,57 @@ def test_build_ci_mirrors_both_aggregates_in_order() -> None:
         "cmake --build --preset ci --target x3d_compile_contracts",
         'ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"',
     ]
+
+
+def test_compiled_parser_headers_do_not_export_implementation_dependencies() -> None:
+    forbidden_includes = {
+        "X3DParse.hpp": {
+            "ClassicVrmlReader.hpp",
+            "Inflate.hpp",
+            "JsonReader.hpp",
+            "NodeBuilder.hpp",
+            "PathConfine.hpp",
+            "Vrml97Dialect.hpp",
+            "Vrml97Reader.hpp",
+            "VrmlTokenizer.hpp",
+            "X3DProtoExpand.hpp",
+            "X3DRangeValidate.hpp",
+            "XmlReaderAdapter.hpp",
+        },
+        "NodeBuilder.hpp": {
+            "FieldValueIO.hpp",
+            "VrmlTokenizer.hpp",
+            "X3DRuntime.hpp",
+            "x3d/nodes/X3DNodeFactory.hpp",
+        },
+        "ClassicVrmlReader.hpp": {
+            "DynamicField.hpp",
+            "FieldAliases.hpp",
+            "FieldValueIO.hpp",
+            "NodeBuilder.hpp",
+            "RecursionLimits.hpp",
+            "x3d/nodes/X3DNodeFactory.hpp",
+        },
+        "JsonReader.hpp": {
+            "DynamicField.hpp",
+            "FieldAliases.hpp",
+            "FieldValueIO.hpp",
+            "JsonLite.hpp",
+            "NodeBuilder.hpp",
+            "x3d/nodes/Script.hpp",
+        },
+        "Vrml97Reader.hpp": {
+            "Vrml97Dialect.hpp",
+            "X3DRuntime.hpp",
+        },
+    }
+
+    for header_name, forbidden in forbidden_includes.items():
+        text = (REPO_ROOT / "runtime" / "parse" / header_name).read_text(
+            encoding="utf-8"
+        )
+        includes = set(re.findall(r'^#include\s+[<"]([^>"]+)[>"]', text, re.M))
+        assert includes.isdisjoint(forbidden), (
+            header_name,
+            sorted(includes & forbidden),
+        )

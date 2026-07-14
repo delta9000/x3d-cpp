@@ -66,6 +66,7 @@
 #include "PackedMesh.hpp"          // PackedMesh (Phase 1 binary geometry)
 #include "RecursionLimits.hpp"     // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "RenderItem.hpp"          // RenderItem descriptors + RenderDelta
+#include "TextExtract.hpp"         // buildTextMesh + outputOnly metrics
 #include "TextureExtract.hpp"      // T-TEX: TextureTransform bake + resolver + sampler enrich
 #include "TextureResolver.hpp"     // TextureResolver seam (embedder-supplied decode)
 #include "TransformSystem.hpp"     // localMatrix (static; per-path re-accumulation)

@@ -142,6 +142,20 @@ if(X3D_CPP_SAN)
     message(STATUS "x3d_cpp: X3D_CPP_SAN=ON -> ASan + UBSan enabled (-fno-sanitize-recover=all, -g1)")
 endif()
 option(X3D_CPP_FUZZ "Build the libFuzzer harness for parseDocument (requires Clang)" OFF)
+if(X3D_CPP_FUZZ)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR "X3D_CPP_FUZZ requires Clang (libFuzzer driver). Detected: ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+    # Parsing and node reflection now live in compiled libraries. Instrument every
+    # target built for the fuzz graph with coverage and sanitizers, but keep the
+    # libFuzzer main out of the libraries; x3d_parse_fuzz owns the driver below.
+    add_compile_options(
+        -fsanitize=fuzzer-no-link,address,undefined
+        -fno-omit-frame-pointer
+        -fno-sanitize-recover=all)
+    add_link_options(-fsanitize=address,undefined)
+    message(STATUS "x3d_cpp: X3D_CPP_FUZZ=ON -> compiled runtime layers use SanitizerCoverage + ASan + UBSan")
+endif()
 
 # ---------------------------------------------------------------------------
 # Compiled node library (C1): the generated *.cpp (per-node out-of-line
@@ -192,8 +206,66 @@ if(X3D_CPP_SHARED_NODES)
 endif()
 target_link_libraries(x3d_cpp_nodes PUBLIC x3d_cpp_headers)
 target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
-# Consumers that link the header interface also link the compiled definitions.
-target_link_libraries(x3d_cpp INTERFACE x3d_cpp_nodes)
+
+# ---------------------------------------------------------------------------
+# Compiled hand-written runtime layers. They follow the generated node
+# library's linkage mode so an implementation graph is either entirely shared
+# (the default) or entirely static (X3D_CPP_SHARED_NODES=OFF). Mixing modes can
+# absorb the same generated symbols into multiple DSOs, so it is deliberately
+# not exposed as a supported configuration.
+# ---------------------------------------------------------------------------
+add_library(x3d_cpp_authoring_runtime ${_x3d_node_library_type}
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/FieldValueIO.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/ChildOrder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/XmlWriter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/JsonWriter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/VrmlWriter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/CanonicalXmlWriter.cpp")
+add_library(x3d_cpp::authoring_runtime ALIAS x3d_cpp_authoring_runtime)
+set_target_properties(x3d_cpp_authoring_runtime PROPERTIES
+    EXPORT_NAME authoring_runtime)
+target_link_libraries(x3d_cpp_authoring_runtime PUBLIC x3d_cpp::nodes)
+target_compile_features(x3d_cpp_authoring_runtime PUBLIC cxx_std_20)
+
+add_library(x3d_cpp_runtime ${_x3d_node_library_type}
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/X3DParse.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/NodeBuilder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/ClassicVrmlReader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/JsonReader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/Vrml97Reader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/XmlReaderAdapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/MeshBuilder.cpp")
+add_library(x3d_cpp::runtime ALIAS x3d_cpp_runtime)
+set_target_properties(x3d_cpp_runtime PROPERTIES EXPORT_NAME runtime)
+target_link_libraries(x3d_cpp_runtime PUBLIC x3d_cpp::authoring_runtime)
+target_compile_features(x3d_cpp_runtime PUBLIC cxx_std_20)
+
+if(X3D_CPP_SHARED_NODES)
+    if(APPLE)
+        set(_x3d_runtime_install_rpath "@loader_path")
+    elseif(UNIX)
+        set(_x3d_runtime_install_rpath "$ORIGIN")
+    endif()
+    foreach(_runtime_target IN ITEMS
+            x3d_cpp_authoring_runtime
+            x3d_cpp_runtime)
+        set_target_properties(${_runtime_target} PROPERTIES
+            VERSION "${PROJECT_VERSION}"
+            SOVERSION "${PROJECT_VERSION_MAJOR}"
+            WINDOWS_EXPORT_ALL_SYMBOLS ON)
+        # Each installed DSO resolves the next implementation layer beside
+        # itself. Executable RUNPATH is not inherited for indirect dependencies.
+        if(DEFINED _x3d_runtime_install_rpath)
+            set_property(TARGET ${_runtime_target} PROPERTY
+                INSTALL_RPATH "${_x3d_runtime_install_rpath}")
+        endif()
+    endforeach()
+    unset(_x3d_runtime_install_rpath)
+endif()
+
+# Consumers of the complete interface receive all compiled definitions through
+# the full runtime's public dependency chain.
+target_link_libraries(x3d_cpp INTERFACE x3d_cpp::runtime)
 
 # ── Authoring slim target: node reflection + writers + range-validate only ──
 # INTERFACE facade over the compiled node library plus the authoring-only
@@ -201,7 +273,9 @@ target_link_libraries(x3d_cpp INTERFACE x3d_cpp_nodes)
 # the parse/execution/extract include dirs so consumers cannot reach those APIs.
 add_library(x3d_cpp_authoring INTERFACE)
 add_library(x3d_cpp::authoring ALIAS x3d_cpp_authoring)
-target_link_libraries(x3d_cpp_authoring INTERFACE x3d_cpp::nodes)
+set_target_properties(x3d_cpp_authoring PROPERTIES EXPORT_NAME authoring)
+target_link_libraries(x3d_cpp_authoring INTERFACE
+    x3d_cpp::authoring_runtime)
 target_include_directories(x3d_cpp_authoring INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime>"
@@ -227,7 +301,13 @@ target_link_libraries(x3d_cpp_sdk INTERFACE x3d_cpp::x3d_cpp)
 # ---------------------------------------------------------------------------
 # Install + export so downstream projects can find_package(x3d_cpp).
 # ---------------------------------------------------------------------------
-install(TARGETS x3d_cpp_headers x3d_cpp x3d_cpp_nodes x3d_cpp_sdk
+install(TARGETS
+        x3d_cpp_headers
+        x3d_cpp
+        x3d_cpp_nodes
+        x3d_cpp_authoring_runtime
+        x3d_cpp_runtime
+        x3d_cpp_sdk
     EXPORT x3d_cppTargets
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -1699,6 +1779,12 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/sdk_facade_test.cpp")
     target_link_libraries(x3d_sdk_facade PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_sdk_facade COMMAND x3d_sdk_facade)
+    add_executable(x3d_authoring_link_contract
+        "${CMAKE_CURRENT_SOURCE_DIR}/examples/embed_minimal/authoring.cpp")
+    target_link_libraries(x3d_authoring_link_contract PRIVATE
+        x3d_cpp::authoring)
+    add_test(NAME x3d_authoring_link_contract
+        COMMAND x3d_authoring_link_contract)
     # Installed-package embed smoke: install THIS build, then configure/build/run
     # examples/embed_minimal against it via find_package(x3d_cpp), so a broken
     # export or a missing installed header fails CI on the actual embedder path.
@@ -2335,19 +2421,12 @@ endif()
 # crash — the ASan/UBSan signal handlers are what actually catch the bug.
 # ---------------------------------------------------------------------------
 if(X3D_CPP_FUZZ)
-    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        message(FATAL_ERROR "X3D_CPP_FUZZ requires Clang (libFuzzer driver). Detected: ${CMAKE_CXX_COMPILER_ID}")
-    endif()
     add_executable(x3d_parse_fuzz
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parse_fuzz.cpp")
     target_link_libraries(x3d_parse_fuzz PRIVATE x3d_cpp::sdk)
-    # COMPILE-time instrumentation is what makes the harness useful: `fuzzer`
-    # inserts SanitizerCoverage (the edge feedback libFuzzer mutates against —
-    # without it the fuzzer runs blind and finds nothing), and `address,undefined`
-    # insert the ASan/UBSan checks that actually catch the memory/UB bugs. The
-    # SDK is header-only, so parseDocument inlines into this one TU — instrumenting
-    # it instruments the whole parse path. (The fuzz preset deliberately does NOT
-    # set X3D_CPP_SAN globally, so these flags are scoped to the harness target.)
+    # The compiled dependency graph receives fuzzer-no-link coverage plus
+    # ASan/UBSan above. This executable adds the libFuzzer driver and also
+    # instruments its small adapter callback.
     target_compile_options(x3d_parse_fuzz PRIVATE
         -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
     # Link the libFuzzer driver + ASan/UBSan runtimes so the fuzzer can run + signal.
@@ -2374,6 +2453,8 @@ _x3d_classify_present_targets(production
     x3d_cpp_headers
     x3d_cpp
     x3d_cpp_nodes
+    x3d_cpp_authoring_runtime
+    x3d_cpp_runtime
     x3d_cpp_authoring
     x3d_cpp_sdk
     x3d_ecmascript_backend
@@ -2412,6 +2493,7 @@ _x3d_classify_present_targets(behavior
     x3d_vrml97_reader
     x3d_json_reader
     x3d_sdk_facade
+    x3d_authoring_link_contract
     x3d_sound_system
     x3d_corpus_sweep
     x3d_corpus_audit
@@ -2534,6 +2616,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_vrml97_reader
         x3d_json_reader
         x3d_sdk_facade
+        x3d_authoring_link_contract
         x3d_sound_system
         x3d_corpus_smoke
         x3d_corpus_audit_smoke

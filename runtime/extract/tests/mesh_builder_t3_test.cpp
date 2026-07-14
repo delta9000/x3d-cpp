@@ -18,6 +18,7 @@
 //   6) hasColors / hasNormals flags + texCoord resolution.
 #include "MeshBuilder.hpp"
 
+#include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>

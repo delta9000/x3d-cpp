@@ -16,6 +16,7 @@
 #include "SceneExtractor.hpp"
 
 #include "MeshBuilder.hpp" // extract::recognizedGeometryType (the static oracle).
+#include "x3d/nodes/X3DNode.hpp"
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"

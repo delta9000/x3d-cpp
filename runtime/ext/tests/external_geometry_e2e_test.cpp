@@ -20,6 +20,7 @@
 
 #include "AssetResolver.hpp"
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 #include "PackedMesh.hpp"
 #include "RenderItem.hpp"
 #include "SceneExtractor.hpp"

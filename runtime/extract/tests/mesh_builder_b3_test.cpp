@@ -15,6 +15,7 @@
 //   6) Per-section scale shrinks the cross-section: a 2x-scaled section's verts
 //      sit at twice the radius of an unscaled one.
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
 

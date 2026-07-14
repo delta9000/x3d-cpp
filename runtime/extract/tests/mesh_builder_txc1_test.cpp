@@ -33,6 +33,7 @@
 //
 // Tests fail against the pre-TXC-1 code (seam placed at +Z) and pass after.
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
 

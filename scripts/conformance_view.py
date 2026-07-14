@@ -275,8 +275,13 @@ def build_model(repo: pathlib.Path) -> dict:
         wired |= {n for n, ifs in registry.items() if abstract in ifs}
 
     # 4. extraction
-    mesh_builder = repo / "runtime" / "extract" / "MeshBuilder.hpp"
-    handled_geom = parse_recognized_geometry(_read(mesh_builder)) if mesh_builder.exists() else set()
+    mesh_builder_stem = repo / "runtime" / "extract" / "MeshBuilder"
+    mesh_builder_text = "\n".join(
+        _read(path)
+        for suffix in (".hpp", ".cpp")
+        if (path := mesh_builder_stem.with_suffix(suffix)).exists()
+    )
+    handled_geom = parse_recognized_geometry(mesh_builder_text)
 
     # 5/6. findings + profiles
     findings = load_findings(conf_dir / "findings.yaml")

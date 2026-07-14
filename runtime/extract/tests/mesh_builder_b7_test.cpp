@@ -19,6 +19,7 @@
 //   naive fan (which produces inverted/overlapping triangles). The total triangle
 //   area must equal the polygon area and all triangles share one winding.
 #include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include "x3d/nodes/X3DNodeFactory.hpp"
 

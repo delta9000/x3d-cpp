@@ -27,6 +27,7 @@
 
 #include <any>
 #include <clocale>
+#include <cmath>
 #include <cstring>
 #include <iostream>
 #include <locale>

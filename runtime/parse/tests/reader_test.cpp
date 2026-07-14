@@ -18,8 +18,11 @@
 
 #include "FieldValueIO.hpp"
 #include "Inflate.hpp" // inflateGzip (gzip fixture round-trip)
+#include "NodeBuilder.hpp"
+#include "VrmlTokenizer.hpp"
 #include "X3DCodecs.hpp" // XmlWriter (to produce a known XML doc to read back)
 #include "X3DRuntime.hpp"
+#include "XmlReaderAdapter.hpp"
 
 // Concrete node types used by the sample scene / collectFieldValue checks.
 #include "x3d/nodes/Appearance.hpp"
