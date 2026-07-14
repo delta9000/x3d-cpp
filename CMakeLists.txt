@@ -1850,9 +1850,9 @@ endif()
 #
 # Both targets include tools/x3d-cli/ so they can see scene_equiv.hpp and
 # cli_gate.cpp without polluting the SDK include path.
-# Always built (not gated on X3D_CPP_BUILD_TESTS) so `mise run build` covers
-# them automatically. The gate is NOT added to ctest (it requires the corpus
-# archive + a committed goldens/validate-verdicts.tsv; run via mise run cli-gate).
+# The self-contained tests remain in the default build. The external-corpus
+# gates exist as explicit targets, but are excluded from `all` and from CTest;
+# their mise tasks build them before use.
 # ---------------------------------------------------------------------------
 add_executable(x3d_scene_equiv_test
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/scene_equiv_test.cpp")
@@ -1873,7 +1873,7 @@ target_link_libraries(x3d_gate_baseurl_roundtrip_test PRIVATE x3d_cpp::sdk)
 add_test(NAME x3d_gate_baseurl_roundtrip_test
          COMMAND x3d_gate_baseurl_roundtrip_test)
 
-add_executable(x3d_cli_gate
+add_executable(x3d_cli_gate EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/cli_gate.cpp")
 target_include_directories(x3d_cli_gate PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
@@ -1895,7 +1895,7 @@ target_include_directories(x3d_canonicalize_unit_test PRIVATE
 target_link_libraries(x3d_canonicalize_unit_test PRIVATE x3d_cpp::sdk)
 add_test(NAME x3d_canonicalize_unit_test COMMAND x3d_canonicalize_unit_test)
 
-add_executable(x3d_canon_gate
+add_executable(x3d_canon_gate EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/canon_gate.cpp")
 target_include_directories(x3d_canon_gate PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")

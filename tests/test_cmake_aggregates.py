@@ -88,6 +88,11 @@ def query_target_inputs(build_dir: Path, target: str) -> set[str]:
     return inputs
 
 
+def ninja_targets(build_dir: Path) -> set[str]:
+    output = run_checked("ninja", "-C", str(build_dir), "-t", "targets", "all")
+    return {line.split(":", 1)[0] for line in output.splitlines() if ":" in line}
+
+
 def normal_ctest_executable_targets(build_dir: Path) -> set[str]:
     targets: set[str] = set()
     for command in ctest_commands(build_dir).values():
@@ -139,3 +144,11 @@ def test_compile_contract_aggregate_and_ctest_labels_are_complete(
             "x3d_corpus_tools_cli_test",
         }:
             assert "behavior" in labels_for(test), test_name
+
+
+def test_external_corpus_gates_exist_but_are_not_default_build_inputs(
+    configured_ci: Path,
+) -> None:
+    gates = {"x3d_cli_gate", "x3d_canon_gate"}
+    assert gates <= ninja_targets(configured_ci)
+    assert not gates.intersection(query_target_inputs(configured_ci, "all"))

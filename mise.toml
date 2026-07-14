@@ -258,7 +258,7 @@ bash tools/x3d-cli/gen_golden.sh
 description = "Java-free differential gate (informative mode): compare our validator verdicts to X3DJSAIL golden + convert roundtrip. Produces tools/x3d-cli/goldens/divergence-report.md."
 run = """
 cmake --preset dev
-cmake --build --preset dev --target x3d_cli_gate
+cmake --build --preset dev --target x3d_cli x3d_cli_gate
 CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
 ./build/x3d_cli_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens
 """
@@ -267,6 +267,8 @@ CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
 description = "REGRESSION gate (CI): both cli_gate + canon_gate in --gate mode. Fails if any baseline-PASS item now fails. Requires: corpus at default path + committed baselines."
 depends = ["build"]
 run = """
+cmake --preset dev
+cmake --build --preset dev --target x3d_cli_gate x3d_canon_gate
 CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
 echo "=== cli_gate regression gate ==="
 ./build/x3d_cli_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens --gate
@@ -278,7 +280,7 @@ echo "=== canon_gate regression gate ==="
 description = "Refresh committed baselines: runs cli_gate + canon_gate in --write-baseline mode. Run after accepting new divergences, then commit the updated baseline TSVs."
 run = """
 cmake --preset dev
-cmake --build --preset dev --target x3d_cli_gate x3d_canon_gate
+cmake --build --preset dev --target x3d_cli x3d_cli_gate x3d_canon_gate
 CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
 echo "=== Writing cli-gate baseline ==="
 ./build/x3d_cli_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens --write-baseline
@@ -299,7 +301,7 @@ bash tools/x3d-cli/gen_canon_goldens.sh
 description = "X3DC14N tiered gate: T1=idempotence (CI), T2=tolerant-diff vs X3DJSAIL, T3=byte-exact rate. Runs T1 always; T2/T3 need mise run canon-golden-gen first."
 run = """
 cmake --preset dev
-cmake --build --preset dev --target x3d_canon_gate
+cmake --build --preset dev --target x3d_cli x3d_canon_gate
 CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
 ./build/x3d_canon_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens
 """
