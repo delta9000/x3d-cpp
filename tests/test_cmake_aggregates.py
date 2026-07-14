@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -174,7 +175,22 @@ def test_sanitizer_preset_and_drivers_are_debug_behavior_only() -> None:
     assert expected_test in (REPO_ROOT / ".github/workflows/ci.yml").read_text()
 
 
-def test_sanitizer_configures_without_install_only_contract(
+def test_sanitizer_configures_with_minimal_debug_information(
     tmp_path: Path,
 ) -> None:
-    run_checked("cmake", "--preset", "san", "-B", str(tmp_path / "san"))
+    build_dir = tmp_path / "san"
+    run_checked("cmake", "--preset", "san", "-B", str(build_dir))
+    compile_commands = json.loads(
+        (build_dir / "compile_commands.json").read_text(encoding="utf-8")
+    )
+    node_command = next(
+        entry["command"]
+        for entry in compile_commands
+        if "x3d_cpp_nodes.dir" in entry["command"]
+    )
+    flags = shlex.split(node_command)
+
+    assert "-fsanitize=address,undefined" in flags
+    assert "-g" in flags
+    assert "-g1" in flags
+    assert flags.index("-g1") > flags.index("-g")

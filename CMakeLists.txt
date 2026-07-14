@@ -125,8 +125,13 @@ endif()
 option(X3D_CPP_SAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer for every project target" OFF)
 if(X3D_CPP_SAN)
     add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
+    # CI needs symbolized function/source locations, not full debugger variable
+    # and type records. Debug's default -g made the behavior-only sanitizer tree
+    # roughly 24 GB; the later -g1 keeps useful ASan/UBSan stacks while bounding
+    # object and executable size.
+    add_compile_options(-g1)
     add_link_options(-fsanitize=address,undefined)
-    message(STATUS "x3d_cpp: X3D_CPP_SAN=ON -> ASan + UBSan enabled (-fno-sanitize-recover=all)")
+    message(STATUS "x3d_cpp: X3D_CPP_SAN=ON -> ASan + UBSan enabled (-fno-sanitize-recover=all, -g1)")
 endif()
 option(X3D_CPP_FUZZ "Build the libFuzzer harness for parseDocument (requires Clang)" OFF)
 
