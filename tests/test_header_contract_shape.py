@@ -3,12 +3,18 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW = yaml.safe_load(
+    (REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+)
+MISE = tomllib.loads((REPO_ROOT / "mise.toml").read_text(encoding="utf-8"))
 
 
 def run_checked(*command: str) -> str:
@@ -72,6 +78,15 @@ def isolation_source_path(
     return build_dir / "header_isolation" / group / f"{safe_name}.cpp"
 
 
+def job_run_lines(job: dict[str, object]) -> list[str]:
+    return [
+        line.strip()
+        for step in job["steps"]
+        for line in step.get("run", "").splitlines()
+        if line.strip()
+    ]
+
+
 def test_header_contract_is_one_ctest_and_one_ninja_target(
     configured_ci: Path,
 ) -> None:
@@ -108,3 +123,73 @@ def test_header_contract_keeps_one_translation_unit_per_header(
 
     assert actual_sources == expected_sources
     assert len(actual_sources) == len(contract_headers())
+
+
+def test_ci_behavior_and_header_contract_jobs_are_scoped() -> None:
+    jobs = WORKFLOW["jobs"]
+    behavior = jobs["cpp"]
+    contracts = jobs["cpp-headers"]
+
+    assert behavior["name"] == "C++ build + ctest (gcc, PR fast gate)"
+    assert contracts["name"] == "C++ header compile contracts (gcc, PR gate)"
+    for job in (behavior, contracts):
+        assert job["needs"] == "changes"
+        assert job["if"] == "needs.changes.outputs.cpp == 'true'"
+
+    behavior_lines = job_run_lines(behavior)
+    contract_lines = job_run_lines(contracts)
+    assert "cmake --preset ci" in behavior_lines
+    assert (
+        "cmake --build --preset ci --target x3d_behavior_tests"
+        in behavior_lines
+    )
+    assert (
+        'ctest --preset ci -L behavior --output-on-failure -j "$(nproc)"'
+        in behavior_lines
+    )
+    assert "cmake --preset ci" in contract_lines
+    assert (
+        "cmake --build --preset ci --target x3d_compile_contracts"
+        in contract_lines
+    )
+    assert (
+        'ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"'
+        in contract_lines
+    )
+
+    build_lines = [
+        line
+        for job in (behavior, contracts)
+        for line in job_run_lines(job)
+        if line.startswith("cmake --build")
+    ]
+    assert all("--target" in line for line in build_lines)
+
+
+def test_cpp_job_ccache_namespaces_are_separate_and_bounded() -> None:
+    jobs = WORKFLOW["jobs"]
+    expected_key_prefixes = {
+        "cpp": "ccache-behavior-",
+        "cpp-san": "ccache-san-",
+        "cpp-headers": "ccache-headers-",
+    }
+    for job_name, prefix in expected_key_prefixes.items():
+        job = jobs[job_name]
+        cache_step = next(step for step in job["steps"] if "with" in step)
+        assert cache_step["with"]["key"].startswith(prefix)
+        assert "ccache --max-size=750M" in job_run_lines(job)
+
+
+def test_build_ci_mirrors_both_aggregates_in_order() -> None:
+    lines = [
+        line.strip()
+        for line in MISE["tasks"]["build-ci"]["run"].splitlines()
+        if line.strip()
+    ]
+    assert lines == [
+        "cmake --preset ci",
+        "cmake --build --preset ci --target x3d_behavior_tests",
+        'ctest --preset ci -L behavior --output-on-failure -j "$(nproc)"',
+        "cmake --build --preset ci --target x3d_compile_contracts",
+        'ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"',
+    ]

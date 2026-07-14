@@ -15,8 +15,8 @@
     },
     {
       "name": "ci",
-      "displayName": "CI (mirrors the GitHub Actions cpp job)",
-      "description": "Local mirror of the GitHub Actions C++ gates: header isolation ON as one object target with one TU per public header, X3D_CPP_WERROR=ON (warnings become errors, the merge gate). Use `mise run build-ci` to drive the same gate locally before pushing.",
+      "displayName": "CI (behavior + compile-contract jobs)",
+      "description": "Shared configuration for the GitHub Actions behavior and header-contract jobs: header isolation ON as one object target with one TU per public header, X3D_CPP_WERROR=ON (warnings become errors, the merge gate). Use `mise run build-ci` to drive both scoped aggregates locally before pushing.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-ci",
       "cacheVariables": {

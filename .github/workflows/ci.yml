@@ -159,16 +159,45 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-gcc-pr-${{ github.sha }}
-          restore-keys: ccache-gcc-pr-
+          key: ccache-behavior-${{ github.sha }}
+          restore-keys: ccache-behavior-
+      - name: Bound ccache storage
+        run: ccache --max-size=750M
       # X3D_CPP_WERROR=ON mirrors the local ci preset: warnings become errors,
       # so a latent warning introduced in a PR fails the merge gate here.
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DX3D_CPP_WERROR=ON
-      - name: Build
-        run: cmake --build build
-      - name: Test
-        run: ctest --test-dir build --output-on-failure -j "$(nproc)"
+        run: cmake --preset ci
+      - name: Build behavior targets
+        run: cmake --build --preset ci --target x3d_behavior_tests
+      - name: Test behavior suite
+        run: ctest --preset ci -L behavior --output-on-failure -j "$(nproc)"
+
+  # Compile-only public-header and installed-consumer contracts are isolated
+  # from the fast runtime gate so their one-TU-per-header cost can run in
+  # parallel and cannot inflate the behavior critical path.
+  cpp-headers:
+    name: C++ header compile contracts (gcc, PR gate)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-headers-${{ github.sha }}
+          restore-keys: ccache-headers-
+      - name: Bound ccache storage
+        run: ccache --max-size=750M
+      - name: Configure
+        run: cmake --preset ci
+      - name: Build compile contracts
+        run: cmake --build --preset ci --target x3d_compile_contracts
+      - name: Test compile contracts
+        run: ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"
 
   # Sanitizer gate (BLD-2). Builds the behavior suite in Debug with ASan + UBSan
   # (-fno-sanitize-recover=all, so the first error aborts). Compile contracts,
@@ -190,6 +219,8 @@ jobs:
           path: ~/.cache/ccache
           key: ccache-san-${{ github.sha }}
           restore-keys: ccache-san-
+      - name: Bound ccache storage
+        run: ccache --max-size=750M
       - name: Configure (ASan + UBSan via the `san` preset)
         run: cmake --preset san
       - name: Build (sanitized)

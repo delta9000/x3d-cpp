@@ -45,16 +45,17 @@ cmake --build --preset dev
 ctest --preset dev -j "$(nproc)"
 """
 
-# build-ci: same as `build` but uses the `ci` CMake preset (per-header isolation
-# checks ON, mirrors the GitHub Actions fast gate). Used by `mise run ci` so the
-# local pipeline doesn't run a weaker gate than the merge. Separate build dir
-# (build-ci/) so the dev preset's build/ cache stays warm for fast iteration.
+# build-ci uses the `ci` preset and mirrors both GitHub Actions C++ jobs:
+# behavior first, then the per-header/install compile contracts. Separate build
+# dir (build-ci/) keeps the dev preset's cache warm for fast iteration.
 [tasks.build-ci]
 description = "Configure, build, and ctest the C++ side using the `ci` preset (mirrors GitHub Actions: per-header isolation checks ON)."
 run = """
 cmake --preset ci
-cmake --build --preset ci
-ctest --preset ci -j "$(nproc)"
+cmake --build --preset ci --target x3d_behavior_tests
+ctest --preset ci -L behavior --output-on-failure -j "$(nproc)"
+cmake --build --preset ci --target x3d_compile_contracts
+ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"
 """
 
 # build-san: ASan + UBSan build (the BLD-2 sanitizer gate). Mirrors the GitHub
