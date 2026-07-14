@@ -326,6 +326,16 @@ export(EXPORT x3d_cppTargets
 # ---------------------------------------------------------------------------
 option(X3D_CPP_BUILD_TESTS "Build header-compilation tests for x3d_cpp" ${PROJECT_IS_TOP_LEVEL})
 
+# All doctest suites use the same implementation-providing entry point. Compile
+# it once per configuration instead of once in every grouped test executable.
+if(X3D_CPP_BUILD_TESTS)
+    add_library(x3d_doctest_main STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp")
+    target_include_directories(x3d_doctest_main PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
+    target_compile_features(x3d_doctest_main PUBLIC cxx_std_20)
+endif()
+
 # Per-header isolation compile-tests (the ~800 compile_* ctests, one per header).
 # They pin a break to a single header, but the aggregate x3d_cpp_all_headers TU
 # plus the behavior/integration suite already catch breaks — the per-header sweep
@@ -802,9 +812,9 @@ endif()
 if(TARGET x3d_stbtt AND TARGET x3d_freetype AND X3D_CPP_BUILD_TESTS)
     enable_testing()
     add_executable(x3d_text_tests
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/font_metrics_tests.cpp")
-    target_link_libraries(x3d_text_tests PRIVATE x3d_stbtt x3d_freetype)
+    target_link_libraries(x3d_text_tests PRIVATE
+        x3d_stbtt x3d_freetype x3d_doctest_main)
     target_include_directories(x3d_text_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
@@ -826,13 +836,13 @@ endif()
 if(TARGET x3d_stb AND TARGET x3d_wuffs AND X3D_CPP_BUILD_TESTS)
     enable_testing()
     add_executable(x3d_texture_tests
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/texture_decode_tests.cpp")
     # The test TU talks only through the seam factories (makeStb/Wuffs/...); it
     # links the backend libs but includes NO decoder header, so no heavy backend
     # header can leak in and disagree with the linked lib (the AssetResolver
     # ABI-skew lesson — trivially clean here since the factories exchange std).
-    target_link_libraries(x3d_texture_tests PRIVATE x3d_stb x3d_wuffs)
+    target_link_libraries(x3d_texture_tests PRIVATE
+        x3d_stb x3d_wuffs x3d_doctest_main)
     target_include_directories(x3d_texture_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
@@ -854,10 +864,9 @@ endif()
 if(TARGET x3d_plmpeg AND X3D_CPP_BUILD_TESTS)
     enable_testing()
     add_executable(x3d_movie_tests
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/tests/movie_decoder_tests.cpp")
     # Talks ONLY through the seam factories (decoder-free headers); no codec header.
-    target_link_libraries(x3d_movie_tests PRIVATE x3d_plmpeg)
+    target_link_libraries(x3d_movie_tests PRIVATE x3d_plmpeg x3d_doctest_main)
     target_include_directories(x3d_movie_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
@@ -2034,7 +2043,6 @@ endif()
 # --- PROTO: grouped doctest binary (math + scene tests, was 22 separate exes) ---
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_geometry_scene_tests
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/mat4_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/aabb_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/mat4_inverse_test.cpp"
@@ -2060,7 +2068,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/binding_system_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/bind_time_conformance_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/binding_stack_audit_test.cpp")
-    target_link_libraries(x3d_geometry_scene_tests PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_geometry_scene_tests PRIVATE
+        x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_geometry_scene_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
     # poc_triangle_asset_test needs its fixture path (was a per-target define).
@@ -2083,7 +2092,6 @@ endif()
 # --- doctest grouped binary: codecs tests (19 cases, one link) ---
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_codecs_tests
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/roundtrip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/vrml_mf_bracket_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_instance_roundtrip_test.cpp"
@@ -2107,7 +2115,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/script_cdata_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/uom_type_pin_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/hanim_container_order_test.cpp")
-    target_link_libraries(x3d_codecs_tests PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_codecs_tests PRIVATE
+        x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_codecs_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
     add_test(NAME x3d_codecs_tests COMMAND x3d_codecs_tests)
@@ -2117,7 +2126,6 @@ endif()
 # --- doctest grouped binary: parse tests (13 cases, one link) ---
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_parse_tests
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_clone_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_expand_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_nested_body_test.cpp"
@@ -2132,7 +2140,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/version_floor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parser_depth_guard_test.cpp")
-    target_link_libraries(x3d_parse_tests PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_parse_tests PRIVATE
+        x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_parse_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
     add_test(NAME x3d_parse_tests COMMAND x3d_parse_tests)
@@ -2142,7 +2151,6 @@ endif()
 # --- doctest grouped binary: extract tests (35 cases, one link) ---
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_extract_tests
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_item_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_delta_perf_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/material_system_test.cpp"
@@ -2184,7 +2192,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/castshadow_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/nurbs_eval_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_test.cpp")
-    target_link_libraries(x3d_extract_tests PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_extract_tests PRIVATE
+        x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_extract_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
     add_test(NAME x3d_extract_tests COMMAND x3d_extract_tests)
@@ -2194,7 +2203,6 @@ endif()
 # --- doctest grouped binary: events tests (34 cases, one link) ---
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_events_tests
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support/doctest_main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/dynamic_field_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/mem_safety_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_test.cpp"
@@ -2232,7 +2240,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_dynamic_route_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_author_field_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/slerp_normal_test.cpp")
-    target_link_libraries(x3d_events_tests PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_events_tests PRIVATE
+        x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_events_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
     add_test(NAME x3d_events_tests COMMAND x3d_events_tests)
@@ -2457,7 +2466,8 @@ _x3d_classify_present_targets(opt-in
 
 _x3d_classify_present_targets(internal
     x3d_duktape
-    x3d_s3_testsupport)
+    x3d_s3_testsupport
+    x3d_doctest_main)
 
 # Test-suite membership is deliberately independent of primary target purpose:
 # x3d_cli is production software and still belongs in the behavior/sanitizer

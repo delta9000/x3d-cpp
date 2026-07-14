@@ -23,6 +23,13 @@ FORBIDDEN_AGGREGATE_TARGETS = {
     "x3d_quickjs_swap",
     "x3d_sound_swaptest",
 }
+DEFAULT_DOCTEST_TARGETS = {
+    "x3d_geometry_scene_tests",
+    "x3d_codecs_tests",
+    "x3d_parse_tests",
+    "x3d_extract_tests",
+    "x3d_events_tests",
+}
 
 
 def run_checked(*command: str) -> str:
@@ -223,6 +230,29 @@ def test_generated_node_runtime_has_explicit_static_opt_out(tmp_path: Path) -> N
     artifacts = node_library_artifacts(build_dir)
     assert "libx3d_cpp_nodes.a" in artifacts
     assert "libx3d_cpp_nodes.so" not in artifacts
+
+
+def test_doctest_main_is_compiled_once_and_reused(
+    configured_ci: Path,
+) -> None:
+    compile_commands = json.loads(
+        (configured_ci / "compile_commands.json").read_text(encoding="utf-8")
+    )
+    test_main = (
+        REPO_ROOT / "runtime" / "test_support" / "doctest_main.cpp"
+    ).resolve()
+    main_compiles = [
+        entry
+        for entry in compile_commands
+        if Path(entry["file"]).resolve() == test_main
+    ]
+
+    assert len(main_compiles) == 1
+    for target in DEFAULT_DOCTEST_TARGETS:
+        query = run_checked(
+            "ninja", "-C", str(configured_ci), "-t", "query", target
+        )
+        assert "libx3d_doctest_main.a" in query, target
 
 
 def test_sanitizer_preset_and_drivers_are_debug_behavior_only() -> None:
