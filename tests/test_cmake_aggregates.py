@@ -293,3 +293,32 @@ def test_sanitizer_configures_with_minimal_debug_information(
     assert "-g" in flags
     assert "-g1" in flags
     assert flags.index("-g1") > flags.index("-g")
+
+
+def test_fuzz_preset_instruments_compiled_runtime_layers(tmp_path: Path) -> None:
+    build_dir = tmp_path / "fuzz"
+    run_checked("cmake", "--preset", "fuzz", "-B", str(build_dir))
+    compile_commands = json.loads(
+        (build_dir / "compile_commands.json").read_text(encoding="utf-8")
+    )
+
+    for target in (
+        "x3d_cpp_nodes.dir",
+        "x3d_cpp_authoring_runtime.dir",
+        "x3d_cpp_runtime.dir",
+    ):
+        command = next(
+            entry["command"]
+            for entry in compile_commands
+            if target in entry["command"]
+        )
+        flags = shlex.split(command)
+        assert "-fsanitize=fuzzer-no-link,address,undefined" in flags, target
+        assert "-fno-omit-frame-pointer" in flags, target
+
+    harness_command = next(
+        entry["command"]
+        for entry in compile_commands
+        if "x3d_parse_fuzz.dir" in entry["command"]
+    )
+    assert "-fsanitize=fuzzer,address,undefined" in shlex.split(harness_command)

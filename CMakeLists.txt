@@ -142,6 +142,20 @@ if(X3D_CPP_SAN)
     message(STATUS "x3d_cpp: X3D_CPP_SAN=ON -> ASan + UBSan enabled (-fno-sanitize-recover=all, -g1)")
 endif()
 option(X3D_CPP_FUZZ "Build the libFuzzer harness for parseDocument (requires Clang)" OFF)
+if(X3D_CPP_FUZZ)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR "X3D_CPP_FUZZ requires Clang (libFuzzer driver). Detected: ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+    # Parsing and node reflection now live in compiled DSOs. Instrument every
+    # target built for the fuzz graph with coverage and sanitizers, but keep the
+    # libFuzzer main out of the libraries; x3d_parse_fuzz owns the driver below.
+    add_compile_options(
+        -fsanitize=fuzzer-no-link,address,undefined
+        -fno-omit-frame-pointer
+        -fno-sanitize-recover=all)
+    add_link_options(-fsanitize=address,undefined)
+    message(STATUS "x3d_cpp: X3D_CPP_FUZZ=ON -> compiled runtime layers use SanitizerCoverage + ASan + UBSan")
+endif()
 
 # ---------------------------------------------------------------------------
 # Compiled node library (C1): the generated *.cpp (per-node out-of-line
@@ -2395,19 +2409,12 @@ endif()
 # crash — the ASan/UBSan signal handlers are what actually catch the bug.
 # ---------------------------------------------------------------------------
 if(X3D_CPP_FUZZ)
-    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        message(FATAL_ERROR "X3D_CPP_FUZZ requires Clang (libFuzzer driver). Detected: ${CMAKE_CXX_COMPILER_ID}")
-    endif()
     add_executable(x3d_parse_fuzz
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parse_fuzz.cpp")
     target_link_libraries(x3d_parse_fuzz PRIVATE x3d_cpp::sdk)
-    # COMPILE-time instrumentation is what makes the harness useful: `fuzzer`
-    # inserts SanitizerCoverage (the edge feedback libFuzzer mutates against —
-    # without it the fuzzer runs blind and finds nothing), and `address,undefined`
-    # insert the ASan/UBSan checks that actually catch the memory/UB bugs. The
-    # SDK is header-only, so parseDocument inlines into this one TU — instrumenting
-    # it instruments the whole parse path. (The fuzz preset deliberately does NOT
-    # set X3D_CPP_SAN globally, so these flags are scoped to the harness target.)
+    # The compiled dependency graph receives fuzzer-no-link coverage plus
+    # ASan/UBSan above. This executable adds the libFuzzer driver and also
+    # instruments its small adapter callback.
     target_compile_options(x3d_parse_fuzz PRIVATE
         -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer)
     # Link the libFuzzer driver + ASan/UBSan runtimes so the fuzzer can run + signal.

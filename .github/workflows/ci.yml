@@ -228,9 +228,9 @@ jobs:
       - name: Test (behavior suite under ASan + UBSan)
         run: ctest --preset san -L behavior --output-on-failure -j "$(nproc)"
 
-  # Fuzz gate (BLD-2). Builds the libFuzzer harness for sdk::parseDocument
-  # (Clang-only — the `-fsanitize=fuzzer` coverage instrumentation + ASan/UBSan
-  # are compiled into the header-only parse path) and runs a short bounded smoke.
+  # Fuzz gate (BLD-2). Builds the libFuzzer harness for sdk::parseDocument.
+  # Clang instruments the compiled node/runtime layers with fuzzer-no-link
+  # coverage + ASan/UBSan; the harness owns the libFuzzer driver.
   # A crash, leak, or UB found in the time budget fails the job (libFuzzer exits
   # nonzero). This is regression coverage, not an exhaustive campaign — the bound
   # keeps PR cost low while still re-exercising the parser against mutated input.
