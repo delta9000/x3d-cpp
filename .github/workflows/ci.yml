@@ -190,13 +190,11 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure -j "$(nproc)"
 
-  # Sanitizer gate (BLD-2). Rebuilds the whole project with ASan + UBSan
-  # (-fno-sanitize-recover=all, so the first error aborts) and runs every ctest
-  # against the sanitized binaries — the green doctest run misses the memory/UB
-  # bugs (use-after-free, leaks, signed overflow) that the parser-hardening work
-  # (SEC-1/2, MEM-1) is meant to foreclose. Mirrors `mise run build-san` exactly
-  # via the `san` preset. Unconditional on every PR; off the fast `cpp` job
-  # because the separate sanitized build dir can't share ccache objects with it.
+  # Sanitizer gate (BLD-2). Builds the behavior suite in Debug with ASan + UBSan
+  # (-fno-sanitize-recover=all, so the first error aborts). Compile contracts,
+  # examples, fuzzers, and external-corpus gates do not execute useful sanitizer
+  # behavior and stay out of this graph. Mirrors `mise run build-san` exactly via
+  # the `san` preset; its separate build dir cannot share objects with `cpp`.
   cpp-san:
     name: C++ sanitizer gate (ASan + UBSan)
     needs: changes
@@ -215,9 +213,9 @@ jobs:
       - name: Configure (ASan + UBSan via the `san` preset)
         run: cmake --preset san
       - name: Build (sanitized)
-        run: cmake --build --preset san
-      - name: Test (every ctest under ASan + UBSan)
-        run: ctest --preset san --output-on-failure -j "$(nproc)"
+        run: cmake --build --preset san --target x3d_sanitizer_tests
+      - name: Test (behavior suite under ASan + UBSan)
+        run: ctest --preset san -L behavior --output-on-failure -j "$(nproc)"
 
   # Fuzz gate (BLD-2). Builds the libFuzzer harness for sdk::parseDocument
   # (Clang-only — the `-fsanitize=fuzzer` coverage instrumentation + ASan/UBSan

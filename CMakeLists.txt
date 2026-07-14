@@ -2508,9 +2508,10 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_events_tests)
     set_tests_properties(${_x3d_behavior_tests} PROPERTIES LABELS behavior)
 
-    set(_x3d_compile_contract_tests
-        x3d_cpp_all_headers
-        x3d_install_embed_smoke)
+    set(_x3d_compile_contract_tests x3d_cpp_all_headers)
+    if(NOT X3D_CPP_SAN)
+        list(APPEND _x3d_compile_contract_tests x3d_install_embed_smoke)
+    endif()
     if(X3D_CPP_PER_HEADER_CHECKS)
         list(APPEND _x3d_compile_contract_tests x3d_header_isolation)
     endif()

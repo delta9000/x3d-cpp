@@ -9,6 +9,7 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+PRESETS = json.loads((REPO_ROOT / "CMakePresets.json").read_text())
 FORBIDDEN_AGGREGATE_TARGETS = {
     "x3d_cli_gate",
     "x3d_canon_gate",
@@ -152,3 +153,28 @@ def test_external_corpus_gates_exist_but_are_not_default_build_inputs(
     gates = {"x3d_cli_gate", "x3d_canon_gate"}
     assert gates <= ninja_targets(configured_ci)
     assert not gates.intersection(query_target_inputs(configured_ci, "all"))
+
+
+def test_sanitizer_preset_and_drivers_are_debug_behavior_only() -> None:
+    configure = next(
+        preset for preset in PRESETS["configurePresets"] if preset["name"] == "san"
+    )
+    cache = configure["cacheVariables"]
+    assert cache["CMAKE_BUILD_TYPE"] == "Debug"
+    assert cache["X3D_CPP_SAN"] == "ON"
+    assert cache["X3D_CPP_PER_HEADER_CHECKS"] == "OFF"
+
+    expected_build = (
+        "cmake --build --preset san --target x3d_sanitizer_tests"
+    )
+    expected_test = "ctest --preset san -L behavior --output-on-failure"
+    assert expected_build in (REPO_ROOT / "mise.toml").read_text()
+    assert expected_build in (REPO_ROOT / ".github/workflows/ci.yml").read_text()
+    assert expected_test in (REPO_ROOT / "mise.toml").read_text()
+    assert expected_test in (REPO_ROOT / ".github/workflows/ci.yml").read_text()
+
+
+def test_sanitizer_configures_without_install_only_contract(
+    tmp_path: Path,
+) -> None:
+    run_checked("cmake", "--preset", "san", "-B", str(tmp_path / "san"))

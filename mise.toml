@@ -58,16 +58,16 @@ ctest --preset ci -j "$(nproc)"
 """
 
 # build-san: ASan + UBSan build (the BLD-2 sanitizer gate). Mirrors the GitHub
-# Actions `cpp-san` job: per-header checks ON, -Werror ON, and every ctest runs
-# against sanitized binaries so a memory or UB regression fails the gate.
+# Actions `cpp-san` job: Debug, per-header checks OFF, and only behavior targets
+# run against sanitized binaries so a memory or UB regression fails the gate.
 # Separate build dir (build-san/) — its objects are NOT ccache-compatible with
 # the dev/ci presets (different flags), so don't try to share.
 [tasks.build-san]
 description = "Configure, build, and ctest the C++ side with ASan + UBSan (BLD-2 sanitizer gate; mirrors GitHub Actions `cpp-san`)."
 run = """
 cmake --preset san
-cmake --build --preset san
-ctest --preset san -j "$(nproc)"
+cmake --build --preset san --target x3d_sanitizer_tests
+ctest --preset san -L behavior --output-on-failure -j "$(nproc)"
 """
 
 # build-fuzz: build the libFuzzer harness for parseDocument (Clang-only; BLD-2).
