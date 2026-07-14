@@ -506,4 +506,10 @@ void RigidBodyCollection::checkRangesDisableTime(
                                   "disableTime below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createRigidBodyCollection() {
+  return std::make_shared<RigidBodyCollection>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

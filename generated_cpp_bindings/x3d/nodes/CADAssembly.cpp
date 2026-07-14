@@ -278,4 +278,10 @@ void CADAssembly::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCADAssembly() {
+  return std::make_shared<CADAssembly>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

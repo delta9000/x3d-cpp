@@ -226,4 +226,10 @@ void ProjectionVolumeStyle::checkRangesIntensityThreshold(
                                   "intensityThreshold above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createProjectionVolumeStyle() {
+  return std::make_shared<ProjectionVolumeStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

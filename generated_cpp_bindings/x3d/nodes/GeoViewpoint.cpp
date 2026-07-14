@@ -430,4 +430,10 @@ void GeoViewpoint::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createGeoViewpoint() {
+  return std::make_shared<GeoViewpoint>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

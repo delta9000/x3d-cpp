@@ -318,4 +318,10 @@ void ChannelSelector::checkRangesChannelSelection(
                                   "channelSelection below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createChannelSelector() {
+  return std::make_shared<ChannelSelector>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

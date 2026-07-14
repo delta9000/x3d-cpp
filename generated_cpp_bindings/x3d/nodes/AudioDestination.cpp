@@ -357,4 +357,10 @@ void AudioDestination::checkRangesMaxChannelCount(
                                   "maxChannelCount below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createAudioDestination() {
+  return std::make_shared<AudioDestination>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

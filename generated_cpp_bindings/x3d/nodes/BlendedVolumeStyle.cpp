@@ -333,4 +333,10 @@ void BlendedVolumeStyle::checkRangesWeightConstant2(
                                   "weightConstant2 above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createBlendedVolumeStyle() {
+  return std::make_shared<BlendedVolumeStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

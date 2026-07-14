@@ -508,4 +508,10 @@ void MovieTexture::validateRanges(std::vector<RangeDiagnostic> &out) const {
       X3DUrlObject::getAutoRefreshTimeLimit(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMovieTexture() {
+  return std::make_shared<MovieTexture>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -132,6 +132,14 @@ void {{ class_name }}::{{ field.range_checker_name }}(const {{ field.cpp_type }}
     {{ field.range_collect_body | indent(4) }}
 }
 {% endfor %}
+{% if namespace and not is_abstract %}
+namespace factory_detail {
+std::shared_ptr<X3DNode> create{{ class_name }}() {
+    return std::make_shared<{{ class_name }}>();
+}
+} // namespace factory_detail
+
+{% endif %}
 {% if namespace %}
 } // namespace {{ namespace }}
 {% endif %}

@@ -248,4 +248,8 @@ void Fog::validateRanges(std::vector<RangeDiagnostic> &out) const {
                                            nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createFog() { return std::make_shared<Fog>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

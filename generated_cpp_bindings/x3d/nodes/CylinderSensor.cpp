@@ -368,4 +368,10 @@ void CylinderSensor::checkRangesDiskAngle(const SFFloat &value,
                                   "diskAngle above maximum of 1.5708"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCylinderSensor() {
+  return std::make_shared<CylinderSensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

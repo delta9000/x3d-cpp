@@ -598,4 +598,10 @@ void DynamicsCompressor::checkRangesThreshold(
                                   "threshold above maximum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createDynamicsCompressor() {
+  return std::make_shared<DynamicsCompressor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

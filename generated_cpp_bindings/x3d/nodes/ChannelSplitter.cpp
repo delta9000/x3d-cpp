@@ -305,4 +305,10 @@ void ChannelSplitter::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createChannelSplitter() {
+  return std::make_shared<ChannelSplitter>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

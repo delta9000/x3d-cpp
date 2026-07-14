@@ -281,4 +281,8 @@ void Text::checkRangesMaxExtent(const SFFloat &value,
                                   "maxExtent below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createText() { return std::make_shared<Text>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

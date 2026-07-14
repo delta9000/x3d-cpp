@@ -389,4 +389,10 @@ void TimeSensor::checkRangesCycleInterval(const SFTime &value,
                                   "cycleInterval below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTimeSensor() {
+  return std::make_shared<TimeSensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

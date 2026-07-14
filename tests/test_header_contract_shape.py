@@ -125,6 +125,22 @@ def test_header_contract_keeps_one_translation_unit_per_header(
     assert len(actual_sources) == len(contract_headers())
 
 
+def test_header_contract_graph_does_not_build_node_runtime(
+    configured_ci: Path,
+) -> None:
+    commands = run_checked(
+        "ninja",
+        "-C",
+        str(configured_ci),
+        "-t",
+        "commands",
+        "x3d_compile_contracts",
+    )
+
+    assert "x3d_cpp_nodes.dir" not in commands
+    assert "libx3d_cpp_nodes" not in commands
+
+
 def test_ci_behavior_and_header_contract_jobs_are_scoped() -> None:
     jobs = WORKFLOW["jobs"]
     behavior = jobs["cpp"]

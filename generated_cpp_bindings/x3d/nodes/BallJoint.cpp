@@ -241,4 +241,10 @@ void BallJoint::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createBallJoint() {
+  return std::make_shared<BallJoint>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -182,4 +182,10 @@ void TextureCoordinate4D::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTextureCoordinate4D() {
+  return std::make_shared<TextureCoordinate4D>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

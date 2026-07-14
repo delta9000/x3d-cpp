@@ -181,4 +181,10 @@ void FogCoordinate::checkRangesDepth(const MFFloat &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createFogCoordinate() {
+  return std::make_shared<FogCoordinate>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

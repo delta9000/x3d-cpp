@@ -472,4 +472,8 @@ void Delay::checkRangesMaxDelayTime(const SFTime &value,
                                   "maxDelayTime below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createDelay() { return std::make_shared<Delay>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

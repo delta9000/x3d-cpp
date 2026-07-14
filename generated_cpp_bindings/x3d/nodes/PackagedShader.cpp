@@ -319,4 +319,10 @@ void PackagedShader::validateRanges(std::vector<RangeDiagnostic> &out) const {
       X3DUrlObject::getAutoRefreshTimeLimit(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createPackagedShader() {
+  return std::make_shared<PackagedShader>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

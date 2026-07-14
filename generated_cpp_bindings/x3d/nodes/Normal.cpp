@@ -185,4 +185,8 @@ void Normal::checkRangesVector(const MFVec3f &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createNormal() { return std::make_shared<Normal>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

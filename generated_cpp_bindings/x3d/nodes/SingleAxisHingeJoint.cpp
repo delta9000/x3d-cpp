@@ -369,4 +369,10 @@ void SingleAxisHingeJoint::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSingleAxisHingeJoint() {
+  return std::make_shared<SingleAxisHingeJoint>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

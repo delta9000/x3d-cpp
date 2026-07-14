@@ -460,4 +460,10 @@ void TextureProperties::checkRangesTexturePriority(
                                   "texturePriority above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTextureProperties() {
+  return std::make_shared<TextureProperties>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

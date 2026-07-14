@@ -271,4 +271,10 @@ void ShaderPart::validateRanges(std::vector<RangeDiagnostic> &out) const {
       X3DUrlObject::getAutoRefreshTimeLimit(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createShaderPart() {
+  return std::make_shared<ShaderPart>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -246,4 +246,8 @@ void LineSet::checkRangesVertexCount(const MFInt32 &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createLineSet() { return std::make_shared<LineSet>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

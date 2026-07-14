@@ -387,4 +387,10 @@ void StreamAudioSource::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createStreamAudioSource() {
+  return std::make_shared<StreamAudioSource>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -412,4 +412,10 @@ void TextureBackground::validateRanges(
       X3DBackgroundNode::getTransparency(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTextureBackground() {
+  return std::make_shared<TextureBackground>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

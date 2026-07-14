@@ -353,4 +353,10 @@ void Appearance::checkRangesAlphaCutoff(const SFFloat &value,
                                   "alphaCutoff above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createAppearance() {
+  return std::make_shared<Appearance>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -164,4 +164,10 @@ void MultiTextureCoordinate::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMultiTextureCoordinate() {
+  return std::make_shared<MultiTextureCoordinate>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

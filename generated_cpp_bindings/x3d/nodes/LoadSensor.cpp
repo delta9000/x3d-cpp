@@ -284,4 +284,10 @@ void LoadSensor::checkRangesTimeOut(const SFTime &value,
                                   "timeOut below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createLoadSensor() {
+  return std::make_shared<LoadSensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

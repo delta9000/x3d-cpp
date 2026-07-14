@@ -291,4 +291,10 @@ void Viewport::checkRangesClipBoundary(const MFFloat &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createViewport() {
+  return std::make_shared<Viewport>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

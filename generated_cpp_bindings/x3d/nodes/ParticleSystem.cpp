@@ -550,4 +550,10 @@ void ParticleSystem::checkRangesParticleSize(
                                   "particleSize.y below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createParticleSystem() {
+  return std::make_shared<ParticleSystem>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

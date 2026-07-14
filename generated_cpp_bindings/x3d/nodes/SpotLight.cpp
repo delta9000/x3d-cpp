@@ -420,4 +420,10 @@ void SpotLight::checkRangesRadius(const SFFloat &value,
                                   "radius below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSpotLight() {
+  return std::make_shared<SpotLight>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -588,4 +588,10 @@ void MotorJoint::checkRangesEnabledAxes(const SFInt32 &value,
                                   "enabledAxes above maximum of 3"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createMotorJoint() {
+  return std::make_shared<MotorJoint>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

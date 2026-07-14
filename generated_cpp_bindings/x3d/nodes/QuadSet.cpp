@@ -310,4 +310,8 @@ void QuadSet::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createQuadSet() { return std::make_shared<QuadSet>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

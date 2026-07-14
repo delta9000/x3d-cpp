@@ -356,4 +356,10 @@ void VolumeEmitter::checkRangesDirection(const SFVec3f &value,
                                   "direction.z above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createVolumeEmitter() {
+  return std::make_shared<VolumeEmitter>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

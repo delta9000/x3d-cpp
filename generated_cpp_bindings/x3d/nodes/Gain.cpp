@@ -416,4 +416,8 @@ void Gain::validateRanges(std::vector<RangeDiagnostic> &out) const {
       X3DSoundProcessingNode::getTailTime(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createGain() { return std::make_shared<Gain>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

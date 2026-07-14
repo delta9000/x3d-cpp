@@ -287,4 +287,10 @@ void LayoutGroup::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createLayoutGroup() {
+  return std::make_shared<LayoutGroup>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -354,4 +354,10 @@ void TriangleStripSet::checkRangesStripCount(
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTriangleStripSet() {
+  return std::make_shared<TriangleStripSet>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

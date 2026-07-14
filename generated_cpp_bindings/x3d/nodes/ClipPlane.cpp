@@ -209,4 +209,10 @@ void ClipPlane::checkRangesPlane(const SFVec4f &value,
                                   "plane.w above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createClipPlane() {
+  return std::make_shared<ClipPlane>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

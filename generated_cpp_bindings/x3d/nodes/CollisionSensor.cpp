@@ -248,4 +248,10 @@ void CollisionSensor::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCollisionSensor() {
+  return std::make_shared<CollisionSensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

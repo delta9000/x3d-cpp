@@ -284,4 +284,10 @@ void CollidableShape::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createCollidableShape() {
+  return std::make_shared<CollidableShape>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

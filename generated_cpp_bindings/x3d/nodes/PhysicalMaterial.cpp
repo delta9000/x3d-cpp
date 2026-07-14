@@ -566,4 +566,10 @@ void PhysicalMaterial::checkRangesTransparency(
                                   "transparency above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createPhysicalMaterial() {
+  return std::make_shared<PhysicalMaterial>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

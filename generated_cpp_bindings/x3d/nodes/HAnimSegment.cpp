@@ -403,4 +403,10 @@ void HAnimSegment::checkRangesMomentsOfInertia(
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createHAnimSegment() {
+  return std::make_shared<HAnimSegment>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

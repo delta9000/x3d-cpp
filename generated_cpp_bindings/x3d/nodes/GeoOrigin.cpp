@@ -187,4 +187,10 @@ void GeoOrigin::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createGeoOrigin() {
+  return std::make_shared<GeoOrigin>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

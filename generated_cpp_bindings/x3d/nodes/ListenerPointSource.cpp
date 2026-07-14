@@ -418,4 +418,10 @@ void ListenerPointSource::checkRangesInterauralDistance(
                                   "interauralDistance below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createListenerPointSource() {
+  return std::make_shared<ListenerPointSource>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

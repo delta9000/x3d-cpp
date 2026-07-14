@@ -267,4 +267,10 @@ void EdgeEnhancementVolumeStyle::checkRangesGradientThreshold(
                                   "gradientThreshold above maximum of 3.1416"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createEdgeEnhancementVolumeStyle() {
+  return std::make_shared<EdgeEnhancementVolumeStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

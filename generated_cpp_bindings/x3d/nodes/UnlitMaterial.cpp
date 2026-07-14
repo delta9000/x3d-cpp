@@ -320,4 +320,10 @@ void UnlitMaterial::checkRangesTransparency(const SFFloat &value,
                                   "transparency above maximum of 1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createUnlitMaterial() {
+  return std::make_shared<UnlitMaterial>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

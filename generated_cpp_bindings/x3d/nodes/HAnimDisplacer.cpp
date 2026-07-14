@@ -227,4 +227,10 @@ void HAnimDisplacer::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createHAnimDisplacer() {
+  return std::make_shared<HAnimDisplacer>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

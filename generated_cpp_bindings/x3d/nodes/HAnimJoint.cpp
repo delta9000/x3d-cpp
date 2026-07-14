@@ -514,4 +514,10 @@ void HAnimJoint::checkRangesStiffness(const MFFloat &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createHAnimJoint() {
+  return std::make_shared<HAnimJoint>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -732,4 +732,10 @@ void BufferAudioSource::checkRangesSampleRate(
                                   "sampleRate below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createBufferAudioSource() {
+  return std::make_shared<BufferAudioSource>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

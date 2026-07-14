@@ -537,4 +537,10 @@ void BiquadFilter::checkRangesQualityFactor(const SFFloat &value,
                                   "qualityFactor below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createBiquadFilter() {
+  return std::make_shared<BiquadFilter>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

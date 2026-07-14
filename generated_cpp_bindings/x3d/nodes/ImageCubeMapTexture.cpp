@@ -262,4 +262,10 @@ void ImageCubeMapTexture::validateRanges(
       X3DUrlObject::getAutoRefreshTimeLimit(), nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createImageCubeMapTexture() {
+  return std::make_shared<ImageCubeMapTexture>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

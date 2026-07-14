@@ -280,4 +280,8 @@ void Switch::checkRangesWhichChoice(const SFInt32 &value,
                                   "whichChoice below minimum of -1"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSwitch() { return std::make_shared<Switch>(); }
+} // namespace factory_detail
+
 } // namespace x3d::nodes

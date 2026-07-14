@@ -197,4 +197,10 @@ void ColorRGBA::checkRangesColor(const MFColorRGBA &value,
   }
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createColorRGBA() {
+  return std::make_shared<ColorRGBA>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

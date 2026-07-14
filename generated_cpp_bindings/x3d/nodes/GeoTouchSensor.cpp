@@ -336,4 +336,10 @@ void GeoTouchSensor::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createGeoTouchSensor() {
+  return std::make_shared<GeoTouchSensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

@@ -259,4 +259,10 @@ void ScalarChaser::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createScalarChaser() {
+  return std::make_shared<ScalarChaser>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

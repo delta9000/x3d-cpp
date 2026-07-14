@@ -733,4 +733,10 @@ void ReceiverPdu::checkRangesWriteInterval(const SFTime &value,
                                   "writeInterval below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createReceiverPdu() {
+  return std::make_shared<ReceiverPdu>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

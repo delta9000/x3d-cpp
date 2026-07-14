@@ -199,4 +199,10 @@ void FloatVertexAttribute::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createFloatVertexAttribute() {
+  return std::make_shared<FloatVertexAttribute>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

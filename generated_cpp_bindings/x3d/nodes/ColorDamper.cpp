@@ -298,4 +298,10 @@ void ColorDamper::validateRanges(std::vector<RangeDiagnostic> &out) const {
                                 out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createColorDamper() {
+  return std::make_shared<ColorDamper>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

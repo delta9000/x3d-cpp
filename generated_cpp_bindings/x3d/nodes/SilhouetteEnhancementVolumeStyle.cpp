@@ -295,4 +295,10 @@ void SilhouetteEnhancementVolumeStyle::checkRangesSilhouetteSharpness(
                                   "silhouetteSharpness below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createSilhouetteEnhancementVolumeStyle() {
+  return std::make_shared<SilhouetteEnhancementVolumeStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

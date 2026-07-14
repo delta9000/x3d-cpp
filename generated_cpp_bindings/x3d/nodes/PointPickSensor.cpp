@@ -349,4 +349,10 @@ void PointPickSensor::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createPointPickSensor() {
+  return std::make_shared<PointPickSensor>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

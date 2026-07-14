@@ -252,4 +252,10 @@ void FillProperties::checkRangesHatchStyle(const SFInt32 &value,
                                   "hatchStyle below minimum of 0"});
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createFillProperties() {
+  return std::make_shared<FillProperties>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

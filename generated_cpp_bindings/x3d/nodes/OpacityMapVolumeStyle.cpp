@@ -182,4 +182,10 @@ void OpacityMapVolumeStyle::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createOpacityMapVolumeStyle() {
+  return std::make_shared<OpacityMapVolumeStyle>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes

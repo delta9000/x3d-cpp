@@ -430,4 +430,10 @@ void TextureProjectorParallel::validateRanges(
                                            nodeTypeName(), "", out);
 }
 
+namespace factory_detail {
+std::shared_ptr<X3DNode> createTextureProjectorParallel() {
+  return std::make_shared<TextureProjectorParallel>();
+}
+} // namespace factory_detail
+
 } // namespace x3d::nodes
