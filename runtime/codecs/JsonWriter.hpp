@@ -30,11 +30,11 @@ class X3DNode;
 } // namespace x3d::nodes
 
 namespace x3d::runtime {
-class ExternProtoDeclaration;
-class Head;
-class IsConnection;
-class ProtoDeclaration;
-class ProtoField;
+struct ExternProtoDeclaration;
+struct Head;
+struct IsConnection;
+struct ProtoDeclaration;
+struct ProtoField;
 class ProtoInstance;
 class Scene;
 class X3DDocument;

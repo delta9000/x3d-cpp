@@ -4,7 +4,8 @@
 // implements the X3DReader interface by delegating to it, so X3D-XML dispatches
 // through the same front door (X3DParse.hpp) as the text/JSON readers.
 //
-// Header-only, namespace x3d::codec.
+// Public declaration, namespace x3d::codec. The implementation is compiled in
+// x3d_cpp_runtime.
 #ifndef X3D_PARSE_XML_READER_ADAPTER_HPP
 #define X3D_PARSE_XML_READER_ADAPTER_HPP
 
@@ -20,11 +21,9 @@ namespace x3d::codec {
 /// uniform front-end contract is met without extra work.
 class XmlReaderAdapter : public X3DReader {
 public:
-  Encoding encoding() const override { return Encoding::XML; }
+  Encoding encoding() const override;
 
-  runtime::X3DDocument readDocument(const std::string &text) override {
-    return reader_.readDocument(text);
-  }
+  runtime::X3DDocument readDocument(const std::string &text) override;
 
 private:
   XmlReader reader_;

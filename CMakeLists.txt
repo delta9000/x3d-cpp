@@ -202,6 +202,7 @@ target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
 # ---------------------------------------------------------------------------
 add_library(x3d_cpp_authoring_runtime ${_x3d_node_library_type}
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/FieldValueIO.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/ChildOrder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/XmlWriter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/JsonWriter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/VrmlWriter.cpp"
@@ -213,7 +214,12 @@ target_link_libraries(x3d_cpp_authoring_runtime PUBLIC x3d_cpp::nodes)
 target_compile_features(x3d_cpp_authoring_runtime PUBLIC cxx_std_20)
 
 add_library(x3d_cpp_runtime ${_x3d_node_library_type}
-    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/compiled/RuntimeAnchor.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/X3DParse.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/NodeBuilder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/ClassicVrmlReader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/JsonReader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/Vrml97Reader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/XmlReaderAdapter.cpp")
 add_library(x3d_cpp::runtime ALIAS x3d_cpp_runtime)
 set_target_properties(x3d_cpp_runtime PROPERTIES EXPORT_NAME runtime)
 target_link_libraries(x3d_cpp_runtime PUBLIC x3d_cpp::authoring_runtime)

@@ -12,10 +12,22 @@ AUTHORING_RUNTIME_SOURCES = {
     (REPO_ROOT / "runtime" / "codecs" / name).resolve()
     for name in (
         "FieldValueIO.cpp",
+        "ChildOrder.cpp",
         "XmlWriter.cpp",
         "JsonWriter.cpp",
         "VrmlWriter.cpp",
         "CanonicalXmlWriter.cpp",
+    )
+}
+RUNTIME_SOURCES = {
+    (REPO_ROOT / "runtime" / "parse" / name).resolve()
+    for name in (
+        "X3DParse.cpp",
+        "NodeBuilder.cpp",
+        "ClassicVrmlReader.cpp",
+        "JsonReader.cpp",
+        "Vrml97Reader.cpp",
+        "XmlReaderAdapter.cpp",
     )
 }
 
@@ -124,3 +136,18 @@ def test_authoring_implementations_compile_once_in_owned_layer(
     )
     assert len(entries) == len(AUTHORING_RUNTIME_SOURCES)
     assert all("x3d_cpp_authoring_runtime.dir" in entry["command"] for entry in entries)
+
+
+def test_parser_implementations_compile_once_in_runtime_layer(
+    configured_ci: Path,
+) -> None:
+    commands = json.loads(
+        (configured_ci / "compile_commands.json").read_text(encoding="utf-8")
+    )
+    entries = [
+        entry for entry in commands if Path(entry["file"]).resolve() in RUNTIME_SOURCES
+    ]
+
+    assert {Path(entry["file"]).resolve() for entry in entries} == RUNTIME_SOURCES
+    assert len(entries) == len(RUNTIME_SOURCES)
+    assert all("x3d_cpp_runtime.dir" in entry["command"] for entry in entries)
