@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -65,7 +66,11 @@ def ctest_commands(build_dir: Path) -> dict[str, Path]:
             continue
         arguments = shlex.split(line[len("add_test(") : -1])
         if len(arguments) >= 2:
-            commands[arguments[0]] = Path(arguments[1])
+            name = arguments[0]
+            bracket_quote = re.fullmatch(r"\[(=*)\[(.*)\]\1\]", name)
+            if bracket_quote:
+                name = bracket_quote.group(2)
+            commands[name] = Path(arguments[1])
     return commands
 
 
@@ -119,19 +124,21 @@ def normal_ctest_executable_targets(build_dir: Path) -> set[str]:
     return targets
 
 
-def test_ctest_commands_accept_quoted_and_unquoted_test_names(
+def test_ctest_commands_accept_cmake_test_name_quoting_styles(
     tmp_path: Path,
 ) -> None:
-    # Older CMake releases leave safe test names unquoted, while newer releases
-    # quote them. Both forms describe the same generated test command.
+    # CMake versions vary between bare, normal-quoted, and bracket-quoted test
+    # names. All forms describe the same generated test command syntax.
     (tmp_path / "CTestTestfile.cmake").write_text(
         'add_test(x3d_cpp_all_headers "/build/x3d_cpp_all_headers")\n'
         'add_test("x3d_header_isolation" "/usr/bin/cmake" "--build")\n'
+        'add_test([=[x3d_install_embed_smoke]=] "bash" "verify.sh")\n'
     )
 
     assert ctest_commands(tmp_path) == {
         "x3d_cpp_all_headers": Path("/build/x3d_cpp_all_headers"),
         "x3d_header_isolation": Path("/usr/bin/cmake"),
+        "x3d_install_embed_smoke": Path("bash"),
     }
 
 
