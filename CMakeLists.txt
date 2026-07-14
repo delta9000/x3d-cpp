@@ -201,7 +201,11 @@ target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
 # not exposed as a supported configuration.
 # ---------------------------------------------------------------------------
 add_library(x3d_cpp_authoring_runtime ${_x3d_node_library_type}
-    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/compiled/AuthoringAnchor.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/FieldValueIO.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/XmlWriter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/JsonWriter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/VrmlWriter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/CanonicalXmlWriter.cpp")
 add_library(x3d_cpp::authoring_runtime ALIAS x3d_cpp_authoring_runtime)
 set_target_properties(x3d_cpp_authoring_runtime PROPERTIES
     EXPORT_NAME authoring_runtime)

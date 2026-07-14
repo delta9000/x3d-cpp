@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -7,6 +8,16 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+AUTHORING_RUNTIME_SOURCES = {
+    (REPO_ROOT / "runtime" / "codecs" / name).resolve()
+    for name in (
+        "FieldValueIO.cpp",
+        "XmlWriter.cpp",
+        "JsonWriter.cpp",
+        "VrmlWriter.cpp",
+        "CanonicalXmlWriter.cpp",
+    )
+}
 
 
 def run_checked(*command: str) -> str:
@@ -94,3 +105,22 @@ def test_facades_link_only_their_owned_runtime_layer(
     assert "libx3d_cpp_runtime.so" in sdk_commands
     assert "libx3d_cpp_authoring_runtime.so" in authoring_commands
     assert "libx3d_cpp_runtime.so" not in authoring_commands
+
+
+def test_authoring_implementations_compile_once_in_owned_layer(
+    configured_ci: Path,
+) -> None:
+    commands = json.loads(
+        (configured_ci / "compile_commands.json").read_text(encoding="utf-8")
+    )
+    entries = [
+        entry
+        for entry in commands
+        if Path(entry["file"]).resolve() in AUTHORING_RUNTIME_SOURCES
+    ]
+
+    assert {Path(entry["file"]).resolve() for entry in entries} == (
+        AUTHORING_RUNTIME_SOURCES
+    )
+    assert len(entries) == len(AUTHORING_RUNTIME_SOURCES)
+    assert all("x3d_cpp_authoring_runtime.dir" in entry["command"] for entry in entries)
