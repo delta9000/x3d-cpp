@@ -33,17 +33,12 @@
 #ifndef X3D_PARSE_CLASSIC_VRML_READER_HPP
 #define X3D_PARSE_CLASSIC_VRML_READER_HPP
 
-#include "DynamicField.hpp" // S1: AuthorFieldDecl + dynamicFieldStore() (Task B)
 #include "Encoding.hpp"
-#include "FieldAliases.hpp"
-#include "FieldValueIO.hpp"    // parseValue, parseInt, parseDouble (x3d::codec)
-#include "NodeBuilder.hpp"     // build:: helpers (findField, applyField, ...)
-#include "RecursionLimits.hpp" // SEC-1: kMaxNestingDepth (DoS guard)
 #include "VrmlTokenizer.hpp"
 #include "X3DReader.hpp"
 #include "X3DRuntime.hpp"
-#include "x3d/nodes/X3DNodeFactory.hpp"
 
+#include <any>
 #include <memory>
 #include <stdexcept>
 #include <string>

@@ -34,11 +34,7 @@
 #define X3D_PARSE_VRML97_READER_HPP
 
 #include "ClassicVrmlReader.hpp"
-#include "Encoding.hpp"
-#include "Vrml97Dialect.hpp"
-#include "X3DRuntime.hpp"
 
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>

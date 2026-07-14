@@ -1,5 +1,9 @@
 #include "Vrml97Reader.hpp"
 
+#include "Vrml97Dialect.hpp"
+
+#include <stdexcept>
+
 namespace x3d::codec {
 
 Encoding Vrml97Reader::encoding() const { return Encoding::VRML97; }

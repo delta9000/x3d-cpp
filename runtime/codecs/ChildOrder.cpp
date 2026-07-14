@@ -1,5 +1,8 @@
 #include "parse/NodeBuilder.hpp"
 
+#include "X3DScene.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+
 namespace x3d::codec::build {
 
 std::vector<const FieldInfo *>

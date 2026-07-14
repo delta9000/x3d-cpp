@@ -1,5 +1,19 @@
 #include "X3DParse.hpp"
 
+#include "ClassicVrmlReader.hpp"
+#include "Inflate.hpp"
+#include "JsonReader.hpp"
+#include "PathConfine.hpp"
+#include "Vrml97Reader.hpp"
+#include "X3DProtoExpand.hpp"
+#include "X3DRangeValidate.hpp"
+#include "XmlReaderAdapter.hpp"
+
+#include <algorithm>
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
+
 namespace x3d::codec {
 
 void stripUtf8Bom(std::string &s) {

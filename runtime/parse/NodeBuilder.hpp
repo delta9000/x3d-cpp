@@ -30,14 +30,24 @@
 #ifndef X3D_PARSE_NODE_BUILDER_HPP
 #define X3D_PARSE_NODE_BUILDER_HPP
 
-#include "FieldValueIO.hpp"             // parseValue, tokenize (x3d::codec)
-#include "VrmlTokenizer.hpp"            // VrmlTokenizer, VrmlToken
-#include "X3DRuntime.hpp"               // runtime::Scene
-#include "x3d/nodes/X3DNodeFactory.hpp" // x3d::nodes::X3DNodeFactory::create
+#include "x3d/core/X3DReflection.hpp"
 
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
+
+namespace x3d::nodes {
+class X3DNode;
+}
+
+namespace x3d::runtime {
+class Scene;
+}
+
+namespace x3d::codec {
+class VrmlTokenizer;
+}
 
 namespace x3d::codec::build {
 using namespace x3d::core;

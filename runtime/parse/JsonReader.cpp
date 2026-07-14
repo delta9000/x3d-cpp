@@ -1,5 +1,12 @@
 #include "JsonReader.hpp"
 
+#include "DynamicField.hpp"
+#include "FieldAliases.hpp"
+#include "FieldValueIO.hpp"
+#include "JsonLite.hpp"
+#include "NodeBuilder.hpp"
+#include "x3d/nodes/Script.hpp"
+
 namespace x3d::codec {
 
 Encoding JsonReader::encoding() const { return Encoding::JSON; }

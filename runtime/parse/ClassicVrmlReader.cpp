@@ -1,5 +1,12 @@
 #include "ClassicVrmlReader.hpp"
 
+#include "DynamicField.hpp"
+#include "FieldAliases.hpp"
+#include "FieldValueIO.hpp"
+#include "NodeBuilder.hpp"
+#include "RecursionLimits.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
+
 namespace x3d::codec {
 
 Encoding ClassicVrmlReader::encoding() const { return Encoding::ClassicVRML; }

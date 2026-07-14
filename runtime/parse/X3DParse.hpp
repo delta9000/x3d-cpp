@@ -17,26 +17,11 @@
 #define X3D_PARSE_HPP
 
 #include "../InlineExpand.hpp"
-#include "ClassicVrmlReader.hpp"
 #include "Encoding.hpp"
-#include "Inflate.hpp"
-#include "JsonReader.hpp"
-#include "NodeBuilder.hpp"
-#include "PathConfine.hpp"
-#include "Vrml97Dialect.hpp"
-#include "Vrml97Reader.hpp"
-#include "VrmlTokenizer.hpp"
-#include "X3DProtoExpand.hpp"
 #include "X3DProtoResolver.hpp"
-#include "X3DRangeValidate.hpp"
 #include "X3DReader.hpp"
-#include "XmlReaderAdapter.hpp"
 
-#include <algorithm>
-#include <fstream>
 #include <memory>
-#include <sstream>
-#include <stdexcept>
 #include <string>
 #include <vector>
 

@@ -209,3 +209,57 @@ def test_build_ci_mirrors_both_aggregates_in_order() -> None:
         "cmake --build --preset ci --target x3d_compile_contracts",
         'ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"',
     ]
+
+
+def test_compiled_parser_headers_do_not_export_implementation_dependencies() -> None:
+    forbidden_includes = {
+        "X3DParse.hpp": {
+            "ClassicVrmlReader.hpp",
+            "Inflate.hpp",
+            "JsonReader.hpp",
+            "NodeBuilder.hpp",
+            "PathConfine.hpp",
+            "Vrml97Dialect.hpp",
+            "Vrml97Reader.hpp",
+            "VrmlTokenizer.hpp",
+            "X3DProtoExpand.hpp",
+            "X3DRangeValidate.hpp",
+            "XmlReaderAdapter.hpp",
+        },
+        "NodeBuilder.hpp": {
+            "FieldValueIO.hpp",
+            "VrmlTokenizer.hpp",
+            "X3DRuntime.hpp",
+            "x3d/nodes/X3DNodeFactory.hpp",
+        },
+        "ClassicVrmlReader.hpp": {
+            "DynamicField.hpp",
+            "FieldAliases.hpp",
+            "FieldValueIO.hpp",
+            "NodeBuilder.hpp",
+            "RecursionLimits.hpp",
+            "x3d/nodes/X3DNodeFactory.hpp",
+        },
+        "JsonReader.hpp": {
+            "DynamicField.hpp",
+            "FieldAliases.hpp",
+            "FieldValueIO.hpp",
+            "JsonLite.hpp",
+            "NodeBuilder.hpp",
+            "x3d/nodes/Script.hpp",
+        },
+        "Vrml97Reader.hpp": {
+            "Vrml97Dialect.hpp",
+            "X3DRuntime.hpp",
+        },
+    }
+
+    for header_name, forbidden in forbidden_includes.items():
+        text = (REPO_ROOT / "runtime" / "parse" / header_name).read_text(
+            encoding="utf-8"
+        )
+        includes = set(re.findall(r'^#include\s+[<"]([^>"]+)[>"]', text, re.M))
+        assert includes.isdisjoint(forbidden), (
+            header_name,
+            sorted(includes & forbidden),
+        )

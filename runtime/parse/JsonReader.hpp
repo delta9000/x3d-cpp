@@ -45,17 +45,16 @@
 #ifndef X3D_PARSE_JSON_READER_HPP
 #define X3D_PARSE_JSON_READER_HPP
 
-#include "DynamicField.hpp" // AuthorFieldDecl + dynamicFieldStore() (S1)
-#include "FieldAliases.hpp"
-#include "FieldValueIO.hpp" // parseInt/parseDouble (x3d::codec)
-#include "JsonLite.hpp"     // x3d::json::parse, Value
-#include "NodeBuilder.hpp"  // build::beginNode/applyField/attachChild/etc.
 #include "X3DReader.hpp"
 #include "X3DRuntime.hpp"
-#include "x3d/nodes/Script.hpp" // Script::setSourceCode (inline source capture)
 
 #include <memory>
 #include <string>
+#include <vector>
+
+namespace x3d::json {
+struct Value;
+}
 
 namespace x3d::codec {
 using namespace x3d::core;

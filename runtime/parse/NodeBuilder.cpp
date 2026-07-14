@@ -1,5 +1,12 @@
 #include "NodeBuilder.hpp"
 
+#include "FieldValueIO.hpp"
+#include "VrmlTokenizer.hpp"
+#include "X3DRuntime.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
+
+#include <any>
+
 namespace x3d::codec::build {
 
 const FieldInfo *findField(const FieldTable &table, std::string_view name) {
