@@ -60,10 +60,18 @@ if(CMAKE_GENERATOR MATCHES "Ninja")
 endif()
 
 # ---------------------------------------------------------------------------
-# Header-only INTERFACE library: x3d_cpp
+# Header usage requirements are a separate acyclic layer. Compiled libraries
+# consume x3d_cpp_headers; the public x3d_cpp facade consumes both headers and
+# compiled implementations. Keeping those directions separate lets the node
+# runtime be either shared or static without a target dependency cycle.
 # ---------------------------------------------------------------------------
+add_library(x3d_cpp_headers INTERFACE)
+add_library(x3d_cpp::headers ALIAS x3d_cpp_headers)
+set_target_properties(x3d_cpp_headers PROPERTIES EXPORT_NAME headers)
+
 add_library(x3d_cpp INTERFACE)
 add_library(x3d_cpp::x3d_cpp ALIAS x3d_cpp)
+target_link_libraries(x3d_cpp INTERFACE x3d_cpp_headers)
 
 # Generated headers live in generated_cpp_bindings/. They #include each other
 # by bare name (e.g. #include "X3DNode.hpp"), so that directory must be on the
@@ -93,10 +101,10 @@ foreach(_sub IN LISTS X3D_CPP_RUNTIME_PUBLIC_SUBDIRS)
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/${_sub}>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/${_sub}>")
 endforeach()
-target_include_directories(x3d_cpp INTERFACE ${_x3d_cpp_interface_includes})
+target_include_directories(x3d_cpp_headers INTERFACE ${_x3d_cpp_interface_includes})
 
 # The generated code targets C++20 (designated initializers, etc.).
-target_compile_features(x3d_cpp INTERFACE cxx_std_20)
+target_compile_features(x3d_cpp_headers INTERFACE cxx_std_20)
 
 # ---------------------------------------------------------------------------
 # Project-wide warning policy. -Wall -Wextra applied to every target we own;
@@ -143,7 +151,27 @@ option(X3D_CPP_FUZZ "Build the libFuzzer harness for parseDocument (requires Cla
 # ---------------------------------------------------------------------------
 file(GLOB X3D_CPP_NODE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/*.cpp")
-add_library(x3d_cpp_nodes STATIC ${X3D_CPP_NODE_SOURCES})
+
+# generator.py also emits a standalone value-smoke program beside the node
+# definitions. Its main() was inert in the old static archive because no link
+# requested that object; it is not a production node definition and must never
+# enter either library form.
+set(_x3d_generated_test_source
+    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/test.cpp")
+list(REMOVE_ITEM X3D_CPP_NODE_SOURCES "${_x3d_generated_test_source}")
+
+option(X3D_CPP_SHARED_NODES
+    "Build the generated node runtime as one shared library (OFF for a static archive)"
+    ON)
+if(X3D_CPP_SHARED_NODES)
+    set(_x3d_node_library_type SHARED)
+    message(STATUS "x3d_cpp: generated node runtime = shared")
+else()
+    set(_x3d_node_library_type STATIC)
+    message(STATUS "x3d_cpp: generated node runtime = static")
+endif()
+
+add_library(x3d_cpp_nodes ${_x3d_node_library_type} ${X3D_CPP_NODE_SOURCES})
 add_library(x3d_cpp::nodes ALIAS x3d_cpp_nodes)
 
 # Unity-build the generated node TUs: batching the per-node .cpp into grouped
@@ -153,18 +181,16 @@ add_library(x3d_cpp::nodes ALIAS x3d_cpp_nodes)
 # pre-C1-split OOM scare was the inline thunks, since removed). Consumers that
 # add_subdirectory() this project inherit the speedup.
 #
-# The generated value-asserting smoke test (generated_cpp_bindings/test.cpp)
-# carries its own main(). It rides inertly in the archive today (no target pulls
-# it). It must stay OUT of the unity merge — otherwise its main() lands in a
-# real node TU and every consumer linking the archive hits a duplicate-main
-# link error.
 set_target_properties(x3d_cpp_nodes PROPERTIES
     EXPORT_NAME nodes
     UNITY_BUILD ON)
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/test.cpp"
-    PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
-target_link_libraries(x3d_cpp_nodes PUBLIC x3d_cpp)
+if(X3D_CPP_SHARED_NODES)
+    set_target_properties(x3d_cpp_nodes PROPERTIES
+        VERSION "${PROJECT_VERSION}"
+        SOVERSION "${PROJECT_VERSION_MAJOR}"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+target_link_libraries(x3d_cpp_nodes PUBLIC x3d_cpp_headers)
 target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
 # Consumers that link the header interface also link the compiled definitions.
 target_link_libraries(x3d_cpp INTERFACE x3d_cpp_nodes)
@@ -201,9 +227,11 @@ target_link_libraries(x3d_cpp_sdk INTERFACE x3d_cpp::x3d_cpp)
 # ---------------------------------------------------------------------------
 # Install + export so downstream projects can find_package(x3d_cpp).
 # ---------------------------------------------------------------------------
-install(TARGETS x3d_cpp x3d_cpp_nodes x3d_cpp_sdk
+install(TARGETS x3d_cpp_headers x3d_cpp x3d_cpp_nodes x3d_cpp_sdk
     EXPORT x3d_cppTargets
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
 # Non-public artifacts that must never reach the installed include tree. Kept
 # byte-for-byte in sync with the leak-gate in scripts/verify_install_embed.sh so
@@ -2334,6 +2362,7 @@ function(_x3d_classify_present_targets purpose)
 endfunction()
 
 _x3d_classify_present_targets(production
+    x3d_cpp_headers
     x3d_cpp
     x3d_cpp_nodes
     x3d_cpp_authoring

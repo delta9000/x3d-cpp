@@ -95,6 +95,14 @@ def ninja_targets(build_dir: Path) -> set[str]:
     return {line.split(":", 1)[0] for line in output.splitlines() if ":" in line}
 
 
+def node_library_artifacts(build_dir: Path) -> set[str]:
+    return {
+        Path(target).name
+        for target in ninja_targets(build_dir)
+        if "libx3d_cpp_nodes" in Path(target).name
+    }
+
+
 def normal_ctest_executable_targets(build_dir: Path) -> set[str]:
     targets: set[str] = set()
     for command in ctest_commands(build_dir).values():
@@ -154,6 +162,43 @@ def test_external_corpus_gates_exist_but_are_not_default_build_inputs(
     gates = {"x3d_cli_gate", "x3d_canon_gate"}
     assert gates <= ninja_targets(configured_ci)
     assert not gates.intersection(query_target_inputs(configured_ci, "all"))
+
+
+def test_generated_node_runtime_is_shared_by_default_and_excludes_test_main(
+    configured_ci: Path,
+) -> None:
+    cache = (configured_ci / "CMakeCache.txt").read_text(encoding="utf-8")
+    assert "X3D_CPP_SHARED_NODES:BOOL=ON" in cache
+
+    artifacts = node_library_artifacts(configured_ci)
+    assert "libx3d_cpp_nodes.so" in artifacts
+    assert "libx3d_cpp_nodes.a" not in artifacts
+
+    compile_commands = json.loads(
+        (configured_ci / "compile_commands.json").read_text(encoding="utf-8")
+    )
+    compiled_sources = {Path(entry["file"]).resolve() for entry in compile_commands}
+    assert (
+        REPO_ROOT / "generated_cpp_bindings" / "x3d" / "nodes" / "test.cpp"
+    ).resolve() not in compiled_sources
+
+
+def test_generated_node_runtime_has_explicit_static_opt_out(tmp_path: Path) -> None:
+    build_dir = tmp_path / "static-nodes"
+    run_checked(
+        "cmake",
+        "--preset",
+        "ci",
+        "-B",
+        str(build_dir),
+        "-DX3D_CPP_SHARED_NODES=OFF",
+    )
+
+    cache = (build_dir / "CMakeCache.txt").read_text(encoding="utf-8")
+    assert "X3D_CPP_SHARED_NODES:BOOL=OFF" in cache
+    artifacts = node_library_artifacts(build_dir)
+    assert "libx3d_cpp_nodes.a" in artifacts
+    assert "libx3d_cpp_nodes.so" not in artifacts
 
 
 def test_sanitizer_preset_and_drivers_are_debug_behavior_only() -> None:
