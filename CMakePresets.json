@@ -5,7 +5,7 @@
     {
       "name": "dev",
       "displayName": "Dev (Ninja + ccache, unoptimized)",
-      "description": "Fast iteration: Ninja scheduling, ccache object reuse, no -O (compile-test/behavior suite needs neither optimization nor NDEBUG). Per-header isolation checks OFF — the ~800 per-header ctests are the slow part of a cold run; use the `ci` preset for the full gate.",
+      "description": "Fast iteration: Ninja scheduling, ccache object reuse, no -O (compile-contract/behavior suites need neither optimization nor NDEBUG). Header isolation is OFF; use the `ci` preset for the full one-TU-per-header contract.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
@@ -15,8 +15,8 @@
     },
     {
       "name": "ci",
-      "displayName": "CI (mirrors the GitHub Actions cpp job)",
-      "description": "Local mirror of the GitHub Actions fast gate: per-header isolation checks ON (the ~800 per-header ctests), X3D_CPP_WERROR=ON (warnings become errors, the merge gate). Use `mise run build-ci` to drive the same gate locally before pushing.",
+      "displayName": "CI (behavior + compile-contract jobs)",
+      "description": "Shared configuration for the GitHub Actions behavior and header-contract jobs: header isolation ON as one object target with one TU per public header, X3D_CPP_WERROR=ON (warnings become errors, the merge gate). Use `mise run build-ci` to drive both scoped aggregates locally before pushing.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-ci",
       "cacheVariables": {
@@ -27,11 +27,11 @@
     {
       "name": "san",
       "displayName": "San (ASan + UBSan)",
-      "description": "Address + UndefinedBehavior sanitizer build for parser tests + corpus sweep. Same flags the GitHub Actions `cpp-san` job uses. ctest under this preset runs every ctest against sanitized binaries — crashes / UB failures fail the gate. WERROR is OFF — the ci preset is the warning-enforcement gate; this one is purely for memory bugs. Per-header isolation checks are OFF here: those are compile-only self-containment tests already gated by the `cpp`/`ci` jobs; running the ~800 of them under ASan/UBSan instrumentation adds no runtime bug-finding and dominated the job's wall-clock.",
+      "description": "Debug Address + UndefinedBehavior sanitizer build for the behavior suite. Same flags and target set the GitHub Actions `cpp-san` job uses. WERROR is OFF — the ci preset is the warning-enforcement gate; this one is purely for memory bugs. Per-header isolation and other compile-only/opt-in targets are excluded because instrumenting code that never executes adds no runtime bug-finding and dominated the job's wall-clock.",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-san",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "X3D_CPP_SAN": "ON",
         "X3D_CPP_PER_HEADER_CHECKS": "OFF"

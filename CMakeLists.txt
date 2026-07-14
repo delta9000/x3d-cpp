@@ -7,6 +7,7 @@ project(x3d_cpp
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/X3DTargetPurpose.cmake")
 
 # ---------------------------------------------------------------------------
 # ccache: reuse cached object output across rebuilds. The generated headers
@@ -59,10 +60,18 @@ if(CMAKE_GENERATOR MATCHES "Ninja")
 endif()
 
 # ---------------------------------------------------------------------------
-# Header-only INTERFACE library: x3d_cpp
+# Header usage requirements are a separate acyclic layer. Compiled libraries
+# consume x3d_cpp_headers; the public x3d_cpp facade consumes both headers and
+# compiled implementations. Keeping those directions separate lets the node
+# runtime be either shared or static without a target dependency cycle.
 # ---------------------------------------------------------------------------
+add_library(x3d_cpp_headers INTERFACE)
+add_library(x3d_cpp::headers ALIAS x3d_cpp_headers)
+set_target_properties(x3d_cpp_headers PROPERTIES EXPORT_NAME headers)
+
 add_library(x3d_cpp INTERFACE)
 add_library(x3d_cpp::x3d_cpp ALIAS x3d_cpp)
+target_link_libraries(x3d_cpp INTERFACE x3d_cpp_headers)
 
 # Generated headers live in generated_cpp_bindings/. They #include each other
 # by bare name (e.g. #include "X3DNode.hpp"), so that directory must be on the
@@ -92,10 +101,10 @@ foreach(_sub IN LISTS X3D_CPP_RUNTIME_PUBLIC_SUBDIRS)
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/${_sub}>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/${_sub}>")
 endforeach()
-target_include_directories(x3d_cpp INTERFACE ${_x3d_cpp_interface_includes})
+target_include_directories(x3d_cpp_headers INTERFACE ${_x3d_cpp_interface_includes})
 
 # The generated code targets C++20 (designated initializers, etc.).
-target_compile_features(x3d_cpp INTERFACE cxx_std_20)
+target_compile_features(x3d_cpp_headers INTERFACE cxx_std_20)
 
 # ---------------------------------------------------------------------------
 # Project-wide warning policy. -Wall -Wextra applied to every target we own;
@@ -124,8 +133,13 @@ endif()
 option(X3D_CPP_SAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer for every project target" OFF)
 if(X3D_CPP_SAN)
     add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
+    # CI needs symbolized function/source locations, not full debugger variable
+    # and type records. Debug's default -g made the behavior-only sanitizer tree
+    # roughly 24 GB; the later -g1 keeps useful ASan/UBSan stacks while bounding
+    # object and executable size.
+    add_compile_options(-g1)
     add_link_options(-fsanitize=address,undefined)
-    message(STATUS "x3d_cpp: X3D_CPP_SAN=ON -> ASan + UBSan enabled (-fno-sanitize-recover=all)")
+    message(STATUS "x3d_cpp: X3D_CPP_SAN=ON -> ASan + UBSan enabled (-fno-sanitize-recover=all, -g1)")
 endif()
 option(X3D_CPP_FUZZ "Build the libFuzzer harness for parseDocument (requires Clang)" OFF)
 
@@ -137,7 +151,27 @@ option(X3D_CPP_FUZZ "Build the libFuzzer harness for parseDocument (requires Cla
 # ---------------------------------------------------------------------------
 file(GLOB X3D_CPP_NODE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/*.cpp")
-add_library(x3d_cpp_nodes STATIC ${X3D_CPP_NODE_SOURCES})
+
+# generator.py also emits a standalone value-smoke program beside the node
+# definitions. Its main() was inert in the old static archive because no link
+# requested that object; it is not a production node definition and must never
+# enter either library form.
+set(_x3d_generated_test_source
+    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/test.cpp")
+list(REMOVE_ITEM X3D_CPP_NODE_SOURCES "${_x3d_generated_test_source}")
+
+option(X3D_CPP_SHARED_NODES
+    "Build the generated node runtime as one shared library (OFF for a static archive)"
+    ON)
+if(X3D_CPP_SHARED_NODES)
+    set(_x3d_node_library_type SHARED)
+    message(STATUS "x3d_cpp: generated node runtime = shared")
+else()
+    set(_x3d_node_library_type STATIC)
+    message(STATUS "x3d_cpp: generated node runtime = static")
+endif()
+
+add_library(x3d_cpp_nodes ${_x3d_node_library_type} ${X3D_CPP_NODE_SOURCES})
 add_library(x3d_cpp::nodes ALIAS x3d_cpp_nodes)
 
 # Unity-build the generated node TUs: batching the per-node .cpp into grouped
@@ -147,18 +181,16 @@ add_library(x3d_cpp::nodes ALIAS x3d_cpp_nodes)
 # pre-C1-split OOM scare was the inline thunks, since removed). Consumers that
 # add_subdirectory() this project inherit the speedup.
 #
-# The generated value-asserting smoke test (generated_cpp_bindings/test.cpp)
-# carries its own main(). It rides inertly in the archive today (no target pulls
-# it). It must stay OUT of the unity merge — otherwise its main() lands in a
-# real node TU and every consumer linking the archive hits a duplicate-main
-# link error.
 set_target_properties(x3d_cpp_nodes PROPERTIES
     EXPORT_NAME nodes
     UNITY_BUILD ON)
-set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/test.cpp"
-    PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
-target_link_libraries(x3d_cpp_nodes PUBLIC x3d_cpp)
+if(X3D_CPP_SHARED_NODES)
+    set_target_properties(x3d_cpp_nodes PROPERTIES
+        VERSION "${PROJECT_VERSION}"
+        SOVERSION "${PROJECT_VERSION_MAJOR}"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+target_link_libraries(x3d_cpp_nodes PUBLIC x3d_cpp_headers)
 target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
 # Consumers that link the header interface also link the compiled definitions.
 target_link_libraries(x3d_cpp INTERFACE x3d_cpp_nodes)
@@ -195,9 +227,11 @@ target_link_libraries(x3d_cpp_sdk INTERFACE x3d_cpp::x3d_cpp)
 # ---------------------------------------------------------------------------
 # Install + export so downstream projects can find_package(x3d_cpp).
 # ---------------------------------------------------------------------------
-install(TARGETS x3d_cpp x3d_cpp_nodes x3d_cpp_sdk
+install(TARGETS x3d_cpp_headers x3d_cpp x3d_cpp_nodes x3d_cpp_sdk
     EXPORT x3d_cppTargets
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
 # Non-public artifacts that must never reach the installed include tree. Kept
 # byte-for-byte in sync with the leak-gate in scripts/verify_install_embed.sh so
@@ -920,64 +954,56 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_cpp_all_headers PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_cpp_all_headers COMMAND x3d_cpp_all_headers)
 
-    # (2) Per-header syntax-only compile tests. Each header is compiled in
-    #     isolation with -fsyntax-only so a regression is pinned to one file.
-    #     Built as a per-header OBJECT library so it inherits the interface
-    #     include dir + cxx_std_20, then registered as a ctest that drives the
-    #     build of just that object.
+    # (2) Header-isolation contract. Keep one generated translation unit per
+    #     public header so diagnostics remain pinned to the exact include, but
+    #     put all of those sources in one OBJECT library. This removes hundreds
+    #     of CMake/Ninja/CTest targets without weakening header self-containment.
     if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_HEADERS)
-        file(RELATIVE_PATH _hdr_rel "${X3D_CPP_HEADER_DIR}" "${_hdr}")
-        string(REGEX REPLACE "[^A-Za-z0-9_]" "_" _hdr_name "${_hdr_rel}")
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax/${_hdr_name}.cpp")
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_rel}\"\n")
+        set(X3D_CPP_HEADER_ISOLATION_SOURCES)
 
-        set(_tgt "x3d_syntax_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
+        function(_x3d_add_header_isolation_source group include_root header)
+            file(RELATIVE_PATH _header_include "${include_root}" "${header}")
+            string(REGEX REPLACE
+                "[^A-Za-z0-9_]" "_" _source_name "${_header_include}")
+            set(_source_dir
+                "${CMAKE_CURRENT_BINARY_DIR}/header_isolation/${group}")
+            file(MAKE_DIRECTORY "${_source_dir}")
+            set(_source "${_source_dir}/${_source_name}.cpp")
+            file(GENERATE OUTPUT "${_source}"
+                CONTENT "#include \"${_header_include}\"\n")
+            set(X3D_CPP_HEADER_ISOLATION_SOURCES
+                ${X3D_CPP_HEADER_ISOLATION_SOURCES} "${_source}"
+                PARENT_SCOPE)
+        endfunction()
 
-        add_test(NAME "compile_${_hdr_name}"
+        foreach(_hdr IN LISTS X3D_CPP_HEADERS)
+            _x3d_add_header_isolation_source(
+                generated "${X3D_CPP_HEADER_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_RUNTIME_HEADERS)
+            _x3d_add_header_isolation_source(
+                runtime "${X3D_CPP_RUNTIME_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_CODEC_HEADERS)
+            _x3d_add_header_isolation_source(
+                codecs "${X3D_CPP_CODEC_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_EVENT_HEADERS)
+            _x3d_add_header_isolation_source(
+                events "${X3D_CPP_EVENT_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_PARSE_HEADERS)
+            _x3d_add_header_isolation_source(
+                parse "${X3D_CPP_PARSE_DIR}" "${_hdr}")
+        endforeach()
+
+        add_library(x3d_header_isolation OBJECT EXCLUDE_FROM_ALL
+            ${X3D_CPP_HEADER_ISOLATION_SOURCES})
+        x3d_set_target_purpose(x3d_header_isolation compile-contract)
+        target_link_libraries(x3d_header_isolation PRIVATE x3d_cpp::x3d_cpp)
+        add_test(NAME x3d_header_isolation
             COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
-    endif()
-
-    # (3) Per-runtime-header syntax-only compile tests, mirroring (2) for the
-    #     hand-written document model.
-    if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_RUNTIME_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax_runtime/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
-
-        set(_tgt "x3d_syntax_runtime_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
-
-        add_test(NAME "compile_runtime_${_hdr_name}"
-            COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
-    endif()
-
-    # (4) Per-codec-header syntax-only compile tests, mirroring (2)/(3) for the
-    #     hand-written codecs (XML/JSON/VRML) and bundled XmlLite.
-    if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_CODEC_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax_codecs/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
-
-        set(_tgt "x3d_syntax_codec_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
-
-        add_test(NAME "compile_codec_${_hdr_name}"
-            COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
+                    --target x3d_header_isolation --config "$<CONFIG>")
     endif()
 
     # (5) Stage C codec integration test: build the sample scene, round-trip it
@@ -1078,26 +1104,7 @@ if(X3D_CPP_BUILD_TESTS)
     #   E. RTC-5 + RTC-6 cascade conformance — registered below alongside the
     #      other event-cascade integration tests (see x3d_cascade_conformance).
 
-    # (6) Per-event-header syntax-only compile tests, mirroring (2)/(3)/(4) for
-    #     the event-system runtime.
-    if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_EVENT_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax_events/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
-
-        set(_tgt "x3d_syntax_event_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
-
-        add_test(NAME "compile_event_${_hdr_name}"
-            COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
-    endif()
-
-    # (7) Event-system integration tests, built and RUN (not just compiled):
+    # (3) Event-system integration tests, built and RUN (not just compiled):
     #     - cascade_test: route propagation, fan-out, loop-breaking, inputOnly
     #       handler delivery, outputOnly emit cascading.
     #     - animation_test: a TimeSensor -> PositionInterpolator -> Transform
@@ -1506,26 +1513,7 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_script_corpus_e2e
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data")
 
-    # (8) Per-parse-header syntax-only compile tests, mirroring (2)/(3)/(4)/(6)
-    #     for the unified parsing front-end.
-    if(X3D_CPP_PER_HEADER_CHECKS)
-    foreach(_hdr IN LISTS X3D_CPP_PARSE_HEADERS)
-        get_filename_component(_hdr_name "${_hdr}" NAME_WE)
-        set(_tu "${CMAKE_CURRENT_BINARY_DIR}/syntax_parse/${_hdr_name}.cpp")
-        get_filename_component(_hdr_file "${_hdr}" NAME)
-        file(GENERATE OUTPUT "${_tu}" CONTENT "#include \"${_hdr_file}\"\n")
-
-        set(_tgt "x3d_syntax_parse_${_hdr_name}")
-        add_library("${_tgt}" OBJECT EXCLUDE_FROM_ALL "${_tu}")
-        target_link_libraries("${_tgt}" PRIVATE x3d_cpp::x3d_cpp)
-
-        add_test(NAME "compile_parse_${_hdr_name}"
-            COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_tgt}" --config "$<CONFIG>")
-    endforeach()
-    endif()
-
-    # (9) Parse front-end integration test (WS-A), built and RUN (not just
+    # (4) Parse front-end integration test (WS-A), built and RUN (not just
     #     compiled): encoding sniffing (extension + content + override + gzip),
     #     the shared VrmlTokenizer, NodeBuilder::collectFieldValue value
     #     round-trips, and the XmlReaderAdapter / parseDocument front door
@@ -1895,9 +1883,9 @@ endif()
 #
 # Both targets include tools/x3d-cli/ so they can see scene_equiv.hpp and
 # cli_gate.cpp without polluting the SDK include path.
-# Always built (not gated on X3D_CPP_BUILD_TESTS) so `mise run build` covers
-# them automatically. The gate is NOT added to ctest (it requires the corpus
-# archive + a committed goldens/validate-verdicts.tsv; run via mise run cli-gate).
+# The self-contained tests remain in the default build. The external-corpus
+# gates exist as explicit targets, but are excluded from `all` and from CTest;
+# their mise tasks build them before use.
 # ---------------------------------------------------------------------------
 add_executable(x3d_scene_equiv_test
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/scene_equiv_test.cpp")
@@ -1918,7 +1906,7 @@ target_link_libraries(x3d_gate_baseurl_roundtrip_test PRIVATE x3d_cpp::sdk)
 add_test(NAME x3d_gate_baseurl_roundtrip_test
          COMMAND x3d_gate_baseurl_roundtrip_test)
 
-add_executable(x3d_cli_gate
+add_executable(x3d_cli_gate EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/cli_gate.cpp")
 target_include_directories(x3d_cli_gate PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
@@ -1940,7 +1928,7 @@ target_include_directories(x3d_canonicalize_unit_test PRIVATE
 target_link_libraries(x3d_canonicalize_unit_test PRIVATE x3d_cpp::sdk)
 add_test(NAME x3d_canonicalize_unit_test COMMAND x3d_canonicalize_unit_test)
 
-add_executable(x3d_canon_gate
+add_executable(x3d_canon_gate EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/canon_gate.cpp")
 target_include_directories(x3d_canon_gate PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
@@ -2357,3 +2345,212 @@ if(X3D_CPP_FUZZ)
     target_link_options(x3d_parse_fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
     message(STATUS "x3d_cpp: X3D_CPP_FUZZ=ON -> x3d_parse_fuzz built with libFuzzer + ASan + UBSan")
 endif()
+
+# ---------------------------------------------------------------------------
+# Target purpose inventory. Primary purpose answers why each repository-owned
+# target exists; test-suite membership is a separate property added in the
+# aggregate-target phase. Optional names are kept in the inventory even when
+# their feature flag is off so enabling a backend cannot create an unclassified
+# target later.
+# ---------------------------------------------------------------------------
+function(_x3d_classify_present_targets purpose)
+    foreach(_target IN LISTS ARGN)
+        if(TARGET "${_target}")
+            x3d_set_target_purpose("${_target}" "${purpose}")
+        endif()
+    endforeach()
+endfunction()
+
+_x3d_classify_present_targets(production
+    x3d_cpp_headers
+    x3d_cpp
+    x3d_cpp_nodes
+    x3d_cpp_authoring
+    x3d_cpp_sdk
+    x3d_ecmascript_backend
+    x3d_cli)
+
+_x3d_classify_present_targets(compile-contract
+    x3d_cpp_all_headers)
+
+_x3d_classify_present_targets(behavior
+    x3d_codec_roundtrip_audit
+    x3d_xml_script_field
+    x3d_xml_composed_shader
+    x3d_vrml_script_field
+    x3d_json_script_field
+    x3d_contact_reporter
+    x3d_physics_contact_wiring
+    x3d_inertia_massprops
+    x3d_contact_response
+    x3d_event_scene_bridge
+    x3d_sai_context
+    x3d_script_system
+    x3d_ecmascript_backend_test
+    x3d_ecmascript_corpus_smoke_test
+    x3d_script_author_runtime
+    x3d_script_corpus_e2e
+    x3d_parse_reader
+    x3d_classic_vrml_reader
+    x3d_proto_front_door
+    x3d_proto_expand_audit
+    x3d_inline_roundtrip
+    x3d_inline_routes
+    x3d_inline_cycle
+    x3d_inflate_bomb
+    x3d_path_confine
+    x3d_inline_containment_cycle
+    x3d_vrml97_reader
+    x3d_json_reader
+    x3d_sdk_facade
+    x3d_sound_system
+    x3d_corpus_sweep
+    x3d_corpus_audit
+    x3d_corpus_audit_selftest
+    x3d_sim_behavior_test
+    x3d_scene_equiv_test
+    x3d_gate_baseurl_roundtrip_test
+    x3d_canonicalize_unit_test
+    x3d_geometry_scene_tests
+    x3d_namespace_taxonomy
+    x3d_codecs_tests
+    x3d_parse_tests
+    x3d_extract_tests
+    x3d_events_tests)
+
+_x3d_classify_present_targets(opt-in
+    x3d_physics_jolt
+    x3d_physics_jolt_test
+    x3d_physics_system_test
+    x3d_quickjs
+    x3d_quickjs_backend_test
+    x3d_curl
+    x3d_assetresolver_backend_a_test
+    x3d_s3
+    x3d_assetresolver_backend_b_test
+    x3d_assetresolver_swap
+    x3d_stb
+    x3d_wuffs
+    x3d_stbtt
+    x3d_plmpeg
+    x3d_theora
+    x3d_freetype
+    x3d_text_tests
+    x3d_texture_tests
+    x3d_movie_tests
+    x3d_example_01_load_validate_convert
+    x3d_example_02_extract_render_feed
+    x3d_example_03_attach_behavior_tick
+    x3d_quickjs_swap
+    x3d_cli_gate
+    x3d_canon_gate
+    x3d_cpp_ext
+    x3d_ext_stl_reader
+    x3d_stl_write_test
+    x3d_extract_oracle_test
+    x3d_ext_external_geometry_node
+    x3d_ext_external_geometry_roundtrip
+    x3d_ext_external_geometry_e2e
+    x3d_miniaudio
+    x3d_sound_swaptest
+    x3d_parse_fuzz)
+
+_x3d_classify_present_targets(internal
+    x3d_duktape
+    x3d_s3_testsupport)
+
+# Test-suite membership is deliberately independent of primary target purpose:
+# x3d_cli is production software and still belongs in the behavior/sanitizer
+# build graph, while behavior test executables naturally belong in both.
+if(X3D_CPP_BUILD_TESTS)
+    x3d_get_targets_by_purpose(_x3d_behavior_targets behavior)
+    foreach(_target IN LISTS _x3d_behavior_targets)
+        x3d_register_test_target("${_target}" SUITES behavior sanitizer)
+    endforeach()
+    if(TARGET x3d_cli)
+        x3d_register_test_target(x3d_cli SUITES behavior sanitizer)
+    endif()
+
+    x3d_get_targets_by_purpose(_x3d_contract_targets compile-contract)
+    foreach(_target IN LISTS _x3d_contract_targets)
+        x3d_register_test_target("${_target}" SUITES compile-contract)
+    endforeach()
+
+    x3d_get_test_targets(_x3d_behavior_suite_targets behavior)
+    add_custom_target(x3d_behavior_tests)
+    add_dependencies(x3d_behavior_tests ${_x3d_behavior_suite_targets})
+    x3d_set_target_purpose(x3d_behavior_tests internal)
+
+    x3d_get_test_targets(_x3d_sanitizer_suite_targets sanitizer)
+    add_custom_target(x3d_sanitizer_tests)
+    add_dependencies(x3d_sanitizer_tests ${_x3d_sanitizer_suite_targets})
+    x3d_set_target_purpose(x3d_sanitizer_tests internal)
+
+    x3d_get_test_targets(_x3d_contract_suite_targets compile-contract)
+    add_custom_target(x3d_compile_contracts)
+    add_dependencies(x3d_compile_contracts ${_x3d_contract_suite_targets})
+    x3d_set_target_purpose(x3d_compile_contracts internal)
+
+    # Keep execution selection as explicit as build selection. Some test names
+    # differ from their owning targets, and shell-driven tests have no owning
+    # executable, so CTest labels are assigned from the public test names.
+    set(_x3d_behavior_tests
+        x3d_codec_roundtrip_audit
+        x3d_xml_script_field
+        x3d_xml_composed_shader
+        x3d_vrml_script_field
+        x3d_json_script_field
+        x3d_contact_reporter
+        x3d_physics_contact_wiring
+        x3d_inertia_massprops
+        x3d_contact_response
+        x3d_event_scene_bridge
+        x3d_sai_context
+        x3d_script_system
+        x3d_ecmascript_backend
+        x3d_ecmascript_corpus_smoke
+        x3d_script_author_runtime
+        x3d_script_corpus_e2e
+        x3d_parse_reader
+        x3d_classic_vrml_reader
+        x3d_proto_front_door
+        x3d_proto_expand_audit
+        x3d_inline_roundtrip
+        x3d_inline_routes
+        x3d_inline_cycle
+        x3d_inflate_bomb
+        x3d_path_confine
+        x3d_inline_containment_cycle
+        x3d_vrml97_reader
+        x3d_json_reader
+        x3d_sdk_facade
+        x3d_sound_system
+        x3d_corpus_smoke
+        x3d_corpus_audit_smoke
+        x3d_corpus_audit_selftest
+        x3d_corpus_tools_cli_test
+        x3d_cli_test
+        x3d_sim_behavior_test
+        x3d_scene_equiv_test
+        x3d_gate_baseurl_roundtrip_test
+        x3d_canonicalize_unit_test
+        x3d_geometry_scene
+        x3d_namespace_taxonomy
+        x3d_codecs_tests
+        x3d_parse_tests
+        x3d_extract_tests
+        x3d_events_tests)
+    set_tests_properties(${_x3d_behavior_tests} PROPERTIES LABELS behavior)
+
+    set(_x3d_compile_contract_tests x3d_cpp_all_headers)
+    if(NOT X3D_CPP_SAN)
+        list(APPEND _x3d_compile_contract_tests x3d_install_embed_smoke)
+    endif()
+    if(X3D_CPP_PER_HEADER_CHECKS)
+        list(APPEND _x3d_compile_contract_tests x3d_header_isolation)
+    endif()
+    set_tests_properties(
+        ${_x3d_compile_contract_tests} PROPERTIES LABELS compile-contract)
+endif()
+
+x3d_validate_target_purposes()

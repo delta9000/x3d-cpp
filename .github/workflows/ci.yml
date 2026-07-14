@@ -5,15 +5,15 @@
 # single-compiler C++ build + ctest.
 #
 # The per-seam backend swap-tests fall into two groups:
-#   - **texture-swap** is UNCONDITIONAL on every PR — both decoders are vendored
-#     and the gate is hermetic + <2 min. Byte-equal decode parity is the
+#   - **texture-swap** runs on every C++ PR — both decoders are vendored and the
+#     gate is hermetic + <2 min. Byte-equal decode parity is the
 #     closest thing the SDK has to a render-correctness guarantee, so it runs
 #     every time.
 #   - The remaining four swap-tests (quickjs / assetresolver / audio /
 #     fontmetrics) each fetch+build a third-party backend (and assetresolver
 #     also brings up docker/minio + the AWS SDK), so they run ONLY when their
 #     backend, the seam interface header, the build system, or a CONSUMING
-#     subsystem changed — gated by the `changes` job's regex detection
+#     subsystem changed — gated by the `changes` job's path classifier
 #     (manual dispatch runs them all).
 #
 # A `concurrency` group cancels superseded in-flight runs so rapid pushes to a
@@ -51,11 +51,10 @@ concurrency:
 jobs:
   # Detect which seam subsystems a PR touches so the heavy backend swap-tests run
   # ONLY when their backend, the seam interface, the build system, OR a
-  # consuming subsystem changed. The fast hermetic gates (pytest/golden/
-  # conformance/wiki/cpp) always run. The texture-swap gate is unconditional
-  # (vendored, hermetic, <2 min) — see below. Plain git + bash (no third-party
-  # action) so the Forgejo mirror runs it unchanged. On workflow_dispatch (no
-  # base ref) every seam proof runs.
+  # consuming subsystem changed. Python/golden/conformance/wiki always run;
+  # C++ jobs use the classifier's `cpp` output. Plain git + Python 3 (no
+  # third-party action) keeps the Forgejo mirror compatible. On manual dispatch
+  # every class is requested.
   changes:
     name: detect changed subsystems
     runs-on: ubuntu-latest
@@ -64,7 +63,9 @@ jobs:
       quickjs: ${{ steps.f.outputs.quickjs }}
       assets: ${{ steps.f.outputs.assets }}
       fontmetrics: ${{ steps.f.outputs.fontmetrics }}
-      code: ${{ steps.f.outputs.code }}
+      cpp: ${{ steps.f.outputs.cpp }}
+      generator: ${{ steps.f.outputs.generator }}
+      docs: ${{ steps.f.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -75,39 +76,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${BASE:-}" ]; then
-            # Manual dispatch (no PR base): run every seam proof + the C++ jobs.
-            for k in audio quickjs assets fontmetrics code; do
-              echo "$k=true" >> "$GITHUB_OUTPUT"
-            done
+            python3 scripts/classify_ci_changes.py --all >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git fetch --no-tags --prune origin "$BASE"
           base_sha="$(git merge-base HEAD "origin/$BASE")"
           changed="$(git diff --name-only "$base_sha" HEAD)"
           echo "changed vs $BASE ($base_sha):"; echo "$changed"
-          m() { echo "$changed" | grep -qE "$1"; }
-          # Build-system / workflow changes can break any backend build -> run all.
-          common='^CMakeLists\.txt$|^cmake/|^\.github/workflows/ci\.yml$'
-          out() { if m "$common" || m "$2"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
-          # Each regex covers: (a) the seam interface header, (b) the backend
-          # implementation dirs, (c) the swap-test TU, and (d) the consumer
-          # subsystem files that drive the seam. Without (d) a refactor of a
-          # consuming subsystem would merge green without re-proving parity.
-          out audio       '^runtime/sound/'
-          out quickjs     '^runtime/script/'
-          out assets      '^runtime/io/(curl|s3)/|^runtime/io/tests/asset_resolver|^runtime/extract/AssetResolver\.hpp$|^runtime/parse/(X3DParse|X3DProtoResolver|JsonReader|ClassicVrmlReader|Vrml97Dialect)\.hpp$|^runtime/InlineExpand\.hpp$|^runtime/ext/(ExtResolver|ExternalGeometry)\.hpp$|^runtime/extract/TextureExtract\.hpp$'
-          # texture is broad by design (see texture-swap) — gated only on `code`.
-          out fontmetrics '^runtime/io/(stbtt|freetype)/|^runtime/io/tests/font_metrics|^runtime/extract/FontMetrics\.hpp$|^runtime/extract/(TextLayout|TextExtract|MeshBuilder|RenderItem)\.hpp$'
-          # code: gates the heavy C++ jobs (cpp-san, cpp-fuzz, texture-swap). True
-          # for ANY non-docs change; skip ONLY when every changed file is docs
-          # (docs/**, *.md, mkdocs.yml). Fail-safe toward running: an empty diff or
-          # any unrecognized path runs the jobs. The fast `cpp` gate stays
-          # always-on (cheap, and the stable required status check).
-          if [ -z "$changed" ] || echo "$changed" | grep -qvE '^docs/|\.md$|^mkdocs\.yml$'; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "code=false" >> "$GITHUB_OUTPUT"
-          fi
+          printf '%s\n' "$changed" | python3 scripts/classify_ci_changes.py >> "$GITHUB_OUTPUT"
 
   python:
     name: pytest (unit + golden tree)
@@ -170,6 +146,10 @@ jobs:
 
   cpp:
     name: C++ build + ctest (gcc, PR fast gate)
+    needs: changes
+    # If this display name is configured as a required branch-protection check,
+    # confirm the host accepts path-skipped jobs before enabling that requirement.
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -179,28 +159,55 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-gcc-pr-${{ github.sha }}
-          restore-keys: ccache-gcc-pr-
+          key: ccache-behavior-${{ github.sha }}
+          restore-keys: ccache-behavior-
+      - name: Bound ccache storage
+        run: ccache --max-size=750M
       # X3D_CPP_WERROR=ON mirrors the local ci preset: warnings become errors,
       # so a latent warning introduced in a PR fails the merge gate here.
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DX3D_CPP_WERROR=ON
-      - name: Build
-        run: cmake --build build
-      - name: Test
-        run: ctest --test-dir build --output-on-failure -j "$(nproc)"
+        run: cmake --preset ci
+      - name: Build behavior targets
+        run: cmake --build --preset ci --target x3d_behavior_tests
+      - name: Test behavior suite
+        run: ctest --preset ci -L behavior --output-on-failure -j "$(nproc)"
 
-  # Sanitizer gate (BLD-2). Rebuilds the whole project with ASan + UBSan
-  # (-fno-sanitize-recover=all, so the first error aborts) and runs every ctest
-  # against the sanitized binaries — the green doctest run misses the memory/UB
-  # bugs (use-after-free, leaks, signed overflow) that the parser-hardening work
-  # (SEC-1/2, MEM-1) is meant to foreclose. Mirrors `mise run build-san` exactly
-  # via the `san` preset. Unconditional on every PR; off the fast `cpp` job
-  # because the separate sanitized build dir can't share ccache objects with it.
+  # Compile-only public-header and installed-consumer contracts are isolated
+  # from the fast runtime gate so their one-TU-per-header cost can run in
+  # parallel and cannot inflate the behavior critical path.
+  cpp-headers:
+    name: C++ header compile contracts (gcc, PR gate)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-headers-${{ github.sha }}
+          restore-keys: ccache-headers-
+      - name: Bound ccache storage
+        run: ccache --max-size=750M
+      - name: Configure
+        run: cmake --preset ci
+      - name: Build compile contracts
+        run: cmake --build --preset ci --target x3d_compile_contracts
+      - name: Test compile contracts
+        run: ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"
+
+  # Sanitizer gate (BLD-2). Builds the behavior suite in Debug with ASan + UBSan
+  # (-fno-sanitize-recover=all, so the first error aborts). Compile contracts,
+  # examples, fuzzers, and external-corpus gates do not execute useful sanitizer
+  # behavior and stay out of this graph. Mirrors `mise run build-san` exactly via
+  # the `san` preset; its separate build dir cannot share objects with `cpp`.
   cpp-san:
     name: C++ sanitizer gate (ASan + UBSan)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -212,12 +219,14 @@ jobs:
           path: ~/.cache/ccache
           key: ccache-san-${{ github.sha }}
           restore-keys: ccache-san-
+      - name: Bound ccache storage
+        run: ccache --max-size=750M
       - name: Configure (ASan + UBSan via the `san` preset)
         run: cmake --preset san
       - name: Build (sanitized)
-        run: cmake --build --preset san
-      - name: Test (every ctest under ASan + UBSan)
-        run: ctest --preset san --output-on-failure -j "$(nproc)"
+        run: cmake --build --preset san --target x3d_sanitizer_tests
+      - name: Test (behavior suite under ASan + UBSan)
+        run: ctest --preset san -L behavior --output-on-failure -j "$(nproc)"
 
   # Fuzz gate (BLD-2). Builds the libFuzzer harness for sdk::parseDocument
   # (Clang-only — the `-fsanitize=fuzzer` coverage instrumentation + ASan/UBSan
@@ -228,7 +237,7 @@ jobs:
   cpp-fuzz:
     name: C++ fuzz gate (libFuzzer parseDocument)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -395,7 +404,7 @@ jobs:
   # NO vcpkg, NO docker/minio, NO FetchContent — both decoders are vendored, so
   # the gate is a sub-minute apt + scoped build.
   #
-  # Runs on every CODE PR (gated on `code`, not on a texture path filter):
+  # Runs on every C++ PR (gated on `cpp`, not on a texture path filter):
   # texture decode parity is the closest thing the SDK has to a byte-exact
   # rendering guarantee, and the dual-backend comparison catches lossy decode
   # regressions a seam-path-gated run would silently miss if the change happened
@@ -404,7 +413,7 @@ jobs:
   texture-swap:
     name: TextureResolver decode seam swap-test
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -514,11 +523,13 @@ jobs:
   # both, runs their --headless probes, and exercises the real GL pipeline
   # headlessly under Xvfb + mesa software GL (llvmpipe) — the closest proof that
   # the renderer-agnostic extraction seam still works for an external consumer.
-  # Unconditional (every PR): the drift it catches comes from arbitrary public-API
+  # Runs on every C++ PR: the drift it catches comes from arbitrary public-API
   # changes, not one path-gated seam. Mirrors `mise run validate-examples` (both
   # call scripts/validate-examples.sh).
   examples-gate:
     name: Example consumers (cpu_raster + poc, headless GL)
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
