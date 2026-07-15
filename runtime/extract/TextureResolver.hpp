@@ -27,6 +27,7 @@
 #define X3D_RUNTIME_EXTRACT_TEXTURE_RESOLVER_HPP
 
 #include <cstdint>
+#include <memory>
 #include <functional>
 #include <string>
 #include <vector>
@@ -58,22 +59,50 @@ enum class TextureResolveStatus { Ready, Pending, Failed };
 // ---------------------------------------------------------------------------
 // TexturePixelResult — POD result carrier.
 // ---------------------------------------------------------------------------
+// TexturePixelsRef — SHARED, immutable handle to one decoded surface (ADR-0045).
+//
+// Decoded RGBA is the largest single payload the render feed carries (a 512x512
+// surface is 1 MiB), and one URL is routinely referenced by many placements. The
+// pixels are therefore co-owned rather than copied per placement: SceneExtractor
+// memoizes each Ready resolve by URL, so N placements of one textured DEF'd Shape
+// invoke the embedder's decoder ONCE and share one buffer. Before this was a
+// handle, 200 placements meant 200 resolver calls and 200 MiB retained.
+//
+// NEVER null: a Pending/Failed result points at the shared empty surface, so
+// `ref.resolvedPixels.pixels->rgba` is safe to dereference without a null check
+// (guard on ready() for meaningfulness, as before).
+using TexturePixelsRef = std::shared_ptr<const TexturePixels>;
+
+inline const TexturePixelsRef &emptyTexturePixelsRef() {
+    static const TexturePixelsRef kEmpty = std::make_shared<const TexturePixels>();
+    return kEmpty;
+}
+
 struct TexturePixelResult {
     TextureResolveStatus status = TextureResolveStatus::Failed;
-    TexturePixels        pixels;
+    TexturePixelsRef     pixels = emptyTexturePixelsRef();
 
     bool ready()   const { return status == TextureResolveStatus::Ready;   }
     bool pending() const { return status == TextureResolveStatus::Pending; }
     bool failed()  const { return status == TextureResolveStatus::Failed;  }
 
+    // Backend-facing factory: unchanged signature, so every embedder adapter that
+    // hands back a decoded TexturePixels by value still compiles as-is.
     static TexturePixelResult makeReady(TexturePixels p) {
-        return {TextureResolveStatus::Ready, std::move(p)};
+        return {TextureResolveStatus::Ready,
+                std::make_shared<const TexturePixels>(std::move(p))};
+    }
+    // Zero-copy overload: re-publish an ALREADY-shared surface (the memo path, and
+    // any backend holding its own decoded-texture cache).
+    static TexturePixelResult makeReady(TexturePixelsRef p) {
+        return {TextureResolveStatus::Ready,
+                p ? std::move(p) : emptyTexturePixelsRef()};
     }
     static TexturePixelResult makePending() {
-        return {TextureResolveStatus::Pending, {}};
+        return {TextureResolveStatus::Pending, emptyTexturePixelsRef()};
     }
     static TexturePixelResult makeFailed() {
-        return {TextureResolveStatus::Failed, {}};
+        return {TextureResolveStatus::Failed, emptyTexturePixelsRef()};
     }
 };
 

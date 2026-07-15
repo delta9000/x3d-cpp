@@ -354,10 +354,10 @@ static void testResolverRoundTrip() {
 
   // Url with a real URL => Ready with the magenta pixel.
   CHECK((refs[0].resolvedPixels.ready()));
-  CHECK((refs[0].resolvedPixels.pixels.width == 1));
-  CHECK((refs[0].resolvedPixels.pixels.rgba.size() == 4));
-  CHECK((refs[0].resolvedPixels.pixels.rgba[0] == 255 &&
-         refs[0].resolvedPixels.pixels.rgba[1] == 0));
+  CHECK((refs[0].resolvedPixels.pixels->width == 1));
+  CHECK((refs[0].resolvedPixels.pixels->rgba.size() == 4));
+  CHECK((refs[0].resolvedPixels.pixels->rgba[0] == 255 &&
+         refs[0].resolvedPixels.pixels->rgba[1] == 0));
 
   // Inline => resolver NEVER called; stays Failed (consumer reads inlinePixels).
   CHECK((refs[1].resolvedPixels.failed()));

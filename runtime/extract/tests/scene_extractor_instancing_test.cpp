@@ -165,6 +165,81 @@ TEST_CASE("instancing: DISTINCT geometry nodes do NOT share a mesh") {
   CHECK(ex.item(0).mesh.get() != ex.item(1).mesh.get());
 }
 
+TEST_CASE("instancing: one texture URL decodes ONCE across N placements") {
+  // Decoded RGBA is the biggest payload the feed carries. The resolver was
+  // invoked per PLACEMENT, so 200 USEs of one textured Shape meant 200 embedder
+  // decode calls and 200 retained surfaces of the same image.
+  const int kInstances = 32;
+  auto shape = makeQuadShape();
+  auto tex = createX3DNode("ImageTexture");
+  setF(tex, "url", std::any(std::vector<std::string>{"shared.png"}));
+  auto app = createX3DNode("Appearance");
+  setF(app, "texture", std::any(std::shared_ptr<X3DNode>(tex)));
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(createX3DNode("Material"))));
+  setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
+
+  Scene scene = makeInstancedScene(shape, kInstances);
+
+  int resolverCalls = 0;
+  TextureResolver counting = [&resolverCalls](const std::string &) {
+    ++resolverCalls;
+    TexturePixels p;
+    p.width = 4;
+    p.height = 4;
+    p.rgba.assign(4 * 4 * 4, 200);
+    return TexturePixelResult::makeReady(std::move(p));
+  };
+
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene, MeshBuildOptions{}, counting);
+  ex.fullSnapshot();
+
+  REQUIRE(ex.itemCount() == static_cast<std::size_t>(kInstances));
+  // One distinct URL => exactly one embedder decode, however many placements.
+  CHECK(resolverCalls == 1);
+
+  std::set<const TexturePixels *> surfaces;
+  for (std::size_t i = 0; i < ex.itemCount(); ++i) {
+    const auto &textures = ex.item(i).material.textures;
+    REQUIRE_FALSE(textures.empty());
+    REQUIRE(textures[0].resolvedPixels.ready());
+    surfaces.insert(textures[0].resolvedPixels.pixels.get());
+  }
+  // ...and every placement shares that one decoded surface.
+  CHECK(surfaces.size() == 1);
+}
+
+TEST_CASE("instancing: Pending texture resolves are NOT memoized (retry survives)") {
+  // A Pending result means "not decoded yet, try again next frame". Memoizing it
+  // would freeze the retry and the texture would never appear.
+  auto shape = makeQuadShape();
+  auto tex = createX3DNode("ImageTexture");
+  setF(tex, "url", std::any(std::vector<std::string>{"slow.png"}));
+  auto app = createX3DNode("Appearance");
+  setF(app, "texture", std::any(std::shared_ptr<X3DNode>(tex)));
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(createX3DNode("Material"))));
+  setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
+  Scene scene = makeInstancedScene(shape, 8);
+
+  int calls = 0;
+  TextureResolver pending = [&calls](const std::string &) {
+    ++calls;
+    return TexturePixelResult::makePending();
+  };
+
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene, MeshBuildOptions{}, pending);
+  ex.fullSnapshot();
+
+  // Every placement re-offered the URL, because nothing was cached.
+  CHECK(calls == 8);
+  CHECK(ex.item(0).material.textures[0].resolvedPixels.pending());
+  // Pending carries no payload but is still safe to dereference (never null).
+  CHECK(ex.item(0).material.textures[0].resolvedPixels.pixels->rgba.empty());
+}
+
 TEST_CASE("instancing: geometry content change rebuilds once and RE-shares") {
   // The delta() re-extract path had the same defect in copy form: it built the
   // mesh once then assigned a full COPY into every dependent record.

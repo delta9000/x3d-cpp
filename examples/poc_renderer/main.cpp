@@ -646,11 +646,11 @@ GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &cache,
   // cache key absent (retry next frame, contract A). Only when the seam yielded
   // nothing (Failed/no resolver wired) do we fall through to the legacy
   // AssetResolver bytes path below (PoC-side stb_image decode).
-  if (pick->resolvedPixels.ready() && !pick->resolvedPixels.pixels.rgba.empty()) {
+  if (pick->resolvedPixels.ready() && !pick->resolvedPixels.pixels->rgba.empty()) {
     const std::string &key = pick->url.front();
     auto it = cache.byUrl.find(key);
     if (it != cache.byUrl.end()) return it->second;
-    const ex::TexturePixels &p = pick->resolvedPixels.pixels;
+    const ex::TexturePixels &p = *pick->resolvedPixels.pixels;
     GLuint tex = uploadGlTexture(p.rgba.data(), static_cast<int>(p.width),
                                  static_cast<int>(p.height), pick->repeatS,
                                  pick->repeatT, pick->sampler.generateMipmaps, srgb);
@@ -882,7 +882,7 @@ int main(int argc, char **argv) {
     for (ex::RenderItemId id = 0; id < items; ++id) {
       for (const ex::TextureRef &t : extractor.item(id).material.textures) {
         if (t.source == ex::TextureRef::Source::Url &&
-            t.resolvedPixels.ready() && !t.resolvedPixels.pixels.rgba.empty())
+            t.resolvedPixels.ready() && !t.resolvedPixels.pixels->rgba.empty())
           ++resolvedTextures;
       }
     }

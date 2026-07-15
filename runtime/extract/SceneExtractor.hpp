@@ -171,6 +171,7 @@ public:
     // caches then collapse N placements onto one build/one allocation.
     rawMeshCache_.clear();
     bakedMeshCache_.clear();
+    textureMemo_.clear();
 
     // #21: one node-visit budget shared across this snapshot's light collection
     // and geometry walk, bounding an acyclic "doubling DAG" fan-out.
@@ -505,7 +506,13 @@ private:
     // TextureTransform bake lives on the MESH texcoords (updatedGeometry), not the
     // material — a textureTransform-only change is a documented v1 narrowing.
     enrichTextureRefs(rec.material.textures, /*texNodes=*/{}, rec.geometry.node);
-    resolveTextureRefs(rec.material.textures, textureResolver_);
+    // Memoized (ADR-0045): one Appearance is routinely shared by many placements,
+    // so an appearance change calls refreshMaterial() once PER DEPENDENT — without
+    // the memo that is N decodes of the same URL. A CHANGED url is a memo miss and
+    // still re-resolves, which is what this path exists to do. (Same-url content
+    // changing underneath us does not dirty the node, so it would not re-resolve
+    // here either way — the memo costs no freshness that was on offer.)
+    resolveTextureRefs(rec.material.textures, textureResolver_, &textureMemo_);
   }
 
   // Resume the subtree walk under a grouping node G whose children changed,
@@ -736,7 +743,10 @@ private:
                      textureTransformParamsListOf(appearance ? appearance.get()
                                                              : nullptr));
     enrichTextureRefs(material.textures, /*texNodes=*/{}, geom);
-    resolveTextureRefs(material.textures, textureResolver_);
+    // ADR-0045: decode-once per URL. Without the memo the embedder's decoder was
+    // invoked once per PLACEMENT (200 calls + 200 MiB retained for one 512x512
+    // texture USE'd 200 times).
+    resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
 
     // §23.4.4 effective far = Viewpoint.farDistance>0 ? : NavigationInfo.visibilityLimit>0 ? : inf.
     float far = 0.0f; // 0 => infinite
@@ -803,7 +813,10 @@ private:
     MaterialDesc material = materialOf(appearance ? appearance.get() : nullptr);
     const bool castShadow = geombounds::getField<bool>(shape, "castShadow", true);
     enrichTextureRefs(material.textures, /*texNodes=*/{}, geom);
-    resolveTextureRefs(material.textures, textureResolver_);
+    // ADR-0045: decode-once per URL. Without the memo the embedder's decoder was
+    // invoked once per PLACEMENT (200 calls + 200 MiB retained for one 512x512
+    // texture USE'd 200 times).
+    resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
 
     auto it = index_.find(path);
     RenderItemId id;
@@ -950,6 +963,11 @@ private:
     MeshRef mesh = emptyMeshRef();
     bool recognized = false; // B2: memoized alongside, same cost to recompute.
   };
+  // Ready-only texture resolves, keyed by URL. Pending/Failed are deliberately
+  // NOT memoized so a not-yet-decoded texture keeps retrying (see
+  // resolveTextureRefs). Cleared by fullSnapshot() alongside the mesh caches.
+  std::unordered_map<std::string, TexturePixelResult> textureMemo_;
+
   // Raw (pre-TextureTransform) build, keyed by geometry node.
   std::unordered_map<const X3DNode *, RawMeshEntry> rawMeshCache_;
   // TextureTransform-baked variants, keyed by (geometry node, params bytes). Only

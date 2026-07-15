@@ -146,7 +146,7 @@ bool reencodePng(const TextureResolver& resolver, const std::string& decodePath,
                   const std::string& outPath) {
   const TexturePixelResult res = resolver(decodePath);
   if (!res.ready()) return false;
-  const auto& px = res.pixels;
+  const auto& px = *res.pixels;
   if (px.width == 0 || px.height == 0 || px.rgba.empty()) return false;
   stbi_flip_vertically_on_write(1);  // seam returns bottom-left; PNG is top-left.
   const int ok = stbi_write_png(outPath.c_str(), static_cast<int>(px.width),

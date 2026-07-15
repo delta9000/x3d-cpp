@@ -58,7 +58,7 @@ int main() {
   // ---- Resolver: proc: synthesizes; unknown ext fails.
   {
     cr::ex::TextureResolver r = cr::makeTextureResolver(".");
-    CHECK(r("proc:checker").ready() && !r("proc:checker").pixels.rgba.empty());
+    CHECK(r("proc:checker").ready() && !r("proc:checker").pixels->rgba.empty());
     CHECK(r("proc:uvgrid").ready());
     CHECK(r("missing.png").failed());
   }

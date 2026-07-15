@@ -80,8 +80,8 @@ public:
     if (ref.source == Src::Inline)
       return fromSFImage(ref.inlinePixels, ref.repeatS, ref.repeatT, srgb);
     if (ref.source == Src::Url && ref.resolvedPixels.ready() &&
-        !ref.resolvedPixels.pixels.rgba.empty()) {
-      const auto &p = ref.resolvedPixels.pixels;
+        !ref.resolvedPixels.pixels->rgba.empty()) {
+      const auto &p = *ref.resolvedPixels.pixels;
       return fromRGBA8(p.rgba.data(), static_cast<int>(p.width),
                        static_cast<int>(p.height), ref.repeatS, ref.repeatT, srgb);
     }

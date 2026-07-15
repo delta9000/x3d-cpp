@@ -319,17 +319,39 @@ inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has)
 //
 // `resolver` must be a valid callable (use makeNullTextureResolver() for the
 // default white-fallback PoC path; a null std::function is NOT legal to call).
+//
+// `memo` (optional, ADR-0045) de-duplicates resolves BY URL. Decoding is the most
+// expensive thing at this seam and one URL is routinely shared by many
+// placements, so the extractor threads a per-snapshot memo through and N
+// placements of one textured DEF'd Shape cost ONE embedder call and ONE shared
+// buffer instead of N of each.
+//
+// ONLY Ready results are memoized, deliberately. Pending means "not decoded yet,
+// retry on a later frame" — caching it would freeze the retry and the texture
+// would never appear. Failed is likewise re-offered, so a resolver that recovers
+// (a late mount, a warmed cache) is not permanently written off. Neither carries
+// pixel payload, so re-offering them costs nothing that matters.
 // ---------------------------------------------------------------------------
-inline void resolveTextureRefs(std::vector<TextureRef> &refs,
-                               const TextureResolver &resolver) {
+inline void resolveTextureRefs(
+    std::vector<TextureRef> &refs, const TextureResolver &resolver,
+    std::unordered_map<std::string, TexturePixelResult> *memo = nullptr) {
   if (!resolver) return; // defensive: never call a null std::function.
   for (TextureRef &ref : refs) {
     if (ref.source != TextureRef::Source::Url) continue; // Inline/Movie: skip.
     TexturePixelResult result = TexturePixelResult::makeFailed();
     for (const std::string &url : ref.url) {
       if (url.empty()) continue;
+      if (memo) {
+        auto hit = memo->find(url);
+        if (hit != memo->end()) {
+          // Ready-only memo, so a hit always wins the MFString fallback race.
+          result = hit->second; // shares the pixel buffer, copies no bytes.
+          break;
+        }
+      }
       TexturePixelResult r = resolver(url);
       if (r.ready() || r.pending()) {
+        if (memo && r.ready()) memo->emplace(url, r);
         result = std::move(r);
         break; // first non-failed URL wins (MFString fallback order).
       }
