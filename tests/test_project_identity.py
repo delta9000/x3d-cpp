@@ -11,6 +11,7 @@ Surviving 'x3d-cpp-gen' occurrences must refer to the Python package, the
 executable, or the generator subsystem -- never to the whole runtime.
 """
 
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -44,6 +45,32 @@ def test_mkdocs_points_at_the_real_repository():
 def test_notice_uses_the_product_name():
     first = (REPO_ROOT / "NOTICE").read_text().splitlines()[0].strip()
     assert first == "x3d-cpp", f"NOTICE opens with {first!r}"
+
+
+def test_readme_cmake_floor_matches_cmake_minimum_required():
+    """The README's stated floor must match what CMake actually declares.
+
+    These drifted once already: PROJECT_IS_TOP_LEVEL (3.21+) was in use while
+    cmake_minimum_required said 3.20, where it silently evaluates empty and
+    X3D_CPP_BUILD_TESTS / X3D_CPP_BUILD_EXAMPLES default OFF.
+    """
+    cmake = (REPO_ROOT / "CMakeLists.txt").read_text()
+    m = re.search(r"cmake_minimum_required\(VERSION (\d+\.\d+)", cmake)
+    assert m, "could not find cmake_minimum_required"
+    declared = m.group(1)
+
+    readme = (REPO_ROOT / "README.md").read_text()
+    r = re.search(r"CMake (\d+\.\d+)\+", readme)
+    assert r, "README does not state a CMake floor"
+    assert r.group(1) == declared, (
+        f"README says CMake {r.group(1)}+ but CMakeLists declares {declared}"
+    )
+
+    if "PROJECT_IS_TOP_LEVEL" in cmake:
+        assert tuple(int(x) for x in declared.split(".")) >= (3, 21), (
+            f"PROJECT_IS_TOP_LEVEL requires CMake 3.21 but the floor is {declared}; "
+            f"below 3.21 it silently evaluates empty"
+        )
 
 
 def test_ext_urn_is_not_renamed_by_an_identity_sweep():

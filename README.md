@@ -105,7 +105,7 @@ downstream-style project that does not depend on the source tree.
 `scripts/verify_install_embed.sh` builds it against a throwaway install prefix on
 every CI run, so the sequence above is gate-enforced rather than aspirational.
 
-**Requires:** a C++20 compiler and CMake 3.20+. Contributors additionally use
+**Requires:** a C++20 compiler and CMake 3.21+. Contributors additionally use
 [mise](#dev-tasks-mise) as a task runner — see [Dev tasks](#dev-tasks-mise).
 
 ## Quickstart — three ways in

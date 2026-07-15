@@ -68,6 +68,15 @@ if [ -n "$backends" ]; then
   exit 1
 fi
 
+# Contract: assert every documented imported target exists against the REAL
+# install prefix. embed_minimal links only two of the seven directly, so a broken
+# EXPORT_NAME elsewhere would otherwise pass -- the in-tree ALIAS resolves while
+# the installed name silently differs. Configure-only.
+targets_src="$(cd "$(dirname "$0")/.." && pwd)/tests/cmake/installed_targets"
+echo "Checking installed target contract ..."
+cmake -S "$targets_src" -B "$work_dir/installed-targets" -G "$generator" \
+  -DCMAKE_PREFIX_PATH="$prefix" >/dev/null
+
 cmake -S "$product_src" -B "$product_build" -G "$generator" \
   -DCMAKE_PREFIX_PATH="$prefix"
 cmake --build "$product_build"

@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 3.20)
+# 3.21 is the floor because PROJECT_IS_TOP_LEVEL -- used to scope dev tooling and
+# to default X3D_CPP_BUILD_TESTS / X3D_CPP_BUILD_EXAMPLES -- was added in 3.21.
+# It was already in use while the floor said 3.20, where it silently evaluated
+# empty and those options defaulted OFF.
+cmake_minimum_required(VERSION 3.21)
 
 project(x3d_cpp
     VERSION 0.1.0
@@ -28,32 +32,65 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
+# Developer tooling. This is for people building THIS project, and some of it
+# escapes our own subtree: the ccache launcher is written to the SHARED CACHE
+# (so it becomes the default for every target in the consumer's build tree) and
+# the Ninja job pool is a GLOBAL property (so it caps the consumer's compiles
+# too). A consumer that merely add_subdirectory()s us must not inherit either.
+# Default ON when we are the top-level project, OFF when we are somebody's
+# dependency. Contract: tests/cmake/dev_tooling/.
+#
+# Deliberately NOT gated here: -Wall -Wextra and the sanitizer options. Those are
+# directory-scoped (current dir and below), so they never reach a consumer's
+# targets -- measured, not assumed. Gating them would only disable OUR OWN
+# warning coverage in a vendored build, which is a regression, not a courtesy.
+# X3D_CPP_SAN / X3D_CPP_FUZZ default OFF and are opt-in gates, so they cannot
+# surprise anyone either.
+# ---------------------------------------------------------------------------
+if(PROJECT_IS_TOP_LEVEL)
+    option(X3D_CPP_ENABLE_DEV_TOOLING
+           "Enable developer tooling that escapes this subtree: ccache launcher, fast linker, Ninja job pool" ON)
+else()
+    option(X3D_CPP_ENABLE_DEV_TOOLING
+           "Enable developer tooling that escapes this subtree: ccache launcher, fast linker, Ninja job pool" OFF)
+endif()
+
+# ---------------------------------------------------------------------------
 # ccache: reuse cached object output across rebuilds. The generated headers
 # change rarely, so the ~800-TU compile-test suite is almost entirely cache
 # hits after the first run. Auto-detected; a no-op when ccache is absent (e.g.
 # a CI runner without it), so it never breaks a fresh checkout.
 # ---------------------------------------------------------------------------
-find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "ccache launcher")
-    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "ccache launcher")
-    message(STATUS "x3d_cpp: ccache enabled (${CCACHE_PROGRAM})")
+# Gated: these set() calls write the SHARED cache, so as a subproject they would
+# make ccache the default launcher for every target the consumer defines too.
+if(X3D_CPP_ENABLE_DEV_TOOLING)
+    find_program(CCACHE_PROGRAM ccache)
+    if(CCACHE_PROGRAM AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
+        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "ccache launcher")
+        set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "ccache launcher")
+        message(STATUS "x3d_cpp: ccache enabled (${CCACHE_PROGRAM})")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
 # Fast linker: the ~70 test executables + the all-headers exe link far quicker
 # with a parallel linker. Prefer mold, then lld; fall back to the system default
 # (no-op) when neither is installed, so a fresh checkout / CI is never broken.
-# Applies to every target defined after this point (libs + tests + PoC).
+# Applies to every target defined after this point in THIS directory and below
+# (add_link_options is directory-scoped; it does not reach a parent project).
+# Gated anyway: a dependency silently choosing the linker for its own targets is
+# still a surprise, and it is dev tooling by any reading.
 # ---------------------------------------------------------------------------
-find_program(X3D_MOLD mold)
-find_program(X3D_LLD ld.lld)
-if(X3D_MOLD)
-    add_link_options("-fuse-ld=mold")
-    message(STATUS "x3d_cpp: linker = mold")
-elseif(X3D_LLD)
-    add_link_options("-fuse-ld=lld")
-    message(STATUS "x3d_cpp: linker = lld")
+if(X3D_CPP_ENABLE_DEV_TOOLING)
+    find_program(X3D_MOLD mold)
+    find_program(X3D_LLD ld.lld)
+    if(X3D_MOLD)
+        add_link_options("-fuse-ld=mold")
+        message(STATUS "x3d_cpp: linker = mold")
+    elseif(X3D_LLD)
+        add_link_options("-fuse-ld=lld")
+        message(STATUS "x3d_cpp: linker = lld")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -69,12 +106,16 @@ endif()
 # to the logical core count. Lower it (-DX3D_CPP_COMPILE_JOBS=N) only on a
 # low-RAM host (budget ~0.9 GB per concurrent compile).
 # ---------------------------------------------------------------------------
-cmake_host_system_information(RESULT _x3d_logical_cores QUERY NUMBER_OF_LOGICAL_CORES)
-set(X3D_CPP_COMPILE_JOBS "${_x3d_logical_cores}" CACHE STRING "Max concurrent compile jobs (Ninja job pool)")
-if(CMAKE_GENERATOR MATCHES "Ninja")
-    set_property(GLOBAL PROPERTY JOB_POOLS x3d_compile=${X3D_CPP_COMPILE_JOBS})
-    set(CMAKE_JOB_POOL_COMPILE x3d_compile)
-    message(STATUS "x3d_cpp: Ninja compile job pool = ${X3D_CPP_COMPILE_JOBS}")
+# Gated: JOB_POOLS is a GLOBAL property, so as a subproject this would cap the
+# consumer's own compile parallelism, not just ours.
+if(X3D_CPP_ENABLE_DEV_TOOLING)
+    cmake_host_system_information(RESULT _x3d_logical_cores QUERY NUMBER_OF_LOGICAL_CORES)
+    set(X3D_CPP_COMPILE_JOBS "${_x3d_logical_cores}" CACHE STRING "Max concurrent compile jobs (Ninja job pool)")
+    if(CMAKE_GENERATOR MATCHES "Ninja")
+        set_property(GLOBAL PROPERTY JOB_POOLS x3d_compile=${X3D_CPP_COMPILE_JOBS})
+        set(CMAKE_JOB_POOL_COMPILE x3d_compile)
+        message(STATUS "x3d_cpp: Ninja compile job pool = ${X3D_CPP_COMPILE_JOBS}")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -1836,6 +1877,28 @@ if(X3D_CPP_BUILD_TESTS)
                 "-DVERSION_FILE=${CMAKE_CURRENT_BINARY_DIR}/x3d_cppConfigVersion.cmake"
                 "-DBUILD_SIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P}"
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/package_version/check_version_file.cmake")
+
+    # Contract: adding x3d_cpp with add_subdirectory() must not mutate cache or
+    # global state that reaches the consumer. Configure-only.
+    #
+    # -G is REQUIRED: without it the nested configure picks CMake's default
+    # (often Unix Makefiles), where the JOB_POOLS property is ignored -- the
+    # fixture would then never exercise the global-pool bug and would pass for
+    # the wrong reason.
+    #
+    # -DCCACHE_PROGRAM makes the launcher half hermetic: x3d_cpp guards its cache
+    # write behind find_program(CCACHE_PROGRAM ccache), so on a machine without
+    # ccache the block is a no-op and the test again passes for the wrong reason.
+    # Pre-seeding the find_program cache variable with a known-present executable
+    # forces the write to happen. It is never executed (configure-only), so any
+    # real path works; /bin/echo is used because it exists everywhere we build.
+    add_test(NAME x3d_dev_tooling_isolation
+        COMMAND "${CMAKE_COMMAND}"
+                -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/dev_tooling"
+                -B "${CMAKE_CURRENT_BINARY_DIR}/dev_tooling_fixture"
+                -G "${CMAKE_GENERATOR}"
+                "-DCCACHE_PROGRAM=/bin/echo"
+                "-DX3D_CPP_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 
     # T-SOUND: the §16 Sound seam (runtime/sound/). The AudioBackend seam +
     # SoundSystem are CORE, header-only, DSP-free (mirrors PhysicsBackend +
