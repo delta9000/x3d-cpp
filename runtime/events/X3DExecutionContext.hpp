@@ -204,6 +204,16 @@ public:
       ~Guard() { ref = false; }
     } guard{ticking_};
 
+    // A MONOTONIC count of completed advances, independent of the simulation
+    // clock. `now` is not a usable tick identity: it is embedder-supplied and may
+    // legitimately repeat (a paused scene that still ticks, a fixed-timestep or
+    // deterministic-replay driver, a coarse clock), and a double cannot
+    // distinguish "a new tick at the same clock value" from "no tick happened".
+    // Incremented AFTER the re-entrancy guard, so a nested tick() -- which is a
+    // documented no-op -- does not fabricate an advance. See SceneExtractor::
+    // delta(), which keys its one-delta-per-tick contract on this.
+    ++tickGeneration_;
+
     now_ = now;
     pointerConsumedBySensor_ = false;     // reset per-tick arbitration flag
     dirty_.clear();                       // drop last tick's changed-set
@@ -227,6 +237,16 @@ public:
   void process() { cascade_.process(); }
 
   double now() const { return now_; }
+
+  /** @brief Monotonic count of completed tick() advances.
+   *
+   * The identity of "which tick are we on", decoupled from the simulation clock.
+   * Starts at 0 (no tick has run) and increments once per non-re-entrant tick(),
+   * never decreasing and never repeating — so it stays a valid tick identity for
+   * a paused, fixed-timestep, or replayed clock, where now() repeats.
+   */
+  std::uint64_t tickGeneration() const { return tickGeneration_; }
+
   const EventGraph &graph() const { return graph_; }
 
   /// Pull surface (read after tick): the per-node dirty set for this tick.
@@ -465,6 +485,7 @@ private:
   std::unordered_map<X3DNode *, ViewpointOffset> offsets_; // per-viewpoint user offset
   BindTransition lastVpTransition_ = BindTransition::None; // BIND-09
   double now_ = 0.0;
+  std::uint64_t tickGeneration_ = 0; // monotonic advance count; see tickGeneration()
   bool ticking_ = false; // reentrancy guard for tick()
   bool pointerConsumedBySensor_ = false; // per-tick nav/sensor arbitration flag
 };

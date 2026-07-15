@@ -192,7 +192,7 @@ public:
     delta.backgroundChanged = true;
     delta.lightsChanged = true;
     snapped_ = true;
-    lastDeltaNow_ = ctx_.now(); // seed the one-delta-per-tick guard.
+    lastDeltaGen_ = ctx_.tickGeneration(); // seed the one-delta-per-tick guard.
     return delta;
   }
 
@@ -201,13 +201,31 @@ public:
   // current tick and partitions the changed nodes into RenderDelta buckets,
   // NEVER re-walking the whole scene for a transform/geometry/material-only tick.
   //
-  // ASSERTED one-delta-per-tick CONTRACT: X3DExecutionContext.tick() clears
-  // dirty_ at the END of each tick (line ~103), so the dirty set is the delta of
-  // exactly ONE advance. Calling delta() twice without an intervening tick() (or
-  // before the first fullSnapshot()) would read a STALE/empty set and silently
-  // drop changes — so both are asserted out. The guard keys on ctx_.now(): a
-  // second delta() at the same clock value trips the assert. (A consumer that
-  // never advances the clock but still ticks is out of PoC scope; documented.)
+  // ONE-DELTA-PER-TICK CONTRACT, made TOTAL (no misuse is undefined):
+  //
+  // tick() clears the dirty set at the start of each advance, so that set is the
+  // delta of exactly ONE tick. Two situations used to be assert()ed out, which
+  // was wrong twice over: asserts compile out under NDEBUG (this repo's `ci`
+  // preset is RelWithDebInfo), so a release consumer got silently different
+  // behaviour from the debug one it was tested against; and the guard keyed on
+  // ctx_.now(), which made a paused / fixed-timestep / deterministic-replay
+  // consumer — one that legitimately ticks twice at the same clock value —
+  // trip an assert for doing nothing wrong. Both now have defined answers:
+  //
+  //   * delta() with no prior fullSnapshot()  =>  returns fullSnapshot().
+  //     There is no baseline to diff against, and a full snapshot IS the correct
+  //     baseline: it reports every item in `added`, which frame 0 and frame N
+  //     already share one upload path for. The consumer needs no special case.
+  //
+  //   * delta() twice with no intervening tick()  =>  returns an EMPTY delta.
+  //     Not an error — an honest answer. Nothing CAN have changed: only tick()
+  //     advances state, and the previous delta() already reported this tick's
+  //     changes. (Previously this asserted, and under NDEBUG silently returned a
+  //     bogus re-diff.)
+  //
+  // The guard keys on ctx_.tickGeneration() — a monotonic count of advances that
+  // cannot repeat — NOT on ctx_.now(), which an embedder may legitimately hold
+  // still or replay.
   //
   // Per changed node n (dispatch is mutually exclusive — a Transform is only ever
   // in transformDeps_, a geometry node only in geomDeps_, an appearance-subtree
@@ -226,12 +244,12 @@ public:
   //       n's cached entry matrix (O(subtree)) => added/removed.
   // ---------------------------------------------------------------------------
   RenderDelta delta() {
-    assert(snapped_ && "delta() requires a prior fullSnapshot()");
-    const double now = ctx_.now();
-    assert(now != lastDeltaNow_ &&
-           "one-delta-per-tick contract violated: delta() called twice without "
-           "an intervening tick() advance (tick() clears the dirty set)");
-    lastDeltaNow_ = now;
+    // No baseline yet — a full snapshot IS the baseline (see contract above).
+    if (!snapped_) return fullSnapshot();
+
+    const std::uint64_t gen = ctx_.tickGeneration();
+    if (gen == lastDeltaGen_) return {}; // no advance since the last delta().
+    lastDeltaGen_ = gen;
 
     // #21: fresh node-visit budget for this tick's incremental re-walks (a dirty
     // subtree can also be a wide acyclic fan-out).
@@ -1093,11 +1111,14 @@ private:
   // by budgetExceeded().
   WalkBudget walkBudget_;
 
-  // One-delta-per-tick contract state. snapped_ gates delta() on a prior
-  // fullSnapshot(); lastDeltaNow_ is the clock value of the last full/delta read,
-  // so a second delta() at the same ctx_.now() trips the asserted invariant.
+  // One-delta-per-tick contract state. snapped_ says a baseline exists (an
+  // un-snapshotted delta() promotes itself to fullSnapshot()); lastDeltaGen_ is
+  // the tick generation the last full/delta read consumed, so a second delta()
+  // with no intervening advance returns empty instead of re-diffing a spent set.
+  // Generation, not clock: ctx_.now() may legitimately repeat (paused /
+  // fixed-timestep / replay), tickGeneration() cannot.
   bool snapped_ = false;
-  double lastDeltaNow_ = -1.0;
+  std::uint64_t lastDeltaGen_ = 0;
 };
 
 } // namespace x3d::runtime::extract
