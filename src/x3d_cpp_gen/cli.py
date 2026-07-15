@@ -30,15 +30,18 @@ DEFAULT_SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.
 
 def compile_and_run_test(test_file_path: str, output_dir: str,
                          compiler: str = "g++") -> bool:
-    """Compile and run the generated smoke test.
+    """Compile and run the generated smoke test. Fail closed.
 
-    Captures stdout/stderr, checks return codes, prints captured output on
-    failure, and degrades gracefully if the compiler is absent. Returns True on
-    success, False otherwise (never raises for a missing/failed compiler).
+    Returns True ONLY when the test actually compiled and ran green. Every path
+    where verification did not happen returns False: reporting success when the
+    thing under test was never built is exactly the failure this function used
+    to have. The caller skips deliberately with --no-test; there is no
+    succeed-without-testing path in here.
     """
     if not compiler:
-        print("No compiler configured; skipping test compilation.")
-        return True
+        print("ERROR: no compiler configured, so the smoke test cannot run. "
+              "Pass --no-test to skip deliberately.", file=sys.stderr)
+        return False
 
     output_binary = os.path.join(output_dir, "test_exec")
     # Node sources + the smoke-test main now live under x3d/nodes/; the include
@@ -50,14 +53,14 @@ def compile_and_run_test(test_file_path: str, output_dir: str,
     # it (don't list it twice or main is multiply defined).
     nodes_dir = os.path.join(output_dir, "x3d", "nodes")
     test_main = os.path.join(nodes_dir, "test.cpp")
-    # During the namespace migration the smoke-test main / factory / registry are
-    # relocated into x3d/nodes/ in a later step. Until the main lands there the
-    # integrated link target is incomplete, so skip gracefully (standalone
-    # per-header compiles cover the relocated layout in the meantime).
     if not os.path.exists(test_main):
-        print("Namespaced smoke-test main not present under x3d/nodes/; "
-              "skipping integrated compile.")
-        return True
+        # Not environmental: generate_test_file() ran just before this, so the
+        # main should exist. Its absence means the generator dropped it -- a
+        # codegen regression, and never a reason to report success.
+        print(f"ERROR: generated smoke-test main not found: {test_main}\n"
+              "The generator was asked to produce it and did not; this is a "
+              "codegen regression, not a missing tool.", file=sys.stderr)
+        return False
     sources = sorted(str(p) for p in Path(nodes_dir).glob("*.cpp"))
     compile_command = [compiler, "-std=c++20", "-I", output_dir,
                        *sources, "-o", output_binary]
@@ -65,15 +68,16 @@ def compile_and_run_test(test_file_path: str, output_dir: str,
     try:
         compile_result = subprocess.run(compile_command, capture_output=True, text=True)
     except FileNotFoundError:
-        print(f"WARNING: compiler '{compiler}' not found; skipping test compilation.")
-        return True
+        print(f"ERROR: compiler '{compiler}' not found, so the smoke test could "
+              f"not run. Pass --no-test to skip deliberately.", file=sys.stderr)
+        return False
 
     if compile_result.returncode != 0:
-        print("Compilation failed.")
+        print("Compilation failed.", file=sys.stderr)
         if compile_result.stdout:
             print(compile_result.stdout)
         if compile_result.stderr:
-            print(compile_result.stderr)
+            print(compile_result.stderr, file=sys.stderr)
         return False
 
     print("Compilation successful. Running test...")
@@ -81,9 +85,9 @@ def compile_and_run_test(test_file_path: str, output_dir: str,
     if run_result.stdout:
         print(run_result.stdout)
     if run_result.returncode != 0:
-        print("Test execution failed.")
+        print("Test execution failed.", file=sys.stderr)
         if run_result.stderr:
-            print(run_result.stderr)
+            print(run_result.stderr, file=sys.stderr)
         return False
     return True
 
@@ -118,7 +122,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--compiler", default=os.environ.get("CXX", "g++"),
-        help="C++ compiler for the smoke test (env CXX; empty string to skip).",
+        help="C++ compiler for the smoke test (env CXX). Use --no-test to skip "
+             "the smoke test; an empty value is an error, not a skip.",
     )
     parser.add_argument(
         "--no-test", action="store_true",
