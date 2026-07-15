@@ -12,10 +12,12 @@
 //                RenderItems (meshes/materials/lights/camera/background) + deltas.
 //   • Seams    — embedder-supplied IO callbacks: AssetResolver, TextureResolver,
 //                FontMetrics, GeoProjection, ScriptEngine. A seam is a PORT (the
-//                ports-and-adapters / SPI sense): the IO-free core owns the
-//                interface, the embedder supplies the backend (adapter). The SDK
-//                does NO file IO, decoding, or rasterization — that stays in the
-//                embedder.
+//                ports-and-adapters / SPI sense): the core owns the interface,
+//                the embedder supplies the backend (adapter). The simulation and
+//                extraction core performs no hidden resource, network, image,
+//                font, media or rendering I/O — that stays in the embedder.
+//                parseFile() below is a synchronous local-file convenience API,
+//                the one deliberate exception.
 //
 // Stability: symbols are marked [STABLE] (frozen pre-v2, breaking change = major)
 // or [EXPERIMENTAL] (shape may evolve; embedder wiring still maturing). See

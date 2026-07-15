@@ -8,7 +8,9 @@ windowing, no rendering opinion**: the runtime stays spec-correct and
 backend-free, and you bring (or borrow) the renderer.
 
 The C++ node layer is **generated from the official X3D Unified Object Model
-(UOM)**, so every node and field is spec-correct by construction.
+(UOM)**: node and field declarations, types and defaults come from the UOM, and
+behavioral conformance is tested separately. Generation substantially reduces
+structural drift — it does not prove runtime semantics or eliminate UOM errata.
 
 ## Gallery — real X3D, rendered headless
 
@@ -115,11 +117,13 @@ while (running) {
 }
 ```
 
-The SDK does **no** file IO, image decoding, or rasterization — those are
-embedder-supplied **seams**: *ports* in the ports-and-adapters sense, where the
-IO-free core owns the interface and you supply the backend (`AssetResolver`,
-`TextureResolver`, `FontMetrics`, `ScriptEngine`, …), each proven swappable by a
-second backend. See [`docs/sdk/`](docs/sdk/).
+The simulation and extraction core performs no hidden resource, network, image,
+font, media or rendering I/O — those are embedder-supplied **seams**: *ports* in
+the ports-and-adapters sense, where the core owns the interface and you supply
+the backend (`AssetResolver`, `TextureResolver`, `FontMetrics`, `ScriptEngine`,
+…), each proven swappable by a second backend. `parseFile()` above is a
+synchronous local-file convenience API — the one deliberate exception. See
+[`docs/sdk/`](docs/sdk/).
 
 For a downstream-style CMake project that does not depend on the source tree,
 see [`examples/embed_minimal/`](examples/embed_minimal/). It uses only:

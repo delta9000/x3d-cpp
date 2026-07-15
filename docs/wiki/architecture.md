@@ -14,7 +14,7 @@ related:
 
 # Architecture
 
-This is the system map: the layered spine that every other wiki page hangs off. x3d-cpp is a headless, renderer-agnostic X3D-4.0 domain runtime SDK. It parses any of the four X3D encodings into a document model, runs the event/behavior cascade over a live scene graph, and extracts renderer-ready descriptors — but it does no file IO, no decoding, and no rasterization itself. Those responsibilities live behind explicit seams that the embedder fills.
+This is the system map: the layered spine that every other wiki page hangs off. x3d-cpp is a headless, renderer-agnostic X3D-4.0 domain runtime SDK. It parses any of the four X3D encodings into a document model, runs the event/behavior cascade over a live scene graph, and extracts renderer-ready descriptors. Beyond the parse path's own local-file reads (`parseFile`), it performs no hidden resource, network, image, font, media or rendering I/O, and no rasterization. Those responsibilities live behind explicit seams that the embedder fills.
 
 The cardinal design rule: **the node model is the single source of truth**. Every runtime subsystem keeps its state in side tables keyed by `const X3DNode*` or dense ids, never by mutating node state. That is what lets the same scene be reflected, ticked, extracted, and re-serialized byte-identically (the golden gate).
 
@@ -107,7 +107,7 @@ A `System` (`runtime/events/X3DSystem.hpp`) is a behavior family over a collecti
 
 ## The seams (the renderer-agnostic boundary)
 
-The SDK does no file IO, no image/movie decoding, no font rasterization, no geodesy, and no scripting-language embedding. Each is a typed seam the embedder fills. This is what makes the runtime renderer-agnostic.
+Beyond the parse path's own local-file reads (`parseFile`), the SDK performs no hidden resource or network I/O, no image/movie decoding, no font rasterization, no geodesy, and no scripting-language embedding. Each is a typed seam the embedder fills. This is what makes the runtime renderer-agnostic.
 
 | Seam | Type / header | What the embedder supplies |
 |---|---|---|
