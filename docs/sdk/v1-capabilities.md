@@ -85,7 +85,7 @@ tracking); they are a point-in-time record. For current state run `mise run ci`
 
 | Metric | Value |
 |---|---|
-| Golden | BYTE-IDENTICAL (`*.hpp` regenerated == committed; no `.cpp` drift) |
+| Golden | BYTE-IDENTICAL (every generated `*.hpp` + `*.cpp` regenerated == committed) |
 | Golden hash (*.hpp + *.cpp) | `7f67529bc380ca6425a24f679fda8804d7b9668448a26bcc57cf3256ec415b30` (UNCHANGED — the SCR-SAI-DYN S1 / RTC-5/6 work is codegen-free; the generated tree stays byte-identical to T-GATE) |
 | ctest count | **110/110 passed** (0 failures) — was 94/94 at T-GATE; +7 file-authored-Script un-tabling; +3 corpus-smoke widening; +1 audit harness; +5 corpus-correctness fixes (VRML MF bracket, ProtoInstance round-trip, ProtoBody DEF scope, enum-quote) |
 | ctest time | ~15 s total (corpus subset dominates) |

@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # Golden-drift gate.
 #
-# Regenerates the full C++ binding tree into a throwaway temp directory and
-# diffs every *.hpp against the committed generated_cpp_bindings/. Exits 0 when
-# the trees are identical and non-zero (with a readable report) on ANY drift.
+# Regenerates the full generated C++ source tree into a throwaway temp directory
+# and diffs every generated source file (*.hpp and *.cpp) against the committed
+# generated_cpp_bindings/. Exits 0 when the trees are identical and non-zero
+# (with a readable report) on ANY drift.
 #
 # Codegen changes are therefore opt-in: change a template/emitter, then run
-# `uv run x3d-cpp-gen --out generated_cpp_bindings` and COMMIT the new headers.
+# `uv run x3d-cpp-gen --out generated_cpp_bindings` and COMMIT the new sources.
 # This script (and tests/test_golden_tree.py) fail until that is done.
 #
 # Runnable locally (`scripts/check_golden.sh`) and from CI. The smoke test.cpp
 # and test_exec are generation artifacts (gitignored) and are excluded from the
-# comparison; only *.hpp headers are golden.
+# comparison; every other *.hpp and *.cpp is golden.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,12 +32,12 @@ echo "Regenerating into ${TMP_DIR} ..."
 # in the drift gate. clang-format must match the one that produced the golden.
 ( cd "${REPO_ROOT}" && uv run x3d-cpp-gen --out "${TMP_DIR}" --no-test >/dev/null )
 
-# Compare the FULL tree of *.hpp, in both directions (catches added/removed
-# headers as well as content drift).
+# Compare the FULL generated source tree (*.hpp + *.cpp), in both directions
+# (catches added/removed files as well as content drift).
 DRIFT=0
 REPORT=""
 
-# 1. Headers present in golden: must exist and match in the regen.
+# 1. Generated sources present in golden: must exist and match in the regen.
 while IFS= read -r -d '' g; do
   rel="${g#"${GOLDEN_DIR}/"}"
   r="${TMP_DIR}/${rel}"
@@ -53,7 +54,7 @@ while IFS= read -r -d '' g; do
   fi
 done < <(find "${GOLDEN_DIR}" \( -name '*.hpp' -o -name '*.cpp' \) ! -name 'test.cpp' -print0)
 
-# 2. Headers present in regen but NOT in golden (uncommitted new output).
+# 2. Generated sources present in regen but NOT in golden (uncommitted output).
 while IFS= read -r -d '' r; do
   rel="${r#"${TMP_DIR}/"}"
   if [[ ! -f "${GOLDEN_DIR}/${rel}" ]]; then
@@ -71,5 +72,5 @@ if [[ "${DRIFT}" -ne 0 ]]; then
   exit 1
 fi
 
-echo "Golden tree OK: regenerated *.hpp match generated_cpp_bindings/ byte-for-byte."
+echo "Golden tree OK: generated *.hpp/*.cpp match generated_cpp_bindings/ byte-for-byte."
 exit 0

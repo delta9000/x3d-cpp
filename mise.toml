@@ -33,7 +33,7 @@ depends = ["sync"]
 run = "uv run pytest"
 
 [tasks.golden]
-description = "Golden-drift gate: regenerate to a temp dir and diff *.hpp."
+description = "Golden-drift gate: regenerate to a temp dir and diff every generated *.hpp/*.cpp."
 depends = ["sync"]
 run = "scripts/check_golden.sh"
 
