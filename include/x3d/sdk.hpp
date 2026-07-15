@@ -97,6 +97,8 @@ using x3d::codec::CanonicalXmlWriter;    ///< X3D Canonical Form (X3DC14N) seria
 // Then once per frame: set inputs, ctx.tick(now) [now = seconds since start],
 // read the pull surface.
 using x3d::runtime::X3DExecutionContext;
+using x3d::runtime::FieldWriteResult;    ///< enum class { Ok, NullNode, UnknownField, NotWritable, TypeMismatch } — ctx.writeField's [[nodiscard]] outcome
+using x3d::runtime::fieldWriteResultName; ///< fieldWriteResultName(FieldWriteResult) — human-readable form for diagnostics
 using x3d::runtime::BridgeResult;        ///< { routesAdded, rejected[] } returned by buildFrom
 using x3d::runtime::RouteError;          ///< { index, reason } a single rejected ROUTE
 using x3d::runtime::System;              ///< abstract behavior System: attach() + update()

@@ -98,8 +98,9 @@ TEST_CASE("delta contract: a PAUSED clock still yields deltas") {
 
   for (int i = 1; i <= 3; ++i) {
     ctx.tick(2.0); // clock FROZEN across every iteration.
-    ctx.writeField(xf.get(), "translation",
-                   std::any(SFVec3f{static_cast<float>(i), 0, 0}));
+    REQUIRE(ctx.writeField(xf.get(), "translation",
+                           std::any(SFVec3f{static_cast<float>(i), 0, 0})) ==
+            FieldWriteResult::Ok);
     RenderDelta d = ex.delta();
     // Each frozen-clock tick still reports its own change.
     CHECK(d.updatedTransform.size() == 1);
@@ -117,7 +118,8 @@ TEST_CASE("delta contract: second delta() with no tick returns EMPTY, not garbag
   ex.fullSnapshot();
 
   ctx.tick(1.0);
-  ctx.writeField(xf.get(), "translation", std::any(SFVec3f{5, 0, 0}));
+  REQUIRE(ctx.writeField(xf.get(), "translation", std::any(SFVec3f{5, 0, 0})) ==
+          FieldWriteResult::Ok);
 
   RenderDelta first = ex.delta();
   CHECK(first.updatedTransform.size() == 1);
@@ -133,7 +135,8 @@ TEST_CASE("delta contract: second delta() with no tick returns EMPTY, not garbag
 
   // ...and a real advance resumes reporting.
   ctx.tick(2.0);
-  ctx.writeField(xf.get(), "translation", std::any(SFVec3f{6, 0, 0}));
+  REQUIRE(ctx.writeField(xf.get(), "translation", std::any(SFVec3f{6, 0, 0})) ==
+          FieldWriteResult::Ok);
   RenderDelta third = ex.delta();
   CHECK(third.updatedTransform.size() == 1);
 }

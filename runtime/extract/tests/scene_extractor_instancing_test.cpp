@@ -266,9 +266,10 @@ TEST_CASE("instancing: geometry content change rebuilds once and RE-shares") {
   REQUIRE(coord != nullptr);
 
   ctx.tick(1.0);
-  ctx.writeField(coord.get(), "point",
-                 std::any(std::vector<SFVec3f>{
-                     {0, 0, 0}, {2, 0, 0}, {2, 2, 0}, {0, 2, 0}}));
+  REQUIRE(ctx.writeField(coord.get(), "point",
+                         std::any(std::vector<SFVec3f>{
+                             {0, 0, 0}, {2, 0, 0}, {2, 2, 0}, {0, 2, 0}})) ==
+          FieldWriteResult::Ok);
 
   const std::uint64_t beforeCalls = buildLocalMeshCallCount();
   RenderDelta d = ex.delta();
