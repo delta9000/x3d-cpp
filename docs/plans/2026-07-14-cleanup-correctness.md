@@ -1721,6 +1721,13 @@ gates in CI -- and move mise to the contributor section."
 - Consumes: nothing.
 - Produces: an sdist and wheel containing `LICENSE` and `NOTICE`.
 
+**No `force-include` is needed** (measured, 2026-07-14). Hatchling's default
+`license-files` globs (`LICEN[CS]E*`, `NOTICE*`, …) already place both into the
+wheel's `.dist-info/licenses/` — the standards-correct location that packaging
+tooling reads. The only real gap was the **sdist**, whose `include` list omitted
+them. Adding a `force-include` duplicates the files into a second, non-standard
+path inside the package; don't.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `tests/test_package_metadata.py`:
@@ -1900,8 +1907,6 @@ artifacts = [
     "src/x3d_cpp_gen/templates/*",
     "src/x3d_cpp_gen/data/*",
 ]
-# The package bundles UOM data, so its attribution must travel with the wheel.
-force-include = { "LICENSE" = "x3d_cpp_gen/LICENSE", "NOTICE" = "x3d_cpp_gen/NOTICE" }
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -2105,6 +2110,15 @@ Expected: FAIL, reporting the cached `CMAKE_CXX_COMPILER_LAUNCHER=/bin/echo`, th
 # 3.21 is the floor because PROJECT_IS_TOP_LEVEL (used to scope dev tooling and
 # the test default) was added in 3.21. On 3.20 it silently evaluated empty.
 cmake_minimum_required(VERSION 3.21)
+```
+
+**Also update the README in this same commit.** PR 2's Task 9 documents
+"**Requires:** a C++20 compiler and CMake 3.20+", matching the floor *as declared
+at the time*. This task changes that floor, so the README line must move to
+3.21+ here or the install instructions start lying. Verify with:
+
+```bash
+grep -n 'CMake 3\.' README.md
 ```
 
 - [ ] **Step 4: Add the guard option**

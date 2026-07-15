@@ -1,4 +1,4 @@
-# CI for x3d-cpp-gen — the merge gate behind "Definition of Done".
+# CI for x3d-cpp — the merge gate behind "Definition of Done".
 #
 # On every PR (and manual dispatch) the FAST, hermetic gates run as required
 # checks: pytest, golden drift, conformance-view drift, wiki strict build, and a

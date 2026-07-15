@@ -19,7 +19,7 @@ This subsystem converts the scene graph's Appearance, material, and light nodes 
 - **Texture**: `TextureExtract.hpp` enriches texture descriptors produced by `MaterialSystem` with the full §18.4.9 sampler state (`extendedSamplerOf`), §18.4.8 procedural coordinate generation descriptors (`texCoordGenOf`), baked §18.4.10 UV transforms (`applyTextureTransformToMesh`), and resolved decoded pixels from the consumer's `TextureResolver` callback.
 - **Lights**: `LightSystem::collect(scene)` walks the scene graph, accumulates the world transform fresh along every path (never reads the shared `world_` table, which is first-path-only), and returns a `std::vector<LightDesc>` with all active lights world-resolved.
 
-The subsystem is intentionally IO-free: the SDK never loads image bytes, opens files, or calls network APIs. `AssetResolver.hpp` defines the seam type (`std::function`) that a consumer plugs in to supply bytes; `TextureResolver.hpp` defines the narrower, decoded-pixel variant used by `TextureExtract`.
+The subsystem is intentionally IO-free: it never loads image bytes, opens files, or calls network APIs. (The SDK as a whole does open local files on the parse path — `parseFile` — but nothing in texture extraction does.) `AssetResolver.hpp` defines the seam type (`std::function`) that a consumer plugs in to supply bytes; `TextureResolver.hpp` defines the narrower, decoded-pixel variant used by `TextureExtract`.
 
 ## Key files
 

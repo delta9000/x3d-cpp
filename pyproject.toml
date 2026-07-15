@@ -5,8 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "x3d-cpp-gen"
 version = "0.1.0"
-description = "Generate spec-correct C++ bindings from the X3D Unified Object Model."
-readme = "README.md"
+description = "Generate spec-faithful C++ bindings from the X3D Unified Object Model."
+# The generator's OWN readme, not the C++ runtime's: this package ships a code
+# generator, and a PyPI user should not be shown a renderer gallery and CMake
+# targets they did not install.
+readme = "README.generator.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Ben Sandbrook", email = "sandbrookvt@gmail.com" }]
@@ -34,6 +37,7 @@ docs = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = ["slow: tests that build distribution artifacts"]
 
 [tool.hatch.build.targets.wheel]
 # src layout: map the package and ship all non-Python data (templates + XML).
@@ -47,5 +51,7 @@ artifacts = [
 include = [
     "src/x3d_cpp_gen",
     "pyproject.toml",
-    "README.md",
+    "README.generator.md",
+    "LICENSE",
+    "NOTICE",
 ]

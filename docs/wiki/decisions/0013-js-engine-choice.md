@@ -22,7 +22,7 @@ specific language… shall adhere to that language binding."*
 The only two ISO-normative bindings are ECMAScript (ISO/IEC 19777-1) and Java
 (ISO/IEC 19777-2); ECMAScript is the de-facto language of real X3D corpora.
 
-The x3d-cpp-gen runtime has two strong constraints that bear on engine choice:
+The x3d-cpp runtime has two strong constraints that bear on engine choice:
 
 1. **No IO, no threads, no dynamic deps.** The runtime core is
    IO-free and single-threaded (the event cascade is deterministic, and async

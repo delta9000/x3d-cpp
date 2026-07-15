@@ -1,4 +1,4 @@
-# Dev task runner for x3d-cpp-gen.
+# Dev task runner for x3d-cpp.
 #
 #   mise run gen      regenerate the committed C++ bindings (headers + smoke test)
 #   mise run test     pytest (unit + full-tree golden drift)
