@@ -143,8 +143,6 @@ nav:
       - RAGs (Spec Prose Search): guides/rags.md
       - Conformance Campaign: guides/conformance-campaign.md
       - Add a CLI Command: guides/add-a-cli-command.md
-      - Workflow / Subagent Discipline: guides/workflow-subagent-discipline.md
-      - Card → Done Workflow: guides/card-to-done-workflow.md
       - Golden Regeneration: guides/golden-regeneration.md
   - Conventions:
       - Overview: _conventions/CONVENTIONS.md

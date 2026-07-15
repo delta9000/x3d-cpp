@@ -5,9 +5,9 @@ the canonical knowledge home is the in-repo wiki (`docs/wiki/`, served by `mise 
 
 **How work flows here.** Tasks come from the [GitHub Project](https://github.com/users/delta9000/projects/2)
 (`scripts/pick-card.sh --list`). Take a card → documented completion via
-`docs/wiki/guides/card-to-done-workflow.md` (Definition of Ready/Done; the
+`docs/contributor/card-to-done-workflow.md` (Definition of Ready/Done; the
 card→issue→branch→PR→docs→Done chain). Multi-agent execution discipline:
-`docs/wiki/guides/workflow-subagent-discipline.md`.
+`docs/contributor/workflow-subagent-discipline.md`.
 
 ## Docs are part of the diff (anti-drift discipline)
 

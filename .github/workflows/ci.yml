@@ -27,7 +27,7 @@
 # passing — so PRs that don't touch a path-gated seam are not blocked waiting
 # on it. (texture-swap is never skipped.)
 #
-# See docs/wiki/guides/card-to-done-workflow.md (the DoD gate) and
+# See docs/contributor/card-to-done-workflow.md (the DoD gate) and
 # docs/wiki/guides/gate-system.md (what each gate protects).
 #
 # Note: Forgejo Actions also reads .github/workflows, so mirroring picks up the

@@ -140,9 +140,14 @@ Operational how-tos.
 | covered | `guides/rags.md` | The RAGs — running `code_rag`/`spec_rag`, when to use which (companion to the knowledge map) |
 | covered | `guides/conformance-campaign.md` | The conformance campaign — cadence, the audit workflow, the generated conformance view |
 | covered | `guides/add-a-cli-command.md` | How to add a CLI command to the `x3d` suite |
-| covered | `guides/workflow-subagent-discipline.md` | The workflow / subagent discipline — multi-agent fan-out, review gates |
-| covered | `guides/card-to-done-workflow.md` | Card → Done — Definition of Ready/Done, the card→issue→branch→PR→docs chain, `pick-card.sh` |
 | covered | `guides/golden-regeneration.md` | Golden regeneration — when and how to regenerate golden files and accept drift |
+
+> Two guides left this wiki on 2026-07-15 and are no longer rows above:
+> `workflow-subagent-discipline.md` and `card-to-done-workflow.md` now live in
+> `docs/contributor/`. They describe how *maintainers* run the project, not how
+> the SDK works, and promoting them in the public nav made the site read as
+> maintainer tooling. They are still maintained — this manifest tracks the
+> published wiki, so they are counted out of it, not deprecated.
 
 ## 4. Trackers
 
@@ -160,9 +165,9 @@ Top-level live trackers (a tracker is a page that tracks an ongoing, cross-cutti
 |---|---|---|---|
 | Subsystems | 42 | 42 | 0 |
 | Decisions (ADRs) | 43 | 43 | 0 |
-| Guides | 8 | 8 | 0 |
+| Guides | 6 | 6 | 0 |
 | Trackers | 1 | 1 | 0 |
-| **Total** | **93** | **93** | **0** |
+| **Total** | **91** | **91** | **0** |
 
 > ADR coverage (`decisions/*.md` ⇄ this table) is enforced by `mise run coverage-gate`
 > (`scripts/coverage_gate.py`), which fails CI on any ADR file missing a row or any
