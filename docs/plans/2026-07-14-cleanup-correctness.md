@@ -1721,6 +1721,13 @@ gates in CI -- and move mise to the contributor section."
 - Consumes: nothing.
 - Produces: an sdist and wheel containing `LICENSE` and `NOTICE`.
 
+**No `force-include` is needed** (measured, 2026-07-14). Hatchling's default
+`license-files` globs (`LICEN[CS]E*`, `NOTICE*`, …) already place both into the
+wheel's `.dist-info/licenses/` — the standards-correct location that packaging
+tooling reads. The only real gap was the **sdist**, whose `include` list omitted
+them. Adding a `force-include` duplicates the files into a second, non-standard
+path inside the package; don't.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `tests/test_package_metadata.py`:
@@ -1900,8 +1907,6 @@ artifacts = [
     "src/x3d_cpp_gen/templates/*",
     "src/x3d_cpp_gen/data/*",
 ]
-# The package bundles UOM data, so its attribution must travel with the wheel.
-force-include = { "LICENSE" = "x3d_cpp_gen/LICENSE", "NOTICE" = "x3d_cpp_gen/NOTICE" }
 
 [tool.hatch.build.targets.sdist]
 include = [
