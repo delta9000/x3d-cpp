@@ -108,12 +108,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output directory for generated headers (default: ./generated_cpp_bindings).",
     )
     parser.add_argument(
-        "--namespace", default=None, nargs="?", const="__AUTO__",
-        help="Wrap emitted classes in a C++ namespace. Pass a name, or bare "
-             "--namespace to auto-derive 'x3d::vX_Y' from the version. Default "
-             "OFF, so the 4.0 output stays byte-identical to the golden.",
-    )
-    parser.add_argument(
         "--templates", default=str(TEMPLATES_DIR),
         help="Jinja templates directory (default: packaged templates).",
     )
@@ -161,11 +155,13 @@ def main(argv=None) -> int:
         print(f"Auto-detected X3D spec version {spec_version.version} "
               f"(from <X3dUnifiedObjectModel version=...> in {spec.name}).")
 
-    # Generated node classes always live in x3d::nodes now (the namespace
-    # refactor): the vocabulary value/reflection types are x3d::core and the
-    # node classes are x3d::nodes. The legacy --namespace flag no longer drives
-    # this; the layout is fixed so the in-tree and installed include spellings
-    # ("x3d/core/...", "x3d/nodes/...") are uniform.
+    # Generated node classes always live in x3d::nodes: the vocabulary
+    # value/reflection types are x3d::core and the node classes are x3d::nodes.
+    # The layout is fixed so the in-tree and installed include spellings
+    # ("x3d/core/...", "x3d/nodes/...") are uniform. generate_cpp_bindings()
+    # still takes a `namespace` parameter -- tests/test_version.py exercises it
+    # directly -- but the CLI does not expose it, because a CLI option the tool
+    # then overrides is a lie to the caller.
     namespace = "x3d::nodes"
 
     out_dir.mkdir(parents=True, exist_ok=True)
