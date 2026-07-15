@@ -2455,7 +2455,14 @@ On the GitHub Project:
 ### Task 14: Add the minimum human-maintainer surface
 
 **Files:**
-- Create: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.github/PULL_REQUEST_TEMPLATE.md`
+- Create: `CONTRIBUTING.md`, `CHANGELOG.md`, `.github/PULL_REQUEST_TEMPLATE.md`
+
+**SECURITY.md and CODE_OF_CONDUCT.md were deliberately NOT created** (decided 2026-07-15, filed as #60 and #61):
+
+- **SECURITY.md** — GitHub private vulnerability reporting is **disabled** on this repo (`gh api repos/delta9000/x3d-cpp/private-vulnerability-reporting` → `{"enabled":false}`). A SECURITY.md pointing at the advisory flow would document a channel that does not work — the exact class of false claim this plan exists to remove. Enabling it is a repo-settings change and needs an explicit decision. `CONTRIBUTING.md` carries an interim note instead.
+- **CODE_OF_CONDUCT.md** — the Contributor Covenant needs a real enforcement contact. A CoC with a placeholder contact is worse than none: it reads as governance theatre and gives a reporter nowhere to go.
+
+Verify before assuming either is safe to add: **check the feature is actually on**, don't infer it from `security_and_analysis.secret_scanning.status` (that is a different feature and reports `enabled` regardless).
 
 **Interfaces:**
 - Consumes: Task 1's `SameMinorVersion` decision (the 0.x stability promise).
