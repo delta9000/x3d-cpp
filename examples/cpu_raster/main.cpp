@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 
   if (headless) {
     std::size_t firstVerts =
-        items ? extractor.item(snap.added.front()).mesh.positions.size() : 0;
+        items ? extractor.item(snap.added.front()).mesh->positions.size() : 0;
     std::size_t phong = 0, physical = 0, unlit = 0, transparent = 0, textured = 0;
     for (ex::RenderItemId id = 0; id < items; ++id) {
       const ex::RenderItem &it = extractor.item(id);

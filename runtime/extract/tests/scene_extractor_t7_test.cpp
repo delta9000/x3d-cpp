@@ -128,7 +128,7 @@ TEST_CASE("scene_extractor_t7_test") {
     auto snap = ex.fullSnapshot();
     CHECK((snap.added.size() == 1));
     const extract::RenderItem &it = ex.item(snap.added[0]);
-    CHECK((it.mesh.indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
+    CHECK((it.mesh->indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
   }
 
   // === 5) Shape with a real Material gets the real MaterialDesc (T5 wired) ===

@@ -41,7 +41,7 @@ static long extractVerts(const sdk::X3DDocument &doc, long &items) {
   sdk::RenderDelta f = ex.fullSnapshot();
   items = static_cast<long>(f.added.size());
   long verts = 0;
-  for (sdk::RenderItemId id : f.added) verts += (long)ex.item(id).mesh.positions.size();
+  for (sdk::RenderItemId id : f.added) verts += (long)ex.item(id).mesh->positions.size();
   return verts;
 }
 

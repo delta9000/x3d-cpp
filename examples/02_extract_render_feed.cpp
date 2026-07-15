@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
   std::cout << "== Snapshot: " << frame0.added.size() << " render item(s) ==\n";
   for (sdk::RenderItemId id : frame0.added) {
     const sdk::RenderItem &ri = ex.item(id);
-    const sdk::MeshData &m = ri.mesh;
+    const sdk::MeshData &m = *ri.mesh;
     const sdk::MaterialDesc &mat = ri.material;
     std::cout << "  item #" << id << " : " << topoName(m.topology)
               << "  verts=" << m.positions.size()

@@ -134,7 +134,7 @@ TEST_CASE("scene_extractor_test") {
     extract::RenderDelta d2 = ex2.fullSnapshot();
     CHECK((d2.added.size() == 1)); // Box now tessellates (T4 primitive support).
     const extract::RenderItem &bi = ex2.item(d2.added[0]);
-    CHECK((bi.mesh.indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
+    CHECK((bi.mesh->indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
   }
 
   return;

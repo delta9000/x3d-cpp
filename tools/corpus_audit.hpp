@@ -222,8 +222,8 @@ inline Fingerprint makeFingerprint(sdk::X3DDocument &doc,
     const sdk::MaterialDesc &mat = it.material;
 
     std::ostringstream os;
-    os << static_cast<int>(it.mesh.topology) << '|' << it.mesh.positions.size()
-       << '|' << it.mesh.indices.size() << '|' << fmtq(mat.toRGBA().r, colEps)
+    os << static_cast<int>(it.mesh->topology) << '|' << it.mesh->positions.size()
+       << '|' << it.mesh->indices.size() << '|' << fmtq(mat.toRGBA().r, colEps)
        << ',' << fmtq(mat.toRGBA().g, colEps) << ','
        << fmtq(mat.toRGBA().b, colEps) << '|' << fmtq(tx, trEps) << ','
        << fmtq(ty, trEps) << ',' << fmtq(tz, trEps) << '|' << fmtq(sx, posEps)
@@ -385,7 +385,7 @@ inline void auditInvariants(sdk::X3DDocument &doc, const std::string &file,
     // mesh-derived local bound.
     sdk::Aabb local;
     bool meshFinite = true;
-    for (const SFVec3f &p : it.mesh.positions) {
+    for (const SFVec3f &p : it.mesh->positions) {
       if (!finite3(p)) { meshFinite = false; break; }
       local.expand(p);
     }

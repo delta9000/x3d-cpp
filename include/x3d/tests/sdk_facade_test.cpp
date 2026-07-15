@@ -57,8 +57,8 @@ int main() {
   sdk::RenderItemId id = f0.added.front();
   check(id != sdk::kInvalidRenderItemId, "valid render item id");
   const sdk::RenderItem &ri = ex.item(id);
-  check(!ri.mesh.positions.empty(), "box mesh has positions");
-  check(ri.mesh.topology == sdk::Topology::Triangles, "box is triangle topology");
+  check(!ri.mesh->positions.empty(), "box mesh has positions");
+  check(ri.mesh->topology == sdk::Topology::Triangles, "box is triangle topology");
 
   // Material descriptor: emissive red, alpha = 1 - transparency.
   sdk::MaterialDesc mat = ri.material;

@@ -829,7 +829,7 @@ int main(int argc, char **argv) {
     ex::RenderDelta snap = extractor.fullSnapshot();
     std::size_t items = extractor.itemCount();
     std::size_t firstVerts =
-        items ? extractor.item(snap.added.front()).mesh.positions.size() : 0;
+        items ? extractor.item(snap.added.front()).mesh->positions.size() : 0;
     std::fprintf(stderr,
                  "[poc] headless: %zu render item(s); item[0] has %zu vertices\n",
                  items, firstVerts);
@@ -861,7 +861,7 @@ int main(int argc, char **argv) {
     std::size_t texturedItems = 0;
     for (ex::RenderItemId id = 0; id < items; ++id) {
       const ex::RenderItem &it = extractor.item(id);
-      if (it.mesh.texcoords.empty()) continue;
+      if (it.mesh->texcoords.empty()) continue;
       for (const ex::TextureRef &t : it.material.textures) {
         if (t.slot == ex::TextureRef::Slot::BaseColor ||
             t.slot == ex::TextureRef::Slot::Diffuse) {
@@ -895,7 +895,7 @@ int main(int argc, char **argv) {
     // resolver supplies one) binds via MaterialDesc.textures like any texture.
     std::size_t glyphMeshItems = 0;
     for (ex::RenderItemId id = 0; id < items; ++id)
-      if (extractor.item(id).mesh.isGlyphMesh) ++glyphMeshItems;
+      if (extractor.item(id).mesh->isGlyphMesh) ++glyphMeshItems;
     std::fprintf(stderr, "[poc] headless t-text: glyph_mesh_items=%zu\n",
                  glyphMeshItems);
     // T12 lit self-check (no GL): confirm the shading inputs the lit path needs
@@ -915,7 +915,7 @@ int main(int argc, char **argv) {
     const std::size_t litLights =
         directional ? directional : (headlightOn ? 1u : 0u);
     bool firstHasNormals =
-        items ? extractor.item(snap.added.front()).mesh.hasNormals : false;
+        items ? extractor.item(snap.added.front()).mesh->hasNormals : false;
     SFColorRGBA c0 =
         items ? extractor.item(snap.added.front()).material.toRGBA()
               : SFColorRGBA{0, 0, 0, 0};
@@ -1203,7 +1203,7 @@ int main(int argc, char **argv) {
   // and bumping its refcount. Returns nothing; gpuMeshes/meshRefs are mutated.
   auto acquireMesh = [&](const ex::RenderItem &it) {
     if (gpuMeshes.find(it.geometry) == gpuMeshes.end())
-      gpuMeshes.emplace(it.geometry, uploadMesh(it.mesh));
+      gpuMeshes.emplace(it.geometry, uploadMesh(*it.mesh));
     ++meshRefs[it.geometry];
   };
   // Drop one reference to a GeomId; delete the GpuMesh when it hits zero.

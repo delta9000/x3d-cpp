@@ -118,7 +118,7 @@ static bool run_oracle(const std::string &path, const std::string &label,
 
         for (sdk::RenderItemId id : frame0.added) {
             const sdk::RenderItem &item = ex.item(id);
-            const sdk::MeshData &mesh = item.mesh;
+            const sdk::MeshData &mesh = *item.mesh;
             const x3d::runtime::Mat4 &W = item.worldTransform;
 
             const std::size_t triCount = mesh.indices.size() / 3;
