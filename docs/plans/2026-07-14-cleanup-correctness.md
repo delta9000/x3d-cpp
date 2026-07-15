@@ -2107,6 +2107,15 @@ Expected: FAIL, reporting the cached `CMAKE_CXX_COMPILER_LAUNCHER=/bin/echo`, th
 cmake_minimum_required(VERSION 3.21)
 ```
 
+**Also update the README in this same commit.** PR 2's Task 9 documents
+"**Requires:** a C++20 compiler and CMake 3.20+", matching the floor *as declared
+at the time*. This task changes that floor, so the README line must move to
+3.21+ here or the install instructions start lying. Verify with:
+
+```bash
+grep -n 'CMake 3\.' README.md
+```
+
 - [ ] **Step 4: Add the guard option**
 
 Immediately after the `project()` call and the `include()`s (~line 10), insert:

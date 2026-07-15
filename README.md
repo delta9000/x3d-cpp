@@ -77,13 +77,44 @@ Full-quality WebM:
 [color](docs/videos/demos/color.webm) — regenerate everything with `mise run demos`; see
 [`examples/cpu_raster/`](examples/cpu_raster/README.md#animation-demos).
 
+## Build and install
+
+x3d-cpp is a normal CMake package. Nothing project-specific is needed to build,
+install, or consume it:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DX3D_CPP_BUILD_TESTS=OFF
+cmake --build build
+cmake --install build --prefix "$PWD/install"
+```
+
+Then consume it from a downstream project:
+
+```bash
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/install
+```
+
+```cmake
+find_package(x3d_cpp CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE x3d_cpp::sdk)
+```
+
+[`examples/embed_minimal/`](examples/embed_minimal/) is exactly this: a
+downstream-style project that does not depend on the source tree.
+`scripts/verify_install_embed.sh` builds it against a throwaway install prefix on
+every CI run, so the sequence above is gate-enforced rather than aspirational.
+
+**Requires:** a C++20 compiler and CMake 3.20+. Contributors additionally use
+[mise](#dev-tasks-mise) as a task runner — see [Dev tasks](#dev-tasks-mise).
+
 ## Quickstart — three ways in
 
 ### 1. The `x3d` CLI (no code)
 
-Build the tools (`mise run build` → `build/x3d`), then drive scenes from the
-shell — convert between encodings, validate against the spec, headlessly
-simulate behavior, or export geometry:
+Build the CLI (`cmake --build build` → `build/x3d`, or `mise run build`), then
+drive scenes from the shell — convert between encodings, validate against the
+spec, headlessly simulate behavior, or export geometry:
 
 ```bash
 x3d convert  scene.x3dv -o scene.x3d -f xml   # ClassicVRML → XML (or vrml|json)
