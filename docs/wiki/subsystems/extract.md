@@ -60,7 +60,7 @@ SceneExtractor ex(ctx, scene, meshOptions, textureResolver);
 RenderDelta d0 = ex.fullSnapshot();
 
 // Subsequent frames: incremental; reads ctx.dirtyTracker() exactly once.
-RenderDelta dn = ex.delta(); // one call per tick; asserts one-delta-per-tick.
+RenderDelta dn = ex.delta(); // one call per tick; a second with no tick = empty.
 
 // Item access by dense handle.
 const RenderItem &it = ex.item(id); // id in delta.added / updatedTransform / etc.
@@ -116,7 +116,7 @@ struct RenderDelta {
 - `geometry` (`GeomId`) — `{node*, contentVersion}`; equal GeomIds share GPU geometry.
 - `geometry_ext` (`Geometry`) — union of AoS `MeshData` (default) and `PackedMesh` (binary resolver path).
 - `material` (`MaterialDesc`) — full Phong/Physical/Unlit descriptor with textures.
-- `mesh` (`MeshData`) — local-frame triangles used by `sceneWorldBounds()`.
+- `mesh` (`MeshRef` = `shared_ptr<const MeshData>`) — local-frame triangles, **shared** across every placement of one `GeomId` ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)), so host RAM is O(distinct content) rather than O(placements). Never null (a Packed item points at `emptyMeshRef()`), so `item.mesh->positions` needs no null check. Immutable by contract: a content change builds a **new** mesh and bumps `GeomId::contentVersion` rather than editing one a co-owner can see.
 - `lights` — indices into `snapshotLights()` for lights whose scope covers this placement.
 - `beyondVisibilityLimit` — hint: item origin is past `Viewpoint.farDistance` / `NavigationInfo.visibilityLimit`.
 - `castShadow` — `X3DShapeNode.castShadow` (X3D default `true`); whether this shape occludes light. Carried, not interpreted — the shadow-visibility query (technique-defined per §17) is a consumer/seam concern (see [ADR-0028](../decisions/0028-shadow-visibility-seam.md)).
@@ -176,7 +176,7 @@ not a seam" rationale and the deferral set are in [ADR-0040](../decisions/0040-n
 
 - **`externalGeometryResolver` / `PackedMesh`** — Phase 1 binary geometry path. When `buildLocalMesh` returns `recognized=false` and an `externalGeometryResolver` is wired, the extractor calls it with the unrecognized geometry node. A non-empty `PackedMesh` (glTF-accessor-compatible byte slabs, `attrib_mask` bitmask, `VertexBufferView` per attribute) triggers `emitPacked()`, producing a `RenderItem` with `geometry_ext.kind == Geometry::Kind::Packed`. An empty `PackedMesh` signals Pending (silent retry next tick). See [Ext firewall](ext-firewall.md).
 
-- **`X3DExecutionContext` (runtime dependency)** — provides `dirtyTracker()` (the `DirtyTracker` read by `delta()`), `now()` (for the one-delta-per-tick assert), `boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`, `viewMatrix()`, and `cameraWorldPosition()`. See [Execution context](execution-context.md).
+- **`X3DExecutionContext` (runtime dependency)** — provides `dirtyTracker()` (the `DirtyTracker` read by `delta()`), `tickGeneration()` (the monotonic advance count the one-delta-per-tick guard keys on — deliberately not `now()`, which an embedder may pause or replay), `boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`, `viewMatrix()`, and `cameraWorldPosition()`. See [Execution context](execution-context.md).
 
 - **`DirtyTracker` (runtime dependency)** — `delta()` reads `changedNodes()` and `flags(n)` exactly once per tick. Dirty flags consumed: `DirtyLocalTransform | DirtyWorldTransform` → transform re-accumulation; `DirtyField` → geometry content re-extract or material re-read; `DirtyChildren` → subtree re-walk from the cached entry matrix. See [Dirty/bounds/transform](dirty-bounds-transform.md).
 

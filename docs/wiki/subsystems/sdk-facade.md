@@ -89,7 +89,7 @@ The complete `x3d::sdk` namespace, grouped by area:
 - `RenderItem` — `{ path, worldTransform, geometry, material, mesh, lights, ... }`.
 - `RenderDelta` — `{ added, removed, updatedTransform, updatedGeometry, updatedMaterial, *Changed }`.
 - `RenderItemId` / `kInvalidRenderItemId`, `PathKey` / `PathKeyHash` / `PathKeyEqual`, `GeomId` / `GeomIdHash`.
-- `MeshData` — `positions/indices/normals/texcoords/colors/topology/...`.
+- `MeshData` — `positions/indices/normals/texcoords/colors/topology/...`. Reached through `MeshRef` (`shared_ptr<const MeshData>`) on a `RenderItem`: one allocation per distinct `GeomId`, co-owned by every placement ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)).
 - `Topology` — `enum class { Triangles, Lines, Points }`.
 - `MaterialDesc` / `MaterialModel` / `AlphaMode` (including `toRGBA()`), `LightDesc`, `CameraDesc`, `BackgroundDesc`.
 

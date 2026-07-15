@@ -119,8 +119,13 @@ The SDK is single-threaded and synchronous. One `X3DExecutionContext` and one
 
 1. push inputs (`setPointer*`, `setKey`) since the last tick,
 2. `ctx.tick(now)` once,
-3. `ex.delta()` **at most once** per tick (asserted — the dirty set is cleared by
-   the next tick).
+3. `ex.delta()` **once** per tick.
+
+Step 3 is total — no call sequence is undefined, and none of it keys on the
+clock, so a paused, fixed-timestep or replayed `now` is fine. `delta()` before any
+`fullSnapshot()` returns the snapshot (that *is* the baseline); a second
+`delta()` with no intervening `tick()` returns an empty delta, because nothing can
+have changed. The guard keys on `ctx.tickGeneration()`, a monotonic advance count.
 
 There is no internal threading and no hidden IO on the tick path. If your asset
 or font seams are async, return `Pending` and retry on a later frame.
