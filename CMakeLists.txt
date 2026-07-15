@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(x3d_cpp
     VERSION 0.1.0
-    DESCRIPTION "Header-only C++ bindings generated from the X3D Unified Object Model"
+    DESCRIPTION "Headless, renderer-agnostic X3D domain-runtime SDK: C++ node bindings generated from the X3D Unified Object Model, plus a compiled runtime"
     LANGUAGES CXX C)
 
 include(GNUInstallDirs)

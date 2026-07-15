@@ -1,4 +1,4 @@
-# x3d-cpp-gen
+# x3d-cpp
 
 A headless, renderer-agnostic **X3D domain-runtime SDK** in C++. Load an X3D
 scene (XML, ClassicVRML, VRML97, or JSON; versions 3.0–4.1), run its event /

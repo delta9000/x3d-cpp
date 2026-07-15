@@ -1,4 +1,4 @@
-# x3d-cpp-gen — project instructions
+# x3d-cpp — project instructions
 
 Headless, renderer-agnostic X3D domain-runtime SDK. Task runner is **mise** (`mise tasks`);
 the canonical knowledge home is the in-repo wiki (`docs/wiki/`, served by `mise run docs`).

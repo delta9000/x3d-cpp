@@ -1,6 +1,6 @@
 ---
 title: Architecture
-summary: System map for x3d-cpp-gen — layers, seams, and data flow from generator to SDK consumer.
+summary: System map for x3d-cpp — layers, seams, and data flow from generator to SDK consumer.
 tags: [architecture, runtime, generator]
 updated: 2026-06-21
 related:
@@ -14,7 +14,7 @@ related:
 
 # Architecture
 
-This is the system map: the layered spine that every other wiki page hangs off. x3d-cpp-gen is a headless, renderer-agnostic X3D-4.0 domain runtime SDK. It parses any of the four X3D encodings into a document model, runs the event/behavior cascade over a live scene graph, and extracts renderer-ready descriptors — but it does no file IO, no decoding, and no rasterization itself. Those responsibilities live behind explicit seams that the embedder fills.
+This is the system map: the layered spine that every other wiki page hangs off. x3d-cpp is a headless, renderer-agnostic X3D-4.0 domain runtime SDK. It parses any of the four X3D encodings into a document model, runs the event/behavior cascade over a live scene graph, and extracts renderer-ready descriptors — but it does no file IO, no decoding, and no rasterization itself. Those responsibilities live behind explicit seams that the embedder fills.
 
 The cardinal design rule: **the node model is the single source of truth**. Every runtime subsystem keeps its state in side tables keyed by `const X3DNode*` or dense ids, never by mutating node state. That is what lets the same scene be reflected, ticked, extracted, and re-serialized byte-identically (the golden gate).
 

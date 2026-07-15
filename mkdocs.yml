@@ -1,7 +1,7 @@
-site_name: x3d-cpp-gen Knowledge Wiki
-site_description: Canonical knowledge home for the x3d-cpp-gen X3D domain runtime SDK.
+site_name: x3d-cpp Knowledge Wiki
+site_description: Canonical knowledge home for the x3d-cpp X3D domain runtime SDK.
 site_author: Ben Sandbrook
-repo_url: https://github.com/sandbrookvt/x3d-cpp-gen
+repo_url: https://github.com/delta9000/x3d-cpp
 docs_dir: docs/wiki
 
 theme:

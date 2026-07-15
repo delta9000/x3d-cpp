@@ -1,4 +1,4 @@
-# x3d-cpp-gen SDK — embedder quick-start (v1)
+# x3d-cpp SDK — embedder quick-start (v1)
 
 A headless, renderer-agnostic X3D domain runtime. You load an X3D document, tick
 a runtime, and pull renderer-ready descriptors out the other side. The SDK does

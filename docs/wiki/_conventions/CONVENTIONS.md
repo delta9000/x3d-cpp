@@ -1,6 +1,6 @@
 ---
 title: Wiki Conventions
-summary: Frontmatter schema, link style, and nav conventions for the x3d-cpp-gen wiki.
+summary: Frontmatter schema, link style, and nav conventions for the x3d-cpp wiki.
 tags: [conventions, meta]
 updated: 2026-06-20
 related: []

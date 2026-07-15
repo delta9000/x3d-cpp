@@ -1,4 +1,4 @@
-# x3d-cpp-gen SDK — v1 capability matrix
+# x3d-cpp SDK — v1 capability matrix
 
 What the v1 façade (`x3d::sdk`) supports, and what is deferred to post-v1. The
 deferred rows are breadth, not spine: the architecture accommodates each as an
