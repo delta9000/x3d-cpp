@@ -1,5 +1,9 @@
 # x3d-cpp
 
+[![CI](https://github.com/delta9000/x3d-cpp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/delta9000/x3d-cpp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
+
 A headless, renderer-agnostic **X3D domain-runtime SDK** in C++. Load an X3D
 scene (XML, ClassicVRML, VRML97, or JSON; versions 3.0–4.1), run its event /
 behavior model tick-by-tick, and pull out renderer-ready geometry — meshes,

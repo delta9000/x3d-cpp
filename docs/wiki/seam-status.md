@@ -17,7 +17,6 @@ related:
   - subsystems/system-font-metrics.md
   - subsystems/system-script-sai.md
   - subsystems/system-texture-decode.md
-  - guides/card-to-done-workflow.md
 ---
 
 # Seam-Status Matrix
@@ -315,5 +314,5 @@ For each NOT-YET-PROVEN row, the path to GREEN mirrors the ScriptEngine pilot:
 4. Then **freeze the interface** `[STABLE]` (in `sdk.hpp` for public seams; in the seam header
    itself for runtime seams like `AudioBackend.hpp`) and flip the row GREEN here.
 
-See [Card → Done Workflow](guides/card-to-done-workflow.md) for how a seam card is driven to
-this documented-completion state.
+See `docs/contributor/card-to-done-workflow.md` (contributor material, outside
+this wiki) for how a seam card is driven to this documented-completion state.

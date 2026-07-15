@@ -53,7 +53,7 @@ The runtime is designed to be consumed by renderers (the first real consumer is 
 
 All three build waves are complete: the [Architecture](architecture.md) spine, every subsystem and decision page, the operational guides, and the [Knowledge Map](knowledge-map.md). Completeness is tracked in the [Coverage Manifest](coverage.md) — the canonical target set (subsystems, ADRs, guides) with covered-vs-residual status. Any deferred area is named there rather than left implicit.
 
-How work flows from a planning card to documented completion is described in the [Card → Done Workflow](guides/card-to-done-workflow.md) guide. The product's core thesis — that every renderer/engine seam is *proven generic* only with a second independent backend + a CI-gated swap-test — is tracked live in the [Seam-Status Matrix](seam-status.md) (ScriptEngine is the first GREEN row; see [ADR-0022](decisions/0022-scriptengine-second-backend-swap-test.md)).
+How work flows from a planning card to documented completion is described in `docs/contributor/card-to-done-workflow.md` (contributor material, outside this wiki). The product's core thesis — that every renderer/engine seam is *proven generic* only with a second independent backend + a CI-gated swap-test — is tracked live in the [Seam-Status Matrix](seam-status.md) (ScriptEngine is the first GREEN row; see [ADR-0022](decisions/0022-scriptengine-second-backend-swap-test.md)).
 
 The **Subsystems** nav is grouped by architecture layer (Generator & Bindings → Runtime Core → Codecs & Parse → Event/Behavior Runtime → Extract → Boundaries & Consumers) so you can zoom from the [Architecture](architecture.md) map down to a single area. For semantic search across the codebase and the ISO spec, see the [Knowledge Map](knowledge-map.md).
 

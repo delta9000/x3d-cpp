@@ -8,7 +8,7 @@ body:
       value: |
         Fill every section. A card is **Ready** only when the Definition of Ready below is
         satisfied — under-specified items are the top cause of agent failure. See the
-        [Card → Done Workflow](../../docs/wiki/guides/card-to-done-workflow.md).
+        [Card → Done Workflow](../../docs/contributor/card-to-done-workflow.md).
 
   - type: textarea
     id: context

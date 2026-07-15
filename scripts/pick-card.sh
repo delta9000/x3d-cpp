@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # pick-card.sh — take a Project card into work: convert the draft card to a GitHub
 # issue (so the PR can `Closes #N` and auto-move it to Done) and print the agent
-# handoff packet. See docs/wiki/guides/card-to-done-workflow.md.
+# handoff packet. See docs/contributor/card-to-done-workflow.md.
 #
 # Usage:  scripts/pick-card.sh "<card title or substring>"
 #         scripts/pick-card.sh --list           # show pickable (Backlog/Ready) cards
@@ -82,7 +82,7 @@ VERIFY: run the card's verification command AND \`mise run ci\` to green before 
 DOCS:   update the living docs named on the card in THIS PR (\`mise run docs-drift\` pre-check).
 PLAN:   substantial card => design spec + ADR + five-phase workflow first;
         small card => one agent: writing-plans -> test-driven-development -> implement.
-See: docs/wiki/guides/card-to-done-workflow.md
+See: docs/contributor/card-to-done-workflow.md
 ───────────────────────────────────────────────────────────────────────
 
 Issue body (acceptance criteria / anchors / verify / docs):
