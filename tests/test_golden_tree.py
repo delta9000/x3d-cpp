@@ -1,12 +1,13 @@
 """Full-tree golden-drift test.
 
-Regenerates the ENTIRE C++ binding tree into a temp dir and asserts every *.hpp
-matches the committed generated_cpp_bindings/ byte-for-byte (in both directions:
-no missing, no extra, no drifted headers). This is the pytest twin of
-scripts/check_golden.sh, so `uv run pytest` alone catches codegen drift.
+Regenerates the ENTIRE generated C++ source tree into a temp dir and asserts
+every generated source file (*.hpp and *.cpp) matches the committed
+generated_cpp_bindings/ byte-for-byte (in both directions: no missing, no extra,
+no drifted files). This is the pytest twin of scripts/check_golden.sh, so
+`uv run pytest` alone catches codegen drift.
 
 Codegen changes are intentional: change a template/emitter, regenerate with
-`uv run x3d-cpp-gen --out generated_cpp_bindings`, and commit the new headers.
+`uv run x3d-cpp-gen --out generated_cpp_bindings`, and commit the new sources.
 """
 
 import shutil
@@ -31,7 +32,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def _regenerate(out_dir: Path) -> None:
-    """Run the real CLI to regenerate the full tree (headers only, no smoke test)."""
+    """Run the real CLI to regenerate the full generated source tree (no smoke test)."""
     result = subprocess.run(
         [
             sys.executable, "-m", "x3d_cpp_gen.cli",
@@ -66,19 +67,19 @@ def test_golden_tree_matches(tmp_path):
     golden = _tree(GOLDEN_DIR)
     produced = _tree(out)
 
-    assert golden, "no golden headers found"
+    assert golden, "no golden sources found"
 
     missing = sorted(str(p) for p in golden - produced)
     extra = sorted(str(p) for p in produced - golden)
-    assert not missing, f"headers in golden but not regenerated: {missing}"
-    assert not extra, f"headers regenerated but not committed to golden: {extra}"
+    assert not missing, f"generated sources in golden but not regenerated: {missing}"
+    assert not extra, f"generated sources regenerated but not committed to golden: {extra}"
 
     drifted = []
     for rel in sorted(golden, key=str):
         if (GOLDEN_DIR / rel).read_bytes() != (out / rel).read_bytes():
             drifted.append(str(rel))
     assert not drifted, (
-        "regenerated headers differ from committed golden "
+        "regenerated sources differ from committed golden "
         f"(regenerate + commit): {drifted}"
     )
 

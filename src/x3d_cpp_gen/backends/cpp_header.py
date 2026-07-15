@@ -14,6 +14,16 @@ from jinja2 import Environment, FileSystemLoader
 
 from x3d_cpp_gen.emit.descriptors import build_descriptors
 from x3d_cpp_gen.emit.naming import pascal
+
+# The repo's committed style, resolved absolutely and passed explicitly.
+# clang-format otherwise searches upward from each output file, which finds
+# nothing when the golden gate regenerates into a temp dir outside the repo and
+# silently falls back to the built-in default -- formatting the temp tree
+# differently from the committed one and failing the gate forever.
+#
+# Absent from an installed wheel (only the package is shipped), in which case we
+# ask for LLVM explicitly -- the style the committed golden was produced with.
+_STYLE_FILE = Path(__file__).resolve().parents[3] / ".clang-format"
 from x3d_cpp_gen.parser import (
     X3DNode, get_own_fields, resolve_inheritance_chain,
 )
@@ -208,8 +218,10 @@ class CppHeaderBackend:
         """
         if not clang_format or not output_files:
             return clang_format
+        style_arg = (f"--style=file:{_STYLE_FILE}" if _STYLE_FILE.exists()
+                     else "--style=LLVM")
         try:
-            result = subprocess.run([clang_format, "-i", *output_files],
+            result = subprocess.run([clang_format, style_arg, "-i", *output_files],
                                    capture_output=True, text=True)
             if result.returncode != 0:
                 print(f"WARNING: {clang_format} failed on {len(output_files)} files "

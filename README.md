@@ -175,7 +175,7 @@ The repo ships a `mise.toml` task runner:
 ```bash
 mise run gen           # regenerate the committed C++ bindings into generated_cpp_bindings/
 mise run test          # pytest (unit suite + full-tree golden-drift test)
-mise run golden        # golden-drift gate (regenerate to a temp dir, diff every *.hpp)
+mise run golden        # golden-drift gate (regenerate to a temp dir, diff every *.hpp/*.cpp)
 mise run build         # cmake configure + build + ctest
 mise run corpus-fetch  # fetch the X3D test corpus the differential gates need (see "Test corpus")
 mise run ci            # full local pipeline: test + golden + conformance-gate + build +
@@ -186,19 +186,20 @@ mise run ci            # full local pipeline: test + golden + conformance-gate +
 
 ## Golden-file policy
 
-`generated_cpp_bindings/*.hpp` are **golden**: they are committed and treated as
-the source of truth for codegen output. The only generation artifacts that are
-NOT golden are `test.cpp` / `test_exec` (gitignored).
+`generated_cpp_bindings/` is **golden**: every generated `*.hpp` and `*.cpp` is
+committed and treated as the source of truth for codegen output. The only
+generation artifacts that are NOT golden are `test.cpp` / `test_exec` (gitignored).
 
 Codegen changes are therefore **intentional and explicit**:
 
 1. Change a template (`src/x3d_cpp_gen/templates/`) or emitter.
 2. Regenerate: `uv run x3d-cpp-gen --out generated_cpp_bindings` (or `mise run gen`).
-3. Review and **commit** the new headers.
+3. Review and **commit** the new generated sources.
 
 The golden-drift gate (`scripts/check_golden.sh`, `tests/test_golden_tree.py`,
-and the `golden` CI job) regenerates into a temp dir and fails on ANY *.hpp
-difference, so uncommitted codegen drift can never land silently.
+and the `golden` CI job) regenerates into a temp dir and fails on ANY difference
+in the generated `*.hpp`/`*.cpp` tree, so uncommitted codegen drift can never
+land silently.
 
 ## CI
 

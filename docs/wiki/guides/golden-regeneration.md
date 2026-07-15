@@ -75,7 +75,7 @@ What it does:
    committed).
 4. On any drift: prints a report naming every drifted/missing/extra file with a
    short unified diff snippet, then exits non-zero.
-5. On clean: prints `Golden tree OK: regenerated *.hpp match generated_cpp_bindings/ byte-for-byte.` and exits 0.
+5. On clean: prints `Golden tree OK: generated *.hpp/*.cpp match generated_cpp_bindings/ byte-for-byte.` and exits 0.
 
 There is **no sha256** step in the gate — comparison is a plain `diff -q` per file.
 The gate is also run by `uv run pytest` via `tests/test_golden_tree.py` (the pytest

@@ -10,6 +10,24 @@ include(CMakePackageConfigHelpers)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/X3DTargetPurpose.cmake")
 
 # ---------------------------------------------------------------------------
+# Shared-library soname. Pre-1.0 the ABI-breaking axis is the MINOR (SemVer says
+# 0.y is unstable), so the soname must track major.minor: a plain
+# ${PROJECT_VERSION_MAJOR} is 0 for every 0.x, which would let ld.so load a 0.2
+# runtime into a 0.1 consumer that find_package() had just refused --
+# write_basic_package_version_file(SameMinorVersion) governs configure time only,
+# not the loader. From 1.0 the major IS the ABI axis and the conventional soname
+# is correct, so this branch expires on its own at the version bump.
+#
+# The compatibility promise this encodes is INTENT, not proof: there is no ABI
+# checker in CI yet. See CONTRIBUTING.md.
+# ---------------------------------------------------------------------------
+if(PROJECT_VERSION_MAJOR EQUAL 0)
+    set(X3D_CPP_SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
+else()
+    set(X3D_CPP_SOVERSION "${PROJECT_VERSION_MAJOR}")
+endif()
+
+# ---------------------------------------------------------------------------
 # ccache: reuse cached object output across rebuilds. The generated headers
 # change rarely, so the ~800-TU compile-test suite is almost entirely cache
 # hits after the first run. Auto-detected; a no-op when ccache is absent (e.g.
@@ -201,7 +219,7 @@ set_target_properties(x3d_cpp_nodes PROPERTIES
 if(X3D_CPP_SHARED_NODES)
     set_target_properties(x3d_cpp_nodes PROPERTIES
         VERSION "${PROJECT_VERSION}"
-        SOVERSION "${PROJECT_VERSION_MAJOR}"
+        SOVERSION "${X3D_CPP_SOVERSION}"
         WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 target_link_libraries(x3d_cpp_nodes PUBLIC x3d_cpp_headers)
@@ -251,7 +269,7 @@ if(X3D_CPP_SHARED_NODES)
             x3d_cpp_runtime)
         set_target_properties(${_runtime_target} PROPERTIES
             VERSION "${PROJECT_VERSION}"
-            SOVERSION "${PROJECT_VERSION_MAJOR}"
+            SOVERSION "${X3D_CPP_SOVERSION}"
             WINDOWS_EXPORT_ALL_SYMBOLS ON)
         # Each installed DSO resolves the next implementation layer beside
         # itself. Executable RUNPATH is not inherited for indirect dependencies.
@@ -385,11 +403,16 @@ configure_package_config_file(
     "${CMAKE_CURRENT_BINARY_DIR}/x3d_cppConfig.cmake"
     INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/x3d_cpp")
 
+# The package installs compiled shared libraries, so it is NOT arch-independent:
+# ARCH_INDEPENDENT would delete the CMAKE_SIZEOF_VOID_P guard and let a consumer
+# with a different pointer size link a mismatched ABI. SameMinorVersion (not
+# SameMajorVersion) because PROJECT_VERSION is 0.x: at major 0, SameMajorVersion
+# treats every future 0.y as compatible with 0.1. Contract + the exact reasoning:
+# tests/cmake/package_version/check_version_file.cmake.
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/x3d_cppConfigVersion.cmake"
     VERSION "${PROJECT_VERSION}"
-    COMPATIBILITY SameMajorVersion
-    ARCH_INDEPENDENT)
+    COMPATIBILITY SameMinorVersion)
 
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/x3d_cppConfig.cmake"
@@ -1802,6 +1825,17 @@ if(X3D_CPP_BUILD_TESTS)
                     "${CMAKE_CURRENT_BINARY_DIR}/install-embed-smoke"
                     "${CMAKE_GENERATOR}")
     endif()
+
+    # Contract: the generated package version file must reject a mismatched
+    # pointer size (the package ships compiled .so files, so it is NOT
+    # arch-independent) and must not treat a different MINOR as compatible (at
+    # 0.x, SameMajorVersion would green-light every future 0.y). Drives the
+    # generated file directly, so it needs no cross-compiler.
+    add_test(NAME x3d_package_version_contract
+        COMMAND "${CMAKE_COMMAND}"
+                "-DVERSION_FILE=${CMAKE_CURRENT_BINARY_DIR}/x3d_cppConfigVersion.cmake"
+                "-DBUILD_SIZEOF_VOID_P=${CMAKE_SIZEOF_VOID_P}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/package_version/check_version_file.cmake")
 
     # T-SOUND: the §16 Sound seam (runtime/sound/). The AudioBackend seam +
     # SoundSystem are CORE, header-only, DSP-free (mirrors PhysicsBackend +
