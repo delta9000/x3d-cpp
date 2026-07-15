@@ -46,3 +46,56 @@ def test_no_spec_correct_by_construction_claim():
         "generation from the UOM does not prove runtime semantics or eliminate "
         "UOM errata; behavioral conformance is tested separately"
     )
+
+
+def test_readme_does_not_call_ci_manual_only():
+    """ci.yml has a pull_request trigger; the README told readers to enable it."""
+    text = (REPO_ROOT / "README.md").read_text()
+    assert "re-enable the `push:` / `pull_request:` triggers" not in text
+    workflow = (REPO_ROOT / ".github/workflows/ci.yml").read_text()
+    assert "pull_request:" in workflow, (
+        "the README now claims CI runs on every PR -- keep it true"
+    )
+
+
+def test_sdk_guide_does_not_claim_all_seams_experimental():
+    """docs/wiki/seam-status.md declares six seams STABLE."""
+    text = (REPO_ROOT / "docs/sdk/README.md").read_text()
+    assert "All seams are **experimental**" not in text
+    matrix = (REPO_ROOT / "docs/wiki/seam-status.md").read_text()
+    assert "**STABLE**" in matrix, "the matrix no longer declares any seam STABLE"
+
+
+def test_notice_and_readme_agree_on_corpus_gates():
+    notice = (REPO_ROOT / "NOTICE").read_text()
+    assert "those tests skip cleanly" not in notice, (
+        "the corpus differential gates fail closed; only RAG/JDK skip cleanly"
+    )
+    assert "fail closed" in notice
+
+
+def test_wiki_does_not_deny_renderers_are_in_the_repo():
+    text = (REPO_ROOT / "docs/wiki/index.md").read_text()
+    assert "not part of this repo" not in text, (
+        "examples/cpu_raster and examples/poc_renderer are in the repo; "
+        "they are out-of-SDK consumers, which is a different claim"
+    )
+    assert (REPO_ROOT / "examples/cpu_raster").is_dir()
+    assert (REPO_ROOT / "examples/poc_renderer").is_dir()
+
+
+def test_capability_matrix_mentions_the_moviedecoder_seam():
+    """The matrix undersold shipped work: it omitted the seam entirely.
+
+    Movie DECODE ships (two backends + x3d_movie_tests). Movie PLAYBACK is
+    correctly still deferred -- the SDK never invokes the callback. Both facts
+    belong in the matrix; previously neither did.
+    """
+    text = (REPO_ROOT / "docs/sdk/v1-capabilities.md").read_text()
+    assert "MovieDecoder" in text, (
+        "the MovieDecoder seam ships with two backends and a CI gate; the "
+        "capability matrix must not omit it"
+    )
+    assert "MovieTexture frames" in text, (
+        "MovieTexture frame playback is genuinely deferred and must stay listed"
+    )

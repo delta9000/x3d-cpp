@@ -131,9 +131,13 @@ the embedder supplies the *adapter* (here called a *backend*) that does the actu
 IO. Every seam is proven backend-agnostic by a second independent implementation
 plus a swap-test, so the contract — not any one backend — is what's frozen.
 
-The core is IO-free. Decoding and rasterization live in the embedder, supplied as
-`std::function` callbacks. All seams are **experimental** in v1 — the shapes are
-usable but may gain fields.
+The core is IO-free apart from the parse path's own local-file reads
+(`parseFile`). Decoding and rasterization live in the embedder, supplied as
+`std::function` callbacks. Each seam carries its own stability marker:
+**[STABLE]** seams are frozen pre-v2 (a breaking change is a major bump),
+**[EXPERIMENTAL]** seams are usable but may gain fields. See the
+[seam status matrix](../wiki/seam-status.md) for the current per-seam state —
+do not assume a blanket answer.
 
 | Seam | Type | What you supply |
 |---|---|---|

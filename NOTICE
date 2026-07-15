@@ -32,7 +32,9 @@ https://www.web3d.org/x3d/content/examples/Basic/license.html
 NOT bundled (size + per-file attribution): the X3D conformance example archive
 and the X3DJSAIL canonical reference fixtures derived from it. Point a local
 checkout at the X3D_CORPUS_DIR environment variable to run the corpus / gate
-suites; without it those tests skip cleanly.
+suites. The RAG and JDK seams skip cleanly when unset; the corpus differential
+gates instead fail closed when asked to run without a corpus (a gate with no
+inputs must never green) — fetch one with `mise run corpus-fetch`.
 
 NOT bundled (fetched on demand by examples/cpu_raster/assets/kelp_flythrough/
 fetch_kelp.sh into a git-ignored exhibit/ dir): the "Kelp Forest Exhibit" X3D

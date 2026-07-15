@@ -207,9 +207,11 @@ land silently.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on demand (`workflow_dispatch` — the full
-matrix is heavy; re-enable the `push:` / `pull_request:` triggers to make it
-automatic). Forgejo Actions reads the same file if the repo is mirrored there:
+`.github/workflows/ci.yml` runs the fast, hermetic gates on every pull request
+(pytest, golden drift, conformance-view drift, wiki strict build, and a
+single-compiler C++ build + ctest). The heavy 4-compiler baseline matrix stays
+manual (`workflow_dispatch`). Forgejo Actions reads the same file if the repo is
+mirrored there:
 
 - **python** — `uv sync` + `uv run pytest` (unit suite + full-tree golden test).
 - **golden** — the golden-drift gate (regenerate + diff).
