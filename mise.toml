@@ -12,9 +12,11 @@
 # an activated venv.
 
 [tools]
-# uv provides the Python toolchain / project env. (Listed so `mise install`
-# bootstraps it; pinning omitted to use whatever uv resolves from pyproject.)
-uv = "latest"
+# uv provides the Python toolchain / project env. Pinned: `latest` means a silent
+# uv upgrade can change resolution and break a previously-green checkout. CI pins
+# the SAME version via setup-uv's `version:` input -- setup-uv does NOT read this
+# file, so both sites must be updated together or they drift apart silently.
+uv = "0.10.4"
 # The generated C++ tree is byte-exact golden, so its formatter is part of the
 # contract and is pinned exactly -- the full version, not just the major, since
 # the default style can shift in any release. scripts/check_golden.sh asserts the

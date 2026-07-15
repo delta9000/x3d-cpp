@@ -1,8 +1,8 @@
 # CI for x3d-cpp — the merge gate behind "Definition of Done".
 #
-# On every PR (and manual dispatch) the FAST, hermetic gates run as required
-# checks: pytest, golden drift, conformance-view drift, wiki strict build, and a
-# single-compiler C++ build + ctest.
+# On every PR, on pushes to main, and on manual dispatch the FAST, hermetic gates
+# run as required checks: pytest, golden drift, conformance-view drift, wiki
+# strict build, and a single-compiler C++ build + ctest.
 #
 # The per-seam backend swap-tests fall into two groups:
 #   - **texture-swap** runs on every C++ PR — both decoders are vendored and the
@@ -35,6 +35,11 @@
 name: CI
 
 on:
+  # main is tested on every merge, so the badge reflects the repo's actual head
+  # and is worth trusting. This costs one extra run per merge -- the concurrency
+  # group below cancels superseded PR-branch runs, but it does not make this free.
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -67,7 +72,7 @@ jobs:
       generator: ${{ steps.f.outputs.generator }}
       docs: ${{ steps.f.outputs.docs }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
       - id: f
@@ -89,17 +94,18 @@ jobs:
     name: pytest (unit + golden tree)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       # The golden tree is byte-exact, so the formatter version is part of the
       # contract. apt ships whatever Ubuntu currently has (18.x); install the
       # exact pin from mise.toml instead, so CI and local cannot diverge.
       - name: Install pinned clang-format (golden formatting is byte-exact)
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac  # v2
         with:
           install_args: clang-format
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
         with:
+          version: "0.10.4"   # keep in sync with mise.toml [tools]
           enable-cache: true
       - name: Sync (incl dev group)
         run: uv sync
@@ -110,17 +116,18 @@ jobs:
     name: golden drift gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       # Must be the exact formatter that produced the golden tree. check_golden.sh
       # asserts the version and fails loudly on a mismatch rather than reporting
       # a toolchain difference as codegen drift.
       - name: Install pinned clang-format (must match the formatter that produced golden)
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac  # v2
         with:
           install_args: clang-format
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
         with:
+          version: "0.10.4"   # keep in sync with mise.toml [tools]
           enable-cache: true
       - name: Sync
         run: uv sync
@@ -131,10 +138,11 @@ jobs:
     name: conformance-view gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
         with:
+          version: "0.10.4"   # keep in sync with mise.toml [tools]
           enable-cache: true
       # Fails if findings.yaml schema is invalid or the committed generated view
       # (INDEX.md / model.json / components/) drifted from findings.yaml.
@@ -145,10 +153,11 @@ jobs:
     name: wiki strict build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
         with:
+          version: "0.10.4"   # keep in sync with mise.toml [tools]
           enable-cache: true
       # --strict fails on broken internal links / nav orphans.
       - name: Build wiki (strict)
@@ -162,11 +171,11 @@ jobs:
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-behavior-${{ github.sha }}
@@ -191,11 +200,11 @@ jobs:
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-headers-${{ github.sha }}
@@ -220,11 +229,11 @@ jobs:
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-san-${{ github.sha }}
@@ -250,11 +259,11 @@ jobs:
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install Clang + cmake + ninja + ccache
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache clang
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-fuzz-${{ github.sha }}
@@ -280,11 +289,11 @@ jobs:
     if: needs.changes.outputs.quickjs == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-quickjs-${{ github.sha }}
@@ -312,7 +321,7 @@ jobs:
     if: needs.changes.outputs.assets == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       # minio can't run as a `services:` container: the GH Actions service syntax
       # has no way to pass the container COMMAND, but `minio/minio` needs
       # `server /data` to start (with no command it prints usage and exits, so
@@ -359,7 +368,7 @@ jobs:
       # Binary cache so the heavy aws-sdk-cpp build (+ curl/openssl deps) is
       # built once and restored on later runs. Restored before `vcpkg install`.
       - name: Cache vcpkg binary archives
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/vcpkg/archives
           # Encode the manifest baseline in the key so it self-refreshes when the
@@ -377,7 +386,7 @@ jobs:
         # cold build tight.
         run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-assetresolver-${{ github.sha }}
@@ -426,11 +435,11 @@ jobs:
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-texture-${{ github.sha }}
@@ -453,11 +462,11 @@ jobs:
     if: needs.changes.outputs.audio == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-audio-${{ github.sha }}
@@ -482,7 +491,7 @@ jobs:
     if: needs.changes.outputs.fontmetrics == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold curl zip unzip tar
       - name: Locate or bootstrap vcpkg
@@ -495,7 +504,7 @@ jobs:
             echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
           fi
       - name: Cache vcpkg binary archives
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/vcpkg/archives
           # Encode the manifest baseline in the key so it self-refreshes when the
@@ -508,7 +517,7 @@ jobs:
         # fontmetrics swap, that's freetype.
         run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-fontmetrics-${{ github.sha }}
@@ -542,7 +551,7 @@ jobs:
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install build tools + GLFW build deps + headless GL (Xvfb + mesa)
         run: |
           sudo apt-get update
@@ -552,7 +561,7 @@ jobs:
             libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
             xvfb libgl1-mesa-dri mesa-utils libgl-dev
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-examples-${{ github.sha }}
@@ -575,11 +584,11 @@ jobs:
           - { name: gcc-default,   os: ubuntu-latest, apt: g++,    cc: gcc,     cxx: g++ }
           - { name: clang-default, os: ubuntu-latest, apt: clang,  cc: clang,   cxx: clang++ }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache ${{ matrix.apt }}
       - name: ccache cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: ~/.cache/ccache
           key: ccache-${{ matrix.name }}-${{ github.sha }}
