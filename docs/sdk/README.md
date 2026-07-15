@@ -44,7 +44,9 @@ sdk::X3DDocument doc = sdk::parseDocument(text, sdk::Encoding::XML);
 ```
 
 `parseFile` handles all four encodings (XML, ClassicVRML, VRML97, JSON), gzip
-input, versions 3.0–4.1, lenient reads, and PROTO/EXTERNPROTO expansion. The
+input, X3D 3.0–4.1 documents (the generated node model targets 4.0, so the six
+4.1-only nodes are absent — see [v1 capabilities](v1-capabilities.md)), lenient
+reads, and PROTO/EXTERNPROTO expansion. The
 returned `X3DDocument` carries `version`, `profile`, `head`, `scene`, and two
 diagnostic channels: `rangeWarnings` (out-of-range authored values the lenient
 read kept) and `protoWarnings` (PROTO expansion issues). The document never fails

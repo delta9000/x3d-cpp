@@ -6,8 +6,59 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ## [Unreleased]
 
+### Added
+
+- **`x3d::sdk::RuntimeSession`** — the recommended entry point. Owns the
+  document, context, and extractor, and does the wiring you can silently forget:
+  `buildSceneGraph` (skip it and no Viewpoint binds, so the camera is identity),
+  `buildFrom` (skip it and authored ROUTEs never fire), and
+  `attachStandardRuntime` (skip it and the ROUTEs resolve but nothing drives
+  them, so the scene renders one static frame forever). `SessionOptions` names
+  what it turns on. The low-level path stays public and reachable via
+  `context()` / `extractor()` / `scene()`.
+- `X3DExecutionContext::tickGeneration()` — a monotonic count of completed
+  advances, independent of the simulation clock.
+- A supported-platform table in the README, and the two X3D version axes stated
+  where a reader meets them rather than only in `CONTRIBUTING.md`.
+- `CONTRIBUTING.md`, `CHANGELOG.md`, and a PR template.
+- A plain `cmake` build-and-install path in the README.
+- Contract tests for the package version file, dev-tooling isolation, and the
+  installed imported-target set.
+
 ### Fixed
 
+- **Extraction no longer duplicates per placement.** `RenderItem` held `MeshData`
+  by value and `buildLocalMesh()` ran once per *placement*, so N `USE`s of one
+  DEF'd geometry re-tessellated identical content N times and retained N copies —
+  to hand the consumer N descriptors it would immediately dedupe using `GeomId`,
+  the key the SDK had already computed. Measured on 200 `USE`s of one
+  19,602-triangle `IndexedFaceSet`: **702 MiB → 3.3 MiB** RSS and **1085 ms →
+  8.7 ms**. Decoded textures had the same shape (200 resolver calls and 200 MiB
+  for one image) and are now memoized by URL. See ADR-0045.
+- **`SceneExtractor::delta()`'s contract is now total.** It asserted
+  `ctx.now() != lastDeltaNow_`, which failed a paused / fixed-timestep / replay
+  consumer for doing nothing wrong (a clock may legitimately repeat), and
+  asserts compile out under `NDEBUG` — so a release build behaved differently
+  from the debug build it was tested against. The guard keys on
+  `tickGeneration()`; `delta()` before any `fullSnapshot()` returns the snapshot,
+  and a second `delta()` with no intervening `tick()` returns an empty delta.
+- **`ctx.writeField` reports instead of guessing.** It returned `void`, so a null
+  node, a typo'd field name, and an unwritable field were one silent nothing; a
+  wrong-typed `std::any` was worse, escaping as an uncaught `std::bad_any_cast`
+  from inside the generated setter. It now returns a `[[nodiscard]]`
+  `FieldWriteResult`. (Note: `outputOnly` fields *are* writable — their thunk
+  routes to the field's emitter.)
+- Documentation that contradicted the code: the SDK header and wiki called the
+  product by the generator's name (`x3d-cpp-gen`); the wiki still claimed the
+  generator emits "spec-correct" bindings after the README correctly narrowed
+  that; and both the wiki and the façade's own banner marked all five embedder
+  seams `[EXPERIMENTAL]` while four are `[STABLE]` with second-backend swap-test
+  proofs. Example 03 claimed façade-only use while including a core header.
+- The unqualified "versions 3.0–4.1" claim. The parser reads 3.0–4.1; the
+  generated node model targets 4.0, so the **six** 4.1-only node types
+  (`EnvironmentLight`, `FontLibrary`, `HAnimPose`, `InlineGeometry`,
+  `RenderedTexture`, `Tangent`) are absent. Previously stated only in
+  `CONTRIBUTING.md`, and under-counted at one node in the capability matrix.
 - The installed CMake package no longer declares `ARCH_INDEPENDENT` and now uses
   `SameMinorVersion`. It ships compiled shared libraries, so `ARCH_INDEPENDENT`
   wrongly deleted CMake's pointer-size guard — a consumer with a different
@@ -44,10 +95,3 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   `urn:x3d-cpp-gen:ext:ExternalGeometry` wire-format constant is unchanged.
 - The Python package publishes its own README instead of the C++ runtime's, and
   ships `LICENSE` + `NOTICE` in the sdist.
-
-### Added
-
-- `CONTRIBUTING.md`, `CHANGELOG.md`, and a PR template.
-- A plain `cmake` build-and-install path in the README.
-- Contract tests for the package version file, dev-tooling isolation, and the
-  installed imported-target set.
