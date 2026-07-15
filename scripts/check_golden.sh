@@ -23,6 +23,35 @@ if [[ ! -d "${GOLDEN_DIR}" ]]; then
   exit 2
 fi
 
+# The golden tree is byte-exact, so the formatter is part of the contract and
+# the FULL version is what we pin: clang-format's default style can shift in any
+# release, not just a major. A mismatch would surface as "golden drift" that is
+# really a toolchain mismatch -- fail loudly with the real reason instead. Keep
+# this in sync with mise.toml [tools] and tests/test_formatter_pin.py.
+EXPECTED_CLANG_FORMAT_VERSION=22.1.8
+# Exported so the generator below formats with the SAME binary we just verified
+# (it reads CLANG_FORMAT from the environment); otherwise this check could pass
+# while generation silently used a different formatter off PATH.
+export CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
+
+if ! command -v "${CLANG_FORMAT}" >/dev/null 2>&1; then
+  echo "ERROR: '${CLANG_FORMAT}' not found. The golden tree is byte-exact and" >&2
+  echo "cannot be verified without the pinned formatter. Install it with:" >&2
+  echo "  mise install clang-format@${EXPECTED_CLANG_FORMAT_VERSION}" >&2
+  exit 2
+fi
+
+CLANG_FORMAT_RAW="$("${CLANG_FORMAT}" --version 2>/dev/null || true)"
+echo "Formatter: ${CLANG_FORMAT_RAW}"
+CLANG_FORMAT_VERSION="$(printf '%s' "${CLANG_FORMAT_RAW}" | sed -n 's/.*version \([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p')"
+if [[ "${CLANG_FORMAT_VERSION}" != "${EXPECTED_CLANG_FORMAT_VERSION}" ]]; then
+  echo "ERROR: clang-format '${CLANG_FORMAT_VERSION}' != pinned ${EXPECTED_CLANG_FORMAT_VERSION}." >&2
+  echo "The golden tree is byte-exact, so the full version is the contract;" >&2
+  echo "refusing to run rather than report a toolchain mismatch as drift." >&2
+  echo "Install the pin with: mise install clang-format@${EXPECTED_CLANG_FORMAT_VERSION}" >&2
+  exit 2
+fi
+
 TMP_DIR="$(mktemp -d)"
 cleanup() { rm -rf "${TMP_DIR}"; }
 trap cleanup EXIT

@@ -1,6 +1,6 @@
 import subprocess
 
-from x3d_cpp_gen.backends.cpp_header import CppHeaderBackend
+from x3d_cpp_gen.backends.cpp_header import CppHeaderBackend, _STYLE_FILE
 
 
 def test_format_batches_all_files_in_one_subprocess(monkeypatch):
@@ -16,8 +16,30 @@ def test_format_batches_all_files_in_one_subprocess(monkeypatch):
     CppHeaderBackend._format(files, "clang-format")
 
     assert calls == [
-        (["clang-format", "-i", *files], True, True),
+        (["clang-format", f"--style=file:{_STYLE_FILE}", "-i", *files], True, True),
     ]
+
+
+def test_format_passes_an_explicit_style_rather_than_searching_upward(monkeypatch):
+    """The style must never be left to clang-format's upward directory search.
+
+    The golden gate regenerates into a temp dir outside the repo; an implicit
+    search would find no .clang-format there and silently fall back to the
+    built-in default, formatting the temp tree differently from the committed
+    one and failing the gate forever.
+    """
+    calls = []
+
+    def fake_run(args, capture_output, text):
+        calls.append(args)
+        return subprocess.CompletedProcess(args=args, returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    CppHeaderBackend._format(["out/A.hpp"], "clang-format")
+
+    style_args = [a for a in calls[0] if a.startswith("--style=")]
+    assert len(style_args) == 1, f"expected exactly one --style arg, got {calls[0]}"
+    assert style_args[0].startswith("--style=file:") or style_args[0] == "--style=LLVM"
 
 
 def test_format_stops_cleanly_when_clang_format_is_missing(monkeypatch, capsys):

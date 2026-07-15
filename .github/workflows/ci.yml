@@ -90,8 +90,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install clang-format (golden formatting baseline)
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+      # The golden tree is byte-exact, so the formatter version is part of the
+      # contract. apt ships whatever Ubuntu currently has (18.x); install the
+      # exact pin from mise.toml instead, so CI and local cannot diverge.
+      - name: Install pinned clang-format (golden formatting is byte-exact)
+        uses: jdx/mise-action@v2
+        with:
+          install_args: clang-format
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -106,15 +111,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install clang-format (must match the formatter that produced golden)
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+      # Must be the exact formatter that produced the golden tree. check_golden.sh
+      # asserts the version and fails loudly on a mismatch rather than reporting
+      # a toolchain difference as codegen drift.
+      - name: Install pinned clang-format (must match the formatter that produced golden)
+        uses: jdx/mise-action@v2
+        with:
+          install_args: clang-format
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
       - name: Sync
         run: uv sync
-      - name: Check golden tree (regenerate + diff *.hpp)
+      - name: Check golden tree (regenerate + diff *.hpp/*.cpp)
         run: ./scripts/check_golden.sh
 
   conformance:

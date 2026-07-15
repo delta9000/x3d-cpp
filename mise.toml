@@ -15,6 +15,12 @@
 # uv provides the Python toolchain / project env. (Listed so `mise install`
 # bootstraps it; pinning omitted to use whatever uv resolves from pyproject.)
 uv = "latest"
+# The generated C++ tree is byte-exact golden, so its formatter is part of the
+# contract and is pinned exactly -- the full version, not just the major, since
+# the default style can shift in any release. scripts/check_golden.sh asserts the
+# running version matches; CI installs this same pin. Bumping it reformats
+# generated_cpp_bindings/ and needs a regenerate + commit in the same change.
+clang-format = "22.1.8"
 
 [tasks.sync]
 description = "Install/refresh the project env (incl dev group)."
