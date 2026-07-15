@@ -50,6 +50,7 @@
 #include "Ray.hpp"                 // x3d::runtime — Ray
 #include "Mat4.hpp"                // x3d::runtime — Mat4
 #include "Aabb.hpp"                // x3d::runtime — Aabb
+#include "RuntimeSession.hpp"      // x3d::runtime — RuntimeSession/SessionOptions (the recommended entry point)
 #include "SceneExtractor.hpp"      // x3d::runtime::extract — SceneExtractor
 #include "RenderItem.hpp"          // x3d::runtime::extract — descriptor POD
 #include "MeshBuilder.hpp"         // x3d::runtime::extract — MeshBuildOptions/GeoProjection
@@ -107,6 +108,18 @@ using x3d::runtime::PickResult;          ///< result of ctx.pick(ray)
 using x3d::runtime::Ray;                 ///< { origin, direction, pointAt(t) }
 using x3d::runtime::Mat4;                ///< column-major 4×4
 using x3d::runtime::Aabb;                ///< axis-aligned bounds
+
+// ── Session — the recommended entry point ────────────────────────────── [STABLE]
+// Owns document + context + extractor, does the wiring you can silently forget
+// (buildSceneGraph, buildFrom, attachStandardRuntime), and cannot outlive its own
+// scene. Everything below stays public — session->context()/extractor()/scene()
+// hand the pieces back — so this is a shorter path, not a walled garden.
+//
+//   auto session = sdk::RuntimeSession::create(sdk::parseFile("scene.x3dv"));
+//   sdk::RenderDelta f0 = session->fullSnapshot();     // upload f0.added
+//   while (running) { session->tick(now); auto d = session->delta(); }
+using x3d::runtime::RuntimeSession;      ///< create(doc, options) -> unique_ptr; tick()/fullSnapshot()/delta()
+using x3d::runtime::SessionOptions;      ///< { standardRuntime=true, interactive=false, meshOptions, textureResolver }
 
 // ── Extraction / render feed ─────────────────────────────────────────── [STABLE]
 using x3d::runtime::extract::SceneExtractor; ///< fullSnapshot()/delta()/item()/camera()/lights()/...
