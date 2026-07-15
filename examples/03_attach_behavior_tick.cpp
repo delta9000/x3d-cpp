@@ -11,14 +11,13 @@
 //
 // (The same registration path carries the X3D Script node: implement
 //  x3d::sdk::ScriptEngine, wrap it in x3d::sdk::ScriptSystem, and call
-//  ctx.addScriptSystem(ss). That seam is EXPERIMENTAL; this example uses the
-//  stable System base so it has no language-backend dependency.)
+//  ctx.addScriptSystem(ss). That seam is STABLE — frozen pre-v2, proven generic
+//  by a second-backend swap test (ADR-0022) — but it needs a language backend;
+//  this example uses the System base so it has no such dependency.)
 //
 // Run: 03_attach_behavior_tick
 // ─────────────────────────────────────────────────────────────────────────────
 #include "x3d/sdk.hpp"
-
-#include "x3d/core/X3Dtypes.hpp" // SFRotation (the value type we write)
 
 #include <any>
 #include <cmath>

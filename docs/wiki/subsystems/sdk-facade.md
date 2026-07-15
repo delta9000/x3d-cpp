@@ -14,7 +14,7 @@ related:
 
 ## Purpose
 
-The SDK façade is the boundary between the x3d-cpp-gen internals and every embedder (renderer, tool, or script). It owns exactly one file — `include/x3d/sdk.hpp` — and one CMake target — `x3d_cpp::sdk` (an `INTERFACE` library). Embedders include that one header and link that one target; everything else is an implementation detail they do not name. The façade adds no compiled translation unit of its own: it re-exports curated `using` declarations from `namespace x3d::sdk`, covering loading, the execution context, extraction descriptors, serialization writers, and the five embedder seams. Symbols are tagged `[STABLE]` (frozen pre-v2; breaking change requires a major version bump) or `[EXPERIMENTAL]` (shape may still evolve; embedder wiring is maturing).
+The SDK façade is the boundary between the x3d-cpp runtime internals and every embedder (renderer, tool, or script). It owns exactly one file — `include/x3d/sdk.hpp` — and one CMake target — `x3d_cpp::sdk` (an `INTERFACE` library). Embedders include that one header and link that one target; everything else is an implementation detail they do not name. The façade adds no compiled translation unit of its own: it re-exports curated `using` declarations from `namespace x3d::sdk`, covering loading, the execution context, extraction descriptors, serialization writers, and the five embedder seams. Symbols are tagged `[STABLE]` (frozen pre-v2; breaking change requires a major version bump) or `[EXPERIMENTAL]` (shape may still evolve; embedder wiring is maturing).
 
 ## Key files
 
@@ -93,15 +93,20 @@ The complete `x3d::sdk` namespace, grouped by area:
 - `Topology` — `enum class { Triangles, Lines, Points }`.
 - `MaterialDesc` / `MaterialModel` / `AlphaMode` (including `toRGBA()`), `LightDesc`, `CameraDesc`, `BackgroundDesc`.
 
-**Seams — embedder-supplied IO** (`[EXPERIMENTAL]`)
+**Seams — embedder-supplied IO**
 
-| Seam | Re-exported types | Contract |
-|---|---|---|
-| Asset resolution | `AssetResolver`, `AssetResult`, `AssetStatus`, `AssetKind` | `function<AssetResult(url, AssetKind)>`; render-time may return `Pending`; parse-time must answer synchronously |
-| Texture decode | `TextureResolver`, `TexturePixelResult`, `TexturePixels`, `TextureResolveStatus`, `TextureRef`, `SamplerParams` | `function<TexturePixelResult(url)>`; embedder maps url → decoded RGBA pixels |
-| Font metrics | `FontMetrics`, `FontKey`, `GlyphMetrics`, `GlyphResult`, `GlyphStatus`, `makeMonospaceStub` | `function<GlyphResult(const FontKey&)>`; SDK does all Text layout; default = monospaced stub (advanceEm 0.6) |
-| Geo-projection | `GeoProjection`, `GeoSystemDesc` | `function<SFVec3f(SFVec3d, double elev, GeoSystemDesc)>`; supplied via `MeshBuildOptions::geoProjection`; empty ⇒ flat fallback |
-| Script / SAI | `ScriptEngine`, `ScriptSystem`, `SaiContext`, `ScriptHandle`, `kInvalidScriptHandle` | Abstract engine; wrap in `ScriptSystem`, register via `ctx.addScriptSystem`; `SaiContext` is the backend↔runtime channel |
+Stability is marked **per seam**, not for the group: a seam is frozen `[STABLE]` only once a
+second independent backend has carried the interface with no signature change, under a
+CI-gated swap-test. Four of the five have cleared that bar; `GeoProjection` has not. The live
+tracker is the [Seam-Status Matrix](../seam-status.md).
+
+| Seam | Stability | Re-exported types | Contract |
+|---|---|---|---|
+| Asset resolution | `[STABLE]` ([ADR-0023](../decisions/0023-assetresolver-second-backend-swap-test.md); libcurl + S3) | `AssetResolver`, `AssetResult`, `AssetStatus`, `AssetKind` | `function<AssetResult(url, AssetKind)>`; render-time may return `Pending`; parse-time must answer synchronously |
+| Texture decode | `[STABLE]` ([ADR-0024](../decisions/0024-textureresolver-second-backend-swap-test.md); stb_image + wuffs) | `TextureResolver`, `TexturePixelResult`, `TexturePixels`, `TextureResolveStatus`, `TextureRef`, `SamplerParams` | `function<TexturePixelResult(url)>`; embedder maps url → decoded RGBA pixels |
+| Font metrics | `[STABLE]` ([ADR-0025](../decisions/0025-fontmetrics-second-backend-swap-test.md); stb_truetype + FreeType) | `FontMetrics`, `FontKey`, `GlyphMetrics`, `GlyphResult`, `GlyphStatus`, `makeMonospaceStub` | `function<GlyphResult(const FontKey&)>`; SDK does all Text layout; default = monospaced stub (advanceEm 0.6) |
+| Geo-projection | `[EXPERIMENTAL]` — no second backend yet; shape may still gain fields | `GeoProjection`, `GeoSystemDesc` | `function<SFVec3f(SFVec3d, double elev, GeoSystemDesc)>`; supplied via `MeshBuildOptions::geoProjection`; empty ⇒ flat fallback |
+| Script / SAI | `[STABLE]` ([ADR-0022](../decisions/0022-scriptengine-second-backend-swap-test.md); Duktape + QuickJS) | `ScriptEngine`, `ScriptSystem`, `SaiContext`, `ScriptHandle`, `kInvalidScriptHandle` | Abstract engine; wrap in `ScriptSystem`, register via `ctx.addScriptSystem`; `SaiContext` is the backend↔runtime channel |
 
 Also re-exported: `MeshBuildOptions` — tessellation density knobs (`sphereRings`, `sphereSegments`, `radialSlices`, `geoProjection`, `fontMetrics`).
 

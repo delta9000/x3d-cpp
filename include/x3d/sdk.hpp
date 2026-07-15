@@ -1,5 +1,5 @@
 // ─── include/x3d/sdk.hpp ─────────────────────────────────────────────────────
-// Umbrella façade for the x3d-cpp-gen headless SDK (v1).
+// Umbrella façade for the x3d-cpp headless SDK (v1).
 //
 // Include this ONE header; link the CMake target x3d_cpp::sdk. Everything an
 // embedder needs is re-exported into namespace `x3d::sdk`:
@@ -141,8 +141,14 @@ using x3d::runtime::extract::LightDesc;      ///< Directional/Point/Spot light d
 using x3d::runtime::extract::CameraDesc;     ///< { viewMatrix, fieldOfView, near/far, ortho... }
 using x3d::runtime::extract::BackgroundDesc; ///< { skyColor/skyAngle/groundColor/groundAngle }
 
-// ── Seams (embedder-supplied IO) ─────────────────────────────────── [EXPERIMENTAL]
-// Shapes are usable but may gain fields; embedder wiring is still maturing.
+// ── Seams (embedder-supplied IO) ───────────────────────────────────── [PER-SEAM]
+// There is no blanket answer here: each seam carries its own marker below.
+// AssetResolver (ADR-0023), TextureResolver (ADR-0024) and FontMetrics (ADR-0025)
+// are [STABLE] — frozen pre-v2, each proven generic by a second independent backend
+// under a CI-gated swap-test. GeoProjection is the one [EXPERIMENTAL] seam: it has
+// no second backend yet, so its shape may still gain fields. (The Script/SAI seam
+// is [STABLE] too — it has its own section below.) The live per-seam tracker is
+// docs/wiki/seam-status.md.
 
 // Tessellation density + geodesy + font-metrics build knobs.
 using x3d::runtime::extract::MeshBuildOptions; ///< { sphereRings, sphereSegments, radialSlices, geoProjection, fontMetrics }
