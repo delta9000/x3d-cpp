@@ -56,9 +56,9 @@ TEST_CASE("texture_backend_a_stb") {
 
   const TexturePixelResult ok = r(fx("rgba_gradient.png"));
   CHECK((ok.ready()));
-  CHECK((ok.pixels.width == 16));
-  CHECK((ok.pixels.height == 16));
-  CHECK((ok.pixels.rgba.size() == 16u * 16u * 4u));
+  CHECK((ok.pixels->width == 16));
+  CHECK((ok.pixels->height == 16));
+  CHECK((ok.pixels->rgba.size() == 16u * 16u * 4u));
 
   CHECK((r(fx("does-not-exist.png")).failed()));
   CHECK((r(fx("garbage.bin")).failed()));
@@ -71,9 +71,9 @@ TEST_CASE("texture_backend_b_wuffs") {
 
   const TexturePixelResult ok = r(fx("rgba_gradient.png"));
   CHECK((ok.ready()));
-  CHECK((ok.pixels.width == 16));
-  CHECK((ok.pixels.height == 16));
-  CHECK((ok.pixels.rgba.size() == 16u * 16u * 4u));
+  CHECK((ok.pixels->width == 16));
+  CHECK((ok.pixels->height == 16));
+  CHECK((ok.pixels->rgba.size() == 16u * 16u * 4u));
 
   CHECK((r(fx("does-not-exist.png")).failed()));
   CHECK((r(fx("garbage.bin")).failed()));
@@ -91,11 +91,11 @@ TEST_CASE("texture_swap_byte_equal") {
 
     CHECK((ra.ready()));
     CHECK((rb.ready()));
-    CHECK((ra.pixels.width == rb.pixels.width));
-    CHECK((ra.pixels.height == rb.pixels.height));
-    CHECK((ra.pixels.rgba.size() == rb.pixels.rgba.size()));
+    CHECK((ra.pixels->width == rb.pixels->width));
+    CHECK((ra.pixels->height == rb.pixels->height));
+    CHECK((ra.pixels->rgba.size() == rb.pixels->rgba.size()));
     // The proof: two independent decoders, byte-identical RGBA surface.
-    CHECK((ra.pixels.rgba == rb.pixels.rgba));
+    CHECK((ra.pixels->rgba == rb.pixels->rgba));
   }
 }
 
@@ -135,8 +135,8 @@ TEST_CASE("multiformat_composer_routing") {
     CAPTURE(name);
     const TexturePixelResult res = r(fx(name));
     CHECK((res.ready()));
-    CHECK((res.pixels.width == 16));
-    CHECK((res.pixels.height == 16));
+    CHECK((res.pixels->width == 16));
+    CHECK((res.pixels->height == 16));
   }
 
   // Unsniffable blob: Failed (routing happens before any decoder is called).

@@ -44,7 +44,9 @@ sdk::X3DDocument doc = sdk::parseDocument(text, sdk::Encoding::XML);
 ```
 
 `parseFile` handles all four encodings (XML, ClassicVRML, VRML97, JSON), gzip
-input, versions 3.0–4.1, lenient reads, and PROTO/EXTERNPROTO expansion. The
+input, X3D 3.0–4.1 documents (the generated node model targets 4.0, so the six
+4.1-only nodes are absent — see [v1 capabilities](v1-capabilities.md)), lenient
+reads, and PROTO/EXTERNPROTO expansion. The
 returned `X3DDocument` carries `version`, `profile`, `head`, `scene`, and two
 diagnostic channels: `rangeWarnings` (out-of-range authored values the lenient
 read kept) and `protoWarnings` (PROTO expansion issues). The document never fails
@@ -117,8 +119,13 @@ The SDK is single-threaded and synchronous. One `X3DExecutionContext` and one
 
 1. push inputs (`setPointer*`, `setKey`) since the last tick,
 2. `ctx.tick(now)` once,
-3. `ex.delta()` **at most once** per tick (asserted — the dirty set is cleared by
-   the next tick).
+3. `ex.delta()` **once** per tick.
+
+Step 3 is total — no call sequence is undefined, and none of it keys on the
+clock, so a paused, fixed-timestep or replayed `now` is fine. `delta()` before any
+`fullSnapshot()` returns the snapshot (that *is* the baseline); a second
+`delta()` with no intervening `tick()` returns an empty delta, because nothing can
+have changed. The guard keys on `ctx.tickGeneration()`, a monotonic advance count.
 
 There is no internal threading and no hidden IO on the tick path. If your asset
 or font seams are async, return `Pending` and retry on a later frame.

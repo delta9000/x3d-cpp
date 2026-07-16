@@ -128,6 +128,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0042-authoring-target.md` | Introduce `x3d_cpp::authoring` slim target and a footprint gate to prevent runtime dependency bloat | `docs/superpowers/specs/2026-07-01-asset-import-authoring-target-design.md` |
 | covered | `decisions/0043-usd-material-portable-glsl-seam.md` | USD material port as a portable-GLSL seam: UsdPreviewSurface is the input ceiling (MaterialX flatten-or-skip); one `usd_preview_surface.frag` is the frozen contract run byte-identically by the CPU GLSL interpreter and desktop GL (interpreter now binds the full texture-slot + fidelity-uniform set); `ImportMaterial` promoted to UsdPreviewSurface-grade; and because the X3D `PhysicalMaterial` node cannot model ior/clearcoat/specular-workflow/opacityMode, the asset-import `--emit-glsl` path bakes those as `const` — the only faithful realtime channel past the X3D material-model ceiling | `examples/cpu_raster/shaders/usd_preview_surface.frag`, `examples/cpu_raster/cpuraster/GlslInterpreter.hpp`, `examples/asset_import/glsl_emit.cpp` |
 | covered | `decisions/0044-asset-import-backend-selection.md` | Asset-import backend selection moves from an extension if/else to a priority `BackendRegistry` (`select(input)` highest-priority-wins + `--backend` override), letting multiple backends claim one file type; a default-ON, header-only cgltf glTF backend outranks assimp (100 vs 10) for `.gltf`/`.glb`; the `ImportSource` seam's genericity is proven by a tolerant cgltf-vs-assimp differential swap-test over a committed `twobox.glb` (invariants match; assimp's extra default material tolerated) | `examples/asset_import/backend_registry.hpp`, `examples/asset_import/cgltf_source.cpp`, `examples/asset_import/tests/backend_swap_test.cpp` |
+| covered | `decisions/0045-shared-mesh-instancing.md` | `RenderItem::mesh` becomes a shared, immutable `MeshRef` (`shared_ptr<const MeshData>`) backed by a content-keyed build cache in `SceneExtractor` — making `GeomId`'s long-documented upload-once/instance-N contract structural on the SDK side, not just available to the consumer. Cache is keyed on *(geometry, TextureTransform params)* because `emit()` bakes the Appearance's `TextureTransform` into texcoords; `fullSnapshot()` clears, `delta()` evicts-then-rebuilds-once. Measured on 200 `USE`s of one 19,602-tri `IndexedFaceSet`: 702 MiB → 3.3 MiB RSS, 1085 ms → 8.7 ms | `runtime/extract/SceneExtractor.hpp`, `runtime/extract/RenderItem.hpp`, `runtime/extract/tests/scene_extractor_instancing_test.cpp` |
 
 ## 3. Guides
 
@@ -164,10 +165,10 @@ Top-level live trackers (a tracker is a page that tracks an ongoing, cross-cutti
 | Category | Total | Covered | Planned |
 |---|---|---|---|
 | Subsystems | 42 | 42 | 0 |
-| Decisions (ADRs) | 43 | 43 | 0 |
+| Decisions (ADRs) | 45 | 45 | 0 |
 | Guides | 6 | 6 | 0 |
 | Trackers | 1 | 1 | 0 |
-| **Total** | **91** | **91** | **0** |
+| **Total** | **94** | **94** | **0** |
 
 > ADR coverage (`decisions/*.md` ⇄ this table) is enforced by `mise run coverage-gate`
 > (`scripts/coverage_gate.py`), which fails CI on any ADR file missing a row or any

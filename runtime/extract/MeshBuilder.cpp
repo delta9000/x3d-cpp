@@ -956,6 +956,7 @@ bool recognizedGeometryType(const std::string &t) {
 MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
                         bool *recognized) {
   using namespace mesh_detail;
+  ++buildLocalMeshCalls_;
   MeshData mesh;
   if (recognized)
     *recognized = false;

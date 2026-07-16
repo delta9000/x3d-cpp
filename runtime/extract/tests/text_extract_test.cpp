@@ -153,9 +153,9 @@ static void test_scene_extractor_text() {
 
   check(snap.added.size() == 1, "scene: one render item emitted");
   const auto &item = ex.item(snap.added[0]);
-  check(item.mesh.isGlyphMesh, "scene: glyph mesh flagged");
-  check(item.mesh.positions.size() == 8, "scene: 2 glyphs => 8 positions");
-  check(item.mesh.indices.size() == 12, "scene: 2 glyphs => 12 indices");
+  check(item.mesh->isGlyphMesh, "scene: glyph mesh flagged");
+  check(item.mesh->positions.size() == 8, "scene: 2 glyphs => 8 positions");
+  check(item.mesh->indices.size() == 12, "scene: 2 glyphs => 12 indices");
 
   // The dispatch hook set the Text node outputs.
   auto *tn = dynamic_cast<Text *>(text.get());

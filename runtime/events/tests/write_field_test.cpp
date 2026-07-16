@@ -17,6 +17,7 @@
 #include "doctest/doctest.h"
 #include <cmath>
 #include <memory>
+#include <string>
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
@@ -53,10 +54,12 @@ struct WriteOnceSystem : System {
   WriteOnceSystem(X3DNode* t, const char* f, std::any v)
       : target(t), fieldName(f), value(std::move(v)) {}
 
+  FieldWriteResult result = FieldWriteResult::Ok; // outcome of the one write.
+
   void attach(X3DNode*, X3DExecutionContext&) override {}
   void update(double /*now*/, X3DExecutionContext& ctx) override {
     if (!fired) {
-      ctx.writeField(target, fieldName, value);
+      result = ctx.writeField(target, fieldName, value);
       fired = true;
     }
   }
@@ -156,4 +159,84 @@ TEST_CASE("write_field_test") {
   }
 
   return;
+}
+
+// ---------------------------------------------------------------------------
+// writeField REPORTS every way a stringly-typed, std::any-valued write can be
+// wrong. It used to return void: a null node, a typo'd field name and an
+// outputOnly field were all the same silent nothing, so a caller's mistake was
+// indistinguishable from a runtime bug. A wrong-typed std::any was worse than
+// silent — it escaped as an uncaught std::bad_any_cast from inside the generated
+// setter thunk, crashing the caller from a write the SDK invited.
+// ---------------------------------------------------------------------------
+TEST_CASE("writeField: every failure mode has its own answer") {
+  X3DExecutionContext ctx;
+  auto T = createX3DNode("Transform");
+
+  SUBCASE("Ok — real field, right type") {
+    CHECK(ctx.writeField(T.get(), "translation", std::any(SFVec3f{1, 2, 3})) ==
+          FieldWriteResult::Ok);
+    CHECK(feq(getField<SFVec3f>(*T, "translation").x, 1.0f));
+  }
+
+  SUBCASE("NullNode") {
+    CHECK(ctx.writeField(nullptr, "translation", std::any(SFVec3f{1, 2, 3})) ==
+          FieldWriteResult::NullNode);
+  }
+
+  SUBCASE("UnknownField — a typo is now distinguishable from a runtime bug") {
+    CHECK(ctx.writeField(T.get(), "translatoin", std::any(SFVec3f{1, 2, 3})) ==
+          FieldWriteResult::UnknownField);
+    // The real field is untouched — a failed write changes nothing.
+    CHECK(feq(getField<SFVec3f>(*T, "translation").x, 0.0f));
+  }
+
+  SUBCASE("outputOnly fields ARE writable — the thunk routes to the emitter") {
+    // Pins a fact that is easy to assume backwards (this test caught the author
+    // assuming it): `outputOnly` does NOT mean "no set thunk". The generator
+    // gives every access type a set thunk; an outputOnly field's routes to the
+    // field's EMITTER. So writing TouchSensor.isActive succeeds and FIRES the
+    // event — it is not rejected as read-only. All 4914 generated FieldInfos
+    // carry a set thunk, which is why FieldWriteResult::NotWritable is defensive
+    // depth rather than a state any current node reaches.
+    auto ts = createX3DNode("TouchSensor");
+    CHECK(ctx.writeField(ts.get(), "isActive", std::any(true)) ==
+          FieldWriteResult::Ok);
+  }
+
+  SUBCASE("a Script/PROTO author field is UnknownField, not a silent success") {
+    // Author-declared (dynamic) fields live in the DynamicFieldStore side-table
+    // and resolve via effectiveFields(); writeField consults only the static
+    // fields() table. Writing one therefore reports UnknownField rather than
+    // appearing to succeed. Documented narrowing, pinned so a change is a
+    // deliberate one — see FieldWriteResult::UnknownField.
+    auto script = createX3DNode("Script");
+    CHECK(ctx.writeField(script.get(), "myAuthorField", std::any(1.0f)) ==
+          FieldWriteResult::UnknownField);
+  }
+
+  SUBCASE("TypeMismatch — contained, not thrown") {
+    // translation is an SFVec3f; hand it a float. Every generated setter does an
+    // unchecked any_cast<T>, so this used to propagate std::bad_any_cast out of
+    // writeField. It must come back as a value instead.
+    CHECK_NOTHROW((void)ctx.writeField(T.get(), "translation", std::any(3.5f)));
+    CHECK(ctx.writeField(T.get(), "translation", std::any(3.5f)) ==
+          FieldWriteResult::TypeMismatch);
+  }
+
+  SUBCASE("a failed write leaves the dirty-tracker clean") {
+    // The write is atomic w.r.t. failure: a node must never be flagged dirty for
+    // a change that did not happen, or delta() reports phantom updates.
+    (void)ctx.writeField(T.get(), "translatoin", std::any(SFVec3f{9, 9, 9}));
+    (void)ctx.writeField(T.get(), "translation", std::any(3.5f));
+    CHECK(ctx.dirtyTracker().flags(T.get()) == 0u);
+  }
+}
+
+TEST_CASE("writeField: fieldWriteResultName round-trips every result for diagnostics") {
+  CHECK(std::string(fieldWriteResultName(FieldWriteResult::Ok)) == "Ok");
+  CHECK(std::string(fieldWriteResultName(FieldWriteResult::NullNode)) == "NullNode");
+  CHECK(std::string(fieldWriteResultName(FieldWriteResult::UnknownField)) == "UnknownField");
+  CHECK(std::string(fieldWriteResultName(FieldWriteResult::NotWritable)) == "NotWritable");
+  CHECK(std::string(fieldWriteResultName(FieldWriteResult::TypeMismatch)) == "TypeMismatch");
 }

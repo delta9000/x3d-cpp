@@ -350,14 +350,14 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
   std::vector<std::pair<float, ex::RenderItemId>> blended; // (eyeZ, id)
   for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
     const ex::RenderItem &it = extractor.item(id);
-    if (it.mesh.positions.empty()) continue;
+    if (it.mesh->positions.empty()) continue;
     const ex::MaterialDesc &mat = it.material;
     const bool isBlended =
         (mat.alphaMode == ex::AlphaMode::Blend) || (mat.transparency > 0.0f);
     if (!isBlended) {
       opaque.push_back(id);
     } else {
-      glsl::vec3 wc = it.worldTransform.transformPoint(centroid(it.mesh).toSF());
+      glsl::vec3 wc = it.worldTransform.transformPoint(centroid(*it.mesh).toSF());
       glsl::vec3 ec = viewRT.transformPoint(wc.toSF());
       blended.emplace_back(ec.z, id);
     }
@@ -367,7 +367,7 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
 
   auto drawOne = [&](ex::RenderItemId id, BlendMode blend) {
     const ex::RenderItem &it = extractor.item(id);
-    const ex::MeshData &mesh = it.mesh;
+    const ex::MeshData &mesh = *it.mesh;
     if (mesh.positions.empty() || mesh.indices.empty()) return;
     const std::vector<Vertex> verts = toVertices(mesh);
     const glsl::mat4 modelG(it.worldTransform);

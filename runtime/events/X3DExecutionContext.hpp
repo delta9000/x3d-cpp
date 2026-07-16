@@ -32,6 +32,49 @@
 
 namespace x3d::runtime {
 
+/**
+ * @brief Outcome of X3DExecutionContext::writeField.
+ *
+ * `writeField` is stringly-typed and `std::any`-valued — the dynamic SAI shape
+ * the X3D spec asks for. That makes every argument a chance for the caller to be
+ * wrong, so each way of being wrong gets its own answer rather than silence.
+ * Distinguishing them is the point: `UnknownField` means the CALLER typo'd (or
+ * the node's profile does not carry that field), while `NotWritable` means the
+ * field is real but `outputOnly` — very different fixes, previously the same
+ * silent nothing.
+ */
+enum class FieldWriteResult {
+  Ok,           ///< Written, and the dirty-tracker was updated.
+  NullNode,     ///< `node` was null.
+  /// No field of that x3dName in this node's STATIC table (a typo, or a field
+  /// this node's profile does not carry). Also returned for a Script/PROTO
+  /// author-declared field: those live in the DynamicFieldStore side-table and
+  /// are reached via effectiveFields(), which writeField does not consult.
+  UnknownField,
+  /// Field exists but carries no write thunk. Defensive depth — NO node type
+  /// currently produces this. Every one of the generated fields has a set thunk,
+  /// including `outputOnly` ones (see below), and the sole hand-written fields()
+  /// override does too. Kept so that a future or embedder-supplied node with a
+  /// genuinely read-only field reports an error instead of skipping in silence.
+  NotWritable,
+  TypeMismatch, ///< `value`'s type is not the field's type; nothing was written.
+};
+
+/// Human-readable form of a FieldWriteResult, for diagnostics and test failures.
+/// NOT named toString: doctest stringifies via `toString(toString(x))`, so an
+/// overload of that name in this namespace breaks any consumer that combines
+/// `using namespace x3d::runtime` with doctest.
+inline const char *fieldWriteResultName(FieldWriteResult r) {
+  switch (r) {
+  case FieldWriteResult::Ok:           return "Ok";
+  case FieldWriteResult::NullNode:     return "NullNode";
+  case FieldWriteResult::UnknownField: return "UnknownField";
+  case FieldWriteResult::NotWritable:  return "NotWritable";
+  case FieldWriteResult::TypeMismatch: return "TypeMismatch";
+  }
+  return "?";
+}
+
 class Scene;
 struct BridgeResult;
 
@@ -157,24 +200,53 @@ public:
    *          (not via a posted event) — omitting `classifyDirty` would leave the
    *          dirty state stale, which is a silent footgun (M2C-3).
    *
-   *          If `node` is null, the field is not found, or the field has no write
-   *          thunk, this is a no-op (mirrors `EventCascade::deliver` behaviour).
+   *          REPORTS, never guesses. This is a stringly-typed, `std::any`-valued
+   *          write, so every argument is a chance for the caller to be wrong: a
+   *          dangling node, a misspelled or profile-absent field name, an
+   *          `outputOnly` field with no write thunk, a value whose type does not
+   *          match the field's. Each returns a distinct
+   *          @ref FieldWriteResult rather than doing nothing — the previous
+   *          `void` signature made a caller's typo indistinguishable from a
+   *          runtime bug, and a type mismatch escaped as an uncaught
+   *          `std::bad_any_cast` from inside the generated setter thunk.
+   *
+   *          `[[nodiscard]]`: a discarded result is exactly the silent no-op this
+   *          exists to remove. A caller that genuinely does not care must say so
+   *          with an explicit `(void)` cast, which is greppable.
+   *
+   *          The write is ATOMIC with respect to failure: on any non-Ok result
+   *          neither the field nor the dirty-tracker is touched, so a failed
+   *          write cannot leave a node dirty-flagged for a change that did not
+   *          happen.
    *
    *          Field-scan logic mirrors `EventCascade::deliver`; if you change the
    *          lookup here, update that method too (intentional small duplication —
    *          the cascade fans one value to N sinks via const&, this moves to one).
    */
-  void writeField(X3DNode *node, const std::string &field, std::any value) {
-    if (!node) return;
+  [[nodiscard]] FieldWriteResult writeField(X3DNode *node,
+                                            const std::string &field,
+                                            std::any value) {
+    if (!node) return FieldWriteResult::NullNode;
     for (const auto &info : node->fields()) {
-      if (info.x3dName == field) {
-        if (info.set) {
-          info.set(*node, std::move(value));
-          classifyDirty(FieldAddress{node, field});
-        }
-        return;
+      if (info.x3dName != field) continue;
+      // Defensive: no node type currently reaches this. `outputOnly` does NOT
+      // mean "no set thunk" — the generator gives those a thunk that routes to
+      // the field's EMITTER, which is why writing e.g. TouchSensor.isActive
+      // succeeds and fires the event rather than being rejected.
+      if (!info.set) return FieldWriteResult::NotWritable;
+      try {
+        info.set(*node, std::move(value));
+      } catch (const std::bad_any_cast &) {
+        // Every generated setter does an unchecked any_cast<T>. Contain it here:
+        // a caller mistake must not propagate as an exception out of a write the
+        // SDK invited them to make. The field is unchanged (the cast throws
+        // before assignment), so skipping classifyDirty keeps the tracker honest.
+        return FieldWriteResult::TypeMismatch;
       }
+      classifyDirty(FieldAddress{node, field});
+      return FieldWriteResult::Ok;
     }
+    return FieldWriteResult::UnknownField;
   }
 
   /**
@@ -204,6 +276,16 @@ public:
       ~Guard() { ref = false; }
     } guard{ticking_};
 
+    // A MONOTONIC count of completed advances, independent of the simulation
+    // clock. `now` is not a usable tick identity: it is embedder-supplied and may
+    // legitimately repeat (a paused scene that still ticks, a fixed-timestep or
+    // deterministic-replay driver, a coarse clock), and a double cannot
+    // distinguish "a new tick at the same clock value" from "no tick happened".
+    // Incremented AFTER the re-entrancy guard, so a nested tick() -- which is a
+    // documented no-op -- does not fabricate an advance. See SceneExtractor::
+    // delta(), which keys its one-delta-per-tick contract on this.
+    ++tickGeneration_;
+
     now_ = now;
     pointerConsumedBySensor_ = false;     // reset per-tick arbitration flag
     dirty_.clear();                       // drop last tick's changed-set
@@ -227,6 +309,16 @@ public:
   void process() { cascade_.process(); }
 
   double now() const { return now_; }
+
+  /** @brief Monotonic count of completed tick() advances.
+   *
+   * The identity of "which tick are we on", decoupled from the simulation clock.
+   * Starts at 0 (no tick has run) and increments once per non-re-entrant tick(),
+   * never decreasing and never repeating — so it stays a valid tick identity for
+   * a paused, fixed-timestep, or replayed clock, where now() repeats.
+   */
+  std::uint64_t tickGeneration() const { return tickGeneration_; }
+
   const EventGraph &graph() const { return graph_; }
 
   /// Pull surface (read after tick): the per-node dirty set for this tick.
@@ -465,6 +557,7 @@ private:
   std::unordered_map<X3DNode *, ViewpointOffset> offsets_; // per-viewpoint user offset
   BindTransition lastVpTransition_ = BindTransition::None; // BIND-09
   double now_ = 0.0;
+  std::uint64_t tickGeneration_ = 0; // monotonic advance count; see tickGeneration()
   bool ticking_ = false; // reentrancy guard for tick()
   bool pointerConsumedBySensor_ = false; // per-tick nav/sensor arbitration flag
 };

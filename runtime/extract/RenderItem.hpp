@@ -192,6 +192,35 @@ struct MeshData {
 };
 
 // ---------------------------------------------------------------------------
+// MeshRef — SHARED, immutable handle to one MeshData (ADR-0045).
+//
+// A RenderItem is per-PLACEMENT; a MeshData is per-CONTENT. N placements of one
+// DEF'd geometry (the DEF/USE instancing shape, and the whole point of GeomId)
+// share ONE MeshData allocation, so host RAM stays O(distinct content) rather
+// than O(placements). Before this was a handle, 200 USEs of one 19,602-triangle
+// IndexedFaceSet retained 493 MiB of duplicated vertex/index buffers and burned
+// ~1.08 s re-tessellating identical content.
+//
+// IMMUTABLE by contract (shared_ptr<CONST MeshData>): a mesh is never edited in
+// place once emitted, because a co-owning placement would see the edit. The
+// delta() geometry-change path therefore builds a NEW MeshData and bumps
+// GeomId::contentVersion — which is exactly the signal a consumer's GeomId-keyed
+// GPU cache already uses to orphan the stale buffer.
+//
+// NEVER null on an emitted RenderItem: a Packed-geometry item (emitPacked) and a
+// default-constructed RenderItem both point at the shared empty mesh, so
+// `item.mesh->positions` is always safe to dereference without a null check.
+// ---------------------------------------------------------------------------
+using MeshRef = std::shared_ptr<const MeshData>;
+
+// The single shared empty mesh. Used as the never-null default so consumers can
+// dereference MeshRef unconditionally.
+inline const MeshRef &emptyMeshRef() {
+  static const MeshRef kEmpty = std::make_shared<const MeshData>();
+  return kEmpty;
+}
+
+// ---------------------------------------------------------------------------
 // Geometry — union of AoS (array-of-structs MeshData) and Packed (binary slab
 // PackedMesh). Default is AoS to keep all pre-Phase-1 code unchanged.
 // Phase 1 adds the Packed variant for embedder-supplied binary geometry.

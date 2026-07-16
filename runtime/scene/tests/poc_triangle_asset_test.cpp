@@ -59,8 +59,8 @@ TEST_CASE("poc_triangle_asset_test") {
   CHECK((ex.itemCount() >= 1));
 
   const extract::RenderItem &it = ex.item(snap.added.front());
-  CHECK((it.mesh.positions.size() == 3 && "the one IndexedFaceSet face is a triangle"));
-  CHECK((it.mesh.indices.size() == 3));
+  CHECK((it.mesh->positions.size() == 3 && "the one IndexedFaceSet face is a triangle"));
+  CHECK((it.mesh->indices.size() == 3));
 
   // 3. The triangle is centered on the origin in the Z=0 plane (see asset). Its
   //    per-path world AABB must be non-empty so near/far fit has something to work
@@ -70,6 +70,6 @@ TEST_CASE("poc_triangle_asset_test") {
 
   std::fprintf(stderr,
                "[ok] %s -> %zu render item(s), item[0] has %zu vertices\n",
-               assetPath.c_str(), ex.itemCount(), it.mesh.positions.size());
+               assetPath.c_str(), ex.itemCount(), it.mesh->positions.size());
   return;
 }

@@ -103,9 +103,9 @@ TEST_CASE("render_item_test") {
   px.rgba.assign(2 * 2 * 4, 0xFF); // solid white RGBA8
   tex.resolvedPixels = TexturePixelResult::makeReady(px);
   CHECK((tex.resolvedPixels.ready()));
-  CHECK((tex.resolvedPixels.pixels.width  == 2));
-  CHECK((tex.resolvedPixels.pixels.height == 2));
-  CHECK((tex.resolvedPixels.pixels.rgba.size() == 16));
+  CHECK((tex.resolvedPixels.pixels->width  == 2));
+  CHECK((tex.resolvedPixels.pixels->height == 2));
+  CHECK((tex.resolvedPixels.pixels->rgba.size() == 16));
 
   // T-TEX: Pending state is valid (atlas not yet uploaded; retry next frame).
   TextureRef pendingTex;

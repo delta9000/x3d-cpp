@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 
   if (headless) {
     std::size_t firstVerts =
-        items ? extractor.item(snap.added.front()).mesh.positions.size() : 0;
+        items ? extractor.item(snap.added.front()).mesh->positions.size() : 0;
     std::size_t phong = 0, physical = 0, unlit = 0, transparent = 0, textured = 0;
     for (ex::RenderItemId id = 0; id < items; ++id) {
       const ex::RenderItem &it = extractor.item(id);
@@ -191,8 +191,8 @@ int main(int argc, char **argv) {
         auto urls = x3d::runtime::geombounds::getField<MFString>(*bg, field, {});
         for (const std::string &u : urls) { // ordered fallback
           ex::TexturePixelResult r = texResolve(u);
-          if (r.ready() && !r.pixels.rgba.empty()) {
-            const auto &p = r.pixels;
+          if (r.ready() && !r.pixels->rgba.empty()) {
+            const auto &p = *r.pixels;
             // srgb=false: the skybox is written straight to the display
             // framebuffer (no lighting, no shader gamma re-encode), so sample
             // the faces as display-referred — not decoded to linear.

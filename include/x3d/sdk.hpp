@@ -1,5 +1,5 @@
 // ─── include/x3d/sdk.hpp ─────────────────────────────────────────────────────
-// Umbrella façade for the x3d-cpp-gen headless SDK (v1).
+// Umbrella façade for the x3d-cpp headless SDK (v1).
 //
 // Include this ONE header; link the CMake target x3d_cpp::sdk. Everything an
 // embedder needs is re-exported into namespace `x3d::sdk`:
@@ -50,6 +50,7 @@
 #include "Ray.hpp"                 // x3d::runtime — Ray
 #include "Mat4.hpp"                // x3d::runtime — Mat4
 #include "Aabb.hpp"                // x3d::runtime — Aabb
+#include "RuntimeSession.hpp"      // x3d::runtime — RuntimeSession/SessionOptions (the recommended entry point)
 #include "SceneExtractor.hpp"      // x3d::runtime::extract — SceneExtractor
 #include "RenderItem.hpp"          // x3d::runtime::extract — descriptor POD
 #include "MeshBuilder.hpp"         // x3d::runtime::extract — MeshBuildOptions/GeoProjection
@@ -97,6 +98,8 @@ using x3d::codec::CanonicalXmlWriter;    ///< X3D Canonical Form (X3DC14N) seria
 // Then once per frame: set inputs, ctx.tick(now) [now = seconds since start],
 // read the pull surface.
 using x3d::runtime::X3DExecutionContext;
+using x3d::runtime::FieldWriteResult;    ///< enum class { Ok, NullNode, UnknownField, NotWritable, TypeMismatch } — ctx.writeField's [[nodiscard]] outcome
+using x3d::runtime::fieldWriteResultName; ///< fieldWriteResultName(FieldWriteResult) — human-readable form for diagnostics
 using x3d::runtime::BridgeResult;        ///< { routesAdded, rejected[] } returned by buildFrom
 using x3d::runtime::RouteError;          ///< { index, reason } a single rejected ROUTE
 using x3d::runtime::System;              ///< abstract behavior System: attach() + update()
@@ -105,6 +108,18 @@ using x3d::runtime::PickResult;          ///< result of ctx.pick(ray)
 using x3d::runtime::Ray;                 ///< { origin, direction, pointAt(t) }
 using x3d::runtime::Mat4;                ///< column-major 4×4
 using x3d::runtime::Aabb;                ///< axis-aligned bounds
+
+// ── Session — the recommended entry point ────────────────────────────── [STABLE]
+// Owns document + context + extractor, does the wiring you can silently forget
+// (buildSceneGraph, buildFrom, attachStandardRuntime), and cannot outlive its own
+// scene. Everything below stays public — session->context()/extractor()/scene()
+// hand the pieces back — so this is a shorter path, not a walled garden.
+//
+//   auto session = sdk::RuntimeSession::create(sdk::parseFile("scene.x3dv"));
+//   sdk::RenderDelta f0 = session->fullSnapshot();     // upload f0.added
+//   while (running) { session->tick(now); auto d = session->delta(); }
+using x3d::runtime::RuntimeSession;      ///< create(doc, options) -> unique_ptr; tick()/fullSnapshot()/delta()
+using x3d::runtime::SessionOptions;      ///< { standardRuntime=true, interactive=false, meshOptions, textureResolver }
 
 // ── Extraction / render feed ─────────────────────────────────────────── [STABLE]
 using x3d::runtime::extract::SceneExtractor; ///< fullSnapshot()/delta()/item()/camera()/lights()/...
@@ -126,8 +141,14 @@ using x3d::runtime::extract::LightDesc;      ///< Directional/Point/Spot light d
 using x3d::runtime::extract::CameraDesc;     ///< { viewMatrix, fieldOfView, near/far, ortho... }
 using x3d::runtime::extract::BackgroundDesc; ///< { skyColor/skyAngle/groundColor/groundAngle }
 
-// ── Seams (embedder-supplied IO) ─────────────────────────────────── [EXPERIMENTAL]
-// Shapes are usable but may gain fields; embedder wiring is still maturing.
+// ── Seams (embedder-supplied IO) ───────────────────────────────────── [PER-SEAM]
+// There is no blanket answer here: each seam carries its own marker below.
+// AssetResolver (ADR-0023), TextureResolver (ADR-0024) and FontMetrics (ADR-0025)
+// are [STABLE] — frozen pre-v2, each proven generic by a second independent backend
+// under a CI-gated swap-test. GeoProjection is the one [EXPERIMENTAL] seam: it has
+// no second backend yet, so its shape may still gain fields. (The Script/SAI seam
+// is [STABLE] too — it has its own section below.) The live per-seam tracker is
+// docs/wiki/seam-status.md.
 
 // Tessellation density + geodesy + font-metrics build knobs.
 using x3d::runtime::extract::MeshBuildOptions; ///< { sphereRings, sphereSegments, radialSlices, geoProjection, fontMetrics }

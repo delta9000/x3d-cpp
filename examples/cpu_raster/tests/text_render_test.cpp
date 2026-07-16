@@ -73,7 +73,7 @@ int main() {
 
   bool anyGlyph = false;
   for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id)
-    if (extractor.item(id).mesh.isGlyphMesh) anyGlyph = true;
+    if (extractor.item(id).mesh->isGlyphMesh) anyGlyph = true;
   CHECK(anyGlyph); // Text produced glyph geometry.
 
   // WITH the atlas: letters -> sparse ink.

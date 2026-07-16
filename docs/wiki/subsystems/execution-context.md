@@ -90,7 +90,34 @@ void postEvent(X3DNode *node, const std::string &field, std::any value);
 
 // Direct field write that also classifies dirty — use instead of raw info.set
 // when a System needs to poke a field outside the cascade (M2C-3 fix).
-void writeField(X3DNode *node, const std::string &field, std::any value);
+//
+// REPORTS rather than guessing: this is a stringly-typed, std::any-valued write,
+// so every argument is a chance for the caller to be wrong. Discarding the result
+// is the silent no-op the [[nodiscard]] exists to prevent; a caller that truly
+// does not care must say so with an explicit (void), which is greppable.
+// Atomic w.r.t. failure — on any non-Ok result neither the field nor the
+// dirty-tracker is touched.
+[[nodiscard]] FieldWriteResult
+writeField(X3DNode *node, const std::string &field, std::any value);
+
+// Ok | NullNode | UnknownField | NotWritable | TypeMismatch.
+//   * TypeMismatch is CONTAINED here: every generated setter does an unchecked
+//     any_cast<T>, so a wrong-typed value would otherwise escape as an uncaught
+//     std::bad_any_cast from inside the thunk.
+//   * UnknownField also covers Script/PROTO author fields: those live in the
+//     DynamicFieldStore and resolve via effectiveFields(), which this does not
+//     consult.
+//   * NotWritable is defensive depth — no node type currently reaches it. All
+//     4914 generated FieldInfos carry a set thunk, INCLUDING outputOnly ones,
+//     whose thunk routes to the field's emitter (so writing TouchSensor.isActive
+//     succeeds and fires the event).
+enum class FieldWriteResult { Ok, NullNode, UnknownField, NotWritable, TypeMismatch };
+const char *fieldWriteResultName(FieldWriteResult);  // NOT toString: collides with doctest's
+
+// Monotonic count of completed tick() advances, independent of the simulation
+// clock — the identity SceneExtractor::delta()'s one-delta-per-tick guard keys
+// on, because now() may legitimately repeat (paused / fixed-timestep / replay).
+std::uint64_t tickGeneration() const;
 ```
 
 **Input seams (consumer-to-runtime, between ticks):**

@@ -13,7 +13,7 @@ engineering / planning deferrals in the
 
 | Capability | Notes |
 |---|---|
-| Load 4 encodings (XML, ClassicVRML, VRML97, JSON) | + gzip input, versions 3.0–4.1, lenient read, BOM strip |
+| Load 4 encodings (XML, ClassicVRML, VRML97, JSON) | + gzip input, lenient read, BOM strip. Parses versions 3.0–4.1; the generated node model targets 4.0, so the six 4.1-only nodes are absent (row below) |
 | PROTO / EXTERNPROTO | local PROTO always expands; file-local EXTERNPROTO via `localFileProtoResolver` (http/urn skipped by default) |
 | Conformance diagnostics | `rangeWarnings` (out-of-range values) + `protoWarnings` (expansion issues); per-version validation moat |
 | Serialization | `XmlWriter` / `JsonWriter` / `VrmlWriter`, reflection-driven |
@@ -60,7 +60,7 @@ breadth. Each is tracked as a card in the
 | Geospatial (full projection) | Geo-accurate bounds/anchoring need the GEO coordinate projection; flat-fallback ships. |
 | Layering / Layout (per-layer binding + view volumes) | Needs binding stacks + view-dependent eval keyed by layer. |
 | H-Anim (full), Particle systems | Advanced components; breadth beyond the common-scene v1 target. (Rigid-body physics and audio ship as seams — see *In v1*.) |
-| EnvironmentLight / IBL (image-based lighting) | `EnvironmentLight` is an X3D 4.1 node; `generated_cpp_bindings/` is code-generated from the 4.0 UOM with a byte-identical golden invariant. A hand-authored 4.1 binding conflicts with the golden gate. Needs a defined strategy for 4.1 extension nodes. The `ShaderUniformVocabulary` already reserves `envDiffuse`/`envSpecular`/`envSH`/`brdfLUT` entries for future use. |
+| The six X3D 4.1-only nodes (incl. `EnvironmentLight` / IBL) | `generated_cpp_bindings/` is code-generated from the **4.0** UOM under a byte-identical golden invariant, so a hand-authored 4.1 binding would conflict with the golden gate. All six nodes 4.1 adds over 4.0 are therefore absent: `EnvironmentLight`, `FontLibrary`, `HAnimPose`, `InlineGeometry`, `RenderedTexture`, `Tangent`. A 4.1 document still parses and runs — only these node types are missing. Needs a defined strategy for 4.1 extension nodes; for `EnvironmentLight` specifically the `ShaderUniformVocabulary` already reserves `envDiffuse`/`envSpecular`/`envSH`/`brdfLUT`. |
 | MultiTexture compositing, MovieTexture frames | Beyond the single-channel `TextureRef` descriptor. |
 | Bidi / complex text shaping (language field) | Beyond left-to-right / top-to-bottom layout. |
 

@@ -58,7 +58,7 @@ int main() {
   // ---- Resolver: proc: synthesizes; unknown ext fails.
   {
     cr::ex::TextureResolver r = cr::makeTextureResolver(".");
-    CHECK(r("proc:checker").ready() && !r("proc:checker").pixels.rgba.empty());
+    CHECK(r("proc:checker").ready() && !r("proc:checker").pixels->rgba.empty());
     CHECK(r("proc:uvgrid").ready());
     CHECK(r("missing.png").failed());
   }
@@ -102,7 +102,7 @@ int main() {
         ++textured;
         if (it.material.textures[0].resolvedPixels.ready()) ++resolved;
       }
-      if (!it.mesh.texcoords.empty()) ++withUv;
+      if (!it.mesh->texcoords.empty()) ++withUv;
     }
     std::fprintf(stderr, "textured=%d resolved=%d withUv=%d items=%zu\n",
                  textured, resolved, withUv, extractor.itemCount());

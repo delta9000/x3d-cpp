@@ -5,11 +5,15 @@
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 
 A headless, renderer-agnostic **X3D domain-runtime SDK** in C++. Load an X3D
-scene (XML, ClassicVRML, VRML97, or JSON; versions 3.0–4.1), run its event /
-behavior model tick-by-tick, and pull out renderer-ready geometry — meshes,
-materials, lights, camera, background — for *your* backend. **No GPU, no
-windowing, no rendering opinion**: the runtime stays spec-correct and
-backend-free, and you bring (or borrow) the renderer.
+scene (XML, ClassicVRML, VRML97, or JSON), run its event / behavior model
+tick-by-tick, and pull out renderer-ready geometry — meshes, materials, lights,
+camera, background — for *your* backend. **No GPU, no windowing, no rendering
+opinion**: the runtime stays spec-correct and backend-free, and you bring (or
+borrow) the renderer.
+
+**Versions:** parses X3D **3.0–4.1** documents; the generated node model targets
+X3D **4.0**, so the six 4.1-only node types are not yet available (see
+[Supported platforms & versions](#supported-platforms--versions)).
 
 The C++ node layer is **generated from the official X3D Unified Object Model
 (UOM)**: node and field declarations, types and defaults come from the UOM, and
@@ -80,6 +84,36 @@ Full-quality WebM:
 [orientation](docs/videos/demos/orientation.webm) ·
 [color](docs/videos/demos/color.webm) — regenerate everything with `mise run demos`; see
 [`examples/cpu_raster/`](examples/cpu_raster/README.md#animation-demos).
+
+## Supported platforms & versions
+
+What is actually verified, as opposed to what might work. At 0.1 the honest
+answer is **Linux-tested; macOS and Windows are intended but not demonstrated**.
+
+| Platform | Status |
+|---|---|
+| Linux x86-64, GCC 11+ | **Supported** — every push builds + tests here (also under ASan/UBSan and a bounded parser fuzz run) |
+| Linux x86-64, Clang 14+ | **Supported** — same, via the CI compiler matrix |
+| macOS | **Not verified.** The build carries an `@loader_path` install-RPATH branch and nothing else Apple-specific. No CI job runs here. |
+| Windows / MSVC | **Not verified.** The build sets `WINDOWS_EXPORT_ALL_SYMBOLS` and nothing else. No CI job runs here; expect to hit issues (e.g. `/bigobj`) before it links. |
+
+CI's compiler matrix varies the **compiler**, not the OS — all sixteen jobs run
+on `ubuntu-latest`/`ubuntu-22.04`. A macOS or Windows report is welcome and is
+what would move either row; until a job runs there, neither is a claim we make.
+
+**X3D versions.** Two axes, which are easy to conflate:
+
+| Axis | Coverage |
+|---|---|
+| Parser (what loads) | X3D **3.0–4.1**, in all four encodings. Sub-3.0 VRML97/ClassicVRML is floored to 3.0; there is no upper gate, so a 4.2 document parses too. |
+| Generated node model (what you get objects for) | X3D **4.0** — the UOM the bindings are generated from. |
+
+So a 4.1 document parses and runs; the **six** node types 4.1 adds over 4.0 are
+simply absent from the node layer: `EnvironmentLight`, `FontLibrary`,
+`HAnimPose`, `InlineGeometry`, `RenderedTexture`, `Tangent`. See
+[v1 capabilities](docs/sdk/v1-capabilities.md) for why (the generated tree is
+under a byte-identical golden invariant, so a hand-authored 4.1 binding would
+conflict with the gate) and [CONTRIBUTING](CONTRIBUTING.md) for the two-axis rule.
 
 ## Build and install
 

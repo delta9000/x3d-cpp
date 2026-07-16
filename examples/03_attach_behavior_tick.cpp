@@ -11,17 +11,17 @@
 //
 // (The same registration path carries the X3D Script node: implement
 //  x3d::sdk::ScriptEngine, wrap it in x3d::sdk::ScriptSystem, and call
-//  ctx.addScriptSystem(ss). That seam is EXPERIMENTAL; this example uses the
-//  stable System base so it has no language-backend dependency.)
+//  ctx.addScriptSystem(ss). That seam is STABLE — frozen pre-v2, proven generic
+//  by a second-backend swap test (ADR-0022) — but it needs a language backend;
+//  this example uses the System base so it has no such dependency.)
 //
 // Run: 03_attach_behavior_tick
 // ─────────────────────────────────────────────────────────────────────────────
 #include "x3d/sdk.hpp"
 
-#include "x3d/core/X3Dtypes.hpp" // SFRotation (the value type we write)
-
 #include <any>
 #include <cmath>
+#include <cstdio>
 #include <iostream>
 
 using namespace x3d::core;
@@ -54,8 +54,21 @@ public:
       return;
     float angle = static_cast<float>(now * rate_);
     // Dirty-aware write: the extractor's delta() will report updatedTransform.
-    ctx.writeField(target_, "rotation",
-                   std::any(SFRotation{0.0f, 1.0f, 0.0f, angle}));
+    //
+    // writeField is stringly-typed and std::any-valued, so it REPORTS rather than
+    // guessing: a misspelled field name, an outputOnly field, or a value of the
+    // wrong type each come back as a distinct FieldWriteResult. Check it — a
+    // discarded result is the silent no-op the API exists to prevent. Here a
+    // failure means this System was attached to a node that is not a Transform,
+    // which is a wiring bug worth surfacing rather than spinning nothing.
+    const sdk::FieldWriteResult r =
+        ctx.writeField(target_, "rotation",
+                       std::any(SFRotation{0.0f, 1.0f, 0.0f, angle}));
+    if (r != sdk::FieldWriteResult::Ok) {
+      std::fprintf(stderr, "Spinner: cannot write 'rotation' on %s: %s\n",
+                   target_->nodeTypeName().c_str(), sdk::fieldWriteResultName(r));
+      target_ = nullptr; // stop retrying every tick.
+    }
   }
 
 private:

@@ -554,5 +554,15 @@ bool recognizedGeometryType(const std::string &t);
 MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt = {},
                         bool *recognized = nullptr);
 
+/// Diagnostic counter: number of buildLocalMesh() tessellations performed
+/// process-wide. Tessellation is the dominant per-scene extraction cost (a
+/// six-figure-triangle IndexedFaceSet is milliseconds), so an instancing
+/// consumer must build one mesh per DISTINCT geometry node, never one per
+/// placement. Tests snapshot this around fullSnapshot()/delta() to assert the
+/// build stays O(distinct geometry), not O(placements) — the trap that made 200
+/// USEs of one DEF'd IFS cost ~1.08 s and 493 MiB (see ADR-0045).
+inline std::uint64_t buildLocalMeshCalls_ = 0;
+inline std::uint64_t buildLocalMeshCallCount() { return buildLocalMeshCalls_; }
+
 } // namespace x3d::runtime::extract
 #endif

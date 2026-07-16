@@ -731,7 +731,7 @@ int cmdExtract(const std::vector<std::string> &args) {
         // For each RenderItem, transform its local-frame triangles to world space.
         for (sdk::RenderItemId id : frame0.added) {
             const sdk::RenderItem &item = ex.item(id);
-            const sdk::MeshData &mesh = item.mesh;
+            const sdk::MeshData &mesh = *item.mesh;
             const sdk::Mat4 &W = item.worldTransform;
 
             // MeshData uses expanded layout: indices are trivial 0..N-1 (or

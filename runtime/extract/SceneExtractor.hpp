@@ -78,6 +78,7 @@
 #include <any>
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <map>
 #include <memory>
 #include <string>
@@ -102,7 +103,10 @@ struct RenderItem {
   GeomId geometry;                    // content identity of the mesh.
   MaterialDesc material;              // real MaterialSystem result (T5).
   std::optional<ShaderProgramDesc> shaderProgram;  // absent = fixed-function path (Phase 3)
-  MeshData mesh;                      // LOCAL-frame triangles (for sceneWorldBounds).
+  // LOCAL-frame triangles, SHARED across every placement of one GeomId
+  // (ADR-0045). Never null — a Packed item points at emptyMeshRef() — so
+  // `item.mesh->positions` needs no null check.
+  MeshRef mesh = emptyMeshRef();
 
   // Phase 1 binary geometry union. For AoS items (all pre-Phase-1 paths),
   // geometry_ext.kind == AoS and geometry_ext.aos is empty (mesh above is the
@@ -162,6 +166,12 @@ public:
     geomNodeOf_.clear();
     entryMatrix_.clear();
     skippedGeometry_.clear(); // B2: recount unsupported drops for this full walk.
+    // ADR-0045: a full walk is authoritative — it must re-read current field
+    // state, so no mesh survives from a previous snapshot. Within THIS walk the
+    // caches then collapse N placements onto one build/one allocation.
+    rawMeshCache_.clear();
+    bakedMeshCache_.clear();
+    textureMemo_.clear();
 
     // #21: one node-visit budget shared across this snapshot's light collection
     // and geometry walk, bounding an acyclic "doubling DAG" fan-out.
@@ -182,7 +192,7 @@ public:
     delta.backgroundChanged = true;
     delta.lightsChanged = true;
     snapped_ = true;
-    lastDeltaNow_ = ctx_.now(); // seed the one-delta-per-tick guard.
+    lastDeltaGen_ = ctx_.tickGeneration(); // seed the one-delta-per-tick guard.
     return delta;
   }
 
@@ -191,13 +201,31 @@ public:
   // current tick and partitions the changed nodes into RenderDelta buckets,
   // NEVER re-walking the whole scene for a transform/geometry/material-only tick.
   //
-  // ASSERTED one-delta-per-tick CONTRACT: X3DExecutionContext.tick() clears
-  // dirty_ at the END of each tick (line ~103), so the dirty set is the delta of
-  // exactly ONE advance. Calling delta() twice without an intervening tick() (or
-  // before the first fullSnapshot()) would read a STALE/empty set and silently
-  // drop changes — so both are asserted out. The guard keys on ctx_.now(): a
-  // second delta() at the same clock value trips the assert. (A consumer that
-  // never advances the clock but still ticks is out of PoC scope; documented.)
+  // ONE-DELTA-PER-TICK CONTRACT, made TOTAL (no misuse is undefined):
+  //
+  // tick() clears the dirty set at the start of each advance, so that set is the
+  // delta of exactly ONE tick. Two situations used to be assert()ed out, which
+  // was wrong twice over: asserts compile out under NDEBUG (this repo's `ci`
+  // preset is RelWithDebInfo), so a release consumer got silently different
+  // behaviour from the debug one it was tested against; and the guard keyed on
+  // ctx_.now(), which made a paused / fixed-timestep / deterministic-replay
+  // consumer — one that legitimately ticks twice at the same clock value —
+  // trip an assert for doing nothing wrong. Both now have defined answers:
+  //
+  //   * delta() with no prior fullSnapshot()  =>  returns fullSnapshot().
+  //     There is no baseline to diff against, and a full snapshot IS the correct
+  //     baseline: it reports every item in `added`, which frame 0 and frame N
+  //     already share one upload path for. The consumer needs no special case.
+  //
+  //   * delta() twice with no intervening tick()  =>  returns an EMPTY delta.
+  //     Not an error — an honest answer. Nothing CAN have changed: only tick()
+  //     advances state, and the previous delta() already reported this tick's
+  //     changes. (Previously this asserted, and under NDEBUG silently returned a
+  //     bogus re-diff.)
+  //
+  // The guard keys on ctx_.tickGeneration() — a monotonic count of advances that
+  // cannot repeat — NOT on ctx_.now(), which an embedder may legitimately hold
+  // still or replay.
   //
   // Per changed node n (dispatch is mutually exclusive — a Transform is only ever
   // in transformDeps_, a geometry node only in geomDeps_, an appearance-subtree
@@ -216,12 +244,12 @@ public:
   //       n's cached entry matrix (O(subtree)) => added/removed.
   // ---------------------------------------------------------------------------
   RenderDelta delta() {
-    assert(snapped_ && "delta() requires a prior fullSnapshot()");
-    const double now = ctx_.now();
-    assert(now != lastDeltaNow_ &&
-           "one-delta-per-tick contract violated: delta() called twice without "
-           "an intervening tick() advance (tick() clears the dirty set)");
-    lastDeltaNow_ = now;
+    // No baseline yet — a full snapshot IS the baseline (see contract above).
+    if (!snapped_) return fullSnapshot();
+
+    const std::uint64_t gen = ctx_.tickGeneration();
+    if (gen == lastDeltaGen_) return {}; // no advance since the last delta().
+    lastDeltaGen_ = gen;
 
     // #21: fresh node-visit budget for this tick's incremental re-walks (a dirty
     // subtree can also be a wide acyclic fan-out).
@@ -260,11 +288,21 @@ public:
           // GeomId-keyed GPU cache orphans the old buffer.
           auto git = geomNodeOf_.find(n);
           const X3DNode *geomNode = git == geomNodeOf_.end() ? n : git->second;
-          MeshData mesh = buildLocalMesh(geomNode, meshOptions_);
+          // The content changed, so every cached mesh derived from this geometry
+          // (the raw build AND every TextureTransform-baked variant of it) is
+          // stale. Evict first, then rebuild ONCE through the same cache — so the
+          // N dependent placements re-share a single new allocation instead of
+          // taking N full copies of it (ADR-0045).
+          evictMeshCache(geomNode);
+          MeshRef mesh = cachedRawMesh(geomNode, nullptr);
           for (RenderItemId id : gids) {
             RenderItem &rec = items_[id];
             rec.geometry.contentVersion++;
-            if (!mesh.indices.empty()) rec.mesh = mesh;
+            // Re-bake per dependent: two placements of this geometry may sit
+            // under different TextureTransforms. bakedMesh() is cache-backed, so
+            // placements that agree still share one allocation.
+            if (!mesh->indices.empty())
+              rec.mesh = bakedMesh(geomNode, mesh, ttParamsOfItem(id));
             if (geomSeen.insert(id).second) delta.updatedGeometry.push_back(id);
           }
         }
@@ -390,7 +428,7 @@ public:
     Aabb out; // empty == union identity.
     for (const RenderItem &it : items_) {
       Aabb local;
-      for (const SFVec3f &p : it.mesh.positions) local.expand(p);
+      for (const SFVec3f &p : it.mesh->positions) local.expand(p);
       if (!local.empty) out.unionWith(local.transformed(it.worldTransform));
     }
     return out;
@@ -486,7 +524,13 @@ private:
     // TextureTransform bake lives on the MESH texcoords (updatedGeometry), not the
     // material — a textureTransform-only change is a documented v1 narrowing.
     enrichTextureRefs(rec.material.textures, /*texNodes=*/{}, rec.geometry.node);
-    resolveTextureRefs(rec.material.textures, textureResolver_);
+    // Memoized (ADR-0045): one Appearance is routinely shared by many placements,
+    // so an appearance change calls refreshMaterial() once PER DEPENDENT — without
+    // the memo that is N decodes of the same URL. A CHANGED url is a memo miss and
+    // still re-resolves, which is what this path exists to do. (Same-url content
+    // changing underneath us does not dirty the node, so it would not re-resolve
+    // here either way — the memo costs no freshness that was on offer.)
+    resolveTextureRefs(rec.material.textures, textureResolver_, &textureMemo_);
   }
 
   // Resume the subtree walk under a grouping node G whose children changed,
@@ -584,7 +628,8 @@ private:
     if (geombounds::hasField(*n, "geometry")) {
       if (auto geom = geombounds::getNode(*n, "geometry")) {
         bool recognized = false;
-        MeshData mesh = buildLocalMesh(geom.get(), meshOptions_, &recognized);
+        // ADR-0045: build-once per DISTINCT geometry node, not per placement.
+        MeshRef mesh = cachedRawMesh(geom.get(), &recognized);
         // T-TEXT: a Text node also EMITS its outputOnly fields (textBounds/
         // lineBounds/origin). buildLocalMesh produces the glyph geometry only;
         // here, owning the non-const node, we recompute the layout once and set
@@ -599,7 +644,7 @@ private:
         // skipped (no proxy path at this seam) — UNLESS the embedder has wired
         // an externalGeometryResolver, in which case we offer the unrecognized
         // node to it and emit via emitPacked() if it returns a non-empty PackedMesh.
-        if (!mesh.indices.empty()) {
+        if (!mesh->indices.empty()) {
           emit(*n, path, here, geom.get(), std::move(mesh), delta);
         } else if (!recognized) {
           if (meshOptions_.externalGeometryResolver) {
@@ -695,7 +740,7 @@ private:
   // Intern this PATH into a dense RenderItemId; store the per-path record and
   // populate the three reverse indices for it.
   void emit(const X3DNode &shape, const PathKey &path, const Mat4 &worldM,
-            const X3DNode *geom, MeshData mesh, RenderDelta &delta) {
+            const X3DNode *geom, MeshRef mesh, RenderDelta &delta) {
     // Resolve the real material from the Shape's Appearance (T5). A Shape with no
     // appearance => Unlit white (MaterialSystem's always-draws debug fallback).
     auto appearance = geombounds::getNode(shape, "appearance");
@@ -708,10 +753,18 @@ private:
     // both are in UV space. (2) Attach the geometry-borne TextureCoordinateGenerator
     // descriptor (§18.4.8) to each material texture ref. (3) Thread the embedder's
     // TextureResolver onto each Url ref's resolvedPixels (Inline/Movie skipped).
-    applyTextureTransformsToMesh(
-        mesh, textureTransformParamsListOf(appearance ? appearance.get() : nullptr));
+    // (1) is per-APPEARANCE, not per-placement: the bake is a pure function of
+    // (geometry content, TextureTransform params), so it is cached on that pair
+    // and shared by every placement that agrees on both (ADR-0045). One geometry
+    // USE'd under two DIFFERENT TextureTransforms legitimately yields two meshes.
+    mesh = bakedMesh(geom, std::move(mesh),
+                     textureTransformParamsListOf(appearance ? appearance.get()
+                                                             : nullptr));
     enrichTextureRefs(material.textures, /*texNodes=*/{}, geom);
-    resolveTextureRefs(material.textures, textureResolver_);
+    // ADR-0045: decode-once per URL. Without the memo the embedder's decoder was
+    // invoked once per PLACEMENT (200 calls + 200 MiB retained for one 512x512
+    // texture USE'd 200 times).
+    resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
 
     // §23.4.4 effective far = Viewpoint.farDistance>0 ? : NavigationInfo.visibilityLimit>0 ? : inf.
     float far = 0.0f; // 0 => infinite
@@ -778,7 +831,10 @@ private:
     MaterialDesc material = materialOf(appearance ? appearance.get() : nullptr);
     const bool castShadow = geombounds::getField<bool>(shape, "castShadow", true);
     enrichTextureRefs(material.textures, /*texNodes=*/{}, geom);
-    resolveTextureRefs(material.textures, textureResolver_);
+    // ADR-0045: decode-once per URL. Without the memo the embedder's decoder was
+    // invoked once per PLACEMENT (200 calls + 200 MiB retained for one 512x512
+    // texture USE'd 200 times).
+    resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
 
     auto it = index_.find(path);
     RenderItemId id;
@@ -908,6 +964,116 @@ private:
     }
   }
 
+  // -------------------------------------------------------------------------
+  // ADR-0045: content-keyed mesh cache — the SDK side of upload-once/instance-N.
+  //
+  // GeomId already told the CONSUMER which placements share content; the walk
+  // ignored its own key and re-tessellated per placement, retaining N copies.
+  // These two caches make the identity structural: one build and one allocation
+  // per DISTINCT (geometry content [, TextureTransform params]).
+  //
+  // LIFETIME: both are cleared by fullSnapshot() — a fresh full walk must re-read
+  // current field state, which is what makes a rebuild authoritative. Within one
+  // snapshot, and across the delta()s that follow it, an entry is only evicted
+  // when that geometry's content actually changes (evictMeshCache).
+  // -------------------------------------------------------------------------
+  struct RawMeshEntry {
+    MeshRef mesh = emptyMeshRef();
+    bool recognized = false; // B2: memoized alongside, same cost to recompute.
+  };
+  // Ready-only texture resolves, keyed by URL. Pending/Failed are deliberately
+  // NOT memoized so a not-yet-decoded texture keeps retrying (see
+  // resolveTextureRefs). Cleared by fullSnapshot() alongside the mesh caches.
+  std::unordered_map<std::string, TexturePixelResult> textureMemo_;
+
+  // Raw (pre-TextureTransform) build, keyed by geometry node.
+  std::unordered_map<const X3DNode *, RawMeshEntry> rawMeshCache_;
+  // TextureTransform-baked variants, keyed by (geometry node, params bytes). Only
+  // populated when a TextureTransform is actually authored — the common
+  // untransformed case shares the raw entry directly and allocates nothing here.
+  std::map<std::pair<const X3DNode *, std::string>, MeshRef> bakedMeshCache_;
+
+  // Serialize a params list into a cache key. Field-by-field (NOT a memcpy of the
+  // struct) — TextureTransform2DParams has padding after `hasMatrix`, and hashing
+  // indeterminate padding bytes would make cache hits nondeterministic.
+  static std::string ttParamsKey(const std::vector<TextureTransform2DParams> &ps) {
+    std::string k;
+    k.reserve(ps.size() * (7 * sizeof(float) + 1));
+    auto put = [&k](float v) {
+      char b[sizeof(float)];
+      std::memcpy(b, &v, sizeof(float));
+      k.append(b, sizeof(float));
+    };
+    for (const auto &p : ps) {
+      for (float v : {p.centerS, p.centerT, p.rotation, p.scaleS, p.scaleT,
+                      p.translationS, p.translationT})
+        put(v);
+      k.push_back(p.hasMatrix ? '\1' : '\0');
+      if (p.hasMatrix)
+        for (float v : p.matrix) put(v);
+    }
+    return k;
+  }
+
+  // The one place buildLocalMesh() is called. `recognized` may be null.
+  MeshRef cachedRawMesh(const X3DNode *geom, bool *recognized) {
+    auto it = rawMeshCache_.find(geom);
+    if (it == rawMeshCache_.end()) {
+      bool rec = false;
+      MeshData built = buildLocalMesh(geom, meshOptions_, &rec);
+      it = rawMeshCache_
+               .emplace(geom,
+                        RawMeshEntry{std::make_shared<const MeshData>(
+                                         std::move(built)),
+                                     rec})
+               .first;
+    }
+    if (recognized) *recognized = it->second.recognized;
+    return it->second.mesh;
+  }
+
+  // Bake `params` into `raw`, sharing the result across every caller that agrees
+  // on (geom, params). An empty params list means no TextureTransform is authored
+  // and applyTextureTransformsToMesh() is a documented no-op — return the raw
+  // mesh untouched so the common case costs nothing.
+  MeshRef bakedMesh(const X3DNode *geom, MeshRef raw,
+                    const std::vector<TextureTransform2DParams> &params) {
+    if (params.empty()) return raw;
+    auto key = std::make_pair(geom, ttParamsKey(params));
+    auto it = bakedMeshCache_.find(key);
+    if (it == bakedMeshCache_.end()) {
+      MeshData baked = *raw; // the one deliberate copy: one per distinct bake.
+      applyTextureTransformsToMesh(baked, params);
+      it = bakedMeshCache_
+               .emplace(std::move(key),
+                        std::make_shared<const MeshData>(std::move(baked)))
+               .first;
+    }
+    return it->second;
+  }
+
+  // Drop every cached mesh derived from `geom` (the raw build + all its baked
+  // variants) so the next lookup rebuilds from current field state.
+  void evictMeshCache(const X3DNode *geom) {
+    rawMeshCache_.erase(geom);
+    // Baked keys are (geom, paramsBytes); the map is ordered by that pair, so all
+    // of one geometry's variants form a contiguous range starting at (geom, "").
+    auto lo = bakedMeshCache_.lower_bound({geom, std::string{}});
+    auto hi = lo;
+    while (hi != bakedMeshCache_.end() && hi->first.first == geom) ++hi;
+    bakedMeshCache_.erase(lo, hi);
+  }
+
+  // The TextureTransform params governing an already-emitted item, read back from
+  // the Shape at the leaf of its stored path (delta()'s geometry-rebuild arm has
+  // the item, not the appearance).
+  std::vector<TextureTransform2DParams> ttParamsOfItem(RenderItemId id) const {
+    const RenderItem &rec = items_[id];
+    if (rec.path.empty() || !rec.path.back()) return {};
+    auto appearance = geombounds::getNode(*rec.path.back(), "appearance");
+    return textureTransformParamsListOf(appearance ? appearance.get() : nullptr);
+  }
+
   const X3DExecutionContext &ctx_;
   const Scene &scene_;
 
@@ -945,11 +1111,14 @@ private:
   // by budgetExceeded().
   WalkBudget walkBudget_;
 
-  // One-delta-per-tick contract state. snapped_ gates delta() on a prior
-  // fullSnapshot(); lastDeltaNow_ is the clock value of the last full/delta read,
-  // so a second delta() at the same ctx_.now() trips the asserted invariant.
+  // One-delta-per-tick contract state. snapped_ says a baseline exists (an
+  // un-snapshotted delta() promotes itself to fullSnapshot()); lastDeltaGen_ is
+  // the tick generation the last full/delta read consumed, so a second delta()
+  // with no intervening advance returns empty instead of re-diffing a spent set.
+  // Generation, not clock: ctx_.now() may legitimately repeat (paused /
+  // fixed-timestep / replay), tickGeneration() cannot.
   bool snapped_ = false;
-  double lastDeltaNow_ = -1.0;
+  std::uint64_t lastDeltaGen_ = 0;
 };
 
 } // namespace x3d::runtime::extract
