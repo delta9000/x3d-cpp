@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
-<X3D profile="Interchange" version="4.0">
+<X3D profile="Full" version="4.0">
   <head>
     <meta name="title" content="Utah teapot as NURBS patches"/>
     <meta name="description" content="Utah teapot (Martin Newell, 1975) — PUBLIC DOMAIN. 32 bicubic Bezier patches expressed as order-4 NurbsPatchSurface nodes (a Bezier patch IS a NURBS patch: clamped knots + unit weights). Control points: teapotCGA.bpt from http://www.holmes3d.net/graphics/teapot/ (public domain), Z-up source rotated to Y-up. Showcases the NURBS tessellation path with analytic normals."/>

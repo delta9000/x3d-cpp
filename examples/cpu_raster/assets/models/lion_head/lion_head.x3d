@@ -1,4 +1,4 @@
-<X3D profile="Interchange" version="4.0"><Scene>
+<X3D profile="Immersive" version="4.0"><Scene>
 <Shape>
 <Appearance><PhysicalMaterial baseColor="1 1 1" metallic="1" roughness="1">
   <ImageTexture containerField="baseTexture" url='&quot;lion_head_diff_1k.jpg&quot;'/>

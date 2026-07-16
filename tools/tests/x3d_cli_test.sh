@@ -6,6 +6,7 @@
 # Positional args:
 #   $1  path to the x3d_cli binary (passed via CMake generator expression)
 #   $2  path to the in-repo fixture directory (tools/x3d-cli/fixtures/)
+#   $5  repo root (for the gallery/smoke scene profile gate — see below)
 #
 # Tests:
 #   1. --help exits 0 and mentions 'convert'
@@ -27,6 +28,7 @@ CLI="$1"
 FIXTURES="$2"
 GOLDENS="${3:-}"
 PHYSICS="${4:-0}"   # 1 when x3d_cli was built with the Jolt physics backend
+REPO_ROOT="${5:-}"  # repo root, for the gallery/smoke scene profile gate
 TD=$(mktemp -d)
 trap 'rm -rf "$TD"' EXIT
 
@@ -831,6 +833,55 @@ if [[ -f "$FIXTURE_DMP" ]]; then
     if [[ -n "$GOLDENS" && -f "$GOLDENS/sim-damper.trace.json" ]]; then
         [[ "$(cat "$d1")" == "$(cat "$GOLDENS/sim-damper.trace.json")" ]] && echo "ok:   sim damper trace matches golden" || { echo "FAIL: damper golden drift"; diff "$d1" "$GOLDENS/sim-damper.trace.json" | head -20; failures=$(( failures + 1 )); }
     fi
+fi
+
+# ════════════════════════════════════════════════════════════════════════════
+# Gallery/smoke scene profile gate: `x3d validate` must exit 0 on every
+# first-party showcase/smoke scene committed under examples/cpu_raster/assets/
+# (the cpu_raster "gallery" hero scenes, the lion_head demo model + its studio
+# wrappers, and the flagship raster_smoke.x3d + its sibling smoke scenes).
+# These ship as documentation/demo material (README "try it" pointers,
+# docs/images/gallery/*.png) — a declared profile narrower than the content
+# (e.g. "Interchange" with a PhysicalMaterial or NURBS node) makes `x3d
+# validate` fail with "component ... exceeds declared profile" (exit 3).
+# Regression test for that class of bug (task: fix declared X3D profiles on
+# first-party showcase/gallery scenes).
+# ════════════════════════════════════════════════════════════════════════════
+
+if [[ -n "$REPO_ROOT" ]]; then
+    GALLERY_SCENES=(
+        "$REPO_ROOT/examples/cpu_raster/assets/raster_smoke.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/text_smoke.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/textured_scene.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/skybox_smoke.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/gallery/hero_lights.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/gallery/hero_pbr_grid.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/gallery/hero_primitives.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/gallery/hero_skybox_pbr.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/gallery/hero_teapot_nurbs.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/models/lion_head/lion_head.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/models/lion_head/lion_head_lit.x3d"
+        "$REPO_ROOT/examples/cpu_raster/assets/models/lion_head/lion_head_garden.x3d"
+    )
+    for scene in "${GALLERY_SCENES[@]}"; do
+        if [[ ! -f "$scene" ]]; then
+            echo "FAIL: gallery/smoke scene profile gate — missing scene: $scene"
+            failures=$(( failures + 1 ))
+            continue
+        fi
+        rel="${scene#"$REPO_ROOT/"}"
+        out=$("$CLI" validate "$scene" 2>&1)
+        ec=$?
+        if [[ "$ec" == "0" ]]; then
+            echo "ok:   validate $rel exits 0"
+        else
+            echo "FAIL: validate $rel exited $ec (expected 0)"
+            echo "$out" | sed 's/^/      /'
+            failures=$(( failures + 1 ))
+        fi
+    done
+else
+    echo "SKIP: gallery/smoke scene profile gate (no repo root arg provided)"
 fi
 
 # ── summary ───────────────────────────────────────────────────────────────────
