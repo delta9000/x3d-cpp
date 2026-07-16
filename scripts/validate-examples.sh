@@ -8,9 +8,12 @@
 # silently breaks them and nothing notices until someone runs an example by hand.
 #
 # This gate builds BOTH, runs their --headless probes, and exercises the real GL
-# pipeline headlessly under Xvfb + mesa software GL (llvmpipe) — mirroring the
-# sibling ../x3d-render validation path (GLFW offscreen + glReadPixels). It is the
-# single source of truth shared by `mise run validate-examples` and CI.
+# pipeline headlessly under Xvfb — requesting mesa software GL (llvmpipe) so the
+# run is reproducible on a GPU-less box — mirroring the sibling ../x3d-render
+# validation path (GLFW offscreen + glReadPixels). It captures and checks the
+# renderer's own GL_VERSION/GL_RENDERER banner rather than assuming the software
+# request was honored, since it is known to be ignored on some GLX driver paths.
+# It is the single source of truth shared by `mise run validate-examples` and CI.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -34,17 +37,42 @@ echo "== poc --headless (no GL) =="
 "$POC" --headless "$SCENE"
 
 echo "== poc --screenshot under Xvfb + mesa software GL (the real GL pipeline) =="
-# Force mesa/llvmpipe so this is reproducible on a GPU-less box: NVIDIA's GLX
-# ignores LIBGL_ALWAYS_SOFTWARE, so we also steer GLVND to the mesa vendor.
+# We ask for mesa/llvmpipe so this is reproducible on a GPU-less box: NVIDIA's
+# GLX is known to ignore LIBGL_ALWAYS_SOFTWARE on some setups, so we also steer
+# GLVND to the mesa vendor. That is a request, not a guarantee -- so rather than
+# asserting "software Mesa" happened, capture the renderer's own GL_VERSION/
+# GL_RENDERER stderr banner (main.cpp logs it right after context creation) and
+# check what actually rendered.
+GL_LOG="$(mktemp -d)/poc_gl.log"
+# Pipe through tee rather than a plain `2>file` redirect: xvfb-run backgrounds Xvfb
+# and execs the wrapped command through an extra process layer (env), and on at
+# least one real CI runner that chain did not reliably propagate a bare stderr
+# redirect all the way through to the file even though the same command's output
+# still reached the terminal -- a pipe is the standard, well-tested mechanism and
+# also gives us the pipefail exit code from $POC itself, not from tee.
 xvfb-run -a env \
   LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIBRARY_NAME=mesa \
-  "$POC" --screenshot "$SHOT" "$SCENE"
+  "$POC" --screenshot "$SHOT" "$SCENE" 2>&1 | tee "$GL_LOG" >&2
 
 if [ ! -s "$SHOT" ]; then
   echo "FAIL: GL screenshot missing or empty: $SHOT" >&2
   exit 1
 fi
-echo "OK: GL pipeline produced a $(stat -c%s "$SHOT")-byte frame ($SHOT)"
+
+GL_RENDERER_LINE="$(grep -m1 '^\[poc\] GL_RENDERER' "$GL_LOG" || true)"
+GL_VERSION_LINE="$(grep -m1 '^\[poc\] GL_VERSION' "$GL_LOG" || true)"
+if [ -z "$GL_RENDERER_LINE" ]; then
+  echo "FAIL: poc did not log a [poc] GL_RENDERER line to stderr ($GL_LOG) -- cannot verify what actually rendered" >&2
+  exit 1
+fi
+
+if echo "$GL_RENDERER_LINE" | grep -qiE 'llvmpipe|softpipe|swrast|software rasterizer'; then
+  echo "OK: GL pipeline produced a $(stat -c%s "$SHOT")-byte frame on software Mesa (confirmed -- $GL_RENDERER_LINE)"
+else
+  echo "NOTE: GL pipeline produced a $(stat -c%s "$SHOT")-byte frame, but it did NOT render on software Mesa/llvmpipe -- LIBGL_ALWAYS_SOFTWARE/GLVND overrides were evidently not honored on this box's GLX path."
+  echo "NOTE: actual renderer -- $GL_VERSION_LINE / $GL_RENDERER_LINE"
+  echo "NOTE: the real GL pipeline was still exercised end-to-end on real hardware; what is NOT proven here is the GPU-less/software-Mesa reproducibility this gate also aims for."
+fi
 
 echo "== build asset_import (cgltf default, no assimp) =="
 cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
