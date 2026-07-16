@@ -2,7 +2,7 @@
 title: Script / SAI Runtime
 summary: Script node runtime — ScriptEngine seam, SAI execution context, ECMAScript (Duktape) backend, and dynamic field marshalling.
 tags: [subsystem, script, sai, ecmascript, duktape, quickjs, dynamic-fields]
-updated: 2026-06-23
+updated: 2026-07-16
 related:
   - ../architecture.md
   - ../subsystems/routes.md
@@ -17,6 +17,15 @@ related:
 ## Purpose
 
 The Script / SAI Runtime makes `Script` nodes execute. It owns the full ISO/IEC 19775-1 §29.2 lifecycle (load → initialize → prepareEvents → invoke → eventsProcessed → shutdown), enforces the `directOutput` and `mustEvaluate` field gates, and exposes the in-process Scene Access Interface (SAI) as the only sanctioned channel from script code back into the running scene. The subsystem is language-agnostic: the `ScriptEngine` abstract seam carries no scripting-language types, so a Lua, Python, or alternative ECMAScript backend could be substituted without touching the runtime.
+
+The primary Duktape `EcmaScriptBackend` (`x3d_ecmascript_backend`, vendored, MIT) builds under
+its own `X3D_CPP_BUILD_SCRIPT` option (**ON by default**), independent of
+`X3D_CPP_BUILD_TESTS` — it previously only existed inside the test build, so a
+`-DX3D_CPP_BUILD_TESTS=OFF` "production" configuration (the README's own primary build
+recipe) linked an `x3d` CLI that could never run `Script` nodes. `tools/x3d_cli.cpp`'s `sim`
+command reports which case it is in (`X3D_SIM_HAVE_SCRIPT`, driven off the actual link state,
+not the tests flag): "enrolled N Script node(s)" when linked, or the inert-script note when
+`X3D_CPP_BUILD_SCRIPT=OFF`.
 
 !!! note "Seam proven generic — second backend (QuickJS)"
     A **second, independent `ScriptEngine` backend now exists**: `QuickJsBackend`

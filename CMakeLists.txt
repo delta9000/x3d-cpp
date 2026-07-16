@@ -1036,6 +1036,55 @@ endif()
 # ---------------------------------------------------------------------------
 option(X3D_CPP_BUILD_EXAMPLES "Build + run the x3d::sdk façade examples" ${PROJECT_IS_TOP_LEVEL})
 
+# ---------------------------------------------------------------------------
+# ECMAScript/Duktape ScriptEngine backend (runtime/script/EcmaScriptBackend.*
+# + vendored runtime/script/vendor/duktape/). The PRIMARY, production-facing
+# backend for the language-agnostic ScriptEngine seam (runtime/script/
+# ScriptEngine.hpp is CORE, header-only, JS-free, always present) — this is
+# what makes Script nodes actually run, as opposed to being reported inert.
+#
+# Historically this only existed inside X3D_CPP_BUILD_TESTS, so the README's
+# own primary build recipe (-DX3D_CPP_BUILD_TESTS=OFF) produced an `x3d`
+# binary that could never execute Script nodes. Decoupled into its own option,
+# mirroring the x3d_physics_jolt / x3d_quickjs isolation rule (option() -> an
+# isolated static lib), except there is no FetchContent step: Duktape 2.7.0 is
+# vendored in-repo (MIT license), so there is no network fetch and no extra
+# dependency to acquire. ON by default — like X3D_CPP_BUILD_CGLTF — so the
+# documented build recipe keeps working without a README change; turn it OFF
+# only if you deliberately want a Script-free build.
+# ---------------------------------------------------------------------------
+option(X3D_CPP_BUILD_SCRIPT "Build the ECMAScript/Duktape ScriptEngine backend (vendored, MIT; ON default)" ON)
+
+if(X3D_CPP_BUILD_SCRIPT)
+    # Duktape 2.7.0 is vendored at runtime/script/vendor/duktape/ (MIT license).
+    # It is a plain C source file; compile it as C (not C++) so it picks up its
+    # own duk_config.h without any C++ name-mangling. Isolated into a static lib
+    # (x3d_duktape) so the rest of the build is completely unaffected — nothing
+    # except the ECMAScript backend target links it.
+    add_library(x3d_duktape STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape/duktape.c")
+    # Compile as C (it must not be parsed as C++).
+    set_source_files_properties(
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape/duktape.c"
+        PROPERTIES LANGUAGE C)
+    target_include_directories(x3d_duktape PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape")
+    # Keep Duktape warnings from polluting the main build.
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(x3d_duktape PRIVATE -w)
+    endif()
+
+    # EcmaScriptBackend: the Duktape-backed ScriptEngine implementation.
+    add_library(x3d_ecmascript_backend STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/EcmaScriptBackend.cpp")
+    target_link_libraries(x3d_ecmascript_backend PUBLIC
+        x3d_cpp::x3d_cpp
+        x3d_duktape)
+    target_include_directories(x3d_ecmascript_backend PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape")
+endif()
+
 if(X3D_CPP_BUILD_TESTS)
     enable_testing()
 
@@ -1588,83 +1637,62 @@ if(X3D_CPP_BUILD_TESTS)
     add_test(NAME x3d_script_system COMMAND x3d_script_system)
 
     # ---------------------------------------------------------------------------
-    # M4 Track-B: Duktape ECMAScript backend (U3 skeleton).
-    #
-    # Duktape 2.7.0 is vendored at runtime/script/vendor/duktape/ (MIT license).
-    # It is a plain C source file; compile it as C (not C++) so it picks up its
-    # own duk_config.h without any C++ name-mangling. Isolated into a static lib
-    # (x3d_duktape) so the rest of the build is completely unaffected — nothing
-    # except the ECMAScript backend target links it.
+    # M4 Track-B: Duktape ECMAScript backend tests. The backend itself
+    # (x3d_duktape / x3d_ecmascript_backend) is defined above, independent of
+    # X3D_CPP_BUILD_TESTS, behind X3D_CPP_BUILD_SCRIPT (ON by default) — see
+    # that option's block. These test executables still need the test build
+    # AND the backend target to exist, hence the nested TARGET guard: a
+    # -DX3D_CPP_BUILD_SCRIPT=OFF -DX3D_CPP_BUILD_TESTS=ON configuration builds
+    # everything else but skips these.
     # ---------------------------------------------------------------------------
-    add_library(x3d_duktape STATIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape/duktape.c")
-    # Compile as C (it must not be parsed as C++).
-    set_source_files_properties(
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape/duktape.c"
-        PROPERTIES LANGUAGE C)
-    target_include_directories(x3d_duktape PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape")
-    # Keep Duktape warnings from polluting the main build.
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(x3d_duktape PRIVATE -w)
+    if(TARGET x3d_ecmascript_backend)
+        #     - ecmascript_backend_test: M4 Track-B unit. Proves the full backend:
+        #       field marshalling std::any<->JS (all core SF/MF types), the Browser
+        #       global object (getName/getVersion/currentTime/addRoute/print backed
+        #       by SaiContext), handler dispatch with (value, timestamp), an
+        #       end-to-end ROUTE wired by the script via Browser.addRoute, and the
+        #       directOutput gate throwing into JS.
+        add_executable(x3d_ecmascript_backend_test
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/ecmascript_backend_test.cpp")
+        target_link_libraries(x3d_ecmascript_backend_test PRIVATE
+            x3d_ecmascript_backend)
+        add_test(NAME x3d_ecmascript_backend COMMAND x3d_ecmascript_backend_test)
+
+        #     - ecmascript_corpus_smoke_test: M4 Track-B corpus smoke. Drives
+        #       parse -> expand -> attach ScriptSystem(EcmaScriptBackend) -> tick on
+        #       an authored known scene (deterministic Browser.print) and a few real
+        #       Script-bearing .x3d from testdata (no-crash robustness).
+        add_executable(x3d_ecmascript_corpus_smoke_test
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/ecmascript_corpus_smoke_test.cpp")
+        target_link_libraries(x3d_ecmascript_corpus_smoke_test PRIVATE
+            x3d_ecmascript_backend)
+        add_test(NAME x3d_ecmascript_corpus_smoke
+            COMMAND x3d_ecmascript_corpus_smoke_test)
+
+        #   D. Runtime wiring (Phase-1 placeholder pre-registered in Phase 0).
+        #      Source-from-sourceCode, author-event dispatch, author-field
+        #      marshalling + an end-to-end "author field drives a ROUTE" test. Links
+        #      the real EcmaScript backend (defined above) so the Phase-1 agent
+        #      that fills this file needs no CMake edit. Currently a trivial main.
+        add_executable(x3d_script_author_runtime
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_author_runtime_test.cpp")
+        target_link_libraries(x3d_script_author_runtime PRIVATE
+            x3d_ecmascript_backend)
+        add_test(NAME x3d_script_author_runtime COMMAND x3d_script_author_runtime)
+
+        #   Phase-2 CORPUS END-TO-END proof: a FILE-AUTHORED Script that v1 shipped
+        #   INERT now actually executes through the real reader -> expand -> attach ->
+        #   tick path (XML: the Savage CanopyExample.x3d; ClassicVRML: an authored
+        #   .x3dv fixture). Closes SCR-SAI-DYN (S1) behaviorally. The data dir arg
+        #   locates the .x3dv fixture; the .x3d is the absolute corpus path.
+        add_executable(x3d_script_corpus_e2e
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_corpus_e2e_test.cpp")
+        target_link_libraries(x3d_script_corpus_e2e PRIVATE
+            x3d_ecmascript_backend)
+        add_test(NAME x3d_script_corpus_e2e
+            COMMAND x3d_script_corpus_e2e
+                    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data")
     endif()
-
-    # EcmaScriptBackend: the Duktape-backed ScriptEngine implementation.
-    add_library(x3d_ecmascript_backend STATIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/EcmaScriptBackend.cpp")
-    target_link_libraries(x3d_ecmascript_backend PUBLIC
-        x3d_cpp::x3d_cpp
-        x3d_duktape)
-    target_include_directories(x3d_ecmascript_backend PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape")
-
-    #     - ecmascript_backend_test: M4 Track-B unit. Proves the full backend:
-    #       field marshalling std::any<->JS (all core SF/MF types), the Browser
-    #       global object (getName/getVersion/currentTime/addRoute/print backed
-    #       by SaiContext), handler dispatch with (value, timestamp), an
-    #       end-to-end ROUTE wired by the script via Browser.addRoute, and the
-    #       directOutput gate throwing into JS.
-    add_executable(x3d_ecmascript_backend_test
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/ecmascript_backend_test.cpp")
-    target_link_libraries(x3d_ecmascript_backend_test PRIVATE
-        x3d_ecmascript_backend)
-    add_test(NAME x3d_ecmascript_backend COMMAND x3d_ecmascript_backend_test)
-
-    #     - ecmascript_corpus_smoke_test: M4 Track-B corpus smoke. Drives
-    #       parse -> expand -> attach ScriptSystem(EcmaScriptBackend) -> tick on
-    #       an authored known scene (deterministic Browser.print) and a few real
-    #       Script-bearing .x3d from testdata (no-crash robustness).
-    add_executable(x3d_ecmascript_corpus_smoke_test
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/ecmascript_corpus_smoke_test.cpp")
-    target_link_libraries(x3d_ecmascript_corpus_smoke_test PRIVATE
-        x3d_ecmascript_backend)
-    add_test(NAME x3d_ecmascript_corpus_smoke
-        COMMAND x3d_ecmascript_corpus_smoke_test)
-
-    #   D. Runtime wiring (Phase-1 placeholder pre-registered in Phase 0).
-    #      Source-from-sourceCode, author-event dispatch, author-field
-    #      marshalling + an end-to-end "author field drives a ROUTE" test. Links
-    #      the real EcmaScript backend (defined just above) so the Phase-1 agent
-    #      that fills this file needs no CMake edit. Currently a trivial main.
-    add_executable(x3d_script_author_runtime
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_author_runtime_test.cpp")
-    target_link_libraries(x3d_script_author_runtime PRIVATE
-        x3d_ecmascript_backend)
-    add_test(NAME x3d_script_author_runtime COMMAND x3d_script_author_runtime)
-
-    #   Phase-2 CORPUS END-TO-END proof: a FILE-AUTHORED Script that v1 shipped
-    #   INERT now actually executes through the real reader -> expand -> attach ->
-    #   tick path (XML: the Savage CanopyExample.x3d; ClassicVRML: an authored
-    #   .x3dv fixture). Closes SCR-SAI-DYN (S1) behaviorally. The data dir arg
-    #   locates the .x3dv fixture; the .x3d is the absolute corpus path.
-    add_executable(x3d_script_corpus_e2e
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_corpus_e2e_test.cpp")
-    target_link_libraries(x3d_script_corpus_e2e PRIVATE
-        x3d_ecmascript_backend)
-    add_test(NAME x3d_script_corpus_e2e
-        COMMAND x3d_script_corpus_e2e
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data")
 
     # (4) Parse front-end integration test (WS-A), built and RUN (not just
     #     compiled): encoding sniffing (extension + content + override + gzip),
@@ -1998,9 +2026,10 @@ target_include_directories(x3d_cli PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
 target_link_libraries(x3d_cli PRIVATE x3d_cpp::sdk)
 # `x3d sim` drives the behavior runtime; link the ECMAScript backend so Script
-# nodes actually run when it is available (it lives behind X3D_CPP_BUILD_TESTS).
-# When absent (tests OFF), sim degrades cleanly: scripts are inert (reported,
-# not a failure). The compile define gates the optional ScriptSystem include.
+# nodes actually run when it is available (it lives behind X3D_CPP_BUILD_SCRIPT,
+# ON by default, independent of X3D_CPP_BUILD_TESTS). When absent (explicitly
+# turned OFF), sim degrades cleanly: scripts are inert (reported, not a
+# failure). The compile define gates the optional ScriptSystem include.
 if(TARGET x3d_ecmascript_backend)
     target_link_libraries(x3d_cli PRIVATE x3d_ecmascript_backend)
     target_compile_definitions(x3d_cli PRIVATE X3D_SIM_HAVE_SCRIPT=1)
@@ -2032,19 +2061,22 @@ add_test(NAME x3d_cli_test
 # sim behavioral self-oracle (C++): the runtime actually interpolating
 # (translation.x ~= 5 at t~=0.5) + ProximitySensor enter/exit on a viewer path +
 # determinism (two runs byte-identical). Links the full SDK; the fixtures dir is
-# passed as argv[1].
-add_executable(x3d_sim_behavior_test
-    "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/sim_behavior_test.cpp")
-target_include_directories(x3d_sim_behavior_test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
-target_link_libraries(x3d_sim_behavior_test PRIVATE x3d_cpp::sdk)
-if(TARGET x3d_ecmascript_backend)
-    target_link_libraries(x3d_sim_behavior_test PRIVATE x3d_ecmascript_backend)
-    target_compile_definitions(x3d_sim_behavior_test PRIVATE X3D_SIM_HAVE_SCRIPT=1)
+# passed as argv[1]. Gated by X3D_CPP_BUILD_TESTS like the rest of the test
+# suite, so a tests-off "production" build does not compile this test binary.
+if(X3D_CPP_BUILD_TESTS)
+    add_executable(x3d_sim_behavior_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/sim_behavior_test.cpp")
+    target_include_directories(x3d_sim_behavior_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
+    target_link_libraries(x3d_sim_behavior_test PRIVATE x3d_cpp::sdk)
+    if(TARGET x3d_ecmascript_backend)
+        target_link_libraries(x3d_sim_behavior_test PRIVATE x3d_ecmascript_backend)
+        target_compile_definitions(x3d_sim_behavior_test PRIVATE X3D_SIM_HAVE_SCRIPT=1)
+    endif()
+    add_test(NAME x3d_sim_behavior_test
+        COMMAND x3d_sim_behavior_test
+                "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/fixtures")
 endif()
-add_test(NAME x3d_sim_behavior_test
-    COMMAND x3d_sim_behavior_test
-            "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/fixtures")
 
 # ---------------------------------------------------------------------------
 # U3 ScriptEngine GENERICITY PROOF — the backend swap-test (x3d_quickjs_swap).
@@ -2069,7 +2101,8 @@ endif()
 
 # ---------------------------------------------------------------------------
 # x3d-cli differential gate:
-#   x3d_scene_equiv_test  — unit tests for sceneEquivalent() (always built)
+#   x3d_scene_equiv_test  — unit tests for sceneEquivalent() (built under
+#                           X3D_CPP_BUILD_TESTS, like the rest of the suite)
 #   x3d_cli_gate          — Java-free differential gate (validate-diff +
 #                           convert-roundtrip vs X3DJSAIL golden verdicts)
 #
@@ -2079,24 +2112,27 @@ endif()
 # gates exist as explicit targets, but are excluded from `all` and from CTest;
 # their mise tasks build them before use.
 # ---------------------------------------------------------------------------
-add_executable(x3d_scene_equiv_test
-    "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/scene_equiv_test.cpp")
-target_include_directories(x3d_scene_equiv_test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
-target_link_libraries(x3d_scene_equiv_test PRIVATE x3d_cpp::sdk)
-add_test(NAME x3d_scene_equiv_test COMMAND x3d_scene_equiv_test)
+if(X3D_CPP_BUILD_TESTS)
+    add_executable(x3d_scene_equiv_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/scene_equiv_test.cpp")
+    target_include_directories(x3d_scene_equiv_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
+    target_link_libraries(x3d_scene_equiv_test PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_scene_equiv_test COMMAND x3d_scene_equiv_test)
 
-# Regression for the gate's Inline/EXTERNPROTO baseUrl asymmetry (BUG-1): the
-# reparse must use the same baseUrl as the source parse so relative externals
-# expand symmetrically. Self-contained (writes its own temp fixtures), so it is
-# a real ctest (unlike x3d_cli_gate which needs the external corpus).
-add_executable(x3d_gate_baseurl_roundtrip_test
-    "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/gate_baseurl_roundtrip_test.cpp")
-target_include_directories(x3d_gate_baseurl_roundtrip_test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
-target_link_libraries(x3d_gate_baseurl_roundtrip_test PRIVATE x3d_cpp::sdk)
-add_test(NAME x3d_gate_baseurl_roundtrip_test
-         COMMAND x3d_gate_baseurl_roundtrip_test)
+    # Regression for the gate's Inline/EXTERNPROTO baseUrl asymmetry (BUG-1):
+    # the reparse must use the same baseUrl as the source parse so relative
+    # externals expand symmetrically. Self-contained (writes its own temp
+    # fixtures), so it is a real ctest (unlike x3d_cli_gate which needs the
+    # external corpus).
+    add_executable(x3d_gate_baseurl_roundtrip_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/gate_baseurl_roundtrip_test.cpp")
+    target_include_directories(x3d_gate_baseurl_roundtrip_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
+    target_link_libraries(x3d_gate_baseurl_roundtrip_test PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_gate_baseurl_roundtrip_test
+             COMMAND x3d_gate_baseurl_roundtrip_test)
+endif()
 
 add_executable(x3d_cli_gate EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/cli_gate.cpp")
@@ -2108,17 +2144,20 @@ target_link_libraries(x3d_cli_gate PRIVATE x3d_cpp::sdk)
 
 # ---------------------------------------------------------------------------
 # x3d canonicalize — X3DC14N canonical form gate:
-#   x3d_canonicalize_unit_test  — unit tests for CanonicalXmlWriter (ctest)
+#   x3d_canonicalize_unit_test  — unit tests for CanonicalXmlWriter (ctest,
+#                                 built under X3D_CPP_BUILD_TESTS)
 #   x3d_canon_gate              — tiered differential gate vs X3DJSAIL golden
 #                                 fixtures; NOT a ctest (needs external corpus).
 #                                 Run via: mise run canon-gate
 # ---------------------------------------------------------------------------
-add_executable(x3d_canonicalize_unit_test
-    "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/canonicalize_unit_test.cpp")
-target_include_directories(x3d_canonicalize_unit_test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs")
-target_link_libraries(x3d_canonicalize_unit_test PRIVATE x3d_cpp::sdk)
-add_test(NAME x3d_canonicalize_unit_test COMMAND x3d_canonicalize_unit_test)
+if(X3D_CPP_BUILD_TESTS)
+    add_executable(x3d_canonicalize_unit_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/canonicalize_unit_test.cpp")
+    target_include_directories(x3d_canonicalize_unit_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs")
+    target_link_libraries(x3d_canonicalize_unit_test PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_canonicalize_unit_test COMMAND x3d_canonicalize_unit_test)
+endif()
 
 add_executable(x3d_canon_gate EXCLUDE_FROM_ALL
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/canon_gate.cpp")
