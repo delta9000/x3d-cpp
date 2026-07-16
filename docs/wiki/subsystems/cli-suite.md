@@ -2,7 +2,7 @@
 title: CLI Suite
 summary: The x3d CLI — convert, validate, extract, canonicalize, and sim commands; the first SDK consumer.
 tags: [subsystem, cli, convert, validate, extract, canonicalize, sim]
-updated: 2026-06-20
+updated: 2026-07-16
 related:
   - ../architecture.md
   - ../guides/gate-system.md
@@ -98,8 +98,11 @@ parseFile → X3DExecutionContext::buildSceneGraph + buildFrom
 ```
 
 `SceneExtractor` is used exactly as a renderer would — the dogfooding payoff.
-Geometry types `MeshBuilder` does not support (NURBS, 2D primitives) are counted
-and reported to stderr, never fatal. A zero-geometry scene writes a valid empty
+`MeshBuilder` supports `NurbsCurve` and `NurbsPatchSurface` (see
+[ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md)); geometry types
+it does not support (2D primitives such as `Rectangle2D`/`Circle2D`/`Disk2D`,
+and the deferred trimmed/swept/swung NURBS surfaces — NRB-3) are counted and
+reported to stderr, never fatal. A zero-geometry scene writes a valid empty
 STL (0 triangles) with a stderr note.
 
 **STL writer placement:** `tools/x3d-cli/stl_write.hpp` (`x3d::cli::writeStlBinary`) is core,
