@@ -28,6 +28,16 @@
 //   author-shader: ComposedShader dispatch via ShaderBindingPlan vocabulary.
 //   Gamma/sRGB: LINEARtoSRGB at fragment output; sRGB texture internal format.
 //
+// #39 (Background gradient): the M0 flat clear above only ever painted the
+// bound Background's first skyColor. bg.vert/bg.frag now paint the FULL
+// sky/ground gradient (skyColor/skyAngle/groundColor/groundAngle) as a
+// depth-test-disabled fullscreen dome drawn before scene geometry, ported
+// independently from examples/cpu_raster's skyGroundColor()/colorRamp() (same
+// §Background semantics: groundColor never extends past its last groundAngle,
+// so a last angle < pi/2 leaves that band showing sky through it — pinned by
+// the NIST verify_lastground.x3d conformance case). The flat clear remains
+// the fast path for a single-skyColor Background (or none bound).
+//
 // The M0 GATE is configure+build+LINK. The interactive GUI is run by the user on
 // a real Wayland session, but CI's `examples-gate` (and `mise run validate-examples`)
 // now also exercise the GL pipeline headlessly: the --screenshot path runs under
@@ -324,6 +334,12 @@ struct EyeLight {
 };
 
 inline constexpr int kMaxLights = 8;
+
+// #39: max sky/ground color bands the background gradient shader (bg.frag)
+// accepts, mirrored there as `kMaxBands`. NIST conformance content never
+// comes close; extra bands beyond this are silently dropped (matches the
+// existing kMaxLights convention above).
+inline constexpr int kMaxBgBands = 8;
 
 // Build the active eye-space directional-light set for this frame from the
 // extractor's world-resolved LightDesc list and the bound NavigationInfo
@@ -1181,6 +1197,34 @@ int main(int argc, char **argv) {
   const GLint uUsdOpacityMode         = pbrProg ? glGetUniformLocation(pbrProg, "uOpacityMode") : -1;
   const GLint uUsdOpacityThreshold    = pbrProg ? glGetUniformLocation(pbrProg, "uOpacityThreshold") : -1;
 
+  // ---- #39 Background gradient program (bg.vert/bg.frag) --------------------
+  // Paints the bound Background's full sky/ground gradient as a fullscreen
+  // dome BEFORE scene geometry (see the render loop below). No VBO — the
+  // vertex shader synthesizes a covering triangle from gl_VertexID, so a bare
+  // VAO is enough to issue the draw call.
+  GLuint bvs = compileShader(GL_VERTEX_SHADER, readTextFile(shaderDir + "/bg.vert"), "bg.vert");
+  GLuint bfs = compileShader(GL_FRAGMENT_SHADER, readTextFile(shaderDir + "/bg.frag"), "bg.frag");
+  GLuint bgProg = (bvs && bfs) ? linkProgram(bvs, bfs) : 0;
+  if (bvs) glDeleteShader(bvs);
+  if (bfs) glDeleteShader(bfs);
+  if (!bgProg) {
+    std::fprintf(stderr, "[poc] Background gradient shader unavailable; "
+                         "flat first-skyColor clear only\n");
+  }
+  const GLint uBgInvView         = bgProg ? glGetUniformLocation(bgProg, "uInvView") : -1;
+  const GLint uBgInvP0           = bgProg ? glGetUniformLocation(bgProg, "uInvP0") : -1;
+  const GLint uBgInvP5           = bgProg ? glGetUniformLocation(bgProg, "uInvP5") : -1;
+  const GLint uBgSkyColor        = bgProg ? glGetUniformLocation(bgProg, "uSkyColor") : -1;
+  const GLint uBgSkyAngle        = bgProg ? glGetUniformLocation(bgProg, "uSkyAngle") : -1;
+  const GLint uBgSkyColorCount   = bgProg ? glGetUniformLocation(bgProg, "uSkyColorCount") : -1;
+  const GLint uBgSkyAngleCount   = bgProg ? glGetUniformLocation(bgProg, "uSkyAngleCount") : -1;
+  const GLint uBgGroundColor      = bgProg ? glGetUniformLocation(bgProg, "uGroundColor") : -1;
+  const GLint uBgGroundAngle      = bgProg ? glGetUniformLocation(bgProg, "uGroundAngle") : -1;
+  const GLint uBgGroundColorCount = bgProg ? glGetUniformLocation(bgProg, "uGroundColorCount") : -1;
+  const GLint uBgGroundAngleCount = bgProg ? glGetUniformLocation(bgProg, "uGroundAngleCount") : -1;
+  GLuint bgVao = 0;
+  glGenVertexArrays(1, &bgVao);
+
   // ---- Phase 5.4 author-shader cache (ComposedShader, compiled on demand) ---
   // Key: combined VS+FS source string. Value: linked GL program (or 0 = failed).
   std::unordered_map<std::string, GLuint> authorProgCache;
@@ -1401,34 +1445,91 @@ int main(int argc, char **argv) {
     if (h == 0) h = 1;
     glViewport(0, 0, w, h);
 
+    // Camera: the bound Viewpoint's view matrix, else the view-all fit framed
+    // once above. Computed every frame regardless of gpuMeshes — #39: a
+    // geometry-less scene (e.g. a bare Background, as in the NIST
+    // verify_lastground.x3d conformance case) still needs a real camera for
+    // the background gradient pass below, which used to be skipped entirely
+    // because it lived inside the "has meshes" gate.
+    ex::CameraDesc cam = extractor.camera();
+    const Mat4 view = (useFitCamera && !sceneBounds.empty)
+                          ? fitView : cam.viewMatrix;
+    const float aspect = static_cast<float>(w) / static_cast<float>(h);
+
+    // near/far from scene bounds; sane defaults when empty.
+    float zNear = 0.1f, zFar = 10000.0f;
+    if (!sceneBounds.empty) {
+      SFVec3f sz = sceneBounds.size();
+      float diag = std::sqrt(sz.x * sz.x + sz.y * sz.y + sz.z * sz.z);
+      if (diag > 0.0f) {
+        zFar = diag * 100.0f;
+        zNear = (std::max)(0.001f, diag * 0.001f);
+      }
+    }
+    const Mat4 proj = perspective(cam.fieldOfView, aspect, zNear, zFar);
+    // Stash for next frame's cursor-ray unprojection (feedPointerRay above).
+    lastView = view;
+    lastProj = proj;
+
     // Forced full-screen clear sanity step: if NOTHING else draws, the window
     // is still the Background color, proving context + swap work (M0 gate).
     glClearColor(clearR, clearG, clearB, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    if ((phongProg || unlitProg || pbrProg) && !gpuMeshes.empty()) {
-      ex::CameraDesc cam = extractor.camera();
-      // Use the view-all framing when the scene authored no Viewpoint, else the
-      // bound Viewpoint's view matrix from the SDK.
-      const Mat4 view = (useFitCamera && !sceneBounds.empty)
-                            ? fitView : cam.viewMatrix;
-      const float aspect = static_cast<float>(w) / static_cast<float>(h);
-
-      // near/far from scene bounds; sane defaults when empty.
-      float zNear = 0.1f, zFar = 10000.0f;
-      if (!sceneBounds.empty) {
-        SFVec3f sz = sceneBounds.size();
-        float diag = std::sqrt(sz.x * sz.x + sz.y * sz.y + sz.z * sz.z);
-        if (diag > 0.0f) {
-          zFar = diag * 100.0f;
-          zNear = (std::max)(0.001f, diag * 0.001f);
+    // #39: paint the bound Background's full sky/ground gradient as a
+    // depth-test-disabled fullscreen dome, BEFORE scene geometry. A single
+    // skyColor (or no Background at all) is already exactly the flat clear
+    // above, so the shader pass only runs when there's a real ramp to paint
+    // (matches examples/cpu_raster's same "stay flat" fast path).
+    if (bgProg) {
+      if (const X3DNode *bg = ctx.boundBackground()) {
+        auto skyC = x3d::runtime::geombounds::getField<std::vector<SFColor>>(
+            *bg, "skyColor", {});
+        auto skyA = x3d::runtime::geombounds::getField<std::vector<float>>(
+            *bg, "skyAngle", {});
+        auto grC = x3d::runtime::geombounds::getField<std::vector<SFColor>>(
+            *bg, "groundColor", {});
+        auto grA = x3d::runtime::geombounds::getField<std::vector<float>>(
+            *bg, "groundAngle", {});
+        if (skyC.size() > 1 || !grC.empty()) {
+          glDisable(GL_DEPTH_TEST);
+          glUseProgram(bgProg);
+          const Mat4 invView = view.inverse();
+          glUniformMatrix4fv(uBgInvView, 1, GL_FALSE, invView.m.data());
+          glUniform1f(uBgInvP0, 1.0f / proj.m[0]);
+          glUniform1f(uBgInvP5, 1.0f / proj.m[5]);
+          auto uploadBand = [&](GLint locColor, GLint locAngle,
+                                GLint locColorCount, GLint locAngleCount,
+                                const std::vector<SFColor> &cols,
+                                const std::vector<float> &angs) {
+            float colBuf[kMaxBgBands * 3] = {0};
+            float angBuf[kMaxBgBands - 1] = {0};
+            const int cn = (std::min)(static_cast<int>(cols.size()), kMaxBgBands);
+            const int an = (std::min)(static_cast<int>(angs.size()), kMaxBgBands - 1);
+            for (int i = 0; i < cn; ++i) {
+              colBuf[i * 3 + 0] = cols[i].r;
+              colBuf[i * 3 + 1] = cols[i].g;
+              colBuf[i * 3 + 2] = cols[i].b;
+            }
+            for (int i = 0; i < an; ++i) angBuf[i] = angs[i];
+            if (locColor >= 0) glUniform3fv(locColor, kMaxBgBands, colBuf);
+            if (locAngle >= 0) glUniform1fv(locAngle, kMaxBgBands - 1, angBuf);
+            if (locColorCount >= 0) glUniform1i(locColorCount, cn);
+            if (locAngleCount >= 0) glUniform1i(locAngleCount, an);
+          };
+          uploadBand(uBgSkyColor, uBgSkyAngle, uBgSkyColorCount,
+                     uBgSkyAngleCount, skyC, skyA);
+          uploadBand(uBgGroundColor, uBgGroundAngle, uBgGroundColorCount,
+                     uBgGroundAngleCount, grC, grA);
+          glBindVertexArray(bgVao);
+          glDrawArrays(GL_TRIANGLES, 0, 3);
+          glBindVertexArray(0);
+          glEnable(GL_DEPTH_TEST);
         }
       }
-      Mat4 proj = perspective(cam.fieldOfView, aspect, zNear, zFar);
-      // Stash for next frame's cursor-ray unprojection (feedPointerRay above).
-      lastView = view;
-      lastProj = proj;
+    }
 
+    if ((phongProg || unlitProg || pbrProg) && !gpuMeshes.empty()) {
       // Resolve the active lights to eye space (world-resolved LightDescs from
       // the extractor + the NavigationInfo headlight fallback when none apply).
       std::vector<ex::LightDesc> lights = extractor.lights();
