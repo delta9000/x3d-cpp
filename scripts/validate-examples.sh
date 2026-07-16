@@ -44,10 +44,15 @@ echo "== poc --screenshot under Xvfb + mesa software GL (the real GL pipeline) =
 # GL_RENDERER stderr banner (main.cpp logs it right after context creation) and
 # check what actually rendered.
 GL_LOG="$(mktemp -d)/poc_gl.log"
+# Pipe through tee rather than a plain `2>file` redirect: xvfb-run backgrounds Xvfb
+# and execs the wrapped command through an extra process layer (env), and on at
+# least one real CI runner that chain did not reliably propagate a bare stderr
+# redirect all the way through to the file even though the same command's output
+# still reached the terminal -- a pipe is the standard, well-tested mechanism and
+# also gives us the pipefail exit code from $POC itself, not from tee.
 xvfb-run -a env \
   LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIBRARY_NAME=mesa \
-  "$POC" --screenshot "$SHOT" "$SCENE" 2>"$GL_LOG"
-cat "$GL_LOG" >&2
+  "$POC" --screenshot "$SHOT" "$SCENE" 2>&1 | tee "$GL_LOG" >&2
 
 if [ ! -s "$SHOT" ]; then
   echo "FAIL: GL screenshot missing or empty: $SHOT" >&2
