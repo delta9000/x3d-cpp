@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
-<X3D profile="Interchange" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+<X3D profile="Immersive" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
   <head>
     <meta name="title" content="raster_smoke.x3d"/>
     <meta name="description" content="CPU rasterizer smoke scene exercising all three MaterialModels: a Phong (Material) box, a PhysicalMaterial (metallic-roughness) sphere, an UnlitMaterial cone, a per-vertex Color triangle (Color overrides diffuse), and a half-transparent Phong box (blend pass). One DirectionalLight so shading is deterministic."/>

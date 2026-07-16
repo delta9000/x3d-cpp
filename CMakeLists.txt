@@ -2013,10 +2013,13 @@ if(TARGET x3d_physics_jolt)
 endif()
 
 # CLI test: arg parsing, convert round-trips, help, error paths, + `sim`
-# (golden traces, --watch, --json, determinism, malformed-input robustness).
+# (golden traces, --watch, --json, determinism, malformed-input robustness),
+# plus a gallery/smoke scene profile gate (validate exits 0 on every
+# first-party showcase scene under examples/cpu_raster/assets/).
 # Passes the binary path, in-repo fixture dir, and the goldens dir to the harness.
 # The 4th arg signals whether x3d_cli was built with the Jolt physics backend so
-# the harness runs (or skips) its §37 sim-physics assertions accordingly.
+# the harness runs (or skips) its §37 sim-physics assertions accordingly. The
+# 5th arg is the repo root, so the harness can locate the gallery/smoke scenes.
 if(TARGET x3d_physics_jolt)
     set(_x3d_cli_physics 1)
 else()
@@ -2027,7 +2030,8 @@ add_test(NAME x3d_cli_test
             "$<TARGET_FILE:x3d_cli>"
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/fixtures"
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/goldens"
-            "${_x3d_cli_physics}")
+            "${_x3d_cli_physics}"
+            "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # sim behavioral self-oracle (C++): the runtime actually interpolating
 # (translation.x ~= 5 at t~=0.5) + ProximitySensor enter/exit on a viewer path +
