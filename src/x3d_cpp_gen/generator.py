@@ -96,76 +96,94 @@ def generate_special_structs() -> str:
         "SFVec2d": """
     struct SFVec2d {
         double x, y;
+        bool operator==(const SFVec2d&) const = default;
     };
 """,
         "SFVec2f": """
     struct SFVec2f {
         float x, y;
+        bool operator==(const SFVec2f&) const = default;
     };
 """,
         "SFVec3d": """
     struct SFVec3d {
         double x, y, z;
+        bool operator==(const SFVec3d&) const = default;
     };
 """,
         "SFVec3f": """
     struct SFVec3f {
         float x, y, z;
+        bool operator==(const SFVec3f&) const = default;
     };
 """,
         "SFVec4d": """
     struct SFVec4d {
         double x, y, z, w;
+        bool operator==(const SFVec4d&) const = default;
     };
 """,
         "SFVec4f": """
     struct SFVec4f {
         float x, y, z, w;
+        bool operator==(const SFVec4f&) const = default;
     };
 """,
         "SFColor": """
     struct SFColor {
         float r, g, b;
+        bool operator==(const SFColor&) const = default;
     };
 """,
         "SFColorRGBA": """
     struct SFColorRGBA {
         float r, g, b, a;
+        bool operator==(const SFColorRGBA&) const = default;
     };
 """,
         "SFRotation": """
     struct SFRotation {
         float x, y, z, angle;
+        bool operator==(const SFRotation&) const = default;
     };
 """,
         "SFMatrix3d": """
     struct SFMatrix3d {
         double matrix[3][3];
+        bool operator==(const SFMatrix3d&) const = default;
     };
 """,
         "SFMatrix3f": """
     struct SFMatrix3f {
         float matrix[3][3];
+        bool operator==(const SFMatrix3f&) const = default;
     };
 """,
         "SFMatrix4d": """
     struct SFMatrix4d {
         double matrix[4][4];
+        bool operator==(const SFMatrix4d&) const = default;
     };
 """,
         "SFMatrix4f": """
     struct SFMatrix4f {
         float matrix[4][4];
+        bool operator==(const SFMatrix4f&) const = default;
     };
 """,
         "SFImage": """
     struct SFImage {
         int width, height, numComponents;
         std::vector<unsigned char> data;
+        bool operator==(const SFImage&) const = default;
     };
 """
     }
-    structs_code = "// Special structs\n"
+    structs_code = (
+        "// Special structs. Equality is exact member-wise comparison (C++20\n"
+        "// defaulted operator==, which also synthesizes !=). Vocabulary, not\n"
+        "// math: no epsilon, no arithmetic (ADR-0012).\n"
+    )
     for struct in SPECIAL_STRUCTS:
         structs_code += structs.get(struct, f"// Struct for {struct} not defined.\n")
     structs_code += "\n"

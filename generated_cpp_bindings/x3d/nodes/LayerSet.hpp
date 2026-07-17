@@ -102,9 +102,9 @@ public:
    * @brief Gets the value of layers. AccessType: inputOutput
    * @details The layers list defines a list of Layer nodes that contain the
    * constituent parts of the scene.
-   * @return MFNode The current value of layers.
+   * @return const MFNode& The current value of layers.
    */
-  MFNode getLayers() const { return _layers; }
+  const MFNode &getLayers() const { return _layers; }
 
   /**
    * @brief Acceptable node types for the layers field.

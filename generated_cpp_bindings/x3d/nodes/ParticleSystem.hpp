@@ -416,9 +416,9 @@ public:
    * @brief Gets the value of physics. AccessType: initializeOnly
    * @details After being created, the individual particles are then manipulated
    * according to the physics model(s) specified in the physics field.
-   * @return MFNode The current value of physics.
+   * @return const MFNode& The current value of physics.
    */
-  MFNode getPhysics() const { return _physics; }
+  const MFNode &getPhysics() const { return _physics; }
 
   /**
    * @brief Acceptable node types for the physics field.

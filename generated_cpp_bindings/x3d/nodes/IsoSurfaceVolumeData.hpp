@@ -140,9 +140,9 @@ public:
    * @details Multiple contained X3DVolumeRenderStyleNode nodes corresponding to
    * each isosurface that define specific rendering technique for this
    * volumetric object.
-   * @return MFNode The current value of renderStyle.
+   * @return const MFNode& The current value of renderStyle.
    */
-  MFNode getRenderStyle() const { return _renderStyle; }
+  const MFNode &getRenderStyle() const { return _renderStyle; }
 
   /**
    * @brief Acceptable node types for the renderStyle field.

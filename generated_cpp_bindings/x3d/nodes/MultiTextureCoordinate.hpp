@@ -68,9 +68,9 @@ public:
    * TextureCoordinateGenerator nodes that specify texture coordinates for the
    * different texture channels, used for texture mapping onto corresponding
    * geometry.
-   * @return MFNode The current value of texCoord.
+   * @return const MFNode& The current value of texCoord.
    */
-  MFNode getTexCoord() const { return _texCoord; }
+  const MFNode &getTexCoord() const { return _texCoord; }
 
   /**
    * @brief Acceptable node types for the texCoord field.

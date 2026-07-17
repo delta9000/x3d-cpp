@@ -200,9 +200,9 @@ public:
    * @details Contained texture nodes (ImageTexture, MovieTexture, PixelTexture)
    * that map image(s) to surface geometry, defining each of the different
    * texture channels.
-   * @return MFNode The current value of texture.
+   * @return const MFNode& The current value of texture.
    */
-  MFNode getTexture() const { return _texture; }
+  const MFNode &getTexture() const { return _texture; }
 
   /**
    * @brief Acceptable node types for the texture field.

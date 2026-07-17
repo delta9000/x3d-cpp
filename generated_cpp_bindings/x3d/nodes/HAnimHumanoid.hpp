@@ -271,9 +271,9 @@ public:
    * @brief Gets the value of joints. AccessType: inputOutput
    * @details The joints field contains a list of USE references for all
    * HAnimJoint node instances found within the preceding skeleton hierarchy.
-   * @return MFNode The current value of joints.
+   * @return const MFNode& The current value of joints.
    */
-  MFNode getJoints() const { return _joints; }
+  const MFNode &getJoints() const { return _joints; }
 
   /**
    * @brief Acceptable node types for the joints field.
@@ -326,9 +326,9 @@ public:
   /**
    * @brief Gets the value of motions. AccessType: inputOutput
    * @details Contains any HAnimMotion nodes that can animate the HAnimHumanoid.
-   * @return MFNode The current value of motions.
+   * @return const MFNode& The current value of motions.
    */
-  MFNode getMotions() const { return _motions; }
+  const MFNode &getMotions() const { return _motions; }
 
   /**
    * @brief Acceptable node types for the motions field.
@@ -447,9 +447,9 @@ public:
    * @brief Gets the value of segments. AccessType: inputOutput
    * @details The segments field contains a list of USE references for all
    * HAnimSegment node instances found within the preceding skeleton hierarchy.
-   * @return MFNode The current value of segments.
+   * @return const MFNode& The current value of segments.
    */
-  MFNode getSegments() const { return _segments; }
+  const MFNode &getSegments() const { return _segments; }
 
   /**
    * @brief Acceptable node types for the segments field.
@@ -475,9 +475,9 @@ public:
    * @brief Gets the value of sites. AccessType: inputOutput
    * @details sites field contains a list of USE references for all HAnimSite
    * node instances found within the preceding skeleton hierarchy.
-   * @return MFNode The current value of sites.
+   * @return const MFNode& The current value of sites.
    */
-  MFNode getSites() const { return _sites; }
+  const MFNode &getSites() const { return _sites; }
 
   /**
    * @brief Acceptable node types for the sites field.
@@ -527,9 +527,9 @@ public:
    * @brief Gets the value of skeleton. AccessType: inputOutput
    * @details List of top-level HAnimJoint and HAnimSite nodes that create the
    * skeleton model.
-   * @return MFNode The current value of skeleton.
+   * @return const MFNode& The current value of skeleton.
    */
-  MFNode getSkeleton() const { return _skeleton; }
+  const MFNode &getSkeleton() const { return _skeleton; }
 
   /**
    * @brief Acceptable node types for the skeleton field.
@@ -555,9 +555,9 @@ public:
    * @brief Gets the value of skin. AccessType: inputOutput
    * @details List of one or more indexed mesh definitions (such as
    * IndexedFaceSet) that utilize skinCoord point and skinNormal normal data.
-   * @return MFNode The current value of skin.
+   * @return const MFNode& The current value of skin.
    */
-  MFNode getSkin() const { return _skin; }
+  const MFNode &getSkin() const { return _skin; }
 
   /**
    * @brief Acceptable node types for the skin field.
@@ -735,9 +735,9 @@ public:
    * @brief Gets the value of viewpoints. AccessType: inputOutput
    * @details List of HAnimSite nodes containing Viewpoint nodes that appear in
    * the skeleton model, usually as USE node references.
-   * @return MFNode The current value of viewpoints.
+   * @return const MFNode& The current value of viewpoints.
    */
-  MFNode getViewpoints() const { return _viewpoints; }
+  const MFNode &getViewpoints() const { return _viewpoints; }
 
   /**
    * @brief Acceptable node types for the viewpoints field.

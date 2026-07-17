@@ -160,9 +160,9 @@ public:
    * @brief Gets the value of bodies. AccessType: inputOutput
    * @details Collection of top-level nodes that comprise a set of bodies
    * evaluated as a single set of interactions.
-   * @return MFNode The current value of bodies.
+   * @return const MFNode& The current value of bodies.
    */
-  MFNode getBodies() const { return _bodies; }
+  const MFNode &getBodies() const { return _bodies; }
 
   /**
    * @brief Acceptable node types for the bodies field.
@@ -397,9 +397,9 @@ public:
    * @brief Gets the value of joints. AccessType: inputOutput
    * @details The joints field is used to register all joints between bodies
    * contained in this collection.
-   * @return MFNode The current value of joints.
+   * @return const MFNode& The current value of joints.
    */
-  MFNode getJoints() const { return _joints; }
+  const MFNode &getJoints() const { return _joints; }
 
   /**
    * @brief Acceptable node types for the joints field.

@@ -8,63 +8,79 @@ namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::core {
 
-// Special structs
+// Special structs. Equality is exact member-wise comparison (C++20
+// defaulted operator==, which also synthesizes !=). Vocabulary, not
+// math: no epsilon, no arithmetic (ADR-0012).
 
     struct SFVec2d {
         double x, y;
+        bool operator==(const SFVec2d&) const = default;
     };
 
     struct SFVec2f {
         float x, y;
+        bool operator==(const SFVec2f&) const = default;
     };
 
     struct SFVec3d {
         double x, y, z;
+        bool operator==(const SFVec3d&) const = default;
     };
 
     struct SFVec3f {
         float x, y, z;
+        bool operator==(const SFVec3f&) const = default;
     };
 
     struct SFVec4d {
         double x, y, z, w;
+        bool operator==(const SFVec4d&) const = default;
     };
 
     struct SFVec4f {
         float x, y, z, w;
+        bool operator==(const SFVec4f&) const = default;
     };
 
     struct SFColor {
         float r, g, b;
+        bool operator==(const SFColor&) const = default;
     };
 
     struct SFColorRGBA {
         float r, g, b, a;
+        bool operator==(const SFColorRGBA&) const = default;
     };
 
     struct SFRotation {
         float x, y, z, angle;
+        bool operator==(const SFRotation&) const = default;
     };
 
     struct SFMatrix3d {
         double matrix[3][3];
+        bool operator==(const SFMatrix3d&) const = default;
     };
 
     struct SFMatrix3f {
         float matrix[3][3];
+        bool operator==(const SFMatrix3f&) const = default;
     };
 
     struct SFMatrix4d {
         double matrix[4][4];
+        bool operator==(const SFMatrix4d&) const = default;
     };
 
     struct SFMatrix4f {
         float matrix[4][4];
+        bool operator==(const SFMatrix4f&) const = default;
     };
 
     struct SFImage {
         int width, height, numComponents;
         std::vector<unsigned char> data;
+        bool operator==(const SFImage&) const = default;
     };
 
 typedef bool SFBool;

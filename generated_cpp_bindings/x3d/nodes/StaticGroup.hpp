@@ -65,9 +65,9 @@ public:
   /**
    * @brief Gets the value of children. AccessType: initializeOnly
    * @details Grouping nodes contain an ordered list of children nodes.
-   * @return MFNode The current value of children.
+   * @return const MFNode& The current value of children.
    */
-  MFNode getChildren() const { return _children; }
+  const MFNode &getChildren() const { return _children; }
 
   /**
    * @brief Acceptable node types for the children field.

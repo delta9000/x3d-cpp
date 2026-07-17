@@ -99,9 +99,9 @@ public:
   /**
    * @brief Gets the value of contacts. AccessType: outputOnly
    * @details
-   * @return MFNode The current value of contacts.
+   * @return const MFNode& The current value of contacts.
    */
-  MFNode getContacts() const { return _contacts; }
+  const MFNode &getContacts() const { return _contacts; }
 
   /**
    * @brief Emit an output value on contacts. AccessType: outputOnly
@@ -127,9 +127,9 @@ public:
   /**
    * @brief Gets the value of intersections. AccessType: outputOnly
    * @details
-   * @return MFNode The current value of intersections.
+   * @return const MFNode& The current value of intersections.
    */
-  MFNode getIntersections() const { return _intersections; }
+  const MFNode &getIntersections() const { return _intersections; }
 
   /**
    * @brief Emit an output value on intersections. AccessType: outputOnly

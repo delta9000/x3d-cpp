@@ -158,9 +158,9 @@ public:
    * @brief Gets the value of children. AccessType: outputOnly
    * @details The outputOnly children field exposes a portion of the scene graph
    * for the currently loaded set of nodes.
-   * @return MFNode The current value of children.
+   * @return const MFNode& The current value of children.
    */
-  MFNode getChildren() const { return _children; }
+  const MFNode &getChildren() const { return _children; }
 
   /**
    * @brief Emit an output value on children. AccessType: outputOnly
@@ -261,9 +261,9 @@ public:
   /**
    * @brief Gets the value of rootNode. AccessType: initializeOnly
    * @details Geometry for the root tile.
-   * @return MFNode The current value of rootNode.
+   * @return const MFNode& The current value of rootNode.
    */
-  MFNode getRootNode() const { return _rootNode; }
+  const MFNode &getRootNode() const { return _rootNode; }
 
   /**
    * @brief Acceptable node types for the rootNode field.

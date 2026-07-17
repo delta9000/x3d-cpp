@@ -182,9 +182,9 @@ public:
    * @details CollisionCollection node holds a collection of objects in the
    * collidables field that can be managed as a single entity for resolution of
    * inter-object collisions with other groups of collidable objects.
-   * @return MFNode The current value of collidables.
+   * @return const MFNode& The current value of collidables.
    */
-  MFNode getCollidables() const { return _collidables; }
+  const MFNode &getCollidables() const { return _collidables; }
 
   /**
    * @brief Acceptable node types for the collidables field.

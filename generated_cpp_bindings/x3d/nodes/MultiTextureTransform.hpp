@@ -67,9 +67,9 @@ public:
    * @details Zero or more contained TextureTransform nodes, for each of the
    * different texture channels, that define 2D transformation applied to
    * texture coordinates.
-   * @return MFNode The current value of textureTransform.
+   * @return const MFNode& The current value of textureTransform.
    */
-  MFNode getTextureTransform() const { return _textureTransform; }
+  const MFNode &getTextureTransform() const { return _textureTransform; }
 
   /**
    * @brief Acceptable node types for the textureTransform field.

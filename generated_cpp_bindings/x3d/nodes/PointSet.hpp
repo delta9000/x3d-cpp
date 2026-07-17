@@ -88,9 +88,9 @@ public:
    * @brief Gets the value of attrib. AccessType: inputOutput
    * @details Single contained FloatVertexAttribute node that can specify list
    * of per-vertex attribute information for programmable shaders.
-   * @return MFNode The current value of attrib.
+   * @return const MFNode& The current value of attrib.
    */
-  MFNode getAttrib() const { return _attrib; }
+  const MFNode &getAttrib() const { return _attrib; }
 
   /**
    * @brief Acceptable node types for the attrib field.

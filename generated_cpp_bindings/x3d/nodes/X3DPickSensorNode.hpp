@@ -145,9 +145,9 @@ public:
   /**
    * @brief Gets the value of pickedGeometry. AccessType: outputOnly
    * @details
-   * @return MFNode The current value of pickedGeometry.
+   * @return const MFNode& The current value of pickedGeometry.
    */
-  MFNode getPickedGeometry() const { return _pickedGeometry; }
+  const MFNode &getPickedGeometry() const { return _pickedGeometry; }
 
   /**
    * @brief Emit an output value on pickedGeometry. AccessType: outputOnly
@@ -202,9 +202,9 @@ public:
   /**
    * @brief Gets the value of pickTarget. AccessType: inputOutput
    * @details
-   * @return MFNode The current value of pickTarget.
+   * @return const MFNode& The current value of pickTarget.
    */
-  MFNode getPickTarget() const { return _pickTarget; }
+  const MFNode &getPickTarget() const { return _pickTarget; }
 
   /**
    * @brief Acceptable node types for the pickTarget field.

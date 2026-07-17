@@ -65,9 +65,9 @@ public:
    * @brief Gets the value of renderStyle. AccessType: inputOutput
    * @details List of contributing rendering style nodes or node references that
    * can be applied to the object.
-   * @return MFNode The current value of renderStyle.
+   * @return const MFNode& The current value of renderStyle.
    */
-  MFNode getRenderStyle() const { return _renderStyle; }
+  const MFNode &getRenderStyle() const { return _renderStyle; }
 
   /**
    * @brief Acceptable node types for the renderStyle field.

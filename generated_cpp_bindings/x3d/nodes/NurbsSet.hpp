@@ -107,9 +107,9 @@ public:
    * @details The children form a closed loop with first point of first child
    * repeated as last point of last child, and the last point of a segment
    * repeated as first point of the consecutive one.
-   * @return MFNode The current value of geometry.
+   * @return const MFNode& The current value of geometry.
    */
-  MFNode getGeometry() const { return _geometry; }
+  const MFNode &getGeometry() const { return _geometry; }
 
   /**
    * @brief Acceptable node types for the geometry field.

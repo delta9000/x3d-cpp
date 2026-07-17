@@ -112,9 +112,9 @@ public:
   /**
    * @brief Gets the value of attrib. AccessType: inputOutput
    * @details
-   * @return MFNode The current value of attrib.
+   * @return const MFNode& The current value of attrib.
    */
-  MFNode getAttrib() const { return _attrib; }
+  const MFNode &getAttrib() const { return _attrib; }
 
   /**
    * @brief Acceptable node types for the attrib field.
