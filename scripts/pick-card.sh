@@ -16,7 +16,8 @@ REPO=delta9000/x3d-cpp
 items_json() { gh project item-list "$PROJECT" --owner "$OWNER" --format json --limit 200; }
 
 if [[ "${1:-}" == "--list" ]]; then
-  items_json | python3 -c '
+  ITEMS=$(items_json) || { echo "error: could not list project items — if gh printed a scope error above, run: gh auth refresh -s read:project" >&2; exit 1; }
+  printf '%s' "$ITEMS" | python3 -c '
 import json,sys
 for it in json.load(sys.stdin)["items"]:
     if it.get("status") in (None,"Backlog","Ready"):

@@ -73,7 +73,7 @@ Example: `Anchor : public virtual X3DGroupingNode, public virtual X3DUrlObject` 
 - `src/x3d_cpp_gen/backends/cpp_header.py` — `_reaches_root`, `_ancestors`, `emit_reflection` logic (lines 46–65, 119–165)
 - `src/x3d_cpp_gen/parser.py` — `parse_node(is_mixin=True)` for `<AbstractObjectTypes>`, `build_dependency_graph` (lines 121–146, 208–223)
 - `src/x3d_cpp_gen/templates/class_template.hpp.jinja` line 24 — the `public virtual` emission loop
-- `generated_cpp_bindings/X3DBoundedObject.hpp` — example mixin with real spec fields (`bboxCenter`, `bboxSize`, `visible`)
-- `generated_cpp_bindings/X3DUrlObject.hpp` — example mixin with constrained fields (`autoRefresh`, `autoRefreshTimeLimit`)
-- `generated_cpp_bindings/LayoutGroup.hpp` — the canonical diamond case (`X3DNode` reached via two paths)
-- `generated_cpp_bindings/Anchor.hpp` — concrete node inheriting both `X3DGroupingNode` and `X3DUrlObject`
+- `generated_cpp_bindings/x3d/nodes/X3DBoundedObject.hpp` — example mixin with real spec fields (`bboxCenter`, `bboxSize`, `visible`)
+- `generated_cpp_bindings/x3d/nodes/X3DUrlObject.hpp` — example mixin with constrained fields (`autoRefresh`, `autoRefreshTimeLimit`)
+- `generated_cpp_bindings/x3d/nodes/LayoutGroup.hpp` — the canonical diamond case (`X3DNode` reached via two paths)
+- `generated_cpp_bindings/x3d/nodes/Anchor.hpp` — concrete node inheriting both `X3DGroupingNode` and `X3DUrlObject`

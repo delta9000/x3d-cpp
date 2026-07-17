@@ -37,7 +37,7 @@ directory and `diff`s the output byte-for-byte against the committed tree. Any d
 change, added file, deleted file — fails CI.
 
 This makes codegen changes **opt-in**: you must regenerate and commit the new headers before
-the gate passes. The canonical header `generated_cpp_bindings/X3DNode.hpp` (the base class
+the gate passes. The canonical header `generated_cpp_bindings/x3d/nodes/X3DNode.hpp` (the base class
 for all instantiable nodes) is a representative example of generator-emitted output.
 
 **Script.** The gate is implemented in `scripts/check_golden.sh`. It:

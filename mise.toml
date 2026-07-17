@@ -200,11 +200,11 @@ depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gat
 
 [tasks.coverage-gate]
 description = "ADR coverage gate: cross-check docs/wiki/decisions/*.md against the Decisions table in coverage.md (no file unrowed, no row dangling, contiguous numbering)."
-run = "python scripts/coverage_gate.py"
+run = "uv run python scripts/coverage_gate.py"
 
 [tasks.doc-ctest-gate]
 description = "Doc ctest-command gate: every `ctest -R x3d_*` in docs/wiki must match a real add_test(NAME …) target (doctest case names are not ctest targets)."
-run = "python scripts/doc_ctest_gate.py"
+run = "uv run python scripts/doc_ctest_gate.py"
 
 [tasks.conformance]
 description = "Regenerate the conformance view (docs/conformance/: model.json + INDEX.md + components/). Edit judgments in docs/conformance/findings.yaml first."

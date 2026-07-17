@@ -26,9 +26,9 @@ The same `KeyState` struct also exposes a `held` set and a monotonic `revision` 
 | `runtime/events/KeyDeviceSensorSystem.hpp` | `KeyDeviceSensorSystem` class (full implementation in the header); `System::attach` + `System::update` plus private `driveKeySensor` / `driveStringSensor` helpers |
 | `runtime/events/KeyState.hpp` | `KeyState` struct — `held` set, `revision` counter, discrete `events` vector (of `KeyEvent`), and the five push helpers; owned by `X3DExecutionContext` |
 | `runtime/events/X3DSceneBridge.hpp` | `attachKeyDeviceSensors(Scene&, X3DExecutionContext&)` — production wiring helper that walks the scene and registers one `KeyDeviceSensorSystem` in the context |
-| `generated_cpp_bindings/KeySensor.hpp` | Generated binding for `KeySensor` (§21.4.1): `keyPress`, `keyRelease`, `actionKeyPress`, `actionKeyRelease`, `shiftKey`, `controlKey`, `altKey`, `isActive`, `enabled` |
-| `generated_cpp_bindings/StringSensor.hpp` | Generated binding for `StringSensor` (§21.4.2): `enteredText`, `finalText`, `isActive`, `enabled`, `deletionAllowed` |
-| `generated_cpp_bindings/X3DKeyDeviceSensorNode.hpp` | Generated abstract base class for the §21 key-device sensor node type |
+| `generated_cpp_bindings/x3d/nodes/KeySensor.hpp` | Generated binding for `KeySensor` (§21.4.1): `keyPress`, `keyRelease`, `actionKeyPress`, `actionKeyRelease`, `shiftKey`, `controlKey`, `altKey`, `isActive`, `enabled` |
+| `generated_cpp_bindings/x3d/nodes/StringSensor.hpp` | Generated binding for `StringSensor` (§21.4.2): `enteredText`, `finalText`, `isActive`, `enabled`, `deletionAllowed` |
+| `generated_cpp_bindings/x3d/nodes/X3DKeyDeviceSensorNode.hpp` | Generated abstract base class for the §21 key-device sensor node type |
 | `runtime/events/tests/key_device_sensor_test.cpp` | Behavioral-conformance tests for the system (KDS-2..9 + enabled gate + batch coalesce + production wiring) |
 | `runtime/events/tests/key_state_test.cpp` | Unit tests for the `KeyState` struct and the `X3DExecutionContext` keyboard seam (M2D PDS-4) |
 

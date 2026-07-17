@@ -92,8 +92,8 @@ answer is **Linux-tested; macOS and Windows are intended but not demonstrated**.
 
 | Platform | Status |
 |---|---|
-| Linux x86-64, GCC 11+ | **Supported** — every push builds + tests here (also under ASan/UBSan and a bounded parser fuzz run) |
-| Linux x86-64, Clang 14+ | **Supported** — same, via the CI compiler matrix |
+| Linux x86-64, GCC 11+ | **Supported** — every push builds + tests here, also under ASan/UBSan |
+| Linux x86-64, Clang 14+ | **Supported** — via the CI compiler matrix (run manually before releases, not per-push) plus the per-push Clang libFuzzer gate |
 | macOS | **Not verified.** The build carries an `@loader_path` install-RPATH branch and nothing else Apple-specific. No CI job runs here. |
 | Windows / MSVC | **Not verified.** The build sets `WINDOWS_EXPORT_ALL_SYMBOLS` and nothing else. No CI job runs here; expect to hit issues (e.g. `/bigobj`) before it links. |
 
@@ -140,8 +140,9 @@ target_link_libraries(my_app PRIVATE x3d_cpp::sdk)
 
 [`examples/embed_minimal/`](examples/embed_minimal/) is exactly this: a
 downstream-style project that does not depend on the source tree.
-`scripts/verify_install_embed.sh` builds it against a throwaway install prefix on
-every CI run, so the sequence above is gate-enforced rather than aspirational.
+`scripts/verify_install_embed.sh` builds it against a throwaway install prefix
+in CI (the ctest `x3d_install_embed_smoke`, run by every C++-touching PR and
+every push), so the sequence above is gate-enforced rather than aspirational.
 
 **Requires:** a C++20 compiler and CMake 3.21+. Contributors additionally use
 [mise](#dev-tasks-mise) as a task runner — see [Dev tasks](#dev-tasks-mise).
@@ -165,26 +166,30 @@ x3d canonicalize scene.x3d                     # X3D Canonical Form (X3DC14N)
 ### 2. Embed the SDK (one header)
 
 Link `x3d_cpp::sdk` and `#include "x3d/sdk.hpp"` — everything an embedder needs
-is in namespace `x3d::sdk`. Parse once, tick each frame, consume the delta:
+is in namespace `x3d::sdk`. Parse once, tick each frame, consume the delta.
+`RuntimeSession` is the recommended entry point: it owns the document, context,
+and extractor, and does the setup wiring you can silently forget (skip
+`attachStandardRuntime` on the manual path, for example, and ROUTEs resolve but
+nothing drives them — the scene renders one static frame forever):
 
 ```cpp
 #include "x3d/sdk.hpp"
 namespace sdk = x3d::sdk;
 
-sdk::X3DDocument doc = sdk::parseFile("scene.x3d");   // 4 encodings + gzip, with diagnostics
-sdk::X3DExecutionContext ctx;
-ctx.buildSceneGraph(doc.getScene());
-ctx.buildFrom(doc.getScene());
-
-sdk::SceneExtractor ex(ctx, doc.getScene());
-sdk::RenderDelta f0 = ex.fullSnapshot();              // upload f0.added (meshes/materials/lights)
+auto session = sdk::RuntimeSession::create(sdk::parseFile("scene.x3d"));  // 4 encodings + gzip
+sdk::RenderDelta f0 = session->fullSnapshot();        // upload f0.added (meshes/materials/lights)
 const auto t0 = std::chrono::steady_clock::now();     // monotonic clock start
 while (running) {
   double now = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();  // seconds since start
-  ctx.tick(now);                                      // advance time, routes, scripts, behaviors
-  sdk::RenderDelta d = ex.delta();                    // apply d.added / removed / updated*
+  session->tick(now);                                 // advance time, routes, scripts, behaviors
+  sdk::RenderDelta d = session->delta();              // apply d.added / removed / updated*
 }
 ```
+
+This is a shorter path, not a walled garden: `session->context()` /
+`extractor()` / `scene()` hand back the underlying `X3DExecutionContext`,
+`SceneExtractor`, and scene, and the low-level surface stays public
+(`SessionOptions` names what `create` turns on).
 
 The simulation and extraction core performs no hidden resource, network, image,
 font, media or rendering I/O — those are embedder-supplied **seams**: *ports* in
@@ -231,8 +236,11 @@ package and are resolved relative to the install, not the CWD.
 - `-o, --out` — output directory (default: `./generated_cpp_bindings`)
 - `--templates` — Jinja templates directory (default: packaged)
 - `--clang-format` — formatter executable (env `CLANG_FORMAT`; empty to disable)
-- `--compiler` — C++ compiler for the smoke test (env `CXX`; empty to skip)
+- `--compiler` — C++ compiler for the smoke test (env `CXX`; an empty value is
+  an error, not a skip — use `--no-test` to skip deliberately)
 - `--no-test` — skip generating/compiling the smoke test
+- `--allow-unsupported-fields` — don't fail when the UOM contains a field type
+  the generator doesn't support (default: fail closed)
 
 The generated smoke test (`generated_cpp_bindings/test.cpp`) is value-asserting:
 for every concrete node it default-constructs an instance and asserts each
@@ -284,8 +292,9 @@ mirrored there:
 
 - **python** — `uv sync` + `uv run pytest` (unit suite + full-tree golden test).
 - **golden** — the golden-drift gate (regenerate + diff).
-- **cpp** — `cmake` build + `ctest` across a compiler matrix that pins the
-  **baseline GCC 11 / Clang 14** and also runs the current distro compilers.
+- **cpp** — `cmake` build + `ctest` with the distro GCC on every PR; the
+  manual **cpp-matrix** job additionally pins the **baseline GCC 11 / Clang 14**
+  and runs the current distro compilers.
 
 ## Configuration (optional external resources)
 

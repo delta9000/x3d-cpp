@@ -63,8 +63,8 @@ check that the asset is drawable, independent of the on-screen visual verify:
 # → render_items=1 first_item_vertices=3   (exit 0)
 ```
 
-The same check runs in the default `mise run build` ctest path as
-`x3d_poc_triangle_asset` (no GL, so it needs no display).
+The same check runs in the default `mise run build` ctest path, inside the
+grouped `x3d_geometry_scene` test (no GL, so it needs no display).
 
 ### Headless GL validation (Xvfb + software mesa)
 
