@@ -265,7 +265,7 @@ public:
     {#- OWN + INHERITED constrained settable fields (same list fields() reflects),
         so mixin-inherited constrained fields (e.g. X3DFogObject::color) are checked
         too. Inherited entries base-qualify both the checker static and the getter. -#}
-    {% set _constrained = reflection_fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+    {% set _constrained = reflection_fields | selectattr('has_range_diagnostics') | list %}
     {% if is_root %}
     /**
      * @brief Append RangeDiagnostics for this node's own out-of-range constrained
@@ -282,7 +282,7 @@ public:
         can reach a static inherited from an AbstractObjectType mixin via a
         base-qualified call (e.g. X3DFogObject::checkRangesColor). Only emit the
         protected: label when this class actually defines at least one such static. -#}
-    {% set _own_constrained = fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+    {% set _own_constrained = fields | selectattr('has_range_diagnostics') | list %}
     {% if _own_constrained %}
 protected:
     {% for field in _own_constrained %}

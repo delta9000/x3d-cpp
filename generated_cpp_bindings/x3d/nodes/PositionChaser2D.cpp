@@ -261,6 +261,12 @@ void PositionChaser2D::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void PositionChaser2D::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  X3DChaserNode::checkRangesDuration(X3DChaserNode::getDuration(),
+                                     nodeTypeName(), "", out);
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createPositionChaser2D() {
   return std::make_shared<PositionChaser2D>();

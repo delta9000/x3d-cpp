@@ -299,6 +299,8 @@ void PolylineEmitter::accept(NodeVisitor &visitor) const {
 
 void PolylineEmitter::validateRanges(std::vector<RangeDiagnostic> &out) const {
 
+  checkRangesCoordIndex(getCoordIndex(), nodeTypeName(), "", out);
+
   checkRangesDirection(getDirection(), nodeTypeName(), "", out);
 
   X3DParticleEmitterNode::checkRangesMass(X3DParticleEmitterNode::getMass(),
@@ -312,6 +314,18 @@ void PolylineEmitter::validateRanges(std::vector<RangeDiagnostic> &out) const {
 
   X3DParticleEmitterNode::checkRangesVariation(
       X3DParticleEmitterNode::getVariation(), nodeTypeName(), "", out);
+}
+
+void PolylineEmitter::checkRangesCoordIndex(const MFInt32 &value,
+                                            const std::string &nodeType,
+                                            const std::string &defName,
+                                            std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < -1)
+      out.push_back(RangeDiagnostic{nodeType, defName, "coordIndex",
+                                    "coordIndex below minimum of -1"});
+  }
 }
 
 void PolylineEmitter::checkRangesDirection(const SFVec3f &value,

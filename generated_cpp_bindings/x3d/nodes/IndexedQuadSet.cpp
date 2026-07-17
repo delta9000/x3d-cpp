@@ -349,6 +349,23 @@ void IndexedQuadSet::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void IndexedQuadSet::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesIndex(getIndex(), nodeTypeName(), "", out);
+}
+
+void IndexedQuadSet::checkRangesIndex(const MFInt32 &value,
+                                      const std::string &nodeType,
+                                      const std::string &defName,
+                                      std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < 0)
+      out.push_back(RangeDiagnostic{nodeType, defName, "index",
+                                    "index below minimum of 0"});
+  }
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createIndexedQuadSet() {
   return std::make_shared<IndexedQuadSet>();

@@ -213,6 +213,15 @@ protected:
    * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
    *        component. Used by validateRanges() to surface lenient-read values.
    */
+  static void checkRangesCoordIndex(const MFInt32 &value,
+                                    const std::string &nodeType,
+                                    const std::string &defName,
+                                    std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
   static void checkRangesDirection(const SFVec3f &value,
                                    const std::string &nodeType,
                                    const std::string &defName,

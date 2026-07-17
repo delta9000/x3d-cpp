@@ -430,6 +430,20 @@ void GeoViewpoint::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void GeoViewpoint::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesSpeedFactor(getSpeedFactor(), nodeTypeName(), "", out);
+}
+
+void GeoViewpoint::checkRangesSpeedFactor(const SFFloat &value,
+                                          const std::string &nodeType,
+                                          const std::string &defName,
+                                          std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "speedFactor",
+                                  "speedFactor below minimum of 0"});
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createGeoViewpoint() {
   return std::make_shared<GeoViewpoint>();

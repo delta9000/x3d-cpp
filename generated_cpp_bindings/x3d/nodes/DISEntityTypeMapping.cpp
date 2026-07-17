@@ -361,6 +361,99 @@ void DISEntityTypeMapping::validateRanges(
 
   X3DUrlObject::checkRangesAutoRefreshTimeLimit(
       X3DUrlObject::getAutoRefreshTimeLimit(), nodeTypeName(), "", out);
+
+  checkRangesCategory(getCategory(), nodeTypeName(), "", out);
+
+  checkRangesCountry(getCountry(), nodeTypeName(), "", out);
+
+  checkRangesDomain(getDomain(), nodeTypeName(), "", out);
+
+  checkRangesExtra(getExtra(), nodeTypeName(), "", out);
+
+  checkRangesKind(getKind(), nodeTypeName(), "", out);
+
+  checkRangesSpecific(getSpecific(), nodeTypeName(), "", out);
+
+  checkRangesSubcategory(getSubcategory(), nodeTypeName(), "", out);
+}
+
+void DISEntityTypeMapping::checkRangesCategory(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "category",
+                                  "category below minimum of 0"});
+  if (value > 255)
+    out.push_back(RangeDiagnostic{nodeType, defName, "category",
+                                  "category above maximum of 255"});
+}
+
+void DISEntityTypeMapping::checkRangesCountry(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "country",
+                                  "country below minimum of 0"});
+  if (value > 65535)
+    out.push_back(RangeDiagnostic{nodeType, defName, "country",
+                                  "country above maximum of 65535"});
+}
+
+void DISEntityTypeMapping::checkRangesDomain(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "domain",
+                                  "domain below minimum of 0"});
+  if (value > 255)
+    out.push_back(RangeDiagnostic{nodeType, defName, "domain",
+                                  "domain above maximum of 255"});
+}
+
+void DISEntityTypeMapping::checkRangesExtra(const SFInt32 &value,
+                                            const std::string &nodeType,
+                                            const std::string &defName,
+                                            std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "extra",
+                                  "extra below minimum of 0"});
+  if (value > 255)
+    out.push_back(RangeDiagnostic{nodeType, defName, "extra",
+                                  "extra above maximum of 255"});
+}
+
+void DISEntityTypeMapping::checkRangesKind(const SFInt32 &value,
+                                           const std::string &nodeType,
+                                           const std::string &defName,
+                                           std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(
+        RangeDiagnostic{nodeType, defName, "kind", "kind below minimum of 0"});
+  if (value > 255)
+    out.push_back(RangeDiagnostic{nodeType, defName, "kind",
+                                  "kind above maximum of 255"});
+}
+
+void DISEntityTypeMapping::checkRangesSpecific(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "specific",
+                                  "specific below minimum of 0"});
+  if (value > 255)
+    out.push_back(RangeDiagnostic{nodeType, defName, "specific",
+                                  "specific above maximum of 255"});
+}
+
+void DISEntityTypeMapping::checkRangesSubcategory(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "subcategory",
+                                  "subcategory below minimum of 0"});
+  if (value > 255)
+    out.push_back(RangeDiagnostic{nodeType, defName, "subcategory",
+                                  "subcategory above maximum of 255"});
 }
 
 namespace factory_detail {

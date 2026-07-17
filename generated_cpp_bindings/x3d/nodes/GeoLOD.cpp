@@ -396,6 +396,19 @@ void GeoLOD::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void GeoLOD::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesRange(getRange(), nodeTypeName(), "", out);
+}
+
+void GeoLOD::checkRangesRange(const SFFloat &value, const std::string &nodeType,
+                              const std::string &defName,
+                              std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "range",
+                                  "range below minimum of 0"});
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createGeoLOD() { return std::make_shared<GeoLOD>(); }
 } // namespace factory_detail

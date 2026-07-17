@@ -400,6 +400,22 @@ void NurbsPatchSurface::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void NurbsPatchSurface::validateRanges(
+    std::vector<RangeDiagnostic> &out) const {
+
+  X3DNurbsSurfaceGeometryNode::checkRangesUDimension(
+      X3DNurbsSurfaceGeometryNode::getUDimension(), nodeTypeName(), "", out);
+
+  X3DNurbsSurfaceGeometryNode::checkRangesUOrder(
+      X3DNurbsSurfaceGeometryNode::getUOrder(), nodeTypeName(), "", out);
+
+  X3DNurbsSurfaceGeometryNode::checkRangesVDimension(
+      X3DNurbsSurfaceGeometryNode::getVDimension(), nodeTypeName(), "", out);
+
+  X3DNurbsSurfaceGeometryNode::checkRangesVOrder(
+      X3DNurbsSurfaceGeometryNode::getVOrder(), nodeTypeName(), "", out);
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createNurbsPatchSurface() {
   return std::make_shared<NurbsPatchSurface>();

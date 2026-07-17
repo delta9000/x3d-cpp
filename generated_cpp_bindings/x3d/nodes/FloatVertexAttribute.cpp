@@ -199,6 +199,23 @@ void FloatVertexAttribute::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void FloatVertexAttribute::validateRanges(
+    std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesNumComponents(getNumComponents(), nodeTypeName(), "", out);
+}
+
+void FloatVertexAttribute::checkRangesNumComponents(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 1)
+    out.push_back(RangeDiagnostic{nodeType, defName, "numComponents",
+                                  "numComponents below minimum of 1"});
+  if (value > 4)
+    out.push_back(RangeDiagnostic{nodeType, defName, "numComponents",
+                                  "numComponents above maximum of 4"});
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createFloatVertexAttribute() {
   return std::make_shared<FloatVertexAttribute>();

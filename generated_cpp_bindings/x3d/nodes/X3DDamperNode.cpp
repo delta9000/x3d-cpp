@@ -213,7 +213,21 @@ void X3DDamperNode::accept(NodeVisitor &visitor) const {
 
 void X3DDamperNode::validateRanges(std::vector<RangeDiagnostic> &out) const {
 
+  checkRangesOrder(getOrder(), nodeTypeName(), "", out);
+
   checkRangesTau(getTau(), nodeTypeName(), "", out);
+}
+
+void X3DDamperNode::checkRangesOrder(const SFInt32 &value,
+                                     const std::string &nodeType,
+                                     const std::string &defName,
+                                     std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "order",
+                                  "order below minimum of 0"});
+  if (value > 5)
+    out.push_back(RangeDiagnostic{nodeType, defName, "order",
+                                  "order above maximum of 5"});
 }
 
 void X3DDamperNode::checkRangesTau(const SFTime &value,

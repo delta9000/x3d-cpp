@@ -502,6 +502,8 @@ void ParticleSystem::accept(NodeVisitor &visitor) const {
 
 void ParticleSystem::validateRanges(std::vector<RangeDiagnostic> &out) const {
 
+  checkRangesColorKey(getColorKey(), nodeTypeName(), "", out);
+
   checkRangesLifetimeVariation(getLifetimeVariation(), nodeTypeName(), "", out);
 
   checkRangesMaxParticles(getMaxParticles(), nodeTypeName(), "", out);
@@ -509,6 +511,20 @@ void ParticleSystem::validateRanges(std::vector<RangeDiagnostic> &out) const {
   checkRangesParticleLifetime(getParticleLifetime(), nodeTypeName(), "", out);
 
   checkRangesParticleSize(getParticleSize(), nodeTypeName(), "", out);
+
+  checkRangesTexCoordKey(getTexCoordKey(), nodeTypeName(), "", out);
+}
+
+void ParticleSystem::checkRangesColorKey(const MFFloat &value,
+                                         const std::string &nodeType,
+                                         const std::string &defName,
+                                         std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < 0)
+      out.push_back(RangeDiagnostic{nodeType, defName, "colorKey",
+                                    "colorKey below minimum of 0"});
+  }
 }
 
 void ParticleSystem::checkRangesLifetimeVariation(
@@ -548,6 +564,18 @@ void ParticleSystem::checkRangesParticleSize(
   if (value.y < 0)
     out.push_back(RangeDiagnostic{nodeType, defName, "particleSize",
                                   "particleSize.y below minimum of 0"});
+}
+
+void ParticleSystem::checkRangesTexCoordKey(const MFFloat &value,
+                                            const std::string &nodeType,
+                                            const std::string &defName,
+                                            std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < 0)
+      out.push_back(RangeDiagnostic{nodeType, defName, "texCoordKey",
+                                    "texCoordKey below minimum of 0"});
+  }
 }
 
 namespace factory_detail {

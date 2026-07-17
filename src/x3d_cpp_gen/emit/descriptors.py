@@ -227,6 +227,17 @@ class FieldDescriptor:
     def has_constraints(self) -> bool:
         return self.constraint_checks is not None
 
+    @property
+    def has_range_diagnostics(self) -> bool:
+        """True when this field gets a non-throwing checkRanges<Name>() static.
+
+        Broader than has_constraints: inputOutput AND initializeOnly fields
+        with spec range bounds both get the non-throwing diagnostic path
+        (only inputOutput additionally gets the throwing validate<Name>(),
+        since only it has a public typed setter to protect).
+        """
+        return self.range_collect_body is not None
+
 
 def _render_constraints(name: str, x3d_type: X3DType,
                         lo: Optional[str], hi: Optional[str]) -> str:
@@ -333,27 +344,38 @@ def build_descriptor(field, enum_defs: Optional[Dict] = None) -> FieldDescriptor
     )
 
     # Constraint resolution: a color type always clamps to [0,1]; otherwise use
-    # the spec-declared inclusive bounds. Validation only exists for settable
-    # (inputOutput) fields, matching the original template gate.
+    # the spec-declared inclusive bounds.
     is_color = x3d_type in _COLOR_TYPES
     lo = field.min_inclusive
     hi = field.max_inclusive
     if is_color:
         lo, hi = "0", "1"
-    wants_validation = (
-        access == "inputOutput"
-        and x3d_type is not None
+    has_bounds = (
+        x3d_type is not None
         and (field.min_inclusive is not None
              or field.max_inclusive is not None
              or is_color)
     )
+    # Throwing validation (validate<Name>() called from the public setter)
+    # only makes sense where a public typed setter exists to protect:
+    # inputOutput only. Matches the original template gate exactly.
+    wants_throwing_validation = access == "inputOutput" and has_bounds
+    # Non-throwing diagnostic collection (checkRanges<Name>(), surfaced via
+    # validateRanges()/collectRangeWarnings()) is broader: inputOutput OR
+    # initializeOnly. Both have a data-layer write path (set<Name>Unchecked
+    # for initializeOnly, same for constrained inputOutput) that bypasses the
+    # throwing check, so both need a way to surface an out-of-range authored
+    # value as a structured diagnostic instead of losing it silently.
+    wants_range_diagnostics = (
+        access in ("inputOutput", "initializeOnly") and has_bounds
+    )
     constraint_checks = (
         _render_constraints(field.name, x3d_type, lo, hi)
-        if wants_validation else None
+        if wants_throwing_validation else None
     )
     range_collect_body = (
         _render_range_collect(field.name, x3d_type, lo, hi)
-        if wants_validation else None
+        if wants_range_diagnostics else None
     )
 
     name_pascal = pascal(field.name)

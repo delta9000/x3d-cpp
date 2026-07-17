@@ -352,6 +352,23 @@ void IndexedTriangleStripSet::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void IndexedTriangleStripSet::validateRanges(
+    std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesIndex(getIndex(), nodeTypeName(), "", out);
+}
+
+void IndexedTriangleStripSet::checkRangesIndex(
+    const MFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < -1)
+      out.push_back(RangeDiagnostic{nodeType, defName, "index",
+                                    "index below minimum of -1"});
+  }
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createIndexedTriangleStripSet() {
   return std::make_shared<IndexedTriangleStripSet>();

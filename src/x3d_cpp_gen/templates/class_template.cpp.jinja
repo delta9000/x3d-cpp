@@ -107,7 +107,7 @@ void {{ class_name }}::accept(NodeVisitor& visitor) const {
     visitor.leave(*this);
 }
 
-{% set _constrained = reflection_fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+{% set _constrained = reflection_fields | selectattr('has_range_diagnostics') | list %}
 {% if is_root %}
 void {{ class_name }}::validateRanges(std::vector<RangeDiagnostic>& /*out*/) const {}
 {% elif _constrained %}
@@ -124,7 +124,7 @@ void {{ class_name }}::validateRanges(std::vector<RangeDiagnostic>& out) const {
     X3DFogObject, X3DUrlObject) declare these statics in their header even
     though they do not participate in reflection, and derived nodes call them
     base-qualified from validateRanges(). -#}
-{% set _own_constrained = fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+{% set _own_constrained = fields | selectattr('has_range_diagnostics') | list %}
 {% for field in _own_constrained %}
 void {{ class_name }}::{{ field.range_checker_name }}(const {{ field.cpp_type }}& value,
         const std::string& nodeType, const std::string& defName,

@@ -450,7 +450,29 @@ void GeoElevationGrid::accept(NodeVisitor &visitor) const {
 
 void GeoElevationGrid::validateRanges(std::vector<RangeDiagnostic> &out) const {
 
+  checkRangesCreaseAngle(getCreaseAngle(), nodeTypeName(), "", out);
+
+  checkRangesXDimension(getXDimension(), nodeTypeName(), "", out);
+
   checkRangesYScale(getYScale(), nodeTypeName(), "", out);
+
+  checkRangesZDimension(getZDimension(), nodeTypeName(), "", out);
+}
+
+void GeoElevationGrid::checkRangesCreaseAngle(
+    const SFDouble &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "creaseAngle",
+                                  "creaseAngle below minimum of 0"});
+}
+
+void GeoElevationGrid::checkRangesXDimension(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "xDimension",
+                                  "xDimension below minimum of 0"});
 }
 
 void GeoElevationGrid::checkRangesYScale(const SFFloat &value,
@@ -460,6 +482,14 @@ void GeoElevationGrid::checkRangesYScale(const SFFloat &value,
   if (value < 0)
     out.push_back(RangeDiagnostic{nodeType, defName, "yScale",
                                   "yScale below minimum of 0"});
+}
+
+void GeoElevationGrid::checkRangesZDimension(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "zDimension",
+                                  "zDimension below minimum of 0"});
 }
 
 namespace factory_detail {

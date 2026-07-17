@@ -476,6 +476,75 @@ void IndexedFaceSet::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void IndexedFaceSet::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesColorIndex(getColorIndex(), nodeTypeName(), "", out);
+
+  checkRangesCoordIndex(getCoordIndex(), nodeTypeName(), "", out);
+
+  checkRangesCreaseAngle(getCreaseAngle(), nodeTypeName(), "", out);
+
+  checkRangesNormalIndex(getNormalIndex(), nodeTypeName(), "", out);
+
+  checkRangesTexCoordIndex(getTexCoordIndex(), nodeTypeName(), "", out);
+}
+
+void IndexedFaceSet::checkRangesColorIndex(const MFInt32 &value,
+                                           const std::string &nodeType,
+                                           const std::string &defName,
+                                           std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < -1)
+      out.push_back(RangeDiagnostic{nodeType, defName, "colorIndex",
+                                    "colorIndex below minimum of -1"});
+  }
+}
+
+void IndexedFaceSet::checkRangesCoordIndex(const MFInt32 &value,
+                                           const std::string &nodeType,
+                                           const std::string &defName,
+                                           std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < -1)
+      out.push_back(RangeDiagnostic{nodeType, defName, "coordIndex",
+                                    "coordIndex below minimum of -1"});
+  }
+}
+
+void IndexedFaceSet::checkRangesCreaseAngle(const SFFloat &value,
+                                            const std::string &nodeType,
+                                            const std::string &defName,
+                                            std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "creaseAngle",
+                                  "creaseAngle below minimum of 0"});
+}
+
+void IndexedFaceSet::checkRangesNormalIndex(const MFInt32 &value,
+                                            const std::string &nodeType,
+                                            const std::string &defName,
+                                            std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < -1)
+      out.push_back(RangeDiagnostic{nodeType, defName, "normalIndex",
+                                    "normalIndex below minimum of -1"});
+  }
+}
+
+void IndexedFaceSet::checkRangesTexCoordIndex(
+    const MFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < -1)
+      out.push_back(RangeDiagnostic{nodeType, defName, "texCoordIndex",
+                                    "texCoordIndex below minimum of -1"});
+  }
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createIndexedFaceSet() {
   return std::make_shared<IndexedFaceSet>();

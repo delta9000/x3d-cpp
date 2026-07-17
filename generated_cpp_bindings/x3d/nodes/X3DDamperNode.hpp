@@ -172,6 +172,15 @@ protected:
    * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
    *        component. Used by validateRanges() to surface lenient-read values.
    */
+  static void checkRangesOrder(const SFInt32 &value,
+                               const std::string &nodeType,
+                               const std::string &defName,
+                               std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
   static void checkRangesTau(const SFTime &value, const std::string &nodeType,
                              const std::string &defName,
                              std::vector<RangeDiagnostic> &out);

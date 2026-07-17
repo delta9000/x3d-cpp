@@ -259,6 +259,12 @@ void ScalarChaser::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void ScalarChaser::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  X3DChaserNode::checkRangesDuration(X3DChaserNode::getDuration(),
+                                     nodeTypeName(), "", out);
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createScalarChaser() {
   return std::make_shared<ScalarChaser>();
