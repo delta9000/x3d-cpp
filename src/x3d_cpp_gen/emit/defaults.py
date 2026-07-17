@@ -269,8 +269,14 @@ def enum_default_expr(enum_def, default: Optional[str]) -> Optional[str]:
     multi-valued (MF) enum field it is ``std::vector<EnumClass>{MEMBER, ...}``
     built from the (quoted, whitespace-separated) default tokens.
 
-    Unrecognised default tokens fall back to the first member (SF) or are
-    skipped (MF) so the emitted initializer is always well-formed.
+    An SF default token that doesn't match any member is a spec/generator
+    mismatch (a renamed token, a typo, a newer spec revision) -- raising here
+    turns a silently-wrong generated default into a loud generation-time
+    failure, rather than emitting a default that happens to compile but does
+    not match what the X3D spec actually says. An MF default with SOME
+    unmatched tokens among otherwise-valid ones is not escalated the same
+    way (a single bad token in a longer list is much lower-blast-radius than
+    an entirely wrong SF default) but is printed loudly so it's visible.
     """
     cpp = enum_def.cpp_name
     if not enum_def.is_multi:
@@ -278,15 +284,28 @@ def enum_default_expr(enum_def, default: Optional[str]) -> Optional[str]:
             return None
         member = enum_def.member_for_value(default)
         if member is None:
-            member = enum_def.members[0] if enum_def.members else None
-        if member is None:
-            return None
+            raise ValueError(
+                f"Enum default token {default!r} does not match any member "
+                f"of SimpleType {enum_def.name!r} (known: "
+                f"{[m.value for m in enum_def.members]}). This is a spec/"
+                f"generator mismatch -- check for a renamed token or a UOM "
+                f"version drift, and update model/enums.py's parsing or the "
+                f"UOM source, not this generator."
+            )
         return f"{cpp}::{member.cpp_name}"
 
-    # Multi-valued enum field: vector of enum members.
+    # Multi-valued enum field: vector of enum members. Unmatched tokens are
+    # dropped (not fatal -- see docstring) but printed so they're visible.
     toks = tokenize_mfstring(default) if default else []
-    members = [enum_def.member_for_value(t) for t in toks]
-    members = [m for m in members if m is not None]
+    members = []
+    for t in toks:
+        m = enum_def.member_for_value(t)
+        if m is None:
+            print(f"WARNING: enum default token {t!r} on SimpleType "
+                  f"{enum_def.name!r} does not match any member; dropping "
+                  f"it from the generated default.")
+            continue
+        members.append(m)
     if not members:
         return f"std::vector<{cpp}>{{}}"
     body = ", ".join(f"{cpp}::{m.cpp_name}" for m in members)

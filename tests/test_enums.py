@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
+import pytest
 from lxml import etree
 
 from x3d_cpp_gen.model.enums import parse_enum_defs, _sanitize_enum_member
@@ -172,11 +173,48 @@ def test_open_vocab_field_stays_string():
     assert d.cpp_type == "SFString"
 
 
-def test_enum_default_value_fallback_to_first_member():
-    defs = _alpha_defs()
-    ed = defs["alphaModeChoices"]
-    # An unknown default token falls back to the first member.
-    assert enum_default_expr(ed, "NONEXISTENT") == "AlphaModeChoices::AUTO"
+def test_enum_default_expr_raises_on_unmatched_sf_token():
+    from x3d_cpp_gen.emit.defaults import enum_default_expr
+    from x3d_cpp_gen.model.enums import EnumDef, EnumMember
+
+    enum_def = EnumDef(
+        name="alphaModeChoices", cpp_name="AlphaModeChoices",
+        base_type="SFString",
+        members=[EnumMember(value="OPAQUE", cpp_name="OPAQUE"),
+                 EnumMember(value="MASK", cpp_name="MASK")],
+    )
+    with pytest.raises(ValueError, match="alphaModeChoices"):
+        enum_default_expr(enum_def, "NOT_A_REAL_TOKEN")
+
+
+def test_enum_default_expr_sf_matches_correctly():
+    from x3d_cpp_gen.emit.defaults import enum_default_expr
+    from x3d_cpp_gen.model.enums import EnumDef, EnumMember
+
+    enum_def = EnumDef(
+        name="alphaModeChoices", cpp_name="AlphaModeChoices",
+        base_type="SFString",
+        members=[EnumMember(value="OPAQUE", cpp_name="OPAQUE"),
+                 EnumMember(value="MASK", cpp_name="MASK")],
+    )
+    assert enum_default_expr(enum_def, "MASK") == "AlphaModeChoices::MASK"
+
+
+def test_enum_default_expr_mf_drops_unmatched_tokens_with_warning(capsys):
+    from x3d_cpp_gen.emit.defaults import enum_default_expr
+    from x3d_cpp_gen.model.enums import EnumDef, EnumMember
+
+    enum_def = EnumDef(
+        name="fooChoices", cpp_name="FooChoices",
+        base_type="MFString",
+        members=[EnumMember(value="A", cpp_name="A"),
+                 EnumMember(value="B", cpp_name="B")],
+    )
+    result = enum_default_expr(enum_def, '"A" "NOT_REAL" "B"')
+    assert result == "std::vector<FooChoices>{FooChoices::A, FooChoices::B}"
+    captured = capsys.readouterr()
+    assert "fooChoices" in captured.out
+    assert "NOT_REAL" in captured.out
 
 
 def test_gen_enums_header_emits_enum_class():
