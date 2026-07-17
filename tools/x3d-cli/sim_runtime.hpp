@@ -42,8 +42,8 @@
 
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"   // attachInterpolators / attachEventUtilities /
-                                // attachViewDependent / attachKeyDeviceSensors +
-                                // detail::forEachNode
+                                // attachViewDependent / attachKeyDeviceSensors /
+                                // attachLoadSensors + detail::forEachNode
 #include "TimeSensorSystem.hpp"
 #include "ViewpointBindSystem.hpp"  // attachViewpointBind (post-cascade hook)
 #include "X3DScene.hpp"
@@ -155,6 +155,12 @@ inline RuntimeWiring attachFullRuntime(x3d::runtime::Scene &scene,
   attachEventUtilities(scene, ctx);
   attachViewDependent(scene, ctx);
   attachKeyDeviceSensors(scene, ctx);
+
+  // ── LoadSensor (§9) — one system observes every LoadSensor's watched
+  //    children through the AssetResolver seam. Defaults install the SEC-3
+  //    confined local-file resolver, so `x3d sim` reports load state for local
+  //    files out of the box.
+  attachLoadSensors(scene, ctx);
 
   // ── ViewpointBindSystem (§23.3.1) — post-cascade hook driving set_bind
   //    jump/retainUserOffsets + bind-stack transitions (scene-agnostic: it reads

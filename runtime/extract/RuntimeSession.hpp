@@ -7,7 +7,7 @@
 //   sdk::X3DExecutionContext ctx;
 //   ctx.buildSceneGraph(doc.scene);         // transforms/bounds/bindings/pick
 //   ctx.buildFrom(doc.scene);               // resolve DEF-named ROUTEs
-//   sdk::attachStandardRuntime(doc.scene, ctx);  // §8/§19/§39/§30/§22/§23/§21
+//   sdk::attachStandardRuntime(doc.scene, ctx);  // §8/§19/§39/§30/§22/§23/§21/§9
 //   sdk::SceneExtractor ex(ctx, doc.scene); // scene passed a SECOND time
 //   // ...and doc + ctx must both outlive ex, which holds references to them.
 //
@@ -41,6 +41,7 @@
 #ifndef X3D_RUNTIME_SESSION_HPP
 #define X3D_RUNTIME_SESSION_HPP
 
+#include "AssetResolver.hpp"       // AssetResolver (LoadSensor byte oracle)
 #include "MeshBuilder.hpp"         // MeshBuildOptions
 #include "SceneExtractor.hpp"      // SceneExtractor, RenderDelta
 #include "TextureResolver.hpp"     // TextureResolver, makeNullTextureResolver
@@ -49,6 +50,7 @@
 #include "X3DSceneBridge.hpp"      // BridgeResult (buildFrom's return type)
 
 #include <memory>
+#include <string>
 #include <utility>
 
 namespace x3d::runtime {
@@ -58,7 +60,7 @@ namespace x3d::runtime {
 struct SessionOptions {
   /// Attach the standard behavior systems: §8 TimeSensor, §19 interpolators,
   /// §39 followers, §30 event utilities, §22/§23 LOD/Billboard/Proximity/
-  /// Visibility, §21 key-device sensors, §23.3.1 viewpoint bind.
+  /// Visibility, §21 key-device sensors, §9 LoadSensor, §23.3.1 viewpoint bind.
   ///
   /// Default ON, and this is NOT the session smuggling in policy: without these
   /// the ROUTEs resolve but nothing drives them, so an authored scene loads,
@@ -77,6 +79,13 @@ struct SessionOptions {
   /// introduces no hidden I/O: with the default resolver the SDK decodes nothing.
   extract::MeshBuildOptions meshOptions{};
   extract::TextureResolver textureResolver = extract::makeNullTextureResolver();
+
+  /// The byte oracle §9 LoadSensor resolves its watched children through
+  /// (attached as part of the standard runtime). null installs the SEC-3-confined
+  /// local-file default rooted at `baseUrl`, so a default session reports load
+  /// state for local files without the embedder wiring anything.
+  extract::AssetResolver assetResolver = nullptr;
+  std::string baseUrl = "";
 };
 
 class RuntimeSession {
@@ -150,7 +159,9 @@ private:
     // one ordering here that is real: attachStandardRuntime walks the scene the
     // buildSceneGraph pass just sanitized, and a System added after the first
     // tick() misses that tick's update.
-    if (options.standardRuntime) attachStandardRuntime(doc_.scene, ctx_);
+    if (options.standardRuntime)
+      attachStandardRuntime(doc_.scene, ctx_, std::move(options.assetResolver),
+                            std::move(options.baseUrl));
     if (options.interactive) nav_ = attachInteractive(doc_.scene, ctx_);
   }
 

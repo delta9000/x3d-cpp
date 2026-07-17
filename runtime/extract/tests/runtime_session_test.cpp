@@ -9,6 +9,7 @@
 #include "RuntimeSession.hpp"
 
 #include "X3DParse.hpp"
+#include "x3d/nodes/LoadSensor.hpp"
 #include "doctest/doctest.h"
 
 #include <memory>
@@ -118,6 +119,36 @@ TEST_CASE("RuntimeSession: owns the document, so the scene outlives the caller's
   CHECK(f0.added.size() == 1);
   CHECK(s->document().scene.rootNodes.size() == 4);
   CHECK(s->scene().resolve("Mover") != nullptr);
+}
+
+TEST_CASE("RuntimeSession: SessionOptions.assetResolver drives LoadSensor (§9)") {
+  // A LoadSensor watching one ImageTexture. The session's default standard
+  // runtime attaches the LoadSensorSystem; SessionOptions.assetResolver is the
+  // byte oracle it resolves through. A Ready resolver → the NSN-9 success burst.
+  const char *xml = R"X3D(<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Interchange" version="4.0">
+  <Scene>
+    <LoadSensor DEF="LS">
+      <ImageTexture containerField="children" url='"a.png"'/>
+    </LoadSensor>
+  </Scene>
+</X3D>)X3D";
+
+  SessionOptions opts;
+  opts.assetResolver = [](const std::string &, AssetKind) {
+    return AssetResult::makeReady({});
+  };
+  auto s = RuntimeSession::create(
+      x3d::codec::parseDocument(xml, x3d::codec::Encoding::XML), std::move(opts));
+  s->tick(3.0);
+
+  x3d::nodes::LoadSensor *ls = nullptr;
+  for (auto &r : s->scene().rootNodes)
+    if (auto *p = dynamic_cast<x3d::nodes::LoadSensor *>(r.get()))
+      ls = p;
+  REQUIRE(ls != nullptr);
+  CHECK(ls->getIsLoaded());
+  CHECK(ls->getLoadTime() == 3.0);
 }
 
 TEST_CASE("RuntimeSession: delta() totality is inherited, not re-implemented") {
