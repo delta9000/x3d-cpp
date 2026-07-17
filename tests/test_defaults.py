@@ -66,6 +66,19 @@ def test_sfmatrix4f_arity_padding_still_row_braced():
     assert default_expr_for(X3DType.SFMatrix4f, "1") == expected
 
 
+def test_sfmatrix3f_overlong_default_is_truncated_not_overrun():
+    # A malformed/oversized spec default (more tokens than the matrix's true
+    # arity) must be truncated to exactly `count` before row-chunking, not
+    # passed through in full -- otherwise the extra tokens spill into extra
+    # braced rows beyond the fixed-size float matrix[N][N] member, which
+    # would not compile. Regression guard for a truncation step that was
+    # briefly dropped during a refactor and caught by review, not by any
+    # test at the time.
+    overlong = "1 0 0 0 1 0 0 0 1 99 99 99"  # 12 tokens, SFMatrix3f wants 9
+    assert (default_expr_for(X3DType.SFMatrix3f, overlong)
+            == "SFMatrix3f{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}}")
+
+
 def test_flat_structs_stay_single_braced_not_double():
     # Regression guard: only the matrix types get the extra brace. A flat
     # struct double-braced would itself be a -Wmissing-braces mismatch the
@@ -120,6 +133,25 @@ def test_tokenize_mfstring_quote_aware():
     assert tokenize_mfstring("a b c") == ["a", "b", "c"]
     assert tokenize_mfstring("") == []
     assert tokenize_mfstring(None) == []
+
+
+# _chunk_braced tests
+
+def test_chunk_braced_groups_without_padding():
+    from x3d_cpp_gen.emit.defaults import _chunk_braced
+    assert _chunk_braced(["1", "2", "3", "4"], 2, pad_short=False) == ["{1, 2}", "{3, 4}"]
+
+
+def test_chunk_braced_drops_ragged_remainder_when_not_padding():
+    from x3d_cpp_gen.emit.defaults import _chunk_braced
+    assert _chunk_braced(["1", "2", "3"], 2, pad_short=False) == ["{1, 2}"]
+
+
+def test_chunk_braced_zero_pads_short_final_group_when_padding():
+    from x3d_cpp_gen.emit.defaults import _chunk_braced
+    # 5 values, chunk size 4 -> one full chunk, one short chunk padded to 4.
+    result = _chunk_braced(["1", "2", "3", "4", "5"], 4, pad_short=True, floaty=True)
+    assert result == ["{1, 2, 3, 4}", "{5, 0.0f, 0.0f, 0.0f}"]
 
 
 def test_struct_arity_row_size_matches_sqrt_of_count():

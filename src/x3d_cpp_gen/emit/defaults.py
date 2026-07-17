@@ -154,6 +154,32 @@ _MF_STRUCT_ELEM = {
 }
 
 
+def _chunk_braced(vals: List[str], size: int, *, pad_short: bool,
+                  floaty: bool = True) -> List[str]:
+    """Slice ``vals`` into ``size``-sized groups, brace-wrapping each.
+
+    ``pad_short=True`` zero-pads a short final group to exactly ``size``
+    (matrix rows: the caller has already zero-padded the WHOLE list to a
+    multiple of ``size`` via the arity guard, so this only matters if a
+    caller passes an un-padded list directly). ``pad_short=False`` drops a
+    ragged trailing remainder instead (MF-struct elements: a multi-element
+    default with a trailing partial element is intentionally truncated, not
+    padded with synthetic zeros the spec never declared).
+    """
+    zero = "0.0f" if floaty else "0.0"
+    if pad_short:
+        vals = list(vals)
+        while len(vals) % size != 0:
+            vals.append(zero)
+        stop = len(vals)
+    else:
+        stop = len(vals) - len(vals) % size
+    return [
+        "{" + ", ".join(vals[i:i + size]) + "}"
+        for i in range(0, stop, size)
+    ]
+
+
 def _struct_literal(struct: str, count: int, floaty: bool, row_size: int, d: str) -> str:
     vals = _scalar_list(d)
     zero = "0.0f" if floaty else "0.0"
@@ -161,10 +187,7 @@ def _struct_literal(struct: str, count: int, floaty: bool, row_size: int, d: str
         vals.append(zero)
     vals = vals[:count]
     if row_size:
-        rows = [
-            "{" + ", ".join(vals[i:i + row_size]) + "}"
-            for i in range(0, count, row_size)
-        ]
+        rows = _chunk_braced(vals, row_size, pad_short=False, floaty=floaty)
         return struct + "{{" + ", ".join(rows) + "}}"
     return struct + "{" + ", ".join(vals) + "}"
 
@@ -220,7 +243,7 @@ def default_expr_for(x3d_type: X3DType, default: Optional[str]) -> Optional[str]
                 for v in _scalar_list(d)]
         return "std::vector<bool>{" + ", ".join(vals) + "}"
     if x3d_type in _MF_STRUCT_ELEM:
-        struct, count, _floaty = _MF_STRUCT_ELEM[x3d_type]
+        struct, count, floaty = _MF_STRUCT_ELEM[x3d_type]
         vals = _scalar_list(d)
         if len(vals) < count:
             return f"std::vector<{struct}>{{}}"
@@ -228,10 +251,8 @@ def default_expr_for(x3d_type: X3DType, default: Optional[str]) -> Optional[str]
         # default (e.g. Extrusion.crossSection = the 5-point square, spine = the
         # 2-point segment) emits every element, not just the first. Trailing
         # scalars that do not fill a whole element are dropped.
-        elems = [
-            f"{struct}{{" + ", ".join(vals[i:i + count]) + "}"
-            for i in range(0, len(vals) - len(vals) % count, count)
-        ]
+        chunks = _chunk_braced(vals, count, pad_short=False, floaty=floaty)
+        elems = [struct + chunk for chunk in chunks]
         return f"std::vector<{struct}>{{" + ", ".join(elems) + "}"
     if TypeRegistry.is_multi(x3d_type):
         # Remaining MF types (e.g. MFNode/MFImage/MFMatrix*) value-initialize.
