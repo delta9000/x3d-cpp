@@ -78,22 +78,35 @@ def _scalar_list(default: str):
     return [tok for tok in default.replace(",", " ").split() if tok]
 
 
-# Struct SF* types -> (struct name, component count, is-float). Drives the brace
-# initializer for fixed-arity vector/colour/rotation defaults.
+# Struct SF* types -> (struct name, component count, is-float, row size).
+# Drives the brace initializer for fixed-arity vector/colour/rotation/matrix
+# defaults. ``row_size`` is nonzero only for the matrix types: their struct
+# wraps a genuine 2D array member (e.g. ``float matrix[4][4]``), which C++
+# aggregate-init rules let you flatten into a single elided-brace list -- but
+# Clang's -Wmissing-braces (promoted to -Werror) rejects the elided form even
+# though GCC accepts it silently, and empirically a single extra wrapping
+# brace around the flat list is *not* enough either: Clang still wants each
+# row of the 2D array individually braced (verified directly against both
+# clang and gcc with -Wmissing-braces -Werror, not just read about). So a
+# matrix's literal chunks the flat value list into ``row_size``-sized rows,
+# each explicitly braced, wrapped in one more brace for the array member
+# itself: ``Struct{ {row0}, {row1}, ... }``. The plain vector/colour/rotation
+# structs are flat (e.g. ``float x, y, z;``), where a single brace is exactly
+# right and extra nesting would itself warn.
 _STRUCT_ARITY = {
-    X3DType.SFVec2f: ("SFVec2f", 2, True),
-    X3DType.SFVec3f: ("SFVec3f", 3, True),
-    X3DType.SFVec4f: ("SFVec4f", 4, True),
-    X3DType.SFColor: ("SFColor", 3, True),
-    X3DType.SFColorRGBA: ("SFColorRGBA", 4, True),
-    X3DType.SFVec2d: ("SFVec2d", 2, False),
-    X3DType.SFVec3d: ("SFVec3d", 3, False),
-    X3DType.SFVec4d: ("SFVec4d", 4, False),
-    X3DType.SFRotation: ("SFRotation", 4, True),
-    X3DType.SFMatrix3f: ("SFMatrix3f", 9, True),
-    X3DType.SFMatrix4f: ("SFMatrix4f", 16, True),
-    X3DType.SFMatrix3d: ("SFMatrix3d", 9, False),
-    X3DType.SFMatrix4d: ("SFMatrix4d", 16, False),
+    X3DType.SFVec2f: ("SFVec2f", 2, True, 0),
+    X3DType.SFVec3f: ("SFVec3f", 3, True, 0),
+    X3DType.SFVec4f: ("SFVec4f", 4, True, 0),
+    X3DType.SFColor: ("SFColor", 3, True, 0),
+    X3DType.SFColorRGBA: ("SFColorRGBA", 4, True, 0),
+    X3DType.SFVec2d: ("SFVec2d", 2, False, 0),
+    X3DType.SFVec3d: ("SFVec3d", 3, False, 0),
+    X3DType.SFVec4d: ("SFVec4d", 4, False, 0),
+    X3DType.SFRotation: ("SFRotation", 4, True, 0),
+    X3DType.SFMatrix3f: ("SFMatrix3f", 9, True, 3),
+    X3DType.SFMatrix4f: ("SFMatrix4f", 16, True, 4),
+    X3DType.SFMatrix3d: ("SFMatrix3d", 9, False, 3),
+    X3DType.SFMatrix4d: ("SFMatrix4d", 16, False, 4),
 }
 
 # MF struct types -> (element struct name, component count, is-float). A single
@@ -111,12 +124,19 @@ _MF_STRUCT_ELEM = {
 }
 
 
-def _struct_literal(struct: str, count: int, floaty: bool, d: str) -> str:
+def _struct_literal(struct: str, count: int, floaty: bool, row_size: int, d: str) -> str:
     vals = _scalar_list(d)
     zero = "0.0f" if floaty else "0.0"
     while len(vals) < count:  # arity guard: never read OOB
         vals.append(zero)
-    return f"{struct}{{" + ", ".join(vals[:count]) + "}"
+    vals = vals[:count]
+    if row_size:
+        rows = [
+            "{" + ", ".join(vals[i:i + row_size]) + "}"
+            for i in range(0, count, row_size)
+        ]
+        return struct + "{{" + ", ".join(rows) + "}}"
+    return struct + "{" + ", ".join(vals) + "}"
 
 
 def default_expr_for(x3d_type: X3DType, default: Optional[str]) -> Optional[str]:
