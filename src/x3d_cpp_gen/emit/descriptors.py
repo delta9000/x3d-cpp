@@ -456,3 +456,48 @@ def _build_enum_descriptor(field, enum_def, access, is_event,
 
 def build_descriptors(fields, enum_defs: Optional[Dict] = None) -> List[FieldDescriptor]:
     return [build_descriptor(f, enum_defs) for f in fields]
+
+
+def build_reflection_descriptors(node, nodes, dependency_graph,
+                                 *, own_field_names, ancestors,
+                                 enum_defs: Optional[Dict] = None) -> List[FieldDescriptor]:
+    """Build the FULL reflection field set for ``node`` (own + inherited),
+    with each descriptor's ``inherited_from`` resolved to the class that
+    ACTUALLY declares it, and phantom fields dropped.
+
+    The UOM flattens inherited fields into every node so the reflection
+    table doesn't need to walk the C++ base chain -- but its raw
+    ``field/@inheritedFrom`` attribute does not always name the class that
+    actually declares the field (a UOM data quirk). This function re-derives
+    the true declaring ancestor from ``own_field_names`` (each class's ACTUAL
+    own-declared field set, keyed by the field's wire/x3d_name) instead of
+    trusting the UOM attribute, and drops any field that names no real
+    declarer anywhere in the hierarchy (a "phantom" field -- 9 such fields
+    exist in the 4.0 UOM; there is no accessor/member for them anywhere in
+    the generated C++, so keeping them in the reflection table would emit a
+    call to a nonexistent accessor).
+
+    ``own_field_names``: ``{class_name: {wire_field_name, ...}}`` for every
+    class in the hierarchy (own-declared fields only, not inherited).
+    ``ancestors``: the ordered list of ``node``'s transitive base classes
+    (nearest-first is not required; the first ancestor found declaring the
+    field wins, matching the prior inline behavior in CppHeaderBackend).
+    """
+    descriptors = list(build_descriptors(node.fields, enum_defs))
+    own_here = own_field_names.get(node.name, set())
+    resolved: List[FieldDescriptor] = []
+    for d in descriptors:
+        if d.x3d_name in own_here:
+            d.inherited_from = None
+            resolved.append(d)
+            continue
+        declaring = next(
+            (a for a in ancestors if d.x3d_name in own_field_names.get(a, set())),
+            None,
+        )
+        if declaring is None:
+            # Phantom field: dropped, not emitted into the reflection table.
+            continue
+        d.inherited_from = declaring
+        resolved.append(d)
+    return resolved
