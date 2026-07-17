@@ -6,10 +6,10 @@ _Generated. Levels 1,2,3,4 · 13 nodes · profiles: Full._
 |------|-----|--------|---------|---------|----------|------------|
 | Contour2D | 4 | ✓ | — | — | — |  |
 | ContourPolyline2D | 3 | ✓ | — | — | — | X3DNurbsControlCurveNode |
-| NurbsCurve | 1 | ✓ | ✓ | — | CONTAINERFIELD-FALSEPOS, NRB-1, SEAM-2D-NURBS | X3DGeometryNode, X3DParametricGeometryNode |
+| NurbsCurve | 1 | ✓ | ✓ | — | CONTAINERFIELD-FALSEPOS, NRB-1 | X3DGeometryNode, X3DParametricGeometryNode |
 | NurbsCurve2D | 3 | ✓ | — | — | — | X3DNurbsControlCurveNode |
 | NurbsOrientationInterpolator | 1 | ✓ | — | — | NRB-2 | X3DChildNode |
-| NurbsPatchSurface | 1 | ✓ | ✓ | — | NRB-1, SEAM-2D-NURBS | X3DGeometryNode, X3DNurbsSurfaceGeometryNode, X3DParametricGeometryNode |
+| NurbsPatchSurface | 1 | ✓ | ✓ | — | NRB-1 | X3DGeometryNode, X3DNurbsSurfaceGeometryNode, X3DParametricGeometryNode |
 | NurbsPositionInterpolator | 1 | ✓ | — | — | NRB-2 | X3DChildNode |
 | NurbsSet | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode |
 | NurbsSurfaceInterpolator | 1 | ✓ | — | — | NRB-2 | X3DChildNode |

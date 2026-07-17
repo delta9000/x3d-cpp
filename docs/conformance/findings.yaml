@@ -1240,9 +1240,9 @@
   nodes: [TouchSensor]
   clause: "20.4.4"
   severity: low
-  status: open
-  summary: touchTime condition-3 (still-over-at-release pick re-resolution) not verified.
-  note: "Was BACKLOG CONF-CRITIC. Confirm touchTime fires only when the release pick still resolves over the sensor's geometry."
+  status: closed
+  summary: touchTime condition-3 (still-over-at-release pick re-resolution) verified — implemented and tested.
+  note: "Was BACKLOG CONF-CRITIC. Verified 2026-07-17: PointingSensorSystem.hpp re-resolves the release pick (stillOver = pick.hit && resolve(pick) == active_) and gates touchTime on `pressWasOver_ && stillOver` (§20.4.4); covered by pointing_sensor_test.cpp test_isActive_touchTime, which asserts touchTime fires when released over the geometry and does NOT fire when released off it. Both present since the initial commit — the finding was carried over from BACKLOG without confirming the behavior already existed."
 
 # ── 2026-06-25 Three-RAG conformance-walk sweep (all 36 components) ──────────
 # High-severity gaps surfaced by the full per-component walk. Evidence cited at
@@ -1966,17 +1966,18 @@
     is reproducible from the contract. (extraction-seam review.)
 
 - id: SEAM-2D-NURBS
-  nodes: [Disk2D, Arc2D, Circle2D, Rectangle2D, NurbsCurve, NurbsPatchSurface]
+  nodes: [Disk2D, Arc2D, Circle2D, Rectangle2D]
   component: Geometry2D
-  clause: "14 (Geometry2D), 27 (NURBS)"
+  clause: "14 (Geometry2D)"
   severity: major
   status: open
-  summary: The entire 2D-geometry component and all NURBS nodes are unrecognized by the mesh builder and render nothing — indistinguishable from a parser failure.
+  summary: The entire 2D-geometry component is unrecognized by the mesh builder and renders nothing — indistinguishable from a parser failure.
   note: >-
-    recognizedGeometryType MeshBuilder.hpp:1242-1256 lists none of Disk2D/Arc2D/ArcClose2D/Circle2D/
-    Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D or NurbsCurve/NurbsPatchSurface/NurbsTrimmedSurface;
-    each falls to ++skippedGeometry_ (SceneExtractor.hpp:558). view3dscene/X_ITE tessellate these. Fix:
-    tessellate the 2D primitives (cheap trig fans) now; flag NURBS as a known gap. (extraction-seam review.)
+    recognizedGeometryType (MeshBuilder.cpp:938-953) lists none of Disk2D/Arc2D/ArcClose2D/Circle2D/
+    Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D; each falls to ++skippedGeometry_ (SceneExtractor.hpp).
+    view3dscene/X_ITE tessellate these. Fix: tessellate the 2D primitives (cheap trig fans). (extraction-seam
+    review.) NURBS is no longer part of this finding: NurbsCurve/NurbsPatchSurface now tessellate (NRB-1,
+    fixed) and the remaining trimmed/swept/swung surfaces are tracked by NRB-3.
 
 - id: SEAM-LINEPOINT
   nodes: [LineProperties, PointProperties, IndexedLineSet, PointSet]
@@ -2063,4 +2064,5 @@
     it as the texture each tick. The NIST .mpg files are RAW elementary video streams (no MPEG-PS system layer), so the
     backend drives pl_mpeg's low-level plm_video_t directly for those (plm_t + seek for program streams). Verified by the
     x3d_movie_tests semantics-contract test and by rendering Appearance/Appearance/movietexture.x3d (the VTS card plays on
-    box/sphere/cone/cylinder). Theora/WebM remain follow-ups; MovieTexture time-lifecycle nuance tracked by TDN-5.
+    box/sphere/cone/cylinder). Theora since shipped as MovieDecoder Backend B (TheoraMovieDecoder, seam-status.md — the
+    seam is STABLE); WebM remains a follow-up. MovieTexture time-lifecycle nuance tracked by TDN-5.
