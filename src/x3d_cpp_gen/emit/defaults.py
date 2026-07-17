@@ -10,25 +10,7 @@ import math
 from typing import List, Optional
 
 from x3d_cpp_gen.model.types import X3DType, TypeRegistry, resolve_x3d_type
-
-
-def cpp_string_literal(s: str) -> str:
-    """Escape a Python string into the body of a C++ double-quoted literal."""
-    out = []
-    for ch in s:
-        if ch == '\\':
-            out.append('\\\\')
-        elif ch == '"':
-            out.append('\\"')
-        elif ch == '\n':
-            out.append('\\n')
-        elif ch == '\t':
-            out.append('\\t')
-        elif ch == '\r':
-            out.append('\\r')
-        else:
-            out.append(ch)
-    return ''.join(out)
+from x3d_cpp_gen.emit.naming import cpp_str as cpp_string_literal  # noqa: F401
 
 
 def tokenize_mfstring(default: str) -> List[str]:

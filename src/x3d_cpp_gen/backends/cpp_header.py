@@ -47,7 +47,9 @@ class CppHeaderBackend:
             loader=FileSystemLoader(self.templates_dir),
             extensions=['jinja2.ext.loopcontrols'],
         )
+        from x3d_cpp_gen.emit.naming import cpp_str
         env.filters['pascal'] = pascal
+        env.filters['cpp_str'] = cpp_str
         self._env = env
         self._template = env.get_template('class_template.hpp.jinja')
         self._source_template = env.get_template('class_template.cpp.jinja')

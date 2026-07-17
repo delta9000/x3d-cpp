@@ -63,3 +63,26 @@ def test_every_reserved_keyword_is_suffixed(kw):
     sanitized = sanitize_field_name(kw)
     assert sanitized == f"{kw}_"
     assert sanitized not in CPP_RESERVED_KEYWORDS
+
+
+def test_cpp_str_escapes_backslash_and_quote():
+    from x3d_cpp_gen.emit.naming import cpp_str
+    assert cpp_str('a"b\\c') == 'a\\"b\\\\c'
+
+
+def test_cpp_str_escapes_control_chars():
+    from x3d_cpp_gen.emit.naming import cpp_str
+    assert cpp_str("line1\nline2\ttabbed\rcr") == "line1\\nline2\\ttabbed\\rcr"
+
+
+def test_cpp_str_handles_comment_terminator():
+    # A description containing "*/" must not be able to close a /** ... */
+    # Doxygen block early -- cpp_str itself only escapes string-literal
+    # metacharacters, but this test documents the exact input that would
+    # break an @details comment if a caller used raw interpolation instead
+    # of routing through cpp_str (or a comment-safe filter) -- see Step 5.
+    from x3d_cpp_gen.emit.naming import cpp_str
+    # cpp_str's job is string-literal safety, not comment safety -- "*/"
+    # inside a STRING LITERAL is completely inert, this assertion just pins
+    # that cpp_str does not mangle it.
+    assert cpp_str("ends with */ here") == "ends with */ here"

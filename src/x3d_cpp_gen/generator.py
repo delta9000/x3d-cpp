@@ -8,6 +8,7 @@ from x3d_cpp_gen.backends.cpp_header import CppHeaderBackend, TEMPLATES_DIR
 # --- Re-exports: these responsibilities now live in dedicated layers, but the
 # historical generator.* import surface is preserved for the CLI and tests. ---
 from x3d_cpp_gen.emit.naming import pascal  # noqa: F401
+from x3d_cpp_gen.emit.naming import cpp_str as _cpp_str  # noqa: F401
 from x3d_cpp_gen.emit.defaults import (  # noqa: F401
     compute_default_expr, tokenize_mfstring, cpp_string_literal,
 )
@@ -261,7 +262,7 @@ def gen_enums_header(enum_defs) -> str:
         lines.append("    switch (value) {")
         for m in ed.members:
             token = _enum_token(m.value)
-            lines.append(f"    case {cpp}::{m.cpp_name}: return {_cpp_str(token)};")
+            lines.append(f"    case {cpp}::{m.cpp_name}: return {_cpp_str_literal(token)};")
         lines.append("    }")
         lines.append("    return \"\";")
         lines.append("}")
@@ -272,7 +273,7 @@ def gen_enums_header(enum_defs) -> str:
         for m in ed.members:
             token = _enum_token(m.value)
             lines.append(
-                f"    if (token == {_cpp_str(token)}) {{ out = {cpp}::{m.cpp_name}; return true; }}")
+                f"    if (token == {_cpp_str_literal(token)}) {{ out = {cpp}::{m.cpp_name}; return true; }}")
         lines.append("    return false;")
         lines.append("}")
         lines.append("")
@@ -288,10 +289,9 @@ def _enum_token(raw: str) -> str:
     return (raw or "").strip().strip('"')
 
 
-def _cpp_str(s: str) -> str:
-    """A C++ string literal for ``s`` (escapes backslashes and double-quotes)."""
-    escaped = s.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
+def _cpp_str_literal(s: str) -> str:
+    """A fully-quoted C++ string literal for ``s``."""
+    return f'"{_cpp_str(s)}"'
 
 
 def write_enums_header(output_dir: str, enum_defs) -> None:
