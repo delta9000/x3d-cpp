@@ -2,7 +2,7 @@
 title: Codec Writers
 summary: XML, VRML, and JSON serialization writers plus field-value IO — the full set of output codecs.
 tags: [subsystem, codecs, writers, xml, vrml, json, serialization]
-updated: 2026-06-20
+updated: 2026-07-17
 related:
   - ../architecture.md
   - ../subsystems/canonical-xml.md
@@ -96,7 +96,7 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
 **XmlWriter:**
 - Value fields become XML attributes; `SFNode`/`MFNode` fields become child elements under the child's `containerField` name.
 - Enum fields use the `FieldInfo::getEnumString` thunk.
-- A `Script` node's inline source is emitted as a `<![CDATA[...]]>` text body (SCR-SAI-DYN S1) rather than an attribute; author `<field>` declarations from the `DynamicFieldStore` are emitted as `<field>` child elements.
+- A `Script` node's inline source is emitted as a `<![CDATA[...]]>` text body (SCR-SAI-DYN S1) rather than an attribute; author `<field>` declarations from the `DynamicFieldStore` are emitted as `<field>` child elements. A literal `]]>` in the source is split across consecutive CDATA sections (`xml::cdataEscape`; the reader concatenates them back — ENC-CDATA-SCRIPT).
 - ProtoBody re-emit uses a fresh `XmlWriter` instance (isolated DEF/USE bookkeeping); `IS` connections are threaded via `bodyIsc_` so `<IS><connect>` blocks appear at any nesting depth inside the body.
 - Un-expanded `ProtoInstance`s that were not resolved (no graph node) are re-emitted from `scene.protoInstances` so they survive a round-trip.
 
@@ -162,6 +162,7 @@ Tests live in `runtime/codecs/tests/`. Most are doctest cases compiled into the 
 | `script_cdata_audit_test` | Script CDATA inline source survives all three writers |
 | `fval_extended_test` | Extended field-value IO: matrices, SFImage, MFImage, edge-case numeric formats |
 | `codec_conformance_test` | Conformance spot-checks: field default elision, DEF/USE identity, enum emit |
+| `codec_string_hardening_test` | The seven ENC-* string/value regressions: META escaping, unknown-escape backslash retention, SFImage over the `.x3dv` hop, `]]>` CDATA splitting, JSON `unit` array, RFC 8259 control-char escaping, canonical attr whitespace refs |
 
 Run the codec test suite with:
 

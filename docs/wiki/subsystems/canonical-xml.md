@@ -2,7 +2,7 @@
 title: Canonical XML Writer
 summary: X3D canonical-XML writer (X3DC14N) for byte-stable, deterministic output used by the canonicalize gate.
 tags: [subsystem, canonical, xml, x3dc14n, canonicalize]
-updated: 2026-06-20
+updated: 2026-07-17
 related:
   - ../architecture.md
   - ../subsystems/codecs-writers.md
@@ -109,6 +109,12 @@ public:
 | T11 | `XmlWriter` output byte-identical before and after `CanonicalXmlWriter` use (isolation proof) |
 | T12 | `<meta>` attrs in canonical order (`content` before `name`) |
 | T13 | Apostrophe in attribute value escapes to `&apos;` (single-quote context) |
+
+Attribute values additionally escape tab/newline/CR as `&#x9;`/`&#xA;`/`&#xD;` (ENC-C14N-ATTR) so
+canonical output is portable: a conformant reader would otherwise normalize the raw whitespace to a
+space, breaking byte-stable signing across parsers. CDATA bodies split a literal `]]>` across
+consecutive sections (`xml::cdataEscape`), same as `XmlWriter`. Regressions for both live in
+`codec_string_hardening_test`.
 
 **Canon gate (corpus-scale differential, external corpus required):**
 
