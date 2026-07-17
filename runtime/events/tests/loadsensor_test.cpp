@@ -226,6 +226,66 @@ TEST_CASE("LoadSensor: parse-time expanded Inline is pre-seeded Ready (NSN-9)") 
   CHECK(calls == 0);                 // pre-seed asked no resolver
 }
 
+// ── Task 4: timeOut deadline + enabled lifecycle ──────────────────────────
+
+TEST_CASE("LoadSensor: timeOut deadline fires terminal failure, no loadTime") {
+  auto alwaysPending = [](const std::string &, AssetKind) { return pending(); };
+  Rig rig(alwaysPending);
+  rig.ls->setTimeOut(5.0);
+
+  rig.ctx.tick(1.0); // activate; window opens at t=1
+  CHECK(rig.ls->getIsActive());
+
+  rig.ctx.tick(7.0); // 7-1 = 6 > 5 → timeout
+  CHECK_FALSE(rig.ls->getIsActive());
+  CHECK_FALSE(rig.ls->getIsLoaded());
+  CHECK(rig.ls->getLoadTime() == 0.0); // loadTime is never sent on failure
+}
+
+TEST_CASE("LoadSensor: timeOut=0 monitors indefinitely") {
+  auto alwaysPending = [](const std::string &, AssetKind) { return pending(); };
+  Rig rig(alwaysPending); // default timeOut is 0
+
+  rig.ctx.tick(1.0);
+  CHECK(rig.ls->getIsActive());
+  rig.ctx.tick(1000.0);
+  CHECK(rig.ls->getIsActive()); // still monitoring
+  CHECK_FALSE(rig.ls->getIsLoaded());
+}
+
+TEST_CASE("LoadSensor: enabled=FALSE deactivates; re-enable starts fresh") {
+  auto alwaysPending = [](const std::string &, AssetKind) { return pending(); };
+  Rig rig(alwaysPending);
+
+  rig.ctx.tick(1.0);
+  CHECK(rig.ls->getIsActive());
+
+  rig.ls->setEnabled(false);
+  rig.ctx.tick(2.0);
+  CHECK_FALSE(rig.ls->getIsActive()); // deactivated
+  CHECK_FALSE(rig.ls->getIsLoaded()); // no isLoaded emitted by a disable
+
+  rig.ls->setEnabled(true);
+  rig.ctx.tick(3.0);
+  CHECK(rig.ls->getIsActive()); // fresh cycle re-activates
+}
+
+TEST_CASE("LoadSensor: timeOut window starts at activation, not scene start") {
+  auto alwaysPending = [](const std::string &, AssetKind) { return pending(); };
+  Rig rig(alwaysPending);
+  rig.ls->setTimeOut(5.0);
+
+  rig.ctx.tick(10.0); // sensor first activates at t=10
+  CHECK(rig.ls->getIsActive());
+
+  rig.ctx.tick(14.0); // 14-10 = 4 < 5, even though 14 > 5 from scene start
+  CHECK(rig.ls->getIsActive());
+
+  rig.ctx.tick(16.0); // 16-10 = 6 > 5 → timeout
+  CHECK_FALSE(rig.ls->getIsActive());
+  CHECK_FALSE(rig.ls->getIsLoaded());
+}
+
 TEST_CASE("LoadSensor: all candidates fail → isLoaded FALSE, not active") {
   ChildStatus seen = ChildStatus::NotStarted;
   auto s = std::make_shared<ScriptState>();
