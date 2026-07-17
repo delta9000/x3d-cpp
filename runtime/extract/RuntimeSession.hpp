@@ -50,7 +50,6 @@
 #include "X3DSceneBridge.hpp"      // BridgeResult (buildFrom's return type)
 
 #include <memory>
-#include <string>
 #include <utility>
 
 namespace x3d::runtime {
@@ -81,11 +80,11 @@ struct SessionOptions {
   extract::TextureResolver textureResolver = extract::makeNullTextureResolver();
 
   /// The byte oracle §9 LoadSensor resolves its watched children through
-  /// (attached as part of the standard runtime). null installs the SEC-3-confined
-  /// local-file default rooted at `baseUrl`, so a default session reports load
-  /// state for local files without the embedder wiring anything.
+  /// (attached as part of the standard runtime). The session introduces no hidden
+  /// I/O: null is the IO-free null stub (Failed), mirroring `textureResolver`.
+  /// The SDK ships no concrete backend — an embedder injects one (e.g. a
+  /// confined local-file resolver) to make watched children actually load.
   extract::AssetResolver assetResolver = nullptr;
-  std::string baseUrl = "";
 };
 
 class RuntimeSession {
@@ -160,8 +159,7 @@ private:
     // buildSceneGraph pass just sanitized, and a System added after the first
     // tick() misses that tick's update.
     if (options.standardRuntime)
-      attachStandardRuntime(doc_.scene, ctx_, std::move(options.assetResolver),
-                            std::move(options.baseUrl));
+      attachStandardRuntime(doc_.scene, ctx_, std::move(options.assetResolver));
     if (options.interactive) nav_ = attachInteractive(doc_.scene, ctx_);
   }
 

@@ -92,6 +92,15 @@ struct AssetResult {
 using AssetResolver =
     std::function<AssetResult(const std::string &url, AssetKind kind)>;
 
+// DEFAULT STUB: makeNullAssetResolver() returns a callable that always answers
+// makeFailed() — the IO-free default, mirroring makeNullTextureResolver(). The
+// SDK ships no concrete backend (a local-file/HTTP/S3 resolver is a backend, kept
+// out of the public headers, ADR — IO-free SDK); an app or embedder injects one.
+// A null std::function is NOT legal to call — always use this stub as the default.
+inline AssetResolver makeNullAssetResolver() {
+  return [](const std::string &, AssetKind) { return AssetResult::makeFailed(); };
+}
+
 } // namespace x3d::runtime::extract
 
 #endif // X3D_RUNTIME_EXTRACT_ASSET_RESOLVER_HPP

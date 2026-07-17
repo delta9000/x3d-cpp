@@ -88,11 +88,11 @@ monitor indefinitely.
 | File / directory | Role |
 |---|---|
 | `runtime/events/LoadSensorSystem.hpp` | The System: per-sensor state, the per-tick algorithm, `ChildLoadPolicy` hook, `setSensorHook`/`setChildStateHook` test seams; header-only |
-| `runtime/io/file/FileResolver.hpp` | `makeFileResolver(baseDir)` — the SEC-3-confined local-file default `AssetResolver` (Ready/Failed, never Pending) |
-| `runtime/extract/AssetResolver.hpp` | The `(url, kind) → AssetResult` seam LoadSensor resolves through (ADR-0023) |
-| `runtime/events/X3DSceneBridge.hpp` | `attachLoadSensors(scene, ctx, resolver, baseUrl)` production wiring; `attachStandardRuntime` gains the two defaulted trailing params |
-| `runtime/extract/RuntimeSession.hpp` | `SessionOptions.assetResolver` + `baseUrl` pass-through to `attachStandardRuntime` |
-| `tools/x3d-cli/sim_runtime.hpp` | `attachFullRuntime` calls `attachLoadSensors` (defaults) — `x3d sim` gets LoadSensor out of the box |
+| `runtime/extract/AssetResolver.hpp` | The `(url, kind) → AssetResult` seam LoadSensor resolves through (ADR-0023); `makeNullAssetResolver()` is the IO-free default stub (Failed) |
+| `runtime/io/file/FileResolver.hpp` | `makeFileResolver(baseDir)` — the SEC-3-confined local-file backend (Ready/Failed, never Pending); a **concrete backend**, kept out of the public SDK and injected by the app layer |
+| `runtime/events/X3DSceneBridge.hpp` | `attachLoadSensors(scene, ctx, resolver)` production wiring; `attachStandardRuntime` gains the defaulted trailing `assetResolver` param |
+| `runtime/extract/RuntimeSession.hpp` | `SessionOptions.assetResolver` pass-through to `attachStandardRuntime` |
+| `tools/x3d-cli/sim_runtime.hpp` | `attachFullRuntime` injects `io::file::makeFileResolver()` — the app-layer backend that gives `x3d sim` confined local-file load state out of the box |
 | `runtime/InlineExpand.hpp` | Parse-time `Scene::expandedInlines` — the map the pre-seed reads (an Inline in `children` becomes a synthetic `Group`, keyed to the original Inline) |
 | `generated_cpp_bindings/x3d/nodes/LoadSensor.hpp` | The generated node: `getChildren`/`setChildren`, `getTimeOut`, `emitIsLoaded`/`emitLoadTime`/`emitProgress` |
 | `runtime/events/tests/loadsensor_test.cpp` | Behavioral conformance tests (in `x3d_events_tests`) |
@@ -105,9 +105,8 @@ namespace x3d::runtime {
 
 class LoadSensorSystem : public System {
 public:
-  // resolver == nullptr -> SEC-3-confined local-file default rooted at baseUrl
-  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr,
-                            std::string baseUrl = "");
+  // resolver == nullptr -> IO-free null stub (Failed); the app injects a backend
+  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr);
   void setScene(const Scene *);              // reads Scene::expandedInlines for pre-seed
   void setChildLoadPolicy(ChildLoadPolicy);  // headed-embedder hook
   void setSensorHook(std::function<void(X3DNode*, bool active, double now)>);
@@ -122,7 +121,7 @@ using ChildLoadPolicy = std::function<ChildLoadPlan(X3DNode* child, const Scene&
 // Production wiring (X3DSceneBridge.hpp):
 std::shared_ptr<LoadSensorSystem>
 attachLoadSensors(Scene&, X3DExecutionContext&,
-                  extract::AssetResolver = nullptr, std::string baseUrl = "");
+                  extract::AssetResolver = nullptr);
 
 } // namespace x3d::runtime
 ```
@@ -130,9 +129,10 @@ attachLoadSensors(Scene&, X3DExecutionContext&,
 ### Seam points
 
 - **`extract::AssetResolver`** — the byte oracle (`(url, kind) → Ready/Pending/
-  Failed`). Injected by the embedder or defaulted to the confined local-file
-  resolver. LoadSensor is its first SDK-side caller; `Pending` (inert for the sync
-  default) is honored so a future async/HTTP backend drops in unchanged.
+  Failed`). Injected by the app/embedder; the default is the IO-free
+  `makeNullAssetResolver()` stub (Failed), since the SDK ships no concrete backend.
+  LoadSensor is its first SDK-side caller; `Pending` is honored so a future
+  async/HTTP backend drops in unchanged.
 - **`setChildLoadPolicy`** — headed embedders override per-child watch/vacuous/kind
   rulings; combined with a `Pending`-returning resolver, this expresses
   spec-literal Anchor cases (b)/(c) (the default deviation is recorded as `NSN-11`).
@@ -158,7 +158,7 @@ attachLoadSensors(Scene&, X3DExecutionContext&,
   `setChildLoadPolicy` hook, and a ROUTE `loadTime` end-to-end through
   `attachStandardRuntime`.
 - **`ctest --preset dev -R x3d_fileresolver_test`** (`runtime/io/tests/file_resolver_test.cpp`)
-  — the confined default resolver: an existing confined file is `Ready`; missing,
+  — the confined local-file backend (app-injected): an existing confined file is `Ready`; missing,
   escaping (`../`), absolute, and scheme-bearing paths are `Failed`; fragments are
   stripped; never `Pending`.
 - **`ctest --preset dev -R x3d_extract_tests`** (`runtime/extract/tests/runtime_session_test.cpp`)

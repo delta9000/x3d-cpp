@@ -571,7 +571,7 @@ TEST_CASE("LoadSensor: ROUTE loadTime end-to-end via attachStandardRuntime") {
 
   auto s = std::make_shared<ScriptState>();
   s->seq["a.png"] = {pending(), ready()};
-  attachStandardRuntime(scene, ctx, scripted(s), "");
+  attachStandardRuntime(scene, ctx, scripted(s));
 
   x3d::nodes::TimeSensor *ts = nullptr;
   for (auto &r : scene.rootNodes)

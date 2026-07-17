@@ -1,6 +1,6 @@
 ---
 title: "ADR-0046: LoadSensor as a System over the AssetResolver Seam"
-summary: LoadSensor becomes a live X3DNetworkSensorNode via a time-driven LoadSensorSystem — the first SDK-side caller of the AssetResolver seam (ADR-0023). Per-sensor state lives in the system (never on the node); load truth comes from an injected resolver plus a parse-time pre-seed of already-expanded Inlines. A Ready-only system-wide URL memo, a ≤1-resolver-call-per-child-per-tick bound made idempotent against the cascade settle loop, a SEC-3-confined local-file default resolver, and rulings R3–R7 for the spec-silent edges. Closes NSN-1..7 and NSN-9.
+summary: LoadSensor becomes a live X3DNetworkSensorNode via a time-driven LoadSensorSystem — the first SDK-side caller of the AssetResolver seam (ADR-0023). Per-sensor state lives in the system (never on the node); load truth comes from an injected resolver plus a parse-time pre-seed of already-expanded Inlines. A Ready-only system-wide URL memo, a ≤1-resolver-call-per-child-per-tick bound made idempotent against the cascade settle loop, an IO-free null default resolver (the app injects the SEC-3-confined local-file backend), and rulings R3–R7 for the spec-silent edges. Closes NSN-1..7 and NSN-9.
 tags: [adr, loadsensor, networking, asset-resolver, events, conformance]
 updated: 2026-07-17
 related:
@@ -50,15 +50,27 @@ spurious failures for HTTP-loaded Inlines under a file-only resolver) and
 parse-time-truth-primary (parse-failure vs. skipped-scheme is indistinguishable at
 runtime, and NSN-7 still needs the resolver path).
 
-### 2. Default resolver: SEC-3-confined local file
+### 2. IO-free default; the concrete backend is injected by the app
 
-When the embedder injects nothing, the system installs a new local-file
-`AssetResolver` (`runtime/io/file/FileResolver.hpp`) that answers `Ready` when a
-URL resolves inside the SEC-3 confinement root (ADR-0038,
-`confineLocalIncludePath`) and is readable, `Failed` otherwise, **never
-`Pending`** (v1 local I/O is synchronous). This matches Networking level 1
-(`file:` protocol) and means a default CLI/session reports load state for local
-files out of the box, without silently swallowing the NSN-9 burst.
+The SDK is IO-free (it ships seam interfaces + core systems, never a concrete
+backend — the `io/` reference backends are excluded from the install and gated by
+`scripts/verify_install_embed.sh`). `LoadSensorSystem` is a **public** SDK header
+(reached through `sdk.hpp` → `X3DSceneBridge.hpp`), so it cannot bake in a
+concrete resolver. A local-file resolver *is* a concrete backend, exactly like the
+HTTP/S3 backends — so the system's default is the **IO-free null stub**
+(`extract::makeNullAssetResolver()`, `Failed`), mirroring the sibling
+`makeNullTextureResolver()` seam default.
+
+The concrete SEC-3-confined local-file backend
+(`runtime/io/file/FileResolver.hpp`, ADR-0038 `confineLocalIncludePath`, `Ready`
+inside the confinement root / `Failed` otherwise / never `Pending`) lives in the
+**app layer**: the CLI's `attachFullRuntime` injects
+`io::file::makeFileResolver()`, so `x3d sim` reports load state for confined local
+files out of the box, and embedders inject their own backend. This is a deliberate
+deviation from the design doc's "default = local-file resolver" (decision 2),
+which pre-dated recognizing the IO-free-SDK install constraint; the pre-seed
+(NSN-9), embedded-scheme, empty-url, and Anchor-`#Name` cases still resolve
+without any resolver, so the null default swallows nothing they cover.
 
 ### 3. One resolver call per child per tick, made idempotent
 
@@ -115,8 +127,8 @@ default deviation is recorded as a deferred finding (`NSN-11`), not left silent.
 
 - **Closes `NSN-1..7`, `NSN-9`** (six critical). `LoadSensorSystem` is wired by
   `attachStandardRuntime` / `attachFullRuntime` and threaded through
-  `SessionOptions.assetResolver` + `baseUrl`, so an authored LoadSensor reports
-  load state with no embedder wiring.
+  `SessionOptions.assetResolver`; the CLI injects the confined local-file backend,
+  so `x3d sim` reports load state for local files with no embedder wiring.
 - **First SDK-side `AssetResolver` caller.** The seam existed for a milestone with
   no in-SDK consumer; this is it. The `Pending` contract — inert for the
   synchronous local-file default — is honored so a future async/HTTP backend

@@ -121,7 +121,8 @@ findings currently note "Blocked on the asset-resolver/IO seam"):
 - **NSN-*** — LoadSensor (NSN-1..7, NSN-9): **SHIPPED** (2026-07-17, ADR-0046).
   `LoadSensorSystem` (`runtime/events/LoadSensorSystem.hpp`) is the first SDK-side
   AssetResolver caller — a time-driven System observing per-tick child URL-object
-  load state; the default resolver is the SEC-3-confined local-file backend. See
+  load state. IO-free: the SDK default is the null stub; the app injects the
+  concrete backend (the CLI wires the SEC-3-confined local-file resolver). See
   `docs/wiki/subsystems/system-loadsensor.md`. (NSN-11 Anchor cases (b)/(c)
   deferred to the policy hook.)
 - **PRF-6** — http/urn EXTERNPROTO: the parse-time `ProtoDeclarationResolver` becomes

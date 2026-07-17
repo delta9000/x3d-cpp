@@ -1,10 +1,14 @@
 // LoadSensorSystem.hpp
 // §9.4.3 Networking — LoadSensor as a live X3DNetworkSensorNode. A time-driven
 // System observes each LoadSensor's watched X3DUrlObject children per tick,
-// resolving their load state through the injected extract::AssetResolver seam
-// (default: a SEC-3-confined local-file resolver), and emits isActive / isLoaded
-// / loadTime / progress per the spec. Per-sensor state lives here in a map, never
-// on the node (the node model stays pure data). Closes findings NSN-1..7, NSN-9.
+// resolving their load state through the injected extract::AssetResolver seam,
+// and emits isActive / isLoaded / loadTime / progress per the spec. Per-sensor
+// state lives here in a map, never on the node (the node model stays pure data).
+//
+// IO-free: the system is pure over the seam and ships no concrete backend. The
+// default resolver is the null stub (Failed); an app injects a real backend —
+// e.g. the CLI wires io::file::makeFileResolver (SEC-3-confined local files),
+// which stays out of the public SDK headers. Closes findings NSN-1..7, NSN-9.
 //
 // Design: docs/superpowers/specs/2026-07-17-loadsensor-design.md.
 #ifndef X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
@@ -14,7 +18,6 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DScene.hpp"
 #include "AssetResolver.hpp"
-#include "io/file/FileResolver.hpp"
 #include "x3d/nodes/LoadSensor.hpp"
 #include "x3d/nodes/X3DUrlObject.hpp"
 #include "x3d/nodes/X3DInterfaceRegistry.hpp"
@@ -75,11 +78,9 @@ using ChildLoadPolicy = std::function<ChildLoadPlan(X3DNode *child, const Scene 
 
 class LoadSensorSystem : public System {
 public:
-  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr,
-                            std::string baseUrl = "")
+  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr)
       : resolver_(resolver ? std::move(resolver)
-                           : io::file::makeFileResolver(baseUrl)),
-        baseUrl_(std::move(baseUrl)) {}
+                           : extract::makeNullAssetResolver()) {}
 
   void setScene(const Scene *s) { scene_ = s; }
   void setChildLoadPolicy(ChildLoadPolicy p) { policy_ = std::move(p); }
@@ -136,7 +137,6 @@ private:
   }
 
   extract::AssetResolver resolver_;
-  std::string baseUrl_;
   const Scene *scene_ = nullptr;
   ChildLoadPolicy policy_;
   std::function<void(X3DNode *, bool, double)> sensorHook_;
