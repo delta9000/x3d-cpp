@@ -6,10 +6,16 @@
 #include "InlineExpand.hpp"
 #include "LoadSensorSystem.hpp"
 #include "X3DExecutionContext.hpp"
+#include "X3DParse.hpp"
+#include "X3DSceneBridge.hpp"
 #include "X3DScene.hpp"
+#include "x3d/nodes/Anchor.hpp"
 #include "x3d/nodes/ImageTexture.hpp"
 #include "x3d/nodes/Inline.hpp"
 #include "x3d/nodes/LoadSensor.hpp"
+#include "x3d/nodes/Script.hpp"
+#include "x3d/nodes/TimeSensor.hpp"
+#include "x3d/nodes/Viewpoint.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <deque>
@@ -408,4 +414,174 @@ TEST_CASE("LoadSensor: all candidates fail → isLoaded FALSE, not active") {
   CHECK_FALSE(ls->getIsActive());
   CHECK_FALSE(ls->getIsLoaded());
   CHECK(seen == ChildStatus::Failed);
+}
+
+// ── Task 6: edge rulings + policy hook + ROUTE end-to-end ──────────────────
+
+TEST_CASE("LoadSensor: R3 — empty url with load=TRUE is a vacuous success") {
+  int calls = 0;
+  Scene scene;
+  X3DExecutionContext ctx;
+  auto ls = std::make_shared<x3d::nodes::LoadSensor>();
+  ls->setChildren(MFNode{tex({})}); // empty url list
+  scene.addRootNode(ls);
+  auto sys = wire(scene, ctx, ls.get(),
+                  [&](const std::string &, AssetKind) { ++calls; return failed(); });
+  ctx.tick(1.0);
+  CHECK(ls->getIsLoaded());
+  CHECK(ls->getProgress() == 1.0f);
+  CHECK_FALSE(ls->getIsActive());
+  CHECK(calls == 0); // R3 short-circuits the resolver
+}
+
+TEST_CASE("LoadSensor: R6 — empty children is a vacuous first-tick success") {
+  int calls = 0;
+  Scene scene;
+  X3DExecutionContext ctx;
+  auto ls = std::make_shared<x3d::nodes::LoadSensor>();
+  ls->setChildren(MFNode{});
+  scene.addRootNode(ls);
+  auto sys = wire(scene, ctx, ls.get(),
+                  [&](const std::string &, AssetKind) { ++calls; return failed(); });
+  ctx.tick(1.0);
+  CHECK(ls->getIsLoaded());
+  CHECK(ls->getProgress() == 1.0f);
+  CHECK(ls->getLoadTime() == 1.0);
+  CHECK(calls == 0);
+}
+
+TEST_CASE("LoadSensor: embedded scheme resolves Ready with no resolver call") {
+  int calls = 0;
+  Scene scene;
+  X3DExecutionContext ctx;
+  auto ls = std::make_shared<x3d::nodes::LoadSensor>();
+  auto scr = std::make_shared<x3d::nodes::Script>();
+  scr->setUrl(MFString{"ecmascript:function initialize(){}"});
+  ls->setChildren(MFNode{scr});
+  scene.addRootNode(ls);
+  auto sys = wire(scene, ctx, ls.get(),
+                  [&](const std::string &, AssetKind) { ++calls; return failed(); });
+  ctx.tick(1.0);
+  CHECK(ls->getIsLoaded());
+  CHECK(calls == 0); // bytes are in the url string
+}
+
+TEST_CASE("LoadSensor: Anchor '#Name' → Ready iff a Viewpoint DEF exists") {
+  { // viewpoint present → Ready without a resolver call
+    int calls = 0;
+    Scene scene;
+    X3DExecutionContext ctx;
+    auto vp = std::make_shared<x3d::nodes::Viewpoint>();
+    vp->setDEF("Doorway");
+    scene.addRootNode(vp);
+    auto anchor = std::make_shared<x3d::nodes::Anchor>();
+    anchor->setUrl(MFString{"#Doorway"});
+    auto ls = std::make_shared<x3d::nodes::LoadSensor>();
+    ls->setChildren(MFNode{anchor});
+    scene.addRootNode(ls);
+    auto sys = wire(scene, ctx, ls.get(), [&](const std::string &, AssetKind) {
+      ++calls;
+      return failed();
+    });
+    ctx.tick(1.0);
+    CHECK(ls->getIsLoaded());
+    CHECK(calls == 0);
+  }
+  { // no such viewpoint → resolver asked, fails → child Failed
+    int calls = 0;
+    Scene scene;
+    X3DExecutionContext ctx;
+    auto anchor = std::make_shared<x3d::nodes::Anchor>();
+    anchor->setUrl(MFString{"#Missing"});
+    auto ls = std::make_shared<x3d::nodes::LoadSensor>();
+    ls->setChildren(MFNode{anchor});
+    scene.addRootNode(ls);
+    auto sys = wire(scene, ctx, ls.get(), [&](const std::string &, AssetKind) {
+      ++calls;
+      return failed();
+    });
+    ctx.tick(1.0);
+    CHECK_FALSE(ls->getIsLoaded());
+    CHECK(calls >= 1);
+  }
+}
+
+TEST_CASE("LoadSensor: policy hook — watch=false ignores, vacuousReady short-circuits") {
+  { // watch=false drops the child; resolver never called
+    int calls = 0;
+    Scene scene;
+    X3DExecutionContext ctx;
+    auto ls = std::make_shared<x3d::nodes::LoadSensor>();
+    ls->setChildren(MFNode{tex({"x.png"})});
+    scene.addRootNode(ls);
+    ctx.buildSceneGraph(scene);
+    auto sys = std::make_shared<LoadSensorSystem>(
+        [&](const std::string &, AssetKind) { ++calls; return failed(); });
+    sys->setScene(&scene);
+    sys->setChildLoadPolicy([](X3DNode *, const Scene &) {
+      ChildLoadPlan p;
+      p.watch = false;
+      return p;
+    });
+    sys->attach(ls.get(), ctx);
+    ctx.addSystem(sys);
+    ctx.tick(1.0);
+    CHECK(calls == 0);
+    CHECK(ls->getIsLoaded()); // empty watch set → vacuous success
+  }
+  { // vacuousReady → watched but Ready with no resolver call
+    int calls = 0;
+    Scene scene;
+    X3DExecutionContext ctx;
+    auto ls = std::make_shared<x3d::nodes::LoadSensor>();
+    ls->setChildren(MFNode{tex({"x.png"})});
+    scene.addRootNode(ls);
+    ctx.buildSceneGraph(scene);
+    auto sys = std::make_shared<LoadSensorSystem>(
+        [&](const std::string &, AssetKind) { ++calls; return failed(); });
+    sys->setScene(&scene);
+    sys->setChildLoadPolicy([](X3DNode *, const Scene &) {
+      ChildLoadPlan p;
+      p.vacuousReady = true;
+      return p;
+    });
+    sys->attach(ls.get(), ctx);
+    ctx.addSystem(sys);
+    ctx.tick(1.0);
+    CHECK(calls == 0);
+    CHECK(ls->getIsLoaded());
+    CHECK(ls->getProgress() == 1.0f);
+  }
+}
+
+TEST_CASE("LoadSensor: ROUTE loadTime end-to-end via attachStandardRuntime") {
+  const char *xml =
+      "<X3D profile='Interactive'><Scene>"
+      "<LoadSensor DEF='LS'>"
+      "<ImageTexture containerField='children' url='\"a.png\"'/>"
+      "</LoadSensor>"
+      "<TimeSensor DEF='TS'/>"
+      "<ROUTE fromNode='LS' fromField='loadTime' toNode='TS' toField='startTime'/>"
+      "</Scene></X3D>";
+  auto doc = x3d::codec::parseDocument(xml);
+  Scene &scene = doc.getScene();
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.buildFrom(scene);
+
+  auto s = std::make_shared<ScriptState>();
+  s->seq["a.png"] = {pending(), ready()};
+  attachStandardRuntime(scene, ctx, scripted(s), "");
+
+  x3d::nodes::TimeSensor *ts = nullptr;
+  for (auto &r : scene.rootNodes)
+    if (auto *p = dynamic_cast<x3d::nodes::TimeSensor *>(r.get()))
+      ts = p;
+  REQUIRE(ts != nullptr);
+
+  ctx.tick(1.0); // child still loading → no loadTime (proves it is really watched)
+  CHECK(ts->getStartTime() == 0.0);
+
+  ctx.tick(2.0); // child loads → loadTime=2.0 routed into TS.startTime
+  CHECK(ts->getStartTime() == 2.0);
 }

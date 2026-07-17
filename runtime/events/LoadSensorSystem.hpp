@@ -50,6 +50,13 @@ inline extract::AssetKind kindForNode(X3DNode *c) {
     return extract::AssetKind::Texture;
   return extract::AssetKind::Inline; // generic bytes
 }
+// Anchor default policy: an intra-scene "#Name" fragment is "loaded" iff a
+// Viewpoint DEF'd `name` exists in the scene (the viewpoint-bind Anchor case).
+inline bool isViewpointDef(const Scene &scene, const std::string &name) {
+  auto n = scene.resolve(name);
+  return n && x3d::nodes::X3DInterfaceRegistry::nodeImplements(
+                  n.get(), x3d::nodes::InterfaceId::X3DViewpointNode);
+}
 } // namespace detail_loadsensor
 
 // Per-child resolution status the system tracks across ticks.
@@ -267,6 +274,14 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       bool called = false;
       while (cs.candidate < urls.size()) {
         const std::string &u = urls[cs.candidate];
+        // Anchor default policy: "#Name" is loaded iff a Viewpoint DEF exists;
+        // otherwise it falls through to the resolver (which fails for a bare
+        // fragment), yielding a Failed child.
+        if (!u.empty() && u[0] == '#' && scene_ &&
+            detail_loadsensor::isViewpointDef(*scene_, u.substr(1))) {
+          setChildStatus(cs, c, ls, ChildStatus::Ready);
+          break;
+        }
         if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(u)) {
           setChildStatus(cs, c, ls, ChildStatus::Ready);
           break;
