@@ -2503,6 +2503,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/timesensor_rtc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_dynamic_route_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_author_field_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/loadsensor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/slerp_normal_test.cpp")
     target_link_libraries(x3d_events_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
