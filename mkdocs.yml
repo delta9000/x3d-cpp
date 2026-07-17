@@ -72,6 +72,7 @@ nav:
           - Navigation System: subsystems/system-navigation.md
           - Pointing-Device Sensor System: subsystems/system-pointing.md
           - Key-Device Sensor System: subsystems/system-keydevice.md
+          - LoadSensor System: subsystems/system-loadsensor.md
           - Script / SAI Runtime: subsystems/system-script-sai.md
           - Sensor Layer Overview: subsystems/sensors.md
           - Physics (RigidBody dynamics): subsystems/physics.md
@@ -138,6 +139,7 @@ nav:
       - "ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam": decisions/0043-usd-material-portable-glsl-seam.md
       - "ADR-0044: Asset-Import Backend Selection — Priority Registry & cgltf glTF Path": decisions/0044-asset-import-backend-selection.md
       - "ADR-0045: Shared Mesh Storage — Make GeomId's Instancing Contract Structural": decisions/0045-shared-mesh-instancing.md
+      - "ADR-0046: LoadSensor as a System over the AssetResolver Seam": decisions/0046-loadsensor-assetresolver-oracle.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

@@ -118,8 +118,12 @@ The `AssetResolver` seam is the second row to go GREEN (Phase-1):
 The IO seam being proven generic removes the blocker on four P1 dependency cards (whose
 findings currently note "Blocked on the asset-resolver/IO seam"):
 
-- **NSN-*** — LoadSensor (8 findings, NSN-1..9): now wireable as an active System
-  observing per-tick child URL-object load state.
+- **NSN-*** — LoadSensor (NSN-1..7, NSN-9): **SHIPPED** (2026-07-17, ADR-0046).
+  `LoadSensorSystem` (`runtime/events/LoadSensorSystem.hpp`) is the first SDK-side
+  AssetResolver caller — a time-driven System observing per-tick child URL-object
+  load state; the default resolver is the SEC-3-confined local-file backend. See
+  `docs/wiki/subsystems/system-loadsensor.md`. (NSN-11 Anchor cases (b)/(c)
+  deferred to the policy hook.)
 - **PRF-6** — http/urn EXTERNPROTO: the parse-time `ProtoDeclarationResolver` becomes
   writeable for `http://` / `urn:` URLs (its own future swap-test is a separate card).
 - **CONF-CRITIC-2** — Script external-URL: scripts with `@url` can fetch external bytes.

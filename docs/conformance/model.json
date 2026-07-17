@@ -3557,6 +3557,7 @@
       "findings": [
         "IMPORT-EXPORT-WIRE",
         "NSN-1",
+        "NSN-11",
         "NSN-2",
         "NSN-3",
         "NSN-4",
@@ -3574,10 +3575,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "9.4.3, 9.4.1",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "NSN-11"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -3621,13 +3624,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "9.4.3",
+          "clause": "9.4.3; 9.4.3, 9.4.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "NSN-1",
+            "NSN-11",
             "NSN-2",
             "NSN-3",
             "NSN-4",
@@ -8031,90 +8035,98 @@
     },
     {
       "clause": "9.4.3",
+      "commit": "9bb71c2",
       "id": "NSN-1",
       "nodes": [
         "LoadSensor"
       ],
-      "note": "Unblocked by the asset-resolver/IO seam (shipped 2026-06-23; see ADR-0023 + docs/wiki/seam-status.md). Drives NSN-2..9.",
+      "note": "Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/subsystems/system-loadsensor.md. Drives NSN-2..9.",
       "severity": "minor",
-      "status": "deferred",
+      "status": "closed",
       "summary": "LoadSensor not wired as an active System observing child URL-object load state per tick.",
       "wave": 4
     },
     {
       "clause": "9.4.3",
+      "commit": "9bb71c2",
       "id": "NSN-2",
       "nodes": [
         "LoadSensor"
       ],
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.",
       "wave": 4
     },
     {
       "clause": "9.4.3",
+      "commit": "9bb71c2",
       "id": "NSN-3",
       "nodes": [
         "LoadSensor"
       ],
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.",
       "wave": 4
     },
     {
       "clause": "9.4.3",
+      "commit": "9bb71c2",
       "id": "NSN-4",
       "nodes": [
         "LoadSensor"
       ],
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "loadTime (now, on successful completion only) not emitted.",
       "wave": 4
     },
     {
       "clause": "9.4.3",
+      "commit": "9bb71c2",
       "id": "NSN-5",
       "nodes": [
         "LoadSensor"
       ],
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "progress events (advancing to 1.0 on full load) not emitted.",
       "wave": 4
     },
     {
       "clause": "9.4.3",
+      "commit": "597e5a0",
       "id": "NSN-6",
       "nodes": [
         "LoadSensor"
       ],
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "timeOut deadline tracking (emit isLoaded=FALSE/isActive=FALSE on expiry) unimplemented.",
       "wave": 4
     },
     {
       "clause": "9.4.3",
+      "commit": "632d8a2",
       "id": "NSN-7",
       "nodes": [
         "LoadSensor"
       ],
       "severity": "major",
-      "status": "deferred",
+      "status": "closed",
       "summary": "watched child url/load change must reset LoadSensor state and re-evaluate.",
       "wave": 4
     },
     {
       "clause": "9.4.3",
+      "commit": "9bb71c2",
       "id": "NSN-9",
       "nodes": [
         "LoadSensor"
       ],
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "Already-resolved children at scene-build must emit the immediate isLoaded/loadTime/progress burst.",
       "wave": 4
     },
@@ -8131,6 +8143,19 @@
       "severity": "major",
       "status": "deferred",
       "summary": "DIS PDU nodes react to networkMode (standAlone/networkReader/networkWriter) + emit isActive/dead-reckoning \u2014 no DIS transport runtime.",
+      "wave": 4
+    },
+    {
+      "clause": "9.4.3, 9.4.1",
+      "id": "NSN-11",
+      "nodes": [
+        "LoadSensor",
+        "Anchor"
+      ],
+      "note": "By design \u2014 the runtime is headless. Headed embedders express cases (b)/(c) via LoadSensorSystem::setChildLoadPolicy + a Pending-returning resolver (ADR-0046). See docs/wiki/subsystems/system-loadsensor.md.",
+      "severity": "minor",
+      "status": "deferred",
+      "summary": "Spec-literal Anchor children cases (b) replacement-world / (c) separate-window are not the SDK default; the headless default policy treats \"#Name\" as loaded iff a Viewpoint DEF exists and other Anchor urls as resolver load-request-acknowledged.",
       "wave": 4
     },
     {
@@ -9493,6 +9518,7 @@
     "generator": "scripts/conformance_view.py",
     "node_count": 262,
     "wired_detected": [
+      "AudioClip",
       "AudioDestination",
       "Background",
       "BallJoint",
@@ -9528,10 +9554,13 @@
       "IndexedTriangleFanSet",
       "IndexedTriangleSet",
       "IndexedTriangleStripSet",
+      "Inline",
       "IntegerSequencer",
       "IntegerTrigger",
       "KeySensor",
       "LOD",
+      "LoadSensor",
+      "MovieTexture",
       "NavigationInfo",
       "NormalInterpolator",
       "OrientationChaser",
@@ -9584,14 +9613,15 @@
       "X3DRigidJointNode",
       "X3DSensorNode",
       "X3DTimeDependentNode",
+      "X3DUrlObject",
       "X3DViewpointNode"
     ]
   },
   "summary": {
-    "closed_count": 116,
+    "closed_count": 124,
     "component_count": 36,
-    "deferred_count": 46,
-    "finding_count": 208,
+    "deferred_count": 39,
+    "finding_count": 209,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -9603,7 +9633,6 @@
       "GeoProximitySensor",
       "GeoTouchSensor",
       "LinePickSensor",
-      "LoadSensor",
       "MicrophoneSource",
       "PointPickSensor",
       "PrimitivePickSensor",
@@ -9616,9 +9645,9 @@
       "WaveShaper"
     ],
     "open_by_severity": {
-      "critical": 9,
+      "critical": 3,
       "low": 6,
-      "major": 41,
+      "major": 40,
       "minor": 36
     }
   },
