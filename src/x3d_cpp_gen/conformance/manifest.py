@@ -71,7 +71,10 @@ def _node_to_dict(node) -> Dict[str, Any]:
 
 def extract_manifest(uom_file: str) -> Manifest:
     version = SpecVersion.detect(uom_file).version
-    parsed = parse_x3d_model(uom_file, FIELD_TYPE_MAPPING, XS_TYPES)
+    parsed, skipped = parse_x3d_model(uom_file, FIELD_TYPE_MAPPING, XS_TYPES)
+    if skipped:
+        print(f"WARNING: {len(skipped)} field(s) skipped due to unsupported "
+              f"types while building the conformance manifest: {skipped}")
     nodes = {name: _node_to_dict(node) for name, node in parsed.items()}
     # Hash the canonical nodes payload only (provenance excluded so the hash is
     # purely content-addressed).

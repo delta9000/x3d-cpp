@@ -60,18 +60,24 @@ def validate_field_type(field_type: str, field_type_mapping: dict, xs_types: dic
     return field_type in field_type_mapping or field_type in xs_types
 
 def _parse_fields(node_element, field_type_mapping: dict, xs_types: dict,
-                  node_name: str) -> List[X3DField]:
+                  node_name: str):
     """Parse all <field> children of a node into X3DField objects.
 
     Fields whose type is unsupported are logged and skipped (never yielded as
-    None) so that no None ever leaks into a node's field list.
+    None) so that no None ever leaks into a node's field list. Returns
+    ``(fields, skipped)`` where ``skipped`` is a list of
+    ``(node_name, field_name, raw_type)`` for every skip, so the caller can
+    decide whether an unsupported type is tolerable (see cli.py's
+    --allow-unsupported-fields) instead of it silently shrinking the API.
     """
     parsed = []
+    skipped = []
     for field in node_element.findall('.//field'):
         raw_type = field.get('type')
         if not validate_field_type(raw_type, field_type_mapping, xs_types):
             print(f"WARNING: skipping field '{field.get('name')}' on node "
                   f"'{node_name}': unsupported type '{raw_type}'")
+            skipped.append((node_name, field.get('name'), raw_type))
             continue
         cpp_field_type = xs_types[raw_type][0] if raw_type in xs_types else raw_type
         raw_name = field.get('name', '')
@@ -90,7 +96,7 @@ def _parse_fields(node_element, field_type_mapping: dict, xs_types: dict,
             inherited_from=field.get('inheritedFrom'),
             simple_type=field.get('simpleType'),
         ))
-    return parsed
+    return parsed, skipped
 
 
 def _parse_component_info(node_element) -> Optional[ComponentInfo]:
@@ -119,8 +125,9 @@ def _parse_container_field(node_element) -> Optional[ContainerField]:
 
 
 def parse_node(node_element, field_type_mapping: dict, xs_types: dict,
-               *, is_abstract: bool, is_mixin: bool = False) -> X3DNode:
-    """Parse a single node element (mixin / abstract / concrete) into an X3DNode.
+               *, is_abstract: bool, is_mixin: bool = False):
+    """Parse a single node element (mixin / abstract / concrete) into an
+    (X3DNode, skipped) pair. See _parse_fields for the ``skipped`` shape.
 
     The three UOM node categories share one parsing path. Mixin object types
     (``is_mixin=True``) have no primary base — they are inherited 'public
@@ -137,58 +144,67 @@ def parse_node(node_element, field_type_mapping: dict, xs_types: dict,
     component = _parse_component_info(node_element)
 
     if is_mixin:
-        fields = (_parse_fields(node_element, field_type_mapping, xs_types, node_name)
-                  if iface is not None else [])
+        if iface is not None:
+            fields, skipped = _parse_fields(node_element, field_type_mapping, xs_types, node_name)
+        else:
+            fields, skipped = [], []
         return X3DNode(
             name=node_name, fields=fields, base_type=None, is_abstract=is_abstract,
             class_description=description, specification_url=specification_url,
             component=component,
-        )
+        ), skipped
 
     inheritance = node_element.find('.//Inheritance')
     base_type = inheritance.get('baseType') if inheritance is not None else None
     additional_base_types = [a.get('baseType')
                              for a in node_element.findall('.//AdditionalInheritance')
                              if a.get('baseType')]
-    fields = _parse_fields(node_element, field_type_mapping, xs_types, node_name)
+    fields, skipped = _parse_fields(node_element, field_type_mapping, xs_types, node_name)
     return X3DNode(
         name=node_name, fields=fields, base_type=base_type,
         additional_base_types=additional_base_types, is_abstract=is_abstract,
         container_field=_parse_container_field(node_element),
         class_description=description, specification_url=specification_url,
         component=component,
-    )
+    ), skipped
 
 
-def parse_x3d_model(uom_file: str, field_type_mapping: dict, xs_types: dict) -> Dict[str, X3DNode]:
+def parse_x3d_model(uom_file: str, field_type_mapping: dict, xs_types: dict):
+    all_skipped = []
     try:
         tree = etree.parse(uom_file)
     except (etree.ParseError, IOError) as e:
         print(f"Failed to parse XML file {uom_file}: {e}")
-        return {}
+        return {}, all_skipped
 
     try:
         root = tree.getroot()
         nodes = {}
     except Exception as e:
         print(f"Failed to process XML tree: {e}")
-        return {}
+        return {}, all_skipped
 
     # Three node categories, one shared parse path. Mixin object types have no
     # primary base; abstract and concrete nodes differ only by is_abstract.
     for obj in root.findall('.//AbstractObjectTypes/AbstractObjectType'):
-        nodes[obj.get('name')] = parse_node(
+        node, skipped = parse_node(
             obj, field_type_mapping, xs_types, is_abstract=True, is_mixin=True)
+        nodes[obj.get('name')] = node
+        all_skipped.extend(skipped)
 
     for node_element in root.findall('.//AbstractNodeTypes/AbstractNodeType'):
-        nodes[node_element.get('name')] = parse_node(
+        node, skipped = parse_node(
             node_element, field_type_mapping, xs_types, is_abstract=True)
+        nodes[node_element.get('name')] = node
+        all_skipped.extend(skipped)
 
     for node_element in root.findall('.//ConcreteNodes/ConcreteNode'):
-        nodes[node_element.get('name')] = parse_node(
+        node, skipped = parse_node(
             node_element, field_type_mapping, xs_types, is_abstract=False)
+        nodes[node_element.get('name')] = node
+        all_skipped.extend(skipped)
 
-    return nodes
+    return nodes, all_skipped
 
 
 def parse_enum_definitions(uom_file: str):

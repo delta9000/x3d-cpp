@@ -91,7 +91,8 @@ def test_resolve_or_raise_is_actionable():
 # --- Generation from a SECOND version (synthetic 4.1) ---------------------
 
 def test_synthetic_41_parses_new_node_and_enum():
-    nodes = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
+    nodes, skipped = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
+    assert skipped == []
     # Brand-new node not present in 4.0.
     assert "QuantumWidget" in nodes
     assert "Box" not in nodes  # synthetic subset, distinct from 4.0
@@ -108,7 +109,8 @@ def test_synthetic_41_parses_new_node_and_enum():
 
 
 def test_synthetic_41_generates_and_emits_new_content(tmp_path):
-    nodes = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
+    nodes, skipped = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
+    assert skipped == []
     graph = build_dependency_graph(nodes)
     enum_defs = parse_enum_definitions(str(SYNTHETIC_41))
     out = tmp_path / "v41syn"
@@ -133,7 +135,8 @@ def test_synthetic_41_generates_and_emits_new_content(tmp_path):
 def test_synthetic_41_namespace_isolation(tmp_path):
     # A namespaced emission wraps each class; the default 4.0 path (namespace="")
     # is exercised by the golden tests and stays unnamespaced.
-    nodes = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
+    nodes, skipped = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
+    assert skipped == []
     graph = build_dependency_graph(nodes)
     out = tmp_path / "v41ns"
     out.mkdir()
@@ -154,9 +157,9 @@ def test_synthetic_41_namespace_isolation(tmp_path):
                     reason="real X3D 4.1 UOM fixture not present")
 def test_real_41_autodetect_and_new_nodes():
     assert detect_version_from_file(str(REAL_41)) == "4.1"
-    nodes = parse_x3d_model(str(REAL_41), FIELD_TYPE_MAPPING, XS_TYPES)
+    nodes, _skipped = parse_x3d_model(str(REAL_41), FIELD_TYPE_MAPPING, XS_TYPES)
     # Nodes introduced in X3D 4.1 (absent from 4.0).
-    nodes_40 = parse_x3d_model(str(SPEC_40), FIELD_TYPE_MAPPING, XS_TYPES)
+    nodes_40, _skipped_40 = parse_x3d_model(str(SPEC_40), FIELD_TYPE_MAPPING, XS_TYPES)
     assert "EnvironmentLight" in nodes
     assert "EnvironmentLight" not in nodes_40
     assert len(nodes) > len(nodes_40)
