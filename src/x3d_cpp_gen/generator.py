@@ -345,16 +345,6 @@ def write_interface_registry(output_dir: str, nodes: Dict[str, X3DNode],
     print(f"Generated X3D interface registry source at {src}")
 
 
-def annotate_default_exprs(fields) -> None:
-    """Compatibility shim: populate field.default_expr in place.
-
-    Default-literal computation moved to emit.defaults; this remains so legacy
-    callers that annotate parser dataclasses keep working.
-    """
-    for f in fields:
-        f.default_expr = compute_default_expr(f)
-
-
 def generate_cpp_bindings(nodes: Dict[str, X3DNode], dependency_graph,
                           output_dir: str, templates_dir=None,
                           clang_format: str = "clang-format",
