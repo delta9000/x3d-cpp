@@ -67,18 +67,9 @@ const FieldTable& {{ class_name }}::fields() const {
             [](X3DNode& n, const std::string& s) {
                 {% if field.runtime_field_type == "MFEnum" %}
                 {{ field.cpp_type }} vec;
-                std::size_t i = 0;
-                while (i < s.size()) {
-                    while (i < s.size() && (s[i] == ' ' || s[i] == '\t' ||
-                           s[i] == '\n' || s[i] == '\r' || s[i] == ',')) ++i;
-                    std::size_t j = i;
-                    while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                           s[j] != '\n' && s[j] != '\r' && s[j] != ',') ++j;
-                    if (j > i) {
-                        {{ field.enum_cpp_name }} ev;
-                        if (from_string(s.substr(i, j - i), ev)) vec.push_back(ev);
-                    }
-                    i = j;
+                for (const auto& tok : parseEnumTokens(s)) {
+                    {{ field.enum_cpp_name }} ev;
+                    if (from_string(tok, ev)) vec.push_back(ev);
                 }
                 dynamic_cast<{{ class_name }}&>(n).{{ field.reader_setter_call }}(std::move(vec));
                 {% else %}
@@ -107,7 +98,7 @@ void {{ class_name }}::accept(NodeVisitor& visitor) const {
     visitor.leave(*this);
 }
 
-{% set _constrained = reflection_fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+{% set _constrained = reflection_fields | selectattr('has_range_diagnostics') | list %}
 {% if is_root %}
 void {{ class_name }}::validateRanges(std::vector<RangeDiagnostic>& /*out*/) const {}
 {% elif _constrained %}
@@ -124,7 +115,7 @@ void {{ class_name }}::validateRanges(std::vector<RangeDiagnostic>& out) const {
     X3DFogObject, X3DUrlObject) declare these statics in their header even
     though they do not participate in reflection, and derived nodes call them
     base-qualified from validateRanges(). -#}
-{% set _own_constrained = fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+{% set _own_constrained = fields | selectattr('has_range_diagnostics') | list %}
 {% for field in _own_constrained %}
 void {{ class_name }}::{{ field.range_checker_name }}(const {{ field.cpp_type }}& value,
         const std::string& nodeType, const std::string& defName,

@@ -539,10 +539,37 @@ protected:
    * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
    *        component. Used by validateRanges() to surface lenient-read values.
    */
+  static void checkRangesCreaseAngle(const SFDouble &value,
+                                     const std::string &nodeType,
+                                     const std::string &defName,
+                                     std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesXDimension(const SFInt32 &value,
+                                    const std::string &nodeType,
+                                    const std::string &defName,
+                                    std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
   static void checkRangesYScale(const SFFloat &value,
                                 const std::string &nodeType,
                                 const std::string &defName,
                                 std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesZDimension(const SFInt32 &value,
+                                    const std::string &nodeType,
+                                    const std::string &defName,
+                                    std::vector<RangeDiagnostic> &out);
 
 private:
   static void validateYScale(const SFFloat &value) {

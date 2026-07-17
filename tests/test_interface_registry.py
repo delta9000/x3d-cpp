@@ -17,7 +17,7 @@ SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
 
 @pytest.fixture(scope="module")
 def model():
-    nodes = parse_x3d_model(str(SPEC), FIELD_TYPE_MAPPING, XS_TYPES)
+    nodes, _skipped = parse_x3d_model(str(SPEC), FIELD_TYPE_MAPPING, XS_TYPES)
     graph = build_dependency_graph(nodes)
     return nodes, graph
 

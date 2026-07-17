@@ -33,7 +33,7 @@ def test_generated_header_matches_golden(tmp_path, header):
     golden = GOLDEN_DIR / subdir / header
     assert golden.exists(), f"golden header missing: {golden}"
 
-    nodes = parse_x3d_model(str(SPEC), FIELD_TYPE_MAPPING, XS_TYPES)
+    nodes, _skipped = parse_x3d_model(str(SPEC), FIELD_TYPE_MAPPING, XS_TYPES)
     assert nodes
     graph = build_dependency_graph(nodes)
 

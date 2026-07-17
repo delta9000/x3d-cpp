@@ -352,6 +352,24 @@ void IndexedTriangleSet::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void IndexedTriangleSet::validateRanges(
+    std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesIndex(getIndex(), nodeTypeName(), "", out);
+}
+
+void IndexedTriangleSet::checkRangesIndex(const MFInt32 &value,
+                                          const std::string &nodeType,
+                                          const std::string &defName,
+                                          std::vector<RangeDiagnostic> &out) {
+  for (const auto &v : value) {
+
+    if (v < 0)
+      out.push_back(RangeDiagnostic{nodeType, defName, "index",
+                                    "index below minimum of 0"});
+  }
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createIndexedTriangleSet() {
   return std::make_shared<IndexedTriangleSet>();

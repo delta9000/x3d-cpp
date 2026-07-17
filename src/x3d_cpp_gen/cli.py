@@ -129,6 +129,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-test", action="store_true",
         help="Skip generating and compiling the smoke test.",
     )
+    parser.add_argument(
+        "--allow-unsupported-fields", action="store_true",
+        help="Do not fail when the UOM spec contains a field whose type "
+             "this generator doesn't support (default: fail closed).",
+    )
     return parser
 
 
@@ -175,7 +180,14 @@ def main(argv=None) -> int:
     core_dir.mkdir(parents=True, exist_ok=True)
     nodes_dir.mkdir(parents=True, exist_ok=True)
 
-    nodes = parse_x3d_model(str(spec), FIELD_TYPE_MAPPING, XS_TYPES)
+    nodes, skipped_fields = parse_x3d_model(str(spec), FIELD_TYPE_MAPPING, XS_TYPES)
+    if skipped_fields and not args.allow_unsupported_fields:
+        print(f"ERROR: {len(skipped_fields)} field(s) were skipped due to "
+              f"unsupported types (this shrinks the generated API silently "
+              f"unless you pass --allow-unsupported-fields):", file=sys.stderr)
+        for node_name, field_name, raw_type in skipped_fields:
+            print(f"  {node_name}.{field_name}: type={raw_type!r}", file=sys.stderr)
+        return 1
     if not nodes:
         print(f"ERROR: no nodes parsed from {spec}", file=sys.stderr)
         return 1

@@ -6,28 +6,11 @@ expression for a field's spec default (or ``None`` when there is none, in which
 case the member value-initializes with ``{}``).
 """
 
+import math
 from typing import List, Optional
 
 from x3d_cpp_gen.model.types import X3DType, TypeRegistry, resolve_x3d_type
-
-
-def cpp_string_literal(s: str) -> str:
-    """Escape a Python string into the body of a C++ double-quoted literal."""
-    out = []
-    for ch in s:
-        if ch == '\\':
-            out.append('\\\\')
-        elif ch == '"':
-            out.append('\\"')
-        elif ch == '\n':
-            out.append('\\n')
-        elif ch == '\t':
-            out.append('\\t')
-        elif ch == '\r':
-            out.append('\\r')
-        else:
-            out.append(ch)
-    return ''.join(out)
+from x3d_cpp_gen.emit.naming import cpp_str as cpp_string_literal  # noqa: F401
 
 
 def tokenize_mfstring(default: str) -> List[str]:
@@ -80,19 +63,35 @@ def _scalar_list(default: str):
 
 # Struct SF* types -> (struct name, component count, is-float, row size).
 # Drives the brace initializer for fixed-arity vector/colour/rotation/matrix
-# defaults. ``row_size`` is nonzero only for the matrix types: their struct
-# wraps a genuine 2D array member (e.g. ``float matrix[4][4]``), which C++
-# aggregate-init rules let you flatten into a single elided-brace list -- but
-# Clang's -Wmissing-braces (promoted to -Werror) rejects the elided form even
-# though GCC accepts it silently, and empirically a single extra wrapping
-# brace around the flat list is *not* enough either: Clang still wants each
-# row of the 2D array individually braced (verified directly against both
-# clang and gcc with -Wmissing-braces -Werror, not just read about). So a
-# matrix's literal chunks the flat value list into ``row_size``-sized rows,
-# each explicitly braced, wrapped in one more brace for the array member
-# itself: ``Struct{ {row0}, {row1}, ... }``. The plain vector/colour/rotation
-# structs are flat (e.g. ``float x, y, z;``), where a single brace is exactly
-# right and extra nesting would itself warn.
+# defaults. The plain vector/colour/rotation structs are flat (e.g. ``float
+# x, y, z;``), so row_size=0 and _struct_literal emits a single flat brace
+# list: ``SFVec3f{x, y, z}``.
+#
+# For matrix types, row_size (derived via math.isqrt(count)) is nonzero: their
+# struct wraps a genuine 2D array member (e.g. ``float matrix[4][4]``). This
+# is why Clang's -Wmissing-braces (promoted to -Werror) rejects the flat
+# elided-brace form even though GCC accepts it -- empirically verified that
+# Clang requires each row of the 2D array individually braced. row_size is
+# consumed by _struct_literal via _chunk_braced to chunk the flat value list
+# into row_size-sized rows, each explicitly braced, wrapped in one more brace
+# for the array member: ``Struct{ {row0}, {row1}, ... }``.
+#
+# row_size is DERIVED (math.isqrt(count)) rather than hand-typed to prevent
+# the class of bug that prompted this table's creation: a stale/wrong value
+# that silently disagrees with count. All supported matrix types are square,
+# so isqrt is exact for them; the assert in _matrix_row_size below fails
+# loudly if a future non-square matrix type is added (it would need a
+# different chunking scheme entirely).
+def _matrix_row_size(count: int) -> int:
+    row_size = math.isqrt(count)
+    assert row_size * row_size == count, (
+        f"_STRUCT_ARITY matrix entry with count={count} is not a perfect "
+        f"square -- row-chunking assumes a square matrix; a non-square "
+        f"matrix type needs a different scheme, not this helper."
+    )
+    return row_size
+
+
 _STRUCT_ARITY = {
     X3DType.SFVec2f: ("SFVec2f", 2, True, 0),
     X3DType.SFVec3f: ("SFVec3f", 3, True, 0),
@@ -103,11 +102,21 @@ _STRUCT_ARITY = {
     X3DType.SFVec3d: ("SFVec3d", 3, False, 0),
     X3DType.SFVec4d: ("SFVec4d", 4, False, 0),
     X3DType.SFRotation: ("SFRotation", 4, True, 0),
-    X3DType.SFMatrix3f: ("SFMatrix3f", 9, True, 3),
-    X3DType.SFMatrix4f: ("SFMatrix4f", 16, True, 4),
-    X3DType.SFMatrix3d: ("SFMatrix3d", 9, False, 3),
-    X3DType.SFMatrix4d: ("SFMatrix4d", 16, False, 4),
+    X3DType.SFMatrix3f: ("SFMatrix3f", 9, True, _matrix_row_size(9)),
+    X3DType.SFMatrix4f: ("SFMatrix4f", 16, True, _matrix_row_size(16)),
+    X3DType.SFMatrix3d: ("SFMatrix3d", 9, False, _matrix_row_size(9)),
+    X3DType.SFMatrix4d: ("SFMatrix4d", 16, False, _matrix_row_size(16)),
 }
+
+
+def struct_arity_names() -> set:
+    """Return the set of struct names in _STRUCT_ARITY (public accessor).
+
+    Used by generator.py to verify that every SPECIAL_STRUCTS entry has a
+    corresponding _STRUCT_ARITY row for default literal generation.
+    """
+    return {arity[0] for arity in _STRUCT_ARITY.values()}
+
 
 # MF struct types -> (element struct name, component count, is-float). A single
 # element is built from the default.
@@ -124,6 +133,32 @@ _MF_STRUCT_ELEM = {
 }
 
 
+def _chunk_braced(vals: List[str], size: int, *, pad_short: bool,
+                  floaty: bool = True) -> List[str]:
+    """Slice ``vals`` into ``size``-sized groups, brace-wrapping each.
+
+    ``pad_short=True`` zero-pads a short final group to exactly ``size``
+    (matrix rows: the caller has already zero-padded the WHOLE list to a
+    multiple of ``size`` via the arity guard, so this only matters if a
+    caller passes an un-padded list directly). ``pad_short=False`` drops a
+    ragged trailing remainder instead (MF-struct elements: a multi-element
+    default with a trailing partial element is intentionally truncated, not
+    padded with synthetic zeros the spec never declared).
+    """
+    zero = "0.0f" if floaty else "0.0"
+    if pad_short:
+        vals = list(vals)
+        while len(vals) % size != 0:
+            vals.append(zero)
+        stop = len(vals)
+    else:
+        stop = len(vals) - len(vals) % size
+    return [
+        "{" + ", ".join(vals[i:i + size]) + "}"
+        for i in range(0, stop, size)
+    ]
+
+
 def _struct_literal(struct: str, count: int, floaty: bool, row_size: int, d: str) -> str:
     vals = _scalar_list(d)
     zero = "0.0f" if floaty else "0.0"
@@ -131,10 +166,7 @@ def _struct_literal(struct: str, count: int, floaty: bool, row_size: int, d: str
         vals.append(zero)
     vals = vals[:count]
     if row_size:
-        rows = [
-            "{" + ", ".join(vals[i:i + row_size]) + "}"
-            for i in range(0, count, row_size)
-        ]
+        rows = _chunk_braced(vals, row_size, pad_short=False, floaty=floaty)
         return struct + "{{" + ", ".join(rows) + "}}"
     return struct + "{" + ", ".join(vals) + "}"
 
@@ -190,7 +222,7 @@ def default_expr_for(x3d_type: X3DType, default: Optional[str]) -> Optional[str]
                 for v in _scalar_list(d)]
         return "std::vector<bool>{" + ", ".join(vals) + "}"
     if x3d_type in _MF_STRUCT_ELEM:
-        struct, count, _floaty = _MF_STRUCT_ELEM[x3d_type]
+        struct, count, floaty = _MF_STRUCT_ELEM[x3d_type]
         vals = _scalar_list(d)
         if len(vals) < count:
             return f"std::vector<{struct}>{{}}"
@@ -198,10 +230,8 @@ def default_expr_for(x3d_type: X3DType, default: Optional[str]) -> Optional[str]
         # default (e.g. Extrusion.crossSection = the 5-point square, spine = the
         # 2-point segment) emits every element, not just the first. Trailing
         # scalars that do not fill a whole element are dropped.
-        elems = [
-            f"{struct}{{" + ", ".join(vals[i:i + count]) + "}"
-            for i in range(0, len(vals) - len(vals) % count, count)
-        ]
+        chunks = _chunk_braced(vals, count, pad_short=False, floaty=floaty)
+        elems = [struct + chunk for chunk in chunks]
         return f"std::vector<{struct}>{{" + ", ".join(elems) + "}"
     if TypeRegistry.is_multi(x3d_type):
         # Remaining MF types (e.g. MFNode/MFImage/MFMatrix*) value-initialize.
@@ -218,8 +248,14 @@ def enum_default_expr(enum_def, default: Optional[str]) -> Optional[str]:
     multi-valued (MF) enum field it is ``std::vector<EnumClass>{MEMBER, ...}``
     built from the (quoted, whitespace-separated) default tokens.
 
-    Unrecognised default tokens fall back to the first member (SF) or are
-    skipped (MF) so the emitted initializer is always well-formed.
+    An SF default token that doesn't match any member is a spec/generator
+    mismatch (a renamed token, a typo, a newer spec revision) -- raising here
+    turns a silently-wrong generated default into a loud generation-time
+    failure, rather than emitting a default that happens to compile but does
+    not match what the X3D spec actually says. An MF default with SOME
+    unmatched tokens among otherwise-valid ones is not escalated the same
+    way (a single bad token in a longer list is much lower-blast-radius than
+    an entirely wrong SF default) but is printed loudly so it's visible.
     """
     cpp = enum_def.cpp_name
     if not enum_def.is_multi:
@@ -227,15 +263,28 @@ def enum_default_expr(enum_def, default: Optional[str]) -> Optional[str]:
             return None
         member = enum_def.member_for_value(default)
         if member is None:
-            member = enum_def.members[0] if enum_def.members else None
-        if member is None:
-            return None
+            raise ValueError(
+                f"Enum default token {default!r} does not match any member "
+                f"of SimpleType {enum_def.name!r} (known: "
+                f"{[m.value for m in enum_def.members]}). This is a spec/"
+                f"generator mismatch -- check for a renamed token or a UOM "
+                f"version drift, and update model/enums.py's parsing or the "
+                f"UOM source, not this generator."
+            )
         return f"{cpp}::{member.cpp_name}"
 
-    # Multi-valued enum field: vector of enum members.
+    # Multi-valued enum field: vector of enum members. Unmatched tokens are
+    # dropped (not fatal -- see docstring) but printed so they're visible.
     toks = tokenize_mfstring(default) if default else []
-    members = [enum_def.member_for_value(t) for t in toks]
-    members = [m for m in members if m is not None]
+    members = []
+    for t in toks:
+        m = enum_def.member_for_value(t)
+        if m is None:
+            print(f"WARNING: enum default token {t!r} on SimpleType "
+                  f"{enum_def.name!r} does not match any member; dropping "
+                  f"it from the generated default.")
+            continue
+        members.append(m)
     if not members:
         return f"std::vector<{cpp}>{{}}"
     body = ", ".join(f"{cpp}::{m.cpp_name}" for m in members)

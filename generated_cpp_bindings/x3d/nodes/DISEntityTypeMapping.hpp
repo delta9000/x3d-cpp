@@ -236,6 +236,69 @@ public:
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
+protected:
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesCategory(const SFInt32 &value,
+                                  const std::string &nodeType,
+                                  const std::string &defName,
+                                  std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesCountry(const SFInt32 &value,
+                                 const std::string &nodeType,
+                                 const std::string &defName,
+                                 std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesDomain(const SFInt32 &value,
+                                const std::string &nodeType,
+                                const std::string &defName,
+                                std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesExtra(const SFInt32 &value,
+                               const std::string &nodeType,
+                               const std::string &defName,
+                               std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesKind(const SFInt32 &value, const std::string &nodeType,
+                              const std::string &defName,
+                              std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesSpecific(const SFInt32 &value,
+                                  const std::string &nodeType,
+                                  const std::string &defName,
+                                  std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesSubcategory(const SFInt32 &value,
+                                     const std::string &nodeType,
+                                     const std::string &defName,
+                                     std::vector<RangeDiagnostic> &out);
+
 private:
   /**
    * @brief Member variable for category.

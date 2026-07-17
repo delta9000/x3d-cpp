@@ -227,6 +227,17 @@ class FieldDescriptor:
     def has_constraints(self) -> bool:
         return self.constraint_checks is not None
 
+    @property
+    def has_range_diagnostics(self) -> bool:
+        """True when this field gets a non-throwing checkRanges<Name>() static.
+
+        Broader than has_constraints: inputOutput AND initializeOnly fields
+        with spec range bounds both get the non-throwing diagnostic path
+        (only inputOutput additionally gets the throwing validate<Name>(),
+        since only it has a public typed setter to protect).
+        """
+        return self.range_collect_body is not None
+
 
 def _render_constraints(name: str, x3d_type: X3DType,
                         lo: Optional[str], hi: Optional[str]) -> str:
@@ -333,27 +344,38 @@ def build_descriptor(field, enum_defs: Optional[Dict] = None) -> FieldDescriptor
     )
 
     # Constraint resolution: a color type always clamps to [0,1]; otherwise use
-    # the spec-declared inclusive bounds. Validation only exists for settable
-    # (inputOutput) fields, matching the original template gate.
+    # the spec-declared inclusive bounds.
     is_color = x3d_type in _COLOR_TYPES
     lo = field.min_inclusive
     hi = field.max_inclusive
     if is_color:
         lo, hi = "0", "1"
-    wants_validation = (
-        access == "inputOutput"
-        and x3d_type is not None
+    has_bounds = (
+        x3d_type is not None
         and (field.min_inclusive is not None
              or field.max_inclusive is not None
              or is_color)
     )
+    # Throwing validation (validate<Name>() called from the public setter)
+    # only makes sense where a public typed setter exists to protect:
+    # inputOutput only. Matches the original template gate exactly.
+    wants_throwing_validation = access == "inputOutput" and has_bounds
+    # Non-throwing diagnostic collection (checkRanges<Name>(), surfaced via
+    # validateRanges()/collectRangeWarnings()) is broader: inputOutput OR
+    # initializeOnly. Both have a data-layer write path (set<Name>Unchecked
+    # for initializeOnly, same for constrained inputOutput) that bypasses the
+    # throwing check, so both need a way to surface an out-of-range authored
+    # value as a structured diagnostic instead of losing it silently.
+    wants_range_diagnostics = (
+        access in ("inputOutput", "initializeOnly") and has_bounds
+    )
     constraint_checks = (
         _render_constraints(field.name, x3d_type, lo, hi)
-        if wants_validation else None
+        if wants_throwing_validation else None
     )
     range_collect_body = (
         _render_range_collect(field.name, x3d_type, lo, hi)
-        if wants_validation else None
+        if wants_range_diagnostics else None
     )
 
     name_pascal = pascal(field.name)
@@ -434,3 +456,47 @@ def _build_enum_descriptor(field, enum_def, access, is_event,
 
 def build_descriptors(fields, enum_defs: Optional[Dict] = None) -> List[FieldDescriptor]:
     return [build_descriptor(f, enum_defs) for f in fields]
+
+
+def build_reflection_descriptors(node, *, own_field_names, ancestors,
+                                 enum_defs: Optional[Dict] = None) -> List[FieldDescriptor]:
+    """Build the FULL reflection field set for ``node`` (own + inherited),
+    with each descriptor's ``inherited_from`` resolved to the class that
+    ACTUALLY declares it, and phantom fields dropped.
+
+    The UOM flattens inherited fields into every node so the reflection
+    table doesn't need to walk the C++ base chain -- but its raw
+    ``field/@inheritedFrom`` attribute does not always name the class that
+    actually declares the field (a UOM data quirk). This function re-derives
+    the true declaring ancestor from ``own_field_names`` (each class's ACTUAL
+    own-declared field set, keyed by the field's wire/x3d_name) instead of
+    trusting the UOM attribute, and drops any field that names no real
+    declarer anywhere in the hierarchy (a "phantom" field -- 9 such fields
+    exist in the 4.0 UOM; there is no accessor/member for them anywhere in
+    the generated C++, so keeping them in the reflection table would emit a
+    call to a nonexistent accessor).
+
+    ``own_field_names``: ``{class_name: {wire_field_name, ...}}`` for every
+    class in the hierarchy (own-declared fields only, not inherited).
+    ``ancestors``: the ordered list of ``node``'s transitive base classes
+    (nearest-first is not required; the first ancestor found declaring the
+    field wins, matching the prior inline behavior in CppHeaderBackend).
+    """
+    descriptors = list(build_descriptors(node.fields, enum_defs))
+    own_here = own_field_names.get(node.name, set())
+    resolved: List[FieldDescriptor] = []
+    for d in descriptors:
+        if d.x3d_name in own_here:
+            d.inherited_from = None
+            resolved.append(d)
+            continue
+        declaring = next(
+            (a for a in ancestors if d.x3d_name in own_field_names.get(a, set())),
+            None,
+        )
+        if declaring is None:
+            # Phantom field: dropped, not emitted into the reflection table.
+            continue
+        d.inherited_from = declaring
+        resolved.append(d)
+    return resolved

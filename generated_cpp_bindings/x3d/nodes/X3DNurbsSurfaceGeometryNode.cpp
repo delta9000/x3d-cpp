@@ -386,4 +386,48 @@ void X3DNurbsSurfaceGeometryNode::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void X3DNurbsSurfaceGeometryNode::validateRanges(
+    std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesUDimension(getUDimension(), nodeTypeName(), "", out);
+
+  checkRangesUOrder(getUOrder(), nodeTypeName(), "", out);
+
+  checkRangesVDimension(getVDimension(), nodeTypeName(), "", out);
+
+  checkRangesVOrder(getVOrder(), nodeTypeName(), "", out);
+}
+
+void X3DNurbsSurfaceGeometryNode::checkRangesUDimension(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "uDimension",
+                                  "uDimension below minimum of 0"});
+}
+
+void X3DNurbsSurfaceGeometryNode::checkRangesUOrder(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 2)
+    out.push_back(RangeDiagnostic{nodeType, defName, "uOrder",
+                                  "uOrder below minimum of 2"});
+}
+
+void X3DNurbsSurfaceGeometryNode::checkRangesVDimension(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "vDimension",
+                                  "vDimension below minimum of 0"});
+}
+
+void X3DNurbsSurfaceGeometryNode::checkRangesVOrder(
+    const SFInt32 &value, const std::string &nodeType,
+    const std::string &defName, std::vector<RangeDiagnostic> &out) {
+  if (value < 2)
+    out.push_back(RangeDiagnostic{nodeType, defName, "vOrder",
+                                  "vOrder below minimum of 2"});
+}
+
 } // namespace x3d::nodes

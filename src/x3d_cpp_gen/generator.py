@@ -8,6 +8,7 @@ from x3d_cpp_gen.backends.cpp_header import CppHeaderBackend, TEMPLATES_DIR
 # --- Re-exports: these responsibilities now live in dedicated layers, but the
 # historical generator.* import surface is preserved for the CLI and tests. ---
 from x3d_cpp_gen.emit.naming import pascal  # noqa: F401
+from x3d_cpp_gen.emit.naming import cpp_str as _cpp_str  # noqa: F401
 from x3d_cpp_gen.emit.defaults import (  # noqa: F401
     compute_default_expr, tokenize_mfstring, cpp_string_literal,
 )
@@ -70,6 +71,24 @@ SPECIAL_STRUCTS = [
     "SFColor", "SFColorRGBA",
     "SFRotation", "SFMatrix3d", "SFMatrix3f", "SFMatrix4d", "SFMatrix4f", "SFImage"
 ]
+
+# Coverage assertion: every SPECIAL_STRUCTS entry (except SFImage's documented gap)
+# must have a corresponding _STRUCT_ARITY entry in defaults.py, or default_expr_for
+# will silently emit invalid C++ struct literals for fields with spec defaults.
+# This assertion fires at import time, before any code generation can proceed.
+def _assert_struct_arity_coverage():
+    from x3d_cpp_gen.emit.defaults import struct_arity_names
+    covered = struct_arity_names()
+    expected_gap = {"SFImage"}
+    missing = [name for name in SPECIAL_STRUCTS
+               if name not in covered and name not in expected_gap]
+    assert not missing, (
+        f"SPECIAL_STRUCTS entries with no _STRUCT_ARITY coverage: {missing}. "
+        f"A field of this type with a spec default will silently emit an "
+        f"unbraced token list instead of a valid struct literal."
+    )
+
+_assert_struct_arity_coverage()
 
 def generate_special_structs() -> str:
     """Generates C++ struct definitions for special field types."""
@@ -243,7 +262,7 @@ def gen_enums_header(enum_defs) -> str:
         lines.append("    switch (value) {")
         for m in ed.members:
             token = _enum_token(m.value)
-            lines.append(f"    case {cpp}::{m.cpp_name}: return {_cpp_str(token)};")
+            lines.append(f"    case {cpp}::{m.cpp_name}: return {_cpp_str_literal(token)};")
         lines.append("    }")
         lines.append("    return \"\";")
         lines.append("}")
@@ -254,7 +273,7 @@ def gen_enums_header(enum_defs) -> str:
         for m in ed.members:
             token = _enum_token(m.value)
             lines.append(
-                f"    if (token == {_cpp_str(token)}) {{ out = {cpp}::{m.cpp_name}; return true; }}")
+                f"    if (token == {_cpp_str_literal(token)}) {{ out = {cpp}::{m.cpp_name}; return true; }}")
         lines.append("    return false;")
         lines.append("}")
         lines.append("")
@@ -270,10 +289,9 @@ def _enum_token(raw: str) -> str:
     return (raw or "").strip().strip('"')
 
 
-def _cpp_str(s: str) -> str:
-    """A C++ string literal for ``s`` (escapes backslashes and double-quotes)."""
-    escaped = s.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
+def _cpp_str_literal(s: str) -> str:
+    """A fully-quoted C++ string literal for ``s``."""
+    return f'"{_cpp_str(s)}"'
 
 
 def write_enums_header(output_dir: str, enum_defs) -> None:
@@ -325,16 +343,6 @@ def write_interface_registry(output_dir: str, nodes: Dict[str, X3DNode],
     with open(src, "w") as f:
         f.write(gen_interface_registry_source(nodes, dependency_graph))
     print(f"Generated X3D interface registry source at {src}")
-
-
-def annotate_default_exprs(fields) -> None:
-    """Compatibility shim: populate field.default_expr in place.
-
-    Default-literal computation moved to emit.defaults; this remains so legacy
-    callers that annotate parser dataclasses keep working.
-    """
-    for f in fields:
-        f.default_expr = compute_default_expr(f)
 
 
 def generate_cpp_bindings(nodes: Dict[str, X3DNode], dependency_graph,

@@ -511,6 +511,15 @@ protected:
    * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
    *        component. Used by validateRanges() to surface lenient-read values.
    */
+  static void checkRangesColorKey(const MFFloat &value,
+                                  const std::string &nodeType,
+                                  const std::string &defName,
+                                  std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
   static void checkRangesLifetimeVariation(const SFFloat &value,
                                            const std::string &nodeType,
                                            const std::string &defName,
@@ -542,6 +551,15 @@ protected:
                                       const std::string &nodeType,
                                       const std::string &defName,
                                       std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesTexCoordKey(const MFFloat &value,
+                                     const std::string &nodeType,
+                                     const std::string &defName,
+                                     std::vector<RangeDiagnostic> &out);
 
 private:
   static void validateLifetimeVariation(const SFFloat &value) {

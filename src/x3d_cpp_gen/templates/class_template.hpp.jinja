@@ -16,6 +16,11 @@
 namespace {{ namespace }} {
 using namespace x3d::core;
 {% endif %}
+{#- NOTE: class_description/specification_url/field descriptions are NOT run
+    through cpp_str here -- that escapes STRING-LITERAL metacharacters, not
+    Doxygen COMMENT metacharacters (a description containing "*/" would still
+    break this block). Not addressed in this pass; needs a comment-safe
+    filter, not cpp_str. #}
 /**
  * @class {{ class_name }}
  * @brief {{ class_description }}
@@ -59,7 +64,7 @@ public:
      * @return std::string The container field type
      */
     static std::string getContainerFieldType() {
-        return "{{ container_field.type }}";
+        return "{{ container_field.type | cpp_str }}";
     }
 
     /**
@@ -67,7 +72,7 @@ public:
      * @return std::string The default container field value
      */
     static std::string getDefaultContainerField() {
-        return "{{ container_field.default }}";
+        return "{{ container_field.default | cpp_str }}";
     }
 
     {% if container_field.enumerations %}
@@ -78,7 +83,7 @@ public:
      */
     static bool isValidContainerField(const std::string& value) {
         static const std::vector<std::string> valid_values = {
-            {% for enum in container_field.enumerations %}"{{ enum }}"{% if not loop.last %}, {% endif %}{% endfor %}
+            {% for enum in container_field.enumerations %}"{{ enum | cpp_str }}"{% if not loop.last %}, {% endif %}{% endfor %}
         };
         return std::find(valid_values.begin(), valid_values.end(), value) != valid_values.end();
     }
@@ -101,7 +106,7 @@ public:
      * @return std::string The component name
      */
     static std::string componentName() {
-        return "{{ component.name }}";
+        return "{{ component.name | cpp_str }}";
     }
 
     {% if component.level is not none %}
@@ -153,7 +158,7 @@ public:
      */
     static const std::vector<std::string>& acceptable{{ field.name_pascal }}NodeTypes() {
         static const std::vector<std::string> types = {
-            {% for t in field.acceptable_node_types %}"{{ t }}"{% if not loop.last %}, {% endif %}{% endfor %}
+            {% for t in field.acceptable_node_types %}"{{ t | cpp_str }}"{% if not loop.last %}, {% endif %}{% endfor %}
         };
         return types;
     }
@@ -265,7 +270,7 @@ public:
     {#- OWN + INHERITED constrained settable fields (same list fields() reflects),
         so mixin-inherited constrained fields (e.g. X3DFogObject::color) are checked
         too. Inherited entries base-qualify both the checker static and the getter. -#}
-    {% set _constrained = reflection_fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+    {% set _constrained = reflection_fields | selectattr('has_range_diagnostics') | list %}
     {% if is_root %}
     /**
      * @brief Append RangeDiagnostics for this node's own out-of-range constrained
@@ -282,7 +287,7 @@ public:
         can reach a static inherited from an AbstractObjectType mixin via a
         base-qualified call (e.g. X3DFogObject::checkRangesColor). Only emit the
         protected: label when this class actually defines at least one such static. -#}
-    {% set _own_constrained = fields | selectattr('is_settable') | selectattr('has_constraints') | list %}
+    {% set _own_constrained = fields | selectattr('has_range_diagnostics') | list %}
     {% if _own_constrained %}
 protected:
     {% for field in _own_constrained %}

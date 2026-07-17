@@ -182,6 +182,20 @@ void Disk2D::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void Disk2D::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesInnerRadius(getInnerRadius(), nodeTypeName(), "", out);
+}
+
+void Disk2D::checkRangesInnerRadius(const SFFloat &value,
+                                    const std::string &nodeType,
+                                    const std::string &defName,
+                                    std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "innerRadius",
+                                  "innerRadius below minimum of 0"});
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createDisk2D() { return std::make_shared<Disk2D>(); }
 } // namespace factory_detail

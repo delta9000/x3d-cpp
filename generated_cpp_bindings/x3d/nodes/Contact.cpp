@@ -41,22 +41,10 @@ const FieldTable &Contact::fields() const {
 
         [](X3DNode &n, const std::string &s) {
           std::vector<AppliedParametersChoices> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              AppliedParametersChoices ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
+          for (const auto &tok : parseEnumTokens(s)) {
+            AppliedParametersChoices ev;
+            if (from_string(tok, ev))
+              vec.push_back(ev);
           }
           dynamic_cast<Contact &>(n).setAppliedParameters(std::move(vec));
         }

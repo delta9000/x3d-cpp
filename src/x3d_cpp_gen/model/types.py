@@ -16,16 +16,6 @@ from enum import Enum
 from typing import Optional
 
 
-class TypeKind(Enum):
-    """Coarse structural category of an X3D type, used for shape decisions."""
-
-    SCALAR = "scalar"        # bool / int / float / double / string / time
-    STRUCT = "struct"        # SFVec*, SFColor*, SFRotation, SFMatrix*, SFImage
-    NODE = "node"            # SFNode (shared_ptr)
-    MULTI = "multi"          # any MF* type
-    XS = "xs"                # xs:* aliased types
-
-
 class X3DType(Enum):
     """One member per X3D field type (SF*/MF*) plus the supported ``xs:*`` types.
 
@@ -80,54 +70,6 @@ class X3DType(Enum):
     # --- XML-schema aliased types ---
     XS_NMTOKEN = "xs:NMTOKEN"
 
-
-# Canonical C++ type for every X3D type. SFColor is deliberately its own struct,
-# distinct from SFVec3f, even though both are three floats.
-_CPP_TYPE = {
-    X3DType.SFBool: "bool",
-    X3DType.SFColor: "SFColor",
-    X3DType.SFColorRGBA: "SFColorRGBA",
-    X3DType.SFDouble: "double",
-    X3DType.SFFloat: "float",
-    X3DType.SFImage: "SFImage",
-    X3DType.SFInt32: "int",
-    X3DType.SFMatrix3d: "SFMatrix3d",
-    X3DType.SFMatrix3f: "SFMatrix3f",
-    X3DType.SFMatrix4d: "SFMatrix4d",
-    X3DType.SFMatrix4f: "SFMatrix4f",
-    X3DType.SFNode: "std::shared_ptr<X3DNode>",
-    X3DType.SFRotation: "SFRotation",
-    X3DType.SFString: "std::string",
-    X3DType.SFTime: "double",
-    X3DType.SFVec2d: "SFVec2d",
-    X3DType.SFVec2f: "SFVec2f",
-    X3DType.SFVec3d: "SFVec3d",
-    X3DType.SFVec3f: "SFVec3f",
-    X3DType.SFVec4d: "SFVec4d",
-    X3DType.SFVec4f: "SFVec4f",
-    X3DType.MFBool: "std::vector<bool>",
-    X3DType.MFColor: "std::vector<SFColor>",
-    X3DType.MFColorRGBA: "std::vector<SFColorRGBA>",
-    X3DType.MFDouble: "std::vector<double>",
-    X3DType.MFFloat: "std::vector<float>",
-    X3DType.MFImage: "std::vector<SFImage>",
-    X3DType.MFInt32: "std::vector<int>",
-    X3DType.MFMatrix3d: "std::vector<SFMatrix3d>",
-    X3DType.MFMatrix3f: "std::vector<SFMatrix3f>",
-    X3DType.MFMatrix4d: "std::vector<SFMatrix4d>",
-    X3DType.MFMatrix4f: "std::vector<SFMatrix4f>",
-    X3DType.MFNode: "std::vector<std::shared_ptr<X3DNode>>",
-    X3DType.MFRotation: "std::vector<SFRotation>",
-    X3DType.MFString: "std::vector<std::string>",
-    X3DType.MFTime: "std::vector<double>",
-    X3DType.MFVec2d: "std::vector<SFVec2d>",
-    X3DType.MFVec2f: "std::vector<SFVec2f>",
-    X3DType.MFVec3d: "std::vector<SFVec3d>",
-    X3DType.MFVec3f: "std::vector<SFVec3f>",
-    X3DType.MFVec4d: "std::vector<SFVec4d>",
-    X3DType.MFVec4f: "std::vector<SFVec4f>",
-    X3DType.XS_NMTOKEN: "std::string",
-}
 
 # Component layout of struct-shaped types (used for per-component validation).
 _COMPONENTS = {
@@ -193,9 +135,10 @@ class TypeRegistry:
         """Like :meth:`resolve` but raise a clear, actionable error on miss.
 
         A newer X3D spec introducing a NEW field type is handled by DATA, not
-        code: add the member to :class:`X3DType` and an entry to ``_CPP_TYPE``
-        (and, for the parser, ``FIELD_TYPE_MAPPING``). The error message says so
-        explicitly so the failure is actionable rather than a bare ``None``.
+        code: add the member to :class:`X3DType` and an entry to
+        ``FIELD_TYPE_MAPPING`` (in both generator.py and the parser). The error
+        message says so explicitly so the failure is actionable rather than a
+        bare ``None``.
         """
         resolved = cls.resolve(type_string)
         if resolved is None:
@@ -203,34 +146,15 @@ class TypeRegistry:
             raise KeyError(
                 f"Unknown X3D field type {type_string!r}. If a newer spec "
                 f"version added this type, register it as DATA: add an X3DType "
-                f"member and a _CPP_TYPE entry in model/types.py (and a "
-                f"FIELD_TYPE_MAPPING entry for the parser). Known types: {known}."
+                f"member and a FIELD_TYPE_MAPPING entry in generator.py "
+                f"(and the parser's FIELD_TYPE_MAPPING). Known types: {known}."
             )
         return resolved
-
-    @classmethod
-    def cpp_type(cls, t: "X3DType") -> str:
-        return _CPP_TYPE[t]
 
     @classmethod
     def components(cls, t: "X3DType"):
         """Component accessor names for struct types, else None."""
         return _COMPONENTS.get(t)
-
-    @classmethod
-    def kind(cls, t: "X3DType") -> TypeKind:
-        if t in (X3DType.SFNode, X3DType.MFNode):
-            return TypeKind.NODE if t is X3DType.SFNode else TypeKind.MULTI
-        if t is X3DType.XS_NMTOKEN:
-            return TypeKind.XS
-        if t.value.startswith("MF"):
-            return TypeKind.MULTI
-        if t in (
-            X3DType.SFBool, X3DType.SFInt32, X3DType.SFFloat,
-            X3DType.SFDouble, X3DType.SFTime, X3DType.SFString,
-        ):
-            return TypeKind.SCALAR
-        return TypeKind.STRUCT
 
     @classmethod
     def is_multi(cls, t: "X3DType") -> bool:

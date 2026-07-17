@@ -354,6 +354,20 @@ void Extrusion::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void Extrusion::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesCreaseAngle(getCreaseAngle(), nodeTypeName(), "", out);
+}
+
+void Extrusion::checkRangesCreaseAngle(const SFFloat &value,
+                                       const std::string &nodeType,
+                                       const std::string &defName,
+                                       std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "creaseAngle",
+                                  "creaseAngle below minimum of 0"});
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createExtrusion() {
   return std::make_shared<Extrusion>();

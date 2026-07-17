@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 
 from jinja2 import Environment, FileSystemLoader
 
-from x3d_cpp_gen.emit.descriptors import build_descriptors
+from x3d_cpp_gen.emit.descriptors import build_descriptors, build_reflection_descriptors
 from x3d_cpp_gen.emit.naming import pascal
 
 # The repo's committed style, resolved absolutely and passed explicitly.
@@ -47,7 +47,9 @@ class CppHeaderBackend:
             loader=FileSystemLoader(self.templates_dir),
             extensions=['jinja2.ext.loopcontrols'],
         )
+        from x3d_cpp_gen.emit.naming import cpp_str
         env.filters['pascal'] = pascal
+        env.filters['cpp_str'] = cpp_str
         self._env = env
         self._template = env.get_template('class_template.hpp.jinja')
         self._source_template = env.get_template('class_template.cpp.jinja')
@@ -114,45 +116,11 @@ class CppHeaderBackend:
 
         for node in nodes.values():
             descriptors = build_descriptors(get_own_fields(node), self.enum_defs)
-            # The reflection table covers the FULL field set (own + inherited):
-            # the UOM flattens inherited fields into each node, so this gives a
-            # codec every field without walking the C++ base chain. Accessors for
-            # inherited fields are reachable via public inheritance, so the
-            # downcasting get/set thunks compile for them too. inputOnly events
-            # are included so the event cascade can deliver to them: their `set`
-            # thunk dispatches to the registered on<Name> handler. They carry no
-            # `get` thunk (not readable), so value codecs skip them.
-            reflection_descriptors = list(
-                build_descriptors(node.fields, self.enum_defs)
-            )
-            # Resolve the disambiguating qualifier for every reflected field:
-            # the class whose OWN fields declare it. If the node declares it
-            # itself, leave it unqualified (a direct member, never ambiguous);
-            # otherwise qualify by the nearest ancestor that declares it so the
-            # call selects a single, valid base subobject even under diamonds.
-            own_here = own_field_names.get(node.name, set())
             ancestors = self._ancestors(node.name, dependency_graph)
-            resolved: List = []
-            for d in reflection_descriptors:
-                if d.x3d_name in own_here:
-                    d.inherited_from = None
-                    resolved.append(d)
-                    continue
-                declaring = next(
-                    (a for a in ancestors
-                     if d.x3d_name in own_field_names.get(a, set())),
-                    None,
-                )
-                if declaring is None:
-                    # Phantom field: the UOM marks it inheritedFrom a class that
-                    # never declares it, so no accessor/member exists anywhere in
-                    # the C++ hierarchy. It is unrepresentable at runtime — drop
-                    # it from the reflection table rather than emit a call to a
-                    # nonexistent accessor. (9 such fields in the 4.0 UOM.)
-                    continue
-                d.inherited_from = declaring
-                resolved.append(d)
-            reflection_descriptors = resolved
+            reflection_descriptors = build_reflection_descriptors(
+                node, own_field_names=own_field_names, ancestors=ancestors,
+                enum_defs=self.enum_defs,
+            )
             # Every base (primary + additional) is emitted 'public virtual' so a
             # base reachable via multiple paths (e.g. X3DNode in LayoutGroup)
             # collapses to a single shared subobject — no -Winaccessible-base.

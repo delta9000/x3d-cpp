@@ -299,6 +299,9 @@ void OrientationDamper::accept(NodeVisitor &visitor) const {
 void OrientationDamper::validateRanges(
     std::vector<RangeDiagnostic> &out) const {
 
+  X3DDamperNode::checkRangesOrder(X3DDamperNode::getOrder(), nodeTypeName(), "",
+                                  out);
+
   X3DDamperNode::checkRangesTau(X3DDamperNode::getTau(), nodeTypeName(), "",
                                 out);
 }

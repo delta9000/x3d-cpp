@@ -178,4 +178,18 @@ void X3DChaserNode::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void X3DChaserNode::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesDuration(getDuration(), nodeTypeName(), "", out);
+}
+
+void X3DChaserNode::checkRangesDuration(const SFTime &value,
+                                        const std::string &nodeType,
+                                        const std::string &defName,
+                                        std::vector<RangeDiagnostic> &out) {
+  if (value < 0)
+    out.push_back(RangeDiagnostic{nodeType, defName, "duration",
+                                  "duration below minimum of 0"});
+}
+
 } // namespace x3d::nodes

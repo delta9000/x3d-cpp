@@ -262,6 +262,13 @@ void OrientationChaser::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void OrientationChaser::validateRanges(
+    std::vector<RangeDiagnostic> &out) const {
+
+  X3DChaserNode::checkRangesDuration(X3DChaserNode::getDuration(),
+                                     nodeTypeName(), "", out);
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createOrientationChaser() {
   return std::make_shared<OrientationChaser>();

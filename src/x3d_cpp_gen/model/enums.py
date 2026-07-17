@@ -82,16 +82,26 @@ def _enum_cpp_name(simple_type_name: str) -> str:
 def _is_bounded(appinfo: str) -> bool:
     """A SimpleType is a closed vocabulary iff its appinfo says so.
 
-    The UOM marks open vocabularies with the word "unbounded" — which itself
-    contains the substring "bounded". An explicit "unbounded" declaration must
-    therefore veto the match; otherwise an open vocabulary (e.g.
-    ``hanimJointNameValues``) is wrongly emitted as a closed ``enum class`` that
-    drops out-of-list values and elides its default on round-trip.
+    Matches the UOM's actual declaration phrasing ("this list is bounded")
+    rather than a bare substring check for "bounded" -- the UOM marks open
+    vocabularies with the word "unbounded" (itself containing "bounded" as a
+    substring), so a bare substring match already special-cased that one
+    known collision; a tighter phrase match reduces the surface for a FUTURE
+    unrelated appinfo phrase that happens to contain "bounded" (e.g. "value
+    space is bounded above but the list itself is open") to be misread as a
+    closed-vocabulary declaration.
+
+    Verified against the real UOM 4.0 spec and the 4.1 fixture: every one of
+    their <SimpleType> appinfo strings uses the exact phrase "This list is
+    bounded" (closed) or "This list is unbounded" (open) -- no SimpleType
+    appinfo anywhere in either file contains a bare "bounded" substring
+    outside that fuller phrase, so tightening the match changes nothing for
+    real data (see tests/test_enums.py for the codified check).
     """
     text = (appinfo or "").lower()
     if "unbounded" in text:
         return False
-    return "bounded" in text
+    return "this list is bounded" in text or "list is bounded" in text
 
 
 def parse_enum_defs(root) -> Dict[str, EnumDef]:

@@ -201,6 +201,27 @@ public:
    */
   void accept(NodeVisitor &visitor) const override;
 
+  void validateRanges(std::vector<RangeDiagnostic> &out) const override;
+
+protected:
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesInitialDestination(const SFColor &value,
+                                            const std::string &nodeType,
+                                            const std::string &defName,
+                                            std::vector<RangeDiagnostic> &out);
+
+  /**
+   * @brief Non-throwing range check: appends a RangeDiagnostic per out-of-range
+   *        component. Used by validateRanges() to surface lenient-read values.
+   */
+  static void checkRangesInitialValue(const SFColor &value,
+                                      const std::string &nodeType,
+                                      const std::string &defName,
+                                      std::vector<RangeDiagnostic> &out);
+
 private:
   /**
    * @brief Member variable for initialDestination.

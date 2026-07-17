@@ -187,6 +187,8 @@ public:
    */
   void accept(NodeVisitor &visitor) const override;
 
+  void validateRanges(std::vector<RangeDiagnostic> &out) const override;
+
 private:
   /**
    * @brief Member variable for initialDestination.

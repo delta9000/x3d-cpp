@@ -90,6 +90,8 @@ public:
    */
   void accept(NodeVisitor &visitor) const override;
 
+  void validateRanges(std::vector<RangeDiagnostic> &out) const override;
+
 private:
 };
 

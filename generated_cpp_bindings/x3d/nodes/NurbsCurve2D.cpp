@@ -243,6 +243,20 @@ void NurbsCurve2D::accept(NodeVisitor &visitor) const {
   visitor.leave(*this);
 }
 
+void NurbsCurve2D::validateRanges(std::vector<RangeDiagnostic> &out) const {
+
+  checkRangesOrder(getOrder(), nodeTypeName(), "", out);
+}
+
+void NurbsCurve2D::checkRangesOrder(const SFInt32 &value,
+                                    const std::string &nodeType,
+                                    const std::string &defName,
+                                    std::vector<RangeDiagnostic> &out) {
+  if (value < 2)
+    out.push_back(RangeDiagnostic{nodeType, defName, "order",
+                                  "order below minimum of 2"});
+}
+
 namespace factory_detail {
 std::shared_ptr<X3DNode> createNurbsCurve2D() {
   return std::make_shared<NurbsCurve2D>();

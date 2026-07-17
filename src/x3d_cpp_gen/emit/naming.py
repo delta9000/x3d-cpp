@@ -43,3 +43,32 @@ def pascal(s: str) -> str:
     'bboxCenter' -> 'BboxCenter' (yielding getBboxCenter, not getBboxcenter).
     """
     return (s[:1].upper() + s[1:]) if s else s
+
+
+def cpp_str(s: str) -> str:
+    """Escape a Python string into the body of a C++ double-quoted literal.
+
+    Escapes backslash, double-quote, newline, tab, and carriage return -- the
+    union of what this generator's two previously-separate, inconsistent
+    escaping implementations covered (emit.defaults.cpp_string_literal used
+    to escape all five; generator._cpp_str used to escape only backslash and
+    quote). One shared implementation now backs every quoted interpolation
+    site, including Jinja templates via the registered ``cpp_str`` filter.
+    """
+    if s is None:
+        return ""
+    out = []
+    for ch in s:
+        if ch == '\\':
+            out.append('\\\\')
+        elif ch == '"':
+            out.append('\\"')
+        elif ch == '\n':
+            out.append('\\n')
+        elif ch == '\t':
+            out.append('\\t')
+        elif ch == '\r':
+            out.append('\\r')
+        else:
+            out.append(ch)
+    return ''.join(out)

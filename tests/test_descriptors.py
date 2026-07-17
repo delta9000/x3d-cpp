@@ -142,3 +142,128 @@ def test_render_range_collect_scalar_and_color():
     mfbody = _render_range_collect("color", X3DType.MFColor, "0", "1")
     assert mfbody.startswith("for (const auto& v : value) {")
     assert "out.push_back(RangeDiagnostic{" in mfbody
+
+
+def test_initializeonly_constrained_field_gets_range_diagnostics_not_throwing_validation():
+    from x3d_cpp_gen.parser import X3DField
+    from x3d_cpp_gen.emit.descriptors import build_descriptor
+
+    field = X3DField(
+        name="order", type="SFInt32", accessType="initializeOnly",
+        x3d_name="order", default="4", min_inclusive="0", max_inclusive="5",
+    )
+    d = build_descriptor(field)
+
+    # initializeOnly must NOT get the throwing validate<Name>() path -- it has
+    # no public typed setter to protect (data-layer writes always go through
+    # set<Name>Unchecked by design).
+    assert d.constraint_checks is None
+    assert not d.has_constraints
+
+    # But it MUST get the non-throwing diagnostic-collection path, so an
+    # out-of-range authored value is at least surfaced via validateRanges()/
+    # collectRangeWarnings() instead of vanishing silently.
+    assert d.range_collect_body is not None
+    assert d.has_range_diagnostics
+
+
+def test_inputoutput_constrained_field_still_gets_both_paths():
+    from x3d_cpp_gen.parser import X3DField
+    from x3d_cpp_gen.emit.descriptors import build_descriptor
+
+    field = X3DField(
+        name="transparency", type="SFFloat", accessType="inputOutput",
+        x3d_name="transparency", default="0", min_inclusive="0", max_inclusive="1",
+    )
+    d = build_descriptor(field)
+
+    assert d.constraint_checks is not None
+    assert d.has_constraints
+    assert d.range_collect_body is not None
+    assert d.has_range_diagnostics
+
+
+def test_unconstrained_field_gets_neither():
+    from x3d_cpp_gen.parser import X3DField
+    from x3d_cpp_gen.emit.descriptors import build_descriptor
+
+    field = X3DField(
+        name="name", type="SFString", accessType="inputOutput",
+        x3d_name="name", default="",
+    )
+    d = build_descriptor(field)
+
+    assert d.constraint_checks is None
+    assert not d.has_constraints
+    assert d.range_collect_body is None
+    assert not d.has_range_diagnostics
+
+
+def test_build_reflection_descriptors_drops_phantom_fields():
+    from x3d_cpp_gen.parser import X3DField, X3DNode
+    from x3d_cpp_gen.emit.descriptors import build_reflection_descriptors
+
+    # "ghost" claims inheritedFrom="NeverDeclaresIt" but no node in the
+    # hierarchy actually owns a field named "ghost" -- this is the UOM
+    # phantom-field pattern (9 such fields exist in the real 4.0 spec).
+    child = X3DNode(
+        name="Child", base_type="Parent",
+        fields=[
+            X3DField(name="ghost", type="SFBool", accessType="inputOutput",
+                     x3d_name="ghost", inherited_from="NeverDeclaresIt"),
+            X3DField(name="real", type="SFBool", accessType="inputOutput",
+                     x3d_name="real"),
+        ],
+    )
+    descriptors = build_reflection_descriptors(
+        child,
+        own_field_names={"Child": {"real"}, "Parent": set()},
+        ancestors=["Parent"],
+    )
+
+    names = {d.x3d_name for d in descriptors}
+    assert "real" in names
+    assert "ghost" not in names, "phantom field (declared nowhere) must be dropped"
+
+
+def test_build_reflection_descriptors_qualifies_inherited_fields_by_true_declarer():
+    from x3d_cpp_gen.parser import X3DField, X3DNode
+    from x3d_cpp_gen.emit.descriptors import build_reflection_descriptors
+
+    # "color" is claimed inheritedFrom="WrongClass" in the UOM data, but is
+    # actually declared by "RealBase" per own_field_names -- the resolver
+    # must trust own_field_names (derived from the actual C++ hierarchy),
+    # not the UOM's raw inheritedFrom attribute.
+    child = X3DNode(
+        name="Child", base_type="RealBase",
+        fields=[
+            X3DField(name="color", type="SFColor", accessType="inputOutput",
+                     x3d_name="color", inherited_from="WrongClass"),
+        ],
+    )
+    descriptors = build_reflection_descriptors(
+        child,
+        own_field_names={"Child": set(), "RealBase": {"color"}},
+        ancestors=["RealBase"],
+    )
+
+    assert len(descriptors) == 1
+    assert descriptors[0].inherited_from == "RealBase"
+
+
+def test_build_reflection_descriptors_leaves_own_fields_unqualified():
+    from x3d_cpp_gen.parser import X3DField, X3DNode
+    from x3d_cpp_gen.emit.descriptors import build_reflection_descriptors
+
+    node = X3DNode(
+        name="Leaf", fields=[
+            X3DField(name="size", type="SFVec3f", accessType="inputOutput",
+                     x3d_name="size"),
+        ],
+    )
+    descriptors = build_reflection_descriptors(
+        node,
+        own_field_names={"Leaf": {"size"}},
+        ancestors=[],
+    )
+    assert descriptors[0].inherited_from is None
