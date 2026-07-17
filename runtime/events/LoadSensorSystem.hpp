@@ -95,7 +95,11 @@ public:
       state_.emplace(ls, SensorState{});
   }
 
-  void update(double now, X3DExecutionContext &ctx) override; // Tasks 3-6 fill in.
+  // `inline` at the declaration point keeps update() from becoming the class's
+  // Itanium-ABI key function — otherwise the vtable (and its node-lib typeinfo /
+  // nodeImplements references) would be emitted in every TU that merely includes
+  // this header, breaking the headers-only x3d_cpp_all_headers link.
+  inline void update(double now, X3DExecutionContext &ctx) override;
 
 private:
   struct ChildState {
