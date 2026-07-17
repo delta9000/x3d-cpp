@@ -32,3 +32,9 @@ cmake --build build -j4 --target \
 extraction seam, supports all three material models, emulates the GLSL pipeline
 (including a GLSL-subset interpreter for author `ComposedShader` source), and
 writes a PPM — a GPU-free golden-image harness. See `cpu_raster/README.md`.
+
+`x3d2svg/` is a **façade-only headless SVG projector** (off by default,
+`-DX3D_CPP_BUILD_X3D2SVG=ON`, or `mise run x3d2svg`). The smallest full renderer
+in the tree: zero third-party deps, links only `x3d_cpp::sdk`, and projects the
+extracted geometry to a flat-shaded SVG (animated SVG with `--animate`). See
+`x3d2svg/README.md`.

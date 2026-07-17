@@ -25,6 +25,11 @@ cmake -S . -B build-cpuraster -G Ninja -DX3D_CPP_BUILD_CPURASTER=ON -DX3D_CPP_BU
 cmake --build build-cpuraster --target x3d_cpu_raster
 CPU=build-cpuraster/examples/cpu_raster/x3d_cpu_raster
 
+echo "== build x3d2svg (X3D_CPP_BUILD_X3D2SVG=ON; façade-only, no deps) =="
+cmake -S . -B build-x3d2svg -G Ninja -DX3D_CPP_BUILD_X3D2SVG=ON >/dev/null
+cmake --build build-x3d2svg --target x3d_x3d2svg x3d_x3d2svg_project
+SVG=build-x3d2svg/examples/x3d2svg/x3d_x3d2svg
+
 echo "== build poc_renderer (X3D_CPP_BUILD_POC=ON; FetchContent GLFW) =="
 cmake -S . -B build-poc -G Ninja -DX3D_CPP_BUILD_POC=ON >/dev/null
 cmake --build build-poc --target x3d_poc_renderer
@@ -32,6 +37,10 @@ POC=build-poc/examples/poc_renderer/x3d_poc_renderer
 
 echo "== cpu_raster --headless (no GL) =="
 "$CPU" "$SCENE" --headless
+
+echo "== x3d2svg --headless (façade-only extract + project) =="
+"$SVG" examples/x3d2svg/assets/smoke.x3d --headless
+ctest --test-dir build-x3d2svg -R x3d_x3d2svg --output-on-failure
 
 echo "== poc --headless (no GL) =="
 "$POC" --headless "$SCENE"
@@ -125,5 +134,5 @@ else
   echo "assimp not available; skipping assimp job"
 fi
 
-echo "== examples validated: cpu_raster + poc_renderer + asset_import compile and run headless =="
+echo "== examples validated: cpu_raster + x3d2svg + poc_renderer + asset_import compile and run headless =="
 

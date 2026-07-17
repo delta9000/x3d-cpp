@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Interchange" version="4.0">
+  <head>
+    <meta name="title" content="smoke.x3d"/>
+    <meta name="description" content="x3d2svg gate scene: three primitives with distinct materials under a bound Viewpoint."/>
+  </head>
+  <Scene>
+    <Viewpoint description="front" position="0 0 8"/>
+    <Transform translation="-2.4 0 0">
+      <Shape>
+        <Appearance><Material diffuseColor="0.85 0.35 0.25"/></Appearance>
+        <Box size="1.6 1.6 1.6"/>
+      </Shape>
+    </Transform>
+    <Transform translation="0 0 0">
+      <Shape>
+        <Appearance><Material diffuseColor="0.30 0.55 0.85"/></Appearance>
+        <Sphere radius="1.0"/>
+      </Shape>
+    </Transform>
+    <Transform translation="2.4 0 0">
+      <Shape>
+        <Appearance><Material diffuseColor="0.45 0.75 0.40"/></Appearance>
+        <Cone bottomRadius="1.0" height="1.8"/>
+      </Shape>
+    </Transform>
+  </Scene>
+</X3D>
