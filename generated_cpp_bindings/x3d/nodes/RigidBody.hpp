@@ -108,7 +108,7 @@ public:
    * @return SFMatrix3f The default value
    */
   static SFMatrix3f getDefaultInertia() {
-    return SFMatrix3f{1, 0, 0, 0, 1, 0, 0, 0, 1};
+    return SFMatrix3f{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
   }
 
   /**
@@ -779,7 +779,7 @@ private:
    * @brief Member variable for inertia.
    */
 
-  SFMatrix3f _inertia{SFMatrix3f{1, 0, 0, 0, 1, 0, 0, 0, 1}};
+  SFMatrix3f _inertia{SFMatrix3f{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}}};
 
   /**
    * @brief Member variable for linearDampingFactor.

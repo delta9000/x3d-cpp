@@ -42,7 +42,7 @@ public:
    * @return SFMatrix4f The default value
    */
   static SFMatrix4f getDefaultMatrix() {
-    return SFMatrix4f{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    return SFMatrix4f{{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
   }
 
   /**
@@ -146,7 +146,7 @@ private:
    */
 
   SFMatrix4f _matrix{
-      SFMatrix4f{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}};
+      SFMatrix4f{{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}}};
 };
 
 } // namespace x3d::nodes
