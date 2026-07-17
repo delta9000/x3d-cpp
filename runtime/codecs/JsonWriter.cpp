@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <any>
+#include <cstdio>
 #include <sstream>
 #include <utility>
 
@@ -77,7 +78,16 @@ std::string JsonWriter::jstr(const std::string &s) {
       out += "\\r";
       break;
     default:
-      out += c;
+      if (static_cast<unsigned char>(c) < 0x20) {
+        // RFC 8259: control characters MUST be escaped; strict consumers
+        // (and X3DJSAIL's JSON path) reject raw bytes here (ENC-JSON-CTRL).
+        char buf[8];
+        std::snprintf(buf, sizeof buf, "\\u%04x",
+                      static_cast<unsigned>(static_cast<unsigned char>(c)));
+        out += buf;
+      } else {
+        out += c;
+      }
       break;
     }
   }
@@ -96,6 +106,27 @@ void JsonWriter::writeHead(std::ostringstream &os, const runtime::Head &head,
       os << "{ \"@name\": " << jstr(head.components[i].name)
          << ", \"@level\": " << head.components[i].level << " }"
          << (i + 1 < head.components.size() ? "," : "") << "\n";
+    }
+    pad(os, depth);
+    os << "]";
+    first = false;
+  }
+  if (!head.units.empty()) {
+    // ENC-JSON-UNIT: mirror the meta array — JsonReader already reads this
+    // shape back ("@category"/"@name"/"@conversionFactor"); without it every
+    // UNIT declaration silently vanished on the JSON hop.
+    if (!first)
+      os << ",";
+    os << "\n";
+    pad(os, depth);
+    os << "\"unit\": [\n";
+    for (std::size_t i = 0; i < head.units.size(); ++i) {
+      pad(os, depth + 1);
+      os << "{ \"@category\": " << jstr(head.units[i].category)
+         << ", \"@name\": " << jstr(head.units[i].name)
+         << ", \"@conversionFactor\": "
+         << fmtDouble(head.units[i].conversionFactor) << " }"
+         << (i + 1 < head.units.size() ? "," : "") << "\n";
     }
     pad(os, depth);
     os << "]";

@@ -506,7 +506,7 @@ void XmlWriter::render(const xml::Element &el, std::ostringstream &os,
   // verbatim from Element.text (SCR-SAI-DYN S1). Empty text is skipped above.
   if (!el.text.empty()) {
     indent(os, depth + 1);
-    os << "<![CDATA[" << el.text << "]]>\n";
+    os << "<![CDATA[" << xml::cdataEscape(el.text) << "]]>\n";
   }
   indent(os, depth);
   os << "</" << el.name << ">\n";

@@ -90,6 +90,27 @@ inline std::string escape(const std::string &s) {
   return out;
 }
 
+/// Make text safe for a CDATA body: a literal `]]>` would close the section
+/// early (silently truncating e.g. Script source — ENC-CDATA-SCRIPT), so split
+/// it across two sections: `]]` ends one, `>` starts the next. The reader
+/// concatenates consecutive CDATA sections, restoring the original text.
+inline std::string cdataEscape(const std::string &s) {
+  std::string out;
+  out.reserve(s.size());
+  std::size_t i = 0;
+  while (i < s.size()) {
+    std::size_t hit = s.find("]]>", i);
+    if (hit == std::string::npos) {
+      out.append(s, i, std::string::npos);
+      break;
+    }
+    out.append(s, i, hit - i);
+    out += "]]]]><![CDATA[>";
+    i = hit + 3;
+  }
+  return out;
+}
+
 /// Decode the predefined entities and numeric character references in `s`.
 inline std::string unescape(const std::string &s) {
   std::string out;

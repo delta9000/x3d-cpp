@@ -146,9 +146,11 @@ private:
       bump(); // opening quote
       std::string str;
       while (pos_ < src_.size() && src_[pos_] != '"') {
-        if (src_[pos_] == '\\' && pos_ + 1 < src_.size()) {
-          char esc = src_[pos_ + 1];
-          str += esc; // \" -> ", \\ -> \, others pass through unescaped
+        if (src_[pos_] == '\\' && pos_ + 1 < src_.size() &&
+            (src_[pos_ + 1] == '"' || src_[pos_ + 1] == '\\')) {
+          // ISO 19776-2 defines exactly two escapes: \" and \\. Any other \x
+          // keeps its backslash (ENC-MFSTRING-READ).
+          str += src_[pos_ + 1];
           bump();
           bump();
         } else {

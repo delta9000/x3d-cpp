@@ -9130,6 +9130,7 @@
     },
     {
       "clause": "ISO 19776-2 5.3 (sfstringValue/mfstringValue)",
+      "commit": "1e3c51d",
       "id": "ENC-VRML-STRING",
       "interfaces": [
         "X3DMetadataObject"
@@ -9137,33 +9138,35 @@
       "nodes": [
         "MetadataString"
       ],
-      "note": "Proven on real corpus ConformanceNist/.../greyscale_jpg_diffuseColor.x3d: a META description with an inner quote writes `META \"description\" \"...adding a \"red\"...\"` and re-reads truncated at the inner quote, dropping the rest plus the next four <meta> lines. MFString probe: a 5-element field with a backslash/quote becomes 6 elements. Fix: VrmlWriter must emit '\"'->'\\\"' and '\\\\'->'\\\\\\\\' on every SFString/MFString/META. Affects descriptions, licenses, any string-bearing field through a .x3dv hop. (round-trip sweep; confirms an earlier static prediction.)",
+      "note": "Proven on real corpus ConformanceNist/.../greyscale_jpg_diffuseColor.x3d: a META description with an inner quote writes `META \"description\" \"...adding a \"red\"...\"` and re-reads truncated at the inner quote, dropping the rest plus the next four <meta> lines. MFString probe: a 5-element field with a backslash/quote becomes 6 elements. Fix: VrmlWriter must emit '\"'->'\\\"' and '\\\\'->'\\\\\\\\' on every SFString/MFString/META. Affects descriptions, licenses, any string-bearing field through a .x3dv hop. (round-trip sweep; confirms an earlier static prediction.) CLOSE: by the time of the fix only META still wrote raw (SFString/MFString paths had gained vrmlEscapeString/fmtMFString escaping earlier); META name/content now escape too. Regression: codec_string_hardening_test (XML -> VRML -> reparse with embedded quote + backslash).",
       "severity": "major",
-      "status": "open",
+      "status": "fixed",
       "summary": "ClassicVRML writer does not escape '\\\"' or '\\\\' in SFString/MFString/META \u2014 embedded quote truncates the value and drops following fields; backslash is eaten and splits one MFString element into two."
     },
     {
       "clause": "ISO 19776-2 5.3 (sfimageValue)",
+      "commit": "1e3c51d",
       "component": "Texturing",
       "id": "ENC-VRML-SFIMAGE",
       "nodes": [
         "PixelTexture"
       ],
-      "note": "Real scenes NetworkedCamera.x3d, examples/.../textured_text.x3d: `image='2 2 3 0 65280 255 16711680'` survives XML->JSON direct, the .x3dv even WRITES it correctly, but reading that .x3dv back yields `[2,0,0]` \u2014 every inline PixelTexture destroyed the instant the scene passes through ClassicVRML. Fix: the ClassicVRML SFImage parser must consume width*height pixel words after the `w h comp` header. (round-trip sweep, newly surfaced.)",
+      "note": "Real scenes NetworkedCamera.x3d, examples/.../textured_text.x3d: `image='2 2 3 0 65280 255 16711680'` survives XML->JSON direct, the .x3dv even WRITES it correctly, but reading that .x3dv back yields `[2,0,0]` \u2014 every inline PixelTexture destroyed the instant the scene passes through ClassicVRML. Fix: the ClassicVRML SFImage parser must consume width*height pixel words after the `w h comp` header. (round-trip sweep, newly surfaced.) CLOSE: NodeBuilder::collectFieldValue special-cases SFImage (3 header tokens then w*h pixel words; hostile headers capped at 2^20 per axis). Regression: codec_string_hardening_test (SFImage operator== across the .x3dv hop).",
       "severity": "major",
-      "status": "open",
+      "status": "fixed",
       "summary": "ClassicVRML SFImage READER consumes only width and discards height/components/all pixel words \u2014 a 2x2 texture parses back as `2 0 0` (empty)."
     },
     {
       "clause": "ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT",
+      "commit": "1e3c51d",
       "component": "Core",
       "id": "ENC-JSON-UNIT",
       "nodes": [
         "WorldInfo"
       ],
-      "note": "Probe: `<unit category='angle' name='degrees' conversionFactor='0.0174533'/>` survives into ClassicVRML (`UNIT angle degrees 0.0174533`) but is absent from the JSON and the round-trip XML. JsonReader.hpp:111-119 READS \"unit\" back, so the asymmetry is the tell. Fix: emit the `unit` array in JsonWriter.hpp writeHead, mirroring `meta`. (round-trip sweep, confirms a static prediction.)",
+      "note": "Probe: `<unit category='angle' name='degrees' conversionFactor='0.0174533'/>` survives into ClassicVRML (`UNIT angle degrees 0.0174533`) but is absent from the JSON and the round-trip XML. JsonReader.hpp:111-119 READS \"unit\" back, so the asymmetry is the tell. Fix: emit the `unit` array in JsonWriter.hpp writeHead, mirroring `meta`. (round-trip sweep, confirms a static prediction.) CLOSE: JsonWriter::writeHead emits the unit array in the exact shape JsonReader reads (\"@category\"/\"@name\"/\"@conversionFactor\"). Regression: codec_string_hardening_test.",
       "severity": "major",
-      "status": "open",
+      "status": "fixed",
       "summary": "X3D-JSON writer has no slot for UNIT declarations \u2014 <unit> is silently dropped on XML/VRML->JSON, so every angle/length value then means something different with no warning."
     },
     {
@@ -9213,6 +9216,7 @@
     },
     {
       "clause": "ISO 19776-1 (CDATA); 19775-1 29",
+      "commit": "1e3c51d",
       "id": "ENC-CDATA-SCRIPT",
       "interfaces": [
         "X3DScriptNode"
@@ -9220,45 +9224,48 @@
       "nodes": [
         "Script"
       ],
-      "note": "XmlWriter wraps el.text as `<![CDATA[ + text + ]]>` with no split; a `]]>` in JS source closes the CDATA early. Partly an inherent XML limit, but the toolchain neither rejects nor preserves \u2014 it eats characters. Fix: split on `]]>` into consecutive CDATA sections (`]]]]><![CDATA[>`). (encoding review; confirmed by round-trip sweep.)",
+      "note": "XmlWriter wraps el.text as `<![CDATA[ + text + ]]>` with no split; a `]]>` in JS source closes the CDATA early. Partly an inherent XML limit, but the toolchain neither rejects nor preserves \u2014 it eats characters. Fix: split on `]]>` into consecutive CDATA sections (`]]]]><![CDATA[>`). (encoding review; confirmed by round-trip sweep.) CLOSE: xml::cdataEscape (XmlLite) applied by both XmlWriter and CanonicalXmlWriter; XmlLite's reader already concatenates consecutive CDATA sections. Regression: codec_string_hardening_test.",
       "severity": "minor",
-      "status": "open",
+      "status": "fixed",
       "summary": "Script source containing the literal `]]>` is silently truncated (`if (a]]>b)` -> `if (ab)`) \u2014 the XML writer wraps source in one CDATA block without splitting."
     },
     {
       "clause": "X3D Canonical Form (X3DC14N); W3C C14N attr normalization",
+      "commit": "1e3c51d",
       "component": "Core",
       "id": "ENC-C14N-ATTR",
       "nodes": [
         "MetadataString"
       ],
-      "note": "CanonicalXmlWriter canonEscape escapes only `& < > '`. Self-stable here (re-canonicalizing twice is identical) but NOT portable/signable across conformant parsers, and likely caps the canon-gate T3 byte-exact rate. Fix: emit `&#x9;/&#xA;/&#xD;` in attribute values (pure superset for well-formed text). (encoding review; confirmed non-portable by round-trip sweep.)",
+      "note": "CanonicalXmlWriter canonEscape escapes only `& < > '`. Self-stable here (re-canonicalizing twice is identical) but NOT portable/signable across conformant parsers, and likely caps the canon-gate T3 byte-exact rate. Fix: emit `&#x9;/&#xA;/&#xD;` in attribute values (pure superset for well-formed text). (encoding review; confirmed non-portable by round-trip sweep.) CLOSE: canonEscape now emits the three character references in attribute values. Regression: codec_string_hardening_test (reparse of the canonical form preserves tab/newline/CR).",
       "severity": "minor",
-      "status": "open",
+      "status": "fixed",
       "summary": "X3DC14N attribute escaping omits tab/newline/CR (`&#x9; &#xA; &#xD;`) \u2014 a canonical file with multiline meta/MFString is non-portable (any conformant reader normalizes the raw tab/newline to a space)."
     },
     {
       "clause": "ISO 19776-2 5.3 (mfstringValue)",
+      "commit": "1e3c51d",
       "component": "Core",
       "id": "ENC-MFSTRING-READ",
       "nodes": [
         "MetadataString"
       ],
-      "note": "FieldValueIO.hpp:172-177: on `\\\\` it copies buf[i+1] verbatim and advances 2. ISO 19776 defines only `\\\"` and `\\\\` as escapes; X_ITE preserves an unknown `\\x`. Own write->read is safe (writer escapes `\\`), but external/hand-authored MFString is mangled. Fix: for any `\\x` other than `\\\"`/`\\\\`, keep the backslash. (encoding review.)",
+      "note": "FieldValueIO.hpp:172-177: on `\\\\` it copies buf[i+1] verbatim and advances 2. ISO 19776 defines only `\\\"` and `\\\\` as escapes; X_ITE preserves an unknown `\\x`. Own write->read is safe (writer escapes `\\`), but external/hand-authored MFString is mangled. Fix: for any `\\x` other than `\\\"`/`\\\\`, keep the backslash. (encoding review.) CLOSE: applied in both unescape sites \u2014 FieldValueIO::parseMFString and VrmlTokenizer's string lexer (same bug class on the ClassicVRML path). Regression: codec_string_hardening_test.",
       "severity": "minor",
-      "status": "open",
+      "status": "fixed",
       "summary": "MFString reader drops a backslash before any char other than '\\\"'/'\\\\' \u2014 `\\\\n`->`n`, `\\\\t`->`t`, Windows `c:\\\\new\\\\tex`->`c:newex`."
     },
     {
       "clause": "ISO 19776-3; RFC 8259",
+      "commit": "1e3c51d",
       "component": "Core",
       "id": "ENC-JSON-CTRL",
       "nodes": [
         "MetadataString"
       ],
-      "note": "JsonWriter jstr escapes only `\" \\ \\n \\t \\r`; strict consumers (and X3DJSAIL's JSON path) reject the output. Fix: fall through to `\\u00XX` for any byte < 0x20; optionally substitute U+FFFD for unpaired surrogates on read. (encoding review.)",
+      "note": "JsonWriter jstr escapes only `\" \\ \\n \\t \\r`; strict consumers (and X3DJSAIL's JSON path) reject the output. Fix: fall through to `\\u00XX` for any byte < 0x20; optionally substitute U+FFFD for unpaired surrogates on read. (encoding review.) CLOSE: jstr escapes U+0000..001F as \\u00XX. The optional read-side U+FFFD substitution for unpaired surrogates was NOT done (lenient read keeps bytes as-is; revisit only if a consumer needs strict UTF-8). Regression: codec_string_hardening_test.",
       "severity": "minor",
-      "status": "open",
+      "status": "fixed",
       "summary": "X3D-JSON writer emits raw control chars (`\\\\b \\\\f`, any U+0000\u2013001F) which RFC 8259 forbids; reader passes a lone surrogate through as malformed UTF-8."
     },
     {
@@ -9581,7 +9588,7 @@
     ]
   },
   "summary": {
-    "closed_count": 109,
+    "closed_count": 116,
     "component_count": 36,
     "deferred_count": 46,
     "finding_count": 208,
@@ -9611,8 +9618,8 @@
     "open_by_severity": {
       "critical": 9,
       "low": 6,
-      "major": 44,
-      "minor": 40
+      "major": 41,
+      "minor": 36
     }
   },
   "unresolved_findings": []
