@@ -71,13 +71,10 @@ def _scalar_list(default: str):
 # struct wraps a genuine 2D array member (e.g. ``float matrix[4][4]``). This
 # is why Clang's -Wmissing-braces (promoted to -Werror) rejects the flat
 # elided-brace form even though GCC accepts it -- empirically verified that
-# Clang requires each row of the 2D array individually braced. To support
-# this (in a future change), the row_size is derived and stored here so that
-# _struct_literal can later chunk the flat value list into row_size-sized
-# rows, each explicitly braced, wrapped in one more brace for the array
-# member: ``Struct{ {row0}, {row1}, ... }``. For now, row_size is computed
-# and validated but NOT YET consumed by _struct_literal (which still emits
-# flat lists); that wiring is a separate follow-on change.
+# Clang requires each row of the 2D array individually braced. row_size is
+# consumed by _struct_literal via _chunk_braced to chunk the flat value list
+# into row_size-sized rows, each explicitly braced, wrapped in one more brace
+# for the array member: ``Struct{ {row0}, {row1}, ... }``.
 #
 # row_size is DERIVED (math.isqrt(count)) rather than hand-typed to prevent
 # the class of bug that prompted this table's creation: a stale/wrong value

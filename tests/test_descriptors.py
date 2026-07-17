@@ -215,12 +215,8 @@ def test_build_reflection_descriptors_drops_phantom_fields():
                      x3d_name="real"),
         ],
     )
-    parent = X3DNode(name="Parent", fields=[])
-    nodes = {"Child": child, "Parent": parent}
-    dependency_graph = {"Child": ["Parent"], "Parent": []}
-
     descriptors = build_reflection_descriptors(
-        child, nodes, dependency_graph,
+        child,
         own_field_names={"Child": {"real"}, "Parent": set()},
         ancestors=["Parent"],
     )
@@ -245,11 +241,8 @@ def test_build_reflection_descriptors_qualifies_inherited_fields_by_true_declare
                      x3d_name="color", inherited_from="WrongClass"),
         ],
     )
-    nodes = {"Child": child}
-    dependency_graph = {"Child": ["RealBase"], "RealBase": []}
-
     descriptors = build_reflection_descriptors(
-        child, nodes, dependency_graph,
+        child,
         own_field_names={"Child": set(), "RealBase": {"color"}},
         ancestors=["RealBase"],
     )
@@ -269,7 +262,7 @@ def test_build_reflection_descriptors_leaves_own_fields_unqualified():
         ],
     )
     descriptors = build_reflection_descriptors(
-        node, {"Leaf": node}, {"Leaf": []},
+        node,
         own_field_names={"Leaf": {"size"}},
         ancestors=[],
     )

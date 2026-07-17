@@ -92,8 +92,8 @@ def test_unsupported_field_fails_closed_unless_allowed(tmp_path):
         capture_output=True, text=True,
     )
     assert result_default.returncode == 1, result_default.stdout + result_default.stderr
-    assert "ERROR:" in result_default.stdout
-    assert "SFFrobnicator" in result_default.stdout
+    assert "ERROR:" in result_default.stderr
+    assert "SFFrobnicator" in result_default.stderr
 
     out_allowed = tmp_path / "out_allowed"
     result_allowed = subprocess.run(

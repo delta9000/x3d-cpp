@@ -184,9 +184,9 @@ def main(argv=None) -> int:
     if skipped_fields and not args.allow_unsupported_fields:
         print(f"ERROR: {len(skipped_fields)} field(s) were skipped due to "
               f"unsupported types (this shrinks the generated API silently "
-              f"unless you pass --allow-unsupported-fields):")
+              f"unless you pass --allow-unsupported-fields):", file=sys.stderr)
         for node_name, field_name, raw_type in skipped_fields:
-            print(f"  {node_name}.{field_name}: type={raw_type!r}")
+            print(f"  {node_name}.{field_name}: type={raw_type!r}", file=sys.stderr)
         return 1
     if not nodes:
         print(f"ERROR: no nodes parsed from {spec}", file=sys.stderr)

@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 
 from jinja2 import Environment, FileSystemLoader
 
-from x3d_cpp_gen.emit.descriptors import build_descriptors
+from x3d_cpp_gen.emit.descriptors import build_descriptors, build_reflection_descriptors
 from x3d_cpp_gen.emit.naming import pascal
 
 # The repo's committed style, resolved absolutely and passed explicitly.
@@ -114,14 +114,11 @@ class CppHeaderBackend:
             n.name: {_wire(f) for f in get_own_fields(n)} for n in nodes.values()
         }
 
-        from x3d_cpp_gen.emit.descriptors import build_reflection_descriptors
-
         for node in nodes.values():
             descriptors = build_descriptors(get_own_fields(node), self.enum_defs)
             ancestors = self._ancestors(node.name, dependency_graph)
             reflection_descriptors = build_reflection_descriptors(
-                node, nodes, dependency_graph,
-                own_field_names=own_field_names, ancestors=ancestors,
+                node, own_field_names=own_field_names, ancestors=ancestors,
                 enum_defs=self.enum_defs,
             )
             # Every base (primary + additional) is emitted 'public virtual' so a

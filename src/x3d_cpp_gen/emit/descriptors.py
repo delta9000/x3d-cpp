@@ -458,8 +458,7 @@ def build_descriptors(fields, enum_defs: Optional[Dict] = None) -> List[FieldDes
     return [build_descriptor(f, enum_defs) for f in fields]
 
 
-def build_reflection_descriptors(node, nodes, dependency_graph,
-                                 *, own_field_names, ancestors,
+def build_reflection_descriptors(node, *, own_field_names, ancestors,
                                  enum_defs: Optional[Dict] = None) -> List[FieldDescriptor]:
     """Build the FULL reflection field set for ``node`` (own + inherited),
     with each descriptor's ``inherited_from`` resolved to the class that
