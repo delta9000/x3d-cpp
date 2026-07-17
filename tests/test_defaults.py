@@ -120,3 +120,64 @@ def test_tokenize_mfstring_quote_aware():
     assert tokenize_mfstring("a b c") == ["a", "b", "c"]
     assert tokenize_mfstring("") == []
     assert tokenize_mfstring(None) == []
+
+
+def test_struct_arity_row_size_matches_sqrt_of_count():
+    # row_size must always be math.isqrt(count) for matrix entries (0 for
+    # flat structs) -- this is what makes it impossible for the table to
+    # drift the way it did before the Clang -Wmissing-braces fix (a
+    # hand-typed row_size that silently disagreed with count).
+    import math
+    from x3d_cpp_gen.emit.defaults import _STRUCT_ARITY
+    from x3d_cpp_gen.model.types import X3DType
+
+    matrix_types = {
+        X3DType.SFMatrix3f, X3DType.SFMatrix4f,
+        X3DType.SFMatrix3d, X3DType.SFMatrix4d,
+    }
+    for x3d_type, (struct, count, floaty, row_size) in _STRUCT_ARITY.items():
+        if x3d_type in matrix_types:
+            assert row_size == math.isqrt(count), (
+                f"{struct}: row_size={row_size} does not match "
+                f"isqrt(count={count})={math.isqrt(count)}"
+            )
+            assert row_size * row_size == count, (
+                f"{struct}: count={count} is not a perfect square of "
+                f"row_size={row_size} -- a non-square matrix cannot use "
+                f"this row-chunking scheme"
+            )
+        else:
+            assert row_size == 0, f"{struct}: non-matrix type must have row_size=0"
+
+
+def test_every_matrix_shaped_special_struct_has_a_struct_arity_entry():
+    # generator.py's SPECIAL_STRUCTS defines the actual C++ struct shapes
+    # (which ones wrap a nested 2D array vs. flat scalars). _STRUCT_ARITY
+    # must have an entry for every one of them, or default_expr_for silently
+    # falls through to a bare unbraced token-string fallback for the missing
+    # type -- not just a Clang warning, but invalid C++ in the initializer
+    # position. This test is the coverage safety net: it fails loudly at
+    # test time instead of failing obscurely at C++ compile time.
+    from x3d_cpp_gen import generator
+    from x3d_cpp_gen.emit.defaults import _STRUCT_ARITY
+    from x3d_cpp_gen.model.types import resolve_x3d_type
+
+    covered_struct_names = {arity[0] for arity in _STRUCT_ARITY.values()}
+    # SFImage is intentionally NOT in _STRUCT_ARITY -- it has bespoke
+    # default_expr_for handling (a std::vector<unsigned char> data member with
+    # no meaningful literal default), so it's an expected, documented gap.
+    expected_gap = {"SFImage"}
+    missing = [
+        name for name in generator.SPECIAL_STRUCTS
+        if name not in covered_struct_names and name not in expected_gap
+    ]
+    assert not missing, (
+        f"SPECIAL_STRUCTS entries with no _STRUCT_ARITY coverage: {missing}. "
+        f"A field of this type with a spec default will silently emit an "
+        f"unbraced token list instead of a valid struct literal. Add an "
+        f"entry to _STRUCT_ARITY in emit/defaults.py."
+    )
+    # Cross-check the other direction too: every _STRUCT_ARITY struct name
+    # must actually be a real SPECIAL_STRUCTS entry (catches typos).
+    extra = covered_struct_names - set(generator.SPECIAL_STRUCTS)
+    assert not extra, f"_STRUCT_ARITY names a struct SPECIAL_STRUCTS doesn't define: {extra}"

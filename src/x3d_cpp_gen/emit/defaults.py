@@ -6,6 +6,7 @@ expression for a field's spec default (or ``None`` when there is none, in which
 case the member value-initializes with ``{}``).
 """
 
+import math
 from typing import List, Optional
 
 from x3d_cpp_gen.model.types import X3DType, TypeRegistry, resolve_x3d_type
@@ -93,6 +94,24 @@ def _scalar_list(default: str):
 # itself: ``Struct{ {row0}, {row1}, ... }``. The plain vector/colour/rotation
 # structs are flat (e.g. ``float x, y, z;``), where a single brace is exactly
 # right and extra nesting would itself warn.
+#
+# row_size is DERIVED (math.isqrt(count)) rather than hand-typed: a
+# hand-maintained row_size that could silently disagree with count is exactly
+# the class of bug that produced the Clang -Wmissing-braces break this table
+# was introduced to fix (a stale/wrong value with no validation). All
+# supported matrix types are square, so isqrt is exact for them; the assert
+# in _matrix_row_size below fails loudly if a future non-square matrix type
+# is ever added here (it would need a different chunking scheme entirely).
+def _matrix_row_size(count: int) -> int:
+    row_size = math.isqrt(count)
+    assert row_size * row_size == count, (
+        f"_STRUCT_ARITY matrix entry with count={count} is not a perfect "
+        f"square -- row-chunking assumes a square matrix; a non-square "
+        f"matrix type needs a different scheme, not this helper."
+    )
+    return row_size
+
+
 _STRUCT_ARITY = {
     X3DType.SFVec2f: ("SFVec2f", 2, True, 0),
     X3DType.SFVec3f: ("SFVec3f", 3, True, 0),
@@ -103,10 +122,10 @@ _STRUCT_ARITY = {
     X3DType.SFVec3d: ("SFVec3d", 3, False, 0),
     X3DType.SFVec4d: ("SFVec4d", 4, False, 0),
     X3DType.SFRotation: ("SFRotation", 4, True, 0),
-    X3DType.SFMatrix3f: ("SFMatrix3f", 9, True, 3),
-    X3DType.SFMatrix4f: ("SFMatrix4f", 16, True, 4),
-    X3DType.SFMatrix3d: ("SFMatrix3d", 9, False, 3),
-    X3DType.SFMatrix4d: ("SFMatrix4d", 16, False, 4),
+    X3DType.SFMatrix3f: ("SFMatrix3f", 9, True, _matrix_row_size(9)),
+    X3DType.SFMatrix4f: ("SFMatrix4f", 16, True, _matrix_row_size(16)),
+    X3DType.SFMatrix3d: ("SFMatrix3d", 9, False, _matrix_row_size(9)),
+    X3DType.SFMatrix4d: ("SFMatrix4d", 16, False, _matrix_row_size(16)),
 }
 
 # MF struct types -> (element struct name, component count, is-float). A single

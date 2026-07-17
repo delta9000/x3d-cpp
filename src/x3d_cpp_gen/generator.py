@@ -71,6 +71,24 @@ SPECIAL_STRUCTS = [
     "SFRotation", "SFMatrix3d", "SFMatrix3f", "SFMatrix4d", "SFMatrix4f", "SFImage"
 ]
 
+# Coverage assertion: every SPECIAL_STRUCTS entry (except SFImage's documented gap)
+# must have a corresponding _STRUCT_ARITY entry in defaults.py, or default_expr_for
+# will silently emit invalid C++ struct literals for fields with spec defaults.
+# This assertion fires at import time, before any code generation can proceed.
+def _assert_struct_arity_coverage():
+    from x3d_cpp_gen.emit.defaults import _STRUCT_ARITY
+    covered = {arity[0] for arity in _STRUCT_ARITY.values()}
+    expected_gap = {"SFImage"}
+    missing = [name for name in SPECIAL_STRUCTS
+               if name not in covered and name not in expected_gap]
+    assert not missing, (
+        f"SPECIAL_STRUCTS entries with no _STRUCT_ARITY coverage: {missing}. "
+        f"A field of this type with a spec default will silently emit an "
+        f"unbraced token list instead of a valid struct literal."
+    )
+
+_assert_struct_arity_coverage()
+
 def generate_special_structs() -> str:
     """Generates C++ struct definitions for special field types."""
     structs = {
