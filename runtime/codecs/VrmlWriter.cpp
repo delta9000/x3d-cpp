@@ -28,7 +28,8 @@ std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
     os << "UNIT " << u.category << " " << u.name << " "
        << fmtDouble(u.conversionFactor) << "\n";
   for (const auto &m : doc.head.meta)
-    os << "META \"" << m.name << "\" \"" << m.content << "\"\n";
+    os << "META \"" << vrmlEscapeString(m.name) << "\" \""
+       << vrmlEscapeString(m.content) << "\"\n";
   os << "\n";
 
   // Emit PROTO/ExternProto declarations before root nodes.

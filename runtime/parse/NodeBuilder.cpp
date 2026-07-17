@@ -6,6 +6,7 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
+#include <cstdlib>
 
 namespace x3d::codec::build {
 
@@ -254,6 +255,40 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
                     !tok.peek().isPunct(']');
          ++i)
       appendTok(tok.next());
+    return out;
+  }
+
+  // ----- SFImage -----
+  // Wire form: `width height numComponents` then width*height pixel words
+  // (ENC-VRML-SFIMAGE: a fixed component count of 1 consumed only `width`,
+  // destroying every inline PixelTexture on the ClassicVRML hop).
+  if (type == X3DFieldType::SFImage) {
+    std::string out;
+    long w = 0, h = 0;
+    for (int i = 0; i < 3 && !tok.atEnd() && !tok.peek().isPunct('}') &&
+                    !tok.peek().isPunct(']');
+         ++i) {
+      const std::string t = tok.next().text;
+      if (i == 0)
+        w = std::strtol(t.c_str(), nullptr, 0);
+      else if (i == 1)
+        h = std::strtol(t.c_str(), nullptr, 0);
+      if (!out.empty())
+        out += ' ';
+      out += t;
+    }
+    // Malformed headers (negative / absurd sizes) collect nothing further;
+    // the atEnd/punct guards stop early on truncated pixel runs. The 2^20
+    // per-axis cap keeps w*h from overflowing on hostile headers.
+    constexpr long kMaxAxis = 1L << 20;
+    const long pixels =
+        (w > 0 && h > 0 && w <= kMaxAxis && h <= kMaxAxis) ? w * h : 0;
+    for (long p = 0; p < pixels && !tok.atEnd() && !tok.peek().isPunct('}') &&
+                     !tok.peek().isPunct(']');
+         ++p) {
+      out += ' ';
+      out += tok.next().text;
+    }
     return out;
   }
 

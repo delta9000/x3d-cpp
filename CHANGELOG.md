@@ -45,6 +45,28 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Codec string/value hardening** — seven encoding findings closed in one
+  sweep (regression-tested end-to-end in `codec_string_hardening_test`):
+  - ClassicVRML writer escapes `"` and `\` in META statements; an embedded
+    quote no longer truncates the value and swallows following lines
+    (ENC-VRML-STRING).
+  - MFString / ClassicVRML string readers keep the backslash on escapes other
+    than `\"` and `\\` — `c:\new\tex` no longer reads back as `c:newtex`
+    (ENC-MFSTRING-READ).
+  - The ClassicVRML reader consumes SFImage's `width*height` pixel words; an
+    inline PixelTexture survives the `.x3dv` hop instead of collapsing to
+    `2 0 0` (ENC-VRML-SFIMAGE).
+  - The XML and canonical writers split a literal `]]>` in character content
+    across consecutive CDATA sections; Script source containing `]]>` is no
+    longer silently truncated (ENC-CDATA-SCRIPT).
+  - The X3D-JSON writer emits the head `unit` array (the reader always read
+    it); UNIT declarations survive the JSON hop instead of silently changing
+    every angle/length's meaning (ENC-JSON-UNIT).
+  - The X3D-JSON writer escapes control characters as `\u00XX` per RFC 8259
+    (ENC-JSON-CTRL).
+  - X3DC14N escapes tab/newline/CR in attribute values (`&#x9; &#xA; &#xD;`)
+    so canonical output is portable across conformant parsers (ENC-C14N-ATTR).
+
 - **Extraction no longer duplicates per placement.** `RenderItem` held `MeshData`
   by value and `buildLocalMesh()` ran once per *placement*, so N `USE`s of one
   DEF'd geometry re-tessellated identical content N times and retained N copies —

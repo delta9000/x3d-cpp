@@ -129,7 +129,11 @@ std::vector<std::string> parseMFString(const std::string &s) {
       ++i;
       std::string cur;
       while (i < buf.size() && buf[i] != '"') {
-        if (buf[i] == '\\' && i + 1 < buf.size()) { // \" or \\ escapes
+        if (buf[i] == '\\' && i + 1 < buf.size() &&
+            (buf[i + 1] == '"' || buf[i + 1] == '\\')) {
+          // ISO 19776 defines exactly two escapes: \" and \\. Any other \x
+          // keeps its backslash (ENC-MFSTRING-READ: c:\new\tex must not
+          // become c:newtex).
           cur += buf[i + 1];
           i += 2;
         } else {

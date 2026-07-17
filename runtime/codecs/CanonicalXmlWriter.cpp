@@ -455,7 +455,7 @@ void CanonicalXmlWriter::renderCanonical(const xml::Element &el,
     renderCanonical(*c, os, depth + 1);
   if (!el.text.empty()) {
     indentCan(os, depth + 1);
-    os << "<![CDATA[" << el.text << "]]>\n";
+    os << "<![CDATA[" << xml::cdataEscape(el.text) << "]]>\n";
   }
   indentCan(os, depth);
   os << "</" << el.name << ">\n";
@@ -477,6 +477,15 @@ std::string canonEscape(const std::string &s) {
       break;
     case '\'':
       out += "&apos;";
+      break;
+    case '\t':
+      out += "&#x9;";
+      break;
+    case '\n':
+      out += "&#xA;";
+      break;
+    case '\r':
+      out += "&#xD;";
       break;
     default:
       out += c;

@@ -2358,7 +2358,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/xml_depth_guard_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/script_cdata_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/uom_type_pin_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/hanim_container_order_test.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/hanim_container_order_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/codec_string_hardening_test.cpp")
     target_link_libraries(x3d_codecs_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_codecs_tests PRIVATE
