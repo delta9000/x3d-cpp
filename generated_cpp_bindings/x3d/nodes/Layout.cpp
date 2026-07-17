@@ -39,22 +39,10 @@ const FieldTable &Layout::fields() const {
 
         [](X3DNode &n, const std::string &s) {
           std::vector<LayoutAlignChoices> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              LayoutAlignChoices ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
+          for (const auto &tok : parseEnumTokens(s)) {
+            LayoutAlignChoices ev;
+            if (from_string(tok, ev))
+              vec.push_back(ev);
           }
           dynamic_cast<Layout &>(n).setAlign(std::move(vec));
         }
@@ -133,22 +121,10 @@ const FieldTable &Layout::fields() const {
 
         [](X3DNode &n, const std::string &s) {
           std::vector<LayoutUnitsChoices> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              LayoutUnitsChoices ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
+          for (const auto &tok : parseEnumTokens(s)) {
+            LayoutUnitsChoices ev;
+            if (from_string(tok, ev))
+              vec.push_back(ev);
           }
           dynamic_cast<Layout &>(n).setOffsetUnits(std::move(vec));
         }
@@ -180,22 +156,10 @@ const FieldTable &Layout::fields() const {
 
         [](X3DNode &n, const std::string &s) {
           std::vector<LayoutScaleModeChoices> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              LayoutScaleModeChoices ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
+          for (const auto &tok : parseEnumTokens(s)) {
+            LayoutScaleModeChoices ev;
+            if (from_string(tok, ev))
+              vec.push_back(ev);
           }
           dynamic_cast<Layout &>(n).setScaleMode(std::move(vec));
         }
@@ -242,22 +206,10 @@ const FieldTable &Layout::fields() const {
 
         [](X3DNode &n, const std::string &s) {
           std::vector<LayoutUnitsChoices> vec;
-          std::size_t i = 0;
-          while (i < s.size()) {
-            while (i < s.size() &&
-                   (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
-                    s[i] == '\r' || s[i] == ','))
-              ++i;
-            std::size_t j = i;
-            while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
-                   s[j] != '\n' && s[j] != '\r' && s[j] != ',')
-              ++j;
-            if (j > i) {
-              LayoutUnitsChoices ev;
-              if (from_string(s.substr(i, j - i), ev))
-                vec.push_back(ev);
-            }
-            i = j;
+          for (const auto &tok : parseEnumTokens(s)) {
+            LayoutUnitsChoices ev;
+            if (from_string(tok, ev))
+              vec.push_back(ev);
           }
           dynamic_cast<Layout &>(n).setSizeUnits(std::move(vec));
         }

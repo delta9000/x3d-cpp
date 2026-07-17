@@ -156,4 +156,23 @@ public:
     virtual void leave(const X3DNode& node) { (void)node; }
 };
 
+// Whitespace/comma-delimited token split for MFEnum wire values
+// (e.g. "OPAQUE MASK" or "OPAQUE,MASK"). Shared by every
+// generated node's MFEnum reflection set-thunk so the split logic
+// lives in exactly one place instead of once per generated .cpp.
+inline std::vector<std::string> parseEnumTokens(const std::string& s) {
+    std::vector<std::string> out;
+    std::size_t i = 0;
+    while (i < s.size()) {
+        while (i < s.size() && (s[i] == ' ' || s[i] == '\t' ||
+               s[i] == '\n' || s[i] == '\r' || s[i] == ',')) ++i;
+        std::size_t j = i;
+        while (j < s.size() && s[j] != ' ' && s[j] != '\t' &&
+               s[j] != '\n' && s[j] != '\r' && s[j] != ',') ++j;
+        if (j > i) out.push_back(s.substr(i, j - i));
+        i = j;
+    }
+    return out;
+}
+
 } // namespace x3d::core
