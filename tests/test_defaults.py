@@ -160,7 +160,6 @@ def test_every_matrix_shaped_special_struct_has_a_struct_arity_entry():
     # test time instead of failing obscurely at C++ compile time.
     from x3d_cpp_gen import generator
     from x3d_cpp_gen.emit.defaults import _STRUCT_ARITY
-    from x3d_cpp_gen.model.types import resolve_x3d_type
 
     covered_struct_names = {arity[0] for arity in _STRUCT_ARITY.values()}
     # SFImage is intentionally NOT in _STRUCT_ARITY -- it has bespoke

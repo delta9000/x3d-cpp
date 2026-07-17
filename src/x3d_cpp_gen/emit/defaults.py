@@ -81,27 +81,28 @@ def _scalar_list(default: str):
 
 # Struct SF* types -> (struct name, component count, is-float, row size).
 # Drives the brace initializer for fixed-arity vector/colour/rotation/matrix
-# defaults. ``row_size`` is nonzero only for the matrix types: their struct
-# wraps a genuine 2D array member (e.g. ``float matrix[4][4]``), which C++
-# aggregate-init rules let you flatten into a single elided-brace list -- but
-# Clang's -Wmissing-braces (promoted to -Werror) rejects the elided form even
-# though GCC accepts it silently, and empirically a single extra wrapping
-# brace around the flat list is *not* enough either: Clang still wants each
-# row of the 2D array individually braced (verified directly against both
-# clang and gcc with -Wmissing-braces -Werror, not just read about). So a
-# matrix's literal chunks the flat value list into ``row_size``-sized rows,
-# each explicitly braced, wrapped in one more brace for the array member
-# itself: ``Struct{ {row0}, {row1}, ... }``. The plain vector/colour/rotation
-# structs are flat (e.g. ``float x, y, z;``), where a single brace is exactly
-# right and extra nesting would itself warn.
+# defaults. The plain vector/colour/rotation structs are flat (e.g. ``float
+# x, y, z;``), so row_size=0 and _struct_literal emits a single flat brace
+# list: ``SFVec3f{x, y, z}``.
 #
-# row_size is DERIVED (math.isqrt(count)) rather than hand-typed: a
-# hand-maintained row_size that could silently disagree with count is exactly
-# the class of bug that produced the Clang -Wmissing-braces break this table
-# was introduced to fix (a stale/wrong value with no validation). All
-# supported matrix types are square, so isqrt is exact for them; the assert
-# in _matrix_row_size below fails loudly if a future non-square matrix type
-# is ever added here (it would need a different chunking scheme entirely).
+# For matrix types, row_size (derived via math.isqrt(count)) is nonzero: their
+# struct wraps a genuine 2D array member (e.g. ``float matrix[4][4]``). This
+# is why Clang's -Wmissing-braces (promoted to -Werror) rejects the flat
+# elided-brace form even though GCC accepts it -- empirically verified that
+# Clang requires each row of the 2D array individually braced. To support
+# this (in a future change), the row_size is derived and stored here so that
+# _struct_literal can later chunk the flat value list into row_size-sized
+# rows, each explicitly braced, wrapped in one more brace for the array
+# member: ``Struct{ {row0}, {row1}, ... }``. For now, row_size is computed
+# and validated but NOT YET consumed by _struct_literal (which still emits
+# flat lists); that wiring is a separate follow-on change.
+#
+# row_size is DERIVED (math.isqrt(count)) rather than hand-typed to prevent
+# the class of bug that prompted this table's creation: a stale/wrong value
+# that silently disagrees with count. All supported matrix types are square,
+# so isqrt is exact for them; the assert in _matrix_row_size below fails
+# loudly if a future non-square matrix type is added (it would need a
+# different chunking scheme entirely).
 def _matrix_row_size(count: int) -> int:
     row_size = math.isqrt(count)
     assert row_size * row_size == count, (
@@ -127,6 +128,16 @@ _STRUCT_ARITY = {
     X3DType.SFMatrix3d: ("SFMatrix3d", 9, False, _matrix_row_size(9)),
     X3DType.SFMatrix4d: ("SFMatrix4d", 16, False, _matrix_row_size(16)),
 }
+
+
+def struct_arity_names() -> set:
+    """Return the set of struct names in _STRUCT_ARITY (public accessor).
+
+    Used by generator.py to verify that every SPECIAL_STRUCTS entry has a
+    corresponding _STRUCT_ARITY row for default literal generation.
+    """
+    return {arity[0] for arity in _STRUCT_ARITY.values()}
+
 
 # MF struct types -> (element struct name, component count, is-float). A single
 # element is built from the default.

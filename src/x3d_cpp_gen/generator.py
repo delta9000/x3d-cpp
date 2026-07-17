@@ -76,8 +76,8 @@ SPECIAL_STRUCTS = [
 # will silently emit invalid C++ struct literals for fields with spec defaults.
 # This assertion fires at import time, before any code generation can proceed.
 def _assert_struct_arity_coverage():
-    from x3d_cpp_gen.emit.defaults import _STRUCT_ARITY
-    covered = {arity[0] for arity in _STRUCT_ARITY.values()}
+    from x3d_cpp_gen.emit.defaults import struct_arity_names
+    covered = struct_arity_names()
     expected_gap = {"SFImage"}
     missing = [name for name in SPECIAL_STRUCTS
                if name not in covered and name not in expected_gap]
