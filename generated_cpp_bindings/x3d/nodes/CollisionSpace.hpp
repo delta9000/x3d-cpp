@@ -71,9 +71,9 @@ public:
    * @brief Gets the value of collidables. AccessType: inputOutput
    * @details Collection of collidable objects as well as nested CollisionSpace
    * collections.
-   * @return MFNode The current value of collidables.
+   * @return const MFNode& The current value of collidables.
    */
-  MFNode getCollidables() const { return _collidables; }
+  const MFNode &getCollidables() const { return _collidables; }
 
   /**
    * @brief Acceptable node types for the collidables field.

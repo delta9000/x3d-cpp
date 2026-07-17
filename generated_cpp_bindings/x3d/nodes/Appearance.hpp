@@ -352,9 +352,9 @@ public:
    * @details Zero or more contained programmable shader nodes (ComposedShader,
    * PackagedShader, ProgramShader) that specify, in order of preference,
    * author-programmed rendering characteristics.
-   * @return MFNode The current value of shaders.
+   * @return const MFNode& The current value of shaders.
    */
-  MFNode getShaders() const { return _shaders; }
+  const MFNode &getShaders() const { return _shaders; }
 
   /**
    * @brief Acceptable node types for the shaders field.

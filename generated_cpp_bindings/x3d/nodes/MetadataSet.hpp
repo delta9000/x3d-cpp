@@ -133,9 +133,9 @@ public:
    * @brief Gets the value of value. AccessType: inputOutput
    * @details The value field provides a list of X3DMetadataObject nodes whose
    * meaning is determined by the name field.
-   * @return MFNode The current value of value.
+   * @return const MFNode& The current value of value.
    */
-  MFNode getValue() const { return _value; }
+  const MFNode &getValue() const { return _value; }
 
   /**
    * @brief Acceptable node types for the value field.

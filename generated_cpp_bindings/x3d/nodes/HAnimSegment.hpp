@@ -160,9 +160,9 @@ public:
    * @brief Gets the value of displacers. AccessType: inputOutput
    * @details the displacers field stores HAnimDisplacer objects for a
    * particular HAnimSegment object.
-   * @return MFNode The current value of displacers.
+   * @return const MFNode& The current value of displacers.
    */
-  MFNode getDisplacers() const { return _displacers; }
+  const MFNode &getDisplacers() const { return _displacers; }
 
   /**
    * @brief Acceptable node types for the displacers field.

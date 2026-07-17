@@ -68,9 +68,9 @@ public:
   /**
    * @brief Gets the value of data. AccessType: inputOutput
    * @details DEF list of all nodes that implement this data.
-   * @return MFNode The current value of data.
+   * @return const MFNode& The current value of data.
    */
-  MFNode getData() const { return _data; }
+  const MFNode &getData() const { return _data; }
 
   /**
    * @brief Acceptable node types for the data field.

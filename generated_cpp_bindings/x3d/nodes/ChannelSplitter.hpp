@@ -69,9 +69,9 @@ public:
    * @brief Gets the value of children. AccessType: inputOutput
    * @details The children field specifies audio-graph sound sources providing
    * input signals for this node, making up a section of the audio graph.
-   * @return MFNode The current value of children.
+   * @return const MFNode& The current value of children.
    */
-  MFNode getChildren() const { return _children; }
+  const MFNode &getChildren() const { return _children; }
 
   /**
    * @brief Acceptable node types for the children field.
@@ -121,9 +121,9 @@ public:
    * @brief Gets the value of outputs. AccessType: inputOutput
    * @details The outputs field is a set of output nodes receiving the split
    * channels, and making up a section of the audio graph.
-   * @return MFNode The current value of outputs.
+   * @return const MFNode& The current value of outputs.
    */
-  MFNode getOutputs() const { return _outputs; }
+  const MFNode &getOutputs() const { return _outputs; }
 
   /**
    * @brief Acceptable node types for the outputs field.

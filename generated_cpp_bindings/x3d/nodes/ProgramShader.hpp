@@ -64,9 +64,9 @@ public:
   /**
    * @brief Gets the value of programs. AccessType: inputOutput
    * @details ProgramShader contains zero or more ShaderProgram node instances.
-   * @return MFNode The current value of programs.
+   * @return const MFNode& The current value of programs.
    */
-  MFNode getPrograms() const { return _programs; }
+  const MFNode &getPrograms() const { return _programs; }
 
   /**
    * @brief Acceptable node types for the programs field.

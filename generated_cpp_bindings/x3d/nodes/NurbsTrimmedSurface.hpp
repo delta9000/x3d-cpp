@@ -140,9 +140,9 @@ public:
   /**
    * @brief Gets the value of trimmingContour. AccessType: inputOutput
    * @details A set of Contour2D nodes are used as trimming loops.
-   * @return MFNode The current value of trimmingContour.
+   * @return const MFNode& The current value of trimmingContour.
    */
-  MFNode getTrimmingContour() const { return _trimmingContour; }
+  const MFNode &getTrimmingContour() const { return _trimmingContour; }
 
   /**
    * @brief Acceptable node types for the trimmingContour field.

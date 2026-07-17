@@ -67,9 +67,9 @@ public:
    * @brief Gets the value of fieldValue. AccessType: inputOutput
    * @details Include fieldValue statements if this ProtoInstance overrides
    * default values in any of the original field declarations.
-   * @return MFNode The current value of fieldValue.
+   * @return const MFNode& The current value of fieldValue.
    */
-  MFNode getFieldValue() const { return _fieldValue; }
+  const MFNode &getFieldValue() const { return _fieldValue; }
 
   /**
    * @brief Acceptable node types for the fieldValue field.

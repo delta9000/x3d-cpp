@@ -139,9 +139,9 @@ public:
    * @brief Gets the value of children. AccessType: inputOutput
    * @details The children field specifies audio-graph sound sources providing
    * input signals for this node.
-   * @return MFNode The current value of children.
+   * @return const MFNode& The current value of children.
    */
-  MFNode getChildren() const { return _children; }
+  const MFNode &getChildren() const { return _children; }
 
   /**
    * @brief Acceptable node types for the children field.

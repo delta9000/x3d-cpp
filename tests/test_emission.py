@@ -81,6 +81,24 @@ def test_no_inaccessible_base_inheritance_all_virtual(rendered):
     assert "public X3D" not in class_line  # only 'public virtual X3D...'
 
 
+def test_mfnode_getters_return_const_ref(rendered):
+    # MFNode getters hand out a reference to the member instead of copying the
+    # vector (and bumping every child's refcount) on each read.
+    raw, src = _read(rendered, "X3DGroupingNode.hpp")
+    assert "const MFNode& getChildren() const" in src
+    raw, src = _read(rendered, "Appearance.hpp")
+    assert "const MFNode& getShaders() const" in src
+
+
+def test_non_mfnode_getters_stay_by_value(rendered):
+    # Only MFNode getters change shape; value-typed getters keep the uniform
+    # by-value contract.
+    raw, src = _read(rendered, "Transform.hpp")
+    assert "SFVec3f getTranslation() const" in src
+    raw, src = _read(rendered, "Coordinate.hpp")
+    assert "MFVec3f getPoint() const" in src
+
+
 def test_enums_header_generated(rendered):
     raw, src = _read(rendered, "X3Denums.hpp")
     assert "enum class AlphaModeChoices {" in src

@@ -85,9 +85,9 @@ public:
    * @brief Gets the value of field. AccessType: inputOutput
    * @details Include a field statement for each field declaration in the
    * PackagedShader node.
-   * @return MFNode The current value of field.
+   * @return const MFNode& The current value of field.
    */
-  MFNode getField() const { return _field; }
+  const MFNode &getField() const { return _field; }
 
   /**
    * @brief Acceptable node types for the field field.

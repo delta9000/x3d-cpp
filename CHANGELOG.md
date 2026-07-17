@@ -8,6 +8,20 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **`operator==`/`!=` on the generated value structs** (`SFVec3f`, `SFColor`,
+  `SFRotation`, the matrix types, `SFImage`, …) — C++20 defaulted, exact
+  member-wise comparison. Equality is vocabulary, not math: no epsilon, and
+  arithmetic stays out of `x3d::core` per ADR-0012.
+
+### Changed
+
+- **`MFNode` getters return `const MFNode&` instead of a copy** (e.g.
+  `X3DGroupingNode::getChildren()`). Reading a grouping node's children no
+  longer copies the vector and bumps every child's refcount. Callers that
+  mutated the returned temporary (a silent no-op before) now fail to compile;
+  take an explicit copy if you need one. All other getters keep the by-value
+  contract.
+
 - The binding generator now **fails closed when the UOM contains a field type
   it doesn't support**, listing the affected fields instead of silently
   shrinking the generated API; `--allow-unsupported-fields` is the explicit

@@ -121,14 +121,18 @@ public:
     {% endif %}
 
     {% for field in fields %}
-    {#- Getter: readable for inputOutput / initializeOnly / outputOnly. -#}
+    {#- Getter: readable for inputOutput / initializeOnly / outputOnly. MFNode
+        getters return const& -- copying the child vector on every read bumps
+        every child's refcount for nothing (grouping-heavy scenes poll these per
+        tick); every other type keeps the uniform by-value contract. -#}
     {% if field.is_readable %}
+    {%- set getter_return = "const MFNode&" if field.cpp_type == "MFNode" else field.cpp_type %}
     /**
      * @brief Gets the value of {{ field.x3d_name }}. AccessType: {{ field.access_type }}
      * @details {{ field.description }}
-     * @return {{ field.cpp_type }} The current value of {{ field.x3d_name }}.
+     * @return {{ getter_return }} The current value of {{ field.x3d_name }}.
      */
-    {{ field.cpp_type }} {{ field.getter_name }}() const {
+    {{ getter_return }} {{ field.getter_name }}() const {
         return {{ field.cpp_ident }};
     }
     {% endif %}

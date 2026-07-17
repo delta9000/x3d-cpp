@@ -89,9 +89,9 @@ public:
    * @brief Gets the value of addedEntities. AccessType: outputOnly
    * @details addedEntities array contains any new entities added during the
    * last frame.
-   * @return MFNode The current value of addedEntities.
+   * @return const MFNode& The current value of addedEntities.
    */
-  MFNode getAddedEntities() const { return _addedEntities; }
+  const MFNode &getAddedEntities() const { return _addedEntities; }
 
   /**
    * @brief Emit an output value on addedEntities. AccessType: outputOnly
@@ -150,9 +150,9 @@ public:
    * @brief Gets the value of children. AccessType: inputOutput
    * @details mapping field provides a mechanism for automatically creating an
    * X3D model when a new entity arrives over the network.
-   * @return MFNode The current value of children.
+   * @return const MFNode& The current value of children.
    */
-  MFNode getChildren() const { return _children; }
+  const MFNode &getChildren() const { return _children; }
 
   /**
    * @brief Acceptable node types for the children field.
@@ -193,9 +193,9 @@ public:
    * @details removedEntities output array provides EspduTransform references to
    * any entities removed during last frame, either due to a timeout or from an
    * explicit RemoveEntityPDU action.
-   * @return MFNode The current value of removedEntities.
+   * @return const MFNode& The current value of removedEntities.
    */
-  MFNode getRemovedEntities() const { return _removedEntities; }
+  const MFNode &getRemovedEntities() const { return _removedEntities; }
 
   /**
    * @brief Emit an output value on removedEntities. AccessType: outputOnly

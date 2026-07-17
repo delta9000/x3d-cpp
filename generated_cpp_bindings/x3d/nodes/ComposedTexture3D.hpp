@@ -68,9 +68,9 @@ public:
   /**
    * @brief Gets the value of texture. AccessType: inputOutput
    * @details collection of 2D texture sources.
-   * @return MFNode The current value of texture.
+   * @return const MFNode& The current value of texture.
    */
-  MFNode getTexture() const { return _texture; }
+  const MFNode &getTexture() const { return _texture; }
 
   /**
    * @brief Acceptable node types for the texture field.

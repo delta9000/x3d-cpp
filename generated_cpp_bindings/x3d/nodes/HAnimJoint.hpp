@@ -175,9 +175,9 @@ public:
   /**
    * @brief Gets the value of children. AccessType: inputOutput
    * @details Grouping nodes contain an ordered list of children nodes.
-   * @return MFNode The current value of children.
+   * @return const MFNode& The current value of children.
    */
-  MFNode getChildren() const { return _children; }
+  const MFNode &getChildren() const { return _children; }
 
   /**
    * @brief Acceptable node types for the children field.
@@ -221,9 +221,9 @@ public:
    * @brief Gets the value of displacers. AccessType: inputOutput
    * @details the displacers field stores HAnimDisplacer objects for a
    * particular HAnimJoint object.
-   * @return MFNode The current value of displacers.
+   * @return const MFNode& The current value of displacers.
    */
-  MFNode getDisplacers() const { return _displacers; }
+  const MFNode &getDisplacers() const { return _displacers; }
 
   /**
    * @brief Acceptable node types for the displacers field.

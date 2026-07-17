@@ -439,9 +439,9 @@ public:
    * @details The geometry field is used to connect the body modelled by the
    * physics engine implementation to the real geometry of the scene through the
    * use of collidable nodes.
-   * @return MFNode The current value of geometry.
+   * @return const MFNode& The current value of geometry.
    */
-  MFNode getGeometry() const { return _geometry; }
+  const MFNode &getGeometry() const { return _geometry; }
 
   /**
    * @brief Acceptable node types for the geometry field.
