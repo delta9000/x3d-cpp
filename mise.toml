@@ -118,6 +118,17 @@ cmake --build build-cpuraster
 ctest --test-dir build-cpuraster -R x3d_cpuraster --output-on-failure
 """
 
+[tasks.x3d2svg]
+description = "Configure + build + ctest the out-of-SDK headless SVG projector (X3D_CPP_BUILD_X3D2SVG=ON). The smallest reference consumer: no third-party deps, links only the public x3d_cpp::sdk façade. Render a scene yourself, e.g.:  ./build-x3d2svg/examples/x3d2svg/x3d_x3d2svg examples/x3d2svg/assets/smoke.x3d -o out.svg  (or --animate 24 --fps 24 for an animated SVG)."
+# Separate build dir (build-x3d2svg/) so it never perturbs the dev preset's
+# build/ cache that golden/ctest rely on. No seam flags — the example needs
+# nothing but the SDK.
+run = """
+cmake -S . -B build-x3d2svg -G Ninja -DX3D_CPP_BUILD_X3D2SVG=ON
+cmake --build build-x3d2svg
+ctest --test-dir build-x3d2svg -R x3d_x3d2svg --output-on-failure
+"""
+
 [tasks.asset-import]
 description = "Configure + build + ctest the out-of-SDK asset-import consumer (no assimp; fixture backend). Add -DX3D_CPP_BUILD_ASSIMP=ON locally for real formats."
 run = """

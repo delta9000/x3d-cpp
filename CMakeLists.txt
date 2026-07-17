@@ -512,6 +512,15 @@ option(X3D_CPP_BUILD_ASSET_IMPORT "Build the asset-import consumer" OFF)
 option(X3D_CPP_BUILD_CPURASTER "Build the headless CPU rasterizer + GLSL emulation" OFF)
 
 # ---------------------------------------------------------------------------
+# Headless SVG projector (examples/x3d2svg/). OUT-of-SDK consumer, OFF by
+# default. The smallest reference consumer: no third-party deps, and it links
+# ONLY the public façade x3d_cpp::sdk (not the internal target cpu_raster uses).
+# Added at the end of this file once x3d_cpp::sdk exists. Build with:
+#   cmake -S . -B build-x3d2svg -DX3D_CPP_BUILD_X3D2SVG=ON
+# ---------------------------------------------------------------------------
+option(X3D_CPP_BUILD_X3D2SVG "Build the headless X3D->SVG projector example" OFF)
+
+# ---------------------------------------------------------------------------
 # Extension quarantine (runtime/ext/). Hand-written foreign-format codecs and
 # binary-geometry helpers that live in x3d::runtime::ext. One-way dep: ext
 # may include runtime/extract/* (PackedMesh, Aabb, …) but core NEVER includes
@@ -2187,6 +2196,15 @@ endif()
 if(X3D_CPP_BUILD_CPURASTER)
     enable_testing() # so the rasterizer's ctests register even when BUILD_TESTS is OFF.
     add_subdirectory(examples/cpu_raster)
+endif()
+
+# ---------------------------------------------------------------------------
+# Headless SVG projector — conditional, OFF by default. Façade-only and
+# dependency-free; when OFF this is a no-op and the default path is unchanged.
+# ---------------------------------------------------------------------------
+if(X3D_CPP_BUILD_X3D2SVG)
+    enable_testing() # so the example's ctests register even when BUILD_TESTS is OFF.
+    add_subdirectory(examples/x3d2svg)
 endif()
 
 # ---------------------------------------------------------------------------
