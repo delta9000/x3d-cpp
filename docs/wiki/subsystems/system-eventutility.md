@@ -55,13 +55,13 @@ definition wins") — implemented by walking back while `key[i] == t && key[i-1]
 | `runtime/events/X3DSceneBridge.hpp` | `attachEventUtilities(scene, ctx)` — production wiring; iterates every node in the scene, calls `attach` on each system, then registers all seven with `ctx.addSystem` |
 | `runtime/events/X3DSystem.hpp` | `System` base class (`attach` / `update`) that all seven classes extend |
 | `runtime/events/X3DExecutionContext.hpp` | `postEvent` + `addSystem` + `tick` — the cascade/context seams the systems call |
-| `generated_cpp_bindings/BooleanFilter.hpp` | `setOnSet_booleanHandler` / `emitInput*` accessors |
-| `generated_cpp_bindings/BooleanToggle.hpp` | `setOnSet_booleanHandler` / `getToggle` |
-| `generated_cpp_bindings/BooleanTrigger.hpp` | `setOnSet_triggerTimeHandler` / `emitTriggerTrue` |
-| `generated_cpp_bindings/IntegerTrigger.hpp` | `setOnSet_booleanHandler` / `getIntegerKey` / `emitTriggerValue` |
-| `generated_cpp_bindings/TimeTrigger.hpp` | `setOnSet_booleanHandler` / `emitTriggerTime` |
-| `generated_cpp_bindings/BooleanSequencer.hpp` | `setOnSet_fractionHandler` / `setOnNextHandler` / `setOnPreviousHandler` / `getKey` / `getKeyValue` |
-| `generated_cpp_bindings/IntegerSequencer.hpp` | Same handler pattern; `getKeyValue()` returns `MFInt32` |
+| `generated_cpp_bindings/x3d/nodes/BooleanFilter.hpp` | `setOnSet_booleanHandler` / `emitInput*` accessors |
+| `generated_cpp_bindings/x3d/nodes/BooleanToggle.hpp` | `setOnSet_booleanHandler` / `getToggle` |
+| `generated_cpp_bindings/x3d/nodes/BooleanTrigger.hpp` | `setOnSet_triggerTimeHandler` / `emitTriggerTrue` |
+| `generated_cpp_bindings/x3d/nodes/IntegerTrigger.hpp` | `setOnSet_booleanHandler` / `getIntegerKey` / `emitTriggerValue` |
+| `generated_cpp_bindings/x3d/nodes/TimeTrigger.hpp` | `setOnSet_booleanHandler` / `emitTriggerTime` |
+| `generated_cpp_bindings/x3d/nodes/BooleanSequencer.hpp` | `setOnSet_fractionHandler` / `setOnNextHandler` / `setOnPreviousHandler` / `getKey` / `getKeyValue` |
+| `generated_cpp_bindings/x3d/nodes/IntegerSequencer.hpp` | Same handler pattern; `getKeyValue()` returns `MFInt32` |
 | `runtime/events/tests/event_utility_test.cpp` | Behavioral conformance tests |
 
 ## Interfaces and seams

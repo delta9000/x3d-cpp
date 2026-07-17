@@ -115,7 +115,7 @@ public:
 `tools/x3d-cli/canon_gate.cpp` implements a three-tier gate driven via `x3d canonicalize` subprocess calls over the XML-only subset of the conformance archive:
 
 - **Tier 1 — Idempotence** (hard gate, 100% required, Java-free): `c1 == c2` byte-for-byte over the full XML subset. Any failure exits 1. This is the CI-wired gate (`--gate` flag).
-- **Tier 2 — Tolerant diff vs X3DJSAIL goldens** (baseline-locked regression): structural and numeric agreement with committed X3DJSAIL canonical fixtures (`tools/x3d-cli/goldens/canonical-goldens/`). Numbers compared within relative tolerance 1e-5; `containerField` and schema-location attrs stripped from both sides before comparison. PASS→FAIL is a regression.
+- **Tier 2 — Tolerant diff vs X3DJSAIL goldens** (baseline-locked regression): structural and numeric agreement with X3DJSAIL canonical fixtures generated on demand by `mise run canon-golden-gen` into `tools/x3d-cli/goldens/canonical-goldens/` (not committed — needs a JDK and the corpus archive). Numbers compared within relative tolerance 1e-5; `containerField` and schema-location attrs stripped from both sides before comparison. PASS→FAIL is a regression.
 - **Tier 3 — Byte-exact vs X3DJSAIL** (informative stretch metric): fraction of corpus files where our output is byte-identical to the JSAIL reference. Not a gate.
 
 `x3d_canon_gate` is NOT registered as a ctest target (requires the external corpus). Run manually via `mise run canon-gate`. Baselines for both cli-gate and canon-gate are written by `mise run cli-gate-baseline`.

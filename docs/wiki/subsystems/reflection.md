@@ -36,9 +36,9 @@ The layer is split across the Python generator (`src/x3d_cpp_gen/emit/`) and the
 | `src/x3d_cpp_gen/emit/registry.py` | Emits `X3DInterfaceRegistry.hpp/.cpp`: one `InterfaceId` enumerator per abstract node type; per-node transitive-closure table; `interfacesOf` / `nodeImplements` / `nodesImplementing` queries |
 | `src/x3d_cpp_gen/emit/factory.py` | Emits `X3DNodeFactory.hpp/.cpp`: concrete-node-only `create(typeName)` free function and `registry()` map |
 | `src/x3d_cpp_gen/emit/naming.py` | `pascal()` and `sanitize_field_name()` — the canonical naming rules shared by the parser and all emitters |
-| `generated_cpp_bindings/X3DReflection.hpp` | Committed golden: the shared reflection types every node header `#include`s |
-| `generated_cpp_bindings/X3DNodeFactory.hpp` / `.cpp` | Committed golden: the factory definition (compiled into `x3d_cpp_nodes`) |
-| `generated_cpp_bindings/X3DInterfaceRegistry.hpp` / `.cpp` | Committed golden: the interface-id enum and membership tables |
+| `generated_cpp_bindings/x3d/core/X3DReflection.hpp` | Committed golden: the shared reflection types every node header `#include`s |
+| `generated_cpp_bindings/x3d/nodes/X3DNodeFactory.hpp` / `.cpp` | Committed golden: the factory definition (compiled into `x3d_cpp_nodes`) |
+| `generated_cpp_bindings/x3d/nodes/X3DInterfaceRegistry.hpp` / `.cpp` | Committed golden: the interface-id enum and membership tables |
 | `generated_cpp_bindings/<NodeName>.cpp` | Per-node golden: the `fields()` static (lambda-initialized `FieldTable`) and `accept()` double-dispatch body |
 | `runtime/events/DynamicField.hpp` | Runtime extension: `effectiveFields(node)` concatenates the generated `fields()` table with per-instance author `<field>` declarations; `DynamicFieldStore` holds the side-table |
 | `runtime/X3DRangeValidate.hpp` | Runtime helper: `collectRangeWarnings()` walks a scene calling `validateRanges()` on each node (the per-node `validateRanges` is generated) |

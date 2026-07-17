@@ -5,14 +5,14 @@ tags: [guide, workflow, project, agent, definition-of-done]
 updated: 2026-06-22
 related:
   - workflow-subagent-discipline.md
-  - gate-system.md
+  - ../wiki/guides/gate-system.md
 ---
 
 # Card → Done Workflow
 
 The [GitHub Project](https://github.com/users/delta9000/projects/2) is the planning board;
 [`findings.yaml`](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml)
-is the conformance source of truth (see the [BACKLOG deprecation](../index.md)). This guide is the **connective tissue**: how one card
+is the conformance source of truth (see the [BACKLOG deprecation](../wiki/index.md)). This guide is the **connective tissue**: how one card
 becomes shipped, documented work.
 
 It does **not** replace [Workflow / Subagent Discipline](workflow-subagent-discipline.md) —

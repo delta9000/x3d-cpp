@@ -54,7 +54,7 @@ font file and gives correct proportional text layout for fixed-pitch output.
 | `runtime/io/stbtt/vendor/stb_truetype.h` | Vendored stb_truetype single-header (MIT OR Public Domain; see `STB_TRUETYPE_LICENSE.txt`). |
 | `runtime/io/freetype/FreetypeFontMetrics.{hpp,cpp}` | **Backend B** — FreeType. `makeFreetypeFontMetrics(FontFaceMap)`. The `.cpp` is the one TU that calls the FreeType C API (PRIVATE). Built behind `X3D_CPP_BUILD_FREETYPE` (via vcpkg). |
 | `runtime/io/tests/font_metrics_tests.cpp` | The grouped doctest binary `x3d_text_tests`: per-backend cases, the exact-equal advanceEm swap-test, Failed-parity on `.notdef`, and BOLD/ITALIC out-of-scope cases. Talks only through the seam factories — no backend headers. |
-| `runtime/io/tests/fixtures/font/` | Liberation font fixtures (`LiberationSerif-Regular.ttf`, `LiberationSans-Regular.ttf`, `LiberationMono-Regular.ttf`) + `OFL.txt` license. |
+| `third_party/fonts/` | Liberation font fixtures (`LiberationSerif-Regular.ttf`, `LiberationSans-Regular.ttf`, `LiberationMono-Regular.ttf`) + `OFL.txt` license. |
 
 ## The two backends
 

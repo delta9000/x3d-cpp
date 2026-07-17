@@ -24,7 +24,7 @@ Every consumer that resolves field identity walks `node.fields()` and matches by
 Two structural constraints shaped the choice:
 
 - **`X3DNode::fields()` is `virtual const FieldTable&` returning a reference to a function-local `static` table** — one table shared across all instances of a type. It cannot hold per-instance author fields; a per-instance channel is required.
-- **The `std::any` field-value channel already exists.** `FieldInfo.get`/`set` thunks box and unbox values through `std::any` (defined in `runtime/X3DReflection.hpp`). Author field values can reuse this same channel exactly, so routing and cascade delivery treat author fields identically to generated ones.
+- **The `std::any` field-value channel already exists.** `FieldInfo.get`/`set` thunks box and unbox values through `std::any` (defined in `generated_cpp_bindings/x3d/core/X3DReflection.hpp`). Author field values can reuse this same channel exactly, so routing and cascade delivery treat author fields identically to generated ones.
 
 The early spec (`docs/superpowers/specs/2026-06-05-dynamic-field-foundation-spec.md`) proposed placing `std::vector<DynamicFieldSlot> userFields_` on the `X3DNode` base and emitting the additions via the class template (Option A). That approach was revisited before implementation. See the decision below.
 

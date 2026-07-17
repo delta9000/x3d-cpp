@@ -8,6 +8,10 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- The binding generator now **fails closed when the UOM contains a field type
+  it doesn't support**, listing the affected fields instead of silently
+  shrinking the generated API; `--allow-unsupported-fields` is the explicit
+  opt-out.
 - **`x3d::sdk::RuntimeSession`** — the recommended entry point. Owns the
   document, context, and extractor, and does the wiring you can silently forget:
   `buildSceneGraph` (skip it and no Viewpoint binds, so the camera is identity),

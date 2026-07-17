@@ -30,7 +30,7 @@ x3d-cpp shadowing is possible **today**: registration has no collision check
 checks the proto table **before** the factory (`ClassicVrmlReader.hpp:295-298`, `JsonReader.hpp:622`),
 so a same-named PROTO wins. This routes around the ADR-0001 ext-firewall, which assumes built-in node
 names are inviolable trust anchors. The detection seam already exists:
-`X3DNodeFactory::registry()` (`generated_cpp_bindings/X3DNodeFactory.hpp:22-24`).
+`X3DNodeFactory::registry()` (`generated_cpp_bindings/x3d/nodes/X3DNodeFactory.hpp:23`).
 
 ## Decision
 

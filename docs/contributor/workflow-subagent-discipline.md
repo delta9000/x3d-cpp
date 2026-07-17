@@ -226,7 +226,7 @@ Or all together: `mise run ci`.
 
 The gate is not optional even if `ctest` passed in the review phase — the per-unit review
 checks the unit in isolation; the gate checks the whole-system integration. See
-[Gate System](gate-system.md) for what each gate protects and when to regenerate a baseline.
+[Gate System](../wiki/guides/gate-system.md) for what each gate protects and when to regenerate a baseline.
 
 ---
 

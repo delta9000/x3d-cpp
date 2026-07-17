@@ -50,6 +50,10 @@ Any `X3dUnifiedObjectModel-*.xml` revision. The spec version is auto-detected
 from the root element's `version` attribute; override it with `--spec-version`.
 The packaged default is 4.0.
 
+If the UOM contains a field whose type the generator doesn't support, generation
+**fails closed** rather than silently emitting a node with fields missing. Pass
+`--allow-unsupported-fields` to opt out (the unsupported fields are skipped).
+
 ## Verification behavior
 
 The generator compiles and runs a smoke test over its own output, and **fails

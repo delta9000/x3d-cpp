@@ -26,7 +26,7 @@ different aspect ratios and content scaling, so conforming implementations diver
 
 x3d-cpp is renderer-agnostic, so it cannot be "wrong" at the pixel level — but it must pin down which
 semantics the sub-region it exposes represents, so every integrating renderer frames identically.
-Today `Viewport::setClipBoundary` (`generated_cpp_bindings/Viewport.hpp:87`) only validates each
+Today `Viewport::setClipBoundary` (`generated_cpp_bindings/x3d/nodes/Viewport.hpp:89`) only validates each
 component ∈ [0,1] and stores the 4-tuple (default `{0,1,0,1}`); there is no ordering check, no sub-rect
 computation, and no consumer of `clipBoundary` anywhere in `runtime/` (only whole-surface
 `ViewportSize` is exposed).
@@ -53,7 +53,7 @@ own projection into its region).
 **Positive:**
 - All renderers integrating against the runtime frame Viewport content identically.
 - Matches the node name and the layer-as-independent-view intent; serves the CAD quadrant use case.
-- Adds the missing ordering guard (`Viewport.hpp:87` currently validates range but not order).
+- Adds the missing ordering guard (`Viewport.hpp:89` currently validates range but not order).
 
 **Trade-offs:**
 - Fixes a spec-open choice in the engine; if 4.1 later mandates glScissor semantics this is superseded.

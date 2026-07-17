@@ -40,7 +40,7 @@ The generated bindings maintain a strict/lenient split at the field-write seam:
 
 4. **Range violations are surfaced as structured diagnostics after parse.** Each constrained node generates a `virtual void validateRanges(std::vector<RangeDiagnostic>& out) const` override. The free function `collectRangeWarnings(root)` (`runtime/X3DRangeValidate.hpp`) walks the scene graph via reflection and aggregates these per-node checks. The `X3DParse` front door (`runtime/parse/X3DParse.hpp`) calls `collectRangeWarnings` after the scene is built and exposes the result as `X3DDocument::rangeWarnings`. This is a separate structured channel — not silently merged into the per-reader `warnings()` string vector — so the conformance validator can consume it directly.
 
-The `RangeDiagnostic` struct is defined in `generated_cpp_bindings/X3DReflection.hpp`:
+The `RangeDiagnostic` struct is defined in `generated_cpp_bindings/x3d/core/X3DReflection.hpp`:
 
 ```cpp
 struct RangeDiagnostic {
@@ -75,4 +75,4 @@ struct RangeDiagnostic {
 - [Architecture](../architecture.md) — the data-layer / typed-API seam sits between the codec/parse layer and the node bindings.
 - [Reflection subsystem](../subsystems/reflection.md) — the `fields()` reflection thunk that routes all reads/writes and targets `set<Name>Unchecked`.
 - Design history: `docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md` — full component design, DRY-constraint rationale, and TDD test plan for the warning-collection half of this decision.
-- Implementation: `generated_cpp_bindings/X3DReflection.hpp` (`RangeDiagnostic`), `runtime/X3DRangeValidate.hpp` (`collectRangeWarnings`), `runtime/parse/X3DParse.hpp` (parse-front-door integration), `runtime/X3DDocument.hpp` (`rangeWarnings` field).
+- Implementation: `generated_cpp_bindings/x3d/core/X3DReflection.hpp` (`RangeDiagnostic`), `runtime/X3DRangeValidate.hpp` (`collectRangeWarnings`), `runtime/parse/X3DParse.hpp` (parse-front-door integration), `runtime/X3DDocument.hpp` (`rangeWarnings` field).

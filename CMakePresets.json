@@ -10,6 +10,7 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "X3D_CPP_BUILD_TESTS": "ON",
         "X3D_CPP_PER_HEADER_CHECKS": "OFF"
       }
     },
@@ -21,6 +22,7 @@
       "binaryDir": "${sourceDir}/build-ci",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "X3D_CPP_BUILD_TESTS": "ON",
         "X3D_CPP_WERROR": "ON"
       }
     },
