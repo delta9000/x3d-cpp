@@ -203,6 +203,12 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
           cs.lastUrl = uo->getUrl();
           cs.lastLoad = uo->getLoad();
         }
+        // A newly watched child that still needs loading reopens a terminal
+        // sensor (membership growth is an NSN-7 reset) and restarts the window.
+        if (cs.status != ChildStatus::Ready) {
+          st.terminal = false;
+          restartTimeout = true;
+        }
       } else if (!pre && uo) {
         // NSN-7 poll-and-diff on the inputOutput url/load fields.
         MFString curUrl = uo->getUrl();

@@ -226,6 +226,107 @@ TEST_CASE("LoadSensor: parse-time expanded Inline is pre-seeded Ready (NSN-9)") 
   CHECK(calls == 0);                 // pre-seed asked no resolver
 }
 
+// ── Task 5: watched-child change resets (NSN-7) ───────────────────────────
+
+TEST_CASE("LoadSensor: url change after success re-activates, no isLoaded=FALSE") {
+  auto s = std::make_shared<ScriptState>();
+  s->seq["a.png"] = {ready()};
+  s->seq["b.png"] = {pending(), ready()};
+  Rig rig(scripted(s));
+
+  rig.ctx.tick(1.0); // first url loads → success burst
+  CHECK(rig.ls->getIsLoaded());
+  CHECK_FALSE(rig.ls->getIsActive());
+  CHECK(rig.ls->getLoadTime() == 1.0);
+
+  rig.texNode->setUrl(MFString{"b.png"}); // author changes the url
+  rig.ctx.tick(3.0);
+  CHECK(rig.ls->getIsActive());  // NSN-7 reset re-activates the sensor
+  CHECK(rig.ls->getIsLoaded());  // R4: no spurious isLoaded=FALSE on reset
+
+  rig.ctx.tick(4.0);
+  CHECK_FALSE(rig.ls->getIsActive());
+  CHECK(rig.ls->getIsLoaded());
+  CHECK(rig.ls->getLoadTime() == 4.0); // second success burst
+}
+
+TEST_CASE("LoadSensor: url change restarts the timeout window") {
+  auto alwaysPending = [](const std::string &, AssetKind) { return pending(); };
+  Rig rig(alwaysPending);
+  rig.ls->setTimeOut(5.0);
+
+  rig.ctx.tick(1.0); // window opens at t=1
+  CHECK(rig.ls->getIsActive());
+
+  rig.texNode->setUrl(MFString{"c.png"});
+  rig.ctx.tick(4.0); // url change restarts the window at t=4
+  CHECK(rig.ls->getIsActive());
+
+  rig.ctx.tick(8.0); // 8-4 = 4 < 5 — would have timed out at t=6 without restart
+  CHECK(rig.ls->getIsActive());
+
+  rig.ctx.tick(10.0); // 10-4 = 6 > 5 → timeout
+  CHECK_FALSE(rig.ls->getIsActive());
+  CHECK_FALSE(rig.ls->getIsLoaded());
+}
+
+TEST_CASE("LoadSensor: load TRUE→FALSE idles the sensor, FALSE→TRUE re-resolves") {
+  auto s = std::make_shared<ScriptState>();
+  s->seq["a.png"] = {ready()};
+  Rig rig(scripted(s));
+
+  rig.ctx.tick(1.0);
+  CHECK(rig.ls->getIsLoaded());
+  CHECK(rig.ls->getLoadTime() == 1.0);
+
+  rig.texNode->setLoad(false);
+  rig.ctx.tick(2.0); // child drops to NotStarted; nothing loading → idle
+  CHECK_FALSE(rig.ls->getIsActive());
+
+  rig.texNode->setLoad(true);
+  rig.ctx.tick(3.0); // re-resolves (memoized Ready) → fresh success burst
+  CHECK(rig.ls->getIsLoaded());
+  CHECK(rig.ls->getLoadTime() == 3.0); // proves a new success, not a stale value
+}
+
+TEST_CASE("LoadSensor: membership change — empty then add a new child") {
+  auto s = std::make_shared<ScriptState>();
+  s->seq["a.png"] = {ready()};
+  s->seq["d.png"] = {ready()};
+  Rig rig(scripted(s));
+
+  rig.ctx.tick(1.0);
+  CHECK(rig.ls->getIsLoaded());
+  CHECK(rig.ls->getLoadTime() == 1.0);
+
+  rig.ls->setChildren(MFNode{});
+  rig.ctx.tick(2.0); // empty watch set after success → quiet
+  CHECK(rig.ls->getLoadTime() == 1.0);
+
+  rig.ls->setChildren(MFNode{tex({"d.png"})});
+  rig.ctx.tick(3.0); // new child evaluates fresh → new success burst
+  CHECK(rig.ls->getIsLoaded());
+  CHECK(rig.ls->getLoadTime() == 3.0);
+}
+
+TEST_CASE("LoadSensor: USE-duplicated child dedups the progress denominator (R5)") {
+  auto s = std::make_shared<ScriptState>();
+  s->seq["a.png"] = {ready()};
+  Scene scene;
+  X3DExecutionContext ctx;
+  auto ls = std::make_shared<x3d::nodes::LoadSensor>();
+  auto t = tex({"a.png"});
+  ls->setChildren(MFNode{t, t}); // the same node USE'd twice
+  scene.addRootNode(ls);
+  auto sys = wire(scene, ctx, ls.get(), scripted(s));
+
+  ctx.tick(1.0);
+  CHECK(ls->getIsLoaded());
+  CHECK(ls->getProgress() == 1.0f); // denominator is 1, not 2
+  CHECK_FALSE(ls->getIsActive());
+  CHECK(s->calls == 1); // deduped → a single resolver call
+}
+
 // ── Task 4: timeOut deadline + enabled lifecycle ──────────────────────────
 
 TEST_CASE("LoadSensor: timeOut deadline fires terminal failure, no loadTime") {
