@@ -19,6 +19,8 @@ Accepted — 2026-06-17
 
 X3D's USE mechanism resolves a name to an existing node reference at parse time. Malformed input can make a node its own ancestor: the canonical case is `<TouchSensor DEF='a' USE='a'/>` (a node USEing its own DEF name) — which resolves in memory to a genuine pointer cycle A → A. A less trivial form is a descendant USEing an enclosing DEF, producing A → B → A.
 
+A cyclic USE also belongs to a broader class of self-referential/recursive parser input that a robust X3D reader must actively defend against rather than merely tolerate a crash from — the same category of adversarial-structure guard as the recursion-depth caps and PROTO-expansion limits already present elsewhere in the parse/extraction pipeline.
+
 The runtime has many recursive scene-graph walkers:
 
 - `BindingSystem::walk` — enrolls binding-stack nodes
@@ -53,6 +55,11 @@ We decided to run a single DFS sanitizer, `breakContainmentCycles(scene)` (`runt
 - One extra DFS at scene-build time. For well-formed scenes the cost is a single O(N) traversal with no allocations beyond two `unordered_set<const X3DNode*>` whose population is bounded by the number of distinct nodes in the scene.
 - The sanitizer operates by **mutation** (severing edges in-place). If a future caller needs to preserve the original pointer graph (e.g. to re-serialize malformed input faithfully), it must snapshot the graph before calling `buildSceneGraph`. Current writers read from the parsed `Scene` before `buildSceneGraph` is called, so there is no conflict today.
 - `BoundsSystem`'s defense-in-depth guard (the `computing_` set) means `BoundsSystem::compute` silently contributes zero geometry for the back-reference node. This is the correct behavior (the back-reference adds no geometry not already accounted for by the legitimate forward path), but it is not surfaced as a warning. A future diagnostic pass could report severed edges if needed.
+- `breakContainmentCycles` walks each node's static field table (`n->fields()`) only. A cycle
+  introduced solely through an author-declared Script `<field>` — a dynamic SFNode/MFNode field
+  merged in via `effectiveFields()`, see ADR-0014 — referencing an ancestor node is a distinct vector
+  this DFS does not sever. Whether that vector is reachable in practice depends on whether any
+  recursive walker traverses dynamic fields; not yet audited.
 
 ## Follow-up — self-guarding standalone walkers (MEM-1, 2026-06-26)
 

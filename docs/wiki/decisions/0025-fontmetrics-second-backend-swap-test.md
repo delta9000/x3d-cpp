@@ -80,7 +80,9 @@ The swap matrix covers **PLAIN style only**:
 - **Atlas UV / outline** — out of scope. Neither backend fills `hasAtlasUv = true` in this
   proof; atlas upload is an embedder-side integration that does not derive from the font tables.
   The swap-test covers the `advanceEm` path only; the atlas-UV / outline paths are a separate
-  card.
+  card. Extruded/outline 3D text geometry (turning glyph outlines into extruded Text geometry,
+  rather than a flat glyph quad) has been a long-standing, recurring author request in X3D
+  content workflows — a real constituency for this deferred card, not a purely hypothetical one.
 
 ### The `.notdef` contract rule
 

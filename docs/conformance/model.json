@@ -5039,6 +5039,7 @@
         "MAT-007",
         "MAT-008",
         "MAT-009",
+        "MAT-010",
         "SEAM-LINEPOINT",
         "UNLIT-EMISSIVE"
       ],
@@ -5078,7 +5079,8 @@
           "findings": [
             "MAT-001",
             "MAT-006",
-            "MAT-009"
+            "MAT-009",
+            "MAT-010"
           ],
           "geometry": false,
           "interfaces": [
@@ -5146,7 +5148,8 @@
             "MAT-005",
             "MAT-006",
             "MAT-007",
-            "MAT-009"
+            "MAT-009",
+            "MAT-010"
           ],
           "geometry": false,
           "interfaces": [
@@ -5175,7 +5178,8 @@
             "MAT-006",
             "MAT-007",
             "MAT-008",
-            "MAT-009"
+            "MAT-009",
+            "MAT-010"
           ],
           "geometry": false,
           "interfaces": [
@@ -7225,7 +7229,7 @@
         "SpatialSound",
         "ListenerPointSource"
       ],
-      "note": "SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: the \u00a716 Sound ellipsoid (seam carries no ellipsoid params \u2014 SpatialSound does not fully map to Panner), HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section.",
+      "note": "SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: the \u00a716 Sound ellipsoid (seam carries no ellipsoid params \u2014 SpatialSound does not fully map to Panner), HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion \u2014 not a novel or low-priority ask \u2014 worth weighting accordingly when scheduling v2.",
       "severity": "major",
       "status": "deferred",
       "summary": "Spatialization PARTIAL \u2014 SpatialSound/ListenerPointSource equal-power pan + three DistanceModel modes proven via swap-test (ADR-0026); \u00a716 Sound ellipsoid attenuation (minFront/maxFront/minBack/maxBack), HRTF, and Doppler still deferred."
@@ -7279,7 +7283,7 @@
         "ChannelSelector",
         "ChannelSplitter"
       ],
-      "note": "The AudioBackend now has renderStereo() proven via the swap-test (both backends render stereo output for Panner nodes). The stereo path is the seam prerequisite for multi-channel; the ChannelMerger/Selector/Splitter nodes and channel-aware routing still require dedicated NodeKinds and a channel-count-aware buffer contract. Deferred.",
+      "note": "The AudioBackend now has renderStereo() proven via the swap-test (both backends render stereo output for Panner nodes). The stereo path is the seam prerequisite for multi-channel; the ChannelMerger/Selector/Splitter nodes and channel-aware routing still require dedicated NodeKinds and a channel-count-aware buffer contract. Deferred. Multi-channel routing has moved beyond a speculative extension: it was an actively-proposed X3D4 spec feature with competing routing-node proposals, and at least one working prototype implementation has demonstrated SFInt32 routing on both source and destination sides plus connect/disconnect handling \u2014 concrete precedent for the buffer-contract shape this seam will eventually need.",
       "severity": "minor",
       "status": "deferred",
       "summary": "Channels + multi-channel PARTIALLY UNBLOCKED \u2014 stereo render path (renderStereo) landed (ADR-0026); ChannelMerger/Selector/Splitter still not built; channelCount/channelCountMode/channelInterpretation still ignored."
@@ -8375,6 +8379,20 @@
       "severity": "low",
       "status": "closed",
       "summary": "Gamma/sRGB output encoding stance not documented or enforced \u2014 PoC consumer rendered in linear space."
+    },
+    {
+      "clause": "12.2.3, 12.4.2",
+      "component": "Shape",
+      "id": "MAT-010",
+      "nodes": [
+        "Appearance",
+        "Material",
+        "PhysicalMaterial"
+      ],
+      "note": "backMaterialConstraintMet (materialOf(), see MAT-006) validates only that backMaterial.model == front.model. A prior design discussion for this exact front/back constraint scoped it to cover both the material-model type AND a matching texture set between front and back; only the model-type half is implemented. The back MaterialDesc is currently constructed inline with its textures vector left unpopulated (Appearance-level textures are front-only in the current extraction path), so a texture-set comparison is not yet meaningful to add without first populating back-material textures \u2014 tracked as the deferred follow-on already named in ADR-0021.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "Appearance.backMaterial constraint checks material-model type only \u2014 texture-set match between front and back materials is not validated."
     },
     {
       "clause": "13.3.4, 25.3.2",
@@ -9656,7 +9674,7 @@
     "closed_count": 124,
     "component_count": 36,
     "deferred_count": 39,
-    "finding_count": 211,
+    "finding_count": 212,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -9683,7 +9701,7 @@
       "critical": 3,
       "low": 6,
       "major": 40,
-      "minor": 38
+      "minor": 39
     }
   },
   "unresolved_findings": []

@@ -49,6 +49,11 @@ Only underdetermined sections change; spines with ≥3 non-collinear distinct po
 **Positive:**
 - Deterministic, reproducible SCP for degenerate spines; agrees with conforming browsers (Harrier
   wings render correctly).
+- A cross-implementation edge-case comparison for this exact 2-point/undefined-orientation scenario
+  shows two independent conforming implementations (Castle Game Engine/view3dscene and X_ITE)
+  already agreeing with each other on the rendered result, while X3DOM (noted above) renders it
+  differently — corroborating that local-coordinate alignment matches where implementations have
+  already converged.
 - Implements the §13.3.5.4.5 "render nothing" rule for single-distinct-point spines.
 - Non-regressive on well-defined spines (B3/B6/TC3 acceptance unaffected).
 

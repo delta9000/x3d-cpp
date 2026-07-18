@@ -355,7 +355,7 @@
   severity: major
   status: deferred
   summary: "Spatialization PARTIAL — SpatialSound/ListenerPointSource equal-power pan + three DistanceModel modes proven via swap-test (ADR-0026); §16 Sound ellipsoid attenuation (minFront/maxFront/minBack/maxBack), HRTF, and Doppler still deferred."
-  note: "SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: the §16 Sound ellipsoid (seam carries no ellipsoid params — SpatialSound does not fully map to Panner), HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section."
+  note: "SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: the §16 Sound ellipsoid (seam carries no ellipsoid params — SpatialSound does not fully map to Panner), HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion — not a novel or low-priority ask — worth weighting accordingly when scheduling v2."
 - id: SND-4
   nodes: [AudioClip, BufferAudioSource, StreamAudioSource, MicrophoneSource]
   interfaces: [X3DSoundSourceNode]
@@ -382,7 +382,7 @@
   severity: minor
   status: deferred
   summary: "Channels + multi-channel PARTIALLY UNBLOCKED — stereo render path (renderStereo) landed (ADR-0026); ChannelMerger/Selector/Splitter still not built; channelCount/channelCountMode/channelInterpretation still ignored."
-  note: "The AudioBackend now has renderStereo() proven via the swap-test (both backends render stereo output for Panner nodes). The stereo path is the seam prerequisite for multi-channel; the ChannelMerger/Selector/Splitter nodes and channel-aware routing still require dedicated NodeKinds and a channel-count-aware buffer contract. Deferred."
+  note: "The AudioBackend now has renderStereo() proven via the swap-test (both backends render stereo output for Panner nodes). The stereo path is the seam prerequisite for multi-channel; the ChannelMerger/Selector/Splitter nodes and channel-aware routing still require dedicated NodeKinds and a channel-count-aware buffer contract. Deferred. Multi-channel routing has moved beyond a speculative extension: it was an actively-proposed X3D4 spec feature with competing routing-node proposals, and at least one working prototype implementation has demonstrated SFInt32 routing on both source and destination sides plus connect/disconnect handling — concrete precedent for the buffer-contract shape this seam will eventually need."
 - id: SND-7
   nodes: [AudioDestination, StreamAudioDestination]
   component: Sound
@@ -1145,6 +1145,14 @@
   commit: 954ad98
   summary: Gamma/sRGB output encoding stance not documented or enforced — PoC consumer rendered in linear space.
   note: Closed — PoC consumer (examples/poc_renderer/) uses GL_SRGB8_ALPHA8 for BaseColor/Emissive textures, applies linearToSRGB() at fragment output in pbr.frag and lit.frag; SDK emits colors in authored space (linear for Material scalars); gamma is consumer policy, documented in MaterialSystem.hpp and the Materials wiki page.
+- id: MAT-010
+  nodes: [Appearance, Material, PhysicalMaterial]
+  component: Shape
+  clause: "12.2.3, 12.4.2"
+  severity: minor
+  status: open
+  summary: "Appearance.backMaterial constraint checks material-model type only — texture-set match between front and back materials is not validated."
+  note: "backMaterialConstraintMet (materialOf(), see MAT-006) validates only that backMaterial.model == front.model. A prior design discussion for this exact front/back constraint scoped it to cover both the material-model type AND a matching texture set between front and back; only the model-type half is implemented. The back MaterialDesc is currently constructed inline with its textures vector left unpopulated (Appearance-level textures are front-only in the current extraction path), so a texture-set comparison is not yet meaningful to add without first populating back-material textures — tracked as the deferred follow-on already named in ADR-0021."
 
 # --- Geometry tessellation + normals (§11 / §13) ---
 - id: EXT-001
