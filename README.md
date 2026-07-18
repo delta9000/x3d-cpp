@@ -127,10 +127,15 @@ install, or consume it:
 
 ```bash
 cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
   -DX3D_CPP_BUILD_TESTS=OFF
 cmake --build build
 cmake --install build --prefix "$PWD/install"
 ```
+
+Without `-DCMAKE_BUILD_TYPE=Release`, single-config generators build with no
+optimization and the install prefix roughly triples (measured 79 MB vs 27 MB).
+Use `RelWithDebInfo` if you want symbols.
 
 Then consume it from a downstream project:
 
