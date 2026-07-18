@@ -245,7 +245,11 @@ file(GLOB X3D_CPP_NODE_SOURCES CONFIGURE_DEPENDS
 # enter either library form.
 set(_x3d_generated_test_source
     "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/test.cpp")
-list(REMOVE_ITEM X3D_CPP_NODE_SOURCES "${_x3d_generated_test_source}")
+set(_x3d_generated_semantic_metadata_source
+    "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/X3DSemanticMetadataRegistry.cpp")
+list(REMOVE_ITEM X3D_CPP_NODE_SOURCES
+    "${_x3d_generated_test_source}"
+    "${_x3d_generated_semantic_metadata_source}")
 
 option(X3D_CPP_SHARED_NODES
     "Build the generated node runtime as one shared library (OFF for a static archive)"
@@ -1713,10 +1717,24 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/include")
     target_compile_features(x3d_sai_experimental PUBLIC cxx_std_20)
 
+    # Optional generated-schema bridge. Keeping this separate preserves the
+    # stdlib-only semantic kernel while allowing consumers to opt into the UOM
+    # catalog without pulling generated runtime node implementations into the
+    # semantic identity or the normal node-library startup path.
+    add_library(x3d_sai_experimental_metadata STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/src/metadata.cpp"
+        "${_x3d_generated_semantic_metadata_source}")
+    target_include_directories(x3d_sai_experimental_metadata PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/include")
+    target_link_libraries(x3d_sai_experimental_metadata
+        PUBLIC x3d_sai_experimental
+        PRIVATE x3d_cpp_headers)
+    target_compile_features(x3d_sai_experimental_metadata PUBLIC cxx_std_20)
+
     add_executable(x3d_sai_experimental_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/tests/semantic_kernel_test.cpp")
     target_link_libraries(x3d_sai_experimental_tests PRIVATE
-        x3d_sai_experimental x3d_doctest_main)
+        x3d_sai_experimental_metadata x3d_cpp::nodes x3d_doctest_main)
     target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
     add_test(NAME x3d_sai_experimental COMMAND x3d_sai_experimental_tests)
     add_test(NAME sai_id_shared_node COMMAND x3d_sai_experimental_tests
@@ -1727,6 +1745,10 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=a browser rejects an execution context from another browser")
     add_test(NAME sai_field_one_descriptor COMMAND x3d_sai_experimental_tests
         "--test-case=dynamic discovery and typed fields are substitutable")
+    add_test(NAME sai_generated_metadata COMMAND x3d_sai_experimental_tests
+        "--test-case=generated metadata authors without runtime node identity")
+    add_test(NAME sai_generated_metadata_drift COMMAND x3d_sai_experimental_tests
+        "--test-case=generated metadata adapter has exhaustive ordered descriptor parity")
     add_test(NAME sai_field_equal_intent COMMAND x3d_sai_experimental_tests
         "--test-case=dynamic discovery and typed fields are substitutable")
     add_test(NAME sai_field_access_state_machine COMMAND x3d_sai_experimental_tests
@@ -2897,7 +2919,8 @@ _x3d_classify_present_targets(internal
     x3d_duktape
     x3d_s3_testsupport
     x3d_doctest_main
-    x3d_sai_experimental)
+    x3d_sai_experimental
+    x3d_sai_experimental_metadata)
 
 # Test-suite membership is deliberately independent of primary target purpose:
 # x3d_cli is production software and still belongs in the behavior/sanitizer

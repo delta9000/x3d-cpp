@@ -20,7 +20,7 @@ from x3d_cpp_gen.generator import (
     write_types_header, write_enums_header,
     write_reflection_header, write_node_factory,
     generate_cpp_bindings, generate_test_file,
-    write_interface_registry,
+    write_interface_registry, write_semantic_metadata_registry,
 )
 from x3d_cpp_gen.model.version import SpecVersion
 
@@ -203,6 +203,8 @@ def main(argv=None) -> int:
                           enum_defs=enum_defs, namespace=namespace)
     write_node_factory(str(out_dir), nodes)
     write_interface_registry(str(out_dir), nodes, dependency_graph)
+    write_semantic_metadata_registry(str(out_dir), nodes, dependency_graph,
+                                     enum_defs, spec_version.version)
 
     if not args.no_test:
         test_file_path = generate_test_file(nodes, str(out_dir),

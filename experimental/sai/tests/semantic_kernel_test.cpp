@@ -1,4 +1,9 @@
 #include "x3d/sai/experimental/kernel.hpp"
+#include "x3d/sai/experimental/metadata.hpp"
+
+#include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/X3DSemanticMetadataRegistry.hpp"
 
 #include "doctest/doctest.h"
 
@@ -45,106 +50,72 @@ concept accepts_imported_event_target =
       batch.send(target, sai::value{sai::vec3f{}});
     };
 
+sai::field_descriptor test_field(std::string name, sai::value_kind kind,
+                                 sai::access_type access,
+                                 sai::value default_value,
+                                 bool containment = false) {
+  return sai::field_descriptor{
+      .name = std::move(name),
+      .kind = kind,
+      .access = access,
+      .default_value = std::move(default_value),
+      .default_origin = sai::default_source::field_type,
+      .containment = containment,
+      .accepted_node_types = {},
+      .unit_category = std::nullopt,
+  };
+}
+
+sai::node_type_descriptor
+test_node_type(std::string name, std::vector<sai::field_descriptor> fields) {
+  return sai::node_type_descriptor{
+      .name = std::move(name),
+      .fields = std::move(fields),
+      .component = {},
+      .component_level = 0,
+      .interfaces = {},
+      .abstract = false,
+  };
+}
+
 sai::type_registry graph_registry() {
   sai::type_registry registry;
-  REQUIRE(registry.define(sai::node_type_descriptor{
-      .name = "Group",
-      .fields = {sai::field_descriptor{
-          .name = "children",
-          .kind = sai::value_kind::node_list,
-          .access = sai::access_type::input_output,
-          .default_value = sai::node_list{},
-          .containment = true,
-      }},
-  }));
-  REQUIRE(registry.define(sai::node_type_descriptor{
-      .name = "Transform",
-      .fields =
-          {
-              sai::field_descriptor{
-                  .name = "translation",
-                  .kind = sai::value_kind::vec3f,
-                  .access = sai::access_type::input_output,
-                  .default_value = sai::vec3f{},
-                  .containment = false,
-              },
-              sai::field_descriptor{
-                  .name = "children",
-                  .kind = sai::value_kind::node_list,
-                  .access = sai::access_type::input_output,
-                  .default_value = sai::node_list{},
-                  .containment = true,
-              },
-              sai::field_descriptor{
-                  .name = "worldTranslation",
-                  .kind = sai::value_kind::vec3f,
-                  .access = sai::access_type::output_only,
-                  .default_value = sai::vec3f{},
-                  .containment = false,
-              },
-              sai::field_descriptor{
-                  .name = "initialLabel",
-                  .kind = sai::value_kind::string,
-                  .access = sai::access_type::initialize_only,
-                  .default_value = std::string{},
-                  .containment = false,
-              },
-              sai::field_descriptor{
-                  .name = "set_translation",
-                  .kind = sai::value_kind::vec3f,
-                  .access = sai::access_type::input_only,
-                  .default_value = sai::vec3f{},
-                  .containment = false,
-              },
-          },
-  }));
-  REQUIRE(registry.define(sai::node_type_descriptor{
-      .name = "AccessNode",
-      .fields =
-          {
-              sai::field_descriptor{
-                  .name = "initialChildren",
-                  .kind = sai::value_kind::node_list,
-                  .access = sai::access_type::initialize_only,
-                  .default_value = sai::node_list{},
-                  .containment = true,
-              },
-              sai::field_descriptor{
-                  .name = "receivedChildren",
-                  .kind = sai::value_kind::node_list,
-                  .access = sai::access_type::input_only,
-                  .default_value = sai::node_list{},
-                  .containment = true,
-              },
-              sai::field_descriptor{
-                  .name = "observedChildren",
-                  .kind = sai::value_kind::node_list,
-                  .access = sai::access_type::output_only,
-                  .default_value = sai::node_list{},
-                  .containment = true,
-              },
-          },
-  }));
-  REQUIRE(registry.define(sai::node_type_descriptor{
-      .name = "Link",
-      .fields =
-          {
-              sai::field_descriptor{
-                  .name = "target",
-                  .kind = sai::value_kind::node,
-                  .access = sai::access_type::input_output,
-                  .default_value = sai::node_id{},
-                  .containment = false,
-              },
-              sai::field_descriptor{
-                  .name = "targets",
-                  .kind = sai::value_kind::node_list,
-                  .access = sai::access_type::input_output,
-                  .default_value = sai::node_list{},
-                  .containment = false,
-              },
-          },
-  }));
+  REQUIRE(registry.define(test_node_type(
+      "Group", {test_field("children", sai::value_kind::node_list,
+                            sai::access_type::input_output, sai::node_list{},
+                            true)})));
+  REQUIRE(registry.define(test_node_type(
+      "Transform",
+      {
+          test_field("translation", sai::value_kind::vec3f,
+                     sai::access_type::input_output, sai::vec3f{}),
+          test_field("children", sai::value_kind::node_list,
+                     sai::access_type::input_output, sai::node_list{}, true),
+          test_field("worldTranslation", sai::value_kind::vec3f,
+                     sai::access_type::output_only, sai::vec3f{}),
+          test_field("initialLabel", sai::value_kind::string,
+                     sai::access_type::initialize_only, std::string{}),
+          test_field("set_translation", sai::value_kind::vec3f,
+                     sai::access_type::input_only, sai::vec3f{}),
+      })));
+  REQUIRE(registry.define(test_node_type(
+      "AccessNode",
+      {
+          test_field("initialChildren", sai::value_kind::node_list,
+                     sai::access_type::initialize_only, sai::node_list{}, true),
+          test_field("receivedChildren", sai::value_kind::node_list,
+                     sai::access_type::input_only, sai::node_list{}, true),
+          test_field("observedChildren", sai::value_kind::node_list,
+                     sai::access_type::output_only, sai::node_list{}, true),
+      })));
+  REQUIRE(registry.define(test_node_type(
+      "Link",
+      {
+          test_field("target", sai::value_kind::node,
+                     sai::access_type::input_output, sai::node_id{}),
+          test_field("targets", sai::value_kind::node_list,
+                     sai::access_type::input_output, sai::node_list{}),
+      })));
   return registry;
 }
 
@@ -152,20 +123,13 @@ sai::type_registry graph_registry() {
 
 TEST_CASE("experimental SAI starts as an empty descriptor-governed context") {
   sai::type_registry registry;
-  auto defined = registry.define(sai::node_type_descriptor{
-      .name = "Group",
-      .fields = {sai::field_descriptor{
-          .name = "children",
-          .kind = sai::value_kind::node_list,
-          .access = sai::access_type::input_output,
-          .default_value = sai::node_list{},
-          .containment = true,
-      }},
-  });
+  auto defined = registry.define(test_node_type(
+      "Group", {test_field("children", sai::value_kind::node_list,
+                            sai::access_type::input_output, sai::node_list{},
+                            true)}));
   REQUIRE(defined);
 
-  auto duplicate =
-      registry.define(sai::node_type_descriptor{.name = "Group", .fields = {}});
+  auto duplicate = registry.define(test_node_type("Group", {}));
   REQUIRE_FALSE(duplicate);
   CHECK(duplicate.error().code == sai::error_code::duplicate_type);
   CHECK(duplicate.error().operation == "type_registry.define");
@@ -184,31 +148,154 @@ TEST_CASE("experimental SAI starts as an empty descriptor-governed context") {
   CHECK_FALSE(host.capabilities().rendering);
 }
 
+TEST_CASE("generated metadata authors without runtime node identity") {
+  const std::array<std::string_view, 1> selected{"Box"};
+  auto registry = sai::generated_type_registry(selected);
+  REQUIRE(registry);
+
+  sai::browser host{std::move(registry).value()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto box = edit.create_node("Box");
+  REQUIRE(box);
+  REQUIRE(edit.append_root(box.value()));
+  REQUIRE(edit.commit());
+
+  const auto described = context.snapshot().describe(box.value());
+  REQUIRE(described);
+  CHECK(described.value().name == "Box");
+  CHECK(described.value().component == "Geometry3D");
+  CHECK(described.value().component_level == 1);
+  REQUIRE(described.value().fields.size() == 9);
+  CHECK(described.value().fields[0].name == "IS");
+  CHECK(described.value().fields[0].accepted_node_types ==
+        std::vector<std::string>{"IS"});
+  CHECK_FALSE(described.value().fields[0].unit_category.has_value());
+  CHECK(described.value().fields[0].default_origin ==
+        sai::default_source::schema);
+  CHECK(described.value().fields[2].name == "size");
+  CHECK(described.value().fields[2].default_origin ==
+        sai::default_source::schema);
+  CHECK(described.value().fields[2].default_value ==
+        sai::value{sai::vec3f{2, 2, 2}});
+  CHECK(described.value().fields[4].name == "DEF");
+  CHECK(described.value().fields[4].default_origin ==
+        sai::default_source::field_type);
+}
+
+TEST_CASE("generated metadata adapter has exhaustive ordered descriptor parity") {
+  const auto source = x3d::nodes::X3DSemanticMetadataRegistry::nodes();
+  const auto adapted = sai::generated_metadata_catalog();
+  CHECK(adapted.specification_version == "4.0");
+  CHECK(adapted.model_fingerprint ==
+        x3d::nodes::X3DSemanticMetadataRegistry::modelFingerprint());
+  CHECK(adapted.model_fingerprint.size() == 64);
+  CHECK(adapted.generator_version ==
+        x3d::nodes::X3DSemanticMetadataRegistry::generatorVersion());
+  CHECK_FALSE(adapted.generator_version.empty());
+  CHECK_FALSE(adapted.unit_categories_complete);
+  REQUIRE(adapted.nodes.size() == source.size());
+
+  for (std::size_t node_index = 0; node_index < source.size(); ++node_index) {
+    const auto &source_node = source[node_index];
+    const auto &adapted_node = adapted.nodes[node_index];
+    CHECK(adapted_node.name == source_node.name);
+    CHECK(adapted_node.abstract == source_node.abstract);
+    CHECK(adapted_node.component == source_node.component);
+    CHECK(adapted_node.component_level == source_node.level);
+    CHECK(adapted_node.interfaces == source_node.interfaces);
+    REQUIRE(adapted_node.fields.size() == source_node.fields.size());
+
+    for (std::size_t field_index = 0; field_index < source_node.fields.size();
+         ++field_index) {
+      const auto &source_field = source_node.fields[field_index];
+      const auto &adapted_field = adapted_node.fields[field_index];
+      CHECK(adapted_field.name == source_field.name);
+      CHECK(static_cast<int>(adapted_field.type) ==
+            static_cast<int>(source_field.type));
+      CHECK(static_cast<int>(adapted_field.access) ==
+            static_cast<int>(source_field.access));
+      CHECK(adapted_field.declared_default == source_field.defaultValue);
+      CHECK(adapted_field.accepted_node_types ==
+            source_field.acceptableNodeTypes);
+      CHECK(adapted_field.unit_category == source_field.unitCategory);
+    }
+
+    if (!source_node.abstract) {
+      const auto live = x3d::nodes::X3DNodeFactory::create(source_node.name);
+      REQUIRE(live);
+      const auto &reflected = live->fields();
+      REQUIRE(reflected.size() == source_node.fields.size());
+      for (std::size_t field_index = 0; field_index < reflected.size();
+           ++field_index) {
+        CHECK(reflected[field_index].x3dName ==
+              source_node.fields[field_index].name);
+        CHECK(reflected[field_index].type == source_node.fields[field_index].type);
+        CHECK(reflected[field_index].access ==
+              source_node.fields[field_index].access);
+      }
+    }
+  }
+}
+
+TEST_CASE("generated abstract interfaces remain non-instantiable") {
+  const std::array<std::string_view, 1> selected{"X3DNode"};
+  auto registry = sai::generated_type_registry(selected);
+  REQUIRE(registry);
+
+  sai::browser host{std::move(registry).value()};
+  auto edit = host.current_scene().edit();
+  auto abstract_node = edit.create_node("X3DNode");
+  REQUIRE_FALSE(abstract_node);
+  CHECK(abstract_node.error().code == sai::error_code::abstract_type);
+}
+
+TEST_CASE("generated metadata fails closed instead of collapsing ISO types") {
+  const std::array<std::string_view, 1> selected{"TimeSensor"};
+  auto registry = sai::generated_type_registry(selected);
+  REQUIRE_FALSE(registry);
+  CHECK(registry.error().code == sai::error_code::unsupported_field_type);
+  CHECK(registry.error().field == "cycleInterval");
+}
+
+TEST_CASE("generated node constraints govern containment authoring") {
+  const std::array<std::string_view, 3> selected{"Group", "Shape", "Box"};
+  auto registry = sai::generated_type_registry(selected);
+  REQUIRE(registry);
+
+  sai::browser host{std::move(registry).value()};
+  auto context = host.current_scene();
+  auto valid = context.edit();
+  auto group = valid.create_node("Group");
+  auto shape = valid.create_node("Shape");
+  REQUIRE(group);
+  REQUIRE(shape);
+  REQUIRE(valid.append(group.value(), "children", shape.value()));
+  REQUIRE(valid.commit());
+
+  auto invalid = context.edit();
+  auto box = invalid.create_node("Box");
+  REQUIRE(box);
+  auto rejected = invalid.append(group.value(), "children", box.value());
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::type_mismatch);
+  REQUIRE_FALSE(invalid.commit());
+}
+
 TEST_CASE("registry rejects descriptors whose defaults or containment lie") {
   sai::type_registry registry;
-  auto wrong_default = registry.define(sai::node_type_descriptor{
-      .name = "WrongDefault",
-      .fields = {sai::field_descriptor{
-          .name = "translation",
-          .kind = sai::value_kind::vec3f,
-          .access = sai::access_type::input_output,
-          .default_value = std::string{"not a vector"},
-          .containment = false,
-      }},
-  });
+  auto wrong_default = registry.define(test_node_type(
+      "WrongDefault",
+      {test_field("translation", sai::value_kind::vec3f,
+                  sai::access_type::input_output,
+                  std::string{"not a vector"})}));
   REQUIRE_FALSE(wrong_default);
   CHECK(wrong_default.error().code == sai::error_code::invalid_descriptor);
 
-  auto wrong_containment = registry.define(sai::node_type_descriptor{
-      .name = "WrongContainment",
-      .fields = {sai::field_descriptor{
-          .name = "translation",
-          .kind = sai::value_kind::vec3f,
-          .access = sai::access_type::input_output,
-          .default_value = sai::vec3f{},
-          .containment = true,
-      }},
-  });
+  auto wrong_containment = registry.define(test_node_type(
+      "WrongContainment",
+      {test_field("translation", sai::value_kind::vec3f,
+                  sai::access_type::input_output, sai::vec3f{}, true)}));
   REQUIRE_FALSE(wrong_containment);
   CHECK(wrong_containment.error().code == sai::error_code::invalid_descriptor);
 }
@@ -690,6 +777,52 @@ TEST_CASE("a multi-hop route cascade preserves time and causal identity") {
   CHECK(cascade.value().state_changes->changes.size() == 3);
   CHECK(context.snapshot().read(third_value.value()).value() ==
         sai::value{sai::vec3f{7, 0, 0}});
+}
+
+TEST_CASE("routed node events obey the destination accepted-node constraint") {
+  auto source_value = test_field("value", sai::value_kind::node,
+                                 sai::access_type::input_output,
+                                 sai::node_id{});
+  source_value.accepted_node_types = {"Box"};
+  auto sink_value = test_field("value", sai::value_kind::node,
+                               sai::access_type::input_output, sai::node_id{});
+  sink_value.accepted_node_types = {"Shape"};
+
+  sai::type_registry registry;
+  REQUIRE(registry.define(test_node_type("Box", {})));
+  REQUIRE(registry.define(test_node_type("Shape", {})));
+  REQUIRE(registry.define(
+      test_node_type("NodeSource", {std::move(source_value)})));
+  REQUIRE(
+      registry.define(test_node_type("NodeSink", {std::move(sink_value)})));
+
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto box = author.create_node("Box");
+  auto source = author.create_node("NodeSource");
+  auto sink = author.create_node("NodeSink");
+  REQUIRE(box);
+  REQUIRE(source);
+  REQUIRE(sink);
+  auto output = author.field(source.value(), "value");
+  auto input = author.field(sink.value(), "value");
+  REQUIRE(output);
+  REQUIRE(input);
+  REQUIRE(author.add_route(output.value(), input.value()));
+  REQUIRE(author.commit());
+
+  auto events = context.events(sai::event_time{69.0});
+  REQUIRE(events.send(output.value(), box.value()));
+  auto rejected = events.commit();
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::type_mismatch);
+  CHECK(rejected.error().operation == "event_batch.commit");
+  CHECK(rejected.error().node == sink.value().id());
+  CHECK(rejected.error().field == "value");
+  CHECK(context.snapshot().revision() == 1);
+  CHECK(context.snapshot().read(input.value()).value() ==
+        sai::value{sai::node_id{}});
 }
 
 TEST_CASE("a route cycle reaches quiescence by firing each route once") {

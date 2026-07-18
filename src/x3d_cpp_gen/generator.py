@@ -363,6 +363,28 @@ def write_interface_registry(output_dir: str, nodes: Dict[str, X3DNode],
     print(f"Generated X3D interface registry source at {src}")
 
 
+def write_semantic_metadata_registry(output_dir: str,
+                                     nodes: Dict[str, X3DNode],
+                                     dependency_graph,
+                                     enum_defs=None,
+                                     spec_version="unknown") -> None:
+    """Write the instance-free semantic descriptor catalog."""
+    from x3d_cpp_gen.emit.semantic_metadata import (
+        gen_semantic_metadata_header, gen_semantic_metadata_source,
+    )
+    nodes_dir = os.path.join(output_dir, "x3d", "nodes")
+    os.makedirs(nodes_dir, exist_ok=True)
+    hdr = os.path.join(nodes_dir, "X3DSemanticMetadataRegistry.hpp")
+    with open(hdr, "w") as f:
+        f.write(gen_semantic_metadata_header())
+    print(f"Generated X3D semantic metadata header at {hdr}")
+    src = os.path.join(nodes_dir, "X3DSemanticMetadataRegistry.cpp")
+    with open(src, "w") as f:
+        f.write(gen_semantic_metadata_source(
+            nodes, dependency_graph, enum_defs, spec_version))
+    print(f"Generated X3D semantic metadata source at {src}")
+
+
 def generate_cpp_bindings(nodes: Dict[str, X3DNode], dependency_graph,
                           output_dir: str, templates_dir=None,
                           clang_format: str = "clang-format",
