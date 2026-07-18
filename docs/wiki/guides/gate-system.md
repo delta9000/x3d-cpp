@@ -2,7 +2,7 @@
 title: Gate System
 summary: How the golden, conformance, CLI regression, and docs gates work and how to run them.
 tags: [guide, gates, golden, conformance, regression, docs]
-updated: 2026-06-20
+updated: 2026-07-18
 related:
   - ../architecture.md
   - ../subsystems/cli-suite.md
@@ -166,6 +166,19 @@ TSVs. The commit locks the new allowed set as the regression floor.
 mise run cli-golden-gen    # validate verdicts via X3DJSAIL -validate
 mise run canon-golden-gen  # canonical reference fixtures via X3DJSAIL -canonical
 ```
+
+**Canon tier-2/3 coverage is local-only by design.** The canonical goldens are
+derivatives of the Web3D example archive (per-file attribution, ~7.4 MB) and
+are deliberately not committed — the same policy that keeps the corpus out of
+git. On a checkout without them, `canon_gate` runs **tier-1 only and states it
+unmissably** (`TIER 2/3: *** NOT RUN (0 checks) ***` in the summary and
+`T1-only coverage` in the gate PASS line — never a silent skip). To get full
+tier-2/3 coverage locally, run `mise run canon-golden-gen` once (JDK ≥ 25 +
+`X3DJSAIL.jar`; the gen script header records the official download URL); the
+gate picks the fixtures up automatically from
+`tools/x3d-cli/goldens/canonical-goldens/`. A 2026-07 re-capture with the
+current X3DJSAIL 4.0 jar reproduced the committed tier-2 baseline exactly
+(22 tolerant-diff passes), so regeneration is deterministic.
 
 These are one-time (or after expanding the corpus subset) — not part of routine CI.
 

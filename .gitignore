@@ -36,8 +36,11 @@ Testing/
 tools/x3d-cli/.javacache/
 
 # X3DJSAIL canonical reference fixtures: derived from the X3D conformance
-# example archive (per-file Web3D attribution + ~7.5MB), NOT bundled.
-# Regenerate locally with `mise run canon-golden-gen` (needs a corpus + JDK>=25).
+# example archive (per-file Web3D attribution + ~7.4MB), NOT bundled — the same
+# policy that keeps the corpus itself out of git. canon_gate therefore runs
+# tier-1-only on a fresh clone and SAYS SO loudly (no silent skip; see #105).
+# Regenerate locally with `mise run canon-golden-gen` (needs a corpus + JDK>=25
+# + X3DJSAIL.jar; the gen script header records the download URL).
 tools/x3d-cli/goldens/canonical-goldens/
 
 # X3D test corpus fetched by `mise run corpus-fetch` (default location).
