@@ -5,6 +5,14 @@ modern C++ X3D SAI. It is deliberately firewalled in
 `x3d::sai::experimental`: the library links only the C++ standard library and
 does not modify or depend on x3d-cpp's current runtime.
 
+An optional `x3d_sai_experimental_metadata` bridge copies node and field facts
+from an instance-free catalog generated from the UOM. The core kernel remains
+stdlib-only, and generated runtime node objects never participate in SAI
+identity. The adapter currently fails closed for field types not yet present in
+the experimental owning value vocabulary. Catalog provenance carries the X3D
+specification version, a deterministic SHA-256 fingerprint of the resolved
+semantic model, and the generator version.
+
 The proposal makes these design choices executable:
 
 - `node_id` is semantic identity; an `occurrence` is an ordered containment
@@ -47,20 +55,25 @@ invariant can be cited independently by the convergence register.
 
 This is a semantic reference kernel, not a complete ISO/IEC 19775-2 or
 19777-4 implementation. It currently omits parsing and serialization,
-profiles/components and units, PROTO/EXTERNPROTO expansion, node removal,
+profiles and authored unit conversion, PROTO/EXTERNPROTO expansion, node removal,
 cross-context field writes and ROUTEs, Inline loading, PROTO/IS
 apertures, runtime-originated outputOnly events, Script integration, URL
-transport, concrete browser adapters, presentation scheduling, provenance, and
-an ABI-stable boundary. EXPORT/IMPORT currently provides snapshot inspection,
+transport, concrete browser adapters, presentation scheduling, scene-change
+provenance, and an ABI-stable boundary. Generated catalog provenance is
+explicit. EXPORT/IMPORT currently provides snapshot
+inspection,
 not multi-context live publication. The event kernel is a synchronous reference
 model, not a claim that the complete live SAI capability is available.
 The load API models only cancellation and stale-completion publication rules.
 
-The type registry is handwritten test metadata for fast iteration. A future
-integration must derive it from the same versioned semantic model as generated
-node conveniences and runtime reflection. Likewise, typed fields here are
-checked views over the dynamic descriptor; generated node-specific sugar
-should remain a convenience layer and expose no additional semantics.
+Handwritten type registries remain explicit test fixtures for fast iteration.
+Production-facing experiments can instead select descriptors from the
+generated UOM catalog; unsupported value kinds are reported rather than
+silently narrowed. The current 4.0 UOM does not formally annotate per-field
+unit categories, so the catalog preserves that absence and the unit-overlay
+design remains open. Typed fields here are checked views over the dynamic
+descriptor; generated node-specific sugar should remain a convenience layer
+and expose no additional semantics.
 
 No API in this directory should be promoted merely because it compiles. The
 invariant tests and composed examples are the review surface: revise the

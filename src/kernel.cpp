@@ -191,6 +191,44 @@ find_descriptor(const detail::context_control &context,
   return nullptr;
 }
 
+bool accepts_node_type(const detail::context_control &context,
+                       const field_descriptor &field,
+                       const detail::scene_state::node_record &candidate) {
+  if (field.accepted_node_types.empty())
+    return true;
+  const auto *candidate_type = context.registry.find(candidate.type_name);
+  if (!candidate_type)
+    return false;
+  return std::any_of(
+      field.accepted_node_types.begin(), field.accepted_node_types.end(),
+      [&](const std::string &accepted) {
+        return accepted == candidate_type->name ||
+               std::find(candidate_type->interfaces.begin(),
+                         candidate_type->interfaces.end(),
+                         accepted) != candidate_type->interfaces.end();
+      });
+}
+
+bool accepts_node_payload(const detail::context_control &context,
+                          const detail::scene_state &state,
+                          const field_descriptor &field,
+                          const value &payload) {
+  if (field.kind == value_kind::node) {
+    const auto candidate = state.nodes.find(std::get<node_id>(payload).value);
+    return candidate != state.nodes.end() &&
+           accepts_node_type(context, field, candidate->second);
+  }
+  if (field.kind == value_kind::node_list) {
+    return std::ranges::all_of(
+        std::get<node_list>(payload), [&](const node_id id) {
+          const auto candidate = state.nodes.find(id.value);
+          return candidate != state.nodes.end() &&
+                 accepts_node_type(context, field, candidate->second);
+        });
+  }
+  return true;
+}
+
 value_kind kind_of(const value &field_value) {
   switch (field_value.index()) {
   case 1:
@@ -315,6 +353,13 @@ result<node> scene_edit::create_node(const std::string &type_name) {
         impl_->base->revision, "unknown node type: " + type_name);
     return *impl_->poison;
   }
+  if (type->abstract) {
+    impl_->poison = edit_error(
+        error_code::abstract_type, "scene_edit.create_node", *impl_->context,
+        impl_->base->revision,
+        "abstract node type cannot be instantiated: " + type_name);
+    return *impl_->poison;
+  }
   const node_id id{impl_->staged.next_node_id++};
   detail::scene_state::node_record record;
   record.type_name = type_name;
@@ -418,6 +463,17 @@ result<void> scene_edit::append(const node &parent, const std::string &field,
                                "containment field is not author-writable in "
                                "this lifecycle phase",
                                parent.id_, field);
+    return *impl_->poison;
+  }
+  const auto child_record = impl_->staged.nodes.find(child.id_.value);
+  if (child_record == impl_->staged.nodes.end() ||
+      !accepts_node_type(*impl_->context, *descriptor,
+                         child_record->second)) {
+    impl_->poison = edit_error(
+        error_code::type_mismatch, "scene_edit.append", *impl_->context,
+        impl_->base->revision,
+        "child type is not accepted by the field descriptor", parent.id_,
+        field);
     return *impl_->poison;
   }
   auto &field_value = parent_record->second.fields.at(field);
@@ -549,6 +605,35 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                "value does not match field descriptor",
                                target.node_, target.name_);
     return *impl_->poison;
+  }
+  if (node_authority_checked && descriptor->kind == value_kind::node) {
+    const auto id = std::get<node_id>(new_value);
+    const auto candidate = impl_->staged.nodes.find(id.value);
+    if (candidate == impl_->staged.nodes.end() ||
+        !accepts_node_type(*impl_->context, *descriptor,
+                           candidate->second)) {
+      impl_->poison = edit_error(
+          error_code::type_mismatch, "scene_edit.set", *impl_->context,
+          impl_->base->revision,
+          "node type is not accepted by the field descriptor", target.node_,
+          target.name_);
+      return *impl_->poison;
+    }
+  }
+  if (node_authority_checked && descriptor->kind == value_kind::node_list) {
+    for (const auto id : std::get<node_list>(new_value)) {
+      const auto candidate = impl_->staged.nodes.find(id.value);
+      if (candidate == impl_->staged.nodes.end() ||
+          !accepts_node_type(*impl_->context, *descriptor,
+                             candidate->second)) {
+        impl_->poison = edit_error(
+            error_code::type_mismatch, "scene_edit.set", *impl_->context,
+            impl_->base->revision,
+            "node range contains a type not accepted by the field descriptor",
+            target.node_, target.name_);
+        return *impl_->poison;
+      }
+    }
   }
   auto &stored = found->second.fields.at(target.name_);
   const value before = stored;
@@ -1087,6 +1172,36 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                target.node_, target.name_);
     return *impl_->poison;
   }
+  if (node_authority_checked && descriptor->kind == value_kind::node) {
+    const auto id = std::get<node_id>(payload);
+    const auto candidate = impl_->base->nodes.find(id.value);
+    if (candidate == impl_->base->nodes.end() ||
+        !accepts_node_type(*impl_->context, *descriptor,
+                           candidate->second)) {
+      impl_->poison = edit_error(
+          error_code::type_mismatch, "event_batch.send", *impl_->context,
+          impl_->base->revision,
+          "node event type is not accepted by the field descriptor",
+          target.node_, target.name_);
+      return *impl_->poison;
+    }
+  }
+  if (node_authority_checked && descriptor->kind == value_kind::node_list) {
+    for (const auto id : std::get<node_list>(payload)) {
+      const auto candidate = impl_->base->nodes.find(id.value);
+      if (candidate == impl_->base->nodes.end() ||
+          !accepts_node_type(*impl_->context, *descriptor,
+                             candidate->second)) {
+        impl_->poison = edit_error(
+            error_code::type_mismatch, "event_batch.send", *impl_->context,
+            impl_->base->revision,
+            "node event range contains a type not accepted by the field "
+            "descriptor",
+            target.node_, target.name_);
+        return *impl_->poison;
+      }
+    }
+  }
   const auto duplicate = std::find_if(impl_->seeds.begin(), impl_->seeds.end(),
                                       [&](const event_delivery &seed) {
                                         return seed.target == target.node_ &&
@@ -1151,6 +1266,22 @@ result<event_result> event_batch::commit() {
       if (candidate.source != source_target ||
           candidate.source_field != source_field)
         continue;
+      const auto sink = staged.nodes.find(candidate.sink.value);
+      const auto *sink_descriptor =
+          sink == staged.nodes.end()
+              ? nullptr
+              : find_descriptor(*impl_->context, sink->second,
+                                candidate.sink_field);
+      if (!sink_descriptor ||
+          !accepts_node_payload(*impl_->context, staged, *sink_descriptor,
+                                source_payload)) {
+        return edit_error(
+            error_code::type_mismatch, "event_batch.commit", *impl_->context,
+            impl_->base->revision,
+            "routed node event type is not accepted by the destination field "
+            "descriptor",
+            candidate.sink, candidate.sink_field);
+      }
       route_fired[route_index] = true;
       deliveries.push_back(event_delivery{.time = impl_->time,
                                           .target = candidate.sink,

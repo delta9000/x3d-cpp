@@ -54,6 +54,11 @@ enum class access_type {
   input_output,
 };
 
+enum class default_source {
+  field_type,
+  schema,
+};
+
 template <class T> struct value_traits;
 template <> struct value_traits<bool> {
   static constexpr value_kind kind = value_kind::boolean;
@@ -100,6 +105,8 @@ enum class error_code {
   event_time_regression,
   cancelled,
   stale_completion,
+  unsupported_field_type,
+  abstract_type,
 };
 
 struct sai_error {
@@ -183,12 +190,19 @@ struct field_descriptor {
   value_kind kind = value_kind::string;
   access_type access = access_type::input_output;
   value default_value;
+  default_source default_origin = default_source::field_type;
   bool containment = false;
+  std::vector<std::string> accepted_node_types;
+  std::optional<std::string> unit_category;
 };
 
 struct node_type_descriptor {
   std::string name;
   std::vector<field_descriptor> fields;
+  std::string component;
+  int component_level = 0;
+  std::vector<std::string> interfaces;
+  bool abstract = false;
 };
 
 class type_registry {
