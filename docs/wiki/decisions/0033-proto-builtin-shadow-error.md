@@ -53,7 +53,13 @@ registry, so they pass untouched — the check only rejects masquerade-as-a-core
 **Positive:**
 - Closes a silent built-in-subversion vector; built-in semantics become inviolable (composes with
   ADR-0001's firewall).
-- Deterministic resolution of the spec's "undefined" (built-in precedence), matching X_ITE.
+- Deterministic resolution of the spec's "undefined" (built-in precedence), matching X_ITE and
+  FreeWRL — two independent implementations already converged on the same policy.
+- Conforming implementations currently diverge on this exact case, not just on how to read
+  "results undefined": at least one currently-shipping implementation, X3DOM, lets a same-named
+  PROTO take precedence over the built-in — the opposite of the policy adopted here (and by X_ITE
+  and FreeWRL). That divergence grounds the built-in-precedence question in an observed
+  interoperability gap rather than a purely hypothetical reading of the spec text.
 - Auditable via `ProtoWarning`, like recursion / unresolved-extern warnings.
 
 **Trade-offs:**
