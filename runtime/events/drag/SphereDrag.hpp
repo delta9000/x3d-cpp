@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace x3d::runtime {
 
@@ -112,7 +113,7 @@ inline SphereDragResult sphereDrag(const Mat4 &sensorFrame,
       SFVec3f perp = scross(p0_hat, t);
       float pn = slen(perp);
       if (pn > 1e-9f) perp = SFVec3f{perp.x / pn, perp.y / pn, perp.z / pn};
-      rRel = SFRotation{perp.x, perp.y, perp.z, static_cast<float>(M_PI)};
+      rRel = SFRotation{perp.x, perp.y, perp.z, static_cast<float>(std::numbers::pi)};
     }
   } else {
     axis = SFVec3f{axis.x / axisLen, axis.y / axisLen, axis.z / axisLen};

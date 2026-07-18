@@ -172,11 +172,25 @@ target_compile_features(x3d_cpp_headers INTERFACE cxx_std_20)
 # in this baseline. X3D_CPP_WERROR (default OFF) promotes warnings to errors
 # for the merge gate — the `ci` CMake preset flips it ON so local `mise run ci`
 # matches the GitHub Actions fast gate.
+#
+# The -W flags are GCC/Clang syntax. Real MSVC (cl.exe) rejects them — passing
+# `-Wextra` fails configure with `D8021 invalid numeric argument`. clang-cl
+# reports as Clang (not MSVC) and accepts the GCC/Clang flags, so the MSVC branch
+# below fires ONLY for genuine cl.exe (the local clang-cl cross-build and the
+# GitHub MSVC job take opposite branches, which is intended).
 # ---------------------------------------------------------------------------
-add_compile_options(-Wall -Wextra)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options(/W3)   # MSVC baseline; the tree is not yet /W4-clean
+else()
+    add_compile_options(-Wall -Wextra)
+endif()
 option(X3D_CPP_WERROR "Treat compiler warnings as errors (the merge gate enables this via the ci preset)" OFF)
 if(X3D_CPP_WERROR)
-    add_compile_options(-Werror)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        add_compile_options(/WX)
+    else()
+        add_compile_options(-Werror)
+    endif()
     message(STATUS "x3d_cpp: X3D_CPP_WERROR=ON -> warnings treated as errors")
 endif()
 

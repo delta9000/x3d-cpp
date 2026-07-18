@@ -121,7 +121,7 @@ TEST_CASE("instancing: every placement shares ONE MeshData allocation") {
   REQUIRE(ex.itemCount() == static_cast<std::size_t>(kInstances));
 
   const MeshData *first = ex.item(0).mesh.get();
-  REQUIRE(first != nullptr);
+  REQUIRE((first != nullptr));
   REQUIRE_FALSE(first->positions.empty());
 
   std::set<const MeshData *> distinctAllocations;
@@ -259,11 +259,11 @@ TEST_CASE("instancing: geometry content change rebuilds once and RE-shares") {
   for (auto &f : shape->fields())
     if (f.x3dName == "geometry")
       ifs = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*shape));
-  REQUIRE(ifs != nullptr);
+  REQUIRE((ifs != nullptr));
   for (auto &f : ifs->fields())
     if (f.x3dName == "coord")
       coord = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*ifs));
-  REQUIRE(coord != nullptr);
+  REQUIRE((coord != nullptr));
 
   ctx.tick(1.0);
   REQUIRE(ctx.writeField(coord.get(), "point",

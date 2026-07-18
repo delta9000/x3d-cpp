@@ -86,7 +86,12 @@ static tinfl_status tinfl_decompress(tinfl_decompressor *r,
 #define TINFL_FAST_LOOKUP_BITS 10
 #define TINFL_FAST_LOOKUP_SIZE (1 << TINFL_FAST_LOOKUP_BITS)
 
-#if defined(__GNUC__) || defined(__clang__)
+// Must be a preprocessor-evaluable constant: this feeds `#if
+// TINFL_HAS_64BIT_REGISTERS` below, where `sizeof` is illegal (real MSVC cl.exe
+// rejects it with C1017). UINTPTR_MAX (from <stdint.h>, included above) is
+// preprocessor-safe on GCC/Clang AND MSVC. clang-cl defines __clang__ so it
+// already took this branch — only genuine cl.exe hit the sizeof fallback.
+#if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
 #define TINFL_HAS_64BIT_REGISTERS (UINTPTR_MAX > 0xFFFFFFFFu)
 #else
 #define TINFL_HAS_64BIT_REGISTERS (sizeof(size_t) > 4)

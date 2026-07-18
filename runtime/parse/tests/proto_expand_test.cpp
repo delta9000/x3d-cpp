@@ -194,7 +194,7 @@ static void routesAndRedirectsTest() {
   inst.name = "Anim"; inst.declaration = decl; inst.DEF = "A";
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> warnings;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
-  CHECK((primary));
+  CHECK((primary != nullptr));
 
   // body route pre-resolved to concrete cloned endpoints
   CHECK((scene.resolvedProtoRoutes.size() == 1));

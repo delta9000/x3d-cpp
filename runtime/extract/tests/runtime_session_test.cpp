@@ -118,7 +118,7 @@ TEST_CASE("RuntimeSession: owns the document, so the scene outlives the caller's
   RenderDelta f0 = s->fullSnapshot(); // still valid: the session owns it.
   CHECK(f0.added.size() == 1);
   CHECK(s->document().scene.rootNodes.size() == 4);
-  CHECK(s->scene().resolve("Mover") != nullptr);
+  CHECK((s->scene().resolve("Mover") != nullptr));
 }
 
 TEST_CASE("RuntimeSession: SessionOptions.assetResolver drives LoadSensor (§9)") {
@@ -146,7 +146,7 @@ TEST_CASE("RuntimeSession: SessionOptions.assetResolver drives LoadSensor (§9)"
   for (auto &r : s->scene().rootNodes)
     if (auto *p = dynamic_cast<x3d::nodes::LoadSensor *>(r.get()))
       ls = p;
-  REQUIRE(ls != nullptr);
+  REQUIRE((ls != nullptr));
   CHECK(ls->getIsLoaded());
   CHECK(ls->getLoadTime() == 3.0);
 }

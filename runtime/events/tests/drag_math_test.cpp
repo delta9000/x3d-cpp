@@ -21,6 +21,7 @@
 #include "Mat4.hpp"
 
 #include <cmath>
+#include <numbers>
 #include <iostream>
 #include <string>
 
@@ -109,7 +110,7 @@ void testPlane() {
   // --- axisRotation: rotate sensor frame 90deg about Z so world +X maps to
   //     sensor +Y. A world-space hit displaced +X should appear as +Y delta.
   {
-    SFRotation axis{0, 0, 1, static_cast<float>(M_PI) / 2.0f};
+    SFRotation axis{0, 0, 1, static_cast<float>(std::numbers::pi) / 2.0f};
     Mat4 rframe = Mat4::rotation(axis); // M_sensor = world(I) * R(axisRotation)
     // initial hit at world origin -> sensor-local also origin (on z=0)
     SFVec3f p0r{0, 0, 0};
@@ -145,7 +146,7 @@ void testSphere() {
     check(veq(r.trackPoint, SFVec3f{2, 0, 0}), "sphere trackPoint on +X surface");
     // cross(+Z,+X) = (0*0-1*0, 1*1-0*0, 0*0-0*1)... cross(z,x)= +Y? compute:
     // z=(0,0,1) x=(1,0,0): cross = (0*0-1*0, 1*1-0*0, 0*0-0*1) = (0,1,0)
-    check(feq(std::fabs(r.rotation.angle), static_cast<float>(M_PI) / 2.0f),
+    check(feq(std::fabs(r.rotation.angle), static_cast<float>(std::numbers::pi) / 2.0f),
           "sphere rotation angle 90deg");
     // axis should be +Y (normalized)
     check(feq(r.rotation.x, 0) && feq(r.rotation.y, 1) && feq(r.rotation.z, 0),
@@ -168,9 +169,9 @@ void testSphere() {
     Ray ray;
     ray.origin = SFVec3f{0.0f, 0.0f, 10.0f};
     ray.direction = SFVec3f{0.0f, 0.0f, -1.0f};
-    SFRotation offset{0, 1, 0, static_cast<float>(M_PI) / 2.0f};
+    SFRotation offset{0, 1, 0, static_cast<float>(std::numbers::pi) / 2.0f};
     SphereDragResult r = sphereDrag(frame, p0, ray, offset);
-    check(feq(r.rotation.angle, static_cast<float>(M_PI) / 2.0f),
+    check(feq(r.rotation.angle, static_cast<float>(std::numbers::pi) / 2.0f),
           "sphere offset passes through when no motion (angle)");
     check(feq(std::fabs(r.rotation.y), 1.0f), "sphere offset axis +Y");
   }
@@ -181,7 +182,7 @@ void testSphere() {
 // ---------------------------------------------------------------------------
 void testCylinder() {
   Mat4 frame = Mat4::identity();
-  const float diskAngle = static_cast<float>(M_PI) / 12.0f; // 15deg default
+  const float diskAngle = static_cast<float>(std::numbers::pi) / 12.0f; // 15deg default
 
   // --- CYLINDER mode: bearing nearly perpendicular to Y (along -Z) so the
   //     acute angle to Y is ~90deg >= diskAngle. Activation hit at (2,0,0):
@@ -201,7 +202,7 @@ void testCylinder() {
     // zero_vec +X, curr_vec at (0,0,2)->+Z. angle from +X to +Z about +Y:
     // atan2(cross2D(+X,+Z), dot) ; cross2D(ref,cur)=ref.x*cur.z-ref.z*cur.x=1*1-0*0=1
     // dot=0 -> atan2(1,0)=+pi/2
-    check(feq(r.rotation.angle, static_cast<float>(M_PI) / 2.0f),
+    check(feq(r.rotation.angle, static_cast<float>(std::numbers::pi) / 2.0f),
           "cylinder rotation +90deg about Y");
     check(feq(r.rotation.x, 0) && feq(r.rotation.y, 1) && feq(r.rotation.z, 0),
           "cylinder rotation axis +Y");
@@ -219,7 +220,7 @@ void testCylinder() {
         cylinderDrag(frame, p0, bearingDir, ray, diskAngle, 0.0f, 0.0f, -1.0f);
     check(r.mode == CylinderMode::Disk, "disk mode selected (parallel bearing)");
     // ref=+X(1,0,0), cur at (0,0,1)->+Z. angle +pi/2 about Y (same as above)
-    check(feq(r.rotation.angle, static_cast<float>(M_PI) / 2.0f),
+    check(feq(r.rotation.angle, static_cast<float>(std::numbers::pi) / 2.0f),
           "disk rotation +90deg about Y");
   }
 
@@ -275,7 +276,7 @@ void testCylinder() {
     ray.direction = SFVec3f{0.0f, 0.0f, -1.0f};
     CylinderDragResult r =
         cylinderDrag(frame, p0, bearingDir, ray, diskAngle, 0.1f, 0.0f, -1.0f);
-    check(feq(r.rotation.angle, static_cast<float>(M_PI) / 2.0f + 0.1f),
+    check(feq(r.rotation.angle, static_cast<float>(std::numbers::pi) / 2.0f + 0.1f),
           "cylinder offset added to angle");
   }
 }

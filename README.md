@@ -88,18 +88,23 @@ Full-quality WebM:
 ## Supported platforms & versions
 
 What is actually verified, as opposed to what might work. At 0.1 the honest
-answer is **Linux-tested; macOS and Windows are intended but not demonstrated**.
+answer is **Linux is the gated tier; macOS (Apple Clang) and Windows (real MSVC)
+are now compile- and test-verified for a core slice in CI, with the full behavior
+suite compiling under both locally — but neither is yet a blocking merge gate**.
 
 | Platform | Status |
 |---|---|
-| Linux x86-64, GCC 11+ | **Supported** — every push builds + tests here, also under ASan/UBSan |
+| Linux x86-64, GCC 11+ | **Supported (gated)** — every push builds + tests here, also under ASan/UBSan |
 | Linux x86-64, Clang 14+ | **Supported** — via the CI compiler matrix (run manually before releases, not per-push) plus the per-push Clang libFuzzer gate |
-| macOS | **Not verified.** The build carries an `@loader_path` install-RPATH branch and nothing else Apple-specific. No CI job runs here. |
-| Windows / MSVC | **Not verified.** The build sets `WINDOWS_EXPORT_ALL_SYMBOLS` and nothing else. No CI job runs here; expect to hit issues (e.g. `/bigobj`) before it links. |
+| macOS arm64, Apple Clang | **Compile + test verified (non-blocking).** The `cross-platform-smoke` CI job builds + `ctest`s the LoadSensor + FileResolver suites on `macos-latest`; the whole `x3d_behavior_tests` aggregate compiles locally. `continue-on-error`, so informational, not a gate. |
+| Windows x64, MSVC | **Compile + test verified (non-blocking).** The same smoke job builds + `ctest`s those suites with **real MSVC** on `windows-latest`; the whole `x3d_behavior_tests` aggregate compiles + runs under real `cl.exe` locally via `mise run build-msvc-real` (msvc-wine) and the faster `mise run build-msvc` (clang-cl + xwin). `continue-on-error`. |
 
-CI's compiler matrix varies the **compiler**, not the OS — all sixteen jobs run
-on `ubuntu-latest`/`ubuntu-22.04`. A macOS or Windows report is welcome and is
-what would move either row; until a job runs there, neither is a claim we make.
+The per-PR `cross-platform-smoke` job (macOS + Windows) is non-blocking; the
+heavier compiler matrix still varies the **compiler on Linux**, not the OS.
+Promoting the smoke to a required gate over the full suite is the next step.
+Local MSVC / Apple-Clang pre-flight — the fast way to catch portability drift
+before pushing — is `mise run build-msvc` (clang-cl) and `mise run build-msvc-real`
+(authoritative real cl.exe); see `cmake/toolchains/`.
 
 **X3D versions.** Two axes, which are easy to conflate:
 

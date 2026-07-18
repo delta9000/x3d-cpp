@@ -950,7 +950,11 @@ int main(int argc, char **argv) {
   if (argc > 1) {
     // accept argv[1] as data dir for the file-based tests
     std::string d = argv[1];
+#ifdef _WIN32
+    _putenv_s("X3D_TEST_DATA_DIR", d.c_str()); // setenv is POSIX; MSVC uses this
+#else
     setenv("X3D_TEST_DATA_DIR", d.c_str(), 1);
+#endif
   }
 
   initOnlyValueForwardTest();
