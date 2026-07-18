@@ -1009,6 +1009,72 @@ TEST_CASE("DEF and import names share one atomic local collision domain") {
   CHECK(imported_parent.snapshot().revision() == 0);
 }
 
+TEST_CASE("source export remapping invalidates a staged import atomically") {
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto parent = host.create_scene();
+  auto source_edit = source.edit();
+  auto first = source_edit.create_node("Transform");
+  auto second = source_edit.create_node("Transform");
+  REQUIRE(first);
+  REQUIRE(second);
+  REQUIRE(source_edit.export_node("Shared", first.value()));
+  REQUIRE(source_edit.commit());
+
+  auto staged = parent.edit();
+  REQUIRE(staged.import_node("Remote", source, "Shared"));
+  int callbacks = 0;
+  auto observed = parent.observe([&](const sai::change_set &) { ++callbacks; });
+
+  const auto source_before = source.snapshot();
+  auto remap = source.edit();
+  REQUIRE(remap.remove_export(source_before.exports().front()));
+  REQUIRE(remap.export_node("Shared", second.value()));
+  REQUIRE(remap.commit());
+
+  auto rejected = staged.commit();
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::stale_aperture);
+  CHECK(parent.snapshot().revision() == 0);
+  CHECK(parent.snapshot().imports().empty());
+  CHECK(parent.drain().delivered == 0);
+  CHECK(callbacks == 0);
+  CHECK(observed.active());
+}
+
+TEST_CASE("ordered imports are their own removal tokens") {
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto parent = host.create_scene();
+  auto source_edit = source.edit();
+  auto first = source_edit.create_node("Transform");
+  auto second = source_edit.create_node("Transform");
+  REQUIRE(first);
+  REQUIRE(second);
+  REQUIRE(source_edit.export_node("First", first.value()));
+  REQUIRE(source_edit.export_node("Second", second.value()));
+  REQUIRE(source_edit.commit());
+
+  auto imports = parent.edit();
+  REQUIRE(imports.import_node("A", source, "First"));
+  REQUIRE(imports.import_node("B", source, "Second"));
+  REQUIRE(imports.commit());
+  const auto before = parent.snapshot();
+  REQUIRE(before.imports().size() == 2);
+  CHECK(before.imports()[0].local_name == "A");
+  CHECK(before.imports()[1].local_name == "B");
+
+  auto remove = parent.edit();
+  REQUIRE(remove.remove_import(before.imports().front()));
+  auto committed = remove.commit();
+  REQUIRE(committed);
+  REQUIRE(committed.value().changes.size() == 1);
+  CHECK(committed.value().changes[0].kind == sai::change_kind::import_removed);
+  const auto after = parent.snapshot();
+  REQUIRE(after.imports().size() == 1);
+  CHECK(after.imports()[0].local_name == "B");
+}
+
 TEST_CASE("enumerated roots names and routes are their own removal tokens") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();
