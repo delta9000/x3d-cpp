@@ -579,6 +579,40 @@ void testRotationParseZeroAxis() {
         "SFRotation: parses zero-axis vector without crash");
 }
 
+// ============================================================================
+// 7. Shortest-round-trip float formatting
+// ============================================================================
+void testShortestRoundTripFormatting() {
+  // 0.9f used to serialize as "0.899999976" (fixed precision(9)); the writers
+  // must emit the shortest digits that parse back to the same value — what a
+  // human wrote. (The canonical writer already did this via to_chars.)
+  auto sf = [](float v) {
+    return formatValue(X3DFieldType::SFFloat, std::any(v));
+  };
+  auto sd = [](double v) {
+    return formatValue(X3DFieldType::SFDouble, std::any(v));
+  };
+  check(sf(0.9f) == "0.9", "0.9f prints as 0.9, got " + sf(0.9f));
+  check(sf(0.1f) == "0.1", "0.1f prints as 0.1");
+  check(sf(1.570796f) == "1.570796", "1.570796f keeps its authored digits");
+  check(sf(2.0f) == "2", "integral float stays undotted");
+  check(sf(-0.25f) == "-0.25", "negative exact float");
+  check(sd(0.9) == "0.9", "0.9 double prints as 0.9");
+  check(sd(2.0) == "2", "integral double stays undotted");
+
+  // Round-trip exactness: shortest form must parse back bit-identical.
+  for (float v : {0.9f, 0.1f, 1.570796f, 3.14159265f, 1e-7f, 1.0e20f, -0.25f,
+                  16777217.0f}) {
+    float back = std::any_cast<float>(parseValue(X3DFieldType::SFFloat, sf(v)));
+    check(back == v, "float round-trips exactly: " + sf(v));
+  }
+  for (double v : {0.9, 1e-12, 2.718281828459045, -1.0e120}) {
+    double back =
+        std::any_cast<double>(parseValue(X3DFieldType::SFDouble, sd(v)));
+    check(back == v, "double round-trips exactly: " + sd(v));
+  }
+}
+
 } // namespace
 
 TEST_CASE("fval_extended_test") {
@@ -622,6 +656,7 @@ TEST_CASE("fval_extended_test") {
 
   // Section 6: locale
   testFloatFormatLocaleIndependent();
+  testShortestRoundTripFormatting();
   testFloatFormatLocaleNaN();
   testFloatParseRejectsComma();
 

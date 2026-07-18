@@ -55,7 +55,7 @@
                       "-material": [
                         { "Material": {
                           "@DEF": "MaterialOffWhite",
-                          "@diffuseColor": [0.980391979,0.976471007,0.964706004]
+                          "@diffuseColor": [0.980392,0.976471,0.964706]
                         } }
                       ],
                       "-texture": [

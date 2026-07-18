@@ -1,6 +1,7 @@
 #include "FieldValueIO.hpp"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <cstdint>
@@ -24,9 +25,20 @@ std::string fmtFloat(float v) {
   if (v == static_cast<long long>(v) && std::fabs(v) < 1e15f) {
     return std::to_string(static_cast<long long>(v));
   }
+  // Shortest round-trip form (to_chars general): emits the fewest digits that
+  // parse back bit-identical, so an authored "0.9" serializes as "0.9", not
+  // the precision(9) "0.899999976". Locale-free by definition ('.' always).
+  // Same approach as canonFmtFloat in CanonicalXmlWriter (which is pinned
+  // separately and intentionally NOT shared — X3DC14N owns its own contract).
+  std::array<char, 32> buf;
+  auto [ptr, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), v,
+                                 std::chars_format::general);
+  if (ec == std::errc())
+    return std::string(buf.data(), ptr);
+  // Unreachable with a 32-byte buffer; keep the old path as a safe fallback.
   std::ostringstream os;
-  os.imbue(std::locale::classic()); // X3D wire uses '.' regardless of locale
-  os.precision(9);                  // enough for round-trip of float
+  os.imbue(std::locale::classic());
+  os.precision(9);
   os << v;
   return os.str();
 }
@@ -35,9 +47,14 @@ std::string fmtDouble(double v) {
   if (v == static_cast<long long>(v) && std::fabs(v) < 1e15) {
     return std::to_string(static_cast<long long>(v));
   }
+  std::array<char, 32> buf;
+  auto [ptr, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), v,
+                                 std::chars_format::general);
+  if (ec == std::errc())
+    return std::string(buf.data(), ptr);
   std::ostringstream os;
-  os.imbue(std::locale::classic()); // X3D wire uses '.' regardless of locale
-  os.precision(17);                 // enough for round-trip of double
+  os.imbue(std::locale::classic());
+  os.precision(17);
   os << v;
   return os.str();
 }
