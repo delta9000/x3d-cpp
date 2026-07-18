@@ -19,6 +19,8 @@ struct context_control;
 struct scene_state;
 } // namespace detail
 
+class execution_context;
+
 class load_ticket {
 public:
   std::uint64_t request_id() const noexcept { return request_id_; }
@@ -60,6 +62,42 @@ private:
   friend class scene_edit;
   friend class scene_snapshot;
   friend class event_batch;
+};
+
+struct semantic_node_id {
+  generation_id generation = 0;
+  node_id local;
+  friend bool operator==(semantic_node_id, semantic_node_id) = default;
+};
+
+class imported_node {
+public:
+  semantic_node_id identity() const noexcept {
+    return semantic_node_id{source_generation_, id_};
+  }
+  generation_id importer_generation() const noexcept {
+    return importer_generation_;
+  }
+  const std::string &local_name() const noexcept { return local_name_; }
+
+private:
+  imported_node(std::weak_ptr<detail::context_control> importer,
+                generation_id importer_generation,
+                std::weak_ptr<detail::context_control> source,
+                generation_id source_generation, node_id id,
+                std::string local_name)
+      : importer_(std::move(importer)),
+        importer_generation_(importer_generation), source_(std::move(source)),
+        source_generation_(source_generation), id_(id),
+        local_name_(std::move(local_name)) {}
+
+  std::weak_ptr<detail::context_control> importer_;
+  generation_id importer_generation_ = 0;
+  std::weak_ptr<detail::context_control> source_;
+  generation_id source_generation_ = 0;
+  node_id id_;
+  std::string local_name_;
+  friend class scene_snapshot;
 };
 
 template <class T> class field;
@@ -137,6 +175,8 @@ enum class change_kind {
   name_removed,
   export_added,
   export_removed,
+  import_added,
+  import_removed,
   route_added,
   route_removed,
 };
@@ -204,6 +244,15 @@ struct export_binding {
                          const export_binding &) = default;
 };
 
+struct import_binding {
+  std::string local_name;
+  generation_id source_generation = 0;
+  std::string exported_name;
+  semantic_node_id target;
+  friend bool operator==(const import_binding &,
+                         const import_binding &) = default;
+};
+
 class subscription {
 public:
   subscription() = default;
@@ -266,6 +315,9 @@ public:
   result<void> undefine_name(const std::string &name);
   result<void> export_node(const std::string &name, const node &target);
   result<void> remove_export(const export_binding &target);
+  result<void> import_node(const std::string &local_name,
+                           const execution_context &source,
+                           const std::string &exported_name);
   result<void> add_route(const dynamic_field &source,
                          const dynamic_field &sink);
   result<void> remove_route(const route &target);
@@ -300,6 +352,8 @@ public:
   const std::vector<name_binding> &names() const noexcept;
   result<node> exported(const std::string &name) const;
   const std::vector<export_binding> &exports() const noexcept;
+  result<imported_node> imported(const std::string &local_name) const;
+  const std::vector<import_binding> &imports() const noexcept;
   const std::vector<route> &routes() const noexcept;
 
 private:
@@ -364,6 +418,7 @@ private:
   explicit execution_context(std::shared_ptr<detail::context_control> control);
   std::shared_ptr<detail::context_control> control_;
   friend class browser;
+  friend class scene_edit;
 };
 
 class browser {

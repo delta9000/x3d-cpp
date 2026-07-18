@@ -936,6 +936,79 @@ TEST_CASE(
   REQUIRE_FALSE(source.snapshot().exported("PublicTransform"));
 }
 
+TEST_CASE("imports cross only explicit same-browser apertures") {
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto parent = host.create_scene();
+  auto source_edit = source.edit();
+  auto shared = source_edit.create_node("Transform");
+  REQUIRE(shared);
+  REQUIRE(source_edit.export_node("Shared", shared.value()));
+  REQUIRE(source_edit.commit());
+
+  auto parent_edit = parent.edit();
+  REQUIRE(parent_edit.import_node("Remote", source, "Shared"));
+  REQUIRE(parent_edit.commit());
+  const auto snapshot = parent.snapshot();
+  REQUIRE(snapshot.imports().size() == 1);
+  CHECK(snapshot.imports()[0].local_name == "Remote");
+  CHECK(snapshot.imports()[0].source_generation == source.generation());
+  CHECK(snapshot.imports()[0].exported_name == "Shared");
+  CHECK(snapshot.imports()[0].target ==
+        sai::semantic_node_id{source.generation(), shared.value().id()});
+  auto imported = snapshot.imported("Remote");
+  REQUIRE(imported);
+  CHECK(imported.value().identity() == snapshot.imports()[0].target);
+  CHECK(imported.value().local_name() == "Remote");
+
+  sai::browser foreign_host{graph_registry()};
+  auto foreign_source = foreign_host.current_scene();
+  auto foreign_edit = foreign_source.edit();
+  auto foreign_node = foreign_edit.create_node("Transform");
+  REQUIRE(foreign_node);
+  REQUIRE(foreign_edit.export_node("Foreign", foreign_node.value()));
+  REQUIRE(foreign_edit.commit());
+  auto denied_edit = parent.edit();
+  auto denied = denied_edit.import_node("Denied", foreign_source, "Foreign");
+  REQUIRE_FALSE(denied);
+  CHECK(denied.error().code == sai::error_code::invalid_context);
+  REQUIRE_FALSE(denied_edit.commit());
+  CHECK(parent.snapshot().imports().size() == 1);
+}
+
+TEST_CASE("DEF and import names share one atomic local collision domain") {
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto source_edit = source.edit();
+  auto shared = source_edit.create_node("Transform");
+  REQUIRE(shared);
+  REQUIRE(source_edit.export_node("Shared", shared.value()));
+  REQUIRE(source_edit.commit());
+
+  auto named_parent = host.create_scene();
+  auto named_edit = named_parent.edit();
+  auto local = named_edit.create_node("Transform");
+  REQUIRE(local);
+  REQUIRE(named_edit.define_name("Collision", local.value()));
+  auto import_collision = named_edit.import_node("Collision", source, "Shared");
+  REQUIRE_FALSE(import_collision);
+  CHECK(import_collision.error().code == sai::error_code::duplicate_name);
+  REQUIRE_FALSE(named_edit.commit());
+  CHECK(named_parent.snapshot().revision() == 0);
+
+  auto imported_parent = host.create_scene();
+  auto imported_edit = imported_parent.edit();
+  auto another_local = imported_edit.create_node("Transform");
+  REQUIRE(another_local);
+  REQUIRE(imported_edit.import_node("Collision", source, "Shared"));
+  auto name_collision =
+      imported_edit.define_name("Collision", another_local.value());
+  REQUIRE_FALSE(name_collision);
+  CHECK(name_collision.error().code == sai::error_code::duplicate_name);
+  REQUIRE_FALSE(imported_edit.commit());
+  CHECK(imported_parent.snapshot().revision() == 0);
+}
+
 TEST_CASE("enumerated roots names and routes are their own removal tokens") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();
