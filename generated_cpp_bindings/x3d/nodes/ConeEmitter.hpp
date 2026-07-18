@@ -209,27 +209,27 @@ protected:
 private:
   static void validateAngle(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("angle below minimum of 0");
-    if (value > 3.1416)
+    if (value > 3.1416f)
       throw std::out_of_range("angle above maximum of 3.1416");
   }
 
   static void validateDirection(const SFVec3f &value) {
 
-    if (value.x < -1)
+    if (value.x < -1.0f)
       throw std::out_of_range("direction.x below minimum of -1");
-    if (value.x > 1)
+    if (value.x > 1.0f)
       throw std::out_of_range("direction.x above maximum of 1");
 
-    if (value.y < -1)
+    if (value.y < -1.0f)
       throw std::out_of_range("direction.y below minimum of -1");
-    if (value.y > 1)
+    if (value.y > 1.0f)
       throw std::out_of_range("direction.y above maximum of 1");
 
-    if (value.z < -1)
+    if (value.z < -1.0f)
       throw std::out_of_range("direction.z below minimum of -1");
-    if (value.z > 1)
+    if (value.z > 1.0f)
       throw std::out_of_range("direction.z above maximum of 1");
   }
 

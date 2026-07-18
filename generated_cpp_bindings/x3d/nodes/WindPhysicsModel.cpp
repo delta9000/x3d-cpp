@@ -245,7 +245,7 @@ void WindPhysicsModel::checkRangesGustiness(const SFFloat &value,
                                             const std::string &nodeType,
                                             const std::string &defName,
                                             std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "gustiness",
                                   "gustiness below minimum of 0"});
 }
@@ -254,7 +254,7 @@ void WindPhysicsModel::checkRangesSpeed(const SFFloat &value,
                                         const std::string &nodeType,
                                         const std::string &defName,
                                         std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "speed",
                                   "speed below minimum of 0"});
 }
@@ -262,10 +262,10 @@ void WindPhysicsModel::checkRangesSpeed(const SFFloat &value,
 void WindPhysicsModel::checkRangesTurbulence(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "turbulence",
                                   "turbulence below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "turbulence",
                                   "turbulence above maximum of 1"});
 }

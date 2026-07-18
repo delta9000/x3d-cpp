@@ -239,6 +239,21 @@ class FieldDescriptor:
         return self.range_collect_body is not None
 
 
+def _cmp_literal(bound: str, x3d_type: X3DType) -> str:
+    """The C++ literal a bound is COMPARED against (messages keep the raw text).
+
+    For float32-element types the comparison must happen in float, so the bound
+    becomes a float literal: comparing the stored ``float`` against a double
+    literal widens the value first, and a value at exactly a decimal bound that
+    float cannot represent (e.g. beamWidth ``1.570796``, the UOM's truncation
+    of pi/2) lands epsilon above it and gets falsely flagged.
+    """
+    if not TypeRegistry.is_float32_element(x3d_type):
+        return bound
+    has_point = any(c in bound for c in ".eE")
+    return bound + ("f" if has_point else ".0f")
+
+
 def _render_constraints(name: str, x3d_type: X3DType,
                         lo: Optional[str], hi: Optional[str]) -> str:
     """Render the C++ body of validate<Name>() for a constrained field.
@@ -254,11 +269,11 @@ def _render_constraints(name: str, x3d_type: X3DType,
         out = []
         if lo is not None:
             out.append(
-                f'if ({target} < {lo}) throw std::out_of_range('
+                f'if ({target} < {_cmp_literal(lo, x3d_type)}) throw std::out_of_range('
                 f'"{label} below minimum of {lo}");')
         if hi is not None:
             out.append(
-                f'if ({target} > {hi}) throw std::out_of_range('
+                f'if ({target} > {_cmp_literal(hi, x3d_type)}) throw std::out_of_range('
                 f'"{label} above maximum of {hi}");')
         return "\n".join(out)
 
@@ -293,9 +308,11 @@ def _render_range_collect(name: str, x3d_type: X3DType,
     def group(target: str, label: str) -> str:
         out = []
         if lo is not None:
-            out.append(f'if ({target} < {lo}) {push(f"{label} below minimum of {lo}")}')
+            out.append(f'if ({target} < {_cmp_literal(lo, x3d_type)}) '
+                       f'{push(f"{label} below minimum of {lo}")}')
         if hi is not None:
-            out.append(f'if ({target} > {hi}) {push(f"{label} above maximum of {hi}")}')
+            out.append(f'if ({target} > {_cmp_literal(hi, x3d_type)}) '
+                       f'{push(f"{label} above maximum of {hi}")}')
         return "\n".join(out)
 
     def body(prefix: str) -> str:

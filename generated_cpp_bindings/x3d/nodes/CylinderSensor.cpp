@@ -360,10 +360,10 @@ void CylinderSensor::checkRangesDiskAngle(const SFFloat &value,
                                           const std::string &nodeType,
                                           const std::string &defName,
                                           std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "diskAngle",
                                   "diskAngle below minimum of 0"});
-  if (value > 1.5708)
+  if (value > 1.5708f)
     out.push_back(RangeDiagnostic{nodeType, defName, "diskAngle",
                                   "diskAngle above maximum of 1.5708"});
 }

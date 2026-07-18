@@ -160,24 +160,24 @@ void Color::checkRangesColor(const MFColor &value, const std::string &nodeType,
                              std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v.r < 0)
+    if (v.r < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                     "color.r below minimum of 0"});
-    if (v.r > 1)
+    if (v.r > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                     "color.r above maximum of 1"});
 
-    if (v.g < 0)
+    if (v.g < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                     "color.g below minimum of 0"});
-    if (v.g > 1)
+    if (v.g > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                     "color.g above maximum of 1"});
 
-    if (v.b < 0)
+    if (v.b < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                     "color.b below minimum of 0"});
-    if (v.b > 1)
+    if (v.b > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                     "color.b above maximum of 1"});
   }

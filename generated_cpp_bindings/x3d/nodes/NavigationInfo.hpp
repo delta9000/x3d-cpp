@@ -391,14 +391,14 @@ private:
 
     for (const auto &v : value) {
 
-      if (v < 0)
+      if (v < 0.0f)
         throw std::out_of_range("avatarSize below minimum of 0");
     }
   }
 
   static void validateSpeed(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("speed below minimum of 0");
   }
 
@@ -410,7 +410,7 @@ private:
 
   static void validateVisibilityLimit(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("visibilityLimit below minimum of 0");
   }
 

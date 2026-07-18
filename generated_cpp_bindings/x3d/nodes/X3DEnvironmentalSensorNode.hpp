@@ -139,13 +139,13 @@ protected:
 private:
   static void validateSize(const SFVec3f &value) {
 
-    if (value.x < 0)
+    if (value.x < 0.0f)
       throw std::out_of_range("size.x below minimum of 0");
 
-    if (value.y < 0)
+    if (value.y < 0.0f)
       throw std::out_of_range("size.y below minimum of 0");
 
-    if (value.z < 0)
+    if (value.z < 0.0f)
       throw std::out_of_range("size.z below minimum of 0");
   }
 

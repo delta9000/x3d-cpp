@@ -227,31 +227,31 @@ void EdgeEnhancementVolumeStyle::validateRanges(
 void EdgeEnhancementVolumeStyle::checkRangesEdgeColor(
     const SFColorRGBA &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.r < 0)
+  if (value.r < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "edgeColor",
                                   "edgeColor.r below minimum of 0"});
-  if (value.r > 1)
+  if (value.r > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "edgeColor",
                                   "edgeColor.r above maximum of 1"});
 
-  if (value.g < 0)
+  if (value.g < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "edgeColor",
                                   "edgeColor.g below minimum of 0"});
-  if (value.g > 1)
+  if (value.g > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "edgeColor",
                                   "edgeColor.g above maximum of 1"});
 
-  if (value.b < 0)
+  if (value.b < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "edgeColor",
                                   "edgeColor.b below minimum of 0"});
-  if (value.b > 1)
+  if (value.b > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "edgeColor",
                                   "edgeColor.b above maximum of 1"});
 
-  if (value.a < 0)
+  if (value.a < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "edgeColor",
                                   "edgeColor.a below minimum of 0"});
-  if (value.a > 1)
+  if (value.a > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "edgeColor",
                                   "edgeColor.a above maximum of 1"});
 }
@@ -259,10 +259,10 @@ void EdgeEnhancementVolumeStyle::checkRangesEdgeColor(
 void EdgeEnhancementVolumeStyle::checkRangesGradientThreshold(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "gradientThreshold",
                                   "gradientThreshold below minimum of 0"});
-  if (value > 3.1416)
+  if (value > 3.1416f)
     out.push_back(RangeDiagnostic{nodeType, defName, "gradientThreshold",
                                   "gradientThreshold above maximum of 3.1416"});
 }

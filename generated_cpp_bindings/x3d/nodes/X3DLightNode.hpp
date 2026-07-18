@@ -314,41 +314,41 @@ protected:
 private:
   static void validateAmbientIntensity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("ambientIntensity below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("ambientIntensity above maximum of 1");
   }
 
   static void validateColor(const SFColor &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("color.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("color.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("color.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("color.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("color.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("color.b above maximum of 1");
   }
 
   static void validateIntensity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("intensity below minimum of 0");
   }
 
   static void validateShadowIntensity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("shadowIntensity below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("shadowIntensity above maximum of 1");
   }
 

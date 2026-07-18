@@ -227,7 +227,7 @@ void PointProperties::validateRanges(std::vector<RangeDiagnostic> &out) const {
 void PointProperties::checkRangesPointSizeMaxValue(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "pointSizeMaxValue",
                                   "pointSizeMaxValue below minimum of 0"});
 }
@@ -235,7 +235,7 @@ void PointProperties::checkRangesPointSizeMaxValue(
 void PointProperties::checkRangesPointSizeMinValue(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "pointSizeMinValue",
                                   "pointSizeMinValue below minimum of 0"});
 }
@@ -243,7 +243,7 @@ void PointProperties::checkRangesPointSizeMinValue(
 void PointProperties::checkRangesPointSizeScaleFactor(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 1)
+  if (value < 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "pointSizeScaleFactor",
                                   "pointSizeScaleFactor below minimum of 1"});
 }

@@ -416,15 +416,15 @@ private:
 
   static void validateKnee(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("knee below minimum of 0");
   }
 
   static void validateRatio(const SFFloat &value) {
 
-    if (value < 1)
+    if (value < 1.0f)
       throw std::out_of_range("ratio below minimum of 1");
-    if (value > 20)
+    if (value > 20.0f)
       throw std::out_of_range("ratio above maximum of 20");
   }
 
@@ -436,9 +436,9 @@ private:
 
   static void validateThreshold(const SFFloat &value) {
 
-    if (value < -100)
+    if (value < -100.0f)
       throw std::out_of_range("threshold below minimum of -100");
-    if (value > 0)
+    if (value > 0.0f)
       throw std::out_of_range("threshold above maximum of 0");
   }
 

@@ -239,23 +239,23 @@ protected:
 private:
   static void validateBoundaryOpacity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("boundaryOpacity below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("boundaryOpacity above maximum of 1");
   }
 
   static void validateOpacityFactor(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("opacityFactor below minimum of 0");
   }
 
   static void validateRetainedOpacity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("retainedOpacity below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("retainedOpacity above maximum of 1");
   }
 

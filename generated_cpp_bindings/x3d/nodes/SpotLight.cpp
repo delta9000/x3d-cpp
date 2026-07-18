@@ -380,15 +380,15 @@ void SpotLight::checkRangesAttenuation(const SFVec3f &value,
                                        const std::string &nodeType,
                                        const std::string &defName,
                                        std::vector<RangeDiagnostic> &out) {
-  if (value.x < 0)
+  if (value.x < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "attenuation",
                                   "attenuation.x below minimum of 0"});
 
-  if (value.y < 0)
+  if (value.y < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "attenuation",
                                   "attenuation.y below minimum of 0"});
 
-  if (value.z < 0)
+  if (value.z < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "attenuation",
                                   "attenuation.z below minimum of 0"});
 }
@@ -397,7 +397,7 @@ void SpotLight::checkRangesBeamWidth(const SFFloat &value,
                                      const std::string &nodeType,
                                      const std::string &defName,
                                      std::vector<RangeDiagnostic> &out) {
-  if (value > 1.570796)
+  if (value > 1.570796f)
     out.push_back(RangeDiagnostic{nodeType, defName, "beamWidth",
                                   "beamWidth above maximum of 1.570796"});
 }
@@ -406,7 +406,7 @@ void SpotLight::checkRangesCutOffAngle(const SFFloat &value,
                                        const std::string &nodeType,
                                        const std::string &defName,
                                        std::vector<RangeDiagnostic> &out) {
-  if (value > 1.570796)
+  if (value > 1.570796f)
     out.push_back(RangeDiagnostic{nodeType, defName, "cutOffAngle",
                                   "cutOffAngle above maximum of 1.570796"});
 }
@@ -415,7 +415,7 @@ void SpotLight::checkRangesRadius(const SFFloat &value,
                                   const std::string &nodeType,
                                   const std::string &defName,
                                   std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "radius",
                                   "radius below minimum of 0"});
 }

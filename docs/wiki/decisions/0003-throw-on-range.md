@@ -2,7 +2,7 @@
 title: "ADR-0003: Throw on Range Violation"
 summary: Typed field setters throw std::out_of_range; the reflection set thunk is non-validating (lenient) for read-path use.
 tags: [adr, range-validation, throw, reflection, lenient-read]
-updated: 2026-06-20
+updated: 2026-07-18
 related:
   - ../architecture.md
   - ../subsystems/reflection.md
@@ -51,6 +51,20 @@ struct RangeDiagnostic {
     std::string message() const;
 };
 ```
+
+### Boundary precision (2026-07-18 refinement)
+
+Bound comparisons are evaluated **in the field's own scalar precision**: for
+float32-element types (`SFFloat`, vec/color/rotation `-f` structs and their MF
+variants) the generated checks compare against a *float* literal
+(`value > 1.570796f`), not a double one. Comparing a stored `float` against a
+double literal widens the value first, so a value authored at exactly a decimal
+bound that float cannot represent (e.g. `beamWidth='1.570796'`, the UOM's
+truncation of π/2) landed epsilon above the double literal and was falsely
+flagged — caught as the `range-only-us` divergence in the X3DJSAIL
+differential (`ConformanceNist .../DirectionalLight/test_intensitysim.x3d`).
+Diagnostic message text keeps the UOM's own digits. Double- and int-typed
+fields compare against unsuffixed literals, unchanged.
 
 ## Consequences
 

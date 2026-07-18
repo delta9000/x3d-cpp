@@ -451,41 +451,41 @@ protected:
 private:
   static void validateIntensity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("intensity below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("intensity above maximum of 1");
   }
 
   static void validateMaxBack(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("maxBack below minimum of 0");
   }
 
   static void validateMaxFront(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("maxFront below minimum of 0");
   }
 
   static void validateMinBack(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("minBack below minimum of 0");
   }
 
   static void validateMinFront(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("minFront below minimum of 0");
   }
 
   static void validatePriority(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("priority below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("priority above maximum of 1");
   }
 

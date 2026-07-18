@@ -521,7 +521,7 @@ void ParticleSystem::checkRangesColorKey(const MFFloat &value,
                                          std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < 0)
+    if (v < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "colorKey",
                                     "colorKey below minimum of 0"});
   }
@@ -530,10 +530,10 @@ void ParticleSystem::checkRangesColorKey(const MFFloat &value,
 void ParticleSystem::checkRangesLifetimeVariation(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "lifetimeVariation",
                                   "lifetimeVariation below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "lifetimeVariation",
                                   "lifetimeVariation above maximum of 1"});
 }
@@ -549,7 +549,7 @@ void ParticleSystem::checkRangesMaxParticles(
 void ParticleSystem::checkRangesParticleLifetime(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "particleLifetime",
                                   "particleLifetime below minimum of 0"});
 }
@@ -557,11 +557,11 @@ void ParticleSystem::checkRangesParticleLifetime(
 void ParticleSystem::checkRangesParticleSize(
     const SFVec2f &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.x < 0)
+  if (value.x < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "particleSize",
                                   "particleSize.x below minimum of 0"});
 
-  if (value.y < 0)
+  if (value.y < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "particleSize",
                                   "particleSize.y below minimum of 0"});
 }
@@ -572,7 +572,7 @@ void ParticleSystem::checkRangesTexCoordKey(const MFFloat &value,
                                             std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < 0)
+    if (v < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "texCoordKey",
                                     "texCoordKey below minimum of 0"});
   }

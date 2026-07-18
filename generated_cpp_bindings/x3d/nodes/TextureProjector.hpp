@@ -166,9 +166,9 @@ protected:
 private:
   static void validateFieldOfView(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("fieldOfView below minimum of 0");
-    if (value > 3.1416)
+    if (value > 3.1416f)
       throw std::out_of_range("fieldOfView above maximum of 3.1416");
   }
 

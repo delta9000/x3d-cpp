@@ -534,7 +534,7 @@ void Analyser::checkRangesFrequencyBinCount(const SFInt32 &value,
 void Analyser::checkRangesSmoothingTimeConstant(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "smoothingTimeConstant",
                                   "smoothingTimeConstant below minimum of 0"});
 }

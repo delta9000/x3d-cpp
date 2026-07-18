@@ -314,33 +314,33 @@ protected:
 private:
   static void validateAbsorption(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("absorption below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("absorption above maximum of 1");
   }
 
   static void validateDiffuse(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("diffuse below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("diffuse above maximum of 1");
   }
 
   static void validateRefraction(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("refraction below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("refraction above maximum of 1");
   }
 
   static void validateSpecular(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("specular below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("specular above maximum of 1");
   }
 

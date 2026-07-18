@@ -252,21 +252,21 @@ protected:
 private:
   static void validateGustiness(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("gustiness below minimum of 0");
   }
 
   static void validateSpeed(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("speed below minimum of 0");
   }
 
   static void validateTurbulence(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("turbulence below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("turbulence above maximum of 1");
   }
 

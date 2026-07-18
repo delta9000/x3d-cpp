@@ -306,13 +306,13 @@ protected:
 private:
   static void validateFarDistance(const SFFloat &value) {
 
-    if (value < -1)
+    if (value < -1.0f)
       throw std::out_of_range("farDistance below minimum of -1");
   }
 
   static void validateNearDistance(const SFFloat &value) {
 
-    if (value < -1)
+    if (value < -1.0f)
       throw std::out_of_range("nearDistance below minimum of -1");
   }
 

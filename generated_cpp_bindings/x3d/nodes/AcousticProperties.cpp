@@ -264,10 +264,10 @@ void AcousticProperties::validateRanges(
 void AcousticProperties::checkRangesAbsorption(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "absorption",
                                   "absorption below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "absorption",
                                   "absorption above maximum of 1"});
 }
@@ -276,10 +276,10 @@ void AcousticProperties::checkRangesDiffuse(const SFFloat &value,
                                             const std::string &nodeType,
                                             const std::string &defName,
                                             std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "diffuse",
                                   "diffuse below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "diffuse",
                                   "diffuse above maximum of 1"});
 }
@@ -287,10 +287,10 @@ void AcousticProperties::checkRangesDiffuse(const SFFloat &value,
 void AcousticProperties::checkRangesRefraction(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "refraction",
                                   "refraction below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "refraction",
                                   "refraction above maximum of 1"});
 }
@@ -298,10 +298,10 @@ void AcousticProperties::checkRangesRefraction(
 void AcousticProperties::checkRangesSpecular(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "specular",
                                   "specular below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "specular",
                                   "specular above maximum of 1"});
 }

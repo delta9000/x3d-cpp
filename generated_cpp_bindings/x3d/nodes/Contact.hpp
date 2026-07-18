@@ -654,40 +654,40 @@ protected:
 private:
   static void validateBounce(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("bounce below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("bounce above maximum of 1");
   }
 
   static void validateFrictionCoefficients(const SFVec2f &value) {
 
-    if (value.x < 0)
+    if (value.x < 0.0f)
       throw std::out_of_range("frictionCoefficients.x below minimum of 0");
 
-    if (value.y < 0)
+    if (value.y < 0.0f)
       throw std::out_of_range("frictionCoefficients.y below minimum of 0");
   }
 
   static void validateMinBounceSpeed(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("minBounceSpeed below minimum of 0");
   }
 
   static void validateSoftnessConstantForceMix(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("softnessConstantForceMix below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("softnessConstantForceMix above maximum of 1");
   }
 
   static void validateSoftnessErrorCorrection(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("softnessErrorCorrection below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("softnessErrorCorrection above maximum of 1");
   }
 

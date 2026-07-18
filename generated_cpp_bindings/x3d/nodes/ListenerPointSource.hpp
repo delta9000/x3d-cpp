@@ -241,7 +241,7 @@ protected:
 private:
   static void validateInterauralDistance(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("interauralDistance below minimum of 0");
   }
 

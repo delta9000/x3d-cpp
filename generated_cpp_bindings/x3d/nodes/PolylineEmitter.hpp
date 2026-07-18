@@ -230,19 +230,19 @@ protected:
 private:
   static void validateDirection(const SFVec3f &value) {
 
-    if (value.x < -1)
+    if (value.x < -1.0f)
       throw std::out_of_range("direction.x below minimum of -1");
-    if (value.x > 1)
+    if (value.x > 1.0f)
       throw std::out_of_range("direction.x above maximum of 1");
 
-    if (value.y < -1)
+    if (value.y < -1.0f)
       throw std::out_of_range("direction.y below minimum of -1");
-    if (value.y > 1)
+    if (value.y > 1.0f)
       throw std::out_of_range("direction.y above maximum of 1");
 
-    if (value.z < -1)
+    if (value.z < -1.0f)
       throw std::out_of_range("direction.z below minimum of -1");
-    if (value.z > 1)
+    if (value.z > 1.0f)
       throw std::out_of_range("direction.z above maximum of 1");
   }
 

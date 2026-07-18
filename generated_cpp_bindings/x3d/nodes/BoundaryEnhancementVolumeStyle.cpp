@@ -239,10 +239,10 @@ void BoundaryEnhancementVolumeStyle::validateRanges(
 void BoundaryEnhancementVolumeStyle::checkRangesBoundaryOpacity(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "boundaryOpacity",
                                   "boundaryOpacity below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "boundaryOpacity",
                                   "boundaryOpacity above maximum of 1"});
 }
@@ -250,7 +250,7 @@ void BoundaryEnhancementVolumeStyle::checkRangesBoundaryOpacity(
 void BoundaryEnhancementVolumeStyle::checkRangesOpacityFactor(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "opacityFactor",
                                   "opacityFactor below minimum of 0"});
 }
@@ -258,10 +258,10 @@ void BoundaryEnhancementVolumeStyle::checkRangesOpacityFactor(
 void BoundaryEnhancementVolumeStyle::checkRangesRetainedOpacity(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "retainedOpacity",
                                   "retainedOpacity below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "retainedOpacity",
                                   "retainedOpacity above maximum of 1"});
 }

@@ -224,9 +224,9 @@ private:
 
     for (const auto &v : value) {
 
-      if (v < -1)
+      if (v < -1.0f)
         throw std::out_of_range("buffer below minimum of -1");
-      if (v > 1)
+      if (v > 1.0f)
         throw std::out_of_range("buffer above maximum of 1");
     }
   }

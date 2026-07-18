@@ -398,10 +398,10 @@ void UniversalJoint::checkRangesStop1Bounce(const SFFloat &value,
                                             const std::string &nodeType,
                                             const std::string &defName,
                                             std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "stop1Bounce",
                                   "stop1Bounce below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "stop1Bounce",
                                   "stop1Bounce above maximum of 1"});
 }
@@ -409,10 +409,10 @@ void UniversalJoint::checkRangesStop1Bounce(const SFFloat &value,
 void UniversalJoint::checkRangesStop1ErrorCorrection(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "stop1ErrorCorrection",
                                   "stop1ErrorCorrection below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "stop1ErrorCorrection",
                                   "stop1ErrorCorrection above maximum of 1"});
 }
@@ -421,10 +421,10 @@ void UniversalJoint::checkRangesStop2Bounce(const SFFloat &value,
                                             const std::string &nodeType,
                                             const std::string &defName,
                                             std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "stop2Bounce",
                                   "stop2Bounce below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "stop2Bounce",
                                   "stop2Bounce above maximum of 1"});
 }
@@ -432,10 +432,10 @@ void UniversalJoint::checkRangesStop2Bounce(const SFFloat &value,
 void UniversalJoint::checkRangesStop2ErrorCorrection(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "stop2ErrorCorrection",
                                   "stop2ErrorCorrection below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "stop2ErrorCorrection",
                                   "stop2ErrorCorrection above maximum of 1"});
 }

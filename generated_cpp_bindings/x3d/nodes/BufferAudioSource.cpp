@@ -673,10 +673,10 @@ void BufferAudioSource::checkRangesBuffer(const MFFloat &value,
                                           std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < -1)
+    if (v < -1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "buffer",
                                     "buffer below minimum of -1"});
-    if (v > 1)
+    if (v > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "buffer",
                                     "buffer above maximum of 1"});
   }
@@ -694,7 +694,7 @@ void BufferAudioSource::checkRangesDetune(const SFFloat &value,
                                           const std::string &nodeType,
                                           const std::string &defName,
                                           std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "detune",
                                   "detune below minimum of 0"});
 }
@@ -703,7 +703,7 @@ void BufferAudioSource::checkRangesLoopEnd(const SFFloat &value,
                                            const std::string &nodeType,
                                            const std::string &defName,
                                            std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "loopEnd",
                                   "loopEnd below minimum of 0"});
 }
@@ -711,7 +711,7 @@ void BufferAudioSource::checkRangesLoopEnd(const SFFloat &value,
 void BufferAudioSource::checkRangesLoopStart(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "loopStart",
                                   "loopStart below minimum of 0"});
 }
@@ -727,7 +727,7 @@ void BufferAudioSource::checkRangesNumberOfChannels(
 void BufferAudioSource::checkRangesSampleRate(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "sampleRate",
                                   "sampleRate below minimum of 0"});
 }

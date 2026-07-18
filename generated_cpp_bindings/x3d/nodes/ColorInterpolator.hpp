@@ -160,19 +160,19 @@ private:
 
     for (const auto &v : value) {
 
-      if (v.r < 0)
+      if (v.r < 0.0f)
         throw std::out_of_range("keyValue.r below minimum of 0");
-      if (v.r > 1)
+      if (v.r > 1.0f)
         throw std::out_of_range("keyValue.r above maximum of 1");
 
-      if (v.g < 0)
+      if (v.g < 0.0f)
         throw std::out_of_range("keyValue.g below minimum of 0");
-      if (v.g > 1)
+      if (v.g > 1.0f)
         throw std::out_of_range("keyValue.g above maximum of 1");
 
-      if (v.b < 0)
+      if (v.b < 0.0f)
         throw std::out_of_range("keyValue.b below minimum of 0");
-      if (v.b > 1)
+      if (v.b > 1.0f)
         throw std::out_of_range("keyValue.b above maximum of 1");
     }
   }

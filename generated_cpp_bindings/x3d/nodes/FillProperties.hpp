@@ -227,19 +227,19 @@ protected:
 private:
   static void validateHatchColor(const SFColor &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("hatchColor.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("hatchColor.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("hatchColor.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("hatchColor.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("hatchColor.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("hatchColor.b above maximum of 1");
   }
 

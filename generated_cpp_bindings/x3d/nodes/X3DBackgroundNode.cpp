@@ -299,10 +299,10 @@ void X3DBackgroundNode::checkRangesGroundAngle(
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < 0)
+    if (v < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "groundAngle",
                                     "groundAngle below minimum of 0"});
-    if (v > 1.5708)
+    if (v > 1.5708f)
       out.push_back(RangeDiagnostic{nodeType, defName, "groundAngle",
                                     "groundAngle above maximum of 1.5708"});
   }
@@ -313,24 +313,24 @@ void X3DBackgroundNode::checkRangesGroundColor(
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v.r < 0)
+    if (v.r < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "groundColor",
                                     "groundColor.r below minimum of 0"});
-    if (v.r > 1)
+    if (v.r > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "groundColor",
                                     "groundColor.r above maximum of 1"});
 
-    if (v.g < 0)
+    if (v.g < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "groundColor",
                                     "groundColor.g below minimum of 0"});
-    if (v.g > 1)
+    if (v.g > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "groundColor",
                                     "groundColor.g above maximum of 1"});
 
-    if (v.b < 0)
+    if (v.b < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "groundColor",
                                     "groundColor.b below minimum of 0"});
-    if (v.b > 1)
+    if (v.b > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "groundColor",
                                     "groundColor.b above maximum of 1"});
   }
@@ -342,10 +342,10 @@ void X3DBackgroundNode::checkRangesSkyAngle(const MFFloat &value,
                                             std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < 0)
+    if (v < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "skyAngle",
                                     "skyAngle below minimum of 0"});
-    if (v > 3.1416)
+    if (v > 3.1416f)
       out.push_back(RangeDiagnostic{nodeType, defName, "skyAngle",
                                     "skyAngle above maximum of 3.1416"});
   }
@@ -357,24 +357,24 @@ void X3DBackgroundNode::checkRangesSkyColor(const MFColor &value,
                                             std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v.r < 0)
+    if (v.r < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "skyColor",
                                     "skyColor.r below minimum of 0"});
-    if (v.r > 1)
+    if (v.r > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "skyColor",
                                     "skyColor.r above maximum of 1"});
 
-    if (v.g < 0)
+    if (v.g < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "skyColor",
                                     "skyColor.g below minimum of 0"});
-    if (v.g > 1)
+    if (v.g > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "skyColor",
                                     "skyColor.g above maximum of 1"});
 
-    if (v.b < 0)
+    if (v.b < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "skyColor",
                                     "skyColor.b below minimum of 0"});
-    if (v.b > 1)
+    if (v.b > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "skyColor",
                                     "skyColor.b above maximum of 1"});
   }
@@ -383,10 +383,10 @@ void X3DBackgroundNode::checkRangesSkyColor(const MFColor &value,
 void X3DBackgroundNode::checkRangesTransparency(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "transparency",
                                   "transparency below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "transparency",
                                   "transparency above maximum of 1"});
 }

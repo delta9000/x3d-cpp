@@ -319,9 +319,9 @@ private:
 
     for (const auto &v : value) {
 
-      if (v < 0)
+      if (v < 0.0f)
         throw std::out_of_range("groundAngle below minimum of 0");
-      if (v > 1.5708)
+      if (v > 1.5708f)
         throw std::out_of_range("groundAngle above maximum of 1.5708");
     }
   }
@@ -330,19 +330,19 @@ private:
 
     for (const auto &v : value) {
 
-      if (v.r < 0)
+      if (v.r < 0.0f)
         throw std::out_of_range("groundColor.r below minimum of 0");
-      if (v.r > 1)
+      if (v.r > 1.0f)
         throw std::out_of_range("groundColor.r above maximum of 1");
 
-      if (v.g < 0)
+      if (v.g < 0.0f)
         throw std::out_of_range("groundColor.g below minimum of 0");
-      if (v.g > 1)
+      if (v.g > 1.0f)
         throw std::out_of_range("groundColor.g above maximum of 1");
 
-      if (v.b < 0)
+      if (v.b < 0.0f)
         throw std::out_of_range("groundColor.b below minimum of 0");
-      if (v.b > 1)
+      if (v.b > 1.0f)
         throw std::out_of_range("groundColor.b above maximum of 1");
     }
   }
@@ -351,9 +351,9 @@ private:
 
     for (const auto &v : value) {
 
-      if (v < 0)
+      if (v < 0.0f)
         throw std::out_of_range("skyAngle below minimum of 0");
-      if (v > 3.1416)
+      if (v > 3.1416f)
         throw std::out_of_range("skyAngle above maximum of 3.1416");
     }
   }
@@ -362,28 +362,28 @@ private:
 
     for (const auto &v : value) {
 
-      if (v.r < 0)
+      if (v.r < 0.0f)
         throw std::out_of_range("skyColor.r below minimum of 0");
-      if (v.r > 1)
+      if (v.r > 1.0f)
         throw std::out_of_range("skyColor.r above maximum of 1");
 
-      if (v.g < 0)
+      if (v.g < 0.0f)
         throw std::out_of_range("skyColor.g below minimum of 0");
-      if (v.g > 1)
+      if (v.g > 1.0f)
         throw std::out_of_range("skyColor.g above maximum of 1");
 
-      if (v.b < 0)
+      if (v.b < 0.0f)
         throw std::out_of_range("skyColor.b below minimum of 0");
-      if (v.b > 1)
+      if (v.b > 1.0f)
         throw std::out_of_range("skyColor.b above maximum of 1");
     }
   }
 
   static void validateTransparency(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("transparency below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("transparency above maximum of 1");
   }
 

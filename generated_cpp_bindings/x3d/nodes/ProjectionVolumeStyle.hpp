@@ -162,9 +162,9 @@ protected:
 private:
   static void validateIntensityThreshold(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("intensityThreshold below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("intensityThreshold above maximum of 1");
   }
 

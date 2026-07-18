@@ -224,15 +224,15 @@ void X3DEnvironmentalSensorNode::validateRanges(
 void X3DEnvironmentalSensorNode::checkRangesSize(
     const SFVec3f &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.x < 0)
+  if (value.x < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "size",
                                   "size.x below minimum of 0"});
 
-  if (value.y < 0)
+  if (value.y < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "size",
                                   "size.y below minimum of 0"});
 
-  if (value.z < 0)
+  if (value.z < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "size",
                                   "size.z below minimum of 0"});
 }

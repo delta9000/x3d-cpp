@@ -180,31 +180,31 @@ void ClipPlane::checkRangesPlane(const SFVec4f &value,
                                  const std::string &nodeType,
                                  const std::string &defName,
                                  std::vector<RangeDiagnostic> &out) {
-  if (value.x < -1)
+  if (value.x < -1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "plane",
                                   "plane.x below minimum of -1"});
-  if (value.x > 1)
+  if (value.x > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "plane",
                                   "plane.x above maximum of 1"});
 
-  if (value.y < -1)
+  if (value.y < -1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "plane",
                                   "plane.y below minimum of -1"});
-  if (value.y > 1)
+  if (value.y > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "plane",
                                   "plane.y above maximum of 1"});
 
-  if (value.z < -1)
+  if (value.z < -1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "plane",
                                   "plane.z below minimum of -1"});
-  if (value.z > 1)
+  if (value.z > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "plane",
                                   "plane.z above maximum of 1"});
 
-  if (value.w < -1)
+  if (value.w < -1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "plane",
                                   "plane.w below minimum of -1"});
-  if (value.w > 1)
+  if (value.w > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "plane",
                                   "plane.w above maximum of 1"});
 }

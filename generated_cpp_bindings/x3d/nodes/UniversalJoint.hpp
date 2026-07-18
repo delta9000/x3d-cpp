@@ -418,33 +418,33 @@ protected:
 private:
   static void validateStop1Bounce(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("stop1Bounce below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("stop1Bounce above maximum of 1");
   }
 
   static void validateStop1ErrorCorrection(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("stop1ErrorCorrection below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("stop1ErrorCorrection above maximum of 1");
   }
 
   static void validateStop2Bounce(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("stop2Bounce below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("stop2Bounce above maximum of 1");
   }
 
   static void validateStop2ErrorCorrection(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("stop2ErrorCorrection below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("stop2ErrorCorrection above maximum of 1");
   }
 

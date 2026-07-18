@@ -258,31 +258,31 @@ void CartoonVolumeStyle::checkRangesColorSteps(
 void CartoonVolumeStyle::checkRangesOrthogonalColor(
     const SFColorRGBA &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.r < 0)
+  if (value.r < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "orthogonalColor",
                                   "orthogonalColor.r below minimum of 0"});
-  if (value.r > 1)
+  if (value.r > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "orthogonalColor",
                                   "orthogonalColor.r above maximum of 1"});
 
-  if (value.g < 0)
+  if (value.g < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "orthogonalColor",
                                   "orthogonalColor.g below minimum of 0"});
-  if (value.g > 1)
+  if (value.g > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "orthogonalColor",
                                   "orthogonalColor.g above maximum of 1"});
 
-  if (value.b < 0)
+  if (value.b < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "orthogonalColor",
                                   "orthogonalColor.b below minimum of 0"});
-  if (value.b > 1)
+  if (value.b > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "orthogonalColor",
                                   "orthogonalColor.b above maximum of 1"});
 
-  if (value.a < 0)
+  if (value.a < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "orthogonalColor",
                                   "orthogonalColor.a below minimum of 0"});
-  if (value.a > 1)
+  if (value.a > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "orthogonalColor",
                                   "orthogonalColor.a above maximum of 1"});
 }
@@ -290,31 +290,31 @@ void CartoonVolumeStyle::checkRangesOrthogonalColor(
 void CartoonVolumeStyle::checkRangesParallelColor(
     const SFColorRGBA &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.r < 0)
+  if (value.r < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "parallelColor",
                                   "parallelColor.r below minimum of 0"});
-  if (value.r > 1)
+  if (value.r > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "parallelColor",
                                   "parallelColor.r above maximum of 1"});
 
-  if (value.g < 0)
+  if (value.g < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "parallelColor",
                                   "parallelColor.g below minimum of 0"});
-  if (value.g > 1)
+  if (value.g > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "parallelColor",
                                   "parallelColor.g above maximum of 1"});
 
-  if (value.b < 0)
+  if (value.b < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "parallelColor",
                                   "parallelColor.b below minimum of 0"});
-  if (value.b > 1)
+  if (value.b > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "parallelColor",
                                   "parallelColor.b above maximum of 1"});
 
-  if (value.a < 0)
+  if (value.a < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "parallelColor",
                                   "parallelColor.a below minimum of 0"});
-  if (value.a > 1)
+  if (value.a > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "parallelColor",
                                   "parallelColor.a above maximum of 1"});
 }

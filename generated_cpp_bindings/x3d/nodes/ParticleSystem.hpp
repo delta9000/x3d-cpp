@@ -564,9 +564,9 @@ protected:
 private:
   static void validateLifetimeVariation(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("lifetimeVariation below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("lifetimeVariation above maximum of 1");
   }
 
@@ -578,16 +578,16 @@ private:
 
   static void validateParticleLifetime(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("particleLifetime below minimum of 0");
   }
 
   static void validateParticleSize(const SFVec2f &value) {
 
-    if (value.x < 0)
+    if (value.x < 0.0f)
       throw std::out_of_range("particleSize.x below minimum of 0");
 
-    if (value.y < 0)
+    if (value.y < 0.0f)
       throw std::out_of_range("particleSize.y below minimum of 0");
   }
 

@@ -514,7 +514,7 @@ void BiquadFilter::checkRangesDetune(const SFFloat &value,
                                      const std::string &nodeType,
                                      const std::string &defName,
                                      std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "detune",
                                   "detune below minimum of 0"});
 }
@@ -523,7 +523,7 @@ void BiquadFilter::checkRangesFrequency(const SFFloat &value,
                                         const std::string &nodeType,
                                         const std::string &defName,
                                         std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "frequency",
                                   "frequency below minimum of 0"});
 }
@@ -532,7 +532,7 @@ void BiquadFilter::checkRangesQualityFactor(const SFFloat &value,
                                             const std::string &nodeType,
                                             const std::string &defName,
                                             std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "qualityFactor",
                                   "qualityFactor below minimum of 0"});
 }

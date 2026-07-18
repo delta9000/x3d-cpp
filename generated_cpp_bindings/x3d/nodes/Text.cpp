@@ -266,7 +266,7 @@ void Text::checkRangesLength(const MFFloat &value, const std::string &nodeType,
                              std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < 0)
+    if (v < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "length",
                                     "length below minimum of 0"});
   }
@@ -276,7 +276,7 @@ void Text::checkRangesMaxExtent(const SFFloat &value,
                                 const std::string &nodeType,
                                 const std::string &defName,
                                 std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "maxExtent",
                                   "maxExtent below minimum of 0"});
 }

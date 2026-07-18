@@ -399,17 +399,17 @@ protected:
 private:
   static void validateWeightConstant1(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("weightConstant1 below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("weightConstant1 above maximum of 1");
   }
 
   static void validateWeightConstant2(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("weightConstant2 below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("weightConstant2 above maximum of 1");
   }
 

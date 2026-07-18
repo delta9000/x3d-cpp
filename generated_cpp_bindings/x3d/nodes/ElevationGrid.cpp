@@ -414,7 +414,7 @@ void ElevationGrid::checkRangesCreaseAngle(const SFFloat &value,
                                            const std::string &nodeType,
                                            const std::string &defName,
                                            std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "creaseAngle",
                                   "creaseAngle below minimum of 0"});
 }

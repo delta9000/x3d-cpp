@@ -294,47 +294,47 @@ private:
 
   static void validateOrthogonalColor(const SFColorRGBA &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("orthogonalColor.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("orthogonalColor.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("orthogonalColor.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("orthogonalColor.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("orthogonalColor.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("orthogonalColor.b above maximum of 1");
 
-    if (value.a < 0)
+    if (value.a < 0.0f)
       throw std::out_of_range("orthogonalColor.a below minimum of 0");
-    if (value.a > 1)
+    if (value.a > 1.0f)
       throw std::out_of_range("orthogonalColor.a above maximum of 1");
   }
 
   static void validateParallelColor(const SFColorRGBA &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("parallelColor.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("parallelColor.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("parallelColor.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("parallelColor.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("parallelColor.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("parallelColor.b above maximum of 1");
 
-    if (value.a < 0)
+    if (value.a < 0.0f)
       throw std::out_of_range("parallelColor.a below minimum of 0");
-    if (value.a > 1)
+    if (value.a > 1.0f)
       throw std::out_of_range("parallelColor.a above maximum of 1");
   }
 

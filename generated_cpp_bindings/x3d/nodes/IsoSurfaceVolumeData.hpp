@@ -288,7 +288,7 @@ protected:
 private:
   static void validateSurfaceTolerance(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("surfaceTolerance below minimum of 0");
   }
 

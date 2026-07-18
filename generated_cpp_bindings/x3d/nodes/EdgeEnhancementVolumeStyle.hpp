@@ -227,32 +227,32 @@ protected:
 private:
   static void validateEdgeColor(const SFColorRGBA &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("edgeColor.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("edgeColor.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("edgeColor.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("edgeColor.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("edgeColor.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("edgeColor.b above maximum of 1");
 
-    if (value.a < 0)
+    if (value.a < 0.0f)
       throw std::out_of_range("edgeColor.a below minimum of 0");
-    if (value.a > 1)
+    if (value.a > 1.0f)
       throw std::out_of_range("edgeColor.a above maximum of 1");
   }
 
   static void validateGradientThreshold(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("gradientThreshold below minimum of 0");
-    if (value > 3.1416)
+    if (value > 3.1416f)
       throw std::out_of_range("gradientThreshold above maximum of 3.1416");
   }
 

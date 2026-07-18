@@ -277,25 +277,25 @@ protected:
 private:
   static void validateMass(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("mass below minimum of 0");
   }
 
   static void validateSpeed(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("speed below minimum of 0");
   }
 
   static void validateSurfaceArea(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("surfaceArea below minimum of 0");
   }
 
   static void validateVariation(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("variation below minimum of 0");
   }
 

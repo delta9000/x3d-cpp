@@ -255,10 +255,10 @@ void X3DLightNode::validateRanges(std::vector<RangeDiagnostic> &out) const {
 void X3DLightNode::checkRangesAmbientIntensity(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "ambientIntensity",
                                   "ambientIntensity below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "ambientIntensity",
                                   "ambientIntensity above maximum of 1"});
 }
@@ -267,24 +267,24 @@ void X3DLightNode::checkRangesColor(const SFColor &value,
                                     const std::string &nodeType,
                                     const std::string &defName,
                                     std::vector<RangeDiagnostic> &out) {
-  if (value.r < 0)
+  if (value.r < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                   "color.r below minimum of 0"});
-  if (value.r > 1)
+  if (value.r > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                   "color.r above maximum of 1"});
 
-  if (value.g < 0)
+  if (value.g < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                   "color.g below minimum of 0"});
-  if (value.g > 1)
+  if (value.g > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                   "color.g above maximum of 1"});
 
-  if (value.b < 0)
+  if (value.b < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                   "color.b below minimum of 0"});
-  if (value.b > 1)
+  if (value.b > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "color",
                                   "color.b above maximum of 1"});
 }
@@ -293,7 +293,7 @@ void X3DLightNode::checkRangesIntensity(const SFFloat &value,
                                         const std::string &nodeType,
                                         const std::string &defName,
                                         std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "intensity",
                                   "intensity below minimum of 0"});
 }
@@ -301,10 +301,10 @@ void X3DLightNode::checkRangesIntensity(const SFFloat &value,
 void X3DLightNode::checkRangesShadowIntensity(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "shadowIntensity",
                                   "shadowIntensity below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "shadowIntensity",
                                   "shadowIntensity above maximum of 1"});
 }
