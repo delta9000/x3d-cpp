@@ -47,6 +47,7 @@ TEST_CASE("nurbs_curve_exact_unit_circle") {
   // Verified in double precision to 2.2e-16; here points are stored as SFVec3f
   // (float), so the achievable radius error is ~1 float ulp (~6e-8). Tolerance
   // 1e-6 is the float-correct bound (the math is exact; only storage is float).
+  // Control points are plain Euclidean corners here => Euclidean weight mode.
   const double s = std::sqrt(2.0)/2.0;
   nurbs::CurveDef c;
   c.cp = {{1,0,0},{1,1,0},{0,1,0},{-1,1,0},{-1,0,0},
@@ -54,9 +55,45 @@ TEST_CASE("nurbs_curve_exact_unit_circle") {
   c.w  = {1,s,1,s,1,s,1,s,1};
   c.knot = {0,0,0, 0.5,0.5, 1,1, 1.5,1.5, 2,2,2};
   c.order = 3;
+  c.weightMode = nurbs::NurbsWeightMode::Euclidean;
   auto pts = nurbs::tessellateCurve(c, 64);
   CHECK(pts.size() == 65);
   for (auto& p : pts) CHECK(feq((double)p.x*p.x + (double)p.y*p.y, 1.0, 1e-6));
+}
+
+TEST_CASE("nurbs_curve_premultiplied_unit_circle") {
+  // NRB-4: same unit circle, but control points PREMULTIPLIED by weight (the
+  // default, ecosystem convention). The corner points become s*(±1,±1) and the
+  // evaluator uses them verbatim in the numerator. Must trace the same circle.
+  const double s = std::sqrt(2.0)/2.0;
+  nurbs::CurveDef c;
+  c.cp = {{1,0,0},{(float)s,(float)s,0},{0,1,0},{(float)-s,(float)s,0},{-1,0,0},
+          {(float)-s,(float)-s,0},{0,-1,0},{(float)s,(float)-s,0},{1,0,0}};
+  c.w  = {1,s,1,s,1,s,1,s,1};
+  c.knot = {0,0,0, 0.5,0.5, 1,1, 1.5,1.5, 2,2,2};
+  c.order = 3;
+  // default weightMode == Premultiplied
+  auto pts = nurbs::tessellateCurve(c, 64);
+  CHECK(pts.size() == 65);
+  for (auto& p : pts) CHECK(feq((double)p.x*p.x + (double)p.y*p.y, 1.0, 1e-6));
+}
+
+TEST_CASE("nurbs_curve_unit_weights_mode_agnostic") {
+  // NRB-4: with all weights == 1 the two conventions coincide bit-for-bit, so
+  // the common case (and every existing unit-weight golden) is unaffected.
+  nurbs::CurveDef base;
+  base.cp = {{0,0,0},{1,2,0},{3,1,0},{4,4,0}};
+  base.order = 3;
+  nurbs::CurveDef e = base; e.weightMode = nurbs::NurbsWeightMode::Euclidean;
+  nurbs::CurveDef p = base; p.weightMode = nurbs::NurbsWeightMode::Premultiplied;
+  auto pe = nurbs::tessellateCurve(e, 20);
+  auto pp = nurbs::tessellateCurve(p, 20);
+  REQUIRE(pe.size() == pp.size());
+  for (std::size_t i = 0; i < pe.size(); ++i) {
+    CHECK(pe[i].x == pp[i].x);
+    CHECK(pe[i].y == pp[i].y);
+    CHECK(pe[i].z == pp[i].z);
+  }
 }
 
 TEST_CASE("nurbs_curve_closed_periodic") {

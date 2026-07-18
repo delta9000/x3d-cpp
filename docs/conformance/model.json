@@ -8817,10 +8817,10 @@
         "NurbsCurve",
         "NurbsPatchSurface"
       ],
-      "note": "runtime/extract/NurbsEval.hpp computes the rational numerator as weight * controlPoint per control point (tessellateCurve and tessellateSurface: hx = wi*P.x, hy = wi*P.y, hz = wi*P.z, ...) \u2014 the textbook homogeneous-coordinate formulation, where controlPoint and weight are independent per-point inputs and the evaluator performs the multiplication. At least three other X3D implementations instead expect authored controlPoint values to already carry the weight multiplication, using controlPoint directly as the homogeneous coordinate without re-multiplying by weight. X3D \u00a727 defines the controlPoint and weight fields but does not state which convention an author or implementation should use, so both readings are spec-permitted under the current text. Practical effect: weighted (non-unity-weight) NurbsCurve/NurbsPatchSurface content authored against the premultiplied convention tessellates to a different shape in x3d-cpp than in those other implementations. Unity-weight control points (the default, and the common case) are unaffected \u2014 both conventions coincide when weight=1. No fix is spec-mandated given the silence; options are (a) keep the current textbook convention as documented, deliberate behavior, (b) detect/support both conventions via a heuristic or opt-in flag, or (c) switch to the premultiplied convention to match the wider ecosystem. NRB-3's still-deferred trimmed/swept/swung surfaces will face the same open question if their control-point evaluation reuses this weight handling.",
+      "note": "Resolved by option (b): runtime/extract/NurbsEval.hpp gained a NurbsWeightMode { Premultiplied, Euclidean } on CurveDef/SurfaceDef, threaded through evalSurface/tessellateCurve, and surfaced as MeshBuildOptions::nurbsWeightMode. The DEFAULT is Premultiplied \u2014 controlPoint is used verbatim as the homogeneous xyz \u2014 because the entire shipping X3D ecosystem requires it: primary-source list evidence (x3d-public 2020-05, 'Nurbs control points, preweighted or not?') has Andreas Plesch ('all freeWrl, view3dscene and InstantPlayer expect premultiplied control points') and Michalis Kamburelis ('all X3D browsers require points to be premultiplied by the given weight'), the convention was set by the blaxxun/bitmanagement browser ~20 years ago, White Dune stores premultiplied handles, and X3DOM deliberately switched to it (Plesch, 2020-05-28); the X3D 4.0 keep-compat decision preserved it. The literal textbook/spec-formula reading (\u00a727, multiply weight*controlPoint inside the evaluator) remains available via NurbsWeightMode::Euclidean. X3D \u00a727 is genuinely silent on the convention, so both are spec-permitted; the default is chosen for interop faithfulness. weight==1 content (the common case + every existing golden, incl. the unit-weight Bezier teapot) is bit-identical under both modes \u2014 verified by nurbs_curve_unit_weights_mode_agnostic. Coverage: nurbs_curve_exact_unit_circle (Euclidean corners) + nurbs_curve_premultiplied_unit_circle (premultiplied corners, default mode) both trace the exact unit circle. NRB-3's deferred trimmed/swept/swung surfaces should reuse s.weightMode when they land.",
       "severity": "minor",
-      "status": "open",
-      "summary": "NurbsEval.hpp assumes controlPoint is unweighted (Euclidean); at least three other conforming X3D implementations require controlPoint to already be weight-premultiplied."
+      "status": "fixed",
+      "summary": "NURBS controlPoint weight convention now defaults to premultiplied (matching the whole shipping ecosystem), with an opt-in Euclidean/textbook mode."
     },
     {
       "clause": "40.4",
@@ -9671,7 +9671,7 @@
     ]
   },
   "summary": {
-    "closed_count": 124,
+    "closed_count": 125,
     "component_count": 36,
     "deferred_count": 39,
     "finding_count": 212,
@@ -9701,7 +9701,7 @@
       "critical": 3,
       "low": 6,
       "major": 40,
-      "minor": 39
+      "minor": 38
     }
   },
   "unresolved_findings": []

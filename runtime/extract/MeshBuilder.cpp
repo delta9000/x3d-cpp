@@ -981,6 +981,8 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     c.knot = geombounds::getField<std::vector<double>>(*geom, "knot", {});
     c.order = geombounds::getField<SFInt32>(*geom, "order", 3);
     c.closed = geombounds::getField<SFBool>(*geom, "closed", false);
+    c.weightMode = opt.nurbsWeightMode; // NRB-4
+
     if ((int)c.cp.size() < c.order)
       return mesh; // recognized, empty
     int segs = nurbs::tessellationToSegments(
@@ -1016,6 +1018,8 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     s.vOrder = geombounds::getField<SFInt32>(*geom, "vOrder", 3);
     s.uClosed = geombounds::getField<SFBool>(*geom, "uClosed", false);
     s.vClosed = geombounds::getField<SFBool>(*geom, "vClosed", false);
+    s.weightMode = opt.nurbsWeightMode; // NRB-4
+
     if (s.uDim < s.uOrder || s.vDim < s.vOrder ||
         (int)s.cp.size() < s.uDim * s.vDim)
       return mesh; // recognized, empty

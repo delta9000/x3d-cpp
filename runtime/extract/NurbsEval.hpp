@@ -13,12 +13,26 @@ namespace x3d::runtime::extract::nurbs {
 using x3d::core::SFVec3f;
 using x3d::core::SFVec2f;
 
+// How the (controlPoint, weight) pair is interpreted (NRB-4). X3D §27 is silent
+// on this and the two readings diverge for any non-unity weight:
+//   Premultiplied — controlPoint already holds the homogeneous xyz (w*P_euclidean);
+//     the evaluator uses it verbatim in the numerator. This is the DE FACTO X3D
+//     ecosystem convention: FreeWRL, view3dscene/Castle, InstantPlayer, White Dune
+//     and X3DOM all require it, and the X3D 4.0 keep-compat decision preserved it.
+//   Euclidean — controlPoint holds plain Euclidean coordinates; the evaluator
+//     multiplies by weight in the numerator (the literal textbook / spec-formula
+//     rational-B-spline form). Opt-in.
+// weight==1 (the default, common case) makes the two identical, so unit-weight
+// content — and every existing golden — is unaffected by the choice.
+enum class NurbsWeightMode { Premultiplied, Euclidean };
+
 struct CurveDef {
   std::vector<SFVec3f> cp;     // control points
   std::vector<double>  w;      // weights; empty => all 1.0
   std::vector<double>  knot;   // len cp.size()+order; empty/wrong => generated
   int  order = 3;              // = degree + 1 (min 2)
   bool closed = false;
+  NurbsWeightMode weightMode = NurbsWeightMode::Premultiplied;
 };
 
 struct SurfaceDef {
@@ -27,6 +41,7 @@ struct SurfaceDef {
   std::vector<double>  uKnot, vKnot;
   int  uDim = 0, vDim = 0, uOrder = 3, vOrder = 3;
   bool uClosed = false, vClosed = false;
+  NurbsWeightMode weightMode = NurbsWeightMode::Premultiplied;
 };
 struct SurfaceSample { SFVec3f p; SFVec3f n; SFVec2f uv; };
 
@@ -139,7 +154,8 @@ inline SurfaceSample evalSurface(const std::vector<SFVec3f>& cp,
                                  const std::vector<double>& uKnot,
                                  const std::vector<double>& vKnot,
                                  int uDim, int vDim, int uOrder, int vOrder,
-                                 double u, double v) {
+                                 double u, double v,
+                                 NurbsWeightMode mode = NurbsWeightMode::Premultiplied) {
   int pu = uOrder - 1, pv = vOrder - 1;
   int su = findSpan(uDim, uOrder, u, uKnot);
   int sv = findSpan(vDim, vOrder, v, vKnot);
@@ -153,7 +169,9 @@ inline SurfaceSample evalSurface(const std::vector<SFVec3f>& cp,
       int iu = su - pu + a, idx = iu + jv * uDim;
       double wi = w.empty() ? 1.0 : w[idx];
       const SFVec3f& P = cp[idx];
-      double hx=wi*P.x, hy=wi*P.y, hz=wi*P.z, hw=wi;
+      // Premultiplied: cp already holds w*P, use verbatim. Euclidean: scale by w.
+      double sc = mode == NurbsWeightMode::Euclidean ? wi : 1.0;
+      double hx=sc*P.x, hy=sc*P.y, hz=sc*P.z, hw=wi;
       double nN=Nu[a]*Nv[b], nU=dNu[a]*Nv[b], nV=Nu[a]*dNv[b];
       Sx+=nN*hx; Sy+=nN*hy; Sz+=nN*hz; Sw+=nN*hw;
       Ux+=nU*hx; Uy+=nU*hy; Uz+=nU*hz; Uw+=nU*hw;
@@ -256,7 +274,10 @@ inline std::vector<SFVec3f> tessellateCurve(const CurveDef& in, int segments) {
     for (int a = 0; a <= p; ++a) {
       int idx = span - p + a;
       double wi = c.w[idx], nb = N[a] * wi;
-      x += nb*c.cp[idx].x; y += nb*c.cp[idx].y; z += nb*c.cp[idx].z; w += nb;
+      // Denominator always accumulates N*w. Numerator: Premultiplied uses cp
+      // verbatim (N); Euclidean scales cp by weight (N*w).
+      double cn = c.weightMode == NurbsWeightMode::Euclidean ? nb : N[a];
+      x += cn*c.cp[idx].x; y += cn*c.cp[idx].y; z += cn*c.cp[idx].z; w += nb;
     }
     double inv = std::abs(w) > 1e-20 ? 1.0 / w : 0.0; // guard degenerate weights
     out.push_back(SFVec3f{ (float)(x*inv), (float)(y*inv), (float)(z*inv) });
@@ -279,7 +300,8 @@ inline std::vector<SurfaceSample> tessellateSurface(const SurfaceDef& in,
     for (int a = 0; a <= uSeg; ++a) {
       double u = u0 + (u1 - u0) * double(a) / double(uSeg);
       auto sm = detail::evalSurface(s.cp, s.w, s.uKnot, s.vKnot,
-                                    s.uDim, s.vDim, s.uOrder, s.vOrder, u, v);
+                                    s.uDim, s.vDim, s.uOrder, s.vOrder, u, v,
+                                    s.weightMode);
       sm.uv = SFVec2f{ (float)(double(a)/uSeg), (float)(double(b)/vSeg) };
       out.push_back(sm);
     }
