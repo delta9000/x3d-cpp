@@ -363,8 +363,14 @@ struct TextureRef {
 enum class MaterialModel : uint8_t { Phong, Physical, Unlit };
 
 // Transparency/alpha handling mode read off the Appearance.
-// descriptor-only, not exercised by PoC (the first PoC draws opaque).
+// The integer values are a WIRE CONTRACT: consumers upload `int(alphaMode)` to a
+// `uAlphaMode` shader uniform and gate the MASK cutout discard on `== 1`
+// (examples/poc_renderer/shaders/{lit,pbr}.frag). Do not reorder without updating
+// every shader that reads uAlphaMode; the static_asserts below pin the mapping.
 enum class AlphaMode { Opaque, Mask, Blend };
+static_assert(static_cast<int>(AlphaMode::Opaque) == 0, "uAlphaMode wire contract");
+static_assert(static_cast<int>(AlphaMode::Mask)   == 1, "uAlphaMode wire contract: shaders discard on == 1");
+static_assert(static_cast<int>(AlphaMode::Blend)  == 2, "uAlphaMode wire contract");
 
 struct PhongParams {
   SFColor  diffuse           {0.8f, 0.8f, 0.8f};
