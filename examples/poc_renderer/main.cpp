@@ -704,16 +704,6 @@ GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &cache,
   return 0;
 }
 
-// Convenience: resolve the BaseColor/Diffuse slot (the legacy single-texture path,
-// still called from the unlit + headless probe paths). Diffuse is a color slot
-// (sRGB-encoded); pass srgb=true.
-GLuint textureForMaterial(const ex::MaterialDesc &mat, TextureCache &cache,
-                          const ex::AssetResolver &resolver) {
-  return resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::BaseColor,
-                                         ex::TextureRef::Slot::Diffuse}),
-                       cache, resolver, /*srgb=*/true);
-}
-
 // Read the current framebuffer back and write a binary PPM (P6). Used by the
 // --screenshot acceptance path so the GL output is captured directly from the
 // driver (glReadPixels), independent of the window system's root-pixmap readback
@@ -1061,10 +1051,6 @@ int main(int argc, char **argv) {
   if (!phongProg) {
     std::fprintf(stderr, "[poc] Phong shader program unavailable; clear-only mode\n");
   }
-  // Keep `prog` as an alias so existing headless-probe code paths that reference
-  // it continue to compile without modification.
-  const GLuint &prog = phongProg;
-
   const GLint uModel = phongProg ? glGetUniformLocation(phongProg, "uModel") : -1;
   const GLint uView = phongProg ? glGetUniformLocation(phongProg, "uView") : -1;
   const GLint uProj = phongProg ? glGetUniformLocation(phongProg, "uProjection") : -1;
@@ -1884,9 +1870,11 @@ int main(int argc, char **argv) {
               case S::NumLights:
                 glUniform1i(loc, numLights); break;
               case S::LightDirection:
-                if (numLights > 0) glUniform3fv(loc, numLights, lightDir); break;
+                if (numLights > 0) glUniform3fv(loc, numLights, lightDir);
+                break;
               case S::LightColor:
-                if (numLights > 0) glUniform3fv(loc, numLights, lightCol); break;
+                if (numLights > 0) glUniform3fv(loc, numLights, lightCol);
+                break;
               case S::DiffuseColor:
                 glUniform3f(loc, mat.phong.diffuse.r, mat.phong.diffuse.g,
                              mat.phong.diffuse.b); break;

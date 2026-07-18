@@ -43,6 +43,12 @@ FetchContent_Declare(
     GIT_SHALLOW    TRUE
 )
 FetchContent_MakeAvailable(glfw)
+# Third-party warnings are GLFW's business, not ours: silence them (mirroring
+# the poc_imgui rule below) so the ~236 GLFW C warnings can't bury a first-party
+# warning in the example build. First-party targets keep warnings ON.
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(glfw PRIVATE -w)
+endif()
 
 # --------------------------------------------------------------------------
 # Dear ImGui overlay. ImGui ships no top-level CMake target, so build the core
