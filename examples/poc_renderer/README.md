@@ -35,7 +35,13 @@ With no argument it loads the bundled `assets/triangle.x3d` (first-light).
 ## Build
 
 The PoC is OFF by default. Build it into a **separate** build dir so the dev
-preset's `build/` (which `golden`/`ctest` depend on) stays pristine:
+preset's `build/` (which `golden`/`ctest` depend on) stays pristine.
+
+> **Needs internet at configure time.** Unlike the core SDK build (offline),
+> the first `mise run poc` / CMake configure downloads **GLFW (>=3.4)** and
+> **Dear ImGui** from GitHub via `FetchContent` (pinned tags; cached in the
+> build dir afterwards). The glad GL loader is committed at
+> `third_party/glad/`, so nothing else is fetched.
 
 ```sh
 mise run poc
