@@ -1378,8 +1378,13 @@ scene_snapshot::describe(const imported_node &owner) const {
   const auto importer = owner.importer_.lock();
   const auto source = owner.source_.lock();
   if (importer != context_ ||
-      owner.importer_generation_ != context_->generation || !source ||
-      source->generation != owner.source_generation_) {
+      owner.importer_generation_ != context_->generation) {
+    return edit_error(
+        error_code::invalid_context, "scene_snapshot.describe_import",
+        *context_, state_->revision,
+        "imported node belongs to another snapshot context", owner.id_);
+  }
+  if (!source || source->generation != owner.source_generation_) {
     return edit_error(
         error_code::stale_handle, "scene_snapshot.describe_import", *context_,
         state_->revision, "invalid imported node handle", owner.id_);
@@ -1478,8 +1483,13 @@ result<value> scene_snapshot::read(const dynamic_imported_field &field) const {
   const auto importer = field.importer_.lock();
   const auto source = field.source_.lock();
   if (importer != context_ ||
-      field.importer_generation_ != context_->generation || !source ||
-      source->generation != field.source_generation_) {
+      field.importer_generation_ != context_->generation) {
+    return edit_error(error_code::invalid_context, "scene_snapshot.read_import",
+                      *context_, state_->revision,
+                      "imported field belongs to another snapshot context",
+                      field.node_, field.name_);
+  }
+  if (!source || source->generation != field.source_generation_) {
     return edit_error(error_code::stale_handle, "scene_snapshot.read_import",
                       *context_, state_->revision,
                       "invalid imported field handle", field.node_,

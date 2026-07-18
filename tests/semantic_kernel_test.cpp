@@ -28,6 +28,23 @@ struct copy_bomb_observer {
   void operator()(const sai::change_set &) const { ++*calls; }
 };
 
+template <class Edit>
+concept accepts_imported_containment = requires(
+    Edit &edit, const sai::node &parent, const sai::imported_node &child) {
+  edit.append(parent, "children", child);
+};
+
+template <class Edit>
+concept accepts_imported_retained_write =
+    requires(Edit &edit, const sai::dynamic_field &target,
+             const sai::imported_node &value) { edit.set(target, value); };
+
+template <class Batch>
+concept accepts_imported_event_target =
+    requires(Batch &batch, const sai::dynamic_imported_field &target) {
+      batch.send(target, sai::value{sai::vec3f{}});
+    };
+
 sai::type_registry graph_registry() {
   sai::type_registry registry;
   REQUIRE(registry.define(sai::node_type_descriptor{
@@ -1120,6 +1137,58 @@ TEST_CASE(
   REQUIRE(current_field);
   CHECK(after.read(current_field.value()).value() ==
         sai::value{sai::vec3f{4, 5, 6}});
+}
+
+TEST_CASE("imported authority is inspection-only and context checked") {
+  static_assert(!accepts_imported_containment<sai::scene_edit>);
+  static_assert(!accepts_imported_retained_write<sai::scene_edit>);
+  static_assert(!accepts_imported_event_target<sai::event_batch>);
+  static_assert(!std::convertible_to<sai::imported_node, sai::node>);
+
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto parent = host.create_scene();
+  auto unrelated = host.create_scene();
+  auto source_edit = source.edit();
+  auto shared = source_edit.create_node("Transform");
+  REQUIRE(shared);
+  REQUIRE(source_edit.export_node("Shared", shared.value()));
+  REQUIRE(source_edit.commit());
+  auto parent_edit = parent.edit();
+  REQUIRE(parent_edit.import_node("Remote", source, "Shared"));
+  REQUIRE(parent_edit.commit());
+
+  const auto old_parent_snapshot = parent.snapshot();
+  auto imported = old_parent_snapshot.imported("Remote");
+  REQUIRE(imported);
+  auto field = old_parent_snapshot.field(imported.value(), "translation");
+  REQUIRE(field);
+  auto wrong_context = unrelated.snapshot().describe(imported.value());
+  REQUIRE_FALSE(wrong_context);
+  CHECK(wrong_context.error().code == sai::error_code::invalid_context);
+
+  int parent_callbacks = 0;
+  auto observed =
+      parent.observe([&](const sai::change_set &) { ++parent_callbacks; });
+  auto source_update = source.edit();
+  auto source_field = source_update.field(shared.value(), "translation");
+  REQUIRE(source_field);
+  REQUIRE(source_update.set(source_field.value(), sai::vec3f{1, 0, 0}));
+  REQUIRE(source_update.commit());
+  CHECK(parent.drain().delivered == 0);
+  CHECK(parent_callbacks == 0);
+  CHECK(observed.active());
+  CHECK(old_parent_snapshot.read(field.value()).value() ==
+        sai::value{sai::vec3f{}});
+
+  REQUIRE(host.replace_world(parent));
+  auto current_parent_snapshot = parent.snapshot();
+  REQUIRE_FALSE(current_parent_snapshot.imported("Remote"));
+  auto stale = current_parent_snapshot.describe(imported.value());
+  REQUIRE_FALSE(stale);
+  CHECK(stale.error().code == sai::error_code::stale_handle);
+  CHECK(old_parent_snapshot.read(field.value()).value() ==
+        sai::value{sai::vec3f{}});
 }
 
 TEST_CASE("enumerated roots names and routes are their own removal tokens") {
