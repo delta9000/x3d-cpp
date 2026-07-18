@@ -3059,7 +3059,8 @@
         "CONTAINERFIELD-FALSEPOS",
         "NRB-1",
         "NRB-2",
-        "NRB-3"
+        "NRB-3",
+        "NRB-4"
       ],
       "levels": [
         1,
@@ -3107,12 +3108,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4; ISO 19776-1 (containerField)",
+          "clause": "27.4; 27.3; ISO 19776-1 (containerField)",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "CONTAINERFIELD-FALSEPOS",
-            "NRB-1"
+            "NRB-1",
+            "NRB-4"
           ],
           "geometry": true,
           "interfaces": [
@@ -3167,11 +3169,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4",
+          "clause": "27.4; 27.3",
           "exists": true,
           "extracts": "yes",
           "findings": [
-            "NRB-1"
+            "NRB-1",
+            "NRB-4"
           ],
           "geometry": true,
           "interfaces": [
@@ -3558,6 +3561,7 @@
         "IMPORT-EXPORT-WIRE",
         "NSN-1",
         "NSN-11",
+        "NSN-12",
         "NSN-2",
         "NSN-3",
         "NSN-4",
@@ -3601,11 +3605,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "9.4.2; 4.4.6",
+          "clause": "9.4.3; 9.4.2; 4.4.6",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "IMPORT-EXPORT-WIRE"
+            "IMPORT-EXPORT-WIRE",
+            "NSN-12"
           ],
           "geometry": false,
           "interfaces": [
@@ -3632,6 +3637,7 @@
           "findings": [
             "NSN-1",
             "NSN-11",
+            "NSN-12",
             "NSN-2",
             "NSN-3",
             "NSN-4",
@@ -8159,6 +8165,18 @@
       "wave": 4
     },
     {
+      "clause": "9.4.3",
+      "id": "NSN-12",
+      "nodes": [
+        "LoadSensor",
+        "Inline"
+      ],
+      "note": "LoadSensorSystem::tick (runtime/events/LoadSensorSystem.hpp:191) marks a watched Inline Ready by a flat membership check (`scene_->expandedInlines.count(c) > 0`) against the direct child alone \u2014 it does not walk that child's own subtree to check whether Inline nodes nested inside it have themselves finished loading. At least one other conforming implementation defines Inline load-completion recursively: an Inline counts as loaded only once it and all of its nested sub-Inlines have completely loaded. \u00a79.4.3 does not define nested-Inline completion semantics, so this is a spec-silent design choice, in the same spirit as the R3-R7 rulings in ADR-0046, rather than a conformance defect. Under the default null AssetResolver every Inline expands synchronously at parse time so the gap is inert today; it becomes reachable once a real (async-capable) resolver is injected and a nested Inline's own load can still be Pending while its parent is reported Ready. Separately, a non-blocking, notify-on-completion load-node design distinct from LoadSensor has been under active discussion for a future X3D spec node \u2014 directionally relevant if LoadSensor's async story is revisited.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "LoadSensor's per-child readiness check does not recurse into a watched Inline's own nested sub-Inlines."
+    },
+    {
       "clause": "23.4.3",
       "commit": "2b84a99",
       "id": "LOD-1",
@@ -8750,7 +8768,7 @@
         "NurbsSwungSurface",
         "NurbsTrimmedSurface"
       ],
-      "note": "The curve + patch slice shipped first-party (NRB-1, ADR-0040). NurbsTrimmedSurface/NurbsSweptSurface/NurbsSwungSurface remain unrecognized: trimmed surfaces need 2D contour-loop clipping and swept/swung need profile-sweep eval \u2014 both follow-up cards. They continue to route through MeshBuildOptions::externalGeometryResolver (the unrecognized-geometry fallback) and are the canonical unrecognized specimen in external_geom_seam_test.cpp + scene_extractor_audit_test.cpp. (NURBS curve+patch wave 2026-06-27)",
+      "note": "The curve + patch slice shipped first-party (NRB-1, ADR-0040). NurbsTrimmedSurface/NurbsSweptSurface/NurbsSwungSurface remain unrecognized: trimmed surfaces need 2D contour-loop clipping and swept/swung need profile-sweep eval \u2014 both follow-up cards. They continue to route through MeshBuildOptions::externalGeometryResolver (the unrecognized-geometry fallback) and are the canonical unrecognized specimen in external_geom_seam_test.cpp + scene_extractor_audit_test.cpp. Whichever profile-curve/cross-section evaluator these three nodes end up sharing with NurbsCurve/NurbsPatchSurface will also need to settle the controlPoint weight-convention question tracked in NRB-4 (unweighted-input vs. premultiplied-input) \u2014 worth resolving once, not per-node. (NURBS curve+patch wave 2026-06-27)",
       "severity": "major",
       "status": "deferred",
       "summary": "Trimmed/swept/swung NURBS surfaces still absent from recognizedGeometryType() \u2014 extract inert."
@@ -8768,6 +8786,23 @@
       "severity": "major",
       "status": "deferred",
       "summary": "NURBS interpolator set_fraction handlers are dead \u2014 value_changed never emitted."
+    },
+    {
+      "clause": "27.3",
+      "component": "NURBS",
+      "id": "NRB-4",
+      "interfaces": [
+        "X3DNurbsControlCurveNode",
+        "X3DNurbsSurfaceGeometryNode"
+      ],
+      "nodes": [
+        "NurbsCurve",
+        "NurbsPatchSurface"
+      ],
+      "note": "runtime/extract/NurbsEval.hpp computes the rational numerator as weight * controlPoint per control point (tessellateCurve and tessellateSurface: hx = wi*P.x, hy = wi*P.y, hz = wi*P.z, ...) \u2014 the textbook homogeneous-coordinate formulation, where controlPoint and weight are independent per-point inputs and the evaluator performs the multiplication. At least three other X3D implementations instead expect authored controlPoint values to already carry the weight multiplication, using controlPoint directly as the homogeneous coordinate without re-multiplying by weight. X3D \u00a727 defines the controlPoint and weight fields but does not state which convention an author or implementation should use, so both readings are spec-permitted under the current text. Practical effect: weighted (non-unity-weight) NurbsCurve/NurbsPatchSurface content authored against the premultiplied convention tessellates to a different shape in x3d-cpp than in those other implementations. Unity-weight control points (the default, and the common case) are unaffected \u2014 both conventions coincide when weight=1. No fix is spec-mandated given the silence; options are (a) keep the current textbook convention as documented, deliberate behavior, (b) detect/support both conventions via a heuristic or opt-in flag, or (c) switch to the premultiplied convention to match the wider ecosystem. NRB-3's still-deferred trimmed/swept/swung surfaces will face the same open question if their control-point evaluation reuses this weight handling.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "NurbsEval.hpp assumes controlPoint is unweighted (Euclidean); at least three other conforming X3D implementations require controlPoint to already be weight-premultiplied."
     },
     {
       "clause": "40.4",
@@ -9621,7 +9656,7 @@
     "closed_count": 124,
     "component_count": 36,
     "deferred_count": 39,
-    "finding_count": 209,
+    "finding_count": 211,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -9648,7 +9683,7 @@
       "critical": 3,
       "low": 6,
       "major": 40,
-      "minor": 36
+      "minor": 38
     }
   },
   "unresolved_findings": []
