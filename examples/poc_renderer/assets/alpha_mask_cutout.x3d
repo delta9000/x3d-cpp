@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D 4.0//EN" "https://www.web3d.org/specifications/x3d-4.0.dtd">
+<X3D profile="Immersive" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
+  <head>
+    <meta name="title" content="alpha_mask_cutout.x3d"/>
+    <meta name="description" content="RND-1 GL alpha-cutout regression. A red panel filling most of the frame, textured by alpha_cutout_mask.png (uniform alpha 0.235, below the alphaCutoff 0.5). The material is fully opaque (transparency 0) so the panel is in the OPAQUE pass — the ONLY thing that can remove it is the shader's MASK discard. A conformant renderer discards every fragment (texel alpha 0.235 < 0.5), so the frame is pure Background blue. If the GL MASK discard regresses (e.g. gating on the wrong uAlphaMode value), the panel draws SOLID red and the background-dominance check fails. Paired positive control: alpha_mask_opaque.x3d."/>
+  </head>
+  <Scene>
+    <Viewpoint description="front" position="0 0 6" fieldOfView="0.785398"/>
+    <Background skyColor="0 0 0.6"/>
+    <Shape>
+      <Appearance alphaMode="MASK" alphaCutoff="0.5">
+        <Material diffuseColor="1 1 1"/>
+        <ImageTexture url="alpha_cutout_mask.png"/>
+      </Appearance>
+      <Box size="8 5 0.2"/>
+    </Shape>
+  </Scene>
+</X3D>

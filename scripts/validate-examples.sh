@@ -83,6 +83,32 @@ else
   echo "NOTE: the real GL pipeline was still exercised end-to-end on real hardware; what is NOT proven here is the GPU-less/software-Mesa reproducibility this gate also aims for."
 fi
 
+# ---- RND-1: GL MASK alpha-cutout regression -------------------------------
+# A MASK panel textured with a sub-cutoff alpha (0.235 < alphaCutoff 0.5) and a
+# fully-opaque material (so it lives in the OPAQUE pass) must be removed ONLY by
+# the fragment shader's MASK discard -> the frame is ~100% Background. The opaque
+# control (same panel, no alphaMode) renders solid -> Background clearly < 100%.
+# This guards lit.frag's `uAlphaMode == Mask` discard: RND-1 gated the discard on
+# the wrong enum value, so cutouts never punched and the panel drew solid. Robust
+# to software-Mesa/llvmpipe shading noise -- the signal is "did a whole panel of
+# pixels appear or not", measured as background-dominance, not exact pixels.
+echo "== poc MASK alpha-cutout gate (RND-1) under Xvfb + mesa software GL =="
+MASK_DIR="$(mktemp -d)"
+poc_shot() { # $1 = out PPM, $2 = scene
+  xvfb-run -a env \
+    LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIBRARY_NAME=mesa \
+    "$POC" --screenshot "$1" "$2" >/dev/null 2>&1
+}
+poc_shot "$MASK_DIR/opaque.ppm" examples/poc_renderer/assets/alpha_mask_opaque.x3d
+poc_shot "$MASK_DIR/mask.ppm"   examples/poc_renderer/assets/alpha_mask_cutout.x3d
+# Positive control first: the panel MUST render, else an all-background mask frame
+# would pass for the wrong reason (empty scene rather than a working discard).
+python3 scripts/check_screenshot_bg.py "$MASK_DIR/opaque.ppm" \
+  --bg 0,0,153 --tol 30 --max 0.85 --label rnd1-control
+python3 scripts/check_screenshot_bg.py "$MASK_DIR/mask.ppm" \
+  --bg 0,0,153 --tol 30 --min 0.99 --label rnd1-mask
+echo "OK: MASK cutout fully discarded; opaque control rendered (RND-1 guard)"
+
 echo "== build asset_import (cgltf default, no assimp) =="
 cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
 cmake --build build-asset-import --target x3d_asset_import x3d_assetimport_cgltf
