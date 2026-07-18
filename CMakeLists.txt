@@ -802,6 +802,22 @@ if(TARGET x3d_curl AND TARGET x3d_s3 AND X3D_CPP_BUILD_TESTS)
 endif()
 
 # ---------------------------------------------------------------------------
+# FileResolver — SEC-3-confined local-file AssetResolver backend (Task 1, #80).
+# Header-only backend that answers Ready/Failed for file: protocol URLs.
+# Run: ctest --preset dev -R x3d_fileresolver
+# ---------------------------------------------------------------------------
+if(X3D_CPP_BUILD_TESTS)
+    enable_testing()
+    add_executable(x3d_fileresolver_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/file_resolver_test.cpp")
+    target_link_libraries(x3d_fileresolver_test PRIVATE
+        x3d_cpp::sdk x3d_doctest_main)
+    target_compile_definitions(x3d_fileresolver_test PRIVATE
+        FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/fixtures")
+    add_test(NAME x3d_fileresolver_test COMMAND x3d_fileresolver_test)
+endif()
+
+# ---------------------------------------------------------------------------
 # TextureResolver decode seam — Backend A (stb_image). ADR-0024 / U1.
 # Mirrors the x3d_curl isolation rule: option() -> an isolated STATIC lib
 # (x3d_stb) whose single TU is StbTextureResolver.cpp; stb_image.h is included
@@ -2487,6 +2503,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/timesensor_rtc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_dynamic_route_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_author_field_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/loadsensor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/slerp_normal_test.cpp")
     target_link_libraries(x3d_events_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
@@ -2669,7 +2686,8 @@ _x3d_classify_present_targets(behavior
     x3d_codecs_tests
     x3d_parse_tests
     x3d_extract_tests
-    x3d_events_tests)
+    x3d_events_tests
+    x3d_fileresolver_test)
 
 _x3d_classify_present_targets(opt-in
     x3d_physics_jolt
@@ -2794,7 +2812,8 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_codecs_tests
         x3d_parse_tests
         x3d_extract_tests
-        x3d_events_tests)
+        x3d_events_tests
+        x3d_fileresolver_test)
     if(NOT X3D_CPP_SAN)
         list(APPEND _x3d_behavior_tests x3d_install_embed_smoke)
     endif()

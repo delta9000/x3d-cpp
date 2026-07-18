@@ -42,9 +42,10 @@
 
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"   // attachInterpolators / attachEventUtilities /
-                                // attachViewDependent / attachKeyDeviceSensors +
-                                // detail::forEachNode
+                                // attachViewDependent / attachKeyDeviceSensors /
+                                // attachLoadSensors + detail::forEachNode
 #include "TimeSensorSystem.hpp"
+#include "io/file/FileResolver.hpp"  // makeFileResolver — the app-layer LoadSensor backend
 #include "ViewpointBindSystem.hpp"  // attachViewpointBind (post-cascade hook)
 #include "X3DScene.hpp"
 
@@ -155,6 +156,14 @@ inline RuntimeWiring attachFullRuntime(x3d::runtime::Scene &scene,
   attachEventUtilities(scene, ctx);
   attachViewDependent(scene, ctx);
   attachKeyDeviceSensors(scene, ctx);
+
+  // ── LoadSensor (§9) — one system observes every LoadSensor's watched
+  //    children through the AssetResolver seam. The SDK is IO-free, so the app
+  //    injects the concrete backend here: the SEC-3-confined local-file resolver
+  //    (io::file::makeFileResolver), which resolves confined local `file:` URLs
+  //    at parse-time's activeConfineRoot — so `x3d sim` reports load state for
+  //    local files out of the box.
+  attachLoadSensors(scene, ctx, io::file::makeFileResolver());
 
   // ── ViewpointBindSystem (§23.3.1) — post-cascade hook driving set_bind
   //    jump/retainUserOffsets + bind-stack transitions (scene-agnostic: it reads

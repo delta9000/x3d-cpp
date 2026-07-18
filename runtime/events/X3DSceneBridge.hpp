@@ -14,6 +14,7 @@
 #include "FollowerRegistration.hpp"
 #include "InterpolatorRegistration.hpp"
 #include "KeyDeviceSensorSystem.hpp"
+#include "LoadSensorSystem.hpp"
 #include "NavigationSystem.hpp"
 #include "PointingSensorSystem.hpp"
 #include "TimeSensorSystem.hpp"
@@ -414,12 +415,39 @@ inline void attachKeyDeviceSensors(Scene &scene, X3DExecutionContext &ctx) {
 }
 
 /**
+ * @brief Production wiring (§9 Networking): register + attach a LoadSensorSystem
+ *        to every LoadSensor in `scene`, observing each sensor's watched
+ *        X3DUrlObject children through the AssetResolver seam.
+ * @details Call after `buildSceneGraph`. `resolver` is the embedder's byte
+ *          oracle; a null resolver installs the IO-free null stub (Failed) — the
+ *          SDK ships no concrete backend, so an app injects one (the CLI wires
+ *          io::file::makeFileResolver for SEC-3-confined local files). Returns
+ *          the system so a headed embedder can set a ChildLoadPolicy / hooks
+ *          (mirrors `attachInteractive` returning the NavigationSystem). The
+ *          system's `setScene` is wired here so it can read
+ *          `Scene::expandedInlines` for parse-time pre-seeding.
+ */
+inline std::shared_ptr<LoadSensorSystem>
+attachLoadSensors(Scene &scene, X3DExecutionContext &ctx,
+                  extract::AssetResolver resolver = nullptr) {
+  auto sys = std::make_shared<LoadSensorSystem>(std::move(resolver));
+  sys->setScene(&scene);
+  detail::forEachNode(scene, [&](X3DNode *n) { sys->attach(n, ctx); });
+  ctx.addSystem(sys);
+  return sys;
+}
+
+/**
  * @brief Production wiring: attach the full STANDARD behavior runtime — every
  *        system an X3D browser runs, MINUS the embedder-plugged seams (Script
  *        needs a JS backend; Physics needs an engine). After this call an
  *        authored `TimeSensor → Interpolator → Transform` chain animates out of
- *        the box, view-dependent nodes track the camera, key sensors fire, and
- *        the viewpoint bind stack is live.
+ *        the box, view-dependent nodes track the camera, key sensors fire,
+ *        LoadSensors report their watched children's load state, and the
+ *        viewpoint bind stack is live. `assetResolver` is the byte oracle
+ *        LoadSensor resolves through (null → the IO-free null stub; an app
+ *        injects a concrete backend, e.g. the CLI's confined local-file
+ *        resolver).
  * @details Call after `buildSceneGraph(scene)` (and `buildFrom(scene)` for
  *          ROUTEs). TimeSensor is attached first so its `fraction_changed` is
  *          available to interpolators within the same tick's cascade drain.
@@ -428,7 +456,8 @@ inline void attachKeyDeviceSensors(Scene &scene, X3DExecutionContext &ctx) {
  *          currently composes the same system set by hand (Script/Physics on
  *          top); converging it onto this helper is a deferred dedup follow-up.
  */
-inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx) {
+inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
+                                  extract::AssetResolver assetResolver = nullptr) {
   auto tss = std::make_shared<TimeSensorSystem>();        // §8 Time — the clock
   detail::forEachNode(scene, [&](X3DNode *n) { tss->attach(n, ctx); });
   ctx.addSystem(tss);
@@ -437,6 +466,7 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx) {
   attachEventUtilities(scene, ctx);   // §30 trigger/sequencer/filter logic
   attachViewDependent(scene, ctx);    // §22/§23 LOD/Billboard/Proximity/Visibility
   attachKeyDeviceSensors(scene, ctx); // §21 KeySensor/StringSensor
+  attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
   attachViewpointBind(ctx);           // §23.3.1 post-cascade viewpoint bind hook
 }
 
