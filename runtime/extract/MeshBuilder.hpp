@@ -76,6 +76,7 @@
 
 #include "AssetResolver.hpp"   // AssetResolver (binary-geometry seam)
 #include "FontMetrics.hpp"     // T-TEXT: font-metrics seam (Text branch)
+#include "NurbsEval.hpp"       // NRB-4: NurbsWeightMode (controlPoint convention)
 #include "PackedMesh.hpp"      // PackedMesh (Phase 1 binary geometry)
 #include "RecursionLimits.hpp" // #21: kMaxGraphWalkVisits (walk budget default)
 #include "RenderItem.hpp"      // MeshData
@@ -159,6 +160,13 @@ struct MeshBuildOptions {
   // above any legitimate placement count; raise it for a genuinely huge scene
   // (and check SceneExtractor::budgetExceeded() to detect truncation).
   std::size_t maxWalkVisits = kMaxGraphWalkVisits;
+
+  // NRB-4: how NurbsCurve/NurbsPatchSurface interpret (controlPoint, weight).
+  // Default Premultiplied matches the entire shipping X3D ecosystem (FreeWRL,
+  // view3dscene/Castle, InstantPlayer, White Dune, X3DOM) so weighted NURBS
+  // tessellate to the same shape those browsers render. Set to Euclidean for the
+  // literal textbook/spec-formula reading. weight==1 content is identical either way.
+  nurbs::NurbsWeightMode nurbsWeightMode = nurbs::NurbsWeightMode::Premultiplied;
 };
 
 namespace mesh_detail {

@@ -211,9 +211,9 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
   const glsl::vec3 uAmbient = uDiffuse.xyz() * ai;
   const glsl::vec3 uSpecular = glsl::vec3(m.phong.specular);
   const float uShininess = m.phong.shininess;
-  // NB: compare the enum directly. The PoC GLSL hard-codes `uAlphaMode == 2`
-  // for MASK, but AlphaMode is {Opaque=0, Mask=1, Blend=2} — so the int check
-  // is a latent off-by-one. We discard on the actual Mask enum (correct).
+  // Compare the enum directly. AlphaMode is {Opaque=0, Mask=1, Blend=2}; the PoC
+  // GLSL now gates MASK on `uAlphaMode == 1` to match (RenderItem.hpp static_asserts
+  // pin the wire contract). This path is convention-agnostic — it never touches the int.
   const bool maskMode = (m.alphaMode == ex::AlphaMode::Mask);
   const float alphaCutoff = m.alphaCutoff;
   const float normalScale = m.normalScale;

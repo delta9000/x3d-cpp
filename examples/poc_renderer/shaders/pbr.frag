@@ -45,7 +45,7 @@ uniform float uNormalScale;  // normal map strength.
 uniform float uOcclusionStrength; // AO strength.
 
 // ---- Alpha ------------------------------------------------------------------
-uniform int   uAlphaMode;    // 0=Opaque, 1=Blend, 2=Mask.
+uniform int   uAlphaMode;    // 0=Opaque, 1=Mask, 2=Blend (matches ex::AlphaMode).
 uniform float uAlphaCutoff;
 
 // ---- Vertex color override --------------------------------------------------
@@ -113,7 +113,7 @@ void main() {
         baseCol *= texture(uBaseColorTex, vTexCoord);
     }
     float alpha = baseCol.a;
-    if (uAlphaMode == 2 && alpha < uAlphaCutoff) discard;
+    if (uAlphaMode == 1 && alpha < uAlphaCutoff) discard; // MASK (== ex::AlphaMode::Mask).
 
     // ---- Metallic / roughness from ORM texture or uniforms ------------------
     float metallic  = uMetallic;

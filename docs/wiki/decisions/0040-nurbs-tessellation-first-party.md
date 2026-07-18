@@ -52,6 +52,18 @@ the same **species** as Box/Sphere/Cone/Cylinder/Extrusion tessellation — pres
 I/O-free, parametric — all already first-party in `MeshBuilder`. `NurbsPatchSurface` is
 the general case of what `Box` is a trivial case of.
 
+> **Amendment (NRB-4).** The claim above that "§27 *prescribes* the result" and "two
+> correct evaluators produce the same mesh" holds for the basis/knot/tessellation math
+> but **not** for one input convention §27 leaves silent: whether `controlPoint` is
+> plain Euclidean (evaluator multiplies by `weight`) or already weight-**premultiplied**
+> (evaluator uses it verbatim). For non-unity weights the two diverge, and the entire
+> shipping ecosystem (FreeWRL, view3dscene/Castle, InstantPlayer, White Dune, X3DOM)
+> uses premultiplied. `MeshBuildOptions::nurbsWeightMode` now defaults to
+> `Premultiplied` for that interop faithfulness, with `Euclidean` as an opt-in for the
+> literal textbook reading. weight==1 content is identical either way. See finding
+> NRB-4 and the primary-source list thread (x3d-public, 2020-05, "Nurbs control points,
+> preweighted or not?").
+
 **The multi-backend escape hatch already exists and stays.** `MeshBuildOptions::
 externalGeometryResolver` remains the override for embedders who *do* want a library
 (GPU tessellation, OpenNURBS for double-precision CAD, proprietary geometry, trimming at

@@ -56,7 +56,7 @@ uniform sampler2D uSpecularTex;    // unit 3: specular texture.
 // ---- Material params --------------------------------------------------------
 uniform vec3  uSpecular;     // X3D specularColor (Blinn-Phong tint).
 uniform float uShininess;    // X3D shininess [0,1] — exponent = *128.
-uniform int   uAlphaMode;    // 0=Opaque, 1=Blend, 2=Mask.
+uniform int   uAlphaMode;    // 0=Opaque, 1=Mask, 2=Blend (matches ex::AlphaMode).
 uniform float uAlphaCutoff;  // Mask threshold.
 
 // ---- Lights -----------------------------------------------------------------
@@ -90,7 +90,7 @@ void main() {
     }
 
     // ---- Alpha cut / blend gate --------------------------------------------
-    if (uAlphaMode == 2 && alpha < uAlphaCutoff) discard; // MASK.
+    if (uAlphaMode == 1 && alpha < uAlphaCutoff) discard; // MASK (== ex::AlphaMode::Mask).
 
     // ---- Geometric normal in eye space (two-sided) -------------------------
     vec3 Ngeo = normalize(vNormalEye);
