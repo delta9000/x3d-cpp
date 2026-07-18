@@ -569,6 +569,53 @@ jobs:
       - name: Build both examples + headless probes + Xvfb GL smoke
         run: scripts/validate-examples.sh
 
+  # Cross-platform smoke (exploratory). The codebase is Linux-first (GCC/Clang);
+  # nothing else exercises Apple Clang (macOS/arm64) or MSVC (Windows). This job
+  # configures + builds + ctests a focused slice — the SDK runtime lib plus the
+  # LoadSensor + FileResolver suites — on both, to surface portability drift
+  # (path/IO assumptions, ABI/vtable and warning differences). It is
+  # `continue-on-error` (never blocks a merge) and skips main-push to keep push
+  # CI fast; it runs on cpp-touching PRs and on manual dispatch. Uses the `dev`
+  # preset (no -Werror) so we observe real compile/link/test behavior rather than
+  # cross-compiler warning drift. Standard GitHub-hosted runners → free on public.
+  cross-platform-smoke:
+    name: Cross-platform smoke (${{ matrix.os }}, exploratory)
+    needs: changes
+    if: github.event_name != 'push' && needs.changes.outputs.cpp == 'true'
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      # macOS: native Apple Clang (arm64) + Ninja via Homebrew.
+      - name: (macOS) Install Ninja
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: (macOS) Configure + build + test
+        if: runner.os == 'macOS'
+        run: |
+          cmake --preset dev
+          cmake --build --preset dev --target x3d_events_tests x3d_fileresolver_test
+          ctest --preset dev -R 'x3d_events_tests|x3d_fileresolver_test' --output-on-failure
+
+      # Windows: native MSVC (cl) via the VS Developer environment (vswhere +
+      # VsDevCmd — no third-party action, keeping the Forgejo mirror + SHA-pin
+      # conventions intact). Ninja is installed alongside Visual Studio.
+      - name: (Windows) Configure + build + test (MSVC)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do set "VSPATH=%%i"
+          call "%VSPATH%\Common7\Tools\VsDevCmd.bat" -arch=x64 || exit /b 1
+          cmake --preset dev || exit /b 1
+          cmake --build --preset dev --target x3d_events_tests x3d_fileresolver_test || exit /b 1
+          ctest --preset dev -R "x3d_events_tests|x3d_fileresolver_test" --output-on-failure
+
   # Heavy baseline matrix — pins oldest supported (GCC 11 / Clang 14) + current
   # compilers. Manual only (the 4× build is too heavy for every PR push).
   cpp-matrix:
