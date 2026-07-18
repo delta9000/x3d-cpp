@@ -474,6 +474,14 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/x3d_cppConfigVersion.cmake"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/x3d_cpp")
 
+# Redistribution requires the license texts: LICENSE (MIT) plus NOTICE, which
+# carries the attribution/license inventory for every vendored and fetched
+# third-party component. An installed prefix without them is not redistributable.
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/NOTICE"
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/x3d_cpp")
+
 # Allow find_package against the build tree (no install required).
 export(EXPORT x3d_cppTargets
     FILE "${CMAKE_CURRENT_BINARY_DIR}/x3d_cppTargets.cmake"
