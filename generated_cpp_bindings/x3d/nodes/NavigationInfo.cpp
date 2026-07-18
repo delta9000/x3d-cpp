@@ -343,7 +343,7 @@ void NavigationInfo::checkRangesAvatarSize(const MFFloat &value,
                                            std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < 0)
+    if (v < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "avatarSize",
                                     "avatarSize below minimum of 0"});
   }
@@ -353,7 +353,7 @@ void NavigationInfo::checkRangesSpeed(const SFFloat &value,
                                       const std::string &nodeType,
                                       const std::string &defName,
                                       std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "speed",
                                   "speed below minimum of 0"});
 }
@@ -369,7 +369,7 @@ void NavigationInfo::checkRangesTransitionTime(
 void NavigationInfo::checkRangesVisibilityLimit(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "visibilityLimit",
                                   "visibilityLimit below minimum of 0"});
 }

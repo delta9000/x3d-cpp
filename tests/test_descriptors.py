@@ -66,8 +66,8 @@ def test_min_max_constrained_numeric():
     assert d.has_constraints is True
     assert d.validator_name == "validateIntensity"
     body = d.constraint_checks
-    assert 'if (value < 0) throw std::out_of_range("intensity below minimum of 0");' in body
-    assert 'if (value > 1) throw std::out_of_range("intensity above maximum of 1");' in body
+    assert 'if (value < 0.0f) throw std::out_of_range("intensity below minimum of 0");' in body
+    assert 'if (value > 1.0f) throw std::out_of_range("intensity above maximum of 1");' in body
     assert "for (const auto& v : value)" not in body
 
 
@@ -78,8 +78,8 @@ def test_sfcolor_is_distinct_and_clamped():
     # Colors always clamp to [0,1] even without a declared min/max.
     assert d.has_constraints is True
     body = d.constraint_checks
-    assert 'if (value.r < 0) throw std::out_of_range("diffuseColor.r below minimum of 0");' in body
-    assert 'if (value.b > 1) throw std::out_of_range("diffuseColor.b above maximum of 1");' in body
+    assert 'if (value.r < 0.0f) throw std::out_of_range("diffuseColor.r below minimum of 0");' in body
+    assert 'if (value.b > 1.0f) throw std::out_of_range("diffuseColor.b above maximum of 1");' in body
     assert d.default_init_expr == "SFColor{0.8, 0.8, 0.8}"
 
 
@@ -88,7 +88,7 @@ def test_mf_constraint_uses_element_loop():
     assert d.has_constraints is True
     body = d.constraint_checks
     assert body.startswith("for (const auto& v : value) {")
-    assert 'if (v.r < 0) throw std::out_of_range("color.r below minimum of 0");' in body
+    assert 'if (v.r < 0.0f) throw std::out_of_range("color.r below minimum of 0");' in body
 
 
 def test_initialize_only_has_getter_no_setter():
@@ -142,6 +142,41 @@ def test_render_range_collect_scalar_and_color():
     mfbody = _render_range_collect("color", X3DType.MFColor, "0", "1")
     assert mfbody.startswith("for (const auto& v : value) {")
     assert "out.push_back(RangeDiagnostic{" in mfbody
+
+
+def test_float32_bounds_compare_in_float_precision():
+    # The regression behind `range-only-us` in the X3DJSAIL differential: an
+    # SFFloat authored at EXACTLY the documented maximum ("1.570796", the UOM's
+    # truncation of pi/2) parses to float 1.57079601..., which widened to double
+    # sits ABOVE the double literal 1.570796 — so the old emitted comparison
+    # flagged an in-range value. Comparisons must happen in the field's own
+    # float32 precision; the diagnostic message keeps the spec's digits.
+    d = desc(name="beamWidth", type="SFFloat",
+             min_inclusive="0", max_inclusive="1.570796")
+    body = d.constraint_checks
+    assert "if (value > 1.570796f)" in body
+    assert "if (value < 0.0f)" in body
+    assert 'beamWidth above maximum of 1.570796"' in body  # message unchanged
+    r = d.range_collect_body
+    assert "if (value > 1.570796f)" in r
+    assert 'beamWidth above maximum of 1.570796"' in r
+
+
+def test_color_bounds_get_float_literals():
+    d = desc(name="diffuseColor", type="SFColor")
+    body = d.constraint_checks
+    assert "if (value.r < 0.0f)" in body
+    assert "if (value.b > 1.0f)" in body
+    assert 'diffuseColor.r below minimum of 0"' in body  # message unchanged
+
+
+def test_non_float_bounds_stay_plain():
+    i = desc(name="order", type="SFInt32", min_inclusive="2", max_inclusive="5")
+    assert "if (value < 2)" in i.constraint_checks
+    assert "f)" not in i.constraint_checks
+    t = desc(name="cycleInterval", type="SFTime", min_inclusive="0")
+    assert "if (value < 0)" in t.constraint_checks
+    assert "0.0f" not in t.constraint_checks
 
 
 def test_initializeonly_constrained_field_gets_range_diagnostics_not_throwing_validation():

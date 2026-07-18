@@ -234,19 +234,19 @@ protected:
 private:
   static void validateAttenuation(const SFVec3f &value) {
 
-    if (value.x < 0)
+    if (value.x < 0.0f)
       throw std::out_of_range("attenuation.x below minimum of 0");
 
-    if (value.y < 0)
+    if (value.y < 0.0f)
       throw std::out_of_range("attenuation.y below minimum of 0");
 
-    if (value.z < 0)
+    if (value.z < 0.0f)
       throw std::out_of_range("attenuation.z below minimum of 0");
   }
 
   static void validateRadius(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("radius below minimum of 0");
   }
 

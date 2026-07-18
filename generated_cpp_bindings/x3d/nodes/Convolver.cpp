@@ -464,10 +464,10 @@ void Convolver::checkRangesBuffer(const MFFloat &value,
                                   std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < -1)
+    if (v < -1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "buffer",
                                     "buffer below minimum of -1"});
-    if (v > 1)
+    if (v > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "buffer",
                                     "buffer above maximum of 1"});
   }

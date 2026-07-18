@@ -404,7 +404,7 @@ void TextureProperties::validateRanges(
 void TextureProperties::checkRangesAnisotropicDegree(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 1)
+  if (value < 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "anisotropicDegree",
                                   "anisotropicDegree below minimum of 1"});
 }
@@ -412,31 +412,31 @@ void TextureProperties::checkRangesAnisotropicDegree(
 void TextureProperties::checkRangesBorderColor(
     const SFColorRGBA &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.r < 0)
+  if (value.r < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "borderColor",
                                   "borderColor.r below minimum of 0"});
-  if (value.r > 1)
+  if (value.r > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "borderColor",
                                   "borderColor.r above maximum of 1"});
 
-  if (value.g < 0)
+  if (value.g < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "borderColor",
                                   "borderColor.g below minimum of 0"});
-  if (value.g > 1)
+  if (value.g > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "borderColor",
                                   "borderColor.g above maximum of 1"});
 
-  if (value.b < 0)
+  if (value.b < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "borderColor",
                                   "borderColor.b below minimum of 0"});
-  if (value.b > 1)
+  if (value.b > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "borderColor",
                                   "borderColor.b above maximum of 1"});
 
-  if (value.a < 0)
+  if (value.a < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "borderColor",
                                   "borderColor.a below minimum of 0"});
-  if (value.a > 1)
+  if (value.a > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "borderColor",
                                   "borderColor.a above maximum of 1"});
 }
@@ -452,10 +452,10 @@ void TextureProperties::checkRangesBorderWidth(
 void TextureProperties::checkRangesTexturePriority(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "texturePriority",
                                   "texturePriority below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "texturePriority",
                                   "texturePriority above maximum of 1"});
 }

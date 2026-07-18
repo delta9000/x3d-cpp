@@ -264,11 +264,11 @@ void SilhouetteEnhancementVolumeStyle::validateRanges(
 void SilhouetteEnhancementVolumeStyle::checkRangesSilhouetteBoundaryOpacity(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "silhouetteBoundaryOpacity",
                         "silhouetteBoundaryOpacity below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "silhouetteBoundaryOpacity",
                         "silhouetteBoundaryOpacity above maximum of 1"});
@@ -277,11 +277,11 @@ void SilhouetteEnhancementVolumeStyle::checkRangesSilhouetteBoundaryOpacity(
 void SilhouetteEnhancementVolumeStyle::checkRangesSilhouetteRetainedOpacity(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "silhouetteRetainedOpacity",
                         "silhouetteRetainedOpacity below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "silhouetteRetainedOpacity",
                         "silhouetteRetainedOpacity above maximum of 1"});
@@ -290,7 +290,7 @@ void SilhouetteEnhancementVolumeStyle::checkRangesSilhouetteRetainedOpacity(
 void SilhouetteEnhancementVolumeStyle::checkRangesSilhouetteSharpness(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "silhouetteSharpness",
                                   "silhouetteSharpness below minimum of 0"});
 }

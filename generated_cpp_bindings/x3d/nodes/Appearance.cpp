@@ -345,10 +345,10 @@ void Appearance::checkRangesAlphaCutoff(const SFFloat &value,
                                         const std::string &nodeType,
                                         const std::string &defName,
                                         std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "alphaCutoff",
                                   "alphaCutoff below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "alphaCutoff",
                                   "alphaCutoff above maximum of 1"});
 }

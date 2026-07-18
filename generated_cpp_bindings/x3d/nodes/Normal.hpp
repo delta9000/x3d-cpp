@@ -145,19 +145,19 @@ private:
 
     for (const auto &v : value) {
 
-      if (v.x < -1)
+      if (v.x < -1.0f)
         throw std::out_of_range("vector.x below minimum of -1");
-      if (v.x > 1)
+      if (v.x > 1.0f)
         throw std::out_of_range("vector.x above maximum of 1");
 
-      if (v.y < -1)
+      if (v.y < -1.0f)
         throw std::out_of_range("vector.y below minimum of -1");
-      if (v.y > 1)
+      if (v.y > 1.0f)
         throw std::out_of_range("vector.y above maximum of 1");
 
-      if (v.z < -1)
+      if (v.z < -1.0f)
         throw std::out_of_range("vector.z below minimum of -1");
-      if (v.z > 1)
+      if (v.z > 1.0f)
         throw std::out_of_range("vector.z above maximum of 1");
     }
   }

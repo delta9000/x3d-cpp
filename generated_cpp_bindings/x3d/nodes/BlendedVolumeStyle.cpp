@@ -314,10 +314,10 @@ void BlendedVolumeStyle::validateRanges(
 void BlendedVolumeStyle::checkRangesWeightConstant1(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "weightConstant1",
                                   "weightConstant1 below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "weightConstant1",
                                   "weightConstant1 above maximum of 1"});
 }
@@ -325,10 +325,10 @@ void BlendedVolumeStyle::checkRangesWeightConstant1(
 void BlendedVolumeStyle::checkRangesWeightConstant2(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "weightConstant2",
                                   "weightConstant2 below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "weightConstant2",
                                   "weightConstant2 above maximum of 1"});
 }

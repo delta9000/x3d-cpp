@@ -472,10 +472,10 @@ void SpatialSound::validateRanges(std::vector<RangeDiagnostic> &out) const {
 void SpatialSound::checkRangesConeInnerAngle(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coneInnerAngle",
                                   "coneInnerAngle below minimum of 0"});
-  if (value > 6.2832)
+  if (value > 6.2832f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coneInnerAngle",
                                   "coneInnerAngle above maximum of 6.2832"});
 }
@@ -483,10 +483,10 @@ void SpatialSound::checkRangesConeInnerAngle(
 void SpatialSound::checkRangesConeOuterAngle(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coneOuterAngle",
                                   "coneOuterAngle below minimum of 0"});
-  if (value > 6.2832)
+  if (value > 6.2832f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coneOuterAngle",
                                   "coneOuterAngle above maximum of 6.2832"});
 }
@@ -495,10 +495,10 @@ void SpatialSound::checkRangesIntensity(const SFFloat &value,
                                         const std::string &nodeType,
                                         const std::string &defName,
                                         std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "intensity",
                                   "intensity below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "intensity",
                                   "intensity above maximum of 1"});
 }
@@ -507,7 +507,7 @@ void SpatialSound::checkRangesMaxDistance(const SFFloat &value,
                                           const std::string &nodeType,
                                           const std::string &defName,
                                           std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "maxDistance",
                                   "maxDistance below minimum of 0"});
 }
@@ -516,10 +516,10 @@ void SpatialSound::checkRangesPriority(const SFFloat &value,
                                        const std::string &nodeType,
                                        const std::string &defName,
                                        std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "priority",
                                   "priority below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "priority",
                                   "priority above maximum of 1"});
 }
@@ -527,7 +527,7 @@ void SpatialSound::checkRangesPriority(const SFFloat &value,
 void SpatialSound::checkRangesReferenceDistance(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "referenceDistance",
                                   "referenceDistance below minimum of 0"});
 }
@@ -536,7 +536,7 @@ void SpatialSound::checkRangesRolloffFactor(const SFFloat &value,
                                             const std::string &nodeType,
                                             const std::string &defName,
                                             std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "rolloffFactor",
                                   "rolloffFactor below minimum of 0"});
 }

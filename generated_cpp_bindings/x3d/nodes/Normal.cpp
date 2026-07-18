@@ -162,24 +162,24 @@ void Normal::checkRangesVector(const MFVec3f &value,
                                std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v.x < -1)
+    if (v.x < -1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "vector",
                                     "vector.x below minimum of -1"});
-    if (v.x > 1)
+    if (v.x > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "vector",
                                     "vector.x above maximum of 1"});
 
-    if (v.y < -1)
+    if (v.y < -1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "vector",
                                     "vector.y below minimum of -1"});
-    if (v.y > 1)
+    if (v.y > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "vector",
                                     "vector.y above maximum of 1"});
 
-    if (v.z < -1)
+    if (v.z < -1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "vector",
                                     "vector.z below minimum of -1"});
-    if (v.z > 1)
+    if (v.z > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "vector",
                                     "vector.z above maximum of 1"});
   }

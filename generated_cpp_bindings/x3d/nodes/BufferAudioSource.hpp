@@ -588,9 +588,9 @@ private:
 
     for (const auto &v : value) {
 
-      if (v < -1)
+      if (v < -1.0f)
         throw std::out_of_range("buffer below minimum of -1");
-      if (v > 1)
+      if (v > 1.0f)
         throw std::out_of_range("buffer above maximum of 1");
     }
   }
@@ -603,19 +603,19 @@ private:
 
   static void validateDetune(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("detune below minimum of 0");
   }
 
   static void validateLoopEnd(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("loopEnd below minimum of 0");
   }
 
   static void validateLoopStart(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("loopStart below minimum of 0");
   }
 
@@ -627,7 +627,7 @@ private:
 
   static void validateSampleRate(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("sampleRate below minimum of 0");
   }
 

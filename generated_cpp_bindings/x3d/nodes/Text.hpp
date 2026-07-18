@@ -313,14 +313,14 @@ private:
 
     for (const auto &v : value) {
 
-      if (v < 0)
+      if (v < 0.0f)
         throw std::out_of_range("length below minimum of 0");
     }
   }
 
   static void validateMaxExtent(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("maxExtent below minimum of 0");
   }
 

@@ -93,6 +93,23 @@ _COMPONENTS = {
     X3DType.MFRotation: ("x", "y", "z", "angle"),
 }
 
+# Types whose scalar element is float32 in C++ (SFFloat is `typedef float`,
+# vec/color/rotation/matrix -f structs hold float members). Range comparisons
+# for these must happen in float32: comparing the stored float against a wider
+# double literal widens the value first, so a value at exactly a decimal bound
+# that float can't represent (e.g. 1.570796) lands epsilon above/below it.
+_FLOAT32_ELEMENT = {
+    X3DType.SFFloat, X3DType.MFFloat,
+    X3DType.SFColor, X3DType.MFColor,
+    X3DType.SFColorRGBA, X3DType.MFColorRGBA,
+    X3DType.SFVec2f, X3DType.MFVec2f,
+    X3DType.SFVec3f, X3DType.MFVec3f,
+    X3DType.SFVec4f, X3DType.MFVec4f,
+    X3DType.SFRotation, X3DType.MFRotation,
+    X3DType.SFMatrix3f, X3DType.MFMatrix3f,
+    X3DType.SFMatrix4f, X3DType.MFMatrix4f,
+}
+
 # Scalar value-types whose copy setter does NOT also get a move overload (passing
 # them by value/move is pointless; matches the original Jinja exclusion list).
 _NO_MOVE_OVERLOAD = {
@@ -159,6 +176,11 @@ class TypeRegistry:
     @classmethod
     def is_multi(cls, t: "X3DType") -> bool:
         return t.value.startswith("MF")
+
+    @classmethod
+    def is_float32_element(cls, t: "X3DType") -> bool:
+        """True when the type's scalar element is C++ ``float``."""
+        return t in _FLOAT32_ELEMENT
 
     @classmethod
     def needs_move_overload(cls, t: "X3DType") -> bool:

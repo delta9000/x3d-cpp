@@ -227,31 +227,31 @@ void ToneMappedVolumeStyle::validateRanges(
 void ToneMappedVolumeStyle::checkRangesCoolColor(
     const SFColorRGBA &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.r < 0)
+  if (value.r < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coolColor",
                                   "coolColor.r below minimum of 0"});
-  if (value.r > 1)
+  if (value.r > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coolColor",
                                   "coolColor.r above maximum of 1"});
 
-  if (value.g < 0)
+  if (value.g < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coolColor",
                                   "coolColor.g below minimum of 0"});
-  if (value.g > 1)
+  if (value.g > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coolColor",
                                   "coolColor.g above maximum of 1"});
 
-  if (value.b < 0)
+  if (value.b < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coolColor",
                                   "coolColor.b below minimum of 0"});
-  if (value.b > 1)
+  if (value.b > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coolColor",
                                   "coolColor.b above maximum of 1"});
 
-  if (value.a < 0)
+  if (value.a < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coolColor",
                                   "coolColor.a below minimum of 0"});
-  if (value.a > 1)
+  if (value.a > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "coolColor",
                                   "coolColor.a above maximum of 1"});
 }
@@ -259,31 +259,31 @@ void ToneMappedVolumeStyle::checkRangesCoolColor(
 void ToneMappedVolumeStyle::checkRangesWarmColor(
     const SFColorRGBA &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.r < 0)
+  if (value.r < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "warmColor",
                                   "warmColor.r below minimum of 0"});
-  if (value.r > 1)
+  if (value.r > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "warmColor",
                                   "warmColor.r above maximum of 1"});
 
-  if (value.g < 0)
+  if (value.g < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "warmColor",
                                   "warmColor.g below minimum of 0"});
-  if (value.g > 1)
+  if (value.g > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "warmColor",
                                   "warmColor.g above maximum of 1"});
 
-  if (value.b < 0)
+  if (value.b < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "warmColor",
                                   "warmColor.b below minimum of 0"});
-  if (value.b > 1)
+  if (value.b > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "warmColor",
                                   "warmColor.b above maximum of 1"});
 
-  if (value.a < 0)
+  if (value.a < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "warmColor",
                                   "warmColor.a below minimum of 0"});
-  if (value.a > 1)
+  if (value.a > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "warmColor",
                                   "warmColor.a above maximum of 1"});
 }

@@ -169,24 +169,24 @@ protected:
 private:
   static void validatePlane(const SFVec4f &value) {
 
-    if (value.x < -1)
+    if (value.x < -1.0f)
       throw std::out_of_range("plane.x below minimum of -1");
-    if (value.x > 1)
+    if (value.x > 1.0f)
       throw std::out_of_range("plane.x above maximum of 1");
 
-    if (value.y < -1)
+    if (value.y < -1.0f)
       throw std::out_of_range("plane.y below minimum of -1");
-    if (value.y > 1)
+    if (value.y > 1.0f)
       throw std::out_of_range("plane.y above maximum of 1");
 
-    if (value.z < -1)
+    if (value.z < -1.0f)
       throw std::out_of_range("plane.z below minimum of -1");
-    if (value.z > 1)
+    if (value.z > 1.0f)
       throw std::out_of_range("plane.z above maximum of 1");
 
-    if (value.w < -1)
+    if (value.w < -1.0f)
       throw std::out_of_range("plane.w below minimum of -1");
-    if (value.w > 1)
+    if (value.w > 1.0f)
       throw std::out_of_range("plane.w above maximum of 1");
   }
 

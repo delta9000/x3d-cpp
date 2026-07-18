@@ -190,13 +190,13 @@ protected:
 private:
   static void validateDetune(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("detune below minimum of 0");
   }
 
   static void validateFrequency(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("frequency below minimum of 0");
   }
 

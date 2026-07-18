@@ -261,19 +261,19 @@ protected:
 private:
   static void validatePointSizeMaxValue(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("pointSizeMaxValue below minimum of 0");
   }
 
   static void validatePointSizeMinValue(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("pointSizeMinValue below minimum of 0");
   }
 
   static void validatePointSizeScaleFactor(const SFFloat &value) {
 
-    if (value < 1)
+    if (value < 1.0f)
       throw std::out_of_range("pointSizeScaleFactor below minimum of 1");
   }
 

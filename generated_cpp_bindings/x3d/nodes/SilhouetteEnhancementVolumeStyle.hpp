@@ -270,23 +270,23 @@ protected:
 private:
   static void validateSilhouetteBoundaryOpacity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("silhouetteBoundaryOpacity below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("silhouetteBoundaryOpacity above maximum of 1");
   }
 
   static void validateSilhouetteRetainedOpacity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("silhouetteRetainedOpacity below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("silhouetteRetainedOpacity above maximum of 1");
   }
 
   static void validateSilhouetteSharpness(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("silhouetteSharpness below minimum of 0");
   }
 

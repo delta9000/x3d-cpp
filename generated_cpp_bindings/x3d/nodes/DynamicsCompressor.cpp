@@ -561,7 +561,7 @@ void DynamicsCompressor::checkRangesKnee(const SFFloat &value,
                                          const std::string &nodeType,
                                          const std::string &defName,
                                          std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "knee", "knee below minimum of 0"});
 }
@@ -570,10 +570,10 @@ void DynamicsCompressor::checkRangesRatio(const SFFloat &value,
                                           const std::string &nodeType,
                                           const std::string &defName,
                                           std::vector<RangeDiagnostic> &out) {
-  if (value < 1)
+  if (value < 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "ratio",
                                   "ratio below minimum of 1"});
-  if (value > 20)
+  if (value > 20.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "ratio",
                                   "ratio above maximum of 20"});
 }
@@ -590,10 +590,10 @@ void DynamicsCompressor::checkRangesRelease(const SFTime &value,
 void DynamicsCompressor::checkRangesThreshold(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < -100)
+  if (value < -100.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "threshold",
                                   "threshold below minimum of -100"});
-  if (value > 0)
+  if (value > 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "threshold",
                                   "threshold above maximum of 0"});
 }

@@ -304,10 +304,10 @@ void ConeEmitter::checkRangesAngle(const SFFloat &value,
                                    const std::string &nodeType,
                                    const std::string &defName,
                                    std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "angle",
                                   "angle below minimum of 0"});
-  if (value > 3.1416)
+  if (value > 3.1416f)
     out.push_back(RangeDiagnostic{nodeType, defName, "angle",
                                   "angle above maximum of 3.1416"});
 }
@@ -316,24 +316,24 @@ void ConeEmitter::checkRangesDirection(const SFVec3f &value,
                                        const std::string &nodeType,
                                        const std::string &defName,
                                        std::vector<RangeDiagnostic> &out) {
-  if (value.x < -1)
+  if (value.x < -1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "direction",
                                   "direction.x below minimum of -1"});
-  if (value.x > 1)
+  if (value.x > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "direction",
                                   "direction.x above maximum of 1"});
 
-  if (value.y < -1)
+  if (value.y < -1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "direction",
                                   "direction.y below minimum of -1"});
-  if (value.y > 1)
+  if (value.y > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "direction",
                                   "direction.y above maximum of 1"});
 
-  if (value.z < -1)
+  if (value.z < -1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "direction",
                                   "direction.z below minimum of -1"});
-  if (value.z > 1)
+  if (value.z > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "direction",
                                   "direction.z above maximum of 1"});
 }

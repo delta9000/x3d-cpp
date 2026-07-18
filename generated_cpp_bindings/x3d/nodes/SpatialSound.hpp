@@ -654,51 +654,51 @@ protected:
 private:
   static void validateConeInnerAngle(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("coneInnerAngle below minimum of 0");
-    if (value > 6.2832)
+    if (value > 6.2832f)
       throw std::out_of_range("coneInnerAngle above maximum of 6.2832");
   }
 
   static void validateConeOuterAngle(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("coneOuterAngle below minimum of 0");
-    if (value > 6.2832)
+    if (value > 6.2832f)
       throw std::out_of_range("coneOuterAngle above maximum of 6.2832");
   }
 
   static void validateIntensity(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("intensity below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("intensity above maximum of 1");
   }
 
   static void validateMaxDistance(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("maxDistance below minimum of 0");
   }
 
   static void validatePriority(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("priority below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("priority above maximum of 1");
   }
 
   static void validateReferenceDistance(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("referenceDistance below minimum of 0");
   }
 
   static void validateRolloffFactor(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("rolloffFactor below minimum of 0");
   }
 

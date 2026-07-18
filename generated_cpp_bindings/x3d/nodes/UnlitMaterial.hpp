@@ -264,27 +264,27 @@ protected:
 private:
   static void validateEmissiveColor(const SFColor &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("emissiveColor.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("emissiveColor.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("emissiveColor.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("emissiveColor.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("emissiveColor.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("emissiveColor.b above maximum of 1");
   }
 
   static void validateTransparency(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("transparency below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("transparency above maximum of 1");
   }
 

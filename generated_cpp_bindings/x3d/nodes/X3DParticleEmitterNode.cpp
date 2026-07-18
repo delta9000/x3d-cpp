@@ -247,7 +247,7 @@ void X3DParticleEmitterNode::validateRanges(
 void X3DParticleEmitterNode::checkRangesMass(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "mass", "mass below minimum of 0"});
 }
@@ -255,7 +255,7 @@ void X3DParticleEmitterNode::checkRangesMass(
 void X3DParticleEmitterNode::checkRangesSpeed(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "speed",
                                   "speed below minimum of 0"});
 }
@@ -263,7 +263,7 @@ void X3DParticleEmitterNode::checkRangesSpeed(
 void X3DParticleEmitterNode::checkRangesSurfaceArea(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "surfaceArea",
                                   "surfaceArea below minimum of 0"});
 }
@@ -271,7 +271,7 @@ void X3DParticleEmitterNode::checkRangesSurfaceArea(
 void X3DParticleEmitterNode::checkRangesVariation(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "variation",
                                   "variation below minimum of 0"});
 }

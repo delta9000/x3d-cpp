@@ -231,47 +231,47 @@ protected:
 private:
   static void validateCoolColor(const SFColorRGBA &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("coolColor.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("coolColor.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("coolColor.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("coolColor.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("coolColor.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("coolColor.b above maximum of 1");
 
-    if (value.a < 0)
+    if (value.a < 0.0f)
       throw std::out_of_range("coolColor.a below minimum of 0");
-    if (value.a > 1)
+    if (value.a > 1.0f)
       throw std::out_of_range("coolColor.a above maximum of 1");
   }
 
   static void validateWarmColor(const SFColorRGBA &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("warmColor.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("warmColor.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("warmColor.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("warmColor.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("warmColor.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("warmColor.b above maximum of 1");
 
-    if (value.a < 0)
+    if (value.a < 0.0f)
       throw std::out_of_range("warmColor.a below minimum of 0");
-    if (value.a > 1)
+    if (value.a > 1.0f)
       throw std::out_of_range("warmColor.a above maximum of 1");
   }
 

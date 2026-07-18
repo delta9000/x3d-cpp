@@ -320,7 +320,7 @@ protected:
 private:
   static void validateMass(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("mass below minimum of 0");
   }
 
@@ -328,7 +328,7 @@ private:
 
     for (const auto &v : value) {
 
-      if (v < 0)
+      if (v < 0.0f)
         throw std::out_of_range("momentsOfInertia below minimum of 0");
     }
   }

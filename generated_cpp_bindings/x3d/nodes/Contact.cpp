@@ -436,10 +436,10 @@ void Contact::checkRangesBounce(const SFFloat &value,
                                 const std::string &nodeType,
                                 const std::string &defName,
                                 std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "bounce",
                                   "bounce below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "bounce",
                                   "bounce above maximum of 1"});
 }
@@ -447,11 +447,11 @@ void Contact::checkRangesBounce(const SFFloat &value,
 void Contact::checkRangesFrictionCoefficients(
     const SFVec2f &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value.x < 0)
+  if (value.x < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "frictionCoefficients",
                                   "frictionCoefficients.x below minimum of 0"});
 
-  if (value.y < 0)
+  if (value.y < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "frictionCoefficients",
                                   "frictionCoefficients.y below minimum of 0"});
 }
@@ -460,7 +460,7 @@ void Contact::checkRangesMinBounceSpeed(const SFFloat &value,
                                         const std::string &nodeType,
                                         const std::string &defName,
                                         std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "minBounceSpeed",
                                   "minBounceSpeed below minimum of 0"});
 }
@@ -468,11 +468,11 @@ void Contact::checkRangesMinBounceSpeed(const SFFloat &value,
 void Contact::checkRangesSoftnessConstantForceMix(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "softnessConstantForceMix",
                         "softnessConstantForceMix below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "softnessConstantForceMix",
                         "softnessConstantForceMix above maximum of 1"});
@@ -481,11 +481,11 @@ void Contact::checkRangesSoftnessConstantForceMix(
 void Contact::checkRangesSoftnessErrorCorrection(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "softnessErrorCorrection",
                         "softnessErrorCorrection below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "softnessErrorCorrection",
                         "softnessErrorCorrection above maximum of 1"});

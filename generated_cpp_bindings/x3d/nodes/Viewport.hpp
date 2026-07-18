@@ -153,9 +153,9 @@ private:
 
     for (const auto &v : value) {
 
-      if (v < 0)
+      if (v < 0.0f)
         throw std::out_of_range("clipBoundary below minimum of 0");
-      if (v > 1)
+      if (v > 1.0f)
         throw std::out_of_range("clipBoundary above maximum of 1");
     }
   }

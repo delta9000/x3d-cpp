@@ -218,10 +218,10 @@ void ProjectionVolumeStyle::validateRanges(
 void ProjectionVolumeStyle::checkRangesIntensityThreshold(
     const SFFloat &value, const std::string &nodeType,
     const std::string &defName, std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "intensityThreshold",
                                   "intensityThreshold below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "intensityThreshold",
                                   "intensityThreshold above maximum of 1"});
 }

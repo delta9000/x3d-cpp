@@ -469,30 +469,30 @@ protected:
 private:
   static void validateAnisotropicDegree(const SFFloat &value) {
 
-    if (value < 1)
+    if (value < 1.0f)
       throw std::out_of_range("anisotropicDegree below minimum of 1");
   }
 
   static void validateBorderColor(const SFColorRGBA &value) {
 
-    if (value.r < 0)
+    if (value.r < 0.0f)
       throw std::out_of_range("borderColor.r below minimum of 0");
-    if (value.r > 1)
+    if (value.r > 1.0f)
       throw std::out_of_range("borderColor.r above maximum of 1");
 
-    if (value.g < 0)
+    if (value.g < 0.0f)
       throw std::out_of_range("borderColor.g below minimum of 0");
-    if (value.g > 1)
+    if (value.g > 1.0f)
       throw std::out_of_range("borderColor.g above maximum of 1");
 
-    if (value.b < 0)
+    if (value.b < 0.0f)
       throw std::out_of_range("borderColor.b below minimum of 0");
-    if (value.b > 1)
+    if (value.b > 1.0f)
       throw std::out_of_range("borderColor.b above maximum of 1");
 
-    if (value.a < 0)
+    if (value.a < 0.0f)
       throw std::out_of_range("borderColor.a below minimum of 0");
-    if (value.a > 1)
+    if (value.a > 1.0f)
       throw std::out_of_range("borderColor.a above maximum of 1");
   }
 
@@ -504,9 +504,9 @@ private:
 
   static void validateTexturePriority(const SFFloat &value) {
 
-    if (value < 0)
+    if (value < 0.0f)
       throw std::out_of_range("texturePriority below minimum of 0");
-    if (value > 1)
+    if (value > 1.0f)
       throw std::out_of_range("texturePriority above maximum of 1");
   }
 

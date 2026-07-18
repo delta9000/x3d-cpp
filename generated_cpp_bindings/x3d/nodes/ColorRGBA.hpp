@@ -143,24 +143,24 @@ private:
 
     for (const auto &v : value) {
 
-      if (v.r < 0)
+      if (v.r < 0.0f)
         throw std::out_of_range("color.r below minimum of 0");
-      if (v.r > 1)
+      if (v.r > 1.0f)
         throw std::out_of_range("color.r above maximum of 1");
 
-      if (v.g < 0)
+      if (v.g < 0.0f)
         throw std::out_of_range("color.g below minimum of 0");
-      if (v.g > 1)
+      if (v.g > 1.0f)
         throw std::out_of_range("color.g above maximum of 1");
 
-      if (v.b < 0)
+      if (v.b < 0.0f)
         throw std::out_of_range("color.b below minimum of 0");
-      if (v.b > 1)
+      if (v.b > 1.0f)
         throw std::out_of_range("color.b above maximum of 1");
 
-      if (v.a < 0)
+      if (v.a < 0.0f)
         throw std::out_of_range("color.a below minimum of 0");
-      if (v.a > 1)
+      if (v.a > 1.0f)
         throw std::out_of_range("color.a above maximum of 1");
     }
   }

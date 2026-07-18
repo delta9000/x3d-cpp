@@ -345,10 +345,10 @@ void Sound::checkRangesIntensity(const SFFloat &value,
                                  const std::string &nodeType,
                                  const std::string &defName,
                                  std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "intensity",
                                   "intensity below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "intensity",
                                   "intensity above maximum of 1"});
 }
@@ -357,7 +357,7 @@ void Sound::checkRangesMaxBack(const SFFloat &value,
                                const std::string &nodeType,
                                const std::string &defName,
                                std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "maxBack",
                                   "maxBack below minimum of 0"});
 }
@@ -366,7 +366,7 @@ void Sound::checkRangesMaxFront(const SFFloat &value,
                                 const std::string &nodeType,
                                 const std::string &defName,
                                 std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "maxFront",
                                   "maxFront below minimum of 0"});
 }
@@ -375,7 +375,7 @@ void Sound::checkRangesMinBack(const SFFloat &value,
                                const std::string &nodeType,
                                const std::string &defName,
                                std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "minBack",
                                   "minBack below minimum of 0"});
 }
@@ -384,7 +384,7 @@ void Sound::checkRangesMinFront(const SFFloat &value,
                                 const std::string &nodeType,
                                 const std::string &defName,
                                 std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "minFront",
                                   "minFront below minimum of 0"});
 }
@@ -393,10 +393,10 @@ void Sound::checkRangesPriority(const SFFloat &value,
                                 const std::string &nodeType,
                                 const std::string &defName,
                                 std::vector<RangeDiagnostic> &out) {
-  if (value < 0)
+  if (value < 0.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "priority",
                                   "priority below minimum of 0"});
-  if (value > 1)
+  if (value > 1.0f)
     out.push_back(RangeDiagnostic{nodeType, defName, "priority",
                                   "priority above maximum of 1"});
 }

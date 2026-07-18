@@ -282,10 +282,10 @@ void Viewport::checkRangesClipBoundary(const MFFloat &value,
                                        std::vector<RangeDiagnostic> &out) {
   for (const auto &v : value) {
 
-    if (v < 0)
+    if (v < 0.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "clipBoundary",
                                     "clipBoundary below minimum of 0"});
-    if (v > 1)
+    if (v > 1.0f)
       out.push_back(RangeDiagnostic{nodeType, defName, "clipBoundary",
                                     "clipBoundary above maximum of 1"});
   }
