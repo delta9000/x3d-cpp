@@ -20,6 +20,10 @@ The proposal makes these design choices executable:
 - Node type and ordered field descriptors are discoverable as owning values.
   Node-valued writes require context-bearing `node` handles (or spans of them),
   preventing a bare ID from aliasing an object in another ownership domain.
+- Execution-context boundaries have explicit ordered EXPORT/IMPORT apertures.
+  Imported nodes and fields are distinct inspection-only proxy types; parent
+  snapshots capture immutable source revisions without claiming a globally
+  atomic multi-context snapshot.
 - Observation is explicit, queued, and drained outside internal locks.
   `subscription` is move-only RAII; cancellation and destruction invoke no
   callbacks.
@@ -43,11 +47,13 @@ invariant can be cited independently by the convergence register.
 
 This is a semantic reference kernel, not a complete ISO/IEC 19775-2 or
 19777-4 implementation. It currently omits parsing and serialization,
-profiles/components and units, PROTO/EXTERNPROTO and IMPORT/EXPORT apertures,
-node removal, runtime-originated outputOnly events, Script integration, URL
+profiles/components and units, PROTO/EXTERNPROTO expansion, node removal,
+cross-context field writes and ROUTEs, Inline loading, PROTO/IS
+apertures, runtime-originated outputOnly events, Script integration, URL
 transport, concrete browser adapters, presentation scheduling, provenance, and
-an ABI-stable boundary. The event kernel is a synchronous reference model, not
-a claim that the complete live SAI capability is available.
+an ABI-stable boundary. EXPORT/IMPORT currently provides snapshot inspection,
+not multi-context live publication. The event kernel is a synchronous reference
+model, not a claim that the complete live SAI capability is available.
 The load API models only cancellation and stale-completion publication rules.
 
 The type registry is handwritten test metadata for fast iteration. A future

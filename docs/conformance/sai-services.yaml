@@ -252,23 +252,23 @@ services:
   - <<: *query
     id: SVC-CONTEXT-IMPORTED-NODE-GET
     clause: ISO/IEC 19775-2:2015, 6.4.7 getNode (imported)
-    public_symbol: planned:x3d::sai::execution_context::imported_node
-    support: planned
-    tests: [planned:sai_context_imported_node_get]
+    public_symbol: x3d::sai::experimental::scene_snapshot::imported
+    support: partial
+    tests: [sai_context_import_authority, sai_context_import_snapshot]
     preserves: [INV-ID-2, INV-OWN-2, INV-CXX-2]
   - <<: *command
     id: SVC-CONTEXT-IMPORTED-NODE-UPDATE
     clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (import update)
-    public_symbol: planned:x3d::sai::execution_context::update_imported_node
-    support: planned
-    tests: [planned:sai_context_imported_node_update]
+    public_symbol: x3d::sai::experimental::scene_edit::import_node
+    support: partial
+    tests: [sai_context_import_authority, sai_context_alias_collision, sai_context_aperture_revalidate]
     preserves: [INV-OWN-2, INV-EDIT-1, INV-EDIT-3]
   - <<: *command
     id: SVC-CONTEXT-IMPORTED-NODE-REMOVE
     clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (import remove)
-    public_symbol: planned:x3d::sai::execution_context::remove_imported_node
-    support: planned
-    tests: [planned:sai_context_imported_node_remove]
+    public_symbol: x3d::sai::experimental::scene_edit::remove_import
+    support: partial
+    tests: [sai_context_import_removal]
     preserves: [INV-OWN-1, INV-OWN-2, INV-EDIT-3]
 
   # Nodes and prototypes.

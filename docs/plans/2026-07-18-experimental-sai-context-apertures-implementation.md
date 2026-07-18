@@ -20,6 +20,8 @@ conformance registers.
 
 ### Task 1: Export bindings and local isolation
 
+**Status:** Completed.
+
 **Files:**
 - Modify: `experimental/sai/include/x3d/sai/experimental/kernel.hpp`
 - Modify: `experimental/sai/src/kernel.cpp`
@@ -62,6 +64,8 @@ git commit -m "feat(sai): add ordered context exports"
 ```
 
 ### Task 2: Explicit imports and unified local alias collisions
+
+**Status:** Completed.
 
 **Files:** Same as Task 1.
 
@@ -115,6 +119,8 @@ git commit -m "feat(sai): add explicit imported node authority"
 
 ### Task 3: Source revalidation and reversible import authoring
 
+**Status:** Completed.
+
 **Files:** Same as Task 1.
 
 **Step 1: Write the failing tests**
@@ -151,6 +157,8 @@ git commit -m "feat(sai): revalidate aperture publication"
 
 ### Task 4: Snapshot-coherent imported inspection
 
+**Status:** Completed.
+
 **Files:** Same as Task 1.
 
 **Step 1: Write the failing tests**
@@ -186,6 +194,8 @@ git commit -m "feat(sai): inspect imported nodes through snapshots"
 
 ### Task 5: Lifecycle and mutation firewall
 
+**Status:** Completed.
+
 **Files:** Same as Task 1.
 
 **Step 1: Write the failing tests**
@@ -218,6 +228,8 @@ git commit -m "test(sai): enforce imported authority firewall"
 ```
 
 ### Task 6: Evidence, composed example, and full verification
+
+**Status:** Completed.
 
 **Files:**
 - Modify: `experimental/sai/examples/author_inspect.cpp`

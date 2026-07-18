@@ -1791,6 +1791,20 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=field observers isolate exceptions and permit a later reentrant batch")
     add_test(NAME sai_evt_time_monotonic COMMAND x3d_sai_experimental_tests
         "--test-case=event publication rejects timestamps that do not move forward")
+    add_test(NAME sai_context_export_isolation COMMAND x3d_sai_experimental_tests
+        "--test-case=context exports are ordered aliases while ordinary lookup stays local")
+    add_test(NAME sai_context_import_authority COMMAND x3d_sai_experimental_tests
+        "--test-case=imports cross only explicit same-browser apertures")
+    add_test(NAME sai_context_alias_collision COMMAND x3d_sai_experimental_tests
+        "--test-case=DEF and import names share one atomic local collision domain")
+    add_test(NAME sai_context_aperture_revalidate COMMAND x3d_sai_experimental_tests
+        "--test-case=source export remapping invalidates a staged import atomically")
+    add_test(NAME sai_context_import_removal COMMAND x3d_sai_experimental_tests
+        "--test-case=ordered imports are their own removal tokens")
+    add_test(NAME sai_context_import_snapshot COMMAND x3d_sai_experimental_tests
+        "--test-case=imported typed and dynamic reads capture immutable source revisions")
+    add_test(NAME sai_context_import_firewall COMMAND x3d_sai_experimental_tests
+        "--test-case=imported authority is inspection-only and context checked")
     add_executable(x3d_sai_experimental_example
         "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/examples/author_inspect.cpp")
     target_link_libraries(x3d_sai_experimental_example PRIVATE
@@ -2970,6 +2984,13 @@ if(X3D_CPP_BUILD_TESTS)
         sai_evt_field_observer
         sai_evt_reentrant_batch
         sai_evt_time_monotonic
+        sai_context_export_isolation
+        sai_context_import_authority
+        sai_context_alias_collision
+        sai_context_aperture_revalidate
+        sai_context_import_removal
+        sai_context_import_snapshot
+        sai_context_import_firewall
         x3d_script_system
         x3d_ecmascript_backend
         x3d_ecmascript_corpus_smoke
