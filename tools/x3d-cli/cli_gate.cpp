@@ -270,6 +270,11 @@ static std::string classifyDisagreement(const std::string &ourVerdict,
             goldenNote.find("X3DException: fileName") != std::string::npos) {
             return "jsail-non-xml-rejection";
         }
+        // The X3DJSAIL CLI died with an uncaught Java exception instead of
+        // producing a verdict (e.g. the containerField='rootNode' GeoLOD
+        // loader crash); the golden capture recorded the abort as INVALID.
+        if (goldenNote.find("Exception in thread") != std::string::npos)
+            return "jsail-crash";
         if (goldenNote.find("WARNING_MESSAGE") != std::string::npos ||
             goldenNote.find("duplicate") != std::string::npos) return "jsail-dup-meta";
         if (goldenNote.find("[error]") != std::string::npos ||
@@ -417,6 +422,35 @@ static void writeReport(const std::string &outPath,
             }
             if (items.size() > 3) f << "- *(+" << (items.size() - 3) << " more)*\n";
             f << "\n";
+        }
+
+        // Adjusted agreement: two categories are DOCUMENTED oracle behaviors,
+        // not validator disagreements — `jsail-error` (X3DJSAIL's head/meta
+        // best-practice rule; the spec makes head/meta optional) and
+        // `jsail-crash` (the JSAIL CLI aborted; no verdict was produced).
+        // Rulings live in validate-check-categories.md. Report agreement over
+        // the files where both validators actually rendered a comparable
+        // verdict, so the headline number measures us, not the oracle.
+        {
+            int oracleBehavior = 0;
+            for (const char *cat : {"jsail-error", "jsail-crash"}) {
+                auto it = byCategory.find(cat);
+                if (it != byCategory.end())
+                    oracleBehavior += static_cast<int>(it->second.size());
+            }
+            int comparable = totalValidate - oracleBehavior;
+            double adjRate = comparable > 0 ? 100.0 * agree / comparable : 0.0;
+            f << "## Adjusted Agreement (comparable files)\n\n";
+            f << "`jsail-error` and `jsail-crash` are documented X3DJSAIL "
+                 "behaviors (best-practice head/meta rule; CLI aborts), not "
+                 "validator disagreements — see "
+                 "[validate-check-categories.md](validate-check-categories.md) "
+                 "for the per-category rulings.\n\n";
+            f << "| Metric | Value |\n|---|---|\n";
+            f << "| Oracle-behavior files excluded | " << oracleBehavior << " |\n";
+            f << "| Comparable files | " << comparable << " |\n";
+            f << "| Agreement over comparable | **" << agree << "/" << comparable
+              << "** (" << static_cast<int>(adjRate + 0.5) << "%) |\n\n";
         }
 
         f << "## Full Disagreement List\n\n";
