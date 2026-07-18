@@ -18,7 +18,7 @@ the compile-job pool (and its OOM history), ccache, fast-linker auto-selection, 
 ## Prerequisites
 
 - `mise` installed — it manages `uv` (Python toolchain) and all task definitions
-- `cmake` 3.20+, `ninja`, `ccache` (optional but strongly recommended)
+- `cmake` 3.21+, `ninja`, `ccache` (optional but strongly recommended)
 - `mold` or `lld` optional — auto-detected at configure time for faster linking
 
 Run `mise install` once after checkout; it bootstraps `uv` per `mise.toml`'s `[tools]` section.

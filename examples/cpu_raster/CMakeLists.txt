@@ -13,7 +13,7 @@
 #   if(X3D_CPP_BUILD_CPURASTER) add_subdirectory(examples/cpu_raster) endif()
 # so it can assume the x3d_cpp::x3d_cpp INTERFACE target already exists.
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 
 # --------------------------------------------------------------------------
 # The CPU rasterizer CLI.

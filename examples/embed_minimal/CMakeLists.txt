@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 project(x3d_embed_minimal LANGUAGES CXX)
 
 find_package(x3d_cpp CONFIG REQUIRED)
