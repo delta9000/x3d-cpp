@@ -48,6 +48,7 @@ int main() {
       !edit.append(root.value(), "children", shared.value()) ||
       !edit.append(root.value(), "children", event_sink.value()) ||
       !edit.define_name("SharedTransform", shared.value()) ||
+      !edit.export_node("SharedTransformExport", shared.value()) ||
       !edit.add_route(translation.value(), sink_translation.value()) ||
       !edit.append_root(root.value()))
     return EXIT_FAILURE;
@@ -98,6 +99,26 @@ int main() {
   const auto after_event = scene.snapshot();
   if (after_event.read(sink_translation.value()).value() !=
       sai::value{sai::vec3f{4, 5, 6}})
+    return EXIT_FAILURE;
+
+  auto importing_scene = browser.create_scene();
+  auto import_edit = importing_scene.edit();
+  if (!import_edit.import_node("RemoteTransform", scene,
+                               "SharedTransformExport") ||
+      !import_edit.commit())
+    return EXIT_FAILURE;
+  const auto importing_snapshot = importing_scene.snapshot();
+  const auto imported = importing_snapshot.imported("RemoteTransform");
+  if (!imported)
+    return EXIT_FAILURE;
+  const auto imported_translation =
+      importing_snapshot.field(imported.value(), "translation");
+  if (!imported_translation)
+    return EXIT_FAILURE;
+  const auto imported_typed = imported_translation.value().as<sai::vec3f>();
+  if (!imported_typed ||
+      importing_snapshot.read(imported_typed.value()).value() !=
+          sai::vec3f{4, 5, 6})
     return EXIT_FAILURE;
   return EXIT_SUCCESS;
 }
