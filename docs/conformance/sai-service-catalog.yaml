@@ -1,0 +1,149 @@
+# Independent completeness oracle for the abstract SAI service inventory.
+# Names and clauses are transcribed from the official ISO/IEC 19775-2:2015
+# (X3D 3.3) Clause 6 table of contents. Do not derive this list from x3d-cpp.
+schema_version: 1
+standard: ISO/IEC 19775-2:2015
+source_url: https://www.web3d.org/documents/specifications/19775-2/V3.3/Part02/services.html
+reviewed: "2026-07-18"
+
+# Language-binding-only semantics are tracked independently from the abstract
+# service clauses below. This audit deliberately fails closed: `complete` may
+# be set only after every normative clause, table, and base interface in Part 4
+# has been checked, not merely after these initially identified obligations are
+# implemented.
+cpp_binding:
+  standard: ISO/IEC 19777-4 C++ language binding
+  source_url: https://www.web3d.org/specifications/ISO-IEC19777/ISO-IEC19777-4v3.3-CD/Part04/concepts.html
+  reviewed: "2026-07-18"
+  audit_status: incomplete
+  obligations:
+    CPP-4.3.1.2-CALLBACK-ROBUSTNESS: User exceptions outside Script initialization do not terminate browser execution.
+    CPP-4.3.2.2-SESSION-EQUIVALENCE: Browser services have the same semantics regardless of how the browser reference was obtained.
+    CPP-4.3.3.1-NODE-USER-DATA: User data follows semantic node identity and is visible through every reference to that node.
+    CPP-4.3.3.1-FIELD-USER-DATA: User data follows semantic field identity and survives disposal of an individual external reference while the field remains live.
+    CPP-4.3.4-RELATIVE-URLS: Relative URL resolution has an explicit application or remote-session base policy.
+    CPP-4.3.5.1-NULL-NODES: A null C++ node handle maps to X3D NULL for SFNode reads and writes.
+    CPP-4.3.5.2-EXTERNAL-MF-EVENTS: External MF edits aggregate under update control and otherwise publish one event per write.
+    CPP-4.3.5.3-MFNODE-NULL-ORDER: MFNode preserves null elements and their original positions.
+    CPP-4.3.5.4-MFIELD-ARRAYS: Empty MF values are size-zero ranges and null is not accepted as an array value.
+    CPP-4.3.5.5-SET1VALUE: Indexed MF writes obey the host-specific aggregation and last-write rules.
+    CPP-4.3.6-DISPOSAL: Explicit disposal invalidates the disposed entity handle and later access fails predictably.
+    CPP-A.4.4-FIELD-DEFINITION: Field definitions expose stable name, access, numeric type, and type-name metadata.
+    CPP-A.4.5-FIELD-CAPABILITY: Field readability and writability reflect the current lifecycle phase.
+    CPP-A.4.5-FIELD-OBSERVATION: Field subscriptions can be added and removed without corrupting event delivery.
+    CPP-A.4.6-MFIELD-EDITING: Multi-fields expose size, clear, and indexed removal with defined bounds behavior.
+    CPP-A.4.48-MFNODE-EDITING: MFNode exposes whole-range, indexed, append, and insert operations without losing node identity.
+
+groups:
+  - name: connection
+    services:
+      "6.2.2": getBrowser
+      "6.2.3": createBrowser
+  - name: browser
+    services:
+      "6.3.2": getName
+      "6.3.3": getVersion
+      "6.3.4": getCurrentSpeed
+      "6.3.5": getCurrentFrameRate
+      "6.3.6": getSupportedProfiles
+      "6.3.7": getProfile
+      "6.3.8": getSupportedComponents
+      "6.3.9": getComponent
+      "6.3.10": getExecutionContext
+      "6.3.11": createScene
+      "6.3.12": replaceWorld
+      "6.3.13": importDocument
+      "6.3.14": loadURL
+      "6.3.15": setDescription
+      "6.3.16": createX3DFromString
+      "6.3.17": createX3DFromStream
+      "6.3.18": createX3DFromURL
+      "6.3.19": updateControl
+      "6.3.20": registerBrowserInterest
+      "6.3.21": getRenderingProperties
+      "6.3.22": getBrowserProperties
+      "6.3.23": changeViewpoint
+      "6.3.24": print/println
+      "6.3.25": dispose
+  - name: execution-context
+    services:
+      "6.4.1": getSpecificationVersion
+      "6.4.2": getEncoding
+      "6.4.3": getProfile
+      "6.4.4": getComponents
+      "6.4.5": getUnits
+      "6.4.6": getWorldURL
+      "6.4.7": getNode
+      "6.4.8": createNode
+      "6.4.9": createProto
+      "6.4.10": namedNodeHandling
+      "6.4.11": getProtoDeclaration
+      "6.4.12": protoDeclarationHandling
+      "6.4.13": getExternProtoDeclaration
+      "6.4.14": externprotoDeclarationHandling
+      "6.4.15": getRootNodes
+      "6.4.16": getRoutes
+      "6.4.17": dynamicRouteHandling
+      "6.4.18": dispose
+  - name: scene
+    services:
+      "6.5.2": getMetaData
+      "6.5.3": setMetaData
+      "6.5.4": namedNodeHandling
+      "6.5.5": rootNodeHandling
+  - name: node
+    services:
+      "6.6.2": getTypeName
+      "6.6.3": getType
+      "6.6.4": getField
+      "6.6.5": getFieldDefinitions
+      "6.6.6": dispose
+  - name: field
+    services:
+      "6.7.2": getAccessType
+      "6.7.3": getType
+      "6.7.4": getName
+      "6.7.5": getValue
+      "6.7.6": setValue
+      "6.7.7": registerFieldInterest
+      "6.7.8": dispose
+  - name: route
+    services:
+      "6.8.1": getSourceNode
+      "6.8.2": getSourceField
+      "6.8.3": getDestinationNode
+      "6.8.4": getDestinationField
+      "6.8.5": dispose
+  - name: prototype
+    services:
+      "6.9.1": isExternproto
+      "6.9.2": createInstance
+      "6.9.3": getFieldDefinitions
+      "6.9.4": checkLoadState
+      "6.9.5": requestImmediateLoad
+  - name: configuration
+    services:
+      "6.10.2": getComponentName
+      "6.10.3": getComponentLevel
+      "6.10.4": getProfileName
+      "6.10.5": getProfileComponents
+      "6.10.6": getProviderName
+      "6.10.7": getUnitCategory
+      "6.10.8": getUnitConversion
+      "6.10.9": getUnitName
+  - name: script-content
+    services:
+      "6.11.3.1": setBrowser
+      "6.11.3.2": setFields
+      "6.11.3.3": initialize
+      "6.11.4.1": prepareEvents
+      "6.11.4.2": eventsProcessed
+      "6.11.5.1": shutdown
+  - name: matrix
+    services:
+      "6.12.2": set
+      "6.12.3": get
+      "6.12.4": inverse
+      "6.12.5": transpose
+      "6.12.6": multiply
+      "6.12.7": multiplyWithVector
