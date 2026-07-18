@@ -232,13 +232,14 @@ ctest --preset dev -j "$(nproc)"
 | Task | What it does |
 |---|---|
 | `mise run ci` | Full pipeline: `test` + `golden` + `conformance-gate` + `build` + `cli-gate-regression`. Run before pushing. |
+| `mise run ci-all` | **Strongest local pre-PR verification**: everything `ci` runs plus `build-san` (ASan/UBSan) and `validate-examples` (example-renderer gates). Mirrors the full blocking GitHub job set; slower — use before pushing risky C++ changes. |
 | `mise run conformance` | Regenerate the conformance view (`docs/conformance/`) from `docs/conformance/findings.yaml` in place. |
 | `mise run conformance-gate` | Conformance gate: validate `findings.yaml` schema + check that the generated view matches the committed files. |
 | `mise run cli-gate-regression` | CLI regression gate: runs `x3d_cli_gate` + `x3d_canon_gate` in `--gate` mode. Depends on `build`. |
 | `mise run cli-gate` | Informative (non-failing) differential gate: produces `tools/x3d-cli/goldens/divergence-report.md`. |
 | `mise run canon-gate` | Informative tiered canonicalize gate (T1 idempotence + T2 tolerant-diff + T3 byte-exact rate). |
 | `mise run cli-gate-baseline` | Refresh the committed baseline TSVs after accepting new intentional divergences. |
-| `mise run build-san` | Sanitizer gate (BLD-2): rebuild every target with ASan + UBSan (`san` preset) and run every ctest against the sanitized binaries. Mirrors the GitHub Actions `cpp-san` job. **Not** part of `mise run ci` — run it explicitly. |
+| `mise run build-san` | Sanitizer gate (BLD-2): rebuild every target with ASan + UBSan (`san` preset) and run every ctest against the sanitized binaries. Mirrors the GitHub Actions `cpp-san` job. Not part of `mise run ci` — run it explicitly, or via `ci-all`. |
 | `mise run build-fuzz` | Build the libFuzzer harness for `parseDocument` (`fuzz` preset, Clang-only). Run the binary directly to fuzz; the `cpp-fuzz` job runs a bounded smoke. |
 
 ### Corpus tasks
@@ -348,8 +349,8 @@ cmake --preset ci && cmake --build --preset ci
 The green doctest run proves behavior but misses the memory/UB bug classes the
 parser-hardening work (SEC-1/2, MEM-1) is meant to foreclose: use-after-free,
 leaks, signed overflow, OOB reads. Two extra build modes — both **separate from
-`mise run ci`** — close that gap. Each runs as its own GitHub Actions job
-(`cpp-san`, `cpp-fuzz`) on every PR.
+`mise run ci`** (`build-san` is included in the `ci-all` aggregate) — close that
+gap. Each runs as its own GitHub Actions job (`cpp-san`, `cpp-fuzz`) on every PR.
 
 ### `san` preset — ASan + UBSan
 
