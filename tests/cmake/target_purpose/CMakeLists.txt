@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 project(x3d_target_purpose_fixture LANGUAGES CXX)
 
 if(NOT DEFINED X3D_CPP_SOURCE_DIR)

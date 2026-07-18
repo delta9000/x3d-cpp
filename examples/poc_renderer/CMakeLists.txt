@@ -20,7 +20,7 @@
 # M0 (task T9) gate: configure + build + LINK the binary. The GUI is NOT run in
 # CI / headless; the user runs it on a real Wayland session.
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 
 # --------------------------------------------------------------------------
 # GLFW via FetchContent. Pinned to a >=3.4 release tag (3.4 is the first GLFW
