@@ -64,6 +64,34 @@ TEST_CASE("version_floor_test") {
     check(doc.version == "3.0", "ClassicVRML #VRML magic floors to 3.0 in parseHeaderLine");
   }
 
+  // Unversioned XML/JSON documents floor to 3.0 EXPLICITLY in the readers —
+  // the §1 bare-floor rung must not lean on the X3DDocument member default,
+  // which is the authoring default (4.0) below.
+  {
+    auto doc = codec::parseDocument("<X3D profile='Interchange'><Scene/></X3D>",
+                                    codec::Encoding::XML);
+    check(doc.version == "3.0", "unversioned <X3D> floors to 3.0");
+  }
+  {
+    auto doc = codec::parseDocument("<Scene><Group/></Scene>", codec::Encoding::XML);
+    check(doc.version == "3.0", "bare <Scene> root floors to 3.0");
+  }
+  {
+    auto doc = codec::parseDocument(R"({"X3D":{"Scene":{}}})", codec::Encoding::JSON);
+    check(doc.version == "3.0", "unversioned JSON floors to 3.0");
+  }
+
+  // Authoring default: a default-constructed document targets the UOM the
+  // bindings are generated from (4.0), not the parse floor — a hand-built
+  // scene must not serialize as a 3.0-labeled file by default.
+  {
+    runtime::X3DDocument doc;
+    check(doc.version == "4.0", "default-constructed X3DDocument is 4.0");
+    codec::XmlWriter w;
+    check(w.writeDocument(doc).find("version=\"4.0\"") != std::string::npos,
+          "hand-built doc serializes as version 4.0");
+  }
+
   std::cout << (failures ? "FAILED\n" : "PASSED\n");
   CHECK(failures == 0);
   return;

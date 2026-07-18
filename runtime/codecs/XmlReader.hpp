@@ -56,6 +56,9 @@ public:
   runtime::X3DDocument readDocument(const std::string &xmlText) {
     auto root = xml::parse(xmlText);
     runtime::X3DDocument doc;
+    // VP-2 §1 bare floor: an unversioned document reads as 3.0. Set here, not
+    // via the X3DDocument member default (that is the 4.0 authoring default).
+    doc.version = "3.0";
     if (!root)
       return doc;
 

@@ -2,7 +2,7 @@
 title: "ADR-0007: Version-Inference Ladder"
 summary: A deterministic version-inference ladder resolves the X3D spec version from file signals; VRML97 input floors to 3.0; sub-3.0 version tokens are clamped before reaching any writer.
 tags: [adr, version-inference, vrml97, spec-version, ladder]
-updated: 2026-06-20
+updated: 2026-07-18
 related:
   - ../architecture.md
   - ../subsystems/parse-readers.md
@@ -100,6 +100,14 @@ for VRML97 and any sub-3.0 version token:
 - `X3DDocument::version` struct default changed from `"4.0"` to `"3.0"`
   (`runtime/X3DDocument.hpp:78`), so unversioned files parsed by readers that
   do not emit a version token inherit the correct bare floor at the C++ layer too.
+  - **Refined 2026-07-18:** the floor no longer rides on the struct default —
+    every reader (Xml, Json, ClassicVrml/Vrml97) now assigns the `"3.0"` bare
+    floor explicitly at document construction, and the struct default is back
+    to `"4.0"` as the **authoring** default (a hand-built document targets the
+    UOM the bindings are generated from, and previously serialized as a
+    mislabeled 3.0 file). The ladder's observable behavior is unchanged;
+    `version_floor_test` pins both halves (unversioned XML/JSON/bare-`<Scene>`
+    → `"3.0"`; default-constructed → `"4.0"`).
 
 **VRML97 stamp:** the mapping is transparent — `doc.version` after parsing is
 `"3.0"` and writers emit a valid `#X3D V3.0 utf8` header. The design document

@@ -22,8 +22,7 @@ int main() {
   ball->setAppearance(look);
   ball->setGeometry(std::make_shared<x3d::nodes::Sphere>());
 
-  x3d::authoring::X3DDocument doc;
-  doc.version = "4.0";
+  x3d::authoring::X3DDocument doc; // authoring default: version 4.0
   doc.scene.rootNodes.push_back(ball);
 
   std::ofstream out("hello.x3d");

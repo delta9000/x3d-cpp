@@ -207,8 +207,7 @@ int main() {
   ball->setAppearance(look);
   ball->setGeometry(std::make_shared<x3d::nodes::Sphere>());
 
-  sdk::X3DDocument doc;
-  doc.version = "4.0";
+  sdk::X3DDocument doc;            // authoring default: version 4.0, Interchange
   doc.scene.rootNodes.push_back(ball);
 
   std::ofstream("hello.x3d") << sdk::XmlWriter{}.writeDocument(doc);
