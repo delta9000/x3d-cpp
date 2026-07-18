@@ -80,5 +80,9 @@ cmake -S "$targets_src" -B "$work_dir/installed-targets" -G "$generator" \
 cmake -S "$product_src" -B "$product_build" -G "$generator" \
   -DCMAKE_PREFIX_PATH="$prefix"
 cmake --build "$product_build"
-"$product_build/x3d_embed_minimal"
-"$product_build/x3d_embed_authoring"
+# The two halves of the README quickstart, chained: the authoring hello world
+# writes hello.x3d into the scratch work dir, the consumer parses it back and
+# must extract real mesh data (author -> serialize -> parse -> extract).
+(cd "$work_dir" && "$product_build/x3d_embed_authoring")
+[ -s "$work_dir/hello.x3d" ] || { echo "authoring example wrote no hello.x3d" >&2; exit 1; }
+(cd "$work_dir" && "$product_build/x3d_embed_minimal")
