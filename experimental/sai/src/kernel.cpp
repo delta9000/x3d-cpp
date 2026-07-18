@@ -1253,7 +1253,23 @@ result<event_result> event_batch::commit() {
 
 scene_snapshot::scene_snapshot(std::shared_ptr<detail::context_control> context,
                                std::shared_ptr<const detail::scene_state> state)
-    : context_(std::move(context)), state_(std::move(state)) {}
+    : context_(std::move(context)), state_(std::move(state)) {
+  import_states_.reserve(state_->imports.size());
+  for (std::size_t index = 0; index < state_->imports.size(); ++index) {
+    const auto source = state_->import_sources[index].lock();
+    if (!source) {
+      import_states_.push_back({});
+      continue;
+    }
+    std::lock_guard lock(source->mutex);
+    if (!source->active ||
+        source->generation != state_->imports[index].source_generation) {
+      import_states_.push_back({});
+      continue;
+    }
+    import_states_.push_back(source->state);
+  }
+}
 
 revision_id scene_snapshot::revision() const noexcept {
   return state_->revision;
@@ -1357,6 +1373,80 @@ result<node_type_descriptor> scene_snapshot::describe(const node &owner) const {
   return *descriptor;
 }
 
+result<node_type_descriptor>
+scene_snapshot::describe(const imported_node &owner) const {
+  const auto importer = owner.importer_.lock();
+  const auto source = owner.source_.lock();
+  if (importer != context_ ||
+      owner.importer_generation_ != context_->generation || !source ||
+      source->generation != owner.source_generation_) {
+    return edit_error(
+        error_code::stale_handle, "scene_snapshot.describe_import", *context_,
+        state_->revision, "invalid imported node handle", owner.id_);
+  }
+  const auto binding =
+      std::find_if(state_->imports.begin(), state_->imports.end(),
+                   [&](const import_binding &candidate) {
+                     return candidate.local_name == owner.local_name_ &&
+                            candidate.target == owner.identity();
+                   });
+  if (binding == state_->imports.end()) {
+    return edit_error(
+        error_code::invalid_context, "scene_snapshot.describe_import",
+        *context_, state_->revision,
+        "imported node does not belong to this snapshot", owner.id_);
+  }
+  const auto index =
+      static_cast<std::size_t>(std::distance(state_->imports.begin(), binding));
+  const auto &source_state = import_states_[index];
+  if (!source_state || source_state->revision != owner.source_revision_) {
+    return edit_error(
+        error_code::stale_handle, "scene_snapshot.describe_import", *context_,
+        state_->revision, "imported node source revision is unavailable",
+        owner.id_);
+  }
+  const auto found = source_state->nodes.find(owner.id_.value);
+  if (found == source_state->nodes.end()) {
+    return edit_error(error_code::unknown_node,
+                      "scene_snapshot.describe_import", *context_,
+                      state_->revision, "imported node is absent", owner.id_);
+  }
+  const auto *descriptor = source->registry.find(found->second.type_name);
+  if (!descriptor) {
+    return edit_error(
+        error_code::unknown_type, "scene_snapshot.describe_import", *context_,
+        state_->revision, "imported node type is absent", owner.id_);
+  }
+  return *descriptor;
+}
+
+result<dynamic_imported_field>
+scene_snapshot::field(const imported_node &owner,
+                      const std::string &name) const {
+  auto described = describe(owner);
+  if (!described)
+    return described.error();
+  const auto descriptor = std::find_if(described.value().fields.begin(),
+                                       described.value().fields.end(),
+                                       [&](const field_descriptor &candidate) {
+                                         return candidate.name == name;
+                                       });
+  if (descriptor == described.value().fields.end()) {
+    return edit_error(error_code::unknown_field, "scene_snapshot.field_import",
+                      *context_, state_->revision,
+                      "unknown imported field: " + name, owner.id_, name);
+  }
+  return dynamic_imported_field{context_,
+                                context_->generation,
+                                owner.source_,
+                                owner.source_generation_,
+                                owner.source_revision_,
+                                owner.id_,
+                                name,
+                                descriptor->kind,
+                                descriptor->access};
+}
+
 result<value> scene_snapshot::read(const dynamic_field &source) const {
   const auto source_context = source.context_.lock();
   const auto found = state_->nodes.find(source.node_.value);
@@ -1382,6 +1472,62 @@ result<value> scene_snapshot::read(const dynamic_field &source) const {
                       source.name_);
   }
   return found->second.fields.at(source.name_);
+}
+
+result<value> scene_snapshot::read(const dynamic_imported_field &field) const {
+  const auto importer = field.importer_.lock();
+  const auto source = field.source_.lock();
+  if (importer != context_ ||
+      field.importer_generation_ != context_->generation || !source ||
+      source->generation != field.source_generation_) {
+    return edit_error(error_code::stale_handle, "scene_snapshot.read_import",
+                      *context_, state_->revision,
+                      "invalid imported field handle", field.node_,
+                      field.name_);
+  }
+  std::optional<std::size_t> binding_index;
+  for (std::size_t index = 0; index < state_->imports.size(); ++index) {
+    if (state_->imports[index].target == field.node() &&
+        state_->import_sources[index].lock() == source) {
+      binding_index = index;
+      break;
+    }
+  }
+  if (!binding_index) {
+    return edit_error(error_code::invalid_context, "scene_snapshot.read_import",
+                      *context_, state_->revision,
+                      "imported field does not belong to this snapshot",
+                      field.node_, field.name_);
+  }
+  const auto &source_state = import_states_[*binding_index];
+  if (!source_state || source_state->revision != field.source_revision_) {
+    return edit_error(error_code::stale_handle, "scene_snapshot.read_import",
+                      *context_, state_->revision,
+                      "imported field source revision is unavailable",
+                      field.node_, field.name_);
+  }
+  const auto found = source_state->nodes.find(field.node_.value);
+  if (found == source_state->nodes.end()) {
+    return edit_error(error_code::unknown_node, "scene_snapshot.read_import",
+                      *context_, state_->revision,
+                      "imported field owner is absent", field.node_,
+                      field.name_);
+  }
+  const auto *descriptor = find_descriptor(*source, found->second, field.name_);
+  if (!descriptor || descriptor->kind != field.kind_ ||
+      descriptor->access != field.access_) {
+    return edit_error(error_code::unknown_field, "scene_snapshot.read_import",
+                      *context_, state_->revision,
+                      "imported field descriptor changed", field.node_,
+                      field.name_);
+  }
+  if (descriptor->access == access_type::input_only) {
+    return edit_error(error_code::access_denied, "scene_snapshot.read_import",
+                      *context_, state_->revision,
+                      "inputOnly imported field is not readable", field.node_,
+                      field.name_);
+  }
+  return found->second.fields.at(field.name_);
 }
 
 result<node> scene_snapshot::named(const std::string &name) const {
@@ -1431,15 +1577,30 @@ scene_snapshot::imported(const std::string &local_name) const {
   const auto index =
       static_cast<std::size_t>(std::distance(state_->imports.begin(), found));
   const auto source = state_->import_sources[index].lock();
-  if (!source || source->generation != found->source_generation) {
+  const auto &source_state = import_states_[index];
+  if (!source || source->generation != found->source_generation ||
+      !source_state) {
     return edit_error(error_code::stale_handle, "scene_snapshot.imported",
                       *context_, state_->revision,
                       "import source generation is stale", found->target.local);
+  }
+  const auto exported =
+      std::find_if(source_state->exports.begin(), source_state->exports.end(),
+                   [&](const export_binding &candidate) {
+                     return candidate.name == found->exported_name;
+                   });
+  if (exported == source_state->exports.end() ||
+      exported->node != found->target.local) {
+    return edit_error(error_code::stale_aperture, "scene_snapshot.imported",
+                      *context_, state_->revision,
+                      "captured source export no longer resolves this import",
+                      found->target.local);
   }
   return imported_node{context_,
                        context_->generation,
                        source,
                        found->source_generation,
+                       source_state->revision,
                        found->target.local,
                        found->local_name};
 }
@@ -1461,8 +1622,12 @@ generation_id execution_context::generation() const noexcept {
 }
 
 scene_snapshot execution_context::snapshot() const {
-  std::lock_guard lock(control_->mutex);
-  return scene_snapshot{control_, control_->state};
+  std::shared_ptr<const detail::scene_state> state;
+  {
+    std::lock_guard lock(control_->mutex);
+    state = control_->state;
+  }
+  return scene_snapshot{control_, std::move(state)};
 }
 
 scene_edit execution_context::edit() const {
