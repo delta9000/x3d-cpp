@@ -93,6 +93,7 @@ enum class error_code {
   containment_cycle,
   stale_handle,
   stale_revision,
+  stale_aperture,
   poisoned_edit,
   callback_failed,
   ambiguous_event_seed,

@@ -769,6 +769,33 @@ result<void> scene_edit::import_node(const std::string &local_name,
   return {};
 }
 
+result<void> scene_edit::remove_import(const import_binding &target) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto found = std::find(impl_->staged.imports.begin(),
+                               impl_->staged.imports.end(), target);
+  if (found == impl_->staged.imports.end()) {
+    impl_->poison = edit_error(
+        error_code::invalid_name, "scene_edit.remove_import", *impl_->context,
+        impl_->base->revision, "import is not present in this context",
+        target.target.local);
+    return *impl_->poison;
+  }
+  const std::size_t index = static_cast<std::size_t>(
+      std::distance(impl_->staged.imports.begin(), found));
+  impl_->staged.imports.erase(found);
+  impl_->staged.import_sources.erase(impl_->staged.import_sources.begin() +
+                                     static_cast<std::ptrdiff_t>(index));
+  impl_->changed = true;
+  impl_->changes.push_back(change{.kind = change_kind::import_removed,
+                                  .node = target.target.local,
+                                  .field = target.local_name,
+                                  .before = target.exported_name,
+                                  .after = std::monostate{},
+                                  .index = index});
+  return {};
+}
+
 result<void> scene_edit::add_route(const dynamic_field &source,
                                    const dynamic_field &sink) {
   if (impl_->poison)
@@ -881,7 +908,33 @@ result<change_set> scene_edit::commit() {
     }
   }
 
-  std::lock_guard lock(impl_->context->mutex);
+  std::vector<std::shared_ptr<detail::context_control>> import_sources;
+  import_sources.reserve(impl_->staged.import_sources.size());
+  for (const auto &weak_source : impl_->staged.import_sources) {
+    auto source = weak_source.lock();
+    if (!source) {
+      return edit_error(error_code::stale_aperture, "scene_edit.commit",
+                        *impl_->context, impl_->base->revision,
+                        "import source context no longer exists");
+    }
+    import_sources.push_back(std::move(source));
+  }
+  std::vector<std::shared_ptr<detail::context_control>> lock_order =
+      import_sources;
+  lock_order.push_back(impl_->context);
+  std::sort(lock_order.begin(), lock_order.end(),
+            [](const auto &left, const auto &right) {
+              if (left->generation != right->generation)
+                return left->generation < right->generation;
+              return left.get() < right.get();
+            });
+  lock_order.erase(std::unique(lock_order.begin(), lock_order.end()),
+                   lock_order.end());
+  std::vector<std::unique_lock<std::mutex>> locks;
+  locks.reserve(lock_order.size());
+  for (const auto &context : lock_order)
+    locks.emplace_back(context->mutex);
+
   if (!impl_->context->active) {
     return edit_error(error_code::stale_handle, "scene_edit.commit",
                       *impl_->context, impl_->base->revision,
@@ -891,6 +944,28 @@ result<change_set> scene_edit::commit() {
     return edit_error(error_code::stale_revision, "scene_edit.commit",
                       *impl_->context, impl_->base->revision,
                       "edit base revision is stale");
+  }
+  for (std::size_t index = 0; index < impl_->staged.imports.size(); ++index) {
+    const import_binding &binding = impl_->staged.imports[index];
+    const auto &source = import_sources[index];
+    if (!source->active || source->generation != binding.source_generation) {
+      return edit_error(error_code::stale_aperture, "scene_edit.commit",
+                        *impl_->context, impl_->base->revision,
+                        "import source generation is stale",
+                        binding.target.local);
+    }
+    const auto exported = std::find_if(
+        source->state->exports.begin(), source->state->exports.end(),
+        [&](const export_binding &candidate) {
+          return candidate.name == binding.exported_name;
+        });
+    if (exported == source->state->exports.end() ||
+        exported->node != binding.target.local) {
+      return edit_error(error_code::stale_aperture, "scene_edit.commit",
+                        *impl_->context, impl_->base->revision,
+                        "source export changed before import publication",
+                        binding.target.local);
+    }
   }
   if (!impl_->changed) {
     return change_set{.before_revision = impl_->base->revision,

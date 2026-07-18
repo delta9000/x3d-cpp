@@ -318,6 +318,7 @@ public:
   result<void> import_node(const std::string &local_name,
                            const execution_context &source,
                            const std::string &exported_name);
+  result<void> remove_import(const import_binding &target);
   result<void> add_route(const dynamic_field &source,
                          const dynamic_field &sink);
   result<void> remove_route(const route &target);
