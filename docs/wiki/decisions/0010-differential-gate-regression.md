@@ -2,7 +2,7 @@
 title: "ADR-0010: Differential CLI Gate as Baseline Regression"
 summary: The differential CLI gate (cli-gate / canon-gate --gate) is wired as a permanent baseline regression gate in CI.
 tags: [adr, differential-gate, regression, cli-gate, canon-gate]
-updated: 2026-06-20
+updated: 2026-07-18
 related:
   - ../architecture.md
   - ../subsystems/cli-suite.md
@@ -60,6 +60,7 @@ Baselines are refreshed explicitly, not automatically: `mise run cli-gate-baseli
 
 - The baseline files are large committed artifacts (366 and 408 TSV lines). They drift whenever the corpus subset changes or a new divergence is accepted, producing noisy git history. The trade-off is accepted: the correctness guarantee outweighs the TSV churn.
 - The validate agreement rate (40/204 = 20%) looks low as a headline number. The ADR locks in this rate as the baseline floor, which makes the metric potentially misleading to a reader unfamiliar with the triage: most of the FAIL rows are X3DJSAIL applying stricter-than-spec conventions (requiring `<meta>`, rejecting `containerField='rootNode'`), not gaps in our validator. The `tools/x3d-cli/goldens/validate-check-categories.md` worklist documents this distinction, but the TSV itself does not.
+  - **Mitigated 2026-07-18:** `divergence-report.md` now computes an **Adjusted Agreement** section itself — the classifier splits `jsail-crash` (JSAIL CLI aborted, no verdict) from real verdict disagreements, and agreement is additionally reported over the files where both validators rendered a comparable verdict. Live refresh after the 2026-07 triage: raw 41/200, adjusted **41/48 (85%)**; the full per-category rulings live in `validate-check-categories.md`.
 - The Tier-2 canon agreement rate (22/202) is locked as a FAIL baseline for those files that do not yet agree with X3DJSAIL. Tier-3 (byte-exact rate) is informative only and is NOT baseline-locked; `canon_gate.cpp` documents T3 as "reports the gap; NOT a gate" and no canon-t3 entries exist in the baseline TSV. The underlying cause of Tier-2 failures — the parser discards per-field was-set state and per-node child source order (needed to match X3DJSAIL's source-preserving X3DC14N) — is a substantial future effort (`reader source-provenance` tracking).
 - `mise run cli-golden-gen` is not in CI (requires JDK 25 + the X3DJSAIL jar cached in `tools/x3d-cli/.javacache/`, not committed). The verdicts it produces (`tools/x3d-cli/goldens/validate-verdicts.tsv`) are committed, but they become stale if the corpus subset changes without a re-run. This is documented as a maintenance responsibility.
 
