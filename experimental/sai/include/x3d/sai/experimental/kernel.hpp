@@ -135,6 +135,8 @@ enum class change_kind {
   root_removed,
   name_defined,
   name_removed,
+  export_added,
+  export_removed,
   route_added,
   route_removed,
 };
@@ -193,6 +195,13 @@ struct name_binding {
   std::string name;
   node_id node;
   friend bool operator==(const name_binding &, const name_binding &) = default;
+};
+
+struct export_binding {
+  std::string name;
+  node_id node;
+  friend bool operator==(const export_binding &,
+                         const export_binding &) = default;
 };
 
 class subscription {
@@ -255,6 +264,8 @@ public:
   }
   result<void> define_name(const std::string &name, const node &target);
   result<void> undefine_name(const std::string &name);
+  result<void> export_node(const std::string &name, const node &target);
+  result<void> remove_export(const export_binding &target);
   result<void> add_route(const dynamic_field &source,
                          const dynamic_field &sink);
   result<void> remove_route(const route &target);
@@ -287,6 +298,8 @@ public:
   }
   result<node> named(const std::string &name) const;
   const std::vector<name_binding> &names() const noexcept;
+  result<node> exported(const std::string &name) const;
+  const std::vector<export_binding> &exports() const noexcept;
   const std::vector<route> &routes() const noexcept;
 
 private:

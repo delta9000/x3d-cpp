@@ -101,6 +101,7 @@ struct scene_state {
   std::unordered_map<std::uint64_t, node_record> nodes;
   std::vector<node_id> roots;
   std::vector<name_binding> names;
+  std::vector<export_binding> exports;
   std::vector<route> routes;
 };
 
@@ -620,6 +621,72 @@ result<void> scene_edit::undefine_name(const std::string &name) {
                                   .before = name,
                                   .after = std::monostate{},
                                   .index = 0});
+  return {};
+}
+
+result<void> scene_edit::export_node(const std::string &name,
+                                     const node &target) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto target_context = target.context_.lock();
+  if (name.empty()) {
+    impl_->poison = edit_error(
+        error_code::invalid_name, "scene_edit.export_node", *impl_->context,
+        impl_->base->revision, "export name is empty", target.id_);
+    return *impl_->poison;
+  }
+  if (target_context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      !impl_->staged.nodes.contains(target.id_.value)) {
+    impl_->poison = edit_error(
+        error_code::stale_handle, "scene_edit.export_node", *impl_->context,
+        impl_->base->revision, "invalid local node handle", target.id_);
+    return *impl_->poison;
+  }
+  const auto existing = std::find_if(
+      impl_->staged.exports.begin(), impl_->staged.exports.end(),
+      [&](const export_binding &binding) { return binding.name == name; });
+  if (existing != impl_->staged.exports.end()) {
+    impl_->poison =
+        edit_error(error_code::duplicate_name, "scene_edit.export_node",
+                   *impl_->context, impl_->base->revision,
+                   "export name is already defined: " + name, target.id_);
+    return *impl_->poison;
+  }
+  impl_->staged.exports.push_back(
+      export_binding{.name = name, .node = target.id_});
+  impl_->changed = true;
+  impl_->changes.push_back(change{.kind = change_kind::export_added,
+                                  .node = target.id_,
+                                  .field = name,
+                                  .before = std::monostate{},
+                                  .after = name,
+                                  .index = impl_->staged.exports.size() - 1});
+  return {};
+}
+
+result<void> scene_edit::remove_export(const export_binding &target) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto found = std::find(impl_->staged.exports.begin(),
+                               impl_->staged.exports.end(), target);
+  if (found == impl_->staged.exports.end()) {
+    impl_->poison =
+        edit_error(error_code::invalid_name, "scene_edit.remove_export",
+                   *impl_->context, impl_->base->revision,
+                   "export is not present in this context", target.node);
+    return *impl_->poison;
+  }
+  const std::size_t index = static_cast<std::size_t>(
+      std::distance(impl_->staged.exports.begin(), found));
+  impl_->staged.exports.erase(found);
+  impl_->changed = true;
+  impl_->changes.push_back(change{.kind = change_kind::export_removed,
+                                  .node = target.node,
+                                  .field = target.name,
+                                  .before = target.name,
+                                  .after = std::monostate{},
+                                  .index = index});
   return {};
 }
 
@@ -1177,6 +1244,22 @@ result<node> scene_snapshot::named(const std::string &name) const {
 
 const std::vector<name_binding> &scene_snapshot::names() const noexcept {
   return state_->names;
+}
+
+result<node> scene_snapshot::exported(const std::string &name) const {
+  const auto found = std::find_if(
+      state_->exports.begin(), state_->exports.end(),
+      [&](const export_binding &binding) { return binding.name == name; });
+  if (found == state_->exports.end()) {
+    return edit_error(error_code::invalid_name, "scene_snapshot.exported",
+                      *context_, state_->revision,
+                      "export is not defined: " + name);
+  }
+  return node{context_, context_->generation, found->node};
+}
+
+const std::vector<export_binding> &scene_snapshot::exports() const noexcept {
+  return state_->exports;
 }
 
 const std::vector<route> &scene_snapshot::routes() const noexcept {
