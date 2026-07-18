@@ -256,6 +256,10 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest (ci preset — per-header checks ON, mirrors GitHub Actions), cli differential regression gate."
 depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
 
+[tasks.ci-all]
+description = "STRONGEST local pre-PR verification: everything `ci` runs PLUS the ASan/UBSan sanitizer build (build-san) and the example-renderer gates (validate-examples: cpu_raster + poc headless probes + the xvfb GL smoke). Mirrors the full set of blocking GitHub jobs; slower than `ci` — use before pushing risky C++ changes."
+depends = ["ci", "build-san", "validate-examples"]
+
 [tasks.coverage-gate]
 description = "ADR coverage gate: cross-check docs/wiki/decisions/*.md against the Decisions table in coverage.md (no file unrowed, no row dangling, contiguous numbering)."
 run = "uv run python scripts/coverage_gate.py"

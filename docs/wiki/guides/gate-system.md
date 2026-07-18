@@ -215,12 +215,16 @@ to pages that do not yet exist in `nav:` — `--strict` will fail.
 ## Running all gates together
 
 ```bash
-mise run ci
+mise run ci        # the standard pre-push pipeline
+mise run ci-all    # ci + build-san (ASan/UBSan) + validate-examples — the full blocking-job set
 ```
 
 `ci` depends on `test`, `golden`, `conformance-gate`, `coverage-gate`, `doc-ctest-gate`, `build`, and `cli-gate-regression` (in
-that order, with the C++ build providing the compiled gate binaries). The DOCS gate
-(`docs-build`) is separate and should also be run before any wiki PR merge.
+that order, with the C++ build providing the compiled gate binaries). `ci-all`
+adds the sanitizer build and the example-renderer gates on top, matching every
+blocking GitHub Actions job; a local `ci-all` green is the strongest pre-PR
+signal. The DOCS gate (`docs-build`) is separate and should also be run before
+any wiki PR merge.
 
 ---
 
