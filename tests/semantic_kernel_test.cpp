@@ -1075,6 +1075,53 @@ TEST_CASE("ordered imports are their own removal tokens") {
   CHECK(after.imports()[0].local_name == "B");
 }
 
+TEST_CASE(
+    "imported typed and dynamic reads capture immutable source revisions") {
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto parent = host.create_scene();
+  auto source_edit = source.edit();
+  auto shared = source_edit.create_node("Transform");
+  REQUIRE(shared);
+  auto translation = source_edit.field(shared.value(), "translation");
+  REQUIRE(translation);
+  REQUIRE(source_edit.set(translation.value(), sai::vec3f{1, 2, 3}));
+  REQUIRE(source_edit.export_node("Shared", shared.value()));
+  REQUIRE(source_edit.commit());
+  auto parent_edit = parent.edit();
+  REQUIRE(parent_edit.import_node("Remote", source, "Shared"));
+  REQUIRE(parent_edit.commit());
+
+  const auto before = parent.snapshot();
+  auto imported = before.imported("Remote");
+  REQUIRE(imported);
+  CHECK(imported.value().source_revision() == source.snapshot().revision());
+  auto described = before.describe(imported.value());
+  REQUIRE(described);
+  CHECK(described.value().name == "Transform");
+  auto dynamic = before.field(imported.value(), "translation");
+  REQUIRE(dynamic);
+  auto typed = dynamic.value().as<sai::vec3f>();
+  REQUIRE(typed);
+  CHECK(before.read(dynamic.value()).value() ==
+        sai::value{sai::vec3f{1, 2, 3}});
+  CHECK(before.read(typed.value()).value() == sai::vec3f{1, 2, 3});
+
+  auto source_update = source.edit();
+  REQUIRE(source_update.set(translation.value(), sai::vec3f{4, 5, 6}));
+  REQUIRE(source_update.commit());
+  CHECK(before.read(typed.value()).value() == sai::vec3f{1, 2, 3});
+
+  const auto after = parent.snapshot();
+  auto current = after.imported("Remote");
+  REQUIRE(current);
+  CHECK(current.value().source_revision() == source.snapshot().revision());
+  auto current_field = after.field(current.value(), "translation");
+  REQUIRE(current_field);
+  CHECK(after.read(current_field.value()).value() ==
+        sai::value{sai::vec3f{4, 5, 6}});
+}
+
 TEST_CASE("enumerated roots names and routes are their own removal tokens") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();

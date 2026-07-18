@@ -78,27 +78,97 @@ public:
   generation_id importer_generation() const noexcept {
     return importer_generation_;
   }
+  revision_id source_revision() const noexcept { return source_revision_; }
   const std::string &local_name() const noexcept { return local_name_; }
 
 private:
   imported_node(std::weak_ptr<detail::context_control> importer,
                 generation_id importer_generation,
                 std::weak_ptr<detail::context_control> source,
-                generation_id source_generation, node_id id,
-                std::string local_name)
+                generation_id source_generation, revision_id source_revision,
+                node_id id, std::string local_name)
       : importer_(std::move(importer)),
         importer_generation_(importer_generation), source_(std::move(source)),
-        source_generation_(source_generation), id_(id),
+        source_generation_(source_generation),
+        source_revision_(source_revision), id_(id),
         local_name_(std::move(local_name)) {}
 
   std::weak_ptr<detail::context_control> importer_;
   generation_id importer_generation_ = 0;
   std::weak_ptr<detail::context_control> source_;
   generation_id source_generation_ = 0;
+  revision_id source_revision_ = 0;
   node_id id_;
   std::string local_name_;
   friend class scene_snapshot;
 };
+
+template <class T> class imported_field;
+
+class dynamic_imported_field {
+public:
+  semantic_node_id node() const noexcept {
+    return semantic_node_id{source_generation_, node_};
+  }
+  const std::string &name() const noexcept { return name_; }
+  value_kind kind() const noexcept { return kind_; }
+  access_type access() const noexcept { return access_; }
+  revision_id source_revision() const noexcept { return source_revision_; }
+
+  template <class T> result<imported_field<T>> as() const;
+
+private:
+  dynamic_imported_field(std::weak_ptr<detail::context_control> importer,
+                         generation_id importer_generation,
+                         std::weak_ptr<detail::context_control> source,
+                         generation_id source_generation,
+                         revision_id source_revision, node_id node,
+                         std::string name, value_kind kind, access_type access)
+      : importer_(std::move(importer)),
+        importer_generation_(importer_generation), source_(std::move(source)),
+        source_generation_(source_generation),
+        source_revision_(source_revision), node_(node), name_(std::move(name)),
+        kind_(kind), access_(access) {}
+
+  std::weak_ptr<detail::context_control> importer_;
+  generation_id importer_generation_ = 0;
+  std::weak_ptr<detail::context_control> source_;
+  generation_id source_generation_ = 0;
+  revision_id source_revision_ = 0;
+  node_id node_;
+  std::string name_;
+  value_kind kind_ = value_kind::string;
+  access_type access_ = access_type::input_output;
+  friend class scene_snapshot;
+  template <class T> friend class imported_field;
+};
+
+template <class T> class imported_field {
+public:
+  semantic_node_id node() const noexcept { return dynamic_.node(); }
+  const std::string &name() const noexcept { return dynamic_.name(); }
+
+private:
+  explicit imported_field(dynamic_imported_field dynamic)
+      : dynamic_(std::move(dynamic)) {}
+  dynamic_imported_field dynamic_;
+  friend class dynamic_imported_field;
+  friend class scene_snapshot;
+};
+
+template <class T>
+result<imported_field<T>> dynamic_imported_field::as() const {
+  if (kind_ == value_traits<T>::kind)
+    return imported_field<T>{*this};
+  sai_error error;
+  error.code = error_code::type_mismatch;
+  error.operation = "dynamic_imported_field.as";
+  error.message = "requested typed view does not match the field descriptor";
+  error.generation = source_generation_;
+  error.node = node_;
+  error.field = name_;
+  return error;
+}
 
 template <class T> class field;
 
@@ -340,10 +410,21 @@ public:
   std::vector<occurrence> occurrences() const;
   result<node> lookup(node_id id) const;
   result<node_type_descriptor> describe(const node &owner) const;
+  result<node_type_descriptor> describe(const imported_node &owner) const;
   result<dynamic_field> field(const node &owner, const std::string &name) const;
+  result<dynamic_imported_field> field(const imported_node &owner,
+                                       const std::string &name) const;
   result<value> read(const dynamic_field &source) const;
+  result<value> read(const dynamic_imported_field &source) const;
   template <class T>
   result<T> read(const experimental::field<T> &source) const {
+    auto dynamic = read(source.dynamic_);
+    if (!dynamic)
+      return dynamic.error();
+    return std::get<T>(std::move(dynamic).value());
+  }
+  template <class T>
+  result<T> read(const experimental::imported_field<T> &source) const {
     auto dynamic = read(source.dynamic_);
     if (!dynamic)
       return dynamic.error();
@@ -363,6 +444,7 @@ private:
 
   std::shared_ptr<detail::context_control> context_;
   std::shared_ptr<const detail::scene_state> state_;
+  std::vector<std::shared_ptr<const detail::scene_state>> import_states_;
   friend class execution_context;
 };
 
