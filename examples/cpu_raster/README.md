@@ -95,7 +95,7 @@ cmake --build build-cpuraster
 | Flag | Meaning |
 |---|---|
 | `[scene.x3d]` | scene to render (default `assets/raster_smoke.x3d`) |
-| `-o, --out <file.ppm>` | output image (default `cpu_raster.ppm`) |
+| `-o, --out <file.png>` | output image (default `cpu_raster.png`; a `.ppm` extension writes PPM) |
 | `-w, --width` / `-H, --height` | image size (default 800×600) |
 | `--frag <file.glsl>` | run an author fragment shader via the interpreter |
 | `--gentex <dir>` | write the procedural test textures as PPM files and exit |

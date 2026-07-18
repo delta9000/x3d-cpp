@@ -14,7 +14,7 @@
 //
 // USAGE:
 //   x3d_cpu_raster [options] [scene.x3d]
-//     -o, --out <file.ppm>   output image (default: cpu_raster.ppm)
+//     -o, --out <file.png>   output image (default: cpu_raster.png; .ppm honored)
 //     -w, --width <px>       image width  (default 800)
 //     -H, --height <px>      image height (default 600)
 //     --frag <file.glsl>     run an author fragment shader via the interpreter
