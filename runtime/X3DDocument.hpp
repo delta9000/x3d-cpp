@@ -71,12 +71,12 @@ inline Profile profileFromString(const std::string &s) {
  */
 class X3DDocument {
 public:
-  // <X3D> attributes. The default is the VP-2 bare-floor rung: an unversioned
-  // document (no header line, no version attr) defaults to 3.0 per the §1
-  // inference ladder (declared → schema/DTD → node-floor → profile-floor →
-  // bare 3.0). Readers override this with the declared version when present;
-  // hand-built documents set it explicitly.
-  std::string version = "3.0";          // VP-2 bare-floor default; e.g. "3.3", "4.0"
+  // <X3D> attributes. The default is the AUTHORING default: a hand-built
+  // document targets the UOM the node bindings are generated from (4.0), so
+  // it never serializes as a mislabeled 3.0 file. The VP-2 §1 bare-floor rung
+  // (unversioned parsed input → 3.0) is owned by the READERS, which set
+  // doc.version explicitly on every path — version_floor_test pins both.
+  std::string version = "4.0";          // authoring default; readers overwrite
   Profile profile = Profile::Interchange;
 
   // Document sections.

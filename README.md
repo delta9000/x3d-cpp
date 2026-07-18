@@ -185,25 +185,108 @@ x3d canonicalize scene.x3d                     # X3D Canonical Form (X3DC14N)
 ### 2. Embed the SDK (one header)
 
 Link `x3d_cpp::sdk` and `#include "x3d/sdk.hpp"` — everything an embedder needs
-is in namespace `x3d::sdk`. Parse once, tick each frame, consume the delta.
-`RuntimeSession` is the recommended entry point: it owns the document, context,
-and extractor, and does the setup wiring you can silently forget (skip
-`attachStandardRuntime` on the manual path, for example, and ROUTEs resolve but
-nothing drives them — the scene renders one static frame forever):
+is in namespace `x3d::sdk`. Hello world: build a scene in C++ and write it to
+a file (a complete program — it compiles and runs as-is):
+
+```cpp
+#include "x3d/sdk.hpp"
+#include "x3d/nodes/Appearance.hpp"
+#include "x3d/nodes/Material.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/Sphere.hpp"
+
+#include <fstream>
+namespace sdk = x3d::sdk;
+
+int main() {
+  auto ball = std::make_shared<x3d::nodes::Shape>();
+  auto look = std::make_shared<x3d::nodes::Appearance>();
+  auto red  = std::make_shared<x3d::nodes::Material>();
+  red->setDiffuseColor({0.875f, 0.25f, 0.25f});
+  look->setMaterial(red);
+  ball->setAppearance(look);
+  ball->setGeometry(std::make_shared<x3d::nodes::Sphere>());
+
+  sdk::X3DDocument doc;            // authoring default: version 4.0, Interchange
+  doc.scene.rootNodes.push_back(ball);
+
+  std::ofstream("hello.x3d") << sdk::XmlWriter{}.writeDocument(doc);
+}
+```
+
+`hello.x3d` comes out as spec-conformant X3D (`x3d validate hello.x3d` → no
+diagnostics) and opens in any X3D browser:
+
+```xml
+<X3D profile="Interchange" version="4.0">
+  <Scene>
+    <Shape>
+      <Appearance containerField="appearance">
+        <Material diffuseColor="0.875 0.25 0.25" containerField="material"/>
+      </Appearance>
+      <Sphere containerField="geometry"/>
+    </Shape>
+  </Scene>
+</X3D>
+```
+
+The node classes are the generated UOM bindings — every node and field in the
+X3D 4.0 object model is available like this, typed setters range-check on
+write, and `JsonWriter` / `VrmlWriter` serialize the same document to the
+other encodings.
+
+**Then feed a renderer.** The other direction — and the reason the SDK exists —
+is consuming a scene as renderer-ready data. `RuntimeSession` is the
+recommended entry point: it owns the document, context, and extractor, and does
+the setup wiring you can silently forget (skip `attachStandardRuntime` on the
+manual path, for example, and ROUTEs resolve but nothing drives them — the
+scene renders one static frame forever). Parse once, upload the snapshot, then
+tick each frame and apply only what changed:
 
 ```cpp
 #include "x3d/sdk.hpp"
 namespace sdk = x3d::sdk;
 
-auto session = sdk::RuntimeSession::create(sdk::parseFile("scene.x3d"));  // 4 encodings + gzip
-sdk::RenderDelta f0 = session->fullSnapshot();        // upload f0.added (meshes/materials/lights)
-const auto t0 = std::chrono::steady_clock::now();     // monotonic clock start
-while (running) {
-  double now = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();  // seconds since start
-  session->tick(now);                                 // advance time, routes, scripts, behaviors
-  sdk::RenderDelta d = session->delta();              // apply d.added / removed / updated*
+auto session = sdk::RuntimeSession::create(sdk::parseFile("hello.x3d"));  // 4 encodings + gzip
+
+// Frame 0: everything, once.
+sdk::RenderDelta f0 = session->fullSnapshot();
+for (sdk::RenderItemId id : f0.added) {
+  const sdk::RenderItem &item = session->extractor().item(id);
+  const sdk::MeshData &mesh = *item.mesh;   // positions / normals / texcoords / indices
+  for (const auto &tex : item.material.textures) {
+    // tex.slot: BaseColor / Normal / MetallicRoughness / ...
+    // tex.url (resolve via your loader) or tex.inlinePixels (PixelTexture)
+  }
+  uploadMesh(mesh, item.worldTransform, item.material);  // your GPU upload
+}
+
+// Every frame after: only what changed.
+while (running()) {
+  session->tick(now());                     // seconds since start, monotonic
+  sdk::RenderDelta d = session->delta();
+  // d.added / d.removed        -> create / destroy GPU objects
+  // d.updatedTransform         -> re-upload the model matrix
+  // d.updatedGeometry          -> re-upload vertex data (morph/animation)
+  // d.updatedMaterial          -> update uniforms
+  // d.cameraChanged / d.lightsChanged / d.backgroundChanged
 }
 ```
+
+`MaterialDesc` tells you which of the three material models to shade
+(`Phong` / `Physical` / `Unlit`) with the corresponding parameters
+(metallic/roughness for PBR, diffuse/specular/shininess for Phong);
+`session->extractor()` also exposes the camera, world-resolved lights, and
+background.
+
+Both programs live in [`examples/embed_minimal/`](examples/embed_minimal/)
+(the hello world there uses the slimmer authoring-only header/target —
+`x3d/authoring.hpp` + `x3d_cpp::authoring` — same graph-building lines). CI
+builds them against a **real install prefix** and runs them **chained** —
+hello world writes `hello.x3d`, the consumer parses it back and must extract
+real mesh data — on every C++-touching PR (`scripts/verify_install_embed.sh`,
+the `x3d_install_embed_smoke` gate), so this section is gate-enforced rather
+than aspirational.
 
 This is a shorter path, not a walled garden: `session->context()` /
 `extractor()` / `scene()` hand back the underlying `X3DExecutionContext`,
@@ -218,8 +301,8 @@ the backend (`AssetResolver`, `TextureResolver`, `FontMetrics`, `ScriptEngine`,
 synchronous local-file convenience API — the one deliberate exception. See
 [`docs/sdk/`](docs/sdk/).
 
-For a downstream-style CMake project that does not depend on the source tree,
-see [`examples/embed_minimal/`](examples/embed_minimal/). It uses only:
+`examples/embed_minimal/` is also the downstream-style CMake reference — it
+does not depend on the source tree and uses only:
 
 ```cmake
 find_package(x3d_cpp CONFIG REQUIRED)

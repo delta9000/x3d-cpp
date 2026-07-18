@@ -14,6 +14,9 @@ Encoding JsonReader::encoding() const { return Encoding::JSON; }
 runtime::X3DDocument JsonReader::readDocument(const std::string &text) {
   auto root = json::parse(text);
   runtime::X3DDocument doc;
+  // VP-2 §1 bare floor: an unversioned document reads as 3.0. Set here, not
+  // via the X3DDocument member default (that is the 4.0 authoring default).
+  doc.version = "3.0";
   if (!root || !root->isObject())
     return doc;
 

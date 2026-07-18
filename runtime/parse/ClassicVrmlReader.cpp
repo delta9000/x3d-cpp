@@ -13,6 +13,10 @@ Encoding ClassicVrmlReader::encoding() const { return Encoding::ClassicVRML; }
 
 runtime::X3DDocument ClassicVrmlReader::readDocument(const std::string &text) {
   runtime::X3DDocument doc;
+  // VP-2 §1 bare floor: readers own the 3.0 floor explicitly (the X3DDocument
+  // member default is the 4.0 authoring default). The header parse below
+  // overwrites this on every well-formed path; this covers malformed ones.
+  doc.version = "3.0";
   std::string_view src(text);
 
   // ----- Header line (`#X3D V<maj>.<min> <enc>` or `#VRML V2.0 utf8`). -----
