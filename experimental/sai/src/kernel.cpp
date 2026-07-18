@@ -102,6 +102,8 @@ struct scene_state {
   std::vector<node_id> roots;
   std::vector<name_binding> names;
   std::vector<export_binding> exports;
+  std::vector<import_binding> imports;
+  std::vector<std::weak_ptr<context_control>> import_sources;
   std::vector<route> routes;
 };
 
@@ -583,7 +585,13 @@ result<void> scene_edit::define_name(const std::string &name,
   const auto existing = std::find_if(
       impl_->staged.names.begin(), impl_->staged.names.end(),
       [&](const name_binding &binding) { return binding.name == name; });
-  if (existing != impl_->staged.names.end()) {
+  const auto imported =
+      std::find_if(impl_->staged.imports.begin(), impl_->staged.imports.end(),
+                   [&](const import_binding &binding) {
+                     return binding.local_name == name;
+                   });
+  if (existing != impl_->staged.names.end() ||
+      imported != impl_->staged.imports.end()) {
     impl_->poison = edit_error(
         error_code::duplicate_name, "scene_edit.define_name", *impl_->context,
         impl_->base->revision, "name is already defined: " + name, target.id_);
@@ -687,6 +695,77 @@ result<void> scene_edit::remove_export(const export_binding &target) {
                                   .before = target.name,
                                   .after = std::monostate{},
                                   .index = index});
+  return {};
+}
+
+result<void> scene_edit::import_node(const std::string &local_name,
+                                     const execution_context &source,
+                                     const std::string &exported_name) {
+  if (impl_->poison)
+    return *impl_->poison;
+  if (local_name.empty() || exported_name.empty()) {
+    impl_->poison = edit_error(
+        error_code::invalid_name, "scene_edit.import_node", *impl_->context,
+        impl_->base->revision, "import and export names must not be empty");
+    return *impl_->poison;
+  }
+  const auto local = std::find_if(
+      impl_->staged.names.begin(), impl_->staged.names.end(),
+      [&](const name_binding &binding) { return binding.name == local_name; });
+  const auto imported =
+      std::find_if(impl_->staged.imports.begin(), impl_->staged.imports.end(),
+                   [&](const import_binding &binding) {
+                     return binding.local_name == local_name;
+                   });
+  if (local != impl_->staged.names.end() ||
+      imported != impl_->staged.imports.end()) {
+    impl_->poison = edit_error(
+        error_code::duplicate_name, "scene_edit.import_node", *impl_->context,
+        impl_->base->revision, "local name is already defined: " + local_name);
+    return *impl_->poison;
+  }
+  if (!source.control_ || source.control_ == impl_->context ||
+      source.control_->owner.lock() != impl_->context->owner.lock()) {
+    impl_->poison = edit_error(
+        error_code::invalid_context, "scene_edit.import_node", *impl_->context,
+        impl_->base->revision,
+        "source context must be a distinct context in the same browser");
+    return *impl_->poison;
+  }
+
+  std::lock_guard source_lock(source.control_->mutex);
+  if (!source.control_->active) {
+    impl_->poison = edit_error(
+        error_code::stale_handle, "scene_edit.import_node", *impl_->context,
+        impl_->base->revision, "source context is no longer active");
+    return *impl_->poison;
+  }
+  const auto exported = std::find_if(source.control_->state->exports.begin(),
+                                     source.control_->state->exports.end(),
+                                     [&](const export_binding &binding) {
+                                       return binding.name == exported_name;
+                                     });
+  if (exported == source.control_->state->exports.end()) {
+    impl_->poison =
+        edit_error(error_code::invalid_name, "scene_edit.import_node",
+                   *impl_->context, impl_->base->revision,
+                   "source export is not defined: " + exported_name);
+    return *impl_->poison;
+  }
+  const import_binding binding{
+      .local_name = local_name,
+      .source_generation = source.control_->generation,
+      .exported_name = exported_name,
+      .target = semantic_node_id{source.control_->generation, exported->node}};
+  impl_->staged.imports.push_back(binding);
+  impl_->staged.import_sources.push_back(source.control_);
+  impl_->changed = true;
+  impl_->changes.push_back(change{.kind = change_kind::import_added,
+                                  .node = exported->node,
+                                  .field = local_name,
+                                  .before = std::monostate{},
+                                  .after = exported_name,
+                                  .index = impl_->staged.imports.size() - 1});
   return {};
 }
 
@@ -1260,6 +1339,38 @@ result<node> scene_snapshot::exported(const std::string &name) const {
 
 const std::vector<export_binding> &scene_snapshot::exports() const noexcept {
   return state_->exports;
+}
+
+result<imported_node>
+scene_snapshot::imported(const std::string &local_name) const {
+  const auto found =
+      std::find_if(state_->imports.begin(), state_->imports.end(),
+                   [&](const import_binding &binding) {
+                     return binding.local_name == local_name;
+                   });
+  if (found == state_->imports.end()) {
+    return edit_error(error_code::invalid_name, "scene_snapshot.imported",
+                      *context_, state_->revision,
+                      "import is not defined: " + local_name);
+  }
+  const auto index =
+      static_cast<std::size_t>(std::distance(state_->imports.begin(), found));
+  const auto source = state_->import_sources[index].lock();
+  if (!source || source->generation != found->source_generation) {
+    return edit_error(error_code::stale_handle, "scene_snapshot.imported",
+                      *context_, state_->revision,
+                      "import source generation is stale", found->target.local);
+  }
+  return imported_node{context_,
+                       context_->generation,
+                       source,
+                       found->source_generation,
+                       found->target.local,
+                       found->local_name};
+}
+
+const std::vector<import_binding> &scene_snapshot::imports() const noexcept {
+  return state_->imports;
 }
 
 const std::vector<route> &scene_snapshot::routes() const noexcept {
