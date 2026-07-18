@@ -77,6 +77,29 @@ else
 fi
 """
 
+# AUTHORITATIVE local Windows check for precommit: real MSVC cl.exe under wine
+# (via msvc-wine). Slower than build-msvc (clang-cl), but catches the MSVC-only
+# #ifdef bugs clang-cl is blind to (e.g. the tinfl.h C1017). Needs wine + msvc-wine
+# installed at ~/my-msvc (or $MSVC_WINE_BIN); see cmake/toolchains/msvc-wine.cmake.
+[tasks.build-msvc-real]
+description = "Precommit Windows check: build + wine-run the LoadSensor + FileResolver suites with REAL MSVC cl.exe (msvc-wine). Authoritative but slower than build-msvc (clang-cl). Needs wine + ~/my-msvc; see cmake/toolchains/msvc-wine.cmake."
+run = """
+set -e
+export WINEDEBUG=-all
+cmake -S . -B build-msvc-real -G Ninja \
+  --toolchain "$PWD/cmake/toolchains/msvc-wine.cmake" \
+  -DCMAKE_BUILD_TYPE=Release -DX3D_CPP_BUILD_TESTS=ON -DX3D_CPP_ENABLE_DEV_TOOLING=OFF
+cmake --build build-msvc-real --target x3d_events_tests x3d_fileresolver_test
+if command -v wine >/dev/null 2>&1; then
+  for t in x3d_fileresolver_test x3d_events_tests; do
+    echo "== wine build-msvc-real/$t.exe (real cl.exe) =="
+    wine "build-msvc-real/$t.exe"
+  done
+else
+  echo "wine not installed — built build-msvc-real/*.exe but did not run them."
+fi
+"""
+
 # build-ci uses the `ci` preset and mirrors both GitHub Actions C++ jobs:
 # behavior first, then the per-header/install compile contracts. Separate build
 # dir (build-ci/) keeps the dev preset's cache warm for fast iteration.
