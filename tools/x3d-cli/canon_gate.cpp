@@ -513,8 +513,16 @@ int main(int argc, char **argv) {
     bool goldensExist = fs::is_directory(canonGoldDir);
     int t2total = 0, t2pass = 0, t3exact = 0;
     if (!goldensExist) {
-        std::cout << "=== TIER 2/3: Skipped (no canonical goldens at " << canonGoldDir << ") ===\n";
-        std::cout << "Run 'mise run canon-golden-gen' to generate X3DJSAIL reference fixtures.\n\n";
+        // The canonical goldens are deliberately NOT committed (derivatives of
+        // the Web3D example archive: per-file attribution + ~7.4MB — same
+        // policy that keeps the corpus itself out of git), so a fresh clone
+        // cannot run tier-2/3. That is a COVERAGE GAP, not a pass: say so
+        // unmissably in both modes instead of the old two-line skip note that
+        // let "PASS" read as full coverage.
+        std::cout << "=== TIER 2/3: *** NOT RUN — 0 of the tier-2/3 checks executed ***\n";
+        std::cout << "    No canonical goldens at " << canonGoldDir << ".\n";
+        std::cout << "    They are local-only fixtures (Web3D-derived; not bundled).\n";
+        std::cout << "    Enable locally: mise run canon-golden-gen  (JDK >= 25 + X3DJSAIL.jar)\n\n";
     } else {
         std::cout << "=== TIER 2: Tolerant diff vs X3DJSAIL goldens ===\n";
         std::cout << "=== TIER 3: Byte-exact match vs X3DJSAIL ===\n\n";
@@ -585,7 +593,8 @@ int main(int argc, char **argv) {
               << " (" << static_cast<int>(t1total > 0 ? 100.0 * t1pass / t1total + 0.5 : 0) << "%)"
               << (t1fail > 0 ? " *** FAILURES ***" : " (OK)") << "\n";
     if (!goldensExist) {
-        std::cout << "TIER 2/3: no goldens (run mise run canon-golden-gen to generate)\n";
+        std::cout << "TIER 2/3: *** NOT RUN (0 checks) *** — no local canonical goldens; "
+                     "coverage is T1-only. Enable: mise run canon-golden-gen\n";
     }
     std::cout << "\n";
 
@@ -652,7 +661,9 @@ int main(int argc, char **argv) {
                 std::cout << "  REGRESSION: " << k << "\n";
         }
         if (t1fail == 0 && regressions.empty())
-            std::cout << "PASS — no regressions (Tier-1 100%; all baseline-PASS items still pass).\n";
+            std::cout << "PASS — no regressions (Tier-1 100%; all baseline-PASS items still pass"
+                      << (goldensExist ? "; tier-2/3 executed" : "; TIER-2/3 NOT RUN — T1-only coverage")
+                      << ").\n";
 
         if (!improvements.empty()) {
             std::cout << "\nNOTE: " << improvements.size() << " improvement(s) detected"

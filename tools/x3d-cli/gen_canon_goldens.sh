@@ -21,6 +21,10 @@
 #           `java` binary is resolved in this order: $X3D_JDK_BIN, then
 #           $JAVA_HOME/bin/java, then `mise which java`, then `java` on PATH.
 #           Install one with e.g. `mise install java@temurin-25.0.3+9.0.LTS`.
+#
+# Jar provenance (official Web3D Consortium distribution; verified 2026-07-18):
+#   curl -fL -o tools/x3d-cli/.javacache/X3DJSAIL.jar \
+#     https://www.web3d.org/specifications/java/jars/X3DJSAIL.4.0.full.jar
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -138,4 +142,8 @@ echo "  No-DTD (skipped): $notdtd"
 echo "  Other failures:   $fail"
 echo "  Non-XML (skipped):$skip"
 echo ""
-echo "Commit: git add $CANON_GOLDENS_DIR && git commit -m 'test: X3DJSAIL canonical goldens'"
+# Deliberately NOT a commit instruction: the fixtures are gitignored LOCAL
+# artifacts (Web3D-archive derivatives — per-file attribution + ~7.4MB; same
+# policy as the uncommitted corpus). canon_gate picks them up from this path
+# automatically; without them it runs tier-1-only and says so loudly (#105).
+echo "Done: canon_gate will now run tier-2/3 against $CANON_GOLDENS_DIR (local, gitignored)."
