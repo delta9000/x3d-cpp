@@ -2,6 +2,7 @@
 #include "Mat4.hpp"
 #include "doctest/doctest.h"
 #include <cmath>
+#include <numbers>
 using namespace x3d::runtime;
 
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
@@ -22,7 +23,7 @@ TEST_CASE("mat4_test") {
   CHECK((veq(s.transformPoint({1,1,1}), {2,3,4})));
 
   // 90deg rotation about +Z maps +X -> +Y
-  Mat4 r = Mat4::rotation(SFRotation{0,0,1, static_cast<float>(M_PI/2.0)});
+  Mat4 r = Mat4::rotation(SFRotation{0,0,1, static_cast<float>(std::numbers::pi/2.0)});
   CHECK((veq(r.transformPoint({1,0,0}), {0,1,0})));
 
   // multiply order: (T * S) applied to p scales THEN translates

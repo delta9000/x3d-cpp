@@ -3,13 +3,14 @@
 #include "Ray.hpp"
 #include "doctest/doctest.h"
 #include <cmath>
+#include <numbers>
 using namespace x3d::runtime;
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-3f; }
 
 TEST_CASE("mat4_inverse_test") {
   // M * inverse(M) ~= I for a non-trivial translate*rotate*scale.
   Mat4 M = Mat4::translation({3,-2,5})
-         * Mat4::rotation(SFRotation{0,1,0, static_cast<float>(M_PI/3)})
+         * Mat4::rotation(SFRotation{0,1,0, static_cast<float>(std::numbers::pi/3)})
          * Mat4::scale({2,4,0.5f});
   Mat4 I = M * M.inverse();
   for (int c=0;c<4;++c) for (int r=0;r<4;++r)

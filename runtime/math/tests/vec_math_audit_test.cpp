@@ -6,6 +6,7 @@
 #include "Interpolation.hpp"
 #include "doctest/doctest.h"
 #include <cmath>
+#include <numbers>
 using namespace x3d::runtime;
 
 static bool feq(float a, float b, float eps = 1e-4f) { return std::fabs(a - b) < eps; }
@@ -23,7 +24,7 @@ TEST_CASE("vec_math_audit_test") {
     CHECK((feq(static_cast<float>(q.w), 1.0f)));
   }
   {
-    Quat q = quatFromRotation(SFRotation{0,0,0, static_cast<float>(M_PI)});
+    Quat q = quatFromRotation(SFRotation{0,0,0, static_cast<float>(std::numbers::pi)});
     CHECK((feq(static_cast<float>(q.x), 0.0f)));
     CHECK((feq(static_cast<float>(q.y), 1.0f))); // axis became +Y, sin(pi/2)=1
     CHECK((feq(static_cast<float>(q.z), 0.0f)));
@@ -68,7 +69,7 @@ TEST_CASE("vec_math_audit_test") {
   // 5. transformMatrix precision: TRS composition round-trip on points
   {
     SFVec3f t{1.0f, 2.0f, 3.0f};
-    SFRotation rot{0,0,1, static_cast<float>(M_PI/4.0)};
+    SFRotation rot{0,0,1, static_cast<float>(std::numbers::pi/4.0)};
     SFVec3f s{2.0f, 2.0f, 2.0f};
     Mat4 m = transformMatrix(t, rot, s, {0,0,0}, {0,0,1,0});
 
