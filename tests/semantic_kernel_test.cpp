@@ -897,6 +897,45 @@ TEST_CASE("names and routes publish at the same revision as their nodes") {
   CHECK(snapshot.routes()[0].sink_field == "translation");
 }
 
+TEST_CASE(
+    "context exports are ordered aliases while ordinary lookup stays local") {
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto sibling = host.create_scene();
+
+  auto source_edit = source.edit();
+  auto source_node = source_edit.create_node("Transform");
+  REQUIRE(source_node);
+  REQUIRE(source_edit.define_name("Local", source_node.value()));
+  REQUIRE(source_edit.export_node("PublicTransform", source_node.value()));
+  REQUIRE(source_edit.commit());
+
+  auto sibling_edit = sibling.edit();
+  auto sibling_node = sibling_edit.create_node("Transform");
+  REQUIRE(sibling_node);
+  REQUIRE(sibling_edit.define_name("Local", sibling_node.value()));
+  REQUIRE(sibling_edit.commit());
+
+  const auto source_snapshot = source.snapshot();
+  const auto sibling_snapshot = sibling.snapshot();
+  CHECK(source_snapshot.named("Local").value().id() ==
+        source_node.value().id());
+  CHECK(sibling_snapshot.named("Local").value().id() ==
+        sibling_node.value().id());
+  REQUIRE_FALSE(sibling_snapshot.exported("PublicTransform"));
+  REQUIRE(source_snapshot.exports().size() == 1);
+  CHECK(source_snapshot.exports()[0].name == "PublicTransform");
+  CHECK(source_snapshot.exports()[0].node == source_node.value().id());
+  CHECK(source_snapshot.exported("PublicTransform").value().id() ==
+        source_node.value().id());
+
+  auto remove = source.edit();
+  REQUIRE(remove.remove_export(source_snapshot.exports().front()));
+  REQUIRE(remove.commit());
+  CHECK(source.snapshot().exports().empty());
+  REQUIRE_FALSE(source.snapshot().exported("PublicTransform"));
+}
+
 TEST_CASE("enumerated roots names and routes are their own removal tokens") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();
