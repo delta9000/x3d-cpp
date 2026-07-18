@@ -152,6 +152,15 @@ every push), so the sequence above is gate-enforced rather than aspirational.
 **Requires:** a C++20 compiler and CMake 3.21+. Contributors additionally use
 [mise](#dev-tasks-mise) as a task runner — see [Dev tasks](#dev-tasks-mise).
 
+**Network access:** the default build above (and the headless
+[`cpu_raster`](examples/cpu_raster/) example, whose image I/O is vendored stb)
+needs **no network** beyond the checkout — configure, build, and install are
+offline. Two things do download at **configure time**, both pinned and
+off-by-default: the OpenGL example (`examples/poc_renderer/`, `mise run poc`)
+FetchContent-pulls GLFW and Dear ImGui from GitHub, and the opt-in backends
+(`X3D_CPP_BUILD_PHYSICS` / `QUICKJS` / `MINIAUDIO` / `USD`) fetch their pinned
+third-party sources the same way.
+
 ## Quickstart — three ways in
 
 ### 1. The `x3d` CLI (no code)
