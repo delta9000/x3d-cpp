@@ -86,3 +86,35 @@ cmake --build "$product_build"
 (cd "$work_dir" && "$product_build/x3d_embed_authoring")
 [ -s "$work_dir/hello.x3d" ] || { echo "authoring example wrote no hello.x3d" >&2; exit 1; }
 (cd "$work_dir" && "$product_build/x3d_embed_minimal")
+
+# ── Relocatability: the package must work from a MOVED copy of the prefix ─────
+# Static half: no absolute source- or build-tree path may be baked into any
+# installed CMake file (prefix-relative _IMPORT_PREFIX only). A hit here is a
+# relocatability bug even when the dynamic half below happens to pass.
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+build_dir_abs="$(cd "$build_dir" && pwd)"
+leaks="$(grep -RIl -e "$repo_root" -e "$build_dir_abs" "$prefix"/lib*/cmake 2>/dev/null || true)"
+if [ -n "$leaks" ]; then
+  echo "installed CMake files embed absolute source/build paths (not relocatable):" >&2
+  echo "$leaks" >&2
+  exit 1
+fi
+
+# Dynamic half: copy the prefix, HIDE the original, then configure + build +
+# run the embed pair against the copy from a fresh build dir — proving no
+# configure, link, or runtime step still reaches into the original install
+# location (e.g. via a baked absolute RPATH or cached import path).
+moved="$work_dir/prefix-moved"
+moved_build="$work_dir/product-build-moved"
+rm -rf "$moved" "$moved_build"
+cp -R "$prefix" "$moved"
+mv "$prefix" "$prefix.hidden"
+trap 'mv -f "$prefix.hidden" "$prefix" 2>/dev/null || true' EXIT
+cmake -S "$product_src" -B "$moved_build" -G "$generator" \
+  -DCMAKE_PREFIX_PATH="$moved" >/dev/null
+cmake --build "$moved_build" >/dev/null
+(cd "$work_dir" && "$moved_build/x3d_embed_authoring")
+(cd "$work_dir" && "$moved_build/x3d_embed_minimal")
+mv "$prefix.hidden" "$prefix"
+trap - EXIT
+echo "relocatable: embed pair configured, built, and ran against a moved prefix with the original hidden"
