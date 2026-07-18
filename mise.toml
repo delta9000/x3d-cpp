@@ -253,8 +253,8 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 """
 
 [tasks.ci]
-description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest (ci preset — per-header checks ON, mirrors GitHub Actions), cli differential regression gate."
-depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
+description = "Run the whole pipeline locally: tests, golden gate, scene and SAI conformance gates, coverage gate, C++ build/ctest (ci preset — per-header checks ON, mirrors GitHub Actions), cli differential regression gate."
+depends = ["test", "golden", "conformance-gate", "sai-conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
 
 [tasks.ci-all]
 description = "STRONGEST local pre-PR verification: everything `ci` runs PLUS the ASan/UBSan sanitizer build (build-san) and the example-renderer gates (validate-examples: cpu_raster + poc headless probes + the xvfb GL smoke). Mirrors the full set of blocking GitHub jobs; slower than `ci` — use before pushing risky C++ changes."
@@ -275,6 +275,22 @@ run = "uv run python scripts/conformance_view.py generate"
 [tasks.conformance-gate]
 description = "Conformance gate: validate findings.yaml schema + fail on drift of the generated view (mirrors golden)."
 run = "uv run python scripts/conformance_view.py check"
+
+[tasks.sai-baseline]
+description = "Regenerate the modern C++ SAI service/invariant baseline from the editable YAML registers."
+run = "uv run python scripts/sai_conformance.py generate"
+
+[tasks.sai-conformance-gate]
+description = "Validate the C++ SAI service and invariant registers, their cross-links, and generated baseline drift (runs in CI)."
+run = "uv run python scripts/check_sai_services.py"
+
+[tasks.sai-invariants]
+description = "Validate the semantic invariant registry, service cross-links, and generated coverage view."
+run = "uv run python scripts/check_sai_invariants.py"
+
+[tasks.sai-conformance]
+description = "Opt-in convergence gate: require every registered SAI service and falsification test to be complete. Expected to fail until the SAI is complete."
+run = "uv run python scripts/check_sai_services.py --strict"
 
 [tasks.corpus-fetch]
 description = "Fetch the X3D test corpus (curated subset + Inline/EXTERNPROTO deps) from web3d.org into .x3d-corpus/ (or $X3D_CORPUS_DIR). ~9MB, seconds. Makes the corpus gates runnable."

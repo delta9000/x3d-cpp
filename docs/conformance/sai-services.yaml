@@ -1,0 +1,544 @@
+# ISO/IEC 19775-2 abstract-service inventory mapped to the intended modern C++
+# surface. This is a convergence register, not a claim that ISO/IEC 19777-4's
+# legacy class layout should be reproduced.
+#
+# support:
+#   implemented  complete portable SAI behavior with executable coverage
+#   partial      useful x3d-cpp behavior exists, but its surface or semantics
+#                do not yet satisfy the complete abstract service
+#   planned      no suitable public semantic service yet
+#   unsupported  intentionally unavailable (must carry a reason in `errors`)
+#
+# A planned:* symbol or test is an explicit gap. YAML merge anchors keep the
+# repeated ISO-wide policy visible here without obscuring per-service semantics.
+schema_version: 1
+
+defaults:
+  query: &query
+    profiles: [inspection]
+    errors: optional absence is distinct from invalid context and implementation failure
+    buffering: reads the latest committed state
+    events: none
+  browser_query: &browser_query
+    profiles: [inspection, live, browser-adapter]
+    errors: optional absence is distinct from invalid browser generation, unavailable capability, and adapter failure
+    buffering: reads the latest committed browser generation
+    events: none
+  command: &command
+    profiles: [authoring, live]
+    errors: structured invalid-operation, invalid-context, and capability errors
+    buffering: participates in the active mutation scope; otherwise commits at the documented service boundary
+    events: effects are observable only after the commit boundary
+  browser_command: &browser_command
+    profiles: [authoring, live, browser-adapter]
+    errors: structured invalid-operation, invalid-generation, capability, and adapter errors
+    buffering: participates in browser update control; otherwise publishes at the service boundary
+    events: world and field effects become observable at the browser publication boundary
+  observer: &observer
+    profiles: [inspection, live, browser-adapter]
+    errors: invalid source, stale generation, and dispatcher failure are distinct
+    buffering: registration and cancellation are immediate; delivery observes committed state only
+    events: callbacks are ordered by causal publication and held by a cancellable RAII subscription
+  console: &console
+    profiles: [live, browser-adapter]
+    errors: adapter output failure is reported without mutating scene state
+    buffering: output is forwarded immediately according to host console policy
+    events: none
+  async: &async
+    profiles: [live, browser-adapter]
+    errors: completion distinguishes success, cancellation, timeout, invalid input, and transport or decode failure
+    buffering: completion publishes one coherent scene or capability result
+    events: completion is delivered through an explicit dispatcher with cancellable subscription lifetime
+
+services:
+  # Browser discovery, lifecycle, and world control.
+  - <<: *browser_query
+    id: SVC-BROWSER-NAME
+    clause: ISO/IEC 19775-2:2015, 6.3.2 getName
+    public_symbol: x3d::runtime::SaiContext::getName
+    support: partial
+    tests: [x3d_sai_context]
+    binding_obligations: [CPP-4.3.2.2-SESSION-EQUIVALENCE]
+    preserves: [INV-CXX-2, INV-PORT-1]
+  - <<: *browser_query
+    id: SVC-BROWSER-VERSION
+    clause: ISO/IEC 19775-2:2015, 6.3.3 getVersion
+    public_symbol: x3d::runtime::SaiContext::getVersion
+    support: partial
+    tests: [x3d_sai_context]
+    preserves: [INV-CXX-2, INV-PORT-1]
+  - <<: *browser_query
+    id: SVC-BROWSER-CURRENT-TIME
+    clause: ISO/IEC 19777-4:2015, Browser::currentTime binding utility
+    public_symbol: x3d::runtime::SaiContext::currentTime
+    support: partial
+    tests: [x3d_sai_context]
+    preserves: [INV-EVT-1, INV-PORT-1]
+  - <<: *browser_query
+    id: SVC-BROWSER-FRAME-RATE
+    clause: ISO/IEC 19775-2:2015, 6.3.5 getCurrentFrameRate
+    public_symbol: x3d::runtime::SaiContext::currentFrameRate
+    support: partial
+    tests: [x3d_sai_context]
+    preserves: [INV-CXX-2, INV-PORT-1]
+  - <<: *browser_query
+    id: SVC-BROWSER-DESCRIPTION-READ
+    clause: ISO/IEC 19777-4:2015, Browser description binding utility
+    public_symbol: planned:x3d::sai::browser::description
+    support: planned
+    tests: [planned:sai_browser_description_read]
+    preserves: [INV-LIFE-1, INV-PORT-1]
+  - <<: *browser_command
+    id: SVC-BROWSER-DESCRIPTION-WRITE
+    clause: ISO/IEC 19775-2:2015, 6.3.15 setDescription
+    public_symbol: planned:x3d::sai::browser::set_description
+    support: planned
+    tests: [planned:sai_browser_description_write]
+    preserves: [INV-EDIT-1, INV-PORT-1]
+  - <<: *browser_query
+    id: SVC-BROWSER-SUPPORTED-PROFILES
+    clause: ISO/IEC 19775-2:2015, 6.3.6 getSupportedProfiles
+    public_symbol: planned:x3d::sai::browser::supported_profiles
+    support: planned
+    tests: [planned:sai_browser_supported_profiles]
+    preserves: [INV-CAP-1, INV-PORT-1]
+  - <<: *browser_query
+    id: SVC-BROWSER-SUPPORTED-COMPONENTS
+    clause: ISO/IEC 19775-2:2015, 6.3.8 getSupportedComponents
+    public_symbol: planned:x3d::sai::browser::supported_components
+    support: planned
+    tests: [planned:sai_browser_supported_components]
+    preserves: [INV-CAP-1, INV-PORT-1]
+  - <<: *browser_query
+    id: SVC-BROWSER-CURRENT-SCENE
+    clause: ISO/IEC 19775-2:2015, 6.3.10 getExecutionContext
+    public_symbol: x3d::sai::experimental::browser::current_scene
+    support: partial
+    tests: [sai_life_stale_handle]
+    preserves: [INV-ID-1, INV-LIFE-1, INV-CONC-1, INV-CXX-1]
+  - <<: *console
+    id: SVC-BROWSER-PRINT
+    clause: ISO/IEC 19775-2:2015, 6.3.24 print/println
+    public_symbol: x3d::runtime::SaiContext::print
+    support: partial
+    tests: [x3d_sai_context]
+    preserves: [INV-PORT-1, INV-VAL-2]
+  - <<: *browser_command
+    id: SVC-BROWSER-REPLACE-WORLD
+    clause: ISO/IEC 19775-2:2015, 6.3.12 replaceWorld
+    public_symbol: x3d::sai::experimental::browser::replace_world
+    support: partial
+    tests: [sai_life_stale_handle]
+    preserves: [INV-LIFE-1, INV-EDIT-1, INV-EDIT-3]
+  - <<: *async
+    id: SVC-BROWSER-LOAD-URL
+    clause: ISO/IEC 19775-2:2015, 6.3.14 loadURL
+    public_symbol: x3d::sai::experimental::browser::begin_load
+    support: partial
+    tests: [sai_evt_stale_async]
+    preserves: [INV-LIFE-1, INV-EDIT-3, INV-EVT-5]
+  - <<: *browser_command
+    id: SVC-BROWSER-BEGIN-UPDATE
+    clause: ISO/IEC 19775-2:2015, 6.3.19 updateControl (begin)
+    public_symbol: x3d::sai::experimental::execution_context::edit
+    support: partial
+    tests: [sai_edit_failure_nonmutation]
+    preserves: [INV-EDIT-1, INV-EDIT-4, INV-CXX-3]
+  - <<: *browser_command
+    id: SVC-BROWSER-END-UPDATE
+    clause: ISO/IEC 19775-2:2015, 6.3.19 updateControl (end)
+    public_symbol: x3d::sai::experimental::scene_edit::commit
+    support: partial
+    tests: [sai_edit_failure_nonmutation]
+    preserves: [INV-EDIT-1, INV-EDIT-2, INV-EVT-1]
+  - <<: *observer
+    id: SVC-BROWSER-LISTENER
+    clause: ISO/IEC 19775-2:2015, 6.3.20 registerBrowserInterest
+    public_symbol: x3d::sai::experimental::execution_context::observe
+    support: partial
+    tests: [sai_evt_observer_mutation, sai_cxx_safe_destruction]
+    binding_obligations: [CPP-4.3.1.2-CALLBACK-ROBUSTNESS]
+    preserves: [INV-CXX-3, INV-EVT-3, INV-CONC-1, INV-EVT-5, INV-EVT-4]
+
+  # Scene creation and parsing. Existing codecs are useful implementation
+  # mechanisms, but synchronous X3DDocument return values are not yet the SAI.
+  - <<: *command
+    id: SVC-SCENE-CREATE-EMPTY
+    clause: ISO/IEC 19775-2:2015, 6.3.11 createScene
+    public_symbol: x3d::sai::experimental::browser::create_scene
+    support: partial
+    tests: [sai_life_stale_handle]
+    preserves: [INV-ID-1, INV-CAP-1, INV-EDIT-3]
+  - <<: *command
+    id: SVC-SCENE-CREATE-FROM-STRING
+    clause: ISO/IEC 19775-2:2015, 6.3.16 createX3DFromString
+    public_symbol: x3d::codec::parseDocument
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-ID-2, INV-EDIT-3, INV-VAL-1, INV-VAL-2, INV-RT-2]
+  - <<: *async
+    id: SVC-SCENE-CREATE-FROM-URL
+    clause: ISO/IEC 19775-2:2015, 6.3.18 createX3DFromURL
+    public_symbol: x3d::runtime::extract::AssetResolver
+    support: partial
+    tests: [x3d_assetresolver_swap]
+    binding_obligations: [CPP-4.3.4-RELATIVE-URLS]
+    preserves: [INV-EDIT-3, INV-LIFE-1, INV-EVT-5]
+
+  # Execution-context metadata and symbol tables.
+  - <<: *query
+    id: SVC-CONTEXT-SPECIFICATION-VERSION
+    clause: ISO/IEC 19775-2:2015, 6.4.1 getSpecificationVersion
+    public_symbol: x3d::runtime::X3DDocument::version
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-CAP-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-CONTEXT-ENCODING
+    clause: ISO/IEC 19775-2:2015, 6.4.2 getEncoding
+    public_symbol: x3d::codec::Encoding
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-CAP-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-CONTEXT-PROFILE
+    clause: ISO/IEC 19775-2:2015, 6.4.3 getProfile
+    public_symbol: x3d::runtime::X3DDocument::profile
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-CAP-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-CONTEXT-COMPONENTS
+    clause: ISO/IEC 19775-2:2015, 6.4.4 getComponents
+    public_symbol: x3d::runtime::Head::components
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-CAP-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-CONTEXT-UNITS
+    clause: ISO/IEC 19775-2:2015, 6.4.5 getUnits
+    public_symbol: x3d::runtime::Head::units
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-FIELD-4, INV-CAP-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-CONTEXT-WORLD-URL
+    clause: ISO/IEC 19775-2:2015, 6.4.6 getWorldURL
+    public_symbol: planned:x3d::sai::execution_context::world_url
+    support: planned
+    tests: [planned:sai_context_world_url]
+    preserves: [INV-CXX-2, INV-PORT-1]
+  - <<: *query
+    id: SVC-CONTEXT-NAMED-NODE-GET
+    clause: ISO/IEC 19775-2:2015, 6.4.7 getNode (named)
+    public_symbol: x3d::runtime::Scene::resolve
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-ID-1, INV-ID-2, INV-ID-3, INV-CXX-2]
+  - <<: *command
+    id: SVC-CONTEXT-NAMED-NODE-UPDATE
+    clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (update)
+    public_symbol: x3d::runtime::Scene::define
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-ID-1, INV-EDIT-1, INV-EDIT-3]
+  - <<: *command
+    id: SVC-CONTEXT-NAMED-NODE-REMOVE
+    clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (remove)
+    public_symbol: x3d::sai::experimental::scene_edit::undefine_name
+    support: partial
+    tests: [sai_edit_query_mutation_dual]
+    preserves: [INV-OWN-1, INV-EDIT-1, INV-EDIT-3]
+  - <<: *query
+    id: SVC-CONTEXT-IMPORTED-NODE-GET
+    clause: ISO/IEC 19775-2:2015, 6.4.7 getNode (imported)
+    public_symbol: planned:x3d::sai::execution_context::imported_node
+    support: planned
+    tests: [planned:sai_context_imported_node_get]
+    preserves: [INV-ID-2, INV-OWN-2, INV-CXX-2]
+  - <<: *command
+    id: SVC-CONTEXT-IMPORTED-NODE-UPDATE
+    clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (import update)
+    public_symbol: planned:x3d::sai::execution_context::update_imported_node
+    support: planned
+    tests: [planned:sai_context_imported_node_update]
+    preserves: [INV-OWN-2, INV-EDIT-1, INV-EDIT-3]
+  - <<: *command
+    id: SVC-CONTEXT-IMPORTED-NODE-REMOVE
+    clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (import remove)
+    public_symbol: planned:x3d::sai::execution_context::remove_imported_node
+    support: planned
+    tests: [planned:sai_context_imported_node_remove]
+    preserves: [INV-OWN-1, INV-OWN-2, INV-EDIT-3]
+
+  # Nodes and prototypes.
+  - <<: *command
+    id: SVC-NODE-CREATE
+    clause: ISO/IEC 19775-2:2015, 6.4.8 createNode
+    public_symbol: x3d::nodes::X3DNodeFactory::create
+    support: partial
+    tests: [x3d_geometry_scene]
+    preserves: [INV-ID-1, INV-CAP-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-NODE-TYPE
+    clause: ISO/IEC 19775-2:2015, 6.6.2 getTypeName
+    public_symbol: x3d::nodes::X3DNode::nodeTypeName
+    support: partial
+    tests: [x3d_geometry_scene, sai_inspect_descriptor]
+    preserves: [INV-FIELD-1, INV-PORT-1, INV-CXX-5]
+  - <<: *query
+    id: SVC-NODE-TYPE-HIERARCHY
+    clause: ISO/IEC 19775-2:2015, 6.6.3 getType
+    public_symbol: x3d::core::X3DInterfaceRegistry
+    support: partial
+    tests: [x3d_geometry_scene]
+    preserves: [INV-FIELD-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-NODE-FIELD-DEFINITIONS
+    clause: ISO/IEC 19775-2:2015, 6.6.5 getFieldDefinitions
+    public_symbol: x3d::nodes::X3DNode::fields
+    support: partial
+    tests: [x3d_geometry_scene, sai_inspect_descriptor]
+    preserves: [INV-FIELD-1, INV-GEN-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-NODE-FIELD-LOOKUP
+    clause: ISO/IEC 19775-2:2015, 6.6.4 getField
+    public_symbol: x3d::runtime::SaiContext::getField
+    support: partial
+    tests: [x3d_sai_context]
+    preserves: [INV-FIELD-1, INV-FIELD-5, INV-CXX-2]
+  - <<: *command
+    id: SVC-NODE-DISPOSE
+    clause: ISO/IEC 19775-2:2015, 6.6.6 dispose
+    public_symbol: planned:x3d::sai::node::dispose
+    support: planned
+    tests: [planned:sai_node_dispose]
+    binding_obligations: [CPP-4.3.6-DISPOSAL]
+    preserves: [INV-LIFE-1, INV-OWN-1, INV-CXX-3]
+  - <<: *query
+    id: SVC-NODE-USER-DATA-READ
+    clause: ISO/IEC 19777-4, 4.3.3.1 node user-data identity
+    public_symbol: planned:x3d::sai::node::user_data
+    support: planned
+    tests: [planned:sai_node_user_data_read]
+    binding_obligations: [CPP-4.3.3.1-NODE-USER-DATA]
+    preserves: [INV-ID-1, INV-LIFE-1, INV-CXX-1]
+  - <<: *command
+    id: SVC-NODE-USER-DATA-WRITE
+    clause: ISO/IEC 19777-4, 4.3.3.1 node user-data identity
+    public_symbol: planned:x3d::sai::node::set_user_data
+    support: planned
+    tests: [planned:sai_node_user_data_write]
+    binding_obligations: [CPP-4.3.3.1-NODE-USER-DATA]
+    preserves: [INV-ID-1, INV-LIFE-1, INV-EDIT-1]
+  - <<: *query
+    id: SVC-PROTO-DECLARATIONS
+    clause: ISO/IEC 19775-2:2015, 6.4.11 getProtoDeclaration
+    public_symbol: x3d::runtime::Scene::protoDeclarations
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-OWN-2, INV-CXX-2, INV-PORT-1]
+  - <<: *query
+    id: SVC-EXTERNPROTO-DECLARATIONS
+    clause: ISO/IEC 19775-2:2015, 6.4.13 getExternProtoDeclaration
+    public_symbol: x3d::runtime::Scene::externProtoDeclarations
+    support: partial
+    tests: [x3d_parse_tests]
+    preserves: [INV-OWN-2, INV-CXX-2, INV-EVT-5]
+  - <<: *command
+    id: SVC-PROTO-INSTANCE-CREATE
+    clause: ISO/IEC 19775-2:2015, 6.4.9 createProto; 6.9.2 createInstance
+    public_symbol: planned:x3d::sai::proto_declaration::create_instance
+    support: planned
+    tests: [planned:sai_proto_instance_create]
+    preserves: [INV-OWN-1, INV-OWN-2, INV-EDIT-3]
+
+  # Root graph and routes.
+  - <<: *query
+    id: SVC-ROOT-NODES-READ
+    clause: ISO/IEC 19775-2:2015, 6.4.15 getRootNodes
+    public_symbol: x3d::runtime::Scene::rootNodes
+    support: partial
+    tests: [x3d_authoring_link_contract]
+    preserves: [INV-ID-2, INV-OWN-1, INV-ORDER-1, INV-RT-1]
+  - <<: *command
+    id: SVC-ROOT-NODES-UPDATE
+    clause: ISO/IEC 19775-2:2015, 6.5.5 rootNodeHandling
+    public_symbol: x3d::runtime::Scene::addRootNode
+    support: partial
+    tests: [x3d_authoring_link_contract]
+    preserves: [INV-OWN-1, INV-EDIT-1, INV-EDIT-3]
+  - <<: *query
+    id: SVC-ROUTES-READ
+    clause: ISO/IEC 19775-2:2015, 6.4.16 getRoutes
+    public_symbol: x3d::runtime::Scene::routes
+    support: partial
+    tests: [x3d_events_tests, sai_evt_route_causal]
+    preserves: [INV-EDIT-5, INV-OWN-1, INV-RT-1]
+  - <<: *command
+    id: SVC-ROUTE-ADD
+    clause: ISO/IEC 19775-2:2015, 6.4.17 dynamicRouteHandling (add)
+    public_symbol: x3d::runtime::SaiContext::addRoute
+    support: partial
+    tests: [x3d_sai_context, x3d_events_tests, sai_route_access, sai_route_unique, sai_evt_route_causal]
+    preserves: [INV-EDIT-5, INV-OWN-2, INV-EDIT-3]
+  - <<: *command
+    id: SVC-ROUTE-REMOVE
+    clause: ISO/IEC 19775-2:2015, 6.4.17 dynamicRouteHandling (remove)
+    public_symbol: x3d::runtime::SaiContext::deleteRoute
+    support: partial
+    tests: [x3d_sai_context, x3d_events_tests]
+    preserves: [INV-EDIT-5, INV-OWN-1, INV-EDIT-3]
+
+  # Field definition, value, and observation services.
+  - <<: *query
+    id: SVC-FIELD-DEFINITION-NAME
+    clause: ISO/IEC 19775-2:2015, 6.7.4 getName
+    public_symbol: x3d::core::FieldInfo::x3dName
+    support: partial
+    tests: [x3d_geometry_scene]
+    binding_obligations: [CPP-A.4.4-FIELD-DEFINITION]
+    preserves: [INV-FIELD-1, INV-GEN-1]
+  - <<: *query
+    id: SVC-FIELD-DEFINITION-ACCESS
+    clause: ISO/IEC 19775-2:2015, 6.7.2 getAccessType
+    public_symbol: x3d::core::FieldInfo::access
+    support: partial
+    tests: [x3d_geometry_scene]
+    preserves: [INV-FIELD-3, INV-FIELD-1]
+  - <<: *query
+    id: SVC-FIELD-DEFINITION-TYPE
+    clause: ISO/IEC 19775-2:2015, 6.7.3 getType
+    public_symbol: x3d::core::FieldInfo::type
+    support: partial
+    tests: [x3d_geometry_scene]
+    preserves: [INV-FIELD-1, INV-CXX-4]
+  - <<: *query
+    id: SVC-FIELD-READ
+    clause: ISO/IEC 19775-2:2015, 6.7.5 getValue
+    public_symbol: x3d::runtime::SaiContext::getField
+    support: partial
+    tests: [x3d_sai_context]
+    preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5, INV-CXX-4]
+  - <<: *command
+    id: SVC-FIELD-WRITE
+    clause: ISO/IEC 19775-2:2015, 6.7.6 setValue
+    public_symbol: x3d::runtime::X3DExecutionContext::writeField
+    support: partial
+    tests: [x3d_events_tests, sai_field_specialized_access, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes]
+    preserves: [INV-FIELD-2, INV-FIELD-3, INV-CXX-4, INV-EVT-1]
+  - <<: *observer
+    id: SVC-FIELD-OBSERVE
+    clause: ISO/IEC 19775-2:2015, 6.7.7 registerFieldInterest
+    public_symbol: x3d::sai::experimental::execution_context::observe
+    support: partial
+    tests: [sai_evt_field_observer, sai_evt_reentrant_batch]
+    binding_obligations: [CPP-A.4.5-FIELD-OBSERVATION]
+    preserves: [INV-CXX-3, INV-EVT-2, INV-EVT-3]
+  - <<: *query
+    id: SVC-FIELD-READABLE
+    clause: ISO/IEC 19777-4, Annex A.4.5 X3DField::isReadable
+    public_symbol: planned:x3d::sai::field::is_readable
+    support: planned
+    tests: [planned:sai_field_readable]
+    binding_obligations: [CPP-A.4.5-FIELD-CAPABILITY]
+    preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5]
+  - <<: *query
+    id: SVC-FIELD-WRITABLE
+    clause: ISO/IEC 19777-4, Annex A.4.5 X3DField::isWritable
+    public_symbol: planned:x3d::sai::field::is_writable
+    support: planned
+    tests: [planned:sai_field_writable]
+    binding_obligations: [CPP-A.4.5-FIELD-CAPABILITY]
+    preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5]
+  - <<: *query
+    id: SVC-FIELD-USER-DATA-READ
+    clause: ISO/IEC 19777-4, Annex A.4.5 X3DField::getUserData
+    public_symbol: planned:x3d::sai::field::user_data
+    support: planned
+    tests: [planned:sai_field_user_data_read]
+    binding_obligations: [CPP-4.3.3.1-FIELD-USER-DATA]
+    preserves: [INV-ID-1, INV-LIFE-1, INV-CXX-1]
+  - <<: *command
+    id: SVC-FIELD-USER-DATA-WRITE
+    clause: ISO/IEC 19777-4, Annex A.4.5 X3DField::setUserData
+    public_symbol: planned:x3d::sai::field::set_user_data
+    support: planned
+    tests: [planned:sai_field_user_data_write]
+    binding_obligations: [CPP-4.3.3.1-FIELD-USER-DATA]
+    preserves: [INV-ID-1, INV-LIFE-1, INV-EDIT-1]
+
+  # Multi-field edit primitives need a semantic wrapper even though generated
+  # MF values are currently ordinary vectors.
+  - <<: *query
+    id: SVC-MFIELD-SIZE
+    clause: ISO/IEC 19775-2:2015, 6.7.5 getValue (MF size)
+    public_symbol: planned:x3d::sai::multi_field::size
+    support: planned
+    tests: [planned:sai_mfield_size]
+    binding_obligations: [CPP-4.3.5.4-MFIELD-ARRAYS, CPP-A.4.6-MFIELD-EDITING]
+    preserves: [INV-FIELD-3, INV-RT-1]
+  - <<: *query
+    id: SVC-MFIELD-ELEMENT-READ
+    clause: ISO/IEC 19775-2:2015, 6.7.5 getValue (MF element)
+    public_symbol: planned:x3d::sai::multi_field::at
+    support: planned
+    tests: [planned:sai_mfield_element_read]
+    preserves: [INV-FIELD-3, INV-CXX-4, INV-RT-1]
+  - <<: *command
+    id: SVC-MFIELD-ELEMENT-WRITE
+    clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF element)
+    public_symbol: planned:x3d::sai::multi_field::set
+    support: planned
+    tests: [planned:sai_mfield_element_write]
+    binding_obligations: [CPP-4.3.5.2-EXTERNAL-MF-EVENTS, CPP-4.3.5.5-SET1VALUE]
+    preserves: [INV-FIELD-3, INV-CXX-4, INV-EDIT-1]
+  - <<: *command
+    id: SVC-MFIELD-INSERT
+    clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF insert)
+    public_symbol: planned:x3d::sai::multi_field::insert
+    support: planned
+    tests: [planned:sai_mfield_insert]
+    binding_obligations: [CPP-A.4.48-MFNODE-EDITING]
+    preserves: [INV-FIELD-3, INV-EDIT-1, INV-RT-1]
+  - <<: *command
+    id: SVC-MFIELD-ERASE
+    clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF erase)
+    public_symbol: planned:x3d::sai::multi_field::erase
+    support: planned
+    tests: [planned:sai_mfield_erase]
+    binding_obligations: [CPP-A.4.6-MFIELD-EDITING]
+    preserves: [INV-FIELD-3, INV-EDIT-1, INV-RT-1]
+  - <<: *command
+    id: SVC-MFIELD-CLEAR
+    clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF clear)
+    public_symbol: planned:x3d::sai::multi_field::clear
+    support: planned
+    tests: [planned:sai_mfield_clear]
+    binding_obligations: [CPP-4.3.5.4-MFIELD-ARRAYS, CPP-A.4.6-MFIELD-EDITING]
+    preserves: [INV-FIELD-3, INV-EDIT-1, INV-RT-1]
+  - <<: *command
+    id: SVC-MFIELD-APPEND
+    clause: ISO/IEC 19777-4, Annex A.4.48 MFNode::append
+    public_symbol: planned:x3d::sai::multi_field::append
+    support: planned
+    tests: [planned:sai_mfield_append]
+    binding_obligations: [CPP-A.4.48-MFNODE-EDITING]
+    preserves: [INV-FIELD-3, INV-EDIT-1, INV-ORDER-1]
+
+  # Matrix utility services are part of the language binding's composable value
+  # vocabulary, but must remain value operations rather than browser state.
+  - <<: *query
+    id: SVC-MATRIX-COMPOSE
+    clause: ISO/IEC 19775-2:2015, 6.12.2 set; 6.12.6 multiply
+    public_symbol: x3d::runtime::Mat4
+    support: partial
+    tests: [x3d_geometry_scene]
+    preserves: [INV-RT-1, INV-PORT-1]
+  - <<: *query
+    id: SVC-MATRIX-DECOMPOSE
+    clause: ISO/IEC 19775-2:2015, 6.12.3 get
+    public_symbol: planned:x3d::sai::decompose
+    support: planned
+    tests: [planned:sai_matrix_decompose]
+    preserves: [INV-CXX-2, INV-RT-1, INV-PORT-1]

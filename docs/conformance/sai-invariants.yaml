@@ -1,0 +1,354 @@
+# Modern C++ SAI semantic kernel distilled from the normative architecture and
+# the historical community record. These IDs are stable plan vocabulary.
+schema_version: 1
+
+defaults: &invariant_defaults
+  profiles: [authoring, inspection, live, browser-adapter]
+  property_generators: [planned:semantic-property-generator]
+  adversarial_sequences: [planned:semantic-adversarial-sequence]
+  normative_references: [ISO/IEC 19775-1 event-and-scene architecture, ISO/IEC 19775-2 SAI]
+  evidence_references: [x3d-archive-mine/research/cpp-sai/2026-07-18-modern-cpp-sai-convergence.md]
+
+axioms:
+  - id: AX-1
+    title: X3D is a graph presented through occurrences
+    statement: Node identity is shared; parent field, order, path, and lexical placement are occurrence facts rather than intrinsic node properties.
+  - id: AX-2
+    title: All access occurs in an execution context
+    statement: Scene, Inline, and prototype scopes own local nodes, declarations, names, routes, and capabilities; boundary crossing is explicit.
+  - id: AX-3
+    title: A field is typed state and a lifecycle-governed event port
+    statement: Type, access, phase, write origin, units, constraints, and event behavior jointly determine field semantics.
+  - id: AX-4
+    title: Scene change is published at a coherent boundary
+    statement: Related field, structure, name, route, scope, and derived-state changes become observable together at a declared boundary.
+  - id: AX-5
+    title: Event semantics are causal and timestamped, not totally ordered
+    statement: A cascade reaches quiescence at one timestamp; portable behavior cannot depend on incidental fan-in, fan-out, queue, or hash order.
+  - id: AX-6
+    title: One semantic model has multiple representations and hosts
+    statement: Encodings, language bindings, offline tools, scripts, adapters, and browsers preserve one meaning while remaining host-idiomatic.
+
+invariants:
+  - <<: *invariant_defaults
+    id: INV-ID-1
+    review_marker: reviewed:sha256:947d8f9c4052
+    title: One semantic node, one identity
+    axiom: AX-1
+    evidence_strength: normative
+    statement: DEF/USE is sharing; every handle and occurrence of one node observes the same mutations, while serialization never creates semantic clones to obtain a tree.
+    preserving_operations: [lookup node, attach shared node, serialize DEF/USE]
+    falsification_tests: [sai_id_shared_node]
+  - <<: *invariant_defaults
+    id: INV-ID-2
+    review_marker: reviewed:sha256:e4ffb3ca9bb8
+    title: Occurrence is an edge, not a node
+    axiom: AX-1
+    evidence_strength: normative
+    statement: Parent, container field, MF index, authored order, path, and lexical USE form belong to an occurrence; node-only queries invent no canonical parent.
+    preserving_operations: [traverse occurrences, attach node, inspect parent edge]
+    falsification_tests: [sai_id_occurrence_edge]
+  - <<: *invariant_defaults
+    id: INV-ID-3
+    review_marker: reviewed:sha256:23dd55898b64
+    title: Names are scoped aliases, not identity
+    axiom: AX-1
+    evidence_strength: normative
+    statement: DEF, IMPORT, EXPORT, prototype, and source names resolve locally; rename or remap preserves NodeId, cloning changes it, and strict duplicate aliases fail atomically.
+    preserving_operations: [get node, update name, import, export, clone]
+    falsification_tests: [planned:sai_id_scoped_alias]
+
+  - <<: *invariant_defaults
+    id: INV-OWN-1
+    review_marker: reviewed:sha256:5ade230700b4
+    title: Every live object has one ownership domain
+    axiom: AX-2
+    evidence_strength: cpp_policy
+    statement: Nodes belong to one detached arena or execution-context generation; cross-domain insertion requires an explicit share, import, clone, or splice policy.
+    preserving_operations: [create node, adopt node, insert node, clone subgraph]
+    falsification_tests: [sai_own_node_value, sai_own_node_range, sai_own_event_nodes]
+  - <<: *invariant_defaults
+    id: INV-OWN-2
+    review_marker: reviewed:sha256:0cf4b3470970
+    title: Context boundaries have explicit apertures
+    axiom: AX-2
+    evidence_strength: normative
+    statement: Ordinary lookup is local; Inline crosses through EXPORT/IMPORT and prototype internals through interface/IS; ancestor navigation never silently changes lookup.
+    preserving_operations: [local lookup, import, export, IS binding, parent context]
+    falsification_tests: [planned:sai_own_context_boundary]
+
+  - <<: *invariant_defaults
+    id: INV-FIELD-1
+    review_marker: reviewed:sha256:34574f1aa094
+    title: One descriptor governs every access path
+    axiom: AX-3
+    evidence_strength: normative
+    statement: Typed, generic, parser, Script, external SAI, IS, and ROUTE paths use the same type, access, constraints, accepted nodes, and unit metadata.
+    preserving_operations: [describe field, read field, write field, route field, bind IS]
+    falsification_tests: [sai_field_one_descriptor]
+  - <<: *invariant_defaults
+    id: INV-FIELD-2
+    review_marker: reviewed:sha256:7e69b9ddd522
+    title: Equal intent yields equal effect
+    axiom: AX-3
+    evidence_strength: framework_proposal
+    statement: Equal write intent, value, timestamp, and starting state yield equal storage, invalidation, event, diagnostic, and semantic change through typed and generic paths.
+    preserving_operations: [typed write, generic write, Script write, route delivery]
+    falsification_tests: [sai_field_equal_intent, sai_evt_inputoutput_publish, sai_evt_typed_generic]
+  - <<: *invariant_defaults
+    id: INV-FIELD-3
+    review_marker: reviewed:sha256:7b7769f2becb
+    title: Access type is a state-machine rule
+    axiom: AX-3
+    evidence_strength: normative
+    statement: initializeOnly, inputOnly, outputOnly, and inputOutput legality depends on lifecycle phase and write intent; rejected writes change no storage or dirtiness.
+    preserving_operations: [inspect access, initialize field, write live field]
+    falsification_tests: [sai_field_access_state_machine, sai_field_specialized_access, sai_evt_input_transient]
+  - <<: *invariant_defaults
+    id: INV-FIELD-4
+    review_marker: reviewed:sha256:8ba4f0f86dd4
+    title: Units convert exactly once
+    axiom: AX-3
+    evidence_strength: normative
+    statement: Authored and canonical unit interpretation is explicit; parse, assign, route, inspect, and serialize never double-convert or lose the scene unit declaration.
+    preserving_operations: [inspect units, parse value, assign value, route value, serialize value]
+    falsification_tests: [planned:sai_field_units_once]
+  - <<: *invariant_defaults
+    id: INV-FIELD-5
+    review_marker: reviewed:sha256:d96ae0eeba5d
+    title: Reads are observationally pure
+    axiom: AX-3
+    evidence_strength: recurrent_intent
+    statement: Inspection, validation, traversal, serialization planning, and capability queries do not initialize state, assign names, reorder, or clear dirtiness without an explicit edit.
+    preserving_operations: [read field, traverse, validate, inspect capability]
+    falsification_tests: [planned:sai_field_pure_read]
+
+  - <<: *invariant_defaults
+    id: INV-EDIT-1
+    review_marker: reviewed:sha256:05b662b0fb70
+    title: Commit is atomic across semantic indexes
+    axiom: AX-4
+    evidence_strength: framework_proposal
+    statement: Roots, child fields, names, routes, declarations, ownership, occurrences, runtime realization, and dirtiness move between valid states together.
+    preserving_operations: [commit edit, update root, update route, update declaration]
+    falsification_tests: [sai_edit_atomic_indexes, sai_evt_inputoutput_publish]
+  - <<: *invariant_defaults
+    id: INV-EDIT-2
+    review_marker: reviewed:sha256:08c047a4527f
+    title: Failure is non-mutation
+    axiom: AX-4
+    evidence_strength: framework_proposal
+    statement: A rejected edit leaves semantic state, indexes, queues, revisions, and dirty state unchanged; diagnostics require no cleanup edit.
+    preserving_operations: [validate edit, reject edit, rollback edit]
+    falsification_tests: [sai_edit_failure_nonmutation]
+  - <<: *invariant_defaults
+    id: INV-EDIT-3
+    review_marker: reviewed:sha256:9a19304ccb4e
+    title: Derived indexes are not authority
+    axiom: AX-4
+    evidence_strength: cpp_policy
+    statement: Name maps, reverse parents, route caches, capability summaries, and extraction indexes derive from committed state and are coordinated rather than publicly repaired.
+    preserving_operations: [commit edit, rebuild index, inspect index]
+    falsification_tests: [planned:sai_edit_derived_indexes]
+  - <<: *invariant_defaults
+    id: INV-EDIT-4
+    review_marker: reviewed:sha256:079ee0fa0ac6
+    title: A change has one revision and a complete explanation
+    axiom: AX-4
+    evidence_strength: framework_proposal
+    statement: Each successful non-empty commit advances one monotonic revision and yields a ChangeSet with before/after facts, identities, occurrences, intent, timestamp, and diagnostics.
+    preserving_operations: [commit edit, inspect changes, checkpoint revision]
+    falsification_tests: [sai_edit_revision_changeset, sai_evt_inputoutput_publish]
+  - <<: *invariant_defaults
+    id: INV-EDIT-5
+    review_marker: reviewed:sha256:695321f98a38
+    title: Queries and mutations are duals
+    axiom: AX-4
+    evidence_strength: recurrent_intent
+    statement: Anything addable, replaceable, renameable, connectable, importable, or removable is first enumerable and addressable without guessing private keys.
+    preserving_operations: [enumerate, find, contains, add, replace, remove]
+    falsification_tests: [sai_edit_query_mutation_dual]
+
+  - <<: *invariant_defaults
+    id: INV-EVT-1
+    review_marker: reviewed:sha256:c6cf61ef96c6
+    title: A committed batch enters one coherent cascade
+    axiom: AX-5
+    evidence_strength: normative
+    statement: Buffered writes become visible at one commit timestamp and causal propagation reaches quiescence before presentation; incidental scheduling cannot change mandated results.
+    preserving_operations: [begin update, commit update, dispatch cascade]
+    falsification_tests: [sai_evt_route_causal, sai_evt_time_monotonic]
+  - <<: *invariant_defaults
+    id: INV-EVT-2
+    review_marker: reviewed:sha256:1f09c72f33a7
+    title: Loop breaking and simultaneity follow the architecture
+    axiom: AX-5
+    evidence_strength: normative
+    statement: Per-field and per-ROUTE loop breaking applies at a timestamp; fan-in and fan-out are simultaneous and no access path creates a hidden cascade rule.
+    preserving_operations: [route event, IS event, Script write, external write]
+    falsification_tests: [sai_evt_route_loop, sai_evt_fanin_portability]
+  - <<: *invariant_defaults
+    id: INV-EVT-3
+    review_marker: reviewed:sha256:1509e9f3208b
+    title: Observation cannot corrupt dispatch
+    axiom: AX-5
+    evidence_strength: cpp_policy
+    statement: Callbacks may change subscriptions, request edits, or dispose handles without invalidating traversal; reentrant edits are queued or rejected at a defined boundary.
+    preserving_operations: [subscribe, unsubscribe, callback, request reentrant edit]
+    falsification_tests: [sai_evt_observer_mutation, sai_evt_callback_copy, sai_evt_field_observer, sai_evt_reentrant_batch]
+  - <<: *invariant_defaults
+    id: INV-EVT-4
+    review_marker: reviewed:sha256:35cf0e667b29
+    title: Change observation is lossless across subsystems
+    axiom: AX-4
+    evidence_strength: framework_proposal
+    statement: Runtime, extraction, subscriptions, and checkpoints advance independent revision cursors; no global dirty clear destroys another consumer's evidence.
+    preserving_operations: [observe changes, extract delta, tick runtime, checkpoint]
+    falsification_tests: [planned:sai_evt_lossless_consumers]
+  - <<: *invariant_defaults
+    id: INV-EVT-5
+    review_marker: reviewed:sha256:cab01aa14f9a
+    title: Stale asynchronous completion is inert
+    axiom: AX-4
+    evidence_strength: recurrent_intent
+    statement: Loads and imports carry generation and request identity; completion after cancellation, replacement, or disposal cannot mutate or callback into a new world.
+    preserving_operations: [load URL, resolve Inline, resolve EXTERNPROTO, cancel load]
+    falsification_tests: [sai_evt_stale_async]
+
+  - <<: *invariant_defaults
+    id: INV-LIFE-1
+    review_marker: reviewed:sha256:85219034b6f3
+    title: Stale handles fail safely and predictably
+    axiom: AX-2
+    evidence_strength: cpp_policy
+    statement: Replacement, removal, declaration change, and disposal have explicit per-handle effects; stale handles never alias new allocations, dereference freed memory, or switch generation.
+    preserving_operations: [dispose, replace world, remove node, use stale handle]
+    falsification_tests: [sai_life_stale_handle]
+  - <<: *invariant_defaults
+    id: INV-CONC-1
+    review_marker: reviewed:sha256:7b1e40335ca8
+    title: Concurrency is explicit at the boundary
+    axiom: AX-5
+    evidence_strength: cpp_policy
+    statement: Immutable views declare thread safety, live mutation is serialized, callback affinity is documented, and commit conflict behavior is deterministic and data-race-free.
+    preserving_operations: [read immutable view, stage concurrently, commit, dispatch callback]
+    falsification_tests: [sai_conc_boundary, sai_evt_reentrant_batch]
+  - <<: *invariant_defaults
+    id: INV-ORDER-1
+    review_marker: reviewed:sha256:23bcea329468
+    title: Public iteration has a semantic order
+    axiom: AX-5
+    evidence_strength: recurrent_intent
+    statement: Roots, MF fields, occurrences, routes, declarations, changes, and diagnostics preserve authored order or document stable canonical or explicitly unordered iteration.
+    preserving_operations: [iterate roots, fields, routes, declarations, changes]
+    falsification_tests: [planned:sai_order_public_ranges]
+
+  - <<: *invariant_defaults
+    id: INV-RT-1
+    review_marker: reviewed:sha256:dc127a864526
+    title: Semantic round-trip is encoding-independent
+    axiom: AX-6
+    evidence_strength: recurrent_intent
+    statement: Encode then parse preserves sharing topology, occurrences, ordered fields, routes, scopes, declarations, values, and units modulo documented normalization.
+    preserving_operations: [serialize, parse, compare semantic graph]
+    falsification_tests: [planned:sai_rt_semantic]
+  - <<: *invariant_defaults
+    id: INV-RT-2
+    review_marker: reviewed:sha256:9c6c544eff5a
+    title: Source fidelity is separate and opt-in
+    axiom: AX-6
+    evidence_strength: framework_proposal
+    statement: Comments, lexical spellings, explicit defaults, DEF/USE placement, statements, and source spans live in provenance; losing provenance cannot change semantics.
+    preserving_operations: [capture provenance, serialize source, discard provenance]
+    falsification_tests: [planned:sai_rt_source_fidelity]
+  - <<: *invariant_defaults
+    id: INV-VAL-1
+    review_marker: reviewed:sha256:d307e4badb54
+    title: Validation diagnoses and never secretly repairs
+    axiom: AX-6
+    evidence_strength: recurrent_intent
+    statement: Strict authoring rejects before commit, lenient ingestion preserves recoverable facts, and correction is an explicit inspectable SceneEdit.
+    preserving_operations: [validate strict, ingest lenient, propose repair]
+    falsification_tests: [planned:sai_val_no_secret_repair]
+  - <<: *invariant_defaults
+    id: INV-VAL-2
+    review_marker: reviewed:sha256:5781b400ff8c
+    title: Diagnostics are stable data
+    axiom: AX-6
+    evidence_strength: cpp_policy
+    statement: Code, severity, operation, context, identity, occurrence, endpoints, source location, and causal chain are machine-readable independently of human wording.
+    preserving_operations: [validate, report error, serialize diagnostic]
+    falsification_tests: [planned:sai_val_stable_diagnostic]
+  - <<: *invariant_defaults
+    id: INV-CAP-1
+    review_marker: reviewed:sha256:c51fbfbe939f
+    title: Capability answers predict operation results
+    axiom: AX-2
+    evidence_strength: normative
+    statement: Reported support for a profile, component, node, or service cannot fail as unsupported under the same generation and configuration; negotiation changes are revisioned.
+    preserving_operations: [query capability, negotiate profile, invoke service]
+    falsification_tests: [planned:sai_cap_predictive]
+  - <<: *invariant_defaults
+    id: INV-PORT-1
+    review_marker: reviewed:sha256:1e34fcc0b7c9
+    title: Profiles share semantics
+    axiom: AX-6
+    evidence_strength: recurrent_intent
+    statement: Authoring, inspection, live external, and Script profiles share identity, descriptors, scope, validation, and errors; moving a fixture between profiles does not reinterpret it.
+    preserving_operations: [author, inspect, run external, run Script]
+    falsification_tests: [planned:sai_port_profile_parity]
+  - <<: *invariant_defaults
+    id: INV-GEN-1
+    review_marker: reviewed:sha256:cb1e8e9e0609
+    title: Generated API and runtime metadata cannot drift
+    axiom: AX-6
+    evidence_strength: recurrent_intent
+    statement: Types, fields, access, defaults, constraints, units, profiles, components, docs, and serializers derive from one versioned semantic model with no dangling references.
+    preserving_operations: [generate bindings, reflect runtime, serialize, build docs]
+    falsification_tests: [planned:sai_gen_no_drift]
+
+  - <<: *invariant_defaults
+    id: INV-CXX-1
+    review_marker: reviewed:sha256:9bf53b7684b1
+    title: Ownership is visible in types
+    axiom: AX-6
+    evidence_strength: cpp_policy
+    statement: Values, views, RAII handles, and smart ownership are deliberate; raw pointers own nothing and borrowed views cannot silently outlive their revision or generation.
+    preserving_operations: [create handle, borrow view, transfer ownership, destroy handle]
+    falsification_tests: [planned:sai_cxx_visible_ownership]
+  - <<: *invariant_defaults
+    id: INV-CXX-2
+    review_marker: reviewed:sha256:91df91985065
+    title: Ordinary failure is a value
+    axiom: AX-6
+    evidence_strength: cpp_policy
+    statement: Validation, capability, lookup, stale-handle, and transaction failures use a consistent expected-style SaiError; exceptions follow one narrow documented policy.
+    preserving_operations: [lookup, validate, commit, inspect error]
+    falsification_tests: [sai_cxx_failure_value]
+  - <<: *invariant_defaults
+    id: INV-CXX-3
+    review_marker: reviewed:sha256:9bb0fb0c824b
+    title: Destruction is non-observably safe
+    axiom: AX-6
+    evidence_strength: cpp_policy
+    statement: Rollback, unsubscribe, cancellation, and destruction are noexcept and appropriately idempotent, and invoke no user callback through a half-destroyed graph.
+    preserving_operations: [rollback, unsubscribe, cancel, destroy]
+    falsification_tests: [sai_cxx_safe_destruction]
+  - <<: *invariant_defaults
+    id: INV-CXX-4
+    review_marker: reviewed:sha256:a82bcd9c8cad
+    title: Generic and typed APIs are substitutable
+    axiom: AX-3
+    evidence_strength: cpp_policy
+    statement: Dynamic discovery can safely yield a typed reference without copying or changing semantics; generated conveniences expose no capability absent from generic inspection.
+    preserving_operations: [discover field, type-check field, obtain typed field, read, write]
+    falsification_tests: [sai_cxx_typed_generic, sai_evt_typed_generic]
+  - <<: *invariant_defaults
+    id: INV-CXX-5
+    review_marker: reviewed:sha256:2e8dda4c7cf1
+    title: ABI mechanics are not scene semantics
+    axiom: AX-6
+    evidence_strength: cpp_policy
+    statement: Stable IDs, descriptors, and semantic traces define interoperability; C++ layout, STL ABI, exception ABI, and inheritance topology do not, and binary adapters are versioned.
+    preserving_operations: [cross adapter boundary, compare semantic trace, query ABI version]
+    falsification_tests: [planned:sai_cxx_abi_boundary]
