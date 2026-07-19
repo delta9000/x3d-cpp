@@ -24,3 +24,19 @@ run = "uv run python scripts/check_sai_invariants.py"
 [tasks.sai-conformance]
 description = "Opt-in convergence gate: require every registered SAI service and falsification test to be complete. Expected to fail until the SAI is complete."
 run = "uv run python scripts/check_sai_services.py --strict"
+
+[tasks.gen]
+description = "Regenerate the SAI bindings and semantic catalog from the vendored UOM."
+run = "uv run python -m x3d_sai_gen.cli --out-dir generated_cpp_bindings"
+
+[tasks.gen-determinism]
+description = "Fail if regenerating the committed bindings produces any diff."
+run = "uv run python -m x3d_sai_gen.cli --out-dir generated_cpp_bindings && git diff --exit-code -- generated_cpp_bindings"
+
+[tasks.uom-pin]
+description = "Fail if the vendored UOM drifted from its recorded SHA-256."
+run = "uv run python -m x3d_sai_gen.cli --check-uom-only"
+
+[tasks.pytest]
+description = "Run the generator test suite."
+run = "uv run pytest tests/ -v"

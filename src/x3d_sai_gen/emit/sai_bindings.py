@@ -1,9 +1,9 @@
 """Generate lightweight typed bindings for the experimental C++ SAI."""
 
-from x3d_cpp_gen import __version__
-from x3d_cpp_gen.emit.naming import cpp_str, sanitize_field_name
-from x3d_cpp_gen.emit.semantic_fields import resolved_node_fields
-from x3d_cpp_gen.model.types import X3DType
+from x3d_sai_gen import __version__
+from x3d_sai_gen.emit.naming import cpp_str, sanitize_field_name
+from x3d_sai_gen.emit.semantic_fields import resolved_node_fields
+from x3d_sai_gen.model.types import X3DType
 
 
 _NS = "::x3d::sai::experimental::"
