@@ -48,7 +48,8 @@ Add a test named `generated field keys remove dynamic authoring lookup` that:
 3. obtains `field<vec3f>` directly from the typed node;
 4. sets, commits, and reads it;
 5. discovers the same field dynamically and proves value/identity parity;
-6. proves a stale generated field fails at `set`, not at acquisition.
+6. proves stale generated acquisition remains pure and the optimistic edit
+   fails at its synchronized `commit` authority boundary.
 
 **Step 2: Run the test to verify RED**
 

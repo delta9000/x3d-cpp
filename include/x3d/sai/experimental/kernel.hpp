@@ -9,6 +9,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace x3d::sai::experimental {
@@ -21,6 +22,23 @@ struct scene_state;
 } // namespace detail
 
 class execution_context;
+template <class Tag> class typed_node;
+
+template <class Owner, class T> class field_key {
+public:
+  std::string_view name() const noexcept { return name_; }
+  static constexpr value_kind kind = value_traits<T>::kind;
+  access_type access() const noexcept { return access_; }
+
+private:
+  constexpr field_key(std::string_view name, access_type access)
+      : name_(name), access_(access) {}
+
+  std::string_view name_;
+  access_type access_;
+  friend Owner;
+  template <class> friend class typed_node;
+};
 
 class load_ticket {
 public:
@@ -64,6 +82,7 @@ private:
   friend class dynamic_multi_field_edit;
   friend class scene_snapshot;
   friend class event_batch;
+  template <class> friend class typed_node;
 };
 
 struct semantic_node_id {
@@ -202,6 +221,7 @@ private:
   friend class event_batch;
   friend class execution_context;
   template <class T> friend class field;
+  template <class> friend class typed_node;
 };
 
 template <class T> class field {
@@ -216,6 +236,26 @@ private:
   friend class scene_edit;
   friend class scene_snapshot;
   friend class event_batch;
+  template <class Tag> friend class typed_node;
+};
+
+template <class Tag> class typed_node {
+public:
+  node_id id() const noexcept { return dynamic_.id(); }
+  const node &dynamic() const noexcept { return dynamic_; }
+
+  template <class T>
+  experimental::field<T> field(const field_key<Tag, T> &key) const noexcept {
+    return experimental::field<T>{dynamic_field{
+        dynamic_.context_, dynamic_.generation_, dynamic_.id_,
+        std::string{key.name_}, value_traits<T>::kind, key.access_}};
+  }
+
+private:
+  explicit typed_node(node dynamic) : dynamic_(std::move(dynamic)) {}
+
+  node dynamic_;
+  friend class scene_edit;
 };
 
 template <class T> result<field<T>> dynamic_field::as() const {
@@ -469,6 +509,11 @@ public:
   scene_edit &operator=(const scene_edit &) = delete;
 
   result<node> create_node(const std::string &type_name);
+  template <class Tag> result<typed_node<Tag>> create() {
+    return create_node(std::string{Tag::x3d_name}).transform([](node created) {
+      return typed_node<Tag>{std::move(created)};
+    });
+  }
   result<void> append_root(const node &child);
   result<void> remove_root(std::size_t index);
   result<void> append(const node &parent, const std::string &field,
