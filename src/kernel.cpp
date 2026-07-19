@@ -392,6 +392,67 @@ bool accepts_node_payload(const detail::context_control &context,
   return true;
 }
 
+struct node_reference_blocker {
+  std::string message;
+  std::string field;
+};
+
+std::optional<node_reference_blocker>
+find_node_reference(const detail::context_control &context,
+                    const detail::scene_state &state, node_id target) {
+  if (std::ranges::find(state.roots, target) != state.roots.end())
+    return node_reference_blocker{"node is retained as a scene root", {}};
+
+  std::vector<std::uint64_t> owner_ids;
+  owner_ids.reserve(state.nodes.size());
+  for (const auto &[id, record] : state.nodes) {
+    (void)record;
+    owner_ids.push_back(id);
+  }
+  std::ranges::sort(owner_ids);
+  for (const auto owner_id : owner_ids) {
+    const auto &record = state.nodes.at(owner_id);
+    const auto *type = context.registry.find(record.type_name);
+    if (!type)
+      continue;
+    for (const auto &descriptor : type->fields) {
+      if (descriptor.kind != value_kind::sf_node &&
+          descriptor.kind != value_kind::mf_node)
+        continue;
+      const auto stored = record.fields.find(descriptor.name);
+      if (stored == record.fields.end())
+        continue;
+      bool references = false;
+      if (descriptor.kind == value_kind::sf_node) {
+        references = std::get<node_id>(stored->second) == target;
+      } else {
+        const auto &nodes = std::get<node_list>(stored->second);
+        references = std::ranges::find(nodes, target) != nodes.end();
+      }
+      if (references)
+        return node_reference_blocker{
+            "node is retained by a node-valued field", descriptor.name};
+    }
+  }
+
+  const auto named = std::ranges::find(state.names, target, &name_binding::node);
+  if (named != state.names.end())
+    return node_reference_blocker{"node is retained by a name", named->name};
+  const auto exported =
+      std::ranges::find(state.exports, target, &export_binding::node);
+  if (exported != state.exports.end())
+    return node_reference_blocker{"node is retained by an export",
+                                  exported->name};
+  const auto routed = std::ranges::find_if(state.routes, [&](const route &item) {
+    return item.source == target || item.sink == target;
+  });
+  if (routed != state.routes.end())
+    return node_reference_blocker{
+        "node is retained by a route endpoint",
+        routed->source_field + " -> " + routed->sink_field};
+  return std::nullopt;
+}
+
 bool retained_write_allowed(access_type access, bool node_is_being_created) {
   switch (access) {
   case access_type::initialize_only:
@@ -702,6 +763,14 @@ result<void> scene_edit::remove_node(const node &target) {
     impl_->poison = edit_error(
         error_code::stale_handle, "scene_edit.remove_node", *impl_->context,
         impl_->base->revision, "invalid node handle", target.id_);
+    return *impl_->poison;
+  }
+  if (const auto blocker =
+          find_node_reference(*impl_->context, impl_->staged, target.id_)) {
+    impl_->poison =
+        edit_error(error_code::node_in_use, "scene_edit.remove_node",
+                   *impl_->context, impl_->base->revision, blocker->message,
+                   target.id_, blocker->field);
     return *impl_->poison;
   }
 
