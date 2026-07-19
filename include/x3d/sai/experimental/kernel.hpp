@@ -636,6 +636,11 @@ public:
   add_local_declaration(local_declaration_descriptor descriptor);
   result<declaration>
   add_external_declaration(external_declaration_descriptor descriptor);
+  result<void> rename_declaration(const declaration &target,
+                                  std::string new_name);
+  result<void> update_declaration(const declaration &target,
+                                  declaration_payload replacement);
+  result<void> remove_declaration(const declaration &target);
   result<change_set> commit();
 
 private:

@@ -262,6 +262,7 @@ TEST_CASE("SAI results compose through expected-style monadic operations") {
                                .operation = "compose",
                                .message = "bad value",
                                .node = std::nullopt,
+                               .declaration = std::nullopt,
                                .field = {}};
   const auto recovered =
       sai::result<int>{sai::unexpected{failure}}
@@ -291,6 +292,7 @@ TEST_CASE("SAI results compose through expected-style monadic operations") {
                           .operation = "value",
                           .message = "an error-shaped success",
                           .node = std::nullopt,
+                          .declaration = std::nullopt,
                           .field = {}};
   }();
   REQUIRE(error_as_value);
@@ -1394,6 +1396,87 @@ TEST_CASE("rejected declaration edits publish nothing") {
   CHECK(invalid.error().code == sai::error_code::invalid_descriptor);
   REQUIRE_FALSE(missing_url.commit());
   CHECK(context.snapshot().revision() == 0);
+}
+
+TEST_CASE("declaration query and mutation operations are identity duals") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto local = author.add_local_declaration(test_local_declaration("Widget"));
+  auto external = author.add_external_declaration(
+      test_external_declaration("Remote", {"first.x3d#Widget"}));
+  REQUIRE(local);
+  REQUIRE(external);
+  REQUIRE(author.commit());
+  const auto historical = context.snapshot();
+  const auto original_order = historical.declarations();
+
+  auto update = context.edit();
+  REQUIRE(update.rename_declaration(local.value(), "RenamedWidget"));
+  REQUIRE(update.update_declaration(
+      external.value(),
+      test_external_declaration("Remote", {"second.x3d#Widget"})));
+  REQUIRE(update.commit());
+
+  const auto current = context.snapshot();
+  CHECK(current.declarations() == original_order);
+  CHECK_FALSE(current.declaration_named("Widget"));
+  CHECK(current.declaration_named("RenamedWidget")->id() == local->id());
+  const auto updated_external = current.describe(external.value());
+  REQUIRE(updated_external);
+  CHECK(
+      std::get<sai::external_declaration_descriptor>(updated_external->payload)
+          .urls == std::vector<std::string>{"second.x3d#Widget"});
+
+  CHECK(historical.declaration_named("Widget")->id() == local->id());
+  CHECK_FALSE(historical.declaration_named("RenamedWidget"));
+  CHECK(std::get<sai::external_declaration_descriptor>(
+            historical.describe(external.value())->payload)
+            .urls == std::vector<std::string>{"first.x3d#Widget"});
+
+  auto removal = context.edit();
+  REQUIRE(removal.remove_declaration(local.value()));
+  REQUIRE(removal.commit());
+  const auto stale = context.snapshot().describe(local.value());
+  REQUIRE_FALSE(stale);
+  CHECK(stale.error().code == sai::error_code::stale_handle);
+  CHECK(stale.error().declaration == local->id());
+  CHECK(historical.describe(local.value()));
+
+  auto replacement = context.edit();
+  auto recreated = replacement.add_local_declaration(
+      test_local_declaration("RenamedWidget"));
+  REQUIRE(recreated);
+  REQUIRE(replacement.commit());
+  CHECK(recreated->id() != local->id());
+  CHECK(recreated->id().value > local->id().value);
+}
+
+TEST_CASE("declaration updates preserve kind and separate rename intent") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto local = author.add_local_declaration(test_local_declaration("Local"));
+  auto external = author.add_external_declaration(
+      test_external_declaration("External", {"external.x3d#External"}));
+  REQUIRE(local);
+  REQUIRE(external);
+  REQUIRE(author.commit());
+
+  auto kind_change = context.edit();
+  const auto wrong_kind = kind_change.update_declaration(
+      local.value(), test_external_declaration("Local", {"local.x3d#Local"}));
+  REQUIRE_FALSE(wrong_kind);
+  CHECK(wrong_kind.error().code == sai::error_code::invalid_descriptor);
+  REQUIRE_FALSE(kind_change.commit());
+
+  auto hidden_rename = context.edit();
+  const auto wrong_name = hidden_rename.update_declaration(
+      external.value(),
+      test_external_declaration("Different", {"external.x3d#External"}));
+  REQUIRE_FALSE(wrong_name);
+  CHECK(wrong_name.error().code == sai::error_code::invalid_name);
+  REQUIRE_FALSE(hidden_rename.commit());
 }
 
 TEST_CASE("node-valued writes require a context-bearing node handle") {

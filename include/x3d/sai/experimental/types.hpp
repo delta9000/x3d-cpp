@@ -420,6 +420,7 @@ struct sai_error {
   revision_id base_revision = 0;
   revision_id current_revision = 0;
   std::optional<node_id> node;
+  std::optional<declaration_id> declaration;
   std::string field;
 };
 
