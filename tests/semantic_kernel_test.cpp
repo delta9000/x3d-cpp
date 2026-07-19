@@ -2779,6 +2779,53 @@ TEST_CASE("explicit detachment and node removal publish atomically") {
   CHECK_FALSE(context.snapshot().lookup(target->id()));
 }
 
+static_assert(noexcept(std::declval<sai::node &>().dispose()));
+static_assert(noexcept(
+    std::declval<sai::typed_node<BoundTransform> &>().dispose()));
+
+TEST_CASE("wrapper disposal is local idempotent and callback free") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto typed = author.create<BoundTransform>();
+  REQUIRE(typed);
+  REQUIRE(author.commit());
+
+  const auto snapshot = context.snapshot();
+  const auto revision = snapshot.revision();
+  int callbacks = 0;
+  auto observer =
+      context.observe([&](const sai::change_set &) { ++callbacks; });
+
+  auto typed_copy = typed.value();
+  const auto typed_id = typed->id();
+  typed->dispose();
+  typed->dispose();
+  CHECK(typed->disposed());
+  CHECK(typed->id() == typed_id);
+  CHECK_FALSE(typed_copy.disposed());
+  CHECK(snapshot.describe(typed_copy.dynamic()));
+  CHECK_FALSE(snapshot.describe(typed->dynamic()));
+
+  auto dynamic = typed_copy.dynamic();
+  auto dynamic_copy = dynamic;
+  const auto dynamic_id = dynamic.id();
+  dynamic.dispose();
+  dynamic.dispose();
+  CHECK(dynamic.disposed());
+  CHECK(dynamic.id() == dynamic_id);
+  CHECK_FALSE(dynamic_copy.disposed());
+  CHECK(snapshot.describe(dynamic_copy));
+  const auto disposed = snapshot.describe(dynamic);
+  REQUIRE_FALSE(disposed);
+  CHECK(disposed.error().code == sai::error_code::stale_handle);
+
+  CHECK(context.snapshot().revision() == revision);
+  CHECK(context.drain().delivered == 0);
+  CHECK(callbacks == 0);
+  CHECK(observer.active());
+}
+
 TEST_CASE(
     "world replacement invalidates handles without invalidating snapshots") {
   sai::browser host{graph_registry()};
