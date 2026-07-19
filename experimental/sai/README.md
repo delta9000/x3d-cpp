@@ -25,6 +25,10 @@ The proposal makes these design choices executable:
 - One `field_descriptor` governs dynamic and typed field handles. Access type
   is enforced as a lifecycle rule, and ordinary failure is a `result<T>` with
   structured `sai_error` data.
+- MF fields are edited through revision-bound typed or dynamic range editors,
+  never borrowed mutable containers. Indexed changes remain ordered inside one
+  atomic `scene_edit`; MFNode mutations accept only context-bearing handles and
+  validate the complete replacement range before staging it.
 - Field storage and event equivalence is the public `same_representation`
   relation: IEEE payload bits survive, signed zeros differ, and identical NaN
   payloads match. Ordinary numerical `operator==` remains numerical.

@@ -372,9 +372,66 @@ bool route_sink_allowed(access_type access) {
          access == access_type::input_output;
 }
 
+std::optional<value_kind> element_kind(value_kind sequence) {
+  switch (sequence) {
+  case value_kind::mf_bool:
+    return value_kind::sf_bool;
+  case value_kind::mf_color:
+    return value_kind::sf_color;
+  case value_kind::mf_color_rgba:
+    return value_kind::sf_color_rgba;
+  case value_kind::mf_double:
+    return value_kind::sf_double;
+  case value_kind::mf_float:
+    return value_kind::sf_float;
+  case value_kind::mf_image:
+    return value_kind::sf_image;
+  case value_kind::mf_int32:
+    return value_kind::sf_int32;
+  case value_kind::mf_matrix3d:
+    return value_kind::sf_matrix3d;
+  case value_kind::mf_matrix3f:
+    return value_kind::sf_matrix3f;
+  case value_kind::mf_matrix4d:
+    return value_kind::sf_matrix4d;
+  case value_kind::mf_matrix4f:
+    return value_kind::sf_matrix4f;
+  case value_kind::mf_node:
+    return value_kind::sf_node;
+  case value_kind::mf_rotation:
+    return value_kind::sf_rotation;
+  case value_kind::mf_string:
+    return value_kind::sf_string;
+  case value_kind::mf_time:
+    return value_kind::sf_time;
+  case value_kind::mf_vec2d:
+    return value_kind::sf_vec2d;
+  case value_kind::mf_vec2f:
+    return value_kind::sf_vec2f;
+  case value_kind::mf_vec3d:
+    return value_kind::sf_vec3d;
+  case value_kind::mf_vec3f:
+    return value_kind::sf_vec3f;
+  case value_kind::mf_vec4d:
+    return value_kind::sf_vec4d;
+  case value_kind::mf_vec4f:
+    return value_kind::sf_vec4f;
+  case value_kind::mf_enum:
+    return value_kind::sf_enum;
+  default:
+    return std::nullopt;
+  }
+}
+
+template <class T> struct is_std_vector : std::false_type {};
+template <class T, class Allocator>
+struct is_std_vector<std::vector<T, Allocator>> : std::true_type {};
+template <class T>
+inline constexpr bool is_std_vector_v = is_std_vector<T>::value;
+
 } // namespace
 
-struct scene_edit::impl {
+struct detail::scene_edit_control {
   std::shared_ptr<detail::context_control> context;
   std::shared_ptr<const detail::scene_state> base;
   detail::scene_state staged;
@@ -382,6 +439,7 @@ struct scene_edit::impl {
   std::optional<sai_error> poison;
   std::vector<change> changes;
   std::unordered_set<std::uint64_t> created_nodes;
+  bool committed = false;
 };
 
 struct event_batch::impl {
@@ -393,7 +451,8 @@ struct event_batch::impl {
   bool committed = false;
 };
 
-scene_edit::scene_edit(std::unique_ptr<impl> implementation)
+scene_edit::scene_edit(
+    std::shared_ptr<detail::scene_edit_control> implementation)
     : impl_(std::move(implementation)) {}
 scene_edit::scene_edit(scene_edit &&) noexcept = default;
 scene_edit &scene_edit::operator=(scene_edit &&) noexcept = default;
@@ -609,6 +668,602 @@ result<dynamic_field> scene_edit::field(const node &owner,
   return dynamic_field{impl_->context,   impl_->context->generation,
                        owner.id_,        name,
                        descriptor->kind, descriptor->access};
+}
+
+namespace {
+
+result<std::shared_ptr<detail::scene_edit_control>>
+active_multi_edit(const std::weak_ptr<detail::scene_edit_control> &weak,
+                  const char *operation, node_id node,
+                  const std::string &field) {
+  auto edit = weak.lock();
+  if (!edit) {
+    sai_error error;
+    error.code = error_code::stale_revision;
+    error.operation = operation;
+    error.message = "multi-field editor no longer has an owning transaction";
+    error.node = node;
+    error.field = field;
+    return error;
+  }
+  if (edit->poison)
+    return *edit->poison;
+  if (edit->committed) {
+    return edit_error(error_code::stale_revision, operation, *edit->context,
+                      edit->base->revision,
+                      "multi-field editor is bound to a stale revision", node,
+                      field);
+  }
+  std::lock_guard lock(edit->context->mutex);
+  if (!edit->context->active) {
+    return edit_error(error_code::stale_handle, operation, *edit->context,
+                      edit->base->revision,
+                      "multi-field editor belongs to a retired context", node,
+                      field);
+  }
+  if (edit->context->published_revision.load(std::memory_order_acquire) !=
+      edit->base->revision) {
+    return edit_error(error_code::stale_revision, operation, *edit->context,
+                      edit->base->revision,
+                      "multi-field editor is bound to a stale revision", node,
+                      field);
+  }
+  return edit;
+}
+
+value *multi_sequence(detail::scene_edit_control &edit,
+                      const dynamic_field &target) {
+  const auto found = edit.staged.nodes.find(target.node().value);
+  if (found == edit.staged.nodes.end())
+    return nullptr;
+  const auto value_found = found->second.fields.find(target.name());
+  return value_found == found->second.fields.end() ? nullptr
+                                                   : &value_found->second;
+}
+
+std::size_t sequence_size(const value &sequence) {
+  return std::visit(
+      []<class T>(const T &stored) -> std::size_t {
+        if constexpr (is_std_vector_v<T> || std::is_same_v<T, bool_list>)
+          return stored.size();
+        return 0;
+      },
+      sequence);
+}
+
+std::optional<value> sequence_element(const value &sequence,
+                                      std::size_t index) {
+  return std::visit(
+      [index]<class T>(const T &stored) -> std::optional<value> {
+        if constexpr (std::is_same_v<T, bool_list>) {
+          if (index < stored.size())
+            return value{stored[index]};
+        } else if constexpr (is_std_vector_v<T>) {
+          if (index < stored.size())
+            return value{stored[index]};
+        }
+        return std::nullopt;
+      },
+      sequence);
+}
+
+enum class element_mutation { set, insert };
+
+bool mutate_element(value &sequence, std::size_t index, const value &element,
+                    element_mutation mutation) {
+  return std::visit(
+      [&](auto &stored) {
+        using sequence_type = std::remove_cvref_t<decltype(stored)>;
+        if constexpr (std::is_same_v<sequence_type, bool_list>) {
+          if (!std::holds_alternative<bool>(element))
+            return false;
+          if (mutation == element_mutation::set) {
+            if (index >= stored.size())
+              return false;
+            stored.set(index, std::get<bool>(element));
+          } else {
+            if (index > stored.size())
+              return false;
+            stored.insert(index, std::get<bool>(element));
+          }
+          return true;
+        } else if constexpr (is_std_vector_v<sequence_type>) {
+          using element_type = typename sequence_type::value_type;
+          if (!std::holds_alternative<element_type>(element))
+            return false;
+          if (mutation == element_mutation::set) {
+            if (index >= stored.size())
+              return false;
+            stored[index] = std::get<element_type>(element);
+          } else {
+            if (index > stored.size())
+              return false;
+            stored.insert(stored.begin() + static_cast<std::ptrdiff_t>(index),
+                          std::get<element_type>(element));
+          }
+          return true;
+        }
+        return false;
+      },
+      sequence);
+}
+
+} // namespace
+
+result<dynamic_multi_field_edit>
+scene_edit::multi(const dynamic_field &target) {
+  if (impl_->committed) {
+    return edit_error(error_code::stale_revision, "scene_edit.multi",
+                      *impl_->context, impl_->base->revision,
+                      "transaction was already committed", target.node(),
+                      target.name());
+  }
+  const auto target_context = target.context_.lock();
+  const auto found = impl_->staged.nodes.find(target.node_.value);
+  if (target_context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      found == impl_->staged.nodes.end()) {
+    return edit_error(error_code::stale_handle, "scene_edit.multi",
+                      *impl_->context, impl_->base->revision,
+                      "invalid multi-field handle", target.node_, target.name_);
+  }
+  const auto *descriptor =
+      find_descriptor(*impl_->context, found->second, target.name_);
+  if (!descriptor || !element_kind(descriptor->kind)) {
+    return edit_error(error_code::type_mismatch, "scene_edit.multi",
+                      *impl_->context, impl_->base->revision,
+                      "field is not a multi-field", target.node_, target.name_);
+  }
+  if (!retained_write_allowed(descriptor->access, impl_->created_nodes.contains(
+                                                      target.node_.value))) {
+    return edit_error(error_code::access_denied, "scene_edit.multi",
+                      *impl_->context, impl_->base->revision,
+                      "multi-field is not author-writable", target.node_,
+                      target.name_);
+  }
+  return dynamic_multi_field_edit{impl_, target};
+}
+
+result<std::size_t> dynamic_multi_field_edit::size() const {
+  auto edit = active_multi_edit(edit_, "multi_field.size", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  const auto *sequence = multi_sequence(*edit.value(), target_);
+  if (!sequence)
+    return edit_error(error_code::unknown_field, "multi_field.size",
+                      *edit.value()->context, edit.value()->base->revision,
+                      "multi-field no longer exists", target_.node(),
+                      target_.name());
+  return sequence_size(*sequence);
+}
+
+result<value> dynamic_multi_field_edit::at(std::size_t index) const {
+  auto edit = active_multi_edit(edit_, "multi_field.at", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  const auto *sequence = multi_sequence(*edit.value(), target_);
+  const auto element =
+      sequence ? sequence_element(*sequence, index) : std::optional<value>{};
+  if (!element)
+    return edit_error(error_code::index_out_of_range, "multi_field.at",
+                      *edit.value()->context, edit.value()->base->revision,
+                      "multi-field index is out of range", target_.node(),
+                      target_.name());
+  return *element;
+}
+
+result<node> dynamic_multi_field_edit::node_at(std::size_t index) const {
+  auto edit = active_multi_edit(edit_, "multi_field.node_at", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  if (target_.kind() != value_kind::mf_node) {
+    return edit_error(error_code::type_mismatch, "multi_field.node_at",
+                      *edit.value()->context, edit.value()->base->revision,
+                      "multi-field does not contain nodes", target_.node(),
+                      target_.name());
+  }
+  const auto *sequence = multi_sequence(*edit.value(), target_);
+  const auto element =
+      sequence ? sequence_element(*sequence, index) : std::optional<value>{};
+  if (!element) {
+    return edit_error(error_code::index_out_of_range, "multi_field.node_at",
+                      *edit.value()->context, edit.value()->base->revision,
+                      "multi-field index is out of range", target_.node(),
+                      target_.name());
+  }
+  const node_id id = std::get<node_id>(*element);
+  if (!edit.value()->staged.nodes.contains(id.value)) {
+    return edit_error(error_code::stale_handle, "multi_field.node_at",
+                      *edit.value()->context, edit.value()->base->revision,
+                      "multi-field contains a dangling node identity", id,
+                      target_.name());
+  }
+  return node{edit.value()->context, edit.value()->context->generation, id};
+}
+
+result<void> dynamic_multi_field_edit::set(std::size_t index, value element) {
+  auto edit = active_multi_edit(edit_, "multi_field.set", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  const auto expected = element_kind(target_.kind());
+  if (target_.kind() == value_kind::mf_node) {
+    edit.value()->poison =
+        edit_error(error_code::invalid_context, "multi_field.set",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "MFNode edits require context-bearing node handles",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  if (!expected || kind_of(element) != expected ||
+      !value_is_well_formed(element)) {
+    edit.value()->poison =
+        edit_error(error_code::type_mismatch, "multi_field.set",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "element does not match the multi-field descriptor",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  auto *sequence = multi_sequence(*edit.value(), target_);
+  const auto before =
+      sequence ? sequence_element(*sequence, index) : std::optional<value>{};
+  if (!sequence || !before ||
+      !mutate_element(*sequence, index, element, element_mutation::set)) {
+    edit.value()->poison = edit_error(
+        error_code::index_out_of_range, "multi_field.set",
+        *edit.value()->context, edit.value()->base->revision,
+        "multi-field index is out of range", target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  edit.value()->changed = true;
+  edit.value()->changes.push_back(change{.kind = change_kind::multi_element_set,
+                                         .node = target_.node(),
+                                         .field = target_.name(),
+                                         .before = *before,
+                                         .after = std::move(element),
+                                         .index = index});
+  return {};
+}
+
+result<void> dynamic_multi_field_edit::set(std::size_t index,
+                                           const node &element) {
+  auto edit = active_multi_edit(edit_, "multi_field.set_node", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  const auto element_context = element.context_.lock();
+  const auto candidate = edit.value()->staged.nodes.find(element.id_.value);
+  const auto owner = edit.value()->staged.nodes.find(target_.node().value);
+  const auto *descriptor = owner == edit.value()->staged.nodes.end()
+                               ? nullptr
+                               : find_descriptor(*edit.value()->context,
+                                                 owner->second, target_.name());
+  if (target_.kind() != value_kind::mf_node ||
+      element_context != edit.value()->context ||
+      element.generation_ != edit.value()->context->generation ||
+      candidate == edit.value()->staged.nodes.end()) {
+    edit.value()->poison =
+        edit_error(error_code::invalid_context, "multi_field.set_node",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "MFNode element is not a live handle from this context",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  if (!descriptor || !accepts_node_type(*edit.value()->context, *descriptor,
+                                        candidate->second)) {
+    edit.value()->poison =
+        edit_error(error_code::type_mismatch, "multi_field.set_node",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "node type is not accepted by the MFNode descriptor",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  auto *sequence = multi_sequence(*edit.value(), target_);
+  const auto before =
+      sequence ? sequence_element(*sequence, index) : std::optional<value>{};
+  const value authorized{element.id_};
+  if (!sequence || !before ||
+      !mutate_element(*sequence, index, authorized, element_mutation::set)) {
+    edit.value()->poison = edit_error(
+        error_code::index_out_of_range, "multi_field.set_node",
+        *edit.value()->context, edit.value()->base->revision,
+        "multi-field index is out of range", target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  edit.value()->changed = true;
+  edit.value()->changes.push_back(change{.kind = change_kind::multi_element_set,
+                                         .node = target_.node(),
+                                         .field = target_.name(),
+                                         .before = *before,
+                                         .after = authorized,
+                                         .index = index});
+  return {};
+}
+
+result<void> dynamic_multi_field_edit::insert(std::size_t index,
+                                              value element) {
+  auto edit = active_multi_edit(edit_, "multi_field.insert", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  const auto expected = element_kind(target_.kind());
+  if (target_.kind() == value_kind::mf_node || !expected ||
+      kind_of(element) != expected || !value_is_well_formed(element)) {
+    edit.value()->poison = edit_error(
+        target_.kind() == value_kind::mf_node ? error_code::invalid_context
+                                              : error_code::type_mismatch,
+        "multi_field.insert", *edit.value()->context,
+        edit.value()->base->revision,
+        "element is not authorizable for the multi-field", target_.node(),
+        target_.name());
+    return *edit.value()->poison;
+  }
+  auto *sequence = multi_sequence(*edit.value(), target_);
+  if (!sequence ||
+      !mutate_element(*sequence, index, element, element_mutation::insert)) {
+    edit.value()->poison =
+        edit_error(error_code::index_out_of_range, "multi_field.insert",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "multi-field insertion index is out of range",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  edit.value()->changed = true;
+  edit.value()->changes.push_back(change{.kind = change_kind::multi_inserted,
+                                         .node = target_.node(),
+                                         .field = target_.name(),
+                                         .before = std::monostate{},
+                                         .after = std::move(element),
+                                         .index = index});
+  return {};
+}
+
+result<void> dynamic_multi_field_edit::insert(std::size_t index,
+                                              const node &element) {
+  auto edit = active_multi_edit(edit_, "multi_field.insert_node",
+                                target_.node(), target_.name());
+  if (!edit)
+    return edit.error();
+  const auto element_context = element.context_.lock();
+  const auto candidate = edit.value()->staged.nodes.find(element.id_.value);
+  const auto owner = edit.value()->staged.nodes.find(target_.node().value);
+  const auto *descriptor = owner == edit.value()->staged.nodes.end()
+                               ? nullptr
+                               : find_descriptor(*edit.value()->context,
+                                                 owner->second, target_.name());
+  if (target_.kind() != value_kind::mf_node ||
+      element_context != edit.value()->context ||
+      element.generation_ != edit.value()->context->generation ||
+      candidate == edit.value()->staged.nodes.end()) {
+    edit.value()->poison =
+        edit_error(error_code::invalid_context, "multi_field.insert_node",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "MFNode element is not a live handle from this context",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  if (!descriptor || !accepts_node_type(*edit.value()->context, *descriptor,
+                                        candidate->second)) {
+    edit.value()->poison =
+        edit_error(error_code::type_mismatch, "multi_field.insert_node",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "node type is not accepted by the MFNode descriptor",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  auto *sequence = multi_sequence(*edit.value(), target_);
+  const value authorized{element.id_};
+  if (!sequence ||
+      !mutate_element(*sequence, index, authorized, element_mutation::insert)) {
+    edit.value()->poison =
+        edit_error(error_code::index_out_of_range, "multi_field.insert_node",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "multi-field insertion index is out of range",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  edit.value()->changed = true;
+  edit.value()->changes.push_back(change{.kind = change_kind::multi_inserted,
+                                         .node = target_.node(),
+                                         .field = target_.name(),
+                                         .before = std::monostate{},
+                                         .after = authorized,
+                                         .index = index});
+  return {};
+}
+
+result<void> dynamic_multi_field_edit::append(value element) {
+  auto current_size = size();
+  if (!current_size)
+    return current_size.error();
+  return insert(current_size.value(), std::move(element));
+}
+
+result<void> dynamic_multi_field_edit::append(const node &element) {
+  auto current_size = size();
+  if (!current_size)
+    return current_size.error();
+  return insert(current_size.value(), element);
+}
+
+result<void> dynamic_multi_field_edit::erase(std::size_t index) {
+  auto edit = active_multi_edit(edit_, "multi_field.erase", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  auto *sequence = multi_sequence(*edit.value(), target_);
+  const auto before =
+      sequence ? sequence_element(*sequence, index) : std::optional<value>{};
+  bool erased = false;
+  if (sequence && before) {
+    erased = std::visit(
+        [&](auto &stored) {
+          using sequence_type = std::remove_cvref_t<decltype(stored)>;
+          if constexpr (std::is_same_v<sequence_type, bool_list>) {
+            stored.erase(index);
+            return true;
+          } else if constexpr (is_std_vector_v<sequence_type>) {
+            stored.erase(stored.begin() + static_cast<std::ptrdiff_t>(index));
+            return true;
+          }
+          return false;
+        },
+        *sequence);
+  }
+  if (!erased) {
+    edit.value()->poison =
+        edit_error(error_code::index_out_of_range, "multi_field.erase",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "multi-field erase index is out of range", target_.node(),
+                   target_.name());
+    return *edit.value()->poison;
+  }
+  edit.value()->changed = true;
+  edit.value()->changes.push_back(change{.kind = change_kind::multi_erased,
+                                         .node = target_.node(),
+                                         .field = target_.name(),
+                                         .before = *before,
+                                         .after = std::monostate{},
+                                         .index = index});
+  return {};
+}
+
+result<void> dynamic_multi_field_edit::clear() {
+  auto edit = active_multi_edit(edit_, "multi_field.clear", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  auto *sequence = multi_sequence(*edit.value(), target_);
+  if (!sequence)
+    return edit_error(error_code::unknown_field, "multi_field.clear",
+                      *edit.value()->context, edit.value()->base->revision,
+                      "multi-field no longer exists", target_.node(),
+                      target_.name());
+  const value before = *sequence;
+  std::visit(
+      [](auto &stored) {
+        using sequence_type = std::remove_cvref_t<decltype(stored)>;
+        if constexpr (is_std_vector_v<sequence_type> ||
+                      std::is_same_v<sequence_type, bool_list>)
+          stored.clear();
+      },
+      *sequence);
+  edit.value()->changed = true;
+  edit.value()->changes.push_back(change{.kind = change_kind::multi_cleared,
+                                         .node = target_.node(),
+                                         .field = target_.name(),
+                                         .before = before,
+                                         .after = *sequence,
+                                         .index = 0});
+  return {};
+}
+
+result<void> dynamic_multi_field_edit::replace(value replacement) {
+  auto edit = active_multi_edit(edit_, "multi_field.replace", target_.node(),
+                                target_.name());
+  if (!edit)
+    return edit.error();
+  if (target_.kind() == value_kind::mf_node) {
+    edit.value()->poison =
+        edit_error(error_code::invalid_context, "multi_field.replace",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "MFNode replacement requires context-bearing node handles",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  if (kind_of(replacement) != target_.kind() ||
+      !value_is_well_formed(replacement)) {
+    edit.value()->poison =
+        edit_error(error_code::type_mismatch, "multi_field.replace",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "replacement does not match the multi-field descriptor",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  auto *sequence = multi_sequence(*edit.value(), target_);
+  if (!sequence)
+    return edit_error(error_code::unknown_field, "multi_field.replace",
+                      *edit.value()->context, edit.value()->base->revision,
+                      "multi-field no longer exists", target_.node(),
+                      target_.name());
+  const value before = *sequence;
+  *sequence = std::move(replacement);
+  edit.value()->changed = true;
+  edit.value()->changes.push_back(change{.kind = change_kind::multi_replaced,
+                                         .node = target_.node(),
+                                         .field = target_.name(),
+                                         .before = before,
+                                         .after = *sequence,
+                                         .index = 0});
+  return {};
+}
+
+result<void>
+dynamic_multi_field_edit::replace(std::span<const node> replacement) {
+  auto edit = active_multi_edit(edit_, "multi_field.replace_nodes",
+                                target_.node(), target_.name());
+  if (!edit)
+    return edit.error();
+  const auto owner = edit.value()->staged.nodes.find(target_.node().value);
+  const auto *descriptor = owner == edit.value()->staged.nodes.end()
+                               ? nullptr
+                               : find_descriptor(*edit.value()->context,
+                                                 owner->second, target_.name());
+  if (target_.kind() != value_kind::mf_node || !descriptor) {
+    edit.value()->poison = edit_error(
+        error_code::type_mismatch, "multi_field.replace_nodes",
+        *edit.value()->context, edit.value()->base->revision,
+        "field is not an MFNode descriptor", target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+
+  node_list authorized;
+  authorized.reserve(replacement.size());
+  for (const node &element : replacement) {
+    const auto element_context = element.context_.lock();
+    const auto candidate = edit.value()->staged.nodes.find(element.id_.value);
+    if (element_context != edit.value()->context ||
+        element.generation_ != edit.value()->context->generation ||
+        candidate == edit.value()->staged.nodes.end()) {
+      edit.value()->poison =
+          edit_error(error_code::invalid_context, "multi_field.replace_nodes",
+                     *edit.value()->context, edit.value()->base->revision,
+                     "MFNode range contains a handle from another context",
+                     target_.node(), target_.name());
+      return *edit.value()->poison;
+    }
+    if (!accepts_node_type(*edit.value()->context, *descriptor,
+                           candidate->second)) {
+      edit.value()->poison =
+          edit_error(error_code::type_mismatch, "multi_field.replace_nodes",
+                     *edit.value()->context, edit.value()->base->revision,
+                     "MFNode range contains a type rejected by the descriptor",
+                     target_.node(), target_.name());
+      return *edit.value()->poison;
+    }
+    authorized.push_back(element.id_);
+  }
+
+  auto *sequence = multi_sequence(*edit.value(), target_);
+  if (!sequence) {
+    return edit_error(error_code::unknown_field, "multi_field.replace_nodes",
+                      *edit.value()->context, edit.value()->base->revision,
+                      "multi-field no longer exists", target_.node(),
+                      target_.name());
+  }
+  const value before = *sequence;
+  *sequence = std::move(authorized);
+  edit.value()->changed = true;
+  edit.value()->changes.push_back(change{.kind = change_kind::multi_replaced,
+                                         .node = target_.node(),
+                                         .field = target_.name(),
+                                         .before = before,
+                                         .after = *sequence,
+                                         .index = 0});
+  return {};
 }
 
 result<void> scene_edit::set(const dynamic_field &target, value new_value) {
@@ -1058,6 +1713,11 @@ result<void> scene_edit::remove_route(const route &target) {
 result<change_set> scene_edit::commit() {
   if (impl_->poison)
     return *impl_->poison;
+  if (impl_->committed) {
+    return edit_error(error_code::poisoned_edit, "scene_edit.commit",
+                      *impl_->context, impl_->base->revision,
+                      "scene edit was already committed");
+  }
 
   std::unordered_map<std::uint64_t, int> colors;
   std::function<bool(std::uint64_t)> visit = [&](std::uint64_t id) {
@@ -1156,6 +1816,7 @@ result<change_set> scene_edit::commit() {
     }
   }
   if (!impl_->changed) {
+    impl_->committed = true;
     return change_set{.before_revision = impl_->base->revision,
                       .after_revision = impl_->base->revision,
                       .changes = {}};
@@ -1180,6 +1841,7 @@ result<change_set> scene_edit::commit() {
     impl_->context->pending.push_back(detail::context_control::pending_change{
         .changes = committed, .recipients = std::move(recipients)});
   }
+  impl_->committed = true;
   return committed;
 }
 
@@ -1881,7 +2543,7 @@ scene_snapshot execution_context::snapshot() const {
 
 scene_edit execution_context::edit() const {
   std::lock_guard lock(control_->mutex);
-  auto implementation = std::make_unique<scene_edit::impl>();
+  auto implementation = std::make_shared<detail::scene_edit_control>();
   implementation->context = control_;
   implementation->base = control_->state;
   implementation->staged = *control_->state;

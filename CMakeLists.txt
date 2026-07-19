@@ -1759,6 +1759,28 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=numeric bits and large owning images survive the semantic boundary")
     add_test(NAME sai_field_equal_intent COMMAND x3d_sai_experimental_tests
         "--test-case=dynamic discovery and typed fields are substitutable")
+    add_test(NAME sai_mf_size_read COMMAND x3d_sai_experimental_tests
+        "--test-case=a dynamic multi-field editor stages the complete indexed service")
+    add_test(NAME sai_mf_set COMMAND x3d_sai_experimental_tests
+        "--test-case=a dynamic multi-field editor stages the complete indexed service")
+    add_test(NAME sai_mf_insert COMMAND x3d_sai_experimental_tests
+        "--test-case=a dynamic multi-field editor stages the complete indexed service")
+    add_test(NAME sai_mf_erase COMMAND x3d_sai_experimental_tests
+        "--test-case=a dynamic multi-field editor stages the complete indexed service")
+    add_test(NAME sai_mf_append COMMAND x3d_sai_experimental_tests
+        "--test-case=a dynamic multi-field editor stages the complete indexed service")
+    add_test(NAME sai_mf_clear COMMAND x3d_sai_experimental_tests
+        "--test-case=a dynamic multi-field editor stages the complete indexed service")
+    add_test(NAME sai_mf_replace COMMAND x3d_sai_experimental_tests
+        "--test-case=a dynamic multi-field editor stages the complete indexed service")
+    add_test(NAME sai_mf_typed_dynamic COMMAND x3d_sai_experimental_tests
+        "--test-case=typed and dynamic multi-field editors publish equal traces")
+    add_test(NAME sai_mf_revision_bound COMMAND x3d_sai_experimental_tests
+        "--test-case=multi-field editors are revision-bound capabilities")
+    add_test(NAME sai_mf_node_authority COMMAND x3d_sai_experimental_tests
+        "--test-case=MFNode editors validate the complete handle range before staging")
+    add_test(NAME sai_mf_event_trace COMMAND x3d_sai_experimental_tests
+        "--test-case=typed and dynamic MF events preserve the complete owning payload")
     add_test(NAME sai_field_access_state_machine COMMAND x3d_sai_experimental_tests
         "--test-case=field access is a lifecycle rule rather than a setter shape")
     add_test(NAME sai_field_specialized_access COMMAND x3d_sai_experimental_tests
@@ -2983,7 +3005,24 @@ if(X3D_CPP_BUILD_TESTS)
         sai_id_occurrence_edge
         sai_own_domain
         sai_field_one_descriptor
+        sai_generated_metadata
+        sai_generated_metadata_drift
+        sai_field_complete_vocabulary
+        sai_generated_metadata_executable
+        sai_generated_metadata_lexical
+        sai_field_value_boundaries
         sai_field_equal_intent
+        sai_mf_size_read
+        sai_mf_set
+        sai_mf_insert
+        sai_mf_erase
+        sai_mf_append
+        sai_mf_clear
+        sai_mf_replace
+        sai_mf_typed_dynamic
+        sai_mf_revision_bound
+        sai_mf_node_authority
+        sai_mf_event_trace
         sai_field_access_state_machine
         sai_field_specialized_access
         sai_route_access
