@@ -1726,7 +1726,8 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/src/metadata.cpp"
         "${_x3d_generated_semantic_metadata_source}")
     target_include_directories(x3d_sai_experimental_metadata PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/include")
+        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings")
     target_link_libraries(x3d_sai_experimental_metadata
         PUBLIC x3d_sai_experimental
         PRIVATE x3d_cpp_headers)
@@ -1834,6 +1835,8 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=SAI results compose through expected-style monadic operations")
     add_test(NAME sai_generated_typed_access COMMAND x3d_sai_experimental_tests
         "--test-case=generated field keys remove dynamic authoring lookup")
+    add_test(NAME sai_generated_binding_parity COMMAND x3d_sai_experimental_tests
+        "--test-case=generated typed keys and metadata are one schema view")
     add_test(NAME sai_evt_stale_async COMMAND x3d_sai_experimental_tests
         "--test-case=cancelled and stale load completions are inert")
     add_test(NAME sai_evt_input_transient COMMAND x3d_sai_experimental_tests
