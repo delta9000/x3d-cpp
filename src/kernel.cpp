@@ -261,7 +261,10 @@ struct scene_state {
 
   revision_id revision = 0;
   std::uint64_t next_node_id = 1;
+  std::uint64_t next_declaration_id = 1;
   std::unordered_map<std::uint64_t, node_record> nodes;
+  std::vector<declaration_id> declaration_order;
+  std::unordered_map<std::uint64_t, declaration_descriptor> declarations;
   std::vector<unit_declaration> units;
   std::vector<node_id> roots;
   std::vector<name_binding> names;
@@ -438,12 +441,13 @@ find_node_reference(const detail::context_control &context,
         references = std::ranges::find(nodes, target) != nodes.end();
       }
       if (references)
-        return node_reference_blocker{
-            "node is retained by a node-valued field", descriptor.name};
+        return node_reference_blocker{"node is retained by a node-valued field",
+                                      descriptor.name};
     }
   }
 
-  const auto named = std::ranges::find(state.names, target, &name_binding::node);
+  const auto named =
+      std::ranges::find(state.names, target, &name_binding::node);
   if (named != state.names.end())
     return node_reference_blocker{"node is retained by a name", named->name};
   const auto exported =
@@ -451,13 +455,14 @@ find_node_reference(const detail::context_control &context,
   if (exported != state.exports.end())
     return node_reference_blocker{"node is retained by an export",
                                   exported->name};
-  const auto routed = std::ranges::find_if(state.routes, [&](const route &item) {
-    return item.source == target || item.sink == target;
-  });
+  const auto routed =
+      std::ranges::find_if(state.routes, [&](const route &item) {
+        return item.source == target || item.sink == target;
+      });
   if (routed != state.routes.end())
-    return node_reference_blocker{
-        "node is retained by a route endpoint",
-        routed->source_field + " -> " + routed->sink_field};
+    return node_reference_blocker{"node is retained by a route endpoint",
+                                  routed->source_field + " -> " +
+                                      routed->sink_field};
   return std::nullopt;
 }
 
@@ -808,29 +813,27 @@ result<void> scene_edit::remove_node(const node &target) {
   }
   if (const auto blocker =
           find_node_reference(*impl_->context, impl_->staged, target.id_)) {
-    impl_->poison =
-        edit_error(error_code::node_in_use, "scene_edit.remove_node",
-                   *impl_->context, impl_->base->revision, blocker->message,
-                   target.id_, blocker->field);
+    impl_->poison = edit_error(
+        error_code::node_in_use, "scene_edit.remove_node", *impl_->context,
+        impl_->base->revision, blocker->message, target.id_, blocker->field);
     return *impl_->poison;
   }
   {
     std::lock_guard lock(impl_->context->mutex);
     if (const auto blocker =
             find_live_context_reference(*impl_->context, target.id_)) {
-      impl_->poison =
-          edit_error(error_code::node_in_use, "scene_edit.remove_node",
-                     *impl_->context, impl_->base->revision, blocker->message,
-                     target.id_, blocker->field);
+      impl_->poison = edit_error(
+          error_code::node_in_use, "scene_edit.remove_node", *impl_->context,
+          impl_->base->revision, blocker->message, target.id_, blocker->field);
       return *impl_->poison;
     }
     if (const auto imported =
             find_live_import_reference(*impl_->context, target.id_)) {
-      impl_->poison = edit_error(
-          error_code::node_in_use, "scene_edit.remove_node", *impl_->context,
-          impl_->base->revision,
-          "node is retained by a committed import aperture", target.id_,
-          *imported);
+      impl_->poison =
+          edit_error(error_code::node_in_use, "scene_edit.remove_node",
+                     *impl_->context, impl_->base->revision,
+                     "node is retained by a committed import aperture",
+                     target.id_, *imported);
       return *impl_->poison;
     }
   }
@@ -2143,6 +2146,86 @@ result<void> scene_edit::remove_route(const route &target) {
   return {};
 }
 
+result<declaration>
+scene_edit::add_local_declaration(local_declaration_descriptor descriptor) {
+  if (impl_->poison)
+    return *impl_->poison;
+  if (descriptor.name.empty()) {
+    impl_->poison =
+        edit_error(error_code::invalid_name, "scene_edit.add_local_declaration",
+                   *impl_->context, impl_->base->revision,
+                   "declaration name must not be empty");
+    return *impl_->poison;
+  }
+  if (!descriptor.body_roots.empty()) {
+    impl_->poison = edit_error(
+        error_code::invalid_descriptor, "scene_edit.add_local_declaration",
+        *impl_->context, impl_->base->revision,
+        "template body ownership is not available in this implementation step");
+    return *impl_->poison;
+  }
+  const auto duplicate = std::ranges::find_if(
+      impl_->staged.declaration_order, [&](declaration_id candidate) {
+        return experimental::name(impl_->staged.declarations.at(
+                   candidate.value)) == descriptor.name;
+      });
+  if (duplicate != impl_->staged.declaration_order.end()) {
+    impl_->poison = edit_error(
+        error_code::duplicate_name, "scene_edit.add_local_declaration",
+        *impl_->context, impl_->base->revision,
+        "declaration name is already defined: " + descriptor.name);
+    return *impl_->poison;
+  }
+  const declaration_id id{impl_->staged.next_declaration_id++};
+  impl_->staged.declaration_order.push_back(id);
+  impl_->staged.declarations.emplace(
+      id.value,
+      declaration_descriptor{.id = id, .payload = std::move(descriptor)});
+  impl_->changed = true;
+  return declaration{impl_->context, impl_->context->generation, id};
+}
+
+result<declaration> scene_edit::add_external_declaration(
+    external_declaration_descriptor descriptor) {
+  if (impl_->poison)
+    return *impl_->poison;
+  if (descriptor.name.empty()) {
+    impl_->poison =
+        edit_error(error_code::invalid_name,
+                   "scene_edit.add_external_declaration", *impl_->context,
+                   impl_->base->revision, "declaration name must not be empty");
+    return *impl_->poison;
+  }
+  if (descriptor.urls.empty() ||
+      descriptor.load_state != external_load_state::unresolved ||
+      descriptor.resolved_declaration) {
+    impl_->poison = edit_error(
+        error_code::invalid_descriptor, "scene_edit.add_external_declaration",
+        *impl_->context, impl_->base->revision,
+        "new external declaration must be unresolved with at least one URL");
+    return *impl_->poison;
+  }
+  const auto duplicate = std::ranges::find_if(
+      impl_->staged.declaration_order, [&](declaration_id candidate) {
+        return experimental::name(impl_->staged.declarations.at(
+                   candidate.value)) == descriptor.name;
+      });
+  if (duplicate != impl_->staged.declaration_order.end()) {
+    impl_->poison = edit_error(
+        error_code::duplicate_name, "scene_edit.add_external_declaration",
+        *impl_->context, impl_->base->revision,
+        "declaration name is already defined: " + descriptor.name);
+    return *impl_->poison;
+  }
+  const declaration_id id{impl_->staged.next_declaration_id++};
+  impl_->staged.declaration_order.push_back(id);
+  impl_->staged.declarations.emplace(
+      id.value,
+      declaration_descriptor{.id = id, .payload = std::move(descriptor)});
+  impl_->changed = true;
+  return declaration{impl_->context, impl_->context->generation, id};
+}
+
 result<change_set> scene_edit::commit() {
   if (impl_->poison)
     return *impl_->poison;
@@ -2816,6 +2899,37 @@ result<node> scene_snapshot::lookup(node_id id) const {
   return node{context_, context_->generation, id};
 }
 
+const std::vector<declaration_id> &
+scene_snapshot::declarations() const noexcept {
+  return state_->declaration_order;
+}
+
+result<declaration> scene_snapshot::declaration_at(declaration_id id) const {
+  if (!state_->declarations.contains(id.value)) {
+    return edit_error(error_code::invalid_descriptor,
+                      "scene_snapshot.declaration_at", *context_,
+                      state_->revision,
+                      "declaration identity is not present in this snapshot");
+  }
+  return declaration{context_, context_->generation, id};
+}
+
+result<declaration>
+scene_snapshot::declaration_named(std::string_view requested_name) const {
+  const auto found = std::ranges::find_if(
+      state_->declaration_order, [&](declaration_id candidate) {
+        return experimental::name(state_->declarations.at(candidate.value)) ==
+               requested_name;
+      });
+  if (found == state_->declaration_order.end()) {
+    return edit_error(
+        error_code::invalid_name, "scene_snapshot.declaration_named", *context_,
+        state_->revision,
+        "declaration name is not defined: " + std::string{requested_name});
+  }
+  return declaration{context_, context_->generation, *found};
+}
+
 result<node_type_descriptor> scene_snapshot::describe(const node &owner) const {
   const auto owner_context = owner.context_.lock();
   const auto found = state_->nodes.find(owner.id_.value);
@@ -2833,6 +2947,19 @@ result<node_type_descriptor> scene_snapshot::describe(const node &owner) const {
                       owner.id_);
   }
   return *descriptor;
+}
+
+result<declaration_descriptor>
+scene_snapshot::describe(const declaration &owner) const {
+  const auto owner_context = owner.context_.lock();
+  const auto found = state_->declarations.find(owner.id_.value);
+  if (owner_context != context_ || owner.generation_ != context_->generation ||
+      found == state_->declarations.end()) {
+    return edit_error(error_code::stale_handle,
+                      "scene_snapshot.describe_declaration", *context_,
+                      state_->revision, "invalid declaration handle");
+  }
+  return found->second;
 }
 
 result<node_type_descriptor>
