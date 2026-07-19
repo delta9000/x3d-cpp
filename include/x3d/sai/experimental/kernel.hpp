@@ -294,6 +294,7 @@ struct occurrence {
 
 enum class change_kind {
   node_created,
+  node_removed,
   unit_declared,
   field_changed,
   multi_element_set,
@@ -522,6 +523,7 @@ public:
   scene_edit &operator=(const scene_edit &) = delete;
 
   result<node> create_node(const std::string &type_name);
+  result<void> remove_node(const node &target);
   template <class Tag> result<typed_node<Tag>> create() {
     if constexpr (requires { std::string_view{Tag::schema_fingerprint}; }) {
       auto verified = require_schema_fingerprint(Tag::schema_fingerprint);
