@@ -3077,6 +3077,7 @@ if(X3D_CPP_BUILD_TESTS)
         sai_cxx_failure_value
         sai_cxx_result_composition
         sai_generated_typed_access
+        sai_generated_binding_parity
         sai_evt_stale_async
         sai_evt_input_transient
         sai_evt_inputoutput_publish
