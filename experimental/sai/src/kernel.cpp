@@ -352,6 +352,24 @@ unexpected edit_error(error_code code, const char *operation,
   return failure(std::move(error));
 }
 
+unexpected declaration_edit_error(error_code code, const char *operation,
+                                  const detail::context_control &context,
+                                  revision_id base_revision,
+                                  std::string message, declaration_id target,
+                                  std::string field = {}) {
+  sai_error error;
+  error.code = code;
+  error.operation = operation;
+  error.message = std::move(message);
+  error.generation = context.generation;
+  error.base_revision = base_revision;
+  error.current_revision =
+      context.published_revision.load(std::memory_order_acquire);
+  error.declaration = target;
+  error.field = std::move(field);
+  return failure(std::move(error));
+}
+
 const field_descriptor *
 find_descriptor(const detail::context_control &context,
                 const detail::scene_state::node_record &record,
@@ -2282,6 +2300,143 @@ result<declaration> scene_edit::add_external_declaration(
   return declaration{impl_->context, impl_->context->generation, id};
 }
 
+result<void> scene_edit::rename_declaration(const declaration &target,
+                                            std::string new_name) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto target_context = target.context_.lock();
+  const auto found = impl_->staged.declarations.find(target.id_.value);
+  if (target_context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      found == impl_->staged.declarations.end()) {
+    impl_->poison = declaration_edit_error(
+        error_code::stale_handle, "scene_edit.rename_declaration",
+        *impl_->context, impl_->base->revision, "invalid declaration handle",
+        target.id_);
+    return *impl_->poison;
+  }
+  if (new_name.empty()) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_name, "scene_edit.rename_declaration",
+        *impl_->context, impl_->base->revision,
+        "declaration name must not be empty", target.id_);
+    return *impl_->poison;
+  }
+  const auto duplicate = std::ranges::find_if(
+      impl_->staged.declaration_order, [&](declaration_id candidate) {
+        return candidate != target.id_ &&
+               experimental::name(
+                   impl_->staged.declarations.at(candidate.value)) == new_name;
+      });
+  if (duplicate != impl_->staged.declaration_order.end()) {
+    impl_->poison = declaration_edit_error(
+        error_code::duplicate_name, "scene_edit.rename_declaration",
+        *impl_->context, impl_->base->revision,
+        "declaration name is already defined: " + new_name, target.id_);
+    return *impl_->poison;
+  }
+  std::visit([&](auto &payload) { payload.name = std::move(new_name); },
+             found->second.payload);
+  impl_->changed = true;
+  return {};
+}
+
+result<void> scene_edit::update_declaration(const declaration &target,
+                                            declaration_payload replacement) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto target_context = target.context_.lock();
+  const auto found = impl_->staged.declarations.find(target.id_.value);
+  if (target_context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      found == impl_->staged.declarations.end()) {
+    impl_->poison = declaration_edit_error(
+        error_code::stale_handle, "scene_edit.update_declaration",
+        *impl_->context, impl_->base->revision, "invalid declaration handle",
+        target.id_);
+    return *impl_->poison;
+  }
+  if (replacement.index() != found->second.payload.index()) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_descriptor, "scene_edit.update_declaration",
+        *impl_->context, impl_->base->revision,
+        "declaration kind cannot change during update", target.id_);
+    return *impl_->poison;
+  }
+  const std::string &replacement_name = std::visit(
+      [](const auto &payload) -> const std::string & { return payload.name; },
+      replacement);
+  if (replacement_name != experimental::name(found->second)) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_name, "scene_edit.update_declaration",
+        *impl_->context, impl_->base->revision,
+        "rename intent must use rename_declaration", target.id_);
+    return *impl_->poison;
+  }
+  const auto &interface = std::visit(
+      [](const auto &payload)
+          -> const std::vector<interface_field_descriptor> & {
+        return payload.interface;
+      },
+      replacement);
+  if (const auto issue = validate_declaration_interface(interface)) {
+    impl_->poison = declaration_edit_error(
+        issue->code, "scene_edit.update_declaration", *impl_->context,
+        impl_->base->revision, issue->message, target.id_, issue->field);
+    return *impl_->poison;
+  }
+  if (const auto *local =
+          std::get_if<local_declaration_descriptor>(&replacement);
+      local && !local->body_roots.empty()) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_descriptor, "scene_edit.update_declaration",
+        *impl_->context, impl_->base->revision,
+        "template body ownership is not available in this implementation step",
+        target.id_);
+    return *impl_->poison;
+  }
+  if (const auto *external =
+          std::get_if<external_declaration_descriptor>(&replacement);
+      external && (external->urls.empty() ||
+                   std::ranges::any_of(
+                       external->urls,
+                       [](const std::string &url) { return url.empty(); }) ||
+                   external->load_state != external_load_state::unresolved ||
+                   external->resolved_declaration)) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_descriptor, "scene_edit.update_declaration",
+        *impl_->context, impl_->base->revision,
+        "external update must remain unresolved with at least one URL",
+        target.id_);
+    return *impl_->poison;
+  }
+  found->second.payload = std::move(replacement);
+  impl_->changed = true;
+  return {};
+}
+
+result<void> scene_edit::remove_declaration(const declaration &target) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto target_context = target.context_.lock();
+  const auto found = impl_->staged.declarations.find(target.id_.value);
+  if (target_context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      found == impl_->staged.declarations.end()) {
+    impl_->poison = declaration_edit_error(
+        error_code::stale_handle, "scene_edit.remove_declaration",
+        *impl_->context, impl_->base->revision, "invalid declaration handle",
+        target.id_);
+    return *impl_->poison;
+  }
+  const auto ordered =
+      std::ranges::find(impl_->staged.declaration_order, target.id_);
+  impl_->staged.declaration_order.erase(ordered);
+  impl_->staged.declarations.erase(found);
+  impl_->changed = true;
+  return {};
+}
+
 result<change_set> scene_edit::commit() {
   if (impl_->poison)
     return *impl_->poison;
@@ -3011,9 +3166,9 @@ scene_snapshot::describe(const declaration &owner) const {
   const auto found = state_->declarations.find(owner.id_.value);
   if (owner_context != context_ || owner.generation_ != context_->generation ||
       found == state_->declarations.end()) {
-    return edit_error(error_code::stale_handle,
-                      "scene_snapshot.describe_declaration", *context_,
-                      state_->revision, "invalid declaration handle");
+    return declaration_edit_error(
+        error_code::stale_handle, "scene_snapshot.describe_declaration",
+        *context_, state_->revision, "invalid declaration handle", owner.id_);
   }
   return found->second;
 }
