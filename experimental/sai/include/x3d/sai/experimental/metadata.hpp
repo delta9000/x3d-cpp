@@ -10,52 +10,7 @@
 
 namespace x3d::sai::experimental {
 
-enum class schema_field_type {
-  sf_bool,
-  sf_color,
-  sf_color_rgba,
-  sf_double,
-  sf_float,
-  sf_image,
-  sf_int32,
-  sf_matrix3d,
-  sf_matrix3f,
-  sf_matrix4d,
-  sf_matrix4f,
-  sf_node,
-  sf_rotation,
-  sf_string,
-  sf_time,
-  sf_vec2d,
-  sf_vec2f,
-  sf_vec3d,
-  sf_vec3f,
-  sf_vec4d,
-  sf_vec4f,
-  mf_bool,
-  mf_color,
-  mf_color_rgba,
-  mf_double,
-  mf_float,
-  mf_image,
-  mf_int32,
-  mf_matrix3d,
-  mf_matrix3f,
-  mf_matrix4d,
-  mf_matrix4f,
-  mf_node,
-  mf_rotation,
-  mf_string,
-  mf_time,
-  mf_vec2d,
-  mf_vec2f,
-  mf_vec3d,
-  mf_vec3f,
-  mf_vec4d,
-  mf_vec4f,
-  sf_enum,
-  mf_enum,
-};
+using schema_field_type = value_kind;
 
 struct schema_field_descriptor {
   std::string name;
@@ -86,6 +41,10 @@ struct metadata_catalog {
 // Returns an owning copy of every generated descriptor, including field kinds
 // that the current executable value vocabulary cannot yet author.
 metadata_catalog generated_metadata_catalog();
+
+// Converts a schema lexical default (or the ISO field-type default when
+// absent) into the exact owning SAI alternative.
+result<value> default_value_for(const schema_field_descriptor &field);
 
 // Copies selected descriptors from the generated UOM catalog. The returned
 // registry owns every string and value; generated runtime nodes never become

@@ -1749,6 +1749,14 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=generated metadata authors without runtime node identity")
     add_test(NAME sai_generated_metadata_drift COMMAND x3d_sai_experimental_tests
         "--test-case=generated metadata adapter has exhaustive ordered descriptor parity")
+    add_test(NAME sai_field_complete_vocabulary COMMAND x3d_sai_experimental_tests
+        "--test-case=the owning value vocabulary preserves every non-node ISO kind")
+    add_test(NAME sai_generated_metadata_executable COMMAND x3d_sai_experimental_tests
+        "--test-case=every generated descriptor adapts into the executable vocabulary")
+    add_test(NAME sai_generated_metadata_lexical COMMAND x3d_sai_experimental_tests
+        "--test-case=schema lexical defaults reject image truncation and preserve strings")
+    add_test(NAME sai_field_value_boundaries COMMAND x3d_sai_experimental_tests
+        "--test-case=numeric bits and large owning images survive the semantic boundary")
     add_test(NAME sai_field_equal_intent COMMAND x3d_sai_experimental_tests
         "--test-case=dynamic discovery and typed fields are substitutable")
     add_test(NAME sai_field_access_state_machine COMMAND x3d_sai_experimental_tests

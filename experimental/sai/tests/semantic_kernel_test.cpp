@@ -1,14 +1,17 @@
 #include "x3d/sai/experimental/kernel.hpp"
 #include "x3d/sai/experimental/metadata.hpp"
 
-#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "x3d/nodes/X3DSemanticMetadataRegistry.hpp"
 
 #include "doctest/doctest.h"
 
 #include <array>
+#include <bit>
+#include <cmath>
 #include <concepts>
+#include <limits>
 #include <memory>
 #include <span>
 #include <stdexcept>
@@ -78,12 +81,41 @@ test_node_type(std::string name, std::vector<sai::field_descriptor> fields) {
   };
 }
 
+template <class T>
+void check_owning_value_roundtrip(std::string type_name, sai::value_kind kind,
+                                  T sample) {
+  sai::type_registry registry;
+  REQUIRE(registry.define(test_node_type(
+      type_name,
+      {test_field("value", kind, sai::access_type::input_output, T{})})));
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto owner = edit.create_node(type_name);
+  REQUIRE(owner);
+  auto dynamic = edit.field(owner.value(), "value");
+  REQUIRE(dynamic);
+  auto typed = dynamic.value().template as<T>();
+  REQUIRE(typed);
+  REQUIRE(edit.set(typed.value(), sample));
+  REQUIRE(edit.commit());
+
+  auto snapshot = context.snapshot();
+  auto typed_value = snapshot.read(typed.value());
+  REQUIRE(typed_value);
+  CHECK(typed_value.value() == sample);
+  auto dynamic_value = snapshot.read(dynamic.value());
+  REQUIRE(dynamic_value);
+  CHECK(std::holds_alternative<T>(dynamic_value.value()));
+  CHECK(std::get<T>(dynamic_value.value()) == sample);
+}
+
 sai::type_registry graph_registry() {
   sai::type_registry registry;
   REQUIRE(registry.define(test_node_type(
-      "Group", {test_field("children", sai::value_kind::node_list,
-                            sai::access_type::input_output, sai::node_list{},
-                            true)})));
+      "Group",
+      {test_field("children", sai::value_kind::node_list,
+                  sai::access_type::input_output, sai::node_list{}, true)})));
   REQUIRE(registry.define(test_node_type(
       "Transform",
       {
@@ -109,13 +141,12 @@ sai::type_registry graph_registry() {
                      sai::access_type::output_only, sai::node_list{}, true),
       })));
   REQUIRE(registry.define(test_node_type(
-      "Link",
-      {
-          test_field("target", sai::value_kind::node,
-                     sai::access_type::input_output, sai::node_id{}),
-          test_field("targets", sai::value_kind::node_list,
-                     sai::access_type::input_output, sai::node_list{}),
-      })));
+      "Link", {
+                  test_field("target", sai::value_kind::node,
+                             sai::access_type::input_output, sai::node_id{}),
+                  test_field("targets", sai::value_kind::node_list,
+                             sai::access_type::input_output, sai::node_list{}),
+              })));
   return registry;
 }
 
@@ -124,9 +155,9 @@ sai::type_registry graph_registry() {
 TEST_CASE("experimental SAI starts as an empty descriptor-governed context") {
   sai::type_registry registry;
   auto defined = registry.define(test_node_type(
-      "Group", {test_field("children", sai::value_kind::node_list,
-                            sai::access_type::input_output, sai::node_list{},
-                            true)}));
+      "Group",
+      {test_field("children", sai::value_kind::node_list,
+                  sai::access_type::input_output, sai::node_list{}, true)}));
   REQUIRE(defined);
 
   auto duplicate = registry.define(test_node_type("Group", {}));
@@ -183,7 +214,8 @@ TEST_CASE("generated metadata authors without runtime node identity") {
         sai::default_source::field_type);
 }
 
-TEST_CASE("generated metadata adapter has exhaustive ordered descriptor parity") {
+TEST_CASE(
+    "generated metadata adapter has exhaustive ordered descriptor parity") {
   const auto source = x3d::nodes::X3DSemanticMetadataRegistry::nodes();
   const auto adapted = sai::generated_metadata_catalog();
   CHECK(adapted.specification_version == "4.0");
@@ -230,12 +262,272 @@ TEST_CASE("generated metadata adapter has exhaustive ordered descriptor parity")
            ++field_index) {
         CHECK(reflected[field_index].x3dName ==
               source_node.fields[field_index].name);
-        CHECK(reflected[field_index].type == source_node.fields[field_index].type);
+        CHECK(reflected[field_index].type ==
+              source_node.fields[field_index].type);
         CHECK(reflected[field_index].access ==
               source_node.fields[field_index].access);
       }
     }
   }
+}
+
+TEST_CASE("the owning value vocabulary preserves every non-node ISO kind") {
+  static_assert(std::variant_size_v<sai::value> == 45);
+  static_assert(std::ranges::range<sai::bool_list>);
+  static_assert(std::ranges::forward_range<sai::bool_list>);
+  sai::bool_list booleans{true, false};
+  CHECK(booleans.at(0));
+  CHECK_FALSE(booleans.at(1));
+  booleans.set(1, true);
+  CHECK(booleans.at(1));
+  CHECK_THROWS_AS(
+      sai::matrix3f{}.at(std::numeric_limits<std::size_t>::max(), 1),
+      std::out_of_range);
+  check_owning_value_roundtrip("SFBoolValue", sai::value_kind::sf_bool, true);
+  check_owning_value_roundtrip("SFColorValue", sai::value_kind::sf_color,
+                               sai::color3f{0.25F, 0.5F, 0.75F});
+  check_owning_value_roundtrip("SFColorRGBAValue",
+                               sai::value_kind::sf_color_rgba,
+                               sai::color4f{0.25F, 0.5F, 0.75F, 1.0F});
+  check_owning_value_roundtrip("SFDoubleValue", sai::value_kind::sf_double,
+                               1.25);
+  check_owning_value_roundtrip("SFFloatValue", sai::value_kind::sf_float,
+                               1.25F);
+  check_owning_value_roundtrip("SFImageValue", sai::value_kind::sf_image,
+                               sai::image{.width = 2,
+                                          .height = 1,
+                                          .components = 4,
+                                          .data = {0, 1, 2, 3, 4, 5, 6, 7}});
+  check_owning_value_roundtrip("SFInt32Value", sai::value_kind::sf_int32,
+                               std::int32_t{-7});
+  check_owning_value_roundtrip(
+      "SFMatrix3dValue", sai::value_kind::sf_matrix3d,
+      sai::matrix3d{std::array<double, 9>{1, 2, 3, 4, 5, 6, 7, 8, 9}});
+  check_owning_value_roundtrip(
+      "SFMatrix3fValue", sai::value_kind::sf_matrix3f,
+      sai::matrix3f{std::array<float, 9>{1, 2, 3, 4, 5, 6, 7, 8, 9}});
+  check_owning_value_roundtrip(
+      "SFMatrix4dValue", sai::value_kind::sf_matrix4d,
+      sai::matrix4d{std::array<double, 16>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                                           12, 13, 14, 15, 16}});
+  check_owning_value_roundtrip(
+      "SFMatrix4fValue", sai::value_kind::sf_matrix4f,
+      sai::matrix4f{std::array<float, 16>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                          13, 14, 15, 16}});
+  check_owning_value_roundtrip("SFRotationValue", sai::value_kind::sf_rotation,
+                               sai::rotation{0, 1, 0, 1.5F});
+  check_owning_value_roundtrip("SFStringValue", sai::value_kind::sf_string,
+                               std::string{"owned\0string", 12});
+  check_owning_value_roundtrip("SFTimeValue", sai::value_kind::sf_time,
+                               sai::time_value{12.5});
+  check_owning_value_roundtrip("SFVec2dValue", sai::value_kind::sf_vec2d,
+                               sai::vec2d{1, 2});
+  check_owning_value_roundtrip("SFVec2fValue", sai::value_kind::sf_vec2f,
+                               sai::vec2f{1, 2});
+  check_owning_value_roundtrip("SFVec3dValue", sai::value_kind::sf_vec3d,
+                               sai::vec3d{1, 2, 3});
+  check_owning_value_roundtrip("SFVec3fValue", sai::value_kind::sf_vec3f,
+                               sai::vec3f{1, 2, 3});
+  check_owning_value_roundtrip("SFVec4dValue", sai::value_kind::sf_vec4d,
+                               sai::vec4d{1, 2, 3, 4});
+  check_owning_value_roundtrip("SFVec4fValue", sai::value_kind::sf_vec4f,
+                               sai::vec4f{1, 2, 3, 4});
+  check_owning_value_roundtrip("SFEnumValue", sai::value_kind::sf_enum,
+                               sai::enum_value{"EXAMINE"});
+
+  check_owning_value_roundtrip("MFBoolValue", sai::value_kind::mf_bool,
+                               sai::bool_list{true, false});
+  check_owning_value_roundtrip("MFColorValue", sai::value_kind::mf_color,
+                               sai::color3f_list{{0.25F, 0.5F, 0.75F}});
+  check_owning_value_roundtrip("MFColorRGBAValue",
+                               sai::value_kind::mf_color_rgba,
+                               sai::color4f_list{{0.25F, 0.5F, 0.75F, 1.0F}});
+  check_owning_value_roundtrip("MFDoubleValue", sai::value_kind::mf_double,
+                               sai::double_list{1.25, 2.5});
+  check_owning_value_roundtrip("MFFloatValue", sai::value_kind::mf_float,
+                               sai::float_list{1.25F, 2.5F});
+  check_owning_value_roundtrip(
+      "MFImageValue", sai::value_kind::mf_image,
+      sai::image_list{
+          {.width = 1, .height = 1, .components = 3, .data = {1, 2, 3}}});
+  check_owning_value_roundtrip("MFInt32Value", sai::value_kind::mf_int32,
+                               sai::int32_list{-1, 2});
+  check_owning_value_roundtrip(
+      "MFMatrix3dValue", sai::value_kind::mf_matrix3d,
+      sai::matrix3d_list{
+          sai::matrix3d{std::array<double, 9>{1, 2, 3, 4, 5, 6, 7, 8, 9}}});
+  check_owning_value_roundtrip(
+      "MFMatrix3fValue", sai::value_kind::mf_matrix3f,
+      sai::matrix3f_list{
+          sai::matrix3f{std::array<float, 9>{1, 2, 3, 4, 5, 6, 7, 8, 9}}});
+  check_owning_value_roundtrip(
+      "MFMatrix4dValue", sai::value_kind::mf_matrix4d,
+      sai::matrix4d_list{sai::matrix4d{std::array<double, 16>{
+          1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}}});
+  check_owning_value_roundtrip(
+      "MFMatrix4fValue", sai::value_kind::mf_matrix4f,
+      sai::matrix4f_list{sai::matrix4f{std::array<float, 16>{
+          1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}}});
+  check_owning_value_roundtrip("MFRotationValue", sai::value_kind::mf_rotation,
+                               sai::rotation_list{{0, 1, 0, 1.5F}});
+  check_owning_value_roundtrip("MFStringValue", sai::value_kind::mf_string,
+                               sai::string_list{"one", "two words"});
+  check_owning_value_roundtrip("MFTimeValue", sai::value_kind::mf_time,
+                               sai::time_list{{1.25}, {2.5}});
+  check_owning_value_roundtrip("MFVec2dValue", sai::value_kind::mf_vec2d,
+                               sai::vec2d_list{{1, 2}});
+  check_owning_value_roundtrip("MFVec2fValue", sai::value_kind::mf_vec2f,
+                               sai::vec2f_list{{1, 2}});
+  check_owning_value_roundtrip("MFVec3dValue", sai::value_kind::mf_vec3d,
+                               sai::vec3d_list{{1, 2, 3}});
+  check_owning_value_roundtrip("MFVec3fValue", sai::value_kind::mf_vec3f,
+                               sai::vec3f_list{{1, 2, 3}});
+  check_owning_value_roundtrip("MFVec4dValue", sai::value_kind::mf_vec4d,
+                               sai::vec4d_list{{1, 2, 3, 4}});
+  check_owning_value_roundtrip("MFVec4fValue", sai::value_kind::mf_vec4f,
+                               sai::vec4f_list{{1, 2, 3, 4}});
+  check_owning_value_roundtrip("MFEnumValue", sai::value_kind::mf_enum,
+                               sai::enum_list{{"EXAMINE"}, {"WALK"}});
+}
+
+TEST_CASE("every generated descriptor adapts into the executable vocabulary") {
+  const auto catalog = sai::generated_metadata_catalog();
+  std::vector<std::string_view> names;
+  names.reserve(catalog.nodes.size());
+  for (const auto &node : catalog.nodes)
+    names.push_back(node.name);
+
+  auto registry = sai::generated_type_registry(names);
+  if (!registry)
+    INFO(registry.error().field << ": " << registry.error().message);
+  REQUIRE(registry);
+  for (const auto &source_node : catalog.nodes) {
+    const auto *adapted_node = registry.value().find(source_node.name);
+    REQUIRE(adapted_node != nullptr);
+    REQUIRE(adapted_node->fields.size() == source_node.fields.size());
+    for (std::size_t index = 0; index < source_node.fields.size(); ++index) {
+      CHECK(adapted_node->fields[index].name == source_node.fields[index].name);
+      CHECK(adapted_node->fields[index].kind == source_node.fields[index].type);
+    }
+  }
+}
+
+TEST_CASE(
+    "schema lexical defaults reject image truncation and preserve strings") {
+  const sai::schema_field_descriptor overflowing_image{
+      .name = "image",
+      .type = sai::value_kind::sf_image,
+      .access = sai::access_type::input_output,
+      .declared_default = "1 1 1 0x1ff",
+      .accepted_node_types = {},
+      .unit_category = std::nullopt,
+  };
+  auto rejected = sai::default_value_for(overflowing_image);
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::invalid_descriptor);
+  CHECK(rejected.error().operation == "default_value_for");
+
+  const sai::schema_field_descriptor strings{
+      .name = "strings",
+      .type = sai::value_kind::mf_string,
+      .access = sai::access_type::input_output,
+      .declared_default = R"(["a", "b", "c:\new", "quote\"slash\\"])",
+      .accepted_node_types = {},
+      .unit_category = std::nullopt,
+  };
+  auto parsed = sai::default_value_for(strings);
+  REQUIRE(parsed);
+  REQUIRE(std::holds_alternative<sai::string_list>(parsed.value()));
+  CHECK(std::get<sai::string_list>(parsed.value()) ==
+        sai::string_list{"a", "b", R"(c:\new)", R"(quote"slash\)"});
+}
+
+TEST_CASE(
+    "numeric bits and large owning images survive the semantic boundary") {
+  sai::type_registry registry;
+  REQUIRE(registry.define(test_node_type(
+      "BoundaryValues",
+      {
+          test_field("number", sai::value_kind::sf_double,
+                     sai::access_type::input_output, 0.0),
+          test_field("time", sai::value_kind::sf_time,
+                     sai::access_type::input_output, sai::time_value{}),
+          test_field("image", sai::value_kind::sf_image,
+                     sai::access_type::input_output, sai::image{}),
+      })));
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto owner = edit.create_node("BoundaryValues");
+  REQUIRE(owner);
+  auto number = edit.field(owner.value(), "number");
+  auto time = edit.field(owner.value(), "time");
+  auto pixels = edit.field(owner.value(), "image");
+  REQUIRE(number);
+  REQUIRE(time);
+  REQUIRE(pixels);
+  auto typed_number = number.value().as<double>();
+  auto typed_time = time.value().as<sai::time_value>();
+  auto typed_pixels = pixels.value().as<sai::image>();
+  REQUIRE(typed_number);
+  REQUIRE(typed_time);
+  REQUIRE(typed_pixels);
+
+  constexpr std::uint64_t nan_bits = 0x7ff8000000000042ULL;
+  const double nan = std::bit_cast<double>(nan_bits);
+  CHECK(sai::same_representation(sai::value{nan}, sai::value{nan}));
+  CHECK_FALSE(sai::same_representation(sai::value{-0.0}, sai::value{0.0}));
+  sai::image large{.width = 512,
+                   .height = 512,
+                   .components = 4,
+                   .data = std::vector<std::uint8_t>(512U * 512U * 4U, 0xA5)};
+  REQUIRE(edit.set(typed_number.value(), nan));
+  REQUIRE(edit.set(typed_time.value(), sai::time_value{-0.0}));
+  REQUIRE(edit.set(typed_pixels.value(), large));
+  REQUIRE(edit.commit());
+
+  const auto snapshot = context.snapshot();
+  const auto stored_number = snapshot.read(typed_number.value());
+  const auto stored_time = snapshot.read(typed_time.value());
+  const auto stored_pixels = snapshot.read(typed_pixels.value());
+  REQUIRE(stored_number);
+  REQUIRE(stored_time);
+  REQUIRE(stored_pixels);
+  CHECK(std::bit_cast<std::uint64_t>(stored_number.value()) == nan_bits);
+  CHECK(std::signbit(stored_time.value().seconds));
+  CHECK(stored_pixels.value() == large);
+
+  auto signed_zero = context.events(sai::event_time{1.0});
+  REQUIRE(signed_zero.send(typed_time.value(), sai::time_value{0.0}));
+  auto signed_zero_result = signed_zero.commit();
+  REQUIRE(signed_zero_result);
+  REQUIRE(signed_zero_result.value().state_changes);
+  CHECK_FALSE(std::signbit(
+      context.snapshot().read(typed_time.value()).value().seconds));
+
+  const auto before_same_nan = context.snapshot().revision();
+  auto same_nan = context.events(sai::event_time{2.0});
+  REQUIRE(same_nan.send(typed_number.value(), nan));
+  auto same_nan_result = same_nan.commit();
+  REQUIRE(same_nan_result);
+  CHECK_FALSE(same_nan_result.value().state_changes);
+  CHECK(context.snapshot().revision() == before_same_nan);
+
+  const auto before_invalid = context.snapshot().revision();
+  auto invalid = context.edit();
+  auto invalid_pixels = invalid.field(owner.value(), "image");
+  REQUIRE(invalid_pixels);
+  auto rejected = invalid.set(
+      invalid_pixels.value(),
+      sai::value{sai::image{.width = std::numeric_limits<std::int32_t>::max(),
+                            .height = std::numeric_limits<std::int32_t>::max(),
+                            .components = 4,
+                            .data = {}}});
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::invalid_value);
+  REQUIRE_FALSE(invalid.commit());
+  CHECK(context.snapshot().revision() == before_invalid);
+  CHECK(context.snapshot().read(typed_pixels.value()).value() == large);
 }
 
 TEST_CASE("generated abstract interfaces remain non-instantiable") {
@@ -250,12 +542,22 @@ TEST_CASE("generated abstract interfaces remain non-instantiable") {
   CHECK(abstract_node.error().code == sai::error_code::abstract_type);
 }
 
-TEST_CASE("generated metadata fails closed instead of collapsing ISO types") {
+TEST_CASE(
+    "generated metadata preserves time instead of collapsing it to double") {
   const std::array<std::string_view, 1> selected{"TimeSensor"};
   auto registry = sai::generated_type_registry(selected);
-  REQUIRE_FALSE(registry);
-  CHECK(registry.error().code == sai::error_code::unsupported_field_type);
-  CHECK(registry.error().field == "cycleInterval");
+  REQUIRE(registry);
+  const auto *time_sensor = registry.value().find("TimeSensor");
+  REQUIRE(time_sensor != nullptr);
+  const auto cycle_interval = std::ranges::find_if(
+      time_sensor->fields, [](const sai::field_descriptor &field) {
+        return field.name == "cycleInterval";
+      });
+  REQUIRE(cycle_interval != time_sensor->fields.end());
+  CHECK(cycle_interval->kind == sai::value_kind::sf_time);
+  CHECK(std::holds_alternative<sai::time_value>(cycle_interval->default_value));
+  CHECK(std::get<sai::time_value>(cycle_interval->default_value) ==
+        sai::time_value{1.0});
 }
 
 TEST_CASE("generated node constraints govern containment authoring") {
@@ -285,10 +587,9 @@ TEST_CASE("generated node constraints govern containment authoring") {
 TEST_CASE("registry rejects descriptors whose defaults or containment lie") {
   sai::type_registry registry;
   auto wrong_default = registry.define(test_node_type(
-      "WrongDefault",
-      {test_field("translation", sai::value_kind::vec3f,
-                  sai::access_type::input_output,
-                  std::string{"not a vector"})}));
+      "WrongDefault", {test_field("translation", sai::value_kind::vec3f,
+                                  sai::access_type::input_output,
+                                  std::string{"not a vector"})}));
   REQUIRE_FALSE(wrong_default);
   CHECK(wrong_default.error().code == sai::error_code::invalid_descriptor);
 
@@ -780,9 +1081,9 @@ TEST_CASE("a multi-hop route cascade preserves time and causal identity") {
 }
 
 TEST_CASE("routed node events obey the destination accepted-node constraint") {
-  auto source_value = test_field("value", sai::value_kind::node,
-                                 sai::access_type::input_output,
-                                 sai::node_id{});
+  auto source_value =
+      test_field("value", sai::value_kind::node, sai::access_type::input_output,
+                 sai::node_id{});
   source_value.accepted_node_types = {"Box"};
   auto sink_value = test_field("value", sai::value_kind::node,
                                sai::access_type::input_output, sai::node_id{});
@@ -791,10 +1092,9 @@ TEST_CASE("routed node events obey the destination accepted-node constraint") {
   sai::type_registry registry;
   REQUIRE(registry.define(test_node_type("Box", {})));
   REQUIRE(registry.define(test_node_type("Shape", {})));
-  REQUIRE(registry.define(
-      test_node_type("NodeSource", {std::move(source_value)})));
   REQUIRE(
-      registry.define(test_node_type("NodeSink", {std::move(sink_value)})));
+      registry.define(test_node_type("NodeSource", {std::move(source_value)})));
+  REQUIRE(registry.define(test_node_type("NodeSink", {std::move(sink_value)})));
 
   sai::browser host{std::move(registry)};
   auto context = host.current_scene();
