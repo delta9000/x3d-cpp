@@ -1821,6 +1821,8 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=declaration query and mutation operations are identity duals")
     add_test(NAME sai_decl_update_intent COMMAND x3d_sai_experimental_tests
         "--test-case=declaration updates preserve kind and separate rename intent")
+    add_test(NAME sai_decl_change_order COMMAND x3d_sai_experimental_tests
+        "--test-case=graph and declaration changes share one authored order")
     add_test(NAME sai_own_node_value COMMAND x3d_sai_experimental_tests
         "--test-case=node-valued writes require a context-bearing node handle")
     add_test(NAME sai_own_node_range COMMAND x3d_sai_experimental_tests
@@ -3115,6 +3117,7 @@ if(X3D_CPP_BUILD_TESTS)
         sai_decl_mutation_duals
         sai_decl_snapshot_history
         sai_decl_update_intent
+        sai_decl_change_order
         sai_own_node_value
         sai_own_node_range
         sai_cap_predictive

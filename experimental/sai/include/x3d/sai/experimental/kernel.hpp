@@ -339,7 +339,7 @@ enum class change_kind {
   route_removed,
 };
 
-struct change {
+struct graph_change {
   change_kind kind = change_kind::field_changed;
   node_id node;
   std::string field;
@@ -348,10 +348,48 @@ struct change {
   std::size_t index = 0;
 };
 
+enum class declaration_change_kind { added, renamed, updated, removed };
+
+struct declaration_change {
+  declaration_change_kind kind = declaration_change_kind::updated;
+  declaration_id declaration;
+  std::optional<declaration_descriptor> before;
+  std::optional<declaration_descriptor> after;
+};
+
+using semantic_change = std::variant<graph_change, declaration_change>;
+using semantic_change_kind = std::variant<change_kind, declaration_change_kind>;
+
+inline semantic_change_kind
+change_kind_of(const semantic_change &candidate) noexcept {
+  return std::visit(
+      [](const auto &change) -> semantic_change_kind { return change.kind; },
+      candidate);
+}
+
+inline graph_change *node_change(semantic_change &candidate) noexcept {
+  return std::get_if<graph_change>(&candidate);
+}
+
+inline const graph_change *
+node_change(const semantic_change &candidate) noexcept {
+  return std::get_if<graph_change>(&candidate);
+}
+
+inline declaration_change *
+declaration_change_of(semantic_change &candidate) noexcept {
+  return std::get_if<declaration_change>(&candidate);
+}
+
+inline const declaration_change *
+declaration_change_of(const semantic_change &candidate) noexcept {
+  return std::get_if<declaration_change>(&candidate);
+}
+
 struct change_set {
   revision_id before_revision = 0;
   revision_id after_revision = 0;
-  std::vector<change> changes;
+  std::vector<semantic_change> changes;
 };
 
 struct event_delivery {
