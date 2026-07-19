@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct HAnimMotion {
   static constexpr std::string_view x3d_name = "HAnimMotion";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<HAnimMotion, std::string> channels{
       "channels", access_type::input_output};
   inline static constexpr field_key<HAnimMotion,
@@ -66,6 +68,34 @@ struct HAnimMotion {
       "id", access_type::input_output};
   inline static constexpr field_key<HAnimMotion, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 26> field_keys{{
+      {channels.name(), channels.kind, channels.access()},
+      {channelsEnabled.name(), channelsEnabled.kind, channelsEnabled.access()},
+      {cycleTime.name(), cycleTime.kind, cycleTime.access()},
+      {description.name(), description.kind, description.access()},
+      {elapsedTime.name(), elapsedTime.kind, elapsedTime.access()},
+      {enabled.name(), enabled.kind, enabled.access()},
+      {endFrame.name(), endFrame.kind, endFrame.access()},
+      {frameCount.name(), frameCount.kind, frameCount.access()},
+      {frameDuration.name(), frameDuration.kind, frameDuration.access()},
+      {frameIncrement.name(), frameIncrement.kind, frameIncrement.access()},
+      {frameIndex.name(), frameIndex.kind, frameIndex.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {joints.name(), joints.kind, joints.access()},
+      {loa.name(), loa.kind, loa.access()},
+      {loop.name(), loop.kind, loop.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {name.name(), name.kind, name.access()},
+      {next.name(), next.kind, next.access()},
+      {previous.name(), previous.kind, previous.access()},
+      {startFrame.name(), startFrame.kind, startFrame.access()},
+      {values.name(), values.kind, values.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

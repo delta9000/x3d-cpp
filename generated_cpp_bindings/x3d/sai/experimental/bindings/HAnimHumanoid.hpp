@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct HAnimHumanoid {
   static constexpr std::string_view x3d_name = "HAnimHumanoid";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<HAnimHumanoid,
                                     ::x3d::sai::experimental::vec3f>
       bboxCenter{"bboxCenter", access_type::initialize_only};
@@ -107,6 +109,52 @@ struct HAnimHumanoid {
       "id", access_type::input_output};
   inline static constexpr field_key<HAnimHumanoid, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 37> field_keys{{
+      {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
+      {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
+      {bboxSize.name(), bboxSize.kind, bboxSize.access()},
+      {center.name(), center.kind, center.access()},
+      {description.name(), description.kind, description.access()},
+      {info.name(), info.kind, info.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {jointBindingPositions.name(), jointBindingPositions.kind,
+       jointBindingPositions.access()},
+      {jointBindingRotations.name(), jointBindingRotations.kind,
+       jointBindingRotations.access()},
+      {jointBindingScales.name(), jointBindingScales.kind,
+       jointBindingScales.access()},
+      {joints.name(), joints.kind, joints.access()},
+      {loa.name(), loa.kind, loa.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {motions.name(), motions.kind, motions.access()},
+      {motionsEnabled.name(), motionsEnabled.kind, motionsEnabled.access()},
+      {name.name(), name.kind, name.access()},
+      {rotation.name(), rotation.kind, rotation.access()},
+      {scale.name(), scale.kind, scale.access()},
+      {scaleOrientation.name(), scaleOrientation.kind,
+       scaleOrientation.access()},
+      {segments.name(), segments.kind, segments.access()},
+      {sites.name(), sites.kind, sites.access()},
+      {skeletalConfiguration.name(), skeletalConfiguration.kind,
+       skeletalConfiguration.access()},
+      {skeleton.name(), skeleton.kind, skeleton.access()},
+      {skin.name(), skin.kind, skin.access()},
+      {skinBindingCoords.name(), skinBindingCoords.kind,
+       skinBindingCoords.access()},
+      {skinBindingNormals.name(), skinBindingNormals.kind,
+       skinBindingNormals.access()},
+      {skinCoord.name(), skinCoord.kind, skinCoord.access()},
+      {skinNormal.name(), skinNormal.kind, skinNormal.access()},
+      {translation.name(), translation.kind, translation.access()},
+      {version.name(), version.kind, version.access()},
+      {viewpoints.name(), viewpoints.kind, viewpoints.access()},
+      {visible.name(), visible.kind, visible.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

@@ -94,12 +94,14 @@ def gen_sai_node_binding(node, nodes, graph, enum_defs=None):
         "#pragma once",
         "",
         "// Auto-generated experimental SAI schema binding.",
+        '#include "x3d/sai/experimental/X3DSAIBindings.hpp"',
         '#include "x3d/sai/experimental/kernel.hpp"',
         "",
         "namespace x3d::sai::experimental::bindings {",
         "",
         f"struct {node.name} {{",
         f'  static constexpr std::string_view x3d_name = "{cpp_str(node.name)}";',
+        "  static constexpr std::string_view schema_fingerprint = model_fingerprint;",
     ]
     for descriptor, identifier, value_type in rendered:
         access = _ACCESS[descriptor.access_type]
@@ -110,7 +112,55 @@ def gen_sai_node_binding(node, nodes, graph, enum_defs=None):
                 f"                   access_type::{access}}};",
             ]
         )
+    lines.extend(
+        [
+            f"  inline static constexpr std::array<field_key_descriptor, {len(rendered)}>",
+            "      field_keys{{",
+        ]
+    )
+    for _descriptor, identifier, _value_type in rendered:
+        lines.append(
+            f"          {{{identifier}.name(), {identifier}.kind, {identifier}.access()}},"
+        )
+    lines.extend(["      }};", ""])
     lines.extend(["};", "", "} // namespace x3d::sai::experimental::bindings", ""])
+    return "\n".join(lines)
+
+
+def gen_sai_binding_index(nodes):
+    names = sorted(nodes)
+    lines = [
+        "#pragma once",
+        "",
+        "// Auto-generated exhaustive experimental SAI key catalog.",
+    ]
+    lines.extend(
+        f'#include "x3d/sai/experimental/bindings/{name}.hpp"' for name in names
+    )
+    lines.extend(
+        [
+            "",
+            "namespace x3d::sai::experimental::bindings {",
+            "",
+            f"inline constexpr std::array<node_key_descriptor, {len(names)}>",
+            "    node_keys{{",
+        ]
+    )
+    for name in names:
+        lines.extend(
+            [
+                f"        {{{name}::x3d_name, {name}::schema_fingerprint,",
+                f"          std::span<const field_key_descriptor>{{{name}::field_keys}}}},",
+            ]
+        )
+    lines.extend(
+        [
+            "    }};",
+            "",
+            "} // namespace x3d::sai::experimental::bindings",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 

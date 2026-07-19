@@ -239,6 +239,9 @@ result<void> type_registry::define(node_type_descriptor descriptor) {
     }
   }
   types_.emplace(descriptor.name, std::move(descriptor));
+  // The fingerprint certifies the exact generated descriptor set. Any
+  // successful public mutation turns this back into an ordinary registry.
+  schema_fingerprint_.reset();
   return {};
 }
 
@@ -636,6 +639,20 @@ void subscription::cancel() noexcept {
   }
   observer_id_ = 0;
   context_.reset();
+}
+
+result<void> scene_edit::require_schema_fingerprint(std::string_view expected) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto actual = impl_->context->registry.schema_fingerprint();
+  if (!actual || *actual != expected) {
+    impl_->poison = edit_error(
+        error_code::invalid_descriptor, "scene_edit.create_generated",
+        *impl_->context, impl_->base->revision,
+        "generated node binding does not match the registry schema");
+    return *impl_->poison;
+  }
+  return {};
 }
 
 result<node> scene_edit::create_node(const std::string &type_name) {

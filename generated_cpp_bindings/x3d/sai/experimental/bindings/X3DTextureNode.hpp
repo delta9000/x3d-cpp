@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct X3DTextureNode {
   static constexpr std::string_view x3d_name = "X3DTextureNode";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<X3DTextureNode, std::string> description{
       "description", access_type::input_output};
   inline static constexpr field_key<X3DTextureNode,
@@ -25,6 +27,16 @@ struct X3DTextureNode {
       "id", access_type::input_output};
   inline static constexpr field_key<X3DTextureNode, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 8> field_keys{{
+      {description.name(), description.kind, description.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

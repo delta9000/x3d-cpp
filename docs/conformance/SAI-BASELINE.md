@@ -162,7 +162,7 @@ The strict gate also fails while the binding audit itself remains incomplete.
 | `INV-CXX-1` — Ownership is visible in types | `AX-6` | cpp_policy | `reviewed:sha256:9bf53b7684b1` | 3 | 2/2 |
 | `INV-CXX-2` — Ordinary failure is a value | `AX-6` | cpp_policy | `reviewed:sha256:91df91985065` | 10 | 2/2 |
 | `INV-CXX-3` — Destruction is non-observably safe | `AX-6` | cpp_policy | `reviewed:sha256:9bb0fb0c824b` | 4 | 1/1 |
-| `INV-CXX-4` — Generic and typed APIs are substitutable | `AX-3` | cpp_policy | `reviewed:sha256:a82bcd9c8cad` | 5 | 3/3 |
+| `INV-CXX-4` — Generic and typed APIs are substitutable | `AX-3` | cpp_policy | `reviewed:sha256:a82bcd9c8cad` | 5 | 4/4 |
 | `INV-CXX-5` — ABI mechanics are not scene semantics | `AX-6` | cpp_policy | `reviewed:sha256:2e8dda4c7cf1` | 1 | 0/1 |
 | `INV-EDIT-1` — Commit is atomic across semantic indexes | `AX-4` | framework_proposal | `reviewed:sha256:05b662b0fb70` | 15 | 3/3 |
 | `INV-EDIT-2` — Failure is non-mutation | `AX-4` | framework_proposal | `reviewed:sha256:08c047a4527f` | 1 | 2/2 |
@@ -179,7 +179,7 @@ The strict gate also fails while the binding audit itself remains incomplete.
 | `INV-FIELD-3` — Access type is a state-machine rule | `AX-3` | normative | `reviewed:sha256:7b7769f2becb` | 12 | 3/3 |
 | `INV-FIELD-4` — Units convert exactly once | `AX-3` | normative | `reviewed:sha256:8ba4f0f86dd4` | 2 | 1/2 |
 | `INV-FIELD-5` — Reads are observationally pure | `AX-3` | recurrent_intent | `reviewed:sha256:d96ae0eeba5d` | 4 | 1/1 |
-| `INV-GEN-1` — Generated API and runtime metadata cannot drift | `AX-6` | recurrent_intent | `reviewed:sha256:cb1e8e9e0609` | 2 | 1/2 |
+| `INV-GEN-1` — Generated API and runtime metadata cannot drift | `AX-6` | recurrent_intent | `reviewed:sha256:cb1e8e9e0609` | 2 | 4/5 |
 | `INV-ID-1` — One semantic node, one identity | `AX-1` | normative | `reviewed:sha256:947d8f9c4052` | 9 | 1/1 |
 | `INV-ID-2` — Occurrence is an edge, not a node | `AX-1` | normative | `reviewed:sha256:e4ffb3ca9bb8` | 4 | 1/1 |
 | `INV-ID-3` — Names are scoped aliases, not identity | `AX-1` | normative | `reviewed:sha256:23dd55898b64` | 1 | 3/3 |

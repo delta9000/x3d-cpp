@@ -305,7 +305,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Types, fields, access, defaults, constraints, units, profiles, components, docs, and serializers derive from one versioned semantic model with no dangling references.
     preserving_operations: [generate bindings, reflect runtime, serialize, build docs]
-    falsification_tests: [sai_generated_binding_parity, planned:sai_gen_no_drift]
+    falsification_tests: [sai_generated_binding_parity, sai_generated_binding_drift, sai_generated_registry_provenance, sai_generated_registry_mutation, planned:sai_gen_no_drift]
 
   - <<: *invariant_defaults
     id: INV-CXX-1
@@ -342,7 +342,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Dynamic discovery can safely yield a typed reference without copying or changing semantics; generated conveniences expose no capability absent from generic inspection.
     preserving_operations: [discover field, type-check field, obtain typed field, read, write]
-    falsification_tests: [sai_cxx_typed_generic, sai_evt_typed_generic, sai_context_import_snapshot]
+    falsification_tests: [sai_cxx_typed_generic, sai_generated_error_parity, sai_evt_typed_generic, sai_context_import_snapshot]
   - <<: *invariant_defaults
     id: INV-CXX-5
     review_marker: reviewed:sha256:2e8dda4c7cf1

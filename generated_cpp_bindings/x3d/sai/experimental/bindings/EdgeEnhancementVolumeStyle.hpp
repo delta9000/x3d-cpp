@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct EdgeEnhancementVolumeStyle {
   static constexpr std::string_view x3d_name = "EdgeEnhancementVolumeStyle";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<EdgeEnhancementVolumeStyle,
                                     ::x3d::sai::experimental::color4f>
       edgeColor{"edgeColor", access_type::input_output};
@@ -33,6 +35,20 @@ struct EdgeEnhancementVolumeStyle {
       "id", access_type::input_output};
   inline static constexpr field_key<EdgeEnhancementVolumeStyle, std::string>
       style{"style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 11> field_keys{{
+      {edgeColor.name(), edgeColor.kind, edgeColor.access()},
+      {enabled.name(), enabled.kind, enabled.access()},
+      {gradientThreshold.name(), gradientThreshold.kind,
+       gradientThreshold.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {surfaceNormals.name(), surfaceNormals.kind, surfaceNormals.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

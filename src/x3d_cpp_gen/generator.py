@@ -391,6 +391,7 @@ def write_sai_bindings(output_dir: str, nodes: Dict[str, X3DNode],
                        clang_format="clang-format") -> None:
     """Write runtime-independent experimental SAI node binding headers."""
     from x3d_cpp_gen.emit.sai_bindings import (
+        gen_sai_binding_index,
         gen_sai_bindings_catalog,
         gen_sai_node_binding,
     )
@@ -417,6 +418,10 @@ def write_sai_bindings(output_dir: str, nodes: Dict[str, X3DNode],
     with open(catalog, "w") as generated:
         generated.write(gen_sai_bindings_catalog(spec_version, fingerprint))
     emitted.append(catalog)
+    index = os.path.join(root, "X3DSAIBindingCatalog.hpp")
+    with open(index, "w") as generated:
+        generated.write(gen_sai_binding_index(nodes))
+    emitted.append(index)
     CppHeaderBackend._format(emitted, clang_format)
     print(f"Generated experimental SAI binding catalog at {catalog}")
 

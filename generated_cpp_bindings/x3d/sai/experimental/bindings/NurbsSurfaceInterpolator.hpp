@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct NurbsSurfaceInterpolator {
   static constexpr std::string_view x3d_name = "NurbsSurfaceInterpolator";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<NurbsSurfaceInterpolator,
                                     ::x3d::sai::experimental::node_id>
       controlPoint{"controlPoint", access_type::input_output};
@@ -52,6 +54,27 @@ struct NurbsSurfaceInterpolator {
       "id", access_type::input_output};
   inline static constexpr field_key<NurbsSurfaceInterpolator, std::string>
       style{"style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
+      {controlPoint.name(), controlPoint.kind, controlPoint.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {normal_changed.name(), normal_changed.kind, normal_changed.access()},
+      {position_changed.name(), position_changed.kind,
+       position_changed.access()},
+      {set_fraction.name(), set_fraction.kind, set_fraction.access()},
+      {uDimension.name(), uDimension.kind, uDimension.access()},
+      {uKnot.name(), uKnot.kind, uKnot.access()},
+      {uOrder.name(), uOrder.kind, uOrder.access()},
+      {vDimension.name(), vDimension.kind, vDimension.access()},
+      {vKnot.name(), vKnot.kind, vKnot.access()},
+      {vOrder.name(), vOrder.kind, vOrder.access()},
+      {weight.name(), weight.kind, weight.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

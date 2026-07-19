@@ -1240,6 +1240,9 @@ if(X3D_CPP_BUILD_TESTS)
 
     add_executable(x3d_cpp_all_headers "${X3D_CPP_ALL_HEADERS_CPP}")
     target_link_libraries(x3d_cpp_all_headers PRIVATE x3d_cpp::headers)
+    target_include_directories(x3d_cpp_all_headers PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/third_party")
     add_test(NAME x3d_cpp_all_headers COMMAND x3d_cpp_all_headers)
 
     # (2) Header-isolation contract. Keep one generated translation unit per
@@ -1289,6 +1292,9 @@ if(X3D_CPP_BUILD_TESTS)
             ${X3D_CPP_HEADER_ISOLATION_SOURCES})
         x3d_set_target_purpose(x3d_header_isolation compile-contract)
         target_link_libraries(x3d_header_isolation PRIVATE x3d_cpp::headers)
+        target_include_directories(x3d_header_isolation PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/third_party")
         add_test(NAME x3d_header_isolation
             COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
                     --target x3d_header_isolation --config "$<CONFIG>")
@@ -1837,6 +1843,14 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=generated field keys remove dynamic authoring lookup")
     add_test(NAME sai_generated_binding_parity COMMAND x3d_sai_experimental_tests
         "--test-case=generated typed keys and metadata are one schema view")
+    add_test(NAME sai_generated_registry_provenance COMMAND x3d_sai_experimental_tests
+        "--test-case=generated typed creation rejects mismatched registry provenance")
+    add_test(NAME sai_generated_registry_mutation COMMAND x3d_sai_experimental_tests
+        "--test-case=mutating a generated registry revokes generated provenance")
+    add_test(NAME sai_generated_binding_drift COMMAND x3d_sai_experimental_tests
+        "--test-case=generated key catalog has exhaustive ordered metadata parity")
+    add_test(NAME sai_generated_error_parity COMMAND x3d_sai_experimental_tests
+        "--test-case=generated typed and dynamic failures have one vocabulary")
     add_test(NAME sai_evt_stale_async COMMAND x3d_sai_experimental_tests
         "--test-case=cancelled and stale load completions are inert")
     add_test(NAME sai_evt_input_transient COMMAND x3d_sai_experimental_tests
@@ -3078,6 +3092,10 @@ if(X3D_CPP_BUILD_TESTS)
         sai_cxx_result_composition
         sai_generated_typed_access
         sai_generated_binding_parity
+        sai_generated_registry_provenance
+        sai_generated_registry_mutation
+        sai_generated_binding_drift
+        sai_generated_error_parity
         sai_evt_stale_async
         sai_evt_input_transient
         sai_evt_inputoutput_publish

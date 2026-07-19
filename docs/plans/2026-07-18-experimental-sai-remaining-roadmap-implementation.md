@@ -410,14 +410,15 @@ unsupported features explicitly rather than normalizing them away.
 ### Task 5.2: Generated typed conveniences and profile parity
 
 Phase 1 now generates owner-specific field keys from the same resolved UOM
-descriptor path and exercises representative generated/generic parity in
-`sai_generated_binding_parity` and `sai_generated_author_inspect`. Remaining:
+descriptor path. `sai_generated_binding_drift` compares every actual generated
+key with the complete ordered metadata catalog, while
+`sai_generated_registry_provenance` seals typed creation to the same model
+fingerprint and `sai_generated_registry_mutation` proves that extending a
+generated registry revokes it. Remaining:
 
-1. Compile-test every generated typed API against its generic equivalent; the
-   current five-node parity sample intentionally does not close `INV-GEN-1`.
-2. Run one fixture corpus through authoring, inspection, live external, and
+1. Run one fixture corpus through authoring, inspection, live external, and
    Script profiles and compare semantic traces.
-3. Close `INV-GEN-1` only after preventing dangling descriptor, generated-key,
+2. Close `INV-GEN-1` only after preventing dangling descriptor, generated-key,
    documentation, and serializer references across the complete catalog.
 
 ### Task 5.3: Versioned ABI and adapter boundary
