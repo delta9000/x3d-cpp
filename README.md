@@ -9,7 +9,10 @@ An optional `x3d_sai_experimental_metadata` bridge copies node and field facts
 from an instance-free catalog generated from the UOM. The core kernel remains
 stdlib-only, and generated runtime node objects never participate in SAI
 identity. The adapter currently fails closed for field types not yet present in
-the experimental owning value vocabulary. Catalog provenance carries the X3D
+the experimental owning value vocabulary. The current generated vocabulary is
+complete: all scalar and multi-field kinds have exact tags, owning storage, and
+distinct strong types where C++ primitives would otherwise collapse X3D
+semantics (notably time/double and enum/string). Catalog provenance carries the X3D
 specification version, a deterministic SHA-256 fingerprint of the resolved
 semantic model, and the generator version.
 
@@ -22,6 +25,9 @@ The proposal makes these design choices executable:
 - One `field_descriptor` governs dynamic and typed field handles. Access type
   is enforced as a lifecycle rule, and ordinary failure is a `result<T>` with
   structured `sai_error` data.
+- Field storage and event equivalence is the public `same_representation`
+  relation: IEEE payload bits survive, signed zeros differ, and identical NaN
+  payloads match. Ordinary numerical `operator==` remains numerical.
 - Roots, ordered scoped names, and unique routes are inspected and edited
   through the same transaction. IDs found through inspection resolve back to
   handles, and mutation tokens require no private keys.
@@ -69,7 +75,8 @@ The load API models only cancellation and stale-completion publication rules.
 Handwritten type registries remain explicit test fixtures for fast iteration.
 Production-facing experiments can instead select descriptors from the
 generated UOM catalog; unsupported value kinds are reported rather than
-silently narrowed. The current 4.0 UOM does not formally annotate per-field
+silently narrowed if a future model extends the vocabulary. The current 4.0
+UOM does not formally annotate per-field
 unit categories, so the catalog preserves that absence and the unit-overlay
 design remains open. Typed fields here are checked views over the dynamic
 descriptor; generated node-specific sugar should remain a convenience layer

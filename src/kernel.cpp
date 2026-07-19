@@ -2,11 +2,14 @@
 
 #include <algorithm>
 #include <atomic>
+#include <bit>
 #include <cmath>
 #include <deque>
 #include <functional>
+#include <limits>
 #include <map>
 #include <mutex>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
@@ -24,27 +27,145 @@ sai_error descriptor_error(error_code code, std::string operation,
   return error;
 }
 
-bool value_matches(value_kind kind, const value &candidate) {
-  switch (kind) {
-  case value_kind::boolean:
-    return std::holds_alternative<bool>(candidate);
-  case value_kind::int32:
-    return std::holds_alternative<std::int32_t>(candidate);
-  case value_kind::number:
-    return std::holds_alternative<double>(candidate);
-  case value_kind::string:
-    return std::holds_alternative<std::string>(candidate);
-  case value_kind::vec3f:
-    return std::holds_alternative<vec3f>(candidate);
-  case value_kind::node:
-    return std::holds_alternative<node_id>(candidate);
-  case value_kind::node_list:
-    return std::holds_alternative<node_list>(candidate);
+std::optional<value_kind> kind_of(const value &candidate) {
+  return std::visit(
+      []<class T>(const T &) -> std::optional<value_kind> {
+        if constexpr (std::is_same_v<T, std::monostate>)
+          return std::nullopt;
+        else
+          return value_traits<T>::kind;
+      },
+      candidate);
+}
+
+bool valid_image(const image &candidate) {
+  if (candidate.width < 0 || candidate.height < 0 || candidate.components < 0 ||
+      candidate.components > 4)
+    return false;
+  const auto bytes = static_cast<std::uint64_t>(candidate.width) *
+                     static_cast<std::uint64_t>(candidate.height) *
+                     static_cast<std::uint64_t>(candidate.components);
+  return bytes <= std::numeric_limits<std::size_t>::max() &&
+         bytes == candidate.data.size();
+}
+
+bool value_is_well_formed(const value &candidate) {
+  return std::visit(
+      []<class T>(const T &stored) {
+        if constexpr (std::is_same_v<T, image>)
+          return valid_image(stored);
+        else if constexpr (std::is_same_v<T, image_list>)
+          return std::ranges::all_of(stored, valid_image);
+        else
+          return true;
+      },
+      candidate);
+}
+
+bool representation_equal(float left, float right) {
+  return std::bit_cast<std::uint32_t>(left) ==
+         std::bit_cast<std::uint32_t>(right);
+}
+
+bool representation_equal(double left, double right) {
+  return std::bit_cast<std::uint64_t>(left) ==
+         std::bit_cast<std::uint64_t>(right);
+}
+
+template <class T> bool representation_equal(const T &left, const T &right) {
+  return left == right;
+}
+
+bool representation_equal(const time_value &left, const time_value &right) {
+  return representation_equal(left.seconds, right.seconds);
+}
+
+#define X3D_SAI_COMPONENT_EQUAL(Type, ...)                                     \
+  bool representation_equal(const Type &left, const Type &right) {             \
+    return (__VA_ARGS__);                                                      \
   }
-  return false;
+X3D_SAI_COMPONENT_EQUAL(color3f, representation_equal(left.r, right.r) &&
+                                     representation_equal(left.g, right.g) &&
+                                     representation_equal(left.b, right.b));
+X3D_SAI_COMPONENT_EQUAL(color4f, representation_equal(left.r, right.r) &&
+                                     representation_equal(left.g, right.g) &&
+                                     representation_equal(left.b, right.b) &&
+                                     representation_equal(left.a, right.a));
+X3D_SAI_COMPONENT_EQUAL(rotation,
+                        representation_equal(left.x, right.x) &&
+                            representation_equal(left.y, right.y) &&
+                            representation_equal(left.z, right.z) &&
+                            representation_equal(left.angle, right.angle));
+X3D_SAI_COMPONENT_EQUAL(vec2d, representation_equal(left.x, right.x) &&
+                                   representation_equal(left.y, right.y));
+X3D_SAI_COMPONENT_EQUAL(vec2f, representation_equal(left.x, right.x) &&
+                                   representation_equal(left.y, right.y));
+X3D_SAI_COMPONENT_EQUAL(vec3d, representation_equal(left.x, right.x) &&
+                                   representation_equal(left.y, right.y) &&
+                                   representation_equal(left.z, right.z));
+X3D_SAI_COMPONENT_EQUAL(vec3f, representation_equal(left.x, right.x) &&
+                                   representation_equal(left.y, right.y) &&
+                                   representation_equal(left.z, right.z));
+X3D_SAI_COMPONENT_EQUAL(vec4d, representation_equal(left.x, right.x) &&
+                                   representation_equal(left.y, right.y) &&
+                                   representation_equal(left.z, right.z) &&
+                                   representation_equal(left.w, right.w));
+X3D_SAI_COMPONENT_EQUAL(vec4f, representation_equal(left.x, right.x) &&
+                                   representation_equal(left.y, right.y) &&
+                                   representation_equal(left.z, right.z) &&
+                                   representation_equal(left.w, right.w));
+#undef X3D_SAI_COMPONENT_EQUAL
+
+template <class T, std::size_t N>
+bool representation_equal(const matrix<T, N> &left, const matrix<T, N> &right) {
+  for (std::size_t index = 0; index < left.elements.size(); ++index) {
+    if (!representation_equal(left.elements[index], right.elements[index]))
+      return false;
+  }
+  return true;
+}
+
+template <class T, class Allocator>
+bool representation_equal(const std::vector<T, Allocator> &left,
+                          const std::vector<T, Allocator> &right) {
+  if (left.size() != right.size())
+    return false;
+  for (std::size_t index = 0; index < left.size(); ++index) {
+    if constexpr (std::is_same_v<T, bool>) {
+      if (static_cast<bool>(left[index]) != static_cast<bool>(right[index]))
+        return false;
+    } else if (!representation_equal(left[index], right[index])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool representation_equal(const image &left, const image &right) {
+  return left.width == right.width && left.height == right.height &&
+         left.components == right.components &&
+         representation_equal(left.data, right.data);
+}
+
+bool representation_equal(const value &left, const value &right) {
+  if (left.index() != right.index())
+    return false;
+  return std::visit(
+      [&]<class T>(const T &stored) {
+        return representation_equal(stored, std::get<T>(right));
+      },
+      left);
+}
+
+bool value_matches(value_kind kind, const value &candidate) {
+  return kind_of(candidate) == kind && value_is_well_formed(candidate);
 }
 
 } // namespace
+
+bool same_representation(const value &left, const value &right) {
+  return representation_equal(left, right);
+}
 
 result<void> type_registry::define(node_type_descriptor descriptor) {
   if (descriptor.name.empty()) {
@@ -211,8 +332,7 @@ bool accepts_node_type(const detail::context_control &context,
 
 bool accepts_node_payload(const detail::context_control &context,
                           const detail::scene_state &state,
-                          const field_descriptor &field,
-                          const value &payload) {
+                          const field_descriptor &field, const value &payload) {
   if (field.kind == value_kind::node) {
     const auto candidate = state.nodes.find(std::get<node_id>(payload).value);
     return candidate != state.nodes.end() &&
@@ -227,27 +347,6 @@ bool accepts_node_payload(const detail::context_control &context,
         });
   }
   return true;
-}
-
-value_kind kind_of(const value &field_value) {
-  switch (field_value.index()) {
-  case 1:
-    return value_kind::boolean;
-  case 2:
-    return value_kind::int32;
-  case 3:
-    return value_kind::number;
-  case 4:
-    return value_kind::string;
-  case 5:
-    return value_kind::vec3f;
-  case 6:
-    return value_kind::node;
-  case 7:
-    return value_kind::node_list;
-  default:
-    return value_kind::string;
-  }
 }
 
 bool retained_write_allowed(access_type access, bool node_is_being_created) {
@@ -354,10 +453,10 @@ result<node> scene_edit::create_node(const std::string &type_name) {
     return *impl_->poison;
   }
   if (type->abstract) {
-    impl_->poison = edit_error(
-        error_code::abstract_type, "scene_edit.create_node", *impl_->context,
-        impl_->base->revision,
-        "abstract node type cannot be instantiated: " + type_name);
+    impl_->poison =
+        edit_error(error_code::abstract_type, "scene_edit.create_node",
+                   *impl_->context, impl_->base->revision,
+                   "abstract node type cannot be instantiated: " + type_name);
     return *impl_->poison;
   }
   const node_id id{impl_->staged.next_node_id++};
@@ -467,13 +566,12 @@ result<void> scene_edit::append(const node &parent, const std::string &field,
   }
   const auto child_record = impl_->staged.nodes.find(child.id_.value);
   if (child_record == impl_->staged.nodes.end() ||
-      !accepts_node_type(*impl_->context, *descriptor,
-                         child_record->second)) {
-    impl_->poison = edit_error(
-        error_code::type_mismatch, "scene_edit.append", *impl_->context,
-        impl_->base->revision,
-        "child type is not accepted by the field descriptor", parent.id_,
-        field);
+      !accepts_node_type(*impl_->context, *descriptor, child_record->second)) {
+    impl_->poison =
+        edit_error(error_code::type_mismatch, "scene_edit.append",
+                   *impl_->context, impl_->base->revision,
+                   "child type is not accepted by the field descriptor",
+                   parent.id_, field);
     return *impl_->poison;
   }
   auto &field_value = parent_record->second.fields.at(field);
@@ -606,17 +704,23 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                target.node_, target.name_);
     return *impl_->poison;
   }
+  if (!value_is_well_formed(new_value)) {
+    impl_->poison = edit_error(error_code::invalid_value, "scene_edit.set",
+                               *impl_->context, impl_->base->revision,
+                               "value violates field representation invariants",
+                               target.node_, target.name_);
+    return *impl_->poison;
+  }
   if (node_authority_checked && descriptor->kind == value_kind::node) {
     const auto id = std::get<node_id>(new_value);
     const auto candidate = impl_->staged.nodes.find(id.value);
     if (candidate == impl_->staged.nodes.end() ||
-        !accepts_node_type(*impl_->context, *descriptor,
-                           candidate->second)) {
-      impl_->poison = edit_error(
-          error_code::type_mismatch, "scene_edit.set", *impl_->context,
-          impl_->base->revision,
-          "node type is not accepted by the field descriptor", target.node_,
-          target.name_);
+        !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
+      impl_->poison =
+          edit_error(error_code::type_mismatch, "scene_edit.set",
+                     *impl_->context, impl_->base->revision,
+                     "node type is not accepted by the field descriptor",
+                     target.node_, target.name_);
       return *impl_->poison;
     }
   }
@@ -624,8 +728,7 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
     for (const auto id : std::get<node_list>(new_value)) {
       const auto candidate = impl_->staged.nodes.find(id.value);
       if (candidate == impl_->staged.nodes.end() ||
-          !accepts_node_type(*impl_->context, *descriptor,
-                             candidate->second)) {
+          !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
         impl_->poison = edit_error(
             error_code::type_mismatch, "scene_edit.set", *impl_->context,
             impl_->base->revision,
@@ -1172,17 +1275,23 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                target.node_, target.name_);
     return *impl_->poison;
   }
+  if (!value_is_well_formed(payload)) {
+    impl_->poison = edit_error(error_code::invalid_value, "event_batch.send",
+                               *impl_->context, impl_->base->revision,
+                               "event violates field representation invariants",
+                               target.node_, target.name_);
+    return *impl_->poison;
+  }
   if (node_authority_checked && descriptor->kind == value_kind::node) {
     const auto id = std::get<node_id>(payload);
     const auto candidate = impl_->base->nodes.find(id.value);
     if (candidate == impl_->base->nodes.end() ||
-        !accepts_node_type(*impl_->context, *descriptor,
-                           candidate->second)) {
-      impl_->poison = edit_error(
-          error_code::type_mismatch, "event_batch.send", *impl_->context,
-          impl_->base->revision,
-          "node event type is not accepted by the field descriptor",
-          target.node_, target.name_);
+        !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
+      impl_->poison =
+          edit_error(error_code::type_mismatch, "event_batch.send",
+                     *impl_->context, impl_->base->revision,
+                     "node event type is not accepted by the field descriptor",
+                     target.node_, target.name_);
       return *impl_->poison;
     }
   }
@@ -1190,8 +1299,7 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
     for (const auto id : std::get<node_list>(payload)) {
       const auto candidate = impl_->base->nodes.find(id.value);
       if (candidate == impl_->base->nodes.end() ||
-          !accepts_node_type(*impl_->context, *descriptor,
-                             candidate->second)) {
+          !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
         impl_->poison = edit_error(
             error_code::type_mismatch, "event_batch.send", *impl_->context,
             impl_->base->revision,
@@ -1298,8 +1406,8 @@ result<event_result> event_batch::commit() {
     const auto key =
         std::pair{deliveries[index].target.value, deliveries[index].field};
     const auto [found, inserted] = first_delivery.emplace(key, index);
-    if (inserted ||
-        deliveries[found->second].payload == deliveries[index].payload)
+    if (inserted || same_representation(deliveries[found->second].payload,
+                                        deliveries[index].payload))
       continue;
     const auto issue = issue_by_target.find(key);
     if (issue == issue_by_target.end()) {
@@ -1321,7 +1429,7 @@ result<event_result> event_batch::commit() {
     if (descriptor->access != access_type::input_output)
       continue;
     auto &stored = found->second.fields.at(delivery.field);
-    if (stored == delivery.payload)
+    if (same_representation(stored, delivery.payload))
       continue;
     const value before = stored;
     stored = delivery.payload;
