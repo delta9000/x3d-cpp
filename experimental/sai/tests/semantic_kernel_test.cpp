@@ -2644,6 +2644,141 @@ TEST_CASE("unreferenced node removal preserves historical snapshots") {
   CHECK(second->id().value > first->id().value);
 }
 
+TEST_CASE("node removal rejects retained semantic references") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  sai::node_id target_id;
+
+  SUBCASE("root") {
+    auto author = context.edit();
+    auto target = author.create_node("Transform");
+    REQUIRE(target);
+    REQUIRE(author.append_root(target.value()));
+    REQUIRE(author.commit());
+    target_id = target->id();
+  }
+
+  SUBCASE("shared containment occurrences") {
+    auto author = context.edit();
+    auto parent = author.create_node("Group");
+    auto target = author.create_node("Transform");
+    REQUIRE(parent);
+    REQUIRE(target);
+    REQUIRE(author.append(parent.value(), "children", target.value()));
+    REQUIRE(author.append(parent.value(), "children", target.value()));
+    REQUIRE(author.commit());
+    target_id = target->id();
+  }
+
+  SUBCASE("SFNode reference") {
+    auto author = context.edit();
+    auto owner = author.create_node("Link");
+    auto target = author.create_node("Transform");
+    REQUIRE(owner);
+    REQUIRE(target);
+    auto field = author.field(owner.value(), "target");
+    REQUIRE(field);
+    REQUIRE(author.set(field.value(), target.value()));
+    REQUIRE(author.commit());
+    target_id = target->id();
+  }
+
+  SUBCASE("MFNode reference") {
+    auto author = context.edit();
+    auto owner = author.create_node("Link");
+    auto target = author.create_node("Transform");
+    REQUIRE(owner);
+    REQUIRE(target);
+    auto field = author.field(owner.value(), "targets");
+    REQUIRE(field);
+    const std::array targets{target.value()};
+    REQUIRE(author.set(field.value(), std::span<const sai::node>{targets}));
+    REQUIRE(author.commit());
+    target_id = target->id();
+  }
+
+  SUBCASE("name") {
+    auto author = context.edit();
+    auto target = author.create_node("Transform");
+    REQUIRE(target);
+    REQUIRE(author.define_name("Target", target.value()));
+    REQUIRE(author.commit());
+    target_id = target->id();
+  }
+
+  SUBCASE("export") {
+    auto author = context.edit();
+    auto target = author.create_node("Transform");
+    REQUIRE(target);
+    REQUIRE(author.export_node("Target", target.value()));
+    REQUIRE(author.commit());
+    target_id = target->id();
+  }
+
+  SUBCASE("route endpoint") {
+    auto author = context.edit();
+    auto target = author.create_node("Transform");
+    auto sink = author.create_node("Transform");
+    REQUIRE(target);
+    REQUIRE(sink);
+    auto source_field = author.field(target.value(), "worldTranslation");
+    auto sink_field = author.field(sink.value(), "translation");
+    REQUIRE(source_field);
+    REQUIRE(sink_field);
+    REQUIRE(author.add_route(source_field.value(), sink_field.value()));
+    REQUIRE(author.commit());
+    target_id = target->id();
+  }
+
+  const auto before = context.snapshot();
+  const auto target = before.lookup(target_id);
+  REQUIRE(target);
+  auto removal = context.edit();
+  const auto rejected = removal.remove_node(target.value());
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::node_in_use);
+  CHECK(rejected.error().operation == "scene_edit.remove_node");
+  CHECK(rejected.error().node == target_id);
+  const auto unpublished = removal.commit();
+  REQUIRE_FALSE(unpublished);
+  CHECK(unpublished.error().code == sai::error_code::node_in_use);
+  CHECK(context.snapshot().revision() == before.revision());
+  CHECK(context.snapshot().lookup(target_id));
+}
+
+TEST_CASE("explicit detachment and node removal publish atomically") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto target = author.create_node("Transform");
+  auto sink = author.create_node("Transform");
+  REQUIRE(target);
+  REQUIRE(sink);
+  auto source_field = author.field(target.value(), "worldTranslation");
+  auto sink_field = author.field(sink.value(), "translation");
+  REQUIRE(source_field);
+  REQUIRE(sink_field);
+  REQUIRE(author.append_root(target.value()));
+  REQUIRE(author.define_name("Target", target.value()));
+  REQUIRE(author.add_route(source_field.value(), sink_field.value()));
+  REQUIRE(author.commit());
+
+  const auto before = context.snapshot();
+  auto removal = context.edit();
+  REQUIRE(removal.remove_root(0));
+  REQUIRE(removal.undefine_name("Target"));
+  REQUIRE(removal.remove_route(before.routes().front()));
+  REQUIRE(removal.remove_node(target.value()));
+  const auto committed = removal.commit();
+  REQUIRE(committed);
+  REQUIRE(committed->changes.size() == 4);
+  CHECK(committed->changes[0].kind == sai::change_kind::root_removed);
+  CHECK(committed->changes[1].kind == sai::change_kind::name_removed);
+  CHECK(committed->changes[2].kind == sai::change_kind::route_removed);
+  CHECK(committed->changes[3].kind == sai::change_kind::node_removed);
+  CHECK_FALSE(context.snapshot().lookup(target->id()));
+}
+
 TEST_CASE(
     "world replacement invalidates handles without invalidating snapshots") {
   sai::browser host{graph_registry()};

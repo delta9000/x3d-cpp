@@ -1829,6 +1829,12 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=world replacement invalidates handles without invalidating snapshots")
     add_test(NAME sai_life_node_removal COMMAND x3d_sai_experimental_tests
         "--test-case=unreferenced node removal preserves historical snapshots")
+    add_test(NAME sai_life_remove_references COMMAND x3d_sai_experimental_tests
+        "--test-case=node removal rejects retained semantic references")
+    add_test(NAME sai_life_remove_nonmutation COMMAND x3d_sai_experimental_tests
+        "--test-case=node removal rejects retained semantic references")
+    add_test(NAME sai_life_remove_atomic COMMAND x3d_sai_experimental_tests
+        "--test-case=explicit detachment and node removal publish atomically")
     add_test(NAME sai_evt_observer_mutation COMMAND x3d_sai_experimental_tests
         "--test-case=commit queues observation and drain permits a reentrant commit")
     add_test(NAME sai_evt_callback_copy COMMAND x3d_sai_experimental_tests
@@ -3087,6 +3093,9 @@ if(X3D_CPP_BUILD_TESTS)
         sai_conc_boundary
         sai_life_stale_handle
         sai_life_node_removal
+        sai_life_remove_references
+        sai_life_remove_nonmutation
+        sai_life_remove_atomic
         sai_evt_observer_mutation
         sai_evt_callback_copy
         sai_cxx_safe_destruction
