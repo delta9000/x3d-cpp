@@ -139,7 +139,7 @@ private:
   revision_id source_revision_ = 0;
   node_id node_;
   std::string name_;
-  value_kind kind_ = value_kind::string;
+  value_kind kind_ = value_kind::sf_string;
   access_type access_ = access_type::input_output;
   friend class scene_snapshot;
   template <class T> friend class imported_field;
@@ -169,7 +169,7 @@ result<imported_field<T>> dynamic_imported_field::as() const {
   error.generation = source_generation_;
   error.node = node_;
   error.field = name_;
-  return error;
+  return failure(std::move(error));
 }
 
 template <class T> class field;
@@ -194,7 +194,7 @@ private:
   generation_id generation_ = 0;
   node_id node_;
   std::string name_;
-  value_kind kind_ = value_kind::string;
+  value_kind kind_ = value_kind::sf_string;
   access_type access_ = access_type::input_output;
   friend class scene_edit;
   friend class dynamic_multi_field_edit;
@@ -228,7 +228,7 @@ template <class T> result<field<T>> dynamic_field::as() const {
   error.generation = generation_;
   error.node = node_;
   error.field = name_;
-  return error;
+  return failure(std::move(error));
 }
 
 struct occurrence {
@@ -241,6 +241,7 @@ struct occurrence {
 
 enum class change_kind {
   node_created,
+  unit_declared,
   field_changed,
   multi_element_set,
   multi_inserted,
@@ -410,7 +411,7 @@ public:
   result<element_type> at(std::size_t index) const {
     auto element = dynamic_.at(index);
     if (!element)
-      return element.error();
+      return failure(element.error());
     return std::get<element_type>(std::move(element).value());
   }
   result<void> set(std::size_t index, element_type element) {
@@ -472,17 +473,21 @@ public:
   result<void> remove_root(std::size_t index);
   result<void> append(const node &parent, const std::string &field,
                       const node &child);
+  result<void> declare_unit(unit_declaration declaration);
   result<dynamic_field> field(const node &owner, const std::string &name) const;
+  result<bool> writable(const dynamic_field &target, write_intent intent) const;
   result<dynamic_multi_field_edit> multi(const dynamic_field &target);
   template <multi_field_sequence Sequence>
   result<multi_field_edit<Sequence>>
   multi(const experimental::field<Sequence> &target) {
     auto dynamic = multi(target.dynamic_);
     if (!dynamic)
-      return dynamic.error();
+      return failure(dynamic.error());
     return multi_field_edit<Sequence>{std::move(dynamic).value()};
   }
   result<void> set(const dynamic_field &target, value new_value);
+  result<void> set(const dynamic_field &target, value new_value,
+                   value_space space);
   result<void> set(const dynamic_field &target, const node &new_value);
   result<void> set(const dynamic_field &target,
                    std::span<const node> new_value);
@@ -490,6 +495,12 @@ public:
     requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
   result<void> set(const experimental::field<T> &target, T new_value) {
     return set(target.dynamic_, value{std::move(new_value)});
+  }
+  template <class T>
+    requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
+  result<void> set(const experimental::field<T> &target, T new_value,
+                   value_space space) {
+    return set(target.dynamic_, value{std::move(new_value)}, space);
   }
   result<void> set(const experimental::field<node_id> &target,
                    const node &new_value) {
@@ -524,6 +535,7 @@ private:
 class scene_snapshot {
 public:
   revision_id revision() const noexcept;
+  const std::vector<unit_declaration> &units() const noexcept;
   const std::vector<node_id> &roots() const noexcept;
   std::vector<occurrence> occurrences() const;
   result<node> lookup(node_id id) const;
@@ -532,20 +544,40 @@ public:
   result<dynamic_field> field(const node &owner, const std::string &name) const;
   result<dynamic_imported_field> field(const imported_node &owner,
                                        const std::string &name) const;
+  result<bool> readable(const dynamic_field &source) const;
   result<value> read(const dynamic_field &source) const;
+  result<value> read(const dynamic_field &source, value_space space) const;
   result<value> read(const dynamic_imported_field &source) const;
+  result<value> read(const dynamic_imported_field &source,
+                     value_space space) const;
   template <class T>
   result<T> read(const experimental::field<T> &source) const {
     auto dynamic = read(source.dynamic_);
     if (!dynamic)
-      return dynamic.error();
+      return failure(dynamic.error());
+    return std::get<T>(std::move(dynamic).value());
+  }
+  template <class T>
+  result<T> read(const experimental::field<T> &source,
+                 value_space space) const {
+    auto dynamic = read(source.dynamic_, space);
+    if (!dynamic)
+      return failure(dynamic.error());
     return std::get<T>(std::move(dynamic).value());
   }
   template <class T>
   result<T> read(const experimental::imported_field<T> &source) const {
     auto dynamic = read(source.dynamic_);
     if (!dynamic)
-      return dynamic.error();
+      return failure(dynamic.error());
+    return std::get<T>(std::move(dynamic).value());
+  }
+  template <class T>
+  result<T> read(const experimental::imported_field<T> &source,
+                 value_space space) const {
+    auto dynamic = read(source.dynamic_, space);
+    if (!dynamic)
+      return failure(dynamic.error());
     return std::get<T>(std::move(dynamic).value());
   }
   result<node> named(const std::string &name) const;
@@ -562,6 +594,7 @@ private:
 
   std::shared_ptr<detail::context_control> context_;
   std::shared_ptr<const detail::scene_state> state_;
+  std::vector<std::shared_ptr<detail::context_control>> import_contexts_;
   std::vector<std::shared_ptr<const detail::scene_state>> import_states_;
   friend class execution_context;
 };
@@ -575,12 +608,21 @@ public:
   event_batch &operator=(const event_batch &) = delete;
 
   result<void> send(const dynamic_field &target, value payload);
+  result<bool> writable(const dynamic_field &target, write_intent intent) const;
+  result<void> send(const dynamic_field &target, value payload,
+                    value_space space);
   result<void> send(const dynamic_field &target, const node &payload);
   result<void> send(const dynamic_field &target, std::span<const node> payload);
   template <class T>
     requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
   result<void> send(const experimental::field<T> &target, T payload) {
     return send(target.dynamic_, value{std::move(payload)});
+  }
+  template <class T>
+    requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
+  result<void> send(const experimental::field<T> &target, T payload,
+                    value_space space) {
+    return send(target.dynamic_, value{std::move(payload)}, space);
   }
   result<void> send(const experimental::field<node_id> &target,
                     const node &payload) {

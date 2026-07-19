@@ -18,13 +18,13 @@ namespace x3d::sai::experimental {
 
 namespace {
 
-sai_error descriptor_error(error_code code, std::string operation,
-                           std::string message) {
+unexpected descriptor_error(error_code code, std::string operation,
+                            std::string message) {
   sai_error error;
   error.code = code;
   error.operation = std::move(operation);
   error.message = std::move(message);
-  return error;
+  return failure(std::move(error));
 }
 
 std::optional<value_kind> kind_of(const value &candidate) {
@@ -161,6 +161,37 @@ bool value_matches(value_kind kind, const value &candidate) {
   return kind_of(candidate) == kind && value_is_well_formed(candidate);
 }
 
+bool standard_unit_category(std::string_view category) {
+  return category == "angle" || category == "force" || category == "length" ||
+         category == "mass";
+}
+
+bool unit_scalable_kind(value_kind kind) {
+  switch (kind) {
+  case value_kind::sf_double:
+  case value_kind::sf_float:
+  case value_kind::sf_rotation:
+  case value_kind::sf_vec2d:
+  case value_kind::sf_vec2f:
+  case value_kind::sf_vec3d:
+  case value_kind::sf_vec3f:
+  case value_kind::sf_vec4d:
+  case value_kind::sf_vec4f:
+  case value_kind::mf_double:
+  case value_kind::mf_float:
+  case value_kind::mf_rotation:
+  case value_kind::mf_vec2d:
+  case value_kind::mf_vec2f:
+  case value_kind::mf_vec3d:
+  case value_kind::mf_vec3f:
+  case value_kind::mf_vec4d:
+  case value_kind::mf_vec4f:
+    return true;
+  default:
+    return false;
+  }
+}
+
 } // namespace
 
 bool same_representation(const value &left, const value &right) {
@@ -192,8 +223,16 @@ result<void> type_registry::define(node_type_descriptor descriptor) {
           error_code::invalid_descriptor, "type_registry.define",
           "default value does not match field kind: " + field.name);
     }
-    if (field.containment && field.kind != value_kind::node &&
-        field.kind != value_kind::node_list) {
+    if (field.unit_category && (!standard_unit_category(*field.unit_category) ||
+                                !unit_scalable_kind(field.kind))) {
+      return descriptor_error(error_code::invalid_descriptor,
+                              "type_registry.define",
+                              "field unit category is unknown or incompatible "
+                              "with its value kind: " +
+                                  field.name);
+    }
+    if (field.containment && field.kind != value_kind::sf_node &&
+        field.kind != value_kind::mf_node) {
       return descriptor_error(
           error_code::invalid_descriptor, "type_registry.define",
           "containment field is not node-valued: " + field.name);
@@ -220,6 +259,7 @@ struct scene_state {
   revision_id revision = 0;
   std::uint64_t next_node_id = 1;
   std::unordered_map<std::uint64_t, node_record> nodes;
+  std::vector<unit_declaration> units;
   std::vector<node_id> roots;
   std::vector<name_binding> names;
   std::vector<export_binding> exports;
@@ -280,11 +320,11 @@ struct browser_control {
 
 namespace {
 
-sai_error edit_error(error_code code, const char *operation,
-                     const detail::context_control &context,
-                     revision_id base_revision, std::string message,
-                     std::optional<node_id> node = std::nullopt,
-                     std::string field = {}) {
+unexpected edit_error(error_code code, const char *operation,
+                      const detail::context_control &context,
+                      revision_id base_revision, std::string message,
+                      std::optional<node_id> node = std::nullopt,
+                      std::string field = {}) {
   sai_error error;
   error.code = code;
   error.operation = operation;
@@ -295,7 +335,7 @@ sai_error edit_error(error_code code, const char *operation,
       context.published_revision.load(std::memory_order_acquire);
   error.node = node;
   error.field = std::move(field);
-  return error;
+  return failure(std::move(error));
 }
 
 const field_descriptor *
@@ -333,12 +373,12 @@ bool accepts_node_type(const detail::context_control &context,
 bool accepts_node_payload(const detail::context_control &context,
                           const detail::scene_state &state,
                           const field_descriptor &field, const value &payload) {
-  if (field.kind == value_kind::node) {
+  if (field.kind == value_kind::sf_node) {
     const auto candidate = state.nodes.find(std::get<node_id>(payload).value);
     return candidate != state.nodes.end() &&
            accepts_node_type(context, field, candidate->second);
   }
-  if (field.kind == value_kind::node_list) {
+  if (field.kind == value_kind::mf_node) {
     return std::ranges::all_of(
         std::get<node_list>(payload), [&](const node_id id) {
           const auto candidate = state.nodes.find(id.value);
@@ -360,6 +400,103 @@ bool retained_write_allowed(access_type access, bool node_is_being_created) {
     return true;
   }
   return false;
+}
+
+bool field_is_readable(access_type access) {
+  return access != access_type::input_only;
+}
+
+bool field_is_writable(access_type access, write_intent intent,
+                       bool node_is_being_created) {
+  switch (intent) {
+  case write_intent::initialize:
+    return node_is_being_created && (access == access_type::initialize_only ||
+                                     access == access_type::input_output);
+  case write_intent::retained:
+    return access == access_type::input_output;
+  case write_intent::event_input:
+    return access == access_type::input_only ||
+           access == access_type::input_output;
+  case write_intent::runtime_output:
+    return access == access_type::output_only ||
+           access == access_type::input_output;
+  }
+  return false;
+}
+
+template <class T> bool scale_unit_value(T &, double) { return false; }
+
+bool scale_unit_value(float &stored, double factor) {
+  stored = static_cast<float>(static_cast<double>(stored) * factor);
+  return true;
+}
+
+bool scale_unit_value(double &stored, double factor) {
+  stored *= factor;
+  return true;
+}
+
+#define X3D_SAI_SCALE_VECTOR(Type, ...)                                        \
+  bool scale_unit_value(Type &stored, double factor) {                         \
+    __VA_ARGS__;                                                               \
+    return true;                                                               \
+  }
+X3D_SAI_SCALE_VECTOR(vec2f, scale_unit_value(stored.x, factor);
+                     scale_unit_value(stored.y, factor));
+X3D_SAI_SCALE_VECTOR(vec3f, scale_unit_value(stored.x, factor);
+                     scale_unit_value(stored.y, factor);
+                     scale_unit_value(stored.z, factor));
+X3D_SAI_SCALE_VECTOR(vec4f, scale_unit_value(stored.x, factor);
+                     scale_unit_value(stored.y, factor);
+                     scale_unit_value(stored.z, factor);
+                     scale_unit_value(stored.w, factor));
+X3D_SAI_SCALE_VECTOR(vec2d, stored.x *= factor; stored.y *= factor);
+X3D_SAI_SCALE_VECTOR(vec3d, stored.x *= factor; stored.y *= factor;
+                     stored.z *= factor);
+X3D_SAI_SCALE_VECTOR(vec4d, stored.x *= factor; stored.y *= factor;
+                     stored.z *= factor; stored.w *= factor);
+#undef X3D_SAI_SCALE_VECTOR
+
+bool scale_unit_value(rotation &stored, double factor) {
+  scale_unit_value(stored.angle, factor);
+  return true;
+}
+
+template <class T, class Allocator>
+bool scale_unit_value(std::vector<T, Allocator> &stored, double factor) {
+  T probe{};
+  if (!scale_unit_value(probe, 1.0))
+    return false;
+  for (auto &element : stored) {
+    if (!scale_unit_value(element, factor))
+      return false;
+  }
+  return true;
+}
+
+std::optional<value> convert_unit_value(const detail::scene_state &state,
+                                        const field_descriptor &descriptor,
+                                        value payload, value_space source,
+                                        value_space destination) {
+  if (source == destination || !descriptor.unit_category)
+    return payload;
+  if (kind_of(payload) != descriptor.kind ||
+      !unit_scalable_kind(descriptor.kind))
+    return std::nullopt;
+  const auto declaration = std::find_if(
+      state.units.begin(), state.units.end(), [&](const auto &candidate) {
+        return candidate.category == *descriptor.unit_category;
+      });
+  if (declaration == state.units.end() || declaration->conversion_factor == 1.0)
+    return payload;
+  const double factor = source == value_space::authored
+                            ? declaration->conversion_factor
+                            : 1.0 / declaration->conversion_factor;
+  const bool converted = std::visit(
+      [&](auto &stored) { return scale_unit_value(stored, factor); }, payload);
+  if (!converted)
+    return std::nullopt;
+  return payload;
 }
 
 bool route_source_allowed(access_type access) {
@@ -436,7 +573,7 @@ struct detail::scene_edit_control {
   std::shared_ptr<const detail::scene_state> base;
   detail::scene_state staged;
   bool changed = false;
-  std::optional<sai_error> poison;
+  std::optional<unexpected> poison;
   std::vector<change> changes;
   std::unordered_set<std::uint64_t> created_nodes;
   bool committed = false;
@@ -446,7 +583,7 @@ struct event_batch::impl {
   std::shared_ptr<detail::context_control> context;
   std::shared_ptr<const detail::scene_state> base;
   event_time time;
-  std::optional<sai_error> poison;
+  std::optional<unexpected> poison;
   std::vector<event_delivery> seeds;
   bool committed = false;
 };
@@ -607,7 +744,7 @@ result<void> scene_edit::append(const node &parent, const std::string &field,
                                "unknown field: " + field, parent.id_, field);
     return *impl_->poison;
   }
-  if (!descriptor->containment || descriptor->kind != value_kind::node_list) {
+  if (!descriptor->containment || descriptor->kind != value_kind::mf_node) {
     impl_->poison =
         edit_error(error_code::type_mismatch, "scene_edit.append",
                    *impl_->context, impl_->base->revision,
@@ -647,6 +784,45 @@ result<void> scene_edit::append(const node &parent, const std::string &field,
   return {};
 }
 
+result<void> scene_edit::declare_unit(unit_declaration declaration) {
+  if (impl_->poison)
+    return *impl_->poison;
+  if (!impl_->staged.nodes.empty()) {
+    impl_->poison = edit_error(
+        error_code::access_denied, "scene_edit.declare_unit", *impl_->context,
+        impl_->base->revision,
+        "unit declarations are fixed before scene content is authored");
+    return *impl_->poison;
+  }
+  if (declaration.category.empty() || declaration.name.empty() ||
+      !standard_unit_category(declaration.category) ||
+      !std::isfinite(declaration.conversion_factor) ||
+      declaration.conversion_factor <= 0.0) {
+    impl_->poison = edit_error(
+        error_code::invalid_value, "scene_edit.declare_unit", *impl_->context,
+        impl_->base->revision,
+        "unit declarations require names and a finite positive factor");
+    return *impl_->poison;
+  }
+  const auto duplicate = std::ranges::find(
+      impl_->staged.units, declaration.category, &unit_declaration::category);
+  if (duplicate != impl_->staged.units.end()) {
+    impl_->poison = edit_error(
+        error_code::invalid_value, "scene_edit.declare_unit", *impl_->context,
+        impl_->base->revision, "unit category is already declared");
+    return *impl_->poison;
+  }
+  impl_->changed = true;
+  impl_->changes.push_back(change{.kind = change_kind::unit_declared,
+                                  .node = {},
+                                  .field = declaration.category,
+                                  .before = declaration.name,
+                                  .after = declaration.conversion_factor,
+                                  .index = impl_->staged.units.size()});
+  impl_->staged.units.push_back(std::move(declaration));
+  return {};
+}
+
 result<dynamic_field> scene_edit::field(const node &owner,
                                         const std::string &name) const {
   const auto owner_context = owner.context_.lock();
@@ -670,6 +846,56 @@ result<dynamic_field> scene_edit::field(const node &owner,
                        descriptor->kind, descriptor->access};
 }
 
+result<bool> scene_edit::writable(const dynamic_field &target,
+                                  write_intent intent) const {
+  if (impl_->poison)
+    return *impl_->poison;
+  if (impl_->committed) {
+    return edit_error(error_code::stale_revision, "scene_edit.writable",
+                      *impl_->context, impl_->base->revision,
+                      "scene edit was already committed", target.node(),
+                      target.name());
+  }
+  {
+    std::lock_guard lock(impl_->context->mutex);
+    if (!impl_->context->active) {
+      return edit_error(error_code::stale_handle, "scene_edit.writable",
+                        *impl_->context, impl_->base->revision,
+                        "execution context is no longer active", target.node(),
+                        target.name());
+    }
+    if (impl_->context->published_revision.load(std::memory_order_acquire) !=
+        impl_->base->revision) {
+      return edit_error(error_code::stale_revision, "scene_edit.writable",
+                        *impl_->context, impl_->base->revision,
+                        "edit base revision is stale", target.node(),
+                        target.name());
+    }
+  }
+  const auto target_context = target.context_.lock();
+  const auto found = impl_->staged.nodes.find(target.node_.value);
+  if (target_context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      found == impl_->staged.nodes.end()) {
+    return edit_error(error_code::stale_handle, "scene_edit.writable",
+                      *impl_->context, impl_->base->revision,
+                      "invalid field handle", target.node_, target.name_);
+  }
+  const auto *descriptor =
+      find_descriptor(*impl_->context, found->second, target.name_);
+  if (!descriptor) {
+    return edit_error(error_code::unknown_field, "scene_edit.writable",
+                      *impl_->context, impl_->base->revision,
+                      "unknown field: " + target.name_, target.node_,
+                      target.name_);
+  }
+  if (intent == write_intent::event_input ||
+      intent == write_intent::runtime_output)
+    return false;
+  return field_is_writable(descriptor->access, intent,
+                           impl_->created_nodes.contains(target.node_.value));
+}
+
 namespace {
 
 result<std::shared_ptr<detail::scene_edit_control>>
@@ -684,7 +910,7 @@ active_multi_edit(const std::weak_ptr<detail::scene_edit_control> &weak,
     error.message = "multi-field editor no longer has an owning transaction";
     error.node = node;
     error.field = field;
-    return error;
+    return failure(std::move(error));
   }
   if (edit->poison)
     return *edit->poison;
@@ -828,7 +1054,7 @@ result<std::size_t> dynamic_multi_field_edit::size() const {
   auto edit = active_multi_edit(edit_, "multi_field.size", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   const auto *sequence = multi_sequence(*edit.value(), target_);
   if (!sequence)
     return edit_error(error_code::unknown_field, "multi_field.size",
@@ -842,7 +1068,7 @@ result<value> dynamic_multi_field_edit::at(std::size_t index) const {
   auto edit = active_multi_edit(edit_, "multi_field.at", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   const auto *sequence = multi_sequence(*edit.value(), target_);
   const auto element =
       sequence ? sequence_element(*sequence, index) : std::optional<value>{};
@@ -858,7 +1084,7 @@ result<node> dynamic_multi_field_edit::node_at(std::size_t index) const {
   auto edit = active_multi_edit(edit_, "multi_field.node_at", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   if (target_.kind() != value_kind::mf_node) {
     return edit_error(error_code::type_mismatch, "multi_field.node_at",
                       *edit.value()->context, edit.value()->base->revision,
@@ -888,7 +1114,7 @@ result<void> dynamic_multi_field_edit::set(std::size_t index, value element) {
   auto edit = active_multi_edit(edit_, "multi_field.set", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   const auto expected = element_kind(target_.kind());
   if (target_.kind() == value_kind::mf_node) {
     edit.value()->poison =
@@ -933,7 +1159,7 @@ result<void> dynamic_multi_field_edit::set(std::size_t index,
   auto edit = active_multi_edit(edit_, "multi_field.set_node", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   const auto element_context = element.context_.lock();
   const auto candidate = edit.value()->staged.nodes.find(element.id_.value);
   const auto owner = edit.value()->staged.nodes.find(target_.node().value);
@@ -988,7 +1214,7 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
   auto edit = active_multi_edit(edit_, "multi_field.insert", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   const auto expected = element_kind(target_.kind());
   if (target_.kind() == value_kind::mf_node || !expected ||
       kind_of(element) != expected || !value_is_well_formed(element)) {
@@ -1026,7 +1252,7 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
   auto edit = active_multi_edit(edit_, "multi_field.insert_node",
                                 target_.node(), target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   const auto element_context = element.context_.lock();
   const auto candidate = edit.value()->staged.nodes.find(element.id_.value);
   const auto owner = edit.value()->staged.nodes.find(target_.node().value);
@@ -1078,14 +1304,14 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
 result<void> dynamic_multi_field_edit::append(value element) {
   auto current_size = size();
   if (!current_size)
-    return current_size.error();
+    return failure(current_size.error());
   return insert(current_size.value(), std::move(element));
 }
 
 result<void> dynamic_multi_field_edit::append(const node &element) {
   auto current_size = size();
   if (!current_size)
-    return current_size.error();
+    return failure(current_size.error());
   return insert(current_size.value(), element);
 }
 
@@ -1093,7 +1319,7 @@ result<void> dynamic_multi_field_edit::erase(std::size_t index) {
   auto edit = active_multi_edit(edit_, "multi_field.erase", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   auto *sequence = multi_sequence(*edit.value(), target_);
   const auto before =
       sequence ? sequence_element(*sequence, index) : std::optional<value>{};
@@ -1135,7 +1361,7 @@ result<void> dynamic_multi_field_edit::clear() {
   auto edit = active_multi_edit(edit_, "multi_field.clear", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   auto *sequence = multi_sequence(*edit.value(), target_);
   if (!sequence)
     return edit_error(error_code::unknown_field, "multi_field.clear",
@@ -1165,7 +1391,7 @@ result<void> dynamic_multi_field_edit::replace(value replacement) {
   auto edit = active_multi_edit(edit_, "multi_field.replace", target_.node(),
                                 target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   if (target_.kind() == value_kind::mf_node) {
     edit.value()->poison =
         edit_error(error_code::invalid_context, "multi_field.replace",
@@ -1206,7 +1432,7 @@ dynamic_multi_field_edit::replace(std::span<const node> replacement) {
   auto edit = active_multi_edit(edit_, "multi_field.replace_nodes",
                                 target_.node(), target_.name());
   if (!edit)
-    return edit.error();
+    return failure(edit.error());
   const auto owner = edit.value()->staged.nodes.find(target_.node().value);
   const auto *descriptor = owner == edit.value()->staged.nodes.end()
                                ? nullptr
@@ -1268,6 +1494,38 @@ dynamic_multi_field_edit::replace(std::span<const node> replacement) {
 
 result<void> scene_edit::set(const dynamic_field &target, value new_value) {
   return set_value(target, std::move(new_value), false);
+}
+
+result<void> scene_edit::set(const dynamic_field &target, value new_value,
+                             value_space space) {
+  if (space == value_space::canonical)
+    return set(target, std::move(new_value));
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto owner = impl_->staged.nodes.find(target.node_.value);
+  const auto *descriptor =
+      owner == impl_->staged.nodes.end()
+          ? nullptr
+          : find_descriptor(*impl_->context, owner->second, target.name_);
+  if (!descriptor) {
+    impl_->poison =
+        edit_error(error_code::unknown_field, "scene_edit.set", *impl_->context,
+                   impl_->base->revision, "unknown unit-bearing field",
+                   target.node_, target.name_);
+    return *impl_->poison;
+  }
+  auto canonical =
+      convert_unit_value(impl_->staged, *descriptor, std::move(new_value),
+                         space, value_space::canonical);
+  if (!canonical) {
+    impl_->poison = edit_error(
+        error_code::invalid_value, "scene_edit.set", *impl_->context,
+        impl_->base->revision,
+        "field representation cannot carry the declared unit category",
+        target.node_, target.name_);
+    return *impl_->poison;
+  }
+  return set_value(target, std::move(*canonical), false);
 }
 
 result<void> scene_edit::set(const dynamic_field &target,
@@ -1342,8 +1600,8 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                target.node_, target.name_);
     return *impl_->poison;
   }
-  if ((descriptor->kind == value_kind::node ||
-       descriptor->kind == value_kind::node_list) &&
+  if ((descriptor->kind == value_kind::sf_node ||
+       descriptor->kind == value_kind::mf_node) &&
       !node_authority_checked) {
     impl_->poison =
         edit_error(error_code::invalid_context, "scene_edit.set",
@@ -1366,7 +1624,7 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                target.node_, target.name_);
     return *impl_->poison;
   }
-  if (node_authority_checked && descriptor->kind == value_kind::node) {
+  if (node_authority_checked && descriptor->kind == value_kind::sf_node) {
     const auto id = std::get<node_id>(new_value);
     const auto candidate = impl_->staged.nodes.find(id.value);
     if (candidate == impl_->staged.nodes.end() ||
@@ -1379,7 +1637,7 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
       return *impl_->poison;
     }
   }
-  if (node_authority_checked && descriptor->kind == value_kind::node_list) {
+  if (node_authority_checked && descriptor->kind == value_kind::mf_node) {
     for (const auto id : std::get<node_list>(new_value)) {
       const auto candidate = impl_->staged.nodes.find(id.value);
       if (candidate == impl_->staged.nodes.end() ||
@@ -1732,12 +1990,12 @@ result<change_set> scene_edit::commit() {
       if (!descriptor.containment)
         continue;
       const auto &field_value = record.fields.at(descriptor.name);
-      if (descriptor.kind == value_kind::node) {
+      if (descriptor.kind == value_kind::sf_node) {
         const node_id child = std::get<node_id>(field_value);
         if (child.value != 0 &&
             (!impl_->staged.nodes.contains(child.value) || !visit(child.value)))
           return false;
-      } else if (descriptor.kind == value_kind::node_list) {
+      } else if (descriptor.kind == value_kind::mf_node) {
         for (node_id child : std::get<node_list>(field_value)) {
           if (!impl_->staged.nodes.contains(child.value) || !visit(child.value))
             return false;
@@ -1849,6 +2107,86 @@ result<void> event_batch::send(const dynamic_field &target, value payload) {
   return send_value(target, std::move(payload), false);
 }
 
+result<bool> event_batch::writable(const dynamic_field &target,
+                                   write_intent intent) const {
+  if (impl_->poison)
+    return *impl_->poison;
+  if (impl_->committed) {
+    return edit_error(error_code::stale_revision, "event_batch.writable",
+                      *impl_->context, impl_->base->revision,
+                      "event batch was already committed", target.node(),
+                      target.name());
+  }
+  {
+    std::lock_guard lock(impl_->context->mutex);
+    if (!impl_->context->active) {
+      return edit_error(error_code::stale_handle, "event_batch.writable",
+                        *impl_->context, impl_->base->revision,
+                        "execution context is no longer active", target.node(),
+                        target.name());
+    }
+    if (impl_->context->published_revision.load(std::memory_order_acquire) !=
+        impl_->base->revision) {
+      return edit_error(error_code::stale_revision, "event_batch.writable",
+                        *impl_->context, impl_->base->revision,
+                        "event batch base revision is stale", target.node(),
+                        target.name());
+    }
+  }
+  const auto target_context = target.context_.lock();
+  const auto found = impl_->base->nodes.find(target.node_.value);
+  if (target_context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      found == impl_->base->nodes.end()) {
+    return edit_error(error_code::stale_handle, "event_batch.writable",
+                      *impl_->context, impl_->base->revision,
+                      "invalid field handle", target.node_, target.name_);
+  }
+  const auto *descriptor =
+      find_descriptor(*impl_->context, found->second, target.name_);
+  if (!descriptor) {
+    return edit_error(error_code::unknown_field, "event_batch.writable",
+                      *impl_->context, impl_->base->revision,
+                      "unknown field: " + target.name_, target.node_,
+                      target.name_);
+  }
+  if (intent != write_intent::event_input)
+    return false;
+  return field_is_writable(descriptor->access, intent, false);
+}
+
+result<void> event_batch::send(const dynamic_field &target, value payload,
+                               value_space space) {
+  if (space == value_space::canonical)
+    return send(target, std::move(payload));
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto owner = impl_->base->nodes.find(target.node_.value);
+  const auto *descriptor =
+      owner == impl_->base->nodes.end()
+          ? nullptr
+          : find_descriptor(*impl_->context, owner->second, target.name_);
+  if (!descriptor) {
+    impl_->poison =
+        edit_error(error_code::unknown_field, "event_batch.send",
+                   *impl_->context, impl_->base->revision,
+                   "unknown unit-bearing field", target.node_, target.name_);
+    return *impl_->poison;
+  }
+  auto canonical =
+      convert_unit_value(*impl_->base, *descriptor, std::move(payload), space,
+                         value_space::canonical);
+  if (!canonical) {
+    impl_->poison = edit_error(
+        error_code::invalid_value, "event_batch.send", *impl_->context,
+        impl_->base->revision,
+        "field representation cannot carry the declared unit category",
+        target.node_, target.name_);
+    return *impl_->poison;
+  }
+  return send_value(target, std::move(*canonical), false);
+}
+
 result<void> event_batch::send(const dynamic_field &target,
                                const node &payload) {
   if (impl_->poison)
@@ -1920,8 +2258,8 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                target.node_, target.name_);
     return *impl_->poison;
   }
-  if ((descriptor->kind == value_kind::node ||
-       descriptor->kind == value_kind::node_list) &&
+  if ((descriptor->kind == value_kind::sf_node ||
+       descriptor->kind == value_kind::mf_node) &&
       !node_authority_checked) {
     impl_->poison =
         edit_error(error_code::invalid_context, "event_batch.send",
@@ -1944,7 +2282,7 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                target.node_, target.name_);
     return *impl_->poison;
   }
-  if (node_authority_checked && descriptor->kind == value_kind::node) {
+  if (node_authority_checked && descriptor->kind == value_kind::sf_node) {
     const auto id = std::get<node_id>(payload);
     const auto candidate = impl_->base->nodes.find(id.value);
     if (candidate == impl_->base->nodes.end() ||
@@ -1957,7 +2295,7 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
       return *impl_->poison;
     }
   }
-  if (node_authority_checked && descriptor->kind == value_kind::node_list) {
+  if (node_authority_checked && descriptor->kind == value_kind::mf_node) {
     for (const auto id : std::get<node_list>(payload)) {
       const auto candidate = impl_->base->nodes.find(id.value);
       if (candidate == impl_->base->nodes.end() ||
@@ -2155,25 +2493,33 @@ result<event_result> event_batch::commit() {
 scene_snapshot::scene_snapshot(std::shared_ptr<detail::context_control> context,
                                std::shared_ptr<const detail::scene_state> state)
     : context_(std::move(context)), state_(std::move(state)) {
+  import_contexts_.reserve(state_->imports.size());
   import_states_.reserve(state_->imports.size());
   for (std::size_t index = 0; index < state_->imports.size(); ++index) {
     const auto source = state_->import_sources[index].lock();
     if (!source) {
+      import_contexts_.push_back({});
       import_states_.push_back({});
       continue;
     }
     std::lock_guard lock(source->mutex);
     if (!source->active ||
         source->generation != state_->imports[index].source_generation) {
+      import_contexts_.push_back({});
       import_states_.push_back({});
       continue;
     }
+    import_contexts_.push_back(source);
     import_states_.push_back(source->state);
   }
 }
 
 revision_id scene_snapshot::revision() const noexcept {
   return state_->revision;
+}
+
+const std::vector<unit_declaration> &scene_snapshot::units() const noexcept {
+  return state_->units;
 }
 
 const std::vector<node_id> &scene_snapshot::roots() const noexcept {
@@ -2199,7 +2545,7 @@ std::vector<occurrence> scene_snapshot::occurrences() const {
           if (!descriptor.containment)
             continue;
           const auto &field_value = record.fields.at(descriptor.name);
-          if (descriptor.kind == value_kind::node) {
+          if (descriptor.kind == value_kind::sf_node) {
             const node_id child = std::get<node_id>(field_value);
             if (child.value != 0) {
               auto child_path = path;
@@ -2207,7 +2553,7 @@ std::vector<occurrence> scene_snapshot::occurrences() const {
               walk(child, occurrence_index, descriptor.name, 0,
                    std::move(child_path));
             }
-          } else if (descriptor.kind == value_kind::node_list) {
+          } else if (descriptor.kind == value_kind::mf_node) {
             const auto &children = std::get<node_list>(field_value);
             for (std::size_t child_index = 0; child_index < children.size();
                  ++child_index) {
@@ -2331,7 +2677,7 @@ scene_snapshot::field(const imported_node &owner,
                       const std::string &name) const {
   auto described = describe(owner);
   if (!described)
-    return described.error();
+    return failure(described.error());
   const auto descriptor = std::find_if(described.value().fields.begin(),
                                        described.value().fields.end(),
                                        [&](const field_descriptor &candidate) {
@@ -2353,6 +2699,27 @@ scene_snapshot::field(const imported_node &owner,
                                 descriptor->access};
 }
 
+result<bool> scene_snapshot::readable(const dynamic_field &source) const {
+  const auto source_context = source.context_.lock();
+  const auto found = state_->nodes.find(source.node_.value);
+  if (source_context != context_ ||
+      source.generation_ != context_->generation ||
+      found == state_->nodes.end()) {
+    return edit_error(error_code::stale_handle, "scene_snapshot.readable",
+                      *context_, state_->revision, "invalid field handle",
+                      source.node_, source.name_);
+  }
+  const auto *descriptor =
+      find_descriptor(*context_, found->second, source.name_);
+  if (!descriptor) {
+    return edit_error(error_code::unknown_field, "scene_snapshot.readable",
+                      *context_, state_->revision,
+                      "unknown field: " + source.name_, source.node_,
+                      source.name_);
+  }
+  return field_is_readable(descriptor->access);
+}
+
 result<value> scene_snapshot::read(const dynamic_field &source) const {
   const auto source_context = source.context_.lock();
   const auto found = state_->nodes.find(source.node_.value);
@@ -2371,7 +2738,7 @@ result<value> scene_snapshot::read(const dynamic_field &source) const {
                       "unknown field: " + source.name_, source.node_,
                       source.name_);
   }
-  if (descriptor->access == access_type::input_only) {
+  if (!field_is_readable(descriptor->access)) {
     return edit_error(error_code::access_denied, "scene_snapshot.read",
                       *context_, state_->revision,
                       "inputOnly field is not readable", source.node_,
@@ -2380,7 +2747,40 @@ result<value> scene_snapshot::read(const dynamic_field &source) const {
   return found->second.fields.at(source.name_);
 }
 
+result<value> scene_snapshot::read(const dynamic_field &source,
+                                   value_space space) const {
+  auto stored = read(source);
+  if (!stored || space == value_space::canonical)
+    return stored;
+  const auto found = state_->nodes.find(source.node_.value);
+  const auto *descriptor =
+      found == state_->nodes.end()
+          ? nullptr
+          : find_descriptor(*context_, found->second, source.name_);
+  if (!descriptor) {
+    return edit_error(error_code::unknown_field, "scene_snapshot.read",
+                      *context_, state_->revision, "unknown unit-bearing field",
+                      source.node_, source.name_);
+  }
+  auto authored =
+      convert_unit_value(*state_, *descriptor, std::move(stored).value(),
+                         value_space::canonical, space);
+  if (!authored) {
+    return edit_error(
+        error_code::invalid_value, "scene_snapshot.read", *context_,
+        state_->revision,
+        "field representation cannot carry the declared unit category",
+        source.node_, source.name_);
+  }
+  return std::move(*authored);
+}
+
 result<value> scene_snapshot::read(const dynamic_imported_field &field) const {
+  return read(field, value_space::canonical);
+}
+
+result<value> scene_snapshot::read(const dynamic_imported_field &field,
+                                   value_space space) const {
   const auto importer = field.importer_.lock();
   const auto source = field.source_.lock();
   if (importer != context_ ||
@@ -2438,7 +2838,20 @@ result<value> scene_snapshot::read(const dynamic_imported_field &field) const {
                       "inputOnly imported field is not readable", field.node_,
                       field.name_);
   }
-  return found->second.fields.at(field.name_);
+  value stored = found->second.fields.at(field.name_);
+  if (space == value_space::canonical)
+    return stored;
+  auto authored =
+      convert_unit_value(*source_state, *descriptor, std::move(stored),
+                         value_space::canonical, space);
+  if (!authored) {
+    return edit_error(
+        error_code::invalid_value, "scene_snapshot.read_import", *context_,
+        state_->revision,
+        "imported field representation cannot carry its unit category",
+        field.node_, field.name_);
+  }
+  return std::move(*authored);
 }
 
 result<node> scene_snapshot::named(const std::string &name) const {
@@ -2732,14 +3145,14 @@ result<void> browser::replace_world(const execution_context &replacement) {
     error.code = error_code::stale_handle;
     error.operation = "browser.replace_world";
     error.message = "replacement context is empty";
-    return error;
+    return failure(std::move(error));
   }
   if (replacement.control_->owner.lock() != control_) {
     sai_error error;
     error.code = error_code::invalid_context;
     error.operation = "browser.replace_world";
     error.message = "replacement context belongs to another browser";
-    return error;
+    return failure(std::move(error));
   }
   if (replacement.control_ == control_->current)
     return {};
@@ -2781,7 +3194,7 @@ result<void> browser::cancel(const load_ticket &ticket) {
     error.code = error_code::stale_completion;
     error.operation = "browser.cancel";
     error.message = "load ticket belongs to another browser";
-    return error;
+    return failure(std::move(error));
   }
   std::lock_guard lock(control_->mutex);
   const auto found = control_->requests.find(ticket.request_id_);
@@ -2791,7 +3204,7 @@ result<void> browser::cancel(const load_ticket &ticket) {
     error.code = error_code::stale_completion;
     error.operation = "browser.cancel";
     error.message = "load ticket is stale";
-    return error;
+    return failure(std::move(error));
   }
   found->second.cancelled = true;
   return {};
@@ -2805,7 +3218,7 @@ result<void> browser::complete_load(const load_ticket &ticket,
     error.code = error_code::stale_completion;
     error.operation = "browser.complete_load";
     error.message = "load ticket belongs to another browser";
-    return error;
+    return failure(std::move(error));
   }
   {
     std::lock_guard lock(control_->mutex);
@@ -2815,14 +3228,14 @@ result<void> browser::complete_load(const load_ticket &ticket,
       error.code = error_code::stale_completion;
       error.operation = "browser.complete_load";
       error.message = "load ticket is unknown or already completed";
-      return error;
+      return failure(std::move(error));
     }
     if (found->second.cancelled) {
       sai_error error;
       error.code = error_code::cancelled;
       error.operation = "browser.complete_load";
       error.message = "load request was cancelled";
-      return error;
+      return failure(std::move(error));
     }
     if (found->second.world_epoch != control_->world_epoch ||
         ticket.world_epoch_ != control_->world_epoch) {
@@ -2830,7 +3243,7 @@ result<void> browser::complete_load(const load_ticket &ticket,
       error.code = error_code::stale_completion;
       error.operation = "browser.complete_load";
       error.message = "browser world changed after the load began";
-      return error;
+      return failure(std::move(error));
     }
     control_->requests.erase(found);
   }

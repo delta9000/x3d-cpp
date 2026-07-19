@@ -65,6 +65,9 @@ example; no part of it is committed here.
   tinfl.h (miniz)   runtime/parse/tinfl.h                   Public Domain (Unlicense)
   glad              third_party/glad/                       Apache-2.0 AND (WTFPL OR CC0-1.0)
   doctest           runtime/test_support/doctest/           MIT  (test-only; v2.4.11)
+  tl::expected      experimental/sai/third_party/tl/        CC0-1.0 (v1.3.1)
+                    (C++20 expected/monadic compatibility for the experimental SAI)
+                    (see experimental/sai/third_party/tl/COPYING)
   wuffs (v0.3.4)    runtime/io/wuffs/vendor/wuffs-v0.3.c    Apache-2.0  (-DX3D_CPP_BUILD_WUFFS=ON)
                     (see runtime/io/wuffs/vendor/WUFFS_LICENSE.txt; TextureResolver
                      decode Backend B. Flag-gated OFF — the default build stays

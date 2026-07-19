@@ -112,7 +112,7 @@ invariants:
     evidence_strength: normative
     statement: Authored and canonical unit interpretation is explicit; parse, assign, route, inspect, and serialize never double-convert or lose the scene unit declaration.
     preserving_operations: [inspect units, parse value, assign value, route value, serialize value]
-    falsification_tests: [planned:sai_field_units_once]
+    falsification_tests: [sai_field_units_once, planned:sai_field_unit_codec_bridge]
   - <<: *invariant_defaults
     id: INV-FIELD-5
     review_marker: reviewed:sha256:d96ae0eeba5d
@@ -121,7 +121,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Inspection, validation, traversal, serialization planning, and capability queries do not initialize state, assign names, reorder, or clear dirtiness without an explicit edit.
     preserving_operations: [read field, traverse, validate, inspect capability]
-    falsification_tests: [planned:sai_field_pure_read]
+    falsification_tests: [sai_field_pure_read]
 
   - <<: *invariant_defaults
     id: INV-EDIT-1
@@ -241,7 +241,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Roots, MF fields, occurrences, routes, declarations, changes, and diagnostics preserve authored order or document stable canonical or explicitly unordered iteration.
     preserving_operations: [iterate roots, fields, routes, declarations, changes]
-    falsification_tests: [planned:sai_order_public_ranges]
+    falsification_tests: [sai_order_public_ranges]
 
   - <<: *invariant_defaults
     id: INV-RT-1
@@ -324,7 +324,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Validation, capability, lookup, stale-handle, and transaction failures use a consistent expected-style SaiError; exceptions follow one narrow documented policy.
     preserving_operations: [lookup, validate, commit, inspect error]
-    falsification_tests: [sai_cxx_failure_value]
+    falsification_tests: [sai_cxx_failure_value, sai_cxx_result_composition]
   - <<: *invariant_defaults
     id: INV-CXX-3
     review_marker: reviewed:sha256:9bb0fb0c824b

@@ -1714,11 +1714,12 @@ if(X3D_CPP_BUILD_TESTS)
     add_library(x3d_sai_experimental STATIC
         "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/src/kernel.cpp")
     target_include_directories(x3d_sai_experimental PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/include")
+        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/third_party")
     target_compile_features(x3d_sai_experimental PUBLIC cxx_std_20)
 
     # Optional generated-schema bridge. Keeping this separate preserves the
-    # stdlib-only semantic kernel while allowing consumers to opt into the UOM
+    # dependency-light semantic kernel while allowing consumers to opt into the UOM
     # catalog without pulling generated runtime node implementations into the
     # semantic identity or the normal node-library startup path.
     add_library(x3d_sai_experimental_metadata STATIC
@@ -1783,6 +1784,16 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=typed and dynamic MF events preserve the complete owning payload")
     add_test(NAME sai_field_access_state_machine COMMAND x3d_sai_experimental_tests
         "--test-case=field access is a lifecycle rule rather than a setter shape")
+    add_test(NAME sai_field_readable COMMAND x3d_sai_experimental_tests
+        "--test-case=field capability queries predict every lifecycle intent")
+    add_test(NAME sai_field_writable COMMAND x3d_sai_experimental_tests
+        "--test-case=field capability queries predict every lifecycle intent")
+    add_test(NAME sai_field_units_once COMMAND x3d_sai_experimental_tests
+        "--test-case=authored unit boundaries convert exactly once around canonical state")
+    add_test(NAME sai_field_pure_read COMMAND x3d_sai_experimental_tests
+        "--test-case=public semantic ranges stay pure derived and authored-order stable")
+    add_test(NAME sai_order_public_ranges COMMAND x3d_sai_experimental_tests
+        "--test-case=public semantic ranges stay pure derived and authored-order stable")
     add_test(NAME sai_field_specialized_access COMMAND x3d_sai_experimental_tests
         "--test-case=specialized containment mutation obeys the field lifecycle")
     add_test(NAME sai_route_access COMMAND x3d_sai_experimental_tests
@@ -1819,6 +1830,8 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=dynamic discovery and typed fields are substitutable")
     add_test(NAME sai_cxx_failure_value COMMAND x3d_sai_experimental_tests
         "--test-case=one invalid write poisons the edit and publishes nothing")
+    add_test(NAME sai_cxx_result_composition COMMAND x3d_sai_experimental_tests
+        "--test-case=SAI results compose through expected-style monadic operations")
     add_test(NAME sai_evt_stale_async COMMAND x3d_sai_experimental_tests
         "--test-case=cancelled and stale load completions are inert")
     add_test(NAME sai_evt_input_transient COMMAND x3d_sai_experimental_tests
@@ -3024,6 +3037,11 @@ if(X3D_CPP_BUILD_TESTS)
         sai_mf_node_authority
         sai_mf_event_trace
         sai_field_access_state_machine
+        sai_field_readable
+        sai_field_writable
+        sai_field_units_once
+        sai_field_pure_read
+        sai_order_public_ranges
         sai_field_specialized_access
         sai_route_access
         sai_route_unique
@@ -3042,6 +3060,7 @@ if(X3D_CPP_BUILD_TESTS)
         sai_cxx_safe_destruction
         sai_cxx_typed_generic
         sai_cxx_failure_value
+        sai_cxx_result_composition
         sai_evt_stale_async
         sai_evt_input_transient
         sai_evt_inputoutput_publish

@@ -14,6 +14,8 @@
 #include <variant>
 #include <vector>
 
+#include <tl/expected.hpp>
+
 namespace x3d::sai::experimental {
 
 static_assert(sizeof(float) == 4 && std::numeric_limits<float>::is_iec559,
@@ -277,16 +279,6 @@ enum class value_kind {
   mf_vec4f,
   sf_enum,
   mf_enum,
-
-  // Transitional spellings retained while the experimental call sites move
-  // to exact ISO field kinds.
-  boolean = sf_bool,
-  int32 = sf_int32,
-  number = sf_double,
-  string = sf_string,
-  vec3f = sf_vec3f,
-  node = sf_node,
-  node_list = mf_node,
 };
 
 using value = std::variant<
@@ -308,6 +300,23 @@ enum class access_type {
   input_only,
   output_only,
   input_output,
+};
+
+enum class write_intent {
+  initialize,
+  retained,
+  event_input,
+  runtime_output,
+};
+
+enum class value_space { canonical, authored };
+
+struct unit_declaration {
+  std::string category;
+  std::string name;
+  double conversion_factor = 1.0;
+  friend bool operator==(const unit_declaration &,
+                         const unit_declaration &) = default;
 };
 
 enum class default_source {
@@ -406,74 +415,15 @@ struct sai_error {
   std::string field;
 };
 
-template <class T> class [[nodiscard]] result {
-public:
-  result(T value) : storage_(std::move(value)) {}
-  result(sai_error error) : storage_(std::move(error)) {}
-
-  explicit operator bool() const noexcept {
-    return std::holds_alternative<T>(storage_);
-  }
-
-  T &value() & {
-    if (!*this)
-      throw std::logic_error("result has no value");
-    return std::get<T>(storage_);
-  }
-  const T &value() const & {
-    if (!*this)
-      throw std::logic_error("result has no value");
-    return std::get<T>(storage_);
-  }
-  T &&value() && {
-    if (!*this)
-      throw std::logic_error("result has no value");
-    return std::get<T>(std::move(storage_));
-  }
-
-  sai_error &error() & {
-    if (*this)
-      throw std::logic_error("result has no error");
-    return std::get<sai_error>(storage_);
-  }
-  const sai_error &error() const & {
-    if (*this)
-      throw std::logic_error("result has no error");
-    return std::get<sai_error>(storage_);
-  }
-
-private:
-  std::variant<T, sai_error> storage_;
-};
-
-template <> class [[nodiscard]] result<void> {
-public:
-  result() = default;
-  result(sai_error error) : error_(std::move(error)) {}
-
-  explicit operator bool() const noexcept { return !error_.has_value(); }
-  void value() const {
-    if (!*this)
-      throw std::logic_error("result has no value");
-  }
-  sai_error &error() & {
-    if (*this)
-      throw std::logic_error("result has no error");
-    return *error_;
-  }
-  const sai_error &error() const & {
-    if (*this)
-      throw std::logic_error("result has no error");
-    return *error_;
-  }
-
-private:
-  std::optional<sai_error> error_;
-};
+using unexpected = tl::unexpected<sai_error>;
+inline unexpected failure(sai_error error) {
+  return unexpected{std::move(error)};
+}
+template <class T> using result = tl::expected<T, sai_error>;
 
 struct field_descriptor {
   std::string name;
-  value_kind kind = value_kind::string;
+  value_kind kind = value_kind::sf_string;
   access_type access = access_type::input_output;
   value default_value;
   default_source default_origin = default_source::field_type;
