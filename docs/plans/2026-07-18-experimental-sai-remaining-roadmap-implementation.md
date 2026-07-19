@@ -150,6 +150,13 @@ Stop/go review: confirm the generated model is authority before Phase 2.
 
 ### Task 2.1: Node removal and disposal contract
 
+**Completed 2026-07-19 on `sai/semantic-kernel`.** Strict staged reference
+integrity covers roots, shared SFNode/MFNode occurrences, names, exports,
+routes, committed imports, and import/removal races. Historical snapshots,
+field observers, undrained notifications, stale current handles, monotonic IDs,
+stale event batches, ordered changes, and value-local `noexcept` disposal have
+executable evidence.
+
 **Files:**
 - Modify: `experimental/sai/include/x3d/sai/experimental/kernel.hpp`
 - Modify: `experimental/sai/src/kernel.cpp`

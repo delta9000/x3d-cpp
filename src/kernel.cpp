@@ -474,6 +474,26 @@ find_live_import_reference(const detail::context_control &source,
   return std::nullopt;
 }
 
+std::optional<node_reference_blocker>
+find_live_context_reference(const detail::context_control &context,
+                            node_id target) {
+  for (const auto &[observer_id, observer] : context.event_observers) {
+    (void)observer_id;
+    if (observer.target == target)
+      return node_reference_blocker{
+          "node is retained by an active field observer", observer.field};
+  }
+  for (const auto &notification : context.pending) {
+    const auto *event =
+        std::get_if<detail::context_control::pending_event>(&notification);
+    if (event && event->delivery.target == target)
+      return node_reference_blocker{
+          "node is retained by an undrained event notification",
+          event->delivery.field};
+  }
+  return std::nullopt;
+}
+
 bool retained_write_allowed(access_type access, bool node_is_being_created) {
   switch (access) {
   case access_type::initialize_only:
@@ -796,6 +816,14 @@ result<void> scene_edit::remove_node(const node &target) {
   }
   {
     std::lock_guard lock(impl_->context->mutex);
+    if (const auto blocker =
+            find_live_context_reference(*impl_->context, target.id_)) {
+      impl_->poison =
+          edit_error(error_code::node_in_use, "scene_edit.remove_node",
+                     *impl_->context, impl_->base->revision, blocker->message,
+                     target.id_, blocker->field);
+      return *impl_->poison;
+    }
     if (const auto imported =
             find_live_import_reference(*impl_->context, target.id_)) {
       impl_->poison = edit_error(
@@ -2207,6 +2235,12 @@ result<change_set> scene_edit::commit() {
                       "edit base revision is stale");
   }
   for (const auto removed : impl_->removed_nodes) {
+    if (const auto blocker =
+            find_live_context_reference(*impl_->context, node_id{removed})) {
+      return edit_error(error_code::node_in_use, "scene_edit.commit",
+                        *impl_->context, impl_->base->revision,
+                        blocker->message, node_id{removed}, blocker->field);
+    }
     if (const auto imported =
             find_live_import_reference(*impl_->context, node_id{removed})) {
       return edit_error(error_code::node_in_use, "scene_edit.commit",

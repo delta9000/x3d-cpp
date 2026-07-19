@@ -51,6 +51,14 @@ The proposal makes these design choices executable:
 - Roots, ordered scoped names, and unique routes are inspected and edited
   through the same transaction. IDs found through inspection resolve back to
   handles, and mutation tokens require no private keys.
+- Node removal is an explicit, non-cascading staged mutation. Roots, node-valued
+  fields, names, exports, routes, and committed imports retain their targets
+  until the caller removes or rewrites those references. Field observers and
+  undrained event notifications retain targets at the live context boundary;
+  old snapshots remain historical truth and current handles become stale after
+  publication.
+- `node::dispose()` is local wrapper invalidation: it is `noexcept`, idempotent,
+  callback-free, identity-preserving, and has no scene or copy-wide effect.
 - Node type and ordered field descriptors are discoverable as owning values.
   Node-valued writes require context-bearing `node` handles (or spans of them),
   preventing a bare ID from aliasing an object in another ownership domain.
@@ -91,7 +99,7 @@ demonstrated invariant can be cited independently by the convergence register.
 
 This is a semantic reference kernel, not a complete ISO/IEC 19775-2 or
 19777-4 implementation. It currently omits parsing and serialization,
-profiles and document-codec unit integration, PROTO/EXTERNPROTO expansion, node removal,
+profiles and document-codec unit integration, PROTO/EXTERNPROTO expansion,
 cross-context field writes and ROUTEs, Inline loading, PROTO/IS
 apertures, runtime-originated outputOnly events, Script integration, URL
 transport, concrete browser adapters, presentation scheduling, scene-change
