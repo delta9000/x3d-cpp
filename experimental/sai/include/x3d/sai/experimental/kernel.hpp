@@ -82,6 +82,11 @@ class node {
 public:
   node_id id() const noexcept { return id_; }
   generation_id generation() const noexcept { return generation_; }
+  bool disposed() const noexcept { return disposed_; }
+  void dispose() noexcept {
+    context_.reset();
+    disposed_ = true;
+  }
 
 private:
   node(std::weak_ptr<detail::context_control> context, generation_id generation,
@@ -91,6 +96,7 @@ private:
   std::weak_ptr<detail::context_control> context_;
   generation_id generation_ = 0;
   node_id id_;
+  bool disposed_ = false;
   friend class scene_edit;
   friend class dynamic_multi_field_edit;
   friend class scene_snapshot;
@@ -256,6 +262,8 @@ template <class Tag> class typed_node {
 public:
   node_id id() const noexcept { return dynamic_.id(); }
   const node &dynamic() const noexcept { return dynamic_; }
+  bool disposed() const noexcept { return dynamic_.disposed(); }
+  void dispose() noexcept { dynamic_.dispose(); }
 
   template <class T>
   experimental::field<T> field(const field_key<Tag, T> &key) const noexcept {
