@@ -1837,6 +1837,10 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=explicit detachment and node removal publish atomically")
     add_test(NAME sai_life_wrapper_disposal COMMAND x3d_sai_experimental_tests
         "--test-case=wrapper disposal is local idempotent and callback free")
+    add_test(NAME sai_life_removed_handle COMMAND x3d_sai_experimental_tests
+        "--test-case=removed live handles become stale and node IDs are not recycled")
+    add_test(NAME sai_life_removed_event COMMAND x3d_sai_experimental_tests
+        "--test-case=node removal makes an older event batch stale")
     add_test(NAME sai_evt_observer_mutation COMMAND x3d_sai_experimental_tests
         "--test-case=commit queues observation and drain permits a reentrant commit")
     add_test(NAME sai_evt_callback_copy COMMAND x3d_sai_experimental_tests
@@ -3103,6 +3107,8 @@ if(X3D_CPP_BUILD_TESTS)
         sai_life_remove_nonmutation
         sai_life_remove_atomic
         sai_life_wrapper_disposal
+        sai_life_removed_handle
+        sai_life_removed_event
         sai_evt_observer_mutation
         sai_evt_callback_copy
         sai_cxx_safe_destruction

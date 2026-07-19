@@ -2903,6 +2903,53 @@ TEST_CASE("wrapper disposal is local idempotent and callback free") {
   CHECK(observer.active());
 }
 
+TEST_CASE("removed live handles become stale and node IDs are not recycled") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto removed = author.create_node("Transform");
+  REQUIRE(removed);
+  REQUIRE(author.commit());
+  const auto removed_id = removed->id();
+
+  auto removal = context.edit();
+  REQUIRE(removal.remove_node(removed.value()));
+  REQUIRE(removal.commit());
+  const auto stale = context.snapshot().describe(removed.value());
+  REQUIRE_FALSE(stale);
+  CHECK(stale.error().code == sai::error_code::stale_handle);
+
+  auto replacement = context.edit();
+  auto created = replacement.create_node("Transform");
+  REQUIRE(created);
+  REQUIRE(replacement.commit());
+  CHECK(created->id() != removed_id);
+  CHECK(created->id().value > removed_id.value);
+}
+
+TEST_CASE("node removal makes an older event batch stale") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto target = author.create_node("Transform");
+  REQUIRE(target);
+  REQUIRE(author.commit());
+  const auto input = context.snapshot().field(target.value(), "set_translation");
+  REQUIRE(input);
+  auto queued = context.events(sai::event_time{1.0});
+  REQUIRE(queued.send(input.value(), sai::value{sai::vec3f{1, 2, 3}}));
+
+  auto removal = context.edit();
+  REQUIRE(removal.remove_node(target.value()));
+  REQUIRE(removal.commit());
+
+  const auto stale = queued.commit();
+  REQUIRE_FALSE(stale);
+  CHECK(stale.error().code == sai::error_code::stale_revision);
+  CHECK(context.snapshot().revision() == 2);
+  CHECK(context.drain().delivered == 0);
+}
+
 TEST_CASE(
     "world replacement invalidates handles without invalidating snapshots") {
   sai::browser host{graph_registry()};
