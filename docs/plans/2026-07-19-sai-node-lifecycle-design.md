@@ -29,7 +29,8 @@ is governed by strict referential integrity:
 
 - It fails while the final staged scene still contains a root occurrence, an
   SFNode/MFNode reference, a name, an export, a local route endpoint, or another
-  retained semantic reference to the node.
+  retained semantic reference to the node, including a field observer or an
+  undrained event notification.
 - References may be removed or rewritten earlier in the same edit, so a complete
   graph rewrite and node removal publish atomically in one commit.
 - A C++ `node` wrapper is not a semantic reference and never prevents removal.
@@ -114,7 +115,7 @@ Tests must prove:
 
 - unreferenced node removal;
 - rejection for roots, shared SFNode/MFNode occurrences, names, exports, routes,
-  and active imported apertures;
+  field observers, undrained event notifications, and active imported apertures;
 - atomic explicit detachment followed by removal;
 - unchanged publication after a rejected removal;
 - old-snapshot readability and new-snapshot absence;

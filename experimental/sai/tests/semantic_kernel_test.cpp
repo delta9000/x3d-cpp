@@ -2950,6 +2950,62 @@ TEST_CASE("node removal makes an older event batch stale") {
   CHECK(context.drain().delivered == 0);
 }
 
+TEST_CASE("field observation retains its node until cancellation") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto target = author.create_node("Transform");
+  REQUIRE(target);
+  REQUIRE(author.commit());
+  const auto field = context.snapshot().field(target.value(), "translation");
+  REQUIRE(field);
+  auto observer = context.observe(
+      field.value(), [](const sai::event_delivery &) {});
+  REQUIRE(observer);
+
+  auto blocked = context.edit();
+  const auto rejected = blocked.remove_node(target.value());
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::node_in_use);
+  CHECK(rejected.error().field == "translation");
+
+  observer->cancel();
+  auto removal = context.edit();
+  REQUIRE(removal.remove_node(target.value()));
+  REQUIRE(removal.commit());
+}
+
+TEST_CASE("undrained event notification retains its target node") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto target = author.create_node("Transform");
+  REQUIRE(target);
+  REQUIRE(author.commit());
+  const auto field = context.snapshot().field(target.value(), "translation");
+  REQUIRE(field);
+  int callbacks = 0;
+  auto observer = context.observe(
+      field.value(), [&](const sai::event_delivery &) { ++callbacks; });
+  REQUIRE(observer);
+  auto events = context.events(sai::event_time{1.0});
+  REQUIRE(events.send(field.value(), sai::value{sai::vec3f{1, 2, 3}}));
+  REQUIRE(events.commit());
+  observer->cancel();
+
+  auto blocked = context.edit();
+  const auto rejected = blocked.remove_node(target.value());
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::node_in_use);
+  CHECK(rejected.error().field == "translation");
+
+  CHECK(context.drain().delivered == 0);
+  CHECK(callbacks == 0);
+  auto removal = context.edit();
+  REQUIRE(removal.remove_node(target.value()));
+  REQUIRE(removal.commit());
+}
+
 TEST_CASE(
     "world replacement invalidates handles without invalidating snapshots") {
   sai::browser host{graph_registry()};

@@ -66,7 +66,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Nodes belong to one detached arena or execution-context generation; cross-domain insertion requires an explicit share, import, clone, or splice policy.
     preserving_operations: [create node, adopt node, insert node, clone subgraph]
-    falsification_tests: [sai_own_node_value, sai_own_node_range, sai_own_event_nodes]
+    falsification_tests: [sai_own_node_value, sai_own_node_range, sai_own_event_nodes, sai_life_wrapper_disposal, sai_life_import_reference]
   - <<: *invariant_defaults
     id: INV-OWN-2
     review_marker: reviewed:sha256:0cf4b3470970
@@ -75,7 +75,7 @@ invariants:
     evidence_strength: normative
     statement: Ordinary lookup is local; Inline crosses through EXPORT/IMPORT and prototype internals through interface/IS; ancestor navigation never silently changes lookup.
     preserving_operations: [local lookup, import, export, IS binding, parent context]
-    falsification_tests: [sai_context_export_isolation, sai_context_import_authority, sai_context_import_firewall]
+    falsification_tests: [sai_context_export_isolation, sai_context_import_authority, sai_context_import_firewall, sai_life_import_reference, sai_life_import_race]
 
   - <<: *invariant_defaults
     id: INV-FIELD-1
@@ -131,7 +131,7 @@ invariants:
     evidence_strength: framework_proposal
     statement: Roots, child fields, names, routes, declarations, ownership, occurrences, runtime realization, and dirtiness move between valid states together.
     preserving_operations: [commit edit, update root, update route, update declaration]
-    falsification_tests: [sai_edit_atomic_indexes, sai_evt_inputoutput_publish, sai_context_aperture_revalidate]
+    falsification_tests: [sai_edit_atomic_indexes, sai_evt_inputoutput_publish, sai_context_aperture_revalidate, sai_life_remove_atomic, sai_life_import_race]
   - <<: *invariant_defaults
     id: INV-EDIT-2
     review_marker: reviewed:sha256:08c047a4527f
@@ -140,7 +140,7 @@ invariants:
     evidence_strength: framework_proposal
     statement: A rejected edit leaves semantic state, indexes, queues, revisions, and dirty state unchanged; diagnostics require no cleanup edit.
     preserving_operations: [validate edit, reject edit, rollback edit]
-    falsification_tests: [sai_edit_failure_nonmutation, sai_context_aperture_revalidate]
+    falsification_tests: [sai_edit_failure_nonmutation, sai_context_aperture_revalidate, sai_life_remove_nonmutation]
   - <<: *invariant_defaults
     id: INV-EDIT-3
     review_marker: reviewed:sha256:9a19304ccb4e
@@ -158,7 +158,7 @@ invariants:
     evidence_strength: framework_proposal
     statement: Each successful non-empty commit advances one monotonic revision and yields a ChangeSet with before/after facts, identities, occurrences, intent, timestamp, and diagnostics.
     preserving_operations: [commit edit, inspect changes, checkpoint revision]
-    falsification_tests: [sai_edit_revision_changeset, sai_evt_inputoutput_publish]
+    falsification_tests: [sai_edit_revision_changeset, sai_evt_inputoutput_publish, sai_life_node_removal]
   - <<: *invariant_defaults
     id: INV-EDIT-5
     review_marker: reviewed:sha256:695321f98a38
@@ -195,7 +195,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Callbacks may change subscriptions, request edits, or dispose handles without invalidating traversal; reentrant edits are queued or rejected at a defined boundary.
     preserving_operations: [subscribe, unsubscribe, callback, request reentrant edit]
-    falsification_tests: [sai_evt_observer_mutation, sai_evt_callback_copy, sai_evt_field_observer, sai_evt_reentrant_batch]
+    falsification_tests: [sai_evt_observer_mutation, sai_evt_callback_copy, sai_evt_field_observer, sai_evt_reentrant_batch, sai_life_observer_reference, sai_life_queued_event_reference]
   - <<: *invariant_defaults
     id: INV-EVT-4
     review_marker: reviewed:sha256:35cf0e667b29
@@ -223,7 +223,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Replacement, removal, declaration change, and disposal have explicit per-handle effects; stale handles never alias new allocations, dereference freed memory, or switch generation.
     preserving_operations: [dispose, replace world, remove node, use stale handle]
-    falsification_tests: [sai_life_stale_handle, sai_context_import_firewall]
+    falsification_tests: [sai_life_stale_handle, sai_context_import_firewall, sai_life_node_removal, sai_life_remove_references, sai_life_wrapper_disposal, sai_life_removed_handle, sai_life_removed_event, sai_life_observer_reference, sai_life_queued_event_reference, sai_life_import_reference, sai_life_import_race]
   - <<: *invariant_defaults
     id: INV-CONC-1
     review_marker: reviewed:sha256:7b1e40335ca8
@@ -333,7 +333,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Rollback, unsubscribe, cancellation, and destruction are noexcept and appropriately idempotent, and invoke no user callback through a half-destroyed graph.
     preserving_operations: [rollback, unsubscribe, cancel, destroy]
-    falsification_tests: [sai_cxx_safe_destruction]
+    falsification_tests: [sai_cxx_safe_destruction, sai_life_wrapper_disposal]
   - <<: *invariant_defaults
     id: INV-CXX-4
     review_marker: reviewed:sha256:a82bcd9c8cad
