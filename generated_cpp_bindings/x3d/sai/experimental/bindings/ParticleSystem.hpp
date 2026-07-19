@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct ParticleSystem {
   static constexpr std::string_view x3d_name = "ParticleSystem";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<ParticleSystem,
                                     ::x3d::sai::experimental::node_id>
       appearance{"appearance", access_type::input_output};
@@ -76,6 +78,38 @@ struct ParticleSystem {
       "id", access_type::input_output};
   inline static constexpr field_key<ParticleSystem, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 28> field_keys{{
+      {appearance.name(), appearance.kind, appearance.access()},
+      {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
+      {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
+      {bboxSize.name(), bboxSize.kind, bboxSize.access()},
+      {castShadow.name(), castShadow.kind, castShadow.access()},
+      {color.name(), color.kind, color.access()},
+      {colorKey.name(), colorKey.kind, colorKey.access()},
+      {createParticles.name(), createParticles.kind, createParticles.access()},
+      {emitter.name(), emitter.kind, emitter.access()},
+      {enabled.name(), enabled.kind, enabled.access()},
+      {geometry.name(), geometry.kind, geometry.access()},
+      {geometryType.name(), geometryType.kind, geometryType.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {isActive.name(), isActive.kind, isActive.access()},
+      {lifetimeVariation.name(), lifetimeVariation.kind,
+       lifetimeVariation.access()},
+      {maxParticles.name(), maxParticles.kind, maxParticles.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {particleLifetime.name(), particleLifetime.kind,
+       particleLifetime.access()},
+      {particleSize.name(), particleSize.kind, particleSize.access()},
+      {physics.name(), physics.kind, physics.access()},
+      {texCoord.name(), texCoord.kind, texCoord.access()},
+      {texCoordKey.name(), texCoordKey.kind, texCoordKey.access()},
+      {visible.name(), visible.kind, visible.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct ListenerPointSource {
   static constexpr std::string_view x3d_name = "ListenerPointSource";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<ListenerPointSource, std::string>
       description{"description", access_type::input_output};
   inline static constexpr field_key<ListenerPointSource, bool> dopplerEnabled{
@@ -60,6 +62,32 @@ struct ListenerPointSource {
       "id", access_type::input_output};
   inline static constexpr field_key<ListenerPointSource, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 22> field_keys{{
+      {description.name(), description.kind, description.access()},
+      {dopplerEnabled.name(), dopplerEnabled.kind, dopplerEnabled.access()},
+      {elapsedTime.name(), elapsedTime.kind, elapsedTime.access()},
+      {enabled.name(), enabled.kind, enabled.access()},
+      {gain.name(), gain.kind, gain.access()},
+      {interauralDistance.name(), interauralDistance.kind,
+       interauralDistance.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {isActive.name(), isActive.kind, isActive.access()},
+      {isPaused.name(), isPaused.kind, isPaused.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {orientation.name(), orientation.kind, orientation.access()},
+      {pauseTime.name(), pauseTime.kind, pauseTime.access()},
+      {position.name(), position.kind, position.access()},
+      {resumeTime.name(), resumeTime.kind, resumeTime.access()},
+      {startTime.name(), startTime.kind, startTime.access()},
+      {stopTime.name(), stopTime.kind, stopTime.access()},
+      {trackCurrentView.name(), trackCurrentView.kind,
+       trackCurrentView.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

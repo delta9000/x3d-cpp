@@ -14,6 +14,7 @@ from x3d_cpp_gen.parser import (
 )
 from x3d_cpp_gen.emit.sai_bindings import (
     SAI_VALUE_TYPE_MAPPING,
+    gen_sai_binding_index,
     gen_sai_node_binding,
     sai_value_type,
 )
@@ -40,10 +41,25 @@ def test_transform_binding_uses_owner_typed_keys(model):
     generated = emit("Transform", model)
     assert "struct Transform" in generated
     assert 'static constexpr std::string_view x3d_name = "Transform";' in generated
+    assert "X3DSAIBindings.hpp" in generated
+    assert "schema_fingerprint = model_fingerprint" in generated
     assert "field_key<Transform, ::x3d::sai::experimental::vec3f>" in generated
     assert "translation{" in generated
     assert 'translation{"translation",' in generated
     assert "access_type::input_output" in generated
+    assert "field_keys" in generated
+    assert "translation.name(), translation.kind, translation.access()" in generated
+
+
+def test_binding_index_covers_every_generated_tag_in_order(model):
+    nodes, _graph, _enum_defs = model
+    generated = gen_sai_binding_index(nodes)
+    assert generated.index('bindings/AcousticProperties.hpp') < generated.index(
+        'bindings/WorldInfo.hpp'
+    )
+    assert "std::array<node_key_descriptor" in generated
+    assert "Transform::field_keys" in generated
+    assert "Transform::schema_fingerprint" in generated
 
 
 def test_node_image_and_reserved_field_mappings_are_exact(model):

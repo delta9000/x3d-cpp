@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct Text {
   static constexpr std::string_view x3d_name = "Text";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<Text, ::x3d::sai::experimental::node_id>
       fontStyle{"fontStyle", access_type::input_output};
   inline static constexpr field_key<Text, ::x3d::sai::experimental::node_id> IS{
@@ -37,6 +39,23 @@ struct Text {
       "id", access_type::input_output};
   inline static constexpr field_key<Text, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
+      {fontStyle.name(), fontStyle.kind, fontStyle.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {length.name(), length.kind, length.access()},
+      {lineBounds.name(), lineBounds.kind, lineBounds.access()},
+      {maxExtent.name(), maxExtent.kind, maxExtent.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {origin.name(), origin.kind, origin.access()},
+      {solid.name(), solid.kind, solid.access()},
+      {string.name(), string.kind, string.access()},
+      {textBounds.name(), textBounds.kind, textBounds.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

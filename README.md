@@ -74,10 +74,16 @@ The proposal makes these design choices executable:
   safety protocols can be exercised.
 
 `examples/generated_author_inspect.cpp` is the primary authoring story. It
-selects generated descriptors, uses owner-specific generated keys for every
-write, composes fallible work with `result<T>`, commits once, and inspects the
-same typed fields. `examples/author_inspect.cpp` remains the deliberately
-handwritten dynamic fixture for event, ROUTE, shared-node, and import behavior.
+selects generated descriptors by tag, uses owner-specific generated keys and
+typed nodes for field and graph writes, composes fallible work with `result<T>`,
+commits once, and inspects the same typed fields. Generated tags and registries
+carry the same model fingerprint; typed creation fails before producing a
+handle when provenance differs. A successful public mutation of a generated
+registry revokes that provenance, so mixed handwritten/generated descriptors
+cannot acquire generated typed handles. The exhaustive generated-key catalog is checked
+against metadata for every node and ordered field.
+`examples/author_inspect.cpp` remains the deliberately handwritten dynamic
+fixture for event, ROUTE, shared-node, and import behavior.
 The focused doctest suite is also registered as stable `sai_*` CTests so each
 demonstrated invariant can be cited independently by the convergence register.
 
@@ -104,7 +110,9 @@ UOM does not formally annotate per-field
 unit categories, so the catalog preserves that absence and the unit-overlay
 design remains open. Dynamic typed fields remain checked views over the
 descriptor. Generated owner-specific keys provide the direct authoring lane
-without changing capabilities or bypassing descriptor validation.
+without changing capabilities or bypassing descriptor validation. Typed reads
+defensively report a structured type mismatch rather than exposing variant
+access exceptions.
 
 No API in this directory should be promoted merely because it compiles. The
 invariant tests and composed examples are the review surface: revise the

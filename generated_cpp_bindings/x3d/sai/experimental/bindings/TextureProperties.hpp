@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct TextureProperties {
   static constexpr std::string_view x3d_name = "TextureProperties";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<TextureProperties, float> anisotropicDegree{
       "anisotropicDegree", access_type::input_output};
   inline static constexpr field_key<TextureProperties,
@@ -52,6 +54,30 @@ struct TextureProperties {
       "id", access_type::input_output};
   inline static constexpr field_key<TextureProperties, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
+      {anisotropicDegree.name(), anisotropicDegree.kind,
+       anisotropicDegree.access()},
+      {borderColor.name(), borderColor.kind, borderColor.access()},
+      {borderWidth.name(), borderWidth.kind, borderWidth.access()},
+      {boundaryModeR.name(), boundaryModeR.kind, boundaryModeR.access()},
+      {boundaryModeS.name(), boundaryModeS.kind, boundaryModeS.access()},
+      {boundaryModeT.name(), boundaryModeT.kind, boundaryModeT.access()},
+      {generateMipMaps.name(), generateMipMaps.kind, generateMipMaps.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {magnificationFilter.name(), magnificationFilter.kind,
+       magnificationFilter.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {minificationFilter.name(), minificationFilter.kind,
+       minificationFilter.access()},
+      {textureCompression.name(), textureCompression.kind,
+       textureCompression.access()},
+      {texturePriority.name(), texturePriority.kind, texturePriority.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

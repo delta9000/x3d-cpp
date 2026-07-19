@@ -10,8 +10,6 @@
 
 #include <array>
 #include <cstdlib>
-#include <span>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -23,16 +21,18 @@ template <class T> bool holds(sai::result<T> actual, const T &expected) {
 }
 
 int main() {
-  const std::array<std::string_view, 7> selected{
-      "Appearance", "Coordinate", "PixelTexture", "PointSet",
-      "Shape",      "Transform",  "WorldInfo"};
-  auto registry = sai::generated_type_registry(selected);
+  auto registry = sai::generated_type_registry_for<
+      bindings::Appearance, bindings::Coordinate, bindings::PixelTexture,
+      bindings::PointSet, bindings::Shape, bindings::Transform,
+      bindings::WorldInfo>();
   if (!registry)
     return EXIT_FAILURE;
 
   sai::browser browser{std::move(registry).value()};
   auto scene = browser.current_scene();
   auto edit = scene.edit();
+  // This is ordered scene metadata only: the current UOM does not annotate
+  // Transform.translation with a length category, so no conversion is claimed.
   if (!edit.declare_unit(sai::unit_declaration{.category = "length",
                                                .name = "centimetre",
                                                .conversion_factor = 0.01}))
@@ -74,19 +74,16 @@ int main() {
   const auto image = texture->field(bindings::PixelTexture::image);
   const auto title = world_info->field(bindings::WorldInfo::title);
   const auto info = world_info->field(bindings::WorldInfo::info);
-  const std::array<sai::node, 1> child_nodes{shape->dynamic()};
+  const std::array child_nodes{*shape};
 
-  if (!edit.set(children, std::span<const sai::node>{child_nodes}) ||
-      !edit.set(geometry, point_set->dynamic()) ||
-      !edit.set(shape_appearance, appearance->dynamic()) ||
-      !edit.set(coord, coordinate->dynamic()) ||
-      !edit.set(point, authored_points) ||
-      !edit.set(appearance_texture, texture->dynamic()) ||
+  if (!edit.set(children, child_nodes) || !edit.set(geometry, *point_set) ||
+      !edit.set(shape_appearance, *appearance) ||
+      !edit.set(coord, *coordinate) || !edit.set(point, authored_points) ||
+      !edit.set(appearance_texture, *texture) ||
       !edit.set(image, authored_image) ||
       !edit.set(title, std::string{"Generated authoring"}) ||
-      !edit.set(info, authored_info) ||
-      !edit.append_root(transform->dynamic()) ||
-      !edit.append_root(world_info->dynamic()) || !edit.commit())
+      !edit.set(info, authored_info) || !edit.append_root(*transform) ||
+      !edit.append_root(*world_info) || !edit.commit())
     return EXIT_FAILURE;
 
   const auto snapshot = scene.snapshot();

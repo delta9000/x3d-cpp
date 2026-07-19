@@ -1,6 +1,8 @@
 #include "x3d/sai/experimental/kernel.hpp"
 #include "x3d/sai/experimental/metadata.hpp"
 
+#include "x3d/sai/experimental/X3DSAIBindingCatalog.hpp"
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/bindings/Coordinate.hpp"
 #include "x3d/sai/experimental/bindings/Group.hpp"
 #include "x3d/sai/experimental/bindings/PixelTexture.hpp"
@@ -294,6 +296,8 @@ TEST_CASE("generated field keys remove dynamic authoring lookup") {
 
 TEST_CASE("generated typed keys and metadata are one schema view") {
   namespace bindings = sai::bindings;
+  static_assert(bindings::Transform::schema_fingerprint ==
+                bindings::model_fingerprint);
   static_assert(
       accepts_generated_key<sai::typed_node<bindings::Transform>,
                             decltype(bindings::Transform::translation)>);
@@ -375,6 +379,89 @@ TEST_CASE("generated typed keys and metadata are one schema view") {
   check_dynamic(texture.value().dynamic(), "image", image_value);
   check_dynamic(coordinate.value().dynamic(), "point", point_value);
   check_dynamic(world_info.value().dynamic(), "info", info_value);
+}
+
+TEST_CASE("generated typed creation rejects mismatched registry provenance") {
+  sai::type_registry registry;
+  REQUIRE(registry.define(test_node_type(
+      "Transform",
+      {test_field("translation", sai::value_kind::sf_string,
+                  sai::access_type::input_output, std::string{})})));
+  sai::browser host{std::move(registry)};
+  auto edit = host.current_scene().edit();
+
+  auto transform = edit.create<sai::bindings::Transform>();
+  REQUIRE_FALSE(transform);
+  CHECK(transform.error().code == sai::error_code::invalid_descriptor);
+  CHECK(transform.error().operation == "scene_edit.create_generated");
+}
+
+TEST_CASE("mutating a generated registry revokes generated provenance") {
+  const std::array generated_types{std::string_view{"Group"}};
+  auto registry = sai::generated_type_registry(generated_types);
+  REQUIRE(registry);
+  REQUIRE(registry->schema_fingerprint());
+  REQUIRE(registry->define(test_node_type(
+      "Transform",
+      {test_field("translation", sai::value_kind::sf_string,
+                  sai::access_type::input_output, std::string{})})));
+  CHECK_FALSE(registry->schema_fingerprint());
+
+  sai::browser host{std::move(*registry)};
+  auto edit = host.current_scene().edit();
+  const auto transform = edit.create<sai::bindings::Transform>();
+  REQUIRE_FALSE(transform);
+  CHECK(transform.error().code == sai::error_code::invalid_descriptor);
+  CHECK(transform.error().operation == "scene_edit.create_generated");
+}
+
+TEST_CASE("generated key catalog has exhaustive ordered metadata parity") {
+  const auto metadata = sai::generated_metadata_catalog();
+  const auto &keys = sai::bindings::node_keys;
+  REQUIRE(keys.size() == metadata.nodes.size());
+  CHECK(sai::bindings::model_fingerprint == metadata.model_fingerprint);
+
+  for (std::size_t node_index = 0; node_index < keys.size(); ++node_index) {
+    const auto &key_node = keys[node_index];
+    const auto &metadata_node = metadata.nodes[node_index];
+    CHECK(key_node.name == metadata_node.name);
+    CHECK(key_node.schema_fingerprint == metadata.model_fingerprint);
+    REQUIRE(key_node.fields.size() == metadata_node.fields.size());
+    for (std::size_t field_index = 0; field_index < key_node.fields.size();
+         ++field_index) {
+      const auto &key_field = key_node.fields[field_index];
+      const auto &metadata_field = metadata_node.fields[field_index];
+      CHECK(key_field.name == metadata_field.name);
+      CHECK(key_field.kind == metadata_field.type);
+      CHECK(key_field.access == metadata_field.access);
+    }
+  }
+}
+
+TEST_CASE("generated typed and dynamic failures have one vocabulary") {
+  const std::array<std::string_view, 1> selected{"Transform"};
+  auto registry = sai::generated_type_registry(selected);
+  REQUIRE(registry);
+  sai::browser host{std::move(registry).value()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto transform = edit.create<sai::bindings::Transform>();
+  REQUIRE(transform);
+  REQUIRE(edit.commit());
+
+  const auto snapshot = context.snapshot();
+  const auto typed = transform->field(sai::bindings::Transform::addChildren);
+  const auto dynamic = snapshot.field(transform->dynamic(), "addChildren");
+  REQUIRE(dynamic);
+  const auto typed_read = snapshot.read(typed);
+  const auto dynamic_read = snapshot.read(dynamic.value());
+  REQUIRE_FALSE(typed_read);
+  REQUIRE_FALSE(dynamic_read);
+  CHECK(typed_read.error().code == dynamic_read.error().code);
+  CHECK(typed_read.error().operation == dynamic_read.error().operation);
+  CHECK(typed_read.error().message == dynamic_read.error().message);
+  CHECK(typed_read.error().node == dynamic_read.error().node);
+  CHECK(typed_read.error().field == dynamic_read.error().field);
 }
 
 TEST_CASE("generated metadata authors without runtime node identity") {

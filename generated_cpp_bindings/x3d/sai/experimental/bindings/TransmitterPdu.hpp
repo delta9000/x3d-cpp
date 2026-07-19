@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct TransmitterPdu {
   static constexpr std::string_view x3d_name = "TransmitterPdu";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<TransmitterPdu, std::string> address{
       "address", access_type::input_output};
   inline static constexpr field_key<TransmitterPdu,
@@ -139,6 +141,84 @@ struct TransmitterPdu {
       "id", access_type::input_output};
   inline static constexpr field_key<TransmitterPdu, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 56> field_keys{{
+      {address.name(), address.kind, address.access()},
+      {antennaLocation.name(), antennaLocation.kind, antennaLocation.access()},
+      {antennaPatternLength.name(), antennaPatternLength.kind,
+       antennaPatternLength.access()},
+      {antennaPatternType.name(), antennaPatternType.kind,
+       antennaPatternType.access()},
+      {applicationID.name(), applicationID.kind, applicationID.access()},
+      {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
+      {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
+      {bboxSize.name(), bboxSize.kind, bboxSize.access()},
+      {cryptoKeyID.name(), cryptoKeyID.kind, cryptoKeyID.access()},
+      {cryptoSystem.name(), cryptoSystem.kind, cryptoSystem.access()},
+      {description.name(), description.kind, description.access()},
+      {enabled.name(), enabled.kind, enabled.access()},
+      {entityID.name(), entityID.kind, entityID.access()},
+      {frequency.name(), frequency.kind, frequency.access()},
+      {geoCoords.name(), geoCoords.kind, geoCoords.access()},
+      {geoSystem.name(), geoSystem.kind, geoSystem.access()},
+      {inputSource.name(), inputSource.kind, inputSource.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {isActive.name(), isActive.kind, isActive.access()},
+      {isNetworkReader.name(), isNetworkReader.kind, isNetworkReader.access()},
+      {isNetworkWriter.name(), isNetworkWriter.kind, isNetworkWriter.access()},
+      {isRtpHeaderHeard.name(), isRtpHeaderHeard.kind,
+       isRtpHeaderHeard.access()},
+      {isStandAlone.name(), isStandAlone.kind, isStandAlone.access()},
+      {lengthOfModulationParameters.name(), lengthOfModulationParameters.kind,
+       lengthOfModulationParameters.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {modulationTypeDetail.name(), modulationTypeDetail.kind,
+       modulationTypeDetail.access()},
+      {modulationTypeMajor.name(), modulationTypeMajor.kind,
+       modulationTypeMajor.access()},
+      {modulationTypeSpreadSpectrum.name(), modulationTypeSpreadSpectrum.kind,
+       modulationTypeSpreadSpectrum.access()},
+      {modulationTypeSystem.name(), modulationTypeSystem.kind,
+       modulationTypeSystem.access()},
+      {multicastRelayHost.name(), multicastRelayHost.kind,
+       multicastRelayHost.access()},
+      {multicastRelayPort.name(), multicastRelayPort.kind,
+       multicastRelayPort.access()},
+      {networkMode.name(), networkMode.kind, networkMode.access()},
+      {port.name(), port.kind, port.access()},
+      {power.name(), power.kind, power.access()},
+      {radioEntityTypeCategory.name(), radioEntityTypeCategory.kind,
+       radioEntityTypeCategory.access()},
+      {radioEntityTypeCountry.name(), radioEntityTypeCountry.kind,
+       radioEntityTypeCountry.access()},
+      {radioEntityTypeDomain.name(), radioEntityTypeDomain.kind,
+       radioEntityTypeDomain.access()},
+      {radioEntityTypeKind.name(), radioEntityTypeKind.kind,
+       radioEntityTypeKind.access()},
+      {radioEntityTypeNomenclature.name(), radioEntityTypeNomenclature.kind,
+       radioEntityTypeNomenclature.access()},
+      {radioEntityTypeNomenclatureVersion.name(),
+       radioEntityTypeNomenclatureVersion.kind,
+       radioEntityTypeNomenclatureVersion.access()},
+      {radioID.name(), radioID.kind, radioID.access()},
+      {readInterval.name(), readInterval.kind, readInterval.access()},
+      {relativeAntennaLocation.name(), relativeAntennaLocation.kind,
+       relativeAntennaLocation.access()},
+      {rtpHeaderExpected.name(), rtpHeaderExpected.kind,
+       rtpHeaderExpected.access()},
+      {siteID.name(), siteID.kind, siteID.access()},
+      {timestamp.name(), timestamp.kind, timestamp.access()},
+      {transmitFrequencyBandwidth.name(), transmitFrequencyBandwidth.kind,
+       transmitFrequencyBandwidth.access()},
+      {transmitState.name(), transmitState.kind, transmitState.access()},
+      {visible.name(), visible.kind, visible.access()},
+      {whichGeometry.name(), whichGeometry.kind, whichGeometry.access()},
+      {writeInterval.name(), writeInterval.kind, writeInterval.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

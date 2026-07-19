@@ -53,6 +53,14 @@ result<value> default_value_for(const schema_field_descriptor &field);
 result<type_registry>
 generated_type_registry(std::span<const std::string_view> node_types);
 
+template <class... Tags>
+  requires(sizeof...(Tags) > 0 &&
+           (requires { std::string_view{Tags::schema_fingerprint}; } && ...))
+result<type_registry> generated_type_registry_for() {
+  constexpr std::array names{std::string_view{Tags::x3d_name}...};
+  return generated_type_registry(names);
+}
+
 } // namespace x3d::sai::experimental
 
 #endif

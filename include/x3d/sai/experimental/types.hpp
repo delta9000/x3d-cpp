@@ -7,8 +7,10 @@
 #include <iterator>
 #include <limits>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -441,13 +443,25 @@ struct node_type_descriptor {
   bool abstract = false;
 };
 
+class type_registry;
+result<type_registry>
+generated_type_registry(std::span<const std::string_view> node_types);
+
 class type_registry {
 public:
   result<void> define(node_type_descriptor descriptor);
   const node_type_descriptor *find(const std::string &name) const noexcept;
+  std::optional<std::string_view> schema_fingerprint() const noexcept {
+    if (!schema_fingerprint_)
+      return std::nullopt;
+    return *schema_fingerprint_;
+  }
 
 private:
   std::unordered_map<std::string, node_type_descriptor> types_;
+  std::optional<std::string> schema_fingerprint_;
+  friend result<type_registry>
+  generated_type_registry(std::span<const std::string_view> node_types);
 };
 
 } // namespace x3d::sai::experimental

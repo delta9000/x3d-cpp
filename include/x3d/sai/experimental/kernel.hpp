@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -26,9 +27,9 @@ template <class Tag> class typed_node;
 
 template <class Owner, class T> class field_key {
 public:
-  std::string_view name() const noexcept { return name_; }
+  constexpr std::string_view name() const noexcept { return name_; }
   static constexpr value_kind kind = value_traits<T>::kind;
-  access_type access() const noexcept { return access_; }
+  constexpr access_type access() const noexcept { return access_; }
 
 private:
   constexpr field_key(std::string_view name, access_type access)
@@ -38,6 +39,18 @@ private:
   access_type access_;
   friend Owner;
   template <class> friend class typed_node;
+};
+
+struct field_key_descriptor {
+  std::string_view name;
+  value_kind kind = value_kind::sf_string;
+  access_type access = access_type::input_output;
+};
+
+struct node_key_descriptor {
+  std::string_view name;
+  std::string_view schema_fingerprint;
+  std::span<const field_key_descriptor> fields;
 };
 
 class load_ticket {
@@ -510,11 +523,19 @@ public:
 
   result<node> create_node(const std::string &type_name);
   template <class Tag> result<typed_node<Tag>> create() {
+    if constexpr (requires { std::string_view{Tag::schema_fingerprint}; }) {
+      auto verified = require_schema_fingerprint(Tag::schema_fingerprint);
+      if (!verified)
+        return failure(verified.error());
+    }
     return create_node(std::string{Tag::x3d_name}).transform([](node created) {
       return typed_node<Tag>{std::move(created)};
     });
   }
   result<void> append_root(const node &child);
+  template <class Tag> result<void> append_root(const typed_node<Tag> &child) {
+    return append_root(child.dynamic());
+  }
   result<void> remove_root(std::size_t index);
   result<void> append(const node &parent, const std::string &field,
                       const node &child);
@@ -551,9 +572,27 @@ public:
                    const node &new_value) {
     return set(target.dynamic_, new_value);
   }
+  template <class Tag>
+  result<void> set(const experimental::field<node_id> &target,
+                   const typed_node<Tag> &new_value) {
+    return set(target.dynamic_, new_value.dynamic());
+  }
   result<void> set(const experimental::field<node_list> &target,
                    std::span<const node> new_value) {
     return set(target.dynamic_, new_value);
+  }
+  template <std::ranges::input_range Range>
+    requires requires(std::ranges::range_reference_t<Range> item) {
+      { item.dynamic() } -> std::same_as<const node &>;
+    }
+  result<void> set(const experimental::field<node_list> &target,
+                   const Range &new_value) {
+    std::vector<node> dynamic_nodes;
+    if constexpr (std::ranges::sized_range<Range>)
+      dynamic_nodes.reserve(std::ranges::size(new_value));
+    for (const auto &typed : new_value)
+      dynamic_nodes.push_back(typed.dynamic());
+    return set(target.dynamic_, std::span<const node>{dynamic_nodes});
   }
   result<void> define_name(const std::string &name, const node &target);
   result<void> undefine_name(const std::string &name);
@@ -569,6 +608,7 @@ public:
   result<change_set> commit();
 
 private:
+  result<void> require_schema_fingerprint(std::string_view expected);
   result<void> set_value(const dynamic_field &target, value new_value,
                          bool node_authority_checked);
   explicit scene_edit(
@@ -600,7 +640,10 @@ public:
     auto dynamic = read(source.dynamic_);
     if (!dynamic)
       return failure(dynamic.error());
-    return std::get<T>(std::move(dynamic).value());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return typed_read_mismatch(source.dynamic_, "scene_snapshot.read_typed");
   }
   template <class T>
   result<T> read(const experimental::field<T> &source,
@@ -608,14 +651,21 @@ public:
     auto dynamic = read(source.dynamic_, space);
     if (!dynamic)
       return failure(dynamic.error());
-    return std::get<T>(std::move(dynamic).value());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return typed_read_mismatch(source.dynamic_, "scene_snapshot.read_typed");
   }
   template <class T>
   result<T> read(const experimental::imported_field<T> &source) const {
     auto dynamic = read(source.dynamic_);
     if (!dynamic)
       return failure(dynamic.error());
-    return std::get<T>(std::move(dynamic).value());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return typed_read_mismatch(source.dynamic_,
+                               "scene_snapshot.read_imported_typed");
   }
   template <class T>
   result<T> read(const experimental::imported_field<T> &source,
@@ -623,7 +673,11 @@ public:
     auto dynamic = read(source.dynamic_, space);
     if (!dynamic)
       return failure(dynamic.error());
-    return std::get<T>(std::move(dynamic).value());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return typed_read_mismatch(source.dynamic_,
+                               "scene_snapshot.read_imported_typed");
   }
   result<node> named(const std::string &name) const;
   const std::vector<name_binding> &names() const noexcept;
@@ -634,6 +688,29 @@ public:
   const std::vector<route> &routes() const noexcept;
 
 private:
+  static unexpected typed_read_mismatch(const dynamic_field &source,
+                                        std::string operation) {
+    sai_error error;
+    error.code = error_code::type_mismatch;
+    error.operation = std::move(operation);
+    error.message = "typed field representation does not match its handle";
+    error.generation = source.generation_;
+    error.node = source.node_;
+    error.field = source.name_;
+    return failure(std::move(error));
+  }
+  static unexpected typed_read_mismatch(const dynamic_imported_field &source,
+                                        std::string operation) {
+    sai_error error;
+    error.code = error_code::type_mismatch;
+    error.operation = std::move(operation);
+    error.message =
+        "typed imported field representation does not match its handle";
+    error.generation = source.source_generation_;
+    error.node = source.node_;
+    error.field = source.name_;
+    return failure(std::move(error));
+  }
   scene_snapshot(std::shared_ptr<detail::context_control> context,
                  std::shared_ptr<const detail::scene_state> state);
 

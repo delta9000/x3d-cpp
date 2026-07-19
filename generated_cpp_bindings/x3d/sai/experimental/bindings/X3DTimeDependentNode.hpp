@@ -1,12 +1,14 @@
 #pragma once
 
 // Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
 #include "x3d/sai/experimental/kernel.hpp"
 
 namespace x3d::sai::experimental::bindings {
 
 struct X3DTimeDependentNode {
   static constexpr std::string_view x3d_name = "X3DTimeDependentNode";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<X3DTimeDependentNode, std::string>
       description{"description", access_type::input_output};
   inline static constexpr field_key<X3DTimeDependentNode,
@@ -44,6 +46,23 @@ struct X3DTimeDependentNode {
       "id", access_type::input_output};
   inline static constexpr field_key<X3DTimeDependentNode, std::string> style{
       "style", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
+      {description.name(), description.kind, description.access()},
+      {elapsedTime.name(), elapsedTime.kind, elapsedTime.access()},
+      {IS.name(), IS.kind, IS.access()},
+      {isActive.name(), isActive.kind, isActive.access()},
+      {isPaused.name(), isPaused.kind, isPaused.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {pauseTime.name(), pauseTime.kind, pauseTime.access()},
+      {resumeTime.name(), resumeTime.kind, resumeTime.access()},
+      {startTime.name(), startTime.kind, startTime.access()},
+      {stopTime.name(), stopTime.kind, stopTime.access()},
+      {DEF.name(), DEF.kind, DEF.access()},
+      {USE.name(), USE.kind, USE.access()},
+      {class_.name(), class_.kind, class_.access()},
+      {id.name(), id.kind, id.access()},
+      {style.name(), style.kind, style.access()},
+  }};
 };
 
 } // namespace x3d::sai::experimental::bindings

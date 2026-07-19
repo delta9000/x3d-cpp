@@ -90,6 +90,12 @@ lifecycle. It exposes:
 Each generated concrete node tag owns a complete, deduplicated field-key set,
 including inherited fields. Keys are owner-specific in Phase 1 so a field from
 one node type cannot silently construct a handle for another node type.
+Generated tags and generated registries also carry the exact semantic-model
+fingerprint. `create<Tag>()` verifies that provenance before constructing a
+typed node, so a custom same-name registry cannot counterfeit a generated
+schema contract. Any successful public registry mutation revokes provenance;
+the generated factory stamps it only after population. Typed reads still check the owning variant defensively and
+return `type_mismatch`; they never leak `std::bad_variant_access`.
 Generic interface/base-node relationships remain a later generated-concepts
 layer; Phase 1 does not fake them with an unsafe owner-free key.
 

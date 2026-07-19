@@ -642,6 +642,9 @@ generated_type_registry(std::span<const std::string_view> node_types) {
     if (auto defined = registry.define(std::move(adapted)); !defined)
       return failure(defined.error());
   }
+  // Stamp only after population: define() deliberately revokes generated
+  // provenance on every successful public mutation.
+  registry.schema_fingerprint_ = catalog.model_fingerprint;
   return registry;
 }
 
