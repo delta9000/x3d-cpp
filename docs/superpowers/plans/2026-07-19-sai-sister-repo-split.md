@@ -139,6 +139,21 @@ git remote remove origin
 git status --short   # expect clean
 ```
 
+- [ ] **Step 6: Create the private remote and push**
+
+The repository is private. Create it that way from the start; never create it public
+and flip it afterwards, since even a brief public window is a publication.
+
+```bash
+gh repo create delta9000/x3d-sai --private \
+  --description "Experimental modern C++ X3D SAI semantic kernel (split from x3d-cpp)" \
+  --source . --remote origin
+gh repo view delta9000/x3d-sai --json isPrivate   # expect {"isPrivate":true}
+git push -u origin HEAD
+```
+
+Confirm `isPrivate` is `true` before pushing anything else.
+
 ---
 
 ## Task 2: Seed the build system and vendored test support
