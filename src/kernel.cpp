@@ -257,6 +257,7 @@ struct scene_state {
   struct node_record {
     std::string type_name;
     std::unordered_map<std::string, value> fields;
+    std::optional<declaration_id> scope_owner;
   };
 
   revision_id revision = 0;
@@ -400,6 +401,11 @@ bool accepts_node_type(const detail::context_control &context,
                          candidate_type->interfaces.end(),
                          accepted) != candidate_type->interfaces.end();
       });
+}
+
+bool same_node_scope(const detail::scene_state::node_record &owner,
+                     const detail::scene_state::node_record &candidate) {
+  return owner.scope_owner == candidate.scope_owner;
 }
 
 bool accepts_node_payload(const detail::context_control &context,
@@ -871,6 +877,13 @@ result<void> scene_edit::remove_node(const node &target) {
         impl_->base->revision, "invalid node handle", target.id_);
     return *impl_->poison;
   }
+  if (found->second.scope_owner) {
+    impl_->poison =
+        edit_error(error_code::node_in_use, "scene_edit.remove_node",
+                   *impl_->context, impl_->base->revision,
+                   "node is owned by a local declaration", target.id_);
+    return *impl_->poison;
+  }
   if (const auto blocker =
           find_node_reference(*impl_->context, impl_->staged, target.id_)) {
     impl_->poison = edit_error(
@@ -921,6 +934,13 @@ result<void> scene_edit::append_root(const node &child) {
     impl_->poison = edit_error(
         error_code::stale_handle, "scene_edit.append_root", *impl_->context,
         impl_->base->revision, "invalid child handle", child.id_);
+    return *impl_->poison;
+  }
+  if (impl_->staged.nodes.at(child.id_.value).scope_owner) {
+    impl_->poison = edit_error(
+        error_code::invalid_context, "scene_edit.append_root", *impl_->context,
+        impl_->base->revision,
+        "a template-scoped node cannot become a scene root", child.id_);
     return *impl_->poison;
   }
   impl_->staged.roots.push_back(child.id_);
@@ -1006,6 +1026,14 @@ result<void> scene_edit::append(const node &parent, const std::string &field,
         edit_error(error_code::type_mismatch, "scene_edit.append",
                    *impl_->context, impl_->base->revision,
                    "child type is not accepted by the field descriptor",
+                   parent.id_, field);
+    return *impl_->poison;
+  }
+  if (!same_node_scope(parent_record->second, child_record->second)) {
+    impl_->poison =
+        edit_error(error_code::invalid_context, "scene_edit.append",
+                   *impl_->context, impl_->base->revision,
+                   "containment edges cannot cross scene or declaration scope",
                    parent.id_, field);
     return *impl_->poison;
   }
@@ -1427,6 +1455,14 @@ result<void> dynamic_multi_field_edit::set(std::size_t index,
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
+  if (!same_node_scope(owner->second, candidate->second)) {
+    edit.value()->poison =
+        edit_error(error_code::invalid_context, "multi_field.set_node",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "MFNode element cannot cross scene or declaration scope",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
   auto *sequence = multi_sequence(*edit.value(), target_);
   const auto before =
       sequence ? sequence_element(*sequence, index) : std::optional<value>{};
@@ -1519,6 +1555,14 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
         edit_error(error_code::type_mismatch, "multi_field.insert_node",
                    *edit.value()->context, edit.value()->base->revision,
                    "node type is not accepted by the MFNode descriptor",
+                   target_.node(), target_.name());
+    return *edit.value()->poison;
+  }
+  if (!same_node_scope(owner->second, candidate->second)) {
+    edit.value()->poison =
+        edit_error(error_code::invalid_context, "multi_field.insert_node",
+                   *edit.value()->context, edit.value()->base->revision,
+                   "MFNode element cannot cross scene or declaration scope",
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
@@ -1716,6 +1760,14 @@ dynamic_multi_field_edit::replace(std::span<const node> replacement) {
                      target_.node(), target_.name());
       return *edit.value()->poison;
     }
+    if (!same_node_scope(owner->second, candidate->second)) {
+      edit.value()->poison =
+          edit_error(error_code::invalid_context, "multi_field.replace_nodes",
+                     *edit.value()->context, edit.value()->base->revision,
+                     "MFNode range cannot cross scene or declaration scope",
+                     target_.node(), target_.name());
+      return *edit.value()->poison;
+    }
     authorized.push_back(element.id_);
   }
 
@@ -1883,6 +1935,15 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                      target.node_, target.name_);
       return *impl_->poison;
     }
+    if (id.value != 0 &&
+        candidate->second.scope_owner != found->second.scope_owner) {
+      impl_->poison = edit_error(
+          error_code::invalid_context, "scene_edit.set", *impl_->context,
+          impl_->base->revision,
+          "node-valued fields cannot cross scene or declaration scope",
+          target.node_, target.name_);
+      return *impl_->poison;
+    }
   }
   if (node_authority_checked && descriptor->kind == value_kind::mf_node) {
     for (const auto id : std::get<node_list>(new_value)) {
@@ -1894,6 +1955,14 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
             impl_->base->revision,
             "node range contains a type not accepted by the field descriptor",
             target.node_, target.name_);
+        return *impl_->poison;
+      }
+      if (candidate->second.scope_owner != found->second.scope_owner) {
+        impl_->poison =
+            edit_error(error_code::invalid_context, "scene_edit.set",
+                       *impl_->context, impl_->base->revision,
+                       "node range cannot cross scene or declaration scope",
+                       target.node_, target.name_);
         return *impl_->poison;
       }
     }
@@ -1928,6 +1997,13 @@ result<void> scene_edit::define_name(const std::string &name,
     impl_->poison = edit_error(
         error_code::stale_handle, "scene_edit.define_name", *impl_->context,
         impl_->base->revision, "invalid node handle", target.id_);
+    return *impl_->poison;
+  }
+  if (impl_->staged.nodes.at(target.id_.value).scope_owner) {
+    impl_->poison = edit_error(
+        error_code::invalid_context, "scene_edit.define_name", *impl_->context,
+        impl_->base->revision,
+        "a template-scoped node cannot have a scene name", target.id_);
     return *impl_->poison;
   }
   const auto existing = std::find_if(
@@ -1997,6 +2073,13 @@ result<void> scene_edit::export_node(const std::string &name,
     impl_->poison = edit_error(
         error_code::stale_handle, "scene_edit.export_node", *impl_->context,
         impl_->base->revision, "invalid local node handle", target.id_);
+    return *impl_->poison;
+  }
+  if (impl_->staged.nodes.at(target.id_.value).scope_owner) {
+    impl_->poison =
+        edit_error(error_code::invalid_context, "scene_edit.export_node",
+                   *impl_->context, impl_->base->revision,
+                   "a template-scoped node cannot be exported", target.id_);
     return *impl_->poison;
   }
   const auto existing = std::find_if(
@@ -2170,6 +2253,14 @@ result<void> scene_edit::add_route(const dynamic_field &source,
                    "route endpoint types or access are incompatible");
     return *impl_->poison;
   }
+  if (impl_->staged.nodes.at(source.node_.value).scope_owner ||
+      impl_->staged.nodes.at(sink.node_.value).scope_owner) {
+    impl_->poison =
+        edit_error(error_code::invalid_context, "scene_edit.add_route",
+                   *impl_->context, impl_->base->revision,
+                   "template-scoped nodes cannot be scene route endpoints");
+    return *impl_->poison;
+  }
   route added{.source = source.node_,
               .source_field = source.name_,
               .sink = sink.node_,
@@ -2220,6 +2311,19 @@ result<void> scene_edit::remove_route(const route &target) {
 
 result<declaration>
 scene_edit::add_local_declaration(local_declaration_descriptor descriptor) {
+  if (!descriptor.body_roots.empty()) {
+    impl_->poison = edit_error(
+        error_code::invalid_context, "scene_edit.add_local_declaration",
+        *impl_->context, impl_->base->revision,
+        "template bodies require context-bearing node handles");
+    return *impl_->poison;
+  }
+  return add_local_declaration(std::move(descriptor), {});
+}
+
+result<declaration>
+scene_edit::add_local_declaration(local_declaration_descriptor descriptor,
+                                  std::span<const node> body_roots) {
   if (impl_->poison)
     return *impl_->poison;
   if (descriptor.name.empty()) {
@@ -2231,9 +2335,9 @@ scene_edit::add_local_declaration(local_declaration_descriptor descriptor) {
   }
   if (!descriptor.body_roots.empty()) {
     impl_->poison = edit_error(
-        error_code::invalid_descriptor, "scene_edit.add_local_declaration",
+        error_code::invalid_context, "scene_edit.add_local_declaration",
         *impl_->context, impl_->base->revision,
-        "template body ownership is not available in this implementation step");
+        "body root IDs are inspection data; author with node handles");
     return *impl_->poison;
   }
   if (const auto issue = validate_declaration_interface(descriptor.interface)) {
@@ -2254,7 +2358,138 @@ scene_edit::add_local_declaration(local_declaration_descriptor descriptor) {
         "declaration name is already defined: " + descriptor.name);
     return *impl_->poison;
   }
+
+  std::vector<node_id> authored_roots;
+  authored_roots.reserve(body_roots.size());
+  std::vector<node_id> pending;
+  pending.reserve(body_roots.size());
+  for (const node &root : body_roots) {
+    const auto root_context = root.context_.lock();
+    if (root_context != impl_->context ||
+        root.generation_ != impl_->context->generation ||
+        !impl_->staged.nodes.contains(root.id_.value)) {
+      impl_->poison = edit_error(
+          error_code::invalid_context, "scene_edit.add_local_declaration",
+          *impl_->context, impl_->base->revision,
+          "template body root belongs to another context", root.id_);
+      return *impl_->poison;
+    }
+    authored_roots.push_back(root.id_);
+    pending.push_back(root.id_);
+  }
+
+  std::unordered_set<std::uint64_t> closure;
+  while (!pending.empty()) {
+    const node_id current = pending.back();
+    pending.pop_back();
+    if (!closure.insert(current.value).second)
+      continue;
+    const auto found = impl_->staged.nodes.find(current.value);
+    if (found == impl_->staged.nodes.end()) {
+      impl_->poison = edit_error(
+          error_code::invalid_descriptor, "scene_edit.add_local_declaration",
+          *impl_->context, impl_->base->revision,
+          "template closure contains a dangling node", current);
+      return *impl_->poison;
+    }
+    if (found->second.scope_owner) {
+      impl_->poison = edit_error(
+          error_code::node_in_use, "scene_edit.add_local_declaration",
+          *impl_->context, impl_->base->revision,
+          "template node is already owned by another declaration", current);
+      return *impl_->poison;
+    }
+    for (const auto &[field_name, stored] : found->second.fields) {
+      (void)field_name;
+      if (const auto *single = std::get_if<node_id>(&stored)) {
+        if (single->value != 0)
+          pending.push_back(*single);
+      } else if (const auto *many = std::get_if<node_list>(&stored)) {
+        pending.insert(pending.end(), many->begin(), many->end());
+      }
+    }
+  }
+
+  std::unordered_map<std::uint64_t, int> colors;
+  std::function<bool(std::uint64_t)> acyclic = [&](std::uint64_t current) {
+    if (colors[current] == 1)
+      return false;
+    if (colors[current] == 2)
+      return true;
+    colors[current] = 1;
+    const auto &record = impl_->staged.nodes.at(current);
+    const auto *type = impl_->context->registry.find(record.type_name);
+    for (const field_descriptor &field : type->fields) {
+      if (!field.containment)
+        continue;
+      const value &stored = record.fields.at(field.name);
+      if (const auto *single = std::get_if<node_id>(&stored)) {
+        if (single->value != 0 && !acyclic(single->value))
+          return false;
+      } else if (const auto *many = std::get_if<node_list>(&stored)) {
+        for (node_id child : *many) {
+          if (!acyclic(child.value))
+            return false;
+        }
+      }
+    }
+    colors[current] = 2;
+    return true;
+  };
+  if (std::ranges::any_of(closure,
+                          [&](std::uint64_t node) { return !acyclic(node); })) {
+    impl_->poison = edit_error(error_code::containment_cycle,
+                               "scene_edit.add_local_declaration",
+                               *impl_->context, impl_->base->revision,
+                               "template body contains a containment cycle");
+    return *impl_->poison;
+  }
+
+  const auto in_closure = [&](node_id candidate) {
+    return closure.contains(candidate.value);
+  };
+  if (std::ranges::any_of(impl_->staged.roots, in_closure) ||
+      std::ranges::any_of(impl_->staged.names,
+                          [&](const name_binding &binding) {
+                            return in_closure(binding.node);
+                          }) ||
+      std::ranges::any_of(impl_->staged.exports,
+                          [&](const export_binding &binding) {
+                            return in_closure(binding.node);
+                          }) ||
+      std::ranges::any_of(impl_->staged.routes, [&](const route &candidate) {
+        return in_closure(candidate.source) || in_closure(candidate.sink);
+      })) {
+    impl_->poison =
+        edit_error(error_code::node_in_use, "scene_edit.add_local_declaration",
+                   *impl_->context, impl_->base->revision,
+                   "template closure is already referenced by the live scene");
+    return *impl_->poison;
+  }
+  for (const auto &[id, record] : impl_->staged.nodes) {
+    if (closure.contains(id))
+      continue;
+    for (const auto &[field_name, stored] : record.fields) {
+      bool crosses = false;
+      if (const auto *single = std::get_if<node_id>(&stored))
+        crosses = single->value != 0 && in_closure(*single);
+      else if (const auto *many = std::get_if<node_list>(&stored))
+        crosses = std::ranges::any_of(*many, in_closure);
+      if (crosses) {
+        impl_->poison = edit_error(
+            error_code::node_in_use, "scene_edit.add_local_declaration",
+            *impl_->context, impl_->base->revision,
+            "template closure is retained by an ordinary scene node",
+            node_id{id}, field_name);
+        return *impl_->poison;
+      }
+    }
+  }
+
   const declaration_id id{impl_->staged.next_declaration_id++};
+  descriptor.body_roots = std::move(authored_roots);
+  for (const std::uint64_t node : closure)
+    impl_->staged.nodes.at(node).scope_owner = id;
   declaration_descriptor authored{.id = id, .payload = std::move(descriptor)};
   impl_->staged.declaration_order.push_back(id);
   impl_->staged.declarations.emplace(id.value, authored);
@@ -2412,14 +2647,17 @@ result<void> scene_edit::update_declaration(const declaration &target,
     return *impl_->poison;
   }
   if (const auto *local =
-          std::get_if<local_declaration_descriptor>(&replacement);
-      local && !local->body_roots.empty()) {
-    impl_->poison = declaration_edit_error(
-        error_code::invalid_descriptor, "scene_edit.update_declaration",
-        *impl_->context, impl_->base->revision,
-        "template body ownership is not available in this implementation step",
-        target.id_);
-    return *impl_->poison;
+          std::get_if<local_declaration_descriptor>(&replacement)) {
+    const auto &current =
+        std::get<local_declaration_descriptor>(found->second.payload);
+    if (local->body_roots != current.body_roots) {
+      impl_->poison = declaration_edit_error(
+          error_code::invalid_context, "scene_edit.update_declaration",
+          *impl_->context, impl_->base->revision,
+          "template body changes require context-bearing node handles",
+          target.id_);
+      return *impl_->poison;
+    }
   }
   if (const auto *external =
           std::get_if<external_declaration_descriptor>(&replacement);
@@ -2462,6 +2700,11 @@ result<void> scene_edit::remove_declaration(const declaration &target) {
     return *impl_->poison;
   }
   const declaration_descriptor before = found->second;
+  for (auto &[node, record] : impl_->staged.nodes) {
+    (void)node;
+    if (record.scope_owner == target.id_)
+      record.scope_owner.reset();
+  }
   const auto ordered =
       std::ranges::find(impl_->staged.declaration_order, target.id_);
   impl_->staged.declaration_order.erase(ordered);
