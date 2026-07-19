@@ -179,7 +179,7 @@ The strict gate also fails while the binding audit itself remains incomplete.
 | `INV-FIELD-3` — Access type is a state-machine rule | `AX-3` | normative | `reviewed:sha256:7b7769f2becb` | 12 | 3/3 |
 | `INV-FIELD-4` — Units convert exactly once | `AX-3` | normative | `reviewed:sha256:8ba4f0f86dd4` | 2 | 1/2 |
 | `INV-FIELD-5` — Reads are observationally pure | `AX-3` | recurrent_intent | `reviewed:sha256:d96ae0eeba5d` | 4 | 1/1 |
-| `INV-GEN-1` — Generated API and runtime metadata cannot drift | `AX-6` | recurrent_intent | `reviewed:sha256:cb1e8e9e0609` | 2 | 0/1 |
+| `INV-GEN-1` — Generated API and runtime metadata cannot drift | `AX-6` | recurrent_intent | `reviewed:sha256:cb1e8e9e0609` | 2 | 1/2 |
 | `INV-ID-1` — One semantic node, one identity | `AX-1` | normative | `reviewed:sha256:947d8f9c4052` | 9 | 1/1 |
 | `INV-ID-2` — Occurrence is an edge, not a node | `AX-1` | normative | `reviewed:sha256:e4ffb3ca9bb8` | 4 | 1/1 |
 | `INV-ID-3` — Names are scoped aliases, not identity | `AX-1` | normative | `reviewed:sha256:23dd55898b64` | 1 | 3/3 |

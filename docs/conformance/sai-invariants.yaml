@@ -305,7 +305,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Types, fields, access, defaults, constraints, units, profiles, components, docs, and serializers derive from one versioned semantic model with no dangling references.
     preserving_operations: [generate bindings, reflect runtime, serialize, build docs]
-    falsification_tests: [planned:sai_gen_no_drift]
+    falsification_tests: [sai_generated_binding_parity, planned:sai_gen_no_drift]
 
   - <<: *invariant_defaults
     id: INV-CXX-1

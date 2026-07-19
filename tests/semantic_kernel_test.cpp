@@ -1,6 +1,12 @@
 #include "x3d/sai/experimental/kernel.hpp"
 #include "x3d/sai/experimental/metadata.hpp"
 
+#include "x3d/sai/experimental/bindings/Coordinate.hpp"
+#include "x3d/sai/experimental/bindings/Group.hpp"
+#include "x3d/sai/experimental/bindings/PixelTexture.hpp"
+#include "x3d/sai/experimental/bindings/Transform.hpp"
+#include "x3d/sai/experimental/bindings/WorldInfo.hpp"
+
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "x3d/nodes/X3DSemanticMetadataRegistry.hpp"
@@ -284,6 +290,92 @@ TEST_CASE("generated field keys remove dynamic authoring lookup") {
   auto stale = stale_edit.commit();
   REQUIRE_FALSE(stale);
   CHECK(stale.error().code == sai::error_code::stale_handle);
+}
+
+TEST_CASE("generated typed keys and metadata are one schema view") {
+  namespace bindings = sai::bindings;
+  static_assert(
+      accepts_generated_key<sai::typed_node<bindings::Transform>,
+                            decltype(bindings::Transform::translation)>);
+  static_assert(
+      !accepts_generated_key<sai::typed_node<bindings::Group>,
+                             decltype(bindings::Transform::translation)>);
+
+  const auto catalog = sai::generated_metadata_catalog();
+  const auto check_key = [&](std::string_view node_name, const auto &key) {
+    const auto node = std::ranges::find(catalog.nodes, node_name,
+                                        &sai::schema_node_descriptor::name);
+    REQUIRE(node != catalog.nodes.end());
+    const auto field = std::ranges::find(node->fields, key.name(),
+                                         &sai::schema_field_descriptor::name);
+    REQUIRE(field != node->fields.end());
+    using key_type = std::remove_cvref_t<decltype(key)>;
+    CHECK(field->type == key_type::kind);
+    CHECK(field->access == key.access());
+  };
+  check_key("Transform", bindings::Transform::translation);
+  check_key("Group", bindings::Group::children);
+  check_key("PixelTexture", bindings::PixelTexture::image);
+  check_key("Coordinate", bindings::Coordinate::point);
+  check_key("WorldInfo", bindings::WorldInfo::info);
+
+  const std::array<std::string_view, 5> selected{
+      "Transform", "Group", "PixelTexture", "Coordinate", "WorldInfo"};
+  auto registry = sai::generated_type_registry(selected);
+  REQUIRE(registry);
+  sai::browser host{std::move(registry).value()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto transform = edit.create<bindings::Transform>();
+  auto group = edit.create<bindings::Group>();
+  auto texture = edit.create<bindings::PixelTexture>();
+  auto coordinate = edit.create<bindings::Coordinate>();
+  auto world_info = edit.create<bindings::WorldInfo>();
+  REQUIRE(transform);
+  REQUIRE(group);
+  REQUIRE(texture);
+  REQUIRE(coordinate);
+  REQUIRE(world_info);
+
+  const sai::vec3f translation_value{1, 2, 3};
+  const sai::node_list children_value{transform.value().id()};
+  const std::array<sai::node, 1> children_nodes{
+      transform.value().dynamic()};
+  const sai::image image_value{1, 1, 3, {10, 20, 30}};
+  const sai::vec3f_list point_value{{1, 2, 3}, {4, 5, 6}};
+  const sai::string_list info_value{"generated", "typed"};
+  const auto translation =
+      transform.value().field(bindings::Transform::translation);
+  const auto children = group.value().field(bindings::Group::children);
+  const auto image = texture.value().field(bindings::PixelTexture::image);
+  const auto point = coordinate.value().field(bindings::Coordinate::point);
+  const auto info = world_info.value().field(bindings::WorldInfo::info);
+  REQUIRE(edit.set(translation, translation_value));
+  REQUIRE(edit.set(children, std::span<const sai::node>{children_nodes}));
+  REQUIRE(edit.set(image, image_value));
+  REQUIRE(edit.set(point, point_value));
+  REQUIRE(edit.set(info, info_value));
+  REQUIRE(edit.commit());
+
+  const auto snapshot = context.snapshot();
+  CHECK(snapshot.read(translation).value() == translation_value);
+  CHECK(snapshot.read(children).value() == children_value);
+  CHECK(snapshot.read(image).value() == image_value);
+  CHECK(snapshot.read(point).value() == point_value);
+  CHECK(snapshot.read(info).value() == info_value);
+  const auto check_dynamic = [&](const sai::node &owner, std::string_view name,
+                                 const sai::value &expected) {
+    const auto field = snapshot.field(owner, std::string{name});
+    REQUIRE(field);
+    const auto value = snapshot.read(field.value());
+    REQUIRE(value);
+    CHECK(value.value() == expected);
+  };
+  check_dynamic(transform.value().dynamic(), "translation", translation_value);
+  check_dynamic(group.value().dynamic(), "children", children_value);
+  check_dynamic(texture.value().dynamic(), "image", image_value);
+  check_dynamic(coordinate.value().dynamic(), "point", point_value);
+  check_dynamic(world_info.value().dynamic(), "info", info_value);
 }
 
 TEST_CASE("generated metadata authors without runtime node identity") {
