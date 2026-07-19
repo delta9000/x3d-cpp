@@ -565,6 +565,48 @@ std::optional<interface_validation_issue> validate_declaration_interface(
   return std::nullopt;
 }
 
+bool compatible_interface_field(const interface_field_descriptor &external,
+                                const interface_field_descriptor &local) {
+  if (external.name != local.name || external.kind != local.kind ||
+      external.access != local.access ||
+      external.accepted_node_types != local.accepted_node_types ||
+      external.unit_category != local.unit_category ||
+      external.default_value.has_value() != local.default_value.has_value())
+    return false;
+  return !external.default_value ||
+         same_representation(*external.default_value, *local.default_value);
+}
+
+bool compatible_declaration_interface(
+    const std::vector<interface_field_descriptor> &external,
+    const std::vector<interface_field_descriptor> &local) {
+  return external.size() == local.size() &&
+         std::ranges::equal(external, local, compatible_interface_field);
+}
+
+std::optional<std::string>
+validate_external_resolution(const detail::scene_state &state,
+                             const external_declaration_descriptor &external) {
+  if (external.load_state != external_load_state::resolved) {
+    if (external.resolved_declaration)
+      return "only a resolved external may retain a declaration target";
+    return std::nullopt;
+  }
+  if (!external.resolved_declaration)
+    return "resolved external declaration has no target";
+  const auto target =
+      state.declarations.find(external.resolved_declaration->value);
+  if (target == state.declarations.end())
+    return "resolved external declaration target does not exist";
+  const auto *local =
+      std::get_if<local_declaration_descriptor>(&target->second.payload);
+  if (!local)
+    return "resolved external declaration target is not a local declaration";
+  if (!compatible_declaration_interface(external.interface, local->interface))
+    return "resolved external interface is incompatible with its local target";
+  return std::nullopt;
+}
+
 bool retained_write_allowed(access_type access, bool node_is_being_created) {
   switch (access) {
   case access_type::initialize_only:
@@ -2661,18 +2703,48 @@ result<void> scene_edit::update_declaration(const declaration &target,
   }
   if (const auto *external =
           std::get_if<external_declaration_descriptor>(&replacement);
-      external && (external->urls.empty() ||
-                   std::ranges::any_of(
-                       external->urls,
-                       [](const std::string &url) { return url.empty(); }) ||
-                   external->load_state != external_load_state::unresolved ||
-                   external->resolved_declaration)) {
-    impl_->poison = declaration_edit_error(
-        error_code::invalid_descriptor, "scene_edit.update_declaration",
-        *impl_->context, impl_->base->revision,
-        "external update must remain unresolved with at least one URL",
-        target.id_);
-    return *impl_->poison;
+      external) {
+    if (external->urls.empty() ||
+        std::ranges::any_of(external->urls, [](const std::string &url) {
+          return url.empty();
+        })) {
+      impl_->poison = declaration_edit_error(
+          error_code::invalid_descriptor, "scene_edit.update_declaration",
+          *impl_->context, impl_->base->revision,
+          "external declaration requires at least one non-empty URL",
+          target.id_);
+      return *impl_->poison;
+    }
+    detail::scene_state candidate_state = impl_->staged;
+    candidate_state.declarations.at(target.id_.value).payload = replacement;
+    if (const auto issue =
+            validate_external_resolution(candidate_state, *external)) {
+      impl_->poison = declaration_edit_error(
+          error_code::invalid_descriptor, "scene_edit.update_declaration",
+          *impl_->context, impl_->base->revision, *issue, target.id_);
+      return *impl_->poison;
+    }
+  }
+  if (const auto *local =
+          std::get_if<local_declaration_descriptor>(&replacement)) {
+    const auto retained = std::ranges::find_if(
+        impl_->staged.declaration_order, [&](declaration_id candidate) {
+          const auto *external = std::get_if<external_declaration_descriptor>(
+              &impl_->staged.declarations.at(candidate.value).payload);
+          return external &&
+                 external->load_state == external_load_state::resolved &&
+                 external->resolved_declaration == target.id_ &&
+                 !compatible_declaration_interface(external->interface,
+                                                   local->interface);
+        });
+    if (retained != impl_->staged.declaration_order.end()) {
+      impl_->poison = declaration_edit_error(
+          error_code::declaration_in_use, "scene_edit.update_declaration",
+          *impl_->context, impl_->base->revision,
+          "local declaration is retained by a resolved external declaration",
+          target.id_);
+      return *impl_->poison;
+    }
   }
   const declaration_descriptor before = found->second;
   found->second.payload = std::move(replacement);
@@ -2696,6 +2768,22 @@ result<void> scene_edit::remove_declaration(const declaration &target) {
     impl_->poison = declaration_edit_error(
         error_code::stale_handle, "scene_edit.remove_declaration",
         *impl_->context, impl_->base->revision, "invalid declaration handle",
+        target.id_);
+    return *impl_->poison;
+  }
+  const auto retained = std::ranges::find_if(
+      impl_->staged.declaration_order, [&](declaration_id candidate) {
+        const auto *external = std::get_if<external_declaration_descriptor>(
+            &impl_->staged.declarations.at(candidate.value).payload);
+        return external &&
+               external->load_state == external_load_state::resolved &&
+               external->resolved_declaration == target.id_;
+      });
+  if (retained != impl_->staged.declaration_order.end()) {
+    impl_->poison = declaration_edit_error(
+        error_code::declaration_in_use, "scene_edit.remove_declaration",
+        *impl_->context, impl_->base->revision,
+        "local declaration is retained by a resolved external declaration",
         target.id_);
     return *impl_->poison;
   }
@@ -2725,6 +2813,19 @@ result<change_set> scene_edit::commit() {
     return edit_error(error_code::poisoned_edit, "scene_edit.commit",
                       *impl_->context, impl_->base->revision,
                       "scene edit was already committed");
+  }
+
+  for (declaration_id id : impl_->staged.declaration_order) {
+    const auto *external = std::get_if<external_declaration_descriptor>(
+        &impl_->staged.declarations.at(id.value).payload);
+    if (!external)
+      continue;
+    if (const auto issue =
+            validate_external_resolution(impl_->staged, *external)) {
+      return declaration_edit_error(error_code::invalid_descriptor,
+                                    "scene_edit.commit", *impl_->context,
+                                    impl_->base->revision, *issue, id);
+    }
   }
 
   std::unordered_map<std::uint64_t, int> colors;

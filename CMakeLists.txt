@@ -1831,6 +1831,10 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=template scope rejects public aliases routes and removal")
     add_test(NAME sai_decl_scope_release COMMAND x3d_sai_experimental_tests
         "--test-case=removing a declaration releases rather than deletes template nodes")
+    add_test(NAME sai_decl_external_state COMMAND x3d_sai_experimental_tests
+        "--test-case=external declarations expose honest explicit load states")
+    add_test(NAME sai_decl_external_compatibility COMMAND x3d_sai_experimental_tests
+        "--test-case=resolved externals require and retain compatible local identity")
     add_test(NAME sai_own_node_value COMMAND x3d_sai_experimental_tests
         "--test-case=node-valued writes require a context-bearing node handle")
     add_test(NAME sai_own_node_range COMMAND x3d_sai_experimental_tests
@@ -3130,6 +3134,8 @@ if(X3D_CPP_BUILD_TESTS)
         sai_decl_scope_claim_atomic
         sai_decl_scope_leakage
         sai_decl_scope_release
+        sai_decl_external_state
+        sai_decl_external_compatibility
         sai_own_node_value
         sai_own_node_range
         sai_cap_predictive
