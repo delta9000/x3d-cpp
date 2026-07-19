@@ -1895,6 +1895,10 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=source export remapping invalidates a staged import atomically")
     add_test(NAME sai_context_import_removal COMMAND x3d_sai_experimental_tests
         "--test-case=ordered imports are their own removal tokens")
+    add_test(NAME sai_life_import_reference COMMAND x3d_sai_experimental_tests
+        "--test-case=committed imports retain source nodes across contexts")
+    add_test(NAME sai_life_import_race COMMAND x3d_sai_experimental_tests
+        "--test-case=a committed import wins over an already staged source removal")
     add_test(NAME sai_context_import_snapshot COMMAND x3d_sai_experimental_tests
         "--test-case=imported typed and dynamic reads capture immutable source revisions")
     add_test(NAME sai_context_import_firewall COMMAND x3d_sai_experimental_tests
@@ -3128,6 +3132,8 @@ if(X3D_CPP_BUILD_TESTS)
         sai_context_alias_collision
         sai_context_aperture_revalidate
         sai_context_import_removal
+        sai_life_import_reference
+        sai_life_import_race
         sai_context_import_snapshot
         sai_context_import_firewall
         x3d_script_system
