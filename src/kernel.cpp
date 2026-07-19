@@ -499,6 +499,48 @@ find_live_context_reference(const detail::context_control &context,
   return std::nullopt;
 }
 
+struct interface_validation_issue {
+  error_code code = error_code::invalid_descriptor;
+  std::string message;
+  std::string field;
+};
+
+std::optional<interface_validation_issue> validate_declaration_interface(
+    const std::vector<interface_field_descriptor> &interface) {
+  std::unordered_set<std::string> names;
+  for (const auto &field : interface) {
+    if (field.name.empty())
+      return interface_validation_issue{
+          .message = "interface field name must not be empty", .field = {}};
+    if (!names.insert(field.name).second)
+      return interface_validation_issue{
+          .code = error_code::duplicate_field,
+          .message = "interface field name is already defined: " + field.name,
+          .field = field.name};
+    if (field.default_value && (field.access == access_type::input_only ||
+                                field.access == access_type::output_only))
+      return interface_validation_issue{
+          .message = "event interface field cannot declare a default value",
+          .field = field.name};
+    if (field.default_value && !value_matches(field.kind, *field.default_value))
+      return interface_validation_issue{
+          .message =
+              "interface default value does not match its exact field kind",
+          .field = field.name};
+    if (field.unit_category && (!standard_unit_category(*field.unit_category) ||
+                                !unit_scalable_kind(field.kind)))
+      return interface_validation_issue{
+          .message = "interface unit category is unknown or incompatible",
+          .field = field.name};
+    if (!field.accepted_node_types.empty() &&
+        field.kind != value_kind::sf_node && field.kind != value_kind::mf_node)
+      return interface_validation_issue{
+          .message = "node-type constraints require an SFNode or MFNode field",
+          .field = field.name};
+  }
+  return std::nullopt;
+}
+
 bool retained_write_allowed(access_type access, bool node_is_being_created) {
   switch (access) {
   case access_type::initialize_only:
@@ -2164,6 +2206,12 @@ scene_edit::add_local_declaration(local_declaration_descriptor descriptor) {
         "template body ownership is not available in this implementation step");
     return *impl_->poison;
   }
+  if (const auto issue = validate_declaration_interface(descriptor.interface)) {
+    impl_->poison = edit_error(issue->code, "scene_edit.add_local_declaration",
+                               *impl_->context, impl_->base->revision,
+                               issue->message, std::nullopt, issue->field);
+    return *impl_->poison;
+  }
   const auto duplicate = std::ranges::find_if(
       impl_->staged.declaration_order, [&](declaration_id candidate) {
         return experimental::name(impl_->staged.declarations.at(
@@ -2197,12 +2245,20 @@ result<declaration> scene_edit::add_external_declaration(
     return *impl_->poison;
   }
   if (descriptor.urls.empty() ||
+      std::ranges::any_of(descriptor.urls,
+                          [](const std::string &url) { return url.empty(); }) ||
       descriptor.load_state != external_load_state::unresolved ||
       descriptor.resolved_declaration) {
     impl_->poison = edit_error(
         error_code::invalid_descriptor, "scene_edit.add_external_declaration",
         *impl_->context, impl_->base->revision,
         "new external declaration must be unresolved with at least one URL");
+    return *impl_->poison;
+  }
+  if (const auto issue = validate_declaration_interface(descriptor.interface)) {
+    impl_->poison = edit_error(
+        issue->code, "scene_edit.add_external_declaration", *impl_->context,
+        impl_->base->revision, issue->message, std::nullopt, issue->field);
     return *impl_->poison;
   }
   const auto duplicate = std::ranges::find_if(

@@ -77,6 +77,50 @@ sai::field_descriptor test_field(std::string name, sai::value_kind kind,
   };
 }
 
+sai::interface_field_descriptor
+test_interface_field(std::string name,
+                     sai::value_kind kind = sai::value_kind::sf_string,
+                     sai::access_type access = sai::access_type::input_output,
+                     std::optional<sai::value> default_value = std::nullopt,
+                     std::vector<std::string> accepted_node_types = {},
+                     std::optional<std::string> unit_category = std::nullopt) {
+  return sai::interface_field_descriptor{
+      .name = std::move(name),
+      .kind = kind,
+      .access = access,
+      .default_value = std::move(default_value),
+      .accepted_node_types = std::move(accepted_node_types),
+      .unit_category = std::move(unit_category),
+  };
+}
+
+sai::local_declaration_descriptor test_local_declaration(
+    std::string name,
+    std::vector<sai::interface_field_descriptor> interface = {}) {
+  return sai::local_declaration_descriptor{
+      .name = std::move(name),
+      .interface = std::move(interface),
+      .body_roots = {},
+      .appinfo = {},
+      .documentation = {},
+  };
+}
+
+sai::external_declaration_descriptor test_external_declaration(
+    std::string name, std::vector<std::string> urls,
+    std::vector<sai::interface_field_descriptor> interface = {}) {
+  return sai::external_declaration_descriptor{
+      .name = std::move(name),
+      .interface = std::move(interface),
+      .urls = std::move(urls),
+      .load_state = sai::external_load_state::unresolved,
+      .diagnostic = {},
+      .resolved_declaration = std::nullopt,
+      .appinfo = {},
+      .documentation = {},
+  };
+}
+
 sai::node_type_descriptor
 test_node_type(std::string name, std::vector<sai::field_descriptor> fields) {
   return sai::node_type_descriptor{
@@ -1233,6 +1277,123 @@ TEST_CASE("declarations have stable identity and authored order") {
   CHECK(external_payload.urls ==
         std::vector<std::string>{"widgets.x3d#Widget", "fallback.x3d#Widget"});
   CHECK_FALSE(external_payload.resolved_declaration);
+}
+
+TEST_CASE("declaration interfaces validate exact field semantics") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+
+  SUBCASE("authored interface order is preserved") {
+    auto edit = context.edit();
+    auto declaration =
+        edit.add_local_declaration(sai::local_declaration_descriptor{
+            .name = "Ordered",
+            .interface =
+                {
+                    sai::interface_field_descriptor{
+                        .name = "translation",
+                        .kind = sai::value_kind::sf_vec3f,
+                        .access = sai::access_type::input_output,
+                        .default_value = sai::value{sai::vec3f{1, 2, 3}},
+                        .accepted_node_types = {},
+                        .unit_category = "length"},
+                    sai::interface_field_descriptor{
+                        .name = "trigger",
+                        .kind = sai::value_kind::sf_bool,
+                        .access = sai::access_type::input_only,
+                        .default_value = std::nullopt,
+                        .accepted_node_types = {},
+                        .unit_category = std::nullopt},
+                },
+            .body_roots = {},
+            .appinfo = {},
+            .documentation = {}});
+    REQUIRE(declaration);
+    REQUIRE(edit.commit());
+    const auto descriptor = context.snapshot().describe(declaration.value());
+    REQUIRE(descriptor);
+    const auto &local =
+        std::get<sai::local_declaration_descriptor>(descriptor->payload);
+    REQUIRE(local.interface.size() == 2);
+    CHECK(local.interface[0].name == "translation");
+    CHECK(local.interface[1].name == "trigger");
+  }
+
+  SUBCASE("interface names are unique") {
+    auto edit = context.edit();
+    const auto rejected = edit.add_local_declaration(test_local_declaration(
+        "DuplicateField",
+        {test_interface_field("value"), test_interface_field("value")}));
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::duplicate_field);
+  }
+
+  SUBCASE("default representation matches the field kind") {
+    auto edit = context.edit();
+    const auto rejected = edit.add_local_declaration(test_local_declaration(
+        "WrongDefault",
+        {test_interface_field("translation", sai::value_kind::sf_vec3f,
+                              sai::access_type::input_output,
+                              sai::value{std::string{"wrong"}})}));
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::invalid_descriptor);
+  }
+
+  SUBCASE("event fields cannot declare defaults") {
+    auto edit = context.edit();
+    const auto rejected =
+        edit.add_external_declaration(test_external_declaration(
+            "EventDefault", {"event.x3d#EventDefault"},
+            {test_interface_field("trigger", sai::value_kind::sf_bool,
+                                  sai::access_type::input_only,
+                                  sai::value{false})}));
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::invalid_descriptor);
+  }
+
+  SUBCASE("unit categories require scalable compatible kinds") {
+    auto edit = context.edit();
+    const auto rejected = edit.add_local_declaration(test_local_declaration(
+        "WrongUnit", {test_interface_field("label", sai::value_kind::sf_string,
+                                           sai::access_type::input_output,
+                                           std::nullopt, {}, "length")}));
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::invalid_descriptor);
+  }
+
+  SUBCASE("accepted node types require a node-valued field") {
+    auto edit = context.edit();
+    const auto rejected = edit.add_local_declaration(test_local_declaration(
+        "WrongConstraint",
+        {test_interface_field("label", sai::value_kind::sf_string,
+                              sai::access_type::input_output, std::nullopt,
+                              {"Transform"})}));
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::invalid_descriptor);
+  }
+}
+
+TEST_CASE("rejected declaration edits publish nothing") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  REQUIRE(edit.add_local_declaration(test_local_declaration("Shared")));
+  const auto duplicate = edit.add_external_declaration(
+      test_external_declaration("Shared", {"shared.x3d#Shared"}));
+  REQUIRE_FALSE(duplicate);
+  CHECK(duplicate.error().code == sai::error_code::duplicate_name);
+  const auto unpublished = edit.commit();
+  REQUIRE_FALSE(unpublished);
+  CHECK(context.snapshot().revision() == 0);
+  CHECK(context.snapshot().declarations().empty());
+
+  auto missing_url = context.edit();
+  const auto invalid = missing_url.add_external_declaration(
+      test_external_declaration("NoUrl", {}));
+  REQUIRE_FALSE(invalid);
+  CHECK(invalid.error().code == sai::error_code::invalid_descriptor);
+  REQUIRE_FALSE(missing_url.commit());
+  CHECK(context.snapshot().revision() == 0);
 }
 
 TEST_CASE("node-valued writes require a context-bearing node handle") {
