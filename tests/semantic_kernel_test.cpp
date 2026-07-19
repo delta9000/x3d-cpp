@@ -9,12 +9,11 @@
 #include "x3d/sai/experimental/bindings/Transform.hpp"
 #include "x3d/sai/experimental/bindings/WorldInfo.hpp"
 
-#include "x3d/nodes/X3DNode.hpp"
-#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "x3d/nodes/X3DSemanticMetadataRegistry.hpp"
 
 #include "doctest/doctest.h"
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cmath>
@@ -591,21 +590,9 @@ TEST_CASE(
       CHECK(adapted_field.unit_category == source_field.unitCategory);
     }
 
-    if (!source_node.abstract) {
-      const auto live = x3d::nodes::X3DNodeFactory::create(source_node.name);
-      REQUIRE(live);
-      const auto &reflected = live->fields();
-      REQUIRE(reflected.size() == source_node.fields.size());
-      for (std::size_t field_index = 0; field_index < reflected.size();
-           ++field_index) {
-        CHECK(reflected[field_index].x3dName ==
-              source_node.fields[field_index].name);
-        CHECK(reflected[field_index].type ==
-              source_node.fields[field_index].type);
-        CHECK(reflected[field_index].access ==
-              source_node.fields[field_index].access);
-      }
-    }
+    // Live x3d-cpp runtime reflection parity moved to x3d-cpp with the
+    // 2026-07-19 split; it asserted an SDK property, not a SAI one. See
+    // x3d-cpp's x3d_node_reflection_uom_parity test.
   }
 }
 
