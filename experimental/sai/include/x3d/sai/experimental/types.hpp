@@ -39,6 +39,11 @@ struct node_id {
   friend bool operator==(node_id, node_id) = default;
 };
 
+struct declaration_id {
+  std::uint64_t value = 0;
+  friend bool operator==(declaration_id, declaration_id) = default;
+};
+
 struct vec3f {
   float x = 0;
   float y = 0;
@@ -443,6 +448,60 @@ struct node_type_descriptor {
   std::vector<std::string> interfaces;
   bool abstract = false;
 };
+
+enum class declaration_kind { local_proto, external_proto };
+enum class external_load_state { unresolved, loading, resolved, failed };
+
+struct interface_field_descriptor {
+  std::string name;
+  value_kind kind = value_kind::sf_string;
+  access_type access = access_type::input_output;
+  std::optional<value> default_value;
+  std::vector<std::string> accepted_node_types;
+  std::optional<std::string> unit_category;
+};
+
+struct local_declaration_descriptor {
+  std::string name;
+  std::vector<interface_field_descriptor> interface;
+  std::vector<node_id> body_roots;
+  std::string appinfo;
+  std::string documentation;
+};
+
+struct external_declaration_descriptor {
+  std::string name;
+  std::vector<interface_field_descriptor> interface;
+  std::vector<std::string> urls;
+  external_load_state load_state = external_load_state::unresolved;
+  std::string diagnostic;
+  std::optional<declaration_id> resolved_declaration;
+  std::string appinfo;
+  std::string documentation;
+};
+
+using declaration_payload =
+    std::variant<local_declaration_descriptor, external_declaration_descriptor>;
+
+struct declaration_descriptor {
+  declaration_id id;
+  declaration_payload payload;
+};
+
+inline declaration_kind
+kind(const declaration_descriptor &descriptor) noexcept {
+  return std::holds_alternative<local_declaration_descriptor>(
+             descriptor.payload)
+             ? declaration_kind::local_proto
+             : declaration_kind::external_proto;
+}
+
+inline const std::string &
+name(const declaration_descriptor &descriptor) noexcept {
+  return std::visit(
+      [](const auto &payload) -> const std::string & { return payload.name; },
+      descriptor.payload);
+}
 
 class type_registry;
 result<type_registry>

@@ -1179,6 +1179,62 @@ TEST_CASE("inspection discovers node types and ordered field definitions") {
         sai::value{sai::vec3f{}});
 }
 
+TEST_CASE("declarations have stable identity and authored order") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto named_node = edit.create_node("Transform");
+  REQUIRE(named_node);
+  REQUIRE(edit.define_name("Widget", named_node.value()));
+
+  auto local = edit.add_local_declaration(
+      sai::local_declaration_descriptor{.name = "Widget",
+                                        .interface = {},
+                                        .body_roots = {},
+                                        .appinfo = "local widget",
+                                        .documentation = {}});
+  auto external =
+      edit.add_external_declaration(sai::external_declaration_descriptor{
+          .name = "RemoteWidget",
+          .interface = {},
+          .urls = {"widgets.x3d#Widget", "fallback.x3d#Widget"},
+          .load_state = sai::external_load_state::unresolved,
+          .diagnostic = {},
+          .resolved_declaration = std::nullopt,
+          .appinfo = {},
+          .documentation = {}});
+  REQUIRE(local);
+  REQUIRE(external);
+  CHECK(local->id() != external->id());
+  CHECK(local->id().value < external->id().value);
+  REQUIRE(edit.commit());
+
+  const auto snapshot = context.snapshot();
+  REQUIRE(snapshot.declarations().size() == 2);
+  CHECK(snapshot.declarations()[0] == local->id());
+  CHECK(snapshot.declarations()[1] == external->id());
+  CHECK(snapshot.named("Widget"));
+  const auto found = snapshot.declaration_named("Widget");
+  REQUIRE(found);
+  CHECK(found->id() == local->id());
+
+  const auto local_descriptor = snapshot.describe(local.value());
+  const auto external_descriptor = snapshot.describe(external.value());
+  REQUIRE(local_descriptor);
+  REQUIRE(external_descriptor);
+  CHECK(sai::kind(local_descriptor.value()) ==
+        sai::declaration_kind::local_proto);
+  CHECK(sai::name(local_descriptor.value()) == "Widget");
+  CHECK(sai::kind(external_descriptor.value()) ==
+        sai::declaration_kind::external_proto);
+  CHECK(sai::name(external_descriptor.value()) == "RemoteWidget");
+  const auto &external_payload = std::get<sai::external_declaration_descriptor>(
+      external_descriptor->payload);
+  CHECK(external_payload.urls ==
+        std::vector<std::string>{"widgets.x3d#Widget", "fallback.x3d#Widget"});
+  CHECK_FALSE(external_payload.resolved_declaration);
+}
+
 TEST_CASE("node-valued writes require a context-bearing node handle") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();
@@ -2432,8 +2488,7 @@ TEST_CASE("committed imports retain source nodes across contexts") {
   REQUIRE(abandoned.import_node("Remote", staged_source, "Staged"));
 
   auto unblocked = staged_source.edit();
-  REQUIRE(
-      unblocked.remove_export(staged_source.snapshot().exports().front()));
+  REQUIRE(unblocked.remove_export(staged_source.snapshot().exports().front()));
   REQUIRE(unblocked.remove_node(staged_node.value()));
   REQUIRE(unblocked.commit());
 }
@@ -2449,8 +2504,7 @@ TEST_CASE("a committed import wins over an already staged source removal") {
   REQUIRE(author.commit());
 
   auto staged_removal = source.edit();
-  REQUIRE(
-      staged_removal.remove_export(source.snapshot().exports().front()));
+  REQUIRE(staged_removal.remove_export(source.snapshot().exports().front()));
   REQUIRE(staged_removal.remove_node(shared.value()));
 
   auto winner = importer.edit();
@@ -2701,8 +2755,7 @@ TEST_CASE("unreferenced node removal preserves historical snapshots") {
   REQUIRE(author.commit());
 
   const auto historical = context.snapshot();
-  const auto historical_field =
-      historical.field(first.value(), "translation");
+  const auto historical_field = historical.field(first.value(), "translation");
   REQUIRE(historical_field);
 
   auto removal = context.edit();
@@ -2857,8 +2910,8 @@ TEST_CASE("explicit detachment and node removal publish atomically") {
 }
 
 static_assert(noexcept(std::declval<sai::node &>().dispose()));
-static_assert(noexcept(
-    std::declval<sai::typed_node<BoundTransform> &>().dispose()));
+static_assert(
+    noexcept(std::declval<sai::typed_node<BoundTransform> &>().dispose()));
 
 TEST_CASE("wrapper disposal is local idempotent and callback free") {
   sai::browser host{graph_registry()};
@@ -2934,7 +2987,8 @@ TEST_CASE("node removal makes an older event batch stale") {
   auto target = author.create_node("Transform");
   REQUIRE(target);
   REQUIRE(author.commit());
-  const auto input = context.snapshot().field(target.value(), "set_translation");
+  const auto input =
+      context.snapshot().field(target.value(), "set_translation");
   REQUIRE(input);
   auto queued = context.events(sai::event_time{1.0});
   REQUIRE(queued.send(input.value(), sai::value{sai::vec3f{1, 2, 3}}));
@@ -2959,8 +3013,8 @@ TEST_CASE("field observation retains its node until cancellation") {
   REQUIRE(author.commit());
   const auto field = context.snapshot().field(target.value(), "translation");
   REQUIRE(field);
-  auto observer = context.observe(
-      field.value(), [](const sai::event_delivery &) {});
+  auto observer =
+      context.observe(field.value(), [](const sai::event_delivery &) {});
   REQUIRE(observer);
 
   auto blocked = context.edit();

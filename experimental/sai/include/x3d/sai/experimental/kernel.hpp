@@ -104,6 +104,23 @@ private:
   template <class> friend class typed_node;
 };
 
+class declaration {
+public:
+  declaration_id id() const noexcept { return id_; }
+  generation_id generation() const noexcept { return generation_; }
+
+private:
+  declaration(std::weak_ptr<detail::context_control> context,
+              generation_id generation, declaration_id id)
+      : context_(std::move(context)), generation_(generation), id_(id) {}
+
+  std::weak_ptr<detail::context_control> context_;
+  generation_id generation_ = 0;
+  declaration_id id_;
+  friend class scene_edit;
+  friend class scene_snapshot;
+};
+
 struct semantic_node_id {
   generation_id generation = 0;
   node_id local;
@@ -615,6 +632,10 @@ public:
   result<void> add_route(const dynamic_field &source,
                          const dynamic_field &sink);
   result<void> remove_route(const route &target);
+  result<declaration>
+  add_local_declaration(local_declaration_descriptor descriptor);
+  result<declaration>
+  add_external_declaration(external_declaration_descriptor descriptor);
   result<change_set> commit();
 
 private:
@@ -634,8 +655,12 @@ public:
   const std::vector<node_id> &roots() const noexcept;
   std::vector<occurrence> occurrences() const;
   result<node> lookup(node_id id) const;
+  const std::vector<declaration_id> &declarations() const noexcept;
+  result<declaration> declaration_at(declaration_id id) const;
+  result<declaration> declaration_named(std::string_view name) const;
   result<node_type_descriptor> describe(const node &owner) const;
   result<node_type_descriptor> describe(const imported_node &owner) const;
+  result<declaration_descriptor> describe(const declaration &owner) const;
   result<dynamic_field> field(const node &owner, const std::string &name) const;
   result<dynamic_imported_field> field(const imported_node &owner,
                                        const std::string &name) const;

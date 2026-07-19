@@ -1809,6 +1809,8 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=duplicate route identity is rejected without publication")
     add_test(NAME sai_inspect_descriptor COMMAND x3d_sai_experimental_tests
         "--test-case=inspection discovers node types and ordered field definitions")
+    add_test(NAME sai_decl_identity_order COMMAND x3d_sai_experimental_tests
+        "--test-case=declarations have stable identity and authored order")
     add_test(NAME sai_own_node_value COMMAND x3d_sai_experimental_tests
         "--test-case=node-valued writes require a context-bearing node handle")
     add_test(NAME sai_own_node_range COMMAND x3d_sai_experimental_tests
@@ -3097,6 +3099,7 @@ if(X3D_CPP_BUILD_TESTS)
         sai_route_access
         sai_route_unique
         sai_inspect_descriptor
+        sai_decl_identity_order
         sai_own_node_value
         sai_own_node_range
         sai_cap_predictive
