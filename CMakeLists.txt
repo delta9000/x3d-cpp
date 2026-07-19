@@ -1832,6 +1832,8 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=one invalid write poisons the edit and publishes nothing")
     add_test(NAME sai_cxx_result_composition COMMAND x3d_sai_experimental_tests
         "--test-case=SAI results compose through expected-style monadic operations")
+    add_test(NAME sai_generated_typed_access COMMAND x3d_sai_experimental_tests
+        "--test-case=generated field keys remove dynamic authoring lookup")
     add_test(NAME sai_evt_stale_async COMMAND x3d_sai_experimental_tests
         "--test-case=cancelled and stale load completions are inert")
     add_test(NAME sai_evt_input_transient COMMAND x3d_sai_experimental_tests
@@ -3061,6 +3063,7 @@ if(X3D_CPP_BUILD_TESTS)
         sai_cxx_typed_generic
         sai_cxx_failure_value
         sai_cxx_result_composition
+        sai_generated_typed_access
         sai_evt_stale_async
         sai_evt_input_transient
         sai_evt_inputoutput_publish

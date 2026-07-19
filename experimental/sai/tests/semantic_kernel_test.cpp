@@ -150,6 +150,22 @@ sai::type_registry graph_registry() {
   return registry;
 }
 
+struct BoundTransform {
+  static constexpr std::string_view x3d_name = "Transform";
+  inline static constexpr sai::field_key<BoundTransform, sai::vec3f>
+      translation{"translation", sai::access_type::input_output};
+};
+
+struct BoundGroup {
+  static constexpr std::string_view x3d_name = "Group";
+  inline static constexpr sai::field_key<BoundGroup, sai::node_list> children{
+      "children", sai::access_type::input_output};
+};
+
+template <class Node, class Key>
+concept accepts_generated_key =
+    requires(const Node &node, const Key &key) { node.field(key); };
+
 } // namespace
 
 TEST_CASE("experimental SAI starts as an empty descriptor-governed context") {
@@ -235,6 +251,39 @@ TEST_CASE("SAI results compose through expected-style monadic operations") {
       sai::result<void>{}.and_then([]() -> sai::result<int> { return 11; });
   REQUIRE(void_chain);
   CHECK(void_chain.value() == 11);
+}
+
+TEST_CASE("generated field keys remove dynamic authoring lookup") {
+  static_assert(accepts_generated_key<sai::typed_node<BoundTransform>,
+                                      decltype(BoundTransform::translation)>);
+  static_assert(!accepts_generated_key<sai::typed_node<BoundGroup>,
+                                       decltype(BoundTransform::translation)>);
+
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto transform = edit.create<BoundTransform>();
+  REQUIRE(transform);
+  auto translation = transform.value().field(BoundTransform::translation);
+  static_assert(std::same_as<decltype(translation), sai::field<sai::vec3f>>);
+  REQUIRE(edit.set(translation, sai::vec3f{1, 2, 3}));
+  REQUIRE(edit.commit());
+
+  const auto snapshot = context.snapshot();
+  CHECK(snapshot.read(translation).value() == sai::vec3f{1, 2, 3});
+  auto dynamic = snapshot.field(transform.value().dynamic(), "translation");
+  REQUIRE(dynamic);
+  CHECK(dynamic.value().node() == translation.node());
+  CHECK(snapshot.read(dynamic.value()).value() ==
+        sai::value{sai::vec3f{1, 2, 3}});
+
+  auto replacement = host.create_scene();
+  REQUIRE(host.replace_world(replacement));
+  auto stale_edit = context.edit();
+  REQUIRE(stale_edit.set(translation, sai::vec3f{4, 5, 6}));
+  auto stale = stale_edit.commit();
+  REQUIRE_FALSE(stale);
+  CHECK(stale.error().code == sai::error_code::stale_handle);
 }
 
 TEST_CASE("generated metadata authors without runtime node identity") {
