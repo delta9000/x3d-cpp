@@ -409,12 +409,16 @@ unsupported features explicitly rather than normalizing them away.
 
 ### Task 5.2: Generated typed conveniences and profile parity
 
-1. Generate node-specific conveniences only from the semantic metadata model.
-2. Compile-test every generated typed API against its generic equivalent.
-3. Run one fixture corpus through authoring, inspection, live external, and
+Phase 1 now generates owner-specific field keys from the same resolved UOM
+descriptor path and exercises representative generated/generic parity in
+`sai_generated_binding_parity` and `sai_generated_author_inspect`. Remaining:
+
+1. Compile-test every generated typed API against its generic equivalent; the
+   current five-node parity sample intentionally does not close `INV-GEN-1`.
+2. Run one fixture corpus through authoring, inspection, live external, and
    Script profiles and compare semantic traces.
-4. Close `INV-GEN-1` and prevent dangling descriptor/doc/serializer references.
-5. Commit: `feat(sai): generate typed binding conveniences`.
+3. Close `INV-GEN-1` only after preventing dangling descriptor, generated-key,
+   documentation, and serializer references across the complete catalog.
 
 ### Task 5.3: Versioned ABI and adapter boundary
 

@@ -73,9 +73,13 @@ The proposal makes these design choices executable:
   not live execution, loading, or rendering merely because their publication
   safety protocols can be exercised.
 
-`examples/author_inspect.cpp` is the composed user story. The focused doctest
-suite is also registered as stable `sai_*` CTests so each demonstrated
-invariant can be cited independently by the convergence register.
+`examples/generated_author_inspect.cpp` is the primary authoring story. It
+selects generated descriptors, uses owner-specific generated keys for every
+write, composes fallible work with `result<T>`, commits once, and inspects the
+same typed fields. `examples/author_inspect.cpp` remains the deliberately
+handwritten dynamic fixture for event, ROUTE, shared-node, and import behavior.
+The focused doctest suite is also registered as stable `sai_*` CTests so each
+demonstrated invariant can be cited independently by the convergence register.
 
 ## Deliberate limits
 
@@ -98,9 +102,9 @@ generated UOM catalog; unsupported value kinds are reported rather than
 silently narrowed if a future model extends the vocabulary. The current 4.0
 UOM does not formally annotate per-field
 unit categories, so the catalog preserves that absence and the unit-overlay
-design remains open. Typed fields here are checked views over the dynamic
-descriptor; generated node-specific sugar should remain a convenience layer
-and expose no additional semantics.
+design remains open. Dynamic typed fields remain checked views over the
+descriptor. Generated owner-specific keys provide the direct authoring lane
+without changing capabilities or bypassing descriptor validation.
 
 No API in this directory should be promoted merely because it compiles. The
 invariant tests and composed examples are the review surface: revise the

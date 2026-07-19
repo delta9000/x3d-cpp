@@ -1882,6 +1882,14 @@ if(X3D_CPP_BUILD_TESTS)
     target_compile_features(x3d_sai_experimental_example PRIVATE cxx_std_20)
     add_test(NAME x3d_sai_experimental_author_inspect
         COMMAND x3d_sai_experimental_example)
+    add_executable(x3d_sai_experimental_generated_example
+        "${CMAKE_CURRENT_SOURCE_DIR}/experimental/sai/examples/generated_author_inspect.cpp")
+    target_link_libraries(x3d_sai_experimental_generated_example PRIVATE
+        x3d_sai_experimental_metadata)
+    target_compile_features(x3d_sai_experimental_generated_example PRIVATE
+        cxx_std_20)
+    add_test(NAME sai_generated_author_inspect
+        COMMAND x3d_sai_experimental_generated_example)
 
     #     - script_system_test: M4 Track-A unit. ScriptSystem — the System that
     #       wires Script lifecycle (load/initialize/shutdown) + event delivery
@@ -2891,6 +2899,7 @@ _x3d_classify_present_targets(behavior
     x3d_sai_context
     x3d_sai_experimental_tests
     x3d_sai_experimental_example
+    x3d_sai_experimental_generated_example
     x3d_script_system
     x3d_ecmascript_backend_test
     x3d_ecmascript_corpus_smoke_test
@@ -3019,6 +3028,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_sai_context
         x3d_sai_experimental
         x3d_sai_experimental_author_inspect
+        sai_generated_author_inspect
         sai_id_shared_node
         sai_id_occurrence_edge
         sai_own_domain

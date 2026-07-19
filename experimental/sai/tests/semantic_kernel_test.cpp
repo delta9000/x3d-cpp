@@ -339,8 +339,7 @@ TEST_CASE("generated typed keys and metadata are one schema view") {
 
   const sai::vec3f translation_value{1, 2, 3};
   const sai::node_list children_value{transform.value().id()};
-  const std::array<sai::node, 1> children_nodes{
-      transform.value().dynamic()};
+  const std::array<sai::node, 1> children_nodes{transform.value().dynamic()};
   const sai::image image_value{1, 1, 3, {10, 20, 30}};
   const sai::vec3f_list point_value{{1, 2, 3}, {4, 5, 6}};
   const sai::string_list info_value{"generated", "typed"};
