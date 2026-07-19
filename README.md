@@ -3,11 +3,14 @@
 This directory is a compiling proposal for the irreducible semantics of a
 modern C++ X3D SAI. It is deliberately firewalled in
 `x3d::sai::experimental`: the library links only the C++ standard library and
-does not modify or depend on x3d-cpp's current runtime.
+does not modify or depend on x3d-cpp's current runtime. Its C++20
+`result<T>` is a public alias to the pinned, single-header `tl::expected` 1.3.1
+(CC0-1.0), providing `and_then`, `transform`, `transform_error`, and `or_else`
+without a configure-time dependency or a homegrown expected implementation.
 
 An optional `x3d_sai_experimental_metadata` bridge copies node and field facts
 from an instance-free catalog generated from the UOM. The core kernel remains
-stdlib-only, and generated runtime node objects never participate in SAI
+link-dependency-free, and generated runtime node objects never participate in SAI
 identity. The adapter currently fails closed for field types not yet present in
 the experimental owning value vocabulary. The current generated vocabulary is
 complete: all scalar and multi-field kinds have exact tags, owning storage, and
@@ -22,13 +25,26 @@ The proposal makes these design choices executable:
   edge with its own parent, field, index, and path.
 - An `execution_context` owns one generation. `scene_snapshot` is immutable;
   `scene_edit` stages an atomic revision and returns an ordered `change_set`.
+  For ordinary state changes, `before` and `after` are transition facts. The
+  `unit_declared` kind is explicitly discriminated metadata: `field` is the
+  category, `before` is the declared name, `after` is the canonical conversion
+  factor, and `index` is declaration order; consumers must switch on `kind`.
 - One `field_descriptor` governs dynamic and typed field handles. Access type
   is enforced as a lifecycle rule, and ordinary failure is a `result<T>` with
-  structured `sai_error` data.
+  structured `sai_error` data and expected-style monadic composition.
+- `value_kind` has one public spelling: the lowercase form of the exact X3D
+  field type (`sf_vec3f`, `mf_node`, `sf_color`, `sf_color_rgba`). C++ owning
+  representations such as `vec3f`, `color3f`, and `color4f` describe storage;
+  they do not introduce alternate schema-tag spellings.
 - MF fields are edited through revision-bound typed or dynamic range editors,
   never borrowed mutable containers. Indexed changes remain ordered inside one
   atomic `scene_edit`; MFNode mutations accept only context-bearing handles and
   validate the complete replacement range before staging it.
+- `readable()` and intent-specific `writable()` queries execute the same access
+  state machine as reads, retained edits, external events, and runtime output.
+  Unit declarations are ordered scene facts: authored-space values cross one
+  explicit conversion boundary while storage, ROUTEs, and changes stay in
+  canonical space.
 - Field storage and event equivalence is the public `same_representation`
   relation: IEEE payload bits survive, signed zeros differ, and identical NaN
   payloads match. Ordinary numerical `operator==` remains numerical.
@@ -65,7 +81,7 @@ invariant can be cited independently by the convergence register.
 
 This is a semantic reference kernel, not a complete ISO/IEC 19775-2 or
 19777-4 implementation. It currently omits parsing and serialization,
-profiles and authored unit conversion, PROTO/EXTERNPROTO expansion, node removal,
+profiles and document-codec unit integration, PROTO/EXTERNPROTO expansion, node removal,
 cross-context field writes and ROUTEs, Inline loading, PROTO/IS
 apertures, runtime-originated outputOnly events, Script integration, URL
 transport, concrete browser adapters, presentation scheduling, scene-change

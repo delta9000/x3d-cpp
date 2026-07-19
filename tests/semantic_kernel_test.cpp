@@ -114,37 +114,37 @@ sai::type_registry graph_registry() {
   sai::type_registry registry;
   REQUIRE(registry.define(test_node_type(
       "Group",
-      {test_field("children", sai::value_kind::node_list,
+      {test_field("children", sai::value_kind::mf_node,
                   sai::access_type::input_output, sai::node_list{}, true)})));
   REQUIRE(registry.define(test_node_type(
       "Transform",
       {
-          test_field("translation", sai::value_kind::vec3f,
+          test_field("translation", sai::value_kind::sf_vec3f,
                      sai::access_type::input_output, sai::vec3f{}),
-          test_field("children", sai::value_kind::node_list,
+          test_field("children", sai::value_kind::mf_node,
                      sai::access_type::input_output, sai::node_list{}, true),
-          test_field("worldTranslation", sai::value_kind::vec3f,
+          test_field("worldTranslation", sai::value_kind::sf_vec3f,
                      sai::access_type::output_only, sai::vec3f{}),
-          test_field("initialLabel", sai::value_kind::string,
+          test_field("initialLabel", sai::value_kind::sf_string,
                      sai::access_type::initialize_only, std::string{}),
-          test_field("set_translation", sai::value_kind::vec3f,
+          test_field("set_translation", sai::value_kind::sf_vec3f,
                      sai::access_type::input_only, sai::vec3f{}),
       })));
   REQUIRE(registry.define(test_node_type(
       "AccessNode",
       {
-          test_field("initialChildren", sai::value_kind::node_list,
+          test_field("initialChildren", sai::value_kind::mf_node,
                      sai::access_type::initialize_only, sai::node_list{}, true),
-          test_field("receivedChildren", sai::value_kind::node_list,
+          test_field("receivedChildren", sai::value_kind::mf_node,
                      sai::access_type::input_only, sai::node_list{}, true),
-          test_field("observedChildren", sai::value_kind::node_list,
+          test_field("observedChildren", sai::value_kind::mf_node,
                      sai::access_type::output_only, sai::node_list{}, true),
       })));
   REQUIRE(registry.define(test_node_type(
       "Link", {
-                  test_field("target", sai::value_kind::node,
+                  test_field("target", sai::value_kind::sf_node,
                              sai::access_type::input_output, sai::node_id{}),
-                  test_field("targets", sai::value_kind::node_list,
+                  test_field("targets", sai::value_kind::mf_node,
                              sai::access_type::input_output, sai::node_list{}),
               })));
   return registry;
@@ -156,7 +156,7 @@ TEST_CASE("experimental SAI starts as an empty descriptor-governed context") {
   sai::type_registry registry;
   auto defined = registry.define(test_node_type(
       "Group",
-      {test_field("children", sai::value_kind::node_list,
+      {test_field("children", sai::value_kind::mf_node,
                   sai::access_type::input_output, sai::node_list{}, true)}));
   REQUIRE(defined);
 
@@ -177,6 +177,64 @@ TEST_CASE("experimental SAI starts as an empty descriptor-governed context") {
   CHECK_FALSE(host.capabilities().live);
   CHECK_FALSE(host.capabilities().async_loading);
   CHECK_FALSE(host.capabilities().rendering);
+}
+
+TEST_CASE("SAI results compose through expected-style monadic operations") {
+  const auto composed =
+      sai::result<int>{2}
+          .and_then([](int value) -> sai::result<std::string> {
+            return std::to_string(value * 3);
+          })
+          .transform([](const std::string &value) { return value + " units"; });
+  REQUIRE(composed);
+  CHECK(composed.value() == "6 units");
+
+  int skipped = 0;
+  const sai::sai_error failure{.code = sai::error_code::invalid_value,
+                               .operation = "compose",
+                               .message = "bad value",
+                               .node = std::nullopt,
+                               .field = {}};
+  const auto recovered =
+      sai::result<int>{sai::unexpected{failure}}
+          .and_then([&](int) -> sai::result<int> {
+            ++skipped;
+            return 0;
+          })
+          .or_else([](const sai::sai_error &error) -> sai::result<int> {
+            CHECK(error.operation == "compose");
+            return 7;
+          });
+  CHECK(skipped == 0);
+  REQUIRE(recovered);
+  CHECK(recovered.value() == 7);
+
+  const auto translated =
+      sai::result<int>{sai::unexpected{failure}}.transform_error(
+          [](sai::sai_error error) {
+            error.operation = "translated";
+            return error;
+          });
+  REQUIRE_FALSE(translated);
+  CHECK(translated.error().operation == "translated");
+
+  const auto error_as_value = []() -> sai::result<sai::sai_error> {
+    return sai::sai_error{.code = sai::error_code::cancelled,
+                          .operation = "value",
+                          .message = "an error-shaped success",
+                          .node = std::nullopt,
+                          .field = {}};
+  }();
+  REQUIRE(error_as_value);
+  CHECK(error_as_value.value().operation == "value");
+  const sai::result<sai::sai_error> error_as_failure{sai::failure(failure)};
+  REQUIRE_FALSE(error_as_failure);
+  CHECK(error_as_failure.error().operation == "compose");
+
+  const auto void_chain =
+      sai::result<void>{}.and_then([]() -> sai::result<int> { return 11; });
+  REQUIRE(void_chain);
+  CHECK(void_chain.value() == 11);
 }
 
 TEST_CASE("generated metadata authors without runtime node identity") {
@@ -769,7 +827,7 @@ TEST_CASE("generated node constraints govern containment authoring") {
 TEST_CASE("registry rejects descriptors whose defaults or containment lie") {
   sai::type_registry registry;
   auto wrong_default = registry.define(test_node_type(
-      "WrongDefault", {test_field("translation", sai::value_kind::vec3f,
+      "WrongDefault", {test_field("translation", sai::value_kind::sf_vec3f,
                                   sai::access_type::input_output,
                                   std::string{"not a vector"})}));
   REQUIRE_FALSE(wrong_default);
@@ -777,7 +835,7 @@ TEST_CASE("registry rejects descriptors whose defaults or containment lie") {
 
   auto wrong_containment = registry.define(test_node_type(
       "WrongContainment",
-      {test_field("translation", sai::value_kind::vec3f,
+      {test_field("translation", sai::value_kind::sf_vec3f,
                   sai::access_type::input_output, sai::vec3f{}, true)}));
   REQUIRE_FALSE(wrong_containment);
   CHECK(wrong_containment.error().code == sai::error_code::invalid_descriptor);
@@ -884,7 +942,7 @@ TEST_CASE("inspection discovers node types and ordered field definitions") {
   CHECK(descriptor.value().name == "Transform");
   REQUIRE(descriptor.value().fields.size() == 5);
   CHECK(descriptor.value().fields[0].name == "translation");
-  CHECK(descriptor.value().fields[0].kind == sai::value_kind::vec3f);
+  CHECK(descriptor.value().fields[0].kind == sai::value_kind::sf_vec3f);
   CHECK(descriptor.value().fields[0].access == sai::access_type::input_output);
 
   auto discovered_field = snapshot.field(discovered_node.value(),
@@ -1028,6 +1086,180 @@ TEST_CASE("field access is a lifecycle rule rather than a setter shape") {
   REQUIRE_FALSE(input_edit.commit());
   CHECK(context.snapshot().read(initial.value()).value() ==
         sai::value{std::string{"authored"}});
+}
+
+TEST_CASE("field capability queries predict every lifecycle intent") {
+  sai::type_registry registry;
+  REQUIRE(registry.define(test_node_type(
+      "AccessTable",
+      {
+          test_field("initial", sai::value_kind::sf_int32,
+                     sai::access_type::initialize_only, std::int32_t{}),
+          test_field("input", sai::value_kind::sf_int32,
+                     sai::access_type::input_only, std::int32_t{}),
+          test_field("output", sai::value_kind::sf_int32,
+                     sai::access_type::output_only, std::int32_t{}),
+          test_field("duplex", sai::value_kind::sf_int32,
+                     sai::access_type::input_output, std::int32_t{}),
+      })));
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto owner = author.create_node("AccessTable");
+  REQUIRE(owner);
+  auto initial = author.field(owner.value(), "initial");
+  auto input = author.field(owner.value(), "input");
+  auto output = author.field(owner.value(), "output");
+  auto duplex = author.field(owner.value(), "duplex");
+  REQUIRE(initial);
+  REQUIRE(input);
+  REQUIRE(output);
+  REQUIRE(duplex);
+
+  CHECK(
+      author.writable(initial.value(), sai::write_intent::initialize).value());
+  CHECK_FALSE(
+      author.writable(input.value(), sai::write_intent::initialize).value());
+  CHECK_FALSE(
+      author.writable(output.value(), sai::write_intent::initialize).value());
+  CHECK(author.writable(duplex.value(), sai::write_intent::initialize).value());
+  CHECK_FALSE(
+      author.writable(initial.value(), sai::write_intent::retained).value());
+  CHECK(author.writable(duplex.value(), sai::write_intent::retained).value());
+  CHECK_FALSE(
+      author.writable(input.value(), sai::write_intent::event_input).value());
+  CHECK_FALSE(
+      author.writable(duplex.value(), sai::write_intent::event_input).value());
+  CHECK_FALSE(author.writable(output.value(), sai::write_intent::runtime_output)
+                  .value());
+  CHECK_FALSE(author.writable(duplex.value(), sai::write_intent::runtime_output)
+                  .value());
+  REQUIRE(author.commit());
+
+  const auto snapshot = context.snapshot();
+  CHECK(snapshot.readable(initial.value()).value());
+  CHECK_FALSE(snapshot.readable(input.value()).value());
+  CHECK(snapshot.readable(output.value()).value());
+  CHECK(snapshot.readable(duplex.value()).value());
+  auto events = context.events(sai::event_time{41.0});
+  CHECK(events.writable(input.value(), sai::write_intent::event_input).value());
+  CHECK(
+      events.writable(duplex.value(), sai::write_intent::event_input).value());
+  CHECK_FALSE(
+      events.writable(output.value(), sai::write_intent::event_input).value());
+  CHECK_FALSE(events.writable(output.value(), sai::write_intent::runtime_output)
+                  .value());
+  auto live = context.edit();
+  CHECK_FALSE(
+      live.writable(initial.value(), sai::write_intent::initialize).value());
+  CHECK(live.writable(duplex.value(), sai::write_intent::retained).value());
+
+  auto replacement = host.create_scene();
+  REQUIRE(host.replace_world(replacement));
+  auto stale_readability = snapshot.readable(duplex.value());
+  REQUIRE(stale_readability);
+  CHECK(stale_readability.value());
+  auto stale_writability =
+      live.writable(duplex.value(), sai::write_intent::retained);
+  REQUIRE_FALSE(stale_writability);
+  CHECK(stale_writability.error().code == sai::error_code::stale_handle);
+}
+
+TEST_CASE(
+    "authored unit boundaries convert exactly once around canonical state") {
+  sai::type_registry registry;
+  auto distance = test_field("distance", sai::value_kind::sf_vec3f,
+                             sai::access_type::input_output, sai::vec3f{});
+  distance.unit_category = "length";
+  auto invalid_units =
+      test_field("label", sai::value_kind::sf_string,
+                 sai::access_type::input_output, std::string{});
+  invalid_units.unit_category = "length";
+  auto invalid_type = registry.define(
+      test_node_type("InvalidUnits", {std::move(invalid_units)}));
+  REQUIRE_FALSE(invalid_type);
+  CHECK(invalid_type.error().code == sai::error_code::invalid_descriptor);
+  REQUIRE(registry.define(test_node_type("Measure", {std::move(distance)})));
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  REQUIRE(author.declare_unit(sai::unit_declaration{
+      .category = "length", .name = "centimetre", .conversion_factor = 0.01}));
+  auto source = author.create_node("Measure");
+  auto sink = author.create_node("Measure");
+  REQUIRE(source);
+  REQUIRE(sink);
+  auto source_distance = author.field(source.value(), "distance");
+  auto sink_distance = author.field(sink.value(), "distance");
+  REQUIRE(source_distance);
+  REQUIRE(sink_distance);
+  REQUIRE(author.set(source_distance.value(), sai::value{sai::vec3f{100, 0, 0}},
+                     sai::value_space::authored));
+  REQUIRE(author.add_route(source_distance.value(), sink_distance.value()));
+  auto authored = author.commit();
+  REQUIRE(authored);
+  CHECK(authored.value().changes[0].kind == sai::change_kind::unit_declared);
+  CHECK(authored.value().changes[0].before ==
+        sai::value{std::string{"centimetre"}});
+  CHECK(authored.value().changes[0].after == sai::value{0.01});
+
+  auto snapshot = context.snapshot();
+  REQUIRE(snapshot.units().size() == 1);
+  CHECK(snapshot.units()[0].name == "centimetre");
+  CHECK(snapshot.read(source_distance.value()).value() ==
+        sai::value{sai::vec3f{1, 0, 0}});
+  CHECK(snapshot.read(source_distance.value(), sai::value_space::authored)
+            .value() == sai::value{sai::vec3f{100, 0, 0}});
+
+  auto events = context.events(sai::event_time{70.0});
+  REQUIRE(events.send(source_distance.value(),
+                      sai::value{sai::vec3f{250, 0, 0}},
+                      sai::value_space::authored));
+  auto delivered = events.commit();
+  REQUIRE(delivered);
+  REQUIRE(delivered.value().deliveries.size() == 2);
+  CHECK(delivered.value().deliveries[0].payload ==
+        sai::value{sai::vec3f{2.5F, 0, 0}});
+  CHECK(delivered.value().deliveries[1].payload ==
+        sai::value{sai::vec3f{2.5F, 0, 0}});
+  snapshot = context.snapshot();
+  CHECK(snapshot.read(sink_distance.value()).value() ==
+        sai::value{sai::vec3f{2.5F, 0, 0}});
+  CHECK(snapshot.read(sink_distance.value(), sai::value_space::authored)
+            .value() == sai::value{sai::vec3f{250, 0, 0}});
+
+  auto expose = context.edit();
+  REQUIRE(expose.export_node("Measured", sink.value()));
+  REQUIRE(expose.commit());
+  auto importer = host.create_scene();
+  auto import_edit = importer.edit();
+  REQUIRE(import_edit.import_node("ImportedMeasure", context, "Measured"));
+  REQUIRE(import_edit.commit());
+  auto imported_snapshot = importer.snapshot();
+  auto imported_node = imported_snapshot.imported("ImportedMeasure");
+  REQUIRE(imported_node);
+  auto imported_distance =
+      imported_snapshot.field(imported_node.value(), "distance");
+  REQUIRE(imported_distance);
+  CHECK(imported_snapshot
+            .read(imported_distance.value(), sai::value_space::canonical)
+            .value() == sai::value{sai::vec3f{2.5F, 0, 0}});
+  CHECK(imported_snapshot
+            .read(imported_distance.value(), sai::value_space::authored)
+            .value() == sai::value{sai::vec3f{250, 0, 0}});
+
+  sai::type_registry late_registry;
+  REQUIRE(late_registry.define(test_node_type("Measure", {})));
+  sai::browser late_host{std::move(late_registry)};
+  auto late_context = late_host.current_scene();
+  auto late_edit = late_context.edit();
+  REQUIRE(late_edit.create_node("Measure"));
+  auto late_declaration = late_edit.declare_unit(sai::unit_declaration{
+      .category = "length", .name = "centimetre", .conversion_factor = 0.01});
+  REQUIRE_FALSE(late_declaration);
+  CHECK(late_declaration.error().code == sai::error_code::access_denied);
+  REQUIRE_FALSE(late_edit.commit());
+  CHECK(late_context.snapshot().revision() == 0);
 }
 
 TEST_CASE("inputOnly event intent is transient and access governed") {
@@ -1307,10 +1539,10 @@ TEST_CASE("a multi-hop route cascade preserves time and causal identity") {
 
 TEST_CASE("routed node events obey the destination accepted-node constraint") {
   auto source_value =
-      test_field("value", sai::value_kind::node, sai::access_type::input_output,
-                 sai::node_id{});
+      test_field("value", sai::value_kind::sf_node,
+                 sai::access_type::input_output, sai::node_id{});
   source_value.accepted_node_types = {"Box"};
-  auto sink_value = test_field("value", sai::value_kind::node,
+  auto sink_value = test_field("value", sai::value_kind::sf_node,
                                sai::access_type::input_output, sai::node_id{});
   sink_value.accepted_node_types = {"Shape"};
 
@@ -1540,6 +1772,186 @@ TEST_CASE("change sets preserve authored operation order") {
   CHECK(committed.value().changes[0].kind == sai::change_kind::node_created);
   CHECK(committed.value().changes[1].kind == sai::change_kind::field_changed);
   CHECK(committed.value().changes[2].kind == sai::change_kind::root_inserted);
+}
+
+TEST_CASE(
+    "public semantic ranges stay pure derived and authored-order stable") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto source_context = host.create_scene();
+  auto source_edit = source_context.edit();
+  auto imported_source = source_edit.create_node("Transform");
+  REQUIRE(imported_source);
+  REQUIRE(source_edit.export_node("Remote", imported_source.value()));
+  REQUIRE(source_edit.commit());
+
+  auto author = context.edit();
+  REQUIRE(author.declare_unit(sai::unit_declaration{
+      .category = "length", .name = "millimetre", .conversion_factor = 0.001}));
+  REQUIRE(author.declare_unit(sai::unit_declaration{
+      .category = "angle", .name = "degree", .conversion_factor = 0.017}));
+  auto group = author.create_node("Group");
+  auto first = author.create_node("Transform");
+  auto second = author.create_node("Transform");
+  REQUIRE(group);
+  REQUIRE(first);
+  REQUIRE(second);
+  REQUIRE(author.append(group.value(), "children", second.value()));
+  REQUIRE(author.append(group.value(), "children", first.value()));
+  REQUIRE(author.append_root(group.value()));
+  REQUIRE(author.append_root(first.value()));
+  REQUIRE(author.define_name("Second", second.value()));
+  REQUIRE(author.define_name("First", first.value()));
+  REQUIRE(author.export_node("FirstPublic", first.value()));
+  REQUIRE(author.export_node("SecondPublic", second.value()));
+  REQUIRE(author.import_node("RemoteLocal", source_context, "Remote"));
+  auto first_output = author.field(first.value(), "worldTranslation");
+  auto second_input = author.field(second.value(), "set_translation");
+  auto second_output = author.field(second.value(), "worldTranslation");
+  auto first_input = author.field(first.value(), "set_translation");
+  REQUIRE(first_output);
+  REQUIRE(second_input);
+  REQUIRE(second_output);
+  REQUIRE(first_input);
+  REQUIRE(author.add_route(first_output.value(), second_input.value()));
+  REQUIRE(author.add_route(second_output.value(), first_input.value()));
+  auto changes = author.commit();
+  REQUIRE(changes);
+  REQUIRE(changes.value().changes.size() == 16);
+  CHECK(changes.value().changes[0].kind == sai::change_kind::unit_declared);
+  CHECK(changes.value().changes[0].field == "length");
+  CHECK(changes.value().changes[1].kind == sai::change_kind::unit_declared);
+  CHECK(changes.value().changes[1].field == "angle");
+  CHECK(changes.value().changes[2].kind == sai::change_kind::node_created);
+  CHECK(changes.value().changes.back().kind == sai::change_kind::route_added);
+
+  const auto snapshot = context.snapshot();
+  const auto revision = snapshot.revision();
+  const auto units = snapshot.units();
+  const auto roots = snapshot.roots();
+  const auto occurrences = snapshot.occurrences();
+  const auto names = snapshot.names();
+  const auto exports = snapshot.exports();
+  const auto imports = snapshot.imports();
+  const auto routes = snapshot.routes();
+  const auto capabilities = host.capabilities();
+  auto children = snapshot.field(group.value(), "children");
+  REQUIRE(children);
+  const auto child_ids = snapshot.read(children.value());
+  REQUIRE(child_ids);
+  auto observation = context.observe([](const sai::change_set &) {
+    FAIL("pure inspection queued a change notification");
+  });
+
+  for (int pass = 0; pass < 3; ++pass) {
+    CHECK(snapshot.revision() == revision);
+    CHECK(snapshot.units() == units);
+    CHECK(snapshot.roots() == roots);
+    CHECK(snapshot.names() == names);
+    CHECK(snapshot.exports() == exports);
+    CHECK(snapshot.imports() == imports);
+    CHECK(snapshot.routes() == routes);
+    CHECK(snapshot.read(children.value()).value() == child_ids.value());
+    CHECK(snapshot.readable(children.value()).value());
+    const auto repeated_occurrences = snapshot.occurrences();
+    REQUIRE(repeated_occurrences.size() == occurrences.size());
+    for (std::size_t index = 0; index < occurrences.size(); ++index) {
+      CHECK(repeated_occurrences[index].node == occurrences[index].node);
+      CHECK(repeated_occurrences[index].parent_occurrence ==
+            occurrences[index].parent_occurrence);
+      CHECK(repeated_occurrences[index].container_field ==
+            occurrences[index].container_field);
+      CHECK(repeated_occurrences[index].index == occurrences[index].index);
+      CHECK(repeated_occurrences[index].path == occurrences[index].path);
+    }
+    for (std::size_t index = 0; index < names.size(); ++index)
+      CHECK(snapshot.named(names[index].name).value().id() ==
+            names[index].node);
+    for (std::size_t index = 0; index < exports.size(); ++index)
+      CHECK(snapshot.exported(exports[index].name).value().id() ==
+            exports[index].node);
+  }
+  CHECK(context.snapshot().revision() == revision);
+  CHECK(context.drain().delivered == 0);
+  CHECK(observation.active());
+  CHECK(capabilities.authoring);
+  CHECK(capabilities.inspection);
+  CHECK_FALSE(capabilities.live);
+  CHECK_FALSE(capabilities.async_loading);
+  CHECK_FALSE(capabilities.rendering);
+
+  REQUIRE(units.size() == 2);
+  CHECK(units[0].category == "length");
+  CHECK(units[1].category == "angle");
+  REQUIRE(roots.size() == 2);
+  CHECK(roots[0] == group.value().id());
+  CHECK(roots[1] == first.value().id());
+  CHECK(std::get<sai::node_list>(child_ids.value()) ==
+        sai::node_list{second.value().id(), first.value().id()});
+  REQUIRE(names.size() == 2);
+  CHECK(names[0].name == "Second");
+  CHECK(names[1].name == "First");
+  REQUIRE(exports.size() == 2);
+  CHECK(exports[0].name == "FirstPublic");
+  CHECK(exports[1].name == "SecondPublic");
+  REQUIRE(imports.size() == 1);
+  CHECK(imports[0].local_name == "RemoteLocal");
+  REQUIRE(routes.size() == 2);
+  CHECK(routes[0].source == first.value().id());
+  CHECK(routes[1].source == second.value().id());
+  REQUIRE(occurrences.size() == 4);
+  CHECK(occurrences[0].node == group.value().id());
+  CHECK(occurrences[1].node == second.value().id());
+  CHECK(occurrences[2].node == first.value().id());
+  CHECK(occurrences[3].node == first.value().id());
+
+  std::vector<sai::occurrence> rebuilt;
+  for (std::size_t root_index = 0; root_index < roots.size(); ++root_index) {
+    const auto parent = rebuilt.size();
+    rebuilt.push_back(sai::occurrence{.node = roots[root_index],
+                                      .parent_occurrence = std::nullopt,
+                                      .container_field = {},
+                                      .index = root_index,
+                                      .path = {root_index}});
+    if (roots[root_index] != group.value().id())
+      continue;
+    const auto &ids = std::get<sai::node_list>(child_ids.value());
+    for (std::size_t child_index = 0; child_index < ids.size(); ++child_index) {
+      rebuilt.push_back(sai::occurrence{.node = ids[child_index],
+                                        .parent_occurrence = parent,
+                                        .container_field = "children",
+                                        .index = child_index,
+                                        .path = {root_index, child_index}});
+    }
+  }
+  REQUIRE(rebuilt.size() == occurrences.size());
+  for (std::size_t index = 0; index < rebuilt.size(); ++index) {
+    CHECK(rebuilt[index].node == occurrences[index].node);
+    CHECK(rebuilt[index].parent_occurrence ==
+          occurrences[index].parent_occurrence);
+    CHECK(rebuilt[index].container_field == occurrences[index].container_field);
+    CHECK(rebuilt[index].index == occurrences[index].index);
+    CHECK(rebuilt[index].path == occurrences[index].path);
+  }
+
+  observation.cancel();
+  auto first_error = context.observe([](const sai::change_set &) {
+    throw std::runtime_error("first diagnostic");
+  });
+  auto second_error = context.observe([](const sai::change_set &) {
+    throw std::runtime_error("second diagnostic");
+  });
+  auto trigger = context.edit();
+  auto translation = trigger.field(first.value(), "translation");
+  REQUIRE(translation);
+  REQUIRE(trigger.set(translation.value(), sai::vec3f{1, 2, 3}));
+  REQUIRE(trigger.commit());
+  const auto diagnostics = context.drain();
+  REQUIRE(diagnostics.errors.size() == 2);
+  CHECK(diagnostics.errors[0].message == "first diagnostic");
+  CHECK(diagnostics.errors[1].message == "second diagnostic");
+  CHECK(first_error.active());
+  CHECK(second_error.active());
 }
 
 TEST_CASE("names and routes publish at the same revision as their nodes") {
@@ -1795,6 +2207,49 @@ TEST_CASE(
   REQUIRE(current_field);
   CHECK(after.read(current_field.value()).value() ==
         sai::value{sai::vec3f{4, 5, 6}});
+}
+
+TEST_CASE("imported authored reads retain their captured source authority") {
+  sai::type_registry registry;
+  auto distance = test_field("distance", sai::value_kind::sf_vec3f,
+                             sai::access_type::input_output, sai::vec3f{});
+  distance.unit_category = "length";
+  REQUIRE(registry.define(test_node_type("Measure", {std::move(distance)})));
+  sai::browser host{std::move(registry)};
+  auto parent = host.current_scene();
+
+  const auto [snapshot, imported_distance] = [&] {
+    auto source = host.create_scene();
+    auto source_edit = source.edit();
+    REQUIRE(source_edit.declare_unit(
+        sai::unit_declaration{.category = "length",
+                              .name = "centimetre",
+                              .conversion_factor = 0.01}));
+    auto measured = source_edit.create_node("Measure");
+    REQUIRE(measured);
+    auto source_distance = source_edit.field(measured.value(), "distance");
+    REQUIRE(source_distance);
+    REQUIRE(source_edit.set(source_distance.value(),
+                            sai::value{sai::vec3f{100, 0, 0}},
+                            sai::value_space::authored));
+    REQUIRE(source_edit.export_node("Measured", measured.value()));
+    REQUIRE(source_edit.commit());
+
+    auto import_edit = parent.edit();
+    REQUIRE(import_edit.import_node("Remote", source, "Measured"));
+    REQUIRE(import_edit.commit());
+    auto captured = parent.snapshot();
+    auto imported = captured.imported("Remote");
+    REQUIRE(imported);
+    auto field = captured.field(imported.value(), "distance");
+    REQUIRE(field);
+    return std::pair{std::move(captured), std::move(field).value()};
+  }();
+
+  CHECK(snapshot.read(imported_distance, sai::value_space::canonical).value() ==
+        sai::value{sai::vec3f{1, 0, 0}});
+  CHECK(snapshot.read(imported_distance, sai::value_space::authored).value() ==
+        sai::value{sai::vec3f{100, 0, 0}});
 }
 
 TEST_CASE("imported authority is inspection-only and context checked") {

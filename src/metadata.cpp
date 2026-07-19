@@ -19,14 +19,14 @@ namespace {
 using x3d::core::AccessType;
 using x3d::core::X3DFieldType;
 
-sai_error metadata_error(error_code code, std::string message,
-                         std::string field = {}) {
+unexpected metadata_error(error_code code, std::string message,
+                          std::string field = {}) {
   sai_error error;
   error.code = code;
   error.operation = "generated_type_registry";
   error.message = std::move(message);
   error.field = std::move(field);
-  return error;
+  return failure(std::move(error));
 }
 
 std::optional<access_type> adapt_access(AccessType access) {
@@ -550,7 +550,7 @@ result<value> default_value_for(const schema_field_descriptor &field) {
   if (!adapted) {
     auto error = adapted.error();
     error.operation = "default_value_for";
-    return error;
+    return failure(std::move(error));
   }
   return std::move(adapted).value().second;
 }
@@ -624,7 +624,7 @@ generated_type_registry(std::span<const std::string_view> node_types) {
       if (!adapted_value) {
         auto error = adapted_value.error();
         error.operation = "generated_type_registry";
-        return error;
+        return failure(std::move(error));
       }
       adapted.fields.push_back(field_descriptor{
           .name = field.name,
@@ -640,7 +640,7 @@ generated_type_registry(std::span<const std::string_view> node_types) {
       });
     }
     if (auto defined = registry.define(std::move(adapted)); !defined)
-      return defined.error();
+      return failure(defined.error());
   }
   return registry;
 }

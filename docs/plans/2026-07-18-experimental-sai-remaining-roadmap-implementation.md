@@ -112,10 +112,16 @@ property and fuzz testing.
    assign, route, inspect, and serialize convert exactly once.
 3. Snapshot every public range before repeated reads and prove no revision,
    ordering, name, queue, or dirty-state mutation occurs.
-4. Rebuild names, reverse occurrences, routes, and capability summaries from
-   committed state and compare them to incrementally maintained indexes.
-5. Close `INV-FIELD-4`, `INV-FIELD-5`, `INV-EDIT-3`, and `INV-ORDER-1` only
-   when their falsification suites are executable.
+4. Rebuild reverse occurrences from committed roots and containment fields.
+   Keep `INV-EDIT-3` open until later runtime adapters introduce or expose the
+   name maps, route caches, capability summaries, or extraction indexes needed
+   for an honest independent reconstruction test; the firewalled kernel does
+   not maintain those shadow indexes today.
+5. Close `INV-FIELD-5` and `INV-ORDER-1` only when their falsification suites
+   are executable. Keep `INV-EDIT-3` open on `sai_edit_derived_indexes`, and
+   keep `INV-FIELD-4` open on `sai_field_unit_codec_bridge` until later approved
+   bridges provide the missing evidence. The semantic kernel proves authored
+   assignment, canonical routing, authored inspection, pure reads, and order.
 6. Commit: `feat(sai): make field capabilities predictive`.
 
 ### Phase 1 gate

@@ -1,6 +1,7 @@
 #include "x3d/sai/experimental/kernel.hpp"
 
 #include <cstdlib>
+#include <optional>
 
 namespace sai = x3d::sai::experimental;
 
@@ -10,22 +11,36 @@ int main() {
           .name = "Group",
           .fields = {sai::field_descriptor{
               .name = "children",
-              .kind = sai::value_kind::node_list,
+              .kind = sai::value_kind::mf_node,
               .access = sai::access_type::input_output,
               .default_value = sai::node_list{},
+              .default_origin = sai::default_source::field_type,
               .containment = true,
+              .accepted_node_types = {},
+              .unit_category = std::nullopt,
           }},
+          .component = {},
+          .component_level = 0,
+          .interfaces = {},
+          .abstract = false,
       }))
     return EXIT_FAILURE;
   if (!registry.define(sai::node_type_descriptor{
           .name = "Transform",
           .fields = {sai::field_descriptor{
               .name = "translation",
-              .kind = sai::value_kind::vec3f,
+              .kind = sai::value_kind::sf_vec3f,
               .access = sai::access_type::input_output,
               .default_value = sai::vec3f{},
+              .default_origin = sai::default_source::field_type,
               .containment = false,
+              .accepted_node_types = {},
+              .unit_category = std::nullopt,
           }},
+          .component = {},
+          .component_level = 0,
+          .interfaces = {},
+          .abstract = false,
       }))
     return EXIT_FAILURE;
 

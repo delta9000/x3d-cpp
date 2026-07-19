@@ -217,9 +217,9 @@ services:
   - <<: *query
     id: SVC-CONTEXT-UNITS
     clause: ISO/IEC 19775-2:2015, 6.4.5 getUnits
-    public_symbol: x3d::runtime::Head::units
+    public_symbol: x3d::sai::experimental::scene_snapshot::units
     support: partial
-    tests: [x3d_parse_tests]
+    tests: [x3d_parse_tests, sai_field_units_once]
     preserves: [INV-FIELD-4, INV-CAP-1, INV-PORT-1]
   - <<: *query
     id: SVC-CONTEXT-WORLD-URL
@@ -416,17 +416,17 @@ services:
   - <<: *query
     id: SVC-FIELD-READ
     clause: ISO/IEC 19775-2:2015, 6.7.5 getValue
-    public_symbol: x3d::runtime::SaiContext::getField
+    public_symbol: x3d::sai::experimental::scene_snapshot::read
     support: partial
-    tests: [x3d_sai_context]
+    tests: [x3d_sai_context, sai_field_pure_read, sai_field_units_once]
     preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5, INV-CXX-4]
   - <<: *command
     id: SVC-FIELD-WRITE
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue
-    public_symbol: x3d::runtime::X3DExecutionContext::writeField
+    public_symbol: x3d::sai::experimental::scene_edit::set
     support: partial
-    tests: [x3d_events_tests, sai_field_specialized_access, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes]
-    preserves: [INV-FIELD-2, INV-FIELD-3, INV-CXX-4, INV-EVT-1]
+    tests: [x3d_events_tests, sai_field_specialized_access, sai_field_units_once, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes]
+    preserves: [INV-FIELD-2, INV-FIELD-3, INV-FIELD-4, INV-CXX-4, INV-EVT-1]
   - <<: *observer
     id: SVC-FIELD-OBSERVE
     clause: ISO/IEC 19775-2:2015, 6.7.7 registerFieldInterest
@@ -438,17 +438,17 @@ services:
   - <<: *query
     id: SVC-FIELD-READABLE
     clause: ISO/IEC 19777-4, Annex A.4.5 X3DField::isReadable
-    public_symbol: planned:x3d::sai::field::is_readable
-    support: planned
-    tests: [planned:sai_field_readable]
+    public_symbol: x3d::sai::experimental::scene_snapshot::readable
+    support: partial
+    tests: [sai_field_readable]
     binding_obligations: [CPP-A.4.5-FIELD-CAPABILITY]
     preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5]
   - <<: *query
     id: SVC-FIELD-WRITABLE
     clause: ISO/IEC 19777-4, Annex A.4.5 X3DField::isWritable
-    public_symbol: planned:x3d::sai::field::is_writable
-    support: planned
-    tests: [planned:sai_field_writable]
+    public_symbol: x3d::sai::experimental::scene_edit::writable
+    support: partial
+    tests: [sai_field_writable]
     binding_obligations: [CPP-A.4.5-FIELD-CAPABILITY]
     preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5]
   - <<: *query
@@ -468,61 +468,61 @@ services:
     binding_obligations: [CPP-4.3.3.1-FIELD-USER-DATA]
     preserves: [INV-ID-1, INV-LIFE-1, INV-EDIT-1]
 
-  # Multi-field edit primitives need a semantic wrapper even though generated
-  # MF values are currently ordinary vectors.
+  # Multi-field edits use revision-bound semantic wrappers; snapshots never
+  # expose mutable generated vectors.
   - <<: *query
     id: SVC-MFIELD-SIZE
     clause: ISO/IEC 19775-2:2015, 6.7.5 getValue (MF size)
-    public_symbol: planned:x3d::sai::multi_field::size
-    support: planned
-    tests: [planned:sai_mfield_size]
+    public_symbol: x3d::sai::experimental::multi_field_edit::size
+    support: partial
+    tests: [sai_mf_size_read]
     binding_obligations: [CPP-4.3.5.4-MFIELD-ARRAYS, CPP-A.4.6-MFIELD-EDITING]
     preserves: [INV-FIELD-3, INV-RT-1]
   - <<: *query
     id: SVC-MFIELD-ELEMENT-READ
     clause: ISO/IEC 19775-2:2015, 6.7.5 getValue (MF element)
-    public_symbol: planned:x3d::sai::multi_field::at
-    support: planned
-    tests: [planned:sai_mfield_element_read]
+    public_symbol: x3d::sai::experimental::multi_field_edit::at
+    support: partial
+    tests: [sai_mf_size_read]
     preserves: [INV-FIELD-3, INV-CXX-4, INV-RT-1]
   - <<: *command
     id: SVC-MFIELD-ELEMENT-WRITE
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF element)
-    public_symbol: planned:x3d::sai::multi_field::set
-    support: planned
-    tests: [planned:sai_mfield_element_write]
+    public_symbol: x3d::sai::experimental::multi_field_edit::set
+    support: partial
+    tests: [sai_mf_set, sai_mf_typed_dynamic, sai_mf_node_authority]
     binding_obligations: [CPP-4.3.5.2-EXTERNAL-MF-EVENTS, CPP-4.3.5.5-SET1VALUE]
     preserves: [INV-FIELD-3, INV-CXX-4, INV-EDIT-1]
   - <<: *command
     id: SVC-MFIELD-INSERT
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF insert)
-    public_symbol: planned:x3d::sai::multi_field::insert
-    support: planned
-    tests: [planned:sai_mfield_insert]
+    public_symbol: x3d::sai::experimental::multi_field_edit::insert
+    support: partial
+    tests: [sai_mf_insert, sai_mf_typed_dynamic, sai_mf_node_authority]
     binding_obligations: [CPP-A.4.48-MFNODE-EDITING]
     preserves: [INV-FIELD-3, INV-EDIT-1, INV-RT-1]
   - <<: *command
     id: SVC-MFIELD-ERASE
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF erase)
-    public_symbol: planned:x3d::sai::multi_field::erase
-    support: planned
-    tests: [planned:sai_mfield_erase]
+    public_symbol: x3d::sai::experimental::multi_field_edit::erase
+    support: partial
+    tests: [sai_mf_erase]
     binding_obligations: [CPP-A.4.6-MFIELD-EDITING]
     preserves: [INV-FIELD-3, INV-EDIT-1, INV-RT-1]
   - <<: *command
     id: SVC-MFIELD-CLEAR
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF clear)
-    public_symbol: planned:x3d::sai::multi_field::clear
-    support: planned
-    tests: [planned:sai_mfield_clear]
+    public_symbol: x3d::sai::experimental::multi_field_edit::clear
+    support: partial
+    tests: [sai_mf_clear]
     binding_obligations: [CPP-4.3.5.4-MFIELD-ARRAYS, CPP-A.4.6-MFIELD-EDITING]
     preserves: [INV-FIELD-3, INV-EDIT-1, INV-RT-1]
   - <<: *command
     id: SVC-MFIELD-APPEND
     clause: ISO/IEC 19777-4, Annex A.4.48 MFNode::append
-    public_symbol: planned:x3d::sai::multi_field::append
-    support: planned
-    tests: [planned:sai_mfield_append]
+    public_symbol: x3d::sai::experimental::multi_field_edit::append
+    support: partial
+    tests: [sai_mf_append, sai_mf_node_authority]
     binding_obligations: [CPP-A.4.48-MFNODE-EDITING]
     preserves: [INV-FIELD-3, INV-EDIT-1, INV-ORDER-1]
 
