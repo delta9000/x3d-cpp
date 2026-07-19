@@ -673,6 +673,9 @@ public:
   result<declaration>
   add_local_declaration(local_declaration_descriptor descriptor);
   result<declaration>
+  add_local_declaration(local_declaration_descriptor descriptor,
+                        std::span<const node> body_roots);
+  result<declaration>
   add_external_declaration(external_declaration_descriptor descriptor);
   result<void> rename_declaration(const declaration &target,
                                   std::string new_name);

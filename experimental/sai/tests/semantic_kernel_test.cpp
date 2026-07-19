@@ -1562,6 +1562,166 @@ TEST_CASE("graph and declaration changes share one authored order") {
         sai::semantic_change_kind{sai::declaration_change_kind::removed});
 }
 
+TEST_CASE("local declarations exclusively claim their template closure") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto first_root = edit.create_node("Group");
+  auto second_root = edit.create_node("Link");
+  auto shared = edit.create_node("Transform");
+  REQUIRE(first_root);
+  REQUIRE(second_root);
+  REQUIRE(shared);
+  REQUIRE(edit.append(first_root.value(), "children", shared.value()));
+  auto target = edit.field(second_root.value(), "target");
+  REQUIRE(target);
+  REQUIRE(edit.set(target.value(), shared.value()));
+  const std::array roots{first_root.value(), second_root.value()};
+  auto prototype = edit.add_local_declaration(
+      test_local_declaration("Composite"), std::span<const sai::node>{roots});
+  REQUIRE(prototype);
+  REQUIRE(edit.commit());
+
+  const auto descriptor = context.snapshot().describe(prototype.value());
+  REQUIRE(descriptor);
+  const auto &local =
+      std::get<sai::local_declaration_descriptor>(descriptor->payload);
+  CHECK(local.body_roots ==
+        std::vector<sai::node_id>{first_root->id(), second_root->id()});
+
+  auto root_leak = context.edit();
+  const auto rooted = root_leak.append_root(first_root.value());
+  REQUIRE_FALSE(rooted);
+  CHECK(rooted.error().code == sai::error_code::invalid_context);
+
+  auto scene_reference = context.edit();
+  auto scene_link = scene_reference.create_node("Link");
+  REQUIRE(scene_link);
+  auto scene_target = scene_reference.field(scene_link.value(), "target");
+  REQUIRE(scene_target);
+  const auto retained =
+      scene_reference.set(scene_target.value(), shared.value());
+  REQUIRE_FALSE(retained);
+  CHECK(retained.error().code == sai::error_code::invalid_context);
+
+  auto inverse_reference = context.edit();
+  auto ordinary = inverse_reference.create_node("Transform");
+  REQUIRE(ordinary);
+  const auto escaped = inverse_reference.set(target.value(), ordinary.value());
+  REQUIRE_FALSE(escaped);
+  CHECK(escaped.error().code == sai::error_code::invalid_context);
+
+  auto second_owner = context.edit();
+  const std::array already_owned{first_root.value()};
+  const auto duplicate_owner = second_owner.add_local_declaration(
+      test_local_declaration("Other"),
+      std::span<const sai::node>{already_owned});
+  REQUIRE_FALSE(duplicate_owner);
+  CHECK(duplicate_owner.error().code == sai::error_code::node_in_use);
+
+  sai::browser foreign_host{graph_registry()};
+  auto foreign_context = foreign_host.current_scene();
+  auto foreign_edit = foreign_context.edit();
+  auto foreign_root = foreign_edit.create_node("Group");
+  REQUIRE(foreign_root);
+  const std::array foreign_roots{foreign_root.value()};
+  auto cross_context = context.edit();
+  const auto foreign_body = cross_context.add_local_declaration(
+      test_local_declaration("Foreign"),
+      std::span<const sai::node>{foreign_roots});
+  REQUIRE_FALSE(foreign_body);
+  CHECK(foreign_body.error().code == sai::error_code::invalid_context);
+}
+
+TEST_CASE("template claims reject live references and cycles atomically") {
+  SUBCASE("a live scene root cannot be reclassified as template state") {
+    sai::browser host{graph_registry()};
+    auto context = host.current_scene();
+    auto edit = context.edit();
+    auto root = edit.create_node("Group");
+    REQUIRE(root);
+    REQUIRE(edit.append_root(root.value()));
+    const std::array roots{root.value()};
+    const auto rejected = edit.add_local_declaration(
+        test_local_declaration("Rooted"), std::span<const sai::node>{roots});
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::node_in_use);
+    REQUIRE_FALSE(edit.commit());
+    CHECK(context.snapshot().revision() == 0);
+  }
+
+  SUBCASE("a containment cycle is rejected before ownership mutation") {
+    sai::browser host{graph_registry()};
+    auto context = host.current_scene();
+    auto edit = context.edit();
+    auto first = edit.create_node("Group");
+    auto second = edit.create_node("Group");
+    REQUIRE(first);
+    REQUIRE(second);
+    REQUIRE(edit.append(first.value(), "children", second.value()));
+    REQUIRE(edit.append(second.value(), "children", first.value()));
+    const std::array roots{first.value()};
+    const auto rejected = edit.add_local_declaration(
+        test_local_declaration("Cyclic"), std::span<const sai::node>{roots});
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::containment_cycle);
+    REQUIRE_FALSE(edit.commit());
+    CHECK(context.snapshot().revision() == 0);
+  }
+}
+
+TEST_CASE("template scope rejects public aliases routes and removal") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto root = author.create_node("Transform");
+  REQUIRE(root);
+  const std::array roots{root.value()};
+  auto prototype = author.add_local_declaration(
+      test_local_declaration("Private"), std::span<const sai::node>{roots});
+  REQUIRE(prototype);
+  REQUIRE(author.commit());
+
+  auto named = context.edit();
+  REQUIRE_FALSE(named.define_name("Leaked", root.value()));
+  auto exported = context.edit();
+  REQUIRE_FALSE(exported.export_node("Leaked", root.value()));
+  auto removed = context.edit();
+  const auto retained = removed.remove_node(root.value());
+  REQUIRE_FALSE(retained);
+  CHECK(retained.error().code == sai::error_code::node_in_use);
+
+  auto routed = context.edit();
+  auto sink = routed.create_node("Transform");
+  REQUIRE(sink);
+  auto source_field = routed.field(root.value(), "worldTranslation");
+  auto sink_field = routed.field(sink.value(), "set_translation");
+  REQUIRE(source_field);
+  REQUIRE(sink_field);
+  REQUIRE_FALSE(routed.add_route(source_field.value(), sink_field.value()));
+}
+
+TEST_CASE(
+    "removing a declaration releases rather than deletes template nodes") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto root = author.create_node("Group");
+  REQUIRE(root);
+  const std::array roots{root.value()};
+  auto prototype = author.add_local_declaration(
+      test_local_declaration("Reusable"), std::span<const sai::node>{roots});
+  REQUIRE(prototype);
+  REQUIRE(author.commit());
+
+  auto release = context.edit();
+  REQUIRE(release.remove_declaration(prototype.value()));
+  REQUIRE(release.append_root(root.value()));
+  REQUIRE(release.commit());
+  CHECK(context.snapshot().roots() == std::vector<sai::node_id>{root->id()});
+  CHECK(context.snapshot().lookup(root->id()));
+}
+
 TEST_CASE("node-valued writes require a context-bearing node handle") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();
