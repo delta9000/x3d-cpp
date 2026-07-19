@@ -11,10 +11,10 @@ import json
 from typing import Dict, List, Optional
 
 from x3d_cpp_gen import __version__
-from x3d_cpp_gen.emit.descriptors import build_reflection_descriptors
+from x3d_cpp_gen.emit.semantic_fields import resolved_node_fields
 from x3d_cpp_gen.emit.naming import cpp_str
 from x3d_cpp_gen.emit.registry import interfaces_of
-from x3d_cpp_gen.parser import X3DNode, get_own_fields
+from x3d_cpp_gen.parser import X3DNode
 
 
 def _quoted(value: str) -> str:
@@ -82,22 +82,6 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
     def wire(field):
         return getattr(field, "x3d_name", None) or field.name
 
-    own_field_names = {
-        node.name: {wire(field) for field in get_own_fields(node)}
-        for node in nodes.values()
-    }
-
-    def ancestors(node_name):
-        seen = []
-        pending = list(graph.get(node_name, []))
-        while pending:
-            base = pending.pop(0)
-            if base in seen:
-                continue
-            seen.append(base)
-            pending.extend(graph.get(base, []))
-        return seen
-
     semantic_model = []
     lines: List[str] = [
         "// X3DSemanticMetadataRegistry.cpp",
@@ -125,9 +109,7 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
             f"{_quoted(component)}, {level},")
         lines.append(f"            {_strings(interfaces)},")
         lines.append("            std::vector<SemanticFieldDescriptor>{")
-        rendered = build_reflection_descriptors(
-            node, own_field_names=own_field_names,
-            ancestors=ancestors(node.name), enum_defs=enum_defs)
+        rendered = resolved_node_fields(node, nodes, graph, enum_defs)
         raw_fields = {wire(field): field for field in node.fields}
         for descriptor in rendered:
             field = raw_fields[descriptor.x3d_name]
