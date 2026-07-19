@@ -190,6 +190,17 @@ public:
   void push_back(bool value) {
     values_.push_back(static_cast<std::uint8_t>(value));
   }
+  void insert(std::size_t index, bool value) {
+    if (index > values_.size())
+      throw std::out_of_range("Boolean insertion index is out of range");
+    values_.insert(values_.begin() + static_cast<std::ptrdiff_t>(index),
+                   static_cast<std::uint8_t>(value));
+  }
+  void erase(std::size_t index) {
+    if (index >= values_.size())
+      throw std::out_of_range("Boolean erase index is out of range");
+    values_.erase(values_.begin() + static_cast<std::ptrdiff_t>(index));
+  }
   void clear() noexcept { values_.clear(); }
   const_iterator begin() const noexcept {
     return const_iterator{values_.begin()};
@@ -364,6 +375,7 @@ enum class error_code {
   unknown_field,
   type_mismatch,
   invalid_value,
+  index_out_of_range,
   access_denied,
   invalid_name,
   duplicate_name,

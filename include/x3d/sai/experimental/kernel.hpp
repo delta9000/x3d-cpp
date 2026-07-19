@@ -16,6 +16,7 @@ namespace x3d::sai::experimental {
 namespace detail {
 struct browser_control;
 struct context_control;
+struct scene_edit_control;
 struct scene_state;
 } // namespace detail
 
@@ -60,6 +61,7 @@ private:
   generation_id generation_ = 0;
   node_id id_;
   friend class scene_edit;
+  friend class dynamic_multi_field_edit;
   friend class scene_snapshot;
   friend class event_batch;
 };
@@ -195,6 +197,7 @@ private:
   value_kind kind_ = value_kind::string;
   access_type access_ = access_type::input_output;
   friend class scene_edit;
+  friend class dynamic_multi_field_edit;
   friend class scene_snapshot;
   friend class event_batch;
   friend class execution_context;
@@ -239,6 +242,11 @@ struct occurrence {
 enum class change_kind {
   node_created,
   field_changed,
+  multi_element_set,
+  multi_inserted,
+  multi_erased,
+  multi_cleared,
+  multi_replaced,
   root_inserted,
   root_removed,
   name_defined,
@@ -350,6 +358,107 @@ struct dispatch_report {
   std::vector<sai_error> errors;
 };
 
+class dynamic_multi_field_edit {
+public:
+  result<std::size_t> size() const;
+  result<value> at(std::size_t index) const;
+  result<node> node_at(std::size_t index) const;
+  result<void> set(std::size_t index, value element);
+  result<void> set(std::size_t index, const node &element);
+  result<void> insert(std::size_t index, value element);
+  result<void> insert(std::size_t index, const node &element);
+  result<void> erase(std::size_t index);
+  result<void> append(value element);
+  result<void> append(const node &element);
+  result<void> clear();
+  result<void> replace(value sequence);
+  result<void> replace(std::span<const node> sequence);
+
+private:
+  dynamic_multi_field_edit(std::weak_ptr<detail::scene_edit_control> edit,
+                           dynamic_field target)
+      : edit_(std::move(edit)), target_(std::move(target)) {}
+
+  std::weak_ptr<detail::scene_edit_control> edit_;
+  dynamic_field target_;
+  friend class scene_edit;
+};
+
+namespace detail {
+template <class Sequence> struct multi_sequence_traits;
+template <class Element, class Allocator>
+struct multi_sequence_traits<std::vector<Element, Allocator>> {
+  using element_type = Element;
+};
+template <> struct multi_sequence_traits<bool_list> {
+  using element_type = bool;
+};
+} // namespace detail
+
+template <class Sequence>
+concept multi_field_sequence = requires {
+  typename detail::multi_sequence_traits<Sequence>::element_type;
+  value_traits<Sequence>::kind;
+};
+
+template <multi_field_sequence Sequence> class multi_field_edit {
+public:
+  using element_type =
+      typename detail::multi_sequence_traits<Sequence>::element_type;
+
+  result<std::size_t> size() const { return dynamic_.size(); }
+  result<element_type> at(std::size_t index) const {
+    auto element = dynamic_.at(index);
+    if (!element)
+      return element.error();
+    return std::get<element_type>(std::move(element).value());
+  }
+  result<void> set(std::size_t index, element_type element) {
+    return dynamic_.set(index, value{std::move(element)});
+  }
+  result<void> insert(std::size_t index, element_type element) {
+    return dynamic_.insert(index, value{std::move(element)});
+  }
+  result<void> erase(std::size_t index) { return dynamic_.erase(index); }
+  result<void> append(element_type element) {
+    return dynamic_.append(value{std::move(element)});
+  }
+  result<void> clear() { return dynamic_.clear(); }
+  result<void> replace(Sequence sequence) {
+    return dynamic_.replace(value{std::move(sequence)});
+  }
+
+private:
+  explicit multi_field_edit(dynamic_multi_field_edit dynamic)
+      : dynamic_(std::move(dynamic)) {}
+  dynamic_multi_field_edit dynamic_;
+  friend class scene_edit;
+};
+
+template <> class multi_field_edit<node_list> {
+public:
+  result<std::size_t> size() const { return dynamic_.size(); }
+  result<node> at(std::size_t index) const { return dynamic_.node_at(index); }
+  result<void> set(std::size_t index, const node &element) {
+    return dynamic_.set(index, element);
+  }
+  result<void> insert(std::size_t index, const node &element) {
+    return dynamic_.insert(index, element);
+  }
+  result<void> erase(std::size_t index) { return dynamic_.erase(index); }
+  result<void> append(const node &element) { return dynamic_.append(element); }
+  result<void> clear() { return dynamic_.clear(); }
+  result<void> replace(std::span<const node> sequence) {
+    return dynamic_.replace(sequence);
+  }
+
+private:
+  explicit multi_field_edit(dynamic_multi_field_edit dynamic)
+      : dynamic_(std::move(dynamic)) {}
+  dynamic_multi_field_edit dynamic_;
+  friend class scene_edit;
+};
+
 class scene_edit {
 public:
   scene_edit(scene_edit &&) noexcept;
@@ -364,6 +473,15 @@ public:
   result<void> append(const node &parent, const std::string &field,
                       const node &child);
   result<dynamic_field> field(const node &owner, const std::string &name) const;
+  result<dynamic_multi_field_edit> multi(const dynamic_field &target);
+  template <multi_field_sequence Sequence>
+  result<multi_field_edit<Sequence>>
+  multi(const experimental::field<Sequence> &target) {
+    auto dynamic = multi(target.dynamic_);
+    if (!dynamic)
+      return dynamic.error();
+    return multi_field_edit<Sequence>{std::move(dynamic).value()};
+  }
   result<void> set(const dynamic_field &target, value new_value);
   result<void> set(const dynamic_field &target, const node &new_value);
   result<void> set(const dynamic_field &target,
@@ -397,9 +515,9 @@ public:
 private:
   result<void> set_value(const dynamic_field &target, value new_value,
                          bool node_authority_checked);
-  struct impl;
-  explicit scene_edit(std::unique_ptr<impl> implementation);
-  std::unique_ptr<impl> impl_;
+  explicit scene_edit(
+      std::shared_ptr<detail::scene_edit_control> implementation);
+  std::shared_ptr<detail::scene_edit_control> impl_;
   friend class execution_context;
 };
 

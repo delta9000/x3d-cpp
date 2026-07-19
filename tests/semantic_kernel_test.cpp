@@ -442,6 +442,188 @@ TEST_CASE(
         sai::string_list{"a", "b", R"(c:\new)", R"(quote"slash\)"});
 }
 
+TEST_CASE("a dynamic multi-field editor stages the complete indexed service") {
+  sai::type_registry registry;
+  REQUIRE(registry.define(
+      test_node_type("Samples", {test_field("values", sai::value_kind::mf_int32,
+                                            sai::access_type::input_output,
+                                            sai::int32_list{10, 20, 30})})));
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto owner = edit.create_node("Samples");
+  REQUIRE(owner);
+  auto field = edit.field(owner.value(), "values");
+  REQUIRE(field);
+  auto values = edit.multi(field.value());
+  REQUIRE(values);
+  CHECK(values.value().size().value() == 3);
+  CHECK(values.value().at(1).value() == sai::value{std::int32_t{20}});
+  REQUIRE(values.value().set(1, sai::value{std::int32_t{21}}));
+  REQUIRE(values.value().insert(1, sai::value{std::int32_t{15}}));
+  REQUIRE(values.value().erase(2));
+  REQUIRE(values.value().append(sai::value{std::int32_t{40}}));
+  REQUIRE(values.value().clear());
+  REQUIRE(values.value().replace(sai::value{sai::int32_list{7, 8}}));
+  CHECK(values.value().size().value() == 2);
+  CHECK(values.value().at(0).value() == sai::value{std::int32_t{7}});
+  auto committed = edit.commit();
+  REQUIRE(committed);
+  REQUIRE(committed.value().changes.size() == 7);
+  CHECK(committed.value().changes[1].kind ==
+        sai::change_kind::multi_element_set);
+  CHECK(committed.value().changes[2].kind == sai::change_kind::multi_inserted);
+  CHECK(committed.value().changes[3].kind == sai::change_kind::multi_erased);
+  CHECK(committed.value().changes[4].kind == sai::change_kind::multi_inserted);
+  CHECK(committed.value().changes[5].kind == sai::change_kind::multi_cleared);
+  CHECK(committed.value().changes[6].kind == sai::change_kind::multi_replaced);
+  CHECK(context.snapshot().read(field.value()).value() ==
+        sai::value{sai::int32_list{7, 8}});
+}
+
+TEST_CASE("typed and dynamic multi-field editors publish equal traces") {
+  const auto exercise = [](bool typed) -> sai::change_set {
+    sai::type_registry registry;
+    REQUIRE(registry.define(test_node_type(
+        "Samples", {test_field("values", sai::value_kind::mf_int32,
+                               sai::access_type::input_output,
+                               sai::int32_list{10, 20})})));
+    sai::browser host{std::move(registry)};
+    auto context = host.current_scene();
+    auto edit = context.edit();
+    auto owner = edit.create_node("Samples");
+    REQUIRE(owner);
+    auto dynamic = edit.field(owner.value(), "values");
+    REQUIRE(dynamic);
+    if (typed) {
+      auto field = dynamic.value().as<sai::int32_list>();
+      REQUIRE(field);
+      auto values = edit.multi(field.value());
+      REQUIRE(values);
+      CHECK(values.value().at(0).value() == 10);
+      REQUIRE(values.value().set(0, 11));
+      REQUIRE(values.value().insert(1, 12));
+      REQUIRE(values.value().erase(2));
+      REQUIRE(values.value().append(13));
+      REQUIRE(values.value().clear());
+      REQUIRE(values.value().replace(sai::int32_list{7, 8}));
+    } else {
+      auto values = edit.multi(dynamic.value());
+      REQUIRE(values);
+      CHECK(values.value().at(0).value() == sai::value{std::int32_t{10}});
+      REQUIRE(values.value().set(0, sai::value{std::int32_t{11}}));
+      REQUIRE(values.value().insert(1, sai::value{std::int32_t{12}}));
+      REQUIRE(values.value().erase(2));
+      REQUIRE(values.value().append(sai::value{std::int32_t{13}}));
+      REQUIRE(values.value().clear());
+      REQUIRE(values.value().replace(sai::value{sai::int32_list{7, 8}}));
+    }
+    auto committed = edit.commit();
+    REQUIRE(committed);
+    return committed.value();
+  };
+
+  const auto dynamic = exercise(false);
+  const auto typed = exercise(true);
+  REQUIRE(dynamic.changes.size() == typed.changes.size());
+  for (std::size_t index = 0; index < dynamic.changes.size(); ++index) {
+    CHECK(dynamic.changes[index].kind == typed.changes[index].kind);
+    CHECK(dynamic.changes[index].node == typed.changes[index].node);
+    CHECK(dynamic.changes[index].field == typed.changes[index].field);
+    CHECK(sai::same_representation(dynamic.changes[index].before,
+                                   typed.changes[index].before));
+    CHECK(sai::same_representation(dynamic.changes[index].after,
+                                   typed.changes[index].after));
+    CHECK(dynamic.changes[index].index == typed.changes[index].index);
+  }
+}
+
+TEST_CASE("multi-field editors are revision-bound capabilities") {
+  sai::type_registry registry;
+  REQUIRE(registry.define(test_node_type(
+      "Samples",
+      {test_field("values", sai::value_kind::mf_int32,
+                  sai::access_type::input_output, sai::int32_list{1})})));
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto owner = author.create_node("Samples");
+  REQUIRE(owner);
+  REQUIRE(author.commit());
+  auto field = context.snapshot().field(owner.value(), "values");
+  REQUIRE(field);
+
+  auto stale_edit = context.edit();
+  auto stale_values = stale_edit.multi(field.value());
+  REQUIRE(stale_values);
+  auto winner = context.edit();
+  REQUIRE(winner.set(field.value(), sai::value{sai::int32_list{2}}));
+  REQUIRE(winner.commit());
+  auto stale_read = stale_values.value().size();
+  REQUIRE_FALSE(stale_read);
+  CHECK(stale_read.error().code == sai::error_code::stale_revision);
+
+  auto committed_edit = context.edit();
+  auto committed_values = committed_edit.multi(field.value());
+  REQUIRE(committed_values);
+  REQUIRE(committed_values.value().append(sai::value{std::int32_t{3}}));
+  REQUIRE(committed_edit.commit());
+  auto after_commit = committed_values.value().at(0);
+  REQUIRE_FALSE(after_commit);
+  CHECK(after_commit.error().code == sai::error_code::stale_revision);
+  auto second_commit = committed_edit.commit();
+  REQUIRE_FALSE(second_commit);
+  CHECK(second_commit.error().code == sai::error_code::poisoned_edit);
+
+  auto retired_edit = context.edit();
+  auto retired_values = retired_edit.multi(field.value());
+  REQUIRE(retired_values);
+  auto replacement = host.create_scene();
+  REQUIRE(host.replace_world(replacement));
+  auto retired_read = retired_values.value().size();
+  REQUIRE_FALSE(retired_read);
+  CHECK(retired_read.error().code == sai::error_code::stale_handle);
+  auto retired_write =
+      retired_values.value().append(sai::value{std::int32_t{4}});
+  REQUIRE_FALSE(retired_write);
+  CHECK(retired_write.error().code == sai::error_code::stale_handle);
+}
+
+TEST_CASE("MFNode editors validate the complete handle range before staging") {
+  sai::type_registry registry;
+  auto children =
+      test_field("children", sai::value_kind::mf_node,
+                 sai::access_type::input_output, sai::node_list{}, true);
+  children.accepted_node_types = {"Box"};
+  REQUIRE(registry.define(test_node_type("Parent", {std::move(children)})));
+  REQUIRE(registry.define(test_node_type("Box", {})));
+  REQUIRE(registry.define(test_node_type("Shape", {})));
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto parent = author.create_node("Parent");
+  auto box = author.create_node("Box");
+  auto shape = author.create_node("Shape");
+  REQUIRE(parent);
+  REQUIRE(box);
+  REQUIRE(shape);
+  auto dynamic = author.field(parent.value(), "children");
+  REQUIRE(dynamic);
+  auto typed = dynamic.value().as<sai::node_list>();
+  REQUIRE(typed);
+  auto values = author.multi(typed.value());
+  REQUIRE(values);
+  REQUIRE(values.value().append(box.value()));
+  CHECK(values.value().at(0).value().id() == box.value().id());
+  const std::array invalid_range{box.value(), shape.value()};
+  auto rejected =
+      values.value().replace(std::span<const sai::node>{invalid_range});
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::type_mismatch);
+  REQUIRE_FALSE(author.commit());
+  CHECK(context.snapshot().revision() == 0);
+}
+
 TEST_CASE(
     "numeric bits and large owning images survive the semantic boundary") {
   sai::type_registry registry;
@@ -998,6 +1180,49 @@ TEST_CASE("typed and dynamic event intent have equal traces and failures") {
   CHECK(dynamic_failure.error().operation == typed_failure.error().operation);
   CHECK(dynamic_failure.error().node == typed_failure.error().node);
   CHECK(dynamic_failure.error().field == typed_failure.error().field);
+}
+
+TEST_CASE("typed and dynamic MF events preserve the complete owning payload") {
+  const auto exercise = [](bool typed) -> sai::event_result {
+    sai::type_registry registry;
+    REQUIRE(registry.define(test_node_type(
+        "Samples",
+        {test_field("values", sai::value_kind::mf_int32,
+                    sai::access_type::input_output, sai::int32_list{})})));
+    sai::browser host{std::move(registry)};
+    auto context = host.current_scene();
+    auto author = context.edit();
+    auto owner = author.create_node("Samples");
+    REQUIRE(owner);
+    REQUIRE(author.commit());
+    auto dynamic = context.snapshot().field(owner.value(), "values");
+    REQUIRE(dynamic);
+    auto events = context.events(sai::event_time{57.0});
+    const sai::int32_list payload{3, 1, 4, 1, 5};
+    if (typed) {
+      auto field = dynamic.value().as<sai::int32_list>();
+      REQUIRE(field);
+      REQUIRE(events.send(field.value(), payload));
+    } else {
+      REQUIRE(events.send(dynamic.value(), sai::value{payload}));
+    }
+    auto result = events.commit();
+    REQUIRE(result);
+    return result.value();
+  };
+
+  const auto dynamic = exercise(false);
+  const auto typed = exercise(true);
+  REQUIRE(dynamic.deliveries.size() == 1);
+  REQUIRE(typed.deliveries.size() == 1);
+  CHECK(sai::same_representation(dynamic.deliveries[0].payload,
+                                 typed.deliveries[0].payload));
+  REQUIRE(dynamic.state_changes);
+  REQUIRE(typed.state_changes);
+  REQUIRE(dynamic.state_changes->changes.size() == 1);
+  REQUIRE(typed.state_changes->changes.size() == 1);
+  CHECK(sai::same_representation(dynamic.state_changes->changes[0].after,
+                                 typed.state_changes->changes[0].after));
 }
 
 TEST_CASE("node event payloads require context-bearing handles and ranges") {
