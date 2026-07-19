@@ -385,6 +385,42 @@ def write_semantic_metadata_registry(output_dir: str,
     print(f"Generated X3D semantic metadata source at {src}")
 
 
+def write_sai_bindings(output_dir: str, nodes: Dict[str, X3DNode],
+                       dependency_graph, enum_defs=None,
+                       spec_version="unknown",
+                       clang_format="clang-format") -> None:
+    """Write runtime-independent experimental SAI node binding headers."""
+    from x3d_cpp_gen.emit.sai_bindings import (
+        gen_sai_bindings_catalog,
+        gen_sai_node_binding,
+    )
+    from x3d_cpp_gen.emit.semantic_metadata import gen_semantic_metadata_source
+
+    root = os.path.join(output_dir, "x3d", "sai", "experimental")
+    bindings_dir = os.path.join(root, "bindings")
+    os.makedirs(bindings_dir, exist_ok=True)
+    emitted = []
+    for name in sorted(nodes):
+        output_file = os.path.join(bindings_dir, f"{name}.hpp")
+        with open(output_file, "w") as generated:
+            generated.write(gen_sai_node_binding(
+                nodes[name], nodes, dependency_graph, enum_defs))
+        emitted.append(output_file)
+        print(f"Generated experimental SAI binding at {output_file}")
+
+    metadata = gen_semantic_metadata_source(
+        nodes, dependency_graph, enum_defs, spec_version)
+    marker = "X3DSemanticMetadataRegistry::modelFingerprint()"
+    fingerprint = metadata[metadata.index(marker):].split(
+        'return "', 1)[1].split('"', 1)[0]
+    catalog = os.path.join(root, "X3DSAIBindings.hpp")
+    with open(catalog, "w") as generated:
+        generated.write(gen_sai_bindings_catalog(spec_version, fingerprint))
+    emitted.append(catalog)
+    CppHeaderBackend._format(emitted, clang_format)
+    print(f"Generated experimental SAI binding catalog at {catalog}")
+
+
 def generate_cpp_bindings(nodes: Dict[str, X3DNode], dependency_graph,
                           output_dir: str, templates_dir=None,
                           clang_format: str = "clang-format",

@@ -67,9 +67,10 @@ def test_bounded_enums_use_experimental_owning_values(model):
 
 
 def test_every_sf_mf_kind_has_one_mapping():
-    expected = {kind for kind in X3DType if kind is not X3DType.XS_NMTOKEN}
+    expected = set(X3DType)
     assert set(SAI_VALUE_TYPE_MAPPING) == expected
     assert len(SAI_VALUE_TYPE_MAPPING) == len(expected)
+    assert sai_value_type(X3DType.XS_NMTOKEN) == "std::string"
     with pytest.raises(ValueError, match="unsupported SAI field type"):
         sai_value_type(object())
 

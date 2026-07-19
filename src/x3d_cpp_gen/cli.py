@@ -21,6 +21,7 @@ from x3d_cpp_gen.generator import (
     write_reflection_header, write_node_factory,
     generate_cpp_bindings, generate_test_file,
     write_interface_registry, write_semantic_metadata_registry,
+    write_sai_bindings,
 )
 from x3d_cpp_gen.model.version import SpecVersion
 
@@ -205,6 +206,8 @@ def main(argv=None) -> int:
     write_interface_registry(str(out_dir), nodes, dependency_graph)
     write_semantic_metadata_registry(str(out_dir), nodes, dependency_graph,
                                      enum_defs, spec_version.version)
+    write_sai_bindings(str(out_dir), nodes, dependency_graph, enum_defs,
+                       spec_version.version, args.clang_format)
 
     if not args.no_test:
         test_file_path = generate_test_file(nodes, str(out_dir),

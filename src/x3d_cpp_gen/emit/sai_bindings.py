@@ -1,5 +1,6 @@
 """Generate lightweight typed bindings for the experimental C++ SAI."""
 
+from x3d_cpp_gen import __version__
 from x3d_cpp_gen.emit.naming import cpp_str, sanitize_field_name
 from x3d_cpp_gen.emit.semantic_fields import resolved_node_fields
 from x3d_cpp_gen.model.types import X3DType
@@ -50,6 +51,9 @@ SAI_VALUE_TYPE_MAPPING = {
     X3DType.MFVec3f: f"{_NS}vec3f_list",
     X3DType.MFVec4d: f"{_NS}vec4d_list",
     X3DType.MFVec4f: f"{_NS}vec4f_list",
+    # UOM schema attributes use xs:NMTOKEN, but its executable SAI/runtime
+    # representation is SFString (see X3DType.runtime_tag).
+    X3DType.XS_NMTOKEN: "std::string",
 }
 
 _ACCESS = {
@@ -108,3 +112,21 @@ def gen_sai_node_binding(node, nodes, graph, enum_defs=None):
         )
     lines.extend(["};", "", "} // namespace x3d::sai::experimental::bindings", ""])
     return "\n".join(lines)
+
+
+def gen_sai_bindings_catalog(spec_version, model_fingerprint):
+    return "\n".join(
+        [
+            "#pragma once",
+            "",
+            "// Auto-generated experimental SAI binding provenance.",
+            "#include <string_view>",
+            "",
+            "namespace x3d::sai::experimental::bindings {",
+            f'inline constexpr std::string_view specification_version = "{cpp_str(spec_version)}";',
+            f'inline constexpr std::string_view model_fingerprint = "{cpp_str(model_fingerprint)}";',
+            f'inline constexpr std::string_view generator_version = "{cpp_str(__version__)}";',
+            "} // namespace x3d::sai::experimental::bindings",
+            "",
+        ]
+    )

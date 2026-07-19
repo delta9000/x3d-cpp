@@ -15,6 +15,7 @@ from x3d_cpp_gen.parser import (
 from x3d_cpp_gen.backends.cpp_header import CppHeaderBackend
 from x3d_cpp_gen.generator import (
     FIELD_TYPE_MAPPING, XS_TYPES, write_types_header, write_enums_header,
+    write_sai_bindings, write_semantic_metadata_registry,
 )
 
 
@@ -33,6 +34,12 @@ def rendered(tmp_path_factory):
     write_enums_header(str(core_dir), enum_defs)
     backend = CppHeaderBackend(clang_format="", enum_defs=enum_defs)
     backend.emit(nodes, graph, str(out))
+    write_semantic_metadata_registry(
+        str(out), nodes, graph, enum_defs, spec_version="4.0"
+    )
+    write_sai_bindings(
+        str(out), nodes, graph, enum_defs, spec_version="4.0", clang_format=""
+    )
     return out
 
 
@@ -49,6 +56,32 @@ def _read(rendered, name):
         path = rendered / "x3d" / "nodes" / name
     raw = path.read_text()
     return raw, " ".join(raw.split())
+
+
+def test_experimental_sai_bindings_are_generated_without_runtime_nodes(rendered):
+    transform = (
+        rendered
+        / "x3d"
+        / "sai"
+        / "experimental"
+        / "bindings"
+        / "Transform.hpp"
+    ).read_text()
+    catalog = (
+        rendered / "x3d" / "sai" / "experimental" / "X3DSAIBindings.hpp"
+    ).read_text()
+    metadata = (
+        rendered / "x3d" / "nodes" / "X3DSemanticMetadataRegistry.cpp"
+    ).read_text()
+    fingerprint_marker = "X3DSemanticMetadataRegistry::modelFingerprint()"
+    metadata_fingerprint = metadata[metadata.index(fingerprint_marker):].split(
+        'return "', 1
+    )[1].split('"', 1)[0]
+    assert "struct Transform" in transform
+    assert "field_key<Transform" in transform
+    assert "x3d/nodes/" not in transform
+    assert f'"{metadata_fingerprint}"' in catalog
+    assert "specification_version = \"4.0\"" in catalog
 
 
 def test_appearance_alpha_mode_is_enum(rendered):
