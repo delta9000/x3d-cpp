@@ -1,0 +1,254 @@
+cmake_minimum_required(VERSION 3.24)
+project(x3d_sai VERSION 0.1.0 LANGUAGES CXX)
+
+include(CTest)
+
+set(_sai_generated "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings")
+
+# Firewalled modern-C++ SAI proposal. This target links only the C++ standard
+# library: it has no dependency on x3d-cpp's runtime or generated node objects.
+add_library(x3d_sai_experimental STATIC "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel.cpp")
+target_include_directories(x3d_sai_experimental PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
+target_compile_features(x3d_sai_experimental PUBLIC cxx_std_20)
+
+# Optional generated-schema bridge. Keeping this separate preserves the
+# dependency-light semantic kernel while allowing consumers to opt into the UOM
+# catalog.
+add_library(x3d_sai_experimental_metadata STATIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/metadata.cpp"
+    "${_sai_generated}/x3d/nodes/X3DSemanticMetadataRegistry.cpp")
+target_include_directories(x3d_sai_experimental_metadata PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${_sai_generated}")
+target_link_libraries(x3d_sai_experimental_metadata PUBLIC x3d_sai_experimental)
+target_compile_features(x3d_sai_experimental_metadata PUBLIC cxx_std_20)
+
+add_library(x3d_sai_doctest_main STATIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/doctest/doctest_main.cpp")
+target_include_directories(x3d_sai_doctest_main PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
+target_compile_features(x3d_sai_doctest_main PUBLIC cxx_std_20)
+
+add_executable(x3d_sai_experimental_tests
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_kernel_test.cpp")
+target_link_libraries(x3d_sai_experimental_tests PRIVATE
+    x3d_sai_experimental_metadata x3d_sai_doctest_main)
+target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
+
+# CTest names below are load-bearing: scripts/sai_conformance.py parses literal
+# add_test(NAME ...) entries out of this file to cross-link registered services
+# against their falsification tests. Do not rename them.
+add_test(NAME x3d_sai_experimental COMMAND x3d_sai_experimental_tests)
+add_test(NAME sai_id_shared_node COMMAND x3d_sai_experimental_tests
+    "--test-case=one shared node has one identity and two occurrences")
+add_test(NAME sai_id_occurrence_edge COMMAND x3d_sai_experimental_tests
+    "--test-case=one shared node has one identity and two occurrences")
+add_test(NAME sai_own_domain COMMAND x3d_sai_experimental_tests
+    "--test-case=a browser rejects an execution context from another browser")
+add_test(NAME sai_field_one_descriptor COMMAND x3d_sai_experimental_tests
+    "--test-case=dynamic discovery and typed fields are substitutable")
+add_test(NAME sai_generated_metadata COMMAND x3d_sai_experimental_tests
+    "--test-case=generated metadata authors without runtime node identity")
+add_test(NAME sai_generated_metadata_drift COMMAND x3d_sai_experimental_tests
+    "--test-case=generated metadata adapter has exhaustive ordered descriptor parity")
+add_test(NAME sai_field_complete_vocabulary COMMAND x3d_sai_experimental_tests
+    "--test-case=the owning value vocabulary preserves every non-node ISO kind")
+add_test(NAME sai_generated_metadata_executable COMMAND x3d_sai_experimental_tests
+    "--test-case=every generated descriptor adapts into the executable vocabulary")
+add_test(NAME sai_generated_metadata_lexical COMMAND x3d_sai_experimental_tests
+    "--test-case=schema lexical defaults reject image truncation and preserve strings")
+add_test(NAME sai_field_value_boundaries COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric bits and large owning images survive the semantic boundary")
+add_test(NAME sai_field_equal_intent COMMAND x3d_sai_experimental_tests
+    "--test-case=dynamic discovery and typed fields are substitutable")
+add_test(NAME sai_mf_size_read COMMAND x3d_sai_experimental_tests
+    "--test-case=a dynamic multi-field editor stages the complete indexed service")
+add_test(NAME sai_mf_set COMMAND x3d_sai_experimental_tests
+    "--test-case=a dynamic multi-field editor stages the complete indexed service")
+add_test(NAME sai_mf_insert COMMAND x3d_sai_experimental_tests
+    "--test-case=a dynamic multi-field editor stages the complete indexed service")
+add_test(NAME sai_mf_erase COMMAND x3d_sai_experimental_tests
+    "--test-case=a dynamic multi-field editor stages the complete indexed service")
+add_test(NAME sai_mf_append COMMAND x3d_sai_experimental_tests
+    "--test-case=a dynamic multi-field editor stages the complete indexed service")
+add_test(NAME sai_mf_clear COMMAND x3d_sai_experimental_tests
+    "--test-case=a dynamic multi-field editor stages the complete indexed service")
+add_test(NAME sai_mf_replace COMMAND x3d_sai_experimental_tests
+    "--test-case=a dynamic multi-field editor stages the complete indexed service")
+add_test(NAME sai_mf_typed_dynamic COMMAND x3d_sai_experimental_tests
+    "--test-case=typed and dynamic multi-field editors publish equal traces")
+add_test(NAME sai_mf_revision_bound COMMAND x3d_sai_experimental_tests
+    "--test-case=multi-field editors are revision-bound capabilities")
+add_test(NAME sai_mf_node_authority COMMAND x3d_sai_experimental_tests
+    "--test-case=MFNode editors validate the complete handle range before staging")
+add_test(NAME sai_mf_event_trace COMMAND x3d_sai_experimental_tests
+    "--test-case=typed and dynamic MF events preserve the complete owning payload")
+add_test(NAME sai_field_access_state_machine COMMAND x3d_sai_experimental_tests
+    "--test-case=field access is a lifecycle rule rather than a setter shape")
+add_test(NAME sai_field_readable COMMAND x3d_sai_experimental_tests
+    "--test-case=field capability queries predict every lifecycle intent")
+add_test(NAME sai_field_writable COMMAND x3d_sai_experimental_tests
+    "--test-case=field capability queries predict every lifecycle intent")
+add_test(NAME sai_field_units_once COMMAND x3d_sai_experimental_tests
+    "--test-case=authored unit boundaries convert exactly once around canonical state")
+add_test(NAME sai_field_pure_read COMMAND x3d_sai_experimental_tests
+    "--test-case=public semantic ranges stay pure derived and authored-order stable")
+add_test(NAME sai_order_public_ranges COMMAND x3d_sai_experimental_tests
+    "--test-case=public semantic ranges stay pure derived and authored-order stable")
+add_test(NAME sai_field_specialized_access COMMAND x3d_sai_experimental_tests
+    "--test-case=specialized containment mutation obeys the field lifecycle")
+add_test(NAME sai_route_access COMMAND x3d_sai_experimental_tests
+    "--test-case=routes connect output-capable ports to input-capable ports")
+add_test(NAME sai_route_unique COMMAND x3d_sai_experimental_tests
+    "--test-case=duplicate route identity is rejected without publication")
+add_test(NAME sai_inspect_descriptor COMMAND x3d_sai_experimental_tests
+    "--test-case=inspection discovers node types and ordered field definitions")
+add_test(NAME sai_decl_identity_order COMMAND x3d_sai_experimental_tests
+    "--test-case=declarations have stable identity and authored order")
+add_test(NAME sai_decl_interface_validation COMMAND x3d_sai_experimental_tests
+    "--test-case=declaration interfaces validate exact field semantics")
+add_test(NAME sai_decl_failure_nonmutation COMMAND x3d_sai_experimental_tests
+    "--test-case=rejected declaration edits publish nothing")
+add_test(NAME sai_decl_mutation_duals COMMAND x3d_sai_experimental_tests
+    "--test-case=declaration query and mutation operations are identity duals")
+add_test(NAME sai_decl_snapshot_history COMMAND x3d_sai_experimental_tests
+    "--test-case=declaration query and mutation operations are identity duals")
+add_test(NAME sai_decl_update_intent COMMAND x3d_sai_experimental_tests
+    "--test-case=declaration updates preserve kind and separate rename intent")
+add_test(NAME sai_decl_change_order COMMAND x3d_sai_experimental_tests
+    "--test-case=graph and declaration changes share one authored order")
+add_test(NAME sai_decl_template_scope COMMAND x3d_sai_experimental_tests
+    "--test-case=local declarations exclusively claim their template closure")
+add_test(NAME sai_decl_scope_claim_atomic COMMAND x3d_sai_experimental_tests
+    "--test-case=template claims reject live references and cycles atomically")
+add_test(NAME sai_decl_scope_live_reference COMMAND x3d_sai_experimental_tests
+    "--test-case=template claims revalidate live references at commit")
+add_test(NAME sai_decl_scope_leakage COMMAND x3d_sai_experimental_tests
+    "--test-case=template scope rejects public aliases routes and removal")
+add_test(NAME sai_decl_scope_release COMMAND x3d_sai_experimental_tests
+    "--test-case=removing a declaration releases rather than deletes template nodes")
+add_test(NAME sai_decl_external_state COMMAND x3d_sai_experimental_tests
+    "--test-case=external declarations expose honest explicit load states")
+add_test(NAME sai_decl_external_compatibility COMMAND x3d_sai_experimental_tests
+    "--test-case=resolved externals require and retain compatible local identity")
+add_test(NAME sai_own_node_value COMMAND x3d_sai_experimental_tests
+    "--test-case=node-valued writes require a context-bearing node handle")
+add_test(NAME sai_own_node_range COMMAND x3d_sai_experimental_tests
+    "--test-case=node ranges validate every element before staging")
+add_test(NAME sai_cap_predictive COMMAND x3d_sai_experimental_tests
+    "--test-case=experimental SAI starts as an empty descriptor-governed context")
+add_test(NAME sai_edit_atomic_indexes COMMAND x3d_sai_experimental_tests
+    "--test-case=names and routes publish at the same revision as their nodes")
+add_test(NAME sai_edit_failure_nonmutation COMMAND x3d_sai_experimental_tests
+    "--test-case=one invalid write poisons the edit and publishes nothing")
+add_test(NAME sai_edit_revision_changeset COMMAND x3d_sai_experimental_tests
+    "--test-case=change sets preserve authored operation order")
+add_test(NAME sai_edit_query_mutation_dual COMMAND x3d_sai_experimental_tests
+    "--test-case=enumerated roots names and routes are their own removal tokens")
+add_test(NAME sai_conc_boundary COMMAND x3d_sai_experimental_tests
+    "--test-case=optimistic edits conflict while old snapshots remain immutable")
+add_test(NAME sai_life_stale_handle COMMAND x3d_sai_experimental_tests
+    "--test-case=world replacement invalidates handles without invalidating snapshots")
+add_test(NAME sai_life_node_removal COMMAND x3d_sai_experimental_tests
+    "--test-case=unreferenced node removal preserves historical snapshots")
+add_test(NAME sai_life_remove_references COMMAND x3d_sai_experimental_tests
+    "--test-case=node removal rejects retained semantic references")
+add_test(NAME sai_life_remove_nonmutation COMMAND x3d_sai_experimental_tests
+    "--test-case=node removal rejects retained semantic references")
+add_test(NAME sai_life_remove_atomic COMMAND x3d_sai_experimental_tests
+    "--test-case=explicit detachment and node removal publish atomically")
+add_test(NAME sai_life_wrapper_disposal COMMAND x3d_sai_experimental_tests
+    "--test-case=wrapper disposal is local idempotent and callback free")
+add_test(NAME sai_life_removed_handle COMMAND x3d_sai_experimental_tests
+    "--test-case=removed live handles become stale and node IDs are not recycled")
+add_test(NAME sai_life_removed_event COMMAND x3d_sai_experimental_tests
+    "--test-case=node removal makes an older event batch stale")
+add_test(NAME sai_life_observer_reference COMMAND x3d_sai_experimental_tests
+    "--test-case=field observation retains its node until cancellation")
+add_test(NAME sai_life_queued_event_reference COMMAND x3d_sai_experimental_tests
+    "--test-case=undrained event notification retains its target node")
+add_test(NAME sai_evt_observer_mutation COMMAND x3d_sai_experimental_tests
+    "--test-case=commit queues observation and drain permits a reentrant commit")
+add_test(NAME sai_evt_callback_copy COMMAND x3d_sai_experimental_tests
+    "--test-case=dispatch does not copy user callables")
+add_test(NAME sai_cxx_safe_destruction COMMAND x3d_sai_experimental_tests
+    "--test-case=subscription cancellation and destruction are callback-free")
+add_test(NAME sai_cxx_typed_generic COMMAND x3d_sai_experimental_tests
+    "--test-case=dynamic discovery and typed fields are substitutable")
+add_test(NAME sai_cxx_failure_value COMMAND x3d_sai_experimental_tests
+    "--test-case=one invalid write poisons the edit and publishes nothing")
+add_test(NAME sai_cxx_result_composition COMMAND x3d_sai_experimental_tests
+    "--test-case=SAI results compose through expected-style monadic operations")
+add_test(NAME sai_generated_typed_access COMMAND x3d_sai_experimental_tests
+    "--test-case=generated field keys remove dynamic authoring lookup")
+add_test(NAME sai_generated_binding_parity COMMAND x3d_sai_experimental_tests
+    "--test-case=generated typed keys and metadata are one schema view")
+add_test(NAME sai_generated_registry_provenance COMMAND x3d_sai_experimental_tests
+    "--test-case=generated typed creation rejects mismatched registry provenance")
+add_test(NAME sai_generated_registry_mutation COMMAND x3d_sai_experimental_tests
+    "--test-case=mutating a generated registry revokes generated provenance")
+add_test(NAME sai_generated_binding_drift COMMAND x3d_sai_experimental_tests
+    "--test-case=generated key catalog has exhaustive ordered metadata parity")
+add_test(NAME sai_generated_error_parity COMMAND x3d_sai_experimental_tests
+    "--test-case=generated typed and dynamic failures have one vocabulary")
+add_test(NAME sai_evt_stale_async COMMAND x3d_sai_experimental_tests
+    "--test-case=cancelled and stale load completions are inert")
+add_test(NAME sai_evt_input_transient COMMAND x3d_sai_experimental_tests
+    "--test-case=inputOnly event intent is transient and access governed")
+add_test(NAME sai_evt_inputoutput_publish COMMAND x3d_sai_experimental_tests
+    "--test-case=inputOutput event intent publishes one coherent retained revision")
+add_test(NAME sai_evt_typed_generic COMMAND x3d_sai_experimental_tests
+    "--test-case=typed and dynamic event intent have equal traces and failures")
+add_test(NAME sai_own_event_nodes COMMAND x3d_sai_experimental_tests
+    "--test-case=node event payloads require context-bearing handles and ranges")
+add_test(NAME sai_evt_route_causal COMMAND x3d_sai_experimental_tests
+    "--test-case=a multi-hop route cascade preserves time and causal identity")
+add_test(NAME sai_evt_route_loop COMMAND x3d_sai_experimental_tests
+    "--test-case=a route cycle reaches quiescence by firing each route once")
+add_test(NAME sai_evt_fanin_portability COMMAND x3d_sai_experimental_tests
+    "--test-case=fan-in preserves the trace and exposes nonportable ordering")
+add_test(NAME sai_evt_duplicate_seed COMMAND x3d_sai_experimental_tests
+    "--test-case=duplicate event seeds poison the complete batch")
+add_test(NAME sai_evt_field_observer COMMAND x3d_sai_experimental_tests
+    "--test-case=field event observation is queued cancellable and access checked")
+add_test(NAME sai_evt_reentrant_batch COMMAND x3d_sai_experimental_tests
+    "--test-case=field observers isolate exceptions and permit a later reentrant batch")
+add_test(NAME sai_evt_time_monotonic COMMAND x3d_sai_experimental_tests
+    "--test-case=event publication rejects timestamps that do not move forward")
+add_test(NAME sai_context_export_isolation COMMAND x3d_sai_experimental_tests
+    "--test-case=context exports are ordered aliases while ordinary lookup stays local")
+add_test(NAME sai_context_import_authority COMMAND x3d_sai_experimental_tests
+    "--test-case=imports cross only explicit same-browser apertures")
+add_test(NAME sai_context_alias_collision COMMAND x3d_sai_experimental_tests
+    "--test-case=DEF and import names share one atomic local collision domain")
+add_test(NAME sai_context_aperture_revalidate COMMAND x3d_sai_experimental_tests
+    "--test-case=source export remapping invalidates a staged import atomically")
+add_test(NAME sai_context_import_removal COMMAND x3d_sai_experimental_tests
+    "--test-case=ordered imports are their own removal tokens")
+add_test(NAME sai_life_import_reference COMMAND x3d_sai_experimental_tests
+    "--test-case=committed imports retain source nodes across contexts")
+add_test(NAME sai_life_import_race COMMAND x3d_sai_experimental_tests
+    "--test-case=a committed import wins over an already staged source removal")
+add_test(NAME sai_context_import_snapshot COMMAND x3d_sai_experimental_tests
+    "--test-case=imported typed and dynamic reads capture immutable source revisions")
+add_test(NAME sai_context_import_firewall COMMAND x3d_sai_experimental_tests
+    "--test-case=imported authority is inspection-only and context checked")
+
+add_executable(x3d_sai_experimental_example
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/author_inspect.cpp")
+target_link_libraries(x3d_sai_experimental_example PRIVATE
+    x3d_sai_experimental)
+target_compile_features(x3d_sai_experimental_example PRIVATE cxx_std_20)
+add_test(NAME x3d_sai_experimental_author_inspect
+    COMMAND x3d_sai_experimental_example)
+
+add_executable(x3d_sai_experimental_generated_example
+    "${CMAKE_CURRENT_SOURCE_DIR}/examples/generated_author_inspect.cpp")
+target_link_libraries(x3d_sai_experimental_generated_example PRIVATE
+    x3d_sai_experimental_metadata)
+target_compile_features(x3d_sai_experimental_generated_example PRIVATE
+    cxx_std_20)
+add_test(NAME sai_generated_author_inspect
+    COMMAND x3d_sai_experimental_generated_example)

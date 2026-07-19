@@ -1,9 +1,31 @@
 # Experimental C++ SAI semantic kernel
 
-This directory is a compiling proposal for the irreducible semantics of a
+## About this repository
+
+Split out of [x3d-cpp](https://github.com/delta9000/x3d-cpp) on 2026-07-19, where it
+lived on the unmerged `sai/semantic-kernel` branch. The pre-split branch head is
+preserved there as the tag `archive/sai-semantic-kernel`.
+
+This repository has no build-time, link-time, or Python dependency on x3d-cpp. Its
+generator reads a vendored, SHA-pinned copy of the Web3D Consortium's X3D Unified
+Object Model directly, so both projects are independent consumers of the same
+upstream specification.
+
+The intended endgame is that this kernel becomes x3d-cpp's authoring API. The trigger
+for that decision is the strict convergence gate, `mise run sai-conformance`, going
+green; it is expected to fail until the SAI is complete. Work here is a future part of
+x3d-cpp rather than a permanent fork.
+
+Commit history before the seed commits of 2026-07-19 is provenance, not a buildable
+sequence. Those commits predate this repository's build system, so `git bisect` does
+not work back across the import boundary.
+
+## The proposal
+
+This repository is a compiling proposal for the irreducible semantics of a
 modern C++ X3D SAI. It is deliberately firewalled in
 `x3d::sai::experimental`: the library links only the C++ standard library and
-does not modify or depend on x3d-cpp's current runtime. Its C++20
+does not modify or depend on x3d-cpp's runtime. Its C++20
 `result<T>` is a public alias to the pinned, single-header `tl::expected` 1.3.1
 (CC0-1.0), providing `and_then`, `transform`, `transform_error`, and `or_else`
 without a configure-time dependency or a homegrown expected implementation.

@@ -1,0 +1,26 @@
+[tools]
+python = "3.12"
+
+[tasks.build]
+description = "Configure and build the experimental SAI kernel."
+run = "cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build -j"
+
+[tasks.ctest]
+description = "Run the SAI falsification suite."
+run = "ctest --test-dir build --output-on-failure"
+
+[tasks.sai-baseline]
+description = "Regenerate the SAI service/invariant baseline from the editable YAML registers."
+run = "uv run python scripts/sai_conformance.py generate"
+
+[tasks.sai-conformance-gate]
+description = "Validate the SAI service and invariant registers, their cross-links, and generated baseline drift (runs in CI)."
+run = "uv run python scripts/check_sai_services.py"
+
+[tasks.sai-invariants]
+description = "Validate the semantic invariant registry, service cross-links, and generated coverage view."
+run = "uv run python scripts/check_sai_invariants.py"
+
+[tasks.sai-conformance]
+description = "Opt-in convergence gate: require every registered SAI service and falsification test to be complete. Expected to fail until the SAI is complete."
+run = "uv run python scripts/check_sai_services.py --strict"
