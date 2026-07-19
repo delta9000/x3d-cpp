@@ -389,6 +389,7 @@ enum class error_code {
   unknown_type,
   unknown_node,
   node_in_use,
+  declaration_in_use,
   unknown_field,
   type_mismatch,
   invalid_value,

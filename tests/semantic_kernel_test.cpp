@@ -1722,6 +1722,145 @@ TEST_CASE(
   CHECK(context.snapshot().lookup(root->id()));
 }
 
+TEST_CASE("external declarations expose honest explicit load states") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  const std::vector interface{test_interface_field(
+      "translation", sai::value_kind::sf_vec3f, sai::access_type::input_output,
+      sai::value{sai::vec3f{}}, {}, "length")};
+  auto author = context.edit();
+  auto local =
+      author.add_local_declaration(test_local_declaration("Local", interface));
+  auto external = author.add_external_declaration(test_external_declaration(
+      "Remote", {"first.x3d#Local", "fallback.x3d#Local"}, interface));
+  REQUIRE(local);
+  REQUIRE(external);
+  REQUIRE(author.commit());
+
+  const auto transition = [&](sai::external_load_state state,
+                              std::string diagnostic,
+                              std::optional<sai::declaration_id> target) {
+    auto edit = context.edit();
+    auto replacement = test_external_declaration(
+        "Remote", {"first.x3d#Local", "fallback.x3d#Local"}, interface);
+    replacement.load_state = state;
+    replacement.diagnostic = std::move(diagnostic);
+    replacement.resolved_declaration = target;
+    REQUIRE(edit.update_declaration(external.value(), replacement));
+    REQUIRE(edit.commit());
+    const auto inspected = context.snapshot().describe(external.value());
+    REQUIRE(inspected);
+    return std::get<sai::external_declaration_descriptor>(inspected->payload);
+  };
+
+  auto loading =
+      transition(sai::external_load_state::loading, {}, std::nullopt);
+  CHECK(loading.load_state == sai::external_load_state::loading);
+  CHECK_FALSE(loading.resolved_declaration);
+  auto failed = transition(sai::external_load_state::failed, "network failure",
+                           std::nullopt);
+  CHECK(failed.load_state == sai::external_load_state::failed);
+  CHECK(failed.diagnostic == "network failure");
+  CHECK_FALSE(failed.resolved_declaration);
+  auto resolved =
+      transition(sai::external_load_state::resolved, {}, local->id());
+  CHECK(resolved.load_state == sai::external_load_state::resolved);
+  CHECK(resolved.resolved_declaration == local->id());
+  CHECK(resolved.urls ==
+        std::vector<std::string>{"first.x3d#Local", "fallback.x3d#Local"});
+  auto unresolved =
+      transition(sai::external_load_state::unresolved, {}, std::nullopt);
+  CHECK(unresolved.load_state == sai::external_load_state::unresolved);
+  CHECK_FALSE(unresolved.resolved_declaration);
+}
+
+TEST_CASE("resolved externals require and retain compatible local identity") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  const std::vector interface{
+      test_interface_field("first", sai::value_kind::sf_vec3f,
+                           sai::access_type::input_output,
+                           sai::value{sai::vec3f{}}, {}, "length"),
+      test_interface_field("second", sai::value_kind::sf_node,
+                           sai::access_type::initialize_only,
+                           sai::value{sai::node_id{}}, {"Transform"})};
+  auto author = context.edit();
+  auto local =
+      author.add_local_declaration(test_local_declaration("Local", interface));
+  auto external = author.add_external_declaration(
+      test_external_declaration("Remote", {"remote.x3d#Local"}, interface));
+  REQUIRE(local);
+  REQUIRE(external);
+  REQUIRE(author.commit());
+
+  std::vector<std::vector<sai::interface_field_descriptor>> incompatible;
+  incompatible.push_back(interface);
+  incompatible.back()[0].name = "different";
+  incompatible.push_back(interface);
+  incompatible.back()[0].kind = sai::value_kind::sf_vec3d;
+  incompatible.back()[0].default_value = sai::value{sai::vec3d{}};
+  incompatible.push_back(interface);
+  incompatible.back()[0].access = sai::access_type::initialize_only;
+  incompatible.push_back(interface);
+  std::ranges::reverse(incompatible.back());
+  incompatible.push_back(interface);
+  incompatible.back()[1].accepted_node_types = {"Group"};
+  incompatible.push_back(interface);
+  incompatible.back()[0].default_value = sai::value{sai::vec3f{1, 0, 0}};
+  incompatible.push_back(interface);
+  incompatible.back()[0].unit_category = "angle";
+  for (const auto &candidate : incompatible) {
+    auto reject = context.edit();
+    auto wrong =
+        test_external_declaration("Remote", {"remote.x3d#Local"}, candidate);
+    wrong.load_state = sai::external_load_state::resolved;
+    wrong.resolved_declaration = local->id();
+    const auto mismatch = reject.update_declaration(external.value(), wrong);
+    REQUIRE_FALSE(mismatch);
+    CHECK(mismatch.error().code == sai::error_code::invalid_descriptor);
+    REQUIRE_FALSE(reject.commit());
+  }
+
+  auto resolve = context.edit();
+  auto compatible =
+      test_external_declaration("Remote", {"remote.x3d#Local"}, interface);
+  compatible.load_state = sai::external_load_state::resolved;
+  compatible.resolved_declaration = local->id();
+  REQUIRE(resolve.update_declaration(external.value(), compatible));
+  REQUIRE(resolve.commit());
+
+  auto rename = context.edit();
+  REQUIRE(rename.rename_declaration(local.value(), "RenamedLocal"));
+  REQUIRE(rename.commit());
+  CHECK(std::get<sai::external_declaration_descriptor>(
+            context.snapshot().describe(external.value())->payload)
+            .resolved_declaration == local->id());
+
+  auto mutate = context.edit();
+  auto changed_local = test_local_declaration("RenamedLocal", interface);
+  changed_local.interface[0].kind = sai::value_kind::sf_vec3d;
+  changed_local.interface[0].default_value = sai::value{sai::vec3d{}};
+  const auto incompatible_target =
+      mutate.update_declaration(local.value(), changed_local);
+  REQUIRE_FALSE(incompatible_target);
+  CHECK(incompatible_target.error().code ==
+        sai::error_code::declaration_in_use);
+
+  auto removal = context.edit();
+  const auto retained = removal.remove_declaration(local.value());
+  REQUIRE_FALSE(retained);
+  CHECK(retained.error().code == sai::error_code::declaration_in_use);
+
+  auto release = context.edit();
+  auto failed = compatible;
+  failed.load_state = sai::external_load_state::failed;
+  failed.resolved_declaration.reset();
+  failed.diagnostic = "not found";
+  REQUIRE(release.update_declaration(external.value(), failed));
+  REQUIRE(release.remove_declaration(local.value()));
+  REQUIRE(release.commit());
+}
+
 TEST_CASE("node-valued writes require a context-bearing node handle") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();
