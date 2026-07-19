@@ -1827,6 +1827,8 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=optimistic edits conflict while old snapshots remain immutable")
     add_test(NAME sai_life_stale_handle COMMAND x3d_sai_experimental_tests
         "--test-case=world replacement invalidates handles without invalidating snapshots")
+    add_test(NAME sai_life_node_removal COMMAND x3d_sai_experimental_tests
+        "--test-case=unreferenced node removal preserves historical snapshots")
     add_test(NAME sai_evt_observer_mutation COMMAND x3d_sai_experimental_tests
         "--test-case=commit queues observation and drain permits a reentrant commit")
     add_test(NAME sai_evt_callback_copy COMMAND x3d_sai_experimental_tests
@@ -3084,6 +3086,7 @@ if(X3D_CPP_BUILD_TESTS)
         sai_edit_query_mutation_dual
         sai_conc_boundary
         sai_life_stale_handle
+        sai_life_node_removal
         sai_evt_observer_mutation
         sai_evt_callback_copy
         sai_cxx_safe_destruction

@@ -383,6 +383,7 @@ enum class error_code {
   invalid_descriptor,
   unknown_type,
   unknown_node,
+  node_in_use,
   unknown_field,
   type_mismatch,
   invalid_value,

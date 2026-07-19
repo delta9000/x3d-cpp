@@ -579,6 +579,7 @@ struct detail::scene_edit_control {
   std::optional<unexpected> poison;
   std::vector<change> changes;
   std::unordered_set<std::uint64_t> created_nodes;
+  std::unordered_set<std::uint64_t> removed_nodes;
   bool committed = false;
 };
 
@@ -688,6 +689,33 @@ result<node> scene_edit::create_node(const std::string &type_name) {
                                   .after = type_name,
                                   .index = 0});
   return node{impl_->context, impl_->context->generation, id};
+}
+
+result<void> scene_edit::remove_node(const node &target) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto target_context = target.context_.lock();
+  const auto found = impl_->staged.nodes.find(target.id_.value);
+  if (target_context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      found == impl_->staged.nodes.end()) {
+    impl_->poison = edit_error(
+        error_code::stale_handle, "scene_edit.remove_node", *impl_->context,
+        impl_->base->revision, "invalid node handle", target.id_);
+    return *impl_->poison;
+  }
+
+  impl_->staged.nodes.erase(found);
+  impl_->created_nodes.erase(target.id_.value);
+  impl_->removed_nodes.insert(target.id_.value);
+  impl_->changed = true;
+  impl_->changes.push_back(change{.kind = change_kind::node_removed,
+                                  .node = target.id_,
+                                  .field = {},
+                                  .before = target.id_,
+                                  .after = std::monostate{},
+                                  .index = 0});
+  return {};
 }
 
 result<void> scene_edit::append_root(const node &child) {

@@ -2613,6 +2613,37 @@ TEST_CASE("optimistic edits conflict while old snapshots remain immutable") {
         sai::value{sai::vec3f{1, 0, 0}});
 }
 
+TEST_CASE("unreferenced node removal preserves historical snapshots") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto first = author.create_node("Transform");
+  auto second = author.create_node("Transform");
+  REQUIRE(first);
+  REQUIRE(second);
+  REQUIRE(author.commit());
+
+  const auto historical = context.snapshot();
+  const auto historical_field =
+      historical.field(first.value(), "translation");
+  REQUIRE(historical_field);
+
+  auto removal = context.edit();
+  REQUIRE(removal.remove_node(first.value()));
+  const auto committed = removal.commit();
+  REQUIRE(committed);
+  REQUIRE(committed->changes.size() == 1);
+  CHECK(committed->changes.front().kind == sai::change_kind::node_removed);
+  CHECK(committed->changes.front().node == first->id());
+
+  const auto current = context.snapshot();
+  CHECK(historical.read(historical_field.value()).value() ==
+        sai::value{sai::vec3f{}});
+  CHECK_FALSE(current.lookup(first->id()));
+  CHECK(current.lookup(second->id()));
+  CHECK(second->id().value > first->id().value);
+}
+
 TEST_CASE(
     "world replacement invalidates handles without invalidating snapshots") {
   sai::browser host{graph_registry()};
