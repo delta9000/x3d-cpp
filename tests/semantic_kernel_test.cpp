@@ -2389,6 +2389,83 @@ TEST_CASE("ordered imports are their own removal tokens") {
   CHECK(after.imports()[0].local_name == "B");
 }
 
+TEST_CASE("committed imports retain source nodes across contexts") {
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto importer = host.create_scene();
+  auto source_edit = source.edit();
+  auto shared = source_edit.create_node("Transform");
+  REQUIRE(shared);
+  REQUIRE(source_edit.export_node("Shared", shared.value()));
+  REQUIRE(source_edit.commit());
+
+  auto import_edit = importer.edit();
+  REQUIRE(import_edit.import_node("Remote", source, "Shared"));
+  REQUIRE(import_edit.commit());
+
+  auto blocked = source.edit();
+  REQUIRE(blocked.remove_export(source.snapshot().exports().front()));
+  const auto rejected = blocked.remove_node(shared.value());
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::node_in_use);
+  CHECK(rejected.error().operation == "scene_edit.remove_node");
+  REQUIRE_FALSE(blocked.commit());
+  CHECK(source.snapshot().lookup(shared->id()));
+
+  auto detach = importer.edit();
+  REQUIRE(detach.remove_import(importer.snapshot().imports().front()));
+  REQUIRE(detach.commit());
+  auto removal = source.edit();
+  REQUIRE(removal.remove_export(source.snapshot().exports().front()));
+  REQUIRE(removal.remove_node(shared.value()));
+  REQUIRE(removal.commit());
+  CHECK_FALSE(source.snapshot().lookup(shared->id()));
+
+  auto staged_source = host.create_scene();
+  auto staged_importer = host.create_scene();
+  auto staged_author = staged_source.edit();
+  auto staged_node = staged_author.create_node("Transform");
+  REQUIRE(staged_node);
+  REQUIRE(staged_author.export_node("Staged", staged_node.value()));
+  REQUIRE(staged_author.commit());
+  auto abandoned = staged_importer.edit();
+  REQUIRE(abandoned.import_node("Remote", staged_source, "Staged"));
+
+  auto unblocked = staged_source.edit();
+  REQUIRE(
+      unblocked.remove_export(staged_source.snapshot().exports().front()));
+  REQUIRE(unblocked.remove_node(staged_node.value()));
+  REQUIRE(unblocked.commit());
+}
+
+TEST_CASE("a committed import wins over an already staged source removal") {
+  sai::browser host{graph_registry()};
+  auto source = host.current_scene();
+  auto importer = host.create_scene();
+  auto author = source.edit();
+  auto shared = author.create_node("Transform");
+  REQUIRE(shared);
+  REQUIRE(author.export_node("Shared", shared.value()));
+  REQUIRE(author.commit());
+
+  auto staged_removal = source.edit();
+  REQUIRE(
+      staged_removal.remove_export(source.snapshot().exports().front()));
+  REQUIRE(staged_removal.remove_node(shared.value()));
+
+  auto winner = importer.edit();
+  REQUIRE(winner.import_node("Remote", source, "Shared"));
+  REQUIRE(winner.commit());
+
+  const auto rejected = staged_removal.commit();
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::node_in_use);
+  CHECK(rejected.error().operation == "scene_edit.commit");
+  CHECK(source.snapshot().lookup(shared->id()));
+  CHECK(source.snapshot().exports().size() == 1);
+  CHECK(importer.snapshot().imports().size() == 1);
+}
+
 TEST_CASE(
     "imported typed and dynamic reads capture immutable source revisions") {
   sai::browser host{graph_registry()};

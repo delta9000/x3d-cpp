@@ -272,6 +272,13 @@ struct scene_state {
 };
 
 struct context_control {
+  struct import_dependent_record {
+    std::weak_ptr<context_control> importer;
+    generation_id importer_generation = 0;
+    std::string local_name;
+    node_id target;
+  };
+
   struct pending_change {
     change_set changes;
     std::vector<std::uint64_t> recipients;
@@ -291,7 +298,7 @@ struct context_control {
   mutable std::mutex mutex;
   std::weak_ptr<browser_control> owner;
   generation_id generation = 0;
-  bool active = true;
+  std::atomic_bool active{true};
   type_registry registry;
   std::shared_ptr<const scene_state> state = std::make_shared<scene_state>();
   std::atomic<revision_id> published_revision{0};
@@ -301,6 +308,7 @@ struct context_control {
   std::map<std::uint64_t, field_observer_record> event_observers;
   std::deque<pending_notification> pending;
   std::optional<event_time> last_event_time;
+  std::vector<import_dependent_record> import_dependents;
 };
 
 struct browser_control {
@@ -450,6 +458,19 @@ find_node_reference(const detail::context_control &context,
     return node_reference_blocker{
         "node is retained by a route endpoint",
         routed->source_field + " -> " + routed->sink_field};
+  return std::nullopt;
+}
+
+std::optional<std::string>
+find_live_import_reference(const detail::context_control &source,
+                           node_id target) {
+  for (const auto &dependent : source.import_dependents) {
+    const auto importer = dependent.importer.lock();
+    if (dependent.target == target && importer &&
+        importer->active.load(std::memory_order_acquire) &&
+        importer->generation == dependent.importer_generation)
+      return dependent.local_name;
+  }
   return std::nullopt;
 }
 
@@ -772,6 +793,18 @@ result<void> scene_edit::remove_node(const node &target) {
                    *impl_->context, impl_->base->revision, blocker->message,
                    target.id_, blocker->field);
     return *impl_->poison;
+  }
+  {
+    std::lock_guard lock(impl_->context->mutex);
+    if (const auto imported =
+            find_live_import_reference(*impl_->context, target.id_)) {
+      impl_->poison = edit_error(
+          error_code::node_in_use, "scene_edit.remove_node", *impl_->context,
+          impl_->base->revision,
+          "node is retained by a committed import aperture", target.id_,
+          *imported);
+      return *impl_->poison;
+    }
   }
 
   impl_->staged.nodes.erase(found);
@@ -2139,8 +2172,16 @@ result<change_set> scene_edit::commit() {
     }
     import_sources.push_back(std::move(source));
   }
-  std::vector<std::shared_ptr<detail::context_control>> lock_order =
+  std::vector<std::shared_ptr<detail::context_control>> dependency_sources =
       import_sources;
+  dependency_sources.reserve(dependency_sources.size() +
+                             impl_->base->import_sources.size());
+  for (const auto &weak_source : impl_->base->import_sources) {
+    if (auto source = weak_source.lock())
+      dependency_sources.push_back(std::move(source));
+  }
+  std::vector<std::shared_ptr<detail::context_control>> lock_order =
+      dependency_sources;
   lock_order.push_back(impl_->context);
   std::sort(lock_order.begin(), lock_order.end(),
             [](const auto &left, const auto &right) {
@@ -2164,6 +2205,16 @@ result<change_set> scene_edit::commit() {
     return edit_error(error_code::stale_revision, "scene_edit.commit",
                       *impl_->context, impl_->base->revision,
                       "edit base revision is stale");
+  }
+  for (const auto removed : impl_->removed_nodes) {
+    if (const auto imported =
+            find_live_import_reference(*impl_->context, node_id{removed})) {
+      return edit_error(error_code::node_in_use, "scene_edit.commit",
+                        *impl_->context, impl_->base->revision,
+                        "node acquired a committed import aperture while its "
+                        "removal was staged",
+                        node_id{removed}, *imported);
+    }
   }
   for (std::size_t index = 0; index < impl_->staged.imports.size(); ++index) {
     const import_binding &binding = impl_->staged.imports[index];
@@ -2192,6 +2243,22 @@ result<change_set> scene_edit::commit() {
     return change_set{.before_revision = impl_->base->revision,
                       .after_revision = impl_->base->revision,
                       .changes = {}};
+  }
+  for (const auto &source : dependency_sources) {
+    std::erase_if(source->import_dependents, [&](const auto &dependent) {
+      const auto importer = dependent.importer.lock();
+      return importer == impl_->context &&
+             dependent.importer_generation == impl_->context->generation;
+    });
+  }
+  for (std::size_t index = 0; index < impl_->staged.imports.size(); ++index) {
+    const auto &binding = impl_->staged.imports[index];
+    import_sources[index]->import_dependents.push_back(
+        detail::context_control::import_dependent_record{
+            .importer = impl_->context,
+            .importer_generation = impl_->context->generation,
+            .local_name = binding.local_name,
+            .target = binding.target.local});
   }
   const revision_id before = impl_->base->revision;
   impl_->staged.revision = before + 1;
