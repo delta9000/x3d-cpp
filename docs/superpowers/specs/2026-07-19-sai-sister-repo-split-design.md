@@ -50,24 +50,69 @@ The endgame is that the kernel eventually becomes x3d-cpp's authoring API. The s
 repo is incubation, not a permanent fork, and the re-entry contract below keeps that
 a tracked decision rather than an intention.
 
+## Correction: the firewall is not complete today
+
+The kernel README claims the library "links only the C++ standard library and does not
+depend on x3d-cpp's current runtime". That holds for `x3d_sai_experimental` itself. It
+does not hold for the metadata bridge or the test binary, both of which the split must
+resolve.
+
+`x3d_sai_experimental_metadata` links `x3d_cpp_headers`. This is not a real dependency:
+`x3d_cpp_headers` is an `INTERFACE` target supplying include paths, and the only
+x3d-cpp header `metadata.cpp` includes is `X3DSemanticMetadataRegistry.hpp`, which moves
+to `x3d-sai`. The dependency dissolves with the move.
+
+`x3d_sai_experimental_tests` links `x3d_cpp::nodes` and `x3d_doctest_main`, and
+`semantic_kernel_test.cpp` includes `x3d/nodes/X3DNode.hpp` and `X3DNodeFactory.hpp`.
+Two separate fixes:
+
+- doctest: `x3d-sai` vendors `runtime/test_support/doctest/doctest.h` and
+  `doctest_main.cpp` (MIT, v2.4.11) with its own NOTICE entry.
+- Runtime nodes: exactly one call site, `semantic_kernel_test.cpp:595`, in 1 of 91 test
+  cases. Lines 594-610 of the test case "generated metadata adapter has exhaustive
+  ordered descriptor parity" call `x3d::nodes::X3DNodeFactory::create(name)->fields()`
+  and assert that x3d-cpp's live runtime reflection matches the semantic catalog on
+  field order, name, type, and access.
+
+That last assertion is an x3d-cpp claim, not a SAI claim, and it appears to be the only
+runtime-level check of it. `tests/test_reflection.py` covers the generator's emission,
+not runtime agreement. So the block is dropped from `x3d-sai` and re-homed: the x3d-cpp
+PR gains a runtime test asserting `X3DNodeFactory` reflection matches the UOM-derived
+descriptors. The coverage moves rather than evaporating, and the sister repo's firewall
+becomes absolute rather than aspirational.
+
+The catalog-to-adapter parity assertions in the same test case, which are the actual SAI
+claim, survive intact in `x3d-sai`.
+
 ## Repository layout
 
 ```
 x3d-sai/
   include/x3d/sai/experimental/{kernel,metadata}.hpp
   src/{kernel,metadata}.cpp
-  generated/x3d/sai/experimental/bindings/          338 files, 23.5k LOC, committed
-  generated/x3d/sai/experimental/catalog.{hpp,cpp}  was X3DSemanticMetadataRegistry
-  gen/                                              the x3d-sai-gen Python package
-  tests/ examples/ third_party/tl/
-  conformance/  sai-services.yaml, sai-invariants.yaml, SAI-BASELINE.md, 2 scripts
-  docs/plans/   the 14 SAI design and implementation docs
-  CMakeLists.txt  mise.toml  NOTICE  LICENSE  README.md
+  generated_cpp_bindings/x3d/sai/experimental/      338 files, 23.5k LOC, committed
+  generated_cpp_bindings/x3d/nodes/X3DSemanticMetadataRegistry.{hpp,cpp}
+  src/x3d_sai_gen/                                  the generator package
+  tests/ examples/ third_party/{tl,doctest}/
+  scripts/            sai_conformance.py, check_sai_services.py, check_sai_invariants.py
+  docs/conformance/   sai-services.yaml, sai-invariants.yaml, sai-service-catalog.yaml,
+                      SAI-BASELINE.md
+  docs/plans/         the 14 SAI design and implementation docs
+  CMakeLists.txt  mise.toml  pyproject.toml  NOTICE  LICENSE  README.md
 ```
 
-The `experimental/` nesting flattens away, since the whole repository is now the
-experiment. The namespace stays `x3d::sai::experimental`: renaming would churn 34k
-lines and break every citation in the plan docs, and the qualifier is still accurate.
+The C++ sources flatten out of `experimental/sai/`, since the whole repository is now
+the experiment and nothing depends on that prefix.
+
+Everything else keeps its original path. `scripts/sai_conformance.py` resolves
+`_repo_root() / "docs" / "conformance"`, and `metadata.cpp` includes
+`"x3d/nodes/X3DSemanticMetadataRegistry.hpp"`. Keeping `scripts/`,
+`docs/conformance/`, `tests/`, and `generated_cpp_bindings/x3d/...` unchanged means the
+move needs no path edits in Python or C++, removing a class of migration bug that a
+tidier layout would buy at real risk.
+
+The namespace stays `x3d::sai::experimental`: renaming would churn 34k lines and break
+every citation in the plan docs, and the qualifier is still accurate.
 
 `third_party/tl` (tl::expected 1.3.1, CC0-1.0) moves with the kernel, along with its
 NOTICE entry. x3d-cpp never needed that entry outside SAI.
@@ -89,6 +134,7 @@ better position for a standards proposal than sitting downstream of an SDK's cod
 | `cpp_str`, `sanitize_field_name` from `naming.py` | copied subset | 25 |
 | `semantic_fields.py`: `resolved_node_fields`, `wire_name` | copied | 30 |
 | `interfaces_of` from `registry.py` | copied subset | 11 |
+| `FIELD_TYPE_MAPPING`, `XS_TYPES` from `generator.py` | copied subset | 40 |
 | `emit/{sai_bindings,semantic_metadata}.py` | moved | 369 |
 
 Roughly 1.1k LOC total, of which about 800 is substrate duplicated from x3d-cpp. The
@@ -149,6 +195,9 @@ A small PR:
 - Add a short `docs/wiki/` pointer page, a `docs/wiki/coverage.md` row, and an
   `mkdocs.yml` nav entry. `mise run docs-build` is strict on dead links and nav
   orphans, so these are required for the gate, not optional polish.
+- Re-home the runtime reflection parity check described in the correction section, as a
+  new runtime test asserting `X3DNodeFactory::create(name)->fields()` agrees with the
+  UOM-derived descriptors on order, name, type, and access.
 
 ## Gates
 
