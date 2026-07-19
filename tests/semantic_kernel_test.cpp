@@ -29,6 +29,13 @@ namespace sai = x3d::sai::experimental;
 
 namespace {
 
+const sai::graph_change &
+require_graph_change(const sai::semantic_change &candidate) {
+  const auto *change = sai::node_change(candidate);
+  REQUIRE(change != nullptr);
+  return *change;
+}
+
 struct copy_bomb_observer {
   std::shared_ptr<bool> armed;
   int *calls = nullptr;
@@ -801,13 +808,18 @@ TEST_CASE("a dynamic multi-field editor stages the complete indexed service") {
   auto committed = edit.commit();
   REQUIRE(committed);
   REQUIRE(committed.value().changes.size() == 7);
-  CHECK(committed.value().changes[1].kind ==
+  CHECK(require_graph_change(committed.value().changes[1]).kind ==
         sai::change_kind::multi_element_set);
-  CHECK(committed.value().changes[2].kind == sai::change_kind::multi_inserted);
-  CHECK(committed.value().changes[3].kind == sai::change_kind::multi_erased);
-  CHECK(committed.value().changes[4].kind == sai::change_kind::multi_inserted);
-  CHECK(committed.value().changes[5].kind == sai::change_kind::multi_cleared);
-  CHECK(committed.value().changes[6].kind == sai::change_kind::multi_replaced);
+  CHECK(require_graph_change(committed.value().changes[2]).kind ==
+        sai::change_kind::multi_inserted);
+  CHECK(require_graph_change(committed.value().changes[3]).kind ==
+        sai::change_kind::multi_erased);
+  CHECK(require_graph_change(committed.value().changes[4]).kind ==
+        sai::change_kind::multi_inserted);
+  CHECK(require_graph_change(committed.value().changes[5]).kind ==
+        sai::change_kind::multi_cleared);
+  CHECK(require_graph_change(committed.value().changes[6]).kind ==
+        sai::change_kind::multi_replaced);
   CHECK(context.snapshot().read(field.value()).value() ==
         sai::value{sai::int32_list{7, 8}});
 }
@@ -858,14 +870,14 @@ TEST_CASE("typed and dynamic multi-field editors publish equal traces") {
   const auto typed = exercise(true);
   REQUIRE(dynamic.changes.size() == typed.changes.size());
   for (std::size_t index = 0; index < dynamic.changes.size(); ++index) {
-    CHECK(dynamic.changes[index].kind == typed.changes[index].kind);
-    CHECK(dynamic.changes[index].node == typed.changes[index].node);
-    CHECK(dynamic.changes[index].field == typed.changes[index].field);
-    CHECK(sai::same_representation(dynamic.changes[index].before,
-                                   typed.changes[index].before));
-    CHECK(sai::same_representation(dynamic.changes[index].after,
-                                   typed.changes[index].after));
-    CHECK(dynamic.changes[index].index == typed.changes[index].index);
+    const auto &dynamic_change = require_graph_change(dynamic.changes[index]);
+    const auto &typed_change = require_graph_change(typed.changes[index]);
+    CHECK(dynamic_change.kind == typed_change.kind);
+    CHECK(dynamic_change.node == typed_change.node);
+    CHECK(dynamic_change.field == typed_change.field);
+    CHECK(sai::same_representation(dynamic_change.before, typed_change.before));
+    CHECK(sai::same_representation(dynamic_change.after, typed_change.after));
+    CHECK(dynamic_change.index == typed_change.index);
   }
 }
 
@@ -1187,9 +1199,10 @@ TEST_CASE("dynamic discovery and typed fields are substitutable") {
   auto committed = edit.commit();
   REQUIRE(committed);
   REQUIRE(committed.value().changes.size() == 1);
-  CHECK(committed.value().changes[0].kind == sai::change_kind::field_changed);
-  CHECK(committed.value().changes[0].before == sai::value{sai::vec3f{}});
-  CHECK(committed.value().changes[0].after == sai::value{sai::vec3f{1, 2, 3}});
+  const auto &field_change = require_graph_change(committed.value().changes[0]);
+  CHECK(field_change.kind == sai::change_kind::field_changed);
+  CHECK(field_change.before == sai::value{sai::vec3f{}});
+  CHECK(field_change.after == sai::value{sai::vec3f{1, 2, 3}});
 
   auto after = context.snapshot();
   CHECK(after.read(dynamic.value()).value() == sai::value{sai::vec3f{1, 2, 3}});
@@ -1416,7 +1429,20 @@ TEST_CASE("declaration query and mutation operations are identity duals") {
   REQUIRE(update.update_declaration(
       external.value(),
       test_external_declaration("Remote", {"second.x3d#Widget"})));
-  REQUIRE(update.commit());
+  const auto updated = update.commit();
+  REQUIRE(updated);
+  REQUIRE(updated->changes.size() == 2);
+  CHECK(sai::declaration_change_of(updated->changes[0])->kind ==
+        sai::declaration_change_kind::renamed);
+  const auto *update_change = sai::declaration_change_of(updated->changes[1]);
+  REQUIRE(update_change);
+  CHECK(update_change->kind == sai::declaration_change_kind::updated);
+  const auto &before_external = std::get<sai::external_declaration_descriptor>(
+      update_change->before->payload);
+  const auto &after_external = std::get<sai::external_declaration_descriptor>(
+      update_change->after->payload);
+  CHECK(before_external.urls == std::vector<std::string>{"first.x3d#Widget"});
+  CHECK(after_external.urls == std::vector<std::string>{"second.x3d#Widget"});
 
   const auto current = context.snapshot();
   CHECK(current.declarations() == original_order);
@@ -1477,6 +1503,63 @@ TEST_CASE("declaration updates preserve kind and separate rename intent") {
   REQUIRE_FALSE(wrong_name);
   CHECK(wrong_name.error().code == sai::error_code::invalid_name);
   REQUIRE_FALSE(hidden_rename.commit());
+}
+
+TEST_CASE("graph and declaration changes share one authored order") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto transform = edit.create_node("Transform");
+  auto declaration =
+      edit.add_local_declaration(test_local_declaration("Original"));
+  REQUIRE(transform);
+  REQUIRE(declaration);
+  REQUIRE(edit.rename_declaration(declaration.value(), "Renamed"));
+  auto dynamic_translation = edit.field(transform.value(), "translation");
+  REQUIRE(dynamic_translation);
+  auto translation = dynamic_translation->as<sai::vec3f>();
+  REQUIRE(translation);
+  REQUIRE(edit.set(translation.value(), sai::vec3f{1, 2, 3}));
+  REQUIRE(edit.remove_declaration(declaration.value()));
+
+  const auto committed = edit.commit();
+  REQUIRE(committed);
+  REQUIRE(committed->changes.size() == 5);
+
+  const auto *created = sai::node_change(committed->changes[0]);
+  REQUIRE(created);
+  CHECK(created->kind == sai::change_kind::node_created);
+  CHECK(created->node == transform->id());
+  CHECK_FALSE(sai::declaration_change_of(committed->changes[0]));
+
+  const auto *added = sai::declaration_change_of(committed->changes[1]);
+  REQUIRE(added);
+  CHECK(added->kind == sai::declaration_change_kind::added);
+  CHECK(added->declaration == declaration->id());
+  REQUIRE_FALSE(added->before);
+  REQUIRE(added->after);
+  CHECK(sai::name(added->after.value()) == "Original");
+
+  const auto *renamed = sai::declaration_change_of(committed->changes[2]);
+  REQUIRE(renamed);
+  CHECK(renamed->kind == sai::declaration_change_kind::renamed);
+  CHECK(sai::name(renamed->before.value()) == "Original");
+  CHECK(sai::name(renamed->after.value()) == "Renamed");
+
+  const auto *changed = sai::node_change(committed->changes[3]);
+  REQUIRE(changed);
+  CHECK(changed->kind == sai::change_kind::field_changed);
+  CHECK(changed->before == sai::value{sai::vec3f{}});
+  CHECK(changed->after == sai::value{sai::vec3f{1, 2, 3}});
+
+  const auto *removed = sai::declaration_change_of(committed->changes[4]);
+  REQUIRE(removed);
+  CHECK(removed->kind == sai::declaration_change_kind::removed);
+  REQUIRE(removed->before);
+  REQUIRE_FALSE(removed->after);
+  CHECK(sai::name(removed->before.value()) == "Renamed");
+  CHECK(sai::change_kind_of(committed->changes[4]) ==
+        sai::semantic_change_kind{sai::declaration_change_kind::removed});
 }
 
 TEST_CASE("node-valued writes require a context-bearing node handle") {
@@ -1725,10 +1808,10 @@ TEST_CASE(
   REQUIRE(author.add_route(source_distance.value(), sink_distance.value()));
   auto authored = author.commit();
   REQUIRE(authored);
-  CHECK(authored.value().changes[0].kind == sai::change_kind::unit_declared);
-  CHECK(authored.value().changes[0].before ==
-        sai::value{std::string{"centimetre"}});
-  CHECK(authored.value().changes[0].after == sai::value{0.01});
+  const auto &unit_change = require_graph_change(authored.value().changes[0]);
+  CHECK(unit_change.kind == sai::change_kind::unit_declared);
+  CHECK(unit_change.before == sai::value{std::string{"centimetre"}});
+  CHECK(unit_change.after == sai::value{0.01});
 
   auto snapshot = context.snapshot();
   REQUIRE(snapshot.units().size() == 1);
@@ -1858,12 +1941,11 @@ TEST_CASE("inputOutput event intent publishes one coherent retained revision") {
   CHECK(delivered.value().after_revision == before.revision() + 1);
   REQUIRE(delivered.value().state_changes);
   REQUIRE(delivered.value().state_changes->changes.size() == 1);
-  CHECK(delivered.value().state_changes->changes[0].kind ==
-        sai::change_kind::field_changed);
-  CHECK(delivered.value().state_changes->changes[0].before ==
-        sai::value{sai::vec3f{}});
-  CHECK(delivered.value().state_changes->changes[0].after ==
-        sai::value{sai::vec3f{4, 5, 6}});
+  const auto &delivered_change =
+      require_graph_change(delivered.value().state_changes->changes[0]);
+  CHECK(delivered_change.kind == sai::change_kind::field_changed);
+  CHECK(delivered_change.before == sai::value{sai::vec3f{}});
+  CHECK(delivered_change.after == sai::value{sai::vec3f{4, 5, 6}});
   CHECK(before.read(typed.value()).value() == sai::vec3f{});
   CHECK(context.snapshot().read(dynamic.value()).value() ==
         sai::value{sai::vec3f{4, 5, 6}});
@@ -1980,8 +2062,9 @@ TEST_CASE("typed and dynamic MF events preserve the complete owning payload") {
   REQUIRE(typed.state_changes);
   REQUIRE(dynamic.state_changes->changes.size() == 1);
   REQUIRE(typed.state_changes->changes.size() == 1);
-  CHECK(sai::same_representation(dynamic.state_changes->changes[0].after,
-                                 typed.state_changes->changes[0].after));
+  CHECK(sai::same_representation(
+      require_graph_change(dynamic.state_changes->changes[0]).after,
+      require_graph_change(typed.state_changes->changes[0]).after));
 }
 
 TEST_CASE("node event payloads require context-bearing handles and ranges") {
@@ -2296,9 +2379,12 @@ TEST_CASE("change sets preserve authored operation order") {
   auto committed = edit.commit();
   REQUIRE(committed);
   REQUIRE(committed.value().changes.size() == 3);
-  CHECK(committed.value().changes[0].kind == sai::change_kind::node_created);
-  CHECK(committed.value().changes[1].kind == sai::change_kind::field_changed);
-  CHECK(committed.value().changes[2].kind == sai::change_kind::root_inserted);
+  CHECK(require_graph_change(committed.value().changes[0]).kind ==
+        sai::change_kind::node_created);
+  CHECK(require_graph_change(committed.value().changes[1]).kind ==
+        sai::change_kind::field_changed);
+  CHECK(require_graph_change(committed.value().changes[2]).kind ==
+        sai::change_kind::root_inserted);
 }
 
 TEST_CASE(
@@ -2345,12 +2431,16 @@ TEST_CASE(
   auto changes = author.commit();
   REQUIRE(changes);
   REQUIRE(changes.value().changes.size() == 16);
-  CHECK(changes.value().changes[0].kind == sai::change_kind::unit_declared);
-  CHECK(changes.value().changes[0].field == "length");
-  CHECK(changes.value().changes[1].kind == sai::change_kind::unit_declared);
-  CHECK(changes.value().changes[1].field == "angle");
-  CHECK(changes.value().changes[2].kind == sai::change_kind::node_created);
-  CHECK(changes.value().changes.back().kind == sai::change_kind::route_added);
+  CHECK(require_graph_change(changes.value().changes[0]).kind ==
+        sai::change_kind::unit_declared);
+  CHECK(require_graph_change(changes.value().changes[0]).field == "length");
+  CHECK(require_graph_change(changes.value().changes[1]).kind ==
+        sai::change_kind::unit_declared);
+  CHECK(require_graph_change(changes.value().changes[1]).field == "angle");
+  CHECK(require_graph_change(changes.value().changes[2]).kind ==
+        sai::change_kind::node_created);
+  CHECK(require_graph_change(changes.value().changes.back()).kind ==
+        sai::change_kind::route_added);
 
   const auto snapshot = context.snapshot();
   const auto revision = snapshot.revision();
@@ -2683,7 +2773,8 @@ TEST_CASE("ordered imports are their own removal tokens") {
   auto committed = remove.commit();
   REQUIRE(committed);
   REQUIRE(committed.value().changes.size() == 1);
-  CHECK(committed.value().changes[0].kind == sai::change_kind::import_removed);
+  CHECK(require_graph_change(committed.value().changes[0]).kind ==
+        sai::change_kind::import_removed);
   const auto after = parent.snapshot();
   REQUIRE(after.imports().size() == 1);
   CHECK(after.imports()[0].local_name == "B");
@@ -2945,12 +3036,15 @@ TEST_CASE("enumerated roots names and routes are their own removal tokens") {
   auto committed = remove.commit();
   REQUIRE(committed);
   REQUIRE(committed.value().changes.size() == 3);
-  CHECK(committed.value().changes[0].kind == sai::change_kind::root_removed);
-  CHECK(committed.value().changes[0].before == sai::value{source.value().id()});
-  CHECK(committed.value().changes[0].index == 0);
-  CHECK(committed.value().changes[1].kind == sai::change_kind::name_removed);
-  CHECK(committed.value().changes[1].field == "Source");
-  CHECK(committed.value().changes[2].kind == sai::change_kind::route_removed);
+  const auto &root_removed = require_graph_change(committed.value().changes[0]);
+  CHECK(root_removed.kind == sai::change_kind::root_removed);
+  CHECK(root_removed.before == sai::value{source.value().id()});
+  CHECK(root_removed.index == 0);
+  CHECK(require_graph_change(committed.value().changes[1]).kind ==
+        sai::change_kind::name_removed);
+  CHECK(require_graph_change(committed.value().changes[1]).field == "Source");
+  CHECK(require_graph_change(committed.value().changes[2]).kind ==
+        sai::change_kind::route_removed);
 
   const auto after = context.snapshot();
   REQUIRE(after.roots().size() == 1);
@@ -3007,8 +3101,9 @@ TEST_CASE("unreferenced node removal preserves historical snapshots") {
   const auto committed = removal.commit();
   REQUIRE(committed);
   REQUIRE(committed->changes.size() == 1);
-  CHECK(committed->changes.front().kind == sai::change_kind::node_removed);
-  CHECK(committed->changes.front().node == first->id());
+  const auto &removed = require_graph_change(committed->changes.front());
+  CHECK(removed.kind == sai::change_kind::node_removed);
+  CHECK(removed.node == first->id());
 
   const auto current = context.snapshot();
   CHECK(historical.read(historical_field.value()).value() ==
@@ -3146,10 +3241,14 @@ TEST_CASE("explicit detachment and node removal publish atomically") {
   const auto committed = removal.commit();
   REQUIRE(committed);
   REQUIRE(committed->changes.size() == 4);
-  CHECK(committed->changes[0].kind == sai::change_kind::root_removed);
-  CHECK(committed->changes[1].kind == sai::change_kind::name_removed);
-  CHECK(committed->changes[2].kind == sai::change_kind::route_removed);
-  CHECK(committed->changes[3].kind == sai::change_kind::node_removed);
+  CHECK(require_graph_change(committed->changes[0]).kind ==
+        sai::change_kind::root_removed);
+  CHECK(require_graph_change(committed->changes[1]).kind ==
+        sai::change_kind::name_removed);
+  CHECK(require_graph_change(committed->changes[2]).kind ==
+        sai::change_kind::route_removed);
+  CHECK(require_graph_change(committed->changes[3]).kind ==
+        sai::change_kind::node_removed);
   CHECK_FALSE(context.snapshot().lookup(target->id()));
 }
 

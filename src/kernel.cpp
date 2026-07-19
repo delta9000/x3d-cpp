@@ -744,7 +744,7 @@ struct detail::scene_edit_control {
   detail::scene_state staged;
   bool changed = false;
   std::optional<unexpected> poison;
-  std::vector<change> changes;
+  std::vector<semantic_change> changes;
   std::unordered_set<std::uint64_t> created_nodes;
   std::unordered_set<std::uint64_t> removed_nodes;
   bool committed = false;
@@ -849,12 +849,12 @@ result<node> scene_edit::create_node(const std::string &type_name) {
   impl_->staged.nodes.emplace(id.value, std::move(record));
   impl_->created_nodes.insert(id.value);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::node_created,
-                                  .node = id,
-                                  .field = {},
-                                  .before = std::monostate{},
-                                  .after = type_name,
-                                  .index = 0});
+  impl_->changes.push_back(graph_change{.kind = change_kind::node_created,
+                                        .node = id,
+                                        .field = {},
+                                        .before = std::monostate{},
+                                        .after = type_name,
+                                        .index = 0});
   return node{impl_->context, impl_->context->generation, id};
 }
 
@@ -902,12 +902,12 @@ result<void> scene_edit::remove_node(const node &target) {
   impl_->created_nodes.erase(target.id_.value);
   impl_->removed_nodes.insert(target.id_.value);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::node_removed,
-                                  .node = target.id_,
-                                  .field = {},
-                                  .before = target.id_,
-                                  .after = std::monostate{},
-                                  .index = 0});
+  impl_->changes.push_back(graph_change{.kind = change_kind::node_removed,
+                                        .node = target.id_,
+                                        .field = {},
+                                        .before = target.id_,
+                                        .after = std::monostate{},
+                                        .index = 0});
   return {};
 }
 
@@ -925,12 +925,13 @@ result<void> scene_edit::append_root(const node &child) {
   }
   impl_->staged.roots.push_back(child.id_);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::root_inserted,
-                                  .node = child.id_,
-                                  .field = {},
-                                  .before = std::monostate{},
-                                  .after = child.id_,
-                                  .index = impl_->staged.roots.size() - 1});
+  impl_->changes.push_back(
+      graph_change{.kind = change_kind::root_inserted,
+                   .node = child.id_,
+                   .field = {},
+                   .before = std::monostate{},
+                   .after = child.id_,
+                   .index = impl_->staged.roots.size() - 1});
   return {};
 }
 
@@ -947,12 +948,12 @@ result<void> scene_edit::remove_root(std::size_t index) {
   impl_->staged.roots.erase(impl_->staged.roots.begin() +
                             static_cast<std::ptrdiff_t>(index));
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::root_removed,
-                                  .node = removed,
-                                  .field = {},
-                                  .before = removed,
-                                  .after = std::monostate{},
-                                  .index = index});
+  impl_->changes.push_back(graph_change{.kind = change_kind::root_removed,
+                                        .node = removed,
+                                        .field = {},
+                                        .before = removed,
+                                        .after = std::monostate{},
+                                        .index = index});
   return {};
 }
 
@@ -1013,12 +1014,12 @@ result<void> scene_edit::append(const node &parent, const std::string &field,
   auto &children = std::get<node_list>(field_value);
   children.push_back(child.id_);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::field_changed,
-                                  .node = parent.id_,
-                                  .field = field,
-                                  .before = before,
-                                  .after = field_value,
-                                  .index = children.size() - 1});
+  impl_->changes.push_back(graph_change{.kind = change_kind::field_changed,
+                                        .node = parent.id_,
+                                        .field = field,
+                                        .before = before,
+                                        .after = field_value,
+                                        .index = children.size() - 1});
   return {};
 }
 
@@ -1051,12 +1052,12 @@ result<void> scene_edit::declare_unit(unit_declaration declaration) {
     return *impl_->poison;
   }
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::unit_declared,
-                                  .node = {},
-                                  .field = declaration.category,
-                                  .before = declaration.name,
-                                  .after = declaration.conversion_factor,
-                                  .index = impl_->staged.units.size()});
+  impl_->changes.push_back(graph_change{.kind = change_kind::unit_declared,
+                                        .node = {},
+                                        .field = declaration.category,
+                                        .before = declaration.name,
+                                        .after = declaration.conversion_factor,
+                                        .index = impl_->staged.units.size()});
   impl_->staged.units.push_back(std::move(declaration));
   return {};
 }
@@ -1383,12 +1384,13 @@ result<void> dynamic_multi_field_edit::set(std::size_t index, value element) {
     return *edit.value()->poison;
   }
   edit.value()->changed = true;
-  edit.value()->changes.push_back(change{.kind = change_kind::multi_element_set,
-                                         .node = target_.node(),
-                                         .field = target_.name(),
-                                         .before = *before,
-                                         .after = std::move(element),
-                                         .index = index});
+  edit.value()->changes.push_back(
+      graph_change{.kind = change_kind::multi_element_set,
+                   .node = target_.node(),
+                   .field = target_.name(),
+                   .before = *before,
+                   .after = std::move(element),
+                   .index = index});
   return {};
 }
 
@@ -1438,12 +1440,13 @@ result<void> dynamic_multi_field_edit::set(std::size_t index,
     return *edit.value()->poison;
   }
   edit.value()->changed = true;
-  edit.value()->changes.push_back(change{.kind = change_kind::multi_element_set,
-                                         .node = target_.node(),
-                                         .field = target_.name(),
-                                         .before = *before,
-                                         .after = authorized,
-                                         .index = index});
+  edit.value()->changes.push_back(
+      graph_change{.kind = change_kind::multi_element_set,
+                   .node = target_.node(),
+                   .field = target_.name(),
+                   .before = *before,
+                   .after = authorized,
+                   .index = index});
   return {};
 }
 
@@ -1476,12 +1479,13 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
     return *edit.value()->poison;
   }
   edit.value()->changed = true;
-  edit.value()->changes.push_back(change{.kind = change_kind::multi_inserted,
-                                         .node = target_.node(),
-                                         .field = target_.name(),
-                                         .before = std::monostate{},
-                                         .after = std::move(element),
-                                         .index = index});
+  edit.value()->changes.push_back(
+      graph_change{.kind = change_kind::multi_inserted,
+                   .node = target_.node(),
+                   .field = target_.name(),
+                   .before = std::monostate{},
+                   .after = std::move(element),
+                   .index = index});
   return {};
 }
 
@@ -1530,12 +1534,13 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
     return *edit.value()->poison;
   }
   edit.value()->changed = true;
-  edit.value()->changes.push_back(change{.kind = change_kind::multi_inserted,
-                                         .node = target_.node(),
-                                         .field = target_.name(),
-                                         .before = std::monostate{},
-                                         .after = authorized,
-                                         .index = index});
+  edit.value()->changes.push_back(
+      graph_change{.kind = change_kind::multi_inserted,
+                   .node = target_.node(),
+                   .field = target_.name(),
+                   .before = std::monostate{},
+                   .after = authorized,
+                   .index = index});
   return {};
 }
 
@@ -1586,12 +1591,13 @@ result<void> dynamic_multi_field_edit::erase(std::size_t index) {
     return *edit.value()->poison;
   }
   edit.value()->changed = true;
-  edit.value()->changes.push_back(change{.kind = change_kind::multi_erased,
-                                         .node = target_.node(),
-                                         .field = target_.name(),
-                                         .before = *before,
-                                         .after = std::monostate{},
-                                         .index = index});
+  edit.value()->changes.push_back(
+      graph_change{.kind = change_kind::multi_erased,
+                   .node = target_.node(),
+                   .field = target_.name(),
+                   .before = *before,
+                   .after = std::monostate{},
+                   .index = index});
   return {};
 }
 
@@ -1616,12 +1622,13 @@ result<void> dynamic_multi_field_edit::clear() {
       },
       *sequence);
   edit.value()->changed = true;
-  edit.value()->changes.push_back(change{.kind = change_kind::multi_cleared,
-                                         .node = target_.node(),
-                                         .field = target_.name(),
-                                         .before = before,
-                                         .after = *sequence,
-                                         .index = 0});
+  edit.value()->changes.push_back(
+      graph_change{.kind = change_kind::multi_cleared,
+                   .node = target_.node(),
+                   .field = target_.name(),
+                   .before = before,
+                   .after = *sequence,
+                   .index = 0});
   return {};
 }
 
@@ -1656,12 +1663,13 @@ result<void> dynamic_multi_field_edit::replace(value replacement) {
   const value before = *sequence;
   *sequence = std::move(replacement);
   edit.value()->changed = true;
-  edit.value()->changes.push_back(change{.kind = change_kind::multi_replaced,
-                                         .node = target_.node(),
-                                         .field = target_.name(),
-                                         .before = before,
-                                         .after = *sequence,
-                                         .index = 0});
+  edit.value()->changes.push_back(
+      graph_change{.kind = change_kind::multi_replaced,
+                   .node = target_.node(),
+                   .field = target_.name(),
+                   .before = before,
+                   .after = *sequence,
+                   .index = 0});
   return {};
 }
 
@@ -1721,12 +1729,13 @@ dynamic_multi_field_edit::replace(std::span<const node> replacement) {
   const value before = *sequence;
   *sequence = std::move(authorized);
   edit.value()->changed = true;
-  edit.value()->changes.push_back(change{.kind = change_kind::multi_replaced,
-                                         .node = target_.node(),
-                                         .field = target_.name(),
-                                         .before = before,
-                                         .after = *sequence,
-                                         .index = 0});
+  edit.value()->changes.push_back(
+      graph_change{.kind = change_kind::multi_replaced,
+                   .node = target_.node(),
+                   .field = target_.name(),
+                   .before = before,
+                   .after = *sequence,
+                   .index = 0});
   return {};
 }
 
@@ -1893,12 +1902,12 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
   const value before = stored;
   stored = std::move(new_value);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::field_changed,
-                                  .node = target.node_,
-                                  .field = target.name_,
-                                  .before = before,
-                                  .after = stored,
-                                  .index = 0});
+  impl_->changes.push_back(graph_change{.kind = change_kind::field_changed,
+                                        .node = target.node_,
+                                        .field = target.name_,
+                                        .before = before,
+                                        .after = stored,
+                                        .index = 0});
   return {};
 }
 
@@ -1938,12 +1947,12 @@ result<void> scene_edit::define_name(const std::string &name,
   }
   impl_->staged.names.push_back(name_binding{.name = name, .node = target.id_});
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::name_defined,
-                                  .node = target.id_,
-                                  .field = name,
-                                  .before = std::monostate{},
-                                  .after = name,
-                                  .index = 0});
+  impl_->changes.push_back(graph_change{.kind = change_kind::name_defined,
+                                        .node = target.id_,
+                                        .field = name,
+                                        .before = std::monostate{},
+                                        .after = name,
+                                        .index = 0});
   return {};
 }
 
@@ -1962,12 +1971,12 @@ result<void> scene_edit::undefine_name(const std::string &name) {
   const node_id removed = found->node;
   impl_->staged.names.erase(found);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::name_removed,
-                                  .node = removed,
-                                  .field = name,
-                                  .before = name,
-                                  .after = std::monostate{},
-                                  .index = 0});
+  impl_->changes.push_back(graph_change{.kind = change_kind::name_removed,
+                                        .node = removed,
+                                        .field = name,
+                                        .before = name,
+                                        .after = std::monostate{},
+                                        .index = 0});
   return {};
 }
 
@@ -2003,12 +2012,13 @@ result<void> scene_edit::export_node(const std::string &name,
   impl_->staged.exports.push_back(
       export_binding{.name = name, .node = target.id_});
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::export_added,
-                                  .node = target.id_,
-                                  .field = name,
-                                  .before = std::monostate{},
-                                  .after = name,
-                                  .index = impl_->staged.exports.size() - 1});
+  impl_->changes.push_back(
+      graph_change{.kind = change_kind::export_added,
+                   .node = target.id_,
+                   .field = name,
+                   .before = std::monostate{},
+                   .after = name,
+                   .index = impl_->staged.exports.size() - 1});
   return {};
 }
 
@@ -2028,12 +2038,12 @@ result<void> scene_edit::remove_export(const export_binding &target) {
       std::distance(impl_->staged.exports.begin(), found));
   impl_->staged.exports.erase(found);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::export_removed,
-                                  .node = target.node,
-                                  .field = target.name,
-                                  .before = target.name,
-                                  .after = std::monostate{},
-                                  .index = index});
+  impl_->changes.push_back(graph_change{.kind = change_kind::export_removed,
+                                        .node = target.node,
+                                        .field = target.name,
+                                        .before = target.name,
+                                        .after = std::monostate{},
+                                        .index = index});
   return {};
 }
 
@@ -2099,12 +2109,13 @@ result<void> scene_edit::import_node(const std::string &local_name,
   impl_->staged.imports.push_back(binding);
   impl_->staged.import_sources.push_back(source.control_);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::import_added,
-                                  .node = exported->node,
-                                  .field = local_name,
-                                  .before = std::monostate{},
-                                  .after = exported_name,
-                                  .index = impl_->staged.imports.size() - 1});
+  impl_->changes.push_back(
+      graph_change{.kind = change_kind::import_added,
+                   .node = exported->node,
+                   .field = local_name,
+                   .before = std::monostate{},
+                   .after = exported_name,
+                   .index = impl_->staged.imports.size() - 1});
   return {};
 }
 
@@ -2126,12 +2137,12 @@ result<void> scene_edit::remove_import(const import_binding &target) {
   impl_->staged.import_sources.erase(impl_->staged.import_sources.begin() +
                                      static_cast<std::ptrdiff_t>(index));
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::import_removed,
-                                  .node = target.target.local,
-                                  .field = target.local_name,
-                                  .before = target.exported_name,
-                                  .after = std::monostate{},
-                                  .index = index});
+  impl_->changes.push_back(graph_change{.kind = change_kind::import_removed,
+                                        .node = target.target.local,
+                                        .field = target.local_name,
+                                        .before = target.exported_name,
+                                        .after = std::monostate{},
+                                        .index = index});
   return {};
 }
 
@@ -2172,12 +2183,13 @@ result<void> scene_edit::add_route(const dynamic_field &source,
   }
   impl_->staged.routes.push_back(added);
   impl_->changed = true;
-  impl_->changes.push_back(change{.kind = change_kind::route_added,
-                                  .node = source.node_,
-                                  .field = source.name_ + " -> " + sink.name_,
-                                  .before = std::monostate{},
-                                  .after = sink.node_,
-                                  .index = impl_->staged.routes.size() - 1});
+  impl_->changes.push_back(
+      graph_change{.kind = change_kind::route_added,
+                   .node = source.node_,
+                   .field = source.name_ + " -> " + sink.name_,
+                   .before = std::monostate{},
+                   .after = sink.node_,
+                   .index = impl_->staged.routes.size() - 1});
   return {};
 }
 
@@ -2197,12 +2209,12 @@ result<void> scene_edit::remove_route(const route &target) {
   impl_->staged.routes.erase(found);
   impl_->changed = true;
   impl_->changes.push_back(
-      change{.kind = change_kind::route_removed,
-             .node = target.source,
-             .field = target.source_field + " -> " + target.sink_field,
-             .before = target.sink,
-             .after = std::monostate{},
-             .index = index});
+      graph_change{.kind = change_kind::route_removed,
+                   .node = target.source,
+                   .field = target.source_field + " -> " + target.sink_field,
+                   .before = target.sink,
+                   .after = std::monostate{},
+                   .index = index});
   return {};
 }
 
@@ -2243,10 +2255,14 @@ scene_edit::add_local_declaration(local_declaration_descriptor descriptor) {
     return *impl_->poison;
   }
   const declaration_id id{impl_->staged.next_declaration_id++};
+  declaration_descriptor authored{.id = id, .payload = std::move(descriptor)};
   impl_->staged.declaration_order.push_back(id);
-  impl_->staged.declarations.emplace(
-      id.value,
-      declaration_descriptor{.id = id, .payload = std::move(descriptor)});
+  impl_->staged.declarations.emplace(id.value, authored);
+  impl_->changes.push_back(
+      declaration_change{.kind = declaration_change_kind::added,
+                         .declaration = id,
+                         .before = std::nullopt,
+                         .after = std::move(authored)});
   impl_->changed = true;
   return declaration{impl_->context, impl_->context->generation, id};
 }
@@ -2292,10 +2308,14 @@ result<declaration> scene_edit::add_external_declaration(
     return *impl_->poison;
   }
   const declaration_id id{impl_->staged.next_declaration_id++};
+  declaration_descriptor authored{.id = id, .payload = std::move(descriptor)};
   impl_->staged.declaration_order.push_back(id);
-  impl_->staged.declarations.emplace(
-      id.value,
-      declaration_descriptor{.id = id, .payload = std::move(descriptor)});
+  impl_->staged.declarations.emplace(id.value, authored);
+  impl_->changes.push_back(
+      declaration_change{.kind = declaration_change_kind::added,
+                         .declaration = id,
+                         .before = std::nullopt,
+                         .after = std::move(authored)});
   impl_->changed = true;
   return declaration{impl_->context, impl_->context->generation, id};
 }
@@ -2335,8 +2355,14 @@ result<void> scene_edit::rename_declaration(const declaration &target,
         "declaration name is already defined: " + new_name, target.id_);
     return *impl_->poison;
   }
+  const declaration_descriptor before = found->second;
   std::visit([&](auto &payload) { payload.name = std::move(new_name); },
              found->second.payload);
+  impl_->changes.push_back(
+      declaration_change{.kind = declaration_change_kind::renamed,
+                         .declaration = target.id_,
+                         .before = before,
+                         .after = found->second});
   impl_->changed = true;
   return {};
 }
@@ -2410,7 +2436,13 @@ result<void> scene_edit::update_declaration(const declaration &target,
         target.id_);
     return *impl_->poison;
   }
+  const declaration_descriptor before = found->second;
   found->second.payload = std::move(replacement);
+  impl_->changes.push_back(
+      declaration_change{.kind = declaration_change_kind::updated,
+                         .declaration = target.id_,
+                         .before = before,
+                         .after = found->second});
   impl_->changed = true;
   return {};
 }
@@ -2429,10 +2461,16 @@ result<void> scene_edit::remove_declaration(const declaration &target) {
         target.id_);
     return *impl_->poison;
   }
+  const declaration_descriptor before = found->second;
   const auto ordered =
       std::ranges::find(impl_->staged.declaration_order, target.id_);
   impl_->staged.declaration_order.erase(ordered);
   impl_->staged.declarations.erase(found);
+  impl_->changes.push_back(
+      declaration_change{.kind = declaration_change_kind::removed,
+                         .declaration = target.id_,
+                         .before = before,
+                         .after = std::nullopt});
   impl_->changed = true;
   return {};
 }
@@ -2930,7 +2968,7 @@ result<event_result> event_batch::commit() {
       portability_issues[issue->second].delivery_indices.push_back(index);
     }
   }
-  std::vector<change> changes;
+  std::vector<semantic_change> changes;
   for (const event_delivery &delivery : deliveries) {
     auto found = staged.nodes.find(delivery.target.value);
     const auto *descriptor =
@@ -2942,12 +2980,12 @@ result<event_result> event_batch::commit() {
       continue;
     const value before = stored;
     stored = delivery.payload;
-    changes.push_back(change{.kind = change_kind::field_changed,
-                             .node = delivery.target,
-                             .field = delivery.field,
-                             .before = before,
-                             .after = stored,
-                             .index = 0});
+    changes.push_back(graph_change{.kind = change_kind::field_changed,
+                                   .node = delivery.target,
+                                   .field = delivery.field,
+                                   .before = before,
+                                   .after = stored,
+                                   .index = 0});
   }
 
   event_result result{.time = impl_->time,
