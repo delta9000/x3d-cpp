@@ -10,9 +10,18 @@ related:
   - ../decisions/0013-js-engine-choice.md
   - ../decisions/0014-dynamic-field-foundation.md
   - ../decisions/0022-scriptengine-second-backend-swap-test.md
+  - ../decisions/0047-sai-sister-repo-split.md
 ---
 
 # Script / SAI Runtime
+
+!!! note "Not the experimental SAI semantic kernel"
+
+    This page describes the **in-process SAI** that `Script` nodes use, implemented by
+    `runtime/script/SaiContext.hpp`. It is a different thing from the experimental
+    modern-C++ SAI *semantic kernel*, which lives in the `x3d-sai` sister repository as
+    of 2026-07-19. See [ADR-0047](../decisions/0047-sai-sister-repo-split.md). The two
+    share a standard, not an implementation.
 
 ## Purpose
 
