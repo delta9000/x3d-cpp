@@ -40,3 +40,20 @@ run = "uv run python -m x3d_sai_gen.cli --check-uom-only"
 [tasks.pytest]
 description = "Run the generator test suite."
 run = "uv run pytest tests/ -v"
+
+[tasks.ci]
+description = "Blocking gate set: UOM pin, generator determinism, python tests, C++ build and ctest."
+# Sequential on purpose: these steps share one uv virtualenv and one build
+# directory, so mise's parallel `depends` races them.
+run = """
+mise run uom-pin
+mise run gen-determinism
+mise run pytest
+mise run build
+mise run ctest
+"""
+
+# sai-conformance-gate and sai-invariants are NOT in `ci` yet. The 2026-07-19
+# split left seven invariants with no preserving service, because the register
+# was authored x3d-cpp-first and never recorded the kernel's implementation of
+# roughly nine ISO services. Add both to `depends` once those rows are written.
