@@ -1827,6 +1827,8 @@ if(X3D_CPP_BUILD_TESTS)
         "--test-case=local declarations exclusively claim their template closure")
     add_test(NAME sai_decl_scope_claim_atomic COMMAND x3d_sai_experimental_tests
         "--test-case=template claims reject live references and cycles atomically")
+    add_test(NAME sai_decl_scope_live_reference COMMAND x3d_sai_experimental_tests
+        "--test-case=template claims revalidate live references at commit")
     add_test(NAME sai_decl_scope_leakage COMMAND x3d_sai_experimental_tests
         "--test-case=template scope rejects public aliases routes and removal")
     add_test(NAME sai_decl_scope_release COMMAND x3d_sai_experimental_tests
@@ -3132,6 +3134,7 @@ if(X3D_CPP_BUILD_TESTS)
         sai_decl_change_order
         sai_decl_template_scope
         sai_decl_scope_claim_atomic
+        sai_decl_scope_live_reference
         sai_decl_scope_leakage
         sai_decl_scope_release
         sai_decl_external_state

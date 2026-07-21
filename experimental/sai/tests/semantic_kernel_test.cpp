@@ -1670,6 +1670,99 @@ TEST_CASE("template claims reject live references and cycles atomically") {
   }
 }
 
+TEST_CASE("template claims revalidate live references at commit") {
+  SUBCASE("a committed importer blocks a template claim") {
+    sai::browser host{graph_registry()};
+    auto source = host.current_scene();
+    auto importer = host.create_scene();
+    auto author = source.edit();
+    auto root = author.create_node("Transform");
+    REQUIRE(root);
+    REQUIRE(author.export_node("Public", root.value()));
+    REQUIRE(author.commit());
+    auto import = importer.edit();
+    REQUIRE(import.import_node("Remote", source, "Public"));
+    REQUIRE(import.commit());
+
+    auto claim = source.edit();
+    REQUIRE(claim.remove_export(source.snapshot().exports().front()));
+    const std::array roots{root.value()};
+    const auto rejected = claim.add_local_declaration(
+        test_local_declaration("Private"), std::span<const sai::node>{roots});
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::node_in_use);
+  }
+
+  SUBCASE("an importer committed after staging makes the claim stale") {
+    sai::browser host{graph_registry()};
+    auto source = host.current_scene();
+    auto importer = host.create_scene();
+    auto author = source.edit();
+    auto root = author.create_node("Transform");
+    REQUIRE(root);
+    REQUIRE(author.export_node("Public", root.value()));
+    REQUIRE(author.commit());
+
+    auto claim = source.edit();
+    REQUIRE(claim.remove_export(source.snapshot().exports().front()));
+    const std::array roots{root.value()};
+    REQUIRE(claim.add_local_declaration(test_local_declaration("Private"),
+                                        std::span<const sai::node>{roots}));
+    auto import = importer.edit();
+    REQUIRE(import.import_node("Remote", source, "Public"));
+    REQUIRE(import.commit());
+    const auto rejected = claim.commit();
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::node_in_use);
+    CHECK(source.snapshot().exports().size() == 1);
+    CHECK(source.snapshot().declarations().empty());
+  }
+
+  SUBCASE("a field observer blocks a template claim") {
+    sai::browser host{graph_registry()};
+    auto context = host.current_scene();
+    auto author = context.edit();
+    auto root = author.create_node("Transform");
+    REQUIRE(root);
+    REQUIRE(author.commit());
+    auto field = context.snapshot().field(root.value(), "translation");
+    REQUIRE(field);
+    auto observer =
+        context.observe(field.value(), [](const sai::event_delivery &) {});
+    REQUIRE(observer);
+    auto claim = context.edit();
+    const std::array roots{root.value()};
+    const auto rejected = claim.add_local_declaration(
+        test_local_declaration("Observed"), std::span<const sai::node>{roots});
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::node_in_use);
+  }
+
+  SUBCASE("an undrained event notification blocks a template claim") {
+    sai::browser host{graph_registry()};
+    auto context = host.current_scene();
+    auto author = context.edit();
+    auto root = author.create_node("Transform");
+    REQUIRE(root);
+    REQUIRE(author.commit());
+    auto field = context.snapshot().field(root.value(), "translation");
+    REQUIRE(field);
+    auto observer =
+        context.observe(field.value(), [](const sai::event_delivery &) {});
+    REQUIRE(observer);
+    auto events = context.events(sai::event_time{1.0});
+    REQUIRE(events.send(field.value(), sai::value{sai::vec3f{1, 2, 3}}));
+    REQUIRE(events.commit());
+    observer->cancel();
+    auto claim = context.edit();
+    const std::array roots{root.value()};
+    const auto rejected = claim.add_local_declaration(
+        test_local_declaration("Queued"), std::span<const sai::node>{roots});
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::node_in_use);
+  }
+}
+
 TEST_CASE("template scope rejects public aliases routes and removal") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();
@@ -1699,6 +1792,25 @@ TEST_CASE("template scope rejects public aliases routes and removal") {
   REQUIRE(source_field);
   REQUIRE(sink_field);
   REQUIRE_FALSE(routed.add_route(source_field.value(), sink_field.value()));
+
+  auto live_author = context.edit();
+  auto live_link = live_author.create_node("Link");
+  REQUIRE(live_link);
+  REQUIRE(live_author.commit());
+  auto live_target = context.snapshot().field(live_link.value(), "target");
+  REQUIRE(live_target);
+  auto events = context.events(sai::event_time{1.0});
+  const auto cross_scope_event = events.send(live_target.value(), root.value());
+  REQUIRE_FALSE(cross_scope_event);
+  CHECK(cross_scope_event.error().code == sai::error_code::invalid_context);
+
+  auto template_output =
+      context.snapshot().field(root.value(), "worldTranslation");
+  REQUIRE(template_output);
+  const auto observation = context.observe(template_output.value(),
+                                           [](const sai::event_delivery &) {});
+  REQUIRE_FALSE(observation);
+  CHECK(observation.error().code == sai::error_code::invalid_context);
 }
 
 TEST_CASE(
@@ -1746,7 +1858,13 @@ TEST_CASE("external declarations expose honest explicit load states") {
     replacement.load_state = state;
     replacement.diagnostic = std::move(diagnostic);
     replacement.resolved_declaration = target;
-    REQUIRE(edit.update_declaration(external.value(), replacement));
+    if (state == sai::external_load_state::resolved) {
+      REQUIRE(target == local->id());
+      REQUIRE(edit.resolve_external_declaration(external.value(), replacement,
+                                                local.value()));
+    } else {
+      REQUIRE(edit.update_declaration(external.value(), replacement));
+    }
     REQUIRE(edit.commit());
     const auto inspected = context.snapshot().describe(external.value());
     REQUIRE(inspected);
@@ -1793,6 +1911,33 @@ TEST_CASE("resolved externals require and retain compatible local identity") {
   REQUIRE(external);
   REQUIRE(author.commit());
 
+  auto bare_resolution = context.edit();
+  auto bare =
+      test_external_declaration("Remote", {"remote.x3d#Local"}, interface);
+  bare.load_state = sai::external_load_state::resolved;
+  bare.resolved_declaration = local->id();
+  const auto bare_id =
+      bare_resolution.update_declaration(external.value(), bare);
+  REQUIRE_FALSE(bare_id);
+  CHECK(bare_id.error().code == sai::error_code::invalid_context);
+
+  sai::browser foreign_host{graph_registry()};
+  auto foreign_context = foreign_host.current_scene();
+  auto foreign_author = foreign_context.edit();
+  auto foreign_local = foreign_author.add_local_declaration(
+      test_local_declaration("Foreign", interface));
+  REQUIRE(foreign_local);
+  REQUIRE(foreign_author.commit());
+  REQUIRE(foreign_local->id() == local->id());
+  auto foreign_resolution = context.edit();
+  auto cross_context =
+      test_external_declaration("Remote", {"remote.x3d#Local"}, interface);
+  cross_context.load_state = sai::external_load_state::resolved;
+  const auto aliased = foreign_resolution.resolve_external_declaration(
+      external.value(), cross_context, foreign_local.value());
+  REQUIRE_FALSE(aliased);
+  CHECK(aliased.error().code == sai::error_code::invalid_context);
+
   std::vector<std::vector<sai::interface_field_descriptor>> incompatible;
   incompatible.push_back(interface);
   incompatible.back()[0].name = "different";
@@ -1815,7 +1960,8 @@ TEST_CASE("resolved externals require and retain compatible local identity") {
         test_external_declaration("Remote", {"remote.x3d#Local"}, candidate);
     wrong.load_state = sai::external_load_state::resolved;
     wrong.resolved_declaration = local->id();
-    const auto mismatch = reject.update_declaration(external.value(), wrong);
+    const auto mismatch = reject.resolve_external_declaration(
+        external.value(), wrong, local.value());
     REQUIRE_FALSE(mismatch);
     CHECK(mismatch.error().code == sai::error_code::invalid_descriptor);
     REQUIRE_FALSE(reject.commit());
@@ -1826,7 +1972,8 @@ TEST_CASE("resolved externals require and retain compatible local identity") {
       test_external_declaration("Remote", {"remote.x3d#Local"}, interface);
   compatible.load_state = sai::external_load_state::resolved;
   compatible.resolved_declaration = local->id();
-  REQUIRE(resolve.update_declaration(external.value(), compatible));
+  REQUIRE(resolve.resolve_external_declaration(external.value(), compatible,
+                                               local.value()));
   REQUIRE(resolve.commit());
 
   auto rename = context.edit();

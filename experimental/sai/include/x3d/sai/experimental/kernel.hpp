@@ -681,11 +681,18 @@ public:
                                   std::string new_name);
   result<void> update_declaration(const declaration &target,
                                   declaration_payload replacement);
+  result<void>
+  resolve_external_declaration(const declaration &target,
+                               external_declaration_descriptor replacement,
+                               const declaration &resolved_target);
   result<void> remove_declaration(const declaration &target);
   result<change_set> commit();
 
 private:
   result<void> require_schema_fingerprint(std::string_view expected);
+  result<void> update_declaration_impl(const declaration &target,
+                                       declaration_payload replacement,
+                                       bool resolution_authorized);
   result<void> set_value(const dynamic_field &target, value new_value,
                          bool node_authority_checked);
   explicit scene_edit(

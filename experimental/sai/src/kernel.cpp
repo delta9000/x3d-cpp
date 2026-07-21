@@ -795,6 +795,7 @@ struct detail::scene_edit_control {
   std::vector<semantic_change> changes;
   std::unordered_set<std::uint64_t> created_nodes;
   std::unordered_set<std::uint64_t> removed_nodes;
+  std::unordered_set<std::uint64_t> claimed_nodes;
   bool committed = false;
 };
 
@@ -2528,10 +2529,35 @@ scene_edit::add_local_declaration(local_declaration_descriptor descriptor,
     }
   }
 
+  {
+    std::lock_guard lock(impl_->context->mutex);
+    for (std::uint64_t claimed : closure) {
+      if (const auto blocker =
+              find_live_context_reference(*impl_->context, node_id{claimed})) {
+        impl_->poison = edit_error(
+            error_code::node_in_use, "scene_edit.add_local_declaration",
+            *impl_->context, impl_->base->revision, blocker->message,
+            node_id{claimed}, blocker->field);
+        return *impl_->poison;
+      }
+      if (const auto imported =
+              find_live_import_reference(*impl_->context, node_id{claimed})) {
+        impl_->poison = edit_error(
+            error_code::node_in_use, "scene_edit.add_local_declaration",
+            *impl_->context, impl_->base->revision,
+            "template node is retained by a committed import aperture",
+            node_id{claimed}, *imported);
+        return *impl_->poison;
+      }
+    }
+  }
+
   const declaration_id id{impl_->staged.next_declaration_id++};
   descriptor.body_roots = std::move(authored_roots);
-  for (const std::uint64_t node : closure)
+  for (const std::uint64_t node : closure) {
     impl_->staged.nodes.at(node).scope_owner = id;
+    impl_->claimed_nodes.insert(node);
+  }
   declaration_descriptor authored{.id = id, .payload = std::move(descriptor)};
   impl_->staged.declaration_order.push_back(id);
   impl_->staged.declarations.emplace(id.value, authored);
@@ -2646,6 +2672,45 @@ result<void> scene_edit::rename_declaration(const declaration &target,
 
 result<void> scene_edit::update_declaration(const declaration &target,
                                             declaration_payload replacement) {
+  return update_declaration_impl(target, std::move(replacement), false);
+}
+
+result<void> scene_edit::resolve_external_declaration(
+    const declaration &target, external_declaration_descriptor replacement,
+    const declaration &resolved_target) {
+  if (impl_->poison)
+    return *impl_->poison;
+  if (replacement.load_state != external_load_state::resolved) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_descriptor,
+        "scene_edit.resolve_external_declaration", *impl_->context,
+        impl_->base->revision,
+        "external resolution requires the resolved load state", target.id_);
+    return *impl_->poison;
+  }
+  const auto resolved_context = resolved_target.context_.lock();
+  const auto resolved =
+      impl_->staged.declarations.find(resolved_target.id_.value);
+  if (resolved_context != impl_->context ||
+      resolved_target.generation_ != impl_->context->generation ||
+      resolved == impl_->staged.declarations.end() ||
+      !std::holds_alternative<local_declaration_descriptor>(
+          resolved->second.payload)) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_context, "scene_edit.resolve_external_declaration",
+        *impl_->context, impl_->base->revision,
+        "resolved target must be a local declaration handle from this context",
+        target.id_);
+    return *impl_->poison;
+  }
+  replacement.resolved_declaration = resolved_target.id_;
+  return update_declaration_impl(target, std::move(replacement), true);
+}
+
+result<void>
+scene_edit::update_declaration_impl(const declaration &target,
+                                    declaration_payload replacement,
+                                    bool resolution_authorized) {
   if (impl_->poison)
     return *impl_->poison;
   const auto target_context = target.context_.lock();
@@ -2704,6 +2769,15 @@ result<void> scene_edit::update_declaration(const declaration &target,
   if (const auto *external =
           std::get_if<external_declaration_descriptor>(&replacement);
       external) {
+    if (external->load_state == external_load_state::resolved &&
+        !resolution_authorized) {
+      impl_->poison = declaration_edit_error(
+          error_code::invalid_context, "scene_edit.update_declaration",
+          *impl_->context, impl_->base->revision,
+          "external resolution requires a context-bearing declaration handle",
+          target.id_);
+      return *impl_->poison;
+    }
     if (external->urls.empty() ||
         std::ranges::any_of(external->urls, [](const std::string &url) {
           return url.empty();
@@ -2790,8 +2864,10 @@ result<void> scene_edit::remove_declaration(const declaration &target) {
   const declaration_descriptor before = found->second;
   for (auto &[node, record] : impl_->staged.nodes) {
     (void)node;
-    if (record.scope_owner == target.id_)
+    if (record.scope_owner == target.id_) {
       record.scope_owner.reset();
+      impl_->claimed_nodes.erase(node);
+    }
   }
   const auto ordered =
       std::ranges::find(impl_->staged.declaration_order, target.id_);
@@ -2924,6 +3000,23 @@ result<change_set> scene_edit::commit() {
                         "node acquired a committed import aperture while its "
                         "removal was staged",
                         node_id{removed}, *imported);
+    }
+  }
+  for (const auto claimed : impl_->claimed_nodes) {
+    if (const auto blocker =
+            find_live_context_reference(*impl_->context, node_id{claimed})) {
+      return edit_error(error_code::node_in_use, "scene_edit.commit",
+                        *impl_->context, impl_->base->revision,
+                        blocker->message, node_id{claimed}, blocker->field);
+    }
+    if (const auto imported =
+            find_live_import_reference(*impl_->context, node_id{claimed})) {
+      return edit_error(
+          error_code::node_in_use, "scene_edit.commit", *impl_->context,
+          impl_->base->revision,
+          "template node acquired a committed import aperture while its scope "
+          "claim was staged",
+          node_id{claimed}, *imported);
     }
   }
   for (std::size_t index = 0; index < impl_->staged.imports.size(); ++index) {
@@ -3132,6 +3225,14 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                    "invalid event destination", target.node_, target.name_);
     return *impl_->poison;
   }
+  if (found->second.scope_owner) {
+    impl_->poison =
+        edit_error(error_code::invalid_context, "event_batch.send",
+                   *impl_->context, impl_->base->revision,
+                   "template-scoped fields are not live event destinations",
+                   target.node_, target.name_);
+    return *impl_->poison;
+  }
   const auto *descriptor =
       find_descriptor(*impl_->context, found->second, target.name_);
   if (!descriptor) {
@@ -3185,6 +3286,14 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                      target.node_, target.name_);
       return *impl_->poison;
     }
+    if (!same_node_scope(found->second, candidate->second)) {
+      impl_->poison = edit_error(
+          error_code::invalid_context, "event_batch.send", *impl_->context,
+          impl_->base->revision,
+          "node event payload cannot cross scene or declaration scope",
+          target.node_, target.name_);
+      return *impl_->poison;
+    }
   }
   if (node_authority_checked && descriptor->kind == value_kind::mf_node) {
     for (const auto id : std::get<node_list>(payload)) {
@@ -3196,6 +3305,14 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
             impl_->base->revision,
             "node event range contains a type not accepted by the field "
             "descriptor",
+            target.node_, target.name_);
+        return *impl_->poison;
+      }
+      if (!same_node_scope(found->second, candidate->second)) {
+        impl_->poison = edit_error(
+            error_code::invalid_context, "event_batch.send", *impl_->context,
+            impl_->base->revision,
+            "node event range cannot cross scene or declaration scope",
             target.node_, target.name_);
         return *impl_->poison;
       }
@@ -3952,6 +4069,13 @@ result<subscription> execution_context::observe(const dynamic_field &source,
     return edit_error(error_code::unknown_node,
                       "execution_context.observe_event", *control_,
                       control_->state->revision, "field owner does not exist",
+                      source.node_, source.name_);
+  }
+  if (found->second.scope_owner) {
+    return edit_error(error_code::invalid_context,
+                      "execution_context.observe_event", *control_,
+                      control_->state->revision,
+                      "template-scoped fields are not live event sources",
                       source.node_, source.name_);
   }
   const auto *descriptor =
