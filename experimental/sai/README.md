@@ -62,6 +62,17 @@ The proposal makes these design choices executable:
 - Node type and ordered field descriptors are discoverable as owning values.
   Node-valued writes require context-bearing `node` handles (or spans of them),
   preventing a bare ID from aliasing an object in another ownership domain.
+- PROTO and EXTERNPROTO declarations have monotonic identity independent of
+  mutable names, ordered exact interfaces, immutable snapshot inspection, and
+  transactional add/update/remove duals. Local bodies claim an exclusive
+  handle-authorized node closure; descriptor root IDs are inspection data, not
+  ambient authoring authority. Graph and declaration edits publish through one
+  ordered heterogeneous change stream.
+- EXTERNPROTO state is explicit and I/O-free: unresolved, loading, and failed
+  declarations invent no body; resolved declarations retain a compatible local
+  declaration through a context-bearing handle while preserving authored URL
+  and diagnostic facts. Stored declaration IDs are inspection data, not
+  cross-context resolution authority.
 - Execution-context boundaries have explicit ordered EXPORT/IMPORT apertures.
   Imported nodes and fields are distinct inspection-only proxy types; parent
   snapshots capture immutable source revisions without claiming a globally
@@ -99,7 +110,8 @@ demonstrated invariant can be cited independently by the convergence register.
 
 This is a semantic reference kernel, not a complete ISO/IEC 19775-2 or
 19777-4 implementation. It currently omits parsing and serialization,
-profiles and document-codec unit integration, PROTO/EXTERNPROTO expansion,
+profiles and document-codec unit integration, PROTO instance creation and
+PROTO/EXTERNPROTO expansion,
 cross-context field writes and ROUTEs, Inline loading, PROTO/IS
 apertures, runtime-originated outputOnly events, Script integration, URL
 transport, concrete browser adapters, presentation scheduling, scene-change

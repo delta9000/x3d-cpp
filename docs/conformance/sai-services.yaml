@@ -337,17 +337,59 @@ services:
   - <<: *query
     id: SVC-PROTO-DECLARATIONS
     clause: ISO/IEC 19775-2:2015, 6.4.11 getProtoDeclaration
-    public_symbol: x3d::runtime::Scene::protoDeclarations
+    public_symbol: x3d::sai::experimental::scene_snapshot::declarations
     support: partial
-    tests: [x3d_parse_tests]
-    preserves: [INV-OWN-2, INV-CXX-2, INV-PORT-1]
+    tests: [sai_decl_identity_order, sai_decl_snapshot_history]
+    preserves: [INV-ID-3, INV-OWN-2, INV-CXX-2, INV-ORDER-1]
   - <<: *query
     id: SVC-EXTERNPROTO-DECLARATIONS
     clause: ISO/IEC 19775-2:2015, 6.4.13 getExternProtoDeclaration
-    public_symbol: x3d::runtime::Scene::externProtoDeclarations
+    public_symbol: x3d::sai::experimental::scene_snapshot::describe
     support: partial
-    tests: [x3d_parse_tests]
-    preserves: [INV-OWN-2, INV-CXX-2, INV-EVT-5]
+    tests: [sai_decl_identity_order, sai_decl_external_state]
+    preserves: [INV-ID-3, INV-OWN-2, INV-CXX-2, INV-ORDER-1]
+  - <<: *command
+    id: SVC-PROTO-DECLARATION-ADD
+    clause: ISO/IEC 19775-2:2015, 6.4.12 protoDeclarationHandling (add)
+    public_symbol: x3d::sai::experimental::scene_edit::add_local_declaration
+    support: partial
+    tests: [sai_decl_interface_validation, sai_decl_template_scope]
+    preserves: [INV-ID-3, INV-OWN-1, INV-EDIT-1, INV-ORDER-1]
+  - <<: *command
+    id: SVC-PROTO-DECLARATION-UPDATE
+    clause: ISO/IEC 19775-2:2015, 6.4.12 protoDeclarationHandling (update)
+    public_symbol: x3d::sai::experimental::scene_edit::update_declaration
+    support: partial
+    tests: [sai_decl_mutation_duals, sai_decl_external_compatibility]
+    preserves: [INV-ID-3, INV-OWN-1, INV-EDIT-1, INV-EDIT-2]
+  - <<: *command
+    id: SVC-PROTO-DECLARATION-REMOVE
+    clause: ISO/IEC 19775-2:2015, 6.4.12 protoDeclarationHandling (remove)
+    public_symbol: x3d::sai::experimental::scene_edit::remove_declaration
+    support: partial
+    tests: [sai_decl_scope_release, sai_decl_external_compatibility]
+    preserves: [INV-ID-3, INV-OWN-1, INV-LIFE-1, INV-EDIT-1]
+  - <<: *command
+    id: SVC-EXTERNPROTO-DECLARATION-ADD
+    clause: ISO/IEC 19775-2:2015, 6.4.14 externprotoDeclarationHandling (add)
+    public_symbol: x3d::sai::experimental::scene_edit::add_external_declaration
+    support: partial
+    tests: [sai_decl_identity_order, sai_decl_failure_nonmutation]
+    preserves: [INV-ID-3, INV-EDIT-1, INV-EDIT-2, INV-ORDER-1]
+  - <<: *command
+    id: SVC-EXTERNPROTO-DECLARATION-UPDATE
+    clause: ISO/IEC 19775-2:2015, 6.4.14 externprotoDeclarationHandling (update)
+    public_symbol: x3d::sai::experimental::scene_edit::resolve_external_declaration
+    support: partial
+    tests: [sai_decl_external_state, sai_decl_external_compatibility]
+    preserves: [INV-ID-3, INV-EDIT-1, INV-EDIT-2, INV-ORDER-1]
+  - <<: *command
+    id: SVC-EXTERNPROTO-DECLARATION-REMOVE
+    clause: ISO/IEC 19775-2:2015, 6.4.14 externprotoDeclarationHandling (remove)
+    public_symbol: x3d::sai::experimental::scene_edit::remove_declaration
+    support: partial
+    tests: [sai_decl_mutation_duals, sai_decl_external_compatibility]
+    preserves: [INV-ID-3, INV-EDIT-1, INV-EDIT-2, INV-LIFE-1]
   - <<: *command
     id: SVC-PROTO-INSTANCE-CREATE
     clause: ISO/IEC 19775-2:2015, 6.4.9 createProto; 6.9.2 createInstance

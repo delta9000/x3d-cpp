@@ -176,6 +176,13 @@ executable evidence.
 
 ### Task 2.2: Declaration and interface model
 
+**Completed 2026-07-19 on `sai/semantic-kernel`.** Stable declaration identity,
+ordered exact interfaces, immutable inspection, transactional lifecycle edits,
+exclusive handle-authorized template closures, one heterogeneous change stream,
+and honest EXTERNPROTO resolution/retention states have executable evidence.
+Prototype instances, IS bindings, URL loading, expansion, and runtime behavior
+remain Task 2.3 or later work.
+
 **Files:**
 - Modify: `experimental/sai/include/x3d/sai/experimental/kernel.hpp`
 - Modify: `experimental/sai/src/kernel.cpp`
