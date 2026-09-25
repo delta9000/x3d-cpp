@@ -148,12 +148,9 @@ Operational how-tos.
 | covered | `guides/add-a-cli-command.md` | How to add a CLI command to the `x3d` suite |
 | covered | `guides/golden-regeneration.md` | Golden regeneration — when and how to regenerate golden files and accept drift |
 
-> Two guides left this wiki on 2026-07-15 and are no longer rows above:
-> `workflow-subagent-discipline.md` and `card-to-done-workflow.md` now live in
-> `docs/contributor/`. They describe how *maintainers* run the project, not how
-> the SDK works, and promoting them in the public nav made the site read as
-> maintainer tooling. They are still maintained — this manifest tracks the
-> published wiki, so they are counted out of it, not deprecated.
+> Two former guides, `workflow-subagent-discipline.md` and
+> `card-to-done-workflow.md`, left the wiki on 2026-07-15 and were deleted on
+> 2026-09-25 along with the card workflow they described.
 
 ## 4. Trackers
 

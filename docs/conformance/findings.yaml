@@ -1754,7 +1754,7 @@
 # Multi-pass scoped agent reviews (semantics → subsystem breadth → engineering
 # quality → empirical sanitizer/fuzz/round-trip). Most entries are empirically
 # reproduced (ASan/UBSan, a 422-scene round-trip sweep, compiled probes).
-# Engineering/security/build/docs items are tracked in the GitHub Project, not here.
+# Engineering/security/build/docs items are tracked as GitHub issues, not here.
 # ══════════════════════════════════════════════════════════════════════════
 # ══ ENCODING ROUND-TRIP (ISO 19776) — proven by the 422-scene round-trip sweep ══
 # Sweep result: 378/422 round-trip byte-identical (89.6%); the 44 failures below.
