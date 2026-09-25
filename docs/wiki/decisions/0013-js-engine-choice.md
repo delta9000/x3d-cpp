@@ -71,8 +71,10 @@ engine-independent and do not need modification to add another backend.
 **Positive:**
 
 - **Zero new CMake find_package dependencies.** Duktape is compiled by the
-  existing CMake build (`duktape.c` as a plain-C translation unit) with no
-  external headers. The build stays self-contained.
+  existing CMake build with no external headers. The build stays
+  self-contained. (`duktape.c` was a plain-C translation unit; since
+  2026-09-25 it compiles as C++ with `DUK_USE_CPP_EXCEPTIONS` so script errors
+  unwind as exceptions. See ADR-0048, "Engine error containment".)
 - **Small binary footprint.** The compiled Duktape object is approximately
   492 KB, consistent with the runtime's embedded/headless target profile.
 - **Full ES5.1 coverage of the X3D corpus.** Real-world X3D Script nodes

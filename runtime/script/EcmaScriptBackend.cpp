@@ -68,6 +68,58 @@ SFNode extractNode(duk_context *ctx, duk_idx_t idx) {
 }
 
 // -------------------------------------------------------------------------
+// Protected entry into the engine.
+//
+// Much of what the backend does can run script code: reading a global can hit a
+// script-defined accessor, JSON-encoding a value calls toJSON, reading a
+// structured value or an array can hit getters or Proxy traps. A script error
+// there is raised outside any handler's pcall. With no catchpoint Duktape calls
+// its fatal handler, which aborts the host process, so any document with a
+// Script could crash the embedder.
+//
+// Every engine entry therefore runs under duk_safe_call. Duktape is compiled
+// with DUK_USE_CPP_EXCEPTIONS (duk_config.h), so the error unwinds the C++
+// frames inside `fn` as an exception, with destructors run, and lands here.
+// On failure the error is logged, the value stack is restored to its entry
+// height, and false is returned.
+// -------------------------------------------------------------------------
+
+template <typename Fn>
+bool protectedRun(duk_context *ctx, const std::string &what, Fn fn) {
+  const duk_int_t rc = duk_safe_call(
+      ctx,
+      [](duk_context *c, void *udata) -> duk_ret_t {
+        (*static_cast<Fn *>(udata))(c);
+        return 0;
+      },
+      &fn, 0 /*nargs*/, 1 /*nrets: undefined, or the error*/);
+  if (rc != DUK_EXEC_SUCCESS) {
+    std::cerr << "[EcmaScriptBackend] " << what
+              << " error: " << duk_safe_to_string(ctx, -1) << "\n";
+  }
+  duk_pop(ctx);
+  return rc == DUK_EXEC_SUCCESS;
+}
+
+// Call the script's global function `name` with the `nargs` values pushArgs
+// pushes, under protectedRun. The lookup is protected too: a script can make
+// the global itself a throwing accessor. A missing or non-callable global is a
+// no-op. Returns true if the function was found and called (even if it threw).
+template <typename PushArgs>
+bool callGlobal(duk_context *ctx, const std::string &what, const char *name,
+                duk_idx_t nargs, PushArgs pushArgs) {
+  bool called = false;
+  protectedRun(ctx, what, [&](duk_context *c) {
+    duk_get_global_string(c, name);
+    if (!duk_is_callable(c, -1)) return;
+    pushArgs(c);
+    called = true;
+    duk_call(c, nargs);
+  });
+  return called;
+}
+
+// -------------------------------------------------------------------------
 // Structured-SF helpers (named numeric properties).
 // -------------------------------------------------------------------------
 
@@ -616,10 +668,10 @@ duk_ret_t browser_getCurrentFrameRate(duk_context *ctx) {
 
 // Browser.addRoute / deleteRoute (fromNode, fromField, toNode, toField).
 //
-// Duktape reports errors by longjmp, which skips C++ destructors. So: coerce the
-// field names FIRST (duk_to_string may itself throw via a script toString),
-// keep every C++ object (the owning SFNodes, the caught exception) inside the
-// inner scope, and raise the JS error only after that scope has unwound.
+// Errors raised here unwind as C++ exceptions (DUK_USE_CPP_EXCEPTIONS), so
+// destructors run either way. The field names are still coerced first, and the
+// JS error is raised only after the inner scope (the owning SFNodes and the
+// caught std::exception) has unwound, so no C++ object is live mid-throw.
 template <typename Op>
 duk_ret_t routeOp(duk_context *ctx, const char *name, Op op) {
   SaiContext *sai = saiOf(ctx);
@@ -731,13 +783,19 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
   entry = Entry{ctx, &scriptNode, &sai};
 
   // Stash the SaiContext for the SFNode marshalling helpers (pushNode /
-  // extractNode), which run outside any Browser method.
-  duk_push_global_stash(ctx);
-  duk_push_pointer(ctx, &sai);
-  duk_put_prop_string(ctx, -2, kStashSaiKey);
-  duk_pop(ctx);
-
-  installBrowser(ctx, &entry);
+  // extractNode), which run outside any Browser method, then install Browser.
+  const bool installed = protectedRun(ctx, "install", [&](duk_context *c) {
+    duk_push_global_stash(c);
+    duk_push_pointer(c, &sai);
+    duk_put_prop_string(c, -2, kStashSaiKey);
+    duk_pop(c);
+    installBrowser(c, &entry);
+  });
+  if (!installed) {
+    duk_destroy_heap(ctx);
+    entries_.erase(handle);
+    return kInvalidScriptHandle;
+  }
 
   // Evaluate the source to define global functions.
   if (duk_peval_string(ctx, source.c_str()) != 0) {
@@ -788,21 +846,8 @@ void EcmaScriptBackend::shutdown(ScriptHandle handle) {
 void EcmaScriptBackend::prepareEvents(ScriptHandle handle, double now) {
   Entry *e = entryFor(handle);
   if (!e) return;
-  duk_context *ctx = e->ctx;
-  if (!duk_get_global_string(ctx, "prepareEvents")) {
-    duk_pop(ctx);
-    return;
-  }
-  if (!duk_is_callable(ctx, -1)) {
-    duk_pop(ctx);
-    return;
-  }
-  duk_push_number(ctx, now);
-  if (duk_pcall(ctx, 1) != 0) {
-    std::cerr << "[EcmaScriptBackend] prepareEvents error: "
-              << duk_safe_to_string(ctx, -1) << "\n";
-  }
-  duk_pop(ctx);
+  callGlobal(e->ctx, "prepareEvents", "prepareEvents", 1,
+             [now](duk_context *c) { duk_push_number(c, now); });
 
   // §29.2.5: prepareEvents may "generate events to be handled by the X3D
   // browser's normal event processing sequence" — read back any author
@@ -824,22 +869,11 @@ void EcmaScriptBackend::invoke(ScriptHandle handle,
                                double timestamp) {
   Entry *e = entryFor(handle);
   if (!e) return;
-  duk_context *ctx = e->ctx;
-  if (!duk_get_global_string(ctx, eventName.c_str())) {
-    duk_pop(ctx);
-    return;
-  }
-  if (!duk_is_callable(ctx, -1)) {
-    duk_pop(ctx);
-    return;
-  }
-  pushValue(ctx, value, type);       // arg 0: the field value
-  duk_push_number(ctx, timestamp);   // arg 1: the timestamp (SFTime)
-  if (duk_pcall(ctx, 2) != 0) {
-    std::cerr << "[EcmaScriptBackend] handler '" << eventName
-              << "' error: " << duk_safe_to_string(ctx, -1) << "\n";
-  }
-  duk_pop(ctx);  // pop result / error
+  callGlobal(e->ctx, "handler '" + eventName + "'", eventName.c_str(), 2,
+             [&](duk_context *c) {
+               pushValue(c, value, type);        // arg 0: the field value
+               duk_push_number(c, timestamp);    // arg 1: the timestamp (SFTime)
+             });
 
   // §3.5: after the handler runs, read any author outputOnly/inputOutput field
   // the script wrote back into the store and emit it as a cascade event carrying
@@ -915,8 +949,12 @@ void EcmaScriptBackend::seedAuthorGlobals(Entry &e) {
     if (!info.isReadable() || !info.get) continue;
     std::any v = info.get(*e.node);
     if (!v.has_value()) continue;
-    pushValue(ctx, v, info.type);
-    duk_put_global_string(ctx, info.x3dName.c_str());
+    // Protected: the script's top level may already have made this global a
+    // throwing accessor.
+    protectedRun(ctx, "seed of '" + info.x3dName + "'", [&](duk_context *c) {
+      pushValue(c, v, info.type);
+      duk_put_global_string(c, info.x3dName.c_str());
+    });
   }
 }
 
@@ -932,23 +970,20 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
     // Read back only fields the script may emit: outputOnly + inputOutput. Both
     // synthesize a get thunk in the store; inputOnly does not (isReadable false).
     if (!info.isReadable()) continue;
-    if (!duk_get_global_string(ctx, info.x3dName.c_str())) {
-      duk_pop(ctx);  // not defined yet
-      continue;
-    }
-    if (duk_is_undefined(ctx, -1)) {
-      duk_pop(ctx);  // handler never assigned it
-      continue;
-    }
-    // Suppress no-op re-emit: skip if the JS value equals the stored value.
+    // Read the global and convert it under protection: the value may be an
+    // accessor, carry a toJSON, or be a Proxy, and any of those can throw. A
+    // throw drops this field's event for this callback (logged), nothing else.
     std::any prev = dynamicFieldStore().getValue(*e.node, info.x3dName);
-    if (prev.has_value() &&
-        jsonOfTop(ctx) == jsonOfAny(ctx, prev, info.type)) {
-      duk_pop(ctx);  // unchanged
-      continue;
-    }
-    std::any value = toValue(ctx, -1, info.type);
-    duk_pop(ctx);  // pop the global
+    std::any value;
+    protectedRun(ctx, "readback of '" + info.x3dName + "'",
+                 [&](duk_context *c) {
+      duk_get_global_string(c, info.x3dName.c_str());
+      if (duk_is_undefined(c, -1)) return;  // never defined / never assigned
+      // Suppress no-op re-emit: skip if the JS value equals the stored value.
+      if (prev.has_value() && jsonOfTop(c) == jsonOfAny(c, prev, info.type))
+        return;
+      value = toValue(c, -1, info.type);
+    });
     if (!value.has_value()) continue;
     // Record the new value, then post it as an event on the script's OWN field
     // (always permitted, §29.2.6) so it fans out along ROUTEs at the triggering
@@ -963,20 +998,7 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
 
 bool EcmaScriptBackend::callGlobalNoArgs(duk_context *ctx,
                                          const char *fnName) {
-  if (!duk_get_global_string(ctx, fnName)) {
-    duk_pop(ctx);
-    return false;
-  }
-  if (!duk_is_callable(ctx, -1)) {
-    duk_pop(ctx);
-    return false;
-  }
-  if (duk_pcall(ctx, 0) != 0) {
-    std::cerr << "[EcmaScriptBackend] " << fnName
-              << " error: " << duk_safe_to_string(ctx, -1) << "\n";
-  }
-  duk_pop(ctx);  // pop result / error
-  return true;
+  return callGlobal(ctx, fnName, fnName, 0, [](duk_context *) {});
 }
 
 } // namespace x3d::runtime

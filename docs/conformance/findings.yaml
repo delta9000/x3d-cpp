@@ -1986,6 +1986,20 @@
     identical types. It throws std::invalid_argument, which surfaces as a JS error. deleteRoute rejects
     null nodes. Tests: ecmascript/quickjs backend T15d.
 
+- id: SCRIPT-HOSTILE-VALUE-ABORT
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2.4 (ECMAScript binding 19777-1)"
+  severity: major
+  status: fixed
+  summary: A Script whose author-field value threw while being read back crashed the host process under Duktape, and QuickJS emitted a half-read value.
+  note: >-
+    The throw could come from a getter, toJSON, a Proxy trap, or a global or handler accessor. Readback ran
+    outside any duk_pcall, so Duktape's fatal handler aborted the host. Duktape is now compiled as C++ with
+    DUK_USE_CPP_EXCEPTIONS, and every engine entry runs under duk_safe_call. A throw drops that field's event
+    and is logged. QuickJS readback now drops the field on a pending exception. ADR-0048 (amended). Tests:
+    ecmascript/quickjs backend T15f.
+
 - id: SCRIPT-SFNODE-REFERENCE
   nodes: [Script]
   interfaces: [X3DScriptNode]

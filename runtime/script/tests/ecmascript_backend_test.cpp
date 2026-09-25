@@ -601,6 +601,72 @@ int main() {
   }
 
   // -------------------------------------------------------------------------
+  // T15f: hostile author-field values cannot crash the host. Reading a JS
+  //       global back after a handler runs can execute script code (getters,
+  //       toJSON, Proxy traps, a global accessor). A throw there must be
+  //       contained: no process abort, no event emitted for that field, and the
+  //       script keeps working afterwards.
+  // -------------------------------------------------------------------------
+  {
+    struct HostileCase {
+      const char *what;
+      X3DFieldType type;
+      const char *source;
+      // toJSON only runs when there is a previous value to compare against, so
+      // the first readback legitimately emits {1,2,3}; the throwing toJSON is
+      // hit (and must be contained) on the next readback.
+      bool firstReadbackEmits = false;
+    };
+    const HostileCase cases[] = {
+        {"throwing getter", X3DFieldType::SFVec3f,
+         "function go(v, t) {"
+         "  out = { get x() { throw new Error('boom'); }, y: 0, z: 0 }; }"},
+        {"throwing toJSON", X3DFieldType::SFVec3f,
+         "function go(v, t) {"
+         "  out = { x: 1, y: 2, z: 3, toJSON: function () { throw 1; } }; }",
+         true},
+        {"throwing global accessor", X3DFieldType::SFFloat,
+         "Object.defineProperty(this, 'out', { configurable: true,"
+         "  get: function () { throw new Error('boom'); } });"
+         "function go(v, t) {}"},
+        {"throwing handler accessor", X3DFieldType::SFFloat,
+         "Object.defineProperty(this, 'go', { configurable: true,"
+         "  get: function () { throw new Error('boom'); } });"},
+        {"Proxy MF array", X3DFieldType::MFFloat,
+         "function go(v, t) {"
+         "  out = new Proxy([1, 2, 3], { get: function (o, k) {"
+         "    if (k === 'length') return 3; throw new Error('boom'); } }); }"},
+    };
+    for (const HostileCase &c : cases) {
+      X3DExecutionContext ctx;
+      Script script;
+      SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+      dynamicFieldStore().addAuthorField(
+          script, AuthorFieldDecl{"out", c.type, AccessType::OutputOnly, {}});
+      dynamicFieldStore().addAuthorField(
+          script, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                  AccessType::OutputOnly, {}});
+      std::string src = std::string(c.source) +
+                        "function fine(v, t) { ok = 7; }";
+      ScriptHandle h = backend.load(script, src, sai);
+      check(h != kInvalidScriptHandle,
+            std::string("T15f: load hostile script (") + c.what + ")");
+      backend.initialize(h);
+      backend.invoke(h, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+      check(dynamicFieldStore().getValue(script, "out").has_value() ==
+                c.firstReadbackEmits,
+            std::string("T15f: ") + c.what +
+                " is contained (no crash; emits only a valid value)");
+      backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
+      std::any ok = dynamicFieldStore().getValue(script, "ok");
+      check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
+            std::string("T15f: script still works after ") + c.what);
+      backend.shutdown(h);
+      dynamicFieldStore().erase(script);
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // T16: directOutput=FALSE — Browser.addRoute throws into JS (not a crash);
   //      the route is NOT added.
   // -------------------------------------------------------------------------
