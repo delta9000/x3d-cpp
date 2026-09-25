@@ -38,7 +38,7 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | Seam | Interface | Backend A | Backend B | Swap-test | Findings |
 |---|---|---|---|---|---|
 | **ScriptEngine** | **STABLE** | Duktape (EcmaScriptBackend) | QuickJS / quickjs-ng v0.15.1 (QuickJsBackend) | `x3d_quickjs_swap` ✓ | SCR-* |
-| **AssetResolver / IO** | **STABLE** | libcurl (HttpResolver) | AWS C++ SDK S3 (S3Resolver, docker minio fixture) | `x3d_assetresolver_swap` ✓ | unblocks NSN-*, PRF-6, CONF-CRITIC-2, SCR-005 |
+| **AssetResolver / IO** | **STABLE** | libcurl (HttpResolver) | AWS C++ SDK S3 (S3Resolver, docker s3mock fixture) | `x3d_assetresolver_swap` ✓ | unblocks NSN-*, PRF-6, CONF-CRITIC-2, SCR-005 |
 | Physics (PhysicsBackend) | EXPERIMENTAL | Jolt (flag-gated) | — pending | — | CONF-RBP* |
 | **Audio (AudioBackend)** | **STABLE** | BuiltinDsp | miniaudio (MiniaudioBackend) | `x3d_sound_swaptest` ✓ | thesis-completion (SND-3 partial) |
 | **FontMetrics** | **STABLE** | stb_truetype (StbttFontMetrics) | FreeType (FreetypeFontMetrics) | `x3d_text_tests` ✓ | thesis-completion (no findings) |
@@ -105,11 +105,11 @@ The `AssetResolver` seam is the second row to go GREEN (Phase-1):
 - **Backend B — AWS C++ SDK S3** (`runtime/io/s3/S3Resolver.{hpp,cpp}`): `GetObject` path
   behind `X3D_CPP_BUILD_S3` (OFF default, `find_package(AWSSDK REQUIRED COMPONENTS s3)`),
   with **no core `#ifdef`** — AWS SDK meets the seam in a single isolated TU (`x3d_s3`
-  static lib), linked PRIVATE. Docker minio service in CI provides the S3-compatible
+  static lib), linked PRIVATE. A docker `adobe/s3mock` container in CI provides the S3-compatible
   fixture.
 - **Swap-test — `x3d_assetresolver_swap`** (`runtime/io/tests/asset_resolver_swap_test.cpp`):
   in-process POSIX-socket HTTP server on 127.0.0.1 (Backend A's fixture) + `PutObject` to
-  seed the minio bucket (Backend B's fixture) + loop asserting
+  seed the S3 fixture bucket (Backend B's fixture) + loop asserting
   `resultA.bytes == resultB.bytes` byte-for-byte for every fixture, plus equal
   `AssetStatus::Failed` for missing keys. Gated in CI (see below).
 
@@ -288,8 +288,8 @@ The genericity proof is a **permanent merge gate** — one job per GREEN row:
   `quickjs-swap` job): `-DX3D_CPP_BUILD_QUICKJS=ON` (FetchContent fetches quickjs-ng
   v0.15.1) + `ctest -R 'x3d_quickjs(_backend|_swap)'` on every pull request.
 - **AssetResolver seam swap-test** (`.github/workflows/ci.yml` `assetresolver-swap` job):
-  `-DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON` + docker `minio/minio:latest` service
-  on port 9000 + `ctest -R 'x3d_assetresolver(_backend|_swap)'` on every pull request.
+  `-DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON` + a pinned docker `adobe/s3mock:5.2.3`
+  S3 fixture on port 9000 + `ctest -R 'x3d_assetresolver(_backend|_swap)'` on every pull request.
 - **TextureResolver decode seam swap-test** (`.github/workflows/ci.yml` `texture-swap` job):
   `-DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON` + `ctest -R x3d_texture` on every pull
   request. Both decoders are vendored single files — no vcpkg, no docker, no FetchContent — so

@@ -11,7 +11,7 @@
 #     every time.
 #   - The remaining four swap-tests (quickjs / assetresolver / audio /
 #     fontmetrics) each fetch+build a third-party backend (and assetresolver
-#     also brings up docker/minio + the AWS SDK), so they run ONLY when their
+#     also brings up docker/s3mock + the AWS SDK), so they run ONLY when their
 #     backend, the seam interface header, the build system, or a CONSUMING
 #     subsystem changed — gated by the `changes` job's path classifier
 #     (manual dispatch runs them all).
@@ -31,7 +31,7 @@
 # docs/wiki/guides/gate-system.md (what each gate protects).
 #
 # Every job carries a timeout-minutes bound (a few times its cold-cache duration)
-# so a hung ctest, minio or vcpkg build fails fast instead of running to the
+# so a hung ctest, S3 fixture or vcpkg build fails fast instead of running to the
 # 6-hour default.
 #
 # Note: Forgejo Actions also reads .github/workflows, so mirroring picks up the
@@ -324,7 +324,7 @@ jobs:
 
   # Genericity proof — the permanent gate for the AssetResolver/IO seam (ADR-0023).
   # Builds the flag-gated libcurl HTTP + AWS S3 SDK backends and runs the
-  # dual-backend swap-test against a docker minio service: identical fixture
+  # dual-backend swap-test against a docker S3 fixture (adobe/s3mock): identical fixture
   # bytes served through Backend A (libcurl HTTP) and Backend B (AWS S3 SDK)
   # must yield byte-equal AssetResult.bytes. Off the fast `cpp` job (extra
   # SDK install + docker service) but on every PR, so a future change that
@@ -337,35 +337,33 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      # minio can't run as a `services:` container: the GH Actions service syntax
-      # has no way to pass the container COMMAND, but `minio/minio` needs
-      # `server /data` to start (with no command it prints usage and exits, so
-      # the health-check never goes green and the job aborts at "Initialize
-      # containers"). Start it as a plain docker step instead, where we control
-      # the command, then poll its health endpoint before the swap-test runs.
-      - name: Start minio (S3 fixture backend for the swap-test)
+      # S3-compatible fixture server for Backend B. This was `minio/minio:latest`
+      # until MinIO stopped publishing public images (the Docker Hub repo now
+      # 404s and the pull is denied), which broke this job on every branch.
+      # adobe/s3mock is maintained, credential-agnostic and serves path-style
+      # requests (S3Resolver sets useVirtualAddressing=false); the swap-test
+      # creates its own bucket. Pinned to an exact tag: `latest` is how the
+      # minio image disappeared out from under us. Started as a plain docker
+      # step (not `services:`) so we control startup and poll readiness here.
+      - name: Start s3mock (S3 fixture backend for the swap-test)
         run: |
-          docker run -d --name minio \
-            -p 9000:9000 -p 9001:9001 \
-            -e MINIO_ROOT_USER=minioadmin \
-            -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio:latest server /data --console-address ':9001'
-          # Wait up to ~30s for minio to report live before continuing.
-          for i in $(seq 1 30); do
-            if curl -fsS http://localhost:9000/minio/health/live; then
-              echo "minio is live"; exit 0
+          docker run -d --name s3mock -p 9000:9090 adobe/s3mock:5.2.3
+          # Wait up to ~60s for the listing endpoint (JVM startup) to answer.
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://localhost:9000/; then
+              echo "s3mock is live"; exit 0
             fi
-            echo "waiting for minio to come up ($i/30)..."; sleep 1
+            echo "waiting for s3mock to come up ($i/60)..."; sleep 1
           done
-          echo "minio did not become healthy in time"; docker logs minio; exit 1
+          echo "s3mock did not become ready in time"; docker logs s3mock; exit 1
       - name: Install build tools (compiler, cmake, ninja, ccache, vcpkg deps)
         run: |
           sudo apt-get update
           # Both backend libs come from vcpkg below (libcurl for Backend A, the
           # AWS C++ SDK for Backend B), so no -dev packages from apt. From apt we
           # only need: the toolchain, and curl/zip/unzip/tar/pkg-config as
-          # vcpkg's build prerequisites (the curl CLI also drives the minio
-          # health check above).
+          # vcpkg's build prerequisites (the curl CLI also drives the s3mock
+          # readiness check above).
           sudo apt-get install -y cmake ninja-build ccache g++ mold \
             curl zip unzip tar pkg-config
       # The AWS C++ SDK has no stock apt package, so install it via vcpkg.
@@ -425,8 +423,9 @@ jobs:
       - name: Swap-test (libcurl HTTP vs AWS S3 observable parity)
         env:
           X3D_S3_ENDPOINT: http://localhost:9000
-          AWS_ACCESS_KEY_ID: minioadmin
-          AWS_SECRET_ACCESS_KEY: minioadmin
+          # s3mock ignores credentials, but the AWS SDK requires some.
+          AWS_ACCESS_KEY_ID: x3d-swap-test
+          AWS_SECRET_ACCESS_KEY: x3d-swap-test
         run: ctest --test-dir build --output-on-failure -R 'x3d_assetresolver(_backend|_swap)'
 
   # Genericity proof — the permanent gate for the TextureResolver decode seam
@@ -435,7 +434,7 @@ jobs:
   # amalgamation) — and runs the dual-backend swap-test: each lossless fixture
   # (PNG/BMP/GIF/TGA) decoded through stb AND wuffs must yield BYTE-EQUAL RGBA,
   # plus Failed-parity on corrupt input. Unlike the AssetResolver gate this needs
-  # NO vcpkg, NO docker/minio, NO FetchContent — both decoders are vendored, so
+  # NO vcpkg, NO docker/s3mock, NO FetchContent — both decoders are vendored, so
   # the gate is a sub-minute apt + scoped build.
   #
   # Runs on every C++ PR (gated on `cpp`, not on a texture path filter):
