@@ -200,7 +200,7 @@ See [Gate System](gate-system.md) for the full cli/canon gate workflow.
 
 **clang-format version.** The gate is byte-exact, so the formatter version must
 match. If you upgrade `clang-format`, you must regenerate and commit a new golden.
-The gate skips (not fails) when `clang-format` is absent.
+Locally, the pytest golden tests skip, with install instructions, when the pinned `clang-format` (`$CLANG_FORMAT`, else `clang-format` on PATH) is absent **or the wrong version**; under CI (`CI` set) they fail instead, so the gate cannot pass by skipping. `scripts/check_golden.sh` always hard-fails on a missing or mismatched formatter. To get the pin without mise: `uvx --from clang-format==22.1.8 clang-format --version`, then point `CLANG_FORMAT` at that binary.
 
 **Do not retry PCH.** A shared precompiled header was measured at ~0% build-time
 improvement on this codebase (the bottleneck is template instantiation and codegen

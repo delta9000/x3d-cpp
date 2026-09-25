@@ -245,12 +245,13 @@ private:
   // -------------------------------------------------------------------------
   void consumeInterfaceDeclaration(VrmlTokenizer &tok,
                                    [[maybe_unused]] runtime::Scene &scene,
-                                   X3DNode &node);
+                                   const std::shared_ptr<X3DNode> &nodeShared);
 
   // Register one author field declaration on `node` in the S1 store. Empty
   // initialValue for input/outputOnly (they carry no persistent value) is the
   // store's own contract; we pass through whatever the caller boxed.
-  static void captureAuthorField(const X3DNode &node, const std::string &name,
+  static void captureAuthorField(const std::shared_ptr<X3DNode> &node,
+                                 const std::string &name,
                                  X3DFieldType type, AccessType access,
                                  std::any initialValue);
 

@@ -205,7 +205,7 @@ private:
     // ecmascript:/javascript:/vrmlscript: scheme in `url` (read above as an
     // attribute) is left intact so ScriptSystem's url decode still applies.
     if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
-      captureScriptAuthorFields(el, *node, *script);
+      captureScriptAuthorFields(el, node, *script);
 
     // Phase-3 ComposedShader: an X3DProgrammableShaderObject (ComposedShader,
     // ProgramShader, …) carries author <field> uniform declarations just like
@@ -214,7 +214,7 @@ private:
     // Element.text by XmlLite) is the source. Previously the XML reader captured
     // these only for Script, so ComposedShader reached the runtime sourceless.
     else if (dynamic_cast<x3d::nodes::X3DProgrammableShaderObject *>(node.get()))
-      captureAuthorFieldDecls(el, *node);
+      captureAuthorFieldDecls(el, node);
     if (auto *part = dynamic_cast<x3d::nodes::ShaderPart *>(node.get())) {
       if (!el.text.empty())
         part->setSourceCode(el.text);
@@ -276,7 +276,8 @@ private:
   /// into the per-node DynamicFieldStore. Shared by every
   /// X3DProgrammableShaderObject (Script, ComposedShader, ProgramShader, …) so
   /// their author-declared uniforms/inputs resolve via effectiveFields.
-  static void captureAuthorFieldDecls(const xml::Element &el, X3DNode &node) {
+  static void captureAuthorFieldDecls(const xml::Element &el,
+                                      const std::shared_ptr<X3DNode> &node) {
     std::vector<runtime::AuthorFieldDecl> decls;
     for (const auto &c : el.children) {
       if (c->name != "field")
@@ -299,7 +300,8 @@ private:
       runtime::dynamicFieldStore().addAuthorFields(node, decls);
   }
 
-  static void captureScriptAuthorFields(const xml::Element &el, X3DNode &node,
+  static void captureScriptAuthorFields(const xml::Element &el,
+                                        const std::shared_ptr<X3DNode> &node,
                                         x3d::nodes::Script &script) {
     captureAuthorFieldDecls(el, node);
 

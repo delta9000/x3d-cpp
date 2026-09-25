@@ -9,9 +9,10 @@
 // effectiveFields() + an instance store (which would churn golden), we keep a
 // per-node side-table keyed by node identity (const X3DNode*) — the same memo
 // pattern as TransformSystem.world_ / BoundsSystem / PickSystem path cache.
-// Lifetime: author fields live as long as their Script node, which the document
-// owns, so the const X3DNode* key never dangles in the load->tick->extract model
-// (see design §3.2).
+// Lifetime: readers register through the shared_ptr overloads, so an entry
+// tracks its node with a weak_ptr and expires (and is swept) when the node is
+// destroyed — a node reallocated at the same address never inherits stale
+// author fields (see DynamicFieldStore).
 //
 // SEAM 1 — AuthorFieldDecl: a neutral, encoding-agnostic struct every reader
 //   (XML/ClassicVRML/VRML97/JSON) emits for one author field declaration.
@@ -24,7 +25,9 @@
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3DReflection.hpp"
 
+#include <algorithm>
 #include <any>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -113,16 +116,30 @@ struct AuthorFieldDecl {
  *          `set` is empty for read-only (initializeOnly/outputOnly); the cascade
  *          and ROUTE wiring treat author fields exactly like generated ones.
  *
+ *          Lifetime: register through the shared_ptr overloads (the readers
+ *          do) and the entry tracks its node with a weak_ptr. Once that node is
+ *          destroyed the entry is stale: lookups treat it as absent (so a new
+ *          node allocated at the same address never inherits the old node's
+ *          fields) and it is swept from the table on a later insertion, so the
+ *          table does not grow for the life of a long-running embedder. The
+ *          `const X3DNode&` overloads register an UNTRACKED entry — the caller
+ *          guarantees the node outlives it or calls erase()/clear().
+ *
  *          Thread-safety: a process-global instance is exposed via
- *          dynamicFieldStore(); the table is guarded by an internal mutex so
- *          concurrent reader population is safe. The synthesized get/set thunks
- *          capture a shared_ptr to the per-node value store, so they remain
- *          valid for the node's lifetime independent of rehash.
+ *          dynamicFieldStore(); the table is guarded by the store mutex and each
+ *          node's value store by its own entry mutex (lock order: store, then
+ *          entry; the thunks take only the entry mutex). The synthesized get/set
+ *          thunks hold a weak_ptr to their entry, so a FieldInfo copied out by
+ *          authorFields() stays safe after erase()/clear() — its get returns an
+ *          empty std::any and its set is a no-op. The set thunk enforces the
+ *          same AUD-MEM-1 type check as setValue(), so the event cascade cannot
+ *          bypass it.
  */
 class DynamicFieldStore {
 public:
   /**
-   * @brief Add author fields to `node` from a vector of decls.
+   * @brief Add author fields to `node` from a vector of decls, tracking the
+   *        node's lifetime (the entry expires with the node).
    * @details Idempotent per (node, x3dName): re-adding a name overwrites that
    *          node's existing entry (last writer wins) rather than duplicating
    *          it, so a reader may call this incrementally. Synthesizes one
@@ -130,90 +147,93 @@ public:
    *          store. The boxed initialValue seeds the value store (empty std::any
    *          for inputOnly/outputOnly, which have no persistent value).
    */
-  void addAuthorFields(const X3DNode &node,
+  void addAuthorFields(const std::shared_ptr<const X3DNode> &node,
                        const std::vector<AuthorFieldDecl> &decls) {
+    if (!node) return;
     std::lock_guard<std::mutex> lock(mutex_);
-    std::shared_ptr<NodeEntry> entry = entryFor(&node);
-    for (const AuthorFieldDecl &decl : decls) {
-      addOne(*entry, decl);
-    }
+    std::shared_ptr<NodeEntry> entry = entryFor(node.get(), node);
+    for (const AuthorFieldDecl &decl : decls) addOne(entry, decl);
+  }
+
+  /** @brief Add a single lifetime-tracked author field (last-writer-wins). */
+  void addAuthorField(const std::shared_ptr<const X3DNode> &node,
+                      const AuthorFieldDecl &decl) {
+    if (!node) return;
+    std::lock_guard<std::mutex> lock(mutex_);
+    addOne(entryFor(node.get(), node), decl);
   }
 
   /**
-   * @brief Add a single author field to `node` (last-writer-wins per name).
+   * @brief Add author fields to a node the caller keeps alive (UNTRACKED).
+   * @details The entry never expires on its own: the caller must guarantee the
+   *          node outlives it, or erase()/clear() it. Prefer the shared_ptr
+   *          overload wherever the node is shared-owned.
    */
+  void addAuthorFields(const X3DNode &node,
+                       const std::vector<AuthorFieldDecl> &decls) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::shared_ptr<NodeEntry> entry = entryFor(&node, nullptr);
+    for (const AuthorFieldDecl &decl : decls) addOne(entry, decl);
+  }
+
+  /** @brief Add a single UNTRACKED author field (see the vector overload). */
   void addAuthorField(const X3DNode &node, const AuthorFieldDecl &decl) {
     std::lock_guard<std::mutex> lock(mutex_);
-    addOne(*entryFor(&node), decl);
+    addOne(entryFor(&node, nullptr), decl);
   }
 
   /**
    * @brief The node's author FieldInfo list (empty if the node has none).
    * @details Returns by value (a copy) so callers can concatenate it onto the
    *          static fields() table without holding the store lock. The thunks in
-   *          each FieldInfo capture the live value store, so the copy stays
-   *          functional.
+   *          each FieldInfo reach the live value store through a weak_ptr, so
+   *          the copy stays functional while the entry lives and inert after.
    */
   std::vector<FieldInfo> authorFields(const X3DNode &node) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = table_.find(&node);
-    if (it == table_.end()) return {};
-    return it->second->infos;
+    std::shared_ptr<NodeEntry> entry = find(&node);
+    if (!entry) return {};
+    std::lock_guard<std::mutex> lock(entry->mutex);
+    return entry->infos;
   }
 
   /** @brief True if `node` has at least one author field. */
   bool hasAuthorFields(const X3DNode &node) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = table_.find(&node);
-    return it != table_.end() && !it->second->infos.empty();
+    std::shared_ptr<NodeEntry> entry = find(&node);
+    if (!entry) return false;
+    std::lock_guard<std::mutex> lock(entry->mutex);
+    return !entry->infos.empty();
   }
 
   /**
    * @brief Read a boxed author-field value by (node, name).
    * @details Empty std::any if the node/name is unknown or the field is
    *          write-only (inputOnly carries no persistent value). This is the
-   *          direct store read; the synthesized FieldInfo::get thunk routes here.
+   *          direct store read; the synthesized FieldInfo::get thunk reads the
+   *          same per-entry value store.
    */
   std::any getValue(const X3DNode &node, const std::string &name) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = table_.find(&node);
-    if (it == table_.end()) return {};
-    auto vIt = it->second->values.find(name);
-    return vIt == it->second->values.end() ? std::any{} : vIt->second;
+    std::shared_ptr<NodeEntry> entry = find(&node);
+    if (!entry) return {};
+    return readValue(*entry, name);
   }
 
   /**
    * @brief Write a boxed author-field value by (node, name). No-op if unknown.
-   * @details The direct store write; the synthesized FieldInfo::set thunk routes
-   *          here. Writing an inputOnly field is permitted (an inputOnly field's
-   *          set thunk records the last received event value here even though it
-   *          has no get); a read-only (outputOnly/initializeOnly) field has no
-   *          set thunk so the cascade never calls this for it.
+   * @details The direct store write; the synthesized FieldInfo::set thunk
+   *          applies the same checks. Writing an inputOnly field is permitted
+   *          (an inputOnly field's set thunk records the last received event
+   *          value here even though it has no get); a read-only
+   *          (outputOnly/initializeOnly) field has no set thunk so the cascade
+   *          never calls this for it.
    */
   void setValue(const X3DNode &node, const std::string &name, std::any value) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = table_.find(&node);
-    if (it == table_.end()) return;
-    auto declIt = it->second->declared.find(name);
-    if (declIt == it->second->declared.end()) return;
-    // AUD-MEM-1: reject mismatched types at the API boundary rather than
-    // deferring the error to a later bad_any_cast in getValue. This is a
-    // hardened boundary — it must tolerate arbitrary mismatched input without
-    // crashing (hostile/buggy callers), so the drop is non-fatal. But a silent
-    // drop is near-impossible to trace, so we COUNT drops: a nonzero
-    // typeMismatchDrops() flags either bad input or (more usefully) an internal
-    // boxing-invariant violation where a producer boxed the wrong C++ type for
-    // the declared X3DFieldType.
-    const FieldInfo &fi = it->second->infos[declIt->second];
-    if (!anyMatchesFieldType(value, fi.type)) {
-      ++typeMismatchDrops_;
-      return;
-    }
-    it->second->values[name] = std::move(value);
+    std::shared_ptr<NodeEntry> entry = find(&node);
+    if (!entry) return;
+    writeValue(*entry, *drops_, name, std::move(value));
   }
 
-  /** @brief Drop all author fields for `node` (dynamic removal; out-of-scope but
-   *         provided so a future node-destroy path can keep the table tidy). */
+  /** @brief Drop all author fields for `node`. Outstanding FieldInfo copies
+   *         become inert (get -> empty, set -> no-op). */
   void erase(const X3DNode &node) {
     std::lock_guard<std::mutex> lock(mutex_);
     table_.erase(&node);
@@ -223,41 +243,121 @@ public:
   void clear() {
     std::lock_guard<std::mutex> lock(mutex_);
     table_.clear();
-    typeMismatchDrops_ = 0;
+    sweepAt_ = kMinSweep;
+    drops_->store(0);
   }
 
   /**
-   * @brief AUD-MEM-1: number of setValue() writes dropped for a type mismatch.
-   * @details Makes the otherwise-silent drop observable. A nonzero value flags
+   * @brief AUD-MEM-1: number of author-field writes dropped for a type mismatch.
+   * @details Counts drops from both setValue() and the synthesized set thunks.
+   *          Makes the otherwise-silent drop observable. A nonzero value flags
    *          either hostile/buggy input or an internal boxing-invariant
    *          violation (a producer boxed the wrong C++ type for the declared
    *          X3DFieldType). Reset by clear().
    */
-  std::size_t typeMismatchDrops() const {
+  std::size_t typeMismatchDrops() const { return drops_->load(); }
+
+  /** @brief Number of table entries, stale ones included (sweep diagnostics). */
+  std::size_t entryCount() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return typeMismatchDrops_;
+    return table_.size();
   }
 
 private:
   /// Per-node state: the live value store + the synthesized FieldInfos. Held by
-  /// shared_ptr so the get/set thunks can capture it and survive table rehash.
+  /// shared_ptr in the table; the thunks hold a weak_ptr (a shared_ptr would
+  /// form a cycle through `infos` and keep erased entries alive).
   struct NodeEntry {
+    std::weak_ptr<const X3DNode> owner; ///< set for lifetime-tracked entries
+    bool tracked = false;
+    mutable std::mutex mutex;           ///< guards the three members below
     std::unordered_map<std::string, std::any> values;  ///< live boxed values
     std::unordered_map<std::string, std::size_t> declared; ///< name -> infos idx
     std::vector<FieldInfo> infos;                      ///< synthesized reflection
   };
 
-  std::shared_ptr<NodeEntry> entryFor(const X3DNode *node) {
+  using DropCounter = std::atomic<std::size_t>;
+  static constexpr std::size_t kMinSweep = 64;
+
+  static bool stale(const NodeEntry &entry) {
+    return entry.tracked && entry.owner.expired();
+  }
+
+  // Look up a live entry; a stale (node destroyed) entry reads as absent and is
+  // dropped so a node reallocated at the same address starts clean.
+  std::shared_ptr<NodeEntry> find(const X3DNode *node) const {
+    std::lock_guard<std::mutex> lock(mutex_);
     auto it = table_.find(node);
-    if (it != table_.end()) return it->second;
+    if (it == table_.end()) return nullptr;
+    if (stale(*it->second)) {
+      table_.erase(it);
+      return nullptr;
+    }
+    return it->second;
+  }
+
+  // Caller holds mutex_. `owner` null registers an untracked entry.
+  std::shared_ptr<NodeEntry> entryFor(const X3DNode *node,
+                                      const std::shared_ptr<const X3DNode> &owner) {
+    auto it = table_.find(node);
+    if (it != table_.end() && !stale(*it->second)) {
+      if (owner && !it->second->tracked) {
+        it->second->owner = owner;
+        it->second->tracked = true;
+      }
+      return it->second;
+    }
+    if (it != table_.end()) table_.erase(it);
+    if (table_.size() >= sweepAt_) sweep();
     auto entry = std::make_shared<NodeEntry>();
+    if (owner) {
+      entry->owner = owner;
+      entry->tracked = true;
+    }
     table_.emplace(node, entry);
     return entry;
   }
 
+  // Caller holds mutex_. Drop every stale entry; amortized by doubling the
+  // threshold so steady-state insertion stays O(1).
+  void sweep() {
+    for (auto it = table_.begin(); it != table_.end();) {
+      if (stale(*it->second)) it = table_.erase(it);
+      else ++it;
+    }
+    sweepAt_ = std::max(kMinSweep, table_.size() * 2);
+  }
+
+  static std::any readValue(const NodeEntry &entry, const std::string &name) {
+    std::lock_guard<std::mutex> lock(entry.mutex);
+    auto vIt = entry.values.find(name);
+    return vIt == entry.values.end() ? std::any{} : vIt->second;
+  }
+
+  // AUD-MEM-1: reject mismatched types at the API boundary rather than
+  // deferring the error to a later bad_any_cast in a reader. This is a hardened
+  // boundary — it must tolerate arbitrary mismatched input without crashing
+  // (hostile/buggy callers), so the drop is non-fatal. But a silent drop is
+  // near-impossible to trace, so we COUNT drops: a nonzero typeMismatchDrops()
+  // flags either bad input or (more usefully) an internal boxing-invariant
+  // violation where a producer boxed the wrong C++ type for the declared
+  // X3DFieldType.
+  static void writeValue(NodeEntry &entry, DropCounter &drops,
+                         const std::string &name, std::any value) {
+    std::lock_guard<std::mutex> lock(entry.mutex);
+    auto declIt = entry.declared.find(name);
+    if (declIt == entry.declared.end()) return;
+    if (!anyMatchesFieldType(value, entry.infos[declIt->second].type)) {
+      ++drops;
+      return;
+    }
+    entry.values[name] = std::move(value);
+  }
+
   // Synthesize one FieldInfo obeying the reflection contract and seed its value.
-  // Caller holds mutex_.
-  static void addOne(NodeEntry &entry, const AuthorFieldDecl &decl) {
+  // Caller holds mutex_; takes the entry mutex itself.
+  void addOne(const std::shared_ptr<NodeEntry> &entry,
+              const AuthorFieldDecl &decl) {
     const bool readable =
         decl.access == AccessType::OutputOnly ||
         decl.access == AccessType::InputOutput ||
@@ -266,49 +366,50 @@ private:
         decl.access == AccessType::InputOnly ||
         decl.access == AccessType::InputOutput;
 
-    // Seed the live value store. inputOnly/outputOnly start with no persistent
-    // value (empty std::any); initializeOnly/inputOutput take the boxed default.
-    if (decl.access == AccessType::InitializeOnly ||
-        decl.access == AccessType::InputOutput) {
-      entry.values[decl.x3dName] = decl.initialValue;
-    } else {
-      entry.values[decl.x3dName] = std::any{};
-    }
-
     FieldInfo info;
     info.x3dName = decl.x3dName;
     info.type = decl.type;
     info.access = decl.access;
-    // get/set route through the per-node value store. They locate the node's
-    // entry afresh on each call (the store outlives all nodes), keyed by the
-    // node passed in — which IS the entry's node, so a by-name map lookup on the
-    // captured entry pointer is correct and lock-free at call time.
-    NodeEntry *entryPtr = &entry;
+    std::weak_ptr<NodeEntry> weak = entry;
     const std::string name = decl.x3dName;
     if (readable) {
-      info.get = [entryPtr, name](const X3DNode &) -> std::any {
-        auto vIt = entryPtr->values.find(name);
-        return vIt == entryPtr->values.end() ? std::any{} : vIt->second;
+      info.get = [weak, name](const X3DNode &) -> std::any {
+        std::shared_ptr<NodeEntry> e = weak.lock();
+        return e ? readValue(*e, name) : std::any{};
       };
     }
     if (writable) {
-      info.set = [entryPtr, name](X3DNode &, const std::any &value) {
-        entryPtr->values[name] = value;
+      info.set = [weak, name, drops = drops_](X3DNode &,
+                                              const std::any &value) {
+        if (std::shared_ptr<NodeEntry> e = weak.lock())
+          writeValue(*e, *drops, name, value);
       };
     }
 
-    auto dIt = entry.declared.find(decl.x3dName);
-    if (dIt != entry.declared.end()) {
-      entry.infos[dIt->second] = std::move(info);  // last-writer-wins
+    std::lock_guard<std::mutex> lock(entry->mutex);
+    // Seed the live value store. inputOnly/outputOnly start with no persistent
+    // value (empty std::any); initializeOnly/inputOutput take the boxed default.
+    if (decl.access == AccessType::InitializeOnly ||
+        decl.access == AccessType::InputOutput) {
+      entry->values[decl.x3dName] = decl.initialValue;
     } else {
-      entry.declared[decl.x3dName] = entry.infos.size();
-      entry.infos.push_back(std::move(info));
+      entry->values[decl.x3dName] = std::any{};
+    }
+    auto dIt = entry->declared.find(decl.x3dName);
+    if (dIt != entry->declared.end()) {
+      entry->infos[dIt->second] = std::move(info);  // last-writer-wins
+    } else {
+      entry->declared[decl.x3dName] = entry->infos.size();
+      entry->infos.push_back(std::move(info));
     }
   }
 
   mutable std::mutex mutex_;
-  std::unordered_map<const X3DNode *, std::shared_ptr<NodeEntry>> table_;
-  std::size_t typeMismatchDrops_ = 0; ///< AUD-MEM-1: count of dropped writes
+  mutable std::unordered_map<const X3DNode *, std::shared_ptr<NodeEntry>> table_;
+  std::size_t sweepAt_ = kMinSweep;
+  /// AUD-MEM-1 drop count; shared with the set thunks, which may outlive a
+  /// clear() of the table.
+  std::shared_ptr<DropCounter> drops_ = std::make_shared<DropCounter>(0);
 };
 
 /**

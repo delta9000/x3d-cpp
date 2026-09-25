@@ -400,7 +400,7 @@ void ClassicVrmlReader::parseNodeBody(
     // the S1 DynamicFieldStore as AuthorFieldDecls. On any other node the
     // model has no slot for them, so they are consumed/skipped as before.
     if (isAccessTypeWord(t.text) && !t.isString) {
-      consumeInterfaceDeclaration(tok, scene, node);
+      consumeInterfaceDeclaration(tok, scene, nodeShared);
       continue;
     }
 
@@ -789,14 +789,15 @@ void ClassicVrmlReader::parseProtoInstance(VrmlTokenizer &tok,
 }
 
 void ClassicVrmlReader::consumeInterfaceDeclaration(
-    VrmlTokenizer &tok, [[maybe_unused]] runtime::Scene &scene, X3DNode &node) {
+    VrmlTokenizer &tok, [[maybe_unused]] runtime::Scene &scene,
+    const std::shared_ptr<X3DNode> &nodeShared) {
   std::string accessTok = expectWord(tok, "interface accessType");
   AccessType access = accessTypeFromString(accessTok);
   std::string typeTok = expectWord(tok, "interface field type");
   X3DFieldType type = fieldTypeFromString(typeTok);
   std::string fieldName = expectWord(tok, "interface field name");
 
-  const bool captureAuthor = node.nodeTypeName() == "Script";
+  const bool captureAuthor = nodeShared->nodeTypeName() == "Script";
 
   // A Script/proto-body interface field may bind to a proto interface field
   // with `IS protoField` in place of a literal default (e.g.
@@ -807,7 +808,7 @@ void ClassicVrmlReader::consumeInterfaceDeclaration(
     tok.next();
     expectWord(tok, "IS proto-field name");
     if (captureAuthor)
-      captureAuthorField(node, fieldName, type, access, std::any{});
+      captureAuthorField(nodeShared, fieldName, type, access, std::any{});
     return;
   }
 
@@ -830,13 +831,12 @@ void ClassicVrmlReader::consumeInterfaceDeclaration(
     }
   }
   if (captureAuthor)
-    captureAuthorField(node, fieldName, type, access, std::move(initialValue));
+    captureAuthorField(nodeShared, fieldName, type, access, std::move(initialValue));
 }
 
-void ClassicVrmlReader::captureAuthorField(const X3DNode &node,
-                                           const std::string &name,
-                                           X3DFieldType type, AccessType access,
-                                           std::any initialValue) {
+void ClassicVrmlReader::captureAuthorField(
+    const std::shared_ptr<X3DNode> &node, const std::string &name,
+    X3DFieldType type, AccessType access, std::any initialValue) {
   runtime::AuthorFieldDecl decl;
   decl.x3dName = name;
   decl.type = type;

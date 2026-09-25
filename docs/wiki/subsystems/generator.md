@@ -102,7 +102,7 @@ The `CppHeaderBackend.emit(nodes, graph, out_dir)` method is the render loop: fo
 
 - `uv run pytest tests/test_emission.py` — end-to-end render tests against the packaged 4.0 spec. Asserts specific C++ text in emitted headers (e.g. `Appearance.hpp` carries `AlphaModeChoices getAlphaMode()` and not a bare `std::string` member).
 
-- `uv run pytest tests/test_golden_smoke.py` — byte-for-byte comparison of two representative headers (`Box.hpp`, `X3Dtypes.hpp`) against committed golden files. Skipped if clang-format is absent.
+- `uv run pytest tests/test_golden_smoke.py` — byte-for-byte comparison of two representative headers (`Box.hpp`, `X3Dtypes.hpp`) against committed golden files. Skipped locally, and failed under CI, if the pinned clang-format is absent or the wrong version (`tests/conftest.py`).
 
 - `uv run pytest tests/test_golden_tree.py` — full-tree golden-drift test: runs the CLI into a temp dir and diffs every generated `*.hpp` and `*.cpp` against `generated_cpp_bindings/` (both directions: no missing, no extra, no drifted files). This is the primary regression gate for any pipeline change.
 

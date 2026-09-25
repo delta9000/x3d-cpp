@@ -4807,7 +4807,9 @@
         "SCR-006",
         "SCR-007",
         "SCRIPT-EVENTIN",
-        "SCRIPT-OUTPUTONLY-REEMIT"
+        "SCRIPT-OUTPUTONLY-REEMIT",
+        "SCRIPT-SAI-ADDROUTE-VALIDATE",
+        "SCRIPT-SFNODE-REFERENCE"
       ],
       "levels": [
         1
@@ -4817,7 +4819,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1)",
+          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -4832,7 +4834,9 @@
             "SCR-006",
             "SCR-007",
             "SCRIPT-EVENTIN",
-            "SCRIPT-OUTPUTONLY-REEMIT"
+            "SCRIPT-OUTPUTONLY-REEMIT",
+            "SCRIPT-SAI-ADDROUTE-VALIDATE",
+            "SCRIPT-SFNODE-REFERENCE"
           ],
           "geometry": false,
           "interfaces": [
@@ -9402,6 +9406,34 @@
       "summary": "An explicit same-value assignment to a Script outputOnly field is suppressed \u2014 strict X3D semantics say an explicit eventOut assignment generates an event regardless of value."
     },
     {
+      "clause": "ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7",
+      "id": "SCRIPT-SAI-ADDROUTE-VALIDATE",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "SaiContext::addRoute now validates with the same rules as the document-ROUTE bridge (X3DSceneBridge): non-null nodes, fields present (set_/_changed aliases resolved), source readable, sink writable, identical types. It throws std::invalid_argument, which surfaces as a JS error. deleteRoute rejects null nodes. Tests: ecmascript/quickjs backend T15d.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "Browser.addRoute accepted any endpoints \u2014 a null node, an unknown field, a non-output source, a non-input sink or mismatched types all went straight into the live route graph."
+    },
+    {
+      "clause": "29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference)",
+      "id": "SCRIPT-SFNODE-REFERENCE",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "ADR-0048. Handles are per-script NodeHandleTable ids (Duktape hidden symbol / QuickJS class opaque) that resolve to the node's owning shared_ptr, or to null for unknown ids and destroyed nodes. A script SFNode output shares ownership like DEF/USE. Tests: ecmascript/quickjs backend T15b-c.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A script's SFNode was a raw pointer rebuilt as a non-owning shared_ptr \u2014 an SFNode written into a field could dangle, and under QuickJS a script could forge a handle to an arbitrary address."
+    },
+    {
       "clause": "ISO 19776-1; 19775-1 7",
       "component": "Core",
       "id": "DIAG-UNKNOWN-NODE",
@@ -9671,10 +9703,10 @@
     ]
   },
   "summary": {
-    "closed_count": 125,
+    "closed_count": 127,
     "component_count": 36,
     "deferred_count": 39,
-    "finding_count": 212,
+    "finding_count": 214,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",

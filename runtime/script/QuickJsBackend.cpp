@@ -143,41 +143,45 @@ double getNumberProp(JSContext *ctx, JSValueConst obj, const char *name) {
 }
 
 // ---------------------------------------------------------------------------
-// SFNode <-> JS opaque handle. QuickJS has no pointer value, so a non-null node
-// becomes a plain JS object carrying the X3DNode* in a hidden own property; a
-// null node becomes JS null (mirroring Duktape's pushNode/extractNode). The
-// pointer is stashed as a 64-bit integer split across two number fields so it
-// survives QuickJS's number representation losslessly on LP64.
+// SFNode <-> JS opaque handle. A non-null node becomes an instance of the
+// native X3DNode class whose opaque slot carries its NodeHandleTable id; a null
+// node becomes JS null. The opaque slot is invisible to script code and
+// JS_GetOpaque checks the class, so a script can neither read nor forge a
+// handle. The id resolves through this script's table to the node's owning
+// shared_ptr (null once the node is gone) — see NodeHandleTable.hpp.
 // ---------------------------------------------------------------------------
 
-constexpr const char *kNodePtrLoKey = "\xff" "x3dNodeLo";
-constexpr const char *kNodePtrHiKey = "\xff" "x3dNodeHi";
+// One JSContext backs exactly one loaded script, so the SaiContext is threaded
+// to every native callback via JS_SetContextOpaque(ctx, sai) (the QuickJS
+// analogue of Duktape's per-function \xff sai stamp, but simpler because the
+// context is 1:1 with the script).
+SaiContext *saiOf(JSContext *ctx) {
+  return static_cast<SaiContext *>(JS_GetContextOpaque(ctx));
+}
+
+// The native X3DNode class id, registered once per runtime (Impl ctor) and kept
+// in the runtime opaque.
+JSClassID nodeClassOf(JSContext *ctx) {
+  return static_cast<JSClassID>(
+      reinterpret_cast<uintptr_t>(JS_GetRuntimeOpaque(JS_GetRuntime(ctx))));
+}
 
 JSValue pushNode(JSContext *ctx, const SFNode &node) {
-  if (!node) return JS_NULL;
-  JSValue obj = JS_NewObject(ctx);
+  SaiContext *sai = saiOf(ctx);
+  if (!node || !sai) return JS_NULL;
+  JSValue obj = JS_NewObjectClass(ctx, nodeClassOf(ctx));
   if (JS_IsException(obj)) return obj;
-  const auto bits = reinterpret_cast<uintptr_t>(node.get());
-  const auto lo = static_cast<uint32_t>(bits & 0xFFFFFFFFu);
-  const auto hi = static_cast<uint32_t>((static_cast<uint64_t>(bits) >> 32) &
-                                        0xFFFFFFFFu);
-  // JS_SetPropertyStr consumes the value ref it is handed.
-  JS_SetPropertyStr(ctx, obj, kNodePtrLoKey, JS_NewUint32(ctx, lo));
-  JS_SetPropertyStr(ctx, obj, kNodePtrHiKey, JS_NewUint32(ctx, hi));
+  const NodeHandleTable::Id id = sai->nodeHandles().intern(node);
+  JS_SetOpaque(obj, reinterpret_cast<void *>(static_cast<uintptr_t>(id)));
   return obj;
 }
 
-x3d::nodes::X3DNode *extractNode(JSContext *ctx, JSValueConst v) {
-  if (JS_IsNull(v) || JS_IsUndefined(v) || !JS_IsObject(v)) return nullptr;
-  JsValue lo(ctx, JS_GetPropertyStr(ctx, v, kNodePtrLoKey));
-  JsValue hi(ctx, JS_GetPropertyStr(ctx, v, kNodePtrHiKey));
-  if (lo.isUndefined() || hi.isUndefined()) return nullptr;
-  uint32_t loBits = 0, hiBits = 0;
-  JS_ToUint32(ctx, &loBits, lo.get());
-  JS_ToUint32(ctx, &hiBits, hi.get());
-  const auto bits = (static_cast<uint64_t>(hiBits) << 32) |
-                    static_cast<uint64_t>(loBits);
-  return reinterpret_cast<x3d::nodes::X3DNode *>(static_cast<uintptr_t>(bits));
+SFNode extractNode(JSContext *ctx, JSValueConst v) {
+  SaiContext *sai = saiOf(ctx);
+  if (!sai) return nullptr;
+  const auto bits =
+      reinterpret_cast<uintptr_t>(JS_GetOpaque(v, nodeClassOf(ctx)));
+  return sai->nodeHandles().resolve(static_cast<NodeHandleTable::Id>(bits));
 }
 
 // ---------------------------------------------------------------------------
@@ -577,7 +581,7 @@ std::any toValue(JSContext *ctx, JSValueConst i, X3DFieldType type) {
     case X3DFieldType::SFColorRGBA: return toSFColorRGBA(ctx, i);
     case X3DFieldType::SFRotation: return toSFRotation(ctx, i);
     case X3DFieldType::SFNode:
-      return SFNode(extractNode(ctx, i), [](X3DNode *) {});  // non-owning alias
+      return extractNode(ctx, i);
     case X3DFieldType::MFBool:
       return toMF<MFBool>(ctx, i, [](JSContext *c, JSValueConst j) {
         return SFBool(toBool(c, j));
@@ -622,7 +626,7 @@ std::any toValue(JSContext *ctx, JSValueConst i, X3DFieldType type) {
       return toMF<MFRotation>(ctx, i, toSFRotation);
     case X3DFieldType::MFNode:
       return toMF<MFNode>(ctx, i, [](JSContext *c, JSValueConst j) {
-        return SFNode(extractNode(c, j), [](X3DNode *) {});
+        return extractNode(c, j);
       });
     case X3DFieldType::SFMatrix3f:
       return toSFMatrix<SFMatrix3f, 3, float>(ctx, i);
@@ -675,7 +679,19 @@ struct QuickJsBackend::Impl {
   ScriptHandle nextHandle = 1;  // start at 1 so 0 stays kInvalidScriptHandle
   std::unordered_map<ScriptHandle, Entry> entries;
 
-  Impl() { rt = JS_NewRuntime(); }
+  Impl() {
+    rt = JS_NewRuntime();
+    if (!rt) return;
+    // Register the native SFNode handle class (see pushNode). No finalizer: the
+    // opaque slot holds an id, not an allocation.
+    JSClassID nodeClass = 0;
+    JS_NewClassID(rt, &nodeClass);
+    JSClassDef def{};
+    def.class_name = "X3DNode";
+    JS_NewClass(rt, nodeClass, &def);
+    JS_SetRuntimeOpaque(rt, reinterpret_cast<void *>(
+                                static_cast<uintptr_t>(nodeClass)));
+  }
 
   ~Impl() {
     for (auto &[handle, e] : entries) {
@@ -766,19 +782,10 @@ struct QuickJsBackend::Impl {
 };
 
 // ===========================================================================
-// Browser global — native callbacks bound to the script's SaiContext.
-//
-// One JSContext backs exactly one loaded script, so we thread the SaiContext to
-// the C callbacks via JS_SetContextOpaque(ctx, sai) / JS_GetContextOpaque(ctx)
-// (the QuickJS analogue of Duktape's per-function \xff sai stamp, but simpler
-// because the context is 1:1 with the script).
+// Browser global — native callbacks bound to the script's SaiContext (saiOf).
 // ===========================================================================
 
 namespace {
-
-SaiContext *saiOf(JSContext *ctx) {
-  return static_cast<SaiContext *>(JS_GetContextOpaque(ctx));
-}
 
 JSValue browser_print(JSContext *ctx, JSValueConst, int argc,
                       JSValueConst *argv) {
@@ -820,13 +827,13 @@ JSValue browser_addRoute(JSContext *ctx, JSValueConst, int argc,
                          JSValueConst *argv) {
   SaiContext *sai = saiOf(ctx);
   if (!sai || argc < 4) return JS_UNDEFINED;
-  x3d::nodes::X3DNode *from = extractNode(ctx, argv[0]);
-  x3d::nodes::X3DNode *to = extractNode(ctx, argv[2]);
+  SFNode from = extractNode(ctx, argv[0]);
+  SFNode to = extractNode(ctx, argv[2]);
   const char *fromField = JS_ToCString(ctx, argv[1]);
   const char *toField = JS_ToCString(ctx, argv[3]);
   JSValue result = JS_UNDEFINED;
   try {
-    sai->addRoute(from, fromField ? fromField : "", to, toField ? toField : "");
+    sai->addRoute(from.get(), fromField ? fromField : "", to.get(), toField ? toField : "");
   } catch (const std::exception &e) {
     result = JS_ThrowTypeError(ctx, "addRoute: %s", e.what());
   }
@@ -839,13 +846,13 @@ JSValue browser_deleteRoute(JSContext *ctx, JSValueConst, int argc,
                             JSValueConst *argv) {
   SaiContext *sai = saiOf(ctx);
   if (!sai || argc < 4) return JS_UNDEFINED;
-  x3d::nodes::X3DNode *from = extractNode(ctx, argv[0]);
-  x3d::nodes::X3DNode *to = extractNode(ctx, argv[2]);
+  SFNode from = extractNode(ctx, argv[0]);
+  SFNode to = extractNode(ctx, argv[2]);
   const char *fromField = JS_ToCString(ctx, argv[1]);
   const char *toField = JS_ToCString(ctx, argv[3]);
   JSValue result = JS_UNDEFINED;
   try {
-    sai->deleteRoute(from, fromField ? fromField : "", to,
+    sai->deleteRoute(from.get(), fromField ? fromField : "", to.get(),
                      toField ? toField : "");
   } catch (const std::exception &e) {
     result = JS_ThrowTypeError(ctx, "deleteRoute: %s", e.what());

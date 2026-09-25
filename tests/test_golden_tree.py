@@ -10,7 +10,7 @@ Codegen changes are intentional: change a template/emitter, regenerate with
 `uv run x3d-cpp-gen --out generated_cpp_bindings`, and commit the new sources.
 """
 
-import shutil
+import os
 import subprocess
 import sys
 from importlib.resources import files
@@ -22,16 +22,17 @@ SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLDEN_DIR = REPO_ROOT / "generated_cpp_bindings"
 
-# clang-format produced the golden formatting; byte-for-byte equality only holds
-# when it is available. Skip (rather than fail) the whole module if it is absent.
-HAVE_CLANG_FORMAT = shutil.which("clang-format") is not None
-
-pytestmark = pytest.mark.skipif(
-    not HAVE_CLANG_FORMAT, reason="clang-format not installed"
-)
+# Byte-for-byte equality only holds with the pinned formatter. Every test here
+# takes the pinned_clang_format fixture (conftest.py), which skips locally /
+# fails under CI without it, and hands its path to the generator and
+# check_golden.sh through CLANG_FORMAT.
 
 
-def _regenerate(out_dir: Path) -> None:
+def _env_with(clang_format: str) -> dict:
+    return {**os.environ, "CLANG_FORMAT": clang_format}
+
+
+def _regenerate(out_dir: Path, clang_format: str) -> None:
     """Run the real CLI to regenerate the full generated source tree (no smoke test)."""
     result = subprocess.run(
         [
@@ -40,6 +41,7 @@ def _regenerate(out_dir: Path) -> None:
             "--no-test",
         ],
         cwd=str(REPO_ROOT),
+        env=_env_with(clang_format),
         capture_output=True,
         text=True,
     )
@@ -49,12 +51,12 @@ def _regenerate(out_dir: Path) -> None:
     )
 
 
-def test_golden_tree_matches(tmp_path):
+def test_golden_tree_matches(tmp_path, pinned_clang_format):
     assert GOLDEN_DIR.is_dir(), f"golden dir missing: {GOLDEN_DIR}"
 
     out = tmp_path / "regen"
     out.mkdir()
-    _regenerate(out)
+    _regenerate(out, pinned_clang_format)
 
     def _tree(root):
         # test.cpp is the gitignored smoke-test artifact, not golden — exclude it
@@ -84,13 +86,13 @@ def test_golden_tree_matches(tmp_path):
     )
 
 
-def test_check_golden_script_passes():
+def test_check_golden_script_passes(pinned_clang_format):
     """The shell drift gate exits 0 on a clean tree (covers the CI script too)."""
     script = REPO_ROOT / "scripts" / "check_golden.sh"
     assert script.exists(), f"missing {script}"
     result = subprocess.run(
         ["bash", str(script)], cwd=str(REPO_ROOT),
-        capture_output=True, text=True,
+        env=_env_with(pinned_clang_format), capture_output=True, text=True,
     )
     assert result.returncode == 0, (
         f"check_golden.sh reported drift on a clean tree:\n"

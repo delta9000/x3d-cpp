@@ -10,6 +10,7 @@
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
 #include "x3d/core/X3Dtypes.hpp"     // SF*/MF* concrete C++ types
 
+#include <cstdio>
 #include <iostream>  // diagnostics
 #include <stdexcept>
 
@@ -19,36 +20,51 @@ namespace x3d::runtime {
 
 namespace {
 
-// Hidden Duktape property key (\xff prefix → non-enumerable internal key).
-constexpr const char *kNodePtrKey = "\xff" "x3dNode";   // SFNode handle: X3DNode*
+// Hidden Duktape property key. A key starting with the \xff byte is a hidden
+// symbol: ECMAScript code can neither read, enumerate nor create it.
+constexpr const char *kNodeIdKey = "\xff" "x3dNodeId";  // SFNode handle id
+constexpr const char *kStashSaiKey = "sai";  // global-stash slot: SaiContext*
 
 // -------------------------------------------------------------------------
 // SFNode <-> JS opaque handle object.
-// A non-null node becomes a JS object carrying the X3DNode* in a hidden
-// pointer property; a null node becomes JS null. extractNode reverses it.
+// A non-null node becomes a JS object carrying its NodeHandleTable id in a
+// hidden property; a null node becomes JS null. extractNode resolves the id
+// through this script's table to the node's owning shared_ptr, or null if the
+// id is unknown or the node is gone (see NodeHandleTable.hpp). The SaiContext
+// that owns the table lives in the global stash, which scripts cannot reach.
 // -------------------------------------------------------------------------
 
+SaiContext *stashedSai(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, kStashSaiKey);
+  void *p = duk_get_pointer(ctx, -1);
+  duk_pop_2(ctx);
+  return static_cast<SaiContext *>(p);
+}
+
 void pushNode(duk_context *ctx, const SFNode &node) {
-  if (!node) {
+  SaiContext *sai = stashedSai(ctx);
+  if (!node || !sai) {
     duk_push_null(ctx);
     return;
   }
   duk_push_object(ctx);
-  duk_push_pointer(ctx, node.get());
-  duk_put_prop_string(ctx, -2, kNodePtrKey);
+  duk_push_uint(ctx, sai->nodeHandles().intern(node));
+  duk_put_prop_string(ctx, -2, kNodeIdKey);
 }
 
-// Recover the X3DNode* from a JS node-handle object (or null) at index idx.
-X3DNode *extractNode(duk_context *ctx, duk_idx_t idx) {
-  if (duk_is_null_or_undefined(ctx, idx)) return nullptr;
+// Resolve the JS node-handle object (or null) at index idx.
+SFNode extractNode(duk_context *ctx, duk_idx_t idx) {
   if (!duk_is_object(ctx, idx)) return nullptr;
-  if (!duk_get_prop_string(ctx, idx, kNodePtrKey)) {
+  SaiContext *sai = stashedSai(ctx);
+  if (!sai) return nullptr;
+  if (!duk_get_prop_string(ctx, idx, kNodeIdKey)) {
     duk_pop(ctx);
     return nullptr;
   }
-  void *p = duk_get_pointer(ctx, -1);
+  const duk_uint_t id = duk_is_number(ctx, -1) ? duk_get_uint(ctx, -1) : 0;
   duk_pop(ctx);
-  return static_cast<X3DNode *>(p);
+  return sai->nodeHandles().resolve(static_cast<NodeHandleTable::Id>(id));
 }
 
 // -------------------------------------------------------------------------
@@ -468,7 +484,7 @@ std::any EcmaScriptBackend::toValue(duk_context *ctx, duk_idx_t i,
     case X3DFieldType::SFColorRGBA: return toSFColorRGBA(ctx, i);
     case X3DFieldType::SFRotation: return toSFRotation(ctx, i);
     case X3DFieldType::SFNode:
-      return SFNode(extractNode(ctx, i), [](X3DNode *) {});  // non-owning alias
+      return extractNode(ctx, i);
     case X3DFieldType::MFBool:
       return toMF<MFBool>(ctx, i, [](duk_context *c, duk_idx_t j) {
         return SFBool(duk_to_boolean(c, j));
@@ -514,7 +530,7 @@ std::any EcmaScriptBackend::toValue(duk_context *ctx, duk_idx_t i,
       return toMF<MFRotation>(ctx, i, toSFRotation);
     case X3DFieldType::MFNode:
       return toMF<MFNode>(ctx, i, [](duk_context *c, duk_idx_t j) {
-        return SFNode(extractNode(c, j), [](X3DNode *) {});
+        return extractNode(c, j);
       });
     case X3DFieldType::SFMatrix3f:
       return toSFMatrix<SFMatrix3f, 3, float>(ctx, i);
@@ -598,36 +614,48 @@ duk_ret_t browser_getCurrentFrameRate(duk_context *ctx) {
   return 1;
 }
 
-// addRoute(fromNode, fromField, toNode, toField)
-duk_ret_t browser_addRoute(duk_context *ctx) {
+// Browser.addRoute / deleteRoute (fromNode, fromField, toNode, toField).
+//
+// Duktape reports errors by longjmp, which skips C++ destructors. So: coerce the
+// field names FIRST (duk_to_string may itself throw via a script toString),
+// keep every C++ object (the owning SFNodes, the caught exception) inside the
+// inner scope, and raise the JS error only after that scope has unwound.
+template <typename Op>
+duk_ret_t routeOp(duk_context *ctx, const char *name, Op op) {
   SaiContext *sai = saiOf(ctx);
   if (!sai) return 0;
-  X3DNode *from = extractNode(ctx, 0);
   const char *fromField = duk_to_string(ctx, 1);
-  X3DNode *to = extractNode(ctx, 2);
   const char *toField = duk_to_string(ctx, 3);
-  try {
-    sai->addRoute(from, fromField ? fromField : "", to, toField ? toField : "");
-  } catch (const std::exception &e) {
-    return duk_error(ctx, DUK_ERR_ERROR, "addRoute: %s", e.what());
+  char err[256] = {0};
+  {
+    SFNode from = extractNode(ctx, 0);
+    SFNode to = extractNode(ctx, 2);
+    try {
+      op(*sai, from.get(), fromField ? fromField : "", to.get(),
+         toField ? toField : "");
+    } catch (const std::exception &e) {
+      std::snprintf(err, sizeof err, "%s", e.what());
+      if (!err[0]) std::snprintf(err, sizeof err, "failed");
+    }
   }
+  if (err[0]) return duk_error(ctx, DUK_ERR_ERROR, "%s: %s", name, err);
   return 0;
 }
 
+duk_ret_t browser_addRoute(duk_context *ctx) {
+  return routeOp(ctx, "addRoute",
+                 [](SaiContext &sai, X3DNode *from, const char *fromField,
+                    X3DNode *to, const char *toField) {
+                   sai.addRoute(from, fromField, to, toField);
+                 });
+}
+
 duk_ret_t browser_deleteRoute(duk_context *ctx) {
-  SaiContext *sai = saiOf(ctx);
-  if (!sai) return 0;
-  X3DNode *from = extractNode(ctx, 0);
-  const char *fromField = duk_to_string(ctx, 1);
-  X3DNode *to = extractNode(ctx, 2);
-  const char *toField = duk_to_string(ctx, 3);
-  try {
-    sai->deleteRoute(from, fromField ? fromField : "", to,
-                     toField ? toField : "");
-  } catch (const std::exception &e) {
-    return duk_error(ctx, DUK_ERR_ERROR, "deleteRoute: %s", e.what());
-  }
-  return 0;
+  return routeOp(ctx, "deleteRoute",
+                 [](SaiContext &sai, X3DNode *from, const char *fromField,
+                    X3DNode *to, const char *toField) {
+                   sai.deleteRoute(from, fromField, to, toField);
+                 });
 }
 
 // Define one Browser method, stamping the SaiContext* on it so the C callback
@@ -701,6 +729,13 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
   ScriptHandle handle = nextHandle_++;
   Entry &entry = entries_[handle];
   entry = Entry{ctx, &scriptNode, &sai};
+
+  // Stash the SaiContext for the SFNode marshalling helpers (pushNode /
+  // extractNode), which run outside any Browser method.
+  duk_push_global_stash(ctx);
+  duk_push_pointer(ctx, &sai);
+  duk_put_prop_string(ctx, -2, kStashSaiKey);
+  duk_pop(ctx);
 
   installBrowser(ctx, &entry);
 

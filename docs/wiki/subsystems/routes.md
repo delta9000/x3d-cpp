@@ -103,7 +103,7 @@ DynamicFieldStore &dynamicFieldStore();            // process-global store
 
 - **EventGraph → X3DEventCascade** — after `buildRoutes` populates the `EventGraph` inside `X3DExecutionContext`, the event cascade consults `EventGraph::sinks()` on each tick to propagate field changes across edges. The cascade holds the graph by reference; nodes are never owned.
 
-- **SaiContext → EventGraph (dynamic ROUTE operations)** — `SaiContext::addRoute` and `SaiContext::deleteRoute` call `ctx_.addRoute` / `ctx_.removeRoute` directly on the live graph (ISO/IEC 19775-1 §4.3.7, guarded by `directOutput==TRUE`).
+- **SaiContext → EventGraph (dynamic ROUTE operations)** — `SaiContext::addRoute` and `SaiContext::deleteRoute` call `ctx_.addRoute` / `ctx_.removeRoute` directly on the live graph (ISO/IEC 19775-1 §4.3.7, guarded by `directOutput==TRUE`). `addRoute` first validates the endpoints with the same rules as the document-ROUTE bridge (nodes non-null, fields present with `set_`/`_changed` aliases resolved, source readable, sink writable, identical types), so a script cannot insert a route the bridge would reject. `X3DEventGraph::addRoute` itself stays unvalidated.
 
 ### Validation rules enforced by buildRoutes
 

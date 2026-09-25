@@ -19,6 +19,7 @@
 #include "EcmaScriptBackend.hpp"
 #include "ScriptSystem.hpp"   // for decodeInlineSource
 
+#include "DynamicField.hpp"
 #include "SaiContext.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/Script.hpp"
@@ -27,6 +28,7 @@
 #include <any>
 #include <cmath>
 #include <iostream>
+#include <memory>
 #include <string>
 
 using namespace x3d;
@@ -452,9 +454,10 @@ int main() {
     script.setDirectOutputUnchecked(true);  // allow dynamic addRoute
     SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
 
-    Transform a, b;
-    a.setTranslation(SFVec3f{0, 0, 0});
-    b.setTranslation(SFVec3f{0, 0, 0});
+    auto a = std::make_shared<Transform>();
+    auto b = std::make_shared<Transform>();
+    a->setTranslation(SFVec3f{0, 0, 0});
+    b->setTranslation(SFVec3f{0, 0, 0});
 
     // Two SFNode-valued handler invocations deliver 'from' then 'to' (each as an
     // SFNode value arg, exercising SFNode marshalling), and set_to wires the
@@ -467,20 +470,134 @@ int main() {
         "}", sai);
     check(h2 != kInvalidScriptHandle, "T15: load from/to wiring script");
     backend.initialize(h2);
-    backend.invoke(h2, "set_from", std::any(SFNode(&a, [](X3DNode *) {})),
+    backend.invoke(h2, "set_from", std::any(SFNode(a)),
                    X3DFieldType::SFNode, 1.0);
-    backend.invoke(h2, "set_to", std::any(SFNode(&b, [](X3DNode *) {})),
+    backend.invoke(h2, "set_to", std::any(SFNode(b)),
                    X3DFieldType::SFNode, 1.0);
     check(ctx.graph().routeCount() == 1,
           "T15: script added a route via Browser.addRoute (SFNode marshalling)");
 
     // Drive the source: a.translation -> (route) -> b.translation.
-    ctx.postEvent(&a, "translation", std::any(SFVec3f{7, 8, 9}));
+    ctx.postEvent(a.get(), "translation", std::any(SFVec3f{7, 8, 9}));
     ctx.process();
-    SFVec3f bt = b.getTranslation();
+    SFVec3f bt = b->getTranslation();
     check(nearly(bt.x, 7) && nearly(bt.y, 8) && nearly(bt.z, 9),
           "T15: end-to-end — script-added route carried the event a->b");
     backend.shutdown(h2);
+  }
+
+  // -------------------------------------------------------------------------
+  // T15b: SFNode handles are unforgeable — a script that clones a node
+  //       handle's own properties onto a plain object (or guesses the internal
+  //       key) must NOT obtain a node reference. A forged handle would let
+  //       hostile content aim the runtime at an arbitrary address.
+  // -------------------------------------------------------------------------
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setDirectOutputUnchecked(true);
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    auto a = std::make_shared<Transform>();
+
+    ScriptHandle h = backend.load(script,
+        "function forge(node, t) {"
+        "  var f = {};"
+        "  Object.getOwnPropertyNames(node).forEach(function (k) {"
+        "    f[k] = node[k]; });"
+        "  f['\\u00ffx3dNodeId'] = 1; f['\\u00ffx3dNodeLo'] = 1;"
+        "  try { Browser.addRoute(f, 'translation', f, 'translation'); }"
+        "  catch (e) {}"
+        "}", sai);
+    check(h != kInvalidScriptHandle, "T15b: load forging script");
+    backend.initialize(h);
+    backend.invoke(h, "forge", std::any(SFNode(a)), X3DFieldType::SFNode, 1.0);
+    check(ctx.graph().routeCount() == 0,
+          "T15b: a cloned/forged node handle does not resolve to a node");
+    backend.shutdown(h);
+  }
+
+  // -------------------------------------------------------------------------
+  // T15c: a script's SFNode is a real node reference (ISO/IEC 19777-1): an
+  //       SFNode the script writes out SHARES ownership with the scene (like
+  //       DEF/USE), and a handle whose node the scene has since dropped
+  //       resolves to null — Browser.addRoute reports INVALID_NODE instead of
+  //       touching freed memory.
+  // -------------------------------------------------------------------------
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setDirectOutputUnchecked(true);
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"echo", X3DFieldType::SFNode,
+                                AccessType::InputOutput, {}});
+    auto a = std::make_shared<Transform>();
+
+    ScriptHandle h = backend.load(script,
+        "var held = null;"
+        "function keep(n, t) { held = n; echo = n; }"
+        "function wire(v, t) {"
+        "  try { Browser.addRoute(held, 'translation', held, 'translation'); }"
+        "  catch (e) { Browser.print('invalid'); }"
+        "}", sai);
+    check(h != kInvalidScriptHandle, "T15c: load node-holding script");
+    backend.initialize(h);
+    backend.invoke(h, "keep", std::any(SFNode(a)), X3DFieldType::SFNode, 1.0);
+
+    std::any out = dynamicFieldStore().getValue(script, "echo");
+    const SFNode *outNode = std::any_cast<SFNode>(&out);
+    check(outNode && outNode->get() == a.get() &&
+              !outNode->owner_before(a) && !a.owner_before(*outNode),
+          "T15c: script SFNode output shares the node's real ownership");
+
+    // Drain the cascade: the script's `echo` output is a pending event, and a
+    // pending event legitimately owns its SFNode value until delivered.
+    ctx.process();
+    std::weak_ptr<Transform> weak = a;
+    a.reset();
+    out.reset();
+    dynamicFieldStore().erase(script);
+    check(weak.expired(),
+          "T15c: the script's handle does not keep a dropped node alive");
+    backend.invoke(h, "wire", std::any(1.0), X3DFieldType::SFTime, 2.0);
+    check(sai.log() == "invalid" && ctx.graph().routeCount() == 0,
+          "T15c: a handle to a destroyed node is INVALID_NODE, not a "
+          "dangling pointer");
+    backend.shutdown(h);
+  }
+
+  // -------------------------------------------------------------------------
+  // T15d: Browser.addRoute validates like a document ROUTE (ISO/IEC 19775-2
+  //       INVALID_FIELD): unknown field, wrong direction and type mismatch are
+  //       rejected; set_/_changed aliases of an inputOutput field are accepted.
+  // -------------------------------------------------------------------------
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setDirectOutputUnchecked(true);
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    auto a = std::make_shared<Transform>();
+
+    ScriptHandle h = backend.load(script,
+        "function t(n, ts) {"
+        "  var errs = 0;"
+        "  try { Browser.addRoute(n, 'nope', n, 'translation'); }"
+        "  catch (e) { errs++; }"
+        "  try { Browser.addRoute(n, 'translation', n, 'rotation'); }"
+        "  catch (e) { errs++; }"
+        "  try { Browser.addRoute(n, 'addChildren', n, 'children'); }"
+        "  catch (e) { errs++; }"
+        "  Browser.addRoute(n, 'translation_changed', n, 'set_translation');"
+        "  Browser.print('errs=' + errs);"
+        "}", sai);
+    check(h != kInvalidScriptHandle, "T15d: load route-validation script");
+    backend.initialize(h);
+    backend.invoke(h, "t", std::any(SFNode(a)), X3DFieldType::SFNode, 1.0);
+    check(sai.log() == "errs=3",
+          "T15d: unknown field / type mismatch / non-output source rejected");
+    check(ctx.graph().routeCount() == 1,
+          "T15d: a valid aliased route is added");
+    backend.shutdown(h);
   }
 
   // -------------------------------------------------------------------------
@@ -491,7 +608,7 @@ int main() {
     X3DExecutionContext ctx;
     Script script;  // directOutput defaults FALSE
     SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
-    Transform a, b;
+    auto a = std::make_shared<Transform>();
 
     ScriptHandle h = backend.load(script,
         "var caught = false;"
@@ -502,7 +619,7 @@ int main() {
         "}", sai);
     check(h != kInvalidScriptHandle, "T16: load directOutput-gate script");
     backend.initialize(h);
-    backend.invoke(h, "tryWire", std::any(SFNode(&a, [](X3DNode *) {})),
+    backend.invoke(h, "tryWire", std::any(SFNode(a)),
                    X3DFieldType::SFNode, 1.0);
     check(sai.log() == "blocked",
           "T16: addRoute with directOutput=FALSE threw into JS (caught)");

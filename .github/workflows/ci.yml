@@ -30,6 +30,10 @@
 # See docs/contributor/card-to-done-workflow.md (the DoD gate) and
 # docs/wiki/guides/gate-system.md (what each gate protects).
 #
+# Every job carries a timeout-minutes bound (a few times its cold-cache duration)
+# so a hung ctest, S3 fixture or vcpkg build fails fast instead of running to the
+# 6-hour default.
+#
 # Note: Forgejo Actions also reads .github/workflows, so mirroring picks up the
 # same pipeline (apt-based, no GitHub-only actions beyond checkout + setup-uv).
 name: CI
@@ -63,6 +67,7 @@ jobs:
   changes:
     name: detect changed subsystems
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       audio: ${{ steps.f.outputs.audio }}
       quickjs: ${{ steps.f.outputs.quickjs }}
@@ -93,6 +98,7 @@ jobs:
   python:
     name: pytest (unit + golden tree)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       # The golden tree is byte-exact, so the formatter version is part of the
@@ -115,6 +121,7 @@ jobs:
   golden:
     name: golden drift gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       # Must be the exact formatter that produced the golden tree. check_golden.sh
@@ -137,6 +144,7 @@ jobs:
   conformance:
     name: conformance-view gate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Set up uv
@@ -152,6 +160,7 @@ jobs:
   docs:
     name: wiki strict build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Set up uv
@@ -170,6 +179,7 @@ jobs:
     # confirm the host accepts path-skipped jobs before enabling that requirement.
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
@@ -199,6 +209,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
@@ -228,6 +239,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
@@ -258,6 +270,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install Clang + cmake + ninja + ccache
@@ -288,6 +301,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.quickjs == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
@@ -320,6 +334,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.assets == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       # S3-compatible fixture server for Backend B. This was `minio/minio:latest`
@@ -433,6 +448,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
@@ -460,6 +476,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.audio == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install compiler + cmake + ninja + ccache
@@ -489,6 +506,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.fontmetrics == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install build tools
@@ -549,6 +567,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Install build tools + GLFW build deps + headless GL (Xvfb + mesa)
@@ -620,6 +639,7 @@ jobs:
     name: C++ baseline matrix (${{ matrix.name }})
     if: github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
