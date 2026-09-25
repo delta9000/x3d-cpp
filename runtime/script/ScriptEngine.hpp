@@ -15,6 +15,7 @@
 
 #include <any>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -75,6 +76,22 @@ public:
   void setCallBudget(std::chrono::milliseconds budget) { callBudget_ = budget; }
   std::chrono::milliseconds callBudget() const { return callBudget_; }
 
+  /// Default cap on a script's heap, in bytes.
+  static constexpr std::size_t kDefaultMemoryLimit = std::size_t{256} << 20;
+
+  /**
+   * @brief Cap how much memory script code may allocate, in bytes.
+   * @details Within its call budget a script could still allocate gigabytes
+   *          and get the host killed. Past the cap an allocation fails; the
+   *          engine collects garbage and retries, then raises an out-of-memory
+   *          error, which is contained like any other script error. Applies to
+   *          scripts loaded after the call. Zero disables the cap. How it is
+   *          counted is backend-specific (per script, or per engine instance
+   *          when scripts share one heap); see the backend's documentation.
+   */
+  void setMemoryLimit(std::size_t bytes) { memoryLimit_ = bytes; }
+  std::size_t memoryLimit() const { return memoryLimit_; }
+
   /**
    * @brief Compile `source` for `scriptNode`; return a handle (or invalid).
    * @param scriptNode The owning Script node (its author fields define the
@@ -127,6 +144,7 @@ public:
 
 private:
   std::chrono::milliseconds callBudget_{kDefaultCallBudget};
+  std::size_t memoryLimit_ = kDefaultMemoryLimit;
 };
 
 } // namespace x3d::runtime

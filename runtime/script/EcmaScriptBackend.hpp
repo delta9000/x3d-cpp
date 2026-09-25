@@ -30,6 +30,7 @@ extern "C" {
 
 #include <any>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -60,6 +61,15 @@ public:
   struct CallDeadline {
     bool armed = false;
     std::chrono::steady_clock::time_point at{};
+  };
+
+  /// Per-script heap state, passed to Duktape as the heap udata: the call
+  /// deadline, plus the byte counts of the counting allocator that enforces
+  /// memoryLimit() for this script alone.
+  struct HeapState {
+    CallDeadline deadline;
+    std::size_t used = 0;
+    std::size_t limit = 0; ///< 0 = unlimited
   };
 
   EcmaScriptBackend() = default;
@@ -148,8 +158,9 @@ private:
     duk_context *ctx = nullptr;
     X3DNode *node = nullptr;  // owning Script node (not owned here)
     SaiContext *sai = nullptr; // SAI surface (not owned here)
-    // The heap's udata: Duktape's exec-timeout check reads it (callBudget()).
-    std::unique_ptr<CallDeadline> deadline;
+    // The heap's udata: read by Duktape's exec-timeout check (callBudget())
+    // and by the counting allocator (memoryLimit()). Must outlive the heap.
+    std::unique_ptr<HeapState> heap;
   };
 
   // Retrieve the entry for `handle`; returns nullptr if invalid.

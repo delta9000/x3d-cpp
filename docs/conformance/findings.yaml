@@ -1999,6 +1999,19 @@
     JS_SetInterruptHandler. An interrupted call is logged as a script error and the script stays loaded; a
     catch-and-continue loop cannot outlast it. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15g.
 
+- id: SCRIPT-UNBOUNDED-MEMORY
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2.4 (ECMAScript binding 19777-1)"
+  severity: major
+  status: fixed
+  summary: A Script could allocate without bound and get the host process killed; neither engine capped script memory.
+  note: >-
+    ScriptEngine::setMemoryLimit (default 256 MiB). Duktape uses a counting allocator per script; QuickJS uses
+    JS_SetMemoryLimit on its shared runtime, so there it caps the scripts' combined heap. Past the cap an
+    allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests:
+    ecmascript/quickjs backend T15h.
+
 - id: SCRIPT-HOSTILE-VALUE-ABORT
   nodes: [Script]
   interfaces: [X3DScriptNode]

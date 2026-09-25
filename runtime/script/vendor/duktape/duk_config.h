@@ -2973,7 +2973,7 @@ typedef struct duk_hthread duk_context;
 #define DUK_USE_EXEC_REGCONST_OPTIMIZE
 /* x3d-cpp local change: bound script run time. Duktape calls this every few
  * hundred thousand bytecode instructions with the heap udata (the backend's
- * per-script CallDeadline); a nonzero return interrupts execution with a
+ * per-script HeapState); a nonzero return interrupts execution with a
  * RangeError, and keeps doing so until the backend disarms the deadline, so a
  * script cannot catch its way past it. Defined in EcmaScriptBackend.cpp.
  */

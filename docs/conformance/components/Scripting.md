@@ -4,7 +4,7 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, DO-CASCADE, ENC-CDATA-SCRIPT, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCRIPT-EVENTIN, SCRIPT-HOSTILE-VALUE-ABORT, SCRIPT-OUTPUTONLY-REEMIT, SCRIPT-RUNAWAY-HANG, SCRIPT-SAI-ADDROUTE-VALIDATE, SCRIPT-SFNODE-REFERENCE | X3DChildNode, X3DScriptNode, X3DUrlObject |
+| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, DO-CASCADE, ENC-CDATA-SCRIPT, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCRIPT-EVENTIN, SCRIPT-HOSTILE-VALUE-ABORT, SCRIPT-OUTPUTONLY-REEMIT, SCRIPT-RUNAWAY-HANG, SCRIPT-SAI-ADDROUTE-VALIDATE, SCRIPT-SFNODE-REFERENCE, SCRIPT-UNBOUNDED-MEMORY | X3DChildNode, X3DScriptNode, X3DUrlObject |
 
 ## Findings
 
@@ -26,6 +26,8 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 - **SCR-006** [major/FIXED `f5001cc`] — §29.2.2, 19777-1: SFMatrix3f/4f(+d) author fields marshal to/from ECMAScript.
 - **SCRIPT-RUNAWAY-HANG** [major/FIXED] — §29.2.4 (ECMAScript binding 19777-1): A Script handler or top level that never returned hung the host; neither engine bounded script run time.
   - ScriptEngine::setCallBudget (default 2 s) bounds every entry into script code. Duktape uses its exec-timeout check (DUK_USE_EXEC_TIMEOUT_CHECK, local duk_config.h change) and QuickJS uses JS_SetInterruptHandler. An interrupted call is logged as a script error and the script stays loaded; a catch-and-continue loop cannot outlast it. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15g.
+- **SCRIPT-UNBOUNDED-MEMORY** [major/FIXED] — §29.2.4 (ECMAScript binding 19777-1): A Script could allocate without bound and get the host process killed; neither engine capped script memory.
+  - ScriptEngine::setMemoryLimit (default 256 MiB). Duktape uses a counting allocator per script; QuickJS uses JS_SetMemoryLimit on its shared runtime, so there it caps the scripts' combined heap. Past the cap an allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15h.
 - **SCRIPT-HOSTILE-VALUE-ABORT** [major/FIXED] — §29.2.4 (ECMAScript binding 19777-1): A Script whose author-field value threw while being read back crashed the host process under Duktape, and QuickJS emitted a half-read value.
   - The throw could come from a getter, toJSON, a Proxy trap, or a global or handler accessor. Readback ran outside any duk_pcall, so Duktape's fatal handler aborted the host. Duktape is now compiled as C++ with DUK_USE_CPP_EXCEPTIONS, and every engine entry runs under duk_safe_call. A throw drops that field's event and is logged. QuickJS readback now drops the field on a pending exception. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15f.
 - **SCRIPT-SFNODE-REFERENCE** [major/FIXED] — §29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference): A script's SFNode was a raw pointer rebuilt as a non-owning shared_ptr — an SFNode written into a field could dangle, and under QuickJS a script could forge a handle to an arbitrary address.

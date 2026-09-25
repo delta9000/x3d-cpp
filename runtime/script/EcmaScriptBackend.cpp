@@ -11,7 +11,10 @@
 #include "x3d/core/X3Dtypes.hpp"     // SF*/MF* concrete C++ types
 
 #include <chrono>
+#include <cstddef>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <iostream>  // diagnostics
 #include <stdexcept>
@@ -76,6 +79,62 @@ SFNode extractNode(duk_context *ctx, duk_idx_t idx) {
 // its way past the limit. ArmDeadline arms it for the duration of one public
 // entry point (see ScriptEngine::setCallBudget).
 // -------------------------------------------------------------------------
+
+// -------------------------------------------------------------------------
+// Memory limit. Each script's heap allocates through these, with its HeapState
+// as udata. Every block carries a header holding its size, so the running total
+// stays exact across realloc/free. Past the limit an allocation returns null;
+// Duktape then collects garbage, retries, and finally raises an out-of-memory
+// error, which protectedRun contains like any other script error.
+// -------------------------------------------------------------------------
+
+constexpr std::size_t kAllocHeader = alignof(std::max_align_t);
+static_assert(kAllocHeader >= sizeof(std::size_t));
+
+bool overLimit(const EcmaScriptBackend::HeapState &h, std::size_t growth) {
+  return h.limit != 0 && (h.used > h.limit || growth > h.limit - h.used);
+}
+
+void *heapAlloc(void *udata, duk_size_t size) {
+  auto &h = *static_cast<EcmaScriptBackend::HeapState *>(udata);
+  if (overLimit(h, size)) return nullptr;
+  auto *base = static_cast<unsigned char *>(std::malloc(kAllocHeader + size));
+  if (!base) return nullptr;
+  const std::size_t n = size;
+  std::memcpy(base, &n, sizeof n);
+  h.used += n;
+  return base + kAllocHeader;
+}
+
+void heapFree(void *udata, void *ptr) {
+  if (!ptr) return;
+  auto &h = *static_cast<EcmaScriptBackend::HeapState *>(udata);
+  unsigned char *base = static_cast<unsigned char *>(ptr) - kAllocHeader;
+  std::size_t n = 0;
+  std::memcpy(&n, base, sizeof n);
+  h.used -= n;
+  std::free(base);
+}
+
+void *heapRealloc(void *udata, void *ptr, duk_size_t size) {
+  if (!ptr) return heapAlloc(udata, size);
+  if (size == 0) {
+    heapFree(udata, ptr);
+    return nullptr;
+  }
+  auto &h = *static_cast<EcmaScriptBackend::HeapState *>(udata);
+  unsigned char *base = static_cast<unsigned char *>(ptr) - kAllocHeader;
+  std::size_t old = 0;
+  std::memcpy(&old, base, sizeof old);
+  const std::size_t n = size;
+  if (n > old && overLimit(h, n - old)) return nullptr;
+  auto *grown =
+      static_cast<unsigned char *>(std::realloc(base, kAllocHeader + n));
+  if (!grown) return nullptr;
+  std::memcpy(grown, &n, sizeof n);
+  h.used = h.used - old + n;
+  return grown + kAllocHeader;
+}
 
 class ArmDeadline {
 public:
@@ -804,20 +863,21 @@ EcmaScriptBackend::~EcmaScriptBackend() {
 ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
                                      const std::string &source,
                                      SaiContext &sai) {
-  auto deadline = std::make_unique<CallDeadline>();
-  duk_context *ctx =
-      duk_create_heap(nullptr, nullptr, nullptr, deadline.get(), nullptr);
+  auto heap = std::make_unique<HeapState>();
+  heap->limit = memoryLimit();
+  duk_context *ctx = duk_create_heap(heapAlloc, heapRealloc, heapFree,
+                                     heap.get(), nullptr);
   if (!ctx) return kInvalidScriptHandle;
 
   ScriptHandle handle = nextHandle_++;
   Entry &entry = entries_[handle];
-  entry = Entry{ctx, &scriptNode, &sai, std::move(deadline)};
+  entry = Entry{ctx, &scriptNode, &sai, std::move(heap)};
 
   bool ok = false;
   {
     // The script's top level runs here too, so it gets a budget of its own.
     // Scoped: a failed load frees the deadline with the entry below.
-    ArmDeadline armed(entry.deadline.get(), callBudget());
+    ArmDeadline armed(&entry.heap->deadline, callBudget());
 
     // Stash the SaiContext for the SFNode marshalling helpers (pushNode /
     // extractNode), which run outside any Browser method, then install
@@ -856,7 +916,7 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
 void EcmaScriptBackend::initialize(ScriptHandle handle) {
   Entry *e = entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(e->deadline.get(), callBudget());
+  ArmDeadline armed(&e->heap->deadline, callBudget());
   // §3.5: seed author-field globals from their boxed initialValue BEFORE the
   // script's initialize() runs, so the script reads its authored defaults.
   seedAuthorGlobals(*e);
@@ -876,7 +936,7 @@ void EcmaScriptBackend::shutdown(ScriptHandle handle) {
   if (!e) return;
   {
     // Scoped: the deadline is freed with the entry below.
-    ArmDeadline armed(e->deadline.get(), callBudget());
+    ArmDeadline armed(&e->heap->deadline, callBudget());
     callGlobalNoArgs(e->ctx, "shutdown");
   }
   duk_destroy_heap(e->ctx);
@@ -890,7 +950,7 @@ void EcmaScriptBackend::shutdown(ScriptHandle handle) {
 void EcmaScriptBackend::prepareEvents(ScriptHandle handle, double now) {
   Entry *e = entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(e->deadline.get(), callBudget());
+  ArmDeadline armed(&e->heap->deadline, callBudget());
   callGlobal(e->ctx, "prepareEvents", "prepareEvents", 1,
              [now](duk_context *c) { duk_push_number(c, now); });
 
@@ -914,7 +974,7 @@ void EcmaScriptBackend::invoke(ScriptHandle handle,
                                double timestamp) {
   Entry *e = entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(e->deadline.get(), callBudget());
+  ArmDeadline armed(&e->heap->deadline, callBudget());
   callGlobal(e->ctx, "handler '" + eventName + "'", eventName.c_str(), 2,
              [&](duk_context *c) {
                pushValue(c, value, type);        // arg 0: the field value
@@ -934,7 +994,7 @@ void EcmaScriptBackend::invoke(ScriptHandle handle,
 void EcmaScriptBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
   Entry *e = entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(e->deadline.get(), callBudget());
+  ArmDeadline armed(&e->heap->deadline, callBudget());
   callGlobalNoArgs(e->ctx, "eventsProcessed");
   // §29.2.4: events generated from eventsProcessed() enter the cascade with the
   // timestamp of the last event processed — read back any author
@@ -1051,9 +1111,10 @@ bool EcmaScriptBackend::callGlobalNoArgs(duk_context *ctx,
 } // namespace x3d::runtime
 
 // Duktape's exec-timeout hook (DUK_USE_EXEC_TIMEOUT_CHECK in duk_config.h). The
-// heap udata is the script's CallDeadline (see EcmaScriptBackend::load).
+// heap udata is the script's HeapState (see EcmaScriptBackend::load).
 extern "C" int x3d_duk_exec_timeout_check(void *udata) {
-  const auto *d =
-      static_cast<const x3d::runtime::EcmaScriptBackend::CallDeadline *>(udata);
-  return d && d->armed && std::chrono::steady_clock::now() >= d->at;
+  const auto *h =
+      static_cast<const x3d::runtime::EcmaScriptBackend::HeapState *>(udata);
+  return h && h->deadline.armed &&
+         std::chrono::steady_clock::now() >= h->deadline.at;
 }

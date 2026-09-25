@@ -26,6 +26,7 @@
 
 #include <any>
 #include <chrono>
+#include <cstddef>
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -619,6 +620,9 @@ int main() {
         {"catch-and-continue loop",
          "function go(v, t) {"
          "  for (;;) { try { for (;;) {} } catch (e) {} } }"},
+        // Bounded by the engine's own recursion limit, not the budget.
+        {"unbounded recursion",
+         "function go(v, t) { (function r() { r(); })(); }"},
     };
     for (const LoopCase &c : cases) {
       X3DExecutionContext ctx;
@@ -655,6 +659,44 @@ int main() {
             "T15g: a top-level infinite loop fails the load instead of hanging");
     }
     backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
+  }
+
+  // -------------------------------------------------------------------------
+  // T15h: memory limit. A handler that allocates without bound is stopped by
+  //       memoryLimit() -- well inside a generous call budget, so the memory
+  //       cap, not the clock, ends it -- and the script keeps working.
+  // -------------------------------------------------------------------------
+  {
+    using Clock = std::chrono::steady_clock;
+    backend.setCallBudget(std::chrono::seconds(10));
+    backend.setMemoryLimit(std::size_t{16} << 20);
+
+    X3DExecutionContext ctx;
+    Script script;
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                AccessType::OutputOnly, {}});
+    // Each string is ~1 MB and unique (engines may intern equal strings).
+    ScriptHandle h = backend.load(script,
+        "var hog = [], i = 0;"
+        "function go(v, t) {"
+        "  for (;;) hog.push(new Array(100000).join('xxxxxxxxxx') + (i++)); }"
+        "function fine(v, t) { hog = null; ok = 7; }", sai);
+    check(h != kInvalidScriptHandle, "T15h: load allocating script");
+    backend.initialize(h);
+    const auto start = Clock::now();
+    backend.invoke(h, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    check(Clock::now() - start < std::chrono::seconds(5),
+          "T15h: unbounded allocation is stopped by the memory limit");
+    backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
+    std::any ok = dynamicFieldStore().getValue(script, "ok");
+    check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
+          "T15h: script still works after hitting the memory limit");
+    backend.shutdown(h);
+    dynamicFieldStore().erase(script);
+    backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
+    backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
   }
 
   // -------------------------------------------------------------------------

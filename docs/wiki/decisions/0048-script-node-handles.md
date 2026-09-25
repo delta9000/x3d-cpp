@@ -105,7 +105,20 @@ Script source comes from the document, so this is the same exposure as above.
   uncatchable "interrupted" error.
 - An interrupted call is a script error: it is logged, and the script stays
   loaded. A load whose top level times out fails. T15g covers a plain infinite
-  loop, a catch-and-continue loop and a top-level loop against both engines.
+  loop, a catch-and-continue loop, unbounded recursion (stopped by each
+  engine's own recursion limit) and a top-level loop against both engines.
+- Within its budget a script could still allocate gigabytes, so
+  `ScriptEngine::setMemoryLimit()` caps script heaps. The default is
+  `kDefaultMemoryLimit` (256 MiB), and zero disables it.
+  - Duktape allocates through a counting allocator per script. Each block
+    carries a size header, and the counts live in the heap udata `HeapState`
+    alongside the deadline. Past the cap an allocation fails, Duktape collects
+    garbage and retries, then raises "alloc failed".
+  - QuickJS uses `JS_SetMemoryLimit` on the shared runtime, so there the cap
+    covers all of that backend's scripts together.
+  - Either way the out-of-memory error is contained like any script error.
+    T15h stops an allocate-forever handler at a 16 MiB cap (peak process RSS
+    28 MB) well inside a 10 s budget, and the script keeps working.
 
 ## Consequences
 
@@ -120,9 +133,9 @@ Script source comes from the document, so this is the same exposure as above.
 - Tests that passed stack nodes through `SFNode(&node, [](X3DNode *) {})`
   relied on the old borrowed-pointer semantics. They now use `make_shared`.
 - A script can no longer crash the host through a throwing accessor, `toJSON`
-  or Proxy (see "Engine error containment"), or hang it with a runaway loop
-  (see "Call budget"). The embedder's remaining exposure is memory: neither
-  engine caps a script's heap today.
+  or Proxy (see "Engine error containment"), or hang it or exhaust memory with
+  a runaway loop (see "Call budget"). Native stack depth is bounded by each
+  engine's own recursion limits (T15g).
 
 ## Related
 
@@ -130,4 +143,4 @@ Script source comes from the document, so this is the same exposure as above.
 - [ADR-0014: Dynamic Field Foundation](0014-dynamic-field-foundation.md): the
   author-field store, whose raw-pointer keying was fixed in the same change
 - Tests: `runtime/script/tests/ecmascript_backend_test.cpp` and
-  `quickjs_backend_test.cpp` (T15b, T15c, T15d, T15f, T15g)
+  `quickjs_backend_test.cpp` (T15b, T15c, T15d, T15f, T15g, T15h)

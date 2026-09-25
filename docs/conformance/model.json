@@ -4811,7 +4811,8 @@
         "SCRIPT-OUTPUTONLY-REEMIT",
         "SCRIPT-RUNAWAY-HANG",
         "SCRIPT-SAI-ADDROUTE-VALIDATE",
-        "SCRIPT-SFNODE-REFERENCE"
+        "SCRIPT-SFNODE-REFERENCE",
+        "SCRIPT-UNBOUNDED-MEMORY"
       ],
       "levels": [
         1
@@ -4840,7 +4841,8 @@
             "SCRIPT-OUTPUTONLY-REEMIT",
             "SCRIPT-RUNAWAY-HANG",
             "SCRIPT-SAI-ADDROUTE-VALIDATE",
-            "SCRIPT-SFNODE-REFERENCE"
+            "SCRIPT-SFNODE-REFERENCE",
+            "SCRIPT-UNBOUNDED-MEMORY"
           ],
           "geometry": false,
           "interfaces": [
@@ -9439,6 +9441,20 @@
     },
     {
       "clause": "29.2.4 (ECMAScript binding 19777-1)",
+      "id": "SCRIPT-UNBOUNDED-MEMORY",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "ScriptEngine::setMemoryLimit (default 256 MiB). Duktape uses a counting allocator per script; QuickJS uses JS_SetMemoryLimit on its shared runtime, so there it caps the scripts' combined heap. Past the cap an allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15h.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A Script could allocate without bound and get the host process killed; neither engine capped script memory."
+    },
+    {
+      "clause": "29.2.4 (ECMAScript binding 19777-1)",
       "id": "SCRIPT-HOSTILE-VALUE-ABORT",
       "interfaces": [
         "X3DScriptNode"
@@ -9735,10 +9751,10 @@
     ]
   },
   "summary": {
-    "closed_count": 129,
+    "closed_count": 130,
     "component_count": 36,
     "deferred_count": 39,
-    "finding_count": 216,
+    "finding_count": 217,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",

@@ -973,6 +973,9 @@ QuickJsBackend::~QuickJsBackend() = default;
 ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
                                   const std::string &source, SaiContext &sai) {
   if (!impl_->rt) return kInvalidScriptHandle;
+  // memoryLimit(): every script shares this runtime, so the cap is on their
+  // combined heap (0 = unlimited, as in QuickJS itself).
+  JS_SetMemoryLimit(impl_->rt, memoryLimit());
   JSContext *ctx = JS_NewContext(impl_->rt);
   if (!ctx) return kInvalidScriptHandle;
   // The script's top level runs here too, so it gets a budget of its own.
