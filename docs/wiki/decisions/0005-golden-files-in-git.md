@@ -35,7 +35,7 @@ Two complementary gates enforce this:
 
 1. **`scripts/check_golden.sh`** (runnable locally, invoked as `mise run golden`): regenerates the full tree into a temp directory and diffs every `*.hpp` + `*.cpp` against `generated_cpp_bindings/` in both directions (missing AND extra headers are failures). Exits non-zero on any drift and prints a human-readable report.
 
-2. **`tests/test_golden_tree.py`** (pytest): the programmatic twin of the shell gate, run as part of `uv run pytest`. Asserts the regenerated tree is byte-for-byte identical to the committed golden, including both directions (golden minus produced = missing; produced minus golden = extra). Both gates require `clang-format` to be installed (the formatter is part of the determinism contract; the gate skips if absent rather than failing).
+2. **`tests/test_golden_tree.py`** (pytest): the programmatic twin of the shell gate, run as part of `uv run pytest`. Asserts the regenerated tree is byte-for-byte identical to the committed golden, including both directions (golden minus produced = missing; produced minus golden = extra). Both gates require `clang-format` to be installed (the formatter is part of the determinism contract). The pytest gate skips locally when the pinned formatter is absent or the wrong version, and fails under CI.
 
 The update workflow is intentional and explicit: change a template or emitter, run `uv run x3d-cpp-gen --out generated_cpp_bindings`, review the diff, and commit both the generator change and the updated goldens together. The gate fails until that commit is made — preventing "generator changed but output not regenerated" from reaching CI.
 
@@ -52,7 +52,7 @@ The update workflow is intentional and explicit: change a template or emitter, r
 **Trade-offs / costs:**
 
 - The committed tree is large (343 `.hpp` + 340 `.cpp`; 683 files total). Every generator change touches many of them simultaneously. PRs that modify the emitter will have large diffs that are visually noisy even when semantically uniform (e.g., adding a field to every node).
-- `clang-format` must be present and must be the same version that produced the golden. A version mismatch causes formatting drift that triggers false gate failures. The gate skips (rather than hard-fails) when `clang-format` is absent, which means CI without the formatter installed does not catch formatting regressions — this is an accepted trade-off in favor of not blocking contributors who lack the formatter.
+- `clang-format` must be present and must be the same version that produced the golden. A version mismatch causes formatting drift that triggers false gate failures. Locally the pytest gate skips, with install instructions, when the pinned formatter is absent or the wrong version, so a contributor without it is not blocked. Under CI (`CI` set) the same condition fails, so CI cannot pass the gate by skipping it (amended 2026-09-25; before that, a wrong version failed locally and a missing one skipped everywhere, CI included).
 - Golden regeneration is manual (`uv run x3d-cpp-gen --out generated_cpp_bindings`). There is no auto-regenerate-and-commit hook in CI; that would blur the distinction between intentional and accidental drift, removing the review step. The `mise run golden` gate failing is the signal to regenerate — contributors must do so explicitly.
 
 ## Related

@@ -5,12 +5,9 @@ default the installed clang-format happens to use; without a version pin, a
 distro upgrade silently reformats the golden tree.
 """
 
-import re
-import shutil
-import subprocess
 from pathlib import Path
 
-import pytest
+from tests.conftest import PINNED_CLANG_FORMAT, clang_format_version
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 # The golden tree is BYTE-exact, so the contract is the FULL version, not the
@@ -47,15 +44,12 @@ def test_emitter_passes_an_explicit_style_file():
     )
 
 
-@pytest.mark.skipif(shutil.which("clang-format") is None,
-                    reason="clang-format not installed")
-def test_installed_formatter_matches_the_pin():
-    out = subprocess.run(["clang-format", "--version"],
-                         capture_output=True, text=True).stdout
-    m = re.search(r"version (\d+\.\d+\.\d+)", out)
-    assert m, f"could not parse clang-format version from: {out!r}"
-    assert m.group(1) == EXPECTED_VERSION, (
-        f"clang-format {m.group(1)} != pinned {EXPECTED_VERSION}; the golden "
-        f"tree is byte-exact, so the full version is the contract. "
-        f"Install the pin with: mise install clang-format@{EXPECTED_VERSION}"
-    )
+def test_conftest_pin_matches():
+    """The golden fixture (conftest.py) resolves against the same pin."""
+    assert PINNED_CLANG_FORMAT == EXPECTED_VERSION
+
+
+def test_installed_formatter_matches_the_pin(pinned_clang_format):
+    # The fixture already skips (locally) or fails (under CI) on a missing or
+    # mismatched formatter, with install instructions; this states the contract.
+    assert clang_format_version(pinned_clang_format) == EXPECTED_VERSION
