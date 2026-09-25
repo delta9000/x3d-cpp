@@ -94,7 +94,7 @@ heavyweight SDK linked PRIVATE so its headers/flags never leak to consumers).
 - **Transport**: `Aws::S3::S3Client::GetObject` per call.
 - **URL subset**: `s3://<bucket>/<key>[?...]` only; returns `Failed` otherwise. The
   `endpoint` parameter (default `http://localhost:9000`) overrides the SDK's endpoint
-  resolver for S3-compatible fixtures (docker minio in CI).
+  resolver for S3-compatible fixtures (docker `adobe/s3mock` in CI).
 - **SDK init**: lazy `Aws::InitAPI` via `std::once_flag` on first call. Embedder does
   not need to call `Aws::InitAPI` / `ShutdownAPI` explicitly (idempotent if they do).
 - **Build option**: `-DX3D_CPP_BUILD_S3=ON` (OFF default, `find_package(AWSSDK REQUIRED
@@ -112,13 +112,13 @@ fixture bytes through Backend A (libcurl HTTP) and Backend B (AWS S3) and assert
 - **Failure parity**: `resultA.failed() == resultB.failed()` and both have empty
   `bytes` for missing keys.
 - **Hermetic**: in-process POSIX-socket HTTP server on 127.0.0.1 (no external HTTP
-  server needed); fixtures uploaded to minio via the AWS SDK at swap-test setup.
-- **Skip-when-no-minio**: when `$X3D_S3_ENDPOINT` is unset (no docker), the test
+  server needed); fixtures uploaded to the S3 fixture via the AWS SDK at swap-test setup.
+- **Skip-when-no-S3-endpoint**: when `$X3D_S3_ENDPOINT` is unset (no docker), the test
   degrades to an HTTP-only parity check and emits a SKIP message — so local dev
   without docker doesn't get a spurious failure.
 
 Gated in CI by the `assetresolver-swap` job in `.github/workflows/ci.yml` (flag-gated
-build + docker `minio/minio:latest` service on port 9000 +
+build + a pinned docker `adobe/s3mock:5.2.3` S3 fixture on port 9000 +
 `ctest -R 'x3d_assetresolver(_backend|_swap)'`). On every PR; a future parity break
 fails the merge.
 

@@ -65,13 +65,13 @@ Concretely, for the `AssetResolver` pilot:
   Maps `s3://bucket/key` URLs to `s3::GetObject` calls.
 - **Behavioral swap-test** (`x3d_assetresolver_swap`): a ctest binary drives the *same* fixture
   bytes through Backend A (against an in-process HTTP server in the test binary) and Backend B
-  (against a docker minio fixture) and asserts **byte-equal `AssetResult.bytes`** for every
+  (against a docker S3 fixture, `adobe/s3mock`) and asserts **byte-equal `AssetResult.bytes`** for every
   fixture, plus equal `AssetStatus::Failed` for missing keys. Equality is observable
   (the bytes the resolver hands back), never internal — so per-backend transport details stay
   inside each backend.
 - **Permanent CI merge gate**: `AssetResolver seam swap-test` job in
   `.github/workflows/ci.yml`, flag-gated `-DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON`,
-  docker minio service, `ctest -R 'x3d_assetresolver(_backend|_swap)'`.
+  docker S3 fixture (`adobe/s3mock`), `ctest -R 'x3d_assetresolver(_backend|_swap)'`.
 - Because the interface carried two backends with no signature change, it is promoted
   `[EXPERIMENTAL]` → `[STABLE]` in `include/x3d/sdk.hpp:131` — the whole `AssetResolver` /
   `AssetResult` / `AssetKind` surface as one frozen seam.
@@ -94,8 +94,10 @@ Concretely, for the `AssetResolver` pilot:
 
 - AWS C++ SDK is a real ongoing dependency: `find_package(AWSSDK REQUIRED COMPONENTS s3)` when
   ON; a heavy compile behind the OFF-default option keeps the default PR path cold-safe.
-- Docker in CI: the swap-test job needs a `services:` minio container. Documented; locally,
-  `docker run -d -p 9000:9000 -p 9001:9001 minio/minio server /data`.
+- Docker in CI: the swap-test job starts an S3-compatible fixture container. Originally
+  `minio/minio:latest`; **amended 2026-09-25**: MinIO stopped publishing public images, the
+  pull started failing, and the job now uses a pinned `adobe/s3mock:5.2.3`. Locally:
+  `docker run -d -p 9000:9090 adobe/s3mock:5.2.3`, then `X3D_S3_ENDPOINT=http://localhost:9000`.
 - Two bytes-fetching implementations must stay in lockstep on URL-subset semantics
   (libcurl honors `http(s)://`; S3 honors `s3://` + virtual-hosted) — though the swap-test makes
   divergence a loud CI failure.
