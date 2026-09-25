@@ -5,6 +5,7 @@
 // but the generated setEnumString matched bare tokens, so a quoted "FLY" never
 // matched and the WHOLE field was silently dropped (type=""). Fix strips the
 // quotes before matching in all reader paths.
+#include "ProtoNameMaps.hpp"
 #include "x3d/sdk.hpp"
 #include <iostream>
 #include <string>
@@ -45,4 +46,23 @@ TEST_CASE("enum_quote_test") {
   expectKept(sdk::parseDocument(sdk::VrmlWriter().writeDocument(orig), sdk::Encoding::ClassicVRML), "rt(VRML)");
   CHECK(failures == 0);
   return;
+}
+
+// The readers' name->type lookup is derived from the writers' fieldTypeName(),
+// so the two directions cannot drift apart. Every named type round-trips;
+// "SFString"/"MFString" resolve to the string types (not SFEnum/MFEnum, which
+// fieldTypeName() also spells that way); an unknown name falls back to SFString.
+TEST_CASE("fieldTypeFromName inverts fieldTypeName") {
+  using x3d::codec::fieldTypeFromName;
+  using x3d::codec::fieldTypeName;
+  using x3d::core::X3DFieldType;
+  for (int i = 0; i < static_cast<int>(X3DFieldType::SFEnum); ++i) {
+    const auto t = static_cast<X3DFieldType>(i);
+    CHECK(fieldTypeFromName(fieldTypeName(t)) == t);
+  }
+  CHECK(fieldTypeFromName("SFString") == X3DFieldType::SFString);
+  CHECK(fieldTypeFromName("MFString") == X3DFieldType::MFString);
+  CHECK(fieldTypeFromName("SFVec3f") == X3DFieldType::SFVec3f);
+  CHECK(fieldTypeFromName("SFFrobnicator") == X3DFieldType::SFString);
+  CHECK(fieldTypeFromName("") == X3DFieldType::SFString);
 }

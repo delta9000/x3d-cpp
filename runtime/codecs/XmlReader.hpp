@@ -24,6 +24,7 @@
 #include "DynamicField.hpp"
 #include "FieldAliases.hpp"
 #include "FieldValueIO.hpp"
+#include "ProtoNameMaps.hpp"
 #include "x3d/nodes/Script.hpp"
 #include "x3d/nodes/ShaderPart.hpp"
 #include "x3d/nodes/X3DProgrammableShaderObject.hpp"
@@ -555,57 +556,7 @@ private:
 
   /// Map an X3D field-type string (e.g. "SFVec3f") to X3DFieldType.
   static X3DFieldType mapFieldType(const std::string &w) {
-    static const struct {
-      const char *name;
-      X3DFieldType type;
-    } kMap[] = {
-        {"SFBool", X3DFieldType::SFBool},
-        {"SFColor", X3DFieldType::SFColor},
-        {"SFColorRGBA", X3DFieldType::SFColorRGBA},
-        {"SFDouble", X3DFieldType::SFDouble},
-        {"SFFloat", X3DFieldType::SFFloat},
-        {"SFImage", X3DFieldType::SFImage},
-        {"SFInt32", X3DFieldType::SFInt32},
-        {"SFMatrix3d", X3DFieldType::SFMatrix3d},
-        {"SFMatrix3f", X3DFieldType::SFMatrix3f},
-        {"SFMatrix4d", X3DFieldType::SFMatrix4d},
-        {"SFMatrix4f", X3DFieldType::SFMatrix4f},
-        {"SFNode", X3DFieldType::SFNode},
-        {"SFRotation", X3DFieldType::SFRotation},
-        {"SFString", X3DFieldType::SFString},
-        {"SFTime", X3DFieldType::SFTime},
-        {"SFVec2d", X3DFieldType::SFVec2d},
-        {"SFVec2f", X3DFieldType::SFVec2f},
-        {"SFVec3d", X3DFieldType::SFVec3d},
-        {"SFVec3f", X3DFieldType::SFVec3f},
-        {"SFVec4d", X3DFieldType::SFVec4d},
-        {"SFVec4f", X3DFieldType::SFVec4f},
-        {"MFBool", X3DFieldType::MFBool},
-        {"MFColor", X3DFieldType::MFColor},
-        {"MFColorRGBA", X3DFieldType::MFColorRGBA},
-        {"MFDouble", X3DFieldType::MFDouble},
-        {"MFFloat", X3DFieldType::MFFloat},
-        {"MFImage", X3DFieldType::MFImage},
-        {"MFInt32", X3DFieldType::MFInt32},
-        {"MFMatrix3d", X3DFieldType::MFMatrix3d},
-        {"MFMatrix3f", X3DFieldType::MFMatrix3f},
-        {"MFMatrix4d", X3DFieldType::MFMatrix4d},
-        {"MFMatrix4f", X3DFieldType::MFMatrix4f},
-        {"MFNode", X3DFieldType::MFNode},
-        {"MFRotation", X3DFieldType::MFRotation},
-        {"MFString", X3DFieldType::MFString},
-        {"MFTime", X3DFieldType::MFTime},
-        {"MFVec2d", X3DFieldType::MFVec2d},
-        {"MFVec2f", X3DFieldType::MFVec2f},
-        {"MFVec3d", X3DFieldType::MFVec3d},
-        {"MFVec3f", X3DFieldType::MFVec3f},
-        {"MFVec4d", X3DFieldType::MFVec4d},
-        {"MFVec4f", X3DFieldType::MFVec4f},
-    };
-    for (const auto &e : kMap)
-      if (w == e.name)
-        return e.type;
-    return X3DFieldType::SFString; // unknown: harmless string fallback
+    return fieldTypeFromName(w); // unknown: harmless SFString fallback
   }
 
   /// Map an X3D accessType string to AccessType (X3D and VRML spellings).
