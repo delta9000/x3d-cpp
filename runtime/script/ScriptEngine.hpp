@@ -14,6 +14,7 @@
 #include "x3d/core/X3DReflection.hpp"  // X3DFieldType (type tag carried alongside values)
 
 #include <any>
+#include <chrono>
 #include <cstdint>
 #include <string>
 
@@ -56,6 +57,23 @@ inline constexpr ScriptHandle kInvalidScriptHandle = 0;
 class ScriptEngine {
 public:
   virtual ~ScriptEngine() = default;
+
+  /// Default wall-clock budget for one call into script code.
+  static constexpr std::chrono::milliseconds kDefaultCallBudget{2000};
+
+  /**
+   * @brief Bound how long one call into script code may run.
+   * @details Script source comes from the document, so a handler (or the
+   *          script's top level) that never returns would otherwise hang the
+   *          host. Each entry into script code (load, initialize, one invoke,
+   *          prepareEvents, eventsProcessed, shutdown) gets this much wall-clock
+   *          time, including reading its outputs back. A call that exceeds it
+   *          is interrupted and treated as a script error; the script stays
+   *          loaded and later calls get a fresh budget. Zero disables the limit.
+   *          A backend without an interrupt mechanism may ignore it.
+   */
+  void setCallBudget(std::chrono::milliseconds budget) { callBudget_ = budget; }
+  std::chrono::milliseconds callBudget() const { return callBudget_; }
 
   /**
    * @brief Compile `source` for `scriptNode`; return a handle (or invalid).
@@ -106,6 +124,9 @@ public:
    *          this timestamp were invoked.
    */
   virtual void eventsProcessed(ScriptHandle handle, double timestamp) = 0;
+
+private:
+  std::chrono::milliseconds callBudget_{kDefaultCallBudget};
 };
 
 } // namespace x3d::runtime

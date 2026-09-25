@@ -1986,6 +1986,19 @@
     identical types. It throws std::invalid_argument, which surfaces as a JS error. deleteRoute rejects
     null nodes. Tests: ecmascript/quickjs backend T15d.
 
+- id: SCRIPT-RUNAWAY-HANG
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2.4 (ECMAScript binding 19777-1)"
+  severity: major
+  status: fixed
+  summary: A Script handler or top level that never returned hung the host; neither engine bounded script run time.
+  note: >-
+    ScriptEngine::setCallBudget (default 2 s) bounds every entry into script code. Duktape uses its
+    exec-timeout check (DUK_USE_EXEC_TIMEOUT_CHECK, local duk_config.h change) and QuickJS uses
+    JS_SetInterruptHandler. An interrupted call is logged as a script error and the script stays loaded; a
+    catch-and-continue loop cannot outlast it. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15g.
+
 - id: SCRIPT-HOSTILE-VALUE-ABORT
   nodes: [Script]
   interfaces: [X3DScriptNode]

@@ -10,7 +10,9 @@
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
 #include "x3d/core/X3Dtypes.hpp"     // SF*/MF* concrete C++ types
 
+#include <chrono>
 #include <cstdio>
+#include <memory>
 #include <iostream>  // diagnostics
 #include <stdexcept>
 
@@ -66,6 +68,33 @@ SFNode extractNode(duk_context *ctx, duk_idx_t idx) {
   duk_pop(ctx);
   return sai->nodeHandles().resolve(static_cast<NodeHandleTable::Id>(id));
 }
+
+// -------------------------------------------------------------------------
+// Call budget. Duktape polls DUK_USE_EXEC_TIMEOUT_CHECK (duk_config.h) while
+// running bytecode; once the armed deadline has passed it raises a RangeError
+// and keeps raising it until the deadline is disarmed, so a script cannot catch
+// its way past the limit. ArmDeadline arms it for the duration of one public
+// entry point (see ScriptEngine::setCallBudget).
+// -------------------------------------------------------------------------
+
+class ArmDeadline {
+public:
+  ArmDeadline(EcmaScriptBackend::CallDeadline *d,
+              std::chrono::milliseconds budget)
+      : d_(budget.count() > 0 ? d : nullptr) {
+    if (!d_) return;
+    d_->at = std::chrono::steady_clock::now() + budget;
+    d_->armed = true;
+  }
+  ~ArmDeadline() {
+    if (d_) d_->armed = false;
+  }
+  ArmDeadline(const ArmDeadline &) = delete;
+  ArmDeadline &operator=(const ArmDeadline &) = delete;
+
+private:
+  EcmaScriptBackend::CallDeadline *d_;
+};
 
 // -------------------------------------------------------------------------
 // Protected entry into the engine.
@@ -775,38 +804,48 @@ EcmaScriptBackend::~EcmaScriptBackend() {
 ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
                                      const std::string &source,
                                      SaiContext &sai) {
-  duk_context *ctx = duk_create_heap_default();
+  auto deadline = std::make_unique<CallDeadline>();
+  duk_context *ctx =
+      duk_create_heap(nullptr, nullptr, nullptr, deadline.get(), nullptr);
   if (!ctx) return kInvalidScriptHandle;
 
   ScriptHandle handle = nextHandle_++;
   Entry &entry = entries_[handle];
-  entry = Entry{ctx, &scriptNode, &sai};
+  entry = Entry{ctx, &scriptNode, &sai, std::move(deadline)};
 
-  // Stash the SaiContext for the SFNode marshalling helpers (pushNode /
-  // extractNode), which run outside any Browser method, then install Browser.
-  const bool installed = protectedRun(ctx, "install", [&](duk_context *c) {
-    duk_push_global_stash(c);
-    duk_push_pointer(c, &sai);
-    duk_put_prop_string(c, -2, kStashSaiKey);
-    duk_pop(c);
-    installBrowser(c, &entry);
-  });
-  if (!installed) {
+  bool ok = false;
+  {
+    // The script's top level runs here too, so it gets a budget of its own.
+    // Scoped: a failed load frees the deadline with the entry below.
+    ArmDeadline armed(entry.deadline.get(), callBudget());
+
+    // Stash the SaiContext for the SFNode marshalling helpers (pushNode /
+    // extractNode), which run outside any Browser method, then install
+    // Browser.
+    const bool installed = protectedRun(ctx, "install", [&](duk_context *c) {
+      duk_push_global_stash(c);
+      duk_push_pointer(c, &sai);
+      duk_put_prop_string(c, -2, kStashSaiKey);
+      duk_pop(c);
+      installBrowser(c, &entry);
+    });
+
+    // Evaluate the source to define global functions.
+    if (installed) {
+      if (duk_peval_string(ctx, source.c_str()) != 0) {
+        std::cerr << "[EcmaScriptBackend] eval error: "
+                  << duk_safe_to_string(ctx, -1) << "\n";
+      } else {
+        ok = true;
+      }
+      duk_pop(ctx);  // pop eval result / error
+    }
+  }
+  if (!ok) {
     duk_destroy_heap(ctx);
     entries_.erase(handle);
     return kInvalidScriptHandle;
   }
-
-  // Evaluate the source to define global functions.
-  if (duk_peval_string(ctx, source.c_str()) != 0) {
-    std::cerr << "[EcmaScriptBackend] eval error: "
-              << duk_safe_to_string(ctx, -1) << "\n";
-    duk_pop(ctx);
-    duk_destroy_heap(ctx);
-    entries_.erase(handle);
-    return kInvalidScriptHandle;
-  }
-  duk_pop(ctx);  // pop eval result
   return handle;
 }
 
@@ -817,6 +856,7 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
 void EcmaScriptBackend::initialize(ScriptHandle handle) {
   Entry *e = entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(e->deadline.get(), callBudget());
   // §3.5: seed author-field globals from their boxed initialValue BEFORE the
   // script's initialize() runs, so the script reads its authored defaults.
   seedAuthorGlobals(*e);
@@ -834,7 +874,11 @@ void EcmaScriptBackend::initialize(ScriptHandle handle) {
 void EcmaScriptBackend::shutdown(ScriptHandle handle) {
   Entry *e = entryFor(handle);
   if (!e) return;
-  callGlobalNoArgs(e->ctx, "shutdown");
+  {
+    // Scoped: the deadline is freed with the entry below.
+    ArmDeadline armed(e->deadline.get(), callBudget());
+    callGlobalNoArgs(e->ctx, "shutdown");
+  }
   duk_destroy_heap(e->ctx);
   entries_.erase(handle);
 }
@@ -846,6 +890,7 @@ void EcmaScriptBackend::shutdown(ScriptHandle handle) {
 void EcmaScriptBackend::prepareEvents(ScriptHandle handle, double now) {
   Entry *e = entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(e->deadline.get(), callBudget());
   callGlobal(e->ctx, "prepareEvents", "prepareEvents", 1,
              [now](duk_context *c) { duk_push_number(c, now); });
 
@@ -869,6 +914,7 @@ void EcmaScriptBackend::invoke(ScriptHandle handle,
                                double timestamp) {
   Entry *e = entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(e->deadline.get(), callBudget());
   callGlobal(e->ctx, "handler '" + eventName + "'", eventName.c_str(), 2,
              [&](duk_context *c) {
                pushValue(c, value, type);        // arg 0: the field value
@@ -888,6 +934,7 @@ void EcmaScriptBackend::invoke(ScriptHandle handle,
 void EcmaScriptBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
   Entry *e = entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(e->deadline.get(), callBudget());
   callGlobalNoArgs(e->ctx, "eventsProcessed");
   // §29.2.4: events generated from eventsProcessed() enter the cascade with the
   // timestamp of the last event processed — read back any author
@@ -1002,3 +1049,11 @@ bool EcmaScriptBackend::callGlobalNoArgs(duk_context *ctx,
 }
 
 } // namespace x3d::runtime
+
+// Duktape's exec-timeout hook (DUK_USE_EXEC_TIMEOUT_CHECK in duk_config.h). The
+// heap udata is the script's CallDeadline (see EcmaScriptBackend::load).
+extern "C" int x3d_duk_exec_timeout_check(void *udata) {
+  const auto *d =
+      static_cast<const x3d::runtime::EcmaScriptBackend::CallDeadline *>(udata);
+  return d && d->armed && std::chrono::steady_clock::now() >= d->at;
+}

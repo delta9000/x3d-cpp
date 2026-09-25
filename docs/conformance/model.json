@@ -4809,6 +4809,7 @@
         "SCRIPT-EVENTIN",
         "SCRIPT-HOSTILE-VALUE-ABORT",
         "SCRIPT-OUTPUTONLY-REEMIT",
+        "SCRIPT-RUNAWAY-HANG",
         "SCRIPT-SAI-ADDROUTE-VALIDATE",
         "SCRIPT-SFNODE-REFERENCE"
       ],
@@ -4837,6 +4838,7 @@
             "SCRIPT-EVENTIN",
             "SCRIPT-HOSTILE-VALUE-ABORT",
             "SCRIPT-OUTPUTONLY-REEMIT",
+            "SCRIPT-RUNAWAY-HANG",
             "SCRIPT-SAI-ADDROUTE-VALIDATE",
             "SCRIPT-SFNODE-REFERENCE"
           ],
@@ -9423,6 +9425,20 @@
     },
     {
       "clause": "29.2.4 (ECMAScript binding 19777-1)",
+      "id": "SCRIPT-RUNAWAY-HANG",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "ScriptEngine::setCallBudget (default 2 s) bounds every entry into script code. Duktape uses its exec-timeout check (DUK_USE_EXEC_TIMEOUT_CHECK, local duk_config.h change) and QuickJS uses JS_SetInterruptHandler. An interrupted call is logged as a script error and the script stays loaded; a catch-and-continue loop cannot outlast it. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15g.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A Script handler or top level that never returned hung the host; neither engine bounded script run time."
+    },
+    {
+      "clause": "29.2.4 (ECMAScript binding 19777-1)",
       "id": "SCRIPT-HOSTILE-VALUE-ABORT",
       "interfaces": [
         "X3DScriptNode"
@@ -9719,10 +9735,10 @@
     ]
   },
   "summary": {
-    "closed_count": 128,
+    "closed_count": 129,
     "component_count": 36,
     "deferred_count": 39,
-    "finding_count": 215,
+    "finding_count": 216,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",

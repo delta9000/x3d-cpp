@@ -25,6 +25,7 @@
 #include "x3d/nodes/Transform.hpp"
 
 #include <any>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -595,6 +596,65 @@ int main() {
       backend.shutdown(h);
       dynamicFieldStore().erase(script);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // T15g: call budget. A handler (or the script's top level) that never
+  //       returns is interrupted after callBudget() instead of hanging the
+  //       host -- even if it tries to catch the interruption and keep going --
+  //       and the script keeps working afterwards.
+  // -------------------------------------------------------------------------
+  {
+    using Clock = std::chrono::steady_clock;
+    const auto budget = std::chrono::milliseconds(200);
+    const auto limit = std::chrono::seconds(5); // generous: sanitizer builds
+    backend.setCallBudget(budget);
+
+    struct LoopCase {
+      const char *what;
+      const char *handler;
+    };
+    const LoopCase cases[] = {
+        {"infinite loop", "function go(v, t) { for (;;) {} }"},
+        {"catch-and-continue loop",
+         "function go(v, t) {"
+         "  for (;;) { try { for (;;) {} } catch (e) {} } }"},
+    };
+    for (const LoopCase &c : cases) {
+      X3DExecutionContext ctx;
+      Script script;
+      SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+      dynamicFieldStore().addAuthorField(
+          script, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                  AccessType::OutputOnly, {}});
+      ScriptHandle h = backend.load(
+          script, std::string(c.handler) + "function fine(v, t) { ok = 7; }",
+          sai);
+      check(h != kInvalidScriptHandle,
+            std::string("T15g: load script (") + c.what + ")");
+      backend.initialize(h);
+      const auto start = Clock::now();
+      backend.invoke(h, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+      check(Clock::now() - start < limit,
+            std::string("T15g: ") + c.what + " is interrupted");
+      backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
+      std::any ok = dynamicFieldStore().getValue(script, "ok");
+      check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
+            std::string("T15g: script still works after ") + c.what);
+      backend.shutdown(h);
+      dynamicFieldStore().erase(script);
+    }
+
+    {
+      X3DExecutionContext ctx;
+      Script script;
+      SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+      const auto start = Clock::now();
+      ScriptHandle h = backend.load(script, "for (;;) {}", sai);
+      check(h == kInvalidScriptHandle && Clock::now() - start < limit,
+            "T15g: a top-level infinite loop fails the load instead of hanging");
+    }
+    backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
   }
 
   // -------------------------------------------------------------------------

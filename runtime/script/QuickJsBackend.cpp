@@ -41,6 +41,7 @@
 
 #include "quickjs.h"
 
+#include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <stdexcept>
@@ -679,9 +680,23 @@ struct QuickJsBackend::Impl {
   ScriptHandle nextHandle = 1;  // start at 1 so 0 stays kInvalidScriptHandle
   std::unordered_map<ScriptHandle, Entry> entries;
 
+  // Call budget (ScriptEngine::setCallBudget). One runtime backs every script
+  // and calls are sequential, so one deadline suffices. QuickJS polls the
+  // interrupt handler while running bytecode; a nonzero return raises an
+  // uncatchable "interrupted" error.
+  bool deadlineArmed = false;
+  std::chrono::steady_clock::time_point deadline{};
+
+  static int interruptHandler(JSRuntime *, void *opaque) {
+    const auto *self = static_cast<const Impl *>(opaque);
+    return self->deadlineArmed &&
+           std::chrono::steady_clock::now() >= self->deadline;
+  }
+
   Impl() {
     rt = JS_NewRuntime();
     if (!rt) return;
+    JS_SetInterruptHandler(rt, &Impl::interruptHandler, this);
     // Register the native SFNode handle class (see pushNode). No finalizer: the
     // opaque slot holds an id, not an allocation.
     JSClassID nodeClass = 0;
@@ -922,6 +937,28 @@ void installBrowser(JSContext *ctx) {
 
 } // namespace
 
+// Arms the call budget for the duration of one public entry point.
+namespace {
+class ArmDeadline {
+public:
+  ArmDeadline(bool &armed, std::chrono::steady_clock::time_point &deadline,
+              std::chrono::milliseconds budget)
+      : armed_(budget.count() > 0 ? &armed : nullptr) {
+    if (!armed_) return;
+    deadline = std::chrono::steady_clock::now() + budget;
+    *armed_ = true;
+  }
+  ~ArmDeadline() {
+    if (armed_) *armed_ = false;
+  }
+  ArmDeadline(const ArmDeadline &) = delete;
+  ArmDeadline &operator=(const ArmDeadline &) = delete;
+
+private:
+  bool *armed_;
+};
+} // namespace
+
 // ===========================================================================
 // Construction / destruction.
 // ===========================================================================
@@ -938,6 +975,8 @@ ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
   if (!impl_->rt) return kInvalidScriptHandle;
   JSContext *ctx = JS_NewContext(impl_->rt);
   if (!ctx) return kInvalidScriptHandle;
+  // The script's top level runs here too, so it gets a budget of its own.
+  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
 
   // Thread the SaiContext to Browser callbacks (1 context : 1 script).
   JS_SetContextOpaque(ctx, &sai);
@@ -964,6 +1003,7 @@ ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
 void QuickJsBackend::initialize(ScriptHandle handle) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   // Seed initializeOnly/inputOutput author defaults BEFORE initialize() runs.
   impl_->seedAuthorGlobals(*e);
   impl_->callGlobalNoArgs(e->ctx, "initialize");
@@ -979,6 +1019,7 @@ void QuickJsBackend::initialize(ScriptHandle handle) {
 void QuickJsBackend::shutdown(ScriptHandle handle) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   impl_->callGlobalNoArgs(e->ctx, "shutdown");
   JS_FreeContext(e->ctx);
   impl_->entries.erase(handle);
@@ -991,6 +1032,7 @@ void QuickJsBackend::shutdown(ScriptHandle handle) {
 void QuickJsBackend::prepareEvents(ScriptHandle handle, double now) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   JsValue arg(e->ctx, JS_NewFloat64(e->ctx, now));
   JSValueConst argv[1] = {arg.get()};
   impl_->callGlobal(e->ctx, "prepareEvents", 1, argv);
@@ -1007,6 +1049,7 @@ void QuickJsBackend::invoke(ScriptHandle handle, const std::string &eventName,
                             double timestamp) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   JSContext *ctx = e->ctx;
   JsValue arg0(ctx, pushValue(ctx, value, type));   // arg 0: the field value
   JsValue arg1(ctx, JS_NewFloat64(ctx, timestamp)); // arg 1: the timestamp
@@ -1024,6 +1067,7 @@ void QuickJsBackend::invoke(ScriptHandle handle, const std::string &eventName,
 void QuickJsBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
+  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   impl_->callGlobalNoArgs(e->ctx, "eventsProcessed");
   // §29.2.4: events from eventsProcessed() enter the cascade with the timestamp
   // of the last event processed — read author outputs back.

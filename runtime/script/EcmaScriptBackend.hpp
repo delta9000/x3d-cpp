@@ -29,7 +29,9 @@ extern "C" {
 }
 
 #include <any>
+#include <chrono>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -53,6 +55,13 @@ namespace x3d::runtime {
  */
 class EcmaScriptBackend : public ScriptEngine {
 public:
+  /// Per-script deadline for one call into script code (see callBudget()).
+  /// Public only so Duktape's C timeout hook can read it.
+  struct CallDeadline {
+    bool armed = false;
+    std::chrono::steady_clock::time_point at{};
+  };
+
   EcmaScriptBackend() = default;
   ~EcmaScriptBackend() override;
 
@@ -139,6 +148,8 @@ private:
     duk_context *ctx = nullptr;
     X3DNode *node = nullptr;  // owning Script node (not owned here)
     SaiContext *sai = nullptr; // SAI surface (not owned here)
+    // The heap's udata: Duktape's exec-timeout check reads it (callBudget()).
+    std::unique_ptr<CallDeadline> deadline;
   };
 
   // Retrieve the entry for `handle`; returns nullptr if invalid.
