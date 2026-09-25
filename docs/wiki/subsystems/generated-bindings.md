@@ -147,7 +147,7 @@ records the same class of trap for session wiring.
 
 ### CMake targets
 
-The generated bindings are built as two complementary CMake targets (both defined in the root `CMakeLists.txt`):
+The generated bindings are built as two complementary CMake targets (defined in `cmake/x3d/header-targets.cmake` and `cmake/x3d/libraries.cmake`):
 
 - `x3d_cpp` (`x3d_cpp::x3d_cpp`) — INTERFACE library that adds `generated_cpp_bindings/` (and `runtime/`) to the include path. All generated `.hpp` files are included from this path by bare name.
 - `x3d_cpp_nodes` (`x3d_cpp::nodes`) — STATIC library compiled from all `generated_cpp_bindings/*.cpp`. Carries the out-of-line `fields()` FieldTable definitions, `accept()`, `validateRanges()`, and the `X3DNodeFactory`/`X3DInterfaceRegistry` registries. `x3d_cpp INTERFACE` transitively links `x3d_cpp_nodes`, so consumers that link `x3d_cpp::x3d_cpp` automatically get the compiled definitions.

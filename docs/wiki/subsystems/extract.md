@@ -202,7 +202,7 @@ Single-threaded producer+consumer. The mutable interning caches (`items_`, `inde
 
 ## How it is tested
 
-MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are registered in `CMakeLists.txt` and run under `ctest --preset dev`.
+MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are registered under `cmake/x3d/` (most in the grouped `x3d_extract_tests` binary, `cmake/x3d/doctest-suites.cmake`) and run under `ctest --preset dev`.
 
 | ctest target | What it covers |
 |---|---|
@@ -234,7 +234,7 @@ MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are r
 | `x3d_material_system` | `MaterialSystem::materialOf()` Phong/Physical/Unlit dispatch |
 | `x3d_texture_extract` | Texture extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 
-The full conformance extraction oracle is exercised by `x3d_extract_oracle_test` (registered separately in `CMakeLists.txt`).
+The full conformance extraction oracle is exercised by `x3d_extract_oracle_test` (registered only with `-DX3D_CPP_BUILD_EXT=ON`, in `cmake/x3d/ext.cmake`).
 
 ## Related specs and ADRs
 

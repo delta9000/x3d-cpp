@@ -95,9 +95,40 @@ For the same gate the merge uses (per-header checks ON), use `mise run build-ci`
 
 ---
 
+## Where the build is defined
+
+The top-level `CMakeLists.txt` only declares the project and version, then
+`include()`s the fragments under `cmake/x3d/` in a fixed order. `include()` (not
+`add_subdirectory`) means every fragment shares one scope and sees the repository
+root as `CMAKE_CURRENT_SOURCE_DIR`. Later fragments use options, targets and
+variables that earlier ones define, so keep the order.
+
+| Fragment | Holds |
+|---|---|
+| `dev-tooling.cmake` | ccache, fast linker, Ninja job pool (top-level builds only) |
+| `header-targets.cmake` | INTERFACE header layers (generated nodes, runtime) |
+| `compiler-flags.cmake` | warning policy, `X3D_CPP_WERROR`, sanitizer and fuzz switches |
+| `libraries.cmake` | compiled node + runtime libraries, authoring target, `x3d::sdk` façade |
+| `install.cmake` | install rules and the `find_package(x3d_cpp)` export |
+| `options.cmake` | top-level options: tests, per-header checks, examples, consumers, ext |
+| `backends.cmake` | flag-gated seam backends (physics, QuickJS, curl, S3, stb, wuffs, fonts, movie) + swap-tests |
+| `script-backend.cmake` | the Duktape ScriptEngine backend (ON by default) |
+| `tests.cmake` | per-feature test executables and the header compile contracts |
+| `sdk-examples.cmake` | the `x3d::sdk` façade examples, run as ctests |
+| `cli.cmake` | the `x3d` CLI, the QuickJS swap-test, CLI differential / canonicalize gates |
+| `consumers.cmake` | out-of-SDK example consumers (PoC, CPU raster, SVG, asset import) |
+| `ext.cmake` | the opt-in `runtime/ext/` extensions and their tests |
+| `doctest-suites.cmake` | the grouped doctest binaries (`x3d_{codecs,parse,extract,events}_tests`, math/scene) |
+| `audio.cmake` | the miniaudio AudioBackend + swap-test |
+| `fuzz.cmake` | the libFuzzer `parseDocument` harness |
+| `target-purposes.cmake` | the per-target purpose inventory |
+
+A new test for an existing subsystem usually belongs in that subsystem's grouped
+doctest binary (`doctest-suites.cmake`) rather than a new executable.
+
 ## The compile-job pool
 
-`CMakeLists.txt` lines 53–58 set a Ninja job-pool named `x3d_compile` that caps concurrent
+`cmake/x3d/dev-tooling.cmake` sets a Ninja job-pool named `x3d_compile` that caps concurrent
 **compile** jobs (links and light TUs are uncapped):
 
 ```cmake
@@ -140,7 +171,7 @@ parsing. PCH avoids re-parsing, not instantiation. The correct fix was C1 (done;
 
 ## ccache — warm vs. cold builds
 
-`CMakeLists.txt` lines 17–22 auto-detect and wire ccache:
+`cmake/x3d/dev-tooling.cmake` auto-detects and wires ccache:
 
 ```cmake
 find_program(CCACHE_PROGRAM ccache)
@@ -163,7 +194,7 @@ It is a no-op when ccache is absent (CI runners without it still build cleanly).
 The C1 "decl/def split" is the most important build-time change in the project's history.
 It moved the heavy `fields()` reflection tables and per-field `std::function` get/set thunks
 out of every `<Node>.hpp` into separate `<Node>.cpp` files, compiled once into the CMake
-STATIC lib `x3d_cpp_nodes` (`CMakeLists.txt` line 96). Consumers link against the lib rather
+STATIC lib `x3d_cpp_nodes` (`cmake/x3d/libraries.cmake`). Consumers link against the lib rather
 than re-instantiating the thunks per TU. The design rationale and measurements live in
 `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`.
 
@@ -171,7 +202,7 @@ than re-instantiating the thunks per TU. The design rationale and measurements l
 
 ## Fast-linker auto-selection
 
-`CMakeLists.txt` lines 30–38 prefer `mold` then `lld` over the system linker:
+`cmake/x3d/dev-tooling.cmake` prefers `mold` then `lld` over the system linker:
 
 ```cmake
 find_program(X3D_MOLD mold)
@@ -191,7 +222,7 @@ fallback to the system default is graceful — the build never breaks on a fresh
 
 ## Per-header isolation tests
 
-`CMakeLists.txt` declares the `X3D_CPP_PER_HEADER_CHECKS` option:
+`cmake/x3d/options.cmake` declares the `X3D_CPP_PER_HEADER_CHECKS` option:
 
 ```cmake
 option(X3D_CPP_PER_HEADER_CHECKS "Compile each header in isolation as a ctest" ON)
@@ -322,7 +353,7 @@ and the ccache hit rate for the core build if they shared a directory.
 ## Warning policy
 
 Project targets compile with `-Wall -Wextra` by default (added via
-`add_compile_options` in `CMakeLists.txt` so every target we own picks it up
+`add_compile_options` in `cmake/x3d/compiler-flags.cmake` so every target we own picks it up
 transitively). Vendored TUs (Jolt, quickjs-ng, stb_image, wuffs, stb_truetype)
 suppress with their own `target_compile_options(... PRIVATE -w)` so they don't
 contaminate the project's signal.
@@ -355,7 +386,7 @@ gap. Each runs as its own GitHub Actions job (`cpp-san`, `cpp-fuzz`) on every PR
 ### `san` preset — ASan + UBSan
 
 `X3D_CPP_SAN=ON` adds `-fsanitize=address,undefined -fno-omit-frame-pointer
--fno-sanitize-recover=all` to **every** project target (`CMakeLists.txt`), so the
+-fno-sanitize-recover=all` to **every** project target (`cmake/x3d/compiler-flags.cmake`), so the
 first sanitizer error aborts the run. `RelWithDebInfo` keeps line-accurate traces.
 WERROR is OFF here — the `ci` preset owns warning enforcement; this preset is
 purely for memory/UB.

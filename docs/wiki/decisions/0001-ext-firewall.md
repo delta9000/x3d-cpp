@@ -31,11 +31,11 @@ We decided that all third-party and binary-format code — STL codec, `ExternalG
 
 1. **Code quarantine.** Own directory tree `runtime/ext/`, namespace `x3d::runtime::ext`, hand-written (never generated). The dependency is strictly one-way: `ext` may include core headers (`PackedMesh.hpp`, `Aabb.hpp`, etc. from `runtime/extract/`); core (`x3d_cpp`, `sdk.hpp`) must never include anything from `runtime/ext/`. This is enforced by the comment in every `runtime/ext/` header: "Core MUST NEVER include this file."
 
-2. **Opt-in CMake flag.** `option(X3D_CPP_BUILD_EXT … OFF)` in `CMakeLists.txt`. When `OFF` (the default), no translation unit from `runtime/ext/` is compiled or linked; `build.ninja` does not reference the directory; ctest registers no ext tests. The standard `mise run build` path is completely unaffected. Build with `cmake --preset dev -DX3D_CPP_BUILD_EXT=ON` to include the ext layer.
+2. **Opt-in CMake flag.** `option(X3D_CPP_BUILD_EXT … OFF)` in `cmake/x3d/options.cmake`. When `OFF` (the default), no translation unit from `runtime/ext/` is compiled or linked; `build.ninja` does not reference the directory; ctest registers no ext tests. The standard `mise run build` path is completely unaffected. Build with `cmake --preset dev -DX3D_CPP_BUILD_EXT=ON` to include the ext layer.
 
 3. **Visible in file as EXTERNPROTO.** X3D files that use `ExternalGeometry` must carry an `<ExternProtoDeclare url='"urn:x3d-cpp-gen:ext:ExternalGeometry"'/>`. Any parser that does not install the ext resolver reads and ignores the declaration (graceful degradation). The EXTERNPROTO url list reserves a second slot for a portable `.x3d` fallback (deferred; slot reserved).
 
-4. **Quarantined from gates.** Ext nodes never appear in standard golden files, the conformance audit, or the profile gate. Ext tests are registered exclusively inside the `if(X3D_CPP_BUILD_EXT)` block in `CMakeLists.txt` and run only when the flag is on.
+4. **Quarantined from gates.** Ext nodes never appear in standard golden files, the conformance audit, or the profile gate. Ext tests are registered exclusively inside the `if(X3D_CPP_BUILD_EXT)` block in `cmake/x3d/ext.cmake` and run only when the flag is on.
 
 The CMake targets are:
 
@@ -77,4 +77,4 @@ The STL write path (`tools/x3d-cli/stl_write.hpp`) stays core-side: it takes `Pa
 - `runtime/ext/ExtResolver.hpp` — `install()` function and URN interception
 - `runtime/ext/ExternalGeometryResolver.hpp` — lazy materialization seam; bridges firewall via core-typed `std::function`
 - `runtime/ext/codecs/StlReader.hpp` — first codec; the one-way dep comment ("ext→core") is load-bearing documentation
-- `CMakeLists.txt` lines 207–213 (option declaration) and 1652–1716 (quarantine block + ext tests)
+- `cmake/x3d/options.cmake` (option declaration) and `cmake/x3d/ext.cmake` (quarantine block + ext tests)

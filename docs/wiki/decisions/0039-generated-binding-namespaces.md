@@ -102,6 +102,6 @@ binding-hash golden was re-blessed; the *behavioral* goldens/conformance view di
 - [ADR-0005: Golden Files in Git](0005-golden-files-in-git.md)
 - [ADR-0006: Compiled Static Lib for Node Definitions](0006-compiled-static-lib.md)
 - Primary implementation: `src/x3d_cpp_gen/` (emitter), `generated_cpp_bindings/x3d/{core,nodes}/`,
-  `CMakeLists.txt` (layout + install), `include/x3d/sdk.hpp` (façade aliases)
+  `cmake/x3d/header-targets.cmake` + `cmake/x3d/install.cmake` (layout + install), `include/x3d/sdk.hpp` (façade aliases)
 - Regression test: `runtime/tests/namespace_taxonomy_test.cpp`
 - Design record: `docs/superpowers/specs/2026-06-27-namespace-generated-bindings-design.md`

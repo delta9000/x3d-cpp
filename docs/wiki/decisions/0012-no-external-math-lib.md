@@ -40,7 +40,7 @@ The core runtime (`runtime/math/`, `runtime/scene/`, `runtime/events/`, `runtime
 - `runtime/math/Intersect.hpp` — `rayAabb`, `raySphere`, `rayTriangle`, `rayTriangleBary`, `rayCone`, `rayCylinder` — the exact set required by the X3D §13.3 primitive picking surface.
 - `Quat` and `quatFromRotation`/`rotationFromQuat` live in `runtime/events/Interpolation.hpp` (shared with the interpolator system); `Mat4::rotation` calls this path.
 
-All types operate directly on the generated spec types (`SFVec3f`, `SFRotation`) with no conversion. External libraries (GLM, Eigen, or any other) are **not** linked into `x3d_cpp` or `x3d_cpp_nodes`; they do not appear in `CMakeLists.txt` for the core targets.
+All types operate directly on the generated spec types (`SFVec3f`, `SFRotation`) with no conversion. External libraries (GLM, Eigen, or any other) are **not** linked into `x3d_cpp` or `x3d_cpp_nodes`; they do not appear anywhere in the CMake build (`CMakeLists.txt` or `cmake/`) for the core targets.
 
 The boundary-convention contract (so consumer conversion is deterministic): matrices are **column-major**, angles are **radians**, rotations are **axis-angle** (`SFRotation`), coordinate system is **right-handed Y-up**.
 

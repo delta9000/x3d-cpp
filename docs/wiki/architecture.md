@@ -71,7 +71,7 @@ The C++ node bindings are not hand-written — they are generated from the machi
 
 ### 2. generated_cpp_bindings — the compiled node layer
 
-The emitted `*.hpp` are the X3D node classes (each `X3DNode` subclass with typed fields, reflection via `fields()`, get/set, DEF handling) plus the `X3DNodeFactory` registry. The emitted `*.cpp` carry the out-of-line reflection/validate definitions. These `.cpp` are compiled **once** into a static library `x3d_cpp_nodes` (alias `x3d_cpp::nodes`, `CMakeLists.txt`). This is the C1 decl/def split (2026-06-16): before it, the reflection thunks were re-instantiated in every consumer TU and cold builds took ~1296s and OOM-killed `cc1plus` above `-j4`; after it, cold build dropped to ~76s (~17×) and per-compile peak RSS fell to ~0.86 GB. Consumers link the header interface `x3d_cpp` (an `INTERFACE` target) which transitively pulls in the compiled definitions.
+The emitted `*.hpp` are the X3D node classes (each `X3DNode` subclass with typed fields, reflection via `fields()`, get/set, DEF handling) plus the `X3DNodeFactory` registry. The emitted `*.cpp` carry the out-of-line reflection/validate definitions. These `.cpp` are compiled **once** into a static library `x3d_cpp_nodes` (alias `x3d_cpp::nodes`, `cmake/x3d/libraries.cmake`). This is the C1 decl/def split (2026-06-16): before it, the reflection thunks were re-instantiated in every consumer TU and cold builds took ~1296s and OOM-killed `cc1plus` above `-j4`; after it, cold build dropped to ~76s (~17×) and per-compile peak RSS fell to ~0.86 GB. Consumers link the header interface `x3d_cpp` (an `INTERFACE` target) which transitively pulls in the compiled definitions.
 
 ### 3. Runtime core — document model + scene graph + execution context
 
@@ -119,7 +119,7 @@ Beyond the parse path's own local-file reads (`parseFile`), the SDK performs no 
 
 ### The ext firewall — a one-way dependency, not a seam
 
-Foreign-format codecs and binary-geometry helpers live in `runtime/ext/` (`x3d::runtime::ext`) behind the CMake option `X3D_CPP_BUILD_EXT` (default **OFF**, `CMakeLists.txt`). The dependency is strictly one-way: ext may include `runtime/extract/*` (PackedMesh, Aabb, ...), but **core never includes `runtime/ext/*`**. With the flag off, the standard build / golden / ctest path is completely unaffected. This keeps the core spec-clean while allowing non-spec import paths (e.g. binary mesh) to exist out of band. See [ADR-0001: Ext Firewall](decisions/0001-ext-firewall.md).
+Foreign-format codecs and binary-geometry helpers live in `runtime/ext/` (`x3d::runtime::ext`) behind the CMake option `X3D_CPP_BUILD_EXT` (default **OFF**, declared in `cmake/x3d/options.cmake`). The dependency is strictly one-way: ext may include `runtime/extract/*` (PackedMesh, Aabb, ...), but **core never includes `runtime/ext/*`**. With the flag off, the standard build / golden / ctest path is completely unaffected. This keeps the core spec-clean while allowing non-spec import paths (e.g. binary mesh) to exist out of band. See [ADR-0001: Ext Firewall](decisions/0001-ext-firewall.md).
 
 ## Data flow, end to end
 

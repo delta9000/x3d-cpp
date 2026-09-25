@@ -29,7 +29,7 @@ To address these tensions, we needed a dedicated target structure and a gate sys
 We decided to partition the codebase to expose a slim, header-only target for authoring and implement a symbol/size footprint gate to prevent regression:
 
 1. **The `x3d_cpp::authoring` Target**: 
-   Introduced in `CMakeLists.txt` as an `INTERFACE` library. It exposes only the document model, the codecs (writers), the generated node reflection, and `collectRangeWarnings` (for self-validation). It deliberately omits parser, event/execution, scripting, audio, and physics include directories so that downstream users linking against `x3d_cpp::authoring` cannot transitively pull in these APIs.
+   Introduced in `cmake/x3d/libraries.cmake` as an `INTERFACE` library. It exposes only the document model, the codecs (writers), the generated node reflection, and `collectRangeWarnings` (for self-validation). It deliberately omits parser, event/execution, scripting, audio, and physics include directories so that downstream users linking against `x3d_cpp::authoring` cannot transitively pull in these APIs.
    
 2. **Footprint Gate (`authoring-footprint.sh`)**:
    An automated gate runs under `mise run authoring-footprint` and CI. It compiles the `x3d_authoring_smoke` executable, which only links `x3d_cpp::authoring`. 
