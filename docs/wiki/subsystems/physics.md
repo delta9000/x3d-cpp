@@ -24,7 +24,7 @@ Simulates the X3D §37 RigidBodyPhysics nodes (`RigidBodyCollection`, `RigidBody
 | `runtime/physics/PhysicsSystem.hpp` | **CORE** `System`. Reads §37 nodes, drives the backend, writes bodies back. Constructed with a `shared_ptr<PhysicsBackend>` — inert if none (like `ScriptSystem`). Engine-agnostic. |
 | `runtime/physics/jolt/JoltBackend.{hpp,cpp}` | The Jolt v5.5.0 implementation of `PhysicsBackend`. The **only** translation unit where Jolt (`JPH::`) appears; a pImpl (`struct Impl`) hides Jolt even from `JoltBackend.hpp`. Built only when `X3D_CPP_BUILD_PHYSICS=ON`. |
 | `tools/x3d-cli/fixtures/sim-physics.x3d` + `tools/x3d-cli/goldens/sim-physics.trace.json` | A falling-box §37 fixture + its committed `x3d sim` golden trace (same-host regression). |
-| `CMakeLists.txt` (gated physics block) | `X3D_CPP_BUILD_PHYSICS` option (default OFF) + Jolt via `FetchContent` (pinned v5.5.0) built as an isolated lib; `X3D_HAVE_PHYSICS` define on targets that link the backend. |
+| `cmake/x3d/backends.cmake` (gated physics block) | `X3D_CPP_BUILD_PHYSICS` option (default OFF) + Jolt via `FetchContent` (pinned v5.5.0) built as an isolated lib; `X3D_HAVE_PHYSICS` define on targets that link the backend. |
 
 ## Interfaces and seams
 

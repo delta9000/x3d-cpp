@@ -8,7 +8,7 @@ doctest CASE (e.g. `x3d_mat4`) matches nothing and returns "No tests found".
 
 This gate greps every `ctest … -R <arg>` in docs/wiki and fails (exit 1) if the
 `-R` regex matches NONE of the real `add_test(NAME …)` targets in CMakeLists.txt
-(gated targets included — we read the names, not a configured build). Keeps the
+or the cmake/ fragments it includes (gated targets included — we read the names, not a configured build). Keeps the
 documented commands runnable. Wired as `mise run doc-ctest-gate` and into `ci`.
 
 Stdlib only.
@@ -21,14 +21,14 @@ import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 WIKI = REPO / "docs" / "wiki"
-CMAKELISTS = REPO / "CMakeLists.txt"
+CMAKE_SOURCES = [REPO / "CMakeLists.txt", *sorted((REPO / "cmake").rglob("*.cmake"))]
 
 # A documented invocation: `ctest … -R <arg>` where <arg> is a (quoted) regex.
 CTEST_R_RE = re.compile(r"ctest\b[^\n`]*?-R\s+(\"[^\"]+\"|'[^']+'|\S+)")
 
 
 def real_targets() -> set[str]:
-    text = CMAKELISTS.read_text()
+    text = "\n".join(p.read_text() for p in CMAKE_SOURCES)
     return set(re.findall(r"add_test\(NAME\s+([A-Za-z0-9_]+)", text))
 
 

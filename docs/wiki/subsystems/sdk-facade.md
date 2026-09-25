@@ -26,7 +26,7 @@ The SDK façade is the boundary between the x3d-cpp runtime internals and every 
 | `examples/02_extract_render_feed.cpp` | Worked example: extract → feed a renderer (ctest `x3d_example_02_extract_render_feed`) |
 | `examples/03_attach_behavior_tick.cpp` | Worked example: subclass `System`, register, drive ticks (ctest `x3d_example_03_attach_behavior_tick`) |
 | `examples/README.md` | Index of the three worked examples |
-| `CMakeLists.txt` (line ~108, ~1460–1481) | `add_library(x3d_cpp_sdk INTERFACE)` + `x3d_cpp::sdk` alias, T-SDK ctests, example loop |
+| `cmake/x3d/libraries.cmake`, `cmake/x3d/sdk-examples.cmake` | `add_library(x3d_cpp_sdk INTERFACE)` + `x3d_cpp::sdk` alias, T-SDK ctests, example loop |
 
 ## Interfaces and seams
 

@@ -55,7 +55,7 @@ PCH was explicitly rejected as a remediation path: the profile proves it attacks
 
 - Cold-build time dropped from 1296 s to 76 s (~17×) at `-j4` with ccache disabled — measured A/B on the same machine. A subsequent `-j` raise (commit `719a6dd`) brought it further to 39 s (~33× cumulative), unlocked because per-compile peak RSS fell from OOM territory to ~0.86 GB (measured), removing the memory pressure that had forced the pool to 4.
 - Consumer TUs are lighter: they include the lean header, not the thunk-instantiation cost. This makes adding new test executables and runtime subsystems cheap.
-- The Ninja compile-job pool (`X3D_CPP_COMPILE_JOBS`, `CMakeLists.txt:54`) now defaults to the logical core count rather than a hard cap; it is a documented tunable (`-DX3D_CPP_COMPILE_JOBS=N`) for low-RAM hosts.
+- The Ninja compile-job pool (`X3D_CPP_COMPILE_JOBS`, `cmake/x3d/dev-tooling.cmake`) now defaults to the logical core count rather than a hard cap; it is a documented tunable (`-DX3D_CPP_COMPILE_JOBS=N`) for low-RAM hosts.
 - The SDK ships a concrete artifact: `libx3d_cpp_nodes.a` + headers, installed via `install(TARGETS x3d_cpp x3d_cpp_nodes x3d_cpp_sdk …)`. `find_package(x3d_cpp)` consumers receive the link dependency transitively.
 - The `dev` preset sets `X3D_CPP_PER_HEADER_CHECKS=OFF`, reducing local ctest from ~459 to 66 (aggregate header check + behavior tests), while CI keeps the full per-header isolation coverage.
 
@@ -72,4 +72,4 @@ PCH was explicitly rejected as a remediation path: the profile proves it attacks
 - [Generated Bindings subsystem](../subsystems/generated-bindings.md)
 - Design spec: `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`
 - Implementation plan: `docs/superpowers/plans/2026-06-16-c1-decl-def-split.md`
-- Live CMake wiring: `CMakeLists.txt` lines 26–101 (linker selection, job pool, `x3d_cpp_nodes` target)
+- Live CMake wiring: `cmake/x3d/dev-tooling.cmake` (linker selection, job pool) and `cmake/x3d/libraries.cmake` (`x3d_cpp_nodes` target)

@@ -28,6 +28,10 @@ def enabled_classes(paths: list[str]) -> set[str]:
             ["CMakeLists.txt"],
             {"cpp", "audio", "quickjs", "assets", "fontmetrics"},
         ),
+        (
+            ["cmake/x3d/tests.cmake"],
+            {"cpp", "audio", "quickjs", "assets", "fontmetrics"},
+        ),
         ([], set(CLASSES)),
         (["unexpected/new-area/file.xyz"], set(CLASSES)),
     ],
