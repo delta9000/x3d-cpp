@@ -4,7 +4,7 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, DO-CASCADE, ENC-CDATA-SCRIPT, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCRIPT-EVENTIN, SCRIPT-OUTPUTONLY-REEMIT | X3DChildNode, X3DScriptNode, X3DUrlObject |
+| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, DO-CASCADE, ENC-CDATA-SCRIPT, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCRIPT-EVENTIN, SCRIPT-OUTPUTONLY-REEMIT, SCRIPT-SAI-ADDROUTE-VALIDATE, SCRIPT-SFNODE-REFERENCE | X3DChildNode, X3DScriptNode, X3DUrlObject |
 
 ## Findings
 
@@ -24,7 +24,11 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 - **SCR-003** [major/FIXED `a78da16`] — §29.2.4: eventsProcessed() JS-global outputs read back into the cascade.
 - **SCR-004** [major/FIXED `f2fd324`] — §29.2.5: prepareEvents() JS-global outputs read back into the cascade.
 - **SCR-006** [major/FIXED `f5001cc`] — §29.2.2, 19777-1: SFMatrix3f/4f(+d) author fields marshal to/from ECMAScript.
+- **SCRIPT-SFNODE-REFERENCE** [major/FIXED] — §29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference): A script's SFNode was a raw pointer rebuilt as a non-owning shared_ptr — an SFNode written into a field could dangle, and under QuickJS a script could forge a handle to an arbitrary address.
+  - ADR-0048. Handles are per-script NodeHandleTable ids (Duktape hidden symbol / QuickJS class opaque) that resolve to the node's owning shared_ptr, or to null for unknown ids and destroyed nodes. A script SFNode output shares ownership like DEF/USE. Tests: ecmascript/quickjs backend T15b-c.
 - **SCR-007** [minor/FIXED] — §29.2.2, 19777-1: SFImage + MFImage + MFMatrix3f/3d/4f/4d marshal to/from ECMAScript (previously fell through to undefined/empty in pushValue/toValue). SFImage uses the spec-canonical {x, y, comp, array} JS shape with high-byte-first packed pixels (mirrors the FieldValueIO fmtImage/parseImage packing).
 - **ENC-CDATA-SCRIPT** [minor/FIXED `1e3c51d`] — §ISO 19776-1 (CDATA); 19775-1 29: Script source containing the literal `]]>` is silently truncated (`if (a]]>b)` -> `if (ab)`) — the XML writer wraps source in one CDATA block without splitting.
   - XmlWriter wraps el.text as `<![CDATA[ + text + ]]>` with no split; a `]]>` in JS source closes the CDATA early. Partly an inherent XML limit, but the toolchain neither rejects nor preserves — it eats characters. Fix: split on `]]>` into consecutive CDATA sections (`]]]]><![CDATA[>`). (encoding review; confirmed by round-trip sweep.) CLOSE: xml::cdataEscape (XmlLite) applied by both XmlWriter and CanonicalXmlWriter; XmlLite's reader already concatenates consecutive CDATA sections. Regression: codec_string_hardening_test.
+- **SCRIPT-SAI-ADDROUTE-VALIDATE** [minor/FIXED] — §ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7: Browser.addRoute accepted any endpoints — a null node, an unknown field, a non-output source, a non-input sink or mismatched types all went straight into the live route graph.
+  - SaiContext::addRoute now validates with the same rules as the document-ROUTE bridge (X3DSceneBridge): non-null nodes, fields present (set_/_changed aliases resolved), source readable, sink writable, identical types. It throws std::invalid_argument, which surfaces as a JS error. deleteRoute rejects null nodes. Tests: ecmascript/quickjs backend T15d.
 

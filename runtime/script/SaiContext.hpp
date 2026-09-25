@@ -22,6 +22,8 @@
 #define X3D_RUNTIME_SAI_CONTEXT_HPP
 
 #include "DynamicField.hpp"
+#include "NodeHandleTable.hpp"
+#include "X3DEventGraph.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DFieldAddress.hpp"
 #include "x3d/core/X3DReflection.hpp"
@@ -109,22 +111,36 @@ public:
 
   /**
    * @brief Dynamically add a ROUTE (from -> to). Requires directOutput==TRUE.
+   * @details The route is validated with the same rules as a document ROUTE
+   *          (X3DSceneBridge): both nodes must exist, both fields must exist
+   *          (inputOutput `set_`/`_changed` aliases accepted, §4.4.2.2), the
+   *          source must be an output (outputOnly/inputOutput), the sink an
+   *          input (inputOnly/inputOutput), and the types must match exactly —
+   *          X3D performs no implicit coercion across a ROUTE. The SAI names
+   *          these failures INVALID_NODE / INVALID_FIELD (ISO/IEC 19775-2).
    * @throws std::logic_error if directOutput is FALSE.
+   * @throws std::invalid_argument on an invalid node, field, direction or type.
    */
   void addRoute(X3DNode *fromNode, const std::string &fromField,
                 X3DNode *toNode, const std::string &toField) {
     requireDirectOutput("addRoute");
+    validateRoute(fromNode, fromField, toNode, toField);
     ctx_.addRoute(FieldAddress{fromNode, fromField},
                   FieldAddress{toNode, toField});
   }
 
   /**
    * @brief Dynamically delete a ROUTE (from -> to). Requires directOutput==TRUE.
+   *        Deleting a route that does not exist is a no-op.
    * @throws std::logic_error if directOutput is FALSE.
+   * @throws std::invalid_argument if either node is null (INVALID_NODE).
    */
   void deleteRoute(X3DNode *fromNode, const std::string &fromField,
                    X3DNode *toNode, const std::string &toField) {
     requireDirectOutput("deleteRoute");
+    if (!fromNode || !toNode)
+      throw std::invalid_argument(
+          "SaiContext::deleteRoute: INVALID_NODE (null or disposed node)");
     ctx_.removeRoute(FieldAddress{fromNode, fromField},
                      FieldAddress{toNode, toField});
   }
@@ -160,12 +176,46 @@ public:
   /** @brief The execution context this SAI acts on. */
   X3DExecutionContext &context() const { return ctx_; }
 
+  /** @brief This script's SFNode handle table (see NodeHandleTable.hpp). The
+   *         engine backends intern every node they hand to script code here and
+   *         resolve script-supplied handles back through it. */
+  NodeHandleTable &nodeHandles() { return nodeHandles_; }
+
 private:
   void requireDirectOutput(const char *op) const {
     if (!script_.getDirectOutput()) {
       throw std::logic_error(std::string("SaiContext::") + op +
           ": Script directOutput=FALSE forbids dynamic route changes");
     }
+  }
+
+  static void validateRoute(X3DNode *fromNode, const std::string &fromField,
+                            X3DNode *toNode, const std::string &toField) {
+    if (!fromNode || !toNode)
+      throw std::invalid_argument(
+          "SaiContext::addRoute: INVALID_NODE (null or disposed node)");
+    std::optional<FieldInfo> from =
+        findField(*fromNode, resolveFieldAlias(fromNode, fromField));
+    if (!from)
+      throw std::invalid_argument("SaiContext::addRoute: INVALID_FIELD '" +
+                                  fromField + "' on " +
+                                  fromNode->nodeTypeName());
+    std::optional<FieldInfo> to =
+        findField(*toNode, resolveFieldAlias(toNode, toField));
+    if (!to)
+      throw std::invalid_argument("SaiContext::addRoute: INVALID_FIELD '" +
+                                  toField + "' on " + toNode->nodeTypeName());
+    if (from->access != AccessType::OutputOnly &&
+        from->access != AccessType::InputOutput)
+      throw std::invalid_argument("SaiContext::addRoute: source field '" +
+                                  fromField + "' is not an output");
+    if (to->access != AccessType::InputOnly &&
+        to->access != AccessType::InputOutput)
+      throw std::invalid_argument("SaiContext::addRoute: sink field '" +
+                                  toField + "' is not an input");
+    if (from->type != to->type)
+      throw std::invalid_argument("SaiContext::addRoute: type mismatch '" +
+                                  fromField + "' -> '" + toField + "'");
   }
 
   // Locate a field on a node by x3dName via its EFFECTIVE table: static fields()
@@ -188,6 +238,7 @@ private:
   std::string version_;
   double frameRate_ = 0.0;
   std::string log_;
+  NodeHandleTable nodeHandles_;
 };
 
 } // namespace x3d::runtime

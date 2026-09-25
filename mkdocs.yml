@@ -141,6 +141,7 @@ nav:
       - "ADR-0045: Shared Mesh Storage — Make GeomId's Instancing Contract Structural": decisions/0045-shared-mesh-instancing.md
       - "ADR-0046: LoadSensor as a System over the AssetResolver Seam": decisions/0046-loadsensor-assetresolver-oracle.md
       - "ADR-0047: Split the Experimental SAI Semantic Kernel into a Sister Repository": decisions/0047-sai-sister-repo-split.md
+      - "ADR-0048: Script SFNode Handles Are Table Ids, Resolved to Owning References": decisions/0048-script-node-handles.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

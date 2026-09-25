@@ -109,7 +109,10 @@ std::any SaiContext::getField(X3DNode *node, const std::string &fieldName) const
 // Set a field as a cascade event (cross-node only if directOutput=TRUE; else throws, §29.2.6).
 void SaiContext::setField(X3DNode *node, const std::string &fieldName, std::any value);
 
-// Dynamic route management (requires directOutput=TRUE, §29.4.1).
+// Dynamic route management (requires directOutput=TRUE, §29.4.1). addRoute
+// validates like a document ROUTE and throws std::invalid_argument on a null
+// node (INVALID_NODE), an unknown field (INVALID_FIELD), a non-output source,
+// a non-input sink, or a type mismatch. deleteRoute rejects null nodes.
 void SaiContext::addRoute(X3DNode *fromNode, const std::string &fromField,
                           X3DNode *toNode,   const std::string &toField);
 void SaiContext::deleteRoute(X3DNode *fromNode, const std::string &fromField,
@@ -154,6 +157,8 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 - **`Script.sourceCode`** — readers write inline `<![CDATA[...]]>` blocks / JSON source members / VRML body text into `Script.getSourceCode()`. `ScriptSystem::scriptSource()` prefers this over the `url` inline-scheme decode, enabling file-authored scripts (the SCR-SAI-DYN S1 closure).
 
+- **SFNode handles (`NodeHandleTable`)** — script code never holds a C++ pointer. Each backend interns a node into the per-script `SaiContext::nodeHandles()` table and hands the engine a small integer id. Duktape stores it under a hidden `\xff` symbol; QuickJS stores it in the opaque slot of a native `X3DNode` class. Scripts can neither read nor forge the id. Resolving an id yields the node's real owning `shared_ptr`, so an `SFNode` a script writes into a field shares ownership like DEF/USE, which matches the ECMAScript binding's node-reference semantics (ISO/IEC 19777-1). An id whose node the scene has dropped, or an unknown id, resolves to null. See [ADR-0048](../decisions/0048-script-node-handles.md).
+
 - **`directOutput` gate** — `SaiContext::setField()` on a node other than the owning Script, and both `addRoute`/`deleteRoute`, throw `std::logic_error` when `Script.getDirectOutput()` is `false`. This is the safest conformant response to the spec's "result is UNDEFINED" clause (§29.4.1).
 
 - **`mustEvaluate` flag** — `ScriptSystem::deliverInputEvent()` invokes the engine immediately when `true` (§29.4.1 eager path) or queues a `DeferredEvent` when `false` (flushed at `runEventsProcessed` time, a permitted delay).
@@ -167,12 +172,12 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 **Track-B (real Duktape backend):**
 
-- `ctest --preset dev -R x3d_ecmascript_backend` (`runtime/script/tests/ecmascript_backend_test.cpp`) — inline source decode; load/initialize/invoke/eventsProcessed/prepareEvents/shutdown lifecycle; syntax-error → `kInvalidScriptHandle`; multiple independent `duk_context` instances; field marshalling round-trips for all SF/MF scalar and structured types (T12); handler receives `(value, timestamp)` (T13); `Browser` global (`getName`/`getVersion`/`currentTime`/`print`) backed by `SaiContext` (T14); end-to-end `Browser.addRoute` with `SFNode` marshalling and live route propagation (T15); `directOutput=FALSE` — `Browser.addRoute` throws into JS, no route added (T16).
+- `ctest --preset dev -R x3d_ecmascript_backend` (`runtime/script/tests/ecmascript_backend_test.cpp`) — inline source decode; load/initialize/invoke/eventsProcessed/prepareEvents/shutdown lifecycle; syntax-error → `kInvalidScriptHandle`; multiple independent `duk_context` instances; field marshalling round-trips for all SF/MF scalar and structured types (T12); handler receives `(value, timestamp)` (T13); `Browser` global (`getName`/`getVersion`/`currentTime`/`print`) backed by `SaiContext` (T14); end-to-end `Browser.addRoute` with `SFNode` marshalling and live route propagation (T15); forged/cloned node handles resolve to nothing (T15b); script `SFNode` outputs share real ownership, and a handle to a destroyed node is `INVALID_NODE` (T15c); `Browser.addRoute` rejects unknown fields, wrong direction and type mismatch, and accepts `set_`/`_changed` aliases (T15d); `directOutput=FALSE` — `Browser.addRoute` throws into JS, no route added (T16).
 - `ctest --preset dev -R x3d_ecmascript_corpus_smoke` (`runtime/script/tests/ecmascript_corpus_smoke_test.cpp`) — corpus smoke over the X3D conformance archive (script nodes parsed without crash).
 
 **Track-C (second backend — QuickJS, built only with `-DX3D_CPP_BUILD_QUICKJS=ON`):**
 
-- `ctest -R x3d_quickjs_backend` (`runtime/script/tests/quickjs_backend_test.cpp`) — the QuickJS backend's own lifecycle + marshalling + Browser + handler-dispatch tests (mirrors the Duktape T1–T16 surface).
+- `ctest -R x3d_quickjs_backend` (`runtime/script/tests/quickjs_backend_test.cpp`) — the QuickJS backend's own lifecycle + marshalling + Browser + handler-dispatch tests (mirrors the Duktape T1–T16 surface, including T15b–d).
 - `ctest -R x3d_quickjs_swap` (`runtime/script/tests/quickjs_swap_test.cpp`) — **the genericity proof**: drives identical fixtures through both the Duktape and QuickJS backends and asserts identical observable behavior (cascade field writes + ROUTE-target values). Gated in CI by the `QuickJS seam swap-test` job.
 
 **Integration (file-authored Script un-tabling, SCR-SAI-DYN S1):**
