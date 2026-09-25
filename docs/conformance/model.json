@@ -4807,6 +4807,7 @@
         "SCR-006",
         "SCR-007",
         "SCRIPT-EVENTIN",
+        "SCRIPT-HOSTILE-VALUE-ABORT",
         "SCRIPT-OUTPUTONLY-REEMIT",
         "SCRIPT-SAI-ADDROUTE-VALIDATE",
         "SCRIPT-SFNODE-REFERENCE"
@@ -4834,6 +4835,7 @@
             "SCR-006",
             "SCR-007",
             "SCRIPT-EVENTIN",
+            "SCRIPT-HOSTILE-VALUE-ABORT",
             "SCRIPT-OUTPUTONLY-REEMIT",
             "SCRIPT-SAI-ADDROUTE-VALIDATE",
             "SCRIPT-SFNODE-REFERENCE"
@@ -9420,6 +9422,20 @@
       "summary": "Browser.addRoute accepted any endpoints \u2014 a null node, an unknown field, a non-output source, a non-input sink or mismatched types all went straight into the live route graph."
     },
     {
+      "clause": "29.2.4 (ECMAScript binding 19777-1)",
+      "id": "SCRIPT-HOSTILE-VALUE-ABORT",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "The throw could come from a getter, toJSON, a Proxy trap, or a global or handler accessor. Readback ran outside any duk_pcall, so Duktape's fatal handler aborted the host. Duktape is now compiled as C++ with DUK_USE_CPP_EXCEPTIONS, and every engine entry runs under duk_safe_call. A throw drops that field's event and is logged. QuickJS readback now drops the field on a pending exception. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15f.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A Script whose author-field value threw while being read back crashed the host process under Duktape, and QuickJS emitted a half-read value."
+    },
+    {
       "clause": "29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference)",
       "id": "SCRIPT-SFNODE-REFERENCE",
       "interfaces": [
@@ -9703,10 +9719,10 @@
     ]
   },
   "summary": {
-    "closed_count": 127,
+    "closed_count": 128,
     "component_count": 36,
     "deferred_count": 39,
-    "finding_count": 214,
+    "finding_count": 215,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",

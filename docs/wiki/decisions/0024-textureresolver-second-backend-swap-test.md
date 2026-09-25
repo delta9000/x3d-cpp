@@ -19,7 +19,7 @@ Accepted (2026-06-23). Implemented on `feat/textureresolver-decode`: Backend A
 Backend B (wuffs v0.3.4, `runtime/io/wuffs/WuffsTextureResolver.cpp`,
 `-DX3D_CPP_BUILD_WUFFS=ON`) decode each lossless fixture (PNG/BMP/GIF/TGA) to
 byte-identical RGBA8 under the `x3d_texture_tests` swap-test, gated by the
-`texture-swap` CI job. The seam is frozen `[STABLE]` in `include/x3d/sdk.hpp`.
+`texture-swap` CI job (since 2026-09-25 a step of the `cpp` job, sharing its build tree). The seam is frozen `[STABLE]` in `include/x3d/sdk.hpp`.
 PNM was dropped from the byte-equal matrix — wuffs v0.3.x has no Netpbm decoder
 (it lands in v0.4); see §3 and "Deferred".
 

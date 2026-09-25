@@ -7,6 +7,7 @@ template no longer makes any type decisions; it only walks precomputed
 
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -24,6 +25,10 @@ from x3d_cpp_gen.emit.naming import pascal
 # Absent from an installed wheel (only the package is shipped), in which case we
 # ask for LLVM explicitly -- the style the committed golden was produced with.
 _STYLE_FILE = Path(__file__).resolve().parents[3] / ".clang-format"
+
+# Fewest files per concurrent clang-format process: below this, process startup
+# outweighs the parallelism, so small batches stay a single call.
+_MIN_FORMAT_BATCH = 64
 from x3d_cpp_gen.parser import (
     X3DNode, get_own_fields, resolve_inheritance_chain,
 )
@@ -179,13 +184,45 @@ class CppHeaderBackend:
 
     @staticmethod
     def _format(output_files: List[str], clang_format: Optional[str]):
-        """Run clang-format once over all emitted files, if requested.
+        """Run clang-format over all emitted files, if requested.
+
+        The files are split into a few large batches that run concurrently (one
+        clang-format process per batch, at most one per CPU). Formatting is the
+        bulk of generation time and clang-format formats each file
+        independently, so the output is byte-identical to one serial batch.
 
         If clang-format is unavailable, print a warning and skip formatting for
         the entire batch so generation can still complete.
         """
         if not clang_format or not output_files:
             return clang_format
+        style_arg = (f"--style=file:{_STYLE_FILE}" if _STYLE_FILE.exists()
+                     else "--style=LLVM")
+        workers = max(1, min(os.cpu_count() or 1,
+                             -(-len(output_files) // _MIN_FORMAT_BATCH)))
+        batches = [output_files[i::workers] for i in range(workers)]
+
+        def run(batch):
+            return subprocess.run([clang_format, style_arg, "-i", *batch],
+                                  capture_output=True, text=True)
+
+        try:
+            if workers == 1:
+                results = [run(batches[0])]
+            else:
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    results = list(pool.map(run, batches))
+        except FileNotFoundError:
+            print(f"WARNING: '{clang_format}' not found; skipping formatting. "
+                  f"Output will not match the clang-formatted golden baseline.")
+            return None  # stop retrying for remaining files
+        for batch, result in zip(batches, results):
+            if result.returncode != 0:
+                print(f"WARNING: {clang_format} failed on {len(batch)} files "
+                      f"(exit {result.returncode}); batch formatting did not "
+                      f"complete successfully.\n"
+                      f"{result.stderr}")
+        return clang_format
         style_arg = (f"--style=file:{_STYLE_FILE}" if _STYLE_FILE.exists()
                      else "--style=LLVM")
         try:

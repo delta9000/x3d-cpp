@@ -133,7 +133,7 @@ private:
                                 const X3DNode &n) {
     try {
       return x3d::codec::formatValue(f.type, f.get(n));
-    } catch (...) {
+    } catch (const std::exception &) {
       return "";  // never let a bad-any-cast crash the tracer
     }
   }

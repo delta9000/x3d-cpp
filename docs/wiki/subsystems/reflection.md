@@ -40,6 +40,7 @@ The layer is split across the Python generator (`src/x3d_cpp_gen/emit/`) and the
 | `generated_cpp_bindings/x3d/nodes/X3DNodeFactory.hpp` / `.cpp` | Committed golden: the factory definition (compiled into `x3d_cpp_nodes`) |
 | `generated_cpp_bindings/x3d/nodes/X3DInterfaceRegistry.hpp` / `.cpp` | Committed golden: the interface-id enum and membership tables |
 | `generated_cpp_bindings/<NodeName>.cpp` | Per-node golden: the `fields()` static (lambda-initialized `FieldTable`) and `accept()` double-dispatch body |
+| `runtime/FieldRead.hpp` | Exception-free reads of reflected values: `fieldValueAs<T>` (pointer-form `any_cast`; empty → null, a present value of the wrong type asserts in debug) and `enumToken` (an SFEnum/MFEnum field's token via `getEnumString`). Use these instead of `any_cast` inside `try`/`catch (...)`, which also swallows unrelated errors. |
 | `runtime/events/DynamicField.hpp` | Runtime extension: `effectiveFields(node)` concatenates the generated `fields()` table with per-instance author `<field>` declarations; `DynamicFieldStore` holds the side-table |
 | `runtime/X3DRangeValidate.hpp` | Runtime helper: `collectRangeWarnings()` walks a scene calling `validateRanges()` on each node (the per-node `validateRanges` is generated) |
 

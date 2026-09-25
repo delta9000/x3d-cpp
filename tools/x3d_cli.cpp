@@ -50,6 +50,7 @@
 #include <map>
 #include <set>
 #include <stdexcept>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -1014,17 +1015,17 @@ int cmdSim(const std::vector<std::string> &args) {
         if (a == "--fps") {
             if (!needArg("--fps")) return 1;
             try { fps = std::stod(args[static_cast<size_t>(++i)]); }
-            catch (...) { std::cerr << "error: --fps must be numeric\n"; return 1; }
+            catch (const std::exception &) { std::cerr << "error: --fps must be numeric\n"; return 1; }
             if (fps <= 0) { std::cerr << "error: --fps must be > 0\n"; return 1; }
         } else if (a == "--ticks") {
             if (!needArg("--ticks")) return 1;
             try { ticks = std::stol(args[static_cast<size_t>(++i)]); }
-            catch (...) { std::cerr << "error: --ticks must be an integer\n"; return 1; }
+            catch (const std::exception &) { std::cerr << "error: --ticks must be an integer\n"; return 1; }
             if (ticks < 0) { std::cerr << "error: --ticks must be >= 0\n"; return 1; }
         } else if (a == "--duration") {
             if (!needArg("--duration")) return 1;
             try { duration = std::stod(args[static_cast<size_t>(++i)]); }
-            catch (...) { std::cerr << "error: --duration must be numeric\n"; return 1; }
+            catch (const std::exception &) { std::cerr << "error: --duration must be numeric\n"; return 1; }
             if (duration < 0) { std::cerr << "error: --duration must be >= 0\n"; return 1; }
             ticksFromDuration = true;
         } else if (a == "--move") {
@@ -1097,19 +1098,15 @@ int cmdSim(const std::vector<std::string> &args) {
                   << " Script node(s)\n";
 
     // ── Build the tracer ───────────────────────────────────────────────────────
-    // Wrap construction: a bad-any-cast or other exception in buildNodeIndex
-    // must yield exit 2 + clean stderr, not an unhandled exception / wrong code.
-    x3d::sim::FieldTracer tracer = [&]() -> x3d::sim::FieldTracer {
-        try {
-            return x3d::sim::FieldTracer(doc.scene, watch);
-        } catch (const std::exception &e) {
-            std::cerr << "error: failed to build field tracer: " << e.what() << "\n";
-            std::exit(2);
-        } catch (...) {
-            std::cerr << "error: failed to build field tracer (unknown exception)\n";
-            std::exit(2);
-        }
-    }();
+    // A failure in buildNodeIndex must yield exit 2 + clean stderr, not an
+    // unhandled exception. Returned (not std::exit) so destructors run.
+    std::optional<x3d::sim::FieldTracer> tracer;
+    try {
+        tracer.emplace(doc.scene, watch);
+    } catch (const std::exception &e) {
+        std::cerr << "error: failed to build field tracer: " << e.what() << "\n";
+        return 2;
+    }
 
     // ── Tick loop ──────────────────────────────────────────────────────────────
     std::vector<x3d::sim::TickTrace> traces;
@@ -1134,12 +1131,12 @@ int cmdSim(const std::vector<std::string> &args) {
         // Baseline at t=0 BEFORE the first tick so tick 0's deltas reflect what
         // the first tick produced (initial sensor activations, fraction=0, ...).
         applyMove(0.0);
-        tracer.baseline();
+        tracer->baseline();
         for (long k = 0; k < ticks; ++k) {
             const double t = static_cast<double>(k) * dt;
             applyMove(t);
             ctx.tick(t);
-            traces.push_back(tracer.diff(static_cast<int>(k), t));
+            traces.push_back(tracer->diff(static_cast<int>(k), t));
         }
     } catch (const std::exception &e) {
         std::cerr << "error: simulation failed: " << e.what() << "\n";

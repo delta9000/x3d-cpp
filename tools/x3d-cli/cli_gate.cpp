@@ -659,7 +659,7 @@ int main(int argc, char **argv) {
         sdk::X3DDocument srcDoc;
         try {
             srcDoc = sdk::parseFile(absPath, corpusRoot); // trusted corpus tree
-        } catch (...) {
+        } catch (const std::exception &) {
             continue; // skip files that don't parse
         }
         ++rtRun;

@@ -39,6 +39,7 @@
 #include "RenderItem.hpp"         // MeshData / TextureRef
 #include "TextureResolver.hpp"    // TextureResolver / TexturePixelResult
 #include "TextureTransform2D.hpp" // TextureTransform2DParams / Extended sampler / TexCoordGen
+#include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 
@@ -51,22 +52,10 @@ using namespace x3d::core;
 
 namespace texextract {
 
-// Read an SFEnum field as its X3D token string via FieldInfo::getEnumString, so
-// this stays decoupled from the generated enum-class type (same idiom as
-// matsys::getEnumToken). Returns dflt if absent / not an enum / unreadable.
+// Read an SFEnum field as its X3D token string (FieldRead.hpp enumToken).
 inline std::string enumToken(const x3d::nodes::X3DNode &n, const char *name,
                              const std::string &dflt) {
-  for (const auto &f : n.fields())
-    if (f.x3dName == name) {
-      if (!f.getEnumString) return dflt;
-      try {
-        std::string s = f.getEnumString(n);
-        return s.empty() ? dflt : s;
-      } catch (...) {
-        return dflt;
-      }
-    }
-  return dflt;
+  return ::x3d::runtime::enumToken(n, name, dflt);
 }
 
 // §18.4.9 Table 18.7 — TextureProperties boundary-mode token -> BoundaryMode.

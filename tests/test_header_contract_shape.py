@@ -146,44 +146,28 @@ def test_header_contract_graph_does_not_build_compiled_runtimes(
         assert f"lib{target}" not in commands
 
 
-def test_ci_behavior_and_header_contract_jobs_are_scoped() -> None:
-    jobs = WORKFLOW["jobs"]
-    behavior = jobs["cpp"]
-    contracts = jobs["cpp-headers"]
+def test_ci_cpp_job_builds_scoped_aggregates_in_one_tree() -> None:
+    """The `cpp` job runs `mise run build-ci`'s exact sequence (behavior suite,
+    then compile contracts) in one build tree, then the hermetic swap-tests;
+    every build line names explicit targets."""
+    job = WORKFLOW["jobs"]["cpp"]
+    assert job["name"] == "C++ build + ctest (gcc, PR gate)"
+    assert job["needs"] == "changes"
+    assert job["if"] == "needs.changes.outputs.cpp == 'true'"
 
-    assert behavior["name"] == "C++ build + ctest (gcc, PR fast gate)"
-    assert contracts["name"] == "C++ header compile contracts (gcc, PR gate)"
-    for job in (behavior, contracts):
-        assert job["needs"] == "changes"
-        assert job["if"] == "needs.changes.outputs.cpp == 'true'"
-
-    behavior_lines = job_run_lines(behavior)
-    contract_lines = job_run_lines(contracts)
-    assert "cmake --preset ci" in behavior_lines
-    assert (
-        "cmake --build --preset ci --target x3d_behavior_tests"
-        in behavior_lines
-    )
-    assert (
-        'ctest --preset ci -L behavior --output-on-failure -j "$(nproc)"'
-        in behavior_lines
-    )
-    assert "cmake --preset ci" in contract_lines
-    assert (
-        "cmake --build --preset ci --target x3d_compile_contracts"
-        in contract_lines
-    )
-    assert (
-        'ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"'
-        in contract_lines
-    )
-
-    build_lines = [
-        line
-        for job in (behavior, contracts)
-        for line in job_run_lines(job)
-        if line.startswith("cmake --build")
+    lines = job_run_lines(job)
+    build_ci = [
+        line.strip()
+        for line in MISE["tasks"]["build-ci"]["run"].splitlines()
+        if line.strip()
     ]
+    configure = [line for line in lines if line.startswith("cmake --preset ci")]
+    assert len(configure) == 1
+    # Everything after configure, in order, starts with build-ci's sequence.
+    rest = lines[lines.index(configure[0]) + 1:]
+    assert rest[: len(build_ci) - 1] == build_ci[1:]
+
+    build_lines = [line for line in lines if line.startswith("cmake --build")]
     assert all("--target" in line for line in build_lines)
 
 
@@ -192,7 +176,6 @@ def test_cpp_job_ccache_namespaces_are_separate_and_bounded() -> None:
     expected_key_prefixes = {
         "cpp": "ccache-behavior-",
         "cpp-san": "ccache-san-",
-        "cpp-headers": "ccache-headers-",
     }
     for job_name, prefix in expected_key_prefixes.items():
         job = jobs[job_name]

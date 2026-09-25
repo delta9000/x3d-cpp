@@ -323,7 +323,9 @@ private:
     v->numberLexeme = s_.substr(start, i_ - start);
     try {
       v->number = std::stod(v->numberLexeme);
-    } catch (...) {
+    } catch (const std::invalid_argument &) {
+      fail("invalid number");
+    } catch (const std::out_of_range &) {
       fail("invalid number");
     }
     return v;

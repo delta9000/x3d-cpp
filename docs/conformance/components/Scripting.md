@@ -4,7 +4,7 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, DO-CASCADE, ENC-CDATA-SCRIPT, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCRIPT-EVENTIN, SCRIPT-OUTPUTONLY-REEMIT, SCRIPT-SAI-ADDROUTE-VALIDATE, SCRIPT-SFNODE-REFERENCE | X3DChildNode, X3DScriptNode, X3DUrlObject |
+| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, DO-CASCADE, ENC-CDATA-SCRIPT, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCRIPT-EVENTIN, SCRIPT-HOSTILE-VALUE-ABORT, SCRIPT-OUTPUTONLY-REEMIT, SCRIPT-SAI-ADDROUTE-VALIDATE, SCRIPT-SFNODE-REFERENCE | X3DChildNode, X3DScriptNode, X3DUrlObject |
 
 ## Findings
 
@@ -24,6 +24,8 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 - **SCR-003** [major/FIXED `a78da16`] — §29.2.4: eventsProcessed() JS-global outputs read back into the cascade.
 - **SCR-004** [major/FIXED `f2fd324`] — §29.2.5: prepareEvents() JS-global outputs read back into the cascade.
 - **SCR-006** [major/FIXED `f5001cc`] — §29.2.2, 19777-1: SFMatrix3f/4f(+d) author fields marshal to/from ECMAScript.
+- **SCRIPT-HOSTILE-VALUE-ABORT** [major/FIXED] — §29.2.4 (ECMAScript binding 19777-1): A Script whose author-field value threw while being read back crashed the host process under Duktape, and QuickJS emitted a half-read value.
+  - The throw could come from a getter, toJSON, a Proxy trap, or a global or handler accessor. Readback ran outside any duk_pcall, so Duktape's fatal handler aborted the host. Duktape is now compiled as C++ with DUK_USE_CPP_EXCEPTIONS, and every engine entry runs under duk_safe_call. A throw drops that field's event and is logged. QuickJS readback now drops the field on a pending exception. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15f.
 - **SCRIPT-SFNODE-REFERENCE** [major/FIXED] — §29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference): A script's SFNode was a raw pointer rebuilt as a non-owning shared_ptr — an SFNode written into a field could dangle, and under QuickJS a script could forge a handle to an arbitrary address.
   - ADR-0048. Handles are per-script NodeHandleTable ids (Duktape hidden symbol / QuickJS class opaque) that resolve to the node's owning shared_ptr, or to null for unknown ids and destroyed nodes. A script SFNode output shares ownership like DEF/USE. Tests: ecmascript/quickjs backend T15b-c.
 - **SCR-007** [minor/FIXED] — §29.2.2, 19777-1: SFImage + MFImage + MFMatrix3f/3d/4f/4d marshal to/from ECMAScript (previously fell through to undefined/empty in pushValue/toValue). SFImage uses the spec-canonical {x, y, comp, array} JS shape with high-byte-first packed pixels (mirrors the FieldValueIO fmtImage/parseImage packing).

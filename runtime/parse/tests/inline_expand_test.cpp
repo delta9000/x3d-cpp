@@ -1,4 +1,6 @@
+#include "FieldRead.hpp"
 #include "InlineExpand.hpp"
+#include "RecursionLimits.hpp"
 #include "X3DDocument.hpp"
 #include "X3DScene.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -111,4 +113,72 @@ TEST_CASE("inline_expand_test") {
 
   std::cout << "inline_expand_test OK\n";
   return;
+}
+
+// Chain `depth` nested Groups under `top`; returns the innermost Group.
+static std::shared_ptr<X3DNode> nestGroups(const std::shared_ptr<X3DNode> &top,
+                                           std::size_t depth) {
+  auto cur = top;
+  for (std::size_t i = 0; i < depth; ++i) {
+    auto g = X3DNodeFactory::create("Group");
+    const FieldInfo *ch = findField(*cur, "children");
+    ch->set(*cur, std::any(std::vector<std::shared_ptr<X3DNode>>{g}));
+    cur = g;
+  }
+  return cur;
+}
+
+static void appendChild(X3DNode &parent, const std::shared_ptr<X3DNode> &c) {
+  const FieldInfo *ch = findField(parent, "children");
+  auto kids = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(ch->get(parent));
+  kids.push_back(c);
+  ch->set(parent, std::any(std::move(kids)));
+}
+
+static std::shared_ptr<X3DNode> makeInline() {
+  auto inl = X3DNodeFactory::create("Inline");
+  findField(*inl, "url")->set(*inl, std::any(std::vector<std::string>{"child"}));
+  return inl;
+}
+
+TEST_CASE("inline_expand: the graph walk stops at kMaxNestingDepth") {
+  // MEM-1: the walk recurses on the native stack, so it shares the depth cap
+  // of the other graph walkers. An Inline within the cap expands; one nested
+  // past it is left un-expanded rather than walked.
+  Scene scene;
+  auto root = X3DNodeFactory::create("Group");
+  scene.addRootNode(root);
+  auto deepest = nestGroups(root, x3d::kMaxNestingDepth + 10);
+  auto deep = makeInline();
+  appendChild(*deepest, deep);
+  auto shallow = makeInline(); // appended after nestGroups, which sets children
+  appendChild(*root, shallow);
+
+  InlineResolver resolver = [](const std::vector<std::string> &,
+                               const std::string &) { return makeChildScene(); };
+  std::vector<InlineWarning> warnings;
+  expandInlines(scene, resolver, "", warnings);
+
+  bool shallowExpanded = false, deepExpanded = false;
+  for (const auto &[group, inl] : scene.expandedInlines) {
+    shallowExpanded |= inl == shallow;
+    deepExpanded |= inl == deep;
+  }
+  CHECK(shallowExpanded);
+  CHECK_FALSE(deepExpanded);
+}
+
+TEST_CASE("field_read: exception-free reads of reflected values") {
+  // fieldValueAs: empty -> nullptr; matching type -> the value.
+  CHECK(fieldValueAs<bool>(std::any{}) == nullptr);
+  std::any urls = std::vector<std::string>{"a", "b"};
+  const auto *p = fieldValueAs<std::vector<std::string>>(urls);
+  REQUIRE(p != nullptr);
+  CHECK(p->size() == 2);
+
+  // enumToken: an enum field's token, the default when absent or not an enum.
+  auto app = X3DNodeFactory::create("Appearance");
+  CHECK(enumToken(*app, "alphaMode") == "AUTO");
+  CHECK(enumToken(*app, "noSuchField", "dflt") == "dflt");
+  CHECK(enumToken(*app, "material", "dflt") == "dflt"); // SFNode, not an enum
 }

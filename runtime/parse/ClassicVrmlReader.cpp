@@ -7,6 +7,8 @@
 #include "RecursionLimits.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
+#include <charconv>
+
 namespace x3d::codec {
 
 Encoding ClassicVrmlReader::encoding() const { return Encoding::ClassicVRML; }
@@ -109,12 +111,8 @@ void ClassicVrmlReader::parseHeaderLine(std::string_view src,
     if (!ver.empty()) {
       // Clamp a sub-3.0 (legacy/VRML) major up to the 3.0 floor; leave >= 3.0
       // (incl. future versions we have no manifest for) untouched.
-      int major = 0;
-      try {
-        major = std::stoi(ver.substr(0, ver.find('.')));
-      } catch (...) {
-        major = 3;
-      }
+      int major = 3; // no leading integer major: treat as the 3.0 floor
+      std::from_chars(ver.data(), ver.data() + ver.size(), major);
       doc.version = (major < 3) ? std::string("3.0") : ver;
     }
   }

@@ -31,6 +31,7 @@
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField
 #include "RenderItem.hpp"     // MaterialDesc / TextureRef / SamplerParams
 #include "TextureExtract.hpp" // extendedSamplerOf (§18.4.9 sampler descriptor)
+#include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 
@@ -44,22 +45,10 @@ using namespace x3d::core;
 
 namespace matsys {
 
-// Read an SFEnum field as its X3D token string via FieldInfo::getEnumString, so
-// this stays decoupled from the generated enum-class type. Returns dflt if the
-// field is absent / not an enum / unreadable.
+// Read an SFEnum field as its X3D token string (FieldRead.hpp enumToken).
 inline std::string getEnumToken(const X3DNode &n, const char *name,
                                 const std::string &dflt) {
-  for (const auto &f : n.fields())
-    if (f.x3dName == name) {
-      if (!f.getEnumString) return dflt;
-      try {
-        std::string s = f.getEnumString(n);
-        return s.empty() ? dflt : s;
-      } catch (...) {
-        return dflt;
-      }
-    }
-  return dflt;
+  return ::x3d::runtime::enumToken(n, name, dflt);
 }
 
 // Map an X3D alphaMode token to the descriptor AlphaMode. AUTO => Opaque (the

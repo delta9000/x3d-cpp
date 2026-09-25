@@ -285,14 +285,15 @@ out of scope; they are separate future cards.
 The genericity proof is a **permanent merge gate** — one job per GREEN row:
 
 - **QuickJS seam swap-test** (`[.github/workflows/ci.yml](https://github.com/delta9000/x3d-cpp/blob/main/.github/workflows/ci.yml)`
-  `quickjs-swap` job): `-DX3D_CPP_BUILD_QUICKJS=ON` (FetchContent fetches quickjs-ng
-  v0.15.1) + `ctest -R 'x3d_quickjs(_backend|_swap)'` on every pull request.
+  `cpp` job): `-DX3D_CPP_BUILD_QUICKJS=ON` (FetchContent fetches quickjs-ng
+  v0.15.1) + `ctest -R 'x3d_quickjs(_backend|_swap)'` on every pull request that touches C++.
 - **AssetResolver seam swap-test** (`.github/workflows/ci.yml` `assetresolver-swap` job):
   `-DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON` + a pinned docker `adobe/s3mock:5.2.3`
-  S3 fixture on port 9000 + `ctest -R 'x3d_assetresolver(_backend|_swap)'` on every pull request.
-- **TextureResolver decode seam swap-test** (`.github/workflows/ci.yml` `texture-swap` job):
+  S3 fixture on port 9000 + `ctest -R 'x3d_assetresolver(_backend|_swap)'` on every pull request
+  that touches the asset seam, a consumer of it, or the build.
+- **TextureResolver decode seam swap-test** (`.github/workflows/ci.yml` `cpp` job):
   `-DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON` + `ctest -R x3d_texture` on every pull
-  request. Both decoders are vendored single files — no vcpkg, no docker, no FetchContent — so
+  request that touches C++. Both decoders are vendored single files — no vcpkg, no docker, no FetchContent — so
   this gate runs sub-minute.
 - **AudioBackend headless swap-test** (`.github/workflows/ci.yml` `audio-swap` job):
   `-DX3D_CPP_BUILD_MINIAUDIO=ON` + `ctest -R x3d_sound_swaptest` on every

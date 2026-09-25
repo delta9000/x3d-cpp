@@ -42,7 +42,9 @@ def test_empty_compiler_fails_closed(tmp_path):
 def test_no_test_still_skips_and_succeeds(tmp_path):
     """--no-test is the ONE sanctioned way to skip. It has 5 dependents."""
     result = subprocess.run(
-        [sys.executable, "-m", "x3d_cpp_gen.cli", "--no-test", "--out", str(tmp_path)],
+        # Formatting is irrelevant to what this checks (and was ~all its time).
+        [sys.executable, "-m", "x3d_cpp_gen.cli", "--no-test", "--clang-format", "",
+         "--out", str(tmp_path)],
         capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stderr

@@ -39,6 +39,7 @@
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField
 #include "RenderItem.hpp"     // MeshData
 #include "TextLayout.hpp"     // computeTextLayout + FontStyleParams/TextParams
+#include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 
@@ -61,10 +62,7 @@ namespace text_detail {
 // TextExtract decoupled from the concrete FontFamilyValues/JustifyChoices/
 // FontStyleChoices enum-class types in the generated bindings.
 inline std::string enumTokens(const X3DNode &n, const char *name) {
-  for (const auto &f : n.fields())
-    if (f.x3dName == name && f.getEnumString)
-      return f.getEnumString(n);
-  return {};
+  return ::x3d::runtime::enumToken(n, name);
 }
 
 // Split a token string on whitespace (justify is "MAJOR" or "MAJOR MINOR";

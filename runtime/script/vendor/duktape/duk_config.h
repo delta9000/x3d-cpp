@@ -2920,7 +2920,16 @@ typedef struct duk_hthread duk_context;
 #define DUK_USE_CBOR_SUPPORT
 #define DUK_USE_COMPILER_RECLIMIT 2500
 #define DUK_USE_COROUTINE_SUPPORT
+/* x3d-cpp local change: duktape.c is compiled as C++ (see the x3d_duktape
+ * target), so script errors are raised as C++ exceptions instead of longjmp.
+ * They then unwind the embedder's C++ frames (destructors run) up to a
+ * duk_safe_call / duk_pcall catchpoint. Plain-C consumers keep longjmp.
+ */
+#if defined(__cplusplus)
+#define DUK_USE_CPP_EXCEPTIONS
+#else
 #undef DUK_USE_CPP_EXCEPTIONS
+#endif
 #undef DUK_USE_DATAPTR16
 #undef DUK_USE_DATAPTR_DEC16
 #undef DUK_USE_DATAPTR_ENC16

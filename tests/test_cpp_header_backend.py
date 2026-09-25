@@ -80,3 +80,36 @@ def test_format_skips_empty_batches(monkeypatch):
 
     CppHeaderBackend._format([], "clang-format")
     assert not called
+
+
+def test_format_splits_large_batches_across_concurrent_processes(monkeypatch):
+    """A full-tree batch is split into a few concurrent clang-format calls.
+
+    Formatting dominates generation time; each file is formatted independently,
+    so splitting keeps the output identical. Every file must be formatted
+    exactly once, every call must carry the explicit style, and the number of
+    processes stays bounded by the CPU count.
+    """
+    import os
+    import threading
+
+    lock = threading.Lock()
+    calls = []
+
+    def fake_run(args, capture_output, text):
+        with lock:
+            calls.append(args)
+        return subprocess.CompletedProcess(args=args, returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(os, "cpu_count", lambda: 4)
+
+    files = [f"out/N{i}.hpp" for i in range(686)]
+    CppHeaderBackend._format(files, "clang-format")
+
+    assert 1 < len(calls) <= 4
+    formatted = []
+    for args in calls:
+        assert args[:3] == ["clang-format", f"--style=file:{_STYLE_FILE}", "-i"]
+        formatted += args[3:]
+    assert sorted(formatted) == sorted(files)

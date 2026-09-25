@@ -746,6 +746,9 @@ struct QuickJsBackend::Impl {
       std::any v = info.get(*e.node);
       if (!v.has_value()) continue;
       setGlobal(ctx, info.x3dName.c_str(), pushValue(ctx, v, info.type));
+      // The script's top level may have made this global a throwing setter.
+      if (JS_HasException(ctx))
+        logException(ctx, ("seed of '" + info.x3dName + "'").c_str());
     }
   }
 
@@ -764,15 +767,34 @@ struct QuickJsBackend::Impl {
     JSContext *ctx = e.ctx;
     for (const FieldInfo &info : dynamicFieldStore().authorFields(*e.node)) {
       if (!info.isReadable()) continue;
+      // Reading the global and converting it can run script code (an
+      // accessor, toJSON, getters, a Proxy trap). QuickJS reports a throw there
+      // as a pending exception, not a crash, but the conversion would carry on
+      // and emit whatever it half-read. Any pending exception drops this
+      // field's event for this callback (logged and cleared), nothing else.
+      const std::string what = "readback of '" + info.x3dName + "'";
       JsValue g = getGlobal(ctx, info.x3dName.c_str());
+      if (g.isException() || JS_HasException(ctx)) {
+        logException(ctx, what.c_str());
+        continue;
+      }
       if (g.isUndefined()) continue;  // not defined / never assigned
       // Suppress no-op re-emit: skip if the JS value equals the stored value.
       std::any prev = dynamicFieldStore().getValue(*e.node, info.x3dName);
       if (prev.has_value()) {
         JsValue prevJs(ctx, pushValue(ctx, prev, info.type));
-        if (jsonOf(ctx, g.get()) == jsonOf(ctx, prevJs.get())) continue;
+        const bool same = jsonOf(ctx, g.get()) == jsonOf(ctx, prevJs.get());
+        if (JS_HasException(ctx)) {
+          logException(ctx, what.c_str());
+          continue;
+        }
+        if (same) continue;
       }
       std::any value = toValue(ctx, g.get(), info.type);
+      if (JS_HasException(ctx)) {
+        logException(ctx, what.c_str());
+        continue;
+      }
       if (!value.has_value()) continue;
       dynamicFieldStore().setValue(*e.node, info.x3dName, value);
       (void)timestamp;

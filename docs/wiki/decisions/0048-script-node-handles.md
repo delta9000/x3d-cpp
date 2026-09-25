@@ -59,11 +59,33 @@ sharing a DEF/USE produces. So the fix follows the standard: a script-produced
 - `Browser.addRoute` / `deleteRoute` receive the resolved node. A null node is
   `INVALID_NODE`, and `addRoute` also validates fields, direction and type, as
   in the Script/SAI subsystem page.
-- In Duktape, errors are raised by longjmp, which skips C++ destructors. The
-  route callbacks coerce their string arguments first, hold every C++ object in
-  an inner scope, and call `duk_error` only after that scope has unwound. If
-  they didn't, each rejected call would leak a node reference (LeakSanitizer
-  caught this).
+- The route callbacks coerce their string arguments first, hold every C++ object
+  in an inner scope, and call `duk_error` only after that scope has unwound. When
+  Duktape still raised errors by longjmp, each rejected call otherwise leaked a
+  node reference (LeakSanitizer caught this).
+
+### Engine error containment (amended 2026-09-25)
+
+Reading a value back from a script can run script code: a global accessor,
+`toJSON`, getters, a Proxy trap. In Duktape a throw there happened outside any
+`duk_pcall`, so the fatal handler ran and aborted the host process. Any document
+with a Script could crash the embedder. Test T15f reproduced this.
+
+- Duktape is compiled as C++ with `DUK_USE_CPP_EXCEPTIONS` (a local change in
+  `duk_config.h`, applied only to C++ compiles). Script errors are C++
+  exceptions, so they unwind the backend's frames with destructors run. On MSVC
+  both Duktape targets build with `/EHs`, because the API is `extern "C"` and now
+  throws.
+- Every Duktape entry runs under `duk_safe_call` through `protectedRun` /
+  `callGlobal`: install, seeding, readback, handler dispatch, `prepareEvents`,
+  `initialize`, `eventsProcessed`, `shutdown`. The global lookup is included,
+  because a script can make a handler name a throwing accessor.
+- A throw during readback drops that one field's event for that callback. It is
+  logged, and the script keeps running.
+- QuickJS never aborted, but it ignored the pending exception and emitted
+  whatever the conversion had half-read. Its readback now drops the field and
+  clears the exception, and seeding clears an exception from a throwing setter.
+  T15f runs the same five hostile cases against both engines.
 
 ## Consequences
 
@@ -77,9 +99,10 @@ sharing a DEF/USE produces. So the fix follows the standard: a script-produced
   nodes would need slot recycling, which is not implemented.
 - Tests that passed stack nodes through `SFNode(&node, [](X3DNode *) {})`
   relied on the old borrowed-pointer semantics. They now use `make_shared`.
-- Other Duktape marshalling paths can still longjmp mid-conversion (for example
-  a Proxy whose getter throws while an MF array is being read). That predates
-  this ADR and is tracked separately.
+- A script can no longer crash the host through a throwing accessor, `toJSON`
+  or Proxy (see "Engine error containment"). The embedder's remaining exposure
+  is resource use, such as an infinite loop in a handler, which neither engine
+  bounds today.
 
 ## Related
 
@@ -87,4 +110,4 @@ sharing a DEF/USE produces. So the fix follows the standard: a script-produced
 - [ADR-0014: Dynamic Field Foundation](0014-dynamic-field-foundation.md): the
   author-field store, whose raw-pointer keying was fixed in the same change
 - Tests: `runtime/script/tests/ecmascript_backend_test.cpp` and
-  `quickjs_backend_test.cpp` (T15b, T15c, T15d)
+  `quickjs_backend_test.cpp` (T15b, T15c, T15d, T15f)

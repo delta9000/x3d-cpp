@@ -12,7 +12,6 @@ Codegen changes are intentional: change a template/emitter, regenerate with
 
 import os
 import subprocess
-import sys
 from importlib.resources import files
 from pathlib import Path
 
@@ -32,31 +31,11 @@ def _env_with(clang_format: str) -> dict:
     return {**os.environ, "CLANG_FORMAT": clang_format}
 
 
-def _regenerate(out_dir: Path, clang_format: str) -> None:
-    """Run the real CLI to regenerate the full generated source tree (no smoke test)."""
-    result = subprocess.run(
-        [
-            sys.executable, "-m", "x3d_cpp_gen.cli",
-            "--out", str(out_dir),
-            "--no-test",
-        ],
-        cwd=str(REPO_ROOT),
-        env=_env_with(clang_format),
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, (
-        f"regeneration failed (exit {result.returncode}):\n"
-        f"{result.stdout}\n{result.stderr}"
-    )
-
-
-def test_golden_tree_matches(tmp_path, pinned_clang_format):
+def test_golden_tree_matches(generated_tree, pinned_clang_format):
+    # generated_tree (conftest.py) used the pinned formatter, which the
+    # pinned_clang_format fixture guarantees is available.
     assert GOLDEN_DIR.is_dir(), f"golden dir missing: {GOLDEN_DIR}"
-
-    out = tmp_path / "regen"
-    out.mkdir()
-    _regenerate(out, pinned_clang_format)
+    out = generated_tree
 
     def _tree(root):
         # test.cpp is the gitignored smoke-test artifact, not golden — exclude it

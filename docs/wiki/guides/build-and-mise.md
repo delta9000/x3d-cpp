@@ -381,7 +381,7 @@ The green doctest run proves behavior but misses the memory/UB bug classes the
 parser-hardening work (SEC-1/2, MEM-1) is meant to foreclose: use-after-free,
 leaks, signed overflow, OOB reads. Two extra build modes — both **separate from
 `mise run ci`** (`build-san` is included in the `ci-all` aggregate) — close that
-gap. Each runs as its own GitHub Actions job (`cpp-san`, `cpp-fuzz`) on every PR.
+gap. Each runs as its own GitHub Actions job: `cpp-san` on every PR that touches C++, `cpp-fuzz` after merge (every push to `main`, and manual dispatch).
 
 ### `san` preset — ASan + UBSan
 
