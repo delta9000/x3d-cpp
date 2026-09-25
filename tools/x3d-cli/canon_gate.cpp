@@ -540,12 +540,12 @@ int main(int argc, char **argv) {
             std::string ours;
             try {
                 ours = canonicalize(abs);
-            } catch (...) { continue; }
+            } catch (const std::exception &) { continue; }
 
             std::string golden;
             try {
                 golden = readFile(goldenPath);
-            } catch (...) { continue; }
+            } catch (const std::exception &) { continue; }
 
             ++t2total;
 

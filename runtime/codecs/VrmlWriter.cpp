@@ -7,6 +7,7 @@
 #include "parse/NodeBuilder.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
+#include <charconv>
 #include <algorithm>
 #include <any>
 #include <sstream>
@@ -58,11 +59,9 @@ std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
 
 std::string VrmlWriter::headerVersion(const std::string &v) {
   int major = 0;
-  try {
-    major = std::stoi(v.substr(0, v.find('.')));
-  } catch (...) {
-    return "3.0";
-  }
+  const char *end = v.data() + v.size();
+  if (std::from_chars(v.data(), end, major).ec != std::errc{})
+    return "3.0"; // no leading integer major
   return (major < 3) ? std::string("3.0") : v;
 }
 

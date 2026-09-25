@@ -39,7 +39,7 @@ This mirrors the EXTERNPROTO expansion machinery in `runtime/X3DProtoExpand.hpp`
 | `runtime/X3DDocument.hpp` | `X3DDocument::inlineWarnings` — the lenient-diagnostic channel for unresolvable or cyclic Inline URLs |
 | `runtime/events/X3DSceneBridge.hpp` | Registers `resolvedInlineRoutes` directly (bypasses parent name lookup), making child-internal ROUTEs live |
 | `runtime/codecs/{XmlWriter,CanonicalXmlWriter,VrmlWriter,JsonWriter}.hpp` | Each checks `scene_->expandedInlines` before writing a Group node and re-emits the stored Inline instead |
-| `runtime/parse/tests/inline_expand_test.cpp` | Unit: composition, DEF isolation, `parseDocument` injection seam |
+| `runtime/parse/tests/inline_expand_test.cpp` | Unit: composition, DEF isolation, `parseDocument` injection seam, walk depth cap |
 | `runtime/parse/tests/inline_routes_test.cpp` | Unit: child-internal ROUTEs fire after tick |
 | `runtime/parse/tests/inline_carriers_test.cpp` | Unit: `<IMPORT>`/`<EXPORT>` carrier structs parsed and stored |
 | `runtime/parse/tests/inline_cycle_test.cpp` | Unit: direct/indirect self-reference terminates with a diagnostic |
@@ -89,7 +89,7 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 ### Expansion mechanics
 
-1. Walk the scene graph collecting `(parent, inlineNode)` pairs. A `visited` set prevents re-walking through USE-shared or cyclic containment structures (this guard is needed because `expandInlines` runs before `breakContainmentCycles`).
+1. Walk the scene graph collecting `(parent, inlineNode)` pairs. A `visited` set prevents re-walking through USE-shared or cyclic containment structures (this guard is needed because `expandInlines` runs before `breakContainmentCycles`). The walk also stops descending at `kMaxNestingDepth` (MEM-1, like the other graph walkers): proto expansion can nest deeper than the parse-time cap, and the walk recurses on the native stack. Field values are read with `FieldRead.hpp`'s exception-free `fieldValueAs`, so an error inside the walk propagates instead of silently dropping a subtree.
 2. For each collected Inline with `load=TRUE`, call the resolver. On success:
    - Wrap the child's `rootNodes` in a synthetic `Group` via `X3DNodeFactory::create("Group")`.
    - Call `hoistChildRoutes`: resolve the child's `routes` against the child's own `defs`, append concrete endpoints to `scene.resolvedInlineRoutes`. Also hoist any already-resolved `resolvedProtoRoutes` and `resolvedInlineRoutes` from nested expansions.
@@ -100,7 +100,7 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_expand_test`) — composition (Inline → Group+Shape under a parent Transform), DEF isolation (child DEF "Geo" absent from parent `resolve()`), writer round-trip map entry set, `parseDocument` custom-resolver injection seam.
+- `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_expand_test`) — composition (Inline → Group+Shape under a parent Transform), DEF isolation (child DEF "Geo" absent from parent `resolve()`), writer round-trip map entry set, `parseDocument` custom-resolver injection seam. Doctest case `inline_expand: the graph walk stops at kMaxNestingDepth` covers the depth cap.
 - `ctest --preset dev -R x3d_inline_routes` — child-internal `TimeSensor → PositionInterpolator → Transform` ROUTE fires after a tick.
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_carriers_test`) — `<IMPORT>`/`<EXPORT>` statement structs are parsed and accessible on `X3DDocument`.
 - `ctest --preset dev -R x3d_inline_cycle` — direct and indirect self-reference terminates with a diagnostic; no stack overflow or infinite loop.

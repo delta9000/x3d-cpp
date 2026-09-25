@@ -12,6 +12,8 @@
 #ifndef X3D_RUNTIME_INLINE_EXPAND_HPP
 #define X3D_RUNTIME_INLINE_EXPAND_HPP
 
+#include "FieldRead.hpp"
+#include "RecursionLimits.hpp"
 #include "X3DScene.hpp"
 #include "X3DProtoExpand.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -50,18 +52,18 @@ inline const FieldInfo *field(const X3DNode &n, const std::string &name) {
 inline std::vector<std::string> readUrl(const X3DNode &inl) {
   const FieldInfo *u = field(inl, "url");
   if (!u || !u->get) return {};
-  try {
-    return std::any_cast<std::vector<std::string>>(u->get(inl));
-  } catch (...) { return {}; }
+  std::any v = u->get(inl);
+  const auto *urls = fieldValueAs<std::vector<std::string>>(v);
+  return urls ? *urls : std::vector<std::string>{};
 }
 
 // Read an Inline's `load` (SFBool); default TRUE if absent.
 inline bool readLoad(const X3DNode &inl) {
   const FieldInfo *l = field(inl, "load");
   if (!l || !l->get) return true;
-  try {
-    return std::any_cast<bool>(l->get(inl));
-  } catch (...) { return true; }
+  std::any v = l->get(inl);
+  const bool *load = fieldValueAs<bool>(v);
+  return load ? *load : true;
 }
 
 // Build a synthetic Group whose "children" are `content`.
@@ -97,24 +99,23 @@ inline bool replaceInParent(X3DNode &parent, const X3DNode *target,
   for (const auto &f : parent.fields()) {
     if (!f.get || !f.set) continue;
     if (f.type == X3DFieldType::SFNode) {
-      try {
-        auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(parent));
-        if (c.get() == target) {
-          f.set(parent, std::any(replacement));
+      std::any v = f.get(parent);
+      const auto *c = fieldValueAs<std::shared_ptr<X3DNode>>(v);
+      if (c && c->get() == target) {
+        f.set(parent, std::any(replacement));
+        return true;
+      }
+    } else if (f.type == X3DFieldType::MFNode) {
+      std::any v = f.get(parent);
+      const auto *cur = fieldValueAs<std::vector<std::shared_ptr<X3DNode>>>(v);
+      if (!cur) continue;
+      for (std::size_t i = 0; i < cur->size(); ++i)
+        if ((*cur)[i].get() == target) {
+          auto kids = *cur;
+          kids[i] = replacement;
+          f.set(parent, std::any(std::move(kids)));
           return true;
         }
-      } catch (...) {}
-    } else if (f.type == X3DFieldType::MFNode) {
-      try {
-        auto kids =
-            std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(parent));
-        for (auto &k : kids)
-          if (k.get() == target) {
-            k = replacement;
-            f.set(parent, std::any(std::move(kids)));
-            return true;
-          }
-      } catch (...) {}
     }
   }
   return false;
@@ -135,34 +136,40 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
   std::vector<std::shared_ptr<X3DNode>> rootInlines; // Inlines that ARE scene roots
 
   std::unordered_set<const X3DNode *> walked;
-  std::function<void(const std::shared_ptr<X3DNode> &)> walk =
-      [&](const std::shared_ptr<X3DNode> &n) {
+  std::function<void(const std::shared_ptr<X3DNode> &, std::size_t)> walk =
+      [&](const std::shared_ptr<X3DNode> &n, std::size_t depth) {
         if (!n) return;
+        // MEM-1: the same depth cap as the other graph walkers. The readers
+        // cap parse depth, but proto expansion can nest deeper than any one
+        // document did, and this walk recurses on the native stack.
+        if (depth >= kMaxNestingDepth) return;
         if (!walked.insert(n.get()).second) return; // cycle/USE-sharing guard
         for (const auto &f : n->fields()) {
           if (!f.get) continue;
+          // No catch-all here: it would also swallow errors from the
+          // recursive walk and silently drop the subtree (FieldRead.hpp).
           if (f.type == X3DFieldType::SFNode) {
-            try {
-              auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
+            std::any v = f.get(*n);
+            const auto *c = fieldValueAs<std::shared_ptr<X3DNode>>(v);
+            if (!c || !*c) continue;
+            if ((*c)->nodeTypeName() == "Inline") sites.push_back({n.get(), *c});
+            else walk(*c, depth + 1);
+          } else if (f.type == X3DFieldType::MFNode) {
+            std::any v = f.get(*n);
+            const auto *cs =
+                fieldValueAs<std::vector<std::shared_ptr<X3DNode>>>(v);
+            if (!cs) continue;
+            for (const auto &c : *cs) {
               if (!c) continue;
               if (c->nodeTypeName() == "Inline") sites.push_back({n.get(), c});
-              else walk(c);
-            } catch (...) {}
-          } else if (f.type == X3DFieldType::MFNode) {
-            try {
-              auto cs = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*n));
-              for (auto &c : cs) {
-                if (!c) continue;
-                if (c->nodeTypeName() == "Inline") sites.push_back({n.get(), c});
-                else walk(c);
-              }
-            } catch (...) {}
+              else walk(c, depth + 1);
+            }
           }
         }
       };
   for (auto &r : scene.rootNodes) {
     if (r && r->nodeTypeName() == "Inline") rootInlines.push_back(r);
-    else walk(r);
+    else walk(r, 0);
   }
 
   auto expandOne = [&](const std::shared_ptr<X3DNode> &inl,
