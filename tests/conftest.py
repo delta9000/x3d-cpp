@@ -62,3 +62,32 @@ def pinned_clang_format():
             pytest.fail(problem)
         pytest.skip(problem)
     return path
+
+
+@pytest.fixture(scope="session")
+def generated_tree(tmp_path_factory):
+    """The full generated source tree, generated ONCE per test session.
+
+    Regenerating the tree (clang-format dominates) took ~17 s per test and was
+    repeated by several tests; read-only tests share this one instead. The
+    pinned formatter is used when available, so golden comparisons can use this
+    tree too (they also request `pinned_clang_format`, which skips or fails
+    otherwise); failing that, the environment's formatter.
+    """
+    import sys
+    from pathlib import Path
+
+    out = Path(tmp_path_factory.mktemp("generated")) / "gen"
+    env = dict(os.environ)
+    pinned, _problem = resolve_pinned_clang_format()
+    if pinned:
+        env["CLANG_FORMAT"] = pinned
+    result = subprocess.run(
+        [sys.executable, "-m", "x3d_cpp_gen.cli", "--out", str(out), "--no-test"],
+        cwd=str(Path(__file__).resolve().parent.parent),
+        env=env, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, (
+        f"regeneration failed (exit {result.returncode}):\n"
+        f"{result.stdout}\n{result.stderr}")
+    return out

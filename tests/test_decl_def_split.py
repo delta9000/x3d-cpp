@@ -31,15 +31,10 @@ def test_factory_source_declares_per_node_creators_and_defines_registry():
     assert "std::make_shared<Box>()" not in src
 
 
-import subprocess, sys
-from pathlib import Path
 
 
-def test_node_header_declares_fields_without_inline_body(tmp_path):
-    out = tmp_path / "gen"
-    out.mkdir()
-    subprocess.run([sys.executable, "-m", "x3d_cpp_gen.cli",
-                    "--out", str(out), "--no-test"], check=True)
+def test_node_header_declares_fields_without_inline_body(generated_tree):
+    out = generated_tree
     box_h = (out / "x3d" / "nodes" / "Box.hpp").read_text()
     box_c = (out / "x3d" / "nodes" / "Box.cpp").read_text()
     # Header DECLARES fields() but does NOT inline its FieldTable body.

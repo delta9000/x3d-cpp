@@ -21,28 +21,34 @@ GOLDEN_DIR = REPO_ROOT / "generated_cpp_bindings"
 _CORE_HEADERS = {"X3Dtypes.hpp", "X3Denums.hpp", "X3DReflection.hpp"}
 
 
-# The byte-for-byte comparison only holds with the pinned formatter; the
-# pinned_clang_format fixture (conftest.py) skips locally / fails under CI
-# without it.
-@pytest.mark.parametrize("header", ["Box.hpp", "X3Dtypes.hpp"])
-def test_generated_header_matches_golden(tmp_path, header, pinned_clang_format):
-    subdir = Path("x3d") / ("core" if header in _CORE_HEADERS else "nodes")
-    golden = GOLDEN_DIR / subdir / header
-    assert golden.exists(), f"golden header missing: {golden}"
+@pytest.fixture(scope="module")
+def api_generated_tree(tmp_path_factory, pinned_clang_format):
+    """Generate once through the Python API (the path this test exists to cover).
 
+    The byte-for-byte comparison only holds with the pinned formatter; the
+    pinned_clang_format fixture (conftest.py) skips locally / fails under CI
+    without it.
+    """
     nodes, _skipped = parse_x3d_model(str(SPEC), FIELD_TYPE_MAPPING, XS_TYPES)
     assert nodes
     graph = build_dependency_graph(nodes)
 
-    out = tmp_path / "out"
-    out.mkdir()
+    out = Path(tmp_path_factory.mktemp("api")) / "out"
     core_dir = out / "x3d" / "core"
     core_dir.mkdir(parents=True, exist_ok=True)
     write_types_header(str(core_dir))
     generate_cpp_bindings(nodes, graph, str(out), clang_format=pinned_clang_format,
                           namespace="x3d::nodes")
+    return out
 
-    produced = out / subdir / header
+
+@pytest.mark.parametrize("header", ["Box.hpp", "X3Dtypes.hpp"])
+def test_generated_header_matches_golden(api_generated_tree, header):
+    subdir = Path("x3d") / ("core" if header in _CORE_HEADERS else "nodes")
+    golden = GOLDEN_DIR / subdir / header
+    assert golden.exists(), f"golden header missing: {golden}"
+
+    produced = api_generated_tree / subdir / header
     assert produced.exists(), f"generator did not emit {header}"
     assert produced.read_bytes() == golden.read_bytes(), (
         f"{header} differs from committed golden output"
