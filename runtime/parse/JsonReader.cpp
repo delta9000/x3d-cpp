@@ -464,7 +464,7 @@ void JsonReader::captureScriptInterface(const json::Value &body,
     }
   }
   if (!decls.empty())
-    runtime::dynamicFieldStore().addAuthorFields(*node, decls);
+    runtime::dynamicFieldStore().addAuthorFields(node, decls);
 
   // 2) Inline source. "#sourceText" is an array of lines (the X3D-JSON CDATA
   // convention); join with newlines into Script.sourceCode. A lone string is
