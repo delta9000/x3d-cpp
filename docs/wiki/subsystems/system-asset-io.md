@@ -119,7 +119,7 @@ fixture bytes through Backend A (libcurl HTTP) and Backend B (AWS S3) and assert
 
 Gated in CI by the `assetresolver-swap` job in `.github/workflows/ci.yml` (flag-gated
 build + a pinned docker `adobe/s3mock:5.2.3` S3 fixture on port 9000 +
-`ctest -R 'x3d_assetresolver(_backend|_swap)'`). On every PR; a future parity break
+`ctest -R 'x3d_assetresolver(_backend|_swap)'`). On every PR that touches the asset seam, a consumer of it, or the build; a future parity break
 fails the merge.
 
 ## How it is used

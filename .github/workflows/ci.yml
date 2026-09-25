@@ -1,34 +1,35 @@
-# CI for x3d-cpp — the merge gate behind "Definition of Done".
+# CI for x3d-cpp — the merge gate.
 #
-# On every PR, on pushes to main, and on manual dispatch the FAST, hermetic gates
-# run as required checks: pytest, golden drift, conformance-view drift, wiki
-# strict build, and a single-compiler C++ build + ctest.
+# Cost/latency shape: as few VMs as possible per PR push, nothing exploratory
+# on PRs, and heavy backend builds only when their code changed.
 #
-# The per-seam backend swap-tests fall into two groups:
-#   - **texture-swap** runs on every C++ PR — both decoders are vendored and the
-#     gate is hermetic + <2 min. Byte-equal decode parity is the
-#     closest thing the SDK has to a render-correctness guarantee, so it runs
-#     every time.
-#   - The remaining four swap-tests (quickjs / assetresolver / audio /
-#     fontmetrics) each fetch+build a third-party backend (and assetresolver
-#     also brings up docker/s3mock + the AWS SDK), so they run ONLY when their
-#     backend, the seam interface header, the build system, or a CONSUMING
-#     subsystem changed — gated by the `changes` job's path classifier
-#     (manual dispatch runs them all).
+# On every PR (and on pushes to main, which also keeps the caches warm):
+#   - `checks`: pytest (incl. the golden-tree drift check), the conformance-view
+#     drift check and the strict wiki build, in one job.
+#   - `cpp` (when C++ changed): one gcc build tree for the behavior suite, the
+#     per-header compile contracts, and the two hermetic swap-tests (texture
+#     decode: stb_image vs wuffs, both vendored; script engine: Duktape vs
+#     QuickJS). Byte-equal decode parity is the closest thing the SDK has to a
+#     render-correctness guarantee, so it runs every time.
+#   - `cpp-san` (when C++ changed): the behavior suite under ASan + UBSan.
+#   - `examples-gate` (when C++ changed): the example consumers.
+#   - The swap-tests that need a third-party SDK (assetresolver: curl + AWS SDK +
+#     a docker S3 fixture; audio: miniaudio; fontmetrics: FreeType) run ONLY
+#     when their backend, the seam interface, the build system, or a consuming
+#     subsystem changed — gated by the `changes` job's path classifier.
+#
+# Post-merge only (push to main, manual dispatch): the libFuzzer smoke and the
+# exploratory macOS/Windows smoke. Manual dispatch only: the 4-compiler matrix
+# (run it before a release or when touching the build).
 #
 # A `concurrency` group cancels superseded in-flight runs so rapid pushes to a
 # PR don't each pay full freight.
 #
-# The 4-compiler baseline matrix is expensive, so it stays manual
-# (workflow_dispatch) — run it before a release or when touching the build.
+# NOTE: path-gated job names may be branch-protection "required" checks. A
+# path-skipped job reports the "skipped" conclusion, which GitHub treats as
+# passing — so PRs that don't touch a path-gated seam are not blocked on it.
 #
-# NOTE: the five swap-test job names may be branch-protection "required" checks.
-# A path-skipped job reports the "skipped" conclusion, which GitHub treats as
-# passing — so PRs that don't touch a path-gated seam are not blocked waiting
-# on it. (texture-swap is never skipped.)
-#
-# See docs/contributor/card-to-done-workflow.md (the DoD gate) and
-# docs/wiki/guides/gate-system.md (what each gate protects).
+# See docs/wiki/guides/gate-system.md (what each gate protects).
 #
 # Every job carries a timeout-minutes bound (a few times its cold-cache duration)
 # so a hung ctest, S3 fixture or vcpkg build fails fast instead of running to the
@@ -95,15 +96,16 @@ jobs:
           echo "changed vs $BASE ($base_sha):"; echo "$changed"
           printf '%s\n' "$changed" | python3 scripts/classify_ci_changes.py >> "$GITHUB_OUTPUT"
 
-  python:
-    name: pytest (unit + golden tree)
+  # Every hermetic Python-side gate in ONE job: pytest (which includes the
+  # golden-tree drift check and runs scripts/check_golden.sh), the
+  # conformance-view drift check, and the strict wiki build. These were four
+  # jobs of 10 s - 3 min each, each paying its own VM setup.
+  checks:
+    name: pytest + golden + conformance view + wiki build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      # The golden tree is byte-exact, so the formatter version is part of the
-      # contract. apt ships whatever Ubuntu currently has (18.x); install the
-      # exact pin from mise.toml instead, so CI and local cannot diverge.
       - name: Install pinned clang-format (golden formatting is byte-exact)
         uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac  # v2
         with:
@@ -115,68 +117,23 @@ jobs:
           enable-cache: true
       - name: Sync (incl dev group)
         run: uv sync
-      - name: Run pytest
+      - name: Run pytest (incl. golden tree + check_golden.sh)
         run: uv run pytest
-
-  golden:
-    name: golden drift gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      # Must be the exact formatter that produced the golden tree. check_golden.sh
-      # asserts the version and fails loudly on a mismatch rather than reporting
-      # a toolchain difference as codegen drift.
-      - name: Install pinned clang-format (must match the formatter that produced golden)
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac  # v2
-        with:
-          install_args: clang-format
-      - name: Set up uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
-        with:
-          version: "0.10.4"   # keep in sync with mise.toml [tools]
-          enable-cache: true
-      - name: Sync
-        run: uv sync
-      - name: Check golden tree (regenerate + diff *.hpp/*.cpp)
-        run: ./scripts/check_golden.sh
-
-  conformance:
-    name: conformance-view gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - name: Set up uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
-        with:
-          version: "0.10.4"   # keep in sync with mise.toml [tools]
-          enable-cache: true
-      # Fails if findings.yaml schema is invalid or the committed generated view
-      # (INDEX.md / model.json / components/) drifted from findings.yaml.
       - name: Check conformance view (schema + drift)
         run: uv run python scripts/conformance_view.py check
-
-  docs:
-    name: wiki strict build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - name: Set up uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
-        with:
-          version: "0.10.4"   # keep in sync with mise.toml [tools]
-          enable-cache: true
-      # --strict fails on broken internal links / nav orphans.
       - name: Build wiki (strict)
         run: uv run --group docs mkdocs build --strict
 
+  # The single-compiler C++ gate, in ONE job and one build tree:
+  #   - the behavior suite and the per-header compile contracts (the same
+  #     sequence as `mise run build-ci`), each built as an explicit target;
+  #   - the two hermetic seam swap-tests that only need vendored or fetched
+  #     sources: TextureResolver (stb_image vs wuffs, both vendored) and the
+  #     ScriptEngine (Duktape vs QuickJS, quickjs-ng fetched).
+  # These were four jobs, each rebuilding the core libraries on its own VM.
   cpp:
-    name: C++ build + ctest (gcc, PR fast gate)
+    name: C++ build + ctest (gcc, PR gate)
     needs: changes
-    # If this display name is configured as a required branch-protection check,
-    # confirm the host accepts path-skipped jobs before enabling that requirement.
     if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -192,42 +149,20 @@ jobs:
           restore-keys: ccache-behavior-
       - name: Bound ccache storage
         run: ccache --max-size=750M
-      # X3D_CPP_WERROR=ON mirrors the local ci preset: warnings become errors,
-      # so a latent warning introduced in a PR fails the merge gate here.
-      - name: Configure
-        run: cmake --preset ci
+      - name: Configure (ci preset + vendored texture decoders + QuickJS)
+        run: cmake --preset ci -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON -DX3D_CPP_BUILD_QUICKJS=ON
       - name: Build behavior targets
         run: cmake --build --preset ci --target x3d_behavior_tests
       - name: Test behavior suite
         run: ctest --preset ci -L behavior --output-on-failure -j "$(nproc)"
-
-  # Compile-only public-header and installed-consumer contracts are isolated
-  # from the fast runtime gate so their one-TU-per-header cost can run in
-  # parallel and cannot inflate the behavior critical path.
-  cpp-headers:
-    name: C++ header compile contracts (gcc, PR gate)
-    needs: changes
-    if: needs.changes.outputs.cpp == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - name: Install compiler + cmake + ninja + ccache
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
-      - name: ccache cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
-        with:
-          path: ~/.cache/ccache
-          key: ccache-headers-${{ github.sha }}
-          restore-keys: ccache-headers-
-      - name: Bound ccache storage
-        run: ccache --max-size=750M
-      - name: Configure
-        run: cmake --preset ci
       - name: Build compile contracts
         run: cmake --build --preset ci --target x3d_compile_contracts
       - name: Test compile contracts
         run: ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"
+      - name: Build seam swap-tests (texture decode + script engine)
+        run: cmake --build --preset ci --target x3d_texture_tests x3d_quickjs_backend_test x3d_quickjs_swap
+      - name: Swap-tests (stb_image vs wuffs; Duktape vs QuickJS)
+        run: ctest --preset ci --output-on-failure -R 'x3d_texture|x3d_quickjs(_backend|_swap)'
 
   # Sanitizer gate (BLD-2). Builds the behavior suite in Debug with ASan + UBSan
   # (-fno-sanitize-recover=all, so the first error aborts). Compile contracts,
@@ -264,11 +199,14 @@ jobs:
   # coverage + ASan/UBSan; the harness owns the libFuzzer driver.
   # A crash, leak, or UB found in the time budget fails the job (libFuzzer exits
   # nonzero). This is regression coverage, not an exhaustive campaign — the bound
-  # keeps PR cost low while still re-exercising the parser against mutated input.
+  # keeps its cost low while still re-exercising the parser against mutated input.
   cpp-fuzz:
     name: C++ fuzz gate (libFuzzer parseDocument)
     needs: changes
-    if: needs.changes.outputs.cpp == 'true'
+    # Post-merge only (push to main, manual dispatch): a separate Clang build
+    # plus a 60 s fuzz run on every PR push bought little over running it once
+    # per merge.
+    if: github.event_name != 'pull_request' && needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -290,37 +228,6 @@ jobs:
       # the gate. -print_final_stats surfaces coverage/exec counts in the log.
       - name: Fuzz (bounded 60s smoke)
         run: ./build-fuzz/x3d_parse_fuzz -max_total_time=60 -print_final_stats=1
-
-  # Genericity proof — the permanent gate for the ScriptEngine seam (ADR-0022).
-  # Builds the flag-gated QuickJS backend (FetchContents quickjs-ng v0.15.1) and runs
-  # the dual-backend swap-test: identical fixtures through Duktape AND QuickJS must
-  # produce identical observable behavior. Off the fast `cpp` job (extra fetch+build)
-  # but on every PR, so a future change that breaks parity fails the merge.
-  quickjs-swap:
-    name: QuickJS seam swap-test
-    needs: changes
-    if: needs.changes.outputs.quickjs == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - name: Install compiler + cmake + ninja + ccache
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
-      - name: ccache cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
-        with:
-          path: ~/.cache/ccache
-          key: ccache-quickjs-${{ github.sha }}
-          restore-keys: ccache-quickjs-
-      - name: Configure (QuickJS backend ON — FetchContents quickjs-ng)
-        run: cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_QUICKJS=ON
-      # Build only the QuickJS swap-test targets — not the whole project. The
-      # `cpp` job covers the full build/ctest; this gate exists to prove the
-      # ScriptEngine seam, so building the rest here is wasted minutes.
-      - name: Build (QuickJS swap-test targets only)
-        run: cmake --build build --target x3d_quickjs_backend_test x3d_quickjs_swap
-      - name: Swap-test (Duktape vs QuickJS observable parity)
-        run: ctest --test-dir build --output-on-failure -R 'x3d_quickjs(_backend|_swap)'
 
   # Genericity proof — the permanent gate for the AssetResolver/IO seam (ADR-0023).
   # Builds the flag-gated libcurl HTTP + AWS S3 SDK backends and runs the
@@ -428,45 +335,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: x3d-swap-test
         run: ctest --test-dir build --output-on-failure -R 'x3d_assetresolver(_backend|_swap)'
 
-  # Genericity proof — the permanent gate for the TextureResolver decode seam
-  # (ADR-0024). Builds the two flag-gated decode backends — Backend A (stb_image,
-  # vendored single header) and Backend B (wuffs, vendored single-file
-  # amalgamation) — and runs the dual-backend swap-test: each lossless fixture
-  # (PNG/BMP/GIF/TGA) decoded through stb AND wuffs must yield BYTE-EQUAL RGBA,
-  # plus Failed-parity on corrupt input. Unlike the AssetResolver gate this needs
-  # NO vcpkg, NO docker/s3mock, NO FetchContent — both decoders are vendored, so
-  # the gate is a sub-minute apt + scoped build.
-  #
-  # Runs on every C++ PR (gated on `cpp`, not on a texture path filter):
-  # texture decode parity is the closest thing the SDK has to a byte-exact
-  # rendering guarantee, and the dual-backend comparison catches lossy decode
-  # regressions a seam-path-gated run would silently miss if the change happened
-  # outside the texture code. Only docs-only PRs skip it (they cannot regress
-  # decode). Vendored + hermetic keeps the cost under ~2 min per PR.
-  texture-swap:
-    name: TextureResolver decode seam swap-test
-    needs: changes
-    if: needs.changes.outputs.cpp == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - name: Install compiler + cmake + ninja + ccache
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
-      - name: ccache cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
-        with:
-          path: ~/.cache/ccache
-          key: ccache-texture-${{ github.sha }}
-          restore-keys: ccache-texture-
-      - name: Configure (stb + wuffs decode backends ON — both vendored)
-        run: cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON
-      # Build only the texture test binary — not the whole project. The `cpp` job
-      # covers the full build/ctest; this gate exists to prove the decode seam.
-      - name: Build (TextureResolver swap-test target only)
-        run: cmake --build build --target x3d_texture_tests
-      - name: Swap-test (stb_image vs wuffs byte-equal decode parity)
-        run: ctest --test-dir build --output-on-failure -R x3d_texture
 
   # Genericity proof — the permanent gate for the Audio seam (ADR-0026).
   # Builds the flag-gated miniaudio backend and runs the dual-backend swap-test:
@@ -598,7 +466,10 @@ jobs:
   cross-platform-smoke:
     name: Cross-platform smoke (${{ matrix.os }}, exploratory)
     needs: changes
-    if: github.event_name != 'push' && needs.changes.outputs.cpp == 'true'
+    # Exploratory (continue-on-error: it can never block a merge), so it runs
+    # post-merge (push to main, manual dispatch) instead of on every PR push --
+    # a macOS runner is the most expensive runner type there is.
+    if: github.event_name != 'pull_request' && needs.changes.outputs.cpp == 'true'
     continue-on-error: true
     strategy:
       fail-fast: false

@@ -82,8 +82,8 @@ fixtures through both backends and asserts **byte-equal `TexturePixels.rgba`** +
 `width`/`height`, plus equal `Failed` status on corrupt/missing input. The test TU talks **only
 through the seam factories** and includes no decoder header — the ABI-isolation discipline from
 the [AssetResolver seam](system-asset-io.md) (whose swap-test once segfaulted on AWS SDK
-header-vs-lib skew). Gated by the `texture-swap` CI job
-(`-DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON`, scoped build, `ctest -R x3d_texture`) — no
+header-vs-lib skew). Gated in the `cpp` CI job
+(`-DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON`, `ctest -R x3d_texture`) — no
 vcpkg, no docker, no FetchContent, so it runs sub-minute.
 
 ### The exact-equality boundary
