@@ -2,7 +2,7 @@
 title: Time System
 summary: TimeSensor system and the time-dependent node base that drives all time-indexed behaviors.
 tags: [subsystem, time, timesensor, time-dependent]
-updated: 2026-06-20
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/execution-context.md
@@ -120,4 +120,5 @@ absolute instant. This is a deliberate contract, not a bug — see finding `TIME
 - Spec §8.2.4 (X3D 4.0 ISO normative prose): `X3DTimeDependentNode` clock semantics — activation/deactivation gating, `set_startTime` ignored while active, `loop=FALSE` finishes the current cycle, pause/resume elapsed-time contract.
 - Spec §8.4.1 (X3D 4.0): `TimeSensor` field semantics — `fraction_changed` boundary rule, `cycleTime` definition, `elapsedTime` contract.
 - Spec §8.2.4.3: re-activation guard — a completed node must not auto-restart until a new `startTime` is received.
-- Spec §8.2.4.4: pause/resume edge events — `pauseTime_changed` and `resumeTime_changed` output events at the transition edges.
+- Spec §8.2.4.4: pause/resume edge events — `pauseTime_changed` and `resumeTime_changed` carry the simulation time the pause or resume was recognised (CONF-TDN1V).
+- Spec §8.2.4.3: a `set_stopTime` and `set_startTime` pair at the same instant restarts an active node in place: it stays active (no `isActive` FALSE/TRUE pair) and a new run begins at that instant (CONF-CRITIC-1).

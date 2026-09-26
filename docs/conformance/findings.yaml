@@ -597,10 +597,10 @@
   nodes: [IntegerTrigger]
   clause: "30.4.6"
   severity: major
-  status: open
+  status: closed
   wave: 3
   summary: IntegerTrigger integerKey inputOutput write does not emit integerKey_changed / triggerValue_changed.
-  note: Deferred from the wave-3 fix — integerKey_changed already fans out via the cascade inputOutput alias (AUD-CAS); the triggerValue_changed-on-write half needs §30.4.6 spec re-review before implementing.
+  note: "Writing integerKey (even to the same value) now also emits triggerValue with that value, per the §30.4.6 text; integerKey_changed already came from the inputOutput fan-out (events_misc_test)."
 - id: TRIG-5
   nodes: [TimeTrigger]
   clause: "30.4.7"
@@ -880,10 +880,10 @@
   nodes: [KeySensor, StringSensor]
   clause: "21.2"
   severity: minor
-  status: open
+  status: closed
   wave: 4
   summary: Key-device exclusive-focus arbitration — enabling one sensor must send enabled=FALSE to the others — unimplemented.
-  note: Left open in the wave-4 fix (KDS-1..5/7..10 closed in 85b90b0) — cross-sensor coordination on the enabled-transition; minor, no consumer yet. Closure - watch set_enabled in KeyDeviceSensorSystem and disable the others.
+  note: "Enabling a KeySensor/StringSensor sends enabled FALSE to every other enabled key device sensor (§21.2 'only one key device sensor may be active at a time'), via a field-write listener (events_misc_test)."
 - id: KDS-7
   nodes: [StringSensor]
   clause: "21.4.2"
@@ -996,17 +996,17 @@
   nodes: [LoadSensor, Anchor]
   clause: "9.4.3, 9.4.1"
   severity: minor
-  status: deferred
+  status: closed
   wave: 4
   summary: Spec-literal Anchor children cases (b) replacement-world / (c) separate-window are not the SDK default; the headless default policy treats "#Name" as loaded iff a Viewpoint DEF exists and other Anchor urls as resolver load-request-acknowledged.
-  note: "By design — the runtime is headless. Headed embedders express cases (b)/(c) via LoadSensorSystem::setChildLoadPolicy + a Pending-returning resolver (ADR-0046). See docs/wiki/subsystems/system-loadsensor.md."
+  note: "AnchorSystem now activates Anchors on click: '#Name' binds that viewpoint, any other url goes to the embedder's AnchorHandler with url + parameter, which implements the replacement-world / separate-window cases (events_misc_test)."
 - id: NSN-12
   nodes: [LoadSensor, Inline]
   clause: "9.4.3"
   severity: minor
-  status: open
+  status: closed
   summary: "LoadSensor's per-child readiness check does not recurse into a watched Inline's own nested sub-Inlines."
-  note: "LoadSensorSystem::tick (runtime/events/LoadSensorSystem.hpp:191) marks a watched Inline Ready by a flat membership check (`scene_->expandedInlines.count(c) > 0`) against the direct child alone — it does not walk that child's own subtree to check whether Inline nodes nested inside it have themselves finished loading. At least one other conforming implementation defines Inline load-completion recursively: an Inline counts as loaded only once it and all of its nested sub-Inlines have completely loaded. §9.4.3 does not define nested-Inline completion semantics, so this is a spec-silent design choice, in the same spirit as the R3-R7 rulings in ADR-0046, rather than a conformance defect. Under the default null AssetResolver every Inline expands synchronously at parse time so the gap is inert today; it becomes reachable once a real (async-capable) resolver is injected and a nested Inline's own load can still be Pending while its parent is reported Ready. Separately, a non-blocking, notify-on-completion load-node design distinct from LoadSensor has been under active discussion for a future X3D spec node — directionally relevant if LoadSensor's async story is revisited."
+  note: "An Inline counts as loaded only when every nested sub-Inline it asks to load has loaded; an un-expanded Inline left in an expanded child's content makes that child Failed (LoadSensor ruling R8, events_misc_test)."
 
 # LOD edge (§23.4.3)
 - id: LOD-1
@@ -1267,17 +1267,17 @@
   nodes: [TimeSensor]
   clause: "8.2.4.4"
   severity: low
-  status: open
+  status: closed
   summary: pauseTime_changed/resumeTime_changed emit the field-echo value, not strict simulation-now.
-  note: "Open decision (was BACKLOG CONF-TDN1V). X3DTimeDependentSystem.hpp emits the field value (~=transition instant); a strict reading would pass `now`. 1-line flip if a consumer needs it."
+  note: "pauseTime_changed / resumeTime_changed now carry the simulation time the pause/resume was recognised, per §8.2.4.4 (events_misc_test)."
 - id: CONF-CRITIC-1
   interfaces: [X3DTimeDependentNode]
   nodes: [TimeSensor]
   clause: "8.2.4.3"
   severity: low
-  status: open
+  status: closed
   summary: Same-tick stop->start restart of a TimeSensor is unverified (completed run does not auto-restart).
-  note: "Was BACKLOG CONF-CRITIC (critic unchecked_behaviors). Verify the same-timestamp stop-then-start case in X3DTimeDependentSystem."
+  note: "A set_stopTime / set_startTime pair at the same instant restarts an active node in place (stays active, no isActive FALSE/TRUE pair, new run from that instant); before, it restarted one tick later with an isActive toggle (events_misc_test)."
 - id: CONF-CRITIC-2
   nodes: [Script]
   clause: "29.3.1"

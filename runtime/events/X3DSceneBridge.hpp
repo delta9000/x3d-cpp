@@ -16,6 +16,7 @@
 #include "InterpolatorRegistration.hpp"
 #include "KeyDeviceSensorSystem.hpp"
 #include "LoadSensorSystem.hpp"
+#include "AnchorSystem.hpp"
 #include "NavigationSystem.hpp"
 #include "PointingSensorSystem.hpp"
 #include "TimeSensorSystem.hpp"
@@ -481,6 +482,9 @@ attachInteractive(Scene &scene, X3DExecutionContext &ctx) {
   // case). Sensors still resolve live from the pick path; this only counts them.
   detail::forEachNode(scene, [&](X3DNode *n) { pss->attach(n, ctx); });
   ctx.addSystem(pss); // claims pointer first
+  auto anchors = std::make_shared<AnchorSystem>(); // §9.4.1 Anchor activation
+  detail::forEachNode(scene, [&](X3DNode *n) { anchors->attach(n, ctx); });
+  ctx.addSystem(anchors); // after the sensors, before navigation
   auto nav = std::make_shared<NavigationSystem>();
   ctx.addSystem(nav);                                      // reads pointer after
   return nav;

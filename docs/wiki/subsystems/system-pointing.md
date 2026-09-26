@@ -2,7 +2,7 @@
 title: Pointing-Device Sensor System
 summary: TouchSensor and drag sensors (PlaneSensor, SphereSensor, CylinderSensor) — pointer hit-test, grab lifecycle, and drag math, wired through the M2.5 input seam.
 tags: [subsystem, pointing, touchsensor, drag, plane-sensor, sphere-sensor, cylinder-sensor, events]
-updated: 2026-07-18
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/sensors.md
@@ -163,7 +163,23 @@ Resolution follows §20.2.1: the `resolve()` helper walks the `PickResult::path`
 
 A sensor is considered enabled via `X3DSensorNode::getEnabled()`. A disabled sensor is skipped; the walk continues upward to find the next candidate. If a grabbed sensor is disabled mid-drag, the system deactivates it immediately (emits `isActive FALSE`, drops `isOver`) and releases the grab without further drag output (conformance finding DS-2).
 
+## Anchor activation (§9.4.1)
+
+`runtime/events/AnchorSystem.hpp` makes an Anchor's children pointer-sensitive.
+`attachInteractive` registers it after `PointingSensorSystem` and before
+navigation. A click (press and release over the same Anchor's geometry, the
+innermost Anchor on the pick path) activates it, unless a pointing-device sensor
+grabbed the pointer that tick; while the press is held the Anchor owns the
+pointer, so navigation does not also drag or LOOKAT. The url list is tried in
+order: `"#Name"` binds the viewpoint DEF'd `Name` (`set_bind` TRUE); any other
+url is passed with the `parameter` list to the embedder's
+`AnchorSystem::setAnchorHandler` callback, which loads a replacement world or
+opens a window (cases b/c). With no handler, a non-fragment url does nothing: the
+runtime is headless.
+
 ## How it is tested
+
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `events_misc_test`) — Anchor: a click on a `#Far` Anchor binds that viewpoint; a non-fragment url reaches the handler with url + parameter; releasing off the Anchor does not activate it.
 
 Two dedicated ctest targets cover this subsystem:
 

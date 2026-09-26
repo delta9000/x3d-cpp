@@ -202,6 +202,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/key_state_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/navigation_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/collision_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/events_misc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/nav_pointer_screen_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/viewpoint_offset_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/viewpoint_bind_test.cpp"
