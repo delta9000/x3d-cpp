@@ -93,8 +93,21 @@ x3d::runtime::extract::FontMetrics makeStbttFontMetrics(FontFaceMap faces) {
     const std::uint16_t upm = unitsPerEm(face->info);            // raw uint16 (rule 2)
     if (upm == 0) return GlyphResult::makeFailed();
 
-    const float advanceEm = static_cast<float>(advance) / static_cast<float>(upm);
-    return GlyphResult::makeReady(GlyphMetrics{advanceEm, false, 0.f, 0.f, 0.f, 0.f});
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    stbtt_GetGlyphBox(&face->info, glyph, &x0, &y0, &x1, &y1);
+    int ascent = 0, descent = 0, lineGap = 0;
+    stbtt_GetFontVMetrics(&face->info, &ascent, &descent, &lineGap);
+    const float em = static_cast<float>(upm);
+    GlyphMetrics metrics;
+    metrics.advanceEm = static_cast<float>(advance) / em;
+    metrics.bearingX = static_cast<float>(x0) / em;
+    metrics.sizeX = static_cast<float>(x1 - x0) / em;
+    metrics.sizeY = static_cast<float>(y1 - y0) / em;
+    metrics.top = static_cast<float>(y1) / em;
+    metrics.ascent = static_cast<float>(ascent) / em;
+    metrics.descent = static_cast<float>(descent) / em;
+    metrics.hasGlyphBox = true;
+    return GlyphResult::makeReady(metrics);
   };
 }
 

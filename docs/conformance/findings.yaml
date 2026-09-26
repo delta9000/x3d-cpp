@@ -2163,14 +2163,14 @@
   component: Text
   clause: "15.4.2, 15.4.1"
   severity: minor
-  status: open
+  status: closed
   summary: Text glyphs are stretched to the advance cell and ascender/descender are hard-coded — GlyphMetrics exposes only advanceEm + atlas UV, so the seam cannot place a proportional-font glyph at its true box even with a real atlas.
   note: >-
-    buildTextMesh TextExtract.hpp:294-326 maps the glyph UV across the full advance-width quad; GlyphMetrics
-    FontMetrics.hpp:59-64 lacks bearing/size/top; vertical metrics fixed at 0.8/-0.2*size. Monospace stub is
-    fine; a real font is not. Fix: extend GlyphMetrics with {bearingX,sizeX,sizeY,top} and place the quad at
-    the actual glyph box. (extraction-seam review.) Visual sweep 2026-06-27 CONFIRMED now that the poc wires a
-    real stb_truetype atlas: set_length_comp/set_length_exp render the length-compressed strings as bars.
+    Closed: GlyphMetrics now carries the normalized glyph box and font ascent/descent, populated by stb_truetype
+    and FreeType; buildTextMesh places the quad at that box within the advance cell. The text_extract_test
+    atlas-UV case checks the offset, narrower glyph box; vertical extraction tests verify legacy stub
+    coordinates, Y-axis length compression, and real glyph-box placement. font_metrics_tests extends the
+    backend swap proof across all added fields. Metrics without hasGlyphBox retain advance-cell geometry.
 
 # ── Visual conformance sweep (poc renderer vs Web3D/NIST front refs, 2026-06-27) ──
 # Surfaced by scripts/visual_conformance_sweep.py: poc `--front` screenshots compared

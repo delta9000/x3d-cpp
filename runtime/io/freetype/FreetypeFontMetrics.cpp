@@ -67,11 +67,24 @@ x3d::runtime::extract::FontMetrics makeFreetypeFontMetrics(FontFaceMap faces) {
     if (FT_Get_Advance(face, glyph, FT_LOAD_NO_SCALE, &advance) != 0)
       return GlyphResult::makeFailed();
 
+    if (FT_Load_Glyph(face, glyph, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING) != 0)
+      return GlyphResult::makeFailed();
+
     const std::uint16_t upm = static_cast<std::uint16_t>(face->units_per_EM);  // raw (rule 2)
     if (upm == 0) return GlyphResult::makeFailed();
 
-    const float advanceEm = static_cast<float>(advance) / static_cast<float>(upm);
-    return GlyphResult::makeReady(GlyphMetrics{advanceEm, false, 0.f, 0.f, 0.f, 0.f});
+    const float em = static_cast<float>(upm);
+    const FT_Glyph_Metrics& box = face->glyph->metrics;
+    GlyphMetrics metrics;
+    metrics.advanceEm = static_cast<float>(advance) / em;
+    metrics.bearingX = static_cast<float>(box.horiBearingX) / em;
+    metrics.sizeX = static_cast<float>(box.width) / em;
+    metrics.sizeY = static_cast<float>(box.height) / em;
+    metrics.top = static_cast<float>(box.horiBearingY) / em;
+    metrics.ascent = static_cast<float>(face->ascender) / em;
+    metrics.descent = static_cast<float>(face->descender) / em;
+    metrics.hasGlyphBox = true;
+    return GlyphResult::makeReady(metrics);
   };
 }
 
