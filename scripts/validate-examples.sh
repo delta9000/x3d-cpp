@@ -38,6 +38,25 @@ POC=build-poc/examples/poc_renderer/x3d_poc_renderer
 echo "== cpu_raster --headless (no GL) =="
 "$CPU" "$SCENE" --headless
 
+echo "== cpu_raster gallery render smoke (non-blank subset) =="
+# Gate: a few first-party gallery scenes must not render to a flat,
+# background-only frame. Small deterministic renders (no goldens committed) —
+# the check is "did a subject appear", via tools/tests/check_scene_nonblank.py.
+# Scenes chosen for feature diversity: raster_smoke (flagship baseline),
+# hero_pbr_grid (PhysicalMaterial), hero_teapot_nurbs (NURBS tessellation).
+CPU_SHOT_DIR="$(mktemp -d)"
+for scene in \
+  examples/cpu_raster/assets/raster_smoke.x3d \
+  examples/cpu_raster/assets/gallery/hero_pbr_grid.x3d \
+  examples/cpu_raster/assets/gallery/hero_teapot_nurbs.x3d
+do
+  name="$(basename "$scene" .x3d)"
+  shot="$CPU_SHOT_DIR/$name.ppm"
+  "$CPU" "$scene" -o "$shot" -w 160 -H 120
+  python3 tools/tests/check_scene_nonblank.py "$shot" --label "$name"
+done
+echo "OK: gallery render subset is non-blank"
+
 echo "== x3d2svg --headless (façade-only extract + project) =="
 "$SVG" examples/x3d2svg/assets/smoke.x3d --headless
 ctest --test-dir build-x3d2svg -R x3d_x3d2svg --output-on-failure

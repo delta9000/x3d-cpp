@@ -23,8 +23,9 @@ configures, compiles, or links any of it.
   (`projection * view * model`, `view = ctx.viewMatrix()`, a PoC perspective
   built from `CameraDesc.fieldOfView`, near/far fit from
   `extractor.sceneWorldBounds()`). Lights are the extractor's world-resolved
-  `LightDesc` directionals; when a scene authors none, the bound
-  `NavigationInfo` headlight (default true) supplies a camera-space fallback.
+  `LightDesc` directionals plus, per §23.4.4, the bound
+  `NavigationInfo` headlight (default true) as an additional camera-space light
+  whenever it is on, independent of the scene's own lights.
 - an interactive Dear ImGui diagnostics overlay for frame timing, render-item
   counts, texture-cache counts, runtime time, a wireframe toggle, and the ImGui
   demo window; **F1** toggles the panel. It is disabled for `--headless`, `--screenshot`, and `--animate`
@@ -127,8 +128,9 @@ under XWayland. (GLFW picks Wayland automatically on a Wayland session.)
   at both per-path transforms. *Done.*
 - **M3 (T12):** per-pixel **lighting** (Lambert + ambient, two-sided),
   `MaterialDesc` color with per-vertex `Color` override, and per-draw
-  back-face **culling** honoring `MeshData.ccw`/`solid`. The no-explicit-light
-  fallback is the bound `NavigationInfo` headlight. *Done.*
+  back-face **culling** honoring `MeshData.ccw`/`solid`. The bound
+  `NavigationInfo` headlight (§23.4.4) is added whenever it is on, on top of
+  any authored directional lights. *Done.*
   - Try it: `x3d_poc_renderer assets/lit_scene.x3d` — an explicit
     `DirectionalLight`, a solid culled IFS cube, a Phong `Box`, and a
     per-vertex-`Color` triangle.

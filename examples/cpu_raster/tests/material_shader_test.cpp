@@ -4,6 +4,7 @@
 #include "cpuraster/MaterialShader.hpp"
 #include "cpuraster/Rasterizer.hpp"
 
+#include <cstdint>
 #include <cstdio>
 #include <vector>
 
@@ -27,7 +28,20 @@ static FragmentInput frontFrag() {
   f.normalEye = {0, 0, 1};
   f.color = {1, 1, 1, 1};
   f.frontFacing = true;
+  f.texcoord = {0.5f, 0.5f};
   return f;
+}
+
+// A 1x1 inline (PixelTexture) ref for the given slot, grey level `v` on all RGB.
+static ex::TextureRef inlineRef(ex::TextureRef::Slot slot, std::uint8_t v) {
+  ex::TextureRef r;
+  r.slot = slot;
+  r.source = ex::TextureRef::Source::Inline;
+  r.inlinePixels.width = 1;
+  r.inlinePixels.height = 1;
+  r.inlinePixels.numComponents = 4;
+  r.inlinePixels.data = {v, v, v, 255};
+  return r;
 }
 
 static std::vector<EyeLight> oneLight() {
@@ -101,6 +115,51 @@ int main() {
     FragmentShader fs = makePhongShader(m, lights, false);
     g::vec4 o; bool kept = fs(f, o);
     CHECK(!kept); // discarded.
+  }
+
+  // ---- AO source: occlusionTexture only, never derived from the MR texture ----
+  {
+    // MR texture present with a BLACK R channel + a WHITE occlusion texture.
+    // Old code read AO from tx.mr.x (=0) and ignored the bound occlusion slot;
+    // correct code reads the occlusion slot (=1) -> full ambient, no darkening.
+    ex::MaterialDesc m;
+    m.model = ex::MaterialModel::Physical;
+    m.physical.baseColor = {1, 1, 1};
+    m.physical.metallic = 0.0f;
+    m.physical.roughness = 0.5f;
+    m.physical.occlusionStrength = 1.0f;
+    m.textures.push_back(inlineRef(ex::TextureRef::Slot::MetallicRoughness, 0));
+    m.textures.push_back(inlineRef(ex::TextureRef::Slot::Occlusion, 255));
+    FragmentShader fs = makePbrShader(m, {}, /*hasColors=*/false);
+    g::vec4 o; fs(f, o);
+    CHECK(o.x > 0.1f); // ambient survives: AO came from occlusion (1), not MR (0).
+  }
+  {
+    // MR texture present (black R), NO occlusion bound: AO must be 1 (the MR
+    // texture's R is not an occlusion source), not the MR R value.
+    ex::MaterialDesc m;
+    m.model = ex::MaterialModel::Physical;
+    m.physical.baseColor = {1, 1, 1};
+    m.physical.metallic = 0.0f;
+    m.physical.roughness = 0.5f;
+    m.physical.occlusionStrength = 1.0f;
+    m.textures.push_back(inlineRef(ex::TextureRef::Slot::MetallicRoughness, 0));
+    FragmentShader fs = makePbrShader(m, {}, /*hasColors=*/false);
+    g::vec4 o; fs(f, o);
+    CHECK(o.x > 0.1f); // no AO darkening from the MR texture.
+  }
+  {
+    // Control: a bound occlusion texture with a BLACK R channel DOES darken.
+    ex::MaterialDesc m;
+    m.model = ex::MaterialModel::Physical;
+    m.physical.baseColor = {1, 1, 1};
+    m.physical.metallic = 0.0f;
+    m.physical.roughness = 0.5f;
+    m.physical.occlusionStrength = 1.0f;
+    m.textures.push_back(inlineRef(ex::TextureRef::Slot::Occlusion, 0));
+    FragmentShader fs = makePbrShader(m, {}, /*hasColors=*/false);
+    g::vec4 o; fs(f, o);
+    CHECK(o.x < 0.02f); // AO=0 -> ambient term vanishes.
   }
 
   if (failures) { std::fprintf(stderr, "material_shader_test: %d failure(s)\n", failures); return 1; }

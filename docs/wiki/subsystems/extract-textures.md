@@ -2,7 +2,7 @@
 title: Texture, Material, and Light Extraction
 summary: Texture descriptor extraction, material system, light extraction, and the asset-resolver seam used by rendering consumers.
 tags: [subsystem, extract, textures, materials, lights, asset-resolver]
-updated: 2026-06-20
+updated: 2026-09-26
 related:
   - ../architecture.md
   - extract.md
@@ -69,6 +69,8 @@ void enrichTextureRefs(std::vector<TextureRef> &refs,
 `applyTextureTransformToMesh` bakes the §18.4.10 UV transform into `MeshData::texcoords` in place; identity transforms early-exit with no allocation, keeping untransformed mesh bytes unchanged.
 
 `resolveTextureRefs` applies the MFString fallback order (first non-failed URL wins) and threads decoded pixels from the `TextureResolver` callback onto `TextureRef::resolvedPixels`. `Source::Inline` (PixelTexture) and `Source::Movie` refs are skipped.
+
+`extendedSamplerOf` resolves the full §18.4.9 sampler state onto `TextureRef::extSampler`: boundary modes S/T/R (`REPEAT`, `CLAMP`, `CLAMP_TO_EDGE`, `CLAMP_TO_BOUNDARY`, `MIRRORED_REPEAT`), magnification/minification filters, `generateMipMaps`, and anisotropy. When a `TextureProperties` node is present it governs and the texture node's `repeatS`/`repeatT` are ignored (§18.4.9); otherwise the boundary modes derive from `repeatS`/`repeatT` (`Repeat` / `ClampToEdge` per §18.2.3). The CPU reference sampler (`examples/cpu_raster/cpuraster/Texture.hpp`) consumes this state and implements REPEAT, CLAMP, CLAMP_TO_EDGE, CLAMP_TO_BOUNDARY (border color = the `TextureProperties` default `0,0,0,0`; `borderColor` is not extracted) and MIRRORED_REPEAT, plus magnification nearest-vs-bilinear. Each mode clamps to its own §18.4.9 Table 18.7 range: CLAMP to `[0,1]`, CLAMP_TO_EDGE to `[1/(2N), 1-1/(2N)]`, CLAMP_TO_BOUNDARY to `[-1/(2N), 1+1/(2N)]`, and MIRRORED_REPEAT is mirrored then clamped as CLAMP_TO_EDGE. Under bilinear filtering CLAMP and CLAMP_TO_BOUNDARY let the outermost taps read the border color, so CLAMP differs from CLAMP_TO_EDGE near a texture edge. **Mipmapping (the minification filters) is not implemented** — the CPU sampler has a single mip level. See TXF-4.
 
 **Lights**
 

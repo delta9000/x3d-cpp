@@ -189,6 +189,102 @@ int main() {
     CHECK(kept(ex::AlphaMode::Mask, 0.05f, 0.9f));  // above cutoff -> kept.
   }
 
+  // ---- 14. plain (non-uniform) globals are per-fragment-invocation ----
+  // The interpreter is reused for every fragment of a draw; a global written by
+  // main() must not leak into the next invocation. Two consecutive fragments of
+  // a shader that increments/scales a global must produce identical colors.
+  {
+    InterpretedProgram prog;
+    std::string err;
+    CHECK(prog.compile("float acc; vec3 tint = vec3(0.25);"
+                       " void main(){ acc += 1.0; tint *= 2.0;"
+                       "   FragColor = vec4(tint * acc, 1.0); }",
+                       &err));
+    FragmentShader fs = makeInterpretedShader(prog, ex::MaterialDesc{}, {}, false);
+    g::vec4 a, b;
+    bool ok1 = fs(f, a);
+    bool ok2 = fs(f, b);
+    CHECK(ok1 && ok2);
+    CHECK(near(a.x, 0.5f) && near(a.y, 0.5f) && near(a.z, 0.5f) && near(a.w, 1.0f));
+    CHECK(a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w);
+  }
+
+  // ---- 15. control flow: Flow propagation ----
+  // return/break/continue/discard are a Flow value that unwinds through blocks,
+  // loop nests and user-function calls. Each case asserts its exact result.
+
+  // discard inside a called function (as a statement) kills the fragment.
+  {
+    g::vec4 o = run("void kill(){ discard; }"
+                    " void main(){ FragColor = vec4(1.0,0.0,0.0,1.0); kill(); }",
+                    f, disc);
+    (void)o;
+    CHECK(disc);
+  }
+
+  // discard inside a function called from within an expression also kills it.
+  {
+    g::vec4 o = run("float bad(){ discard; return 1.0; }"
+                    " void main(){ FragColor = vec4(bad(), 0.0, 0.0, 1.0); }",
+                    f, disc);
+    (void)o;
+    CHECK(disc);
+  }
+
+  // return exits both nested loops, so the trailing FragColor write is skipped
+  // and the pre-loop colour survives.
+  {
+    g::vec4 o = run("void main(){ FragColor = vec4(0.0,0.0,0.0,1.0);"
+                    " for (int i = 0; i < 3; i++)"
+                    "   for (int j = 0; j < 3; j++)"
+                    "     if (i == 1 && j == 1) return;"
+                    " FragColor = vec4(1.0,0.0,0.0,1.0); }", f, disc);
+    CHECK(!disc && near(o.x, 0.0f) && near(o.y, 0.0f) && near(o.z, 0.0f));
+  }
+
+  // break and continue in a nested loop: continue skips the current inner
+  // iteration, break leaves the inner loop, a break in the outer loop stops all.
+  {
+    g::vec4 o = run("void main(){ float s = 0.0;"
+                    " for (int i = 0; i < 4; i++) {"
+                    "   if (i == 3) break;"
+                    "   for (int j = 0; j < 4; j++) {"
+                    "     if (j == 2) continue;"
+                    "     if (j == 3) break;"
+                    "     s += 1.0; } }"
+                    " FragColor = vec4(s, 0.0, 0.0, 1.0); }", f, disc);
+    CHECK(!disc && near(o.x, 6.0f));
+  }
+
+  // early return with a value selects the branch.
+  {
+    g::vec4 o = run("float pick(float x){ if (x > 0.0) return 1.0; return 0.0; }"
+                    " void main(){ FragColor = vec4(pick(1.0), pick(-1.0), 0.0, 1.0); }",
+                    f, disc);
+    CHECK(!disc && near(o.x, 1.0f) && near(o.y, 0.0f));
+  }
+
+  // break inside a nested block still unwinds the enclosing loop.
+  {
+    g::vec4 o = run("void main(){ float s = 0.0;"
+                    " for (int i = 0; i < 5; i++) {"
+                    "   { if (i == 2) break; }"
+                    "   s += 1.0; }"
+                    " FragColor = vec4(s, 0.0, 0.0, 1.0); }", f, disc);
+    CHECK(!disc && near(o.x, 2.0f));
+  }
+
+  // discard inside a nested loop kills the fragment.
+  {
+    g::vec4 o = run("void main(){"
+                    " for (int i = 0; i < 3; i++)"
+                    "   for (int j = 0; j < 3; j++)"
+                    "     if (i == 1 && j == 1) discard;"
+                    " FragColor = vec4(1.0,0.0,0.0,1.0); }", f, disc);
+    (void)o;
+    CHECK(disc);
+  }
+
   if (failures) { std::fprintf(stderr, "glsl_interp_test: %d failure(s)\n", failures); return 1; }
   std::printf("glsl_interp_test: OK\n");
   return 0;

@@ -6,7 +6,7 @@
 # Positional args:
 #   $1  path to the x3d_cli binary (passed via CMake generator expression)
 #   $2  path to the in-repo fixture directory (tools/x3d-cli/fixtures/)
-#   $5  repo root (for the gallery/smoke scene profile gate — see below)
+#   $5  repo root (for the gallery/smoke scene asset-hygiene gate — see below)
 #
 # Tests:
 #   1. --help exits 0 and mentions 'convert'
@@ -836,16 +836,23 @@ if [[ -f "$FIXTURE_DMP" ]]; then
 fi
 
 # ════════════════════════════════════════════════════════════════════════════
-# Gallery/smoke scene profile gate: `x3d validate` must exit 0 on every
-# first-party showcase/smoke scene committed under examples/cpu_raster/assets/
-# (the cpu_raster "gallery" hero scenes, the lion_head demo model + its studio
-# wrappers, and the flagship raster_smoke.x3d + its sibling smoke scenes).
-# These ship as documentation/demo material (README "try it" pointers,
-# docs/images/gallery/*.png) — a declared profile narrower than the content
-# (e.g. "Interchange" with a PhysicalMaterial or NURBS node) makes `x3d
-# validate` fail with "component ... exceeds declared profile" (exit 3).
-# Regression test for that class of bug (task: fix declared X3D profiles on
-# first-party showcase/gallery scenes).
+# Gallery/smoke scene asset-hygiene gate. For every first-party showcase/smoke
+# scene committed under examples/cpu_raster/assets/ (the cpu_raster "gallery"
+# hero scenes, the lion_head demo model + its studio wrappers, and the flagship
+# raster_smoke.x3d + its sibling smoke scenes) this asserts TWO things:
+#
+#   (1) profile correctness — `x3d validate` must exit 0. These ship as
+#       documentation/demo material (README "try it" pointers,
+#       docs/images/gallery/*.png); a declared profile narrower than the content
+#       (e.g. "Interchange" with a PhysicalMaterial or NURBS node) makes
+#       `x3d validate` fail with "component ... exceeds declared profile" (exit 3).
+#   (2) non-emptiness — `x3d extract` (the full SceneExtractor pipeline) must
+#       yield > 0 triangles. A scene that passes profile validation can still be
+#       silently empty/unrenderable (geometry deleted, a group reparented away),
+#       which only shows up when someone renders it by hand. Triangle count is an
+#       adequate proxy for "has renderable geometry"; no separate flag is needed.
+#
+# Regression tests for both classes of bug (task: first-party asset hygiene).
 # ════════════════════════════════════════════════════════════════════════════
 
 if [[ -n "$REPO_ROOT" ]]; then
@@ -865,7 +872,7 @@ if [[ -n "$REPO_ROOT" ]]; then
     )
     for scene in "${GALLERY_SCENES[@]}"; do
         if [[ ! -f "$scene" ]]; then
-            echo "FAIL: gallery/smoke scene profile gate — missing scene: $scene"
+            echo "FAIL: gallery/smoke scene asset-hygiene gate — missing scene: $scene"
             failures=$(( failures + 1 ))
             continue
         fi
@@ -879,9 +886,21 @@ if [[ -n "$REPO_ROOT" ]]; then
             echo "$out" | sed 's/^/      /'
             failures=$(( failures + 1 ))
         fi
+
+        # (2) non-empty geometry: `x3d extract` prints "extract: N triangle(s)".
+        exout=$("$CLI" extract "$scene" -o "$TD/gallery_scene.stl" 2>&1)
+        tris=$(printf '%s\n' "$exout" \
+            | sed -n 's/.*extract: \([0-9][0-9]*\) triangle(s).*/\1/p' | tail -1)
+        if [[ -n "$tris" && "$tris" -gt 0 ]]; then
+            echo "ok:   extract $rel yields $tris triangle(s)"
+        else
+            echo "FAIL: extract $rel yielded ${tris:-no} triangle(s) (expected > 0) — scene is empty/unrenderable"
+            echo "$exout" | sed 's/^/      /'
+            failures=$(( failures + 1 ))
+        fi
     done
 else
-    echo "SKIP: gallery/smoke scene profile gate (no repo root arg provided)"
+    echo "SKIP: gallery/smoke scene asset-hygiene gate (no repo root arg provided)"
 fi
 
 # ── summary ───────────────────────────────────────────────────────────────────

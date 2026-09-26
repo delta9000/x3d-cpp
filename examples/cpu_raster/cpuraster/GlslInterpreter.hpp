@@ -83,11 +83,9 @@ struct Value {
   glsl::vec4 vec4v() const { return {f[0], f[1], f[2], f[3]}; }
 };
 
-// Control-flow signals (clean, simple tree-walk).
-struct ReturnSignal { Value v; };
-struct BreakSignal {};
-struct ContinueSignal {};
-struct DiscardSignal {};
+// Control-flow status returned up through statement execution (a status enum
+// rather than C++ exceptions, which were the per-fragment hot-path cost).
+enum class Flow : std::uint8_t { Normal, Return, Break, Continue, Discard };
 struct GlslError : std::runtime_error { using std::runtime_error::runtime_error; };
 
 // ===========================================================================
@@ -491,6 +489,18 @@ public:
   // Per-fragment derivative inputs for dFdx/dFdy (set by the host).
   const FragmentInput *frag = nullptr;
 
+  // Reset per-fragment state so one Interpreter can run every fragment of a
+  // draw: drop any scopes left by a thrown GlslError, reset the step budget, and
+  // rebind the derivative inputs. Uniforms stay shared in the global scope;
+  // every non-uniform/const global is re-initialized each fragment because run()
+  // re-executes the program's global-init statements on every invocation.
+  void beginFragment(const FragmentInput &f) {
+    steps_ = 0;
+    scopes.resize(1);
+    frag = &f;
+    discarded_ = false;
+  }
+
   void define(const std::string &n, Value v) { scopes.back()[n] = std::move(v); }
   void defineGlobal(const std::string &n, Value v) { scopes.front()[n] = std::move(v); }
 
@@ -502,51 +512,78 @@ public:
     return nullptr;
   }
 
-  void run(const std::vector<StmtP> &globalInits, const std::string &entry) {
-    for (const StmtP &s : globalInits) exec(s);
+  Flow run(const std::vector<StmtP> &globalInits, const std::string &entry) {
+    for (const StmtP &s : globalInits) {
+      Flow f = exec(s);
+      if (f != Flow::Normal) return f;
+    }
     auto it = funcs_.find(entry);
     if (it == funcs_.end()) throw GlslError("no '" + entry + "' function");
-    callUser(it->second, {});
+    Value ret;
+    Flow f = callUser(it->second, {}, ret);
+    if (discarded_) f = Flow::Discard;
+    return f;
   }
 
   // ---- statement execution ----
-  void exec(const StmtP &s) {
+  Flow exec(const StmtP &s) {
     if (++steps_ > kStepCap) throw GlslError("step limit exceeded (runaway shader)");
     switch (s->k) {
-      case Stmt::K::Expr: eval(s->expr); break;
+      case Stmt::K::Expr:
+        eval(s->expr);
+        return discarded_ ? Flow::Discard : Flow::Normal;
       case Stmt::K::Decl: {
         Value v = s->init ? coerce(eval(s->init), s->declType) : zeroOf(s->declType);
-        define(s->declName, v); break;
+        if (discarded_) return Flow::Discard;
+        define(s->declName, v);
+        return Flow::Normal;
       }
       case Stmt::K::Block: {
         scopes.emplace_back();
-        for (const StmtP &b : s->body) exec(b);
-        scopes.pop_back(); break;
+        Flow f = Flow::Normal;
+        for (const StmtP &b : s->body) { f = exec(b); if (f != Flow::Normal) break; }
+        scopes.pop_back();
+        return f;
       }
       case Stmt::K::If: {
-        if (eval(s->expr).asBool()) { for (const StmtP &b : s->body) exec(b); }
-        else { for (const StmtP &b : s->elseBody) exec(b); }
-        break;
+        const std::vector<StmtP> &branch = eval(s->expr).asBool() ? s->body : s->elseBody;
+        if (discarded_) return Flow::Discard;
+        Flow f = Flow::Normal;
+        for (const StmtP &b : branch) { f = exec(b); if (f != Flow::Normal) break; }
+        return f;
       }
       case Stmt::K::For: {
         scopes.emplace_back();
-        if (s->forInit) exec(s->forInit);
+        if (s->forInit) { Flow f = exec(s->forInit); if (f != Flow::Normal) { scopes.pop_back(); return f; } }
         int guard = 0;
-        while (!s->forCond || eval(s->forCond).asBool()) {
+        for (;;) {
+          if (s->forCond) {
+            bool c = eval(s->forCond).asBool();
+            if (discarded_) { scopes.pop_back(); return Flow::Discard; }
+            if (!c) break;
+          }
           if (++guard > kLoopCap) throw GlslError("loop limit exceeded");
-          try {
-            for (const StmtP &b : s->body) exec(b);
-          } catch (const BreakSignal &) { break; }
-          catch (const ContinueSignal &) { /* fall to step */ }
-          if (s->forStep) eval(s->forStep);
+          Flow f = Flow::Normal;
+          for (const StmtP &b : s->body) { f = exec(b); if (f != Flow::Normal) break; }
+          if (f == Flow::Break) break;
+          if (f != Flow::Normal && f != Flow::Continue) { scopes.pop_back(); return f; }
+          if (s->forStep) {
+            eval(s->forStep);
+            if (discarded_) { scopes.pop_back(); return Flow::Discard; }
+          }
         }
-        scopes.pop_back(); break;
+        scopes.pop_back();
+        return Flow::Normal;
       }
-      case Stmt::K::Return: throw ReturnSignal{ s->expr ? eval(s->expr) : Value{} };
-      case Stmt::K::Discard: throw DiscardSignal{};
-      case Stmt::K::Break: throw BreakSignal{};
-      case Stmt::K::Continue: throw ContinueSignal{};
+      case Stmt::K::Return: {
+        retVal_ = s->expr ? eval(s->expr) : Value{};
+        return discarded_ ? Flow::Discard : Flow::Return;
+      }
+      case Stmt::K::Discard: return Flow::Discard;
+      case Stmt::K::Break: return Flow::Break;
+      case Stmt::K::Continue: return Flow::Continue;
     }
+    return Flow::Normal;
   }
 
   // ---- expression evaluation ----
@@ -768,7 +805,12 @@ private:
 
     // User function.
     auto it = funcs_.find(name);
-    if (it != funcs_.end()) return callUser(it->second, a);
+    if (it != funcs_.end()) {
+      Value ret;
+      Flow f = callUser(it->second, a, ret);
+      if (f == Flow::Discard) discarded_ = true;
+      return ret;
+    }
 
     throw GlslError("unknown function '" + name + "'");
   }
@@ -902,20 +944,22 @@ private:
     return r;
   }
 
-  Value callUser(const Function &fn, const std::vector<Value> &args) {
+  Flow callUser(const Function &fn, const std::vector<Value> &args, Value &ret) {
     scopes.emplace_back();
     for (std::size_t i = 0; i < fn.params.size() && i < args.size(); ++i)
       define(fn.params[i].second, coerce(args[i], fn.params[i].first));
-    Value ret;
-    try {
-      for (const StmtP &s : fn.body) exec(s);
-    } catch (const ReturnSignal &r) { ret = r.v; }
+    ret = Value{};
+    Flow f = Flow::Normal;
+    for (const StmtP &s : fn.body) { f = exec(s); if (f != Flow::Normal) break; }
+    if (f == Flow::Return) { ret = retVal_; f = Flow::Normal; }
     scopes.pop_back();
-    return ret;
+    return f;
   }
 
   const std::unordered_map<std::string, Function> &funcs_;
   long steps_ = 0;
+  Value retVal_;      // return value of the innermost Return.
+  bool discarded_ = false; // a discard inside a called-from-expression function.
 };
 
 // ===========================================================================
@@ -1025,12 +1069,15 @@ makeInterpretedShader(const InterpretedProgram &prog,
   const InterpretedProgram *pp = &prog;
   glsl::vec4 fallback = glsl::vec4(material.toRGBA());
 
-  return [pp, base, tx, hasColors, fallback](const FragmentInput &f,
-                                             glsl::vec4 &out) -> bool {
-    Interpreter interp(pp->functions());
-    interp.frag = &f;
-    // Global scope: uniforms + varyings.
-    for (const auto &kv : *base) interp.defineGlobal(kv.first, kv.second);
+  // Seed the uniforms once; the interpreter is reused for every fragment of the
+  // draw, resetting only the per-fragment varyings/locals in beginFragment().
+  Interpreter interp(pp->functions());
+  for (const auto &kv : *base) interp.defineGlobal(kv.first, kv.second);
+
+  return [pp, tx, hasColors, fallback, interp](const FragmentInput &f,
+                                             glsl::vec4 &out) mutable -> bool {
+    (void)tx; // keep the sampler texture storage alive for interp's pointers.
+    interp.beginFragment(f);
     interp.defineGlobal("vPosEye", Value::v3(f.posEye));
     interp.defineGlobal("vNormalEye", Value::v3(f.normalEye));
     interp.defineGlobal("vColor", Value::v4(f.color));
@@ -1038,14 +1085,14 @@ makeInterpretedShader(const InterpretedProgram &prog,
     interp.defineGlobal("gl_FrontFacing", Value::boolean(f.frontFacing));
     interp.defineGlobal("uHasColors", Value::integer(hasColors ? 1 : 0));
     interp.defineGlobal("FragColor", Value::v4(fallback));
+    Flow flow;
     try {
-      interp.run(pp->globalInits(), "main");
-    } catch (const DiscardSignal &) {
-      return false;
+      flow = interp.run(pp->globalInits(), "main");
     } catch (const std::exception &) {
       out = fallback; // a runtime error draws the flat material color (robust).
       return true;
     }
+    if (flow == Flow::Discard) return false;
     Value *fc = interp.find("FragColor");
     out = fc ? fc->vec4v() : fallback;
     return true;

@@ -16,10 +16,11 @@
 //   M3 (task T12): per-pixel LIGHTING (Lambert + ambient, two-sided
 //     N=gl_FrontFacing?N:-N via lit.vert/lit.frag), MaterialDesc color
 //     (diffuse/emissive/transparency + per-vertex Color override), and per-draw
-//     back-face CULLING honoring MeshData.ccw/solid. The no-explicit-light
-//     fallback is the bound NavigationInfo headlight (a camera-space directional
-//     light); otherwise the extractor's world-resolved LightDesc Directionals
-//     are used (global=false lights are NOT promoted to scene-wide).
+//     back-face CULLING honoring MeshData.ccw/solid. The bound NavigationInfo
+//     headlight (§23.4.4) is an additional camera-space directional light
+//     whenever headlight is TRUE (default), independent of the scene's lights;
+//     the extractor's world-resolved LightDesc Directionals (global=false lights
+//     are NOT promoted to scene-wide) light the scene too.
 //
 // PHASE 5 (material-shader PoC program):
 //   Per-program dispatch in drawItem: unlit / phong / pbr / author-shader.
@@ -47,7 +48,7 @@
 //   With no scene argument it loads the bundled assets/triangle.x3d (first-light).
 //   --headless parses + extracts the scene, prints the RenderItem count, the
 //     first item's vertex count, and the T12 lit self-check (headlight flag,
-//     active light count incl. the headlight fallback, and item[0]'s material
+//     active light count incl. the §23.4.4 headlight, and item[0]'s material
 //     color + whether its mesh carries shading normals), then exits 0 WITHOUT
 //     ever creating a GL context or a window. This is the build-side acceptance
 //     probe: it runs in CI / over SSH with no display, proving the asset parses
@@ -331,6 +332,7 @@ SFVec3f toEyeDir(const Mat4 &view, const SFVec3f &worldDir) {
 struct EyeLight {
   SFVec3f dirEye{0.0f, 0.0f, -1.0f};
   SFColor color{1.0f, 1.0f, 1.0f}; // already * intensity.
+  float ambientIntensity = 0.0f;   // §17.2.2.4 per-light ambientIntensity.
 };
 
 inline constexpr int kMaxLights = 8;
@@ -345,34 +347,40 @@ inline constexpr int kMaxBgBands = 8;
 // extractor's world-resolved LightDesc list and the bound NavigationInfo
 // headlight flag.
 //
-// FALLBACK RULE (T12): if NO directional light contributes, the bound
-// NavigationInfo headlight (default true) supplies a single camera-space light
-// pointing straight down -Z (the view direction), so an otherwise-unlit corpus
-// scene still shades. When explicit Directional lights exist we honor them and
-// do NOT add the headlight on top (a scene that authored lights chose its own
-// lighting). global=false DirectionalLights are NOT promoted to scene-wide here;
-// for this PoC we still draw them (the dominant corpus case is a single global
-// headlight-style light), but a scoped light's scopeRoot is carried on LightDesc
-// for a future per-subtree pass — we do not blanket-illuminate from it beyond
-// the documented PoC simplification.
+// HEADLIGHT (§23.4.4): headlight TRUE (default) means the browser turns the
+// headlight ON regardless of the scene's own lights; FALSE turns it off. So the
+// camera-space headlight is added whenever headlightOn, on top of any authored
+// directional lights (it is not a no-lights fallback). global=false
+// DirectionalLights are NOT promoted to scene-wide here; for this PoC we still
+// draw them (the dominant corpus case is a single global headlight-style light),
+// but a scoped light's scopeRoot is carried on LightDesc for a future
+// per-subtree pass — we do not blanket-illuminate from it beyond the documented
+// PoC simplification.
 std::vector<EyeLight> buildEyeLights(const std::vector<ex::LightDesc> &lights,
                                      const Mat4 &view, bool headlightOn) {
   std::vector<EyeLight> out;
+  // Reserve a slot for the headlight so it is never dropped by the cap.
+  const std::size_t cap = headlightOn ? static_cast<std::size_t>(kMaxLights - 1)
+                                      : static_cast<std::size_t>(kMaxLights);
   for (const ex::LightDesc &L : lights) {
     if (L.type != ex::LightDesc::Type::Directional) continue; // PoC: directional only.
-    if (static_cast<int>(out.size()) >= kMaxLights) break;
+    if (out.size() >= cap) break;
     EyeLight e;
     e.dirEye = toEyeDir(view, L.worldDirection);
     e.color = SFColor{L.color.r * L.intensity, L.color.g * L.intensity,
                       L.color.b * L.intensity};
+    e.ambientIntensity = L.ambientIntensity;
     out.push_back(e);
   }
 
-  // No explicit directional contribution => NavigationInfo headlight fallback.
-  if (out.empty() && headlightOn) {
+  // §23.4.4: headlight TRUE => a headlight regardless of scene lights.
+  if (headlightOn) {
     EyeLight head;
     head.dirEye = SFVec3f{0.0f, 0.0f, -1.0f}; // straight down the camera's -Z.
     head.color = SFColor{1.0f, 1.0f, 1.0f};
+    // §23.4.4 pins the headlight exactly: intensity 1, color (1 1 1),
+    // ambientIntensity 0.0, direction (0 0 -1).
+    head.ambientIntensity = 0.0f;
     out.push_back(head);
   }
   return out;
@@ -907,9 +915,11 @@ int main(int argc, char **argv) {
     // T12 lit self-check (no GL): confirm the shading inputs the lit path needs
     // are present at the seam — the bound NavigationInfo headlight flag, the
     // active world-resolved light count, and the first item's material color +
-    // whether its mesh carries normals (a lit draw needs a shading normal). When
-    // no directional light contributes, the headlight fallback supplies one, so
-    // the effective lit-light count is max(directional, headlight?1:0).
+    // whether its mesh carries normals (a lit draw needs a shading normal). Per
+    // §23.4.4 the headlight is added on top of any authored directional lights
+    // when headlight is TRUE, so the effective lit-light count is
+    // min(directional, cap) + (headlight?1:0), where the headlight reserves one
+    // of the kMaxLights slots.
     bool headlightOn = true;
     if (const X3DNode *nav = ctx.boundNavigationInfo())
       headlightOn =
@@ -918,8 +928,11 @@ int main(int argc, char **argv) {
     std::size_t directional = 0;
     for (const auto &L : lights)
       if (L.type == ex::LightDesc::Type::Directional) ++directional;
+    const std::size_t dirCap =
+        headlightOn ? static_cast<std::size_t>(kMaxLights - 1)
+                    : static_cast<std::size_t>(kMaxLights);
     const std::size_t litLights =
-        directional ? directional : (headlightOn ? 1u : 0u);
+        std::min(directional, dirCap) + (headlightOn ? 1u : 0u);
     bool firstHasNormals =
         items ? extractor.item(snap.added.front()).mesh->hasNormals : false;
     SFColorRGBA c0 =
@@ -1062,6 +1075,7 @@ int main(int argc, char **argv) {
   const GLint uNumLights = phongProg ? glGetUniformLocation(phongProg, "uNumLights") : -1;
   const GLint uLightDirEye = phongProg ? glGetUniformLocation(phongProg, "uLightDirEye") : -1;
   const GLint uLightColor = phongProg ? glGetUniformLocation(phongProg, "uLightColor") : -1;
+  const GLint uLightAmbient = phongProg ? glGetUniformLocation(phongProg, "uLightAmbient") : -1;
   // B7 Blinn-Phong specular + alpha-mask uniforms.
   const GLint uSpecular = phongProg ? glGetUniformLocation(phongProg, "uSpecular") : -1;
   const GLint uShininess = phongProg ? glGetUniformLocation(phongProg, "uShininess") : -1;
@@ -1154,6 +1168,7 @@ int main(int argc, char **argv) {
   const GLint uPbrNumLights    = pbrProg ? glGetUniformLocation(pbrProg, "uNumLights") : -1;
   const GLint uPbrLightDirEye  = pbrProg ? glGetUniformLocation(pbrProg, "uLightDirEye") : -1;
   const GLint uPbrLightColor   = pbrProg ? glGetUniformLocation(pbrProg, "uLightColor") : -1;
+  const GLint uPbrLightAmbient = pbrProg ? glGetUniformLocation(pbrProg, "uLightAmbient") : -1;
   const GLint uPbrHasColors    = pbrProg ? glGetUniformLocation(pbrProg, "uHasColors") : -1;
   // PBR texture slots (unit 0=baseColor, 1=normal, 2=emissive, 3=metallicRoughness, 4=occlusion).
   const GLint uPbrBaseColorTex = pbrProg ? glGetUniformLocation(pbrProg, "uBaseColorTex") : -1;
@@ -1333,8 +1348,8 @@ int main(int argc, char **argv) {
   // and picks the front-face winding for its own mesh.
   glDisable(GL_CULL_FACE);
 
-  // NavigationInfo headlight flag (default true). When a scene authors no
-  // directional light, this drives the camera-space headlight fallback.
+  // NavigationInfo headlight flag (default true). §23.4.4: headlight TRUE adds
+  // a camera-space headlight regardless of the scene's own lights.
   bool headlightOn = true;
   if (const X3DNode *nav = ctx.boundNavigationInfo()) {
     headlightOn =
@@ -1517,7 +1532,7 @@ int main(int argc, char **argv) {
 
     if ((phongProg || unlitProg || pbrProg) && !gpuMeshes.empty()) {
       // Resolve the active lights to eye space (world-resolved LightDescs from
-      // the extractor + the NavigationInfo headlight fallback when none apply).
+      // the extractor + the §23.4.4 NavigationInfo headlight when headlight is on).
       std::vector<ex::LightDesc> lights = extractor.lights();
       std::vector<EyeLight> eyeLights =
           buildEyeLights(lights, view, headlightOn);
@@ -1525,6 +1540,7 @@ int main(int argc, char **argv) {
       // Flatten into contiguous arrays for the uniform array upload.
       float lightDir[kMaxLights * 3] = {0};
       float lightCol[kMaxLights * 3] = {0};
+      float lightAmb[kMaxLights] = {0};
       for (int i = 0; i < numLights && i < kMaxLights; ++i) {
         lightDir[i * 3 + 0] = eyeLights[i].dirEye.x;
         lightDir[i * 3 + 1] = eyeLights[i].dirEye.y;
@@ -1532,6 +1548,7 @@ int main(int argc, char **argv) {
         lightCol[i * 3 + 0] = eyeLights[i].color.r;
         lightCol[i * 3 + 1] = eyeLights[i].color.g;
         lightCol[i * 3 + 2] = eyeLights[i].color.b;
+        lightAmb[i] = eyeLights[i].ambientIntensity;
       }
 
       // Helper: bind a texture on the given unit; fall back to whiteTex if tex==0.
@@ -1544,11 +1561,13 @@ int main(int argc, char **argv) {
       };
 
       // Helper: upload standard eye-space lights to a program (already bound).
-      auto uploadLights = [&](GLint locNum, GLint locDir, GLint locCol) {
+      auto uploadLights = [&](GLint locNum, GLint locDir, GLint locCol,
+                              GLint locAmb) {
         if (locNum >= 0) glUniform1i(locNum, numLights);
         if (numLights > 0) {
           if (locDir >= 0) glUniform3fv(locDir, numLights, lightDir);
           if (locCol >= 0) glUniform3fv(locCol, numLights, lightCol);
+          if (locAmb >= 0) glUniform1fv(locAmb, numLights, lightAmb);
         }
       };
 
@@ -1637,7 +1656,7 @@ int main(int argc, char **argv) {
             glUseProgram(phongProg);
             glUniformMatrix4fv(uView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uProj, 1, GL_FALSE, proj.m.data());
-            uploadLights(uNumLights, uLightDirEye, uLightColor);
+            uploadLights(uNumLights, uLightDirEye, uLightColor, uLightAmbient);
             boundProg = phongProg;
           }
           // Per-path model + eye-space normal matrix.
@@ -1708,7 +1727,7 @@ int main(int argc, char **argv) {
             glUseProgram(pbrProg);
             glUniformMatrix4fv(uPbrView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uPbrProj, 1, GL_FALSE, proj.m.data());
-            uploadLights(uPbrNumLights, uPbrLightDirEye, uPbrLightColor);
+            uploadLights(uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
             boundProg = pbrProg;
           }
           glUniformMatrix4fv(uPbrModel, 1, GL_FALSE, it.worldTransform.m.data());

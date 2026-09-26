@@ -3,11 +3,12 @@
 <X3D profile="Interchange" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
   <head>
     <meta name="title" content="transparent_scene.x3d"/>
-    <meta name="description" content="PoC B7 transparency + specular acceptance scene. An opaque green Box (back), a half-transparent red Box (transparency=0.5, must alpha-blend and sort back-to-front), and a glossy blue Box with a strong specularColor + high shininess (Blinn-Phong highlight). A single DirectionalLight so the specular highlight is deterministic, not the headlight."/>
+    <meta name="description" content="PoC B7 transparency + specular acceptance scene. An opaque green Box (back), a half-transparent red Box (transparency=0.5, must alpha-blend and sort back-to-front), and a glossy blue Box with a strong specularColor + high shininess (Blinn-Phong highlight). A NavigationInfo headlight=false plus a single DirectionalLight so the specular highlight is deterministic, not the §23.4.4 headlight."/>
   </head>
   <Scene>
     <Viewpoint description="front" position="0 0 8" fieldOfView="0.785398"/>
     <Background skyColor="0.05 0.06 0.10"/>
+    <NavigationInfo headlight="false"/>
     <DirectionalLight direction="-0.3 -0.4 -0.85" color="1 1 1" intensity="1"/>
 
     <!-- Opaque green box, placed at the BACK (farthest from the camera). -->

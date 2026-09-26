@@ -3,15 +3,17 @@
 <X3D profile="Interchange" version="4.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
   <head>
     <meta name="title" content="lit_scene.x3d"/>
-    <meta name="description" content="PoC M3 (T12) lit acceptance scene. An explicit DirectionalLight (so the headlight fallback is NOT used), a SOLID closed IndexedFaceSet cube (back-face culling honoring ccw=true is exercised), a Box primitive with a Phong diffuse color, and a per-vertex Color IFS triangle (Color node OVERRIDES Material diffuse). Renders LIT with correct front faces."/>
+    <meta name="description" content="PoC M3 (T12) lit acceptance scene. An explicit NavigationInfo headlight=false plus a DirectionalLight (so the light is deterministic, §23.4.4 headlight explicitly off), a SOLID closed IndexedFaceSet cube (back-face culling honoring ccw=true is exercised), a Box primitive with a Phong diffuse color, and a per-vertex Color IFS triangle (Color node OVERRIDES Material diffuse). Renders LIT with correct front faces."/>
   </head>
   <Scene>
     <Viewpoint description="front" position="0 1.5 9" orientation="1 0 0 -0.15" fieldOfView="0.785398"/>
     <Background skyColor="0.07 0.09 0.14"/>
 
-    <!-- Explicit DirectionalLight from the upper-left-front. Because a
-         directional light contributes, the renderer does NOT add the
-         NavigationInfo headlight on top of it. -->
+    <!-- §23.4.4 headlight=FALSE turns the camera-space headlight off, so only
+         the explicit DirectionalLight below lights the scene. -->
+    <NavigationInfo headlight="false"/>
+
+    <!-- Explicit DirectionalLight from the upper-left-front. -->
     <DirectionalLight direction="-0.4 -0.7 -0.6" color="1 1 1" intensity="1"/>
 
     <!-- A SOLID closed cube as an IndexedFaceSet (solid=true is the default).

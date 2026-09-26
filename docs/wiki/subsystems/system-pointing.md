@@ -2,7 +2,7 @@
 title: Pointing-Device Sensor System
 summary: TouchSensor and drag sensors (PlaneSensor, SphereSensor, CylinderSensor) — pointer hit-test, grab lifecycle, and drag math, wired through the M2.5 input seam.
 tags: [subsystem, pointing, touchsensor, drag, plane-sensor, sphere-sensor, cylinder-sensor, events]
-updated: 2026-06-20
+updated: 2026-07-18
 related:
   - ../architecture.md
   - ../subsystems/sensors.md
@@ -35,7 +35,7 @@ The pure drag geometry lives in three header-only functions under `runtime/event
 | `runtime/events/drag/PlaneDrag.hpp` | Pure PlaneSensor drag math: tracking-plane intersection + per-component clamp (§20.4.2) |
 | `runtime/events/drag/SphereDrag.hpp` | Pure SphereSensor drag math: virtual-sphere intersection + relative rotation composed with offset (§20.4.3) |
 | `runtime/events/drag/CylinderDrag.hpp` | Pure CylinderSensor drag math: disk/cylinder mode decision + Y-axis angle + clamp (§20.4.1) |
-| `runtime/scene/PickSystem.hpp` | Ray pick over the scene graph (broad-phase AABB + narrow-phase analytic/mesh); produces `PickResult` with hit point, world normal, tex coord, and root-to-node `PathKey` |
+| `runtime/scene/PickSystem.hpp` | Ray pick over the scene graph via a lazily-maintained index of geometry-bearing placements (per-path world AABBs, refit on transform/bounds revision); broad-phase `rayAabb` + narrow-phase analytic/mesh; produces `PickResult` with hit point, world normal, tex coord, and root-to-node `PathKey` |
 | `runtime/events/X3DExecutionContext.hpp` | Context that owns `PointerState` and exposes `setPointer` / `setPointerButton` / `setPointerPresent` + `pick()` / `worldOf()` to the system |
 
 ## Interfaces and seams
@@ -58,9 +58,11 @@ The `Ray` carries a world-space origin and direction. The consumer is responsibl
 
 `PointerState` is a plain struct owned by `X3DExecutionContext`. `PointingSensorSystem` reads it via `ctx.pointerState()` each tick and skips processing when `ps.revision == lastRevision_`.
 
-> **No-sensor pick skip.** `ctx.pick(ps.ray)` is a whole-scene ray walk; a consumer
+> **No-sensor pick skip.** `ctx.pick(ps.ray)` is a whole-scene pick; a consumer
 > that re-feeds the pointer every frame (the OpenGL PoC does) would otherwise run it
-> on every tick. `attachInteractive` takes a one-time inventory pass (`attach` over
+> on every tick. The pick is index-backed (see *Lazy pick index* below), so on an
+> unchanged scene it costs only the broad-phase over candidate leaves rather than a
+> full graph walk. `attachInteractive` takes a one-time inventory pass (`attach` over
 > every scene node) and, when it finds **zero** pointing-device sensors, the system
 > skips the pick entirely — the pick could never resolve to a sensor. The skip is
 > conservative: if the inventory was never taken (a test that registers the system
@@ -98,6 +100,16 @@ struct PickResult {
 The `path` field is the root-to-geometry `PathKey` that the resolution walk uses to locate sensor siblings (§20.2.1 "lowest enabled sensor").
 
 `ctx.worldOf(node)` (delegating to `PickSystem::worldOf`) retrieves the accumulated world matrix for any node; the system uses it to transform hit point and normal into the sensor's local frame for `hitPoint_changed` / `hitNormal_changed` emission.
+
+### Lazy pick index
+
+`pickClosest` no longer walks the whole scene graph per pick. `PickSystem` owns an index of geometry-bearing placements — **one per PATH**, so a DEF/USE node keeps a distinct entry and world AABB for each placement — and tests them with the same `rayAabb` broad phase and existing `narrowPhase`. The index is built lazily on the first pick and thereafter:
+
+- **re-enumerated only when `TransformSystem::revision()` changes** (a structural re-index or a transform re-accumulation) or the caller passes a different `maxVisits` budget;
+- **refit only when `BoundsSystem::revision()` changes** (a geometry/bounds edit with no transform change);
+- **Billboard-affected placements are view-dependent** and therefore never cached: they live in a separate list whose world frame is re-resolved from the stored path on every pick, so a new camera pose produces a new result.
+
+Passing the live `TransformSystem*` (as `X3DExecutionContext::pick` does) enables the cache; a call with `nullptr` rebuilds each time (the old walk's result, no cache), so the direct-call API stays correct with no lifetime coupling. The `WalkBudget`/`budgetExceeded` semantics and the `MEM-1` depth/cycle guards are preserved: the enumeration spends one visit per node and stops on the same doubling-DAG fan-out, returning the same partial best-so-far. Placement order follows the DFS order, so exact-distance ties break exactly as before.
 
 ### System registration
 
@@ -161,6 +173,9 @@ Two dedicated ctest targets cover this subsystem:
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `drag_math_test`) — unit tests for the three pure drag-math functions in isolation (no node, no context). Hand-computed expected geometry for: PlaneSensor unclamped translation, offset pass-through (including `offset.z`), both-axes clamp, line-sensor (Y locked), `axisRotation` reorientation; SphereSensor trackpoint on sphere surface, 90° rotation axis/angle, identity on no-motion, offset composition; CylinderSensor cylinder mode, disk mode, DS-1 disk-plane-at-Y=0 invariant, `theta0 == diskAngle` boundary (selects cylinder), min/max clamp, offset addition.
   Source: `runtime/events/tests/drag_math_test.cpp`
 
+- `ctest --preset dev -R x3d_geometry_scene` (doctest cases: `pick_index_*`) — `runtime/scene/tests/pick_index_equivalence_test.cpp` locks the index's result equivalence to the old reflective walk (multi-mesh closest, DEF/USE per-path instancing, an animated Transform changed between picks, and a view-dependent Billboard), and `runtime/scene/tests/pick_index_perf_test.cpp` asserts the per-pick graph walk drops to zero on an unchanged scene (O(candidate leaves) instead of O(nodes)) and that a transform-revision bump forces a refit.
+  Sources: `runtime/scene/tests/pick_index_equivalence_test.cpp`, `runtime/scene/tests/pick_index_perf_test.cpp`
+
 No golden files are used for this subsystem; correctness is verified analytically against spec-derived expected values.
 
 ## Related specs and ADRs
@@ -168,7 +183,7 @@ No golden files are used for this subsystem; correctness is verified analyticall
 - [Architecture overview](../architecture.md)
 - [Sensors overview](../subsystems/sensors.md)
 - [Key-device sensor system](../subsystems/system-keydevice.md)
-- [Dirty-bounds-transform](../subsystems/dirty-bounds-transform.md) — `BoundsSystem` feeds the broad-phase AABB that `PickSystem` uses before the narrow phase
+- [Dirty-bounds-transform](../subsystems/dirty-bounds-transform.md) — `BoundsSystem` feeds the broad-phase AABB that `PickSystem` caches; its monotonic `revision()` is the pick index's refit key
 - [Execution context](../subsystems/execution-context.md) — owns `PointerState`; exposes `setPointer*`, `pick()`, `worldOf()`, and `postEvent()`
 - [Event cascade](../subsystems/event-cascade.md) — drains `postEvent` writes and fans out author ROUTEs each tick
 

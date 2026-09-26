@@ -276,6 +276,10 @@ run = "uv run python scripts/conformance_view.py generate"
 description = "Conformance gate: validate findings.yaml schema + fail on drift of the generated view (mirrors golden)."
 run = "uv run python scripts/conformance_view.py check"
 
+[tasks.sai-services]
+description = "SAI service register gate: validate docs/conformance/sai-services.yaml schema and that every cited CTest/doctest evidence name exists in the C++ test sources."
+run = "uv run python scripts/check_sai_services.py"
+
 [tasks.corpus-fetch]
 description = "Fetch the X3D test corpus (curated subset + Inline/EXTERNPROTO deps) from web3d.org into .x3d-corpus/ (or $X3D_CORPUS_DIR). ~9MB, seconds. Makes the corpus gates runnable."
 run = "scripts/fetch_corpus.sh"

@@ -13,7 +13,8 @@ related:
 The project enforces four gates, each protecting a different correctness axis. All four run
 together in `mise run ci`. Understanding what each gate protects — and how to update a
 baseline when a divergence is intentional — is the discipline backbone for working on the
-codebase.
+codebase. A fifth, the **gallery asset-hygiene gate**, protects the first-party showcase
+scenes and runs via ctest + `mise run validate-examples`; it is described at the end.
 
 ---
 
@@ -209,6 +210,46 @@ mise run docs         # local serve with live-reload at http://127.0.0.1:8000
 
 Cross-linking: use relative `.md` paths resolvable from the file's own location. Do not link
 to pages that do not yet exist in `nav:` — `--strict` will fail.
+
+---
+
+## Gate 5: GALLERY ASSET HYGIENE (ctest `x3d_cli_test` + `mise run validate-examples`)
+
+**What it protects.** The first-party showcase/gallery scenes under
+`examples/cpu_raster/assets/` — the flagship `raster_smoke.x3d` + its sibling smoke scenes,
+the `gallery/hero_*.x3d` scenes, and the `models/lion_head/` model + studio wrappers — ship
+as documentation/demo material (README "try it" pointers, `docs/images/gallery/*.png`). Two
+ways they can silently rot: a declared X3D profile narrower than the scene content, and a
+scene that becomes empty/unrenderable (geometry deleted, a group reparented away). Both are
+invisible until someone renders by hand, so the gate asserts two things over the same scene
+list:
+
+1. **Profile correctness + non-emptiness** (`tools/tests/x3d_cli_test.sh`, ctest name
+   `x3d_cli_test`). For each scene, `x3d validate` must exit 0 (catches "component … exceeds
+   declared profile"), and `x3d extract` — the full `SceneExtractor` pipeline — must yield
+   `> 0` triangles (catches the empty-scene case; triangle count is an adequate proxy for
+   "has renderable geometry"). The harness receives the repo root as its 5th argument
+   (wired in `cmake/x3d/cli.cmake`).
+2. **Non-blank render** (`scripts/validate-examples.sh`). A small deterministic subset
+   (`raster_smoke` + `gallery/hero_pbr_grid` for PhysicalMaterial + `gallery/hero_teapot_nurbs`
+   for NURBS) is rendered by `x3d_cpu_raster` at `160x120`; each PPM is checked by
+   `tools/tests/check_scene_nonblank.py`, which fails when the frame is
+   background-only (fewer than `--min` pixels differ from their row's background —
+   the row's first and last pixel — so a flat fill or a bare sky/ground gradient
+   both read as blank). No
+   rendered goldens are committed — the assertion is "a subject appeared", not a pixel match.
+
+**Running it.**
+
+```bash
+ctest --preset dev -R x3d_cli_test        # part 1 (needs the dev build)
+mise run validate-examples                # part 2 (builds cpu_raster; also needs Xvfb+mesa
+                                          #   for the unrelated poc_renderer GL smoke)
+```
+
+Both are wired into CI: part 1 rides the `cpp` job's ctest (via `mise run build`), and
+`scripts/validate-examples.sh` is the single source of truth shared by `mise run
+validate-examples` and the `examples-gate` GitHub job.
 
 ---
 

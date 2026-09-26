@@ -13,6 +13,7 @@
 #include "cpuraster/Texture.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 
@@ -130,6 +131,54 @@ int main() {
     double var = n > 0 ? (sum2 / n - (sum / n) * (sum / n)) : 0.0;
     std::fprintf(stderr, "drawn=%.0f luminance variance=%.4f\n", n, var);
     CHECK(var > 0.01); // visible texture contrast.
+  }
+
+  // ---- Wrap modes (§18.4.9): REPEAT / MIRRORED_REPEAT / CLAMP_TO_EDGE /
+  // CLAMP_TO_BOUNDARY on a tiny synthetic 4x1 ramp. Texture::fromRGBA8 takes a
+  // Sampler so we can drive each mode directly (no scene needed).
+  {
+    // 4x1 RGBA8 ramp: R=G=B = 0,85,170,255 (centers at u=0.125,0.375,0.625,0.875).
+    static const std::uint8_t px[16] = {
+        0, 0, 0, 255, 85, 85, 85, 255, 170, 170, 170, 255, 255, 255, 255, 255};
+    cr::Texture::Sampler s; // wrapS/wrapT up to each case; no sRGB decode.
+
+    s.wrapS = ex::BoundaryMode::Repeat;
+    cr::Texture rep = cr::Texture::fromRGBA8(px, 4, 1, s, false);
+    CHECK(std::fabs(rep.sample({1.25f, 0.5f}).x - rep.sample({0.25f, 0.5f}).x) < 1e-4f);
+    CHECK(std::fabs(rep.sample({-0.75f, 0.5f}).x - rep.sample({0.25f, 0.5f}).x) < 1e-4f);
+
+    s.wrapS = ex::BoundaryMode::MirroredRepeat;
+    cr::Texture mir = cr::Texture::fromRGBA8(px, 4, 1, s, false);
+    // Odd tile reflects: u=1.125 -> 1-0.125=0.875 (edge texel ~1.0); u=-0.125
+    // -> 1-0.875=0.125 (texel 0 ~0.0); u=1.875 -> 0.125.
+    CHECK(mir.sample({1.125f, 0.5f}).x > 0.9f);
+    CHECK(mir.sample({-0.125f, 0.5f}).x < 0.1f);
+    CHECK(std::fabs(mir.sample({1.875f, 0.5f}).x - mir.sample({0.125f, 0.5f}).x) < 1e-4f);
+    CHECK(mir.sample({1.125f, 0.5f}).x != rep.sample({1.125f, 0.5f}).x); // != repeat.
+
+    s.wrapS = ex::BoundaryMode::ClampToEdge;
+    cr::Texture cl = cr::Texture::fromRGBA8(px, 4, 1, s, false);
+    CHECK(cl.sample({1.5f, 0.5f}).x > 0.9f);  // clamps to the right edge (1.0).
+    CHECK(cl.sample({-0.5f, 0.5f}).x < 0.1f); // clamps to the left edge (0.0).
+
+    s.wrapS = ex::BoundaryMode::ClampToBoundary;
+    s.borderColor = {0.1f, 0.2f, 0.3f, 0.4f};
+    cr::Texture bd = cr::Texture::fromRGBA8(px, 4, 1, s, false);
+    g::vec4 bl = bd.sample({1.5f, 0.5f});
+    CHECK(std::fabs(bl.x - 0.1f) < 1e-4f && std::fabs(bl.y - 0.2f) < 1e-4f &&
+          std::fabs(bl.z - 0.3f) < 1e-4f); // outside [0,1] -> border color.
+    CHECK(bd.sample({-0.25f, 0.5f}).x < 0.1f + 1e-4f); // also out on the left.
+    CHECK(bd.sample({0.5f, 0.5f}).x > 0.1f);           // in range -> sampled, not border.
+
+    // Magnification NEAREST_PIXEL fetches one texel; DEFAULT stays bilinear.
+    s.wrapS = ex::BoundaryMode::Repeat;
+    s.nearestMagnification = true;
+    cr::Texture nn = cr::Texture::fromRGBA8(px, 4, 1, s, false);
+    s.nearestMagnification = false;
+    cr::Texture lin = cr::Texture::fromRGBA8(px, 4, 1, s, false);
+    // u=0.2: bilinear blends texel0/1 (~0.1), nearest picks texel0 (0.0).
+    CHECK(std::fabs(nn.sample({0.2f, 0.5f}).x - 0.0f) < 0.02f);
+    CHECK(lin.sample({0.2f, 0.5f}).x > 0.05f);
   }
 
   if (failures) { std::fprintf(stderr, "texture_render_test: %d failure(s)\n", failures); return 1; }

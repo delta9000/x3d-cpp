@@ -4,8 +4,8 @@
 //   * perspective() maps X3D's MIN-dimension fieldOfView to the shorter axis.
 //   * a "view-all" fit camera frames the scene's per-path world bounds when no
 //     Viewpoint is authored (X3DExecutionContext::viewMatrix() is identity then).
-//   * eye-space directional + positional (point/spot) lights + the
-//     NavigationInfo headlight fallback.
+//   * eye-space directional + positional (point/spot) lights + the §23.4.4
+//     NavigationInfo headlight (on whenever headlight is TRUE, the default).
 //   * opaque pass (depth-write) then a back-to-front transparency pass.
 //
 // Per item the shader is chosen by MaterialModel (Phong/Physical/Unlit) unless an
@@ -194,18 +194,24 @@ inline rt::Mat4 lookAt(glsl::vec3 eye, glsl::vec3 center, glsl::vec3 up) {
 
 // Build the eye-space light set: every directional, point, and spot LightDesc is
 // resolved into eye space (directions via transformDirection, positions via
-// transformPoint). If none contribute and the headlight is on, a single
-// camera-space directional light down -Z is added as the fallback.
+// transformPoint). The bound NavigationInfo headlight is added as a camera-space
+// directional light WHENEVER headlight is TRUE (default), independent of the
+// scene's own lights — §23.4.4: headlight TRUE means the browser turns on a
+// headlight regardless of other lights (FALSE turns it off).
 inline std::vector<EyeLight>
 buildEyeLights(const std::vector<rt::extract::LightDesc> &lights,
                const rt::Mat4 &view, bool headlightOn) {
   using Type = rt::extract::LightDesc::Type;
   std::vector<EyeLight> out;
+  // The headlight takes one of the 8 slots, so cap the authored lights below it
+  // (the slot is never dropped — the headlight is required regardless).
+  const std::size_t cap = headlightOn ? 7u : 8u;
   for (const auto &L : lights) {
-    if (out.size() >= 8) break;
+    if (out.size() >= cap) break;
     EyeLight e;
     e.color = glsl::vec3{L.color.r * L.intensity, L.color.g * L.intensity,
                          L.color.b * L.intensity};
+    e.ambientIntensity = L.ambientIntensity;
     if (L.type == Type::Directional) {
       e.dirEye = view.transformDirection(L.worldDirection);
     } else {
@@ -224,10 +230,13 @@ buildEyeLights(const std::vector<rt::extract::LightDesc> &lights,
     }
     out.push_back(e);
   }
-  if (out.empty() && headlightOn) {
+  if (headlightOn) {
     EyeLight h;
-    h.dirEye = glsl::vec3{0, 0, -1};
+    h.dirEye = glsl::vec3{0, 0, -1}; // straight down the camera's -Z.
     h.color = glsl::vec3{1, 1, 1};
+    // §23.4.4 pins the headlight exactly: intensity 1, color (1 1 1),
+    // ambientIntensity 0.0, direction (0 0 -1).
+    h.ambientIntensity = 0.0f;
     out.push_back(h);
   }
   return out;

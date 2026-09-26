@@ -487,6 +487,68 @@ inline TextLayoutResult computeTextLayout(
     return result;
 }
 
+// ---------------------------------------------------------------------------
+// TextExtent2D — axis-aligned 2D extent of a laid-out Text block in local text
+// space (the Z=0 plane). Shared by the Text geometry-bounds path so an injected
+// FontMetrics yields exact, culling-safe bounds without re-deriving the layout.
+// ---------------------------------------------------------------------------
+struct TextExtent2D {
+    float minX = 0.0f;
+    float minY = 0.0f;
+    float maxX = 0.0f;
+    float maxY = 0.0f;
+    bool  empty = true;
+
+    void include(float x, float y) {
+        if (empty) { minX = maxX = x; minY = maxY = y; empty = false; return; }
+        minX = std::min(minX, x); maxX = std::max(maxX, x);
+        minY = std::min(minY, y); maxY = std::max(maxY, y);
+    }
+};
+
+// Glyph-cell proportions on the minor axis, matched to the rendered quads (see
+// TextExtract): a glyph cell spans [baseline + descenderProp*size,
+// baseline + ascenderProp*size]. Kept here so bounds and renderer agree.
+inline constexpr float kGlyphAscenderProp  = 0.8f;
+inline constexpr float kGlyphDescenderProp = -0.2f;
+
+// Union of every rendered glyph cell over all lines of `layout`, in local text
+// space. The major-axis span of each line is its effective (post-length/
+// maxExtent) advance — the renderer scales glyphs to it — and the minor-axis
+// span is the baseline +/- the glyph proportions above. Conservative: covers
+// the whole glyph run, so it never under-bounds it (safe for culling).
+inline TextExtent2D textLayoutExtent(const FontStyleParams& fs,
+                                     const TextLayoutResult& layout) {
+    TextExtent2D e;
+    const std::size_t N = layout.lineBaselineOrigins.size();
+    const float size = (fs.size > 0.0f) ? fs.size : 1.0f;
+    const float lo = kGlyphDescenderProp * size;
+    const float hi = kGlyphAscenderProp  * size;
+
+    for (std::size_t i = 0; i < N; ++i) {
+        const float bx = layout.lineBaselineOrigins[i][0];
+        const float by = layout.lineBaselineOrigins[i][1];
+        const float eff = (i < layout.lineBounds.size())
+            ? (fs.horizontal ? layout.lineBounds[i].width
+                             : layout.lineBounds[i].height)
+            : 0.0f;
+        if (fs.horizontal) {
+            // Major axis = X; pen advances in +/-X, minor span in Y.
+            float x0 = bx, x1 = bx + (fs.leftToRight ? +eff : -eff);
+            if (x1 < x0) std::swap(x0, x1);
+            e.include(x0, by + lo);
+            e.include(x1, by + hi);
+        } else {
+            // Major axis = Y; pen advances in -Y when topToBottom, minor in X.
+            float y0 = by, y1 = by + (fs.topToBottom ? -eff : +eff);
+            if (y1 < y0) std::swap(y0, y1);
+            e.include(bx + lo, y0);
+            e.include(bx + hi, y1);
+        }
+    }
+    return e;
+}
+
 } // namespace x3d::runtime::extract
 
 #endif // X3D_RUNTIME_EXTRACT_TEXTLAYOUT_HPP

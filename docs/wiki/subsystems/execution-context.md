@@ -2,7 +2,7 @@
 title: Execution Context
 summary: Per-tick driver, field-write seam, and scene bridge that coordinate the runtime event loop.
 tags: [subsystem, execution-context, tick, runtime, events]
-updated: 2026-06-20
+updated: 2026-07-18
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -48,7 +48,8 @@ BridgeResult buildFrom(Scene &scene);
 ```cpp
 // Advance to time `now` (seconds). Calls every System::update, drains the
 // cascade to quiescence (ISO 19775-1 §4.4.8.3 step 4 repeated-pass loop),
-// fires post-cascade hooks, then propagates dirty transforms and bounds.
+// fires post-cascade hooks, then propagates dirty transforms (local TRS changes
+// AND DirtyChildren structural re-index) and bounds.
 void tick(double now);
 
 // Drain pending events without advancing the clock.
@@ -154,6 +155,8 @@ void setViewpointOffset(X3DNode *vp, const ViewpointOffset &off);
 const DirtyTracker &dirtyTracker() const;
 Mat4  worldTransform(const X3DNode *n) const;       // Transform node only (cached side-table)
 Mat4  worldTransformAny(const X3DNode *n) const;    // any node (Transform = own world; non-Transform = nearest ancestor Transform's world; computed live)
+Mat4  worldTransformUnder(const X3DNode *parent, const X3DNode *n) const; // Transform n through one parent edge; DEF/USE node => a world per parent
+std::uint64_t transformRevision() const;            // monotonic TransformSystem::revision() — bump per world/index change
 Aabb  localBounds(const X3DNode *n) const;
 Aabb  worldBounds(const X3DNode *n) const;          // composes localBounds with the ancestor Transform's world (via worldTransformAny)
 X3DNode *boundViewpoint() const;
@@ -165,9 +168,11 @@ void removeBoundNode(X3DNode *node);       // BIND-06: pop deleted bound node
 Mat4 viewMatrix() const;                   // world-to-camera from bound Viewpoint
 SFVec3f cameraWorldPosition() const;
 SFVec3f cameraWorldUp() const;
-PickResult pick(const Ray &worldRay) const;
+PickResult pick(const Ray &worldRay) const;  // index-backed (see below)
 Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor node
 ```
+
+`pick()` threads the live viewer pose and the context's `TransformSystem` into an index-backed `pickClosest`: the point index is rebuilt only when `transformRevision()` changes and its cached world AABBs refit only when the `BoundsSystem` revision changes, so a pick on an unchanged scene costs a broad phase over geometry-bearing placements instead of a whole-graph walk. Billboard placements are re-resolved per pick (view-dependent).
 
 ### Seam points
 
@@ -179,7 +184,7 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 
 - **`addPostCascadeHook`** — `ScriptSystem` installs `runEventsProcessed` here so `Script::eventsProcessed()` fires after the batch cascade drains (ISO 19775-1 §29.2.4). Hooks may post further events, which are drained before `tick` returns.
 
-- **`classifyDirty` (private)** — the cascade's field-delivery observer; maps any delivered `FieldAddress` to dirty flags (`DirtyField`, `DirtyLocalTransform`, `DirtyChildren`, `DirtyBounds`) on the owning node. `writeField` mirrors this classification for direct System writes (M2C-3).
+- **`classifyDirty` (private)** — the cascade's field-delivery observer; maps any delivered `FieldAddress` to dirty flags (`DirtyField`, `DirtyLocalTransform`, `DirtyChildren`, `DirtyBounds`) on the owning node. `writeField` mirrors this classification for direct System writes (M2C-3). `DirtyChildren` (a `children`/`addChildren`/`removeChildren` write, or a `Switch.whichChoice` swap) is what drives `TransformSystem`'s structural re-walk each tick (M2C-2).
 
 - **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute`, validating with **three rejection categories** (unknown field, wrong direction, type mismatch). It also registers pre-resolved PROTO-body and Inline-internal routes directly (they bypass DEF-name resolution) and applies PROTO interface `IS` redirects via `scene.protoRedirects`. Returns `BridgeResult` (count of routes added + `RouteError` diagnostics for rejected routes; dangling DEFs are skipped silently — not counted as a rejection). The attach helpers (`attachViewDependent`, `attachInterpolators`, `attachEventUtilities`, `attachKeyDeviceSensors`) walk the scene once via `detail::forEachNode` and offer every node to each System's `attach`.
 

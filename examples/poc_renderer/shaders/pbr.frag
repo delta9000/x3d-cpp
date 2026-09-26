@@ -17,10 +17,9 @@
 //   Unit 0 — base-color (uBaseColorTex / uHasBaseColorTex)   — sRGB
 //   Unit 1 — normal map (uNormalTex / uHasNormalTex)         — linear
 //   Unit 2 — emissive   (uEmissiveTex / uHasEmissiveTex)     — sRGB
-//   Unit 3 — metallic-roughness ORM (uMetallicRoughnessTex)  — linear
-//             glTF packing: R=occlusion, G=roughness, B=metallic
+//   Unit 3 — metallic-roughness (uMetallicRoughnessTex)      — linear
+//             G=roughness, B=metallic (R unused — see unit 4).
 //   Unit 4 — occlusion  (uOcclusionTex / uHasOcclusionTex)   — linear (R only)
-//             (if slot 3 already packs occlusion this may be redundant)
 //
 // OUTPUT: always sRGB (linearToSRGB applied at the end).
 // TWO-SIDED: N flipped via gl_FrontFacing, same as lit.frag.
@@ -71,6 +70,7 @@ uniform sampler2D uOcclusionTex;    // unit 4: separate occlusion (R channel).
 uniform int  uNumLights;
 uniform vec3 uLightDirEye[kMaxLights]; // direction of TRAVEL, eye space.
 uniform vec3 uLightColor[kMaxLights];  // rgb * intensity.
+uniform float uLightAmbient[kMaxLights]; // §17.2.2.4 per-light ambientIntensity.
 
 // ---- GGX BRDF helpers -------------------------------------------------------
 
@@ -120,7 +120,7 @@ void main() {
     float roughness = uRoughness;
     if (uHasMetallicRoughnessTex != 0) {
         vec3 orm = texture(uMetallicRoughnessTex, vTexCoord).rgb;
-        // glTF: G = roughness, B = metallic. R = occlusion (handled below).
+        // glTF: G = roughness, B = metallic (R unused — occlusion is separate).
         roughness *= orm.g;
         metallic  *= orm.b;
     }
@@ -128,10 +128,12 @@ void main() {
     alpha2 = alpha2 * alpha2; // perceptual roughness -> linear alpha^2
 
     // ---- Occlusion ----------------------------------------------------------
+    // AO comes ONLY from the occlusion slot (PhysicalMaterial.occlusionTexture,
+    // §12.4.6). The metallic-roughness texture carries roughness in G and
+    // metallic in B; its R channel is NOT an occlusion source unless the map is
+    // explicitly ORM-packed (the extractor emits no such marker).
     float ao = 1.0;
-    if (uHasMetallicRoughnessTex != 0) {
-        ao = texture(uMetallicRoughnessTex, vTexCoord).r; // ORM R channel.
-    } else if (uHasOcclusionTex != 0) {
+    if (uHasOcclusionTex != 0) {
         ao = texture(uOcclusionTex, vTexCoord).r;
     }
     ao = mix(1.0, ao, uOcclusionStrength);
@@ -182,6 +184,10 @@ void main() {
     vec3 color = emissive;
 
     for (int i = 0; i < uNumLights && i < kMaxLights; ++i) {
+        // §17.2.2.4 per-light ambient (normal-independent, so applied before the
+        // NdL gate below). PhysicalMaterial has no ambientIntensity field, so the
+        // ambient surface is diffColor.
+        color += diffColor * uLightColor[i] * uLightAmbient[i];
         vec3 L    = normalize(-uLightDirEye[i]); // toward light
         float NdL = max(dot(N, L), 0.0);
         if (NdL <= 0.0) continue;

@@ -2,7 +2,7 @@
 title: Scene Graph
 summary: Runtime core scene graph — DEF/USE sharing, document/scene model, and the structural systems that traverse it (transform, bounds, binding, pick, dirty-tracking, cycle safety, view-dependent).
 tags: [subsystem, scene-graph, runtime, def-use]
-updated: 2026-06-20
+updated: 2026-06-27
 related:
   - ../architecture.md
   - ../subsystems/dirty-bounds-transform.md
@@ -35,7 +35,7 @@ The subsystem does **not** own the event cascade, route propagation, or per-tick
 | `runtime/X3DDocument.hpp` | `x3d::runtime::X3DDocument` — top-level `<X3D>` object: `version`, `profile` (`Profile` enum), `head` (`Head`), `scene` (`Scene`), `rangeWarnings`, `protoWarnings`, `inlineWarnings`. Also defines `Scene::addRootNode()` (needs complete `X3DNode`). |
 | `runtime/X3DRuntime.hpp` | Umbrella include: pulls in `X3DDocument`, `X3DHeader`, `X3DImportExport`, `X3DProto`, `X3DRangeValidate`, `X3DRoute`, `X3DScene` in one include. |
 | `runtime/scene/DirtyTracker.hpp` | `DirtyTracker` — per-node dirty-category bitset + changed-node list. Categories: `DirtyLocalTransform`, `DirtyWorldTransform`, `DirtyChildren`, `DirtyField`, `DirtyBounds`. Side table; nothing stored on the node. |
-| `runtime/scene/TransformSystem.hpp` | `TransformSystem` — transform-hierarchy index + world-transform side table + incremental propagation. Covers `Transform`, `HAnimHumanoid`, `HAnimJoint`, `CADPart`. Public: `buildIndex(Scene)`, `worldTransform(node)` (Transform only), `worldTransformAny(node)` (any node — walks UP via parent index to the nearest ancestor Transform, computed live), `propagate(DirtyTracker)`, `localMatrix(node)` (static), `isTransform(node)` (static). |
+| `runtime/scene/TransformSystem.hpp` | `TransformSystem` — transform-hierarchy index + world-transform side table + incremental propagation. Covers `Transform`, `HAnimHumanoid`, `HAnimJoint`, `CADPart`. Public: `buildIndex(Scene)`, `worldTransform(node)` (Transform only), `worldTransformAny(node)` (any node — walks UP via parent index to the nearest ancestor Transform, computed live), `worldTransformUnder(parent, node)` (one parent edge; a DEF/USE node has a world per parent), `propagate(DirtyTracker)` (local transforms + `DirtyChildren` structural re-index), `revision()` (monotonic cache key), `localMatrix(node)` (static), `isTransform(node)` (static). |
 | `runtime/scene/BoundsSystem.hpp` | `BoundsSystem` — local-frame AABB per node + bottom-up propagation. `buildBounds(Scene, TransformSystem)`, `localBounds(node)`, `worldBounds(node, TransformSystem)`, `propagate(DirtyTracker, TransformSystem)`. Uses `GeometryBounds.hpp` for leaf geometry. |
 | `runtime/scene/GeometryBounds.hpp` | `localGeometryBounds(X3DNode*)` — type-dispatched local AABB for geometry nodes (Box, Sphere, Cone, Cylinder, mesh via `coord`/`controlPoint`, ElevationGrid, Extrusion, Text). Also the reflection helpers `geombounds::getField`, `getNode`, `hasField` used across the scene layer. |
 | `runtime/scene/CycleBreaker.hpp` | `breakContainmentCycles(Scene&)` — DFS severs SFNode/MFNode back-edges; returns the count of severed edges (0 on valid content). Called once in `buildSceneGraph`. |
@@ -118,6 +118,7 @@ Unit tests live in `runtime/scene/tests/`, all compiled into the `x3d_geometry_s
 
 - `ctest --preset dev -R x3d_geometry_scene` (doctest case: `dirty_tracker_test`) — `DirtyTracker` mark/clear/flag semantics.
 - `ctest --preset dev -R x3d_geometry_scene` (doctest case: `transform_system_test`) — `TransformSystem` world-transform index and incremental propagation via a synthetic scene.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest cases: `transform_system_structural_add`, `transform_system_structural_remove`, `transform_system_defuse_two_parents`, `transform_system_revision`) — M2C-2 structural re-index: runtime add/remove of a child re-indexes only the affected subtree, DEF/USE resolves both parent worlds, and `revision()` tracks world/index changes.
 - `ctest --preset dev -R x3d_geometry_scene` (doctest case: `transform_system_hanim_cadpart_test`) — `HAnimHumanoid`, `HAnimJoint`, `CADPart` TRS frames.
 - `ctest --preset dev -R x3d_geometry_scene` (doctest case: `bounds_system_test`) — `BoundsSystem` leaf geometry, shape hierarchy, post-order build.
 - `ctest --preset dev -R x3d_geometry_scene` (doctest case: `bounds_shared_subgraph_test`) — DEF/USE shared subgraph: a USE-shared node must not produce multiplicative recompute; bounds are path-independent.

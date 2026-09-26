@@ -2,7 +2,7 @@
 title: Asset Resolver / IO Seam
 summary: The bytes path from a URL surfaced verbatim in `TextureRef` to the raw bytes a consumer decodes — one callback type, two invocation contracts, two proven-generic backends (libcurl HTTP + AWS S3 SDK). The seam that unblocks LoadSensor, http/urn EXTERNPROTO, Script external-URL, and autoRefresh.
 tags: [subsystem, seam, asset-resolver, io, libcurl, s3, genericity, proven]
-updated: 2026-06-23
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../seam-status.md
@@ -66,6 +66,31 @@ lifetimes — locked at B8 design, not papered over:
 A single embedder resolver can branch on `AssetKind` to honor both contracts; both
 backends (`HttpResolver`, `S3Resolver`) return `Failed` (never `Pending`) in v1 —
 deferred-bytes Pending is a documented follow-up.
+
+## Routing — `makeSchemeRouter` (route by scheme, never by `Failed`)
+
+Every backend self-identifies by URL scheme (HttpResolver → `http(s)://`, S3Resolver
+→ `s3://`, a local-file resolver → scheme-less/relative) and returns `Failed` for
+everything else, so without a router "wrong backend" and "right backend, genuinely
+failed" are indistinguishable. `runtime/extract/SchemeRouter.hpp` (header-only,
+std-only, IO-free — a lexical prefix check, no socket/file) mirrors
+[`makeMultiFormatTextureResolver`](system-texture-decode.md) by dispatching **before**
+calling a backend:
+
+```cpp
+// keyed by scheme ("http", "https", "s3", "file", "urn", …; a trailing ':'/'://'
+// is tolerated, matching is case-insensitive per RFC 3986). `fallback` handles
+// scheme-less / relative urls and is optional.
+x3d::runtime::extract::AssetResolver makeSchemeRouter(
+    std::map<std::string, x3d::runtime::extract::AssetResolver> backends,
+    x3d::runtime::extract::AssetResolver fallback = nullptr);
+```
+
+A url whose scheme matches a registered backend is handed to that backend verbatim;
+an **unknown scheme yields `Failed` without calling anything** (the router never
+guesses, and the `fallback` is not consulted for a named-but-unregistered scheme). A
+scheme-less / relative url goes to `fallback` when supplied, else `Failed`. A Windows drive path (`C:\models\a.x3d`) is also treated as scheme-less — its one-letter "scheme" is a drive designator, so it takes `fallback` rather than routing to a non-existent backend. Additive
+only — the `[STABLE]` seam type is unchanged.
 
 ## Backends (both proven generic)
 
@@ -169,6 +194,19 @@ delegating `http(s)://` and `urn:` to embedder override territory. The PRF-6 car
 (http/urn EXTERNPROTO) is the parse-time seam's genericity proof; it unblocks here
 because the bytes-fetching seam it sits on top of is now proven.
 
+`runtime/parse/AssetProtoResolver.hpp` bridges the two: `protoResolverFrom(AssetResolver,
+Encoding hint = Unknown)` returns a `ProtoDeclarationResolver` that, for each url in an
+EXTERNPROTO's url list (in declared order, `#ProtoName` fragments honored), fetches the
+document bytes through the AssetResolver, sniffs the encoding, parses with `parseDocument`,
+and returns the matching `ProtoDeclare`. Per contract (B) `Failed` skips to the next
+candidate while `Pending` is a hard error (returns null); it never throws. `urn:` is
+handed to the resolver like any other url, so it resolves only when the injected resolver
+(typically a `makeSchemeRouter` with a `"urn"` entry) owns that scheme — otherwise
+`Failed`/skip, matching the file-local default. An embedder that wires
+`makeSchemeRouter({{"http", makeHttpResolver()}, {"https", makeHttpResolver()}})` into
+`protoResolverFrom` gets http(s):// EXTERNPROTO with no new I/O in the SDK. See the
+[PROTO/EXTERNPROTO expansion](proto-expand.md) page for the parse-side detail.
+
 ## What the seam unblocks
 
 The AssetResolver card ships four P1 dependency cards from "blocked" to "workable":
@@ -189,6 +227,8 @@ the IO seam is proven generic; each flips its own findings when its card ships.
 | File | Role |
 |---|---|
 | `runtime/extract/AssetResolver.hpp` | The seam type — header-only, std-only, golden-untouched |
+| `runtime/extract/SchemeRouter.hpp` | `makeSchemeRouter` — per-scheme dispatch, std-only/IO-free |
+| `runtime/parse/AssetProtoResolver.hpp` | `protoResolverFrom` — EXTERNPROTO over the AssetResolver seam |
 | `runtime/io/curl/HttpResolver.{hpp,cpp}` | Backend A — libcurl HTTP, isolated TU |
 | `runtime/io/curl/tests/asset_resolver_backend_a_test.cpp` | Per-backend test for A |
 | `runtime/io/s3/S3Resolver.{hpp,cpp}` | Backend B — AWS C++ SDK S3, isolated TU |
@@ -204,6 +244,8 @@ the IO seam is proven generic; each flips its own findings when its card ships.
 | `x3d_assetresolver_backend_a` | Backend A: URL prefix + libcurl error path |
 | `x3d_assetresolver_backend_b` | Backend B: URL prefix + `s3://` parse + SDK init |
 | `x3d_assetresolver_swap` | Genericity proof: byte-equality A==B over shared fixtures, failure-mode parity |
+| `x3d_extract_tests` (`scheme_router_test`) | `makeSchemeRouter`: dispatch table, case-insensitive scheme match, unknown-scheme/`fallback` behavior (fake resolvers) |
+| `x3d_parse_tests` (`asset_proto_resolver_test`) | `protoResolverFrom`: fetch+parse+fragment selection over a fake in-memory backend, Pending/Failed contract, router+urn |
 
 The `x3d_assetresolver_b8_test` test (predecessor) pins the seam's two-invocation-contract
 behavior independently of the new backends.

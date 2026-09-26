@@ -26,6 +26,7 @@
 #include <any>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -67,7 +68,15 @@ public:
   void build(const Scene &scene) {
     roots_.clear();
     for (const auto &r : scene.rootNodes) if (r) roots_.push_back(r.get());
+    indexValid_ = false;
   }
+
+  // ≤ (cached) graph walks: reflective node visits during the last index
+  // (re)enumeration. On an unchanged scene with a live TransformSystem this is
+  // zero — the whole-graph walk has amortized away. Test hook.
+  std::uint64_t lastIndexVisits() const { return lastIndexVisits_; }
+  // Placements broadphase-tested during the last pick. O(candidate leaves).
+  std::uint64_t lastCandidateTests() const { return lastCandidateTests_; }
 
   // M2e: the bound viewer pose threaded in by the caller (X3DExecutionContext::
   // pick) so Billboard nodes orient view-facing during the pick-path world
@@ -75,19 +84,61 @@ public:
   // default camera is inert for non-billboard scenes; a scene with a Billboard
   // must pass the live viewer pose for the ray to resolve against the rotated
   // geometry.
+  //
+  // The pick runs over a PickSystem-owned, lazily maintained index of
+  // geometry-bearing placements (one per PATH — DEF/USE instances each keep their
+  // own entry + world AABB). It is rebuilt only when `ts`'s revision changes (a
+  // structural re-index or a transform re-accumulation) or `maxVisits` changes;
+  // its world AABBs are refit only when the BoundsSystem revision changes.
+  // Billboard-affected placements are view-dependent, so they live in a separate
+  // list recomputed from the path on every pick. Pass `ts` to enable the cache;
+  // with `ts == nullptr` the index is rebuilt every call (exactly the old walk's
+  // result, no caching) — the direct-call API stays correct with no lifetime
+  // coupling.
   PickResult pickClosest(const Ray &worldRay, const BoundsSystem &bounds,
                          const SFVec3f &cameraPos = {0, 0, 0},
                          const SFVec3f &cameraUp = {0, 1, 0},
-                         std::size_t maxVisits = kMaxGraphWalkVisits) const {
+                         std::size_t maxVisits = kMaxGraphWalkVisits,
+                         const TransformSystem *ts = nullptr) const {
+    const std::uint64_t trev = ts ? ts->revision() : 0;
+    lastIndexVisits_ = 0;
+    lastCandidateTests_ = 0;
+    const bool needRebuild = !indexValid_ || !ts || trev != cachedTransformRev_ ||
+                             maxVisits != cachedMaxVisits_;
+    if (needRebuild) {
+      rebuildIndex(bounds, maxVisits);
+      cachedTransformRev_ = trev;
+      cachedBoundsRev_ = bounds.revision();
+      cachedMaxVisits_ = maxVisits;
+      indexValid_ = true;
+    } else if (bounds.revision() != cachedBoundsRev_) {
+      refitAabbs(bounds);
+      cachedBoundsRev_ = bounds.revision();
+    }
+
     PickResult best;
-    extract::PathKey path;
-    // #21: pickNode tests geometry per path (each placement has its own world
-    // frame), so it cannot memoize like worldOf — a node-visit budget bounds an
-    // acyclic ("doubling DAG") fan-out and flags the partial result.
-    WalkBudget budget(maxVisits);
-    for (X3DNode *r : roots_)
-      pickNode(r, Mat4::identity(), worldRay, bounds, cameraPos, cameraUp, path, best, budget);
-    best.budgetExceeded = budget.tripped;
+    // Merge the cached structural placements and the live billboard placements in
+    // their original DFS order so exact-distance ties break identically to the
+    // reflective walk (first visited wins).
+    std::size_t i = 0, j = 0;
+    while (i < statics_.size() || j < billboards_.size()) {
+      bool takeStatic;
+      if (i >= statics_.size()) takeStatic = false;
+      else if (j >= billboards_.size()) takeStatic = true;
+      else takeStatic = statics_[i].order < billboards_[j].order;
+      if (takeStatic) {
+        const Placement &p = statics_[i++];
+        ++lastCandidateTests_;
+        evaluate(worldRay, p.node, p.worldM, p.aabb, p.path, best);
+      } else {
+        const Placement &p = billboards_[j++];
+        ++lastCandidateTests_;
+        const Mat4 wm = liveWorldM(p.path, cameraPos, cameraUp);
+        const Aabb wb = bounds.localBounds(p.node).transformed(wm);
+        evaluate(worldRay, p.node, wm, wb, p.path, best);
+      }
+    }
+    best.budgetExceeded = budgetTripped_;
     return best;
   }
 
@@ -310,59 +361,116 @@ private:
     return hit;
   }
 
-  void pickNode(const X3DNode *n, const Mat4 &worldM, const Ray &worldRay,
-                const BoundsSystem &bounds, const SFVec3f &cameraPos,
-                const SFVec3f &cameraUp, extract::PathKey &path,
-                PickResult &best, WalkBudget &budget) const {
-    // #21: bound total node-visits so an acyclic ("doubling DAG") fan-out cannot
-    // test geometry per-path without limit (the partial best-so-far is flagged
-    // via PickResult.budgetExceeded).
+  // Lazily-maintained index entry: one per geometry-bearing placement (per PATH).
+  struct Placement {
+    extract::PathKey path; // root→geometry-bearing node chain
+    X3DNode *node = nullptr;
+    Mat4 worldM;           // valid for a non-billboard entry (cached)
+    Aabb aabb;             // valid for a non-billboard entry (cached)
+    std::size_t order = 0; // global DFS order (tie-break parity with the walk)
+  };
+
+  // DFS the graph once, recording a Placement for every geometry-bearing node,
+  // exactly the node set the reflective walk used to test in order. Billboards do
+  // NOT contribute a rotation here — their descendants are view-dependent, so
+  // they go to the separate billboards_ list and are recomputed live per pick.
+  // Same #21 budget + MEM-1 depth/cycle guards as the old pickNode.
+  void enumerate(const X3DNode *n, const Mat4 &worldM, bool billboardSeen,
+                 const BoundsSystem &bounds, extract::PathKey &path,
+                 WalkBudget &budget) const {
     if (!budget.spend()) return;
-    // MEM-1: bound the pick walk so an unsanitized graph (USE-cyclic or
-    // pathologically deep) cannot stack-overflow. `path` is the live root→n
-    // ancestor chain; a depth cap plus a path-membership test before descending
-    // breaks back-edges (the runtime twin of SEC-1).
+    ++lastIndexVisits_;
     if (path.size() >= kMaxNestingDepth) return;
     for (const X3DNode *ancestor : path)
       if (ancestor == n) return; // n is its own ancestor: containment cycle.
-    path.push_back(n); // accumulate the root→this-node chain (PathKey).
-    Mat4 childM = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
-    // M2e: Billboard contributes a view-dependent local rotation, exactly as the
-    // extractor's per-path walk (SceneExtractor::walk). Apply it here in the
-    // narrow-phase walk so geometry under a Billboard is picked in the rotated
-    // frame, not the un-rotated parent frame.
-    if (n->nodeTypeName() == "Billboard") {
-      const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
-      childM = worldM * billboardLocalMatrix(worldM, cameraPos, cameraUp, axis);
-    }
+    path.push_back(n);
+    const Mat4 childM =
+        TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
+    const bool childBillboard = billboardSeen || n->nodeTypeName() == "Billboard";
     if (geombounds::hasField(*n, "geometry")) {
-      if (auto geom = geombounds::getNode(*n, "geometry")) {
-        Aabb wb = bounds.localBounds(n).transformed(worldM);
-        if (rayAabb(worldRay, wb)) {
-          Mat4 inv = worldM.inverse();
-          Ray local{inv.transformPoint(worldRay.origin), inv.transformDirection(worldRay.direction)};
-          bool gotHit = false;
-          NarrowHit h = narrowPhase(geom.get(), local, gotHit);
-          if (gotHit) {
-            SFVec3f wp = worldM.transformPoint(local.pointAt(h.t));
-            float dx = wp.x-worldRay.origin.x, dy = wp.y-worldRay.origin.y, dz = wp.z-worldRay.origin.z;
-            float d = std::sqrt(dx*dx + dy*dy + dz*dz);
-            if (!best.hit || d < best.distance) {
-              best.hit = true; best.node = const_cast<X3DNode*>(n); best.point = wp; best.distance = d;
-              best.path = path; // root→this geometry-bearing node chain.
-              // World-space normal = normalize(inverse-transpose(worldM) · n).
-              best.normal = normalize(invTranspose(worldM).transformDirection(h.normal));
-              best.texCoord = h.texCoord; // surface attribute — not transformed.
-            }
-          }
+      if (geombounds::getNode(*n, "geometry")) {
+        Placement p;
+        p.path = path;
+        p.node = const_cast<X3DNode *>(n);
+        p.order = orderCounter_++;
+        if (childBillboard) {
+          billboards_.push_back(std::move(p));
+        } else {
+          // The walk resolves a geometry-bearing node's own world frame with the
+          // accumulated world (not its own TRS) — mirror that exactly.
+          p.worldM = worldM;
+          p.aabb = bounds.localBounds(n).transformed(worldM);
+          statics_.push_back(std::move(p));
         }
       }
     }
     forEachChild(n, [&](const X3DNode *c) {
-      pickNode(c, childM, worldRay, bounds, cameraPos, cameraUp, path, best, budget);
+      enumerate(c, childM, childBillboard, bounds, path, budget);
     });
     path.pop_back();
   }
+
+  // Accumulate the world matrix at a placement's node from its PATH, applying each
+  // ancestor transform and (view-dependently) each Billboard rotation with the
+  // live camera pose. The final element is the geometry-bearing node itself,
+  // whose own TRS the walk never folds into its geometry.
+  Mat4 liveWorldM(const extract::PathKey &path, const SFVec3f &cameraPos,
+                  const SFVec3f &cameraUp) const {
+    Mat4 m = Mat4::identity();
+    for (std::size_t i = 0; i + 1 < path.size(); ++i) {
+      const X3DNode *n = path[i];
+      if (TransformSystem::isTransform(n)) m = m * TransformSystem::localMatrix(n);
+      if (n->nodeTypeName() == "Billboard") {
+        const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
+        m = m * billboardLocalMatrix(m, cameraPos, cameraUp, axis);
+      }
+    }
+    return m;
+  }
+
+  // Broad-phase (cached/live world AABB) + narrow-phase one placement; update
+  // best-so-far with the same strict-< tie-break as the reflective walk.
+  void evaluate(const Ray &worldRay, X3DNode *shape, const Mat4 &worldM,
+                const Aabb &worldAabb, const extract::PathKey &path,
+                PickResult &best) const {
+    if (!rayAabb(worldRay, worldAabb)) return;
+    auto geom = geombounds::getNode(*shape, "geometry");
+    if (!geom) return;
+    Mat4 inv = worldM.inverse();
+    Ray local{inv.transformPoint(worldRay.origin), inv.transformDirection(worldRay.direction)};
+    bool gotHit = false;
+    NarrowHit h = narrowPhase(geom.get(), local, gotHit);
+    if (!gotHit) return;
+    SFVec3f wp = worldM.transformPoint(local.pointAt(h.t));
+    float dx = wp.x - worldRay.origin.x, dy = wp.y - worldRay.origin.y,
+          dz = wp.z - worldRay.origin.z;
+    float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+    if (!best.hit || d < best.distance) {
+      best.hit = true; best.node = shape; best.point = wp; best.distance = d;
+      best.path = path; // root→this geometry-bearing node chain.
+      // World-space normal = normalize(inverse-transpose(worldM) · n).
+      best.normal = normalize(invTranspose(worldM).transformDirection(h.normal));
+      best.texCoord = h.texCoord; // surface attribute — not transformed.
+    }
+  }
+
+  void rebuildIndex(const BoundsSystem &bounds, std::size_t maxVisits) const {
+    statics_.clear();
+    billboards_.clear();
+    orderCounter_ = 0;
+    lastIndexVisits_ = 0;
+    WalkBudget budget(maxVisits);
+    extract::PathKey path;
+    for (X3DNode *r : roots_)
+      enumerate(r, Mat4::identity(), false, bounds, path, budget);
+    budgetTripped_ = budget.tripped;
+  }
+
+  void refitAabbs(const BoundsSystem &bounds) const {
+    for (Placement &p : statics_)
+      p.aabb = bounds.localBounds(p.node).transformed(p.worldM);
+  }
+
 
   // Inverse-transpose of the upper-left 3x3 (carried in a Mat4) for transforming
   // surface normals to world space. Translation is irrelevant for directions.
@@ -425,6 +533,21 @@ private:
   }
 
   std::vector<X3DNode *> roots_;
+
+  // Lazily-maintained pick index (see pickClosest). Mutable so the const pick can
+  // refresh it on demand. statics_ keeps non-billboard placements in DFS order
+  // with cached world frames/AABBs; billboards_ holds the view-dependent entries,
+  // re-resolved per pick. Keyed on the TransformSystem + BoundsSystem revisions.
+  mutable std::vector<Placement> statics_;
+  mutable std::vector<Placement> billboards_;
+  mutable bool indexValid_ = false;
+  mutable std::uint64_t cachedTransformRev_ = 0;
+  mutable std::uint64_t cachedBoundsRev_ = 0;
+  mutable std::size_t cachedMaxVisits_ = 0;
+  mutable bool budgetTripped_ = false;
+  mutable std::size_t orderCounter_ = 0;
+  mutable std::uint64_t lastIndexVisits_ = 0;
+  mutable std::uint64_t lastCandidateTests_ = 0;
 };
 
 } // namespace x3d::runtime

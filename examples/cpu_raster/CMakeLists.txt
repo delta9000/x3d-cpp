@@ -62,6 +62,7 @@ set(CPURASTER_TESTS
     text_render_test
     texture_render_test
     positional_light_test
+    light_ambient_test
     tier1_features_test
     skybox_test
     demo_animation_test)

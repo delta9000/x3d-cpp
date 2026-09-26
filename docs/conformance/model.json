@@ -2968,7 +2968,9 @@
     {
       "findings": [
         "ENVLIGHT-ORPHAN",
-        "LGT-1"
+        "LGT-1",
+        "LGT-2",
+        "LGT-3"
       ],
       "levels": [
         1,
@@ -2979,11 +2981,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "LGT-1"
+            "LGT-1",
+            "LGT-2",
+            "LGT-3"
           ],
           "geometry": false,
           "interfaces": [
@@ -3003,11 +3007,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "LGT-1"
+            "LGT-1",
+            "LGT-2",
+            "LGT-3"
           ],
           "geometry": false,
           "interfaces": [
@@ -3026,11 +3032,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "LGT-1"
+            "LGT-1",
+            "LGT-2",
+            "LGT-3"
           ],
           "geometry": false,
           "interfaces": [
@@ -5050,6 +5058,7 @@
         "MAT-008",
         "MAT-009",
         "MAT-010",
+        "MAT-011",
         "SEAM-LINEPOINT",
         "UNLIT-EMISSIVE"
       ],
@@ -5180,7 +5189,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.3.4; 12.2.3, 12.4.2; 12.4.5, 17.2.3; 17.2.3; 12.4.2",
+          "clause": "12.3.4; 12.2.3, 12.4.2; 12.4.5, 17.2.3; 17.2.3; 12.4.2; 12.4.6",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5189,7 +5198,8 @@
             "MAT-007",
             "MAT-008",
             "MAT-009",
-            "MAT-010"
+            "MAT-010",
+            "MAT-011"
           ],
           "geometry": false,
           "interfaces": [
@@ -5956,6 +5966,7 @@
         "TXF-1",
         "TXF-2",
         "TXF-3",
+        "TXF-4",
         "TXT-6",
         "VIS-MOVIE-DECODE",
         "VIS-SPHERE-NOUV"
@@ -5970,10 +5981,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "18.4.9",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "TXF-4"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -6094,11 +6107,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO 19776-2 5.3 (sfimageValue)",
+          "clause": "18.4.9; ISO 19776-2 5.3 (sfimageValue)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "ENC-VRML-SFIMAGE"
+            "ENC-VRML-SFIMAGE",
+            "TXF-4"
           ],
           "geometry": false,
           "interfaces": [
@@ -6168,10 +6182,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "18.4.9",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "TXF-4"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode"
@@ -8405,6 +8421,18 @@
       "summary": "Appearance.backMaterial constraint checks material-model type only \u2014 texture-set match between front and back materials is not validated."
     },
     {
+      "clause": "12.4.6",
+      "component": "Shape",
+      "id": "MAT-011",
+      "nodes": [
+        "PhysicalMaterial"
+      ],
+      "note": "Per \u00a712.4.6 occlusion comes from occlusionTexture (red channel) scaled by occlusionStrength; metallicRoughnessTexture carries roughness in G and metallic in B. Fixed in the CPU reference evaluator (examples/cpu_raster/cpuraster/MaterialShader.hpp) and the PoC GLSL (examples/poc_renderer/shaders/pbr.frag): AO now reads the Occlusion slot only; the MR texture's R is no longer an AO source (the extractor emits no ORM-packed marker). Regression: x3d_cpuraster_material_shader_test.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Ambient occlusion derived from the metallic-roughness texture's R channel even when a separate occlusionTexture was bound (and applied even when none was)."
+    },
+    {
       "clause": "13.3.4, 25.3.2",
       "component": "Geometry3D",
       "id": "EXT-001",
@@ -8445,6 +8473,20 @@
       "severity": "major",
       "status": "closed",
       "summary": "ElevationGrid/GeoElevationGrid cells were wound backwards \u2014 with the default ccw=TRUE the generated face normals pointed \u2212Y (down), so the surface was lit from below and, under a consumer's default solid=TRUE back-face cull, the whole terrain vanished when viewed from above."
+    },
+    {
+      "clause": "18.4.9",
+      "component": "Texturing",
+      "id": "TXF-4",
+      "nodes": [
+        "TextureProperties",
+        "ImageTexture",
+        "PixelTexture"
+      ],
+      "note": "The extractor already surfaces the full \u00a718.4.9 sampler (extendedSamplerOf); the CPU sampler (examples/cpu_raster/cpuraster/Texture.hpp) now honors REPEAT/CLAMP/CLAMP_TO_EDGE/CLAMP_TO_BOUNDARY (border color = the TextureProperties default 0,0,0,0 \u2014 borderColor is not extracted) and MIRRORED_REPEAT, and applies the magnification filter (NEAREST_PIXEL/FASTEST nearest; AVG_PIXEL/NICEST/DEFAULT bilinear). Mipmapping (the minification filters) remains unimplemented \u2014 the sampler has a single mip level. Regression: x3d_cpuraster_texture_render_test.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "CPU reference sampler honored only repeat/clamp \u2014 MIRRORED_REPEAT and CLAMP_TO_BOUNDARY were ignored and the magnification filter was not applied."
     },
     {
       "clause": "18.4.10",
@@ -8933,6 +8975,40 @@
       "severity": "minor",
       "status": "fixed",
       "summary": "shadows / shadowIntensity now extracted onto LightDesc."
+    },
+    {
+      "clause": "17.2.2.4",
+      "component": "Lighting",
+      "id": "LGT-2",
+      "interfaces": [
+        "X3DLightNode"
+      ],
+      "nodes": [
+        "DirectionalLight",
+        "PointLight",
+        "SpotLight"
+      ],
+      "note": "\u00a717.2.2.4 sums per light ambientIntensity_i \u00b7 attenuation_i \u00b7 spot_i \u00b7 diffuseColor \u00b7 material.ambientIntensity. LightDesc.ambientIntensity was populated (runtime/extract/LightSystem.hpp:141) but dropped at the consumer seam. FIXED: the reference evaluator (examples/cpu_raster/cpuraster/MaterialShader.hpp) + the PoC GLSL (examples/poc_renderer/shaders/lit.frag, pbr.frag) now add a per-light ambient term; EyeLight carries ambientIntensity and poc main.cpp uploads uLightAmbient[]. Today's squared-diffuse ambient convention (card RND-2, an ADR-0027 open question) is unchanged. (card RND-3 part 1)",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Per-light ambientIntensity (LightSystem.hpp extracts it) was read by NO consumer."
+    },
+    {
+      "clause": "23.4.4",
+      "component": "Lighting",
+      "id": "LGT-3",
+      "interfaces": [
+        "X3DLightNode"
+      ],
+      "nodes": [
+        "DirectionalLight",
+        "PointLight",
+        "SpotLight"
+      ],
+      "note": "\u00a723.4.4: headlight TRUE means the browser shall turn on a headlight regardless of other lights; FALSE turns it off. FIXED: the cpu_raster (examples/cpu_raster/cpuraster/SceneRender.hpp::buildEyeLights) and PoC (examples/poc_renderer/main.cpp::buildEyeLights) consumers now add the camera-space headlight whenever headlight is TRUE, independent of the scene LightDescs, reserving a kMaxLights slot so it is never dropped. The 3 demo goldens (anim_color/anim_orientation/anim_position) that author a DirectionalLight but no NavigationInfo were re-blessed to the spec-correct lit output. (card RND-3 part 1)",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "NavigationInfo.headlight TRUE (default) must turn on a headlight regardless of scene lights; both consumers only added it when the scene had no lights."
     },
     {
       "clause": "31.4.2",
@@ -9751,10 +9827,10 @@
     ]
   },
   "summary": {
-    "closed_count": 131,
+    "closed_count": 135,
     "component_count": 36,
     "deferred_count": 39,
-    "finding_count": 217,
+    "finding_count": 221,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",

@@ -353,6 +353,15 @@ public:
   Mat4 worldTransformAny(const X3DNode *n) const {
     return transforms_.worldTransformAny(n);
   }
+  /// Pull surface: world transform of a Transform node through ONE parent edge
+  /// (a DEF/USE node under two parents has a world per parent; computed live).
+  Mat4 worldTransformUnder(const X3DNode *parent, const X3DNode *n) const {
+    return transforms_.worldTransformUnder(parent, n);
+  }
+  /// Pull surface: monotonic TransformSystem revision — bumps whenever any world
+  /// matrix or the transform index changes (a no-op tick leaves it unchanged).
+  /// A cheap cache key for transform-derived consumer state (e.g. a pick index).
+  std::uint64_t transformRevision() const { return transforms_.revision(); }
   /// Pull surface: local-frame AABB of a node (empty if unknown).
   Aabb localBounds(const X3DNode *n) const { return bounds_.localBounds(n); }
   /// Pull surface: world-space AABB (= local bounds x composed ancestor
@@ -460,7 +469,7 @@ public:
   PickResult pick(const Ray &worldRay) const {
     ++pickCalls_;
     return pick_.pickClosest(worldRay, bounds_, cameraWorldPosition(),
-                             cameraWorldUp());
+                             cameraWorldUp(), x3d::kMaxGraphWalkVisits, &transforms_);
   }
 
   /// World->camera (view) matrix from the bound Viewpoint (identity if none).

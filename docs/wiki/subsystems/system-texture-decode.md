@@ -115,8 +115,8 @@ needed and the frozen `Ready`/`Pending`/`Failed` seam type is unchanged**.
   *trailer*), so it is routed last by a conservative header plausibility check — the same
   compromise stb and wuffs make internally.
 
-This mirrors the rule [ADR-0024 §7] adopts; AssetResolver's `makeSchemeRouter` is the carded
-follow-up that applies the same treatment to the fetch seam.
+This mirrors the rule [ADR-0024 §7] adopts; AssetResolver's `makeSchemeRouter`
+(`runtime/extract/SchemeRouter.hpp`) applies the same treatment to the fetch seam.
 
 ## Scope / what this seam does and doesn't unblock
 

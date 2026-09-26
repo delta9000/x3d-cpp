@@ -45,6 +45,9 @@ namespace ex = x3d::runtime::extract;
 struct EyeLight {
   glsl::vec3 dirEye{0, 0, -1};
   glsl::vec3 color{1, 1, 1};
+  // §17.2.2.4 per-light ambientIntensity. Scales only the ambient term, gated
+  // by attenuation/spot like the rest of the light's contribution.
+  float ambientIntensity = 0.0f;
   bool positional = false;
   glsl::vec3 posEye{0, 0, 0};
   glsl::vec3 attenuation{1, 0, 0}; // X3D (c0,c1,c2)
@@ -95,8 +98,8 @@ struct MaterialTextures {
   Texture normal;    // Normal map — linear.
   Texture emissive;  // Emissive — sRGB.
   Texture specular;  // Specular — sRGB.
-  Texture mr;        // MetallicRoughness ORM — linear.
-  Texture occlusion; // Occlusion — linear.
+  Texture mr;        // MetallicRoughness — G=roughness, B=metallic (linear).
+  Texture occlusion; // Occlusion — R channel (linear); AO source (§12.4.6).
   // §18.4.8 TextureCoordinateGenerator(Sphere): when set, UVs are generated from
   // the camera-space normal rather than the authored texcoords (sphere/reflection
   // map). Applies to the textured-surface coordinate set (base/emissive/specular).
@@ -242,11 +245,16 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
 
     const glsl::vec3 V = glsl::normalize(-f.posEye);
     const float expo = glsl::maxf(uShininess * 128.0f, 1.0f);
-    glsl::vec3 lit = uAmbient * base + emissive;
+    glsl::vec3 lit = emissive;
     for (const EyeLight &Lt : lights) {
       glsl::vec3 L;
       float atten;
       if (!detail::resolveLight(Lt, f.posEye, L, atten)) continue;
+      // §17.2.2.4 ambient: ambientIntensity_i · materialAmbientIntensity ·
+      // diffuseColor, gated by attenuation/spot like the light's other terms.
+      // `uAmbient · base` folds in the surface `base` — today's squared-diffuse
+      // ambient convention (card RND-2, pending an ADR), unchanged here.
+      lit = lit + (uAmbient * base) * Lt.color * (Lt.ambientIntensity * atten);
       float ndl = glsl::maxf(glsl::dot(N, L), 0.0f);
       lit = lit + base * Lt.color * (ndl * atten);
       if (ndl > 0.0f) {
@@ -301,9 +309,13 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
     float alpha2 = glsl::maxf(roughness * roughness, 0.001f);
     alpha2 = alpha2 * alpha2;
 
+    // AO comes ONLY from the occlusion slot (PhysicalMaterial.occlusionTexture,
+    // §12.4.6). The metallic-roughness texture carries roughness in G and
+    // metallic in B; its R channel is NOT an occlusion source unless the map is
+    // explicitly ORM-packed (the extractor emits no such marker, so we never
+    // derive AO from tx.mr). Matches pbr.frag.
     float ao = 1.0f;
-    if (tx.mr.valid()) ao = tx.mr.sample(f.texcoord).x;       // ORM R.
-    else if (tx.occlusion.valid()) ao = tx.occlusion.sample(f.texcoord).x;
+    if (tx.occlusion.valid()) ao = tx.occlusion.sample(f.texcoord).x;
     ao = glsl::mixf(1.0f, ao, occlusionStrength);
 
     glsl::vec3 Ngeo = glsl::normalize(f.normalEye);
@@ -323,6 +335,10 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
       glsl::vec3 L;
       float atten;
       if (!detail::resolveLight(Lt, f.posEye, L, atten)) continue;
+      // §17.2.2.4 per-light ambient (normal-independent, so applied before the
+      // NdL gate below). PhysicalMaterial has no ambientIntensity field, so the
+      // ambient surface is diffColor; gated by attenuation/spot like the rest.
+      color = color + diffColor * Lt.color * (Lt.ambientIntensity * atten);
       float NdL = glsl::maxf(glsl::dot(N, L), 0.0f);
       if (NdL <= 0.0f) continue;
       glsl::vec3 H = glsl::normalize(L + V);

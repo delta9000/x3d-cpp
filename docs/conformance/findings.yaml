@@ -1153,6 +1153,14 @@
   status: open
   summary: "Appearance.backMaterial constraint checks material-model type only — texture-set match between front and back materials is not validated."
   note: "backMaterialConstraintMet (materialOf(), see MAT-006) validates only that backMaterial.model == front.model. A prior design discussion for this exact front/back constraint scoped it to cover both the material-model type AND a matching texture set between front and back; only the model-type half is implemented. The back MaterialDesc is currently constructed inline with its textures vector left unpopulated (Appearance-level textures are front-only in the current extraction path), so a texture-set comparison is not yet meaningful to add without first populating back-material textures — tracked as the deferred follow-on already named in ADR-0021."
+- id: MAT-011
+  nodes: [PhysicalMaterial]
+  component: Shape
+  clause: "12.4.6"
+  severity: major
+  status: fixed
+  summary: Ambient occlusion derived from the metallic-roughness texture's R channel even when a separate occlusionTexture was bound (and applied even when none was).
+  note: "Per §12.4.6 occlusion comes from occlusionTexture (red channel) scaled by occlusionStrength; metallicRoughnessTexture carries roughness in G and metallic in B. Fixed in the CPU reference evaluator (examples/cpu_raster/cpuraster/MaterialShader.hpp) and the PoC GLSL (examples/poc_renderer/shaders/pbr.frag): AO now reads the Occlusion slot only; the MR texture's R is no longer an AO source (the extractor emits no ORM-packed marker). Regression: x3d_cpuraster_material_shader_test."
 
 # --- Geometry tessellation + normals (§11 / §13) ---
 - id: EXT-001
@@ -1182,6 +1190,14 @@
   note: "emitHeightGrid() (the shared height-grid emitter for both ElevationGrid and GeoElevationGrid) split each cell (v00,v10,v11)+(v00,v11,v01), which is CW from the +Y side → faceNormal −Y. Reversed to (v00,v11,v10)+(v00,v01,v11) so the surface is CCW/front-facing from above and normals point +Y per §13.3.4. latticeIndex/creaseAngle smoothing key on the source lattice id, so they are order-independent. Surfaced by the Kelp Forest RockFloor (an ElevationGrid) rendering as scattered fragments vs X_ITE. Regression: mesh_builder_elevationgrid_winding_test.cpp (flat grid, default ccw → every normal +Y). (2026-06-25)"
 
 # --- TextureCoordinate generation + transform (§18 / §13.3) ---
+- id: TXF-4
+  nodes: [TextureProperties, ImageTexture, PixelTexture]
+  component: Texturing
+  clause: "18.4.9"
+  severity: minor
+  status: fixed
+  summary: CPU reference sampler honored only repeat/clamp — MIRRORED_REPEAT and CLAMP_TO_BOUNDARY were ignored and the magnification filter was not applied.
+  note: "The extractor already surfaces the full §18.4.9 sampler (extendedSamplerOf); the CPU sampler (examples/cpu_raster/cpuraster/Texture.hpp) now honors REPEAT/CLAMP/CLAMP_TO_EDGE/CLAMP_TO_BOUNDARY (border color = the TextureProperties default 0,0,0,0 — borderColor is not extracted) and MIRRORED_REPEAT, and applies the magnification filter (NEAREST_PIXEL/FASTEST nearest; AVG_PIXEL/NICEST/DEFAULT bilinear). Mipmapping (the minification filters) remains unimplemented — the sampler has a single mip level. Regression: x3d_cpuraster_texture_render_test."
 - id: TXF-1
   nodes: [TextureTransform, Box, Sphere, Cone, Cylinder]
   component: Texturing
@@ -1490,6 +1506,24 @@
   status: fixed
   summary: "shadows / shadowIntensity now extracted onto LightDesc."
   note: "§17.3.1 defines shadows (SFBool, default FALSE) + shadowIntensity (SFFloat, default 1, [0,1]) on every light. FIXED: LightDesc (runtime/extract/RenderItem.hpp) gained bool shadows + float shadowIntensity members; LightSystem::makeLight reads both in the shared X3DLightNode block via getField, so all three light types carry them. Consumers can now honor authored shadow-casting + darkness (a downstream renderer chooses the technique). (sweep 2026-06-25; resolved 2026-07-02)"
+- id: LGT-2
+  interfaces: [X3DLightNode]
+  nodes: [DirectionalLight, PointLight, SpotLight]
+  component: Lighting
+  clause: "17.2.2.4"
+  severity: major
+  status: fixed
+  summary: "Per-light ambientIntensity (LightSystem.hpp extracts it) was read by NO consumer."
+  note: "§17.2.2.4 sums per light ambientIntensity_i · attenuation_i · spot_i · diffuseColor · material.ambientIntensity. LightDesc.ambientIntensity was populated (runtime/extract/LightSystem.hpp:141) but dropped at the consumer seam. FIXED: the reference evaluator (examples/cpu_raster/cpuraster/MaterialShader.hpp) + the PoC GLSL (examples/poc_renderer/shaders/lit.frag, pbr.frag) now add a per-light ambient term; EyeLight carries ambientIntensity and poc main.cpp uploads uLightAmbient[]. Today's squared-diffuse ambient convention (card RND-2, an ADR-0027 open question) is unchanged. (card RND-3 part 1)"
+- id: LGT-3
+  interfaces: [X3DLightNode]
+  nodes: [DirectionalLight, PointLight, SpotLight]
+  component: Lighting
+  clause: "23.4.4"
+  severity: major
+  status: fixed
+  summary: "NavigationInfo.headlight TRUE (default) must turn on a headlight regardless of scene lights; both consumers only added it when the scene had no lights."
+  note: "§23.4.4: headlight TRUE means the browser shall turn on a headlight regardless of other lights; FALSE turns it off. FIXED: the cpu_raster (examples/cpu_raster/cpuraster/SceneRender.hpp::buildEyeLights) and PoC (examples/poc_renderer/main.cpp::buildEyeLights) consumers now add the camera-space headlight whenever headlight is TRUE, independent of the scene LightDescs, reserving a kMaxLights slot so it is never dropped. The 3 demo goldens (anim_color/anim_orientation/anim_position) that author a DirectionalLight but no NavigationInfo were re-blessed to the spec-correct lit output. (card RND-3 part 1)"
 - id: SHDR-1
   nodes: [FloatVertexAttribute, Matrix3VertexAttribute, Matrix4VertexAttribute]
   interfaces: [X3DVertexAttributeNode]

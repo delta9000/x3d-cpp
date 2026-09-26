@@ -2,7 +2,7 @@
 title: "Materials (§12 Shape + Appearance)"
 summary: "MaterialDesc discriminated union (Phong/Physical/Unlit), backMaterial two-sided support, multi-UV texCoordMapping, and ORM channel-packing docs — the extraction seam between X3D Appearance nodes and the renderer-facing descriptor."
 tags: [subsystem, materials, extract, appearance, pbr, phong]
-updated: 2026-06-21
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/extract-textures.md
@@ -87,17 +87,20 @@ When `Appearance.backMaterial` is present:
 
 Each `TextureRef` carries `texCoordMapping` (the X3D v4 `xxxTextureMapping` field value, empty = UV set 0).  `mappingOf(materialNode, textureFieldName)` reads the mapping by constructing `fieldName + "Mapping"` and using the reflection layer — no generated-node dependency.
 
-## ORM channel-packing (MAT-008)
+## ORM channel-packing and the AO source (MAT-008, MAT-011)
 
 `Slot::MetallicRoughness` maps to the X3D `PhysicalMaterial.metallicRoughnessTexture` (or an ORM combined image).  The channel assignment follows glTF §3.9.4 / X3D §17:
 
 | Channel | Semantic |
 |---|---|
-| R | Occlusion |
+| R | Occlusion (only when the image is explicitly ORM-packed — see below) |
 | G | Roughness |
 | B | Metallic |
 
 The SDK emits exactly **one** `MetallicRoughness` `TextureRef` per packed map.  Consumers must NOT request separate Metallic / Roughness / Occlusion textures from the same image.  The color-space convention for each slot is documented in the `TextureRef::Slot` enum comment in `runtime/extract/RenderItem.hpp`.
+
+**Ambient-occlusion source (§12.4.6):**  `PhysicalMaterial.occlusionTexture` (red channel), scaled by `occlusionStrength`, is the occlusion source — it is surfaced as a separate `Slot::Occlusion` ref.  A consumer must **not** derive AO from the metallic-roughness texture's R channel: the extractor emits no "ORM-packed" marker, so `Slot::MetallicRoughness` is treated as roughness (G) + metallic (B) only.  The CPU reference evaluator (`examples/cpu_raster/cpuraster/MaterialShader.hpp`) and the PoC GLSL (`examples/poc_renderer/shaders/pbr.frag`) apply AO from `Slot::Occlusion` alone (MAT-011).
+
 
 ## toRGBA and gamma stance (MAT-009)
 

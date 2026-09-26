@@ -4,7 +4,7 @@
 // the extractor (column-major Mat4 uploaded directly via m.m.data()). MVP order
 // is projection * view * model.
 //
-// We light in CAMERA (eye) space so the NavigationInfo-headlight fallback — a
+// We light in CAMERA (eye) space so the NavigationInfo headlight — a
 // directional light fixed to the camera — is a trivial constant direction in
 // the fragment shader, and world-space LightDesc directions are pre-transformed
 // to eye space on the CPU (uLightDirEye). The normal matrix is the inverse-
