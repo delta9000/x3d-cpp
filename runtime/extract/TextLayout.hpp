@@ -252,10 +252,13 @@ inline TextLayoutResult computeTextLayout(
             // §15.2.2.3 FIRST special case: first-line baseline at Y=0.
             firstBaselineMinor = 0.0f;
         } else if (minorJ == "BEGIN") {
-            // Top of first line touches origin.
+            // Table 15.4: top edge (topToBottom=T) / bottom edge (F) of the
+            // first line at Y=0. A line spans [baseline + descender,
+            // baseline + ascender] on Y, as its glyph quads do.
             if (fs.topToBottom) {
-                // Lines go down; first baseline is above Y=0 by ascender.
-                firstBaselineMinor = metrics[0].ascender;
+                // Lines go down, hanging below Y=0: top edge = baseline +
+                // ascender = 0.
+                firstBaselineMinor = -metrics[0].ascender;
             } else {
                 // Lines go up; first baseline is below Y=0 by |descender|.
                 firstBaselineMinor = -metrics[0].descender; // descender <= 0 => this >= 0
@@ -286,31 +289,27 @@ inline TextLayoutResult computeTextLayout(
                 firstBaselineMinor = static_cast<float>(N - 1) * baselineStep
                                    - metrics[N - 1].descender;
             } else {
-                // Top of last line at Y=0 (block entirely below Y=0).
-                // Last baseline is (N-1)*baselineStep ABOVE first (topToBottom=F).
-                // top of last line = last_baseline + ascender[N-1] = 0
-                // firstBaseline - (N-1)*baselineStep + ascender[N-1] = 0
-                // => firstBaseline = (N-1)*baselineStep - ascender[N-1]
-                firstBaselineMinor = static_cast<float>(N - 1) * baselineStep
+                // Top of last line at Y=0 (block entirely below Y=0), TXT-2.
+                // Lines stack UP (topToBottom=F): last baseline =
+                // first + (N-1)*baselineStep; top of last line =
+                // last baseline + ascender[N-1] = 0
+                // => firstBaseline = -(N-1)*baselineStep - ascender[N-1]
+                firstBaselineMinor = -static_cast<float>(N - 1) * baselineStep
                                    - metrics[N - 1].ascender;
             }
         }
     } else {
         // horizontal = FALSE: minor axis is X.
         // Symmetric to the horizontal case but left/right governs sign.
-        if (minorJ == "FIRST") {
-            // FIRST for vertical = identical to BEGIN (§15.2.2.3 special case
-            // applies to horizontal=TRUE only).
+        // A column spans [baseline + descender, baseline + ascender] on X, as
+        // its glyph quads do (Table 15.5 edges are those of that span).
+        if (minorJ == "FIRST" || minorJ == "BEGIN") {
+            // Table 15.5: FIRST and BEGIN both put the left edge (leftToRight=T)
+            // / right edge (F) of the first column at X=0.
             if (fs.leftToRight) {
-                firstBaselineMinor = metrics[0].ascender; // left edge of first col at X=0
+                firstBaselineMinor = -metrics[0].descender; // left edge at X=0
             } else {
-                firstBaselineMinor = -metrics[0].descender;
-            }
-        } else if (minorJ == "BEGIN") {
-            if (fs.leftToRight) {
-                firstBaselineMinor = metrics[0].ascender;
-            } else {
-                firstBaselineMinor = -metrics[0].descender;
+                firstBaselineMinor = -metrics[0].ascender;  // right edge at X=0
             }
         } else if (minorJ == "MIDDLE") {
             // Centre the column BLOCK on X=0 (same block-centring as the
@@ -327,11 +326,18 @@ inline TextLayoutResult computeTextLayout(
             }
         } else if (minorJ == "END") {
             if (fs.leftToRight) {
+                // Right edge of the last column at X=0; columns stack rightward:
+                // first + (N-1)*step + ascender[N-1] = 0.
+                firstBaselineMinor = -static_cast<float>(N - 1) * baselineStep
+                                   - metrics[N - 1].ascender;
+            } else {
+                // TXT-4: columns stack LEFTWARD (leftToRight=F); a column spans
+                // [baseline + descender, baseline + ascender] on X (as its
+                // glyph quads do). Left edge of the last column at X=0:
+                // first - (N-1)*step + descender[N-1] = 0
+                // => firstBaseline = (N-1)*baselineStep - descender[N-1]
                 firstBaselineMinor = static_cast<float>(N - 1) * baselineStep
                                    - metrics[N - 1].descender;
-            } else {
-                firstBaselineMinor = static_cast<float>(N - 1) * baselineStep
-                                   - metrics[N - 1].ascender;
             }
         }
     }

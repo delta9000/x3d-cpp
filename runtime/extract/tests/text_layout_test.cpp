@@ -14,6 +14,7 @@
 
 #include "doctest/doctest.h"
 #include <cmath>
+#include <algorithm>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -115,8 +116,8 @@ static void test_two_lines_first_minor() {
 // Test 3: Minor axis BEGIN, topToBottom=true.
 //
 // strings = {"a"}, size=1, spacing=1, minor="BEGIN", topToBottom=T
-//   FIRST line baseline = +ascender = 0.8  (top of first line at Y=0)
-//   baselineOrigins[0] = {0, 0.8}
+//   Table 15.4: top edge of the first line at Y=0, the block hanging below it
+//   → first baseline = -ascender = -0.8; baselineOrigins[0] = {0, -0.8}
 // ===========================================================================
 static void test_minor_begin_topToBottom() {
     FontStyleParams fs;
@@ -126,9 +127,9 @@ static void test_minor_begin_topToBottom() {
 
     auto r = computeTextLayout(fs, t, monoMetrics());
 
-    check(feq(r.lineBaselineOrigins[0][1], 0.8f), "BEGIN/tTB: baseline Y");
-    // origin upper-left: Y = baseline + ascender = 0.8 + 0.8 = 1.6
-    check(feq(r.originY, 1.6f), "BEGIN/tTB: originY");
+    check(feq(r.lineBaselineOrigins[0][1], -0.8f), "BEGIN/tTB: baseline Y");
+    // origin upper-left: Y = baseline + ascender = -0.8 + 0.8 = 0 (top edge)
+    check(feq(r.originY, 0.0f), "BEGIN/tTB: originY");
 }
 
 // ===========================================================================
@@ -318,8 +319,9 @@ static void test_minor_end_topToBottom() {
 //   For vertical text: major axis = Y, minor axis = X.
 //   natural_advance = 2*1 = 2 (2 characters advancing in Y)
 //   effective = 2
-//   minor FIRST for vertical = BEGIN (special case only for horizontal)
-//     → leftToRight=T → firstBaselineMinor = ascender = 0.8
+//   minor FIRST for vertical = BEGIN (Table 15.5: left edge of the first
+//     column at X=0; a column spans [baseline+descender, baseline+ascender])
+//     → leftToRight=T → firstBaselineMinor = -descender = 0.2
 //   major BEGIN, topToBottom=T → baselineY = 0 (first glyph at Y=0)
 //   column[0] baseline = {0.8, 0}
 // ===========================================================================
@@ -335,8 +337,8 @@ static void test_vertical_single() {
     // vertical: lineBounds.width = size (column width), height = effective
     check(feq(r.lineBounds[0].width,  1.0f), "vert: lineBounds width = size");
     check(feq(r.lineBounds[0].height, 2.0f), "vert: lineBounds height = advance");
-    // baseline X = firstBaselineMinor = 0.8
-    check(feq(r.lineBaselineOrigins[0][0], 0.8f), "vert: baseline X");
+    // baseline X = firstBaselineMinor = 0.2 (left edge at X=0)
+    check(feq(r.lineBaselineOrigins[0][0], 0.2f), "vert: baseline X");
     // baseline Y = 0 (major BEGIN/FIRST)
     check(feq(r.lineBaselineOrigins[0][1], 0.0f), "vert: baseline Y");
 }
@@ -458,6 +460,62 @@ static void test_first_minor_baseline_at_zero_both_directions() {
 // ---------------------------------------------------------------------------
 // Entry point.
 // ---------------------------------------------------------------------------
+// ===========================================================================
+// Minor-axis justification table (ISO 19775-1 Tables 15.4 and 15.5), 3 lines,
+// every direction: the edge the table names sits on the origin. A line spans
+// [baseline + descender, baseline + ascender] on the minor axis (monoMetrics:
+// ascender 0.8, descender -0.2), matching the emitted glyph quads. Regression
+// for TXT-2 / TXT-4 and the BEGIN/FIRST/END placements beside them.
+// ===========================================================================
+static void test_minor_justify_table() {
+    struct Row { bool horizontal, forward; const char *minor; int line; bool upperEdge; bool baseline; };
+    // forward = topToBottom (horizontal) / leftToRight (vertical).
+    // line: 0 = first, 2 = last. upperEdge: ascender side (top / right) else
+    // descender side (bottom / left). baseline: FIRST on horizontal text.
+    const Row rows[] = {
+        {true,  true,  "FIRST",  0, false, true},  {true,  false, "FIRST",  0, false, true},
+        {true,  true,  "BEGIN",  0, true,  false}, {true,  false, "BEGIN",  0, false, false},
+        {true,  true,  "END",    2, false, false}, {true,  false, "END",    2, true,  false},
+        {false, true,  "FIRST",  0, false, false}, {false, false, "FIRST",  0, true,  false},
+        {false, true,  "BEGIN",  0, false, false}, {false, false, "BEGIN",  0, true,  false},
+        {false, true,  "END",    2, true,  false}, {false, false, "END",    2, false, false},
+    };
+    for (const Row &row : rows) {
+        FontStyleParams fs;
+        fs.horizontal = row.horizontal;
+        if (row.horizontal) fs.topToBottom = row.forward; else fs.leftToRight = row.forward;
+        fs.justifyMinor = row.minor;
+        TextParams t;
+        t.strings = {"a", "b", "c"};
+        auto r = computeTextLayout(fs, t, monoMetrics());
+        const float b = r.lineBaselineOrigins[row.line][row.horizontal ? 1 : 0];
+        const float edge = row.baseline ? b : (row.upperEdge ? b + 0.8f : b - 0.2f);
+        const std::string what = std::string("minor table: ") + (row.horizontal ? "horiz " : "vert ") +
+                                 (row.forward ? "fwd " : "rev ") + row.minor;
+        check(feq(edge, 0.0f), what.c_str());
+    }
+    // MIDDLE: the block is centred on the minor axis in every direction.
+    for (bool horizontal : {true, false})
+        for (bool forward : {true, false}) {
+            FontStyleParams fs;
+            fs.horizontal = horizontal;
+            if (horizontal) fs.topToBottom = forward; else fs.leftToRight = forward;
+            fs.justifyMinor = "MIDDLE";
+            TextParams t;
+            t.strings = {"a", "b", "c"};
+            auto r = computeTextLayout(fs, t, monoMetrics());
+            float lo = 1e9f, hi = -1e9f;
+            for (const auto &o : r.lineBaselineOrigins) {
+                const float bl = o[horizontal ? 1 : 0];
+                lo = std::min(lo, bl - 0.2f);
+                hi = std::max(hi, bl + 0.8f);
+            }
+            const std::string what = std::string("minor table: MIDDLE centred ") +
+                                     (horizontal ? "horiz " : "vert ") + (forward ? "fwd" : "rev");
+            check(feq(lo + hi, 0.0f), what.c_str());
+        }
+}
+
 TEST_CASE("text_layout_test") {
     test_single_line_defaults();
     test_two_lines_first_minor();
@@ -472,6 +530,7 @@ TEST_CASE("text_layout_test") {
     test_minor_middle();
     test_minor_end_topToBottom();
     test_vertical_single();
+    test_minor_justify_table();
     test_length_missing_entries();
     test_empty_strings();
     test_major_middle_rtl();

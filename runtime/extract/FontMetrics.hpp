@@ -31,6 +31,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace x3d::runtime::extract {
 
@@ -119,6 +120,23 @@ struct GlyphResult {
 // v1 backends honor PLAIN style only; other styles return Failed.
 // ---------------------------------------------------------------------------
 using FontMetrics = std::function<GlyphResult(const FontKey&)>;
+
+// ---------------------------------------------------------------------------
+// resolveFontFamily — ISO 19775-1 §15.4.1 FontStyle.family: "search the
+// MFString value for the first font family name matching a supported font
+// family"; if none match, "the default font family 'SERIF' shall be used". A
+// family is supported when the backend resolves a probe glyph in it (Ready or
+// Pending). With no backend injected nothing can be probed, so the first
+// listed family is kept (SERIF when the list is empty).
+// ---------------------------------------------------------------------------
+inline std::string resolveFontFamily(const std::vector<std::string> &families,
+                                     const std::string &style, const FontMetrics &fm,
+                                     std::uint32_t probe = U'A') {
+  if (!fm) return families.empty() ? std::string("SERIF") : families.front();
+  for (const std::string &f : families)
+    if (fm(FontKey{f, style, probe}).status != GlyphStatus::Failed) return f;
+  return "SERIF";
+}
 
 // ---------------------------------------------------------------------------
 // makeMonospaceStub() — default FontMetrics: always Ready, advanceEm = 0.6f,
