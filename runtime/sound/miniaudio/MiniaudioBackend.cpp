@@ -62,7 +62,76 @@ namespace x3d::runtime::miniaudio {
 // Internal node representation (heap-pinned — never moved after init)
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum class MaNodeKind { Oscillator, Biquad, Gain, Panner, Destination };
+enum class MaNodeKind { Oscillator, Biquad, Gain, Panner, Destination, Buffer };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Buffer source (NodeKind::Buffer, ADR-0050): decoded PCM played through a
+// custom ma_data_source — read cursor at rate * srcRate/outRate, linear
+// interpolation, wrapping at the end; stopped/paused read silence.
+// ─────────────────────────────────────────────────────────────────────────────
+struct BufferSource {
+  ma_data_source_base base{};  // must be first: miniaudio casts to it
+  const std::vector<float> *samples = nullptr;
+  double srcRate = 44100.0, outRate = 44100.0, rate = 1.0, cursor = 0.0, gain = 1.0;
+  int state = 0;               // 0 stopped, 1 playing, 2 paused
+};
+
+static ma_result bufRead(ma_data_source *ds, void *out, ma_uint64 frames, ma_uint64 *read) {
+  auto *b = static_cast<BufferSource *>(ds);
+  auto *dst = static_cast<float *>(out);
+  const std::size_t len = b->samples ? b->samples->size() : 0;
+  for (ma_uint64 i = 0; i < frames; ++i) {
+    if (b->state != 1 || len == 0) { dst[i] = 0.0f; continue; }
+    const std::size_t i0 = static_cast<std::size_t>(b->cursor) % len;
+    const std::size_t i1 = (i0 + 1) % len;
+    const double frac = b->cursor - std::floor(b->cursor);
+    dst[i] = static_cast<float>(b->gain * ((*b->samples)[i0] + ((*b->samples)[i1] - (*b->samples)[i0]) * frac));
+    b->cursor += b->rate * b->srcRate / b->outRate;
+    if (b->cursor >= double(len)) b->cursor = std::fmod(b->cursor, double(len));
+    if (b->cursor < 0.0) b->cursor = 0.0;
+  }
+  if (read) *read = frames;
+  return MA_SUCCESS;
+}
+static ma_result bufSeek(ma_data_source *, ma_uint64) { return MA_SUCCESS; }
+static ma_result bufFormat(ma_data_source *ds, ma_format *fmt, ma_uint32 *ch, ma_uint32 *sr,
+                           ma_channel *map, size_t cap) {
+  auto *b = static_cast<BufferSource *>(ds);
+  if (fmt) *fmt = ma_format_f32;
+  if (ch) *ch = 1;
+  if (sr) *sr = static_cast<ma_uint32>(b->outRate);
+  if (map) ma_channel_map_init_standard(ma_standard_channel_map_default, map, cap, 1);
+  return MA_SUCCESS;
+}
+static ma_result bufCursor(ma_data_source *, ma_uint64 *c) { if (c) *c = 0; return MA_SUCCESS; }
+static ma_result bufLength(ma_data_source *, ma_uint64 *l) { if (l) *l = 0; return MA_NOT_IMPLEMENTED; }
+static ma_data_source_vtable g_bufferVtable = {bufRead, bufSeek, bufFormat, bufCursor, bufLength,
+                                               nullptr, 0};
+
+// §16.4.17 Sound attenuation (DistanceModel::Ellipsoid), computed here from the
+// geometry that crossed the seam: two focus-anchored ellipsoids along
+// `direction` reach 2FB / ((F+B) - (F-B)cos theta) towards the listener; full
+// level inside the inner, linear in dB to -20 dB at the outer, silence beyond.
+static double ellipsoidGain(const NodeParams &np) {
+  const double vx = double(np.listenerPosition[0]) - np.sourcePosition[0];
+  const double vy = double(np.listenerPosition[1]) - np.sourcePosition[1];
+  const double vz = double(np.listenerPosition[2]) - np.sourcePosition[2];
+  const double d = std::sqrt(vx * vx + vy * vy + vz * vz);
+  const double dl = std::sqrt(double(np.direction[0]) * np.direction[0] +
+                              double(np.direction[1]) * np.direction[1] +
+                              double(np.direction[2]) * np.direction[2]);
+  const double cosT = (d > 1e-12 && dl > 1e-12)
+      ? (vx * np.direction[0] + vy * np.direction[1] + vz * np.direction[2]) / (d * dl) : 1.0;
+  auto reach = [cosT](double f, double b) {
+    const double den = (f + b) - (f - b) * cosT;
+    return den > 1e-12 ? 2.0 * f * b / den : 0.0;
+  };
+  const double rMin = reach(np.minFront, np.minBack), rMax = reach(np.maxFront, np.maxBack);
+  const double g = d <= rMin ? 1.0
+                 : (d >= rMax || rMax <= rMin) ? 0.0
+                 : std::pow(10.0, -(d - rMin) / (rMax - rMin));
+  return g * np.intensity;
+}
 
 struct MaNode {
   MaNodeKind kind;
@@ -80,6 +149,9 @@ struct MaNode {
 
   // Gain
   ma_splitter_node       splitterNode{};
+
+  // Buffer: the custom data source (pinned; dsNode above points back into it).
+  BufferSource           bufferSrc{};
 
   // Panner: splitterNode (above) is used as the mono pass-through in the graph;
   // spatializer + listener are used by renderStereo.
@@ -110,6 +182,8 @@ struct MiniaudioBackend::Impl {
   struct PendingNode {
     NodeKind  kind;
     NodeParams params;
+    int    playState = 0;   // Buffer: state/rate set before the lazy flush
+    double rate      = 1.0;
   };
   struct PendingConnect {
     NodeHandle dst;
@@ -160,6 +234,10 @@ struct MiniaudioBackend::Impl {
           break;
         case MaNodeKind::Destination:
           break; // owned by graph
+        case MaNodeKind::Buffer:
+          ma_data_source_node_uninit(&pn->dsNode, nullptr);
+          ma_data_source_uninit(&pn->bufferSrc.base);
+          break;
         }
       }
       ma_node_graph_uninit(&graph, nullptr);
@@ -240,6 +318,32 @@ struct MiniaudioBackend::Impl {
         continue;
       }
 
+      if (pn.kind == NodeKind::Buffer) {
+        mn->kind = MaNodeKind::Buffer;
+        mn->bufferSrc.samples = &mn->params.samples;  // mn is pinned
+        mn->bufferSrc.srcRate = pn.params.sampleRate > 0.0f ? pn.params.sampleRate : 44100.0;
+        mn->bufferSrc.outRate = sampleRate;
+        mn->bufferSrc.state = pn.playState;
+        mn->bufferSrc.rate = pn.rate;
+        mn->bufferSrc.gain = pn.params.gain;
+        ma_data_source_config dcfg = ma_data_source_config_init();
+        dcfg.vtable = &g_bufferVtable;
+        if (ma_data_source_init(&dcfg, &mn->bufferSrc.base) != MA_SUCCESS) {
+          std::fprintf(stderr, "[MiniaudioBackend] buffer data source init failed\n");
+          continue;
+        }
+        ma_data_source_node_config dscfg = ma_data_source_node_config_init(&mn->bufferSrc);
+        if (ma_data_source_node_init(&graph, &dscfg, nullptr, &mn->dsNode) != MA_SUCCESS) {
+          std::fprintf(stderr, "[MiniaudioBackend] buffer source node init failed\n");
+          ma_data_source_uninit(&mn->bufferSrc.base);
+          continue;
+        }
+        mn->node = &mn->dsNode;
+        mn->initialized = true;
+        nodes[handle] = std::move(mn);
+        continue;
+      }
+
       if (pn.kind == NodeKind::Biquad) {
         mn->kind = MaNodeKind::Biquad;
         double cutoff = static_cast<double>(pn.params.frequency);
@@ -311,7 +415,11 @@ struct MiniaudioBackend::Impl {
         // ── Init the spatializer (mono → stereo) ───────────────────────────
         ma_spatializer_config spatCfg =
             ma_spatializer_config_init(/*channelsIn=*/1, /*channelsOut=*/2);
-        spatCfg.attenuationModel = toMaAttenuation(pn.params.distanceModel);
+        // Ellipsoid (§16.4.17): the spatializer only pans; renderStereo applies
+        // the ellipsoid gain computed from the same geometry.
+        spatCfg.attenuationModel = pn.params.distanceModel == DistanceModel::Ellipsoid
+                                       ? ma_attenuation_model_none
+                                       : toMaAttenuation(pn.params.distanceModel);
         // Defensive: guard referenceDistance <= 0 to avoid NaN in the
         // inverse/exponential formulae (minDistance must be > 0).
         float refDist = pn.params.referenceDistance;
@@ -441,6 +549,21 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
       case Param::PositionX:  it->second.params.sourcePosition[0] = value; break;
       case Param::PositionY:  it->second.params.sourcePosition[1] = value; break;
       case Param::PositionZ:  it->second.params.sourcePosition[2] = value; break;
+      case Param::ListenerPositionX: it->second.params.listenerPosition[0] = value; break;
+      case Param::ListenerPositionY: it->second.params.listenerPosition[1] = value; break;
+      case Param::ListenerPositionZ: it->second.params.listenerPosition[2] = value; break;
+      case Param::ListenerForwardX:  it->second.params.listenerForward[0]  = value; break;
+      case Param::ListenerForwardY:  it->second.params.listenerForward[1]  = value; break;
+      case Param::ListenerForwardZ:  it->second.params.listenerForward[2]  = value; break;
+      case Param::ListenerUpX:       it->second.params.listenerUp[0]       = value; break;
+      case Param::ListenerUpY:       it->second.params.listenerUp[1]       = value; break;
+      case Param::ListenerUpZ:       it->second.params.listenerUp[2]       = value; break;
+      case Param::DirectionX:        it->second.params.direction[0]        = value; break;
+      case Param::DirectionY:        it->second.params.direction[1]        = value; break;
+      case Param::DirectionZ:        it->second.params.direction[2]        = value; break;
+      case Param::Intensity:         it->second.params.intensity           = value; break;
+      case Param::PlaybackState:     it->second.playState = static_cast<int>(value); break;
+      case Param::PlaybackRate:      it->second.rate = value; break;
       }
     }
     return;
@@ -498,6 +621,34 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
     break;
 
   case MaNodeKind::Panner:
+    switch (param) {
+    case Param::ListenerPositionX: case Param::ListenerPositionY: case Param::ListenerPositionZ: {
+      const int i = param == Param::ListenerPositionX ? 0 : param == Param::ListenerPositionY ? 1 : 2;
+      mn.params.listenerPosition[i] = value;
+      ma_spatializer_listener_set_position(&mn.spatializerListener, mn.params.listenerPosition[0],
+                                           mn.params.listenerPosition[1], mn.params.listenerPosition[2]);
+      return;
+    }
+    case Param::ListenerForwardX: case Param::ListenerForwardY: case Param::ListenerForwardZ: {
+      const int i = param == Param::ListenerForwardX ? 0 : param == Param::ListenerForwardY ? 1 : 2;
+      mn.params.listenerForward[i] = value;
+      ma_spatializer_listener_set_direction(&mn.spatializerListener, mn.params.listenerForward[0],
+                                            mn.params.listenerForward[1], mn.params.listenerForward[2]);
+      return;
+    }
+    case Param::ListenerUpX: case Param::ListenerUpY: case Param::ListenerUpZ: {
+      const int i = param == Param::ListenerUpX ? 0 : param == Param::ListenerUpY ? 1 : 2;
+      mn.params.listenerUp[i] = value;
+      ma_spatializer_listener_set_world_up(&mn.spatializerListener, mn.params.listenerUp[0],
+                                           mn.params.listenerUp[1], mn.params.listenerUp[2]);
+      return;
+    }
+    case Param::DirectionX: mn.params.direction[0] = value; return;
+    case Param::DirectionY: mn.params.direction[1] = value; return;
+    case Param::DirectionZ: mn.params.direction[2] = value; return;
+    case Param::Intensity:  mn.params.intensity = value; return;
+    default: break;
+    }
     // Update source position on the spatializer.
     if (param == Param::PositionX) {
       mn.params.sourcePosition[0] = value;
@@ -521,6 +672,18 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
     break;
 
   case MaNodeKind::Destination:
+    break;
+
+  case MaNodeKind::Buffer:
+    if (param == Param::PlaybackState) {
+      const int st = static_cast<int>(value);
+      if (st == 0) mn.bufferSrc.cursor = 0.0;  // stop rewinds; pause holds
+      mn.bufferSrc.state = st;
+    } else if (param == Param::PlaybackRate) {
+      mn.bufferSrc.rate = value;
+    } else if (param == Param::Gain) {
+      mn.bufferSrc.gain = value;
+    }
     break;
   }
 }
@@ -572,6 +735,24 @@ void MiniaudioBackend::renderStereo(NodeHandle destination, int frames,
   render(destination, frames, sampleRate, mono);
 
   outLR.resize(static_cast<std::size_t>(frames) * 2);
+  if (panner->params.distanceModel == DistanceModel::Ellipsoid) {
+    // §16.4.17: the ellipsoid gain from the geometry; pan only when spatialized
+    // (centred equal-power otherwise, as the built-in backend does).
+    const float g = static_cast<float>(ellipsoidGain(panner->params));
+    if (!panner->params.spatialize) {
+      const float c = g * 0.70710678f;
+      for (int i = 0; i < frames; ++i) {
+        const float s = mono[static_cast<std::size_t>(i)] * c;
+        outLR[static_cast<std::size_t>(i) * 2] = s;
+        outLR[static_cast<std::size_t>(i) * 2 + 1] = s;
+      }
+      return;
+    }
+    ma_spatializer_process_pcm_frames(&panner->spatializer, &panner->spatializerListener,
+                                      outLR.data(), mono.data(), static_cast<ma_uint64>(frames));
+    for (float &s : outLR) s *= g;
+    return;
+  }
   ma_result r = ma_spatializer_process_pcm_frames(
       &panner->spatializer, &panner->spatializerListener,
       outLR.data(), mono.data(),

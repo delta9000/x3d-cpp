@@ -349,22 +349,22 @@
   summary: X3DTimeDependentNode lifecycle ignored — sound nodes emit unconditionally; startTime/stopTime/pauseTime/resumeTime/loop not honored and isActive/isPaused/elapsedTime never emitted.
   note: SoundSystem has no activation clock — the oscillator plays from t=0. Gating a synthesized source on startTime/stopTime is doable now (no media seam); emitting isActive/isPaused as routed events needs an event-cascade hookup. Mirrors TimeSensor (TDN-*); relates to TDN-5 for media sources.
 - id: SND-3
-  nodes: [Sound, SpatialSound, ListenerPointSource]
+  nodes: [SpatialSound, ListenerPointSource]
   component: Sound
-  clause: "16.4.17, 16.4.16, 16.4.13"
+  clause: "16.4.16, 16.4.13"
   severity: major
   status: deferred
-  summary: "Spatialization PARTIAL — SpatialSound/ListenerPointSource equal-power pan + three DistanceModel modes proven via swap-test (ADR-0026); §16 Sound ellipsoid attenuation (minFront/maxFront/minBack/maxBack), HRTF, and Doppler still deferred."
-  note: "SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: the §16 Sound ellipsoid (seam carries no ellipsoid params — SpatialSound does not fully map to Panner), HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion — not a novel or low-priority ask — worth weighting accordingly when scheduling v2."
+  summary: "Spatialization PARTIAL — SpatialSound/ListenerPointSource equal-power pan + three DistanceModel modes proven via swap-test (ADR-0026); the §16.4.17 Sound ellipsoid now ships (ADR-0050); HRTF (SpatialSound.enableHRTF) and Doppler (dopplerEnabled) still deferred."
+  note: "The classic Sound node's ellipsoid (minFront/maxFront/minBack/maxBack, direction, intensity, spatialize) crosses the seam as geometry via DistanceModel::Ellipsoid and both backends evaluate it (swap-test F4, sound_immersive_test), so Sound is off this finding. SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion — not a novel or low-priority ask — worth weighting accordingly when scheduling v2."
 - id: SND-4
-  nodes: [AudioClip, BufferAudioSource, StreamAudioSource, MicrophoneSource]
+  nodes: [BufferAudioSource, StreamAudioSource, MicrophoneSource]
   interfaces: [X3DSoundSourceNode]
   component: Sound
-  clause: "16.4.2, 16.4.5, 16.4.20, 16.4.14"
+  clause: "16.4.5, 16.4.20, 16.4.14"
   severity: major
   status: deferred
-  summary: Audio source breadth — only OscillatorSource is built; AudioClip/BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early).
-  note: Blocked on an audio decode/capture + duration_changed seam (file/buffer/stream/device IO). Drives TDN-5 (AudioClip time-lifecycle). Backend extension = add NodeKinds + the IO seam.
+  summary: Audio source breadth — OscillatorSource and AudioClip are built; BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early).
+  note: "AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; isActive/isPaused (MediaTimeSystem, TDN-5), pitch and gain drive playback. Not read: AudioClip.description. BufferAudioSource can reuse the Buffer node (its buffer field is already PCM); StreamAudioSource and MicrophoneSource need a streaming/capture contract."
 - id: SND-5
   nodes: [Analyser, Convolver, Delay, DynamicsCompressor, WaveShaper]
   interfaces: [X3DSoundProcessingNode]

@@ -29,6 +29,13 @@
 //           channel on the SAME side (sign agreement). Numbers are NOT compared
 //           (different panning laws: equal-power vs ma_spatializer amplitude law).
 //
+//   IMMERSIVE fixtures (ADR-0050; tests/immersive_fixtures.hpp), per backend:
+//     F4: Sound ellipsoid — inside / between (-20 dB*(d-rMin)/(rMax-rMin)) /
+//         beyond / behind zones as ratios to the inside level, intensity, and
+//         spatialize FALSE centred. Cross-backend: the between/inside ratio agrees.
+//     F5: Buffer (decoded PCM) — stopped/playing/paused, 1 kHz resampled to the
+//         output rate, PlaybackRate 2 doubles the pitch. Cross-backend: RMS agrees.
+//
 // Anti-tautology guardrail (verified in comments): each assertion fails if a
 // backend's DSP were stubbed to echo input (L==R would break ear-sign;
 // no synthesis would break Goertzel).
@@ -41,6 +48,7 @@
 #include "dsp/BuiltinDspBackend.hpp"
 #include "miniaudio/MiniaudioBackend.hpp"
 #include "tests/dsp_metrics.hpp"
+#include "tests/immersive_fixtures.hpp"
 
 #include "X3DExecutionContext.hpp"
 
@@ -471,6 +479,34 @@ static void testF3_Spatial(DistanceModel dm, const char *dmName) {
   }
 }
 
+// F4/F5: the shared immersive fixtures on each backend, then cross-backend
+// agreement on the numbers both must reproduce.
+static void testF4F5_Immersive() {
+  using namespace x3d::test;
+  runImmersiveFixtures([] { return std::make_shared<BuiltinDspBackend>(); },
+                       [](bool ok, const char *msg) { CHECK(ok, msg); });
+  runImmersiveFixtures([] { return std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>(); },
+                       [](bool ok, const char *msg) { CHECK(ok, msg); });
+
+  auto ratio = [](std::shared_ptr<AudioBackend> a, std::shared_ptr<AudioBackend> b) {
+    return ellipsoidRms(b, ellipsoidParams(5.0f)) / ellipsoidRms(a, ellipsoidParams(0.5f));
+  };
+  const double rb = ratio(std::make_shared<BuiltinDspBackend>(), std::make_shared<BuiltinDspBackend>());
+  const double rm = ratio(std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>(), std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>());
+  std::fprintf(stderr, "[F4] between/inside: builtin=%.4f miniaudio=%.4f\n", rb, rm);
+  CHECK(std::fabs(rb - rm) < 0.03 * rb, "F4: ellipsoid falloff agrees across backends");
+
+  auto playRms = [](std::shared_ptr<AudioBackend> be) {
+    BufferRig rig = bufferRig(be);
+    rig.be->setParam(rig.buf, Param::PlaybackState, 1);
+    return rms(rig.render());
+  };
+  const double bb = playRms(std::make_shared<BuiltinDspBackend>());
+  const double bm = playRms(std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>());
+  std::fprintf(stderr, "[F5] buffer rms: builtin=%.4f miniaudio=%.4f\n", bb, bm);
+  CHECK(std::fabs(bb - bm) < kRmsTol * bb, "F5: buffer playback RMS agrees across backends");
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 
 int main() {
@@ -495,6 +531,9 @@ int main() {
 
   std::fprintf(stderr, "\n--- F3: Spatial (EXPONENTIAL) ---\n");
   testF3_Spatial(DistanceModel::Exponential, "EXPONENTIAL");
+
+  std::fprintf(stderr, "\n--- F4/F5: Immersive (ellipsoid + buffer) ---\n");
+  testF4F5_Immersive();
 
   std::fprintf(stderr, "\n");
   if (g_failures == 0)

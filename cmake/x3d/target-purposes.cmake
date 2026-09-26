@@ -63,6 +63,7 @@ _x3d_classify_present_targets(behavior
     x3d_sdk_facade
     x3d_authoring_link_contract
     x3d_sound_system
+    x3d_sound_immersive
     x3d_corpus_sweep
     x3d_corpus_audit
     x3d_corpus_audit_selftest
@@ -187,6 +188,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_sdk_facade
         x3d_authoring_link_contract
         x3d_sound_system
+        x3d_sound_immersive
         x3d_corpus_smoke
         x3d_corpus_audit_smoke
         x3d_corpus_audit_selftest

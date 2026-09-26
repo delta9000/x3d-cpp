@@ -31,19 +31,33 @@
 //   Gain               -> createNode(Gain, {gain})
 //   for each child c of node n: connect(handle[n], handle[c])  (c feeds INTO n)
 //   update(now): for each mapped node read its animatable fields -> setParam.
+//
+// CLASSIC Sound (§16.4.17, the Immersive profile): each Sound node gets its own
+// Destination fed by an Ellipsoid Panner, fed by its `source`. The listener is
+// the viewer: each tick the camera pose, and the Sound's world location and
+// direction, cross as positions (ellipsoid sizes in the Sound's frame are
+// scaled to world). AudioClip sources are fetched through the AssetResolver
+// seam, decoded by the injected AudioDecoder, and created as Buffer nodes —
+// their PCM crosses once (ADR-0050); a Pending fetch is retried each tick.
+// Their playback state follows the AudioClip time lifecycle (isActive /
+// isPaused, MediaTimeSystem) and pitch.
 #ifndef X3D_RUNTIME_SOUND_SYSTEM_HPP
 #define X3D_RUNTIME_SOUND_SYSTEM_HPP
 
 #include "AudioBackend.hpp"
+#include "AudioDecoder.hpp"
+#include "AssetResolver.hpp"
 
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
+#include "x3d/nodes/AudioClip.hpp"
 #include "x3d/nodes/AudioDestination.hpp"
 #include "x3d/nodes/BiquadFilter.hpp"
 #include "x3d/nodes/Gain.hpp"
 #include "x3d/nodes/ListenerPointSource.hpp"
 #include "x3d/nodes/OscillatorSource.hpp"
+#include "x3d/nodes/Sound.hpp"
 #include "x3d/nodes/SpatialSound.hpp"
 
 #include <cmath>
@@ -89,8 +103,23 @@ public:
    *          are walked through a Panner backed with the resolved positions.
    */
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    (void)ctx;
     if (!backend_) return;
+    ctx_ = &ctx;
+
+    if (auto *snd = dynamic_cast<x3d::nodes::Sound *>(node)) {
+      // Classic Sound: Destination <- Ellipsoid Panner <- source.
+      NodeParams dp;
+      dp.maxChannelCount = 2;
+      NodeHandle destHandle = backend_->createNode(NodeKind::Destination, dp);
+      if (destHandle == kInvalidNodeHandle) return;
+      destinations_.push_back(destHandle);
+      NodeHandle panner = backend_->createNode(NodeKind::Panner, soundPannerParams(snd, ctx));
+      if (panner == kInvalidNodeHandle) return;
+      backend_->connect(destHandle, panner);
+      sounds_.push_back({snd, panner});
+      if (auto src = snd->getSource()) buildChild(src.get(), panner);
+      return;
+    }
 
     if (auto *dest = dynamic_cast<x3d::nodes::AudioDestination *>(node)) {
       NodeParams dp;
@@ -135,6 +164,11 @@ public:
    */
   void setListener(x3d::nodes::ListenerPointSource *listener) { listener_ = listener; }
 
+  /** @brief Byte oracle for AudioClip urls (null -> no clip loads). */
+  void setAssetResolver(extract::AssetResolver r) { resolver_ = std::move(r); }
+  /** @brief AudioClip decoder (null / default -> clips stay silent). */
+  void setAudioDecoder(AudioDecoder d) { decoder_ = std::move(d); }
+
   /**
    * @brief Render one AudioDestination's graph to a stereo interleaved buffer.
    * @details Renders the i-th enrolled destination (default the first).
@@ -159,9 +193,11 @@ public:
    */
   void update(double now, X3DExecutionContext &ctx) override {
     (void)now;
-    (void)ctx;
     if (!backend_) return;
+    ctx_ = &ctx;
+    retryPendingClips();
     for (const auto &m : map_) pushParams(m.first, m.second);
+    for (const SoundEntry &se : sounds_) pushSound(se, ctx);
   }
 
   /**
@@ -214,6 +250,11 @@ private:
       NodeParams p;
       p.gain = gain->getGain();
       handle = backend_->createNode(NodeKind::Gain, p);
+    } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
+      // AudioClip: a Buffer node once its bytes are fetched and decoded.
+      const ClipLoad load = loadClip(clip, handle);
+      if (load == ClipLoad::Pending) pendingClips_.push_back({clip, parent});
+      if (load != ClipLoad::Ready) return kInvalidNodeHandle;
     } else if (auto *ss = dynamic_cast<SpatialSound *>(node)) {
       // SpatialSound as an audio-graph child (§16 allows nesting): insert a
       // Panner carrying the resolved positions. The SpatialSound's own
@@ -258,6 +299,13 @@ private:
       backend_->setParam(handle, Param::Gain, biq->getGain());
     } else if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) {
       backend_->setParam(handle, Param::Gain, gain->getGain());
+    } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
+      // Playback follows the §8.2.4 lifecycle outputs (MediaTimeSystem).
+      const bool active = clip->X3DTimeDependentNode::getIsActive();
+      const bool paused = clip->X3DTimeDependentNode::getIsPaused();
+      backend_->setParam(handle, Param::PlaybackState, !active ? 0.0f : paused ? 2.0f : 1.0f);
+      backend_->setParam(handle, Param::PlaybackRate, clip->getPitch());
+      backend_->setParam(handle, Param::Gain, clip->getGain());
     }
     // AudioDestination has no per-tick animatable scalar in v1.
   }
@@ -368,6 +416,112 @@ private:
 
     return p;
   }
+
+  // ── classic Sound + AudioClip plumbing (positions and bytes only) ────────
+  struct SoundEntry {
+    x3d::nodes::Sound *node;
+    NodeHandle panner;
+  };
+  struct PendingClip {
+    x3d::nodes::AudioClip *clip;
+    NodeHandle parent;
+  };
+  enum class ClipLoad { Ready, Pending, Failed };
+
+  // Fetch the clip's urls in order and decode the first that loads. Ready
+  // creates the Buffer node (its PCM crosses the seam here, once) and posts
+  // duration_changed; Pending means retry next tick.
+  ClipLoad loadClip(x3d::nodes::AudioClip *clip, NodeHandle &out) {
+    if (!resolver_ || !decoder_) return ClipLoad::Failed;
+    bool pending = false;
+    for (const std::string &url : clip->getUrl()) {
+      const extract::AssetResult r = resolver_(url, extract::AssetKind::Audio);
+      if (r.pending()) { pending = true; break; }
+      if (!r.ready()) continue;
+      DecodedAudio audio = decoder_(r.bytes);
+      if (!audio.ok || audio.samples.empty()) continue;
+      NodeParams bp;
+      bp.samples = std::move(audio.samples);
+      bp.sampleRate = audio.sampleRate;
+      bp.gain = clip->getGain();
+      out = backend_->createNode(NodeKind::Buffer, bp);
+      if (out == kInvalidNodeHandle) return ClipLoad::Failed;
+      if (ctx_)
+        ctx_->postEvent(clip, "duration_changed",
+                        std::any(SFTime{static_cast<double>(bp.samples.size()) / bp.sampleRate}));
+      return ClipLoad::Ready;
+    }
+    return pending ? ClipLoad::Pending : ClipLoad::Failed;
+  }
+
+  void retryPendingClips() {
+    for (auto it = pendingClips_.begin(); it != pendingClips_.end();) {
+      NodeHandle h = kInvalidNodeHandle;
+      const ClipLoad load = loadClip(it->clip, h);
+      if (load == ClipLoad::Pending) { ++it; continue; }
+      if (load == ClipLoad::Ready) {
+        map_.emplace(it->clip, h);
+        backend_->connect(it->parent, h);
+      }
+      it = pendingClips_.erase(it);
+    }
+  }
+
+  // The Sound's world location / direction and the viewer pose, as geometry.
+  // Ellipsoid lengths are in the Sound's frame: scale them to world.
+  static NodeParams soundPannerParams(x3d::nodes::Sound *snd, X3DExecutionContext &ctx) {
+    NodeParams p;
+    p.distanceModel = DistanceModel::Ellipsoid;
+    const Mat4 w = ctx.worldTransformAny(snd);
+    const SFVec3f loc = w.transformPoint(snd->getLocation());
+    const SFVec3f dir = w.transformDirection(snd->getDirection());
+    const SFVec3f unitX = w.transformDirection(SFVec3f{1, 0, 0});
+    const float scale = std::sqrt(unitX.x * unitX.x + unitX.y * unitX.y + unitX.z * unitX.z);
+    const float s = scale > 0.0f ? scale : 1.0f;
+    p.sourcePosition[0] = loc.x; p.sourcePosition[1] = loc.y; p.sourcePosition[2] = loc.z;
+    p.direction[0] = dir.x; p.direction[1] = dir.y; p.direction[2] = dir.z;
+    p.minFront = snd->getMinFront() * s;
+    p.minBack = snd->getMinBack() * s;
+    p.maxFront = snd->getMaxFront() * s;
+    p.maxBack = snd->getMaxBack() * s;
+    p.intensity = snd->getIntensity();
+    p.spatialize = snd->getSpatialize();
+    const SFVec3f eye = ctx.cameraWorldPosition();
+    const Mat4 camToWorld = ctx.viewMatrix().inverse();
+    const SFVec3f fwd = camToWorld.transformDirection(SFVec3f{0, 0, -1});
+    const SFVec3f up = camToWorld.transformDirection(SFVec3f{0, 1, 0});
+    p.listenerPosition[0] = eye.x; p.listenerPosition[1] = eye.y; p.listenerPosition[2] = eye.z;
+    p.listenerForward[0] = fwd.x; p.listenerForward[1] = fwd.y; p.listenerForward[2] = fwd.z;
+    p.listenerUp[0] = up.x; p.listenerUp[1] = up.y; p.listenerUp[2] = up.z;
+    return p;
+  }
+
+  void pushSound(const SoundEntry &se, X3DExecutionContext &ctx) {
+    const NodeParams p = soundPannerParams(se.node, ctx);
+    const NodeHandle h = se.panner;
+    backend_->setParam(h, Param::PositionX, p.sourcePosition[0]);
+    backend_->setParam(h, Param::PositionY, p.sourcePosition[1]);
+    backend_->setParam(h, Param::PositionZ, p.sourcePosition[2]);
+    backend_->setParam(h, Param::DirectionX, p.direction[0]);
+    backend_->setParam(h, Param::DirectionY, p.direction[1]);
+    backend_->setParam(h, Param::DirectionZ, p.direction[2]);
+    backend_->setParam(h, Param::ListenerPositionX, p.listenerPosition[0]);
+    backend_->setParam(h, Param::ListenerPositionY, p.listenerPosition[1]);
+    backend_->setParam(h, Param::ListenerPositionZ, p.listenerPosition[2]);
+    backend_->setParam(h, Param::ListenerForwardX, p.listenerForward[0]);
+    backend_->setParam(h, Param::ListenerForwardY, p.listenerForward[1]);
+    backend_->setParam(h, Param::ListenerForwardZ, p.listenerForward[2]);
+    backend_->setParam(h, Param::ListenerUpX, p.listenerUp[0]);
+    backend_->setParam(h, Param::ListenerUpY, p.listenerUp[1]);
+    backend_->setParam(h, Param::ListenerUpZ, p.listenerUp[2]);
+    backend_->setParam(h, Param::Intensity, p.intensity);
+  }
+
+  std::vector<SoundEntry> sounds_;
+  std::vector<PendingClip> pendingClips_;
+  extract::AssetResolver resolver_;
+  AudioDecoder decoder_ = makeNullAudioDecoder();
+  X3DExecutionContext *ctx_ = nullptr;
 
   std::shared_ptr<AudioBackend> backend_;
   // §16 node -> backend handle. unordered_map iteration order is unspecified, so
