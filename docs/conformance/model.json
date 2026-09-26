@@ -630,7 +630,7 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "7.2.2; 24.4.2",
           "exists": true,
@@ -987,7 +987,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "30.4.6; 30.2.3",
           "exists": true,
@@ -1456,7 +1456,7 @@
           "behavioral": false,
           "clause": "14.3; 14 (Geometry2D)",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2",
@@ -1478,7 +1478,7 @@
           "behavioral": false,
           "clause": "14.3",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2"
@@ -1499,7 +1499,7 @@
           "behavioral": false,
           "clause": "14.3; 14 (Geometry2D)",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2",
@@ -1521,7 +1521,7 @@
           "behavioral": false,
           "clause": "14.3; 14 (Geometry2D)",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2",
@@ -1543,7 +1543,7 @@
           "behavioral": false,
           "clause": "14.3",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2"
@@ -1565,7 +1565,7 @@
           "behavioral": false,
           "clause": "14.3",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2"
@@ -1587,7 +1587,7 @@
           "behavioral": false,
           "clause": "14.3; 14 (Geometry2D)",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2",
@@ -1610,7 +1610,7 @@
           "behavioral": false,
           "clause": "14.3",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2"
@@ -2706,7 +2706,7 @@
       "name": "KeyDeviceSensor",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "21.4.1, 21.4.2; 21.4.1; 21.2",
           "exists": true,
@@ -2736,7 +2736,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "21.4.1, 21.4.2; 21.2; 21.4.2",
           "exists": true,
@@ -3394,7 +3394,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "23.2.4, 23.3.2; 23.4.2",
           "exists": true,
@@ -3637,7 +3637,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "9.4.3; 9.4.3, 9.4.1",
           "exists": true,
@@ -4588,7 +4588,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "23.2.4, 23.3.2; 37",
           "exists": true,
@@ -4828,7 +4828,7 @@
       "name": "Scripting",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference)",
           "exists": true,
@@ -6443,7 +6443,7 @@
       "name": "Time",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1",
           "exists": true,
@@ -6928,9 +6928,9 @@
       "nodes": [
         "Script"
       ],
-      "note": "Unblocked by the asset-resolver/IO seam (shipped 2026-06-23; see ADR-0023). Implement together with CONF-CRITIC-2.",
+      "note": "Closed 2026-09-26: ScriptSystem::update() runs runAutoRefresh per tick \u2014 a loaded Script with autoRefresh>0 re-fetches and re-initializes on the interval (shutdown -> resolve+load -> initialize), stopping once autoRefreshTimeLimit (measured from the load that opened the refresh window; 0 = no limit) elapses. Tested in x3d_script_system (testAutoRefresh).",
       "severity": "minor",
-      "status": "deferred",
+      "status": "closed",
       "summary": "autoRefresh/autoRefreshTimeLimit URL reload + re-initialize() absent."
     },
     {
@@ -7389,9 +7389,9 @@
         "Collision",
         "CollisionSensor"
       ],
-      "note": "Needs a volume-sweep collision subsystem (post-v1). FLY ships collision-free.",
+      "note": "Closed for navigation: NavigationSystem implements WALK (horizontal motion, gravity, terrain following at avatarSize[1], step height avatarSize[2]) and collision-checks FLY/WALK moves via PickSystem::castCollidable (collision_test). The rigid-body CollisionSensor (\u00a737) is a physics concern tracked under CONF-RBP*, not avatar collision.",
       "severity": "major",
-      "status": "deferred",
+      "status": "closed",
       "summary": "WALK mode + Collision/CollisionSensor (avatar-volume collision) not implemented."
     },
     {
@@ -7619,9 +7619,9 @@
       "nodes": [
         "IntegerTrigger"
       ],
-      "note": "Deferred from the wave-3 fix \u2014 integerKey_changed already fans out via the cascade inputOutput alias (AUD-CAS); the triggerValue_changed-on-write half needs \u00a730.4.6 spec re-review before implementing.",
+      "note": "Writing integerKey (even to the same value) now also emits triggerValue with that value, per the \u00a730.4.6 text; integerKey_changed already came from the inputOutput fan-out (events_misc_test).",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "IntegerTrigger integerKey inputOutput write does not emit integerKey_changed / triggerValue_changed.",
       "wave": 3
     },
@@ -7912,9 +7912,9 @@
       "nodes": [
         "Collision"
       ],
-      "note": "Blocked on the collision subsystem (volume sweep). See CONF-NAV-COLLISION.",
+      "note": "NavigationSystem fires isActive TRUE + collideTime on the enclosing enabled Collision nodes when avatar contact begins (FLY/WALK moves blocked avatarSize[0] short of geometry), keeps it while resting against the geometry, and isActive FALSE when it ends (collision_test case 1).",
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "Collision isActive/collideTime never fire \u2014 no avatar-volume collision detection.",
       "wave": 4
     },
@@ -7937,9 +7937,9 @@
       "nodes": [
         "Collision"
       ],
-      "note": "Only observable once the collision subsystem exists. See CONF-NAV-COLLISION.",
+      "note": "PickSystem::castCollidable skips the whole subtree of a disabled Collision, nested enabled Collision nodes included (collision_test case 2).",
       "severity": "major",
-      "status": "deferred",
+      "status": "closed",
       "summary": "Collision.enabled=FALSE must propagate through the descendant subtree to gate collision (overriding nested enabled=TRUE).",
       "wave": 4
     },
@@ -8013,9 +8013,9 @@
         "KeySensor",
         "StringSensor"
       ],
-      "note": "Left open in the wave-4 fix (KDS-1..5/7..10 closed in 85b90b0) \u2014 cross-sensor coordination on the enabled-transition; minor, no consumer yet. Closure - watch set_enabled in KeyDeviceSensorSystem and disable the others.",
+      "note": "Enabling a KeySensor/StringSensor sends enabled FALSE to every other enabled key device sensor (\u00a721.2 'only one key device sensor may be active at a time'), via a field-write listener (events_misc_test).",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "Key-device exclusive-focus arbitration \u2014 enabling one sensor must send enabled=FALSE to the others \u2014 unimplemented.",
       "wave": 4
     },
@@ -8188,9 +8188,9 @@
         "LoadSensor",
         "Anchor"
       ],
-      "note": "By design \u2014 the runtime is headless. Headed embedders express cases (b)/(c) via LoadSensorSystem::setChildLoadPolicy + a Pending-returning resolver (ADR-0046). See docs/wiki/subsystems/system-loadsensor.md.",
+      "note": "AnchorSystem now activates Anchors on click: '#Name' binds that viewpoint, any other url goes to the embedder's AnchorHandler with url + parameter, which implements the replacement-world / separate-window cases (events_misc_test).",
       "severity": "minor",
-      "status": "deferred",
+      "status": "closed",
       "summary": "Spec-literal Anchor children cases (b) replacement-world / (c) separate-window are not the SDK default; the headless default policy treats \"#Name\" as loaded iff a Viewpoint DEF exists and other Anchor urls as resolver load-request-acknowledged.",
       "wave": 4
     },
@@ -8201,9 +8201,9 @@
         "LoadSensor",
         "Inline"
       ],
-      "note": "LoadSensorSystem::tick (runtime/events/LoadSensorSystem.hpp:191) marks a watched Inline Ready by a flat membership check (`scene_->expandedInlines.count(c) > 0`) against the direct child alone \u2014 it does not walk that child's own subtree to check whether Inline nodes nested inside it have themselves finished loading. At least one other conforming implementation defines Inline load-completion recursively: an Inline counts as loaded only once it and all of its nested sub-Inlines have completely loaded. \u00a79.4.3 does not define nested-Inline completion semantics, so this is a spec-silent design choice, in the same spirit as the R3-R7 rulings in ADR-0046, rather than a conformance defect. Under the default null AssetResolver every Inline expands synchronously at parse time so the gap is inert today; it becomes reachable once a real (async-capable) resolver is injected and a nested Inline's own load can still be Pending while its parent is reported Ready. Separately, a non-blocking, notify-on-completion load-node design distinct from LoadSensor has been under active discussion for a future X3D spec node \u2014 directionally relevant if LoadSensor's async story is revisited.",
+      "note": "An Inline counts as loaded only when every nested sub-Inline it asks to load has loaded; an un-expanded Inline left in an expanded child's content makes that child Failed (LoadSensor ruling R8, events_misc_test).",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "LoadSensor's per-child readiness check does not recurse into a watched Inline's own nested sub-Inlines."
     },
     {
@@ -8551,8 +8551,9 @@
         "Text",
         "FontStyle"
       ],
+      "note": "Fixed with the whole minor-axis table (Table 15.4/15.5): END with topToBottom FALSE now puts the top edge of the last line at Y=0, and the horizontal BEGIN/topToBottom TRUE and vertical FIRST/BEGIN/END placements that shared the error were corrected too (text_layout_test minor-justify table).",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "justify END (minor axis, horizontal, topToBottom=FALSE) mis-places the block (top edge of last line should be Y=0)."
     },
     {
@@ -8563,8 +8564,9 @@
         "Text",
         "FontStyle"
       ],
+      "note": "Fixed: END with leftToRight FALSE puts the left edge of the last column at X=0, a column spanning [baseline + descender, baseline + ascender] as its quads do (text_layout_test minor-justify table).",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "justify END (minor axis, vertical, leftToRight=FALSE) mis-places columns (left edge of last column should be X=0)."
     },
     {
@@ -8575,8 +8577,9 @@
         "Text",
         "FontStyle"
       ],
+      "note": "Fixed: FontStyle.family is read as the MFString it is (the enum-token read returned nothing, so every Text used SERIF) and resolved with resolveFontFamily \u2014 the first family the FontMetrics backend supports, else SERIF (text_extract_test family fallback).",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "family[] MFString fallback not iterated \u2014 should skip unsupported families and fall back to the next entry via the FontMetrics seam."
     },
     {
@@ -8588,9 +8591,9 @@
       "nodes": [
         "TimeSensor"
       ],
-      "note": "Open decision (was BACKLOG CONF-TDN1V). X3DTimeDependentSystem.hpp emits the field value (~=transition instant); a strict reading would pass `now`. 1-line flip if a consumer needs it.",
+      "note": "pauseTime_changed / resumeTime_changed now carry the simulation time the pause/resume was recognised, per \u00a78.2.4.4 (events_misc_test).",
       "severity": "low",
-      "status": "open",
+      "status": "closed",
       "summary": "pauseTime_changed/resumeTime_changed emit the field-echo value, not strict simulation-now."
     },
     {
@@ -8602,9 +8605,9 @@
       "nodes": [
         "TimeSensor"
       ],
-      "note": "Was BACKLOG CONF-CRITIC (critic unchecked_behaviors). Verify the same-timestamp stop-then-start case in X3DTimeDependentSystem.",
+      "note": "A set_stopTime / set_startTime pair at the same instant restarts an active node in place (stays active, no isActive FALSE/TRUE pair, new run from that instant); before, it restarted one tick later with an isActive toggle (events_misc_test).",
       "severity": "low",
-      "status": "open",
+      "status": "closed",
       "summary": "Same-tick stop->start restart of a TimeSensor is unverified (completed run does not auto-restart)."
     },
     {
@@ -8613,9 +8616,9 @@
       "nodes": [
         "Script"
       ],
-      "note": "Was BACKLOG CONF-CRITIC. Unblocked by the asset-resolver/IO seam (shipped 2026-06-23; see ADR-0023). Implement together with SCR-005.",
+      "note": "Closed 2026-09-26: ScriptSystem::resolveSource() fetches external (non-ecmascript:/javascript:) url entries through the injectable extract::AssetResolver (Ready=source, Pending=retry next tick, Failed=advance to the next url), and update() retries Pending fetches once per tick. Default resolver is the IO-free null stub; the CLI injects io::file::makeFileResolver (sim_runtime.hpp). Tested in x3d_script_system (testExternalUrlFetch).",
       "severity": "major",
-      "status": "deferred",
+      "status": "closed",
       "summary": "Script external-URL (@url in source) loading + auto-refresh interaction unimplemented.",
       "wave": 4
     },
@@ -8631,15 +8634,14 @@
       "summary": "touchTime condition-3 (still-over-at-release pick re-resolution) verified \u2014 implemented and tested."
     },
     {
-      "behaves": "inert",
       "clause": "24.4.2",
       "id": "ENV-10",
       "nodes": [
         "Fog"
       ],
-      "note": "boundFog() declared at runtime/events/X3DExecutionContext.hpp:266 has zero production callers; ShaderUniformVocabulary.hpp:167-175 references a 'FogDesc' struct that does not exist; SceneExtractor has no fog readout. `behaves: inert` forces the matrix to \u2717 (the closed binding-stack finding BIND-06 must not upgrade it to \u25d1). Fix = wire fog colour/type/range into the shader uniform path. (sweep 2026-06-25)",
+      "note": "Closed: FogDesc (RenderItem.hpp) + SceneExtractor::fog() surface the bound Fog's color/fogType/visibilityRange (world-scaled per the node's local coordinate frame); the \u00a717 Table 17.5 fogInterpolant applies as the final step in examples/cpu_raster/cpuraster/MaterialShader.hpp (all models incl. Unlit) and poc_renderer lit/pbr/unlit.frag + main.cpp uFogColor/uFogType/uFogVisibilityRange uniforms. visibilityRange 0 disables fog. Tests: scene_extractor_fog_test (extraction incl. transform scale) and cpuraster fog_shader_test (LINEAR/EXPONENTIAL at d=0, V/2, d>=V; range 0). (2026-06-25)",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "Fog is inert \u2014 bound and round-tripped, but no fog effect reaches the shader."
     },
     {
@@ -8683,9 +8685,9 @@
         "Rectangle2D",
         "TriangleSet2D"
       ],
-      "note": "runtime/extract/MeshBuilder.hpp:1239-1252 lists no Geometry2D node; buildLocalMesh returns recognized=false \u2192 empty MeshData. No tessellation logic for any 2D primitive exists. Implementable now against the existing MeshBuilder. (sweep 2026-06-25)",
+      "note": "Closed: all 8 names added to recognizedGeometryType() and tessellated by a new mesh_detail::buildGeometry2D (MeshBuilder.cpp), dispatched before the coord guard since they carry no `coord`. Arc2D/Circle2D/Polyline2D -> Lines, Polypoint2D -> Points, ArcClose2D (PIE/CHORD)/Disk2D/Rectangle2D/TriangleSet2D -> Triangles with +Z normals. Circular primitives use 64 chords/full circle (2\u03c0/64 rad per chord). Tested in mesh_builder_geom2d_test.cpp. (sweep 2026-06-25, closed 2D-geometry pass)",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "All 8 Geometry2D nodes absent from recognizedGeometryType() \u2014 extract silently drops them."
     },
     {
@@ -9094,9 +9096,9 @@
         "Rectangle2D",
         "TriangleSet2D"
       ],
-      "note": "runtime/scene/GeometryBounds.hpp:52-140 handles Box/Sphere/Cone/Cylinder/grids/Extrusion/Text + generic coord nodes, but no Geometry2D node; the 2D nodes carry no 'coord' field so the generic fallback (line 74) also misses them \u2192 wrong culling/picking. Fix alongside G2D-1. (sweep 2026-06-25)",
+      "note": "Closed: localGeometryBoundsImpl (GeometryBounds.hpp) gained an exact arm per 2D node \u2014 arc/circle bounds from the arc's cardinal extremes (0,\u00b1\u03c0/2,\u03c0) inside the swept range plus endpoints, PIE sectors expand the centre, Disk2D uses outerRadius, Rectangle2D size, Polyline2D/Polypoint2D/TriangleSet2D their point/vertex arrays. Tested (bounds assertions) in mesh_builder_geom2d_test.cpp. (sweep 2026-06-25, closed 2D-geometry pass)",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "Geometry2D nodes absent from localGeometryBounds() \u2014 bboxes always empty."
     },
     {
@@ -9108,9 +9110,9 @@
       "nodes": [
         "Script"
       ],
-      "note": "19775-1 29.2.6 (\"shall be part of the current event cascade\") contradicts 19775-2 SAI 4.5.2 (\"generates no event ... not part of the event cascade\"); SAI governs the seam and matches the x3dom/implementor consensus. Policy (ADR-0029) - SaiContext::setField on another node mutates the field via the reflection setter (no postEvent, no ROUTE fan-out); self-writes to the Script's own outputOnly field keep the routable path. Site runtime/script/SaiContext.hpp:101; extend sai_context_test.cpp:107-127. 4.1 - unresolved upstream; engine adopts the SAI direction ahead of spec.",
+      "note": "19775-1 29.2.6 (\"shall be part of the current event cascade\") contradicts 19775-2 SAI 4.5.2 (\"generates no event ... not part of the event cascade\"); SAI governs the seam and matches the x3dom/implementor consensus. Policy (ADR-0029) - SaiContext::setField on another node mutates the field via the reflection setter (ctx_.writeField, no postEvent, no ROUTE fan-out); self-writes to the Script's own outputOnly field keep the routable postEvent path. Closed 2026-09-26: implemented in runtime/script/SaiContext.hpp:96; tested in x3d_sai_context (testDirectOutputGate asserts the direct write lands but fans out NO ROUTE, and that a self-write still fans out). 4.1 - unresolved upstream; engine adopts the SAI direction ahead of spec.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "directOutput cross-node write is injected as a routable cascade seed (19775-1 29.2.6) instead of a non-routable value mutation (SAI 19775-2 4.5.2)."
     },
     {
@@ -9185,9 +9187,9 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "Policy (ADR-0033) - reject (quarantine + ProtoWarning BuiltinShadow) any ProtoDeclare/ ExternProtoDeclare whose name is in X3DNodeFactory::registry(); the built-in keeps the name. Default lenient (warn, scene loads); strict/conformance mode treats it as fatal. Sites ClassicVrmlReader.hpp:298/797, JsonReader.hpp:622/419. Consistent with the self-reference precaution (concepts.md:956) and the ADR-0001 ext-firewall. 4.1 - ALIGNED; the Mantis 1492 4.1 direction is built-in-takes-precedence (Seelig/X_ITE) flagged as an error/security consideration (Brutzman) \u2014 exactly this policy.",
+      "note": "Closed by quarantining any ProtoDeclare/ExternProtoDeclare whose name is in X3DNodeFactory::registry() at the parse front door (quarantineBuiltinShadowingProtos, ADR-0033): the declaration is dropped, the built-in keeps the name, and a ProtoWarning{Kind::BuiltinShadow} is recorded for every encoding (lenient; a strict embedder may treat it as fatal). Regression: x3d_parse_tests core_diagnostics_test (proto_shadow_xml/classicvrml/json, all fail without the quarantine).",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "PROTO reusing a built-in node name silently shadows the built-in (proto table resolved before factory; no collision check at registration) - a security hazard per Mantis 1492."
     },
     {
@@ -9468,9 +9470,9 @@
         "EXPORT",
         "Inline"
       ],
-      "note": "scene.imports/exports are consumed only by the codecs; no event/routing code references them. Inline DEF isolation (InlineExpand.hpp:176) is correct, but the spec's sanctioned cross-Inline escape hatch is inert. Fix: at scene-bridge build, resolve each Import{inlineDEF, importedDEF, AS} against the named Inline's exported DEF and register the alias before resolveRoutes. X_ITE supports this. (event-model review.)",
+      "note": "Closed by wireInlineImports (runtime/InlineExpand.hpp), called from parseDocument after expandInlines: each Import{inlineDEF, importedDEF, AS} resolves the imported name against the named Inline's retained child scene (its <EXPORT AS> alias first, else a child DEF) and registers the local alias in scene.defs before re-running resolveRoutes, so a ROUTE to/from the AS name binds. Regression: x3d_parse_tests core_diagnostics_test (import_export_wire_route_to_imported_as_name).",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "IMPORT/EXPORT statements parse and round-trip but are never wired to routing \u2014 a ROUTE to an imported name hits the unresolved-endpoint drop."
     },
     {
@@ -9482,9 +9484,9 @@
       "nodes": [
         "Script"
       ],
-      "note": "EcmaScriptBackend.cpp:906-912 readbackAuthorGlobals diffs against the stored value and skips if equal, for BOTH inputOutput (correct) and outputOnly (a re-assert on two ticks fires once). Fix: track a per-field \"assigned this callback\" flag for outputOnly, or document as an intentional X3DOM-aligned optimization. (event-model review.)",
+      "note": "EcmaScriptBackend.cpp readbackAuthorGlobals diffed the JS global against the stored value and skipped if equal, for BOTH inputOutput (correct) and outputOnly (a re-assert on two ticks fired once). Closed 2026-09-26: the no-op diff suppression now applies to inputOutput only, in both backends (runtime/script/EcmaScriptBackend.cpp, runtime/script/QuickJsBackend.cpp); an outputOnly re-assignment always emits. Tested in x3d_ecmascript_backend (T18).",
       "severity": "low",
-      "status": "open",
+      "status": "closed",
       "summary": "An explicit same-value assignment to a Script outputOnly field is suppressed \u2014 strict X3D semantics say an explicit eventOut assignment generates an event regardless of value."
     },
     {
@@ -9564,9 +9566,9 @@
       "nodes": [
         "WorldInfo"
       ],
-      "note": "XmlReader.hpp:157-158 (`unknown node type: skip`) and NodeBuilder.hpp:70 drop the element and collect no warning. Violates the \"the reported error message is precisely correct\" standard by absence. Fix: thread an unknown-element warning into doc (parallel to rangeWarnings/inlineWarnings) and surface it in cmdValidate. (validation review.)",
+      "note": "Closed by threading a ReaderWarning{Kind::UnknownNode} into X3DDocument.readerWarnings at each reader's unknown-element recovery (XmlReader, ClassicVrmlReader, JsonReader) and surfacing it in cmdValidate (and the cli-gate validate path) as a \"node\" diagnostic. Regression: x3d_parse_tests core_diagnostics_test (unknown_node_xml/classicvrml/json).",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "An unknown/misspelled node element is silently discarded with no diagnostic \u2014 `x3d validate` reports \"valid: yes / no diagnostics\" while deleting geometry."
     },
     {
@@ -9576,9 +9578,9 @@
       "nodes": [
         "WorldInfo"
       ],
-      "note": "X3DDocument.hpp:59 returns Profile::Interchange for any unrecognized string; cmdValidate then checks exceedances against the wrong table and the writer rewrites the declared conformance class. Fix: preserve the raw profile string for round-trip; emit a profile/error diagnostic when the token is not one of the seven canonical names. (validation review.)",
+      "note": "Closed by X3DDocument::setProfileToken (all readers): an unknown token is diagnosed as ReaderWarning{Kind::ProfileCoerced} and the authored spelling is preserved in profileRaw so every writer round-trips it unchanged (profileToken()). Resolved Profile is still Interchange for profile-fit. Regression: x3d_parse_tests core_diagnostics_test (profile_coerce_*).",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "An unknown/misspelled `profile=` token is silently coerced to Interchange and re-emitted as `profile='Interchange'` \u2014 validates against the wrong component table and rewrites authored metadata."
     },
     {
@@ -9588,9 +9590,9 @@
         "Coordinate",
         "NurbsCurve"
       ],
-      "note": "validate.py:76 compares only against the child default; the adjacent comment promises a parent-field check that is unimplemented. Fix: resolve whether containerField names a valid SF/MFNode field on the PARENT that accepts this node type before warning; add a NURBS controlPoint regression. (validation review.)",
+      "note": "Closed by resolving whether the explicit containerField names an SF/MFNode field on the PARENT that accepts the child's type (manifest acceptableNodeTypes) before warning; only a field that exists on neither side is flagged. Regression: tests/conformance/test_validate.py (test_legal_containerfield_override_not_flagged, test_containerfield_naming_no_parent_field_still_flagged).",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "CONTAINERFIELD_MISMATCH warns whenever containerField != the child's own default, false-positiving on legal non-default overrides (e.g. <NurbsCurve><Coordinate containerField='controlPoint'/></NurbsCurve>)."
     },
     {
@@ -9616,9 +9618,9 @@
         "Circle2D",
         "Rectangle2D"
       ],
-      "note": "recognizedGeometryType (MeshBuilder.cpp:938-953) lists none of Disk2D/Arc2D/ArcClose2D/Circle2D/ Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D; each falls to ++skippedGeometry_ (SceneExtractor.hpp). view3dscene/X_ITE tessellate these. Fix: tessellate the 2D primitives (cheap trig fans). (extraction-seam review.) NURBS is no longer part of this finding: NurbsCurve/NurbsPatchSurface now tessellate (NRB-1, fixed) and the remaining trimmed/swept/swung surfaces are tracked by NRB-3.",
+      "note": "Closed: recognizedGeometryType now lists all eight 2D primitives and buildGeometry2D tessellates them, so SceneExtractor no longer drops Disk2D/Arc2D/ArcClose2D/Circle2D/Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D (no more ++skippedGeometry_ for them). Tessellation is cheap trig fans/lines in the XY plane. Tested in mesh_builder_geom2d_test.cpp. NURBS was already split out of this finding (NRB-1 fixed; NRB-3 tracks the rest). (extraction-seam review; closed 2D-geometry pass.)",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "The entire 2D-geometry component is unrecognized by the mesh builder and renders nothing \u2014 indistinguishable from a parser failure."
     },
     {
@@ -9700,9 +9702,13 @@
   ],
   "meta": {
     "extractable_geometry": [
+      "Arc2D",
+      "ArcClose2D",
       "Box",
+      "Circle2D",
       "Cone",
       "Cylinder",
+      "Disk2D",
       "ElevationGrid",
       "Extrusion",
       "GeoElevationGrid",
@@ -9716,17 +9722,23 @@
       "NurbsCurve",
       "NurbsPatchSurface",
       "PointSet",
+      "Polyline2D",
+      "Polypoint2D",
       "QuadSet",
+      "Rectangle2D",
       "Sphere",
       "Text",
       "TriangleFanSet",
       "TriangleSet",
+      "TriangleSet2D",
       "TriangleStripSet"
     ],
     "finding_schema_errors": {},
     "generator": "scripts/conformance_view.py",
     "node_count": 262,
     "wired_detected": [
+      "Anchor",
+      "Arc2D",
       "AudioClip",
       "AudioDestination",
       "Background",
@@ -9739,7 +9751,9 @@
       "BooleanTrigger",
       "Box",
       "CADPart",
+      "Circle2D",
       "CollidableShape",
+      "Collision",
       "CollisionCollection",
       "CollisionSensor",
       "CollisionSpace",
@@ -9760,6 +9774,7 @@
       "HAnimHumanoid",
       "HAnimJoint",
       "IndexedFaceSet",
+      "IndexedLineSet",
       "IndexedTriangleFanSet",
       "IndexedTriangleSet",
       "IndexedTriangleStripSet",
@@ -9768,16 +9783,21 @@
       "IntegerTrigger",
       "KeySensor",
       "LOD",
+      "LineSet",
       "LoadSensor",
       "MovieTexture",
       "NavigationInfo",
       "NormalInterpolator",
+      "NurbsCurve",
       "OrientationChaser",
       "OrientationDamper",
       "OrientationInterpolator",
       "OrthoViewpoint",
       "OscillatorSource",
       "PlaneSensor",
+      "PointSet",
+      "Polyline2D",
+      "Polypoint2D",
       "PositionChaser",
       "PositionChaser2D",
       "PositionDamper",
@@ -9803,6 +9823,7 @@
       "SplineScalarInterpolator",
       "SquadOrientationInterpolator",
       "StringSensor",
+      "Switch",
       "TexCoordChaser2D",
       "TexCoordDamper2D",
       "TextureBackground",
@@ -9827,9 +9848,9 @@
     ]
   },
   "summary": {
-    "closed_count": 135,
+    "closed_count": 160,
     "component_count": 36,
-    "deferred_count": 39,
+    "deferred_count": 33,
     "finding_count": 221,
     "inert_behavioral_nodes": [
       "Analyser",
@@ -9838,7 +9859,6 @@
       "Delay",
       "DynamicsCompressor",
       "EspduTransform",
-      "Fog",
       "GeoProximitySensor",
       "GeoTouchSensor",
       "LinePickSensor",
@@ -9854,10 +9874,10 @@
       "WaveShaper"
     ],
     "open_by_severity": {
-      "critical": 3,
-      "low": 6,
-      "major": 39,
-      "minor": 38
+      "critical": 2,
+      "low": 3,
+      "major": 28,
+      "minor": 28
     }
   },
   "unresolved_findings": []

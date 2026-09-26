@@ -9,13 +9,11 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 | BooleanToggle | 1 | ✓ | — | ✓ | EUF-2, EUF-5 | X3DChildNode |
 | BooleanTrigger | 1 | ✓ | — | ✓ | TRIG-1, TRIG-6 | X3DChildNode, X3DTriggerNode |
 | IntegerSequencer | 1 | ✓ | — | ✓ | SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
-| IntegerTrigger | 1 | ✓ | — | ◑ | TRIG-2, TRIG-4, TRIG-6 | X3DChildNode, X3DTriggerNode |
+| IntegerTrigger | 1 | ✓ | — | ✓ | TRIG-2, TRIG-4, TRIG-6 | X3DChildNode, X3DTriggerNode |
 | TimeTrigger | 1 | ✓ | — | ✓ | TRIG-3, TRIG-5, TRIG-6 | X3DChildNode, X3DTriggerNode |
 
 ## Findings
 
-- **TRIG-4** [major/OPEN] — §30.4.6: IntegerTrigger integerKey inputOutput write does not emit integerKey_changed / triggerValue_changed.
-  - Deferred from the wave-3 fix — integerKey_changed already fans out via the cascade inputOutput alias (AUD-CAS); the triggerValue_changed-on-write half needs §30.4.6 spec re-review before implementing.
 - **TRIG-1** [critical/CLOSED `47c0714`] — §30.4.4: BooleanTrigger never emits triggerTrue=TRUE on set_triggerTime — handler is the empty default (no System).
   - set_triggerTimeHandler is never wired; every ROUTE into set_triggerTime is dropped.
 - **TRIG-2** [critical/CLOSED `47c0714`] — §30.4.6: IntegerTrigger never emits triggerValue=integerKey on set_boolean=TRUE (and never applies the TRUE-only filter) — no System.
@@ -30,6 +28,8 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 - **SEQ-5** [critical/CLOSED `47c0714`] — §30.3.1: next/previous index wrap-around (last→0, 0→last) unimplemented.
 - **EUF-1** [critical/CLOSED `47c0714`] — §30.4.1: BooleanFilter routes nothing — on set_boolean it must emit inputTrue/inputFalse (by value) + always inputNegate; no System.
 - **EUF-2** [critical/CLOSED `47c0714`] — §30.4.3: BooleanToggle never toggles — on set_boolean=TRUE it must flip and emit toggle_changed; FALSE is a no-op. No System.
+- **TRIG-4** [major/CLOSED] — §30.4.6: IntegerTrigger integerKey inputOutput write does not emit integerKey_changed / triggerValue_changed.
+  - Writing integerKey (even to the same value) now also emits triggerValue with that value, per the §30.4.6 text; integerKey_changed already came from the inputOutput fan-out (events_misc_test).
 - **SEQ-7** [major/CLOSED `47c0714`] — §30.2.4: Duplicate-key tie-break (lowest index wins) + steady-fraction re-emit semantics unimplemented.
 - **SEQ-8** [major/CLOSED `47c0714`] — §30.3.1: Internal fraction/index state (seed from key[0], updated by next/previous) not maintained.
 - **EUF-4** [major/CLOSED `47c0714`] — §30.4.1: BooleanFilter must emit exactly one of inputTrue/inputFalse per event (not both) plus inputNegate — selection logic absent.
