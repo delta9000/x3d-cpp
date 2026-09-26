@@ -848,6 +848,112 @@ int main() {
     backend.shutdown(h);
   }
 
+  // -------------------------------------------------------------------------
+  // T17: deterministic Date. Date.now() and a zero-argument `new Date()` /
+  //      `Date()` read the injected execution clock (SaiContext::currentTime(),
+  //      seconds -> ms); Date with explicit arguments, Date.parse/UTC and
+  //      instanceof are preserved.
+  // -------------------------------------------------------------------------
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    ctx.tick(12.5);  // injected clock: 12.5 s -> 12500 ms
+
+    const char *outFields[] = {"now", "newGet", "year", "sameInstance",
+                               "funcType", "parsed", "utc", "fixedDiffers",
+                               "bypassCtorNow", "bypassCtorNewGet",
+                               "bypassProtoNow", "dateLength", "protoCtorIsDate",
+                               "funcMatches", "subclassOk"};
+    for (const char *f : outFields) {
+      X3DFieldType t = X3DFieldType::SFTime;
+      if (std::string(f) == "sameInstance") t = X3DFieldType::SFBool;
+      if (std::string(f) == "funcType") t = X3DFieldType::SFString;
+      if (std::string(f) == "fixedDiffers") t = X3DFieldType::SFBool;
+      if (std::string(f) == "protoCtorIsDate") t = X3DFieldType::SFBool;
+      if (std::string(f) == "funcMatches") t = X3DFieldType::SFBool;
+      if (std::string(f) == "subclassOk") t = X3DFieldType::SFBool;
+      if (std::string(f) == "dateLength") t = X3DFieldType::SFInt32;
+      dynamicFieldStore().addAuthorField(
+          script, AuthorFieldDecl{f, t, AccessType::OutputOnly, {}});
+    }
+
+    ScriptHandle h = backend.load(script,
+        "function initialize() {"
+        "  now = Date.now();"
+        "  newGet = new Date().getTime();"
+        "  year = new Date(2020, 0, 1).getFullYear();"
+        "  fixedDiffers = (new Date(2020, 0, 1).getTime() !== Date.now());"
+        "  sameInstance = (new Date()) instanceof Date;"
+        "  funcType = typeof Date();"
+        "  funcMatches = (Date() === new Date().toString());"
+        "  bypassCtorNow = (new Date()).constructor.now();"
+        "  bypassCtorNewGet ="
+        "      new (Date.prototype.constructor)().getTime();"
+        "  bypassProtoNow ="
+        "      Object.getPrototypeOf(new Date()).constructor.now();"
+        "  dateLength = Date.length;"
+        "  protoCtorIsDate = (Date.prototype.constructor === Date);"
+        // Duktape is ES5: no class syntax, so the subclass check is a no-op
+        // there (the QuickJS test exercises `class X extends Date {}`).
+        "  subclassOk = true;"
+        "  var iso = new Date(Date.UTC(2020, 0, 1)).toISOString();"
+        "  parsed = Date.parse(iso);"
+        "  utc = Date.UTC(2020, 0, 1);"
+        "}", sai);
+    check(h != kInvalidScriptHandle, "T17: load deterministic-Date script");
+    backend.initialize(h);
+
+    std::any now = dynamicFieldStore().getValue(script, "now");
+    std::any newGet = dynamicFieldStore().getValue(script, "newGet");
+    check(now.has_value() && std::any_cast<double>(now) == 12500.0,
+          "T17: Date.now() == injected clock in ms");
+    check(newGet.has_value() && std::any_cast<double>(newGet) == 12500.0,
+          "T17: new Date().getTime() == injected clock in ms");
+    std::any year = dynamicFieldStore().getValue(script, "year");
+    check(year.has_value() && std::any_cast<double>(year) == 2020.0,
+          "T17: new Date(2020,0,1) is unaffected (year 2020)");
+    std::any differs = dynamicFieldStore().getValue(script, "fixedDiffers");
+    check(differs.has_value() && std::any_cast<bool>(differs),
+          "T17: explicit-argument Date is not the injected clock");
+    std::any inst = dynamicFieldStore().getValue(script, "sameInstance");
+    check(inst.has_value() && std::any_cast<bool>(inst),
+          "T17: new Date() instanceof Date holds");
+    std::any ft = dynamicFieldStore().getValue(script, "funcType");
+    check(ft.has_value() && std::any_cast<std::string>(ft) == "string",
+          "T17: Date() as a function still returns a string");
+    std::any parsed = dynamicFieldStore().getValue(script, "parsed");
+    std::any utc = dynamicFieldStore().getValue(script, "utc");
+    check(parsed.has_value() && utc.has_value() &&
+              std::any_cast<double>(parsed) == std::any_cast<double>(utc),
+          "T17: Date.parse / Date.UTC still work");
+
+    // Bypass paths (review (a)): all must reach the injected clock, not the
+    // wall clock.
+    std::any b1 = dynamicFieldStore().getValue(script, "bypassCtorNow");
+    std::any b2 = dynamicFieldStore().getValue(script, "bypassCtorNewGet");
+    std::any b3 = dynamicFieldStore().getValue(script, "bypassProtoNow");
+    check(b1.has_value() && std::any_cast<double>(b1) == 12500.0,
+          "T17: (new Date()).constructor.now() == injected clock");
+    check(b2.has_value() && std::any_cast<double>(b2) == 12500.0,
+          "T17: new (Date.prototype.constructor)() == injected clock");
+    check(b3.has_value() && std::any_cast<double>(b3) == 12500.0,
+          "T17: Object.getPrototypeOf(new Date()).constructor.now() == clock");
+    // Semantics (review (b)).
+    std::any len = dynamicFieldStore().getValue(script, "dateLength");
+    check(len.has_value() && std::any_cast<SFInt32>(len) == 7,
+          "T17: Date.length === 7");
+    std::any pc = dynamicFieldStore().getValue(script, "protoCtorIsDate");
+    check(pc.has_value() && std::any_cast<bool>(pc),
+          "T17: Date.prototype.constructor === Date");
+    std::any fm = dynamicFieldStore().getValue(script, "funcMatches");
+    check(fm.has_value() && std::any_cast<bool>(fm),
+          "T17: Date() returns the injected time's string");
+
+    backend.shutdown(h);
+    dynamicFieldStore().erase(script);
+  }
+
   if (failures == 0) {
     std::cout << "All ecmascript_backend tests passed.\n";
     return 0;

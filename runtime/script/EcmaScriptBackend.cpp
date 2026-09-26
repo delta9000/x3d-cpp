@@ -47,6 +47,29 @@ SaiContext *stashedSai(duk_context *ctx) {
   return static_cast<SaiContext *>(p);
 }
 
+// -------------------------------------------------------------------------
+// Active-clock bridge. Duktape's DUK_USE_DATE_GET_NOW hook (duk_config.h)
+// calls x3d_duktape_date_now_ms() below, which reads this thread's current
+// SaiContext so Date.now()/new Date()/Date() see the injected execution clock.
+// The pointer is set for the duration of every engine entry that can run
+// script: protectedRun (below) and the top-level source eval in load().
+// -------------------------------------------------------------------------
+
+thread_local SaiContext *t_activeSai = nullptr;
+
+class ScopedActiveSai {
+public:
+  explicit ScopedActiveSai(SaiContext *sai) : prev_(t_activeSai) {
+    t_activeSai = sai;
+  }
+  ~ScopedActiveSai() { t_activeSai = prev_; }
+  ScopedActiveSai(const ScopedActiveSai &) = delete;
+  ScopedActiveSai &operator=(const ScopedActiveSai &) = delete;
+
+private:
+  SaiContext *prev_;
+};
+
 void pushNode(duk_context *ctx, const SFNode &node) {
   SaiContext *sai = stashedSai(ctx);
   if (!node || !sai) {
@@ -174,6 +197,7 @@ private:
 
 template <typename Fn>
 bool protectedRun(duk_context *ctx, const std::string &what, Fn fn) {
+  ScopedActiveSai active(stashedSai(ctx));
   const duk_int_t rc = duk_safe_call(
       ctx,
       [](duk_context *c, void *udata) -> duk_ret_t {
@@ -820,7 +844,22 @@ void defineBrowserGetter(duk_context *ctx, const char *name, duk_c_function fn,
                    DUK_DEFPROP_SET_CONFIGURABLE);
 }
 
+// Deterministic Date is provided natively through DUK_USE_DATE_GET_NOW
+// (duk_config.h -> x3d_duktape_date_now_ms above): Duktape's own Date reads the
+// injected clock, so no JS shim or global rebinding is needed here.
+
 } // namespace
+
+// Duktape's DUK_USE_DATE_GET_NOW provider (declared in duk_config.h). Returns
+// the currently-executing script's injected clock in milliseconds. Outside a
+// script (e.g. Duktape seeding its RNG at heap creation) there is no active
+// SaiContext, so fall back to the wall clock.
+extern "C" double x3d_duktape_date_now_ms(void * /*thr*/) {
+  if (t_activeSai) return t_activeSai->currentTime() * 1000.0;
+  using namespace std::chrono;
+  return duration<double, std::milli>(system_clock::now().time_since_epoch())
+      .count();
+}
 
 void EcmaScriptBackend::installBrowser(duk_context *ctx, Entry *entry) {
   SaiContext *sai = entry ? entry->sai : nullptr;
@@ -890,8 +929,10 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
       installBrowser(c, &entry);
     });
 
-    // Evaluate the source to define global functions.
+    // Evaluate the source to define global functions. The top-level source runs
+    // here too (outside protectedRun), so arm the active-clock bridge for it.
     if (installed) {
+      ScopedActiveSai active(&sai);
       if (duk_peval_string(ctx, source.c_str()) != 0) {
         std::cerr << "[EcmaScriptBackend] eval error: "
                   << duk_safe_to_string(ctx, -1) << "\n";

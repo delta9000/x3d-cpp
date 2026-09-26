@@ -3135,6 +3135,21 @@ int x3d_duk_exec_timeout_check(void *udata);
 
 #if defined(DUK_COMPILING_DUKTAPE)
 
+/* x3d-cpp: external Date clock provider. Duktape calls DUK_USE_DATE_GET_NOW()
+ * for Date.now(), a zero-argument new Date() and Date(); routing it to a host
+ * function (defined in runtime/script/EcmaScriptBackend.cpp) that returns the
+ * currently-executing script's injected clock makes every wall-clock read
+ * deterministic at the source, leaving the native Date constructor, its
+ * prototype and its .constructor untouched. */
+#if defined(__cplusplus)
+extern "C" {
+#endif
+double x3d_duktape_date_now_ms(void *thr);
+#if defined(__cplusplus)
+}
+#endif
+#define DUK_USE_DATE_GET_NOW(ctx) x3d_duktape_date_now_ms((void *) (ctx))
+
 #if defined(DUK_USE_DATE_GET_NOW)
 /* External provider already defined. */
 #elif defined(DUK_USE_DATE_NOW_GETTIMEOFDAY)

@@ -34,6 +34,7 @@
 
 #include "QuickJsBackend.hpp"
 
+#include "DeterministicDate.hpp" // Date.now()/new Date() -> injected clock
 #include "DynamicField.hpp" // author-field store (mirrors EcmaScriptBackend §3.5)
 #include "SaiContext.hpp"   // post author outputs into the cascade
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
@@ -43,6 +44,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -916,6 +918,29 @@ void defineBrowserGetter(JSContext *ctx, JSValue browser, const char *name,
   JS_FreeAtom(ctx, atom);
 }
 
+// Deterministic Date: QuickJS-ng exposes no runtime clock hook, so route Date
+// through the injected execution clock with a native callback + JS shim
+// (DeterministicDate.hpp).
+JSValue date_clock_ms(JSContext *ctx, JSValueConst, int, JSValueConst *) {
+  SaiContext *sai = saiOf(ctx);
+  return JS_NewFloat64(ctx, sai ? sai->currentTime() * 1000.0 : 0.0);
+}
+
+void installDeterministicDate(JSContext *ctx) {
+  // Publish the callback as a transient global, evaluate the shim (which
+  // captures it in a closure and rebinds Date), then remove the global again.
+  JsValue global(ctx, JS_GetGlobalObject(ctx));
+  JS_SetPropertyStr(ctx, global.get(), detail::kClockMsGlobal,
+                    JS_NewCFunction(ctx, date_clock_ms, detail::kClockMsGlobal, 0));
+  JsValue result(ctx, JS_Eval(ctx, detail::kDeterministicDateShim,
+                              std::strlen(detail::kDeterministicDateShim),
+                              "<date-shim>", JS_EVAL_TYPE_GLOBAL));
+  if (result.isException()) logException(ctx, "date shim");
+  JSAtom atom = JS_NewAtom(ctx, detail::kClockMsGlobal);
+  JS_DeleteProperty(ctx, global.get(), atom, 0);
+  JS_FreeAtom(ctx, atom);
+}
+
 // Install the Browser global on a fresh context. The SaiContext is already
 // stamped on the context opaque by load() before this runs.
 void installBrowser(JSContext *ctx) {
@@ -984,6 +1009,7 @@ ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
   // Thread the SaiContext to Browser callbacks (1 context : 1 script).
   JS_SetContextOpaque(ctx, &sai);
   installBrowser(ctx);
+  installDeterministicDate(ctx);
 
   // Evaluate the source to define global functions (initialize/handlers/...).
   JsValue result(ctx, JS_Eval(ctx, source.c_str(), source.size(),
