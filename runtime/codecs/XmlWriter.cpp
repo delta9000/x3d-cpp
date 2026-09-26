@@ -21,7 +21,7 @@ std::string XmlWriter::writeDocument(const runtime::X3DDocument &doc) {
   seen_.clear();
   auto root = std::make_unique<xml::Element>();
   root->name = "X3D";
-  root->setAttr("profile", doc.profileName());
+  root->setAttr("profile", doc.profileToken());
   root->setAttr("version", headerVersion(doc.version));
 
   // <head>

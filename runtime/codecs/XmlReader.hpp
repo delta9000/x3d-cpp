@@ -55,6 +55,7 @@ public:
   /// Parse a full X3D document string. Throws std::runtime_error on malformed
   /// XML. Unknown node/element names are skipped gracefully.
   runtime::X3DDocument readDocument(const std::string &xmlText) {
+    readerWarnings_.clear();
     auto root = xml::parse(xmlText);
     runtime::X3DDocument doc;
     // VP-2 §1 bare floor: an unversioned document reads as 3.0. Set here, not
@@ -67,7 +68,7 @@ public:
     const xml::Element *x3d = root.get();
     if (x3d->name == "X3D") {
       if (const std::string *p = x3d->attr("profile"))
-        doc.profile = runtime::profileFromString(*p);
+        doc.setProfileToken(*p);
       if (const std::string *v = x3d->attr("version"))
         doc.version = *v;
       for (const auto &child : x3d->children) {
@@ -81,6 +82,8 @@ public:
       readScene(*x3d, doc.scene);
     }
     doc.scene.resolveRoutes();
+    doc.readerWarnings.insert(doc.readerWarnings.end(), readerWarnings_.begin(),
+                              readerWarnings_.end());
     return doc;
   }
 
@@ -95,6 +98,10 @@ public:
   }
 
 private:
+  // Reader-recovery diagnostics accumulated during the current readDocument()
+  // call, moved into X3DDocument.readerWarnings on return.
+  std::vector<runtime::ReaderWarning> readerWarnings_;
+
   void readHead(const xml::Element &head, runtime::Head &out) {
     for (const auto &c : head.children) {
       if (c->name == "component") {
@@ -164,8 +171,15 @@ private:
     }
 
     auto node = X3DNodeFactory::create(el.name);
-    if (!node)
+    if (!node) {
+      // Unknown/misspelled node element: the lenient reader discards it. Keep
+      // the recovery visible (DIAG-UNKNOWN-NODE) rather than silently deleting
+      // authored content.
+      readerWarnings_.push_back(
+          {runtime::ReaderWarning::Kind::UnknownNode,
+           "unknown node element <" + el.name + "> discarded"});
       return nullptr; // unknown node type: skip
+    }
 
     const FieldTable &table = node->fields();
 

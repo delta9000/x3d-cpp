@@ -352,6 +352,16 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
   const std::vector<ex::LightDesc> lights = extractor.lights();
   const std::vector<EyeLight> eyeLights = buildEyeLights(lights, viewRT, headlightOn);
 
+  // §24.4.2: the bound Fog reduced for the fragment shaders. visibilityRange is
+  // world-scaled by the extractor; 0 disables fog (applyFog no-ops).
+  FogParams fog;
+  {
+    const ex::FogDesc fd = extractor.fog();
+    fog.color = glsl::vec3(fd.color);
+    fog.type = (fd.fogType == ex::FogDesc::Type::Exponential) ? 1 : 0;
+    fog.visibilityRange = fd.visibilityRange;
+  }
+
   Rasterizer raster(fb);
 
   // ---- Partition opaque vs transparent (PoC B7 rule) ------------------------
@@ -418,7 +428,8 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
     FragmentShader fs;
     if (opt.authorShaderFor) fs = opt.authorShaderFor(it, eyeLights, mesh.hasColors);
     if (!fs)
-      fs = makeMaterialShader(it.material, eyeLights, mesh.hasColors, forceUnlit);
+      fs = makeMaterialShader(it.material, eyeLights, mesh.hasColors, forceUnlit,
+                              fog);
     raster.drawTriangles(verts, mesh.indices, modelG, viewG, projG, normalMat,
                          mesh.ccw, mesh.solid, blend, fs);
   };

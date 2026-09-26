@@ -71,14 +71,32 @@ def validate_document(xml: str, manifest: Manifest) -> List[Finding]:
                     data={"node": tag, "field": aname},
                 ))
         # explicit containerField: must equal the manifest default OR name some
-        # SF/MFNode field on the PARENT (best-effort: warn only when it does neither)
+        # SF/MFNode field on the PARENT that accepts this child's type. Only warn
+        # when it does neither — a legal non-default override (e.g. <Coordinate
+        # containerField='controlPoint'> under <NurbsCurve>) must not be flagged.
         cf = el.get("containerField")
         if cf and node.get("containerField") and cf != node["containerField"]:
-            findings.append(Finding(
-                "CONTAINERFIELD_MISMATCH", WARNING, path_of(el),
-                f"<{tag} containerField='{cf}'> != manifest default "
-                f"'{node['containerField']}'",
-            ))
+            parent = el.getparent()
+            parent_tag = (
+                etree.QName(parent).localname
+                if parent is not None and isinstance(parent.tag, str)
+                else None
+            )
+            parent_node = manifest.nodes.get(parent_tag) if parent_tag else None
+            legal_override = False
+            if parent_node is not None:
+                pf = parent_node["fields"].get(cf)
+                if pf and pf.get("type") in ("SFNode", "MFNode"):
+                    acceptable = pf.get("acceptableNodeTypes")
+                    if not acceptable or tag in acceptable:
+                        legal_override = True
+            if not legal_override:
+                findings.append(Finding(
+                    "CONTAINERFIELD_MISMATCH", WARNING, path_of(el),
+                    f"<{tag} containerField='{cf}'> names no field on "
+                    f"<{parent_tag}> that accepts it, and != manifest default "
+                    f"'{node['containerField']}'",
+                ))
 
     # ROUTE endpoint/access legality (uses scene DEF map)
     defs = {el.get("DEF"): etree.QName(el).localname

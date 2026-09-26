@@ -63,6 +63,12 @@ public:
   // registers these directly. Reuses ResolvedProtoRoute (same endpoint shape).
   std::vector<ResolvedProtoRoute> resolvedInlineRoutes;
 
+  // The child Scene each Inline expanded to, keyed by the ORIGINAL Inline node.
+  // Retained so an <IMPORT inlineDEF=... importedDEF=...> can resolve the
+  // imported name against the child's exported/DEF'd node (§9.2 cross-Inline
+  // escape hatch) without leaking the child's whole DEF table.
+  std::unordered_map<const X3DNode *, std::shared_ptr<Scene>> expandedInlineScenes;
+
   // Exposed interface event fields -> IS-mapped body endpoints, keyed by the
   // expanded primary node pointer then the interface field name. The bridge
   // consults this to redirect external routes that target an instance.

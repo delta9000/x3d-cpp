@@ -70,6 +70,8 @@ int main() {
   (void)cam.viewMatrix;
   sdk::BackgroundDesc bg = ex.background();
   (void)bg;
+  sdk::FogDesc fog = ex.fog(); // §24.4.2 bound-Fog read-out.
+  (void)fog;
   sdk::Aabb worldBounds = ex.sceneWorldBounds();
   check(!worldBounds.empty, "scene world bounds non-empty");
 

@@ -224,6 +224,12 @@ static std::string ourValidate(const std::string &path, std::string &reason,
         reason = "inline: " + doc.inlineWarnings[0].detail;
         return "INVALID";
     }
+    // Reader-recovery diagnostics (unknown node element, coerced profile), same
+    // as cmdValidate — keeps the two validate paths in step.
+    if (!doc.readerWarnings.empty()) {
+        reason = "reader: " + doc.readerWarnings[0].detail;
+        return "INVALID";
+    }
 
     // Conformance checks (Check 1: duplicate meta)
     if (hasDuplicateMeta(doc)) {
@@ -257,6 +263,7 @@ static std::string classifyDisagreement(const std::string &ourVerdict,
         if (ourReason.rfind("range:", 0) == 0) return "range-only-us";
         if (ourReason.rfind("proto:", 0) == 0) return "proto-warn-us";
         if (ourReason.rfind("inline:", 0) == 0) return "inline-warn-us";
+        if (ourReason.rfind("reader:", 0) == 0) return "reader-warn-us";
         if (ourReason.rfind("dup-meta:", 0) == 0) return "dup-meta-only-us";
         if (ourReason.rfind("unused-proto:", 0) == 0) return "unused-proto-only-us";
         if (ourReason.rfind("coord-index:", 0) == 0) return "coord-index-only-us";

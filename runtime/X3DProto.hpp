@@ -54,7 +54,7 @@ struct ProtoRedirect {
 struct ProtoWarning {
   enum class Kind {
     UnresolvedExtern, MissingDeclaration, InterfaceMismatch,
-    RecursionLimit, UnknownField
+    RecursionLimit, UnknownField, BuiltinShadow
   };
   Kind kind;
   std::string instanceName;
@@ -67,6 +67,16 @@ struct InlineWarning {
   Kind kind;
   std::string inlineDEF; // DEF of the Inline node, or "" if anonymous
   std::string detail;    // e.g. the url that failed to resolve
+};
+
+/// Non-fatal reader diagnostic, collected into X3DDocument.readerWarnings.
+/// Emitted when a reader recovers from authored input that is not legal X3D
+/// (an unknown node element is discarded, a profile token is coerced), so the
+/// recovery stays visible to `x3d validate` instead of being silent.
+struct ReaderWarning {
+  enum class Kind { UnknownNode, ProfileCoerced };
+  Kind kind;
+  std::string detail;
 };
 
 /**

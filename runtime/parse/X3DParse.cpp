@@ -8,6 +8,7 @@
 #include "X3DProtoExpand.hpp"
 #include "X3DRangeValidate.hpp"
 #include "XmlReaderAdapter.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -15,6 +16,53 @@
 #include <stdexcept>
 
 namespace x3d::codec {
+
+namespace {
+
+/// Quarantine PROTO/EXTERNPROTO declarations that reuse a built-in node type
+/// name (ADR-0033, §4.4.4: node type names shall be unique; shadowing a built-in
+/// is rejected — the built-in keeps the name). Detection is centralized here so
+/// every encoding gets the same policy from the single front door. Lenient: the
+/// rogue declaration is dropped and a BuiltinShadow diagnostic is recorded; the
+/// scene still loads (a strict embedder may treat any such warning as fatal).
+void quarantineBuiltinShadowingProtos(runtime::X3DDocument &doc) {
+  const auto &registry = x3d::nodes::X3DNodeFactory::registry();
+  auto isBuiltin = [&](const std::string &name) {
+    return !name.empty() && registry.count(name) != 0;
+  };
+  auto &decls = doc.scene.protoDeclarations;
+  decls.erase(std::remove_if(decls.begin(), decls.end(),
+                             [&](const std::shared_ptr<runtime::ProtoDeclaration> &p) {
+                               if (p && isBuiltin(p->name)) {
+                                 doc.protoWarnings.push_back(
+                                     {runtime::ProtoWarning::Kind::BuiltinShadow,
+                                      p->name,
+                                      "PROTO '" + p->name +
+                                          "' shadows a built-in node type; "
+                                          "declaration ignored"});
+                                 return true;
+                               }
+                               return false;
+                             }),
+              decls.end());
+  auto &externs = doc.scene.externProtoDeclarations;
+  externs.erase(
+      std::remove_if(
+          externs.begin(), externs.end(),
+          [&](const std::shared_ptr<runtime::ExternProtoDeclaration> &p) {
+            if (p && isBuiltin(p->name)) {
+              doc.protoWarnings.push_back(
+                  {runtime::ProtoWarning::Kind::BuiltinShadow, p->name,
+                   "EXTERNPROTO '" + p->name +
+                       "' shadows a built-in node type; declaration ignored"});
+              return true;
+            }
+            return false;
+          }),
+      externs.end());
+}
+
+} // namespace
 
 void stripUtf8Bom(std::string &s) {
   if (s.size() >= 3 && static_cast<unsigned char>(s[0]) == 0xEF &&
@@ -75,6 +123,9 @@ parseDocument(const std::string &text, Encoding hint,
     throw std::runtime_error(
         "parseDocument: could not determine X3D encoding from content");
   runtime::X3DDocument doc = reader->readDocument(body);
+  // ADR-0033: drop any PROTO/EXTERNPROTO that reuses a built-in node name (the
+  // built-in keeps precedence) before instances are expanded against it.
+  quarantineBuiltinShadowingProtos(doc);
   // Surface out-of-range values the lenient readers kept (structured channel;
   // parseFile flows through here, so this is the single collection site).
   for (const auto &root : doc.scene.rootNodes)
@@ -88,6 +139,11 @@ parseDocument(const std::string &text, Encoding hint,
   // Mirrors the PROTO pass above; nested Inlines recurse via parseFile.
   runtime::expandInlines(doc.scene, inlineResolver, baseUrl,
                          doc.inlineWarnings);
+  // Wire IMPORT statements to their Inline's exported node (the child scene is
+  // now retained), then re-resolve routes so a ROUTE to/from an imported AS
+  // name binds instead of being dropped as an unknown DEF.
+  runtime::wireInlineImports(doc.scene);
+  doc.scene.resolveRoutes();
   return doc;
 }
 

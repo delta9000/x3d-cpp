@@ -91,6 +91,8 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
 2. **DEF/USE deduplication.** Node identity (raw pointer) is tracked in an `unordered_set<const X3DNode *>`. The first emission of a shared node writes a `DEF`; all subsequent references emit a `USE` reference with no fields or children.
 3. **PROTO / Inline round-trip redirect.** Before emitting a node the writer checks `scene.expandedSources` (for expanded `ProtoInstance`s) and `scene.expandedInlines` (for expanded `Inline` nodes). If a match is found, the original captured source structure is re-emitted instead of the expansion, so the written output can be re-parsed to re-expand rather than serializing the expanded tree.
 
+All four writers emit the document's `profile` from `X3DDocument::profileToken()` (`runtime/X3DDocument.hpp`): the authored spelling when a reader preserved one, else the canonical name for the resolved `Profile`. An unknown/misspelled `profile=` token therefore round-trips unchanged instead of being silently rewritten to `Interchange` (DIAG-PROFILE-COERCE); the reader still resolves it to `Interchange` for profile-fit.
+
 ### Encoding-specific behaviors
 
 **XmlWriter:**
@@ -142,6 +144,7 @@ Tests live in `runtime/codecs/tests/`. Most are doctest cases compiled into the 
 | doctest case | What it covers |
 |---|---|
 | `roundtrip_test` | Full XML↔parse→write round-trip: reads an X3D-XML string, re-serializes, compares output |
+| `core_diagnostics_test` (parse suite) | An unknown `profile=` token is preserved on write (`profileToken()`), not rewritten to `Interchange` |
 | `x3d_codec_roundtrip_audit` (standalone target) | Differential round-trip audit over a sample corpus; flags structural deviations |
 | `vrml_mf_bracket_test` | Verifies MF values are always bracketed in ClassicVRML output (AUD-A regression) |
 | `enum_quote_test` | Verifies `stripEnumQuotes` strips MFString-style quotes from enum wire values (AUD-D regression) |

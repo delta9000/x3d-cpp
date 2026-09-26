@@ -570,6 +570,25 @@ struct BackgroundDesc {
 };
 
 // ---------------------------------------------------------------------------
+// FogDesc — the bound Fog's colour/type/range (§24.4.2), read reflection-
+// generic. `visibilityRange` is surfaced already scaled into WORLD units: the
+// spec defines it in the Fog node's LOCAL frame, so the extractor multiplies it
+// by the Fog's world scale (uniform scale exact; non-uniform uses the mean
+// upper-3x3 column norm). visibilityRange 0 disables fog.
+// ---------------------------------------------------------------------------
+struct FogDesc {
+  // §24.4.2 fogType: LINEAR=0, EXPONENTIAL=1 (matches ShaderUniformVocabulary
+  // "FogDesc.fogType enum (LINEAR=0, EXPONENTIAL=1)").
+  enum class Type { Linear = 0, Exponential = 1 };
+
+  SFColor color{1.0f, 1.0f, 1.0f};
+  Type fogType = Type::Linear;
+  float visibilityRange = 0.0f; // world units; 0 disables fog.
+
+  bool fogChanged = false; // surfaced for a caching consumer.
+};
+
+// ---------------------------------------------------------------------------
 // RenderDelta — THE single authoritative change channel.
 //
 // fullSnapshot() returns a RenderDelta with EVERY item in `added` (so frame 0
@@ -588,6 +607,7 @@ struct RenderDelta {
 
   bool cameraChanged = false;
   bool backgroundChanged = false;
+  bool fogChanged = false;
   bool lightsChanged = false;
 };
 

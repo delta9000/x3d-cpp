@@ -169,6 +169,9 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     auto group = makeGroup(child->rootNodes);
     hoistChildRoutes(*child, scene.resolvedInlineRoutes);
     scene.expandedInlines[group.get()] = inl; // preserve for writer round-trip
+    // Retain the child scene so a parent <IMPORT ...> can resolve an imported
+    // DEF/EXPORT against it (§9.2). Keyed by the ORIGINAL Inline node.
+    scene.expandedInlineScenes[inl.get()] = child;
     if (parent) {
       replaceInParent(*parent, inl.get(), group);
     } else {
@@ -179,6 +182,42 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
 
   for (auto &site : sites) expandOne(site.inl, site.parent);
   for (auto &r : rootInlines) expandOne(r, nullptr);
+}
+
+/// Wire <IMPORT inlineDEF=... importedDEF=... AS=...> statements to the named
+/// Inline's exported node (§9.2 / §4.4.6 — the sanctioned cross-Inline escape
+/// hatch). For each import, resolve the imported name inside the Inline's
+/// expanded child scene (an <EXPORT AS> alias first, else a child DEF) and
+/// register the local alias in `scene.defs` so a later resolveRoutes() binds a
+/// ROUTE that names it. Lenient: an Inline that was not expanded (load=FALSE,
+/// unresolved url) or an imported name with no matching child node leaves the
+/// alias unregistered, exactly as before. Call AFTER expandInlines and before
+/// (re)running resolveRoutes.
+inline void wireInlineImports(Scene &scene) {
+  for (const Import &imp : scene.imports) {
+    if (imp.inlineDEF.empty() || imp.importedDEF.empty())
+      continue;
+    auto inlineIt = scene.defs.find(imp.inlineDEF);
+    if (inlineIt == scene.defs.end() || !inlineIt->second)
+      continue;
+    auto childIt = scene.expandedInlineScenes.find(inlineIt->second.get());
+    if (childIt == scene.expandedInlineScenes.end() || !childIt->second)
+      continue;
+    Scene &child = *childIt->second;
+    // The parent names the child's EXPORT alias; fall back to the DEF itself.
+    std::string childName = imp.importedDEF;
+    for (const Export &ex : child.exports) {
+      if (ex.as == imp.importedDEF && !ex.localDEF.empty()) {
+        childName = ex.localDEF;
+        break;
+      }
+    }
+    auto node = child.resolve(childName);
+    if (!node)
+      continue;
+    const std::string alias = imp.as.empty() ? imp.importedDEF : imp.as;
+    scene.defs[alias] = node;
+  }
 }
 
 } // namespace x3d::runtime

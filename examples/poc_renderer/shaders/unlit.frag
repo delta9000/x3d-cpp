@@ -14,11 +14,29 @@ out vec4 FragColor;
 
 in vec4 vColor;
 in vec2 vTexCoord;
+in vec3 vPosEye;
 
 uniform vec4 uBaseColor; // rgb = baseColor/diffuse, a = 1 - transparency.
 uniform int  uHasColors; // 1 => per-vertex vColor overrides uBaseColor.rgb.
 uniform sampler2D uTexture;
 uniform int  uHasTexture; // 1 => modulate the surface color by the texture.
+
+// ---- Fog (§24.4.2 / §17 Table 17.5) -----------------------------------------
+// visibilityRange is already world-scaled by the extractor; 0 disables fog.
+uniform vec3  uFogColor;
+uniform int   uFogType;            // 0 = LINEAR, 1 = EXPONENTIAL.
+uniform float uFogVisibilityRange;
+
+// §17 fog: d = eye-space distance, V = visibilityRange. LINEAR f = (V-d)/V
+// (d<V else 0); EXPONENTIAL f = exp(-d/(V-d)) (d<V else 0).
+vec3 applyFog(vec3 color, float d) {
+    float V = uFogVisibilityRange;
+    if (V <= 0.0) return color;       // fog disabled.
+    float f = 0.0;                    // d >= V => fully fogged.
+    if (d < V)
+        f = (uFogType == 1) ? exp(-d / (V - d)) : (V - d) / V;
+    return color * f + uFogColor * (1.0 - f);
+}
 
 void main() {
     vec3 rgb = (uHasColors != 0) ? vColor.rgb : uBaseColor.rgb;
@@ -28,5 +46,7 @@ void main() {
         rgb *= tx.rgb;
         a   *= tx.a;
     }
+    // §17: fog applies to the unlit equation too, as the final step.
+    rgb = applyFog(rgb, length(vPosEye));
     FragColor = vec4(rgb, a);
 }

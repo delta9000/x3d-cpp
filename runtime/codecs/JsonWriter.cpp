@@ -25,7 +25,7 @@ std::string JsonWriter::writeDocument(const runtime::X3DDocument &doc) {
   std::ostringstream os;
   os << "{\n";
   os << "  \"X3D\": {\n";
-  os << "    \"@profile\": " << jstr(doc.profileName()) << ",\n";
+  os << "    \"@profile\": " << jstr(doc.profileToken()) << ",\n";
   os << "    \"@version\": " << jstr(headerVersion(doc.version)) << ",\n";
   os << "    \"head\": {\n";
   writeHead(os, doc.head, 3);

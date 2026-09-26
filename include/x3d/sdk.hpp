@@ -140,6 +140,7 @@ using x3d::runtime::extract::AlphaMode;      ///< enum class { Opaque, Mask, Ble
 using x3d::runtime::extract::LightDesc;      ///< Directional/Point/Spot light descriptor
 using x3d::runtime::extract::CameraDesc;     ///< { viewMatrix, fieldOfView, near/far, ortho... }
 using x3d::runtime::extract::BackgroundDesc; ///< { skyColor/skyAngle/groundColor/groundAngle }
+using x3d::runtime::extract::FogDesc;        ///< bound Fog { color, fogType, visibilityRange } (§24.4.2)
 
 // ── Seams (embedder-supplied IO) ───────────────────────────────────── [PER-SEAM]
 // There is no blanket answer here: each seam carries its own marker below.

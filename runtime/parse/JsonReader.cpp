@@ -13,6 +13,7 @@ namespace x3d::codec {
 Encoding JsonReader::encoding() const { return Encoding::JSON; }
 
 runtime::X3DDocument JsonReader::readDocument(const std::string &text) {
+  readerWarnings_.clear();
   auto root = json::parse(text);
   runtime::X3DDocument doc;
   // VP-2 §1 bare floor: an unversioned document reads as 3.0. Set here, not
@@ -26,7 +27,7 @@ runtime::X3DDocument JsonReader::readDocument(const std::string &text) {
   const json::Value *sceneObj = nullptr;
   if (x3d && x3d->isObject()) {
     if (const json::Value *p = x3d->member("@profile"); p && p->isString())
-      doc.profile = runtime::profileFromString(p->str);
+      doc.setProfileToken(p->str);
     if (const json::Value *v = x3d->member("@version"); v && v->isString())
       doc.version = v->str;
     if (const json::Value *h = x3d->member("head"); h && h->isObject())
@@ -40,6 +41,8 @@ runtime::X3DDocument JsonReader::readDocument(const std::string &text) {
     readScene(*sceneObj, doc.scene);
 
   doc.scene.resolveRoutes();
+  doc.readerWarnings.insert(doc.readerWarnings.end(), readerWarnings_.begin(),
+                            readerWarnings_.end());
   return doc;
 }
 
@@ -186,8 +189,12 @@ JsonReader::readNode(const json::Value &wrapper, runtime::Scene &scene,
   }
 
   auto node = build::beginNode(typeName);
-  if (!node)
+  if (!node) {
+    readerWarnings_.push_back(
+        {runtime::ReaderWarning::Kind::UnknownNode,
+         "unknown node '" + typeName + "' discarded"});
     return nullptr; // unknown node type: skip
+  }
 
   // Pass 1: value "@field" members (and @DEF).
   for (const auto &kv : body->object) {

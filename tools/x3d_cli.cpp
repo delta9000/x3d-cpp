@@ -491,12 +491,15 @@ int cmdValidate(const std::vector<std::string> &args) {
         "  Checks performed:\n"
         "    1. Range diagnostics — out-of-range field values (SFColor [0,1], etc.)\n"
         "    2. Proto/Inline warnings — unresolved EXTERNPROTO, missing declarations,\n"
-        "       unresolved Inline urls, etc.\n"
-        "    3. Profile-fit — the minimal X3D profile the scene requires; flags nodes\n"
+        "       unresolved Inline urls, a PROTO/EXTERNPROTO that reuses a built-in\n"
+        "       node name, etc.\n"
+        "    3. Reader-recovery warnings — an unknown/misspelled node element that\n"
+        "       was discarded, or an unknown `profile=` token coerced to Interchange.\n"
+        "    4. Profile-fit — the minimal X3D profile the scene requires; flags nodes\n"
         "       that exceed a declared profile.\n"
-        "    4. Duplicate <meta> — same (name, content) pair appears more than once.\n"
-        "    5. Unused ProtoDeclare — a ProtoDeclare has no ProtoInstance in the scene.\n"
-        "    6. IFS/ILS coord-without-index — IndexedFaceSet or IndexedLineSet has a\n"
+        "    5. Duplicate <meta> — same (name, content) pair appears more than once.\n"
+        "    6. Unused ProtoDeclare — a ProtoDeclare has no ProtoInstance in the scene.\n"
+        "    7. IFS/ILS coord-without-index — IndexedFaceSet or IndexedLineSet has a\n"
         "       Coordinate node but an empty coordIndex field.\n"
         "\n"
         "  Output: human-readable report by default; --json for machine-readable JSON.\n"
@@ -566,6 +569,14 @@ int cmdValidate(const std::vector<std::string> &args) {
         std::string msg = w.detail;
         if (!w.inlineDEF.empty()) msg = "Inline DEF=" + w.inlineDEF + ": " + msg;
         diags.push_back({"inline", "warning", msg});
+    }
+
+    // 3b. Reader-recovery diagnostics (unknown node element, coerced profile).
+    for (const auto &w : doc.readerWarnings) {
+        const char *cat =
+            (w.kind == x3d::runtime::ReaderWarning::Kind::UnknownNode) ? "node"
+                                                                       : "profile";
+        diags.push_back({cat, "warning", w.detail});
     }
 
     // 4. Conformance checks (X3DJSAIL-equivalent semantic validation).

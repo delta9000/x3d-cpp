@@ -108,7 +108,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/version_floor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parser_depth_guard_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/asset_proto_resolver_test.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/asset_proto_resolver_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/core_diagnostics_test.cpp")
     target_link_libraries(x3d_parse_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_parse_tests PRIVATE
@@ -146,6 +147,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/text_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/asset_resolver_b8_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t7_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_fog_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t8_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_b2_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_col2_test.cpp"
@@ -164,6 +166,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/castshadow_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/nurbs_eval_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_geom2d_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scheme_router_test.cpp")
     target_link_libraries(x3d_extract_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)

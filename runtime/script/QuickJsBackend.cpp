@@ -796,9 +796,13 @@ struct QuickJsBackend::Impl {
         continue;
       }
       if (g.isUndefined()) continue;  // not defined / never assigned
-      // Suppress no-op re-emit: skip if the JS value equals the stored value.
+      // Suppress a no-op re-emit ONLY for inputOutput: there the JS global is an
+      // echo of the value the field already holds. outputOnly is the script's own
+      // output channel — an explicit assignment generates an event regardless of
+      // value (§29.2.4 / ISO 19777-1), so it is never diffed away
+      // (SCRIPT-OUTPUTONLY-REEMIT).
       std::any prev = dynamicFieldStore().getValue(*e.node, info.x3dName);
-      if (prev.has_value()) {
+      if (info.access == AccessType::InputOutput && prev.has_value()) {
         JsValue prevJs(ctx, pushValue(ctx, prev, info.type));
         const bool same = jsonOf(ctx, g.get()) == jsonOf(ctx, prevJs.get());
         if (JS_HasException(ctx)) {

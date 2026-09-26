@@ -64,17 +64,18 @@ the reference.
 
 ### `x3d validate <in> [--json]`
 
-Validates an X3D scene and reports diagnostics. Six checks run in sequence:
+Validates an X3D scene and reports diagnostics. Seven checks run in sequence:
 
 1. **Range diagnostics** — out-of-range field values collected by `sdk::parseFile` (`doc.rangeWarnings`).
-2. **Proto/inline warnings** — unresolved `EXTERNPROTO`, missing declarations, unresolved `Inline` URLs (`doc.protoWarnings` / `doc.inlineWarnings`).
-3. **Profile-fit** — walks every node via `nodeTypeName()` + a hardcoded
+2. **Proto/inline warnings** — unresolved `EXTERNPROTO`, missing declarations, unresolved `Inline` URLs, and a `ProtoDeclare`/`ExternProtoDeclare` that reuses a built-in node name (`doc.protoWarnings` / `doc.inlineWarnings`, ADR-0033).
+3. **Reader-recovery warnings** — an unknown/misspelled node element that was discarded, or an unknown `profile=` token coerced to `Interchange` (`doc.readerWarnings`, DIAG-UNKNOWN-NODE / DIAG-PROFILE-COERCE).
+4. **Profile-fit** — walks every node via `nodeTypeName()` + a hardcoded
    node→`(component, level)` table (built from the generated headers); finds the
    minimal X3D 4.0 profile that contains all components used and flags nodes that
    exceed a declared profile. Profile table sources: ISO/IEC 19775-1:2023 Annexes B–F.
-4. **Duplicate `<meta>`** — same `(name, content)` pair appearing more than once in `<head>`.
-5. **Unused ProtoDeclare / ExternProtoDeclare** — a prototype declared with no corresponding `ProtoInstance` in the scene.
-6. **IFS/ILS coord-without-index** — `IndexedFaceSet` or `IndexedLineSet` has a `Coordinate` node with point data but an empty `coordIndex` (4.0+-only to avoid false positives on older files).
+5. **Duplicate `<meta>`** — same `(name, content)` pair appearing more than once in `<head>`.
+6. **Unused ProtoDeclare / ExternProtoDeclare** — a prototype declared with no corresponding `ProtoInstance` in the scene.
+7. **IFS/ILS coord-without-index** — `IndexedFaceSet` or `IndexedLineSet` has a `Coordinate` node with point data but an empty `coordIndex` (4.0+-only to avoid false positives on older files).
 
 Output: human-readable grouped-by-category report by default; `--json` for
 machine-readable form. Exit codes: 0 clean, 3 issues found, 2 parse/IO failure,
@@ -82,7 +83,10 @@ machine-readable form. Exit codes: 0 clean, 3 issues found, 2 parse/IO failure,
 
 **Oracle:** `cli_gate` diffs our VALID/INVALID verdict per file against
 `validate-verdicts.tsv` (captured from X3DJSAIL `-validate` over the 204-file
-XML corpus subset — X3DJSAIL `-validate` is XML-only). `cli_gate --gate` enforces baseline-regression: a baseline-PASS
+XML corpus subset — X3DJSAIL `-validate` is XML-only). Our validate path mirrors
+`cmdValidate` (including the reader-recovery warnings) so the two stay in step;
+a diagnostic X3DJSAIL does not emit is classified e.g. `reader-warn-us`.
+`cli_gate --gate` enforces baseline-regression: a baseline-PASS
 item that now fails is a CI failure; FAIL→PASS is a noted improvement.
 
 ### `x3d extract <in> [-o out.stl]`

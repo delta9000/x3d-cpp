@@ -13,7 +13,8 @@ related:
 
 ## Status
 
-Proposed — 2026-06-25. Conformance finding `PROTO-SHADOW`. Sibling to ADR-0001 (ext-firewall).
+Accepted — 2026-06-25 (implemented 2026-06-26 as `quarantineBuiltinShadowingProtos` in
+`runtime/parse/X3DParse.cpp`). Conformance finding `PROTO-SHADOW`. Sibling to ADR-0001 (ext-firewall).
 
 ## Context
 

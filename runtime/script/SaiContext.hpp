@@ -15,9 +15,16 @@
 //                                   spec declares the result UNDEFINED, and we
 //                                   take the safest conformant response: throw.
 //   - addRoute / deleteRoute      : permitted ONLY if directOutput==TRUE; else throw.
-// A permitted setField is injected as an input event into the CURRENT cascade at
-// the current timestamp (§29.2.6: such writes "shall be part of the current event
-// cascade"), not a back-door reflection poke.
+// A permitted SELF-write (to the Script's own field) is posted as an input event
+// into the CURRENT cascade at the current timestamp, so it fans out along ROUTEs
+// (§29.2.4 — the sanctioned output channel). A permitted CROSS-node write is a
+// direct VALUE MUTATION of the target field (SAI 19775-2 §4.5.2 / ADR-0029): it
+// generates no event and does not form part of the cascade, so no ROUTE fans out
+// from the written field. The target still generates its own output events per
+// that field's access type, since the mutation is an ordinary write.
+//
+// §29.2.6 ("shall be part of the current event cascade") contradicts SAI §4.5.2
+// ("generates no event ... not part of the event cascade"); SAI governs this seam.
 #ifndef X3D_RUNTIME_SAI_CONTEXT_HPP
 #define X3D_RUNTIME_SAI_CONTEXT_HPP
 
@@ -84,25 +91,46 @@ public:
   }
 
   /**
-   * @brief Set `fieldName` on `node` to `value`, as an event in this cascade.
+   * @brief Set `fieldName` on `node` to `value`.
    * @details Gate (§29.2.6/§29.4.1):
    *            - node == owning Script: always allowed (its own fields/outputs).
    *            - node != owning Script: allowed ONLY if directOutput==TRUE;
    *              otherwise throws std::logic_error (spec says "undefined").
-   *          A permitted write is posted as an input event into the current
-   *          cascade so it carries the current timestamp and fans out via ROUTEs.
+   *          Semantics differ by target (SAI §4.5.2 / ADR-0029):
+   *            - a SELF-write is posted as an input event into the current
+   *              cascade so it carries the current timestamp and fans out via
+   *              ROUTEs (the Script's own output channel, §29.2.4);
+   *            - a permitted CROSS-node write is a direct value mutation of the
+   *              target field via the reflection setter — no event is generated
+   *              and no ROUTE fans out from the written field. The target still
+   *              produces its own output events per the field's access type.
    * @throws std::logic_error on a gated cross-node write with directOutput FALSE.
    */
   void setField(X3DNode *node, const std::string &fieldName, std::any value) {
     if (!node) return;
-    if (node != static_cast<X3DNode *>(&script_) && !script_.getDirectOutput()) {
+    const bool self = node == static_cast<X3DNode *>(&script_);
+    if (!self && !script_.getDirectOutput()) {
       // §29.4.1: directOutput FALSE + write to another node -> UNDEFINED.
       // Throwing is the safest conformant response (design §2).
       throw std::logic_error(
           "SaiContext::setField: Script directOutput=FALSE forbids writing "
           "field '" + fieldName + "' on another node");
     }
-    ctx_.postEvent(node, fieldName, std::move(value));
+    if (self) {
+      // The Script's own field write is its output channel: post it as a
+      // cascade seed so it fans out along ROUTEs (§29.2.4).
+      ctx_.postEvent(node, fieldName, std::move(value));
+      return;
+    }
+    // directOutput cross-node write: a direct value mutation, non-routable
+    // (SAI §4.5.2 / ADR-0029). writeField applies the reflection setter and the
+    // dirty-tracker update atomically, so a failed (type-mismatched) write
+    // changes nothing. Author-declared (Script <field>) targets are absent from
+    // the static table writeField scans, so fall back to the dynamic-field store.
+    if (ctx_.writeField(node, fieldName, std::any(value)) ==
+        FieldWriteResult::UnknownField) {
+      dynamicFieldStore().setValue(*node, fieldName, std::move(value));
+    }
   }
 
   // --------------------------------------------------------------------------

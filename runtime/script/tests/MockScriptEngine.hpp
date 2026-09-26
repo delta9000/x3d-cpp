@@ -45,13 +45,14 @@ public:
     ScriptHandle handle = kInvalidScriptHandle;
     std::string eventName;  // for invoke
     double timestamp = 0.0; // for invoke / prepareEvents (now)
+    std::string source;     // for load: the resolved script body handed in
   };
 
   ScriptHandle load(X3DNode &, const std::string &source,
                     SaiContext &sai) override {
     ScriptHandle h = nextHandle_++;
     slots_[h] = Slot{&sai, source};
-    calls.push_back({"load", h, "", 0.0});
+    calls.push_back({"load", h, "", 0.0, source});
     return h;
   }
 

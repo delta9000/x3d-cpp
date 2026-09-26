@@ -931,6 +931,248 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   m.hasNormals = !m.normals.empty();
 }
 
+// ---------------------------------------------------------------------------
+// Geometry2D (§14): the eight 2D nodes live in the XY plane (z = 0) and carry
+// NO `coord` child, so they are dispatched BEFORE the generic coord guard.
+// Arc2D/Circle2D/Polyline2D emit Topology::Lines and Polypoint2D emits
+// Topology::Points (both unlit, solid=false — the B4 convention).
+// ArcClose2D/Disk2D/Rectangle2D/TriangleSet2D emit Topology::Triangles with +Z
+// normals and `solid` carried verbatim from the node field. Texture coordinates
+// follow the §14 2D convention: the geometry's XY bounding box mapped to [0,1]^2
+// (Rectangle2D and Disk2D map their bounding square, which is the same box);
+// TriangleSet2D's authored texCoord, when present, wins.
+//
+// TESSELLATION COUNT: the circular primitives use one chord per
+// kGeometry2DAngleStep radians. A full circle therefore gets 64 chords
+// (5.625° each); a partial sweep rounds UP to at least one chord. This is
+// finer than the analytic primitives' default radialSlices=24 because a 2D
+// circle is usually the whole silhouette, where a coarse chord count reads as
+// a polygon.
+constexpr float kGeometry2DAngleStep = 6.28318530717958647692f / 64.0f;
+constexpr float kGeometry2DTwoPi = 6.28318530717958647692f;
+
+// Number of chords spanning `sweep` radians at kGeometry2DAngleStep; 0 for a
+// non-positive sweep (a degenerate arc emits nothing).
+int sweepChordCount(float sweep) {
+  if (!(sweep > 0.0f))
+    return 0;
+  const int n = static_cast<int>(std::ceil(sweep / kGeometry2DAngleStep));
+  return std::max(1, n);
+}
+
+// §14.3.2/§14.3.3: the arc runs CCW from startAngle to endAngle; if endAngle
+// is less than startAngle it is increased by 2π. Returns the CCW sweep in
+// [0, 2π]; a sweep of 0 is a single point (degenerate).
+float arcSweep(float startAngle, float endAngle) {
+  float sweep = endAngle - startAngle;
+  if (sweep < 0.0f) {
+    sweep += kGeometry2DTwoPi;
+    while (sweep < 0.0f)
+      sweep += kGeometry2DTwoPi;
+  }
+  if (sweep > kGeometry2DTwoPi)
+    sweep = kGeometry2DTwoPi;
+  return sweep;
+}
+
+void push2DLineVertex(MeshData &m, float x, float y) {
+  m.positions.push_back(SFVec3f{x, y, 0.0f});
+  m.indices.push_back(static_cast<std::uint32_t>(m.indices.size()));
+}
+
+// Arc2D / Circle2D: a linear circular arc (a full circle when sweep == 2π) as
+// Topology::Lines — consecutive endpoint pairs so a GL_LINES draw covers it.
+void emitCircleArcLines(MeshData &m, float radius, float startAngle,
+                        float sweep) {
+  const int segs = sweepChordCount(sweep);
+  if (!(radius > 0.0f) || segs == 0)
+    return;
+  m.topology = Topology::Lines;
+  m.solid = false;
+  const float inv = 1.0f / static_cast<float>(segs);
+  for (int k = 0; k < segs; ++k) {
+    const float a0 = startAngle + sweep * static_cast<float>(k) * inv;
+    const float a1 = startAngle + sweep * static_cast<float>(k + 1) * inv;
+    push2DLineVertex(m, radius * std::cos(a0), radius * std::sin(a0));
+    push2DLineVertex(m, radius * std::cos(a1), radius * std::sin(a1));
+  }
+}
+
+// Push one CCW triangle in the z=0 plane with a +Z normal per corner.
+void push2DTriangle(MeshData &m, const SFVec3f &a, const SFVec3f &b,
+                    const SFVec3f &c) {
+  const std::uint32_t base = static_cast<std::uint32_t>(m.positions.size());
+  m.positions.push_back(a);
+  m.positions.push_back(b);
+  m.positions.push_back(c);
+  m.indices.push_back(base);
+  m.indices.push_back(base + 1);
+  m.indices.push_back(base + 2);
+  m.normals.push_back(SFVec3f{0, 0, 1});
+  m.normals.push_back(SFVec3f{0, 0, 1});
+  m.normals.push_back(SFVec3f{0, 0, 1});
+}
+
+// Map the mesh's XY bounding box to [0,1]^2 (the §14 2D texture convention).
+void map2DBoundsToUnitSquare(MeshData &m) {
+  if (m.positions.empty())
+    return;
+  SFVec3f lo = m.positions[0], hi = m.positions[0];
+  for (const SFVec3f &p : m.positions) {
+    lo.x = std::min(lo.x, p.x);
+    hi.x = std::max(hi.x, p.x);
+    lo.y = std::min(lo.y, p.y);
+    hi.y = std::max(hi.y, p.y);
+  }
+  const float invX = (hi.x - lo.x > 0.0f) ? 1.0f / (hi.x - lo.x) : 0.0f;
+  const float invY = (hi.y - lo.y > 0.0f) ? 1.0f / (hi.y - lo.y) : 0.0f;
+  m.texcoords.clear();
+  m.texcoords.reserve(m.positions.size());
+  for (const SFVec3f &p : m.positions)
+    m.texcoords.push_back(SFVec2f{(p.x - lo.x) * invX, (p.y - lo.y) * invY});
+}
+
+// Tessellate one Geometry2D node into `m`. Returns true iff `t` is a
+// Geometry2D type (whether or not it produced geometry — a recognized-but-
+// degenerate node yields an empty mesh). mesh.ccw/solid were already carried
+// from the node fields by buildLocalMesh.
+bool buildGeometry2D(MeshData &m, const X3DNode &geom, const std::string &t) {
+  using namespace ::x3d::runtime::geombounds;
+
+  if (t == "Arc2D") {
+    const float r = getField<float>(geom, "radius", 1.0f);
+    const float a0 = getField<float>(geom, "startAngle", 0.0f);
+    const float a1 = getField<float>(geom, "endAngle", 1.570796f);
+    emitCircleArcLines(m, r, a0, arcSweep(a0, a1));
+    return true;
+  }
+  if (t == "Circle2D") {
+    const float r = getField<float>(geom, "radius", 1.0f);
+    emitCircleArcLines(m, r, 0.0f, kGeometry2DTwoPi);
+    return true;
+  }
+  if (t == "Polyline2D") {
+    // lineSegments is one open polyline: consecutive points are connected.
+    const auto pts = getField<std::vector<SFVec2f>>(geom, "lineSegments", {});
+    m.topology = Topology::Lines;
+    m.solid = false;
+    for (std::size_t i = 0; i + 1 < pts.size(); ++i) {
+      push2DLineVertex(m, pts[i].x, pts[i].y);
+      push2DLineVertex(m, pts[i + 1].x, pts[i + 1].y);
+    }
+    return true;
+  }
+  if (t == "Polypoint2D") {
+    const auto pts = getField<std::vector<SFVec2f>>(geom, "point", {});
+    m.topology = Topology::Points;
+    m.solid = false;
+    for (const SFVec2f &p : pts)
+      push2DLineVertex(m, p.x, p.y);
+    return true;
+  }
+  if (t == "Rectangle2D") {
+    const SFVec2f sz = getField<SFVec2f>(geom, "size", SFVec2f{2.0f, 2.0f});
+    const float hx = sz.x * 0.5f, hy = sz.y * 0.5f;
+    const SFVec3f v0{-hx, -hy, 0}, v1{hx, -hy, 0}, v2{hx, hy, 0},
+        v3{-hx, hy, 0};
+    push2DTriangle(m, v0, v1, v2);
+    push2DTriangle(m, v0, v2, v3);
+    map2DBoundsToUnitSquare(m);
+    return true;
+  }
+  if (t == "TriangleSet2D") {
+    const auto v = getField<std::vector<SFVec2f>>(geom, "vertices", {});
+    for (std::size_t i = 0; i + 2 < v.size(); i += 3)
+      push2DTriangle(m, SFVec3f{v[i].x, v[i].y, 0.0f},
+                     SFVec3f{v[i + 1].x, v[i + 1].y, 0.0f},
+                     SFVec3f{v[i + 2].x, v[i + 2].y, 0.0f});
+    // Authored texCoord WINS; else the §14 bounding-box default. (The 4.0
+    // binding carries no texCoord field for TriangleSet2D, so in practice the
+    // default path runs; the authored branch keeps the seam honest if a future
+    // binding adds it.)
+    const auto uvs = [&] {
+      if (auto tc = getNode(geom, "texCoord"))
+        return getField<std::vector<SFVec2f>>(*tc, "point", {});
+      return std::vector<SFVec2f>{};
+    }();
+    if (uvs.size() >= v.size())
+      for (std::size_t i = 0; i + 2 < v.size(); i += 3) {
+        m.texcoords.push_back(uvs[i]);
+        m.texcoords.push_back(uvs[i + 1]);
+        m.texcoords.push_back(uvs[i + 2]);
+      }
+    else
+      map2DBoundsToUnitSquare(m);
+    return true;
+  }
+  if (t == "Disk2D") {
+    const float ro = getField<float>(geom, "outerRadius", 1.0f);
+    const float ri = getField<float>(geom, "innerRadius", 0.0f);
+    if (!(ro > 0.0f))
+      return true; // recognized, empty (degenerate radius)
+    // innerRadius == outerRadius (a zero-width annulus) -> a circle LINE.
+    if (ri > 0.0f && std::fabs(ri - ro) <= 1e-6f * std::max(1.0f, ro)) {
+      emitCircleArcLines(m, ro, 0.0f, kGeometry2DTwoPi);
+      return true;
+    }
+    const int segs = sweepChordCount(kGeometry2DTwoPi);
+    const float inv = 1.0f / static_cast<float>(segs);
+    if (ri <= 0.0f) {
+      const SFVec3f c{0, 0, 0};
+      for (int k = 0; k < segs; ++k) {
+        const float a0 = kGeometry2DTwoPi * static_cast<float>(k) * inv;
+        const float a1 = kGeometry2DTwoPi * static_cast<float>(k + 1) * inv;
+        push2DTriangle(m, c, SFVec3f{ro * std::cos(a0), ro * std::sin(a0), 0},
+                       SFVec3f{ro * std::cos(a1), ro * std::sin(a1), 0});
+      }
+    } else {
+      const float rin = std::min(ri, ro);
+      for (int k = 0; k < segs; ++k) {
+        const float a0 = kGeometry2DTwoPi * static_cast<float>(k) * inv;
+        const float a1 = kGeometry2DTwoPi * static_cast<float>(k + 1) * inv;
+        const SFVec3f i0{rin * std::cos(a0), rin * std::sin(a0), 0};
+        const SFVec3f o0{ro * std::cos(a0), ro * std::sin(a0), 0};
+        const SFVec3f o1{ro * std::cos(a1), ro * std::sin(a1), 0};
+        const SFVec3f i1{rin * std::cos(a1), rin * std::sin(a1), 0};
+        push2DTriangle(m, i0, o0, o1);
+        push2DTriangle(m, i0, o1, i1);
+      }
+    }
+    map2DBoundsToUnitSquare(m);
+    return true;
+  }
+  if (t == "ArcClose2D") {
+    const float r = getField<float>(geom, "radius", 1.0f);
+    const float a0 = getField<float>(geom, "startAngle", 0.0f);
+    const float a1 = getField<float>(geom, "endAngle", 1.570796f);
+    const float sweep = arcSweep(a0, a1);
+    const int segs = sweepChordCount(sweep);
+    if (!(r > 0.0f) || segs == 0)
+      return true; // recognized, empty
+    const bool pie = ::x3d::runtime::enumToken(geom, "closureType", "PIE") !=
+                     "CHORD";
+    const float inv = 1.0f / static_cast<float>(segs);
+    std::vector<SFVec3f> p(segs + 1);
+    for (int k = 0; k <= segs; ++k) {
+      const float a = a0 + sweep * static_cast<float>(k) * inv;
+      p[k] = SFVec3f{r * std::cos(a), r * std::sin(a), 0};
+    }
+    if (pie) {
+      const SFVec3f c{0, 0, 0};
+      for (int k = 0; k < segs; ++k)
+        push2DTriangle(m, c, p[k], p[k + 1]);
+    } else {
+      // CHORD: fan from the first arc endpoint; the closing edge p_segs -> p_0
+      // is the straight chord between the arc ends.
+      for (int k = 1; k < segs; ++k)
+        push2DTriangle(m, p[0], p[k], p[k + 1]);
+    }
+    map2DBoundsToUnitSquare(m);
+    return true;
+  }
+  return false;
+}
+
 } // namespace x3d::runtime::extract::mesh_detail
 
 namespace x3d::runtime::extract {
@@ -950,7 +1192,11 @@ bool recognizedGeometryType(const std::string &t) {
       // B4 line/point sets (Topology::Lines / Topology::Points; always unlit)
       t == "IndexedLineSet" || t == "LineSet" || t == "PointSet" ||
       // NURBS (T5): curve -> Lines, patch surface -> Triangles
-      t == "NurbsCurve" || t == "NurbsPatchSurface";
+      t == "NurbsCurve" || t == "NurbsPatchSurface" ||
+      // Geometry2D (§14): XY-plane primitives tessellated by buildGeometry2D
+      t == "Arc2D" || t == "ArcClose2D" || t == "Circle2D" || t == "Disk2D" ||
+      t == "Polyline2D" || t == "Polypoint2D" || t == "Rectangle2D" ||
+      t == "TriangleSet2D";
 }
 
 MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
@@ -1257,6 +1503,15 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     tessellateExtrusion(mesh, crossSection, spine, orientation, scale, beginCap,
                         endCap, mesh.ccw, crease, /*genTexCoords=*/true);
     mesh.hasNormals = !mesh.normals.empty();
+    return mesh;
+  }
+
+  // Geometry2D (§14): no `coord` child, so dispatch before the coord guard.
+  if (buildGeometry2D(mesh, *geom, t)) {
+    if (mesh.texcoordSets.empty() && !mesh.texcoords.empty())
+      mesh.texcoordSets.push_back(mesh.texcoords);
+    mesh.hasNormals = !mesh.normals.empty();
+    mesh.hasColors = !mesh.colors.empty();
     return mesh;
   }
 

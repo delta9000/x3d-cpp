@@ -22,7 +22,7 @@ std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
   scene_ = &doc.scene;
   std::ostringstream os;
   os << "#X3D V" << headerVersion(doc.version) << " utf8\n";
-  os << "PROFILE " << doc.profileName() << "\n";
+  os << "PROFILE " << doc.profileToken() << "\n";
   for (const auto &c : doc.head.components)
     os << "COMPONENT " << c.name << ":" << c.level << "\n";
   for (const auto &u : doc.head.units)

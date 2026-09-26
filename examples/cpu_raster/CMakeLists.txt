@@ -57,6 +57,7 @@ set(CPURASTER_TESTS
     glsl_test
     rasterizer_test
     material_shader_test
+    fog_shader_test
     glsl_interp_test
     render_smoke_test
     text_render_test

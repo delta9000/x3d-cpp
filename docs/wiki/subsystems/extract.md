@@ -36,7 +36,7 @@ to what actually changed, not to scene size.
 | `runtime/extract/SceneExtractor.hpp` | Top-level extractor: visibility-aware DFS, path interning, reverse-index maintenance, `fullSnapshot()` + `delta()` |
 | `runtime/extract/MeshBuilder.hpp` | Geometry-node → `MeshData` in the node's local frame; handles all composed, lattice, analytic, line, and point types |
 | `runtime/extract/PackedMesh.hpp` | Binary slab descriptor for embedder-supplied geometry (glTF-accessor-compatible layout) |
-| `runtime/extract/RenderItem.hpp` | Pure-POD descriptor layer: `PathKey`, `RenderItemId`, `GeomId`, `MeshData`, `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`, `RenderDelta` |
+| `runtime/extract/RenderItem.hpp` | Pure-POD descriptor layer: `PathKey`, `RenderItemId`, `GeomId`, `MeshData`, `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`, `FogDesc`, `RenderDelta` |
 | `runtime/extract/TextureExtract.hpp` | Texture/material extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/MaterialSystem.hpp` | Appearance → `MaterialDesc` mapping (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/LightSystem.hpp` | World-resolved `LightDesc` collection (see [Texture extraction](extract-textures.md)) |
@@ -69,6 +69,7 @@ std::size_t n        = ex.itemCount();
 // Scene-level read-outs (recomputed per call).
 CameraDesc    cam  = ex.camera();
 BackgroundDesc bg  = ex.background();
+FogDesc       fog  = ex.fog(); // bound Fog (§24.4.2); visibilityRange world-scaled, 0 = off.
 std::vector<LightDesc> lights = ex.lights(); // fresh collect; or:
 const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // from last fullSnapshot()
 
@@ -140,6 +141,7 @@ Geometry types handled:
 - **Analytic primitives (T4):** `Box`, `Sphere`, `Cone`, `Cylinder` — parametric tessellation driven by `MeshBuildOptions` density knobs
 - **Extrusion (B3):** SCP-frame sweep with `beginCap`/`endCap`, implicit TC3 texcoords
 - **Line/point topology (B4):** `IndexedLineSet`, `LineSet`, `PointSet` — `MeshData.topology = Lines/Points`, always unlit, `solid=false`
+- **Geometry2D (§14):** the eight XY-plane primitives — `Arc2D`/`Circle2D`/`Polyline2D` → `Lines`, `Polypoint2D` → `Points` (unlit, `solid=false`), and `ArcClose2D` (PIE/CHORD)/`Disk2D` (fan + annulus; `innerRadius==outerRadius` → a circle line)/`Rectangle2D`/`TriangleSet2D` → `Triangles` with +Z normals and per-node `solid`. Circular primitives use one chord per `2π/64` rad (64 chords per full circle); texture coordinates map the geometry's XY bounding box to `[0,1]²`
 - **NURBS (NRB-1):** `NurbsCurve` → `Topology::Lines`, `NurbsPatchSurface` → `Topology::Triangles` with analytic normals + implicit `(u,v)` texcoords (see [NURBS](#nurbs))
 - **Text (T-TEXT):** delegated to `buildTextMesh` (see [Text extraction](extract-text.md)); sets `MeshData.isGlyphMesh = true`
 
@@ -210,6 +212,7 @@ MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are r
 | `x3d_mesh_builder_t2` | Strips/fans/quads + `ElevationGrid` with flat normals |
 | `x3d_mesh_builder_t3` | Normal/Color/ColorRGBA/TextureCoordinate attribute resolution, `normalPerVertex`/`colorPerVertex`, flat-normal generation |
 | `x3d_mesh_builder_t4` | Analytic primitive parametric tessellation (Box/Sphere/Cone/Cylinder) |
+| `x3d_mesh_builder_geom2d` | §14 Geometry2D nodes: Arc2D/ArcClose2D/Circle2D/Disk2D/Polyline2D/Polypoint2D/Rectangle2D/TriangleSet2D extraction (topology, tessellation count, +Z normals, XY bounds) |
 | `x3d_mesh_builder_b3` | Extrusion SCP-frame sweep + caps |
 | `x3d_mesh_builder_b4` | Line/point topology (`IndexedLineSet`, `LineSet`, `PointSet`) |
 | `x3d_mesh_builder_b5` | `GeoElevationGrid` lattice emission + `GeoProjection` seam |

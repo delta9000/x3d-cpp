@@ -131,7 +131,13 @@ Encoding sniffByExtension(std::string_view path);
   - `onHeaderLine(src, doc)` — reacts to the raw first line to set `doc.version`, `doc.profile`, or reject an unsupported encoding (e.g. VRML 1.0 throws in `Vrml97Reader`).
   - `warn(message)` — diagnostic sink; discarded by the base, collected into a `std::vector<std::string>` by `Vrml97Reader` (optional strict mode via `setStrict(true)`).
 
-- **Node factory** — all readers instantiate nodes via `X3DNodeFactory::create(typeName)`, which is the same factory used everywhere else in the runtime. Unknown type names return null and are silently skipped.
+- **Node factory** — all readers instantiate nodes via `X3DNodeFactory::create(typeName)`, which is the same factory used everywhere else in the runtime. Unknown type names return null; the element is skipped, and the reader records a `ReaderWarning{Kind::UnknownNode}` in `X3DDocument.readerWarnings` so `x3d validate` reports it instead of silently deleting author content (DIAG-UNKNOWN-NODE).
+
+- **Reader-recovery diagnostics** — `X3DDocument.readerWarnings` (`runtime/X3DProto.hpp`) is the structured channel for lenient-read recoveries that are not legal X3D: an unknown/misspelled node element (`UnknownNode`) and an unknown `profile=` token coerced to `Interchange` (`ProfileCoerced`, DIAG-PROFILE-COERCE). Every reader (`XmlReader`, `ClassicVrmlReader`/`Vrml97Reader`, `JsonReader`) fills it; `cmdValidate` and the cli-gate validate path surface each as a `node`/`profile` diagnostic. It parallels `rangeWarnings`/`protoWarnings`/`inlineWarnings`.
+
+- **Profile token preservation** — `X3DDocument::setProfileToken` records the authored `profile=` spelling verbatim in `profileRaw` (exposed via `profileToken()`), resolves it to a `Profile` for profile-fit, and diagnoses a non-canonical token. The XML/JSON/VRML writers emit `profileToken()`, so a round-trip never rewrites the declared conformance class (DIAG-PROFILE-COERCE).
+
+- **PROTO built-in-shadow quarantine** — after `readDocument`, `parseDocument` runs `quarantineBuiltinShadowingProtos` (`runtime/parse/X3DParse.cpp`): any `ProtoDeclare`/`ExternProtoDeclare` whose name is a built-in (`X3DNodeFactory::registry()`) is dropped and recorded as `ProtoWarning{Kind::BuiltinShadow}`, so the built-in keeps precedence (ADR-0033, `PROTO-SHADOW`). Applies uniformly across all four encodings from the single front door; lenient by default.
 
 - **Reflection / field population** — all readers set fields through the `FieldInfo` thunks exposed by `node.fields()` (the reflection `FieldTable`). `build::applyField` routes enum fields through `setEnumString` and everything else through `FieldValueIO::parseValue + set`. The `outputOnly`/`inputOnly` access guards in `applyField` skip read-only fields during parse.
 
@@ -146,6 +152,7 @@ Encoding sniffByExtension(std::string_view path);
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `reader_audit_test`) — differential reader audit over the full conformance corpus (`reader_audit_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `version_floor_test`) — version-inference ladder: VRML97 header floored to 3.0, sub-3.0 legacy headers, `#X3D V4` round-trips (`version_floor_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `lenient_read_test`) — unknown node/field skip; outputOnly/inputOnly field guards; graceful recovery from malformed brace/bracket structure (`lenient_read_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest cases: `proto_shadow_*`, `unknown_node_*`, `profile_*`, `import_export_wire_*`) — Core diagnostics: PROTO built-in-shadow quarantine (XML/ClassicVRML/JSON), unknown-node `ReaderWarning` per reader, profile-token coercion diagnosis + round-trip preservation, and IMPORT→Inline-exported-DEF route wiring (`core_diagnostics_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `range_warnings_test`) — out-of-range field values collected into `doc.rangeWarnings` without throwing (`range_warnings_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `proto_expand_test`) — PROTO expansion integration via `parseDocument` (`proto_expand_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `proto_clone_test`) — ProtoDeclaration deep-clone correctness (`proto_clone_test.cpp`).

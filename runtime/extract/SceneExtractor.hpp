@@ -42,7 +42,7 @@
 //         * entryMatrix_   : each interior path-prefix node -> its accumulated
 //                            entry worldM (the matrix in effect ABOVE that node).
 //
-//   (d) camera()/lights()/background() read-outs. camera() surfaces an
+//   (d) camera()/lights()/background()/fog() read-outs. camera() surfaces an
 //       OrthoViewpoint with ortho=true (its MFFloat fieldOfView l/b/r/t carried
 //       through, PoC-out-of-scope but contract-stable).
 //
@@ -78,6 +78,7 @@
 
 #include <any>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <map>
@@ -191,6 +192,7 @@ public:
     }
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
+    delta.fogChanged = true;
     delta.lightsChanged = true;
     snapped_ = true;
     lastDeltaGen_ = ctx_.tickGeneration(); // seed the one-delta-per-tick guard.
@@ -326,6 +328,7 @@ public:
     // recomputes them every frame regardless).
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
+    delta.fogChanged = true;
     delta.lightsChanged = true;
     return delta;
   }
@@ -419,6 +422,40 @@ public:
     }
     bg.backgroundChanged = true;
     return bg;
+  }
+
+  // fog — the bound Fog's colour/type/range (§24.4.2), read reflection-generic.
+  // visibilityRange is spec'd in the Fog node's LOCAL frame; it is surfaced here
+  // scaled by the Fog's world scale (uniform exact; non-uniform -> mean column
+  // norm, a documented approximation). fogChanged is surfaced for a caching
+  // consumer. visibilityRange 0 disables fog (consumer-side).
+  FogDesc fog() const {
+    FogDesc f;
+    if (const X3DNode *n = ctx_.boundFog()) {
+      f.color = geombounds::getField<SFColor>(*n, "color", SFColor{1.0f, 1.0f, 1.0f});
+      // fogType is an SFEnum; read its token to stay decoupled from the
+      // generated enum-class type (enumToken in FieldRead.hpp).
+      const std::string tok = enumToken(*n, "fogType", "LINEAR");
+      f.fogType = (tok == "EXPONENTIAL") ? FogDesc::Type::Exponential
+                                         : FogDesc::Type::Linear;
+      f.visibilityRange =
+          geombounds::getField<float>(*n, "visibilityRange", 0.0f);
+      f.visibilityRange *= fogWorldScale(ctx_.worldTransformAny(n));
+    }
+    f.fogChanged = true;
+    return f;
+  }
+
+  // Local->world scale factor of a transform matrix: the mean of the upper-3x3
+  // column norms. Equals the uniform scale exactly; for a non-uniform scale it
+  // is the documented isotropic approximation (which axis is "the" scale is not
+  // spec'd — §24.4.2 says only "in the coordinate space of the Fog node").
+  static float fogWorldScale(const Mat4 &m) {
+    auto norm = [&](int c) {
+      const float x = m.m[c * 4 + 0], y = m.m[c * 4 + 1], z = m.m[c * 4 + 2];
+      return std::sqrt(x * x + y * y + z * z);
+    };
+    return (norm(0) + norm(1) + norm(2)) / 3.0f;
   }
 
   // sceneWorldBounds — union over every emitted item of (its LOCAL mesh AABB

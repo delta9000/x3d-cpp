@@ -16,10 +16,13 @@ uniform mat4 uProjection;
 
 out vec4 vColor;
 out vec2 vTexCoord;        // passed through un-flipped for the sampler.
+out vec3 vPosEye;          // eye-space position (for the §17 fog distance).
 
 void main() {
     vColor = aColor;
     vTexCoord = aTexCoord;
+    vec4 posEye = uView * uModel * vec4(aPos, 1.0);
+    vPosEye = posEye.xyz;
     gl_PointSize = 3.0; // PoC: visible points for PointSet (GL_PROGRAM_POINT_SIZE).
-    gl_Position = uProjection * uView * uModel * vec4(aPos, 1.0);
+    gl_Position = uProjection * posEye;
 }

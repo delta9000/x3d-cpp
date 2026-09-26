@@ -1144,8 +1144,13 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
                  [&](duk_context *c) {
       duk_get_global_string(c, info.x3dName.c_str());
       if (duk_is_undefined(c, -1)) return;  // never defined / never assigned
-      // Suppress no-op re-emit: skip if the JS value equals the stored value.
-      if (prev.has_value() && jsonOfTop(c) == jsonOfAny(c, prev, info.type))
+      // Suppress a no-op re-emit ONLY for inputOutput: there the JS global is an
+      // echo of the value the field already holds, so re-emitting it would be a
+      // spurious event. outputOnly is the script's own output channel — an
+      // explicit assignment generates an event regardless of value (§29.2.4 /
+      // ISO 19777-1), so it is never diffed away (SCRIPT-OUTPUTONLY-REEMIT).
+      if (info.access == AccessType::InputOutput && prev.has_value() &&
+          jsonOfTop(c) == jsonOfAny(c, prev, info.type))
         return;
       value = toValue(c, -1, info.type);
     });

@@ -1123,6 +1123,10 @@ int main(int argc, char **argv) {
   const GLint uSpecularTex    = phongProg ? glGetUniformLocation(phongProg, "uSpecularTex") : -1;
   // Phase 5.5 gamma toggle for Phong.
   const GLint uGammaOutput    = phongProg ? glGetUniformLocation(phongProg, "uGammaOutput") : -1;
+  // Fog (§24.4.2): the bound Fog's colour/type/world-scaled visibilityRange.
+  const GLint uFogColor       = phongProg ? glGetUniformLocation(phongProg, "uFogColor") : -1;
+  const GLint uFogType        = phongProg ? glGetUniformLocation(phongProg, "uFogType") : -1;
+  const GLint uFogRange       = phongProg ? glGetUniformLocation(phongProg, "uFogVisibilityRange") : -1;
 
   // ---- B4 UNLIT program — lines/points/normal-less meshes ------------------
   GLuint uvs = compileShader(GL_VERTEX_SHADER,
@@ -1139,6 +1143,10 @@ int main(int argc, char **argv) {
   const GLint uUnlitHasColors = unlitProg ? glGetUniformLocation(unlitProg, "uHasColors") : -1;
   const GLint uUnlitTexture = unlitProg ? glGetUniformLocation(unlitProg, "uTexture") : -1;
   const GLint uUnlitHasTexture = unlitProg ? glGetUniformLocation(unlitProg, "uHasTexture") : -1;
+  // Fog (§24.4.2) for the unlit path.
+  const GLint uUnlitFogColor = unlitProg ? glGetUniformLocation(unlitProg, "uFogColor") : -1;
+  const GLint uUnlitFogType  = unlitProg ? glGetUniformLocation(unlitProg, "uFogType") : -1;
+  const GLint uUnlitFogRange = unlitProg ? glGetUniformLocation(unlitProg, "uFogVisibilityRange") : -1;
 
   // ---- Phase 5.3 PBR program (lit.vert / pbr.frag) -------------------------
   // Swap-test seam: --pbr-shader / X3D_POC_PBR_SHADER selects an alternate
@@ -1178,6 +1186,10 @@ int main(int argc, char **argv) {
   const GLint uPbrLightColor   = pbrProg ? glGetUniformLocation(pbrProg, "uLightColor") : -1;
   const GLint uPbrLightAmbient = pbrProg ? glGetUniformLocation(pbrProg, "uLightAmbient") : -1;
   const GLint uPbrHasColors    = pbrProg ? glGetUniformLocation(pbrProg, "uHasColors") : -1;
+  // Fog (§24.4.2) for the PBR path.
+  const GLint uPbrFogColor     = pbrProg ? glGetUniformLocation(pbrProg, "uFogColor") : -1;
+  const GLint uPbrFogType      = pbrProg ? glGetUniformLocation(pbrProg, "uFogType") : -1;
+  const GLint uPbrFogRange     = pbrProg ? glGetUniformLocation(pbrProg, "uFogVisibilityRange") : -1;
   // PBR texture slots (unit 0=baseColor, 1=normal, 2=emissive, 3=metallicRoughness, 4=occlusion).
   const GLint uPbrBaseColorTex = pbrProg ? glGetUniformLocation(pbrProg, "uBaseColorTex") : -1;
   const GLint uPbrNormalTex    = pbrProg ? glGetUniformLocation(pbrProg, "uNormalTex") : -1;
@@ -1579,6 +1591,17 @@ int main(int argc, char **argv) {
         }
       };
 
+      // §24.4.2: the bound Fog, world-scaled by the extractor. visibilityRange
+      // 0 disables fog (the shaders no-op). Uploaded per program bind.
+      const ex::FogDesc fogDesc = extractor.fog();
+      const int fogType = (fogDesc.fogType == ex::FogDesc::Type::Exponential) ? 1 : 0;
+      auto uploadFog = [&](GLint locColor, GLint locType, GLint locRange) {
+        if (locColor >= 0)
+          glUniform3f(locColor, fogDesc.color.r, fogDesc.color.g, fogDesc.color.b);
+        if (locType >= 0) glUniform1i(locType, fogType);
+        if (locRange >= 0) glUniform1f(locRange, fogDesc.visibilityRange);
+      };
+
       // Helper: per-draw culling from mesh winding/solidity.
       auto applyCull = [&](const GpuMesh &g) {
         if (g.solid) {
@@ -1635,6 +1658,7 @@ int main(int argc, char **argv) {
             glUseProgram(unlitProg);
             glUniformMatrix4fv(uUnlitView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uUnlitProj, 1, GL_FALSE, proj.m.data());
+            uploadFog(uUnlitFogColor, uUnlitFogType, uUnlitFogRange);
             boundProg = unlitProg;
           }
           glUniformMatrix4fv(uUnlitModel, 1, GL_FALSE, it.worldTransform.m.data());
@@ -1665,6 +1689,7 @@ int main(int argc, char **argv) {
             glUniformMatrix4fv(uView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uProj, 1, GL_FALSE, proj.m.data());
             uploadLights(uNumLights, uLightDirEye, uLightColor, uLightAmbient);
+            uploadFog(uFogColor, uFogType, uFogRange);
             boundProg = phongProg;
           }
           // Per-path model + eye-space normal matrix.
@@ -1739,6 +1764,7 @@ int main(int argc, char **argv) {
             glUniformMatrix4fv(uPbrView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uPbrProj, 1, GL_FALSE, proj.m.data());
             uploadLights(uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
+            uploadFog(uPbrFogColor, uPbrFogType, uPbrFogRange);
             boundProg = pbrProg;
           }
           glUniformMatrix4fv(uPbrModel, 1, GL_FALSE, it.worldTransform.m.data());

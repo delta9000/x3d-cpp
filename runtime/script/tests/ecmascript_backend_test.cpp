@@ -825,6 +825,47 @@ int main() {
   }
 
   // -------------------------------------------------------------------------
+  // T18 (SCRIPT-OUTPUTONLY-REEMIT): an explicit same-value assignment to an
+  //      outputOnly field STILL generates an event (§29.2.4 / ISO 19777-1).
+  //      The ROUTE target is reset out-of-band between ticks, so a second,
+  //      identical assignment re-driving it proves an event was emitted (a
+  //      suppressed re-emit would leave the reset value untouched).
+  // -------------------------------------------------------------------------
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setDirectOutputUnchecked(true);
+    script.setMustEvaluateUnchecked(true);
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"out", X3DFieldType::SFVec3f,
+                                AccessType::OutputOnly, {}});
+    Transform sink;
+    sink.setTranslation(SFVec3f{0, 0, 0});
+    ScriptHandle h = backend.load(
+        script, "function emit_out(v, t) { out = { x: v, y: v, z: v }; }", sai);
+    check(h != kInvalidScriptHandle, "T18: load re-emit script");
+    backend.initialize(h);
+    ctx.addRoute(FieldAddress{&script, "out"},
+                 FieldAddress{&sink, "translation"});
+
+    backend.invoke(h, "emit_out", std::any(4.0), X3DFieldType::SFTime, 1.0);
+    ctx.process();
+    check(sink.getTranslation().x == 4.0f && sink.getTranslation().y == 4.0f,
+          "T18-pre: the first explicit outputOnly assignment emits");
+
+    // Reset the target out-of-band, then assign the SAME value again.
+    sink.setTranslation(SFVec3f{0, 0, 0});
+    backend.invoke(h, "emit_out", std::any(4.0), X3DFieldType::SFTime, 2.0);
+    ctx.process();
+    check(sink.getTranslation().x == 4.0f,
+          "T18: a same-value outputOnly re-assignment still generates an event");
+
+    backend.shutdown(h);
+    dynamicFieldStore().erase(script);
+  }
+
+  // -------------------------------------------------------------------------
   // T16: directOutput=FALSE — Browser.addRoute throws into JS (not a crash);
   //      the route is NOT added.
   // -------------------------------------------------------------------------
