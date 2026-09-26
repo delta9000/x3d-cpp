@@ -1,8 +1,8 @@
 ---
 title: Navigation System
-summary: EXAMINE, FLY, LOOKAT, and NONE navigation modes plus head-pose integration for the CAVE consumer.
-tags: [subsystem, navigation, examine, fly, lookat, head-pose]
-updated: 2026-06-20
+summary: EXAMINE, FLY, WALK, LOOKAT and NONE navigation modes, avatar collision (Collision node) and terrain following, plus head-pose integration for the CAVE consumer.
+tags: [subsystem, navigation, examine, fly, walk, lookat, collision, head-pose]
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/system-viewpointbind.md
@@ -22,10 +22,12 @@ The system also provides the `HeadPose` seam through which a CAVE consumer can i
 
 | File | Role |
 |---|---|
-| `runtime/events/NavigationSystem.hpp` | The `System` subclass — all four mode implementations, cross-tick state, vector helpers, LOOKAT transition state machine |
+| `runtime/events/NavigationSystem.hpp` | The `System` subclass — the mode implementations, collision + terrain following, Collision-node events, cross-tick state, vector helpers, LOOKAT transition state machine |
+| `runtime/scene/PickSystem.hpp` | `castCollidable` — the collision query (Collision gating, proxy, Switch/LOD selection), reusing the pick narrow phase |
 | `runtime/events/HeadPose.hpp` | Pure-data struct: `position`, `orientation`, `revision`; set by the consumer for head-tracking |
 | `runtime/events/ViewpointOffset.hpp` | Per-viewpoint user offset (`Mat4 local`); navigation accumulates into this rather than the authored fields |
-| `runtime/events/tests/navigation_test.cpp` | Unit test (doctest case `navigation_test` in the `x3d_events_tests` target): five cases covering all four modes |
+| `runtime/events/tests/navigation_test.cpp` | Unit test (doctest case `navigation_test` in the `x3d_events_tests` target) covering the modes |
+| `runtime/events/tests/collision_test.cpp` | Unit test (doctest case `collision_test`): FLY/WALK collision, Collision events, enabled gating, proxy, step height, line geometry |
 
 ## Interfaces and seams
 
@@ -83,6 +85,15 @@ Drag deltas in normalized-screen units drive a yaw (about world +Y) and pitch (a
 
 FLY holds the orientation as yaw/pitch scalars (`flyYaw_`/`flyPitch_`) and reconstructs `q = Rpitch · Ryaw` each step — roll-free by construction (Ryaw is about world-up; Rpitch is about the yawed horizontal right). Drag accumulates the scalars (`-dx * kRotScale` yaw, `-dy * kRotScale` pitch); pitch is clamped to ±(π/2 − ε) to prevent gimbal flip. On mode switch or viewpoint bind change, the scalars are re-decomposed from the current effective orientation via `decomposeLookRotation` (forward direction → yaw/pitch). Held forward/back keys translate along the effective view direction, left/right keys strafe, all scaled by `NavigationInfo.speed * dt` (§23.4.4). Speed of zero locks position.
 
+### Collision, WALK and terrain following (§23.4.2, §23.4.4)
+
+FLY and WALK moves are collision-checked; EXAMINE orbits and LOOKAT transitions are not. `NavigationInfo.avatarSize` gives the collision radius, the eye height above the terrain and the step height (defaults 0.25, 1.6, 0.75); like `speed`, it is scaled by the bound Viewpoint's transform hierarchy.
+
+- **Blocking.** `resolveMove` casts the move from the eye (and, in WALK, from step height — the body below the eye) with `X3DExecutionContext::collide`, and stops the avatar `radius` short of the first hit. Only the motion direction is probed: a wall parallel to the motion does not push the avatar away.
+- **What collides.** `PickSystem::castCollidable` walks the scene with the Collision rules: all geometry collides except line and point geometry; a Collision with `enabled` FALSE removes its whole subtree, nested Collision nodes included; a Collision with a `proxy` collides only through the proxy; a Switch contributes its chosen child and an LOD its first level. Billboards collide unrotated.
+- **Events.** When contact with geometry inside enabled Collision nodes begins, each enclosing group gets `isActive` TRUE and `collideTime`; a stationary avatar resting against the geometry stays in contact; `isActive` FALSE follows when the collision no longer occurs. Geometry outside any Collision node blocks but fires nothing.
+- **WALK.** Motion stays in the viewpoint-local horizontal plane. Each tick a downward ray keeps the eye `avatarSize[1]` above the ground: rising ground (a step no taller than `avatarSize[2]`; taller ones were blocked) lifts the eye at once, and falling integrates gravity (9.81, scaled into the viewpoint frame) until the eye is back at height. With no ground below, the avatar hovers.
+
 ### LOOKAT transition
 
 On button-down edge, the system picks the ray (`ctx.pick`), computes the target world position as `bbox_center - dir * (radius / tan(fov/2))`, converts to viewpoint-local frame, and starts a linear position/`slerp`-rotation animation from the current effective eye to the target. The transition runs over `NavigationInfo.transitionTime` seconds. `TELEPORT` transition type completes in a single tick. `transitionComplete` is posted to the bound `NavigationInfo` at the end.
@@ -100,6 +111,8 @@ On button-down edge, the system picks the ray (`ctx.pick`), computes the target 
   8. **FLY roll-free: combined yaw+pitch** — alternating yaw/pitch drags; asserts the right vector stays horizontal.
   9. **FLY pitch clamp** — extreme downward drag; asserts forward.y ≈ +1 (clamped at +π/2) and right stays horizontal.
   10. **FLY re-decompose on mode switch** — FLY → NONE → FLY; asserts orientation is preserved and drag continues from the current yaw.
+
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `collision_test`) — FLY into a wall inside a Collision group (stops `radius` short; `isActive`/`collideTime` once; resting contact; FALSE on backing away), `enabled` FALSE over a nested enabled Collision, `proxy` (invisible wall; proxy replaces children), WALK gravity / step climbing / tall-obstacle blocking, and a non-collidable IndexedLineSet.
 
 No golden files: navigation output is numeric pose values asserted with floating-point tolerances.
 

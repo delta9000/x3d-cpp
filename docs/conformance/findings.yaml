@@ -433,9 +433,9 @@
   component: Navigation
   clause: "23.2.4, 23.3.2"
   severity: major
-  status: deferred
+  status: closed
   summary: WALK mode + Collision/CollisionSensor (avatar-volume collision) not implemented.
-  note: Needs a volume-sweep collision subsystem (post-v1). FLY ships collision-free.
+  note: "Closed for navigation: NavigationSystem implements WALK (horizontal motion, gravity, terrain following at avatarSize[1], step height avatarSize[2]) and collision-checks FLY/WALK moves via PickSystem::castCollidable (collision_test). The rigid-body CollisionSensor (§37) is a physics concern tracked under CONF-RBP*, not avatar collision."
 # ── §37 RigidBodyPhysics — a simulation runtime SHIPS (seam + flag-gated Jolt:
 #    Box/Sphere, gravity, collision RESPONSE, Ball/SingleAxisHinge/Slider joints,
 #    pose route-out). It is PARTIAL: the findings below enumerate every §37 node /
@@ -811,10 +811,10 @@
   nodes: [Collision]
   clause: "23.4.2"
   severity: critical
-  status: deferred
+  status: closed
   wave: 4
   summary: Collision isActive/collideTime never fire — no avatar-volume collision detection.
-  note: Blocked on the collision subsystem (volume sweep). See CONF-NAV-COLLISION.
+  note: "NavigationSystem fires isActive TRUE + collideTime on the enclosing enabled Collision nodes when avatar contact begins (FLY/WALK moves blocked avatarSize[0] short of geometry), keeps it while resting against the geometry, and isActive FALSE when it ends (collision_test case 1)."
 - id: COL-2
   nodes: [Collision]
   clause: "23.4.2"
@@ -828,10 +828,10 @@
   nodes: [Collision]
   clause: "23.4.2"
   severity: major
-  status: deferred
+  status: closed
   wave: 4
   summary: Collision.enabled=FALSE must propagate through the descendant subtree to gate collision (overriding nested enabled=TRUE).
-  note: Only observable once the collision subsystem exists. See CONF-NAV-COLLISION.
+  note: "PickSystem::castCollidable skips the whole subtree of a disabled Collision, nested enabled Collision nodes included (collision_test case 2)."
 
 # X3DKeyDeviceSensorNode (§21) — KeySensor/StringSensor inert. OPEN: next fix cluster.
 - id: KDS-1

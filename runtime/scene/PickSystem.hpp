@@ -156,6 +156,40 @@ public:
     return out;
   }
 
+  /// Avatar collision query (ISO 19775-1 §23.4.2): the closest hit of a world
+  /// ray within `maxDist` against the geometry the avatar collides with. Unlike
+  /// picking it follows the Collision rules: a Collision with enabled FALSE
+  /// removes its whole subtree (nested Collision nodes included); a Collision
+  /// with a proxy collides through the proxy only, never its children; a Switch
+  /// contributes only its chosen child; an LOD collides with its first (most
+  /// detailed) level. Billboards are treated as plain groups. When `groups` is
+  /// given it receives the enabled Collision nodes enclosing the hit, outermost
+  /// first, so the caller can fire their isActive/collideTime.
+  PickResult castCollidable(const Ray &worldRay, float maxDist,
+                            std::vector<X3DNode *> *groups = nullptr,
+                            std::size_t maxVisits = kMaxGraphWalkVisits) const {
+    PickResult best;
+    std::vector<X3DNode *> enclosing, bestGroups;
+    std::vector<const X3DNode *> path;
+    WalkBudget budget(maxVisits);
+    for (X3DNode *r : roots_)
+      collideWalk(r, Mat4::identity(), worldRay, maxDist, path, enclosing, budget,
+                  best, bestGroups);
+    best.budgetExceeded = budget.tripped;
+    if (groups) *groups = best.hit ? bestGroups : std::vector<X3DNode *>{};
+    return best;
+  }
+
+  /// Local-frame narrow phase for one geometry node, as picking uses it: the
+  /// entry parameter along `local` (which keeps the world ray's parameter when
+  /// the direction is transformed without renormalizing), or nullopt.
+  static std::optional<float> intersectGeometry(const X3DNode *geom, const Ray &local) {
+    bool gotHit = false;
+    NarrowHit h = narrowPhase(geom, local, gotHit);
+    if (!gotHit) return std::nullopt;
+    return h.t;
+  }
+
 private:
   // Delegates to TransformSystem so all transform-bearing types stay in sync.
   // Billboard's view-dependent rotation is applied separately in pickNode (it
@@ -523,6 +557,80 @@ private:
     if (childIncomplete) incomplete = true; // truncated -> do NOT memoize n
     else visited.insert(n);                 // fully explored, target absent -> memoize
     return false;
+  }
+
+  static bool isLineOrPointGeometry(const std::string &t) {
+    return t == "IndexedLineSet" || t == "LineSet" || t == "PointSet" || t == "Polyline2D" ||
+           t == "Polypoint2D" || t == "Arc2D" || t == "Circle2D" || t == "NurbsCurve";
+  }
+
+  void collideWalk(const X3DNode *n, const Mat4 &worldM, const Ray &worldRay,
+                   float maxDist, std::vector<const X3DNode *> &path,
+                   std::vector<X3DNode *> &enclosing, WalkBudget &budget,
+                   PickResult &best, std::vector<X3DNode *> &bestGroups) const {
+    if (!budget.spend()) return;
+    if (path.size() >= kMaxNestingDepth) return;
+    for (const X3DNode *a : path)
+      if (a == n) return; // containment cycle
+    const std::string type = n->nodeTypeName();
+    const bool isCollision = type == "Collision";
+    if (isCollision && !geombounds::getField<bool>(*n, "enabled", true))
+      return; // §23.4.2: disables the whole subtree, nested Collision included.
+    path.push_back(n);
+    if (isCollision) enclosing.push_back(const_cast<X3DNode *>(n));
+    const Mat4 childM =
+        TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
+
+    if (geombounds::hasField(*n, "geometry")) {
+      auto geom = geombounds::getNode(*n, "geometry");
+      // §23.4.2: all geometry collides "except IndexedLineSet and PointSet";
+      // the other line/point geometries have no surface to enter either.
+      if (geom && !isLineOrPointGeometry(geom->nodeTypeName())) {
+        Mat4 inv = worldM.inverse();
+        Ray local{inv.transformPoint(worldRay.origin),
+                  inv.transformDirection(worldRay.direction)};
+        if (auto t = intersectGeometry(geom.get(), local); t && *t >= 0.0f) {
+          SFVec3f wp = worldM.transformPoint(local.pointAt(*t));
+          float dx = wp.x - worldRay.origin.x, dy = wp.y - worldRay.origin.y,
+                dz = wp.z - worldRay.origin.z;
+          float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+          if (d <= maxDist && (!best.hit || d < best.distance)) {
+            best.hit = true;
+            best.node = const_cast<X3DNode *>(n);
+            best.point = wp;
+            best.distance = d;
+            bestGroups = enclosing;
+          }
+        }
+      }
+    }
+
+    auto visit = [&](const X3DNode *c) {
+      collideWalk(c, childM, worldRay, maxDist, path, enclosing, budget, best, bestGroups);
+    };
+    if (isCollision) {
+      if (auto proxy = geombounds::getNode(*n, "proxy")) {
+        visit(proxy.get()); // the proxy stands in for the children entirely
+      } else {
+        for (const auto &c : geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+                 *n, "children", {}))
+          if (c) visit(c.get());
+      }
+    } else if (type == "Switch") {
+      const auto kids = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+          *n, "children", {});
+      const int which = geombounds::getField<int>(*n, "whichChoice", -1);
+      if (which >= 0 && which < static_cast<int>(kids.size()) && kids[which])
+        visit(kids[which].get());
+    } else if (type == "LOD") {
+      const auto kids = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+          *n, "children", {});
+      if (!kids.empty() && kids[0]) visit(kids[0].get());
+    } else {
+      forEachChild(n, visit);
+    }
+    if (isCollision) enclosing.pop_back();
+    path.pop_back();
   }
 
   template <class F>

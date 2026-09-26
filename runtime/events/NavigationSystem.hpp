@@ -1,9 +1,14 @@
 // NavigationSystem.hpp — the interactive navigation driver for the M2D
 // interaction layer. A System (update(now,ctx)) that reads the input seam
 // (PointerState drag deltas + KeyState) and the bound NavigationInfo, and
-// mutates the bound Viewpoint per the active navigation mode. Collision-free:
-// implements EXAMINE / FLY / LOOKAT / NONE (and ANY -> EXAMINE). WALK,
-// terrain-following, gravity, and collision are deferred (NAV-COLLISION).
+// mutates the bound Viewpoint per the active navigation mode: EXAMINE / FLY /
+// WALK / LOOKAT / NONE (and ANY -> EXAMINE). FLY and WALK moves are collision-
+// checked against the scene (§23.4.2 Collision: the avatar may not enter
+// geometry; enabled FALSE turns collision off for a subtree; a proxy stands in
+// for its group's children), with isActive/collideTime fired on the enclosing
+// Collision nodes. WALK adds gravity and terrain following at avatarSize[1]
+// above the ground, stepping onto obstacles up to avatarSize[2] high. EXAMINE
+// and LOOKAT transitions are not collision-checked.
 //
 // Spec grounding (ISO/IEC 19775-1:2023):
 //   §23.2.3  Navigation is performed relative to the viewpoint's location.
@@ -14,6 +19,8 @@
 //            transitionType/transitionTime; EXAMINE orbit; FLY free-flight;
 //            LOOKAT frame-and-animate to a picked object's bbox center.
 //   §23.4.6  Viewpoint position/orientation/centerOfRotation/fieldOfView.
+//   §23.4.2  Collision; §23.4.4 avatarSize (radius, eye height, step height),
+//            scaled — like speed — by the bound Viewpoint's transform hierarchy.
 //
 // The pointer-drag delta is the change in the consumer-supplied NORMALIZED
 // SCREEN cursor (PointerState::screenX/Y) across ticks — a camera-independent
@@ -35,12 +42,14 @@
 #include "Interpolation.hpp" // Quat, quatFromRotation, rotationFromQuat, slerp
 #include "Mat4.hpp"          // rotationFromMatrix
 #include "PointerState.hpp"
+#include "Ray.hpp"
 #include "ViewpointOffset.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
 #include "x3d/nodes/NavigationInfo.hpp" // getType/getSpeed/getTransition*; emitTransitionComplete
 
+#include <algorithm>
 #include <cmath>
 #include <optional>
 #include <string>
@@ -61,7 +70,7 @@ using x3d::nodes::NavigationInfo;
 class NavigationSystem : public System {
 public:
   // Navigation modes (public so consumers can call setForcedMode).
-  enum class Mode { None, Examine, Fly, Lookat };
+  enum class Mode { None, Examine, Fly, Walk, Lookat };
 
   // Opaque key codes this System understands. The consumer maps its native key
   // constants onto these via ctx.setKey (Annex G.3 informative arrow mapping).
@@ -121,18 +130,32 @@ public:
 
     // An in-flight LOOKAT transition takes precedence (it owns the pose until
     // it completes), regardless of the current mode — it was committed at click.
-    if (lookat_.active) { advanceLookat(now, ctx, vp, nav); return; }
+    if (lookat_.active) {
+      finishContacts(now, ctx);
+      advanceLookat(now, ctx, vp, nav);
+      return;
+    }
 
     switch (mode) {
     case Mode::None:
+      finishContacts(now, ctx);
       return; // §23.4.4: NONE produces no output.
     case Mode::Examine:
+      finishContacts(now, ctx);
       if (dragging && (dx != 0.0f || dy != 0.0f)) examineOrbit(ctx, vp, dx, dy);
       return;
     case Mode::Fly:
-      flyUpdate(ctx, vp, nav, dx, dy, dragging, dt);
+      flyUpdate(ctx, vp, nav, dx, dy, dragging, dt, /*walk=*/false);
+      keepContact(ctx, vp, nav);
+      finishContacts(now, ctx);
+      return;
+    case Mode::Walk:
+      flyUpdate(ctx, vp, nav, dx, dy, dragging, dt, /*walk=*/true);
+      keepContact(ctx, vp, nav);
+      finishContacts(now, ctx);
       return;
     case Mode::Lookat:
+      finishContacts(now, ctx);
       // LOOKAT triggers on a button-DOWN edge over a picked object.
       if (ps.present && ps.buttonDown && !buttonWasDown_ && !ctx.pointerConsumedBySensor())
         beginLookat(now, ctx, vp, nav, ps);
@@ -151,6 +174,10 @@ private:
   // NAV-FLY-ROLL: clamp pitch just shy of +/-90 deg so asin() stays defined
   // and the camera never flips through the pole.
   static constexpr float kPitchLimit = kPi * 0.5f - 0.001f;
+  // WALK: gravity (m/s², scaled into the viewpoint's frame) and how far below
+  // the eye, in avatar heights, to look for ground before hovering.
+  static constexpr double kGravity = 9.81;
+  static constexpr float kGroundSearch = 1000.0f;
 
   // First recognized type wins (§23.4.4). ANY and unrecognized -> EXAMINE.
   // NavigationInfo.type is an open MFString vocabulary, so match tokens (not a
@@ -161,9 +188,10 @@ private:
       if (t == "NONE")    return Mode::None;
       if (t == "EXAMINE") return Mode::Examine;
       if (t == "FLY")     return Mode::Fly;
+      if (t == "WALK")    return Mode::Walk;
       if (t == "LOOKAT")  return Mode::Lookat;
       if (t == "ANY")     return Mode::Examine; // sensible default
-      // WALK / EXPLORE not implemented (collision/niche) -> try next token.
+      // EXPLORE not implemented (niche) -> try next token.
     }
     return Mode::Examine;
   }
@@ -307,8 +335,11 @@ private:
   }
 
   // ---- FLY (free flight) ----------------------------------------------------
+  // FLY moves along the view direction; WALK (walk=true) moves horizontally —
+  // the view direction projected onto the viewpoint-local horizontal plane —
+  // then applies gravity and terrain following. Both are collision-checked.
   void flyUpdate(X3DExecutionContext &ctx, X3DNode *vp, NavigationInfo *nav,
-                 float dx, float dy, bool dragging, double dt) {
+                 float dx, float dy, bool dragging, double dt, bool walk) {
     const SFVec3f up{0,1,0};
     Quat q = quatFromRotation(effOri(ctx, vp));
     SFVec3f P = effPos(ctx, vp);
@@ -348,11 +379,141 @@ private:
     if ((fwdIn != 0.0f || strIn != 0.0f) && speed > 0.0f && dt > 0.0) {
       SFVec3f fwd = norm(rotateByQuat(q, SFVec3f{0,0,-1}));
       SFVec3f right = norm(rotateByQuat(q, SFVec3f{1,0,0}));
+      if (walk) { // stay on the ground plane: drop the local-up component
+        fwd = norm(SFVec3f{fwd.x, 0.0f, fwd.z});
+        right = norm(SFVec3f{right.x, 0.0f, right.z});
+      }
       SFVec3f step = add(mul(fwd, fwdIn), mul(right, strIn));
-      P = add(P, mul(step, speed * static_cast<float>(dt)));
+      const SFVec3f target = add(P, mul(step, speed * static_cast<float>(dt)));
+      P = resolveMove(ctx, vp, nav, P, target, walk);
       changed = true;
     }
+    if (walk && dt > 0.0) changed = followTerrain(ctx, vp, nav, P, dt) || changed;
     if (changed) commitEye(ctx, vp, P, rotationFromQuat(q));
+  }
+
+  // ---- collision + terrain following (§23.4.2, §23.4.4) ---------------------
+  struct Avatar {
+    float radius = 0.25f, height = 1.6f, step = 0.75f; // §23.4.4 defaults
+  };
+  // World frame of the bound viewpoint's parent, its uniform scale and world up.
+  struct Frame {
+    Mat4 world;
+    float scale = 1.0f;
+    SFVec3f up{0, 1, 0};
+  };
+  static Frame frameOf(X3DExecutionContext &ctx, X3DNode *vp) {
+    Frame f;
+    f.world = ctx.worldOf(vp);
+    f.scale = len(f.world.transformDirection(SFVec3f{1, 0, 0}));
+    if (f.scale < 1e-12f) f.scale = 1.0f;
+    f.up = norm(f.world.transformDirection(SFVec3f{0, 1, 0}));
+    return f;
+  }
+  // avatarSize is scaled by the bound viewpoint's transform hierarchy, so the
+  // world-space avatar is the authored one times the frame's scale.
+  static Avatar avatarOf(NavigationInfo *nav, float scale) {
+    Avatar a;
+    if (nav) {
+      const MFFloat &s = nav->getAvatarSize();
+      if (s.size() > 0) a.radius = s[0];
+      if (s.size() > 1) a.height = s[1];
+      if (s.size() > 2) a.step = s[2];
+    }
+    a.radius *= scale; a.height *= scale; a.step *= scale;
+    return a;
+  }
+  void touch(const std::vector<X3DNode *> &groups) {
+    for (X3DNode *g : groups)
+      if (std::find(touched_.begin(), touched_.end(), g) == touched_.end())
+        touched_.push_back(g);
+  }
+
+  // Clamp a move so the avatar stops `radius` short of collidable geometry. It
+  // probes along the motion from the eye and, in WALK, from step height (the
+  // body below the eye) so an obstacle taller than avatarSize[2] blocks while a
+  // lower one is stepped onto by terrain following. Sideways clearance is not
+  // modelled: a wall parallel to the motion does not push the avatar away.
+  SFVec3f resolveMove(X3DExecutionContext &ctx, X3DNode *vp, NavigationInfo *nav,
+                      const SFVec3f &fromL, const SFVec3f &toL, bool walk) {
+    const Frame f = frameOf(ctx, vp);
+    const Avatar a = avatarOf(nav, f.scale);
+    const SFVec3f from = f.world.transformPoint(fromL);
+    const SFVec3f to = f.world.transformPoint(toL);
+    const SFVec3f mv = sub(to, from);
+    const float d = len(mv);
+    if (d < 1e-7f) return toL;
+    const SFVec3f dir = mul(mv, 1.0f / d);
+    std::vector<SFVec3f> origins{from};
+    if (walk && a.height > a.step) origins.push_back(sub(from, mul(f.up, a.height - a.step)));
+    float allowed = d;
+    for (const SFVec3f &o : origins) {
+      std::vector<X3DNode *> groups;
+      PickResult h = ctx.collide(Ray{o, dir}, d + a.radius, &groups);
+      if (!h.hit) continue;
+      allowed = std::min(allowed, std::max(0.0f, h.distance - a.radius));
+      touch(groups);
+      blockedDir_ = dir;
+      haveBlockedDir_ = true;
+    }
+    if (allowed >= d) return toL;
+    return f.world.inverse().transformPoint(add(from, mul(dir, allowed)));
+  }
+
+  // WALK: keep the eye avatarSize[1] above the ground below it. Rising ground
+  // (a step no taller than avatarSize[2] — taller ones were blocked by
+  // resolveMove) lifts the eye at once; falling integrates gravity until the
+  // eye is back at its height. With no ground below, the avatar hovers.
+  bool followTerrain(X3DExecutionContext &ctx, X3DNode *vp, NavigationInfo *nav,
+                     SFVec3f &P, double dt) {
+    const Frame f = frameOf(ctx, vp);
+    const Avatar a = avatarOf(nav, f.scale);
+    const SFVec3f eye = f.world.transformPoint(P);
+    const SFVec3f down = mul(f.up, -1.0f);
+    PickResult g = ctx.collide(Ray{eye, down}, a.height * kGroundSearch);
+    if (!g.hit) { fallSpeed_ = 0.0; return false; }
+    float shift = 0.0f;
+    if (g.distance < a.height) {
+      shift = a.height - g.distance; // climb onto the step / rising terrain
+      fallSpeed_ = 0.0;
+    } else if (g.distance > a.height) {
+      fallSpeed_ += kGravity * f.scale * dt;
+      shift = -std::min(g.distance - a.height, static_cast<float>(fallSpeed_ * dt));
+      if (-shift >= g.distance - a.height) fallSpeed_ = 0.0; // landed
+    } else {
+      fallSpeed_ = 0.0;
+    }
+    if (shift == 0.0f) return false;
+    P = f.world.inverse().transformPoint(add(eye, mul(f.up, shift)));
+    return true;
+  }
+
+  // A stationary avatar resting against geometry is still in collision: probe a
+  // hair beyond the radius along the last blocked direction.
+  void keepContact(X3DExecutionContext &ctx, X3DNode *vp, NavigationInfo *nav) {
+    if (!touched_.empty() || colliding_.empty() || !haveBlockedDir_) return;
+    const Frame f = frameOf(ctx, vp);
+    const Avatar a = avatarOf(nav, f.scale);
+    const SFVec3f eye = f.world.transformPoint(effPos(ctx, vp));
+    std::vector<X3DNode *> groups;
+    PickResult h = ctx.collide(Ray{eye, blockedDir_}, a.radius * 1.01f + 1e-4f, &groups);
+    if (h.hit) touch(groups);
+  }
+
+  // §23.4.2: isActive TRUE + collideTime when a Collision group's collision
+  // starts, isActive FALSE when it no longer occurs.
+  void finishContacts(double now, X3DExecutionContext &ctx) {
+    for (X3DNode *g : touched_)
+      if (std::find(colliding_.begin(), colliding_.end(), g) == colliding_.end()) {
+        ctx.postEvent(g, "isActive", std::any(SFBool{true}));
+        ctx.postEvent(g, "collideTime", std::any(SFTime{now}));
+      }
+    for (X3DNode *g : colliding_)
+      if (std::find(touched_.begin(), touched_.end(), g) == touched_.end())
+        ctx.postEvent(g, "isActive", std::any(SFBool{false}));
+    colliding_ = touched_;
+    touched_.clear();
+    if (colliding_.empty()) haveBlockedDir_ = false;
   }
 
   // ---- LOOKAT (frame + animate to a picked object) -------------------------
@@ -467,6 +628,14 @@ private:
   X3DNode *lastFlyVp_ = nullptr;
   bool flyOrientValid_ = false;
   float flyYaw_ = 0.0f, flyPitch_ = 0.0f;
+
+  // Collision (§23.4.2): Collision groups in contact this tick / last tick, the
+  // last blocked motion direction (for resting contact), WALK fall speed.
+  std::vector<X3DNode *> touched_;
+  std::vector<X3DNode *> colliding_;
+  SFVec3f blockedDir_{0, 0, -1};
+  bool haveBlockedDir_ = false;
+  double fallSpeed_ = 0.0;
 
   struct LookatState {
     bool active = false;
