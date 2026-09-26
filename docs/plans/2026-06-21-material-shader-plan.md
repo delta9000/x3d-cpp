@@ -1,7 +1,5 @@
 # Material & Shader System Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Reshape `MaterialDesc` from flat superset to discriminated union, add the `ShaderUniformVocabulary` + `ShaderBindingPlan` author-shader cut-above, land `EnvironmentLight` IBL, and extend the PoC consumer to four programs + author path.
 
 **Architecture:** Six phases, each its own commit boundary. Phase 1 is the breaking `MaterialDesc` restructure (flat → discriminated). Phase 2 adds `texCoordMapping`. Phase 3 ships the vocabulary + binding plan. Phase 4 adds `EnvironmentLight`. Phase 5 extends the PoC consumer. Phase 6 is docs + drift + gates. TDD throughout: existing tests migrate first (compile-fail → implement → pass), new behaviors get new tests.

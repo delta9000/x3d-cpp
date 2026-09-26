@@ -1,7 +1,5 @@
 # SAI Sister-Repo Split Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Move the unmerged `sai/semantic-kernel` branch into a standalone `x3d-sai` repository with a self-contained generator and zero dependency on x3d-cpp, and leave x3d-cpp an archive tag, an ADR, and the one runtime check that moves back.
 
 **Architecture:** `git filter-repo` rewrites the 40-commit branch into the new repo's layout, preserving history. Three seed commits then add what could not be filtered: build system, vendored parse layer, generator wiring. The generator becomes `x3d_sai_gen`, reading a vendored copy of the Web3D UOM XML rather than importing `x3d_cpp_gen`. A separate small PR lands in x3d-cpp.

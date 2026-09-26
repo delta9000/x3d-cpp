@@ -101,7 +101,7 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
 - Un-expanded `ProtoInstance`s that were not resolved (no graph node) are re-emitted from `scene.protoInstances` so they survive a round-trip.
 
 **VrmlWriter:**
-- Emits `#X3D V<version> utf8` header; sub-3.0 version tokens are floored to `3.0` (VP-2 conformance).
+- Emits `#X3D V<version> utf8` header; sub-3.0 version tokens are floored to `3.0` (VP-2 conformance) by the shared `codec::headerVersion` (`VersionHeader.hpp`), which the XML and JSON writers also use for their `version` attribute.
 - MF values are always bracketed with `[ ... ]` to satisfy the ClassicVRML grammar (ISO/IEC 19776-2 `mfValue ::= '[' ... ']'` — bare runs truncate on reparse; AUD-A fix).
 - `SFBool`/`MFBool` tokens are uppercased to `TRUE`/`FALSE` (VRML convention, not XML/JSON).
 - `SFString` values are double-quoted with `\"` / `\\` escaping; `MFString` self-quotes via `fmtMFString`.

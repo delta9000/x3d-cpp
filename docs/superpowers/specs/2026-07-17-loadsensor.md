@@ -1,7 +1,5 @@
 # LoadSensor Runtime Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (or subagent-driven-development) to implement this plan task-by-task. Repo process discipline: `docs/contributor/card-to-done-workflow.md` + `docs/contributor/workflow-subagent-discipline.md`.
-
 **Goal:** Make `LoadSensor` a live X3DNetworkSensorNode: a `LoadSensorSystem` observes watched children's load state per tick via the AssetResolver seam and emits `isActive`/`isLoaded`/`loadTime`/`progress` per spec §9.4.3, closing findings NSN-1..7 and NSN-9.
 
 **Architecture:** Per the approved design `docs/superpowers/specs/2026-07-17-loadsensor-design.md` — time-driven `System` with per-sensor state in a map (never on the node), an injected `extract::AssetResolver` (default: new SEC-3-confined local-file resolver), parse-time pre-seed from `Scene::expandedInlines`, poll-and-diff for NSN-7 resets, and a `ChildLoadPolicy` hook for headed embedders (Anchor cases).

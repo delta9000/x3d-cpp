@@ -35,7 +35,7 @@ uniform float uRoughness;
 uniform vec3  uEmissive;
 uniform float uNormalScale;
 uniform float uOcclusionStrength;
-uniform int   uAlphaMode;         // 0=Opaque, 1=Blend, 2=Mask
+uniform int   uAlphaMode;         // 0=Opaque, 1=Mask, 2=Blend (matches ex::AlphaMode)
 uniform float uAlphaCutoff;
 uniform int   uHasColors;
 
@@ -102,7 +102,9 @@ void main() {
     if (uHasColors != 0) baseCol.rgb = vColor.rgb;
     if (uHasBaseColorTex != 0) baseCol *= texture(uBaseColorTex, vTexCoord);
     float alpha = baseCol.a;
-    if (uAlphaMode == 2 && alpha < uAlphaCutoff) discard;
+    // MASK (== ex::AlphaMode::Mask) cuts out below the cutoff; BLEND (== 2)
+    // falls through and lets the returned alpha composite in the blend pass.
+    if (uAlphaMode == 1 && alpha < uAlphaCutoff) discard;
 
     // ---- Metallic / roughness (glTF ORM packing) ----------------------------
     float metallic  = uMetallic;

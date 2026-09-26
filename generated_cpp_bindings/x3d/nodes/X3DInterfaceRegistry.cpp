@@ -377,15 +377,21 @@ bool X3DInterfaceRegistry::nodeImplements(const X3DNode* node, InterfaceId iface
 
 const std::vector<std::string>&
 X3DInterfaceRegistry::nodesImplementing(InterfaceId iface) {
-    static std::unordered_map<InterfaceId, std::vector<std::string>> cache;
-    auto it = cache.find(iface);
-    if (it != cache.end()) return it->second;
-    std::vector<std::string> out;
-    for (const auto& [name, ifaces] : table())
-        for (InterfaceId i : ifaces)
-            if (i == iface) { out.push_back(name); break; }
-    std::sort(out.begin(), out.end());
-    return cache.emplace(iface, std::move(out)).first->second;
+    // Built once from the table; the immediately-invoked lambda's result
+    // initializes a function-local static, whose initialization C++11
+    // guarantees is thread-safe (no unsynchronized mutable cache).
+    static const std::unordered_map<InterfaceId, std::vector<std::string>> byIface = [] {
+        std::unordered_map<InterfaceId, std::vector<std::string>> m;
+        for (const auto& [name, ifaces] : table())
+            for (InterfaceId i : ifaces)
+                m[i].push_back(name);
+        for (auto& entry : m)
+            std::sort(entry.second.begin(), entry.second.end());
+        return m;
+    }();
+    static const std::vector<std::string> empty;
+    auto it = byIface.find(iface);
+    return it == byIface.end() ? empty : it->second;
 }
 
 } // namespace x3d::nodes

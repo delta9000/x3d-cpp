@@ -1,6 +1,6 @@
 ## What and why
 
-<!-- One paragraph. Link the card/issue. -->
+<!-- One paragraph. Link the issue, if there is one. -->
 
 ## Conformance claim
 

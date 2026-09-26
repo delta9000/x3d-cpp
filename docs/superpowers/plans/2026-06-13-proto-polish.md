@@ -1,7 +1,5 @@
 # PROTO Polish Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Make nested-in-body `<ProtoInstance>`s expand correctly, give the JSON reader PROTO capture (and verify the VRML97 reader's inherited capture), and bring all four codec writers to PROTO round-trip parity.
 
 **Architecture:** Entirely hand-written runtime (`runtime/`, `runtime/parse/`, `runtime/codecs/`) plus the proto model header. **No codegen is touched — the golden header tree must stay byte-identical.** A `ProtoInstance` nested inside a `<ProtoBody>` becomes part of the body *template* (`ProtoBody::nestedInstances`); the expansion engine clones the body and recursively expands each nested instance against the *cloned* parent, once per outer instantiation. Readers route body-nested instances into the current body instead of the flat scene list. Writers re-emit `<ProtoDeclare>` bodies and `<ProtoInstance>`s in each encoding.

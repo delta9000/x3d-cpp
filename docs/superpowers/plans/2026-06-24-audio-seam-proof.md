@@ -1,7 +1,5 @@
 # Audio Seam Genericity Proof — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Prove the `AudioBackend` seam generic with two independent DSP backends (BuiltinDsp + miniaudio) over a headless PCM swap-test that covers the synthesis chain **and** a spatial fixture, then freeze the (spatially-extended) interface `[EXPERIMENTAL]` → `[STABLE]`.
 
 **Architecture:** Mirror the proven pattern (ADR-0024/0025): a flag-gated isolated backend lib (`X3D_CPP_BUILD_MINIAUDIO`, OFF default) whose heavy dep (`miniaudio.h`) is vendored and lives in ONE TU linked PRIVATE; a CI-gated swap-test renders the same `SoundSystem`-built graphs through both backends headless and asserts agreement within a calibrated **tolerance** metric (this is the physics-class proof tier — exact `==` across two independent DSP impls is impossible and would force one to copy the other). The proof is REAL because each backend independently synthesizes PCM and independently computes spatial pan/attenuation from **positions** that cross the seam — never SDK-precomputed gains.

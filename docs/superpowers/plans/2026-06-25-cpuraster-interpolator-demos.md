@@ -1,7 +1,5 @@
 # CPU-raster Interpolator Demos → WebM Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Add a multi-frame `--animate` render mode to the headless CPU rasterizer plus three interpolator demo scenes (Position / Orientation / Color), rendered to committed short WebMs and byte-exact golden frames.
 
 **Architecture:** `--animate` steps `X3DExecutionContext::tick(t)` over a time range, re-extracts, and writes a numbered PPM frame per step via the existing `renderScene`. A `mise run demos` task encodes those frames to VP9 WebM with `ffmpeg` (external dev tool, as in `make_cubemap.sh`). A ctest renders the same demo scenes at fixed sample times and byte-compares to committed golden PPMs — needing no ffmpeg, so CI stays bare-runner.

@@ -30,14 +30,16 @@ std::string glslVec4(const Vec4& v) {
   return "vec4(" + glslFloat(v.x) + ", " + glslFloat(v.y) + ", " + glslFloat(v.z) + ", " + glslFloat(v.w) + ")";
 }
 
-// ImportMaterial::AlphaMode enum order is {Opaque, Mask, Blend}, but the
-// canonical shader's uAlphaMode convention (usd_preview_surface.frag) is
-// 0=Opaque, 1=Blend, 2=Mask — NOT the same order, so map explicitly.
+// ImportMaterial::AlphaMode enum order {Opaque, Mask, Blend} matches the
+// canonical shader's uAlphaMode convention (usd_preview_surface.frag):
+// 0=Opaque, 1=Mask, 2=Blend (RenderItem.hpp static_asserts pin the wire
+// contract; shaders discard on uAlphaMode == 1). Map explicitly so the
+// intent survives any enum-order change.
 int glslAlphaMode(AlphaMode mode) {
   switch (mode) {
     case AlphaMode::Opaque: return 0;
-    case AlphaMode::Blend: return 1;
-    case AlphaMode::Mask: return 2;
+    case AlphaMode::Mask: return 1;
+    case AlphaMode::Blend: return 2;
   }
   return 0;
 }

@@ -3,11 +3,9 @@
 What the v1 façade (`x3d::sdk`) supports, and what is deferred to post-v1. The
 deferred rows are breadth, not spine: the architecture accommodates each as an
 isolated addition. Source of record: `docs/superpowers/specs/2026-06-16-v1-closure-roadmap-design.md`.
-Live deferral tracking lives in the two trackers `CLAUDE.md` designates (the
-`docs/superpowers/BACKLOG.md` tracker is **deprecated**, 2026-06-22): behavioral /
-spec-conformance gaps in [`docs/conformance/findings.yaml`](../conformance/findings.yaml);
-engineering / planning deferrals in the
-[GitHub Project](https://github.com/users/delta9000/projects/2).
+Behavioral / spec-conformance gaps are tracked in
+[`docs/conformance/findings.yaml`](../conformance/findings.yaml); other deferrals are
+GitHub issues.
 
 ## In v1 (supported)
 

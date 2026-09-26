@@ -45,7 +45,5 @@ To **raise** one: append a finding (see the schema header in `findings.yaml`).
 ## Scope
 
 `findings.yaml` owns *behavioral* conformance (the campaign). Broader engineering
-deferrals (build, codecs, extraction milestones) are tracked in the
-[GitHub Project](https://github.com/users/delta9000/projects/2) (the deprecated
-`../superpowers/BACKLOG.md` previously held them); the campaign methodology
+deferrals (build, codecs, extraction milestones) are GitHub issues; the campaign methodology
 lives in [`../superpowers/specs/2026-06-18-conformance-gap-register.md`](../superpowers/specs/2026-06-18-conformance-gap-register.md).

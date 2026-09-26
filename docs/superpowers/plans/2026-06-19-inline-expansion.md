@@ -1,7 +1,5 @@
 # Parse-time Inline Expansion Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Make `<Inline url='…'/>` resolve at parse/scene-build time — load the referenced X3D file, splice its content into the scene graph (DEF-isolated, internal ROUTEs firing), with a byte-identical writer round-trip — mirroring the existing EXTERNPROTO/AUD-B machinery.
 
 **Architecture:** A new `runtime/InlineExpand.hpp` walks the parsed `Scene`, and for each `Inline` node with `load=TRUE` and a resolvable `url`, replaces it in its parent slot with a synthetic `Group` holding the loaded sub-scene's root nodes. The original `Inline` node is preserved in a new `Scene::expandedInlines` side map so writers re-emit `<Inline url='…'/>` (the AUD-B `expandedSources` redirect pattern). The child's internal ROUTEs are pre-resolved in the child's own DEF scope and carried in `Scene::resolvedInlineRoutes`, which the scene-bridge registers directly. Resolution is done by an injectable `InlineResolver`; the default `localFileInlineResolver` (in `X3DParse.hpp`) does sibling-file I/O with a `thread_local` cycle stack, exactly like `localFileProtoResolver`.

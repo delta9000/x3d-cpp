@@ -1,5 +1,6 @@
 #include "emit.hpp"
 #include "fixture_source.hpp"
+#include "glsl_emit.hpp"
 #include "x3d/authoring.hpp"
 #include "doctest/doctest.h"
 using namespace x3d::asset_import;
@@ -73,4 +74,17 @@ TEST_CASE("emit_point_and_spot_lights") {
   const std::string xml = x3d::authoring::XmlWriter{}.writeDocument(emit(s, {}));
   CHECK(xml.find("<PointLight") != std::string::npos);
   CHECK(xml.find("<SpotLight") != std::string::npos);
+}
+
+TEST_CASE("emit_glsl_bakes_alpha_mode_per_wire_contract") {
+  // uAlphaMode is the wire contract RenderItem.hpp pins: 0=Opaque, 1=Mask,
+  // 2=Blend. Regression-guard the asset-import GLSL emit against an enum-order
+  // or off-by-one regression that would silently disable the MASK discard.
+  ImportMaterial mask;
+  mask.alpha = AlphaMode::Mask;
+  CHECK(emitMaterialGlsl(mask).find("const int uAlphaMode = 1;") != std::string::npos);
+
+  ImportMaterial blend;
+  blend.alpha = AlphaMode::Blend;
+  CHECK(emitMaterialGlsl(blend).find("const int uAlphaMode = 2;") != std::string::npos);
 }

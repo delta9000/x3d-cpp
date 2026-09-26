@@ -738,6 +738,7 @@ dev = [
     { name = "tree-sitter-cpp" },
 ]
 docs = [
+    { name = "mkdocs" },
     { name = "mkdocs-material" },
 ]
 
@@ -754,4 +755,7 @@ dev = [
     { name = "tree-sitter", specifier = ">=0.23" },
     { name = "tree-sitter-cpp", specifier = ">=0.23" },
 ]
-docs = [{ name = "mkdocs-material", specifier = ">=9.7.6" }]
+docs = [
+    { name = "mkdocs", specifier = ">=1.6,<2" },
+    { name = "mkdocs-material", specifier = ">=9.7.6" },
+]

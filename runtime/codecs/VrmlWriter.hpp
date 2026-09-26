@@ -55,11 +55,6 @@ public:
   std::string writeDocument(const runtime::X3DDocument &doc);
 
 private:
-  /// X3D has no version below 3.0; floor a sub-3.0/legacy token to "3.0" so the
-  /// emitted header is always valid (VP-2 §8). >= 3.0 (incl. future) passes
-  /// through.
-  static std::string headerVersion(const std::string &v);
-
   // ClassicVRML (ISO 19776-2) writes booleans as TRUE/FALSE, not the XML/JSON
   // lowercase tokens. formatValue() yields lowercase; uppercase each token here
   // for SFBool and the space-separated MFBool list, leaving everything else as

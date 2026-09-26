@@ -322,6 +322,3 @@ For each NOT-YET-PROVEN row, the path to GREEN mirrors the ScriptEngine pilot:
 3. **Gate it in CI** (a dedicated flag-gated job, like `QuickJS seam swap-test`).
 4. Then **freeze the interface** `[STABLE]` (in `sdk.hpp` for public seams; in the seam header
    itself for runtime seams like `AudioBackend.hpp`) and flip the row GREEN here.
-
-See `docs/contributor/card-to-done-workflow.md` (contributor material, outside
-this wiki) for how a seam card is driven to this documented-completion state.

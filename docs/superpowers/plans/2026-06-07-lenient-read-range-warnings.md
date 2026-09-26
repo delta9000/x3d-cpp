@@ -1,7 +1,5 @@
 # Lenient-Read Range-Warning Collection — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Surface, as structured diagnostics, which out-of-range values the lenient read path keeps — paying the owed "+ warnings" half of the lenient-read policy.
 
 **Architecture:** Purely additive codegen — keep the existing throwing `validate<Name>()` (strict setter path) untouched; add a sibling non-throwing `checkRanges<Name>()` static rendered from the same bound spec, plus a virtual `validateRanges()` override on constrained nodes. A hand-written `collectRangeWarnings(root)` walks the node graph via reflection and aggregates them. The `X3DParse` front door runs it and stores results on a new `X3DDocument.rangeWarnings` channel.

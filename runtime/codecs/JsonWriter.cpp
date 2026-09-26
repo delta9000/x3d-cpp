@@ -3,6 +3,7 @@
 #include "DynamicField.hpp"
 #include "FieldValueIO.hpp"
 #include "ProtoNameMaps.hpp"
+#include "VersionHeader.hpp"
 #include "X3DRuntime.hpp"
 #include "parse/NodeBuilder.hpp"
 #include "x3d/nodes/Script.hpp"
@@ -25,7 +26,7 @@ std::string JsonWriter::writeDocument(const runtime::X3DDocument &doc) {
   os << "{\n";
   os << "  \"X3D\": {\n";
   os << "    \"@profile\": " << jstr(doc.profileName()) << ",\n";
-  os << "    \"@version\": " << jstr(doc.version) << ",\n";
+  os << "    \"@version\": " << jstr(headerVersion(doc.version)) << ",\n";
   os << "    \"head\": {\n";
   writeHead(os, doc.head, 3);
   os << "    },\n";

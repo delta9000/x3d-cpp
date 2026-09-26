@@ -1,7 +1,5 @@
 # Cleanup & Correctness Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Fix a set of packaging/CLI/gate correctness bugs and bring the public-facing surface (naming, claims, install path, CI) in line with what the code actually does — without changing the architecture.
 
 **Architecture:** Four PR-sized units, each independently shippable and independently reviewable. They are ordered by dependency, not by importance.

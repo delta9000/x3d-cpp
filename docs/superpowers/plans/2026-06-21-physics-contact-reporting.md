@@ -1,7 +1,5 @@
 # §37 Contact Reporting Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Surface Jolt-detected collisions back into the X3D event graph so `CollisionSensor` emits `contacts` (`Contact` nodes), `intersections`, and `isActive` — closing `CONF-RBP`, the largest remaining RigidBodyPhysics gap.
 
 **Architecture:** A read-only output bridge (the response solve already happens inside Jolt; §37.4.5 forbids feeding contacts back). The backend seam gains a neutral `ContactPoint` + a pull method `drainContacts`. `JoltBackend` buffers contacts in a `ContactListener` during `step()`. `PhysicsSystem` resolves each drained contact's body handles to scene nodes and hands a `std::vector<ResolvedContact>` to a focused, backend-agnostic `ContactReporter`, which builds `Contact` nodes and emits the three output fields via the existing event cascade.

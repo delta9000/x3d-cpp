@@ -1,7 +1,5 @@
 # cgltf Import Backend + Priority-Registry Selection — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Add a default-ON, MIT-header cgltf glTF import backend to the asset-import consumer, behind a new priority-based `BackendRegistry` that resolves overlap when multiple backends (cgltf + assimp) claim the same file, proven generic by a tolerant cross-backend swap-test.
 
 **Architecture:** A pure `BackendRegistry` (priority + name lookup) replaces the hardcoded extension if/else in `main.cpp`; backends are registered explicitly behind `HAVE_*` macros. `CgltfSource` walks a parsed glTF into the existing `ImportScene` IR — no IR or `emit` changes. A committed, script-generated `.glb` fixture drives a `HAVE_CGLTF && HAVE_ASSIMP` invariant differential swap-test.

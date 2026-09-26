@@ -61,3 +61,20 @@ def test_header_and_source_render(model):
     assert "TimeSensor" in src
     assert "InterfaceId::X3DTimeDependentNode" in src
     assert "InterfaceId::X3DSensorNode" in src
+
+
+def test_nodes_implementing_cache_is_thread_safe(model):
+    nodes, graph = model
+    src = gen_interface_registry_source(nodes, graph)
+    # The old lazy cache was a mutable function-local static -- an unsynchronized
+    # data race on first use from two threads. It must be gone.
+    assert "static std::unordered_map<InterfaceId, std::vector<std::string>> cache;" not in src
+    # Replacement: an eagerly-built map, initialized by an immediately-invoked
+    # lambda into a *const* function-local static, whose initialization C++11
+    # guarantees is thread-safe (no mutex needed).
+    assert ("static const std::unordered_map<InterfaceId, std::vector<std::string>>"
+            " byIface = []" in src)
+    assert "}();" in src
+    # No unsynchronized mutation of a shared static remains anywhere.
+    assert "cache.emplace" not in src
+    assert "static std::unordered_map" not in src

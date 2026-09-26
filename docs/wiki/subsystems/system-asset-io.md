@@ -107,10 +107,38 @@ heavyweight SDK linked PRIVATE so its headers/flags never leak to consumers).
 - **URL subset**: `http://` and `https://` only; returns `Failed` for `urn:`, `file:`,
   missing scheme.
 - **Status mapping**: `CURLE_OK` + 2xx → `Ready(bytes)`; `CURLE_*` or non-2xx → `Failed`.
+- **SEC-6 hardening (on by default).** A url like `http://169.254.169.254/` cannot be
+  turned into an SSRF against internal services:
+  - **Protocol-restricted redirects**: `CURLOPT_PROTOCOLS_STR` /
+    `CURLOPT_REDIR_PROTOCOLS_STR = "http,https"` (bitmask `CURLOPT_PROTOCOLS` /
+    `CURLOPT_REDIR_PROTOCOLS` on libcurl < 7.85). A redirect to `file:`, `ftp:`, etc. is
+    refused.
+  - **Redirect cap**: `CURLOPT_MAXREDIRS = 5`.
+  - **Response-size cap**: the write callback aborts a body past `maxBytes`
+    (default 256 MiB) → `Failed`; `CURLOPT_MAXFILESIZE_LARGE` is set as a hint.
+  - **Resolved-address guard**: `CURLOPT_OPENSOCKETFUNCTION` inspects the *resolved*
+    sockaddr (post-DNS, per connection and per redirect hop) and refuses loopback
+    (127/8, ::1), link-local (169.254/16, fe80::/10), RFC1918 (10/8, 172.16/12,
+    192.168/16), CGNAT (100.64/10), unique-local (fc00::/7) and unspecified
+    (0.0.0.0, ::) addresses. IPv4 addresses embedded in IPv6 are classified too —
+    IPv4-mapped (`::ffff:a.b.c.d`), IPv4-compatible (`::a.b.c.d`) and NAT64
+    (`64:ff9b::/96`) forms all run the IPv4 classifier on the embedded address. A
+    hostname or redirect cannot smuggle a private address past it.
+  - **No environment proxy**: when `allowPrivateNetworks` is false, `CURLOPT_PROXY = ""`
+    disables the `http_proxy`/`https_proxy`/`all_proxy` environment proxies. Without
+    this, libcurl would connect to the *proxy*, so the resolved-address guard would
+    inspect the proxy rather than the target and a private target could still be
+    reached through it. Opting in (`allowPrivateNetworks = true`) re-enables them.
+- **Configuration**: `makeHttpResolver(HttpResolverOptions{})` — defaults are the
+  hardened ones above; `allowPrivateNetworks = true` widens for local dev/tests
+  (the swap-test opts in to reach its loopback fixture server). The no-argument
+  `makeHttpResolver()` is source-compatible and uses the defaults.
 - **Build option**: `-DX3D_CPP_BUILD_CURL=ON` (OFF default, `find_package(CURL REQUIRED)`).
   Default build (option OFF) is byte-identical and behavior-unchanged.
 - **Per-backend test**: `x3d_assetresolver_backend_a` (URL prefix check + libcurl
-  error path against unreachable host). Success path is in the swap-test.
+  error path against unreachable host + the SEC-6 loopback-block / size-cap /
+  non-http-redirect cases against an in-process loopback server). Success path is in
+  the swap-test.
 
 ### Backend B — AWS C++ SDK S3 (`x3d_s3`, `X3D_CPP_BUILD_S3`)
 

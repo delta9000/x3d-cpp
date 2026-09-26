@@ -7,6 +7,8 @@
 
 #include <cmath>
 #include <cstdio>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -154,7 +156,40 @@ int main() {
     CHECK(!disc && near(o.x, 1.0f) && o.y > 0.9f); // flag set; B (metallic) ~ 1.0
   }
 
-  // ---- 13. plain (non-uniform) globals are per-fragment-invocation ----
+  // ---- 13. usd_preview_surface.frag alpha wire contract (MASK==1, BLEND==2) ----
+  // The portable shader reads the raw enum int(alphaMode) as its uAlphaMode, so
+  // the canonical mapping (Opaque=0, Mask=1, Blend=2) must land on it. Guards the
+  // historical transposition where the shader discarded on == 2 (old "Mask").
+  {
+    std::ifstream in(std::string(X3D_CPURASTER_SHADER_DIR) +
+                         "/usd_preview_surface.frag",
+                     std::ios::binary);
+    std::ostringstream ss; ss << in.rdbuf();
+    InterpretedProgram prog;
+    std::string err;
+    CHECK(prog.compile(ss.str(), &err));
+    FragmentInput af = f;
+    af.posEye = {0, 0, -5};
+    af.normalEye = {0, 0, 1};
+    af.frontFacing = true;
+    af.texcoord = {0.5f, 0.5f};
+    auto kept = [&](ex::AlphaMode mode, float cutoff, float transparency) {
+      ex::MaterialDesc m;
+      m.alphaMode = mode;
+      m.alphaCutoff = cutoff;
+      m.transparency = transparency;
+      FragmentShader fs = makeInterpretedShader(prog, m, /*lights=*/{}, /*hasColors=*/false);
+      g::vec4 o;
+      return fs(af, o);
+    };
+    // alpha = 1 - transparency = 0.1, below the 0.5 cutoff.
+    CHECK(!kept(ex::AlphaMode::Mask, 0.5f, 0.9f));  // MASK (==1) cuts out.
+    CHECK(kept(ex::AlphaMode::Blend, 0.5f, 0.9f));  // BLEND (==2) keeps alpha.
+    CHECK(kept(ex::AlphaMode::Opaque, 0.5f, 0.9f)); // OPAQUE keeps.
+    CHECK(kept(ex::AlphaMode::Mask, 0.05f, 0.9f));  // above cutoff -> kept.
+  }
+
+  // ---- 14. plain (non-uniform) globals are per-fragment-invocation ----
   // The interpreter is reused for every fragment of a draw; a global written by
   // main() must not leak into the next invocation. Two consecutive fragments of
   // a shader that increments/scales a global must produce identical colors.
@@ -174,7 +209,7 @@ int main() {
     CHECK(a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w);
   }
 
-  // ---- 14. control flow: Flow propagation ----
+  // ---- 15. control flow: Flow propagation ----
   // return/break/continue/discard are a Flow value that unwinds through blocks,
   // loop nests and user-function calls. Each case asserts its exact result.
 
