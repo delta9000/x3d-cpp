@@ -5,6 +5,7 @@
 
 #include "Mat4.hpp"      // Mat4, SFVec3f
 #include <algorithm>
+#include <cmath>
 
 namespace x3d::runtime {
 
@@ -13,6 +14,11 @@ struct Aabb {
   bool empty = true;
 
   void expand(const SFVec3f &p) {
+    // A NaN component would poison min/max order-dependently (std::min(NaN,x)
+    // is NaN but std::min(x,NaN) is x), so non-finite points are ignored
+    // entirely: bounds over {finite points} are then order-independent.
+    if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z))
+      return;
     if (empty) { min = max = p; empty = false; return; }
     min.x = std::min(min.x, p.x); min.y = std::min(min.y, p.y); min.z = std::min(min.z, p.z);
     max.x = std::max(max.x, p.x); max.y = std::max(max.y, p.y); max.z = std::max(max.z, p.z);
