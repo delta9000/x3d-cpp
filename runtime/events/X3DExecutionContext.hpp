@@ -472,6 +472,14 @@ public:
                              cameraWorldUp(), x3d::kMaxGraphWalkVisits, &transforms_);
   }
 
+  /// Avatar collision query (ISO 19775-1 §23.4.2): the closest collidable hit of
+  /// a world ray within maxDist; `groups` receives the enclosing enabled
+  /// Collision nodes. See PickSystem::castCollidable for the traversal rules.
+  PickResult collide(const Ray &worldRay, float maxDist,
+                     std::vector<X3DNode *> *groups = nullptr) const {
+    return pick_.castCollidable(worldRay, maxDist, groups);
+  }
+
   /// World->camera (view) matrix from the bound Viewpoint (identity if none).
   // CONF-VIEWNAV: the EFFECTIVE view = worldOf · authoredPose · navOffset · headPose.
   // Authored position/orientation stay pristine (§23.2.3); navigation accumulates

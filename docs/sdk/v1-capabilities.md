@@ -21,7 +21,7 @@ GitHub issues.
 | Custom behavior | subclass `System`, `ctx.addSystem`, dirty-aware `ctx.writeField` |
 | Input seam | `setPointer` / `setPointerButton` / `setPointerPresent` / `setKey` |
 | Pointing-device sensors | TouchSensor, PlaneSensor, CylinderSensor, SphereSensor (drag) |
-| Navigation (collision-free) | EXAMINE, FLY, LOOKAT, NONE |
+| Navigation | EXAMINE, FLY, WALK, LOOKAT, NONE; avatar collision (Collision node: enabled, proxy, isActive/collideTime), WALK gravity and terrain following with step height |
 | Picking engine | ray cast + closest hit; exact for Sphere/Box/Cone/Cylinder + indexed/triangle meshes; AABB proxy for the long tail |
 | Extraction → render feed | full snapshot + incremental delta; meshes, materials, lights (scoped), camera, background, scene bounds |
 | Mesh primitives + sets | Box/Sphere/Cone/Cylinder, IFS/ITS/TriangleSet/strip/fan, ElevationGrid, Extrusion, IndexedLineSet/LineSet/PointSet, the 8 §14 2D primitives (Arc2D/ArcClose2D/Circle2D/Disk2D/Polyline2D/Polypoint2D/Rectangle2D/TriangleSet2D, XY plane). **Caveat:** ElevationGrid/GeoElevationGrid use auto flat normals only — authored `color`/`normal` (and `colorPerVertex`/`normalPerVertex`) are dropped (EXT-001) |
@@ -49,7 +49,6 @@ breadth. Each is tracked as a card in the
 
 | Deferred | Reason |
 |---|---|
-| WALK navigation + collision / terrain-following / gravity | Requires an avatar-volume collision subsystem (volume sweep, `Collision` node, step height, gravity); WALK is non-conformant without it. FLY ships collision-free. |
 | EXPLORE mode; ANIMATE transition curve; MPEG-object LOOKAT | Not in the Core/Interchange minimum; spline curve + media-object seam have no corpus coverage. |
 | Pick-sensor nodes (Line/Point/Primitive/VolumePickSensor) | Read `pickingGeometry`/`pickTarget`, distinct from the pointer-device seam; no current consumer (the pick *engine* ships). |
 | Full / dynamic SAI (`createX3DFromString`, runtime node add/remove) | Dynamic structural mutation needs incremental re-indexing; no current consumer. |
