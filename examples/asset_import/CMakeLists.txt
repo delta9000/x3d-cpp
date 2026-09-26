@@ -47,11 +47,13 @@ add_test(NAME x3d_assetimport_backend_registry COMMAND x3d_assetimport_backend_r
 add_executable(x3d_assetimport_emit
     "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/emit.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/glsl_emit.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/fixture_source.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/emit_test.cpp")
 target_include_directories(x3d_assetimport_emit PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support"
+    "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(x3d_assetimport_emit PRIVATE x3d_cpp::authoring)
 target_compile_features(x3d_assetimport_emit PRIVATE cxx_std_20)
 add_test(NAME x3d_assetimport_emit COMMAND x3d_assetimport_emit)

@@ -8,8 +8,10 @@
 #include "Interpolation.hpp" // Quat, quatFromRotation
 #include "x3d/core/X3Dtypes.hpp"      // SFVec3f, SFRotation
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <optional>
 
 namespace x3d::runtime {
 
@@ -54,8 +56,12 @@ struct Mat4 {
   }
 
   // General 4x4 inverse (column-major == OpenGL layout, standard adjugate form).
-  // Returns identity() if (near-)singular.
-  Mat4 inverse() const {
+  // Scale-relative singularity test: for an affine matrix det == the upper-3x3
+  // determinant. By Hadamard's inequality |det| <= n0*n1*n2, the product of the
+  // three upper-3x3 column norms, so |det|/(n0*n1*n2) is bounded by 1 and equals
+  // 1 for any rotation*diagonal-scale — scale-invariant per axis, unlike a test
+  // on the max element magnitude which misfires on anisotropic scales.
+  std::optional<Mat4> tryInverse() const {
     std::array<float,16> inv;
     inv[0]  =  m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10];
     inv[4]  = -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10];
@@ -74,11 +80,26 @@ struct Mat4 {
     inv[11] = -m[0]*m[5]*m[11]  + m[0]*m[7]*m[9]   + m[4]*m[1]*m[11] - m[4]*m[3]*m[9]  - m[8]*m[1]*m[7]   + m[8]*m[3]*m[5];
     inv[15] =  m[0]*m[5]*m[10]  - m[0]*m[6]*m[9]   - m[4]*m[1]*m[10] + m[4]*m[2]*m[9]  + m[8]*m[1]*m[6]   - m[8]*m[2]*m[5];
     float det = m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12];
-    if (std::fabs(det) < 1e-20f) return identity();
+    // Upper-3x3 column norms (column c = m[c*4+0..2], this file is column-major).
+    const float n0 = std::sqrt(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+    const float n1 = std::sqrt(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]);
+    const float n2 = std::sqrt(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]);
+    const float nprod = n0 * n1 * n2;
+    // |det|/(n0*n1*n2) rounds to 1 for any rotation*diagonal-scale; 1e-6 is a
+    // few ulp above that rounding noise in float, while rank-deficient matrices
+    // give ~0. A zero column norm makes nprod 0 -> singular.
+    const float eps = 1e-6f;
+    if (!(std::fabs(det) > eps * nprod))
+      return std::nullopt; // (near-)singular: det not resolvable at this scale.
     float idet = 1.0f / det;
     Mat4 r;
     for (int i = 0; i < 16; ++i) r.m[i] = inv[i] * idet;
     return r;
+  }
+
+  Mat4 inverse() const {
+    auto r = tryInverse();
+    return r ? *r : identity();
   }
 
   static Mat4 translation(const SFVec3f &t) {

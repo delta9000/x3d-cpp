@@ -94,9 +94,10 @@ for VRML97 and any sub-3.0 version token:
 - `Vrml97Reader::onHeaderLine` (`runtime/parse/Vrml97Reader.hpp`) sets
   `doc.version = "3.0"` on all three VRML branches: missing header, unrecognised
   magic, and the normal `#VRML V2.0` success path.
-- `VrmlWriter::headerVersion` (`runtime/codecs/VrmlWriter.hpp`) applies a
+- `x3d::codec::headerVersion` (`runtime/codecs/VersionHeader.hpp`) applies a
   defensive second-layer clamp so that a hand-built `X3DDocument` with
-  `version = "2.0"` still emits `#X3D V3.0 utf8`, never `#X3D V2.0`.
+  `version = "2.0"` still emits `#X3D V3.0 utf8`, never `#X3D V2.0`. The VRML,
+  XML and JSON writers all use it (2026-09-26; previously VRML-only).
 - `X3DDocument::version` struct default changed from `"4.0"` to `"3.0"`
   (`runtime/X3DDocument.hpp:78`), so unversioned files parsed by readers that
   do not emit a version token inherit the correct bare floor at the C++ layer too.

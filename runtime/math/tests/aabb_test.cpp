@@ -28,5 +28,23 @@ TEST_CASE("aabb_test") {
 
   Aabb t = Aabb{}.transformed(Mat4::identity()); // empty stays empty
   CHECK((t.empty));
+
+  // MEM-3: non-finite points are ignored, so bounds are order-independent.
+  const float nan = std::nanf("");
+  const SFVec3f P{1,2,3};
+  Aabb f1, f2;
+  f1.expand(SFVec3f{nan, nan, nan}); f1.expand(P);
+  f2.expand(P); f2.expand(SFVec3f{nan, nan, nan});
+  CHECK((!f1.empty && !f2.empty));
+  CHECK((feq(f1.min.x, f2.min.x) && feq(f1.max.y, f2.max.y) &&
+         feq(f1.max.z, f2.max.z)));
+  CHECK((feq(f1.min.x, 1) && feq(f1.max.z, 3))); // only the finite point counts
+
+  // A box of ONLY non-finite points stays empty/invalid.
+  Aabb n; n.expand(SFVec3f{nan, 0, 0}); n.expand(SFVec3f{0, nan, 0});
+  CHECK((n.empty));
+  // And a partial-NaN point is ignored whole (not just its NaN component).
+  Aabb p; p.expand(P); p.expand(SFVec3f{nan, 0, 0});
+  CHECK((feq(p.min.x, 1) && feq(p.max.x, 1)));
   return;
 }
