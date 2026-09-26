@@ -2,7 +2,7 @@
 title: "Shaders (ComposedShader introspection + binding plan)"
 summary: "Author-shader binding INFRASTRUCTURE: ShaderProgramDesc / ShaderStageDesc / ShaderFieldBinding descriptors; ShaderUniformVocabulary typed portability surface; buildBindingPlan() vocab/author-field/unrecognized dispatch. ComposedShader extraction wiring (populating RenderItem::shaderProgram) is a deferred follow-on."
 tags: [subsystem, shaders, extract, composedshader, vocab, binding-plan]
-updated: 2026-06-21
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/materials.md
@@ -61,7 +61,7 @@ A non-null `ShaderProgramDesc` on a `RenderItem` signals the consumer to bind th
 | Group | Examples |
 |---|---|
 | Transform matrices | `modelViewMatrix`, `projectionMatrix`, `normalMatrix`, `modelMatrix`, `viewMatrix`, `textureMatrix` |
-| Lights | `numLights`, `lightColor[]`, `lightDirection[]`, `lightAttenuation[]`, `lightBeamWidth[]`, `lightCutOffAngle[]` |
+| Lights | `numLights`, `lightColor[]`, `lightDirection[]`, `lightAttenuation[]`, `lightAmbientIntensity[]`, `lightBeamWidth[]`, `lightCutOffAngle[]` |
 | Material (Phong) | `diffuseColor`, `specularColor`, `shininess`, `ambientIntensity` |
 | Material (Physical) | `baseColor`, `metallic`, `roughness` |
 | Material (shared) | `emissiveColor`, `occlusionStrength`, `normalScale`, `transparency`, `alphaMode`, `alphaCutoff` |
@@ -104,6 +104,13 @@ The PoC consumer in `examples/poc_renderer/main.cpp` demonstrates the four-progr
 
 `pbr.frag` implements a metallic-roughness **analytic BRDF** (Cook-Torrance NDF + Schlick Fresnel + Smith geometry, sRGB output).  **IBL (image-based lighting) is not implemented** — `EnvironmentLight` is an X3D 4.1 node and the generated binding layer is locked to X3D 4.0; IBL is deferred (see deferred note below).
 
+## Lighting model (reference evaluator)
+
+The Phong/PBR programs (GLSL and their cpu_raster CPU ports, `cpuraster/MaterialShader.hpp`) are the ADR-0027 reference evaluator. Two §17/§23 facts are wired there:
+
+- **Per-light `ambientIntensity` (§17.2.2.4).** Each light contributes `ambientIntensity_i · diffuseColor · material.ambientIntensity` (PhysicalMaterial has no ambientIntensity, so the ambient surface is `diffColor`), gated by attenuation/spot like the light's other terms. `LightDesc.ambientIntensity` (extracted by `runtime/extract/LightSystem.hpp`) surfaces as `EyeLight::ambientIntensity`; the PoC uploads it as `uLightAmbient[]` (vocab `lightAmbientIntensity[]`). This keeps today's squared-diffuse ambient convention (an ADR-0027 open question, card RND-2) unchanged.
+- **`NavigationInfo.headlight` (§23.4.4).** headlight TRUE (default) turns the camera-space headlight ON regardless of the scene's own lights; FALSE turns it OFF. Both consumers' `buildEyeLights()` add it whenever the flag is on (reserving a `kMaxLights` slot so it is never dropped), not only as a no-lights fallback. §23.4.4 pins the headlight exactly: intensity 1, color (1 1 1), `ambientIntensity` 0.0, direction (0 0 −1).
+
 ## IBL / EnvironmentLight — DEFERRED
 
 The vocabulary reserves `EnvDiffuse`, `EnvSpecular`, `EnvSH`, `BrdfLUT`, `EnvIntensity`, `EnvRotation` entries so author shaders can declare them today without a vocab change when IBL ships.  However `EnvironmentLight` itself is an X3D 4.1 node and the generated binding layer (`generated_cpp_bindings/`) is code-generated from the X3D 4.0 UOM and committed as byte-identical golden files.  Hand-authoring a 4.1 binding would invalidate the golden invariant.  The IBL work is tracked as a follow-on that requires a defined strategy for 4.1 extension nodes.
@@ -128,6 +135,12 @@ that *executes* author `ComposedShader` fragment source on the CPU — the
 even before the SDK wires ComposedShader extraction. It binds the same
 `ShaderUniformVocabulary` names this seam defines, making the shader seam testable
 as a GPU-free golden-image harness; see `examples/cpu_raster/README.md`.
+
+Its `cpuraster/Texture.hpp` sampler consumes the §18.4.9 state surfaced on
+`TextureRef::extSampler` (see [Texture extraction](extract-textures.md)):
+REPEAT, CLAMP, CLAMP_TO_EDGE, CLAMP_TO_BOUNDARY and MIRRORED_REPEAT wrap modes,
+plus the magnification filter (nearest vs bilinear). **Mipmapping is unimplemented**
+(single mip level), so the minification filters have no effect (TXF-4).
 
 ## Related specs and ADRs
 

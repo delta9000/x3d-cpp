@@ -33,6 +33,19 @@ static FragmentInput frag(g::vec3 posEye, g::vec3 normalEye, bool front) {
   return f;
 }
 
+// Ambient is per-light (§17.2.2.4). This ambient-only light (color 1, intensity
+// 1, ambientIntensity 1, direction perpendicular to ±Z) contributes no diffuse
+// (N·L=0 for both faces) and no specular, so it isolates the material colour
+// through the ambient term — the role the removed light-independent ambient used
+// to play in tests B and C.
+static std::vector<EyeLight> ambientOnlyLight() {
+  EyeLight al;
+  al.dirEye = {1, 0, 0}; // L = normalize(-dirEye) = {-1,0,0}: N·L = 0 for ±Z.
+  al.color = {1, 1, 1};
+  al.ambientIntensity = 1.0f;
+  return {al};
+}
+
 int main() {
   // ===================================================================== A) ==
   // Background sky/ground gradient: zenith=sky[0], nadir=ground, mid-sky blends.
@@ -72,7 +85,7 @@ int main() {
     m.backMaterial->phong.ambientIntensity = 0.5f;
     m.backMaterialConstraintMet = true;
 
-    std::vector<EyeLight> noLights; // ambient-only isolates the material colour.
+    std::vector<EyeLight> noLights = ambientOnlyLight(); // ambient isolates colour.
     FragmentShader fs = makeMaterialShader(m, noLights, /*hasColors=*/false,
                                            /*forceUnlit=*/false);
     g::vec4 of, ob;
@@ -100,7 +113,7 @@ int main() {
     tex.texCoordGen.mode = ex::TexCoordGenMode::Sphere;
     m.textures.push_back(tex);
 
-    std::vector<EyeLight> noLights;
+    std::vector<EyeLight> noLights = ambientOnlyLight();
     FragmentShader fs = makeMaterialShader(m, noLights, false, false);
     g::vec4 o;
     // Normal {0.6,0,0.8} -> sphere u = 0.6*0.5+0.5 = 0.8 (right half -> green).

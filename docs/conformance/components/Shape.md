@@ -9,7 +9,7 @@ _Generated. Levels 1,2,3,4,5 · 10 nodes · profiles: Interchange, Interactive, 
 | FillProperties | 3 | ✓ | — | — | — | X3DAppearanceChildNode |
 | LineProperties | 2 | ✓ | — | — | SEAM-LINEPOINT | X3DAppearanceChildNode |
 | Material | 1 | ✓ | — | — | MAT-002, MAT-003, MAT-004, MAT-005, MAT-006, MAT-007, MAT-009, MAT-010 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
-| PhysicalMaterial | 2 | ✓ | — | — | MAT-005, MAT-006, MAT-007, MAT-008, MAT-009, MAT-010 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
+| PhysicalMaterial | 2 | ✓ | — | — | MAT-005, MAT-006, MAT-007, MAT-008, MAT-009, MAT-010, MAT-011 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
 | PointProperties | 5 | ✓ | — | — | SEAM-LINEPOINT | X3DAppearanceChildNode |
 | Shape | 1 | ✓ | — | — | MAT-001 | X3DBoundedObject, X3DChildNode, X3DShapeNode |
 | TwoSidedMaterial | 4 | ✓ | — | — | — | X3DAppearanceChildNode, X3DMaterialNode |
@@ -26,6 +26,8 @@ _Generated. Levels 1,2,3,4,5 · 10 nodes · profiles: Interchange, Interactive, 
 - **MAT-002** [major/CLOSED `c86b731`] — §12.4.5, 17.2.2.5: Material.shininessTexture (alpha) has no descriptor slot — consumers can't modulate per-pixel shininess.
   - Add a Shininess TextureRef::Slot + appendSlot in the Phong texturesOf path.
 - **MAT-004** [major/CLOSED `c86b731`] — §12.4.5: Material.occlusionStrength not read — authored non-default values dropped (occlusionTexture always applied at full strength).
+- **MAT-011** [major/FIXED] — §12.4.6: Ambient occlusion derived from the metallic-roughness texture's R channel even when a separate occlusionTexture was bound (and applied even when none was).
+  - Per §12.4.6 occlusion comes from occlusionTexture (red channel) scaled by occlusionStrength; metallicRoughnessTexture carries roughness in G and metallic in B. Fixed in the CPU reference evaluator (examples/cpu_raster/cpuraster/MaterialShader.hpp) and the PoC GLSL (examples/poc_renderer/shaders/pbr.frag): AO now reads the Occlusion slot only; the MR texture's R is no longer an AO source (the extractor emits no ORM-packed marker). Regression: x3d_cpuraster_material_shader_test.
 - **MAT-003** [minor/CLOSED `c86b731`] — §12.4.5, 17.2.2.5: Material.ambientTexture (RGB) has no descriptor slot — per-pixel ambient modulation unavailable.
 - **MAT-005** [minor/CLOSED `c86b731`] — §12.3.4: normalScale (X3DOneSidedMaterialNode) not surfaced — normal-map intensity ignored.
 - **MAT-006** [minor/CLOSED `4c47b58`] — §12.2.3, 12.4.2: Appearance.backMaterial (two-sided, solid=FALSE) not extracted — no separate back-face MaterialDesc.

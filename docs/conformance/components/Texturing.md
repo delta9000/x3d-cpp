@@ -4,15 +4,15 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ImageTexture | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
+| ImageTexture | 1 | ✓ | — | — | TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
 | MovieTexture | 3 | ✓ | — | ◑ | MULTI-INHERIT, TDN-5, VIS-MOVIE-DECODE | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
 | MultiTexture | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureNode |
 | MultiTextureCoordinate | 2 | ✓ | — | — | TXT-6 | X3DGeometricPropertyNode, X3DTextureCoordinateNode |
 | MultiTextureTransform | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureTransformNode |
-| PixelTexture | 1 | ✓ | — | — | ENC-VRML-SFIMAGE | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode |
+| PixelTexture | 1 | ✓ | — | — | ENC-VRML-SFIMAGE, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode |
 | TextureCoordinate | 1 | ✓ | — | — | — | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
 | TextureCoordinateGenerator | 2 | ✓ | — | — | TXF-2 | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
-| TextureProperties | 2 | ✓ | — | — | — |  |
+| TextureProperties | 2 | ✓ | — | — | TXF-4 |  |
 | TextureTransform | 1 | ✓ | — | — | TXF-1, TXF-3 | X3DAppearanceChildNode, X3DTextureTransformNode |
 | X3DSingleTextureTransformNode | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureTransformNode |
 
@@ -30,6 +30,8 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
   - Mischaracterized originally: the sphere DOES carry texcoords (tessellateSphere emits them). The real cause is the no-Material case — an Appearance with an ImageTexture but no Material is unlit per spec (§12.2.5), so the extractor correctly surfaces MaterialModel::Unlit with the image on the EMISSIVE slot (MaterialSystem.hpp). The PoC's UNLIT shader had no texcoord/sampler at all, so the texture was never sampled (Box/texture.x3d has a <Material/> -> Phong path, which is why it worked). Fixed PoC-side: added aTexCoord + sampler2D to unlit.vert/unlit.frag and bound the {Emissive,BaseColor,Diffuse} slot in the unlit draw path. SDK extraction was already spec-correct.
 - **VIS-MOVIE-DECODE** [major/FIXED] — §23.4.1: MovieTexture frames were never decoded — TextureRef::Source::Movie was surfaced but no consumer decode path existed, so movie-textured scenes rendered the white/last fallback (blank). FIXED for MPEG-1: the MovieDecoder seam + pl_mpeg Backend A play the video onto geometry (the whole NIST corpus is MPEG-1).
   - Implemented per ADR-0041: the MovieDecoder seam (runtime/extract/MovieDecoder.hpp) + Backend A pl_mpeg (runtime/io/plmpeg/, flag-gated x3d_plmpeg) wired into the PoC, which decodes the current media-time frame and uploads it as the texture each tick. The NIST .mpg files are RAW elementary video streams (no MPEG-PS system layer), so the backend drives pl_mpeg's low-level plm_video_t directly for those (plm_t + seek for program streams). Verified by the x3d_movie_tests semantics-contract test and by rendering Appearance/Appearance/movietexture.x3d (the VTS card plays on box/sphere/cone/cylinder). Theora since shipped as MovieDecoder Backend B (TheoraMovieDecoder, seam-status.md — the seam is STABLE); WebM remains a follow-up. MovieTexture time-lifecycle nuance tracked by TDN-5.
+- **TXF-4** [minor/FIXED] — §18.4.9: CPU reference sampler honored only repeat/clamp — MIRRORED_REPEAT and CLAMP_TO_BOUNDARY were ignored and the magnification filter was not applied.
+  - The extractor already surfaces the full §18.4.9 sampler (extendedSamplerOf); the CPU sampler (examples/cpu_raster/cpuraster/Texture.hpp) now honors REPEAT/CLAMP/CLAMP_TO_EDGE/CLAMP_TO_BOUNDARY (border color = the TextureProperties default 0,0,0,0 — borderColor is not extracted) and MIRRORED_REPEAT, and applies the magnification filter (NEAREST_PIXEL/FASTEST nearest; AVG_PIXEL/NICEST/DEFAULT bilinear). Mipmapping (the minification filters) remains unimplemented — the sampler has a single mip level. Regression: x3d_cpuraster_texture_render_test.
 - **TXF-3** [minor/FIXED] — §18.4.10: MatrixTextureTransform + MultiTextureTransform not handled (only the single TextureTransform).
   - Fixed for the generated model's available nodes: MultiTextureTransform now yields one TextureTransform2DParams per child and SceneExtractor applies transforms to matching MeshData.texcoordSets; TextureTransformMatrix3D projects its 4x4 transform over (s,t,0,1) onto the current 2D seam. TextureMatrixTransform appears in profile prose, but the generated concrete node is TextureTransformMatrix3D. Covered by texture_extract_test.
 - **MULTI-INHERIT** [minor/CLOSED] — §16.4.2, 18.4.2: MovieTexture declared under two abstract node types; engine handles it via ADR-0004 virtual mixins. AudioClip is the clean single-node pattern (named by association).

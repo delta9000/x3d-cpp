@@ -64,7 +64,8 @@ build/golden/ctest path never compiles any of it.
   back-face culling honoring `MeshData.ccw/solid`, near-plane clipping, the
   view-all fit camera, eye-space directional + positional (point/spot) lights
   with distance attenuation and spot-cone falloff + the `NavigationInfo`
-  headlight fallback, and a back-to-front transparency pass — matching the PoC's
+  headlight (§23.4.4: on whenever `headlight` is TRUE, independent of scene
+  lights), and a back-to-front transparency pass — matching the PoC's
   conventions so a CPU frame lines up with the GL one.
 
 ## Build & run
@@ -147,7 +148,7 @@ with `mise run demos-bless`.
 ```
 cpuraster/glsl.hpp            GLSL-emulation vec/mat/builtins/sampler
 cpuraster/Framebuffer.hpp     RGBA8 + depth buffer + PPM writer
-cpuraster/Texture.hpp         CPU sampler2D (bilinear, wrap, sRGB-on-sample)
+cpuraster/Texture.hpp         CPU sampler2D (§18.4.9 wrap/filter, sRGB-on-sample)
 cpuraster/Rasterizer.hpp      2x2-quad scan-convert, clip, z-buffer, cull
 cpuraster/MaterialShader.hpp  Phong/PBR/Unlit CPU ports
 cpuraster/GlslInterpreter.hpp GLSL-subset interpreter (author ComposedShader)

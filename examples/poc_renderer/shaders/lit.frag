@@ -4,7 +4,9 @@
 //
 // LIGHTING MODEL:
 //   Up to kMaxLights directional lights in eye space. Two-sided via
-//   gl_FrontFacing. NavigationInfo headlight is light[0] when no scene lights.
+//   gl_FrontFacing. The NavigationInfo headlight (§23.4.4) is an additional
+//   camera-space light whenever headlight=TRUE (default), independent of the
+//   scene's lights.
 //
 // TEXTURE SLOTS (units match the PoC bind order in main.cpp):
 //   Unit 0 — diffuse / base-color (uTexture / uHasTexture)
@@ -63,6 +65,7 @@ uniform float uAlphaCutoff;  // Mask threshold.
 uniform int  uNumLights;
 uniform vec3 uLightDirEye[kMaxLights]; // direction of TRAVEL, eye space.
 uniform vec3 uLightColor[kMaxLights];  // rgb * intensity, premultiplied.
+uniform float uLightAmbient[kMaxLights]; // §17.2.2.4 per-light ambientIntensity.
 
 // ---- Output -----------------------------------------------------------------
 uniform int uGammaOutput; // 1 => apply LINEARtoSRGB before writing FragColor.
@@ -134,9 +137,14 @@ void main() {
     // ---- Lighting accumulation (Blinn-Phong) --------------------------------
     vec3 V       = normalize(-vPosEye);
     float expo   = max(uShininess * 128.0, 1.0);
-    vec3 lit     = uAmbientColor * base + emissive;
+    vec3 lit     = emissive;
 
     for (int i = 0; i < uNumLights && i < kMaxLights; ++i) {
+        // §17.2.2.4 ambient: ambientIntensity_i × (diffuseColor × material
+        // ambientIntensity) × base — uAmbientColor already carries
+        // diffuse×ambientIntensity; `base` keeps the squared-diffuse convention
+        // (card RND-2, pending an ADR). Normal-independent, applied before ndl.
+        lit += (uAmbientColor * base) * uLightColor[i] * uLightAmbient[i];
         vec3 L    = normalize(-uLightDirEye[i]);
         float ndl = max(dot(N, L), 0.0);
         lit      += base * uLightColor[i] * ndl;
