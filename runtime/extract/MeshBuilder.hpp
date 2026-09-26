@@ -433,12 +433,27 @@ void tessellateCylinder(MeshData &m, float radius, float height, int slices,
 // ---------------------------------------------------------------------------
 template <class PosFn>
 inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
-                           float creaseAngle = 0.0f, bool ccw = true) {
+                           float creaseAngle = 0.0f, bool ccw = true,
+                           const AttrResolvers *attrs = nullptr) {
   const std::size_t startCorner = m.positions.size();
   auto lid = [&](int i, int j) {
     return static_cast<std::uint32_t>(j * xDim + i);
   };
-  const auto addTriangle = [&](int ia, int ja, int ib, int jb, int ic, int jc) {
+  // EXT-001: authored Color/Normal honor colorPerVertex/normalPerVertex. Per
+  // §13.3.4 a per-vertex value indexes the LATTICE vertex (row*xDim+col); a
+  // per-quad (colorPerVertex/normalPerVertex FALSE) value indexes the CELL
+  // (row*(xDim-1)+col). ElevationGrid carries no *Index fields, so the index is
+  // the picked value directly.
+  const bool authoredNormal = attrs && attrs->hasNormal;
+  const bool authoredColor = attrs && attrs->hasColor;
+  const int cellCols = xDim - 1; // cells per row.
+  const auto pickVert = [&](int i, int j) { return static_cast<int>(lid(i, j)); };
+  // Per-quad (per-cell) attribute index: the CELL, indexed row*(xDim-1)+col. The
+  // cell is identified by its lower-left lattice corner, so all six corners of a
+  // cell's two triangles pick the same entry.
+  const auto pickCell = [&](int ci, int cj) { return cj * cellCols + ci; };
+  const auto addTriangle = [&](int ci, int cj, int ia, int ja, int ib, int jb,
+                               int ic, int jc) {
     const SFVec3f a = pos(ia, ja), b = pos(ib, jb), c = pos(ic, jc);
     auto base = static_cast<std::uint32_t>(m.positions.size());
     m.positions.push_back(a);
@@ -450,27 +465,55 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
     m.latticeIndex.push_back(lid(ia, ja));
     m.latticeIndex.push_back(lid(ib, jb));
     m.latticeIndex.push_back(lid(ic, jc));
-    // GENERATED normal: ccw=FALSE reverses its direction (geometry3D.md §13.3.4
-    // — "Setting the ccw field to FALSE reverses the normal direction"). Done
-    // by negation so the lattice/index order is preserved.
-    SFVec3f n = faceNormal(a, b, c);
-    if (!ccw)
-      n = SFVec3f{-n.x, -n.y, -n.z};
-    m.normals.push_back(n);
-    m.normals.push_back(n);
-    m.normals.push_back(n);
+    // Authored Normal node wins per §13.3.4; else GENERATED flat normal, whose
+    // direction ccw=FALSE reverses ("Setting the ccw field to FALSE reverses the
+    // normal direction"). Negation keeps the lattice/index order.
+    const SFVec3f flat = faceNormal(a, b, c);
+    if (authoredNormal) {
+      const auto pickN = [&](int i, int j) -> SFVec3f {
+        const int sel = attrs->normalPerVertex ? pickVert(i, j)
+                                               : pickCell(ci, cj);
+        return (sel >= 0 && sel < static_cast<int>(attrs->normals.size()))
+                   ? attrs->normals[sel]
+                   : flat;
+      };
+      m.normals.push_back(pickN(ia, ja));
+      m.normals.push_back(pickN(ib, jb));
+      m.normals.push_back(pickN(ic, jc));
+    } else {
+      SFVec3f n = flat;
+      if (!ccw)
+        n = SFVec3f{-n.x, -n.y, -n.z};
+      m.normals.push_back(n);
+      m.normals.push_back(n);
+      m.normals.push_back(n);
+    }
+    if (authoredColor) {
+      const auto pickC = [&](int i, int j) -> SFColorRGBA {
+        const int sel = attrs->colorPerVertex ? pickVert(i, j)
+                                              : pickCell(ci, cj);
+        return (sel >= 0 && sel < static_cast<int>(attrs->colors.size()))
+                   ? attrs->colors[sel]
+                   : SFColorRGBA{1.0f, 1.0f, 1.0f, 1.0f};
+      };
+      m.colors.push_back(pickC(ia, ja));
+      m.colors.push_back(pickC(ib, jb));
+      m.colors.push_back(pickC(ic, jc));
+    }
   };
   for (int j = 0; j + 1 < zDim; ++j)
     for (int i = 0; i + 1 < xDim; ++i) {
-      addTriangle(i, j, i + 1, j + 1, i + 1, j); // v00, v11, v10
-      addTriangle(i, j, i, j + 1, i + 1, j + 1); // v00, v01, v11
+      addTriangle(i, j, i, j, i + 1, j + 1, i + 1, j); // v00, v11, v10
+      addTriangle(i, j, i, j, i, j + 1, i + 1, j + 1); // v00, v01, v11
     }
   // creaseAngle smoothing (B6) keyed on the SOURCE LATTICE id (row*xDim+col),
   // not the expanded 0..N-1 run. creaseAngle==0 => byte-identical flat output.
+  // Runs ONLY when no Normal node is authored (authored normals must survive).
   (void)startCorner; // grids own the whole mesh; smoothing reads it wholesale.
-  if (creaseAngle > 0.0f)
+  if (!authoredNormal && creaseAngle > 0.0f)
     creaseSmoothNormals(m, m.latticeIndex, creaseAngle);
   m.hasNormals = !m.normals.empty();
+  m.hasColors = !m.colors.empty();
 }
 
 // ---------------------------------------------------------------------------

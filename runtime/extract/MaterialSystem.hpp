@@ -145,6 +145,56 @@ inline bool appendSlot(const X3DNode &materialNode, const char *fieldName,
   return true;
 }
 
+// Populate `out` with the texture slots authored on a material NODE (the same
+// slot dispatch texturesOf uses for the front material). Returns true if any
+// slot was populated. Used for BOTH the front material and Appearance.backMaterial
+// so the §12.2.3 texture-set match (MAT-010) can be compared.
+inline bool materialSlotTextures(const X3DNode &material,
+                                 std::vector<TextureRef> &out) {
+  const std::string t = material.nodeTypeName();
+  bool any = false;
+  if (t == "PhysicalMaterial") {
+    any |= appendSlot(material, "baseTexture", TextureRef::Slot::BaseColor, out);
+    any |= appendSlot(material, "metallicRoughnessTexture",
+                      TextureRef::Slot::MetallicRoughness, out);
+    any |= appendSlot(material, "normalTexture", TextureRef::Slot::Normal, out);
+    any |= appendSlot(material, "emissiveTexture", TextureRef::Slot::Emissive, out);
+    any |= appendSlot(material, "occlusionTexture", TextureRef::Slot::Occlusion, out);
+  } else if (t == "UnlitMaterial") {
+    any |= appendSlot(material, "emissiveTexture", TextureRef::Slot::Emissive, out);
+    any |= appendSlot(material, "normalTexture", TextureRef::Slot::Normal, out);
+  } else {
+    // Material (Phong) slots.
+    any |= appendSlot(material, "diffuseTexture", TextureRef::Slot::Diffuse, out);
+    any |= appendSlot(material, "emissiveTexture", TextureRef::Slot::Emissive, out);
+    any |= appendSlot(material, "normalTexture", TextureRef::Slot::Normal, out);
+    any |= appendSlot(material, "specularTexture", TextureRef::Slot::Specular, out);
+    any |= appendSlot(material, "occlusionTexture", TextureRef::Slot::Occlusion, out);
+    any |= appendSlot(material, "shininessTexture", TextureRef::Slot::Shininess, out); // MAT-002
+    any |= appendSlot(material, "ambientTexture", TextureRef::Slot::Ambient, out);     // MAT-003
+  }
+  return any;
+}
+
+// §12.2.3 backMaterial texture-set match: same (slot, channel) multiset. The
+// channel distinguishes MultiTexture stages, so a front MultiTexture of 2 stages
+// does not match a back single texture.
+inline bool sameTextureSlotSet(const std::vector<TextureRef> &a,
+                               const std::vector<TextureRef> &b) {
+  if (a.size() != b.size()) return false;
+  auto key = [](const TextureRef &t) {
+    return static_cast<int>(t.slot) * 64 + t.channel;
+  };
+  std::vector<int> ka, kb;
+  ka.reserve(a.size());
+  kb.reserve(b.size());
+  for (const auto &t : a) ka.push_back(key(t));
+  for (const auto &t : b) kb.push_back(key(t));
+  std::sort(ka.begin(), ka.end());
+  std::sort(kb.begin(), kb.end());
+  return ka == kb;
+}
+
 } // namespace matsys
 
 // Forward decl: materialOf fills MaterialDesc::textures via texturesOf (defined
@@ -175,6 +225,27 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
   // alphaMode / alphaCutoff off the Appearance (independent of material type).
   m.alphaMode = alphaModeFromToken(getEnumToken(*appearance, "alphaMode", "AUTO"));
   m.alphaCutoff = geombounds::getField<float>(*appearance, "alphaCutoff", 0.5f);
+
+  // §12.4.6 / §12.4.8: LineProperties / PointProperties children of the
+  // Appearance (SEAM-LINEPOINT) — read BEFORE the material dispatch so they are
+  // surfaced even when the Appearance has NO material (the usual lines/points
+  // case, which hits the early "default UnlitMaterial" return below).
+  if (auto lp = geombounds::getNode(*appearance, "lineProperties")) {
+    m.line.applied = geombounds::getField<bool>(*lp, "applied", true);
+    m.line.linetype = geombounds::getField<int>(*lp, "linetype", 1);
+    m.line.linewidthScaleFactor =
+        geombounds::getField<float>(*lp, "linewidthScaleFactor", 0.0f);
+  }
+  if (auto pp = geombounds::getNode(*appearance, "pointProperties")) {
+    m.point.attenuation =
+        geombounds::getField<SFVec3f>(*pp, "attenuation", SFVec3f{1.0f, 0.0f, 0.0f});
+    m.point.pointSizeScaleFactor =
+        geombounds::getField<float>(*pp, "pointSizeScaleFactor", 1.0f);
+    m.point.pointSizeMinValue =
+        geombounds::getField<float>(*pp, "pointSizeMinValue", 1.0f);
+    m.point.pointSizeMaxValue =
+        geombounds::getField<float>(*pp, "pointSizeMaxValue", 1.0f);
+  }
 
   auto material = geombounds::getNode(*appearance, "material");
   if (!material) {
@@ -263,12 +334,14 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
       bm.emissive = geombounds::getField<SFColor>(*backNode, "emissiveColor", SFColor{0.0f, 0.0f, 0.0f});
     }
     bm.normalScale = geombounds::getField<float>(*backNode, "normalScale", 1.0f);
-    // Constraint check (design §2): backMaterial must be the same model type as
-    // the front. Surfaced as a diagnostic; not enforced by the SDK.
-    // NOTE: same-texture-slot-set check is deferred — bm.textures is not
-    // populated at this point (Appearance-level textures are front-only), so
-    // comparing against bm.textures would always compare N vs 0 (inert).
-    m.backMaterialConstraintMet = (bm.model == m.model);
+    // §12.2.3: the back MaterialDesc carries ITS OWN texture set (from the back
+    // material node's slots), so the constraint can compare both the model type
+    // AND the texture set against the front (MAT-010).
+    materialSlotTextures(*backNode, bm.textures);
+    // Constraint (design §2): backMaterial must be the same model type AND the
+    // same texture-slot set as the front. Surfaced as a diagnostic; not enforced.
+    m.backMaterialConstraintMet =
+        (bm.model == m.model) && sameTextureSlotSet(m.textures, bm.textures);
     m.backMaterial = std::make_unique<MaterialDesc>(std::move(bm));
     m.doubleSided = true;
   }
@@ -294,42 +367,8 @@ inline std::vector<TextureRef> texturesOf(const X3DNode *appearance) {
   if (!appearance) return out;
 
   bool anyMaterialSlot = false;
-  if (auto material = geombounds::getNode(*appearance, "material")) {
-    const std::string t = material->nodeTypeName();
-    if (t == "PhysicalMaterial") {
-      anyMaterialSlot |= appendSlot(*material, "baseTexture",
-                                    TextureRef::Slot::BaseColor, out);
-      anyMaterialSlot |= appendSlot(*material, "metallicRoughnessTexture",
-                                    TextureRef::Slot::MetallicRoughness, out);
-      anyMaterialSlot |= appendSlot(*material, "normalTexture",
-                                    TextureRef::Slot::Normal, out);
-      anyMaterialSlot |= appendSlot(*material, "emissiveTexture",
-                                    TextureRef::Slot::Emissive, out);
-      anyMaterialSlot |= appendSlot(*material, "occlusionTexture",
-                                    TextureRef::Slot::Occlusion, out);
-    } else if (t == "UnlitMaterial") {
-      anyMaterialSlot |= appendSlot(*material, "emissiveTexture",
-                                    TextureRef::Slot::Emissive, out);
-      anyMaterialSlot |= appendSlot(*material, "normalTexture",
-                                    TextureRef::Slot::Normal, out);
-    } else {
-      // Material (Phong) slots.
-      anyMaterialSlot |= appendSlot(*material, "diffuseTexture",
-                                    TextureRef::Slot::Diffuse, out);
-      anyMaterialSlot |= appendSlot(*material, "emissiveTexture",
-                                    TextureRef::Slot::Emissive, out);
-      anyMaterialSlot |= appendSlot(*material, "normalTexture",
-                                    TextureRef::Slot::Normal, out);
-      anyMaterialSlot |= appendSlot(*material, "specularTexture",
-                                    TextureRef::Slot::Specular, out);
-      anyMaterialSlot |= appendSlot(*material, "occlusionTexture",
-                                    TextureRef::Slot::Occlusion, out);
-      anyMaterialSlot |= appendSlot(*material, "shininessTexture",
-                                    TextureRef::Slot::Shininess, out); // MAT-002
-      anyMaterialSlot |= appendSlot(*material, "ambientTexture",
-                                    TextureRef::Slot::Ambient, out);   // MAT-003
-    }
-  }
+  if (auto material = geombounds::getNode(*appearance, "material"))
+    anyMaterialSlot = materialSlotTextures(*material, out);
 
   // Legacy Appearance.texture ONLY when no material slot was populated.
   if (!anyMaterialSlot)

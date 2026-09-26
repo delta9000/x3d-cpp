@@ -39,7 +39,9 @@ MaterialDesc {
   PhysicalParams physical;      // valid when model == Physical
   vector<TextureRef> textures;
   unique_ptr<MaterialDesc> backMaterial;        // MAT-006
-  bool backMaterialConstraintMet;
+  bool backMaterialConstraintMet;               // MAT-010: model AND texture set
+  LinePropertiesDesc  line;     // §12.4.6 SEAM-LINEPOINT (applied/linetype/width)
+  PointPropertiesDesc point;    // §12.4.8 SEAM-LINEPOINT (scale/attenuation/min/max)
   SFColorRGBA toRGBA() const;   // composes RGB + alpha = 1 - transparency
 }
 ```
@@ -73,7 +75,7 @@ Fields covered per model:
 When `Appearance.backMaterial` is present:
 
 1. The field is read the same way as the front material — same three-way dispatch, same field reads.
-2. A constraint check validates: `backMaterial.model == front.model` (same material model type).  The result is written to `backMaterialConstraintMet`; the check is diagnostic, not enforced by the SDK.  Same-texture-slot-set checking is a deferred follow-on — the back `MaterialDesc` is built inline without `textures` populated (Appearance-level textures are front-only), so a texture-set comparison would always compare N vs 0 and be inert.
+2. A constraint check validates: `backMaterial.model == front.model` (same material model type) AND that the front and back texture-slot sets match (`sameTextureSlotSet`, §12.2.3). The result is written to `backMaterialConstraintMet`; the check is diagnostic, not enforced by the SDK. The back descriptor's `textures` are populated from the back material node's own slots (MAT-010 closed).
 3. `MaterialDesc::doubleSided` is set `true`.
 4. The back descriptor is stored as `unique_ptr<MaterialDesc> backMaterial` (avoids the self-referential incomplete-type problem of `optional<MaterialDesc>`).
 

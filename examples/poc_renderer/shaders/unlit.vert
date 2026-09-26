@@ -13,6 +13,13 @@ layout(location = 3) in vec2 aTexCoord; // X3D LOCAL (bottom-left = GL); no flip
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
+// TXF-2/SEAM-LINEPOINT: §12.4.8 PointProperties. Point size = (A + B·d + C·d²)·
+// scale clamped to [min,max] with d the eye-space distance; defaults (scale 1,
+// atten (1,0,0), min=max=1) reproduce the historic fixed size.
+uniform float uPointSizeScale;
+uniform vec3  uPointAttenuation;
+uniform float uPointSizeMin;
+uniform float uPointSizeMax;
 
 out vec4 vColor;
 out vec2 vTexCoord;        // passed through un-flipped for the sampler.
@@ -23,6 +30,9 @@ void main() {
     vTexCoord = aTexCoord;
     vec4 posEye = uView * uModel * vec4(aPos, 1.0);
     vPosEye = posEye.xyz;
-    gl_PointSize = 3.0; // PoC: visible points for PointSet (GL_PROGRAM_POINT_SIZE).
+    float d = length(posEye.xyz);
+    float size = (uPointAttenuation.x + uPointAttenuation.y * d +
+                  uPointAttenuation.z * d * d) * uPointSizeScale;
+    gl_PointSize = clamp(size, uPointSizeMin, uPointSizeMax);
     gl_Position = uProjection * posEye;
 }

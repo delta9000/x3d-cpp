@@ -396,6 +396,27 @@ struct MaterialExtensionDesc {
   std::vector<MaterialExtensionField> fields;
 };
 
+// ---------------------------------------------------------------------------
+// §12.4.6 LineProperties / §12.4.8 PointProperties (SEAM-LINEPOINT). These are
+// Appearance children that carry renderer styling the geometry seam previously
+// had nowhere to put — so every IndexedLineSet drew 1px and every PointSet a
+// single pixel. Surfaced here (per-Appearance, alongside the material) and
+// honoured by the reference consumers (cpu_raster line/point raster; PoC
+// glLineWidth/gl_PointSize). Additive: defaults are the identity (no scaling).
+// ---------------------------------------------------------------------------
+struct LinePropertiesDesc {
+  bool applied = true;              // LineProperties.applied
+  int linetype = 1;                 // LineProperties.linetype (unused: only solid)
+  float linewidthScaleFactor = 0.0f; // LineProperties.linewidthScaleFactor (0 = default width)
+};
+
+struct PointPropertiesDesc {
+  SFVec3f attenuation{1.0f, 0.0f, 0.0f}; // (A, B, C): size = A + B*d + C*d^2 after scale
+  float pointSizeScaleFactor = 1.0f;
+  float pointSizeMinValue = 1.0f;
+  float pointSizeMaxValue = 1.0f;
+};
+
 struct MaterialDesc {
   MaterialModel model = MaterialModel::Phong;
 
@@ -423,6 +444,11 @@ struct MaterialDesc {
   bool backMaterialConstraintMet = true;
   std::vector<MaterialExtensionDesc> extensions;
 
+  // §12.4.6 / §12.4.8 line + point styling (SEAM-LINEPOINT), read from the
+  // Appearance's LineProperties / PointProperties children.
+  LinePropertiesDesc line;
+  PointPropertiesDesc point;
+
   // Copy/move ops — unique_ptr<MaterialDesc> suppresses defaults; restore them.
   MaterialDesc() = default;
   MaterialDesc(const MaterialDesc &o)
@@ -434,7 +460,7 @@ struct MaterialDesc {
                          ? std::make_unique<MaterialDesc>(*o.backMaterial)
                          : nullptr),
         backMaterialConstraintMet(o.backMaterialConstraintMet),
-        extensions(o.extensions) {}
+        extensions(o.extensions), line(o.line), point(o.point) {}
   MaterialDesc &operator=(const MaterialDesc &o) {
     if (this != &o) {
       model = o.model; emissive = o.emissive; normalScale = o.normalScale;
@@ -446,6 +472,8 @@ struct MaterialDesc {
                          : nullptr;
       backMaterialConstraintMet = o.backMaterialConstraintMet;
       extensions = o.extensions;
+      line = o.line;
+      point = o.point;
     }
     return *this;
   }

@@ -1154,9 +1154,9 @@
   component: Shape
   clause: "12.2.3, 12.4.2"
   severity: minor
-  status: open
+  status: closed
   summary: "Appearance.backMaterial constraint checks material-model type only — texture-set match between front and back materials is not validated."
-  note: "backMaterialConstraintMet (materialOf(), see MAT-006) validates only that backMaterial.model == front.model. A prior design discussion for this exact front/back constraint scoped it to cover both the material-model type AND a matching texture set between front and back; only the model-type half is implemented. The back MaterialDesc is currently constructed inline with its textures vector left unpopulated (Appearance-level textures are front-only in the current extraction path), so a texture-set comparison is not yet meaningful to add without first populating back-material textures — tracked as the deferred follow-on already named in ADR-0021."
+  note: "backMaterial textures are now populated from the BACK material node's own slots (matsys::materialSlotTextures, the same dispatch texturesOf uses for the front), and backMaterialConstraintMet compares both model type AND the (slot, channel) multisets (matsys::sameTextureSlotSet) per §12.2.3. Regression: material_system_test (front+back both diffuse → met; front textured/back not → not met). (2026-06-27)"
 - id: MAT-011
   nodes: [PhysicalMaterial]
   component: Shape
@@ -1172,9 +1172,9 @@
   component: Geometry3D
   clause: "13.3.4, 25.3.2"
   severity: major
-  status: open
+  status: closed
   summary: ElevationGrid/GeoElevationGrid drop authored color + normal nodes (colorPerVertex/normalPerVertex ignored) — only auto flat normals, no vertex colors.
-  note: The grid handlers never call buildAttrs(); wire color/normal/colorPerVertex/normalPerVertex (per-vertex i+j*xDim, per-quad i+j*(xDim-1)).
+  note: "emitHeightGrid (MeshBuilder.hpp, shared by both grids) now resolves authored Color/Normal via buildAttrs() and honors colorPerVertex/normalPerVertex per §13.3.4: per-vertex indexes the LATTICE vertex (row*xDim+col), per-quad indexes the CELL (row*(xDim-1)+col). An authored Normal also suppresses the generated-flat/crease path. Regression: mesh_builder_ext001_test.cpp (per-vertex and per-quad colour/normal, ElevationGrid + GeoElevationGrid). (2026-06-27)"
 - id: EXT-002
   nodes: [TriangleFanSet, TriangleStripSet, IndexedTriangleFanSet, IndexedTriangleStripSet]
   component: Rendering
@@ -1207,18 +1207,17 @@
   component: Texturing
   clause: "18.4.10"
   severity: minor
-  status: deferred
+  status: closed
   summary: TextureTransform matrix application order divergence (translate/center/rotate/scale/−center) — UVs transformed incorrectly for non-trivial transforms.
-  note: Spec-ambiguous (NOT changed) — §18.4.10 contradicts itself; the normative sentence "rotation ... after the scale has been applied" matches the current scale-then-rotate code, while the numbered list + matrix imply rotate-then-scale. Left as-is to avoid trading one reading for the other.
-  note: Verify TextureTransform2D against §18.4.10 right-to-left order T·C·R·S·(−C); fix + regression.
+  note: "Order fixed to the normative matrix Tc' = C·S·R·C⁻¹·T·Tc (right-to-left: translate → pivot → ROTATE → SCALE → un-pivot), matching §18.4.10's '(in order)' list — rotation BEFORE scaling. The contradicting prose sentence ('rotation ... after the scaling operation has been applied') is treated as an editorial error. applyTextureTransform + makeTextureTransform3x3 (TextureTransform2D.hpp) now agree; the centre pivot convention is unchanged. Regression: texture_extract_test (testTextureTransformOrder: π/2 about centre (0.5,0.5) + scale (2,3) + translation → (0.1,0.05), plus a make3x3 cross-check). (2026-06-27)"
 - id: TXF-2
   nodes: [TextureCoordinateGenerator, IndexedFaceSet, ElevationGrid]
   component: Texturing
   clause: "18.4.8"
   severity: major
-  status: deferred
+  status: closed
   summary: TextureCoordinateGenerator UVs (SPHERE/CAMERASPACE*) are view-dependent per-vertex and must be computed at render time — the descriptor is surfaced but no UVs are produced.
-  note: By-design render-time seam; ensure MeshData supplies the world/camera-frame normals the consumer needs. Documented.
+  note: "Render-time UVs implemented for the four view-dependent modes (SPHERE, CAMERASPACENORMAL, CAMERASPACEPOSITION, CAMERASPACEREFLECTIONVECTOR) per §18.4.8 Table: cpu_raster computes them per fragment in MaterialShader.hpp detail::texCoordGenUv (base-colour UV; the seam already carried the mode on TextureRef::hasTexCoordGen/texCoordGen). The PoC reuses lit.vert (shared by Phong + PBR) with a new uTexCoordGenMode uniform fed from texCoordGenModeUniform() in main.cpp. Regression: examples/cpu_raster/tests/texcoord_gen_test.cpp. PoC shaders unbuilt here (GLFW is FetchContent). (2026-06-27)"
 - id: TXF-3
   nodes: [TextureTransform]
   component: Texturing
@@ -1617,15 +1616,15 @@
   nodes: [Extrusion]
   clause: "13.3.5.4.5"
   severity: minor
-  status: open
+  status: closed
   summary: "2-distinct-point Extrusion spine fixes the SCP plane normal but leaves in-plane X/Z free; single distinct point has no SCP. Browsers diverge (X3DOM Harrier wings reversed)."
   note: >-
-    Policy (ADR-0031) - with Y = unit spine tangent, set SCP Z = normalize(modelZ - (modelZ.Y)Y)
-    (fallback modelX when Y is parallel to modelZ), X = normalize(YxZ), re-derive Z = XxY; cull when
-    < 2 DISTINCT (coincident-collapsed) spine points. Site runtime/extract/MeshBuilder.hpp
-    tessellateExtrusion() (ref-x-Y branch ~:1043-1049; count guard :951). 4.1 - partial; 4.1-CD added
-    coincident/distinct-spine-point sections but the 2-point in-plane axes remain open (a Frenet-frame
-    idea was floated, not adopted) — engine rule is a candidate ahead of spec.
+    Implemented per ADR-0031 in tessellateExtrusion() (MeshBuilder.cpp): with Y = unit spine tangent,
+    the underdetermined Z = normalize(modelZ - (modelZ·Y)Y) (fallback modelX when Y ∥ modelZ), X =
+    normalize(Y×Z), re-derive Z = X×Y (replacing the arbitrary ref×Y fallback); and a cull when fewer
+    than 2 DISTINCT (coincident-collapsed) spine points (§13.3.5.4.5 sentence 2). Regression:
+    mesh_builder_extrusion_scp_test.cpp (coincident 1-point cull; spine-along-+X in-plane axes; Y∥modelZ
+    fallback; well-defined bent spine untouched). (2026-06-27)
 - id: HANIM-DISP
   nodes: [HAnimDisplacer, HAnimSegment]
   component: HAnim
@@ -2153,12 +2152,17 @@
   component: Shape
   clause: "12.4.6 (LineProperties), 12.4.8 (PointProperties)"
   severity: minor
-  status: open
+  status: closed
   summary: Line width and point size are unrepresentable on the seam — MeshData/MaterialDesc carry no lineWidth/pointSize, so every IndexedLineSet draws at 1px regardless of LineProperties.linewidthScaleFactor.
   note: >-
-    Line/point funnel MeshBuilder.hpp:1690-1766 sets topology Lines/Points and per-vertex color but the
-    descriptors have no width/size carrier. Fix: add lineWidth/pointSize (or a small LineProperties
-    descriptor) so the GL glLineWidth/gl_PointSize path is feedable. (extraction-seam review.)
+    Added LinePropertiesDesc/PointPropertiesDesc to MaterialDesc (RenderItem.hpp), populated from the
+    Appearance's LineProperties/PointProperties children in materialOf() (read before the material
+    dispatch so the no-material line/point case is covered), and honoured in the reference consumers:
+    cpu_raster Rasterizer drawLines/drawPoints (width square stamp; point size = (A+B·d+C·d²)·scale
+    clamped to [min,max]) driven from SceneRender.hpp; PoC glLineWidth (linewidthScaleFactor) and
+    unlit.vert gl_PointSize (uPointSizeScale/Attenuation/Min/Max, fed from main.cpp). Regression:
+    examples/cpu_raster/tests/linepoint_style_test.cpp (line width, point size + clamp, extraction).
+    (2026-06-27)
 
 - id: SEAM-TEXT-METRICS
   nodes: [Text, FontStyle]

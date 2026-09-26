@@ -125,19 +125,43 @@ struct MaterialTextures {
   Texture specular;  // Specular — sRGB.
   Texture mr;        // MetallicRoughness — G=roughness, B=metallic (linear).
   Texture occlusion; // Occlusion — R channel (linear); AO source (§12.4.6).
-  // §18.4.8 TextureCoordinateGenerator(Sphere): when set, UVs are generated from
-  // the camera-space normal rather than the authored texcoords (sphere/reflection
-  // map). Applies to the textured-surface coordinate set (base/emissive/specular).
-  bool sphereGen = false;
+  // §18.4.8 TextureCoordinateGenerator: when set, UVs are generated per fragment
+  // from eye-space state rather than the authored texcoords. Applies to the
+  // textured-surface coordinate set (base/emissive/specular). TXF-2 covers the
+  // view-dependent modes: SPHERE / CAMERASPACENORMAL / CAMERASPACEPOSITION /
+  // CAMERASPACEREFLECTIONVECTOR.
+  bool hasTexCoordGen = false;
+  ex::TexCoordGenMode texCoordGenMode = ex::TexCoordGenMode::Sphere;
 };
 
 namespace detail {
-// Sphere-map UV from the (front-facing-corrected, normalized) camera-space
-// normal: u = Nx/2 + 0.5, v = Ny/2 + 0.5 (§18.4.8 SPHERE).
-inline glsl::vec2 sphereGenUv(const glsl::vec3 &normalEye, bool frontFacing) {
+// §18.4.8 TextureCoordinateGenerator UVs from eye-space state. `normalEye` is the
+// front-facing-corrected, normalized camera-space normal; `posEye` the camera-
+// space position (eye at the origin, so normalize(posEye) = eye→fragment).
+//   SPHERE                      : u = Nx/2+0.5, v = Ny/2+0.5.
+//   CAMERASPACENORMAL           : (Nx, Ny).
+//   CAMERASPACEPOSITION         : (Px, Py).
+//   CAMERASPACEREFLECTIONVECTOR : R = reflect(−V, N) = 2·dot(V,N)·N − V → (Rx, Ry).
+inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode, const glsl::vec3 &posEye,
+                                const glsl::vec3 &normalEye, bool frontFacing) {
+  using Mode = ex::TexCoordGenMode;
   glsl::vec3 n = glsl::normalize(normalEye);
   if (!frontFacing) n = -n;
-  return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f};
+  switch (mode) {
+    case Mode::Sphere:
+      return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f};
+    case Mode::CameraSpaceNormal:
+      return glsl::vec2{n.x, n.y};
+    case Mode::CameraSpacePosition:
+      return glsl::vec2{posEye.x, posEye.y};
+    case Mode::CameraSpaceReflectionVector: {
+      const glsl::vec3 V = glsl::normalize(posEye);
+      const glsl::vec3 R = glsl::reflect(-V, n);
+      return glsl::vec2{R.x, R.y};
+    }
+    default:
+      return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f}; // SPHERE default.
+  }
 }
 } // namespace detail
 
@@ -160,8 +184,8 @@ inline MaterialTextures buildTextures(const ex::MaterialDesc &m, bool linearWork
   const bool colour = linearWorkflow;
   if (const auto *r = findSlot(m, {Slot::BaseColor, Slot::Diffuse})) {
     tx.base = Texture::fromRef(*r, /*srgb=*/colour);
-    tx.sphereGen =
-        r->hasTexCoordGen && r->texCoordGen.mode == ex::TexCoordGenMode::Sphere;
+    tx.hasTexCoordGen = r->hasTexCoordGen;
+    tx.texCoordGenMode = r->texCoordGen.mode;
   }
   if (const auto *r = findSlot(m, {Slot::Normal}))
     tx.normal = Texture::fromRef(*r, /*srgb=*/false);
@@ -258,7 +282,10 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
 
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
     const glsl::vec2 uv =
-        tx.sphereGen ? detail::sphereGenUv(f.normalEye, f.frontFacing) : f.texcoord;
+        tx.hasTexCoordGen
+            ? detail::texCoordGenUv(tx.texCoordGenMode, f.posEye, f.normalEye,
+                                    f.frontFacing)
+            : f.texcoord;
     glsl::vec3 base = hasColors ? f.color.xyz() : uDiffuse.xyz();
     float alpha = uDiffuse.w;
     if (tx.base.valid()) {
@@ -325,11 +352,14 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
   const MaterialTextures tx = buildTextures(m, /*linearWorkflow=*/true);
 
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
-    // Sphere-map UV (reflection-style) for the base colour when the geometry
-    // bound a TextureCoordinateGenerator(Sphere). ORM/occlusion stay on the
-    // authored coords (they are packed material maps, not a reflection set).
+    // §18.4.8 generated UV for the base colour when the geometry bound a
+    // TextureCoordinateGenerator. ORM/occlusion stay on the authored coords (they
+    // are packed material maps, not a reflection set).
     const glsl::vec2 uv =
-        tx.sphereGen ? detail::sphereGenUv(f.normalEye, f.frontFacing) : f.texcoord;
+        tx.hasTexCoordGen
+            ? detail::texCoordGenUv(tx.texCoordGenMode, f.posEye, f.normalEye,
+                                    f.frontFacing)
+            : f.texcoord;
     glsl::vec4 baseCol = uBaseColor;
     if (hasColors) { baseCol.x = f.color.x; baseCol.y = f.color.y; baseCol.z = f.color.z; }
     if (tx.base.valid()) baseCol = baseCol * tx.base.sample(uv);

@@ -62,6 +62,8 @@ set(CPURASTER_TESTS
     render_smoke_test
     text_render_test
     texture_render_test
+    texcoord_gen_test
+    linepoint_style_test
     positional_light_test
     light_ambient_test
     tier1_features_test

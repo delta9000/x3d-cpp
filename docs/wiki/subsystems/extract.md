@@ -136,10 +136,10 @@ MeshData buildLocalMesh(const X3DNode *geom,
 Geometry types handled:
 
 - **Composed/indexed sets (T1/T2):** `IndexedFaceSet`, `IndexedTriangleSet`, `TriangleSet`, `IndexedTriangleFanSet`, `IndexedTriangleStripSet`, `IndexedQuadSet`, `TriangleFanSet`, `TriangleStripSet`, `QuadSet`
-- **Height-grid lattice (T2/B5):** `ElevationGrid`, `GeoElevationGrid` (geo-projection embedder seam)
+- **Height-grid lattice (T2/B5):** `ElevationGrid`, `GeoElevationGrid` (geo-projection embedder seam). The shared `emitHeightGrid` honours authored `Color`/`Normal` and `colorPerVertex`/`normalPerVertex` per §13.3.4 (per-vertex → lattice vertex `row*xDim+col`, per-quad → cell `row*(xDim-1)+col`); EXT-001
 - **Attribute resolution (T3):** authored `Normal`/`Color`/`ColorRGBA`/`TextureCoordinate` resolved per corner; flat normals generated when no `Normal` is authored; `creaseAngle` smooth-normal post-pass (B6)
 - **Analytic primitives (T4):** `Box`, `Sphere`, `Cone`, `Cylinder` — parametric tessellation driven by `MeshBuildOptions` density knobs
-- **Extrusion (B3):** SCP-frame sweep with `beginCap`/`endCap`, implicit TC3 texcoords
+- **Extrusion (B3):** SCP-frame sweep with `beginCap`/`endCap`, implicit TC3 texcoords. Underdetermined (2-distinct-point / straight) spines use the ADR-0031 local-axis rule (Z = normalize(modelZ − (modelZ·Y)Y), fallback modelX; X = Y×Z) and <2 distinct spine points render nothing (§13.3.5.4.5); EXTRUSION-SCP
 - **Line/point topology (B4):** `IndexedLineSet`, `LineSet`, `PointSet` — `MeshData.topology = Lines/Points`, always unlit, `solid=false`
 - **Geometry2D (§14):** the eight XY-plane primitives — `Arc2D`/`Circle2D`/`Polyline2D` → `Lines`, `Polypoint2D` → `Points` (unlit, `solid=false`), and `ArcClose2D` (PIE/CHORD)/`Disk2D` (fan + annulus; `innerRadius==outerRadius` → a circle line)/`Rectangle2D`/`TriangleSet2D` → `Triangles` with +Z normals and per-node `solid`. Circular primitives use one chord per `2π/64` rad (64 chords per full circle); texture coordinates map the geometry's XY bounding box to `[0,1]²`
 - **NURBS (NRB-1):** `NurbsCurve` → `Topology::Lines`, `NurbsPatchSurface` → `Topology::Triangles` with analytic normals + implicit `(u,v)` texcoords (see [NURBS](#nurbs))
@@ -214,6 +214,8 @@ MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are r
 | `x3d_mesh_builder_t4` | Analytic primitive parametric tessellation (Box/Sphere/Cone/Cylinder) |
 | `x3d_mesh_builder_geom2d` | §14 Geometry2D nodes: Arc2D/ArcClose2D/Circle2D/Disk2D/Polyline2D/Polypoint2D/Rectangle2D/TriangleSet2D extraction (topology, tessellation count, +Z normals, XY bounds) |
 | `x3d_mesh_builder_b3` | Extrusion SCP-frame sweep + caps |
+| `x3d_mesh_builder_extrusion_scp` | Extrusion degenerate-spine SCP axes + distinct-point cull (ADR-0031) |
+| `x3d_mesh_builder_ext001` | ElevationGrid/GeoElevationGrid authored Color/Normal + colorPerVertex/normalPerVertex (§13.3.4) |
 | `x3d_mesh_builder_b4` | Line/point topology (`IndexedLineSet`, `LineSet`, `PointSet`) |
 | `x3d_mesh_builder_b5` | `GeoElevationGrid` lattice emission + `GeoProjection` seam |
 | `x3d_mesh_builder_b6` | `creaseAngle` smooth-normal post-pass |

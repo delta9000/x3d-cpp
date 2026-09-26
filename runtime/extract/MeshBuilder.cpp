@@ -640,6 +640,26 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
       std::fabs(crossSection[0].x - crossSection[nc - 1].x) < eps &&
       std::fabs(crossSection[0].y - crossSection[nc - 1].y) < eps;
 
+  // EXTRUSION-SCP (ADR-0031, §13.3.5.4.5): fewer than 2 DISTINCT
+  // (coincident-collapsed) spine points => nothing is rendered. The element
+  // count guard above (ns<2) does not catch a spine of repeated coincident
+  // points, which has no defined SCP plane.
+  {
+    int distinct = 0;
+    for (int i = 0; i < ns; ++i) {
+      bool dup = false;
+      for (int k = 0; k < i; ++k)
+        if (coincident3(spine[i], spine[k])) {
+          dup = true;
+          break;
+        }
+      if (!dup)
+        ++distinct;
+    }
+    if (distinct < 2)
+      return;
+  }
+
   // SF-or-MF clamp-to-last picker.
   const auto pickScale = [&](int i) -> SFVec2f {
     if (scale.empty())
@@ -721,12 +741,20 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
       haveZ = true;
     }
   }
-  // If NO plane normal was ever valid (straight spine): pick a Z perpendicular
-  // to the (common) tangent and propagate it to every section.
+  // If NO plane normal was ever valid (straight / 2-point spine): the spine
+  // tangent fixes the SCP plane normal but leaves the in-plane X/Z free. Per
+  // ADR-0031, align them to the LOCAL model axes: Y = unit tangent,
+  // Z = normalize(modelZ - (modelZ·Y)Y) (fall back to modelX when Y ∥ modelZ),
+  // X = normalize(Y × Z), re-derive Z = X × Y. No arbitrary ref × Y sign flip.
   if (!haveZ) {
-    const SFVec3f y = axY[0];
-    SFVec3f ref = (std::fabs(y.y) < 0.9f) ? SFVec3f{0, 1, 0} : SFVec3f{1, 0, 0};
-    SFVec3f z = vcross(ref, y);
+    const SFVec3f y = axY[0]; // unit spine tangent.
+    const auto projPerp = [&](const SFVec3f &v) {
+      const float d = vdot(v, y);
+      return SFVec3f{v.x - d * y.x, v.y - d * y.y, v.z - d * y.z};
+    };
+    SFVec3f z = projPerp(SFVec3f{0, 0, 1});
+    if (vlen(z) < eps) // Y ∥ modelZ -> project modelX instead.
+      z = projPerp(SFVec3f{1, 0, 0});
     const float l = vlen(z);
     z = (l > eps) ? SFVec3f{z.x / l, z.y / l, z.z / l} : SFVec3f{0, 0, 1};
     for (int i = 0; i < ns; ++i)
@@ -1337,6 +1365,9 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
       // (row*xDim+col) source id per expanded corner (for B6 smoothing).
       const float crease =
           geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
+      // EXT-001: resolve authored color/normal + colorPerVertex/normalPerVertex
+      // (ElevationGrid is a grid node, not composed: no *Index fields).
+      const AttrResolvers attrs = buildAttrs(*geom);
       emitHeightGrid(
           mesh, xd, zd,
           [&](int i, int j) {
@@ -1344,7 +1375,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
                            h[static_cast<std::size_t>(j) * xd + i],
                            static_cast<float>(j) * zs};
           },
-          crease, mesh.ccw);
+          crease, mesh.ccw, &attrs);
       // DEFAULT (implicit) grid texcoords (TC2). An authored TextureCoordinate
       // ALWAYS WINS (resolved per lattice vertex, lid = j*xDim+i); only when
       // texCoord is NULL do we generate the NORMATIVE s=i/(xDim-1),
@@ -1392,6 +1423,9 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
       const float crease = static_cast<float>(
           geombounds::getField<double>(*geom, "creaseAngle", 0.0));
       const GeoProjection &proj = opt.geoProjection;
+      // EXT-001: same authored color/normal resolution as ElevationGrid (the
+      // shared emitHeightGrid now honors colorPerVertex/normalPerVertex).
+      const AttrResolvers attrs = buildAttrs(*geom);
       // Spec lattice order: height index = row*xDim + col, row j advances along
       // the FIRST geoSystem axis (north/latitude), col i along the SECOND
       // (east/longitude). geoGridOrigin.x = first axis, .y = second axis.
@@ -1415,7 +1449,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
                            static_cast<float>(sys.geoGridOrigin.x +
                                               static_cast<double>(j) * zs)};
           },
-          crease, mesh.ccw);
+          crease, mesh.ccw, &attrs);
       // DEFAULT (implicit) grid texcoords (TC2) — same parameterization as
       // ElevationGrid (s=i/(xDim-1), t=j/(zDim-1)); an authored
       // TextureCoordinate ALWAYS WINS, resolved per lattice vertex via

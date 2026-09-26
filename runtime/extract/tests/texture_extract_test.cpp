@@ -26,6 +26,7 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
+#include <array>
 #include "doctest/doctest.h"
 #include <cmath>
 #include <memory>
@@ -165,6 +166,52 @@ static void testApplyTransformToMesh() {
   sp.scaleT = 2.0f;
   applyTextureTransformToMesh(m3, sp);
   CHECK((feq(m3.texcoords[0].x, 0.5f) && feq(m3.texcoords[0].y, 1.0f)));
+}
+
+// --- 2b. TXF-1: §18.4.10 application ORDER on a non-trivial transform --------
+// The normative matrix Tc' = C⁻¹ · S · R · C · T · Tc applies, right-to-left,
+// translate → pivot → ROTATE → SCALE → un-pivot (rotation BEFORE scaling). A
+// rotation about a non-zero center plus a non-uniform scale makes the two orders
+// (rotate-then-scale vs the previously-coded scale-then-rotate) disagree. The
+// expected values below are the hand-expanded matrix result and differ from the
+// scale-then-rotate order's (-0.1, 0.2), so this test pins the order.
+static void testTextureTransformOrder() {
+  TextureTransform2DParams p;
+  p.centerS = 0.5f;
+  p.centerT = 0.5f;
+  p.rotation = 3.14159265358979323846f * 0.5f; // π/2.
+  p.scaleS = 2.0f;
+  p.scaleT = 3.0f;
+  p.translationS = 0.1f;
+  p.translationT = 0.2f;
+
+  const std::array<float, 2> r = applyTextureTransform(0.25f, 0.5f, p);
+  CHECK((feq(r[0], 0.1f)));
+  CHECK((feq(r[1], 0.05f)));
+
+  // A rotation-only transform about a non-zero center must move a point
+  // off-center along the rotated pivot arm (this is the geometry the pivot
+  // convention must preserve): (1.0,0.5) is +0.5 along S from center (0.5,0.5),
+  // so a +90° CCW rotation lands it at (0.5,1.0).
+  {
+    TextureTransform2DParams rp;
+    rp.centerS = 0.5f;
+    rp.centerT = 0.5f;
+    rp.rotation = 3.14159265358979323846f * 0.5f;
+    const std::array<float, 2> q = applyTextureTransform(1.0f, 0.5f, rp);
+    CHECK((feq(q[0], 0.5f)));
+    CHECK((feq(q[1], 1.0f)));
+  }
+
+  // makeTextureTransform3x3 must agree with applyTextureTransform exactly.
+  {
+    const std::array<float, 9> m = makeTextureTransform3x3(p);
+    const float s = 0.25f, t = 0.5f;
+    const float ms = m[0] * s + m[1] * t + m[2];
+    const float mt = m[3] * s + m[4] * t + m[5];
+    CHECK((feq(ms, r[0])));
+    CHECK((feq(mt, r[1])));
+  }
 }
 
 // --- 3. textureTransformParamsOf reads Appearance.textureTransform ---------
@@ -377,6 +424,7 @@ TEST_CASE("texture_extract_test") {
   testMultiTextureCoordinateFirstUsableChannel();
   testTextureCoordinate3DAnd4DProjectToST();
   testApplyTransformToMesh();
+  testTextureTransformOrder();
   testTextureTransformParamsOf();
   testExtendedSampler();
   testTexCoordGen();

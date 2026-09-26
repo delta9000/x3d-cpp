@@ -11,7 +11,7 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 | GeoMetadata | 1 | ✓ | — | — | — | X3DChildNode, X3DInfoNode, X3DUrlObject |
 | GeoOrigin | 1 | ✓ | — | — | — |  |
 | GeoPositionInterpolator | 1 | ✓ | — | ◑ | CONF-GEO, INTERP-02, PIV-1 | X3DChildNode, X3DInterpolatorNode |
-| GeoProximitySensor | 2 | ✓ | — | ✗ | CONF-GEO, ENV-02, ENV-03, GEOSYSTEM | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| GeoProximitySensor | 2 | ✓ | — | ◑ | CONF-GEO, ENV-02, ENV-03, GEOSYSTEM | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 | GeoTouchSensor | 1 | ✓ | — | ✗ | TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
 | GeoTransform | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | GeoViewpoint | 1 | ✓ | — | ◑ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEOSYSTEM, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
@@ -24,7 +24,6 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - Blocked on the GeoProjection seam (ECEF→geodetic). See CONF-GEO.
 - **ENV-02** [major/DEFERRED] — §25.3.8: GeoProximitySensor has no System and no geoCoord_changed.
   - Blocked on geo-projection (Geospatial deferred). See CONF-GEO.
-- **ENV-03** [minor/OPEN] — §22.4.1: centerOfRotation_changed never emitted.
 - **CONF-GEO** [minor/DEFERRED] — §25: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
   - Blocked on the GeoProjection seam (geoSystem/geoOrigin → local Cartesian). Drives ENV-02; GeoTouchSensor = TSN-1/2.
 - **GEOSYSTEM** [minor/OPEN] — §25.2.3: geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning.
@@ -48,6 +47,8 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - CONF-VIEWNAV cluster.
 - **GEO-1** [major/FIXED] — §25.3.11: GeoViewpoint.position silently reads as zero (SFVec3d/SFVec3f type mismatch).
   - Was: position read via getField<SFVec3f> on an SFVec3d field → camera pinned to origin. Fixed by geombounds::getVec3fLenient at ALL bound-viewpoint read sites — X3DExecutionContext::viewMatrix AND NavigationSystem::poseOf (position) + cor (centerOfRotation), the latter found by the systematic getField-type audit. getField now asserts on such mismatches in debug. Tested in getfield_typecheck_test.cpp + navigation_geoviewpoint_examine. Residue tracked as GitHub issues: #34 (OrthoViewpoint.fieldOfView MFFloat), #35 (write-side centerOfRotation persist). (sweep 2026-06-25, fixed same day)
+- **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
+  - ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).
 - **PIV-1** [minor/CLOSED `07c31ca`] — §—: registerInterpolatorSystems had no production caller; added attachInterpolators scene-walk wiring + makeInterpolatorSystems factory.
 - **BIND-09** [minor/CLOSED] — §23.3.1: Pop (unbind/delete) does not apply the §23.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind.
   - Needs push-vs-pop signaling from BindingSystem to distinguish rule 5.1 (reset) from 6.3 (restore stored offset). Per-node offset persists; only the reset-on-rebind path differs. CAVE doesn't exercise viewpoint stacks.

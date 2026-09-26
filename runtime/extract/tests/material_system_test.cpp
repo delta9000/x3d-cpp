@@ -307,6 +307,44 @@ TEST_CASE("material_system_test") {
     CHECK((m.backMaterialConstraintMet == false));
   }
 
+  // --- MAT-010: backMaterialConstraintMet also compares the TEXTURE SET.
+  //     Front and back each bind a diffuseTexture => same model + same slot set
+  //     => met. Back textures are now populated from the back material node.
+  {
+    auto frontTex = createX3DNode("ImageTexture");
+    auto backTex = createX3DNode("ImageTexture");
+    auto frontMat = createX3DNode("Material");
+    setF(frontMat, "diffuseTexture", std::any(std::shared_ptr<X3DNode>(frontTex)));
+    auto backMat = createX3DNode("Material");
+    setF(backMat, "diffuseTexture", std::any(std::shared_ptr<X3DNode>(backTex)));
+    auto app = createX3DNode("Appearance");
+    setF(app, "material", std::any(std::shared_ptr<X3DNode>(frontMat)));
+    setF(app, "backMaterial", std::any(std::shared_ptr<X3DNode>(backMat)));
+
+    MaterialDesc m = materialOf(app.get());
+    CHECK((m.backMaterial != nullptr));
+    CHECK((m.backMaterial->textures.size() == 1));
+    CHECK((m.backMaterial->textures[0].slot == TextureRef::Slot::Diffuse));
+    CHECK((m.backMaterialConstraintMet == true));
+  }
+
+  // --- MAT-010: front has a texture, back has none => slot set differs => NOT
+  //     met even though the model type matches.
+  {
+    auto frontTex = createX3DNode("ImageTexture");
+    auto frontMat = createX3DNode("Material");
+    setF(frontMat, "diffuseTexture", std::any(std::shared_ptr<X3DNode>(frontTex)));
+    auto backMat = createX3DNode("Material"); // no texture.
+    auto app = createX3DNode("Appearance");
+    setF(app, "material", std::any(std::shared_ptr<X3DNode>(frontMat)));
+    setF(app, "backMaterial", std::any(std::shared_ptr<X3DNode>(backMat)));
+
+    MaterialDesc m = materialOf(app.get());
+    CHECK((m.backMaterial != nullptr));
+    CHECK((m.backMaterial->textures.empty()));
+    CHECK((m.backMaterialConstraintMet == false));
+  }
+
   // --- backMaterialConstraintMet: no backMaterial => trivially true --------
   {
     auto frontMat = createX3DNode("Material");

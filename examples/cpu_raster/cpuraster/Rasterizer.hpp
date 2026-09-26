@@ -92,11 +92,15 @@ public:
   }
 
   // Unlit constant-color LINES (GL_LINES: index pairs) — the B4 topology path.
+  // `lineWidth` (§12.4.6 LineProperties.linewidthScaleFactor) stamps a
+  // width×width square at each pixel (>=1, default 1 = the historic 1px line).
   void drawLines(const std::vector<Vertex> &verts,
                  const std::vector<std::uint32_t> &indices,
                  const glsl::mat4 &model, const glsl::mat4 &view,
-                 const glsl::mat4 &proj, glsl::vec4 baseColor, bool hasColors) {
+                 const glsl::mat4 &proj, glsl::vec4 baseColor, bool hasColors,
+                 float lineWidth = 1.0f) {
     const glsl::mat4 mvp = proj * view * model;
+    const int side = std::max(1, (int)std::lround(lineWidth));
     for (std::size_t i = 0; i + 1 < indices.size(); i += 2) {
       const Vertex &a = verts[indices[i]];
       const Vertex &b = verts[indices[i + 1]];
@@ -104,29 +108,45 @@ public:
       glsl::vec4 cb = mvp * glsl::vec4(b.pos, 1.0f);
       if (ca.w <= 1e-6f || cb.w <= 1e-6f) continue; // skip behind-near segments.
       drawLineNDC(ca, cb, hasColors ? a.color : baseColor,
-                  hasColors ? b.color : baseColor);
+                  hasColors ? b.color : baseColor, side);
     }
   }
 
-  // Unlit POINTS (GL_POINTS: one vertex each) — a 1px splat with depth test.
+  // Unlit POINTS (GL_POINTS: one vertex each) — a depth-tested square splat.
+  // §12.4.8 PointProperties: size = (A + B·d + C·d²)·scale clamped to
+  // [min,max], d = eye distance. Defaults (scale 1, atten (1,0,0), min=max=1)
+  // give the historic single pixel.
   void drawPoints(const std::vector<Vertex> &verts,
                   const std::vector<std::uint32_t> &indices,
                   const glsl::mat4 &model, const glsl::mat4 &view,
-                  const glsl::mat4 &proj, glsl::vec4 baseColor, bool hasColors) {
-    const glsl::mat4 mvp = proj * view * model;
+                  const glsl::mat4 &proj, glsl::vec4 baseColor, bool hasColors,
+                  float pointSizeScale = 1.0f, glsl::vec3 attenuation = {1, 0, 0},
+                  float pointSizeMin = 1.0f, float pointSizeMax = 1.0f) {
+    const glsl::mat4 mv = view * model;
+    const glsl::mat4 mvp = proj * mv;
     for (std::uint32_t idx : indices) {
       const Vertex &v = verts[idx];
       glsl::vec4 c = mvp * glsl::vec4(v.pos, 1.0f);
       if (c.w <= 1e-6f) continue;
       float sx, sy, sz;
       toScreen(c, sx, sy, sz);
-      int px = static_cast<int>(sx), py = static_cast<int>(sy);
-      if (px < 0 || px >= fb_.width() || py < 0 || py >= fb_.height()) continue;
-      if (sz < fb_.depth(px, py)) {
-        fb_.setDepth(px, py, sz);
-        glsl::vec4 col = hasColors ? v.color : baseColor;
-        fb_.setColor(px, py, col);
-      }
+      const float d = glsl::length((mv * glsl::vec4(v.pos, 1.0f)).xyz());
+      float size = (attenuation.x + attenuation.y * d + attenuation.z * d * d) *
+                   pointSizeScale;
+      size = glsl::clampf(size, pointSizeMin, pointSizeMax);
+      const int side = std::max(1, (int)std::lround(size));
+      const int half = side / 2;
+      const int px0 = (int)std::lround(sx), py0 = (int)std::lround(sy);
+      for (int dy = -half; dy <= side - 1 - half; ++dy)
+        for (int dx = -half; dx <= side - 1 - half; ++dx) {
+          const int px = px0 + dx, py = py0 + dy;
+          if (px < 0 || px >= fb_.width() || py < 0 || py >= fb_.height())
+            continue;
+          if (sz < fb_.depth(px, py)) {
+            fb_.setDepth(px, py, sz);
+            fb_.setColor(px, py, hasColors ? v.color : baseColor);
+          }
+        }
     }
   }
 
@@ -293,24 +313,32 @@ private:
     return (bx - ax) * (py - ay) - (by - ay) * (px - ax);
   }
 
-  // Depth-tested constant-color line in NDC->screen (Bresenham-ish DDA).
+  // Depth-tested constant-color line in NDC->screen (Bresenham-ish DDA). `side`
+  // is the square stamp width in pixels (1 = a thin line).
   void drawLineNDC(const glsl::vec4 &ca, const glsl::vec4 &cb, glsl::vec4 cola,
-                   glsl::vec4 colb) {
+                   glsl::vec4 colb, int side = 1) {
     float ax, ay, az, bx, by, bz;
     toScreen(ca, ax, ay, az);
     toScreen(cb, bx, by, bz);
+    const int half = side / 2;
     const int steps =
         std::max(1, (int)std::ceil(std::max(std::fabs(bx - ax), std::fabs(by - ay))));
     for (int s = 0; s <= steps; ++s) {
       const float t = (float)s / steps;
-      const int px = (int)std::lround(ax + (bx - ax) * t);
-      const int py = (int)std::lround(ay + (by - ay) * t);
+      const int cx = (int)std::lround(ax + (bx - ax) * t);
+      const int cy = (int)std::lround(ay + (by - ay) * t);
       const float pz = az + (bz - az) * t;
-      if (px < 0 || px >= fb_.width() || py < 0 || py >= fb_.height()) continue;
-      if (pz < fb_.depth(px, py)) {
-        fb_.setDepth(px, py, pz);
-        fb_.setColor(px, py, cola + (colb - cola) * t);
-      }
+      const glsl::vec4 col = cola + (colb - cola) * t;
+      for (int dy = -half; dy <= side - 1 - half; ++dy)
+        for (int dx = -half; dx <= side - 1 - half; ++dx) {
+          const int px = cx + dx, py = cy + dy;
+          if (px < 0 || px >= fb_.width() || py < 0 || py >= fb_.height())
+            continue;
+          if (pz < fb_.depth(px, py)) {
+            fb_.setDepth(px, py, pz);
+            fb_.setColor(px, py, col);
+          }
+        }
     }
   }
 
