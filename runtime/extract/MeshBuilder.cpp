@@ -332,6 +332,32 @@ AttrResolvers buildAttrs(const X3DNode &geom) {
     a.hasTexCoord = !a.texcoords.empty();
   }
 
+  // §31.4.2 attrib values are per coordinate vertex; coordIndex therefore
+  // selects the same source value for every expanded corner.
+  for (const auto &node : getField<MFNode>(geom, "attrib", {})) {
+    if (!node) continue;
+    const std::string type = node->nodeTypeName();
+    MeshData::VertexAttribute attr;
+    attr.name = getField<SFString>(*node, "name", {});
+    std::vector<float> values;
+    if (type == "FloatVertexAttribute") {
+      const int components = getField<SFInt32>(*node, "numComponents", 4);
+      if (components < 1 || components > 4) continue;
+      attr.components = static_cast<std::uint32_t>(components);
+      values = getField<std::vector<float>>(*node, "value", {});
+    } else if (type == "Matrix3VertexAttribute") {
+      attr.components = 9;
+      for (const auto &m : getField<MFMatrix3f>(*node, "value", {}))
+        for (const auto &row : m.matrix) values.insert(values.end(), row, row + 3);
+    } else if (type == "Matrix4VertexAttribute") {
+      attr.components = 16;
+      for (const auto &m : getField<MFMatrix4f>(*node, "value", {}))
+        for (const auto &row : m.matrix) values.insert(values.end(), row, row + 4);
+    } else continue;
+    a.vertexAttributes.push_back(std::move(attr));
+    a.vertexAttributeValues.push_back(std::move(values));
+  }
+
   a.normalIndex = getField<std::vector<int>>(geom, "normalIndex", {});
   a.colorIndex = getField<std::vector<int>>(geom, "colorIndex", {});
   a.texCoordIndex = getField<std::vector<int>>(geom, "texCoordIndex", {});
@@ -1588,6 +1614,25 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     sourceId.push_back(static_cast<std::uint32_t>(ca.coord));
     sourceId.push_back(static_cast<std::uint32_t>(cb.coord));
     sourceId.push_back(static_cast<std::uint32_t>(cc.coord));
+
+    if (mesh.vertexAttributes.empty() && !attrs.vertexAttributes.empty()) {
+      mesh.vertexAttributes = attrs.vertexAttributes;
+      for (auto &attribute : mesh.vertexAttributes)
+        attribute.values.clear();
+    }
+    const Corner corners[] = {ca, cb, cc};
+    for (std::size_t ai = 0; ai < attrs.vertexAttributes.size(); ++ai) {
+      auto &out = mesh.vertexAttributes[ai].values;
+      const auto &src = attrs.vertexAttributeValues[ai];
+      const auto components = attrs.vertexAttributes[ai].components;
+      for (const Corner &corner : corners) {
+        const std::size_t offset = static_cast<std::size_t>(corner.coord) * components;
+        if (offset + components <= src.size())
+          out.insert(out.end(), src.begin() + offset, src.begin() + offset + components);
+        else
+          out.insert(out.end(), components, 0.0f);
+      }
+    }
 
     // Normals: authored Normal node honored per corner; else FLAT per-face.
     if (attrs.hasNormal) {

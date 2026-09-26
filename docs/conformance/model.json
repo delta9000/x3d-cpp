@@ -9022,9 +9022,9 @@
         "Matrix3VertexAttribute",
         "Matrix4VertexAttribute"
       ],
-      "note": "runtime/extract/MeshBuilder.hpp:514-549 (buildAttrs) reads normal/color/texCoord but never the 'attrib' containerField, so all three X3DVertexAttributeNode types are unreachable from extraction. Not in shaders.md. (sweep 2026-06-25)",
+      "note": "Fixed: MeshBuilder extracts FloatVertexAttribute (1-4 components), Matrix3VertexAttribute (9), and Matrix4VertexAttribute (16) into named MeshData vertex streams, expanded by coordIndex alongside positions. Covered by custom vertex attributes follow expanded coordinate vertices in mesh_builder_t3_test.cpp.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "Custom vertex-attribute nodes silently dropped \u2014 'attrib' children never read."
     },
     {
@@ -9847,7 +9847,7 @@
     ]
   },
   "summary": {
-    "closed_count": 176,
+    "closed_count": 177,
     "component_count": 36,
     "deferred_count": 30,
     "finding_count": 221,
@@ -9874,7 +9874,7 @@
       "critical": 2,
       "low": 3,
       "major": 20,
-      "minor": 20
+      "minor": 19
     }
   },
   "unresolved_findings": []
