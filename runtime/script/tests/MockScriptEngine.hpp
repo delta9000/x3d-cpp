@@ -57,21 +57,21 @@ public:
   }
 
   void initialize(ScriptHandle handle) override {
-    calls.push_back({"initialize", handle, "", 0.0});
+    calls.push_back({"initialize", handle, "", 0.0, ""});
   }
 
   void shutdown(ScriptHandle handle) override {
-    calls.push_back({"shutdown", handle, "", 0.0});
+    calls.push_back({"shutdown", handle, "", 0.0, ""});
   }
 
   void prepareEvents(ScriptHandle handle, double now) override {
-    calls.push_back({"prepareEvents", handle, "", now});
+    calls.push_back({"prepareEvents", handle, "", now, ""});
   }
 
   void invoke(ScriptHandle handle, const std::string &eventName,
               const std::any &value, X3DFieldType /*type*/,
               double timestamp) override {
-    calls.push_back({"invoke", handle, eventName, timestamp});
+    calls.push_back({"invoke", handle, eventName, timestamp, ""});
     auto slot = slots_.find(handle);
     if (slot == slots_.end() || !slot->second.sai) return;
     auto r = reactions_.find(eventName);
@@ -81,7 +81,7 @@ public:
   }
 
   void eventsProcessed(ScriptHandle handle, double timestamp) override {
-    calls.push_back({"eventsProcessed", handle, "", timestamp});
+    calls.push_back({"eventsProcessed", handle, "", timestamp, ""});
   }
 
   // ---- test arming API ------------------------------------------------------
