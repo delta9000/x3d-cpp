@@ -21,10 +21,11 @@
 // This is a SCREEN-SPACE approximation (no pre-computed tangents in the vertex
 // buffer); it suffices for the PoC and avoids an attribute-layout change.
 //
-// GAMMA / sRGB OUTPUT (Phase 5.5):
-//   When uGammaOutput != 0 the final linear color is converted to sRGB before
-//   writing FragColor. Phong enables this to match PBR output expectations.
-//   The pow(3) approximation is fine for a PoC.
+// COLOUR SPACE (ADR-0027):
+//   Phong shades in display space: colour textures are uploaded without sRGB
+//   decode and main.cpp sets uGammaOutput = 0, so authored X3D 3.x colours keep
+//   their look and match UnlitMaterial. The uGammaOutput switch remains for
+//   callers that want the linear workflow PhysicalMaterial uses.
 
 out vec4 FragColor;
 
@@ -37,7 +38,7 @@ in vec2 vTexCoord;
 
 uniform vec4 uDiffuse;       // rgb = diffuse/base, a = 1 - transparency.
 uniform vec3 uEmissive;      // added unlit (augmented by emissive texture).
-uniform vec3 uAmbientColor;  // diffuse * ambientIntensity.
+uniform vec3 uAmbientColor;  // material ambientIntensity (broadcast); §17 multiplies it by base.
 uniform int  uHasColors;     // 1 => per-vertex vColor overrides uDiffuse.rgb.
 
 // ---- Texture slots (all optional — shader guards on Has* flags) -------------
@@ -140,10 +141,10 @@ void main() {
     vec3 lit     = emissive;
 
     for (int i = 0; i < uNumLights && i < kMaxLights; ++i) {
-        // §17.2.2.4 ambient: ambientIntensity_i × (diffuseColor × material
-        // ambientIntensity) × base — uAmbientColor already carries
-        // diffuse×ambientIntensity; `base` keeps the squared-diffuse convention
-        // (card RND-2, pending an ADR). Normal-independent, applied before ndl.
+        // §17 ambient: light.ambientIntensity × ambientParameter, with
+        // ambientParameter = material ambientIntensity × diffuseParameter (the
+        // textured/vertex-coloured base) — linear in diffuse (ADR-0027).
+        // Normal-independent, applied before ndl.
         lit += (uAmbientColor * base) * uLightColor[i] * uLightAmbient[i];
         vec3 L    = normalize(-uLightDirEye[i]);
         float ndl = max(dot(N, L), 0.0);

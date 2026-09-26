@@ -563,9 +563,16 @@ GLuint uploadInlineSFImage(const SFImage &img, bool repeatS, bool repeatT,
 // (cached so we do not retry a missing file every frame); a missing key on the
 // Url path means "not yet attempted" (a Pending resolver leaves it absent so a
 // later frame retries — contract A).
-struct TextureCache {
+// One upload per image *and* format: Phong samples colour textures in display
+// space (GL_RGBA) while PhysicalMaterial samples them sRGB-decoded
+// (GL_SRGB8_ALPHA8), so the same url can need both (ADR-0027).
+struct TextureCacheFormat {
   std::unordered_map<std::string, GLuint> byUrl;          // 0 = failed (no retry).
   std::unordered_map<const void *, GLuint> byInlineNode;  // keyed by SFImage addr.
+};
+struct TextureCache {
+  TextureCacheFormat linear, srgb;
+  TextureCacheFormat &format(bool isSrgb) { return isSrgb ? srgb : linear; }
 };
 
 // Find the first TextureRef matching any of the given slots; returns nullptr if
@@ -625,10 +632,11 @@ GLuint uploadMovieFrame(GLuint tex, const ex::VideoFrame &f, bool repeatS,
 // Emissive); srgb=false → GL_RGBA (data textures: Normal/MetallicRoughness/
 // Occlusion/Specular — linear space, no driver decode).
 // `movie` (when non-null) routes Source::Movie refs through the MovieDecoder seam.
-GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &cache,
+GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &caches,
                      const ex::AssetResolver &resolver, bool srgb = false,
                      MovieState *movie = nullptr) {
   if (!pick) return 0;
+  TextureCacheFormat &cache = caches.format(srgb);
 
   // MovieTexture (ADR-0041): decode this frame's image via the MovieDecoder seam
   // and (re)upload it. Pending holds the previously uploaded frame; Failed falls
@@ -1668,7 +1676,9 @@ int main(int argc, char **argv) {
           glUniform4f(uDiffuse, c.r, c.g, c.b, c.a);
           glUniform3f(uEmissive, mat.emissive.r, mat.emissive.g, mat.emissive.b);
           const float ai = mat.phong.ambientIntensity;
-          glUniform3f(uAmbientColor, c.r * ai, c.g * ai, c.b * ai);
+          // §17: ambientParameter = ambientIntensity × diffuseParameter; the
+          // shader multiplies by the textured/vertex-coloured base itself.
+          glUniform3f(uAmbientColor, ai, ai, ai);
           glUniform1i(uHasColors, g.hasColors ? 1 : 0);
 
           // Blinn-Phong specular + alpha-mask.
@@ -1677,8 +1687,8 @@ int main(int argc, char **argv) {
           glUniform1f(uShininess, mat.phong.shininess);
           glUniform1i(uAlphaMode, static_cast<int>(mat.alphaMode));
           glUniform1f(uAlphaCutoff, mat.alphaCutoff);
-          // Phase 5.5: gamma output on for Phong.
-          if (uGammaOutput >= 0) glUniform1i(uGammaOutput, 1);
+          // ADR-0027: Phong shades in display space — no sRGB output encode.
+          if (uGammaOutput >= 0) glUniform1i(uGammaOutput, 0);
           // Normal scale.
           if (uNormalScale >= 0) glUniform1f(uNormalScale, mat.normalScale);
 
@@ -1693,22 +1703,23 @@ int main(int argc, char **argv) {
             bindTex(3, uSpecularTex, uHasSpecularTex, 0);
           } else if (g.hasTexcoords) {
             if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 0);
-            // Unit 0: diffuse/base color (sRGB — driver decodes to linear).
+            // Unit 0: diffuse/base color — display space for Phong (ADR-0027):
+            // uploaded as GL_RGBA so the driver does not decode it.
             GLuint t0 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Diffuse,
                                                          ex::TextureRef::Slot::BaseColor}),
-                                      texCache, assetResolver, /*srgb=*/true, &movieState);
+                                      texCache, assetResolver, /*srgb=*/false, &movieState);
             bindTex(0, uTexture, uHasTexture, t0);
             // Unit 1: normal map (linear — data texture, no sRGB decode).
             GLuint t1 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
                                       texCache, assetResolver, /*srgb=*/false);
             bindTex(1, uNormalTex, uHasNormalTex, t1);
-            // Unit 2: emissive texture (sRGB).
+            // Unit 2: emissive texture (display space for Phong).
             GLuint t2 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
-                                      texCache, assetResolver, /*srgb=*/true, &movieState);
+                                      texCache, assetResolver, /*srgb=*/false, &movieState);
             bindTex(2, uEmissiveTex, uHasEmissiveTex, t2);
-            // Unit 3: specular texture (sRGB).
+            // Unit 3: specular texture (display space for Phong).
             GLuint t3 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Specular}),
-                                      texCache, assetResolver, /*srgb=*/true);
+                                      texCache, assetResolver, /*srgb=*/false);
             bindTex(3, uSpecularTex, uHasSpecularTex, t3);
           } else {
             if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 0);
@@ -2031,7 +2042,8 @@ int main(int argc, char **argv) {
           ImGui::Text("render items %zu", extractor.itemCount());
           ImGui::Text("gpu meshes %zu", gpuMeshes.size());
           ImGui::Text("textures %zu",
-                      texCache.byUrl.size() + texCache.byInlineNode.size());
+                      texCache.linear.byUrl.size() + texCache.linear.byInlineNode.size() +
+                          texCache.srgb.byUrl.size() + texCache.srgb.byInlineNode.size());
           ImGui::Text("time %.3f", now);
           ImGui::Separator();
           ImGui::Checkbox("Wireframe", &wireframe);

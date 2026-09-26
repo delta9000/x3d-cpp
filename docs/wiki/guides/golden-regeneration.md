@@ -198,6 +198,10 @@ See [Gate System](gate-system.md) for the full cli/canon gate workflow.
 
 ## Gotchas
 
+**Platform.** Goldens are only reproducible with the same binary on the same
+platform (see [Floating-point reproducibility](../architecture.md#floating-point-reproducibility)):
+regenerate them with the toolchain CI uses, not on a different architecture.
+
 **clang-format version.** The gate is byte-exact, so the formatter version must
 match. If you upgrade `clang-format`, you must regenerate and commit a new golden.
 Locally, the pytest golden tests skip, with install instructions, when the pinned `clang-format` (`$CLANG_FORMAT`, else `clang-format` on PATH) is absent **or the wrong version**; under CI (`CI` set) they fail instead, so the gate cannot pass by skipping. `scripts/check_golden.sh` always hard-fails on a missing or mismatched formatter. To get the pin without mise: `uvx --from clang-format==22.1.8 clang-format --version`, then point `CLANG_FORMAT` at that binary.

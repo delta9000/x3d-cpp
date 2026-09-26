@@ -8401,7 +8401,7 @@
         "PhysicalMaterial",
         "UnlitMaterial"
       ],
-      "note": "Closed \u2014 PoC consumer (examples/poc_renderer/) uses GL_SRGB8_ALPHA8 for BaseColor/Emissive textures, applies linearToSRGB() at fragment output in pbr.frag and lit.frag; SDK emits colors in authored space (linear for Material scalars); gamma is consumer policy, documented in MaterialSystem.hpp and the Materials wiki page.",
+      "note": "Closed \u2014 the stance is ADR-0027's (2026-09-26, superseding the first closure, which also encoded Phong output). PhysicalMaterial uses a linear workflow in both reference consumers (sRGB-decoded colour textures, linear factors, linearToSRGB() at output); Material (Phong) and UnlitMaterial stay in display space (no decode, no encode) so X3D 3.x content keeps its authored look. The SDK emits colours in authored space; gamma is consumer policy.",
       "severity": "low",
       "status": "closed",
       "summary": "Gamma/sRGB output encoding stance not documented or enforced \u2014 PoC consumer rendered in linear space."

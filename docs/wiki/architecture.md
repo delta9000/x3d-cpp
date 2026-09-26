@@ -147,6 +147,19 @@ SceneExtractor.delta()         → RenderDelta (changed sets)  }   (renderer, th
 
 The two terminal consumers of the runtime are (a) the **extract** path that feeds a renderer with `RenderItem`/`RenderDelta`, and (b) the **writer** path that re-serializes the (possibly mutated) document to any of the four encodings — the byte-identical round-trip locked by the golden and canonical gates.
 
+## Floating-point reproducibility
+
+Results are bit-identical for the **same binary on the same platform**: two
+runs of the same build produce the same traces, renders and writer output, which
+is what the golden gates rely on. They are **not** guaranteed bit-identical
+across compilers, CPU architectures or operating systems. The build does not
+pass `-ffp-contract=off`, so a compiler may fuse multiply-adds (x86 builds keep
+`-mfma` private to the Jolt target; AArch64 contracts by default), and single
+precision is used throughout the scene math. No part of ISO 19775-1 requires
+bit-identical results across platforms, and nothing visible depends on it, so
+the extra cost of forcing it is not paid. Physics adds its own host fingerprint
+for the same reason ([ADR-0019](decisions/0019-physics-seam.md)).
+
 ## Where to go next
 
 - [CLI Suite](subsystems/cli-suite.md) — the first SDK consumer and gate harness.

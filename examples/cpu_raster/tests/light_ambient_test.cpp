@@ -16,6 +16,7 @@
 #include "cpuraster/MaterialShader.hpp"
 #include "cpuraster/SceneRender.hpp"
 
+#include <cmath>
 #include <cstdio>
 #include <vector>
 
@@ -109,6 +110,53 @@ int main() {
     CHECK(capped.size() == 8);
     // §23.4.4 pins the headlight ambientIntensity to 0.0; it is appended last.
     CHECK(capped.back().ambientIntensity == 0.0f);
+  }
+
+  // ---- ADR-0027: ambient linear in diffuse; colour space per material model --
+  auto near = [](float a, float b) { return std::fabs(a - b) < 2e-3f; };
+  // One ambient-only light (travels +Z, so N·L = 0) of ambientIntensity 1.
+  EyeLight amb;
+  amb.dirEye = {0, 0, 1};
+  amb.ambientIntensity = 1.0f;
+  {
+    // §17: ambient = light.ambientIntensity × materialAmbient × diffuse. With
+    // diffuse 0.5 and materialAmbient 0.4 that is 0.2 — not 0.1 (squared) and
+    // not sRGB-encoded (Phong is display space).
+    ex::MaterialDesc m;
+    m.model = ex::MaterialModel::Phong;
+    m.phong.diffuse = {0.5f, 0.5f, 0.5f};
+    m.phong.specular = {0.0f, 0.0f, 0.0f};
+    m.phong.ambientIntensity = 0.4f;
+    g::vec4 o;
+    makePhongShader(m, {amb}, false)(frontFrag(), o);
+    CHECK(near(o.x, 0.2f) && near(o.y, 0.2f) && near(o.z, 0.2f));
+  }
+  {
+    // The same authored colour renders the same through Phong (fully ambient-lit
+    // with ambientIntensity 1) and UnlitMaterial: both are display space.
+    ex::MaterialDesc ph;
+    ph.model = ex::MaterialModel::Phong;
+    ph.phong.diffuse = {0.8f, 0.3f, 0.1f};
+    ph.phong.specular = {0.0f, 0.0f, 0.0f};
+    ph.phong.ambientIntensity = 1.0f;
+    ex::MaterialDesc un;                        // UnlitMaterial's colour is emissive.
+    un.model = ex::MaterialModel::Unlit;
+    un.emissive = ph.phong.diffuse;
+    g::vec4 a, b;
+    makePhongShader(ph, {amb}, false)(frontFrag(), a);
+    makeUnlitShader(un, false)(frontFrag(), b);
+    CHECK(near(a.x, b.x) && near(a.y, b.y) && near(a.z, b.z));
+  }
+  {
+    // PhysicalMaterial keeps the linear workflow: a linear emissive 0.5 leaves
+    // the evaluator sRGB-encoded (~0.735).
+    ex::MaterialDesc m;
+    m.model = ex::MaterialModel::Physical;
+    m.physical.baseColor = {0.0f, 0.0f, 0.0f};
+    m.emissive = {0.5f, 0.5f, 0.5f};
+    g::vec4 o;
+    makePbrShader(m, {}, false)(frontFrag(), o);
+    CHECK(near(o.x, 0.7354f));
   }
 
   if (failures) {
