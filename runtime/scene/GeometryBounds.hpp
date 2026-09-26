@@ -217,7 +217,8 @@ inline std::vector<std::uint32_t> utf8ToCodepoints(const std::string &s) {
 // node's fontStyle child. Spec defaults (§15.4.1) when absent.
 inline extract::FontStyleParams readFontStyleParams(const X3DNode &textNode,
                                                     std::string &familyOut,
-                                                    std::string &styleOut) {
+                                                    std::string &styleOut,
+    std::vector<std::string> *familiesOut = nullptr) {
   extract::FontStyleParams fs; // spec defaults
   familyOut = "SERIF";
   styleOut = "PLAIN";
@@ -237,8 +238,13 @@ inline extract::FontStyleParams readFontStyleParams(const X3DNode &textNode,
   if (!jt.empty()) fs.justifyMajor = jt[0];
   if (jt.size() >= 2) fs.justifyMinor = jt[1];
 
-  const auto fam = splitTokens(::x3d::runtime::enumToken(*fsNode, "family"));
+  // family is an MFString fallback list (§15.4.1), read as the MFString it
+  // is: it has no enum-string accessor, so an enum-token read returns empty
+  // and every Text fell back to SERIF (TXT-5). The caller resolves it against
+  // the FontMetrics backend with resolveFontFamily.
+  const auto fam = getField<std::vector<std::string>>(*fsNode, "family", {});
   if (!fam.empty()) familyOut = fam[0];
+  if (familiesOut) *familiesOut = fam;
 
   const auto sty = splitTokens(::x3d::runtime::enumToken(*fsNode, "style"));
   if (!sty.empty()) styleOut = sty[0];
@@ -406,8 +412,10 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
     // when no metrics are available (the SDK is IO-free; default is null).
     if (fm && *fm) {
       std::string family, style;
+      std::vector<std::string> families;
       const extract::FontStyleParams fsp =
-          readFontStyleParams(*geom, family, style);
+          readFontStyleParams(*geom, family, style, &families);
+      family = extract::resolveFontFamily(families, style, *fm); // §15.4.1
       const extract::TextParams tp = readTextParams(*geom);
       const extract::FontMetricsCallback lineMetrics =
           makeLayoutMetricsAdapter(*fm, family, style);

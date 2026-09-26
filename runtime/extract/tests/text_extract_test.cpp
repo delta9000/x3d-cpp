@@ -218,12 +218,48 @@ static void test_screenfontstyle_pointsize() {
   check(feq(fs.size, 12.0f), "ScreenFontStyle.pointSize honoured as size");
 }
 
+// ===========================================================================
+// TXT-5: FontStyle.family is a fallback list (§15.4.1): the first family the
+// backend supports wins, SERIF when none does; with no backend the first entry
+// is kept. buildTextMesh asks the backend for the resolved family.
+// ===========================================================================
+static void test_family_fallback() {
+  // A backend that only knows SANS and SERIF, recording the families asked for.
+  std::vector<std::string> asked;
+  FontMetrics fm = [&asked](const FontKey &k) {
+    asked.push_back(k.family);
+    GlyphResult g;
+    if (k.family == "SANS" || k.family == "SERIF") {
+      g.status = GlyphStatus::Ready;
+      g.metrics.advanceEm = 0.5f;
+    }
+    return g;
+  };
+  check(resolveFontFamily({"Nonexistent", "SANS", "SERIF"}, "PLAIN", fm) == "SANS",
+        "family: skips an unsupported family for the next supported one");
+  check(resolveFontFamily({"Nonexistent", "AlsoMissing"}, "PLAIN", fm) == "SERIF",
+        "family: falls back to SERIF when no listed family is supported");
+  check(resolveFontFamily({}, "PLAIN", fm) == "SERIF", "family: empty list -> SERIF");
+  check(resolveFontFamily({"Nonexistent", "SANS"}, "PLAIN", FontMetrics{}) == "Nonexistent",
+        "family: without a backend the first listed family is kept");
+
+  auto style = createX3DNode("FontStyle");
+  setF(style, "family", std::any(std::vector<std::string>{"Nonexistent", "SANS"}));
+  auto text = makeText({"ab"}, style);
+  asked.clear();
+  MeshData m = buildTextMesh(*text, fm);
+  check(!asked.empty() && asked.back() == "SANS",
+        "family: glyphs are requested in the resolved family");
+  check(m.positions.size() == 8, "family: both glyphs render (2 quads)");
+}
+
 TEST_CASE("text_extract_test") {
   test_single_line_quads();
   test_set_outputs();
   test_two_lines_spacing();
   test_scene_extractor_text();
   test_atlas_uv_seam();
+  test_family_fallback();
   test_failed_glyph_skipped();
   test_screenfontstyle_pointsize();
   return;
