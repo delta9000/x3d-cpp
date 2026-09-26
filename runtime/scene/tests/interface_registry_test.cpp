@@ -4,6 +4,8 @@
 
 #include "doctest/doctest.h"
 #include <iostream>
+#include <thread>
+#include <vector>
 
 using namespace x3d::nodes;
 
@@ -30,6 +32,26 @@ TEST_CASE("interface_registry_test") {
   CHECK((n));
   CHECK((X3DInterfaceRegistry::nodeImplements(n.get(),
                                               InterfaceId::X3DSensorNode)));
+
+  // Concurrency: many threads racing the first build of the by-interface map
+  // must not corrupt it. (The map is a function-local static, so C++11 makes
+  // its initialization thread-safe; this exercises that path.)
+  {
+    constexpr int kThreads = 8;
+    std::vector<std::thread> threads;
+    std::vector<std::size_t> counts(kThreads, 0);
+    for (int t = 0; t < kThreads; ++t)
+      threads.emplace_back([&counts, t] {
+        for (int r = 0; r < 500; ++r) {
+          counts[t] = X3DInterfaceRegistry::nodesImplementing(
+                          InterfaceId::X3DChildNode)
+                          .size();
+        }
+      });
+    for (auto& th : threads) th.join();
+    CHECK(counts[0] > 0);
+    for (std::size_t c : counts) CHECK(c == counts[0]);
+  }
 
   std::cout << "interface_registry_test OK\n";
   return;
