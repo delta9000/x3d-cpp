@@ -158,6 +158,20 @@ public:
     observer_ = std::move(obs);
   }
 
+  /// Called when an event is delivered to an author-declared inputOnly or
+  /// inputOutput field (e.g. a Script's eventIn, ISO/IEC 19775-1 §29.2): the
+  /// target, the field's reflection entry, and the value. The script layer
+  /// registers here so a ROUTEd event runs the script's handler (inputOnly) or
+  /// updates the script's view of the field (inputOutput) in the same cascade.
+  /// The
+  /// listener may post events (they join this timestamp) and add or remove
+  /// ROUTEs (process() snapshots sinks before delivering).
+  using AuthorInputListener = std::function<void(
+      const FieldAddress &, const FieldInfo &, const std::any &)>;
+  void addAuthorInputListener(AuthorInputListener listener) {
+    authorInputListeners_.push_back(std::move(listener));
+  }
+
 private:
   struct Delivery {
     FieldAddress target;
@@ -207,6 +221,10 @@ private:
         if (info.set) {
           info.set(*addr.node, value);
           if (observer_) observer_(addr);
+          if (info.access == AccessType::InputOnly ||
+              info.access == AccessType::InputOutput)
+            for (const auto &listener : authorInputListeners_)
+              listener(addr, info, value);
         }
         return;
       }
@@ -216,6 +234,7 @@ private:
   const EventGraph &graph_;
   std::deque<Delivery> pending_;
   std::function<void(const FieldAddress &)> observer_;
+  std::vector<AuthorInputListener> authorInputListeners_;
   // Per-timestamp guards (reset by beginTimestamp). They persist across the
   // several process() calls one tick may make (the §4.4.8.3 step-4 re-eval
   // loop), so the per-field cap bounds the whole tick — not just one drain.

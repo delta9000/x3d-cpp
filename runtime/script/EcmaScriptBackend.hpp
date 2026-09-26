@@ -126,6 +126,8 @@ public:
    * @brief Call eventsProcessed() if it exists in the script.
    */
   void eventsProcessed(ScriptHandle handle, double timestamp) override;
+  void updateField(ScriptHandle handle, const std::string &name,
+                   const std::any &value, X3DFieldType type) override;
 
   // -------------------------------------------------------------------------
   // Marshalling (public so the unit test can round-trip without a script).

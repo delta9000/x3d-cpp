@@ -1921,19 +1921,19 @@
   interfaces: [X3DScriptNode]
   clause: "29.2; 4.4.8.3"
   severity: major
-  status: open
-  summary: A ROUTE into a Script eventIn/inputOutput now lands in the author-field store, but the write is not auto-forwarded to the script engine — the canonical sensor->Script->scene pattern still needs embedder wiring at tick time.
+  status: fixed
+  summary: A ROUTE into a Script inputOnly field now runs the script function of the same name, and a routed inputOutput value reaches the script's variable; before, both stopped in the author-field store and needed embedder wiring.
   note: >-
-    PARTIALLY ADDRESSED. deliver() (X3DEventCascade.hpp) used to scan only the STATIC fields() table;
-    Script/ComposedShader author fields live in effectiveFields()/the dynamic store, so the lookup
-    missed and the event evaporated (buildRoutes resolved the sink via effectiveFields,
-    X3DSceneBridge.hpp:74). deliver() now FALLS BACK to dynamicFieldStore().authorFields() when the
-    static table misses, so a routed value (incl. `set_url`) reaches the author field's store entry
-    (regression: cascade_author_field_test). REMAINING: nothing in the SDK forwards that stored write
-    to ScriptSystem::deliverInputEvent, and eventsProcessed() is still gated on receivedEventThisTick,
-    so the script function does not auto-run — the embedder must poll author-input fields post-cascade
-    and call deliverInputEvent (the x3d-bgfx browser does this). Full fix: an in-SDK bridge from a
-    Script author-field write to ScriptSystem::deliverInputEvent. (event-model review.)
+    deliver() (X3DEventCascade.hpp) falls back to dynamicFieldStore().authorFields() when the static
+    table misses, so a routed value (incl. `set_url`) reaches the author field's store entry
+    (cascade_author_field_test). The cascade now also notifies author-input listeners after such a
+    write, and addScriptSystem registers ScriptSystem::onAuthorInput as one. An inputOnly event goes to
+    deliverInputEvent (so mustEvaluate batching and eventsProcessed apply as for any input); an
+    inputOutput event updates the script's global through ScriptEngine::updateField, so a later
+    readback does not revert the routed value. EMBEDDER NOTE: a browser that polled author-input
+    fields after the cascade and called deliverInputEvent itself must drop that bridge, or each event
+    runs its handler twice. Tests: script_system (mock), script_corpus_e2e (routed eventIn and
+    inputOutput end to end), ecmascript/quickjs backend T15i.
 
 - id: TRANSFORMSENSOR-SCALE
   nodes: [TransformSensor]

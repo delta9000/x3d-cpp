@@ -1077,4 +1077,20 @@ void QuickJsBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
   impl_->readbackAuthorGlobals(*e, timestamp);
 }
 
+// ===========================================================================
+// updateField(): an inputOutput author field was written from outside the
+// script -- refresh its JS global (ScriptEngine::updateField).
+// ===========================================================================
+
+void QuickJsBackend::updateField(ScriptHandle handle, const std::string &name,
+                                 const std::any &value, X3DFieldType type) {
+  Impl::Entry *e = impl_->entryFor(handle);
+  if (!e || !e->ctx || !value.has_value()) return;
+  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
+  impl_->setGlobal(e->ctx, name.c_str(), pushValue(e->ctx, value, type));
+  // The script may have made this global a throwing setter.
+  if (JS_HasException(e->ctx))
+    logException(e->ctx, ("update of '" + name + "'").c_str());
+}
+
 } // namespace x3d::runtime

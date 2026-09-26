@@ -769,6 +769,58 @@ int main() {
   }
 
   // -------------------------------------------------------------------------
+  // T15i: updateField. An inputOutput author field written from outside the
+  //       script reaches its JS global, is not echoed back as an output, and a
+  //       throwing setter on that global is contained.
+  // -------------------------------------------------------------------------
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
+                                AccessType::InputOutput, std::any(0.0f)});
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"seen", X3DFieldType::SFFloat,
+                                AccessType::OutputOnly, {}});
+    ScriptHandle h = backend.load(script,
+        "function poke(v, t) { seen = level; }", sai);
+    check(h != kInvalidScriptHandle, "T15i: load updateField script");
+    backend.initialize(h);
+    dynamicFieldStore().setValue(script, "level", std::any(0.5f));
+    backend.updateField(h, "level", std::any(0.5f), X3DFieldType::SFFloat);
+    backend.invoke(h, "poke", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    std::any seen = dynamicFieldStore().getValue(script, "seen");
+    check(seen.has_value() && std::any_cast<float>(seen) == 0.5f,
+          "T15i: the script sees the updated inputOutput value");
+    std::any level = dynamicFieldStore().getValue(script, "level");
+    check(level.has_value() && std::any_cast<float>(level) == 0.5f,
+          "T15i: the update is not reverted by readback");
+    backend.shutdown(h);
+    dynamicFieldStore().erase(script);
+
+    Script hostile;
+    SaiContext sai2(ctx, hostile, "x3d-cpp-gen", "dev");
+    dynamicFieldStore().addAuthorField(
+        hostile, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                 AccessType::OutputOnly, {}});
+    ScriptHandle h2 = backend.load(hostile,
+        "Object.defineProperty(this, 'level', {"
+        "  set: function (v) { throw new Error('no'); },"
+        "  get: function () { return 1; }, configurable: true });"
+        "function fine(v, t) { ok = 7; }", sai2);
+    check(h2 != kInvalidScriptHandle, "T15i: load throwing-setter script");
+    backend.initialize(h2);
+    backend.updateField(h2, "level", std::any(0.5f), X3DFieldType::SFFloat);
+    backend.invoke(h2, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
+    std::any ok = dynamicFieldStore().getValue(hostile, "ok");
+    check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
+          "T15i: a throwing setter on update is contained");
+    backend.shutdown(h2);
+    dynamicFieldStore().erase(hostile);
+  }
+
+  // -------------------------------------------------------------------------
   // T16: directOutput=FALSE — Browser.addRoute throws into JS (not a crash);
   //      the route is NOT added.
   // -------------------------------------------------------------------------

@@ -91,6 +91,8 @@ public:
 
   /** @brief Call eventsProcessed() if it exists (§29.2.2). */
   void eventsProcessed(ScriptHandle handle, double timestamp) override;
+  void updateField(ScriptHandle handle, const std::string &name,
+                   const std::any &value, X3DFieldType type) override;
 
 private:
   // pImpl: every JSRuntime / JSContext / JSValue lives here, in the .cpp, so

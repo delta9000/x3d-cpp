@@ -142,6 +142,18 @@ public:
    */
   virtual void eventsProcessed(ScriptHandle handle, double timestamp) = 0;
 
+  /**
+   * @brief An inputOutput author field received a value from outside the
+   *        script (a ROUTE or another script's SAI write).
+   * @details Update the script's own view of the field (e.g. a JS global) so
+   *          the script reads the new value, and so the backend's readback
+   *          does not treat the script's stale copy as a fresh write. Invokes
+   *          no handler. The default does nothing, for backends with no
+   *          script-side copy of field values.
+   */
+  virtual void updateField(ScriptHandle /*handle*/, const std::string & /*name*/,
+                           const std::any & /*value*/, X3DFieldType /*type*/) {}
+
 private:
   std::chrono::milliseconds callBudget_{kDefaultCallBudget};
   std::size_t memoryLimit_ = kDefaultMemoryLimit;

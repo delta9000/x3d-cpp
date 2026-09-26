@@ -1003,6 +1003,23 @@ void EcmaScriptBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
 }
 
 // ---------------------------------------------------------------------------
+// updateField(): an inputOutput author field was written from outside the
+// script -- refresh its JS global (ScriptEngine::updateField).
+// ---------------------------------------------------------------------------
+
+void EcmaScriptBackend::updateField(ScriptHandle handle, const std::string &name,
+                                    const std::any &value, X3DFieldType type) {
+  Entry *e = entryFor(handle);
+  if (!e || !value.has_value()) return;
+  ArmDeadline armed(&e->heap->deadline, callBudget());
+  // Protected: the script may have made this global a throwing accessor.
+  protectedRun(e->ctx, "update of '" + name + "'", [&](duk_context *c) {
+    pushValue(c, value, type);
+    duk_put_global_string(c, name.c_str());
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Private helpers.
 // ---------------------------------------------------------------------------
 
