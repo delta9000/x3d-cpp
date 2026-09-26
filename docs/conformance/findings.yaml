@@ -1975,13 +1975,13 @@
   interfaces: [X3DEnvironmentalSensorNode]
   clause: "22.4.5"
   severity: major
-  status: open
+  status: closed
   summary: TransformSensor extracts orientation_changed from a scale-bearing relative matrix — a uniform 3x scale collapses the reported angle to 0; non-uniform scale can emit a NaN SFRotation into the route graph.
   note: >-
-    ViewDependentSystem.hpp:278 `rotationFromMatrix(swInv * tw)`; rotationFromMatrix (Mat4.hpp:128) is
-    documented "assumes upper-left 3x3 is pure rotation (no scale)" but the relative matrix folds in both
-    hierarchies' scale. Probe: uniform-scale(3x)+90deg-about-X -> angle=0.000 (true 1.571). Fix: strip
-    scale (normalize the 3x3 columns / polar or TRS decompose) before rotationFromMatrix. (numeric probe.)
+    TransformSensor now orthonormalizes the relative matrix basis before extracting orientation;
+    degenerate zero-scale bases retain the last valid rotation (identity initially). Covered by
+    testTransformSensorScaleRotation in view_dependent_test.cpp (uniform and non-uniform scale,
+    plus zero scale).
 
 - id: IMPORT-EXPORT-WIRE
   nodes: [IMPORT, EXPORT, Inline]

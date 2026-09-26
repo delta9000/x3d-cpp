@@ -433,10 +433,14 @@ private:
       const SFVec3f tcl = swInv.transformPoint(tc);
       const SFVec3f posLocal{tcl.x - center.x, tcl.y - center.y, tcl.z - center.z};
       // Orientation: target world transform expressed in sensor's local frame.
-      const Mat4 rel = swInv * tw;
-      const SFRotation oriLocal = rotationFromMatrix(rel);
+      Mat4 rel = swInv * tw;
       // Change-gate: emit only when pose actually changes (ENV-04 mirror).
       auto &st = trSensorState_[node];
+      // The relative basis can contain scale and shear from either hierarchy.
+      // A degenerate basis has no defined orientation, so preserve the last
+      // valid value (identity before the first valid sample).
+      const SFRotation oriLocal = orthonormalizeRotation(rel)
+          ? rotationFromMatrix(rel) : (st.has ? st.ori : SFRotation{});
       if (!st.has || !vecEq(posLocal, st.pos))
         ctx.postEvent(node, "position_changed", std::any(posLocal));
       if (!st.has || !rotEq(oriLocal, st.ori))

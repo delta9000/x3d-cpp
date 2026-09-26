@@ -522,6 +522,40 @@ static void testTransformSensorNullTarget() {
   CHECK((!wasCalled));         // no edge event fired for null target
 }
 
+static SFRotation transformSensorRotation(SFVec3f scale, SFRotation rotation) {
+  auto target = createX3DNode("Shape");
+  auto box = createX3DNode("Box");
+  setF(target, "geometry", std::any(std::static_pointer_cast<X3DNode>(box)));
+  auto xf = createX3DNode("Transform");
+  setF(xf, "scale", std::any(scale));
+  setF(xf, "rotation", std::any(rotation));
+  for (auto &f : xf->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*xf, std::any(std::vector<std::shared_ptr<X3DNode>>{target}));
+  auto ts = createX3DNode("TransformSensor");
+  setF(ts, "size", std::any(SFVec3f{10, 10, 10}));
+  setF(ts, "targetObject", std::any(std::static_pointer_cast<X3DNode>(target)));
+  Scene scene;
+  scene.addRootNode(createX3DNode("Viewpoint")); scene.addRootNode(ts); scene.addRootNode(xf);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ts.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  return getF<SFRotation>(ts, "orientation_changed", SFRotation{});
+}
+
+static void testTransformSensorScaleRotation() {
+  const SFRotation rx{1, 0, 0, 1.57079632679f};
+  const auto uniform = transformSensorRotation({3, 3, 3}, rx);
+  CHECK((feq(uniform.x, 1) && feq(uniform.y, 0) && feq(uniform.z, 0)));
+  CHECK((feq(uniform.angle, 1.5708f)));
+  const auto nonuniform = transformSensorRotation({2, 1, 0.5f}, rx);
+  CHECK((std::isfinite(nonuniform.x) && std::isfinite(nonuniform.y) && std::isfinite(nonuniform.z) && std::isfinite(nonuniform.angle)));
+  CHECK((feq(nonuniform.x, 1) && feq(nonuniform.y, 0) && feq(nonuniform.z, 0)));
+  CHECK((feq(nonuniform.angle, 1.5708f)));
+  const auto zero = transformSensorRotation({0, 0, 0}, rx);
+  CHECK((std::isfinite(zero.x) && std::isfinite(zero.y) && std::isfinite(zero.z) && std::isfinite(zero.angle)));
+}
+
 // ─── ENV-03: centerOfRotation_changed (§22.4.1) ─────────────────────────────
 // The bound Viewpoint's centerOfRotation (default 0 0 0) is emitted in the
 // sensor's frame on entry, change-gated like position/orientation_changed.
@@ -734,6 +768,7 @@ TEST_CASE("view_dependent_test") {
   testTransformSensorChangeGate();
   testTransformSensorDisableFiresExit();
   testTransformSensorNullTarget();
+  testTransformSensorScaleRotation();
   testProximityCenterOfRotationChanged();
   testVisibilityFrustumPerAxis();
   testVisibilityWorldExtentScale();
