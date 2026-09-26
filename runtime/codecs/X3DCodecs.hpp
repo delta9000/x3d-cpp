@@ -18,6 +18,7 @@
 #include "CanonicalXmlWriter.hpp"
 #include "FieldValueIO.hpp"
 #include "JsonWriter.hpp"
+#include "VersionHeader.hpp"
 #include "VrmlWriter.hpp"
 #include "XmlLite.hpp"
 #include "XmlReader.hpp"

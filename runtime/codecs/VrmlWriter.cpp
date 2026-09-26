@@ -3,11 +3,11 @@
 #include "DynamicField.hpp"
 #include "FieldValueIO.hpp"
 #include "ProtoNameMaps.hpp"
+#include "VersionHeader.hpp"
 #include "X3DRuntime.hpp"
 #include "parse/NodeBuilder.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
-#include <charconv>
 #include <algorithm>
 #include <any>
 #include <sstream>
@@ -55,14 +55,6 @@ std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
        << "." << r.toField << "\n";
   }
   return os.str();
-}
-
-std::string VrmlWriter::headerVersion(const std::string &v) {
-  int major = 0;
-  const char *end = v.data() + v.size();
-  if (std::from_chars(v.data(), end, major).ec != std::errc{})
-    return "3.0"; // no leading integer major
-  return (major < 3) ? std::string("3.0") : v;
 }
 
 std::string VrmlWriter::vrmlBoolCase(X3DFieldType type, const std::string &in) {

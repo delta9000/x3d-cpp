@@ -3,6 +3,7 @@
 #include "DynamicField.hpp"
 #include "FieldValueIO.hpp"
 #include "ProtoNameMaps.hpp"
+#include "VersionHeader.hpp"
 #include "X3DRuntime.hpp"
 #include "XmlLite.hpp"
 #include "parse/NodeBuilder.hpp"
@@ -21,7 +22,7 @@ std::string XmlWriter::writeDocument(const runtime::X3DDocument &doc) {
   auto root = std::make_unique<xml::Element>();
   root->name = "X3D";
   root->setAttr("profile", doc.profileName());
-  root->setAttr("version", doc.version);
+  root->setAttr("version", headerVersion(doc.version));
 
   // <head>
   if (!doc.head.empty()) {
