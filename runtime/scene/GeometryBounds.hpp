@@ -4,14 +4,19 @@
 #define X3D_RUNTIME_GEOMETRY_BOUNDS_HPP
 
 #include "Aabb.hpp"
+#include "FieldRead.hpp"     // enumToken — FontStyle enum fields (justify/family/style)
+#include "FontMetrics.hpp"   // extract::FontMetrics seam
+#include "TextLayout.hpp"    // extract::computeTextLayout + textLayoutExtent
 #include "x3d/nodes/X3DNode.hpp"
 #include <algorithm>
 #include <any>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace x3d::runtime {
@@ -121,11 +126,123 @@ inline Aabb pointsBounds(const std::shared_ptr<X3DNode> &coordNode) {
   return r;
 }
 
+// ---------------------------------------------------------------------------
+// Text-layout inputs read off a Text node by reflection. Mirrors the extraction
+// layer's readers (TextExtract.hpp) so the bounds path lays the glyphs out with
+// exactly the same FontStyleParams/TextParams the renderer uses.
+// ---------------------------------------------------------------------------
+
+// Split an X3D enum token string on whitespace/quotes/commas (justify is
+// "MAJOR" or "MAJOR MINOR"; family/style are MFEnum token lists).
+inline std::vector<std::string> splitTokens(const std::string &s) {
+  std::vector<std::string> out;
+  std::string cur;
+  for (char c : s) {
+    if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == ',' || c == '"') {
+      if (!cur.empty()) { out.push_back(cur); cur.clear(); }
+    } else {
+      cur.push_back(c);
+    }
+  }
+  if (!cur.empty()) out.push_back(cur);
+  return out;
+}
+
+// UTF-8 -> UTF-32; malformed bytes degrade to U+FFFD so a glyph is still
+// requested (the FontMetrics seam decides what to do with it).
+inline std::vector<std::uint32_t> utf8ToCodepoints(const std::string &s) {
+  std::vector<std::uint32_t> cps;
+  std::size_t i = 0;
+  const std::size_t n = s.size();
+  while (i < n) {
+    const auto b0 = static_cast<unsigned char>(s[i]);
+    std::uint32_t cp;
+    std::size_t len;
+    if (b0 < 0x80) { cp = b0; len = 1; }
+    else if ((b0 >> 5) == 0x6) { cp = b0 & 0x1F; len = 2; }
+    else if ((b0 >> 4) == 0xE) { cp = b0 & 0x0F; len = 3; }
+    else if ((b0 >> 3) == 0x1E) { cp = b0 & 0x07; len = 4; }
+    else { cps.push_back(0xFFFD); ++i; continue; }
+    if (i + len > n) { cps.push_back(0xFFFD); break; }
+    bool ok = true;
+    for (std::size_t k = 1; k < len; ++k) {
+      const auto bk = static_cast<unsigned char>(s[i + k]);
+      if ((bk >> 6) != 0x2) { ok = false; break; }
+      cp = (cp << 6) | (bk & 0x3F);
+    }
+    if (!ok) { cps.push_back(0xFFFD); ++i; continue; }
+    cps.push_back(cp);
+    i += len;
+  }
+  return cps;
+}
+
+// FontStyleParams + the resolved (family, style) FontKey triple off the Text
+// node's fontStyle child. Spec defaults (§15.4.1) when absent.
+inline extract::FontStyleParams readFontStyleParams(const X3DNode &textNode,
+                                                    std::string &familyOut,
+                                                    std::string &styleOut) {
+  extract::FontStyleParams fs; // spec defaults
+  familyOut = "SERIF";
+  styleOut = "PLAIN";
+
+  auto fsNode = getNode(textNode, "fontStyle");
+  if (!fsNode) return fs;
+
+  fs.size = (fsNode->nodeTypeName() == "ScreenFontStyle")
+                ? getField<float>(*fsNode, "pointSize", 1.0f)
+                : getField<float>(*fsNode, "size", 1.0f);
+  fs.spacing = getField<float>(*fsNode, "spacing", 1.0f);
+  fs.horizontal = getField<bool>(*fsNode, "horizontal", true);
+  fs.leftToRight = getField<bool>(*fsNode, "leftToRight", true);
+  fs.topToBottom = getField<bool>(*fsNode, "topToBottom", true);
+
+  const auto jt = splitTokens(::x3d::runtime::enumToken(*fsNode, "justify"));
+  if (!jt.empty()) fs.justifyMajor = jt[0];
+  if (jt.size() >= 2) fs.justifyMinor = jt[1];
+
+  const auto fam = splitTokens(::x3d::runtime::enumToken(*fsNode, "family"));
+  if (!fam.empty()) familyOut = fam[0];
+
+  const auto sty = splitTokens(::x3d::runtime::enumToken(*fsNode, "style"));
+  if (!sty.empty()) styleOut = sty[0];
+
+  return fs;
+}
+
+inline extract::TextParams readTextParams(const X3DNode &textNode) {
+  extract::TextParams t;
+  t.strings = getField<std::vector<std::string>>(textNode, "string", {});
+  t.length = getField<std::vector<float>>(textNode, "length", {});
+  t.maxExtent = getField<float>(textNode, "maxExtent", 0.0f);
+  return t;
+}
+
+// Bridge the per-codepoint FontMetrics seam to the per-line callback the layout
+// engine needs: natural advance = sum of each ready codepoint's advanceEm*size
+// (Pending/Failed contribute 0). Vertical proportions are fixed (0.8 / -0.2 of
+// size) — the seam exposes no per-line vertical metrics in v1.
+inline extract::FontMetricsCallback makeLayoutMetricsAdapter(
+    const extract::FontMetrics &fm, const std::string &family,
+    const std::string &style) {
+  return [&fm, family, style](const std::string &s,
+                              float size) -> std::tuple<float, float, float> {
+    float advance = 0.0f;
+    for (std::uint32_t cp : utf8ToCodepoints(s)) {
+      const extract::GlyphResult g = fm(extract::FontKey{family, style, cp});
+      if (g.ready()) advance += g.metrics.advanceEm * size;
+    }
+    return {advance, 0.8f * size, -0.2f * size};
+  };
+}
+
 } // namespace geombounds
 
-/// Local-frame AABB of `geom` (the node in a Shape's `geometry` slot). Empty for
-/// unsupported / null / degenerate geometry.
-inline Aabb localGeometryBounds(const X3DNode *geom) {
+/// Local-frame AABB of a geometry node. Text uses exact glyph layout when a
+/// FontMetrics `fm` is supplied (never under-bounds the rendered glyphs);
+/// otherwise it falls back to the conservative heuristic.
+inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
+                                    const extract::FontMetrics *fm) {
   using namespace geombounds;
   if (!geom) return {};
   const std::string t = geom->nodeTypeName();
@@ -192,6 +309,29 @@ inline Aabb localGeometryBounds(const X3DNode *geom) {
     return r;
   }
   if (t == "Text") {
+    // Exact glyph layout when a FontMetrics seam was injected: the same
+    // FontStyleParams/TextParams and per-line adapter the renderer uses, so the
+    // bound equals the rendered glyph extents. Falls through to the heuristic
+    // when no metrics are available (the SDK is IO-free; default is null).
+    if (fm && *fm) {
+      std::string family, style;
+      const extract::FontStyleParams fsp =
+          readFontStyleParams(*geom, family, style);
+      const extract::TextParams tp = readTextParams(*geom);
+      const extract::FontMetricsCallback lineMetrics =
+          makeLayoutMetricsAdapter(*fm, family, style);
+      const extract::TextLayoutResult layout =
+          extract::computeTextLayout(fsp, tp, lineMetrics);
+      const extract::TextExtent2D ext = extract::textLayoutExtent(fsp, layout);
+      if (!ext.empty) {
+        Aabb r;
+        r.expand({ext.minX, ext.minY, 0.0f});
+        r.expand({ext.maxX, ext.maxY, 0.0f});
+        return r;
+      }
+      // No glyphs laid out (e.g. an empty string list): fall through to the
+      // heuristic so the bound is never tighter than before.
+    }
     // Conservative symmetric estimate. Exact glyph bounds need a font engine
     // (backlog M2B-1). width ~ longest-string * size * 0.6, capped by maxExtent;
     // height ~ lineCount * size * spacing. Centered box (justification-agnostic).
@@ -216,6 +356,20 @@ inline Aabb localGeometryBounds(const X3DNode *geom) {
 
   // Long-tail types not yet handled return empty.
   return {};
+}
+
+/// Local-frame AABB of a geometry node. Text uses the conservative heuristic
+/// (no font metrics available at this call site).
+inline Aabb localGeometryBounds(const X3DNode *geom) {
+  return localGeometryBoundsImpl(geom, nullptr);
+}
+
+/// Local-frame AABB of a geometry node with a FontMetrics seam: Text lays its
+/// glyphs out exactly (matching the renderer) so the bound never under-bounds
+/// them. A null/empty `fm` degrades to the heuristic path above.
+inline Aabb localGeometryBounds(const X3DNode *geom,
+                                const extract::FontMetrics &fm) {
+  return localGeometryBoundsImpl(geom, &fm);
 }
 
 } // namespace x3d::runtime

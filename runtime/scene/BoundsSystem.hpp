@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace x3d::runtime {
@@ -24,6 +25,12 @@ using namespace x3d::core;
 
 class BoundsSystem {
 public:
+  // Optional FontMetrics seam for exact Text glyph bounds. When unset (the
+  // default — the SDK is IO-free), Text uses its conservative heuristic.
+  void setFontMetrics(extract::FontMetrics fm) {
+    fontMetrics_ = std::move(fm);
+  }
+
   void buildBounds(const Scene &scene, const TransformSystem &ts) {
     parent_.clear(); children_.clear(); local_.clear(); indexed_.clear();
     computing_.clear();
@@ -31,7 +38,14 @@ public:
       if (root) index(root.get(), nullptr);
     for (const auto &root : scene.rootNodes)
       if (root) compute(root.get(), ts);
+    ++revision_;
   }
+
+  /// Monotonic revision — bumps whenever any node's local bound is (re)computed
+  /// to a different value (buildBounds, or a propagate that actually changed a
+  /// bound). A no-op tick leaves it unchanged. Cheap cache key for bound-derived
+  /// consumer state (e.g. a pick index's world AABBs).
+  std::uint64_t revision() const { return revision_; }
 
   const Aabb &localBounds(const X3DNode *n) const {
     static const Aabb kEmpty{};
@@ -48,10 +62,12 @@ public:
     // Snapshot the changed nodes (markDirty during the walk would mutate the list).
     std::vector<const X3DNode *> seed(dirty.changedNodes().begin(),
                                       dirty.changedNodes().end());
+    bool changed = false;
     for (const X3DNode *n : seed) {
       if (!local_.count(n)) continue;            // not bounds-participating
-      recomputeUp(n, ts, dirty);
+      if (recomputeUp(n, ts, dirty)) changed = true;
     }
+    if (changed) ++revision_;
   }
 
 private:
@@ -113,7 +129,7 @@ private:
       }
     Aabb a;
     if (!authorBounds(n, a)) {       // author bbox is authoritative; else compute
-      a = localGeometryBounds(n);    // empty unless n is itself a geometry node
+      a = localGeometryBounds(n, fontMetrics_); // empty unless n is itself a geometry node
       a.unionWith(childUnion);
     }
     local_[n] = a;
@@ -122,14 +138,16 @@ private:
   }
 
   // Recompute n's local AABB and re-union ancestors, stopping when unchanged.
-  void recomputeUp(const X3DNode *n, const TransformSystem &ts, DirtyTracker &dirty) {
+  // Returns true if any node in the chain actually changed.
+  bool recomputeUp(const X3DNode *n, const TransformSystem &ts, DirtyTracker &dirty) {
     Aabb before = localBounds(n);
     Aabb now = recomputeLocal(n, ts);
     local_[n] = now;
     dirty.markDirty(n, DirtyBounds);
-    if (equalish(before, now)) return; // no change to propagate further? still update self
+    if (equalish(before, now)) return false; // no change to propagate further? still update self
     const X3DNode *p = parentOf(n);
     if (p) recomputeUp(p, ts, dirty);
+    return true;
   }
 
   // Recompute one node's local AABB from its CURRENT geometry + its children's
@@ -139,7 +157,7 @@ private:
     (void)ts;
     Aabb a;
     if (authorBounds(n, a)) return a;
-    a = localGeometryBounds(n);                 // empty unless n is a geometry node
+    a = localGeometryBounds(n, fontMetrics_);   // empty unless n is a geometry node
     auto it = children_.find(n);
     if (it != children_.end())
       for (const X3DNode *c : it->second) {
@@ -168,6 +186,8 @@ private:
   std::unordered_set<const X3DNode *> indexed_;   // subtrees already recursed (cycle/sharing guard)
   std::unordered_set<const X3DNode *> computing_; // nodes in-progress in compute() (cycle break)
   static inline const Aabb kCycleEmpty{};         // back-edge contribution on a cycle
+  extract::FontMetrics fontMetrics_{};            // empty => heuristic Text bounds
+  std::uint64_t revision_ = 0;                    // monotonic local-bound revision
 };
 
 } // namespace x3d::runtime

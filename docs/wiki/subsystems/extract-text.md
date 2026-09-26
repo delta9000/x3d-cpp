@@ -97,6 +97,12 @@ using FontMetricsCallback =
 TextLayoutResult computeTextLayout(
     const FontStyleParams&, const TextParams&, FontMetricsCallback);
 
+// Axis-aligned 2D glyph extent of a laid-out block (local Z=0 plane). Shared
+// with the geometry-bounds path so an injected FontMetrics yields exact,
+// culling-safe Text bounds without re-deriving the layout.
+struct TextExtent2D { float minX, minY, maxX, maxY; bool empty; };
+TextExtent2D textLayoutExtent(const FontStyleParams&, const TextLayoutResult&);
+
 // ---- TextExtract.hpp ----
 
 // Produce glyph-quad MeshData for textNode.
@@ -119,6 +125,8 @@ int setTextOutputs(X3DNode& textNode, const TextLayoutResult& layout);
 - **MeshBuildOptions::fontMetrics** — the field in `runtime/extract/MeshBuilder.hpp`'s `MeshBuildOptions` struct that carries the `FontMetrics` callback into the extraction pipeline. Defaults to `makeMonospaceStub()`. The `SceneExtractor` stores a copy and forwards it to `buildTextMesh` when it visits a `Text` geometry node.
 
 - **Reflection / generated-bindings seam** — `readFontStyleParams` and `readTextParams` read all `Text` and `FontStyle` node fields via `geombounds::getField` and `geombounds::getNode` rather than casting to concrete node types. Enum fields (`justify`, `family`, `style`) are read through the node-agnostic `getEnumString` reflection thunk, keeping `TextExtract.hpp` decoupled from the generated enum-class types. `setTextOutputs` writes the three `outputOnly` output fields through the reflection `set` lambdas.
+
+- **Bounds consumption (T-TEXT-D2 / M2B-1)** — the geometry-bounds path (`runtime/scene/GeometryBounds.hpp`) reads the same `FontStyleParams`/`TextParams` and runs the same `computeTextLayout` through an injected `extract::FontMetrics`, then takes `textLayoutExtent` as the `Text` node's local AABB. `BoundsSystem::setFontMetrics` carries the seam; with it unset the bound is the conservative heuristic. The layout engine stays the single source of glyph placement for both rendering and bounds.
 
 - **SceneExtractor T-TEXT dispatch** — inside `SceneExtractor`, the geometry dispatch hook (labelled `T-TEXT` in `runtime/extract/SceneExtractor.hpp`) detects a `Text` geometry node, calls `buildTextMesh` to produce the glyph-quad `MeshData`, and then calls `setTextOutputs` to populate the node's `outputOnly` fields. The produced `MeshData` carries `isGlyphMesh=true` and `solid=false` (two-sided per §15.2.1.2). The consumer uses `isGlyphMesh` to route the render item to a text-shader path.
 

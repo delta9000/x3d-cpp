@@ -1,6 +1,11 @@
 // geometry_bounds_test.cpp
 #include "GeometryBounds.hpp"
+#include "BoundsSystem.hpp"
+#include "TransformSystem.hpp"
+#include "TextExtract.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
+#include "X3DScene.hpp"
+#include "X3DDocument.hpp"
 #include <any>
 #include "doctest/doctest.h"
 #include <cmath>
@@ -9,6 +14,7 @@
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
+using namespace x3d::runtime::extract;
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 static void setF(const std::shared_ptr<X3DNode>& n, const char* name, std::any v) {
   for (auto& f : n->fields()) if (f.x3dName == name && f.set) { f.set(*n, std::move(v)); return; }
@@ -104,5 +110,79 @@ TEST_CASE("geometry_bounds_test") {
     Aabb p = localGeometryBounds(np.get());
     CHECK((feq(p.min.x,0) && feq(p.max.x,1) && feq(p.max.y,1) && feq(p.max.z,4)));
   }
+  return;
+}
+
+// ===========================================================================
+// Exact Text bounds via the FontMetrics seam (T-TEXT-D2 / M2B-1).
+// A fake FontMetrics with known, non-uniform advances: 'W' -> 1.0 em, else 0.5.
+// ===========================================================================
+static FontMetrics fakeMetrics() {
+  return [](const FontKey &k) -> GlyphResult {
+    const float adv = (k.codepoint == 'W') ? 1.0f : 0.5f;
+    return GlyphResult::makeReady(GlyphMetrics{adv, false, 0.f, 0.f, 0.f, 0.f});
+  };
+}
+static Aabb aabbOfPositions(const MeshData &m) {
+  Aabb a;
+  for (const auto &p : m.positions) a.expand(p);
+  return a;
+}
+static bool contains(const Aabb &outer, const Aabb &inner) {
+  return !outer.empty && !inner.empty &&
+         outer.min.x <= inner.min.x + 1e-4f && outer.min.y <= inner.min.y + 1e-4f &&
+         outer.max.x >= inner.max.x - 1e-4f && outer.max.y >= inner.max.y - 1e-4f;
+}
+
+TEST_CASE("text_bounds_fontmetrics") {
+  // Two-line Text, size=1 spacing=1, justify MIDDLE MIDDLE. Known advances:
+  // line "W0" = 1.5, line "WW" = 2.0.
+  auto text = createX3DNode("Text");
+  setF(text, "string", std::any(std::vector<std::string>{"W0", "WW"}));
+  auto fstyle = createX3DNode("FontStyle");
+  setF(fstyle, "justify",
+       std::any(std::vector<JustifyChoices>{JustifyChoices::MIDDLE_MIDDLE}));
+  setF(text, "fontStyle", std::any(std::shared_ptr<X3DNode>(fstyle)));
+
+  const FontMetrics fm = fakeMetrics();
+
+  // Without metrics: the conservative heuristic is unchanged (pinned).
+  Aabb h = localGeometryBounds(text.get());
+  CHECK((!h.empty));
+  CHECK((feq(h.min.x, -1.2f) && feq(h.max.x, 1.2f))); // longest=2 * size * 0.6
+  CHECK((feq(h.min.y, -2.0f) && feq(h.max.y, 2.0f))); // 2 lines * size * spacing
+
+  // With metrics: exact glyph extents (the layout's own extent).
+  Aabb b = localGeometryBounds(text.get(), fm);
+  CHECK((feq(b.min.x, -1.0f) && feq(b.max.x, 1.0f)));
+  CHECK((feq(b.min.y, -1.0f) && feq(b.max.y, 1.0f)));
+
+  // Culling safety: the bound must CONTAIN every rendered glyph.
+  const MeshData mesh = buildTextMesh(*text, fm);
+  CHECK((contains(b, aabbOfPositions(mesh))));
+
+  // And it must equal the layout's glyph extent (not over-bound either).
+  std::string family, style;
+  const FontStyleParams fsp = readFontStyleParams(*text, family, style);
+  const TextParams tp = readTextParams(*text);
+  const TextLayoutResult layout =
+      computeTextLayout(fsp, tp, makeLayoutMetricsAdapter(fm, family, style));
+  const TextExtent2D ext = textLayoutExtent(fsp, layout);
+  CHECK((feq(b.min.x, ext.minX) && feq(b.max.x, ext.maxX)));
+  CHECK((feq(b.min.y, ext.minY) && feq(b.max.y, ext.maxY)));
+
+  // BoundsSystem threads its injected FontMetrics into the Text bound.
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(text)));
+  Scene scene;
+  scene.addRootNode(shape);
+  TransformSystem ts;
+  ts.buildIndex(scene);
+  BoundsSystem bs;
+  bs.setFontMetrics(fakeMetrics());
+  bs.buildBounds(scene, ts);
+  Aabb s = bs.localBounds(shape.get());
+  CHECK((feq(s.min.x, -1.0f) && feq(s.max.x, 1.0f)));
+  CHECK((feq(s.min.y, -1.0f) && feq(s.max.y, 1.0f)));
   return;
 }
