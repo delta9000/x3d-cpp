@@ -15,6 +15,8 @@
 #define X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
 
 #include "X3DSystem.hpp"
+#include "FieldRead.hpp"
+#include "RecursionLimits.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DScene.hpp"
 #include "AssetResolver.hpp"
@@ -35,6 +37,24 @@ namespace x3d::runtime {
 using namespace x3d::core;
 
 namespace detail_loadsensor {
+// NSN-12: an Inline counts as loaded only once it and every nested sub-Inline
+// it asks to load have loaded. Parse-time expansion replaces each loaded Inline
+// with a Group, so an Inline node still present (load TRUE) in an expanded
+// child's content is a sub-Inline that failed to load.
+inline bool hasUnloadedInline(const X3DNode &n, std::size_t depth = 0) {
+  if (depth >= kMaxNestingDepth) return false;
+  bool found = false;
+  forEachChildNode(n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+    if (found) return;
+    if (c->nodeTypeName() == "Inline") {
+      auto *uo = dynamic_cast<const x3d::nodes::X3DUrlObject *>(c.get());
+      if (!uo || uo->getLoad()) found = true;
+      return;
+    }
+    found = hasUnloadedInline(*c, depth + 1);
+  });
+  return found;
+}
 // Embedded schemes carry their bytes in the URL string itself, so they resolve
 // Ready without any resolver call.
 inline bool isEmbeddedScheme(const std::string &u) {
@@ -208,7 +228,9 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
       if (inserted) {
         cs.preseeded = pre;
-        if (pre || plan.vacuousReady)
+        if (pre && detail_loadsensor::hasUnloadedInline(*c))
+          setChildStatus(cs, c, ls, ChildStatus::Failed); // NSN-12: nested failed
+        else if (pre || plan.vacuousReady)
           setChildStatus(cs, c, ls, ChildStatus::Ready);
         if (!pre && uo) {
           cs.lastUrl = uo->getUrl();

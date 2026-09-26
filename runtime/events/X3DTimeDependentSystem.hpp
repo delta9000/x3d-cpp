@@ -176,7 +176,25 @@ private:
     if (st.active) {
       const bool stoppedByDisable = !enabled;
       const bool stoppedByStopTime = stopTime > startTime && stopTime <= now;
-      if (stoppedByDisable || stoppedByStopTime) {
+      // §8.2.4.3: a node "may be restarted while active by sending a
+      // set_stopTime event equal to the current time … and a set_startTime
+      // event", processed as set_stopTime then set_startTime. Restart in place:
+      // it stays active (no isActive FALSE/TRUE pair in one timestamp) and a new
+      // run begins at that instant (CONF-CRITIC-1). The pair usually arrives by
+      // ROUTE during a cascade, after this System ran, so it is recognised on
+      // the next tick by stopTime == startTime rather than by == now.
+      const double liveStart = readStartTime(node);
+      if (!stoppedByDisable && stoppedByStopTime && liveStart == stopTime &&
+          liveStart > st.activeStartTime) {
+        if (st.paused) {
+          emit<SFBool>(ctx, node, "isPaused", false);
+          st.paused = false;
+        }
+        st.timeBase = liveStart;
+        st.activeStartTime = liveStart;
+        st.lastCycleAnnounced = 0;
+        emitCycleTime(node, liveStart, ctx);
+      } else if (stoppedByDisable || stoppedByStopTime) {
         // Spec 8.4.1: a TimeSensor is guaranteed to generate final time and
         // fraction_changed events. On the disable/stop edge, evaluate and send
         // this tick's continuous outputs (time/fraction_changed/elapsedTime)
@@ -304,13 +322,11 @@ private:
       if (pauseTime > resumeTime && pauseTime > 0.0 && pauseTime <= now) {
         st.paused = true;
         emit<SFBool>(ctx, node, "isPaused", true);
-        // §8.2.4.4: also emit pauseTime_changed at the pause edge. Emitting the
-        // inputOutput field on its canonical name fans out to its *_changed
-        // ROUTEs and re-writes the field to its own value (a no-op). The echo
-        // carries the field value (the pause trigger time ~= the pause instant);
-        // a strict "simulation now" reading would pass `now` here instead.
-        // (TDN-1)
-        emit<SFTime>(ctx, node, "pauseTime", static_cast<SFTime>(pauseTime));
+        // §8.2.4.4: pauseTime_changed at the pause edge, "with the timestamp
+        // indicating when pausing occurred" — the simulation time now, not the
+        // authored field value (CONF-TDN1V). Emitting the inputOutput on its
+        // canonical name fans out to its *_changed ROUTEs.
+        emit<SFTime>(ctx, node, "pauseTime", static_cast<SFTime>(now));
       }
     } else {
       // Resume when resumeTime is in (pauseTime, now]. §8.2.4.4 requires
@@ -322,9 +338,9 @@ private:
         // continue from where they froze (exclude the paused interval).
         st.timeBase += (resumeTime - pauseTime);
         emit<SFBool>(ctx, node, "isPaused", false);
-        // §8.2.4.4: emit resumeTime_changed at the resume edge (TDN-2). See the
-        // pause-edge note above on the echo mechanism and value choice.
-        emit<SFTime>(ctx, node, "resumeTime", static_cast<SFTime>(resumeTime));
+        // §8.2.4.4: resumeTime_changed "reporting the simulation time when the
+        // node was resumed" (TDN-2, CONF-TDN1V) — now, as at the pause edge.
+        emit<SFTime>(ctx, node, "resumeTime", static_cast<SFTime>(now));
       }
     }
   }

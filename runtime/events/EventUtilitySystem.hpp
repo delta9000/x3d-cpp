@@ -43,7 +43,11 @@ public:
   }
 };
 
-/// §30.4.6 IntegerTrigger: set_boolean=TRUE -> triggerValue=integerKey; FALSE ignored.
+/// §30.4.6 IntegerTrigger: set_boolean=TRUE -> triggerValue=integerKey; FALSE
+/// ignored. "Resetting the value of the integerKey field itself generates
+/// corresponding integerKey_changed and triggerValue_changed events" with that
+/// same value — integerKey_changed comes from the inputOutput fan-out, and a
+/// field-write listener adds triggerValue (TRIG-4), same value or not.
 class IntegerTriggerSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
@@ -52,6 +56,10 @@ public:
     n->setOnSet_booleanHandler([&ctx, n](const SFBool &v) {
       if (!v) return; // honored only on TRUE
       ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
+    });
+    ctx.addFieldWriteListener([&ctx, n](const FieldAddress &a) {
+      if (a.node == n && (a.field == "integerKey" || a.field == "set_integerKey"))
+        ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
     });
   }
 };

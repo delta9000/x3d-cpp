@@ -128,7 +128,7 @@ public:
     bindings_.bindDefaults();
     pick_.build(scene);
     cascade_.setFieldObserver(
-        [this](const FieldAddress &a) { classifyDirty(a); });
+        [this](const FieldAddress &a) { onFieldWritten(a); });
   }
 
   /** @brief Remove all registered ROUTEs from the execution context. */
@@ -250,7 +250,7 @@ public:
         // before assignment), so skipping classifyDirty keeps the tracker honest.
         return FieldWriteResult::TypeMismatch;
       }
-      classifyDirty(FieldAddress{node, field});
+      onFieldWritten(FieldAddress{node, field});
       return FieldWriteResult::Ok;
     }
     return FieldWriteResult::UnknownField;
@@ -447,6 +447,18 @@ public:
   // sets it; NavigationSystem honors it (skips pointer-drag). See ADR / the
   // reference-consumer interaction spec.
   bool pointerConsumedBySensor() const { return pointerConsumedBySensor_; }
+
+  /// Called after every field write (a cascade delivery or writeField), for a
+  /// System whose node reacts to an inputOutput write itself — e.g. §30.4.6
+  /// IntegerTrigger re-emitting triggerValue, §21.2 key-device focus. The
+  /// listener may post events; they join the current timestamp.
+  using FieldWriteListener = std::function<void(const FieldAddress &)>;
+  void addFieldWriteListener(FieldWriteListener l) {
+    fieldWriteListeners_.push_back(std::move(l));
+    // Listeners must hear cascade deliveries even before (or without)
+    // buildSceneGraph, which otherwise installs this same observer.
+    cascade_.setFieldObserver([this](const FieldAddress &a) { onFieldWritten(a); });
+  }
   void setPointerConsumedBySensor(bool v) { pointerConsumedBySensor_ = v; }
 
   /// Accumulated world transform at `node` (product of ancestor Transform
@@ -510,6 +522,13 @@ public:
 
 private:
   /// Map a delivered field to dirty flags on its node.
+  // A field was written (cascade delivery or writeField): feed dirty tracking,
+  // then the Systems that react to inputOutput writes.
+  void onFieldWritten(const FieldAddress &a) {
+    classifyDirty(a);
+    for (const auto &l : fieldWriteListeners_) l(a);
+  }
+
   void classifyDirty(const FieldAddress &a) {
     if (!a.node) return;
     static const char *kTRS[] = {"translation", "rotation", "scale", "center",
@@ -576,6 +595,7 @@ private:
   std::uint64_t tickGeneration_ = 0; // monotonic advance count; see tickGeneration()
   bool ticking_ = false; // reentrancy guard for tick()
   bool pointerConsumedBySensor_ = false; // per-tick nav/sensor arbitration flag
+  std::vector<FieldWriteListener> fieldWriteListeners_;
 };
 
 } // namespace x3d::runtime

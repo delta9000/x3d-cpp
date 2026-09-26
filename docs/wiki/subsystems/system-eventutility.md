@@ -2,7 +2,7 @@
 title: EventUtility System
 summary: EventUtility nodes — BooleanFilter/Sequencer/Toggle/Trigger and IntegerSequencer for wiring logic without scripting.
 tags: [subsystem, event-utility, boolean-filter, sequencer, toggle, trigger]
-updated: 2026-06-20
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -29,7 +29,7 @@ bindings define but whose handlers were never wired to a `System`:
 | Node | Spec clause | Behavior |
 |---|---|---|
 | `BooleanTrigger` | §30.4.4 | Any `set_triggerTime` → emits `triggerTrue=TRUE` |
-| `IntegerTrigger` | §30.4.6 | `set_boolean=TRUE` → emits `triggerValue=integerKey`; FALSE ignored |
+| `IntegerTrigger` | §30.4.6 | `set_boolean=TRUE` → emits `triggerValue=integerKey`; FALSE ignored. Writing `integerKey` (even to the same value) also emits `triggerValue` with that value (TRIG-4), via a field-write listener |
 | `TimeTrigger` | §30.4.7 | Any `set_boolean` (value irrelevant) → emits `triggerTime=now` |
 | `BooleanFilter` | §30.4.1 | Routes `inputTrue`/`inputFalse` by value; always emits `inputNegate` |
 | `BooleanToggle` | §30.4.3 | `set_boolean=TRUE` flips `toggle`; FALSE is a no-op |

@@ -2,7 +2,7 @@
 title: Execution Context
 summary: Per-tick driver, field-write seam, and scene bridge that coordinate the runtime event loop.
 tags: [subsystem, execution-context, tick, runtime, events]
-updated: 2026-07-18
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -198,6 +198,10 @@ The `tick(now)` implementation enforces two spec requirements:
 
 2. **Reentrancy guard**: a `ticking_` flag is an implementation safety decision that causes a recursive `tick()` call (e.g. a System calling `tick` from `update`) to silently no-op, protecting timestamp and dirty state from clobbering. This guard is not an ISO 19775-1 requirement; it is a defensive implementation choice.
 
+
+### Field-write listeners
+
+`addFieldWriteListener(FieldWriteListener)` registers a callback run after every field write, whether a cascade delivery or `writeField`, after dirty classification. Systems use it for nodes that react to an inputOutput write themselves: IntegerTrigger re-emitting `triggerValue` (§30.4.6) and key-device focus arbitration (§21.2). A listener may post events; they join the current timestamp.
 ## How it is tested
 
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `m2b_tick_test`) — `runtime/events/tests/m2b_tick_test.cpp`: verifies that `buildSceneGraph` + `tick` correctly compute world and local bounds for a translated Shape, and that a cascade-delivered field change updates them.

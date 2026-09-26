@@ -2,7 +2,7 @@
 title: Key-Device Sensor System
 summary: Time-driven system that drains the per-tick KeyState event queue and emits ISO/IEC 19775-1 §21 outputs to every enabled KeySensor and StringSensor.
 tags: [subsystem, key-device, keysensor, stringsensor, keyboard, key-state, events]
-updated: 2026-06-20
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/sensors.md
@@ -79,6 +79,13 @@ public:
 - **`ctx.postEvent`** — output events are posted via `ctx.postEvent(node, fieldName, std::any(value))` and enter the event cascade. Multiple events to the same field in one tick are coalesced (last-wins) before posting, satisfying §4.4.8.3.
 
 - **`StringSensor::getDeletionAllowed()`** — per-instance flag checked before removing the last character from the per-sensor accumulator (`StringState`). When `false`, `pushStringDeletion` events are ignored for that sensor.
+
+### Focus arbitration (§21.2)
+
+"Only one key device sensor may be active at a time": when a KeySensor or
+StringSensor receives `enabled` TRUE, the system sends `enabled` FALSE to every
+other enabled key device sensor (KDS-6), through an
+`X3DExecutionContext::addFieldWriteListener` hook.
 
 ### KeySensor outputs per tick
 
