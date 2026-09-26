@@ -1,8 +1,8 @@
 ---
 title: "ADR-0027: A Single Reference Lighting Evaluator for the Spec-Normative Shading Path"
-summary: "X3D §17 pins a normative lighting equation (per-light contribution, ambient/diffuse/specular terms, the shadowTest modulation), so unlike shadow *generation* (ADR-0028) the shading math HAS a reference result. This ADR names that result the responsibility of one reference lighting evaluator — the function the PoC/cpu_raster MaterialShader already approximates — and makes the open color-space, ambient, and shadow-modulation conventions decisions of that evaluator rather than per-consumer accidents. Proposed."
-tags: [adr, lighting, materials, rendering, conformance, thesis, proposed]
-updated: 2026-06-26
+summary: "X3D §17 pins a normative lighting equation (per-light contribution, ambient/diffuse/specular terms, the shadowTest modulation), so unlike shadow *generation* (ADR-0028) the shading math HAS a reference result. This ADR names that result the responsibility of one reference lighting evaluator — the function the PoC/cpu_raster MaterialShader already approximates — and makes the open color-space, ambient, and shadow-modulation conventions decisions of that evaluator rather than per-consumer accidents. Accepted: PhysicalMaterial shades in linear space, Material and UnlitMaterial in display space."
+tags: [adr, lighting, materials, rendering, conformance, thesis, accepted]
+updated: 2026-09-26
 related:
   - ../architecture.md
   - 0021-material-shader-design.md
@@ -14,10 +14,12 @@ related:
 
 ## Status
 
-**Proposed** (2026-06-26). The evaluator exists today only as the reference
-consumers' `MaterialShader` (PoC + cpu_raster); this ADR names it, fixes the
-conventions it must pin, and is the decision ADR-0028 already cites as the home
-of the spec-normative shadow modulation. No SDK API ships with this ADR.
+**Accepted** (2026-09-26; proposed 2026-06-26). The evaluator exists only as
+the reference consumers' `MaterialShader` (PoC + cpu_raster); this ADR names it,
+fixes the conventions it must pin, and is the decision ADR-0028 already cites as
+the home of the spec-normative shadow modulation. No SDK API ships with this ADR.
+On acceptance the colour-space convention was refined from "linear everywhere"
+to the rule below.
 
 ## Context
 
@@ -60,11 +62,18 @@ elevated from "incidental code" to "the thing conformance is measured against."
 
 **2. The evaluator owns the unpinned conventions.** The following are decisions of
 this evaluator, pinned once, not per-consumer:
-   - **Color space.** Decode authored sRGB colors to linear at build time, do all
-     lighting in linear, and encode outputs back to sRGB — uniformly across
-     Unlit/Phong/Physical so the same authored value matches.
-   - **Ambient term.** The ambient contribution is *linear* in diffuse, not
-     squared.
+   - **Color space: linear when PhysicalMaterial.** ISO 19775-1's lighting
+     clause says nothing about colour space, so this is chosen to balance spec
+     fidelity and appearance. PhysicalMaterial, glTF's material model, uses the
+     glTF linear workflow: factors are linear, colour textures are sRGB-decoded,
+     lighting is linear and the output is sRGB-encoded. Material (Phong) and
+     UnlitMaterial stay in display space, with no decode and no encode, so X3D
+     3.x content keeps the look it was authored for and the same authored
+     colour renders alike through Phong and Unlit. This matches common X3D
+     browser practice (e.g. Castle Game Engine's default).
+   - **Ambient term.** Linear in diffuse, exactly as §17 writes it:
+     `ambient_i = light.ambientIntensity × material.ambientIntensity ×
+     diffuseParameter`, not squared.
    - **Shadow modulation.** The evaluator takes a per-light `visibility ∈ [0,1]`
      (and `shadowIntensity`) and applies `shadowTestᵢ` exactly per §17. This is
      the API surface ADR-0028's `ShadowQuery` seam feeds; the current hardcoded

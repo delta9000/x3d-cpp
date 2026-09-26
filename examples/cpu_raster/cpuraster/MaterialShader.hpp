@@ -8,7 +8,8 @@
 // Each is written against glsl.hpp so it reads as a near-verbatim transcription
 // of the GLSL — this is the "GLSL emulation" of the fixed-function programs:
 // same lighting math, same texture-slot semantics, same screen-space-derivative
-// TBN normal mapping, same sRGB output encode, so a CPU frame matches the GL PoC.
+// TBN normal mapping, same colour-space rules (ADR-0027: Phong/Unlit in display
+// space, PhysicalMaterial linear with sRGB output), so a CPU frame matches the GL PoC.
 //
 // Each factory returns a Rasterizer::FragmentShader closure capturing the
 // resolved material + lights + textures by value.
@@ -125,20 +126,25 @@ findSlot(const ex::MaterialDesc &m,
   return nullptr;
 }
 
-inline MaterialTextures buildTextures(const ex::MaterialDesc &m) {
+// `linearWorkflow`: PhysicalMaterial decodes its colour textures from sRGB and
+// shades in linear; Phong stays in display space and samples them as authored
+// (ADR-0027). Data textures (normal, metallic-roughness, occlusion) are never
+// decoded.
+inline MaterialTextures buildTextures(const ex::MaterialDesc &m, bool linearWorkflow) {
   MaterialTextures tx;
   using Slot = ex::TextureRef::Slot;
+  const bool colour = linearWorkflow;
   if (const auto *r = findSlot(m, {Slot::BaseColor, Slot::Diffuse})) {
-    tx.base = Texture::fromRef(*r, /*srgb=*/true);
+    tx.base = Texture::fromRef(*r, /*srgb=*/colour);
     tx.sphereGen =
         r->hasTexCoordGen && r->texCoordGen.mode == ex::TexCoordGenMode::Sphere;
   }
   if (const auto *r = findSlot(m, {Slot::Normal}))
     tx.normal = Texture::fromRef(*r, /*srgb=*/false);
   if (const auto *r = findSlot(m, {Slot::Emissive}))
-    tx.emissive = Texture::fromRef(*r, /*srgb=*/true);
+    tx.emissive = Texture::fromRef(*r, /*srgb=*/colour);
   if (const auto *r = findSlot(m, {Slot::Specular}))
-    tx.specular = Texture::fromRef(*r, /*srgb=*/true);
+    tx.specular = Texture::fromRef(*r, /*srgb=*/colour);
   if (const auto *r = findSlot(m, {Slot::MetallicRoughness}))
     tx.mr = Texture::fromRef(*r, /*srgb=*/false);
   if (const auto *r = findSlot(m, {Slot::Occlusion}))
@@ -203,7 +209,8 @@ inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors)
 }
 
 // ---------------------------------------------------------------------------
-// PHONG (lit.frag): Blinn-Phong, two-sided, textures, normal map, sRGB output.
+// PHONG (lit.frag): Blinn-Phong, two-sided, textures, normal map. Display
+// space: no sRGB decode or encode, so it matches UnlitMaterial (ADR-0027).
 // ---------------------------------------------------------------------------
 inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
                                       std::vector<EyeLight> lights,
@@ -211,7 +218,6 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
   const glsl::vec4 uDiffuse = glsl::vec4(m.toRGBA());
   const glsl::vec3 uEmissive = glsl::vec3(m.emissive);
   const float ai = m.phong.ambientIntensity;
-  const glsl::vec3 uAmbient = uDiffuse.xyz() * ai;
   const glsl::vec3 uSpecular = glsl::vec3(m.phong.specular);
   const float uShininess = m.phong.shininess;
   // Compare the enum directly. AlphaMode is {Opaque=0, Mask=1, Blend=2}; the PoC
@@ -220,7 +226,7 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
   const bool maskMode = (m.alphaMode == ex::AlphaMode::Mask);
   const float alphaCutoff = m.alphaCutoff;
   const float normalScale = m.normalScale;
-  const MaterialTextures tx = buildTextures(m);
+  const MaterialTextures tx = buildTextures(m, /*linearWorkflow=*/false);
 
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
     const glsl::vec2 uv =
@@ -250,11 +256,11 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
       glsl::vec3 L;
       float atten;
       if (!detail::resolveLight(Lt, f.posEye, L, atten)) continue;
-      // §17.2.2.4 ambient: ambientIntensity_i · materialAmbientIntensity ·
-      // diffuseColor, gated by attenuation/spot like the light's other terms.
-      // `uAmbient · base` folds in the surface `base` — today's squared-diffuse
-      // ambient convention (card RND-2, pending an ADR), unchanged here.
-      lit = lit + (uAmbient * base) * Lt.color * (Lt.ambientIntensity * atten);
+      // §17 ambient: light.ambientIntensity × ambientParameter, where
+      // ambientParameter = material ambientIntensity × diffuseParameter (the
+      // textured/vertex-coloured base) — linear in diffuse (ADR-0027). Gated by
+      // attenuation/spot like the light's other terms.
+      lit = lit + (base * ai) * Lt.color * (Lt.ambientIntensity * atten);
       float ndl = glsl::maxf(glsl::dot(N, L), 0.0f);
       lit = lit + base * Lt.color * (ndl * atten);
       if (ndl > 0.0f) {
@@ -263,8 +269,7 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
         lit = lit + specCol * Lt.color * (std::pow(ndh, expo) * atten);
       }
     }
-    lit = glsl::linearToSRGB(lit); // Phong enables gamma output (PoC parity).
-    out = glsl::vec4(lit, alpha);
+    out = glsl::vec4(lit, alpha); // display space: no encode (ADR-0027).
     return true;
   };
 }
@@ -286,7 +291,7 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
   const float occlusionStrength = m.physical.occlusionStrength;
   const bool maskMode = (m.alphaMode == ex::AlphaMode::Mask);
   const float alphaCutoff = m.alphaCutoff;
-  const MaterialTextures tx = buildTextures(m);
+  const MaterialTextures tx = buildTextures(m, /*linearWorkflow=*/true);
 
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
     // Sphere-map UV (reflection-style) for the base colour when the geometry

@@ -1063,7 +1063,9 @@ inline FragmentShader
 makeInterpretedShader(const InterpretedProgram &prog,
                       const x3d::runtime::extract::MaterialDesc &material,
                       const std::vector<EyeLight> &lights, bool hasColors) {
-  auto tx = std::make_shared<MaterialTextures>(buildTextures(material));
+  // Author shaders (usd_preview_surface, author_lambert) encode their own
+  // output, so they sample colour textures sRGB-decoded (linear workflow).
+  auto tx = std::make_shared<MaterialTextures>(buildTextures(material, /*linearWorkflow=*/true));
   auto base = std::make_shared<std::unordered_map<std::string, Value>>(
       seedUniforms(material, lights, *tx));
   const InterpretedProgram *pp = &prog;
