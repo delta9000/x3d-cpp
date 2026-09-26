@@ -109,6 +109,7 @@ int main() {
       case NodeKind::Biquad: hBiq = cr.handle; biqP = cr.params; break;
       case NodeKind::Oscillator: hOsc = cr.handle; oscP = cr.params; break;
       case NodeKind::Panner: break;
+      case NodeKind::Buffer: break;
       }
     }
     CHECK(hDest && hGain && hBiq && hOsc, "all four kinds present");

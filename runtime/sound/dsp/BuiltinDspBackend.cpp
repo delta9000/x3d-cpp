@@ -45,6 +45,11 @@ struct Node {
 
   // Biquad state (Direct Form I): input/output history.
   double x1 = 0.0, x2 = 0.0, y1 = 0.0, y2 = 0.0;
+  // Buffer source state: read position (in source samples), 0 stopped /
+  // 1 playing / 2 paused, and playback rate (pitch).
+  double cursor = 0.0;
+  int playState = 0;
+  double rate = 1.0;
 
   // Per-render scratch.
   std::vector<float> block;
@@ -151,6 +156,37 @@ BiquadCoeffs computeBiquad(FilterType type, double freqHz, double q,
 
 } // namespace
 
+namespace {
+// §16.4.17 Sound attenuation: two ellipsoids with one focus at the source,
+// oriented along `direction`. Along the line from the source to the listener at
+// angle theta from the direction, an ellipsoid of front/back extents F/B reaches
+// 2FB / ((F+B) - (F-B)cos theta). Full level inside the inner ellipsoid, a
+// linear-in-dB fall to -20 dB at the outer, silence beyond; times intensity.
+double ellipsoidGain(const NodeParams &np) {
+  const double vx = double(np.listenerPosition[0]) - np.sourcePosition[0];
+  const double vy = double(np.listenerPosition[1]) - np.sourcePosition[1];
+  const double vz = double(np.listenerPosition[2]) - np.sourcePosition[2];
+  const double d = std::sqrt(vx * vx + vy * vy + vz * vz);
+  const double dl = std::sqrt(double(np.direction[0]) * np.direction[0] +
+                              double(np.direction[1]) * np.direction[1] +
+                              double(np.direction[2]) * np.direction[2]);
+  double cosT = 1.0;
+  if (d > 1e-12 && dl > 1e-12)
+    cosT = (vx * np.direction[0] + vy * np.direction[1] + vz * np.direction[2]) / (d * dl);
+  auto reach = [cosT](double front, double back) {
+    const double denom = (front + back) - (front - back) * cosT;
+    return denom > 1e-12 ? 2.0 * front * back / denom : 0.0;
+  };
+  const double rMin = reach(np.minFront, np.minBack);
+  const double rMax = reach(np.maxFront, np.maxBack);
+  double g;
+  if (d <= rMin) g = 1.0;
+  else if (d >= rMax || rMax <= rMin) g = 0.0;
+  else g = std::pow(10.0, (-20.0 * (d - rMin) / (rMax - rMin)) / 20.0);
+  return g * np.intensity;
+}
+} // namespace
+
 struct BuiltinDspBackend::Impl {
   std::unordered_map<NodeHandle, Node> nodes;
   NodeHandle lastHandle = kInvalidNodeHandle;
@@ -212,6 +248,26 @@ struct BuiltinDspBackend::Impl {
       sumInputs(n, n.block, frames, sampleRate);
       break;
     }
+    case NodeKind::Buffer: {
+      // Decoded PCM played from a cursor at rate * srcRate/outRate, linearly
+      // interpolated; it wraps at the end (the time lifecycle stops a
+      // non-looping clip). Stopped and paused emit silence.
+      const std::vector<float> &src = n.params.samples;
+      const std::size_t len = src.size();
+      if (n.playState != 1 || len == 0 || n.params.sampleRate <= 0.0f) break;
+      const double step = n.rate * double(n.params.sampleRate) / sampleRate;
+      for (int i = 0; i < frames; ++i) {
+        const std::size_t i0 = static_cast<std::size_t>(n.cursor) % len;
+        const std::size_t i1 = (i0 + 1) % len;
+        const double frac = n.cursor - std::floor(n.cursor);
+        n.block[static_cast<std::size_t>(i)] =
+            static_cast<float>(n.params.gain * (src[i0] + (src[i1] - src[i0]) * frac));
+        n.cursor += step;
+        if (n.cursor >= double(len)) n.cursor = std::fmod(n.cursor, double(len));
+        if (n.cursor < 0.0) n.cursor = 0.0;
+      }
+      break;
+    }
     case NodeKind::Panner: {
       // Task 3: equal-power spatial DSP. All computation is BACKEND-SIDE.
       // POSITIONS cross the seam (NodeParams); no precomputed gain/coefficient
@@ -253,6 +309,9 @@ struct BuiltinDspBackend::Impl {
       // ── 2. Distance gain ─────────────────────────────────────────────────────
       double distGain = 1.0;
       switch (np.distanceModel) {
+      case DistanceModel::Ellipsoid:
+        distGain = ellipsoidGain(np); // §16.4.17 Sound node
+        break;
       case DistanceModel::Linear: {
         // gain = 1 - rolloff * (clamp(d, ref, max) - ref) / (max - ref)
         // clamped to [0, 1].
@@ -295,8 +354,9 @@ struct BuiltinDspBackend::Impl {
       double rZ = fX * uY - fY * uX;
       double rLen = std::sqrt(rX * rX + rY * rY + rZ * rZ);
 
-      double azNorm = 0.0;  // default: centered (degenerate or d=0)
-      if (rLen > 1e-12 && d > 1e-12) {
+      double azNorm = 0.0;  // default: centered (degenerate, d=0, or not spatialized)
+      const bool pan = np.distanceModel != DistanceModel::Ellipsoid || np.spatialize;
+      if (pan && rLen > 1e-12 && d > 1e-12) {
         // Normalize right vector and source direction
         rX /= rLen; rY /= rLen; rZ /= rLen;
         double srcX = dx / d, srcY = dy / d, srcZ = dz / d;
@@ -371,6 +431,26 @@ void BuiltinDspBackend::setParam(NodeHandle node, Param param, float value) {
   case Param::PositionX:  it->second.params.sourcePosition[0]  = value; break;
   case Param::PositionY:  it->second.params.sourcePosition[1]  = value; break;
   case Param::PositionZ:  it->second.params.sourcePosition[2]  = value; break;
+  case Param::ListenerPositionX: it->second.params.listenerPosition[0] = value; break;
+  case Param::ListenerPositionY: it->second.params.listenerPosition[1] = value; break;
+  case Param::ListenerPositionZ: it->second.params.listenerPosition[2] = value; break;
+  case Param::ListenerForwardX:  it->second.params.listenerForward[0]  = value; break;
+  case Param::ListenerForwardY:  it->second.params.listenerForward[1]  = value; break;
+  case Param::ListenerForwardZ:  it->second.params.listenerForward[2]  = value; break;
+  case Param::ListenerUpX:       it->second.params.listenerUp[0]       = value; break;
+  case Param::ListenerUpY:       it->second.params.listenerUp[1]       = value; break;
+  case Param::ListenerUpZ:       it->second.params.listenerUp[2]       = value; break;
+  case Param::DirectionX:        it->second.params.direction[0]        = value; break;
+  case Param::DirectionY:        it->second.params.direction[1]        = value; break;
+  case Param::DirectionZ:        it->second.params.direction[2]        = value; break;
+  case Param::Intensity:         it->second.params.intensity           = value; break;
+  case Param::PlaybackState: {
+    const int st = static_cast<int>(value);
+    if (st == 0) it->second.cursor = 0.0; // stop rewinds; pause holds
+    it->second.playState = st;
+    break;
+  }
+  case Param::PlaybackRate: it->second.rate = value; break;
   }
 }
 

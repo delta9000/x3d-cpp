@@ -5360,14 +5360,13 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 16.4.5, 16.4.20, 16.4.14; 16.4.2, 18.4.2",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "MULTI-INHERIT",
-            "SND-4",
             "TDN-5"
           ],
           "geometry": false,
@@ -5436,7 +5435,7 @@
         {
           "behaves": "inert",
           "behavioral": true,
-          "clause": "16.4.2, 16.4.5, 16.4.20, 16.4.14",
+          "clause": "16.4.5, 16.4.20, 16.4.14",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5620,7 +5619,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.17, 16.4.16, 16.4.13; 16.4.13",
+          "clause": "16.4.16, 16.4.13; 16.4.13",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5644,7 +5643,7 @@
         {
           "behaves": "inert",
           "behavioral": true,
-          "clause": "16.4.2, 16.4.5, 16.4.20, 16.4.14",
+          "clause": "16.4.5, 16.4.20, 16.4.14",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5713,12 +5712,10 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.17, 16.4.16, 16.4.13",
+          "clause": "",
           "exists": true,
           "extracts": "n/a",
-          "findings": [
-            "SND-3"
-          ],
+          "findings": [],
           "geometry": false,
           "interfaces": [
             "X3DChildNode",
@@ -5735,7 +5732,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.17, 16.4.16, 16.4.13",
+          "clause": "16.4.16, 16.4.13",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5778,7 +5775,7 @@
         {
           "behaves": "inert",
           "behavioral": true,
-          "clause": "16.4.2, 16.4.5, 16.4.20, 16.4.14",
+          "clause": "16.4.5, 16.4.20, 16.4.14",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6006,7 +6003,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 23.4.1",
           "exists": true,
@@ -6818,9 +6815,9 @@
         "AudioClip",
         "MovieTexture"
       ],
-      "note": "Blocked on the media/duration_changed seam \u2014 audio sources beyond OscillatorSource are not built (SND-4); the time-dependent lifecycle for sound sources is also inert (SND-2).",
+      "note": "MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip and MovieTexture: enabled, loop, and a cycle of duration_changed / pitch (AudioClip) or / speed (MovieTexture); an unknown duration plays until stopTime (media_time_test). Decoding and playback remain separate (SND-4).",
       "severity": "major",
-      "status": "deferred",
+      "status": "closed",
       "summary": "AudioClip/MovieTexture have no time-lifecycle System \u2014 startTime/loop/isActive inert."
     },
     {
@@ -7251,36 +7248,34 @@
       "summary": "X3DTimeDependentNode lifecycle ignored \u2014 sound nodes emit unconditionally; startTime/stopTime/pauseTime/resumeTime/loop not honored and isActive/isPaused/elapsedTime never emitted."
     },
     {
-      "clause": "16.4.17, 16.4.16, 16.4.13",
+      "clause": "16.4.16, 16.4.13",
       "component": "Sound",
       "id": "SND-3",
       "nodes": [
-        "Sound",
         "SpatialSound",
         "ListenerPointSource"
       ],
-      "note": "SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: the \u00a716 Sound ellipsoid (seam carries no ellipsoid params \u2014 SpatialSound does not fully map to Panner), HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion \u2014 not a novel or low-priority ask \u2014 worth weighting accordingly when scheduling v2.",
+      "note": "The classic Sound node's ellipsoid (minFront/maxFront/minBack/maxBack, direction, intensity, spatialize) crosses the seam as geometry via DistanceModel::Ellipsoid and both backends evaluate it (swap-test F4, sound_immersive_test), so Sound is off this finding. SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion \u2014 not a novel or low-priority ask \u2014 worth weighting accordingly when scheduling v2.",
       "severity": "major",
       "status": "deferred",
-      "summary": "Spatialization PARTIAL \u2014 SpatialSound/ListenerPointSource equal-power pan + three DistanceModel modes proven via swap-test (ADR-0026); \u00a716 Sound ellipsoid attenuation (minFront/maxFront/minBack/maxBack), HRTF, and Doppler still deferred."
+      "summary": "Spatialization PARTIAL \u2014 SpatialSound/ListenerPointSource equal-power pan + three DistanceModel modes proven via swap-test (ADR-0026); the \u00a716.4.17 Sound ellipsoid now ships (ADR-0050); HRTF (SpatialSound.enableHRTF) and Doppler (dopplerEnabled) still deferred."
     },
     {
-      "clause": "16.4.2, 16.4.5, 16.4.20, 16.4.14",
+      "clause": "16.4.5, 16.4.20, 16.4.14",
       "component": "Sound",
       "id": "SND-4",
       "interfaces": [
         "X3DSoundSourceNode"
       ],
       "nodes": [
-        "AudioClip",
         "BufferAudioSource",
         "StreamAudioSource",
         "MicrophoneSource"
       ],
-      "note": "Blocked on an audio decode/capture + duration_changed seam (file/buffer/stream/device IO). Drives TDN-5 (AudioClip time-lifecycle). Backend extension = add NodeKinds + the IO seam.",
+      "note": "AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; isActive/isPaused (MediaTimeSystem, TDN-5), pitch and gain drive playback. Not read: AudioClip.description. BufferAudioSource can reuse the Buffer node (its buffer field is already PCM); StreamAudioSource and MicrophoneSource need a streaming/capture contract.",
       "severity": "major",
       "status": "deferred",
-      "summary": "Audio source breadth \u2014 only OscillatorSource is built; AudioClip/BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early)."
+      "summary": "Audio source breadth \u2014 OscillatorSource and AudioClip are built; BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early)."
     },
     {
       "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21",
@@ -9819,6 +9814,7 @@
       "Shape",
       "SingleAxisHingeJoint",
       "SliderJoint",
+      "Sound",
       "SpatialSound",
       "Sphere",
       "SphereSensor",
@@ -9852,9 +9848,9 @@
     ]
   },
   "summary": {
-    "closed_count": 172,
+    "closed_count": 173,
     "component_count": 36,
-    "deferred_count": 31,
+    "deferred_count": 30,
     "finding_count": 221,
     "inert_behavioral_nodes": [
       "Analyser",
@@ -9879,7 +9875,7 @@
     "open_by_severity": {
       "critical": 2,
       "low": 3,
-      "major": 24,
+      "major": 23,
       "minor": 20
     }
   },

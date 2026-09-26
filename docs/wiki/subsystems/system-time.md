@@ -69,7 +69,7 @@ State lives in the system, never on the node — the node and its reflection `Fi
 - **`X3DExecutionContext::addSystem` / `tick`** — The execution context drives the system on every tick. See [Execution Context](../subsystems/execution-context.md).
 - **`emitCycleOutputs` (virtual hook)** — Derived systems override this to emit their node-specific continuous outputs each active, unpaused tick. `TimeSensorSystem` emits `time` and `fraction_changed` here.
 - **`emitCycleTime` (virtual hook)** — Derived systems override this to emit a cycle-start pulse. `TimeSensorSystem` emits `cycleTime` here.
-- **`readEnabled` / `readLoop` / `readCycleInterval` (virtual reads)** — Overridable so future time-dependent systems (`AudioClip`, `MovieTexture`) can spell these fields differently or supply defaults.
+- **`readEnabled` / `readLoop` / `readCycleInterval` (virtual reads)** — Overridable per node type. `MediaTimeSystem` (`runtime/events/MediaTimeSystem.hpp`, attached by `attachStandardRuntime`) uses them for `AudioClip` and `MovieTexture`: `enabled`, `loop`, and a cycle of one media pass, `duration_changed` divided by `pitch` / `speed`; an unknown duration (-1 before load) plays until `stopTime` (TDN-5).
 - **`ctx.postEvent`** — All output writes go through `X3DExecutionContext::postEvent`; the cascade fans them out to connected ROUTEs in the same tick. See [Routes](../subsystems/routes.md).
 - **Interpolator downstream** — `fraction_changed` from `TimeSensorSystem` is the canonical clock signal that drives interpolators. See [Interpolator System](../subsystems/system-interpolators.md).
 - **Sensor layer** — `TimeSensorSystem` is one of the sensor-like systems registered through the `System`/`X3DActiveNode` pattern. See [Sensors](../subsystems/sensors.md).

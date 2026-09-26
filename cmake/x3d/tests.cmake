@@ -513,5 +513,15 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_sound_system PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_sound_system COMMAND x3d_sound_system)
 
+    # Immersive Sound (ADR-0050): Sound ellipsoid + AudioClip Buffer on the
+    # built-in backend, the WAV decoder, and a Sound{AudioClip} scene.
+    add_executable(x3d_sound_immersive
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_immersive_test.cpp")
+    target_link_libraries(x3d_sound_immersive PRIVATE x3d_cpp::x3d_cpp)
+    target_include_directories(x3d_sound_immersive PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/wav")
+    add_test(NAME x3d_sound_immersive COMMAND x3d_sound_immersive)
+
     # Author-shader binding plan (vocabulary + introspection).
 endif()
