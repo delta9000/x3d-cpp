@@ -264,8 +264,9 @@
   nodes: [ProximitySensor, GeoProximitySensor]
   clause: "22.4.1"
   severity: minor
-  status: open
+  status: closed
   summary: centerOfRotation_changed never emitted.
+  note: ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).
 - id: ENV-04
   nodes: [ProximitySensor]
   clause: "22.4.1"
@@ -277,15 +278,16 @@
   nodes: [VisibilitySensor]
   clause: "22.4.3"
   severity: minor
-  status: open
+  status: closed
   summary: Cone (not frustum) test → false isActive=FALSE in wide-aspect periphery.
+  note: Six view-frustum planes from Viewpoint.fieldOfView (smaller angle) + ViewVolume aspect; per-axis so wide aspect widens only the horizontal half-angle.
 - id: ENV-06
   nodes: [ProximitySensor, VisibilitySensor]
   clause: "22.4.1, 22.4.3"
   severity: major
-  status: open
+  status: closed
   summary: Dynamic removal of an active sensor doesn't fire isActive FALSE/exitTime (no detach).
-  note: Needs a System detach() hook (shared with BIND-06).
+  note: update() computes active-path reachability from scene roots (Switch/LOD aware, ADR-0034) and deactivates unreachable sensors via the existing deactivateIfActive path.
 - id: ENV-07
   nodes: [ProximitySensor, VisibilitySensor]
   clause: "22.4.1"
@@ -297,14 +299,16 @@
   nodes: [ProximitySensor]
   clause: "22.4.1"
   severity: minor
-  status: open
+  status: closed
   summary: enter/exitTime use tick now, not the interpolated boundary-crossing time.
+  note: ProximitySensor interpolates enter/exitTime along the viewer's straight-line motion between ticks (box crossing); VisibilitySensor keeps tick now (no geometric boundary).
 - id: ENV-09
   nodes: [VisibilitySensor]
   clause: "22.4.3"
   severity: minor
-  status: open
+  status: closed
   summary: Visibility radius uses local (unscaled) size, ignoring ancestor scale.
+  note: The sensor box is transformed to world by worldTransformAny (full ancestor matrix, scale included) before the frustum test.
 
 # ── Architecture-pivot follow-ons ───────────────────────────────────────────
 - id: PIV-1
@@ -1758,17 +1762,14 @@
   interfaces: [X3DEnvironmentalSensorNode]
   clause: "22.4, 22.4.3"
   severity: major
-  status: open
+  status: closed
   summary: "Environmental sensors in non-selected Switch children / inactive LOD levels are still ticked (active) instead of treated as removed from the transformation hierarchy."
   note: >-
-    Today branch-blind - sensors enrolled by the full-graph walk (X3DSceneBridge.hpp:338) and ticked
-    unconditionally (ViewDependentSystem.hpp:63-92) while rendering culls inactive branches
-    (SceneExtractor.hpp:570-593). Policy (ADR-0034) - a sensor is in the ACTIVE transformation
-    hierarchy iff some root->node path takes children[whichChoice] at every Switch and the selected
-    level at every LOD (union over DEF/USE); tick only while active (active->inactive forces
-    isActive=FALSE + exitTime once then suppress; inactive->active re-evaluates + enterTime). Script
-    and time-dependent nodes are NOT gated (per 10.4.3). 4.1 - unresolved (open since 2009); engine
-    adopts the Xj3D/Contact reading ahead of spec.
+    Implemented per ADR-0034. Each tick ViewDependentSystem::update computes active-path reachability
+    from ctx.sceneRoots() (Switch descends only children[whichChoice]; LOD only the level the
+    extractor would choose), and deactivates any attached sensor not reached (isActive=FALSE +
+    exitTime once, then suppressed). A reselected branch re-evaluates and re-fires enter. Script and
+    time-dependent nodes are not gated (per 10.4.3). No detach hook was needed; the gate lives in update().
 - id: VIEWPORT-CLIP
   nodes: [Viewport]
   interfaces: [X3DViewportNode]

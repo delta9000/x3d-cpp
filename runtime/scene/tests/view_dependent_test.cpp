@@ -175,9 +175,11 @@ static void testProximitySensor() {
   setF(vp, "position", std::any(SFVec3f{0, 0, 1})); // inside box
   ctx.tick(2.0);
   CHECK((active && feq((float)enter, 2.0f)));        // entered at t=2
-  setF(vp, "position", std::any(SFVec3f{0, 0, 100})); // outside
+  setF(vp, "position", std::any(SFVec3f{0, 0, 5})); // outside; crosses z=2 in flight
   ctx.tick(5.0);
-  CHECK((!active && feq((float)exit, 5.0f)));        // exited at t=5
+  // ENV-08: exitTime is the interpolated boundary crossing between t=2 (eye z=1)
+  // and t=5 (eye z=5): 2 + 3*(2-1)/(5-1) = 2.75, not the tick time.
+  CHECK((!active && feq((float)exit, 2.75f)));        // exited mid-flight at t=2.75
 }
 
 static void testProximityLoadTime() {
@@ -520,6 +522,193 @@ static void testTransformSensorNullTarget() {
   CHECK((!wasCalled));         // no edge event fired for null target
 }
 
+// ─── ENV-03: centerOfRotation_changed (§22.4.1) ─────────────────────────────
+// The bound Viewpoint's centerOfRotation (default 0 0 0) is emitted in the
+// sensor's frame on entry, change-gated like position/orientation_changed.
+static void testProximityCenterOfRotationChanged() {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
+  auto tf = createX3DNode("Transform");
+  setF(tf, "translation", std::any(SFVec3f{10, 0, 0})); // sensor frame origin at (10,0,0)
+  for (auto &f : tf->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*tf, std::any(std::vector<std::shared_ptr<X3DNode>>{ps}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{10, 0, 0}));      // viewer inside the sensor box
+  setF(vp, "centerOfRotation", std::any(SFVec3f{2, 3, 4}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(tf);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>(); vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  SFVec3f cor = getF<SFVec3f>(ps, "centerOfRotation_changed");
+  // world (2,3,4) -> sensor-local (transform inverse): (2-10, 3, 4) = (-8, 3, 4).
+  CHECK((feq(cor.x, -8) && feq(cor.y, 3) && feq(cor.z, 4)));
+
+  // centerOfRotation is in the Viewpoint's own frame: a Viewpoint under a
+  // Transform translated by (0,0,5) puts it at (2,3,9) in world, (-8,3,9) here.
+  auto vpT = createX3DNode("Transform");
+  setF(vpT, "translation", std::any(SFVec3f{0, 0, 5}));
+  auto vp2 = createX3DNode("Viewpoint");
+  setF(vp2, "position", std::any(SFVec3f{10, 0, -5}));
+  setF(vp2, "centerOfRotation", std::any(SFVec3f{2, 3, 4}));
+  for (auto &f : vpT->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*vpT, std::any(std::vector<std::shared_ptr<X3DNode>>{vp2}));
+  auto ps2 = createX3DNode("ProximitySensor");
+  setF(ps2, "size", std::any(SFVec3f{100, 100, 100}));
+  auto tf2 = createX3DNode("Transform");
+  setF(tf2, "translation", std::any(SFVec3f{10, 0, 0}));
+  for (auto &f : tf2->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*tf2, std::any(std::vector<std::shared_ptr<X3DNode>>{ps2}));
+  Scene s2; s2.addRootNode(vpT); s2.addRootNode(tf2);
+  X3DExecutionContext c2; c2.buildSceneGraph(s2);
+  auto v2 = std::make_shared<ViewDependentSystem>(); v2->attach(ps2.get(), c2); c2.addSystem(v2);
+  c2.tick(0.0);
+  SFVec3f cor2 = getF<SFVec3f>(ps2, "centerOfRotation_changed");
+  CHECK((feq(cor2.x, -8) && feq(cor2.y, 3) && feq(cor2.z, 9)));
+}
+
+// ─── ENV-05: six-plane frustum (per-axis), aspect from the ViewVolume seam ──
+// A wide aspect widens the HORIZONTAL half-angle only: an off-axis-in-X box
+// becomes visible, while an equally off-axis-in-Y box stays outside the
+// (vertical) frustum. The old axisymmetric cone widened both.
+static void testVisibilityFrustumPerAxis() {
+  auto mkSensor = [](float x, float y) {
+    auto vs = createX3DNode("VisibilitySensor");
+    setF(vs, "size", std::any(SFVec3f{0.2f, 0.2f, 0.2f}));
+    setF(vs, "center", std::any(SFVec3f{x, y, 0}));
+    return vs;
+  };
+  auto right = mkSensor(6, 0);
+  auto up = mkSensor(0, 6);
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 10}));
+  setF(vp, "fieldOfView", std::any(SFFloat(0.7854f)));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(right); scene.addRootNode(up);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(right.get(), ctx); vds->attach(up.get(), ctx); ctx.addSystem(vds);
+  bool rightActive = false, upActive = false;
+  vds->setSensorHook([&](X3DNode *n, bool a, double){ if (n==right.get()) rightActive=a; if (n==up.get()) upActive=a; });
+  vds->setViewVolume(ViewDependentSystem::ViewVolume{true, 2.0f});
+  ctx.tick(0.0);
+  CHECK((rightActive));   // ~31deg horizontal off-axis, inside the widened horizontal angle (~40deg)
+  CHECK((!upActive));     // ~31deg vertical off-axis, still outside the 22.5deg vertical angle
+}
+
+// ─── ENV-09: world extent (ancestor scale) used, not local radius ───────────
+// A big LOCAL box under a tiny scale is small in world: the old local-radius
+// cone reported it visible; the world frustum test correctly culls it.
+static void testVisibilityWorldExtentScale() {
+  auto vs = createX3DNode("VisibilitySensor");
+  setF(vs, "size", std::any(SFVec3f{10, 10, 10}));   // local (big)...
+  setF(vs, "center", std::any(SFVec3f{0, 0, 0}));
+  auto tf = createX3DNode("Transform");
+  setF(tf, "translation", std::any(SFVec3f{6, 0, 0}));
+  setF(tf, "scale", std::any(SFVec3f{0.01f, 0.01f, 0.01f}));
+  for (auto &f : tf->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*tf, std::any(std::vector<std::shared_ptr<X3DNode>>{vs}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 10}));
+  setF(vp, "fieldOfView", std::any(SFFloat(0.7854f)));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(tf);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>(); vds->attach(vs.get(), ctx); ctx.addSystem(vds);
+  bool active = false; vds->setSensorHook([&](X3DNode *n, bool a, double){ if (n==vs.get()) active=a; });
+  ctx.tick(0.0);
+  CHECK((!active)); // world box is 0.1 wide at x=6 -> outside the 22.5deg frustum
+}
+
+// ─── ENV-06/SENSOR-SWITCH: inactive Switch branch is treated as removed ─────
+static void testSensorSwitchBranchGating() {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
+  auto sw = createX3DNode("Switch");
+  setF(sw, "whichChoice", std::any(SFInt32{0}));
+  for (auto &f : sw->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*sw, std::any(std::vector<std::shared_ptr<X3DNode>>{ps}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(sw);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>(); vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  int exits = 0, enters = 0;
+  vds->setSensorHook([&](X3DNode *n, bool a, double){ if (n==ps.get()){ if(a) ++enters; else ++exits; } });
+  ctx.tick(0.0);
+  CHECK((enters == 1));                            // selected child 0 -> active
+  setF(sw, "whichChoice", std::any(SFInt32{-1}));  // deselect -> treated as removed
+  ctx.tick(1.0);
+  CHECK((exits == 1));                             // isActive FALSE + exitTime once
+  ctx.tick(2.0);
+  CHECK((exits == 1));                             // suppressed while inactive
+  setF(sw, "whichChoice", std::any(SFInt32{0}));   // reselect -> re-inserted
+  ctx.tick(3.0);
+  CHECK((enters == 2));                            // enter fires again
+}
+
+// ─── SENSOR-SWITCH: sensor in an inactive LOD level is treated as removed ───
+static void testSensorLodLevelGating() {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
+  auto lod = createX3DNode("LOD");
+  setF(lod, "range", std::any(std::vector<float>{5.0f}));
+  auto shape = createX3DNode("Shape");
+  for (auto &f : lod->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*lod, std::any(std::vector<std::shared_ptr<X3DNode>>{ps, shape}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0})); // dist 0 -> level 0 (ps)
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(lod);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>(); vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  bool active = false; int exits = 0;
+  vds->setSensorHook([&](X3DNode *n, bool a, double){ if (n==ps.get()){ active=a; if(!a) ++exits; } });
+  ctx.tick(0.0);
+  CHECK((active));                                    // level 0 selected -> ps active
+  setF(vp, "position", std::any(SFVec3f{0, 0, 20}));  // dist 20 >= 5 -> level 1
+  ctx.tick(1.0);
+  CHECK((!active && exits == 1));                     // inactive level -> removed
+}
+
+// ─── SENSOR-SWITCH: removed from the active hierarchy (children rewrite) ────
+static void testSensorRemovedFromChildren() {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
+  auto grp = createX3DNode("Group");
+  for (auto &f : grp->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*grp, std::any(std::vector<std::shared_ptr<X3DNode>>{ps}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(grp);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>(); vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  bool active = false; int exits = 0;
+  vds->setSensorHook([&](X3DNode *n, bool a, double){ if (n==ps.get()){ active=a; if(!a) ++exits; } });
+  ctx.tick(0.0);
+  CHECK((active));
+  for (auto &f : grp->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*grp, std::any(std::vector<std::shared_ptr<X3DNode>>{})); // remove sensor
+  ctx.tick(1.0);
+  CHECK((!active && exits == 1));
+}
+
+// ─── ENV-08: enter/exitTime interpolated along viewer motion ────────────────
+static void testProximityInterpolatedEdgeTime() {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{4, 4, 4})); // box [-2,2]^3
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 4})); // outside
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(ps);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>(); vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  double enter = -1, exit = -1;
+  vds->setSensorHook([&](X3DNode *n, bool a, double t){ if (n==ps.get()){ if(a) enter=t; else exit=t; } });
+  ctx.tick(0.0);
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0})); // enters z=2 -> frac 0.5 of 0..5
+  ctx.tick(5.0);
+  CHECK((feq((float)enter, 2.5f)));
+  setF(vp, "position", std::any(SFVec3f{0, 0, 4})); // exits z=2 -> frac 0.5 of 5..10
+  ctx.tick(10.0);
+  CHECK((feq((float)exit, 7.5f)));
+}
+
 TEST_CASE("view_dependent_test") {
   testCameraPose();
   testLodLevelClamp();
@@ -545,4 +734,11 @@ TEST_CASE("view_dependent_test") {
   testTransformSensorChangeGate();
   testTransformSensorDisableFiresExit();
   testTransformSensorNullTarget();
+  testProximityCenterOfRotationChanged();
+  testVisibilityFrustumPerAxis();
+  testVisibilityWorldExtentScale();
+  testSensorSwitchBranchGating();
+  testSensorLodLevelGating();
+  testSensorRemovedFromChildren();
+  testProximityInterpolatedEdgeTime();
 }

@@ -6,7 +6,7 @@
   {"tick": 4, "t": 0.400000, "changes": [{"node": "Region", "field": "enterTime", "value": "0.4"}, {"node": "Region", "field": "isActive", "value": "true"}]},
   {"tick": 5, "t": 0.500000, "changes": []},
   {"tick": 6, "t": 0.600000, "changes": []},
-  {"tick": 7, "t": 0.700000, "changes": [{"node": "Region", "field": "exitTime", "value": "0.7000000000000001"}, {"node": "Region", "field": "isActive", "value": "false"}]},
+  {"tick": 7, "t": 0.700000, "changes": [{"node": "Region", "field": "exitTime", "value": "0.6000000000000001"}, {"node": "Region", "field": "isActive", "value": "false"}]},
   {"tick": 8, "t": 0.800000, "changes": []},
   {"tick": 9, "t": 0.900000, "changes": []}
 ]

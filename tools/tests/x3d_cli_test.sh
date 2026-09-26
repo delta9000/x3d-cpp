@@ -505,7 +505,9 @@ else
     echo "FAIL: sim proximity --move did not fire enter/exit (got: $prox)"
     failures=$(( failures + 1 ))
 fi
-# Enter at tick 4 (x=-1, t=0.4), exit at tick 7 (x=+1, t=0.7).
+# Enter reported at tick 4; exit reported at tick 7. The box [-1,1] is crossed at
+# x=-1 (t=0.4, exactly tick 4) and x=+1 (t=0.6, tick 6 is on the boundary), so
+# ENV-08 reports exitTime=0.6 while the isActive=FALSE edge fires at tick 7.
 if [[ "$prox" == *"tick 4"*"Region.enterTime"* ]]; then
     echo "ok:   sim proximity enterTime at tick 4"
 else

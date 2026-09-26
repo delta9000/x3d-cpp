@@ -362,6 +362,11 @@ public:
   /// matrix or the transform index changes (a no-op tick leaves it unchanged).
   /// A cheap cache key for transform-derived consumer state (e.g. a pick index).
   std::uint64_t transformRevision() const { return transforms_.revision(); }
+  /// Pull surface: scene root nodes captured at buildSceneGraph — the walk roots
+  /// for view-dependent active-path reachability (SENSOR-SWITCH/ENV-06).
+  const std::vector<const X3DNode *> &sceneRoots() const {
+    return transforms_.sceneRoots();
+  }
   /// Pull surface: local-frame AABB of a node (empty if unknown).
   Aabb localBounds(const X3DNode *n) const { return bounds_.localBounds(n); }
   /// Pull surface: world-space AABB (= local bounds x composed ancestor
