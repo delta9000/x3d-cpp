@@ -56,6 +56,7 @@
 #ifndef X3D_RUNTIME_EXTRACT_SCENE_EXTRACTOR_HPP
 #define X3D_RUNTIME_EXTRACT_SCENE_EXTRACTOR_HPP
 
+#include "FieldRead.hpp"
 #include "Aabb.hpp"
 #include "x3d/nodes/Billboard.hpp"           // billboardLocalMatrix (§23.4.1, M2e) + viewdep
 #include "GeometryBounds.hpp"      // geombounds::getField/getNode/hasField
@@ -681,14 +682,14 @@ private:
       // whichChoice (default -1): <0 or out-of-range => draw nothing; else recurse
       // ONLY the selected child. NEVER the blind child loop (would draw all/first).
       const int which = geombounds::getField<int>(*n, "whichChoice", -1);
-      const auto kids = childrenOf(*n);
+      const auto &kids = childrenOf(*n);
       if (which >= 0 && which < static_cast<int>(kids.size()) && kids[which])
         walk(kids[which].get(), here, path, delta);
       path.pop_back();
       return;
     }
     if (t == "LOD") {
-      const auto kids = childrenOf(*n);
+      const auto &kids = childrenOf(*n);
       if (!kids.empty()) {
         const SFVec3f center = geombounds::getField<SFVec3f>(*n, "center", {0, 0, 0});
         // §23.4.3: distance measured in the LOD's LOCAL frame (here includes scale).
@@ -705,36 +706,29 @@ private:
     // Generic pass-through grouping recursion (Group/Transform/Anchor/Billboard/
     // Collision/StaticGroup/...): every SFNode + MFNode field slot. Gated to node
     // slots only (never metadata scalars); inputOnly slots have no getter.
-    for (const auto &f : n->fields()) {
-      if (!f.get) continue; // inputOnly node fields (addChildren/...) have no getter
+    forEachChildNode(*n, [&](const FieldInfo &f, const std::shared_ptr<X3DNode> &c) {
       // COL-2 §23.4.2: Collision.proxy is collision-only geometry — never rendered.
-      if (t == "Collision" && f.x3dName == std::string("proxy")) continue;
-      if (f.type == X3DFieldType::SFNode) {
-        auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
-        if (!c) continue;
-        // CAD-1 §32.4.2: CADFace.shape accepts only Shape|LOD|Transform; a
-        // non-conforming node in that slot is not part of the visual scene.
-        if (t == "CADFace" && f.x3dName == std::string("shape")) {
-          const std::string ct = c->nodeTypeName();
-          if (ct != "Shape" && ct != "LOD" && ct != "Transform") continue;
-        }
-        walk(c.get(), here, path, delta);
-      } else if (f.type == X3DFieldType::MFNode) {
-        for (const auto &c :
-             std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*n)))
-          if (c) walk(c.get(), here, path, delta);
+      if (t == "Collision" && f.x3dName == "proxy") return;
+      // CAD-1 §32.4.2: CADFace.shape accepts only Shape|LOD|Transform; a
+      // non-conforming node in that slot is not part of the visual scene.
+      if (t == "CADFace" && f.x3dName == "shape") {
+        const std::string ct = c->nodeTypeName();
+        if (ct != "Shape" && ct != "LOD" && ct != "Transform") return;
       }
-    }
+      walk(c.get(), here, path, delta);
+    });
     path.pop_back();
   }
 
-  // The `children` MFNode slot of a grouping node (empty if absent).
-  static std::vector<std::shared_ptr<X3DNode>> childrenOf(const X3DNode &n) {
+  // The `children` MFNode slot of a grouping node (empty if absent). Borrowed:
+  // valid while `n` lives and its children are not rewritten.
+  static const std::vector<std::shared_ptr<X3DNode>> &childrenOf(const X3DNode &n) {
+    static const std::vector<std::shared_ptr<X3DNode>> kNone;
     for (const auto &f : n.fields())
-      if (f.x3dName == std::string("children") && f.get &&
-          f.type == X3DFieldType::MFNode)
-        return std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(n));
-    return {};
+      if (f.x3dName == "children" && f.type == X3DFieldType::MFNode)
+        if (const auto *c = fieldPtr<std::vector<std::shared_ptr<X3DNode>>>(n, f))
+          return *c;
+    return kNone;
   }
 
   // Intern this PATH into a dense RenderItemId; store the per-path record and
@@ -914,17 +908,10 @@ private:
     if (geom) {
       appendDep(geomDeps_, geom, id);
       geomNodeOf_[geom] = geom;
-      for (const auto &f : geom->fields()) {
-        if (!f.get) continue;
-        if (f.type == X3DFieldType::SFNode) {
-          auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*geom));
-          if (c) { appendDep(geomDeps_, c.get(), id); geomNodeOf_[c.get()] = geom; }
-        } else if (f.type == X3DFieldType::MFNode) {
-          for (const auto &c :
-               std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*geom)))
-            if (c) { appendDep(geomDeps_, c.get(), id); geomNodeOf_[c.get()] = geom; }
-        }
-      }
+      forEachChildNode(*geom, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+        appendDep(geomDeps_, c.get(), id);
+        geomNodeOf_[c.get()] = geom;
+      });
     }
 
     // materialDeps: every appearance-subtree node reachable from the Shape
@@ -951,17 +938,9 @@ private:
                               std::unordered_set<const X3DNode *> &seen) {
     if (!n || !seen.insert(n).second) return;
     appendDep(materialDeps_, n, id);
-    for (const auto &f : n->fields()) {
-      if (!f.get) continue;
-      if (f.type == X3DFieldType::SFNode) {
-        auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
-        if (c) collectMaterialSubtree(c.get(), id, seen);
-      } else if (f.type == X3DFieldType::MFNode) {
-        for (const auto &c :
-             std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*n)))
-          if (c) collectMaterialSubtree(c.get(), id, seen);
-      }
-    }
+    forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+      collectMaterialSubtree(c.get(), id, seen);
+    });
   }
 
   // -------------------------------------------------------------------------

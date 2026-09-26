@@ -29,6 +29,13 @@ const FieldTable &CollisionSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n).getCollider(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +52,13 @@ const FieldTable &CollisionSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n).getContacts(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -63,6 +77,14 @@ const FieldTable &CollisionSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -79,6 +101,14 @@ const FieldTable &CollisionSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n)
+                       .X3DSensorNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -98,6 +128,13 @@ const FieldTable &CollisionSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n).getIntersections(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -114,6 +151,13 @@ const FieldTable &CollisionSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -132,6 +176,14 @@ const FieldTable &CollisionSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -148,6 +200,14 @@ const FieldTable &CollisionSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CollisionSensor &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -166,6 +226,13 @@ const FieldTable &CollisionSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -182,6 +249,13 @@ const FieldTable &CollisionSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -200,6 +274,14 @@ const FieldTable &CollisionSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CollisionSensor &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -217,6 +299,13 @@ const FieldTable &CollisionSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -233,6 +322,13 @@ const FieldTable &CollisionSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSensor &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

@@ -77,9 +77,9 @@ public:
    * @brief Gets the value of buffer. AccessType: inputOutput
    * @details buffer is a memory-resident audio asset that can contain one or
    * more channels.
-   * @return MFFloat The current value of buffer.
+   * @return const MFFloat& The current value of buffer.
    */
-  MFFloat getBuffer() const { return _buffer; }
+  const MFFloat &getBuffer() const { return _buffer; }
 
   /**
    * @brief Sets the value of buffer. AccessType: inputOutput
@@ -167,9 +167,9 @@ public:
    * @details normalize controls whether or not the impulse response from the
    * buffer is scaled by an equal-power normalization when the buffer field is
    * set.
-   * @return SFBool The current value of normalize.
+   * @return const SFBool& The current value of normalize.
    */
-  SFBool getNormalize() const { return _normalize; }
+  const SFBool &getNormalize() const { return _normalize; }
 
   /**
    * @brief Sets the value of normalize. AccessType: inputOutput

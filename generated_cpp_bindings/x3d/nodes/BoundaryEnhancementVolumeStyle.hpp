@@ -84,9 +84,9 @@ public:
    * @brief Gets the value of boundaryOpacity. AccessType: inputOutput
    * @details boundaryOpacity k_gs is the factored amount of the gradient
    * enhancement to use.
-   * @return SFFloat The current value of boundaryOpacity.
+   * @return const SFFloat& The current value of boundaryOpacity.
    */
-  SFFloat getBoundaryOpacity() const { return _boundaryOpacity; }
+  const SFFloat &getBoundaryOpacity() const { return _boundaryOpacity; }
 
   /**
    * @brief Sets the value of boundaryOpacity. AccessType: inputOutput
@@ -117,9 +117,9 @@ public:
    * @brief Gets the value of opacityFactor. AccessType: inputOutput
    * @details opacityFactor k_ge is the power function to control the slope of
    * the opacity curve to highlight the set of data.
-   * @return SFFloat The current value of opacityFactor.
+   * @return const SFFloat& The current value of opacityFactor.
    */
-  SFFloat getOpacityFactor() const { return _opacityFactor; }
+  const SFFloat &getOpacityFactor() const { return _opacityFactor; }
 
   /**
    * @brief Sets the value of opacityFactor. AccessType: inputOutput
@@ -149,9 +149,9 @@ public:
    * @brief Gets the value of retainedOpacity. AccessType: inputOutput
    * @details retainedOpacity k_gc is the amount of initial opacity to mix into
    * the output.
-   * @return SFFloat The current value of retainedOpacity.
+   * @return const SFFloat& The current value of retainedOpacity.
    */
-  SFFloat getRetainedOpacity() const { return _retainedOpacity; }
+  const SFFloat &getRetainedOpacity() const { return _retainedOpacity; }
 
   /**
    * @brief Sets the value of retainedOpacity. AccessType: inputOutput

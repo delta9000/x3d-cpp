@@ -30,6 +30,14 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n)
+                       .X3DBoundedObject::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -46,6 +54,14 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n)
+                       .X3DBoundedObject::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -65,6 +81,14 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n)
+                       .X3DBoundedObject::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -79,6 +103,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getCenter(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -97,6 +128,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -111,6 +149,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getInfo(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -128,6 +173,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -147,6 +199,14 @@ const FieldTable &HAnimHumanoid::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const HAnimHumanoid &>(n)
+                                 .getJointBindingPositions(),
+                            &typeid(MFVec3f)};
+                  }
+
         });
 
     t.push_back(
@@ -164,6 +224,14 @@ const FieldTable &HAnimHumanoid::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const HAnimHumanoid &>(n)
+                                 .getJointBindingRotations(),
+                            &typeid(MFRotation)};
+                  }
 
         });
 
@@ -183,6 +251,14 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const HAnimHumanoid &>(n).getJointBindingScales(),
+              &typeid(MFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -197,6 +273,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getJoints(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -213,6 +296,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getLoa(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -231,6 +321,14 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const HAnimHumanoid &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -245,6 +343,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getMotions(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -263,6 +368,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getMotionsEnabled(),
+                  &typeid(MFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -277,6 +389,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getName(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -294,6 +413,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getRotation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -308,6 +434,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getScale(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -327,6 +460,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getScaleOrientation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -343,6 +483,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getSegments(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -357,6 +504,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getSites(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -376,6 +530,14 @@ const FieldTable &HAnimHumanoid::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const HAnimHumanoid &>(n)
+                                 .getSkeletalConfiguration(),
+                            &typeid(SFString)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -392,6 +554,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getSkeleton(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -406,6 +575,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getSkin(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -425,6 +601,14 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const HAnimHumanoid &>(n).getSkinBindingCoords(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -443,6 +627,14 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const HAnimHumanoid &>(n).getSkinBindingNormals(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -460,25 +652,39 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getSkinCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"skinNormal", X3DFieldType::SFNode, AccessType::InputOutput,
-                  "skinNormal",
+    t.push_back(FieldInfo{
+        "skinNormal", X3DFieldType::SFNode, AccessType::InputOutput,
+        "skinNormal",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const HAnimHumanoid &>(n).getSkinNormal());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const HAnimHumanoid &>(n).getSkinNormal());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<HAnimHumanoid &>(n).setSkinNormal(
-                        std::any_cast<SFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<HAnimHumanoid &>(n).setSkinNormal(
+              std::any_cast<SFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getSkinNormal(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "translation", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -494,6 +700,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getTranslation(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -519,25 +732,39 @@ const FieldTable &HAnimHumanoid::fields() const {
             dynamic_cast<HAnimHumanoid &>(n).setVersion(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getVersion(),
+                  &typeid(HanimVersionChoices)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"viewpoints", X3DFieldType::MFNode, AccessType::InputOutput,
-                  "viewpoints",
+    t.push_back(FieldInfo{
+        "viewpoints", X3DFieldType::MFNode, AccessType::InputOutput,
+        "viewpoints",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const HAnimHumanoid &>(n).getViewpoints());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const HAnimHumanoid &>(n).getViewpoints());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<HAnimHumanoid &>(n).setViewpoints(
-                        std::any_cast<MFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<HAnimHumanoid &>(n).setViewpoints(
+              std::any_cast<MFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).getViewpoints(),
+                  &typeid(MFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -553,6 +780,14 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n)
+                       .X3DBoundedObject::getVisible(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -571,6 +806,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -587,6 +829,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -605,6 +854,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -622,6 +878,13 @@ const FieldTable &HAnimHumanoid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -638,6 +901,13 @@ const FieldTable &HAnimHumanoid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimHumanoid &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

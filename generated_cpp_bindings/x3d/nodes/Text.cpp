@@ -27,6 +27,13 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).getFontStyle(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -41,6 +48,13 @@ const FieldTable &Text::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -57,6 +71,12 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).getLength(), &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -71,6 +91,13 @@ const FieldTable &Text::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).getLineBounds(),
+                  &typeid(MFVec2f)};
+        }
 
     });
 
@@ -88,6 +115,13 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).getMaxExtent(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -104,6 +138,13 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -118,6 +159,12 @@ const FieldTable &Text::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).getOrigin(), &typeid(SFVec3f)};
+        }
 
     });
 
@@ -134,6 +181,12 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).getSolid(), &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -148,6 +201,13 @@ const FieldTable &Text::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).getString(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -164,6 +224,13 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).getTextBounds(),
+                  &typeid(SFVec2f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -179,6 +246,13 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -193,6 +267,13 @@ const FieldTable &Text::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -210,6 +291,13 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -225,6 +313,13 @@ const FieldTable &Text::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -239,6 +334,13 @@ const FieldTable &Text::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Text &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

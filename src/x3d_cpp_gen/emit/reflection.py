@@ -15,6 +15,9 @@ The reflection API a codec relies on:
 * ``X3DNode::accept(NodeVisitor&)`` -> double-dispatch entry point.
 * ``FieldInfo::get(node)`` -> ``std::any`` holding the field's typed value.
 * ``FieldInfo::set(node, any)`` -> writes the typed value back (no-op if absent).
+* ``FieldInfo::view(node)`` -> zero-copy ``FieldView``: the address of the stored
+  member plus its ``std::type_info``, so a reader can borrow an MF vector or a
+  node reference without boxing or copying it.
 * ``X3DFieldType`` -> switch on this to know how to format/parse the ``std::any``.
 """
 
@@ -51,6 +54,7 @@ def gen_reflection_header() -> str:
     lines.append("#include <any>")
     lines.append("#include <functional>")
     lines.append("#include <string>")
+    lines.append("#include <typeinfo>")
     lines.append("#include <vector>")
     lines.append("")
     lines.append("namespace x3d::nodes { class X3DNode; }")
@@ -82,6 +86,18 @@ def gen_reflection_header() -> str:
     lines.append("};")
     lines.append("")
     lines.append("/**")
+    lines.append(" * @brief A borrowed, type-tagged pointer to a field's stored value.")
+    lines.append(" * @details `data` points at the node's member; `type` is the member's")
+    lines.append(" *          C++ type (the same type `get` boxes). The pointer stays valid")
+    lines.append(" *          while the node lives; a later write changes what it reads.")
+    lines.append(" *          Both are null when the field has no stored value to borrow.")
+    lines.append(" */")
+    lines.append("struct FieldView {")
+    lines.append("    const void* data = nullptr;")
+    lines.append("    const std::type_info* type = nullptr;")
+    lines.append("};")
+    lines.append("")
+    lines.append("/**")
     lines.append(" * @brief Type-erased, node-agnostic description of one X3D field.")
     lines.append(" * @details `get`/`set` are thunks bound by each node that read/write the")
     lines.append(" *          field's strongly-typed member through the node's existing")
@@ -90,6 +106,9 @@ def gen_reflection_header() -> str:
     lines.append(" *          std::vector<std::shared_ptr<X3DNode>>). Switch on `type` to know")
     lines.append(" *          how to interpret it. `get` is empty for write-only (inputOnly)")
     lines.append(" *          fields; `set` is empty for non-inputOutput (read-only) fields.")
+    lines.append(" *          `view` reads the same value without boxing or copying it; it is")
+    lines.append(" *          null where `get` is empty and for fields with no stored member")
+    lines.append(" *          (e.g. synthesized author fields), so fall back to `get` there.")
     lines.append(" */")
     lines.append("struct FieldInfo {")
     lines.append("    std::string x3dName;")
@@ -109,6 +128,9 @@ def gen_reflection_header() -> str:
     lines.append("    // tokens. Both are empty for non-enum fields.")
     lines.append("    std::function<std::string(const X3DNode&)> getEnumString;")
     lines.append("    std::function<void(X3DNode&, const std::string&)> setEnumString;")
+    lines.append("    // Zero-copy read of the stored value (null if there is none to borrow).")
+    lines.append("    // A plain function pointer: no std::function call overhead.")
+    lines.append("    FieldView (*view)(const X3DNode&) = nullptr;")
     lines.append("")
     lines.append("    bool isNode() const {")
     lines.append("        return type == X3DFieldType::SFNode || type == X3DFieldType::MFNode;")
@@ -118,6 +140,7 @@ def gen_reflection_header() -> str:
     lines.append("    }")
     lines.append("    bool isReadable() const { return static_cast<bool>(get); }")
     lines.append("    bool isWritable() const { return static_cast<bool>(set); }")
+    lines.append("    bool isViewable() const { return view != nullptr; }")
     lines.append("};")
     lines.append("")
     lines.append("/**")

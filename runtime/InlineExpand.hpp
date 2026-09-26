@@ -99,15 +99,13 @@ inline bool replaceInParent(X3DNode &parent, const X3DNode *target,
   for (const auto &f : parent.fields()) {
     if (!f.get || !f.set) continue;
     if (f.type == X3DFieldType::SFNode) {
-      std::any v = f.get(parent);
-      const auto *c = fieldValueAs<std::shared_ptr<X3DNode>>(v);
+      FieldRef<std::shared_ptr<X3DNode>> c(parent, f);
       if (c && c->get() == target) {
         f.set(parent, std::any(replacement));
         return true;
       }
     } else if (f.type == X3DFieldType::MFNode) {
-      std::any v = f.get(parent);
-      const auto *cur = fieldValueAs<std::vector<std::shared_ptr<X3DNode>>>(v);
+      FieldRef<std::vector<std::shared_ptr<X3DNode>>> cur(parent, f);
       if (!cur) continue;
       for (std::size_t i = 0; i < cur->size(); ++i)
         if ((*cur)[i].get() == target) {
@@ -144,28 +142,12 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
         // document did, and this walk recurses on the native stack.
         if (depth >= kMaxNestingDepth) return;
         if (!walked.insert(n.get()).second) return; // cycle/USE-sharing guard
-        for (const auto &f : n->fields()) {
-          if (!f.get) continue;
-          // No catch-all here: it would also swallow errors from the
-          // recursive walk and silently drop the subtree (FieldRead.hpp).
-          if (f.type == X3DFieldType::SFNode) {
-            std::any v = f.get(*n);
-            const auto *c = fieldValueAs<std::shared_ptr<X3DNode>>(v);
-            if (!c || !*c) continue;
-            if ((*c)->nodeTypeName() == "Inline") sites.push_back({n.get(), *c});
-            else walk(*c, depth + 1);
-          } else if (f.type == X3DFieldType::MFNode) {
-            std::any v = f.get(*n);
-            const auto *cs =
-                fieldValueAs<std::vector<std::shared_ptr<X3DNode>>>(v);
-            if (!cs) continue;
-            for (const auto &c : *cs) {
-              if (!c) continue;
-              if (c->nodeTypeName() == "Inline") sites.push_back({n.get(), c});
-              else walk(c, depth + 1);
-            }
-          }
-        }
+        // No catch-all here: it would also swallow errors from the
+        // recursive walk and silently drop the subtree (FieldRead.hpp).
+        forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+          if (c->nodeTypeName() == "Inline") sites.push_back({n.get(), c});
+          else walk(c, depth + 1);
+        });
       };
   for (auto &r : scene.rootNodes) {
     if (r && r->nodeTypeName() == "Inline") rootInlines.push_back(r);

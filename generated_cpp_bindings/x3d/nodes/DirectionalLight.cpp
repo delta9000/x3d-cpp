@@ -32,6 +32,14 @@ const FieldTable &DirectionalLight::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n)
+                       .X3DLightNode::getAmbientIntensity(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,14 @@ const FieldTable &DirectionalLight::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n)
+                       .X3DLightNode::getColor(),
+                  &typeid(SFColor)};
+        }
 
     });
 
@@ -66,24 +82,38 @@ const FieldTable &DirectionalLight::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n).getDirection(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"global", X3DFieldType::SFBool, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "global", X3DFieldType::SFBool, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const DirectionalLight &>(n).getGlobal());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const DirectionalLight &>(n).getGlobal());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<DirectionalLight &>(n).setGlobal(
-                        std::any_cast<SFBool>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<DirectionalLight &>(n).setGlobal(
+              std::any_cast<SFBool>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n).getGlobal(),
+                  &typeid(SFBool)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "intensity", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -99,6 +129,14 @@ const FieldTable &DirectionalLight::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n)
+                       .X3DLightNode::getIntensity(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -117,6 +155,13 @@ const FieldTable &DirectionalLight::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -134,6 +179,14 @@ const FieldTable &DirectionalLight::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DirectionalLight &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -150,6 +203,14 @@ const FieldTable &DirectionalLight::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DirectionalLight &>(n).X3DLightNode::getOn(),
+              &typeid(SFBool)};
+        }
 
     });
 
@@ -169,6 +230,14 @@ const FieldTable &DirectionalLight::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n)
+                       .X3DLightNode::getShadowIntensity(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -185,6 +254,14 @@ const FieldTable &DirectionalLight::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n)
+                       .X3DLightNode::getShadows(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -203,6 +280,13 @@ const FieldTable &DirectionalLight::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -219,6 +303,13 @@ const FieldTable &DirectionalLight::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -237,6 +328,14 @@ const FieldTable &DirectionalLight::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DirectionalLight &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -254,6 +353,13 @@ const FieldTable &DirectionalLight::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DirectionalLight &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -270,6 +376,14 @@ const FieldTable &DirectionalLight::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DirectionalLight &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

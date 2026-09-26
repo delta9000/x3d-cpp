@@ -104,9 +104,9 @@ public:
    * @brief Gets the value of backTexture. AccessType: inputOutput
    * @details Parent TextureBackground element can contain up to six image nodes
    * (ImageTexture PixelTexture MovieTexture MultiTexture).
-   * @return SFNode The current value of backTexture.
+   * @return const SFNode& The current value of backTexture.
    */
-  SFNode getBackTexture() const { return _backTexture; }
+  const SFNode &getBackTexture() const { return _backTexture; }
 
   /**
    * @brief Acceptable node types for the backTexture field.
@@ -133,9 +133,9 @@ public:
    * @brief Gets the value of bottomTexture. AccessType: inputOutput
    * @details Parent TextureBackground element can contain up to six image nodes
    * (ImageTexture PixelTexture MovieTexture MultiTexture).
-   * @return SFNode The current value of bottomTexture.
+   * @return const SFNode& The current value of bottomTexture.
    */
-  SFNode getBottomTexture() const { return _bottomTexture; }
+  const SFNode &getBottomTexture() const { return _bottomTexture; }
 
   /**
    * @brief Acceptable node types for the bottomTexture field.
@@ -162,9 +162,9 @@ public:
    * @brief Gets the value of frontTexture. AccessType: inputOutput
    * @details Parent TextureBackground element can contain up to six image nodes
    * (ImageTexture PixelTexture MovieTexture MultiTexture).
-   * @return SFNode The current value of frontTexture.
+   * @return const SFNode& The current value of frontTexture.
    */
-  SFNode getFrontTexture() const { return _frontTexture; }
+  const SFNode &getFrontTexture() const { return _frontTexture; }
 
   /**
    * @brief Acceptable node types for the frontTexture field.
@@ -191,9 +191,9 @@ public:
    * @brief Gets the value of leftTexture. AccessType: inputOutput
    * @details Parent TextureBackground element can contain up to six image nodes
    * (ImageTexture PixelTexture MovieTexture MultiTexture).
-   * @return SFNode The current value of leftTexture.
+   * @return const SFNode& The current value of leftTexture.
    */
-  SFNode getLeftTexture() const { return _leftTexture; }
+  const SFNode &getLeftTexture() const { return _leftTexture; }
 
   /**
    * @brief Acceptable node types for the leftTexture field.
@@ -220,9 +220,9 @@ public:
    * @brief Gets the value of rightTexture. AccessType: inputOutput
    * @details Parent TextureBackground element can contain up to six image nodes
    * (ImageTexture PixelTexture MovieTexture MultiTexture).
-   * @return SFNode The current value of rightTexture.
+   * @return const SFNode& The current value of rightTexture.
    */
-  SFNode getRightTexture() const { return _rightTexture; }
+  const SFNode &getRightTexture() const { return _rightTexture; }
 
   /**
    * @brief Acceptable node types for the rightTexture field.
@@ -249,9 +249,9 @@ public:
    * @brief Gets the value of topTexture. AccessType: inputOutput
    * @details Parent TextureBackground element can contain up to six image nodes
    * (ImageTexture PixelTexture MovieTexture MultiTexture).
-   * @return SFNode The current value of topTexture.
+   * @return const SFNode& The current value of topTexture.
    */
-  SFNode getTopTexture() const { return _topTexture; }
+  const SFNode &getTopTexture() const { return _topTexture; }
 
   /**
    * @brief Acceptable node types for the topTexture field.

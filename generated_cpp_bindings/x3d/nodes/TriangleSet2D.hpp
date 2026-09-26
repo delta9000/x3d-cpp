@@ -70,9 +70,9 @@ public:
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse
@@ -83,9 +83,9 @@ public:
   /**
    * @brief Gets the value of vertices. AccessType: inputOutput
    * @details 2D coordinates of TriangleSet2D vertices.
-   * @return MFVec2f The current value of vertices.
+   * @return const MFVec2f& The current value of vertices.
    */
-  MFVec2f getVertices() const { return _vertices; }
+  const MFVec2f &getVertices() const { return _vertices; }
 
   /**
    * @brief Sets the value of vertices. AccessType: inputOutput

@@ -73,9 +73,9 @@ public:
   /**
    * @brief Gets the value of shape. AccessType: inputOutput
    * @details Contained Shape for this CADPart.
-   * @return SFNode The current value of shape.
+   * @return const SFNode& The current value of shape.
    */
-  SFNode getShape() const { return _shape; }
+  const SFNode &getShape() const { return _shape; }
 
   /**
    * @brief Acceptable node types for the shape field.

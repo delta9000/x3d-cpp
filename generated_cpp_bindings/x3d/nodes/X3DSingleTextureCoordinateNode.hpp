@@ -60,9 +60,9 @@ public:
   /**
    * @brief Gets the value of mapping. AccessType: inputOutput
    * @details
-   * @return SFString The current value of mapping.
+   * @return const SFString& The current value of mapping.
    */
-  SFString getMapping() const { return _mapping; }
+  const SFString &getMapping() const { return _mapping; }
 
   /**
    * @brief Sets the value of mapping. AccessType: inputOutput

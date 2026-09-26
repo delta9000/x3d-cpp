@@ -27,6 +27,10 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +49,14 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n)
+                       .X3DGroupingNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -61,6 +73,14 @@ const FieldTable &PickableGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n)
+                       .X3DGroupingNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -79,6 +99,14 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n)
+                       .X3DGroupingNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -95,6 +123,14 @@ const FieldTable &PickableGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n)
+                       .X3DGroupingNode::getChildren(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -113,6 +149,13 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n).getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -129,6 +172,13 @@ const FieldTable &PickableGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -147,6 +197,14 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PickableGroup &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -164,6 +222,14 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n)
+                       .X3DPickableObject::getPickable(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -178,6 +244,10 @@ const FieldTable &PickableGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -196,6 +266,14 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n)
+                       .X3DGroupingNode::getVisible(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -212,6 +290,13 @@ const FieldTable &PickableGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -230,6 +315,13 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -246,6 +338,13 @@ const FieldTable &PickableGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -264,6 +363,13 @@ const FieldTable &PickableGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -280,6 +386,13 @@ const FieldTable &PickableGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PickableGroup &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

@@ -138,9 +138,9 @@ public:
    * @brief Gets the value of buffer. AccessType: inputOutput
    * @details buffer is a memory-resident audio asset that can contain one or
    * more channels.
-   * @return MFFloat The current value of buffer.
+   * @return const MFFloat& The current value of buffer.
    */
-  MFFloat getBuffer() const { return _buffer; }
+  const MFFloat &getBuffer() const { return _buffer; }
 
   /**
    * @brief Sets the value of buffer. AccessType: inputOutput
@@ -174,9 +174,9 @@ public:
   /**
    * @brief Gets the value of bufferDuration. AccessType: inputOutput
    * @details bufferDuration is duration in seconds to use from buffer field.
-   * @return SFTime The current value of bufferDuration.
+   * @return const SFTime& The current value of bufferDuration.
    */
-  SFTime getBufferDuration() const { return _bufferDuration; }
+  const SFTime &getBufferDuration() const { return _bufferDuration; }
 
   /**
    * @brief Sets the value of bufferDuration. AccessType: inputOutput
@@ -211,9 +211,9 @@ public:
   /**
    * @brief Gets the value of bufferlength. AccessType: outputOnly
    * @details
-   * @return SFInt32 The current value of bufferlength.
+   * @return const SFInt32& The current value of bufferlength.
    */
-  SFInt32 getBufferlength() const { return _bufferlength; }
+  const SFInt32 &getBufferlength() const { return _bufferlength; }
 
   /**
    * @brief Emit an output value on bufferlength. AccessType: outputOnly
@@ -229,9 +229,9 @@ public:
   /**
    * @brief Gets the value of channelCount. AccessType: outputOnly
    * @details channelCount reports number of channels provided by input nodes.
-   * @return SFInt32 The current value of channelCount.
+   * @return const SFInt32& The current value of channelCount.
    */
-  SFInt32 getChannelCount() const { return _channelCount; }
+  const SFInt32 &getChannelCount() const { return _channelCount; }
 
   /**
    * @brief Emit an output value on channelCount. AccessType: outputOnly
@@ -248,9 +248,10 @@ public:
    * @brief Gets the value of channelCountMode. AccessType: inputOutput
    * @details channelCountMode determines how individual channels are counted
    * when up-mixing and down-mixing connections to any inputs.
-   * @return ChannelCountModeChoices The current value of channelCountMode.
+   * @return const ChannelCountModeChoices& The current value of
+   * channelCountMode.
    */
-  ChannelCountModeChoices getChannelCountMode() const {
+  const ChannelCountModeChoices &getChannelCountMode() const {
     return _channelCountMode;
   }
 
@@ -269,10 +270,10 @@ public:
    * @brief Gets the value of channelInterpretation. AccessType: inputOutput
    * @details channelInterpretation determines how individual channels are
    * treated when up-mixing and down-mixing connections to any inputs.
-   * @return ChannelInterpretationChoices The current value of
+   * @return const ChannelInterpretationChoices& The current value of
    * channelInterpretation.
    */
-  ChannelInterpretationChoices getChannelInterpretation() const {
+  const ChannelInterpretationChoices &getChannelInterpretation() const {
     return _channelInterpretation;
   }
 
@@ -291,9 +292,9 @@ public:
    * @brief Gets the value of detune. AccessType: inputOutput
    * @details The detune field forms a compound field together with playbackRate
    * that together determine a computedPlaybackRate value.
-   * @return SFFloat The current value of detune.
+   * @return const SFFloat& The current value of detune.
    */
-  SFFloat getDetune() const { return _detune; }
+  const SFFloat &getDetune() const { return _detune; }
 
   /**
    * @brief Sets the value of detune. AccessType: inputOutput
@@ -320,9 +321,9 @@ public:
   /**
    * @brief Gets the value of length. AccessType: outputOnly
    * @details
-   * @return SFInt32 The current value of length.
+   * @return const SFInt32& The current value of length.
    */
-  SFInt32 getLength() const { return _length; }
+  const SFInt32 &getLength() const { return _length; }
 
   /**
    * @brief Emit an output value on length. AccessType: outputOnly
@@ -339,9 +340,9 @@ public:
    * @brief Gets the value of loop. AccessType: inputOutput
    * @details Repeat indefinitely when loop=true, repeat only once when
    * loop=false.
-   * @return SFBool The current value of loop.
+   * @return const SFBool& The current value of loop.
    */
-  SFBool getLoop() const { return _loop; }
+  const SFBool &getLoop() const { return _loop; }
 
   /**
    * @brief Sets the value of loop. AccessType: inputOutput
@@ -355,9 +356,9 @@ public:
    * @brief Gets the value of loopEnd. AccessType: inputOutput
    * @details loopEnd field is optional playhead position where looping ends if
    * loop=true.
-   * @return SFFloat The current value of loopEnd.
+   * @return const SFFloat& The current value of loopEnd.
    */
-  SFFloat getLoopEnd() const { return _loopEnd; }
+  const SFFloat &getLoopEnd() const { return _loopEnd; }
 
   /**
    * @brief Sets the value of loopEnd. AccessType: inputOutput
@@ -385,9 +386,9 @@ public:
    * @brief Gets the value of loopStart. AccessType: inputOutput
    * @details loopStart field is optional playhead position where looping begins
    * if loop=true.
-   * @return SFFloat The current value of loopStart.
+   * @return const SFFloat& The current value of loopStart.
    */
-  SFFloat getLoopStart() const { return _loopStart; }
+  const SFFloat &getLoopStart() const { return _loopStart; }
 
   /**
    * @brief Sets the value of loopStart. AccessType: inputOutput
@@ -415,9 +416,9 @@ public:
    * @brief Gets the value of numberOfChannels. AccessType: inputOutput
    * @details numberOfChannels is number of audio channels found in this buffer
    * source.
-   * @return SFInt32 The current value of numberOfChannels.
+   * @return const SFInt32& The current value of numberOfChannels.
    */
-  SFInt32 getNumberOfChannels() const { return _numberOfChannels; }
+  const SFInt32 &getNumberOfChannels() const { return _numberOfChannels; }
 
   /**
    * @brief Sets the value of numberOfChannels. AccessType: inputOutput
@@ -449,9 +450,9 @@ public:
    * @details playbackRate field is speed at which to render the audio stream,
    * and forms a compound field together with detune field Hint: negative values
    * play in reverse.
-   * @return SFFloat The current value of playbackRate.
+   * @return const SFFloat& The current value of playbackRate.
    */
-  SFFloat getPlaybackRate() const { return _playbackRate; }
+  const SFFloat &getPlaybackRate() const { return _playbackRate; }
 
   /**
    * @brief Sets the value of playbackRate. AccessType: inputOutput
@@ -465,9 +466,9 @@ public:
   /**
    * @brief Gets the value of sampleRate. AccessType: inputOutput
    * @details sampleRate field is sample-frames per second.
-   * @return SFFloat The current value of sampleRate.
+   * @return const SFFloat& The current value of sampleRate.
    */
-  SFFloat getSampleRate() const { return _sampleRate; }
+  const SFFloat &getSampleRate() const { return _sampleRate; }
 
   /**
    * @brief Sets the value of sampleRate. AccessType: inputOutput

@@ -29,6 +29,14 @@ const FieldTable &ScreenFontStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n)
+                       .X3DFontStyleNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -44,6 +52,13 @@ const FieldTable &ScreenFontStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getFamily(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -62,6 +77,13 @@ const FieldTable &ScreenFontStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getHorizontal(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(
@@ -79,6 +101,14 @@ const FieldTable &ScreenFontStyle::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const ScreenFontStyle &>(n)
+                                 .X3DFontStyleNode::getId(),
+                            &typeid(SFString)};
+                  }
+
         });
 
     t.push_back(
@@ -95,6 +125,14 @@ const FieldTable &ScreenFontStyle::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const ScreenFontStyle &>(n)
+                                 .X3DFontStyleNode::getIS(),
+                            &typeid(SFNode)};
+                  }
 
         });
 
@@ -133,6 +171,13 @@ const FieldTable &ScreenFontStyle::fields() const {
           dynamic_cast<ScreenFontStyle &>(n).setJustify(std::move(vec));
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getJustify(),
+                  &typeid(std::vector<JustifyChoices>)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -149,6 +194,13 @@ const FieldTable &ScreenFontStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getLanguage(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -167,6 +219,13 @@ const FieldTable &ScreenFontStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getLeftToRight(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -183,6 +242,14 @@ const FieldTable &ScreenFontStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n)
+                       .X3DFontStyleNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -201,24 +268,38 @@ const FieldTable &ScreenFontStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getPointSize(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"spacing", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "spacing", X3DFieldType::SFFloat, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const ScreenFontStyle &>(n).getSpacing());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const ScreenFontStyle &>(n).getSpacing());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<ScreenFontStyle &>(n).setSpacingUnchecked(
-                        std::any_cast<SFFloat>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ScreenFontStyle &>(n).setSpacingUnchecked(
+              std::any_cast<SFFloat>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getSpacing(),
+                  &typeid(SFFloat)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -242,6 +323,13 @@ const FieldTable &ScreenFontStyle::fields() const {
             dynamic_cast<ScreenFontStyle &>(n).setStyle(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getStyle(),
+                  &typeid(FontStyleChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -258,6 +346,13 @@ const FieldTable &ScreenFontStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).getTopToBottom(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -276,6 +371,13 @@ const FieldTable &ScreenFontStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -292,6 +394,13 @@ const FieldTable &ScreenFontStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ScreenFontStyle &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 

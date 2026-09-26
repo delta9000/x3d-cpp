@@ -29,24 +29,40 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n)
+                       .X3DUrlObject::getAutoRefresh(),
+                  &typeid(SFTime)};
+        }
+
     });
 
-    t.push_back(FieldInfo{"autoRefreshTimeLimit", X3DFieldType::SFTime,
-                          AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "autoRefreshTimeLimit", X3DFieldType::SFTime, AccessType::InputOutput,
+        "",
 
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const ImageTexture3D &>(n)
-                                    .X3DUrlObject::getAutoRefreshTimeLimit());
-                          },
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const ImageTexture3D &>(n)
+                              .X3DUrlObject::getAutoRefreshTimeLimit());
+        },
 
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<ImageTexture3D &>(n)
-                                .X3DUrlObject::setAutoRefreshTimeLimitUnchecked(
-                                    std::any_cast<SFTime>(v));
-                          },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ImageTexture3D &>(n)
+              .X3DUrlObject::setAutoRefreshTimeLimitUnchecked(
+                  std::any_cast<SFTime>(v));
+        },
 
-                          nullptr, nullptr
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n)
+                       .X3DUrlObject::getAutoRefreshTimeLimit(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -65,6 +81,14 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n)
+                       .X3DUrlObject::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +105,13 @@ const FieldTable &ImageTexture3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -99,6 +130,14 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ImageTexture3D &>(n).X3DUrlObject::getLoad(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +154,14 @@ const FieldTable &ImageTexture3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ImageTexture3D &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -133,6 +180,14 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n)
+                       .X3DTexture3DNode::getRepeatR(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -150,6 +205,14 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n)
+                       .X3DTexture3DNode::getRepeatS(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -166,6 +229,14 @@ const FieldTable &ImageTexture3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n)
+                       .X3DTexture3DNode::getRepeatT(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -186,6 +257,14 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n)
+                       .X3DTexture3DNode::getTextureProperties(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -202,6 +281,14 @@ const FieldTable &ImageTexture3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ImageTexture3D &>(n).X3DUrlObject::getUrl(),
+              &typeid(MFString)};
+        }
 
     });
 
@@ -220,6 +307,13 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -236,6 +330,13 @@ const FieldTable &ImageTexture3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -254,6 +355,13 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -271,6 +379,13 @@ const FieldTable &ImageTexture3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -287,6 +402,13 @@ const FieldTable &ImageTexture3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

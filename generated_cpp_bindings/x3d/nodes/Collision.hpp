@@ -74,9 +74,9 @@ public:
   /**
    * @brief Gets the value of collideTime. AccessType: outputOnly
    * @details Time of collision between camera (avatar) and geometry.
-   * @return SFTime The current value of collideTime.
+   * @return const SFTime& The current value of collideTime.
    */
-  SFTime getCollideTime() const { return _collideTime; }
+  const SFTime &getCollideTime() const { return _collideTime; }
 
   /**
    * @brief Emit an output value on collideTime. AccessType: outputOnly
@@ -94,9 +94,9 @@ public:
    * @details The proxy node is used as a substitute for Collision children
    * during collision detection, simplifying collision-intersection
    * computations.
-   * @return SFNode The current value of proxy.
+   * @return const SFNode& The current value of proxy.
    */
-  SFNode getProxy() const { return _proxy; }
+  const SFNode &getProxy() const { return _proxy; }
 
   /**
    * @brief Acceptable node types for the proxy field.

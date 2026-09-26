@@ -7,6 +7,7 @@
 #ifndef X3D_RUNTIME_TRANSFORM_SYSTEM_HPP
 #define X3D_RUNTIME_TRANSFORM_SYSTEM_HPP
 
+#include "FieldRead.hpp"
 #include "DirtyTracker.hpp"
 #include "Mat4.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -130,12 +131,18 @@ private:
 
   static SFVec3f getVec(const X3DNode *n, const std::string &name) {
     for (const auto &f : n->fields())
-      if (f.x3dName == name) return std::any_cast<SFVec3f>(f.get(*n));
+      if (f.x3dName == name) {
+        FieldRef<SFVec3f> v(*n, f);
+        return v ? *v : SFVec3f{0, 0, 0};
+      }
     return SFVec3f{0, 0, 0};
   }
   static SFRotation getRot(const X3DNode *n, const std::string &name) {
     for (const auto &f : n->fields())
-      if (f.x3dName == name) return std::any_cast<SFRotation>(f.get(*n));
+      if (f.x3dName == name) {
+        FieldRef<SFRotation> v(*n, f);
+        return v ? *v : SFRotation{0, 0, 1, 0};
+      }
     return SFRotation{0, 0, 1, 0};
   }
 
@@ -159,17 +166,9 @@ private:
     // documented per-node (first-path) approximation; the extractor re-accumulates
     // per-path itself, so the render path is unaffected.
     if (!walked_.insert(n).second) return;
-    for (const auto &f : n->fields()) {
-      if (!f.get) continue; // inputOnly node fields (addChildren/...) have no getter
-      if (f.type == X3DFieldType::SFNode) {
-        auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
-        if (c) walk(c.get(), nextParent);
-      } else if (f.type == X3DFieldType::MFNode) {
-        for (const auto &c :
-             std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*n)))
-          if (c) walk(c.get(), nextParent);
-      }
-    }
+    forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+      walk(c.get(), nextParent);
+    });
   }
 
   // Recompute world = parentWorld * local for `n`, then recurse child Transforms.

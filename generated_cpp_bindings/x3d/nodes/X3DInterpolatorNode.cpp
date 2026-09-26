@@ -31,24 +31,39 @@ const FieldTable &X3DInterpolatorNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DInterpolatorNode &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"key", X3DFieldType::MFFloat, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "key", X3DFieldType::MFFloat, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const X3DInterpolatorNode &>(n).getKey());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const X3DInterpolatorNode &>(n).getKey());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<X3DInterpolatorNode &>(n).setKey(
-                        std::any_cast<MFFloat>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<X3DInterpolatorNode &>(n).setKey(
+              std::any_cast<MFFloat>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DInterpolatorNode &>(n).getKey(),
+                  &typeid(MFFloat)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -65,6 +80,14 @@ const FieldTable &X3DInterpolatorNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DInterpolatorNode &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -78,6 +101,10 @@ const FieldTable &X3DInterpolatorNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -96,6 +123,14 @@ const FieldTable &X3DInterpolatorNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DInterpolatorNode &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -112,6 +147,14 @@ const FieldTable &X3DInterpolatorNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DInterpolatorNode &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -130,6 +173,14 @@ const FieldTable &X3DInterpolatorNode::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const X3DInterpolatorNode &>(n)
+                                 .X3DNode::getClass_(),
+                            &typeid(SFString)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -147,6 +198,14 @@ const FieldTable &X3DInterpolatorNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DInterpolatorNode &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -163,6 +222,14 @@ const FieldTable &X3DInterpolatorNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DInterpolatorNode &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

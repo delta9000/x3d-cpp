@@ -73,9 +73,9 @@ public:
    * @details The transferFunction field holds a single texture representation
    * in either two or three dimensions that maps the voxel data values to a
    * specific colour output.
-   * @return SFNode The current value of transferFunction.
+   * @return const SFNode& The current value of transferFunction.
    */
-  SFNode getTransferFunction() const { return _transferFunction; }
+  const SFNode &getTransferFunction() const { return _transferFunction; }
 
   /**
    * @brief Acceptable node types for the transferFunction field.

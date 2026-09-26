@@ -70,9 +70,9 @@ public:
    * @details Defines index values into the parent HAnimSegment or
    * HAnimBody/HAnimHumanoid coordinate array for the mesh of vertices affected
    * by this HAnimDisplacer.
-   * @return MFInt32 The current value of coordIndex.
+   * @return const MFInt32& The current value of coordIndex.
    */
-  MFInt32 getCoordIndex() const { return _coordIndex; }
+  const MFInt32 &getCoordIndex() const { return _coordIndex; }
 
   /**
    * @brief Sets the value of coordIndex. AccessType: inputOutput
@@ -89,9 +89,9 @@ public:
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Author-provided prose that describes intended purpose of this
    * node.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -108,9 +108,9 @@ public:
    * @details displacements are a set of SFVec3f values added to neutral/resting
    * position of each of the corresponding HAnimSegment vertices (or
    * HAnimJoint/HAnimHumanoid vertices) referenced by coordIndex field.
-   * @return MFVec3f The current value of displacements.
+   * @return const MFVec3f& The current value of displacements.
    */
-  MFVec3f getDisplacements() const { return _displacements; }
+  const MFVec3f &getDisplacements() const { return _displacements; }
 
   /**
    * @brief Sets the value of displacements. AccessType: inputOutput
@@ -127,9 +127,9 @@ public:
    * @brief Gets the value of name. AccessType: inputOutput
    * @details Unique name attribute must be defined so that HAnimDisplacer node
    * can be identified at run time for animation purposes.
-   * @return SFString The current value of name.
+   * @return const SFString& The current value of name.
    */
-  SFString getName() const { return _name; }
+  const SFString &getName() const { return _name; }
 
   /**
    * @brief Sets the value of name. AccessType: inputOutput
@@ -146,9 +146,9 @@ public:
    * @details The weigh factor has typical range [0,1] and defines the scale
    * factor applied to displacement values before adding them to neutral vertex
    * positions.
-   * @return SFFloat The current value of weight.
+   * @return const SFFloat& The current value of weight.
    */
-  SFFloat getWeight() const { return _weight; }
+  const SFFloat &getWeight() const { return _weight; }
 
   /**
    * @brief Sets the value of weight. AccessType: inputOutput

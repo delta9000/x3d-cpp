@@ -122,9 +122,9 @@ public:
    * @details Single contained Color or ColorRGBA node that can specify color
    * values applied to corresponding vertices according to colorIndex and
    * colorPerVertex fields.
-   * @return SFNode The current value of color.
+   * @return const SFNode& The current value of color.
    */
-  SFNode getColor() const { return _color; }
+  const SFNode &getColor() const { return _color; }
 
   /**
    * @brief Acceptable node types for the color field.
@@ -151,9 +151,9 @@ public:
    * @brief Gets the value of colorIndex. AccessType: initializeOnly
    * @details colorIndex values define the order in which Color|ColorRGBA values
    * are applied to polygons (or vertices).
-   * @return MFInt32 The current value of colorIndex.
+   * @return const MFInt32& The current value of colorIndex.
    */
-  MFInt32 getColorIndex() const { return _colorIndex; }
+  const MFInt32 &getColorIndex() const { return _colorIndex; }
   /**
    * @brief Data-layer write of colorIndex (reader/init ingest path).
    * @details colorIndex is initializeOnly: author-settable at parse
@@ -165,9 +165,9 @@ public:
    * @brief Gets the value of colorPerVertex. AccessType: initializeOnly
    * @details Whether Color node color values are applied to each point vertex
    * (true) or per polyline (false).
-   * @return SFBool The current value of colorPerVertex.
+   * @return const SFBool& The current value of colorPerVertex.
    */
-  SFBool getColorPerVertex() const { return _colorPerVertex; }
+  const SFBool &getColorPerVertex() const { return _colorPerVertex; }
   /**
    * @brief Data-layer write of colorPerVertex (reader/init ingest path).
    * @details colorPerVertex is initializeOnly: author-settable at parse
@@ -181,9 +181,9 @@ public:
    * @brief Gets the value of coord. AccessType: inputOutput
    * @details Single contained Coordinate or CoordinateDouble node that can
    * specify a list of vertex values.
-   * @return SFNode The current value of coord.
+   * @return const SFNode& The current value of coord.
    */
-  SFNode getCoord() const { return _coord; }
+  const SFNode &getCoord() const { return _coord; }
 
   /**
    * @brief Acceptable node types for the coord field.
@@ -209,9 +209,9 @@ public:
    * @brief Gets the value of coordIndex. AccessType: initializeOnly
    * @details coordIndex indices provide the order in which coordinates are
    * applied to construct each polygon face.
-   * @return MFInt32 The current value of coordIndex.
+   * @return const MFInt32& The current value of coordIndex.
    */
-  MFInt32 getCoordIndex() const { return _coordIndex; }
+  const MFInt32 &getCoordIndex() const { return _coordIndex; }
   /**
    * @brief Data-layer write of coordIndex (reader/init ingest path).
    * @details coordIndex is initializeOnly: author-settable at parse
@@ -223,9 +223,9 @@ public:
    * @brief Gets the value of fogCoord. AccessType: inputOutput
    * @details Single contained FogCoordinate node that can specify depth
    * parameters for fog in corresponding geometry.
-   * @return SFNode The current value of fogCoord.
+   * @return const SFNode& The current value of fogCoord.
    */
-  SFNode getFogCoord() const { return _fogCoord; }
+  const SFNode &getFogCoord() const { return _fogCoord; }
 
   /**
    * @brief Acceptable node types for the fogCoord field.
@@ -252,9 +252,9 @@ public:
    * @details Single contained Normal node that can specify perpendicular
    * vectors for corresponding vertices to support rendering computations,
    * applied according to the normalPerVertex field.
-   * @return SFNode The current value of normal.
+   * @return const SFNode& The current value of normal.
    */
-  SFNode getNormal() const { return _normal; }
+  const SFNode &getNormal() const { return _normal; }
 
   /**
    * @brief Acceptable node types for the normal field.

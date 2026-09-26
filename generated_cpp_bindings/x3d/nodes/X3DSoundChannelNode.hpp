@@ -82,9 +82,9 @@ public:
   /**
    * @brief Gets the value of channelCount. AccessType: outputOnly
    * @details
-   * @return SFInt32 The current value of channelCount.
+   * @return const SFInt32& The current value of channelCount.
    */
-  SFInt32 getChannelCount() const { return _channelCount; }
+  const SFInt32 &getChannelCount() const { return _channelCount; }
 
   /**
    * @brief Emit an output value on channelCount. AccessType: outputOnly
@@ -100,9 +100,10 @@ public:
   /**
    * @brief Gets the value of channelCountMode. AccessType: inputOutput
    * @details
-   * @return ChannelCountModeChoices The current value of channelCountMode.
+   * @return const ChannelCountModeChoices& The current value of
+   * channelCountMode.
    */
-  ChannelCountModeChoices getChannelCountMode() const {
+  const ChannelCountModeChoices &getChannelCountMode() const {
     return _channelCountMode;
   }
 
@@ -119,10 +120,10 @@ public:
   /**
    * @brief Gets the value of channelInterpretation. AccessType: inputOutput
    * @details
-   * @return ChannelInterpretationChoices The current value of
+   * @return const ChannelInterpretationChoices& The current value of
    * channelInterpretation.
    */
-  ChannelInterpretationChoices getChannelInterpretation() const {
+  const ChannelInterpretationChoices &getChannelInterpretation() const {
     return _channelInterpretation;
   }
 
@@ -139,9 +140,9 @@ public:
   /**
    * @brief Gets the value of gain. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of gain.
+   * @return const SFFloat& The current value of gain.
    */
-  SFFloat getGain() const { return _gain; }
+  const SFFloat &getGain() const { return _gain; }
 
   /**
    * @brief Sets the value of gain. AccessType: inputOutput

@@ -77,9 +77,9 @@ public:
   /**
    * @brief Gets the value of closed. AccessType: inputOutput
    * @details Whether or not the curve is closed (i.
-   * @return SFBool The current value of closed.
+   * @return const SFBool& The current value of closed.
    */
-  SFBool getClosed() const { return _closed; }
+  const SFBool &getClosed() const { return _closed; }
 
   /**
    * @brief Sets the value of closed. AccessType: inputOutput
@@ -92,9 +92,9 @@ public:
    * @brief Gets the value of keyValue. AccessType: inputOutput
    * @details Output values for nonlinear interpolation, each corresponding to
    * an input-fraction value in the key array.
-   * @return MFFloat The current value of keyValue.
+   * @return const MFFloat& The current value of keyValue.
    */
-  MFFloat getKeyValue() const { return _keyValue; }
+  const MFFloat &getKeyValue() const { return _keyValue; }
 
   /**
    * @brief Sets the value of keyValue. AccessType: inputOutput
@@ -110,9 +110,9 @@ public:
    * @brief Gets the value of keyVelocity. AccessType: inputOutput
    * @details Output values for nonlinear interpolation, each corresponding to
    * an input-fraction value in the key array.
-   * @return MFFloat The current value of keyVelocity.
+   * @return const MFFloat& The current value of keyVelocity.
    */
-  MFFloat getKeyVelocity() const { return _keyVelocity; }
+  const MFFloat &getKeyVelocity() const { return _keyVelocity; }
 
   /**
    * @brief Sets the value of keyVelocity. AccessType: inputOutput
@@ -129,9 +129,9 @@ public:
    * @details normalizeVelocity field specifies whether the velocity vectors are
    * normalized to produce smooth speed transitions, or transformed into
    * tangency vectors.
-   * @return SFBool The current value of normalizeVelocity.
+   * @return const SFBool& The current value of normalizeVelocity.
    */
-  SFBool getNormalizeVelocity() const { return _normalizeVelocity; }
+  const SFBool &getNormalizeVelocity() const { return _normalizeVelocity; }
 
   /**
    * @brief Sets the value of normalizeVelocity. AccessType: inputOutput
@@ -147,9 +147,9 @@ public:
    * @details Nonlinearly interpolated output value computed by using current
    * time fraction along with corresponding key, keyValue and keyVelocity
    * values.
-   * @return SFFloat The current value of value_changed.
+   * @return const SFFloat& The current value of value_changed.
    */
-  SFFloat getValue_changed() const { return _value_changed; }
+  const SFFloat &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

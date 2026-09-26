@@ -68,9 +68,9 @@ public:
   /**
    * @brief Gets the value of radius. AccessType: initializeOnly
    * @details circle radius.
-   * @return SFFloat The current value of radius.
+   * @return const SFFloat& The current value of radius.
    */
-  SFFloat getRadius() const { return _radius; }
+  const SFFloat &getRadius() const { return _radius; }
   /**
    * @brief Data-layer write of radius (reader/init ingest path).
    * @details radius is initializeOnly: author-settable at parse

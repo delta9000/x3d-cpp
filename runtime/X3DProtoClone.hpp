@@ -2,6 +2,7 @@
 #ifndef X3D_RUNTIME_PROTO_CLONE_HPP
 #define X3D_RUNTIME_PROTO_CLONE_HPP
 
+#include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "x3d/core/X3DReflection.hpp"
@@ -54,14 +55,16 @@ deepClone(const std::shared_ptr<x3d::nodes::X3DNode> &src,
   for (const FieldInfo &f : src->fields()) {
     if (!f.get || !f.set) continue;                    // event-only/read-only
     if (f.type == X3DFieldType::SFNode) {
-      auto child = std::any_cast<std::shared_ptr<x3d::nodes::X3DNode>>(f.get(*src));
-      f.set(*dst, std::any(deepClone(child, cloneMap)));
+      FieldRef<std::shared_ptr<x3d::nodes::X3DNode>> child(*src, f);
+      if (!child) continue;
+      f.set(*dst, std::any(deepClone(*child, cloneMap)));
     } else if (f.type == X3DFieldType::MFNode) {
-      auto kids =
-          std::any_cast<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>>(f.get(*src));
+      // Borrowed: the walk never writes `src`, only the clones.
+      FieldRef<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>> kids(*src, f);
+      if (!kids) continue;
       std::vector<std::shared_ptr<x3d::nodes::X3DNode>> out;
-      out.reserve(kids.size());
-      for (auto &k : kids) out.push_back(deepClone(k, cloneMap));
+      out.reserve(kids->size());
+      for (const auto &k : *kids) out.push_back(deepClone(k, cloneMap));
       f.set(*dst, std::any(std::move(out)));
     } else {
       f.set(*dst, f.get(*src));                         // scalar: copy boxed any

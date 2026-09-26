@@ -32,6 +32,13 @@ const FieldTable &DISEntityManager::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).getAddedEntities(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +55,13 @@ const FieldTable &DISEntityManager::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).getAddress(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -66,6 +80,13 @@ const FieldTable &DISEntityManager::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).getApplicationID(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +103,13 @@ const FieldTable &DISEntityManager::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -100,6 +128,13 @@ const FieldTable &DISEntityManager::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -117,6 +152,14 @@ const FieldTable &DISEntityManager::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DISEntityManager &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -132,6 +175,13 @@ const FieldTable &DISEntityManager::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).getPort(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -151,24 +201,39 @@ const FieldTable &DISEntityManager::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DISEntityManager &>(n).getRemovedEntities(),
+              &typeid(MFNode)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"siteID", X3DFieldType::SFInt32, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "siteID", X3DFieldType::SFInt32, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const DISEntityManager &>(n).getSiteID());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const DISEntityManager &>(n).getSiteID());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<DISEntityManager &>(n).setSiteID(
-                        std::any_cast<SFInt32>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<DISEntityManager &>(n).setSiteID(
+              std::any_cast<SFInt32>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).getSiteID(),
+                  &typeid(SFInt32)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -184,6 +249,13 @@ const FieldTable &DISEntityManager::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -202,6 +274,13 @@ const FieldTable &DISEntityManager::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -218,6 +297,14 @@ const FieldTable &DISEntityManager::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DISEntityManager &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -236,6 +323,13 @@ const FieldTable &DISEntityManager::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DISEntityManager &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -252,6 +346,14 @@ const FieldTable &DISEntityManager::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DISEntityManager &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

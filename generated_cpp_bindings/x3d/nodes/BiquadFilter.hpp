@@ -149,9 +149,9 @@ public:
    * @brief Gets the value of detune. AccessType: inputOutput
    * @details The detune field forms a compound field together with playbackRate
    * that together determine a computedPlaybackRate value.
-   * @return SFFloat The current value of detune.
+   * @return const SFFloat& The current value of detune.
    */
-  SFFloat getDetune() const { return _detune; }
+  const SFFloat &getDetune() const { return _detune; }
 
   /**
    * @brief Sets the value of detune. AccessType: inputOutput
@@ -178,9 +178,9 @@ public:
   /**
    * @brief Gets the value of frequency. AccessType: inputOutput
    * @details frequency at which the BiquadFilterNode operates, in Hz.
-   * @return SFFloat The current value of frequency.
+   * @return const SFFloat& The current value of frequency.
    */
-  SFFloat getFrequency() const { return _frequency; }
+  const SFFloat &getFrequency() const { return _frequency; }
 
   /**
    * @brief Sets the value of frequency. AccessType: inputOutput
@@ -207,9 +207,9 @@ public:
    * @brief Gets the value of qualityFactor. AccessType: inputOutput
    * @details qualityFactor is Quality Factor (Q) of the respective filter
    * algorithm.
-   * @return SFFloat The current value of qualityFactor.
+   * @return const SFFloat& The current value of qualityFactor.
    */
-  SFFloat getQualityFactor() const { return _qualityFactor; }
+  const SFFloat &getQualityFactor() const { return _qualityFactor; }
 
   /**
    * @brief Sets the value of qualityFactor. AccessType: inputOutput
@@ -238,9 +238,9 @@ public:
   /**
    * @brief Gets the value of type. AccessType: inputOutput
    * @details type selects which BiquadFilter algorithm is used.
-   * @return BiquadTypeFilterChoices The current value of type.
+   * @return const BiquadTypeFilterChoices& The current value of type.
    */
-  BiquadTypeFilterChoices getType() const { return _type; }
+  const BiquadTypeFilterChoices &getType() const { return _type; }
 
   /**
    * @brief Sets the value of type. AccessType: inputOutput

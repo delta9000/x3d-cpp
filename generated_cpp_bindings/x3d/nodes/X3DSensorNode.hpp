@@ -63,9 +63,9 @@ public:
   /**
    * @brief Gets the value of description. AccessType: inputOutput
    * @details
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -79,9 +79,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -93,9 +93,9 @@ public:
   /**
    * @brief Gets the value of isActive. AccessType: outputOnly
    * @details
-   * @return SFBool The current value of isActive.
+   * @return const SFBool& The current value of isActive.
    */
-  SFBool getIsActive() const { return _isActive; }
+  const SFBool &getIsActive() const { return _isActive; }
 
   /**
    * @brief Emit an output value on isActive. AccessType: outputOnly

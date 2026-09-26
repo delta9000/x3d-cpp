@@ -58,9 +58,9 @@ public:
   /**
    * @brief Gets the value of isActive. AccessType: outputOnly
    * @details
-   * @return SFBool The current value of isActive.
+   * @return const SFBool& The current value of isActive.
    */
-  SFBool getIsActive() const { return _isActive; }
+  const SFBool &getIsActive() const { return _isActive; }
 
   /**
    * @brief Emit an output value on isActive. AccessType: outputOnly

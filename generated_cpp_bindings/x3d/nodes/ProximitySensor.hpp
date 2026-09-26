@@ -72,9 +72,9 @@ public:
   /**
    * @brief Gets the value of center. AccessType: inputOutput
    * @details Position offset from origin of local coordinate system.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -89,9 +89,9 @@ public:
    * @brief Gets the value of centerOfRotation_changed. AccessType: outputOnly
    * @details Sends changed centerOfRotation values, likely caused by user
    * interaction.
-   * @return SFVec3f The current value of centerOfRotation_changed.
+   * @return const SFVec3f& The current value of centerOfRotation_changed.
    */
-  SFVec3f getCenterOfRotation_changed() const {
+  const SFVec3f &getCenterOfRotation_changed() const {
     return _centerOfRotation_changed;
   }
 
@@ -112,9 +112,9 @@ public:
   /**
    * @brief Gets the value of enterTime. AccessType: outputOnly
    * @details Time event generated when user's camera enters the box.
-   * @return SFTime The current value of enterTime.
+   * @return const SFTime& The current value of enterTime.
    */
-  SFTime getEnterTime() const { return _enterTime; }
+  const SFTime &getEnterTime() const { return _enterTime; }
 
   /**
    * @brief Emit an output value on enterTime. AccessType: outputOnly
@@ -130,9 +130,9 @@ public:
   /**
    * @brief Gets the value of exitTime. AccessType: outputOnly
    * @details Time event generated when user's camera exits the box.
-   * @return SFTime The current value of exitTime.
+   * @return const SFTime& The current value of exitTime.
    */
-  SFTime getExitTime() const { return _exitTime; }
+  const SFTime &getExitTime() const { return _exitTime; }
 
   /**
    * @brief Emit an output value on exitTime. AccessType: outputOnly
@@ -148,9 +148,11 @@ public:
   /**
    * @brief Gets the value of orientation_changed. AccessType: outputOnly
    * @details Sends rotation event relative to center.
-   * @return SFRotation The current value of orientation_changed.
+   * @return const SFRotation& The current value of orientation_changed.
    */
-  SFRotation getOrientation_changed() const { return _orientation_changed; }
+  const SFRotation &getOrientation_changed() const {
+    return _orientation_changed;
+  }
 
   /**
    * @brief Emit an output value on orientation_changed. AccessType: outputOnly
@@ -168,9 +170,9 @@ public:
   /**
    * @brief Gets the value of position_changed. AccessType: outputOnly
    * @details Sends translation event relative to center.
-   * @return SFVec3f The current value of position_changed.
+   * @return const SFVec3f& The current value of position_changed.
    */
-  SFVec3f getPosition_changed() const { return _position_changed; }
+  const SFVec3f &getPosition_changed() const { return _position_changed; }
 
   /**
    * @brief Emit an output value on position_changed. AccessType: outputOnly

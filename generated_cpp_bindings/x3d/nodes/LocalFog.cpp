@@ -29,6 +29,13 @@ const FieldTable &LocalFog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DFogObject::getColor(),
+                  &typeid(SFColor)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -43,6 +50,13 @@ const FieldTable &LocalFog::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -70,6 +84,13 @@ const FieldTable &LocalFog::fields() const {
             dynamic_cast<LocalFog &>(n).X3DFogObject::setFogType(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DFogObject::getFogType(),
+                  &typeid(FogTypeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -84,6 +105,13 @@ const FieldTable &LocalFog::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -102,6 +130,13 @@ const FieldTable &LocalFog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -119,6 +154,14 @@ const FieldTable &LocalFog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n)
+                       .X3DFogObject::getVisibilityRange(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -134,6 +177,13 @@ const FieldTable &LocalFog::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -151,24 +201,38 @@ const FieldTable &LocalFog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"class", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "class", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const LocalFog &>(n).X3DNode::getClass_());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const LocalFog &>(n).X3DNode::getClass_());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<LocalFog &>(n).X3DNode::setClass_(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<LocalFog &>(n).X3DNode::setClass_(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -184,24 +248,38 @@ const FieldTable &LocalFog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"style", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "style", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const LocalFog &>(n).X3DNode::getStyle());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const LocalFog &>(n).X3DNode::getStyle());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<LocalFog &>(n).X3DNode::setStyle(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<LocalFog &>(n).X3DNode::setStyle(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LocalFog &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     return t;
   }();

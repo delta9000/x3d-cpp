@@ -101,9 +101,9 @@ public:
    * @brief Gets the value of useGeometry. AccessType: inputOutput
    * @details useGeometry indicates whether collision-detection code checks down
    * to level of geometry, or only make approximations using geometry bounds.
-   * @return SFBool The current value of useGeometry.
+   * @return const SFBool& The current value of useGeometry.
    */
-  SFBool getUseGeometry() const { return _useGeometry; }
+  const SFBool &getUseGeometry() const { return _useGeometry; }
 
   /**
    * @brief Sets the value of useGeometry. AccessType: inputOutput

@@ -75,9 +75,9 @@ public:
    * @brief Gets the value of controlPoint. AccessType: inputOutput
    * @details Single contained Coordinate or CoordinateDouble node that can
    * specify control points for NURBS geometry definitions.
-   * @return SFNode The current value of controlPoint.
+   * @return const SFNode& The current value of controlPoint.
    */
-  SFNode getControlPoint() const { return _controlPoint; }
+  const SFNode &getControlPoint() const { return _controlPoint; }
 
   /**
    * @brief Acceptable node types for the controlPoint field.
@@ -104,9 +104,9 @@ public:
    * @brief Gets the value of knot. AccessType: inputOutput
    * @details knot vector, where size = number of control points + order of
    * curve.
-   * @return MFDouble The current value of knot.
+   * @return const MFDouble& The current value of knot.
    */
-  MFDouble getKnot() const { return _knot; }
+  const MFDouble &getKnot() const { return _knot; }
 
   /**
    * @brief Sets the value of knot. AccessType: inputOutput
@@ -121,9 +121,9 @@ public:
   /**
    * @brief Gets the value of order. AccessType: inputOutput
    * @details define order of surface by polynomials of degree = order-1.
-   * @return SFInt32 The current value of order.
+   * @return const SFInt32& The current value of order.
    */
-  SFInt32 getOrder() const { return _order; }
+  const SFInt32 &getOrder() const { return _order; }
 
   /**
    * @brief Sets the value of order. AccessType: inputOutput
@@ -175,9 +175,9 @@ public:
    * @brief Gets the value of value_changed. AccessType: outputOnly
    * @details Computationaly interpolated output value determined by current key
    * time and corresponding keyValue pair.
-   * @return SFVec3f The current value of value_changed.
+   * @return const SFVec3f& The current value of value_changed.
    */
-  SFVec3f getValue_changed() const { return _value_changed; }
+  const SFVec3f &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly
@@ -194,9 +194,9 @@ public:
    * @brief Gets the value of weight. AccessType: inputOutput
    * @details Output values for linear interpolation, each corresponding to
    * knots.
-   * @return MFDouble The current value of weight.
+   * @return const MFDouble& The current value of weight.
    */
-  MFDouble getWeight() const { return _weight; }
+  const MFDouble &getWeight() const { return _weight; }
 
   /**
    * @brief Sets the value of weight. AccessType: inputOutput

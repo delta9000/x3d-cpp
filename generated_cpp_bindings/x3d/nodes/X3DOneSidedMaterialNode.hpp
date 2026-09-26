@@ -67,9 +67,11 @@ public:
   /**
    * @brief Gets the value of emissiveTextureMapping. AccessType: inputOutput
    * @details
-   * @return SFString The current value of emissiveTextureMapping.
+   * @return const SFString& The current value of emissiveTextureMapping.
    */
-  SFString getEmissiveTextureMapping() const { return _emissiveTextureMapping; }
+  const SFString &getEmissiveTextureMapping() const {
+    return _emissiveTextureMapping;
+  }
 
   /**
    * @brief Sets the value of emissiveTextureMapping. AccessType: inputOutput
@@ -89,9 +91,9 @@ public:
   /**
    * @brief Gets the value of normalScale. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of normalScale.
+   * @return const SFFloat& The current value of normalScale.
    */
-  SFFloat getNormalScale() const { return _normalScale; }
+  const SFFloat &getNormalScale() const { return _normalScale; }
 
   /**
    * @brief Sets the value of normalScale. AccessType: inputOutput
@@ -117,9 +119,11 @@ public:
   /**
    * @brief Gets the value of normalTextureMapping. AccessType: inputOutput
    * @details
-   * @return SFString The current value of normalTextureMapping.
+   * @return const SFString& The current value of normalTextureMapping.
    */
-  SFString getNormalTextureMapping() const { return _normalTextureMapping; }
+  const SFString &getNormalTextureMapping() const {
+    return _normalTextureMapping;
+  }
 
   /**
    * @brief Sets the value of normalTextureMapping. AccessType: inputOutput

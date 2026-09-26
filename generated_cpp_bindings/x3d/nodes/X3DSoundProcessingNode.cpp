@@ -31,6 +31,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .getChannelCount(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -55,6 +63,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
           ChannelCountModeChoices ev;
           if (from_string(s, ev))
             dynamic_cast<X3DSoundProcessingNode &>(n).setChannelCountMode(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .getChannelCountMode(),
+                  &typeid(ChannelCountModeChoices)};
         }
 
     });
@@ -85,6 +101,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
                 ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .getChannelInterpretation(),
+                  &typeid(ChannelInterpretationChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -101,6 +125,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DTimeDependentNode::getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -119,6 +151,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DTimeDependentNode::getElapsedTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -135,6 +175,13 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n).getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -153,6 +200,13 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n).getGain(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -169,6 +223,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundProcessingNode &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -187,6 +249,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DTimeDependentNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -203,6 +273,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DTimeDependentNode::getIsPaused(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -221,6 +299,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -237,6 +323,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DTimeDependentNode::getPauseTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -255,6 +349,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DTimeDependentNode::getResumeTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -271,6 +373,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DTimeDependentNode::getStartTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -289,6 +399,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DTimeDependentNode::getStopTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -305,6 +423,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundProcessingNode &>(n).getTailTime(),
+              &typeid(SFTime)};
+        }
 
     });
 
@@ -323,6 +449,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -339,6 +473,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -357,6 +499,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -374,6 +524,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundProcessingNode &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -390,6 +548,14 @@ const FieldTable &X3DSoundProcessingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundProcessingNode &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

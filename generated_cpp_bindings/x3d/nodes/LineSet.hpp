@@ -116,9 +116,9 @@ public:
    * @details Single contained Color or ColorRGBA node that can specify color
    * values applied to corresponding vertices according to colorIndex and
    * colorPerVertex fields.
-   * @return SFNode The current value of color.
+   * @return const SFNode& The current value of color.
    */
-  SFNode getColor() const { return _color; }
+  const SFNode &getColor() const { return _color; }
 
   /**
    * @brief Acceptable node types for the color field.
@@ -145,9 +145,9 @@ public:
    * @brief Gets the value of coord. AccessType: inputOutput
    * @details Single contained Coordinate or CoordinateDouble node that can
    * specify a list of vertex values.
-   * @return SFNode The current value of coord.
+   * @return const SFNode& The current value of coord.
    */
-  SFNode getCoord() const { return _coord; }
+  const SFNode &getCoord() const { return _coord; }
 
   /**
    * @brief Acceptable node types for the coord field.
@@ -173,9 +173,9 @@ public:
    * @brief Gets the value of fogCoord. AccessType: inputOutput
    * @details Single contained FogCoordinate node that can specify depth
    * parameters for fog in corresponding geometry.
-   * @return SFNode The current value of fogCoord.
+   * @return const SFNode& The current value of fogCoord.
    */
-  SFNode getFogCoord() const { return _fogCoord; }
+  const SFNode &getFogCoord() const { return _fogCoord; }
 
   /**
    * @brief Acceptable node types for the fogCoord field.
@@ -202,9 +202,9 @@ public:
    * @details Single contained Normal node that can specify perpendicular
    * vectors for corresponding vertices to support rendering computations,
    * applied according to the normalPerVertex field.
-   * @return SFNode The current value of normal.
+   * @return const SFNode& The current value of normal.
    */
-  SFNode getNormal() const { return _normal; }
+  const SFNode &getNormal() const { return _normal; }
 
   /**
    * @brief Acceptable node types for the normal field.
@@ -231,9 +231,9 @@ public:
    * @brief Gets the value of vertexCount. AccessType: inputOutput
    * @details vertexCount describes how many vertices are used in each
    * individual polyline segment from the Coordinate point values.
-   * @return MFInt32 The current value of vertexCount.
+   * @return const MFInt32& The current value of vertexCount.
    */
-  MFInt32 getVertexCount() const { return _vertexCount; }
+  const MFInt32 &getVertexCount() const { return _vertexCount; }
 
   /**
    * @brief Sets the value of vertexCount. AccessType: inputOutput

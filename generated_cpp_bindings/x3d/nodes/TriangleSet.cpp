@@ -29,6 +29,14 @@ const FieldTable &TriangleSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n)
+                       .X3DComposedGeometryNode::getAttrib(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(
@@ -47,6 +55,14 @@ const FieldTable &TriangleSet::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const TriangleSet &>(n)
+                                 .X3DComposedGeometryNode::getCcw(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -63,6 +79,14 @@ const FieldTable &TriangleSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n)
+                       .X3DComposedGeometryNode::getColor(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -82,6 +106,14 @@ const FieldTable &TriangleSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n)
+                       .X3DComposedGeometryNode::getColorPerVertex(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -98,6 +130,14 @@ const FieldTable &TriangleSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n)
+                       .X3DComposedGeometryNode::getCoord(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -116,24 +156,39 @@ const FieldTable &TriangleSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n)
+                       .X3DComposedGeometryNode::getFogCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
+    t.push_back(FieldInfo{
+        "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const TriangleSet &>(n).X3DNode::getIS());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const TriangleSet &>(n).X3DNode::getIS());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<TriangleSet &>(n).X3DNode::setIS(
-                        std::any_cast<SFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<TriangleSet &>(n).X3DNode::setIS(
+              std::any_cast<SFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -149,6 +204,13 @@ const FieldTable &TriangleSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -166,6 +228,14 @@ const FieldTable &TriangleSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n)
+                       .X3DComposedGeometryNode::getNormal(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -185,6 +255,14 @@ const FieldTable &TriangleSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n)
+                       .X3DComposedGeometryNode::getNormalPerVertex(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(
@@ -203,6 +281,14 @@ const FieldTable &TriangleSet::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const TriangleSet &>(n)
+                                 .X3DComposedGeometryNode::getSolid(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -220,41 +306,63 @@ const FieldTable &TriangleSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n)
+                       .X3DComposedGeometryNode::getTexCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const TriangleSet &>(n).X3DNode::getDEF());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const TriangleSet &>(n).X3DNode::getDEF());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<TriangleSet &>(n).X3DNode::setDEF(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<TriangleSet &>(n).X3DNode::setDEF(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
 
-    t.push_back(
-        FieldInfo{"USE", X3DFieldType::SFString, AccessType::InputOutput, "",
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const TriangleSet &>(n).X3DNode::getUSE());
-                  },
+    });
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<TriangleSet &>(n).X3DNode::setUSE(
-                        std::any_cast<SFString>(v));
-                  },
+    t.push_back(FieldInfo{
+        "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  nullptr, nullptr
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const TriangleSet &>(n).X3DNode::getUSE());
+        },
 
-        });
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<TriangleSet &>(n).X3DNode::setUSE(
+              std::any_cast<SFString>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -271,24 +379,38 @@ const FieldTable &TriangleSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"id", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "id", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const TriangleSet &>(n).X3DNode::getId());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const TriangleSet &>(n).X3DNode::getId());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<TriangleSet &>(n).X3DNode::setId(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<TriangleSet &>(n).X3DNode::setId(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -304,6 +426,13 @@ const FieldTable &TriangleSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TriangleSet &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

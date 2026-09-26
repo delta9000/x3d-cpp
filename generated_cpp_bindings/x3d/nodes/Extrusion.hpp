@@ -132,9 +132,9 @@ public:
   /**
    * @brief Gets the value of beginCap. AccessType: initializeOnly
    * @details Whether beginning cap is drawn (similar to Cylinder top cap).
-   * @return SFBool The current value of beginCap.
+   * @return const SFBool& The current value of beginCap.
    */
-  SFBool getBeginCap() const { return _beginCap; }
+  const SFBool &getBeginCap() const { return _beginCap; }
   /**
    * @brief Data-layer write of beginCap (reader/init ingest path).
    * @details beginCap is initializeOnly: author-settable at parse
@@ -146,9 +146,9 @@ public:
    * @brief Gets the value of ccw. AccessType: initializeOnly
    * @details The ccw field indicates counterclockwise ordering of
    * vertex-coordinates orientation.
-   * @return SFBool The current value of ccw.
+   * @return const SFBool& The current value of ccw.
    */
-  SFBool getCcw() const { return _ccw; }
+  const SFBool &getCcw() const { return _ccw; }
   /**
    * @brief Data-layer write of ccw (reader/init ingest path).
    * @details ccw is initializeOnly: author-settable at parse
@@ -160,9 +160,9 @@ public:
    * @brief Gets the value of convex. AccessType: initializeOnly
    * @details The convex field is a hint to renderers whether all polygons in a
    * shape are convex (true), or possibly concave (false).
-   * @return SFBool The current value of convex.
+   * @return const SFBool& The current value of convex.
    */
-  SFBool getConvex() const { return _convex; }
+  const SFBool &getConvex() const { return _convex; }
   /**
    * @brief Data-layer write of convex (reader/init ingest path).
    * @details convex is initializeOnly: author-settable at parse
@@ -174,9 +174,9 @@ public:
    * @brief Gets the value of creaseAngle. AccessType: initializeOnly
    * @details creaseAngle defines angle (in radians) where adjacent polygons are
    * drawn with sharp edges or smooth shading.
-   * @return SFFloat The current value of creaseAngle.
+   * @return const SFFloat& The current value of creaseAngle.
    */
-  SFFloat getCreaseAngle() const { return _creaseAngle; }
+  const SFFloat &getCreaseAngle() const { return _creaseAngle; }
   /**
    * @brief Data-layer write of creaseAngle (reader/init ingest path).
    * @details creaseAngle is initializeOnly: author-settable at parse
@@ -188,9 +188,9 @@ public:
    * @brief Gets the value of crossSection. AccessType: initializeOnly
    * @details The crossSection array defines a silhouette outline of the outer
    * Extrusion surface.
-   * @return MFVec2f The current value of crossSection.
+   * @return const MFVec2f& The current value of crossSection.
    */
-  MFVec2f getCrossSection() const { return _crossSection; }
+  const MFVec2f &getCrossSection() const { return _crossSection; }
   /**
    * @brief Data-layer write of crossSection (reader/init ingest path).
    * @details crossSection is initializeOnly: author-settable at parse
@@ -201,9 +201,9 @@ public:
   /**
    * @brief Gets the value of endCap. AccessType: initializeOnly
    * @details Whether end cap is drawn (similar to Cylinder bottom cap).
-   * @return SFBool The current value of endCap.
+   * @return const SFBool& The current value of endCap.
    */
-  SFBool getEndCap() const { return _endCap; }
+  const SFBool &getEndCap() const { return _endCap; }
   /**
    * @brief Data-layer write of endCap (reader/init ingest path).
    * @details endCap is initializeOnly: author-settable at parse
@@ -215,9 +215,9 @@ public:
    * @brief Gets the value of orientation. AccessType: initializeOnly
    * @details The orientation array is a list of axis-angle 4-tuple values
    * applied at each spine-aligned cross-section plane.
-   * @return MFRotation The current value of orientation.
+   * @return const MFRotation& The current value of orientation.
    */
-  MFRotation getOrientation() const { return _orientation; }
+  const MFRotation &getOrientation() const { return _orientation; }
   /**
    * @brief Data-layer write of orientation (reader/init ingest path).
    * @details orientation is initializeOnly: author-settable at parse
@@ -231,9 +231,9 @@ public:
    * @brief Gets the value of scale. AccessType: initializeOnly
    * @details scale is a list of 2D-scale parameters applied at each
    * spine-aligned cross-section plane.
-   * @return MFVec2f The current value of scale.
+   * @return const MFVec2f& The current value of scale.
    */
-  MFVec2f getScale() const { return _scale; }
+  const MFVec2f &getScale() const { return _scale; }
   /**
    * @brief Data-layer write of scale (reader/init ingest path).
    * @details scale is initializeOnly: author-settable at parse
@@ -345,9 +345,9 @@ public:
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse
@@ -359,9 +359,9 @@ public:
    * @brief Gets the value of spine. AccessType: initializeOnly
    * @details The spine array defines a center-line sequence of 3D points that
    * define a piecewise-linear curve forming a series of connected vertices.
-   * @return MFVec3f The current value of spine.
+   * @return const MFVec3f& The current value of spine.
    */
-  MFVec3f getSpine() const { return _spine; }
+  const MFVec3f &getSpine() const { return _spine; }
   /**
    * @brief Data-layer write of spine (reader/init ingest path).
    * @details spine is initializeOnly: author-settable at parse

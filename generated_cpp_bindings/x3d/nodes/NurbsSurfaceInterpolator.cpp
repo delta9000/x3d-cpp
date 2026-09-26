@@ -32,6 +32,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .getControlPoint(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -66,6 +82,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +106,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .getNormal_changed(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -100,6 +132,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .getPosition_changed(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -113,6 +153,10 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -131,6 +175,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .getUDimension(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -147,6 +199,13 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n).getUKnot(),
+                  &typeid(MFDouble)};
+        }
 
     });
 
@@ -165,6 +224,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsSurfaceInterpolator &>(n).getUOrder(),
+              &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -181,6 +248,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .getVDimension(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -199,6 +274,13 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n).getVKnot(),
+                  &typeid(MFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -215,6 +297,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsSurfaceInterpolator &>(n).getVOrder(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -233,6 +323,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsSurfaceInterpolator &>(n).getWeight(),
+              &typeid(MFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -249,6 +347,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -267,6 +373,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -283,6 +397,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -301,6 +423,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -317,6 +447,14 @@ const FieldTable &NurbsSurfaceInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSurfaceInterpolator &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

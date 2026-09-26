@@ -141,9 +141,9 @@ public:
    * information required to locate and size the layout region of the
    * LayoutGroup node relative to its parent’s layout region, and also to scale
    * the contents of the LayoutGroup.
-   * @return SFNode The current value of layout.
+   * @return const SFNode& The current value of layout.
    */
-  SFNode getLayout() const { return _layout; }
+  const SFNode &getLayout() const { return _layout; }
 
   /**
    * @brief Acceptable node types for the layout field.
@@ -206,9 +206,9 @@ public:
    * @brief Gets the value of viewport. AccessType: inputOutput
    * @details The content of the LayoutGroup is clipped by the specified
    * viewport.
-   * @return SFNode The current value of viewport.
+   * @return const SFNode& The current value of viewport.
    */
-  SFNode getViewport() const { return _viewport; }
+  const SFNode &getViewport() const { return _viewport; }
 
   /**
    * @brief Acceptable node types for the viewport field.

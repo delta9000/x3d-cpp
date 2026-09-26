@@ -30,6 +30,13 @@ const FieldTable &Shape::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DShapeNode::getAppearance(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -46,6 +53,13 @@ const FieldTable &Shape::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DShapeNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -64,6 +78,14 @@ const FieldTable &Shape::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Shape &>(n).X3DShapeNode::getBboxDisplay(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -80,6 +102,13 @@ const FieldTable &Shape::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DShapeNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -98,6 +127,13 @@ const FieldTable &Shape::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DShapeNode::getCastShadow(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +151,13 @@ const FieldTable &Shape::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DShapeNode::getGeometry(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -129,6 +172,13 @@ const FieldTable &Shape::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -147,6 +197,13 @@ const FieldTable &Shape::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -164,6 +221,13 @@ const FieldTable &Shape::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DShapeNode::getVisible(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -179,6 +243,13 @@ const FieldTable &Shape::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -193,6 +264,13 @@ const FieldTable &Shape::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -210,6 +288,13 @@ const FieldTable &Shape::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -224,6 +309,13 @@ const FieldTable &Shape::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -240,6 +332,13 @@ const FieldTable &Shape::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Shape &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

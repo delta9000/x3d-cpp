@@ -29,6 +29,13 @@ const FieldTable &BooleanFilter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).getInputFalse(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -46,24 +53,38 @@ const FieldTable &BooleanFilter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).getInputNegate(),
+                  &typeid(SFBool)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"inputTrue", X3DFieldType::SFBool, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "inputTrue", X3DFieldType::SFBool, AccessType::OutputOnly, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const BooleanFilter &>(n).getInputTrue());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const BooleanFilter &>(n).getInputTrue());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<BooleanFilter &>(n).emitInputTrue(
-                        std::any_cast<SFBool>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<BooleanFilter &>(n).emitInputTrue(
+              std::any_cast<SFBool>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).getInputTrue(),
+                  &typeid(SFBool)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -79,6 +100,13 @@ const FieldTable &BooleanFilter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -97,6 +125,14 @@ const FieldTable &BooleanFilter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BooleanFilter &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{"set_boolean", X3DFieldType::SFBool,
@@ -110,6 +146,10 @@ const FieldTable &BooleanFilter::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -128,6 +168,13 @@ const FieldTable &BooleanFilter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -144,6 +191,13 @@ const FieldTable &BooleanFilter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -162,6 +216,13 @@ const FieldTable &BooleanFilter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -179,6 +240,13 @@ const FieldTable &BooleanFilter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -195,6 +263,13 @@ const FieldTable &BooleanFilter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

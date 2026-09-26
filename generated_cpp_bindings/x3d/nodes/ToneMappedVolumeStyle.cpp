@@ -31,6 +31,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ToneMappedVolumeStyle &>(n).getCoolColor(),
+              &typeid(SFColorRGBA)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ToneMappedVolumeStyle &>(n)
+                       .X3DVolumeRenderStyleNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -65,6 +81,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ToneMappedVolumeStyle &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +105,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ToneMappedVolumeStyle &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -100,6 +132,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ToneMappedVolumeStyle &>(n)
+                       .getSurfaceNormals(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -116,6 +156,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ToneMappedVolumeStyle &>(n).getWarmColor(),
+              &typeid(SFColorRGBA)};
+        }
 
     });
 
@@ -134,6 +182,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ToneMappedVolumeStyle &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -150,6 +206,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ToneMappedVolumeStyle &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -168,6 +232,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ToneMappedVolumeStyle &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -185,6 +257,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ToneMappedVolumeStyle &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -201,6 +281,14 @@ const FieldTable &ToneMappedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ToneMappedVolumeStyle &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

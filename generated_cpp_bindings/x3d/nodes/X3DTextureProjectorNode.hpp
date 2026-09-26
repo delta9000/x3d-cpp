@@ -96,9 +96,9 @@ public:
   /**
    * @brief Gets the value of aspectRatio. AccessType: outputOnly
    * @details
-   * @return SFFloat The current value of aspectRatio.
+   * @return const SFFloat& The current value of aspectRatio.
    */
-  SFFloat getAspectRatio() const { return _aspectRatio; }
+  const SFFloat &getAspectRatio() const { return _aspectRatio; }
 
   /**
    * @brief Emit an output value on aspectRatio. AccessType: outputOnly
@@ -114,9 +114,9 @@ public:
   /**
    * @brief Gets the value of description. AccessType: inputOutput
    * @details
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -130,9 +130,9 @@ public:
   /**
    * @brief Gets the value of direction. AccessType: inputOutput
    * @details
-   * @return SFVec3f The current value of direction.
+   * @return const SFVec3f& The current value of direction.
    */
-  SFVec3f getDirection() const { return _direction; }
+  const SFVec3f &getDirection() const { return _direction; }
 
   /**
    * @brief Sets the value of direction. AccessType: inputOutput
@@ -146,9 +146,9 @@ public:
   /**
    * @brief Gets the value of farDistance. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of farDistance.
+   * @return const SFFloat& The current value of farDistance.
    */
-  SFFloat getFarDistance() const { return _farDistance; }
+  const SFFloat &getFarDistance() const { return _farDistance; }
 
   /**
    * @brief Sets the value of farDistance. AccessType: inputOutput
@@ -174,9 +174,9 @@ public:
   /**
    * @brief Gets the value of global. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of global.
+   * @return const SFBool& The current value of global.
    */
-  SFBool getGlobal() const { return _global; }
+  const SFBool &getGlobal() const { return _global; }
 
   /**
    * @brief Sets the value of global. AccessType: inputOutput
@@ -188,9 +188,9 @@ public:
   /**
    * @brief Gets the value of location. AccessType: inputOutput
    * @details
-   * @return SFVec3f The current value of location.
+   * @return const SFVec3f& The current value of location.
    */
-  SFVec3f getLocation() const { return _location; }
+  const SFVec3f &getLocation() const { return _location; }
 
   /**
    * @brief Sets the value of location. AccessType: inputOutput
@@ -204,9 +204,9 @@ public:
   /**
    * @brief Gets the value of nearDistance. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of nearDistance.
+   * @return const SFFloat& The current value of nearDistance.
    */
-  SFFloat getNearDistance() const { return _nearDistance; }
+  const SFFloat &getNearDistance() const { return _nearDistance; }
 
   /**
    * @brief Sets the value of nearDistance. AccessType: inputOutput
@@ -232,9 +232,9 @@ public:
   /**
    * @brief Gets the value of texture. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of texture.
+   * @return const SFNode& The current value of texture.
    */
-  SFNode getTexture() const { return _texture; }
+  const SFNode &getTexture() const { return _texture; }
 
   /**
    * @brief Acceptable node types for the texture field.

@@ -68,9 +68,9 @@ public:
   /**
    * @brief Gets the value of anchorPoint. AccessType: inputOutput
    * @details anchorPoint is joint center, specified in world coordinates.
-   * @return SFVec3f The current value of anchorPoint.
+   * @return const SFVec3f& The current value of anchorPoint.
    */
-  SFVec3f getAnchorPoint() const { return _anchorPoint; }
+  const SFVec3f &getAnchorPoint() const { return _anchorPoint; }
 
   /**
    * @brief Sets the value of anchorPoint. AccessType: inputOutput
@@ -85,9 +85,9 @@ public:
    * @brief Gets the value of body1AnchorPoint. AccessType: outputOnly
    * @details body1AnchorPoint describes anchorPoint position relative to local
    * coordinate reference frame.
-   * @return SFVec3f The current value of body1AnchorPoint.
+   * @return const SFVec3f& The current value of body1AnchorPoint.
    */
-  SFVec3f getBody1AnchorPoint() const { return _body1AnchorPoint; }
+  const SFVec3f &getBody1AnchorPoint() const { return _body1AnchorPoint; }
 
   /**
    * @brief Emit an output value on body1AnchorPoint. AccessType: outputOnly
@@ -104,9 +104,9 @@ public:
    * @brief Gets the value of body2AnchorPoint. AccessType: outputOnly
    * @details body2AnchorPoint describes anchorPoint position relative to local
    * coordinate reference frame.
-   * @return SFVec3f The current value of body2AnchorPoint.
+   * @return const SFVec3f& The current value of body2AnchorPoint.
    */
-  SFVec3f getBody2AnchorPoint() const { return _body2AnchorPoint; }
+  const SFVec3f &getBody2AnchorPoint() const { return _body2AnchorPoint; }
 
   /**
    * @brief Emit an output value on body2AnchorPoint. AccessType: outputOnly

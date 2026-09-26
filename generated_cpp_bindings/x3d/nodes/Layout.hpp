@@ -109,9 +109,9 @@ public:
    * @brief Gets the value of align. AccessType: inputOutput
    * @details The align field values align the sized rectangle to an edge or
    * center of the parent rectangle.
-   * @return std::vector<LayoutAlignChoices> The current value of align.
+   * @return const std::vector<LayoutAlignChoices>& The current value of align.
    */
-  std::vector<LayoutAlignChoices> getAlign() const { return _align; }
+  const std::vector<LayoutAlignChoices> &getAlign() const { return _align; }
 
   /**
    * @brief Sets the value of align. AccessType: inputOutput
@@ -133,9 +133,9 @@ public:
    * @brief Gets the value of offset. AccessType: inputOutput
    * @details The values of the offset field are used to translate the location
    * of this rectangle after the initial alignment.
-   * @return MFFloat The current value of offset.
+   * @return const MFFloat& The current value of offset.
    */
-  MFFloat getOffset() const { return _offset; }
+  const MFFloat &getOffset() const { return _offset; }
 
   /**
    * @brief Sets the value of offset. AccessType: inputOutput
@@ -151,9 +151,10 @@ public:
    * @brief Gets the value of offsetUnits. AccessType: inputOutput
    * @details The offsetUnits field values are used to interprete the offset
    * values.
-   * @return std::vector<LayoutUnitsChoices> The current value of offsetUnits.
+   * @return const std::vector<LayoutUnitsChoices>& The current value of
+   * offsetUnits.
    */
-  std::vector<LayoutUnitsChoices> getOffsetUnits() const {
+  const std::vector<LayoutUnitsChoices> &getOffsetUnits() const {
     return _offsetUnits;
   }
 
@@ -177,9 +178,10 @@ public:
    * @brief Gets the value of scaleMode. AccessType: inputOutput
    * @details The scaleMode field specifies how the scale of the parent is
    * modified.
-   * @return std::vector<LayoutScaleModeChoices> The current value of scaleMode.
+   * @return const std::vector<LayoutScaleModeChoices>& The current value of
+   * scaleMode.
    */
-  std::vector<LayoutScaleModeChoices> getScaleMode() const {
+  const std::vector<LayoutScaleModeChoices> &getScaleMode() const {
     return _scaleMode;
   }
 
@@ -203,9 +205,9 @@ public:
    * @brief Gets the value of size. AccessType: inputOutput
    * @details The two values in the size field define the width and height of
    * the layout rectangle.
-   * @return MFFloat The current value of size.
+   * @return const MFFloat& The current value of size.
    */
-  MFFloat getSize() const { return _size; }
+  const MFFloat &getSize() const { return _size; }
 
   /**
    * @brief Sets the value of size. AccessType: inputOutput
@@ -221,9 +223,12 @@ public:
    * @brief Gets the value of sizeUnits. AccessType: inputOutput
    * @details The sizeUnits field values are used to interprete the offset
    * values.
-   * @return std::vector<LayoutUnitsChoices> The current value of sizeUnits.
+   * @return const std::vector<LayoutUnitsChoices>& The current value of
+   * sizeUnits.
    */
-  std::vector<LayoutUnitsChoices> getSizeUnits() const { return _sizeUnits; }
+  const std::vector<LayoutUnitsChoices> &getSizeUnits() const {
+    return _sizeUnits;
+  }
 
   /**
    * @brief Sets the value of sizeUnits. AccessType: inputOutput

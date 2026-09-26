@@ -31,6 +31,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundChannelNode &>(n).getChannelCount(),
+              &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -55,6 +63,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
           ChannelCountModeChoices ev;
           if (from_string(s, ev))
             dynamic_cast<X3DSoundChannelNode &>(n).setChannelCountMode(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundChannelNode &>(n)
+                       .getChannelCountMode(),
+                  &typeid(ChannelCountModeChoices)};
         }
 
     });
@@ -84,6 +100,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
             dynamic_cast<X3DSoundChannelNode &>(n).setChannelInterpretation(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundChannelNode &>(n)
+                       .getChannelInterpretation(),
+                  &typeid(ChannelInterpretationChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -100,6 +124,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundChannelNode &>(n)
+                       .X3DSoundNode::getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -118,24 +150,39 @@ const FieldTable &X3DSoundChannelNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundChannelNode &>(n)
+                       .X3DSoundNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"gain", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "gain", X3DFieldType::SFFloat, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const X3DSoundChannelNode &>(n).getGain());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const X3DSoundChannelNode &>(n).getGain());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<X3DSoundChannelNode &>(n).setGain(
-                        std::any_cast<SFFloat>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<X3DSoundChannelNode &>(n).setGain(
+              std::any_cast<SFFloat>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundChannelNode &>(n).getGain(),
+                  &typeid(SFFloat)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -151,6 +198,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundChannelNode &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -169,6 +224,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DSoundChannelNode &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -185,6 +248,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundChannelNode &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -203,6 +274,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundChannelNode &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(
@@ -219,6 +298,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const X3DSoundChannelNode &>(n)
+                                 .X3DNode::getClass_(),
+                            &typeid(SFString)};
+                  }
 
         });
 
@@ -237,6 +324,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundChannelNode &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -253,6 +348,14 @@ const FieldTable &X3DSoundChannelNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DSoundChannelNode &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

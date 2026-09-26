@@ -99,9 +99,9 @@ public:
   /**
    * @brief Gets the value of anchorPoint. AccessType: inputOutput
    * @details anchorPoint is joint center, specified in world coordinates.
-   * @return SFVec3f The current value of anchorPoint.
+   * @return const SFVec3f& The current value of anchorPoint.
    */
-  SFVec3f getAnchorPoint() const { return _anchorPoint; }
+  const SFVec3f &getAnchorPoint() const { return _anchorPoint; }
 
   /**
    * @brief Sets the value of anchorPoint. AccessType: inputOutput
@@ -115,9 +115,9 @@ public:
   /**
    * @brief Gets the value of angle. AccessType: outputOnly
    * @details
-   * @return SFFloat The current value of angle.
+   * @return const SFFloat& The current value of angle.
    */
-  SFFloat getAngle() const { return _angle; }
+  const SFFloat &getAngle() const { return _angle; }
 
   /**
    * @brief Emit an output value on angle. AccessType: outputOnly
@@ -133,9 +133,9 @@ public:
   /**
    * @brief Gets the value of angleRate. AccessType: outputOnly
    * @details
-   * @return SFFloat The current value of angleRate.
+   * @return const SFFloat& The current value of angleRate.
    */
-  SFFloat getAngleRate() const { return _angleRate; }
+  const SFFloat &getAngleRate() const { return _angleRate; }
 
   /**
    * @brief Emit an output value on angleRate. AccessType: outputOnly
@@ -151,9 +151,9 @@ public:
   /**
    * @brief Gets the value of axis. AccessType: inputOutput
    * @details axis defines vector of joint connection between body1 and body2.
-   * @return SFVec3f The current value of axis.
+   * @return const SFVec3f& The current value of axis.
    */
-  SFVec3f getAxis() const { return _axis; }
+  const SFVec3f &getAxis() const { return _axis; }
 
   /**
    * @brief Sets the value of axis. AccessType: inputOutput
@@ -168,9 +168,9 @@ public:
    * @brief Gets the value of body1AnchorPoint. AccessType: outputOnly
    * @details body1AnchorPoint describes anchorPoint position relative to local
    * coordinate reference frame.
-   * @return SFVec3f The current value of body1AnchorPoint.
+   * @return const SFVec3f& The current value of body1AnchorPoint.
    */
-  SFVec3f getBody1AnchorPoint() const { return _body1AnchorPoint; }
+  const SFVec3f &getBody1AnchorPoint() const { return _body1AnchorPoint; }
 
   /**
    * @brief Emit an output value on body1AnchorPoint. AccessType: outputOnly
@@ -187,9 +187,9 @@ public:
    * @brief Gets the value of body2AnchorPoint. AccessType: outputOnly
    * @details body2AnchorPoint describes anchorPoint position relative to local
    * coordinate reference frame.
-   * @return SFVec3f The current value of body2AnchorPoint.
+   * @return const SFVec3f& The current value of body2AnchorPoint.
    */
-  SFVec3f getBody2AnchorPoint() const { return _body2AnchorPoint; }
+  const SFVec3f &getBody2AnchorPoint() const { return _body2AnchorPoint; }
 
   /**
    * @brief Emit an output value on body2AnchorPoint. AccessType: outputOnly
@@ -205,9 +205,9 @@ public:
   /**
    * @brief Gets the value of maxAngle. AccessType: inputOutput
    * @details maxAngle is maximum rotation angle for hinge.
-   * @return SFFloat The current value of maxAngle.
+   * @return const SFFloat& The current value of maxAngle.
    */
-  SFFloat getMaxAngle() const { return _maxAngle; }
+  const SFFloat &getMaxAngle() const { return _maxAngle; }
 
   /**
    * @brief Sets the value of maxAngle. AccessType: inputOutput
@@ -219,9 +219,9 @@ public:
   /**
    * @brief Gets the value of minAngle. AccessType: inputOutput
    * @details minAngle is minimum rotation angle for hinge.
-   * @return SFFloat The current value of minAngle.
+   * @return const SFFloat& The current value of minAngle.
    */
-  SFFloat getMinAngle() const { return _minAngle; }
+  const SFFloat &getMinAngle() const { return _minAngle; }
 
   /**
    * @brief Sets the value of minAngle. AccessType: inputOutput
@@ -234,9 +234,9 @@ public:
    * @brief Gets the value of stopBounce. AccessType: inputOutput
    * @details stopBounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return SFFloat The current value of stopBounce.
+   * @return const SFFloat& The current value of stopBounce.
    */
-  SFFloat getStopBounce() const { return _stopBounce; }
+  const SFFloat &getStopBounce() const { return _stopBounce; }
 
   /**
    * @brief Sets the value of stopBounce. AccessType: inputOutput
@@ -250,9 +250,9 @@ public:
    * @brief Gets the value of stopErrorCorrection. AccessType: inputOutput
    * @details stopErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return SFFloat The current value of stopErrorCorrection.
+   * @return const SFFloat& The current value of stopErrorCorrection.
    */
-  SFFloat getStopErrorCorrection() const { return _stopErrorCorrection; }
+  const SFFloat &getStopErrorCorrection() const { return _stopErrorCorrection; }
 
   /**
    * @brief Sets the value of stopErrorCorrection. AccessType: inputOutput

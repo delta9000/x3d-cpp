@@ -79,9 +79,9 @@ public:
    * @brief Gets the value of geoOrigin. AccessType: initializeOnly
    * @details Single contained GeoOrigin node that can specify a local
    * coordinate frame for extended precision.
-   * @return SFNode The current value of geoOrigin.
+   * @return const SFNode& The current value of geoOrigin.
    */
-  SFNode getGeoOrigin() const { return _geoOrigin; }
+  const SFNode &getGeoOrigin() const { return _geoOrigin; }
 
   /**
    * @brief Acceptable node types for the geoOrigin field.
@@ -103,9 +103,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -118,9 +118,9 @@ public:
    * @details interpolated coordinate in the geographic coordinate system
    * specified by geoSystem Hint: X3D for Advanced Modeling (X3D4AM) slideset
    * https://x3dgraphics.
-   * @return SFVec3d The current value of geovalue_changed.
+   * @return const SFVec3d& The current value of geovalue_changed.
    */
-  SFVec3d getGeovalue_changed() const { return _geovalue_changed; }
+  const SFVec3d &getGeovalue_changed() const { return _geovalue_changed; }
 
   /**
    * @brief Emit an output value on geovalue_changed. AccessType: outputOnly
@@ -138,9 +138,9 @@ public:
    * @brief Gets the value of keyValue. AccessType: inputOutput
    * @details Output values for linear interpolation, each corresponding to an
    * input-fraction value in the key array.
-   * @return MFVec3d The current value of keyValue.
+   * @return const MFVec3d& The current value of keyValue.
    */
-  MFVec3d getKeyValue() const { return _keyValue; }
+  const MFVec3d &getKeyValue() const { return _keyValue; }
 
   /**
    * @brief Sets the value of keyValue. AccessType: inputOutput
@@ -156,9 +156,9 @@ public:
    * @brief Gets the value of value_changed. AccessType: outputOnly
    * @details Linearly interpolated output value determined by current key time
    * and corresponding keyValue pair.
-   * @return SFVec3f The current value of value_changed.
+   * @return const SFVec3f& The current value of value_changed.
    */
-  SFVec3f getValue_changed() const { return _value_changed; }
+  const SFVec3f &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

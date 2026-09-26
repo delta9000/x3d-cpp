@@ -56,9 +56,9 @@ public:
   /**
    * @brief Gets the value of controlPoint. AccessType: inputOutput
    * @details
-   * @return MFVec2d The current value of controlPoint.
+   * @return const MFVec2d& The current value of controlPoint.
    */
-  MFVec2d getControlPoint() const { return _controlPoint; }
+  const MFVec2d &getControlPoint() const { return _controlPoint; }
 
   /**
    * @brief Sets the value of controlPoint. AccessType: inputOutput

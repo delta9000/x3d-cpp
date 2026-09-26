@@ -64,9 +64,9 @@ public:
    * @brief Gets the value of keyValue. AccessType: inputOutput
    * @details Output values for linear sequencing, each corresponding to an
    * input-fraction value in the key array.
-   * @return MFInt32 The current value of keyValue.
+   * @return const MFInt32& The current value of keyValue.
    */
-  MFInt32 getKeyValue() const { return _keyValue; }
+  const MFInt32 &getKeyValue() const { return _keyValue; }
 
   /**
    * @brief Sets the value of keyValue. AccessType: inputOutput
@@ -82,9 +82,9 @@ public:
    * @brief Gets the value of value_changed. AccessType: outputOnly
    * @details Single intermittent output value determined by current key time
    * and corresponding keyValue entry.
-   * @return SFInt32 The current value of value_changed.
+   * @return const SFInt32& The current value of value_changed.
    */
-  SFInt32 getValue_changed() const { return _value_changed; }
+  const SFInt32 &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

@@ -115,9 +115,9 @@ public:
    * @brief Gets the value of family. AccessType: inputOutput
    * @details Array of quoted font family names in preference order, browsers
    * use the first supported family.
-   * @return MFString The current value of family.
+   * @return const MFString& The current value of family.
    */
-  MFString getFamily() const { return _family; }
+  const MFString &getFamily() const { return _family; }
 
   /**
    * @brief Sets the value of family. AccessType: inputOutput
@@ -132,9 +132,9 @@ public:
   /**
    * @brief Gets the value of horizontal. AccessType: inputOutput
    * @details Whether text direction is horizontal (true) or vertical (false).
-   * @return SFBool The current value of horizontal.
+   * @return const SFBool& The current value of horizontal.
    */
-  SFBool getHorizontal() const { return _horizontal; }
+  const SFBool &getHorizontal() const { return _horizontal; }
 
   /**
    * @brief Sets the value of horizontal. AccessType: inputOutput
@@ -147,9 +147,9 @@ public:
    * @brief Gets the value of justify. AccessType: inputOutput
    * @details The justify field determines horizontal and vertical alignment of
    * text layout, relative to the origin of the object coordinate system.
-   * @return std::vector<JustifyChoices> The current value of justify.
+   * @return const std::vector<JustifyChoices>& The current value of justify.
    */
-  std::vector<JustifyChoices> getJustify() const { return _justify; }
+  const std::vector<JustifyChoices> &getJustify() const { return _justify; }
 
   /**
    * @brief Sets the value of justify. AccessType: inputOutput
@@ -171,9 +171,9 @@ public:
    * @brief Gets the value of language. AccessType: inputOutput
    * @details Language codes consist of a primary code and a (possibly empty)
    * series of subcodes.
-   * @return SFString The current value of language.
+   * @return const SFString& The current value of language.
    */
-  SFString getLanguage() const { return _language; }
+  const SFString &getLanguage() const { return _language; }
 
   /**
    * @brief Sets the value of language. AccessType: inputOutput
@@ -189,9 +189,9 @@ public:
    * @brief Gets the value of leftToRight. AccessType: inputOutput
    * @details Whether text direction is left-to-right (true) or right-to-left
    * (false).
-   * @return SFBool The current value of leftToRight.
+   * @return const SFBool& The current value of leftToRight.
    */
-  SFBool getLeftToRight() const { return _leftToRight; }
+  const SFBool &getLeftToRight() const { return _leftToRight; }
 
   /**
    * @brief Sets the value of leftToRight. AccessType: inputOutput
@@ -205,9 +205,9 @@ public:
    * @brief Gets the value of size. AccessType: inputOutput
    * @details Nominal height (in local coordinate system) of text glyphs, also
    * sets default spacing between adjacent lines of text.
-   * @return SFFloat The current value of size.
+   * @return const SFFloat& The current value of size.
    */
-  SFFloat getSize() const { return _size; }
+  const SFFloat &getSize() const { return _size; }
 
   /**
    * @brief Sets the value of size. AccessType: inputOutput
@@ -220,9 +220,9 @@ public:
   /**
    * @brief Gets the value of spacing. AccessType: inputOutput
    * @details Adjustment factor for line spacing between adjacent lines of text.
-   * @return SFFloat The current value of spacing.
+   * @return const SFFloat& The current value of spacing.
    */
-  SFFloat getSpacing() const { return _spacing; }
+  const SFFloat &getSpacing() const { return _spacing; }
 
   /**
    * @brief Sets the value of spacing. AccessType: inputOutput
@@ -249,9 +249,9 @@ public:
    * @brief Gets the value of style. AccessType: inputOutput
    * @details Pick one of four values for text style
    * (PLAIN|BOLD|ITALIC|BOLDITALIC).
-   * @return FontStyleChoices The current value of style.
+   * @return const FontStyleChoices& The current value of style.
    */
-  FontStyleChoices getStyle() const { return _style; }
+  const FontStyleChoices &getStyle() const { return _style; }
 
   /**
    * @brief Sets the value of style. AccessType: inputOutput
@@ -265,9 +265,9 @@ public:
    * @brief Gets the value of topToBottom. AccessType: inputOutput
    * @details Whether text direction is top-to-bottom (true) or bottom-to-top
    * (false).
-   * @return SFBool The current value of topToBottom.
+   * @return const SFBool& The current value of topToBottom.
    */
-  SFBool getTopToBottom() const { return _topToBottom; }
+  const SFBool &getTopToBottom() const { return _topToBottom; }
 
   /**
    * @brief Sets the value of topToBottom. AccessType: inputOutput

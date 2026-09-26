@@ -84,9 +84,9 @@ public:
    * @brief Gets the value of coolColor. AccessType: inputOutput
    * @details coolColor is used for surfaces facing away from the light
    * direction.
-   * @return SFColorRGBA The current value of coolColor.
+   * @return const SFColorRGBA& The current value of coolColor.
    */
-  SFColorRGBA getCoolColor() const { return _coolColor; }
+  const SFColorRGBA &getCoolColor() const { return _coolColor; }
 
   /**
    * @brief Sets the value of coolColor. AccessType: inputOutput
@@ -121,9 +121,9 @@ public:
    * @brief Gets the value of surfaceNormals. AccessType: inputOutput
    * @details The surfaceNormals field contains a 3D texture with at least three
    * component values.
-   * @return SFNode The current value of surfaceNormals.
+   * @return const SFNode& The current value of surfaceNormals.
    */
-  SFNode getSurfaceNormals() const { return _surfaceNormals; }
+  const SFNode &getSurfaceNormals() const { return _surfaceNormals; }
 
   /**
    * @brief Acceptable node types for the surfaceNormals field.
@@ -148,9 +148,9 @@ public:
   /**
    * @brief Gets the value of warmColor. AccessType: inputOutput
    * @details warmColor is used for surfaces facing towards the light.
-   * @return SFColorRGBA The current value of warmColor.
+   * @return const SFColorRGBA& The current value of warmColor.
    */
-  SFColorRGBA getWarmColor() const { return _warmColor; }
+  const SFColorRGBA &getWarmColor() const { return _warmColor; }
 
   /**
    * @brief Sets the value of warmColor. AccessType: inputOutput

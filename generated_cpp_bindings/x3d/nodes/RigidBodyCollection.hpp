@@ -144,9 +144,9 @@ public:
    * @brief Gets the value of autoDisable. AccessType: inputOutput
    * @details autoDisable toggles operation of disableAngularSpeed,
    * disableLinearSpeed, disableTime.
-   * @return SFBool The current value of autoDisable.
+   * @return const SFBool& The current value of autoDisable.
    */
-  SFBool getAutoDisable() const { return _autoDisable; }
+  const SFBool &getAutoDisable() const { return _autoDisable; }
 
   /**
    * @brief Sets the value of autoDisable. AccessType: inputOutput
@@ -189,9 +189,9 @@ public:
    * @details The collider field associates a collision collection with this
    * rigid body collection allowing seamless updates and integration without the
    * need to use the X3D event model.
-   * @return SFNode The current value of collider.
+   * @return const SFNode& The current value of collider.
    */
-  SFNode getCollider() const { return _collider; }
+  const SFNode &getCollider() const { return _collider; }
 
   /**
    * @brief Acceptable node types for the collider field.
@@ -213,9 +213,9 @@ public:
    * @brief Gets the value of constantForceMix. AccessType: inputOutput
    * @details constantForceMix modifies damping calculations by violating normal
    * constraints while applying small, constant forces in those calculations.
-   * @return SFFloat The current value of constantForceMix.
+   * @return const SFFloat& The current value of constantForceMix.
    */
-  SFFloat getConstantForceMix() const { return _constantForceMix; }
+  const SFFloat &getConstantForceMix() const { return _constantForceMix; }
 
   /**
    * @brief Sets the value of constantForceMix. AccessType: inputOutput
@@ -230,9 +230,9 @@ public:
    * @details contactSurfaceThickness defines how far bodies may interpenetrate
    * after a collision, allowing simulation of softer bodies that deform
    * somewhat during collision.
-   * @return SFFloat The current value of contactSurfaceThickness.
+   * @return const SFFloat& The current value of contactSurfaceThickness.
    */
-  SFFloat getContactSurfaceThickness() const {
+  const SFFloat &getContactSurfaceThickness() const {
     return _contactSurfaceThickness;
   }
 
@@ -253,9 +253,9 @@ public:
    * @details disableAngularSpeed defines lower-limit tolerance value when body
    * is considered at rest and not part of rigid body calculations, reducing
    * numeric instabilities.
-   * @return SFFloat The current value of disableAngularSpeed.
+   * @return const SFFloat& The current value of disableAngularSpeed.
    */
-  SFFloat getDisableAngularSpeed() const { return _disableAngularSpeed; }
+  const SFFloat &getDisableAngularSpeed() const { return _disableAngularSpeed; }
 
   /**
    * @brief Sets the value of disableAngularSpeed. AccessType: inputOutput
@@ -274,9 +274,9 @@ public:
    * @details disableLinearSpeed defines lower-limit tolerance value when body
    * is considered at rest and not part of rigid body calculation, reducing
    * numeric instabilitiess.
-   * @return SFFloat The current value of disableLinearSpeed.
+   * @return const SFFloat& The current value of disableLinearSpeed.
    */
-  SFFloat getDisableLinearSpeed() const { return _disableLinearSpeed; }
+  const SFFloat &getDisableLinearSpeed() const { return _disableLinearSpeed; }
 
   /**
    * @brief Sets the value of disableLinearSpeed. AccessType: inputOutput
@@ -294,9 +294,9 @@ public:
    * @brief Gets the value of disableTime. AccessType: inputOutput
    * @details disableTime defines interval when body becomes at rest and not
    * part of rigid body calculations, reducing numeric instabilities.
-   * @return SFTime The current value of disableTime.
+   * @return const SFTime& The current value of disableTime.
    */
-  SFTime getDisableTime() const { return _disableTime; }
+  const SFTime &getDisableTime() const { return _disableTime; }
 
   /**
    * @brief Sets the value of disableTime. AccessType: inputOutput
@@ -330,9 +330,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details Enables/disables node operation.
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -346,9 +346,9 @@ public:
    * @details errorCorrection describes how quickly intersection errors due to
    * floating-point inaccuracies are resolved (0=no correction, 1=all corrected
    * in single step).
-   * @return SFFloat The current value of errorCorrection.
+   * @return const SFFloat& The current value of errorCorrection.
    */
-  SFFloat getErrorCorrection() const { return _errorCorrection; }
+  const SFFloat &getErrorCorrection() const { return _errorCorrection; }
 
   /**
    * @brief Sets the value of errorCorrection. AccessType: inputOutput
@@ -363,9 +363,9 @@ public:
    * @brief Gets the value of gravity. AccessType: inputOutput
    * @details gravity indicates direction and strength of local gravity vector
    * for this collection of bodies (units m/sec^2).
-   * @return SFVec3f The current value of gravity.
+   * @return const SFVec3f& The current value of gravity.
    */
-  SFVec3f getGravity() const { return _gravity; }
+  const SFVec3f &getGravity() const { return _gravity; }
 
   /**
    * @brief Sets the value of gravity. AccessType: inputOutput
@@ -381,9 +381,9 @@ public:
    * @brief Gets the value of iterations. AccessType: inputOutput
    * @details iterations controls number of iterations performed over
    * collectioned joints and bodies during each evaluation.
-   * @return SFInt32 The current value of iterations.
+   * @return const SFInt32& The current value of iterations.
    */
-  SFInt32 getIterations() const { return _iterations; }
+  const SFInt32 &getIterations() const { return _iterations; }
 
   /**
    * @brief Sets the value of iterations. AccessType: inputOutput
@@ -424,9 +424,9 @@ public:
   /**
    * @brief Gets the value of maxCorrectionSpeed. AccessType: inputOutput
    * @details or -1, maxCorrectionSpeed.
-   * @return SFFloat The current value of maxCorrectionSpeed.
+   * @return const SFFloat& The current value of maxCorrectionSpeed.
    */
-  SFFloat getMaxCorrectionSpeed() const { return _maxCorrectionSpeed; }
+  const SFFloat &getMaxCorrectionSpeed() const { return _maxCorrectionSpeed; }
 
   /**
    * @brief Sets the value of maxCorrectionSpeed. AccessType: inputOutput
@@ -442,9 +442,9 @@ public:
    * @brief Gets the value of preferAccuracy. AccessType: inputOutput
    * @details preferAccuracy provides hint for performance preference: higher
    * accuracy or faster computational speed.
-   * @return SFBool The current value of preferAccuracy.
+   * @return const SFBool& The current value of preferAccuracy.
    */
-  SFBool getPreferAccuracy() const { return _preferAccuracy; }
+  const SFBool &getPreferAccuracy() const { return _preferAccuracy; }
 
   /**
    * @brief Sets the value of preferAccuracy. AccessType: inputOutput

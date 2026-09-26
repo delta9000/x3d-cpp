@@ -86,9 +86,9 @@ public:
   /**
    * @brief Gets the value of mass. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of mass.
+   * @return const SFFloat& The current value of mass.
    */
-  SFFloat getMass() const { return _mass; }
+  const SFFloat &getMass() const { return _mass; }
 
   /**
    * @brief Sets the value of mass. AccessType: inputOutput
@@ -114,9 +114,9 @@ public:
   /**
    * @brief Gets the value of on. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of on.
+   * @return const SFBool& The current value of on.
    */
-  SFBool getOn() const { return _on; }
+  const SFBool &getOn() const { return _on; }
 
   /**
    * @brief Sets the value of on. AccessType: inputOutput
@@ -128,9 +128,9 @@ public:
   /**
    * @brief Gets the value of speed. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of speed.
+   * @return const SFFloat& The current value of speed.
    */
-  SFFloat getSpeed() const { return _speed; }
+  const SFFloat &getSpeed() const { return _speed; }
 
   /**
    * @brief Sets the value of speed. AccessType: inputOutput
@@ -156,9 +156,9 @@ public:
   /**
    * @brief Gets the value of surfaceArea. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of surfaceArea.
+   * @return const SFFloat& The current value of surfaceArea.
    */
-  SFFloat getSurfaceArea() const { return _surfaceArea; }
+  const SFFloat &getSurfaceArea() const { return _surfaceArea; }
 
   /**
    * @brief Sets the value of surfaceArea. AccessType: inputOutput
@@ -184,9 +184,9 @@ public:
   /**
    * @brief Gets the value of variation. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of variation.
+   * @return const SFFloat& The current value of variation.
    */
-  SFFloat getVariation() const { return _variation; }
+  const SFFloat &getVariation() const { return _variation; }
 
   /**
    * @brief Sets the value of variation. AccessType: inputOutput

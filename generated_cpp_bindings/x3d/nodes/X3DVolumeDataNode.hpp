@@ -91,9 +91,9 @@ public:
   /**
    * @brief Gets the value of bboxCenter. AccessType: initializeOnly
    * @details
-   * @return SFVec3f The current value of bboxCenter.
+   * @return const SFVec3f& The current value of bboxCenter.
    */
-  SFVec3f getBboxCenter() const { return _bboxCenter; }
+  const SFVec3f &getBboxCenter() const { return _bboxCenter; }
   /**
    * @brief Data-layer write of bboxCenter (reader/init ingest path).
    * @details bboxCenter is initializeOnly: author-settable at parse
@@ -104,9 +104,9 @@ public:
   /**
    * @brief Gets the value of bboxDisplay. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of bboxDisplay.
+   * @return const SFBool& The current value of bboxDisplay.
    */
-  SFBool getBboxDisplay() const { return _bboxDisplay; }
+  const SFBool &getBboxDisplay() const { return _bboxDisplay; }
 
   /**
    * @brief Sets the value of bboxDisplay. AccessType: inputOutput
@@ -118,9 +118,9 @@ public:
   /**
    * @brief Gets the value of bboxSize. AccessType: initializeOnly
    * @details
-   * @return SFVec3f The current value of bboxSize.
+   * @return const SFVec3f& The current value of bboxSize.
    */
-  SFVec3f getBboxSize() const { return _bboxSize; }
+  const SFVec3f &getBboxSize() const { return _bboxSize; }
   /**
    * @brief Data-layer write of bboxSize (reader/init ingest path).
    * @details bboxSize is initializeOnly: author-settable at parse
@@ -131,9 +131,9 @@ public:
   /**
    * @brief Gets the value of dimensions. AccessType: inputOutput
    * @details
-   * @return SFVec3f The current value of dimensions.
+   * @return const SFVec3f& The current value of dimensions.
    */
-  SFVec3f getDimensions() const { return _dimensions; }
+  const SFVec3f &getDimensions() const { return _dimensions; }
 
   /**
    * @brief Sets the value of dimensions. AccessType: inputOutput
@@ -147,9 +147,9 @@ public:
   /**
    * @brief Gets the value of visible. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of visible.
+   * @return const SFBool& The current value of visible.
    */
-  SFBool getVisible() const { return _visible; }
+  const SFBool &getVisible() const { return _visible; }
 
   /**
    * @brief Sets the value of visible. AccessType: inputOutput

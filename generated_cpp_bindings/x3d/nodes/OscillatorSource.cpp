@@ -31,24 +31,39 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DTimeDependentNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"detune", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "detune", X3DFieldType::SFFloat, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const OscillatorSource &>(n).getDetune());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const OscillatorSource &>(n).getDetune());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<OscillatorSource &>(n).setDetuneUnchecked(
-                        std::any_cast<SFFloat>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<OscillatorSource &>(n).setDetuneUnchecked(
+              std::any_cast<SFFloat>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n).getDetune(),
+                  &typeid(SFFloat)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "elapsedTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -64,6 +79,14 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DTimeDependentNode::getElapsedTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -82,6 +105,14 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DSoundSourceNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -98,6 +129,13 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n).getFrequency(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -116,6 +154,14 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DSoundSourceNode::getGain(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -132,6 +178,13 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -150,6 +203,14 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DTimeDependentNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -166,6 +227,14 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DTimeDependentNode::getIsPaused(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -184,6 +253,14 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const OscillatorSource &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -200,6 +277,14 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DTimeDependentNode::getPauseTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -218,6 +303,14 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DTimeDependentNode::getResumeTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -234,6 +327,14 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DTimeDependentNode::getStartTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -252,6 +353,14 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n)
+                       .X3DTimeDependentNode::getStopTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -268,6 +377,13 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -286,6 +402,13 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -302,6 +425,14 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const OscillatorSource &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -320,6 +451,13 @@ const FieldTable &OscillatorSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OscillatorSource &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -336,6 +474,14 @@ const FieldTable &OscillatorSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const OscillatorSource &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

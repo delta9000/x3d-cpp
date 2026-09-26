@@ -49,6 +49,13 @@ const FieldTable &Contact::fields() const {
           dynamic_cast<Contact &>(n).setAppliedParameters(std::move(vec));
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getAppliedParameters(),
+                  &typeid(std::vector<AppliedParametersChoices>)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -64,6 +71,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getBody1(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -78,6 +92,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getBody2(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -95,6 +116,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getBounce(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -111,6 +139,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getContactNormal(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -125,6 +160,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getDepth(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -144,6 +186,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getFrictionCoefficients(),
+                  &typeid(SFVec2f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -161,6 +210,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getFrictionDirection(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -175,6 +231,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getGeometry1(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -191,6 +254,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getGeometry2(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -205,6 +275,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -223,6 +300,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -239,6 +323,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getMinBounceSpeed(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -253,6 +344,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getPosition(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -270,6 +368,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getSlipCoefficients(),
+                  &typeid(SFVec2f)};
+        }
 
     });
 
@@ -289,6 +394,14 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Contact &>(n).getSoftnessConstantForceMix(),
+              &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -307,6 +420,14 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Contact &>(n).getSoftnessErrorCorrection(),
+              &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -321,6 +442,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).getSurfaceSpeed(),
+                  &typeid(SFVec2f)};
+        }
 
     });
 
@@ -338,6 +466,13 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -354,24 +489,38 @@ const FieldTable &Contact::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"class", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "class", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const Contact &>(n).X3DNode::getClass_());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const Contact &>(n).X3DNode::getClass_());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<Contact &>(n).X3DNode::setClass_(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<Contact &>(n).X3DNode::setClass_(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -385,6 +534,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -401,6 +557,13 @@ const FieldTable &Contact::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contact &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

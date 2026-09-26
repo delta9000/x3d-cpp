@@ -31,6 +31,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DSensorNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -67,6 +83,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DPickSensorNode::getIntersectionType(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -84,6 +108,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PrimitivePickSensor &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -100,6 +132,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -129,6 +169,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
                 .X3DPickSensorNode::setMatchCriterion(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DPickSensorNode::getMatchCriterion(),
+                  &typeid(PickSensorMatchCriterionChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -146,6 +194,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -162,6 +218,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DPickSensorNode::getObjectType(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -181,6 +245,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DPickSensorNode::getPickedGeometry(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -198,6 +270,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DPickSensorNode::getPickingGeometry(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -217,6 +297,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DPickSensorNode::getPickTarget(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -235,6 +323,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                       .X3DPickSensorNode::getSortOrder(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -251,6 +347,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PrimitivePickSensor &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -269,6 +373,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PrimitivePickSensor &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(
@@ -285,6 +397,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const PrimitivePickSensor &>(n)
+                                 .X3DNode::getClass_(),
+                            &typeid(SFString)};
+                  }
 
         });
 
@@ -303,6 +423,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PrimitivePickSensor &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -319,6 +447,14 @@ const FieldTable &PrimitivePickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PrimitivePickSensor &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

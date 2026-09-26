@@ -29,6 +29,13 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).getCycleInterval(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -43,6 +50,13 @@ const FieldTable &TimeSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).getCycleTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -61,6 +75,14 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n)
+                       .X3DTimeDependentNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -77,6 +99,14 @@ const FieldTable &TimeSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n)
+                       .X3DTimeDependentNode::getElapsedTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -95,6 +125,14 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TimeSensor &>(n).X3DSensorNode::getEnabled(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -112,6 +150,13 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).getFraction_changed(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -127,6 +172,13 @@ const FieldTable &TimeSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -145,6 +197,14 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n)
+                       .X3DTimeDependentNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -162,6 +222,14 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n)
+                       .X3DTimeDependentNode::getIsPaused(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -176,6 +244,13 @@ const FieldTable &TimeSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).getLoop(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -194,6 +269,13 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -210,6 +292,14 @@ const FieldTable &TimeSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n)
+                       .X3DTimeDependentNode::getPauseTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -228,6 +318,14 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n)
+                       .X3DTimeDependentNode::getResumeTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -244,6 +342,14 @@ const FieldTable &TimeSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n)
+                       .X3DTimeDependentNode::getStartTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -262,6 +368,14 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n)
+                       .X3DTimeDependentNode::getStopTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -277,41 +391,62 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).getTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const TimeSensor &>(n).X3DNode::getDEF());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const TimeSensor &>(n).X3DNode::getDEF());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<TimeSensor &>(n).X3DNode::setDEF(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<TimeSensor &>(n).X3DNode::setDEF(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
 
-    t.push_back(
-        FieldInfo{"USE", X3DFieldType::SFString, AccessType::InputOutput, "",
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const TimeSensor &>(n).X3DNode::getUSE());
-                  },
+    });
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<TimeSensor &>(n).X3DNode::setUSE(
-                        std::any_cast<SFString>(v));
-                  },
+    t.push_back(FieldInfo{
+        "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  nullptr, nullptr
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const TimeSensor &>(n).X3DNode::getUSE());
+        },
 
-        });
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<TimeSensor &>(n).X3DNode::setUSE(
+              std::any_cast<SFString>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -327,6 +462,13 @@ const FieldTable &TimeSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -344,6 +486,13 @@ const FieldTable &TimeSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -360,6 +509,13 @@ const FieldTable &TimeSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TimeSensor &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

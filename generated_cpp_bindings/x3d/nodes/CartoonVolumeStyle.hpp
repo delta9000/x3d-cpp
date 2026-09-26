@@ -93,9 +93,9 @@ public:
    * @brief Gets the value of colorSteps. AccessType: inputOutput
    * @details Number of distinct colors taken from interpolated colors and used
    * to render the object.
-   * @return SFInt32 The current value of colorSteps.
+   * @return const SFInt32& The current value of colorSteps.
    */
-  SFInt32 getColorSteps() const { return _colorSteps; }
+  const SFInt32 &getColorSteps() const { return _colorSteps; }
 
   /**
    * @brief Sets the value of colorSteps. AccessType: inputOutput
@@ -123,9 +123,9 @@ public:
    * @brief Gets the value of orthogonalColor. AccessType: inputOutput
    * @details orthogonalColor is used for surface normals that are orthogonal
    * (perpendicular) to viewer's current location.
-   * @return SFColorRGBA The current value of orthogonalColor.
+   * @return const SFColorRGBA& The current value of orthogonalColor.
    */
-  SFColorRGBA getOrthogonalColor() const { return _orthogonalColor; }
+  const SFColorRGBA &getOrthogonalColor() const { return _orthogonalColor; }
 
   /**
    * @brief Sets the value of orthogonalColor. AccessType: inputOutput
@@ -163,9 +163,9 @@ public:
    * @brief Gets the value of parallelColor. AccessType: inputOutput
    * @details parallelColor is used for surface normals that are orthogonal to
    * viewer's current location.
-   * @return SFColorRGBA The current value of parallelColor.
+   * @return const SFColorRGBA& The current value of parallelColor.
    */
-  SFColorRGBA getParallelColor() const { return _parallelColor; }
+  const SFColorRGBA &getParallelColor() const { return _parallelColor; }
 
   /**
    * @brief Sets the value of parallelColor. AccessType: inputOutput
@@ -202,9 +202,9 @@ public:
    * @brief Gets the value of surfaceNormals. AccessType: inputOutput
    * @details The surfaceNormals field contains a 3D texture with at least three
    * component values.
-   * @return SFNode The current value of surfaceNormals.
+   * @return const SFNode& The current value of surfaceNormals.
    */
-  SFNode getSurfaceNormals() const { return _surfaceNormals; }
+  const SFNode &getSurfaceNormals() const { return _surfaceNormals; }
 
   /**
    * @brief Acceptable node types for the surfaceNormals field.

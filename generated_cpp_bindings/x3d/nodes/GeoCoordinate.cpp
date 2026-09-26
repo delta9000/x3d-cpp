@@ -14,23 +14,30 @@ const FieldTable &GeoCoordinate::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
 
-    t.push_back(
-        FieldInfo{"geoOrigin", X3DFieldType::SFNode, AccessType::InitializeOnly,
-                  "geoOrigin",
+    t.push_back(FieldInfo{
+        "geoOrigin", X3DFieldType::SFNode, AccessType::InitializeOnly,
+        "geoOrigin",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const GeoCoordinate &>(n).getGeoOrigin());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoCoordinate &>(n).getGeoOrigin());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<GeoCoordinate &>(n).setGeoOriginUnchecked(
-                        std::any_cast<SFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoCoordinate &>(n).setGeoOriginUnchecked(
+              std::any_cast<SFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).getGeoOrigin(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "geoSystem", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -46,6 +53,13 @@ const FieldTable &GeoCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).getGeoSystem(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -64,6 +78,13 @@ const FieldTable &GeoCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +102,14 @@ const FieldTable &GeoCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoCoordinate &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -95,6 +124,13 @@ const FieldTable &GeoCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).getPoint(),
+                  &typeid(MFVec3d)};
+        }
 
     });
 
@@ -113,6 +149,13 @@ const FieldTable &GeoCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -129,6 +172,13 @@ const FieldTable &GeoCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -147,6 +197,13 @@ const FieldTable &GeoCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -164,6 +221,13 @@ const FieldTable &GeoCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -180,6 +244,13 @@ const FieldTable &GeoCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoCoordinate &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

@@ -109,9 +109,9 @@ public:
    * @brief Gets the value of segmentEnabled. AccessType: inputOutput
    * @details Array of boolean values that indicates whether to draw each
    * segment, with indices corresponding to the segment identifier.
-   * @return MFBool The current value of segmentEnabled.
+   * @return const MFBool& The current value of segmentEnabled.
    */
-  MFBool getSegmentEnabled() const { return _segmentEnabled; }
+  const MFBool &getSegmentEnabled() const { return _segmentEnabled; }
 
   /**
    * @brief Sets the value of segmentEnabled. AccessType: inputOutput
@@ -128,9 +128,9 @@ public:
    * @details Single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) holds component texture that provides
    * corresponding segment identifier.
-   * @return SFNode The current value of segmentIdentifiers.
+   * @return const SFNode& The current value of segmentIdentifiers.
    */
-  SFNode getSegmentIdentifiers() const { return _segmentIdentifiers; }
+  const SFNode &getSegmentIdentifiers() const { return _segmentIdentifiers; }
 
   /**
    * @brief Acceptable node types for the segmentIdentifiers field.
@@ -165,9 +165,9 @@ public:
    * @details Single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) that provides raw voxel information
    * utilized by corresponding rendering styles.
-   * @return SFNode The current value of voxels.
+   * @return const SFNode& The current value of voxels.
    */
-  SFNode getVoxels() const { return _voxels; }
+  const SFNode &getVoxels() const { return _voxels; }
 
   /**
    * @brief Acceptable node types for the voxels field.

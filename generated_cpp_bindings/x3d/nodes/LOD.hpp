@@ -81,9 +81,9 @@ public:
    * @brief Gets the value of center. AccessType: initializeOnly
    * @details Viewpoint distance-measurement offset from origin of local
    * coordinate system, used for LOD node distance calculations.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
   /**
    * @brief Data-layer write of center (reader/init ingest path).
    * @details center is initializeOnly: author-settable at parse
@@ -95,9 +95,9 @@ public:
    * @brief Gets the value of forceTransitions. AccessType: initializeOnly
    * @details Whether to perform every range-based transition, regardless of
    * browser optimizations that might otherwise occur.
-   * @return SFBool The current value of forceTransitions.
+   * @return const SFBool& The current value of forceTransitions.
    */
-  SFBool getForceTransitions() const { return _forceTransitions; }
+  const SFBool &getForceTransitions() const { return _forceTransitions; }
   /**
    * @brief Data-layer write of forceTransitions (reader/init ingest path).
    * @details forceTransitions is initializeOnly: author-settable at parse
@@ -111,9 +111,9 @@ public:
    * @brief Gets the value of level_changed. AccessType: outputOnly
    * @details Output event that reports current level of LOD children whenever
    * switching occurs.
-   * @return SFInt32 The current value of level_changed.
+   * @return const SFInt32& The current value of level_changed.
    */
-  SFInt32 getLevel_changed() const { return _level_changed; }
+  const SFInt32 &getLevel_changed() const { return _level_changed; }
 
   /**
    * @brief Emit an output value on level_changed. AccessType: outputOnly
@@ -129,9 +129,9 @@ public:
   /**
    * @brief Gets the value of range. AccessType: initializeOnly
    * @details Specifies ideal distances at which to switch between levels.
-   * @return MFFloat The current value of range.
+   * @return const MFFloat& The current value of range.
    */
-  MFFloat getRange() const { return _range; }
+  const MFFloat &getRange() const { return _range; }
   /**
    * @brief Data-layer write of range (reader/init ingest path).
    * @details range is initializeOnly: author-settable at parse

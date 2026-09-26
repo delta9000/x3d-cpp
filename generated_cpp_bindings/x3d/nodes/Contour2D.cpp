@@ -26,6 +26,10 @@ const FieldTable &Contour2D::fields() const {
 
                           nullptr, nullptr
 
+                          ,
+
+                          nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -41,6 +45,13 @@ const FieldTable &Contour2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contour2D &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -55,6 +66,13 @@ const FieldTable &Contour2D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contour2D &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -73,6 +91,13 @@ const FieldTable &Contour2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contour2D &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{"removeChildren", X3DFieldType::MFNode,
@@ -86,6 +111,10 @@ const FieldTable &Contour2D::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -103,6 +132,13 @@ const FieldTable &Contour2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contour2D &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -118,6 +154,13 @@ const FieldTable &Contour2D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contour2D &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -136,6 +179,13 @@ const FieldTable &Contour2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contour2D &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -152,24 +202,38 @@ const FieldTable &Contour2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contour2D &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"style", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "style", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const Contour2D &>(n).X3DNode::getStyle());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const Contour2D &>(n).X3DNode::getStyle());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<Contour2D &>(n).X3DNode::setStyle(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<Contour2D &>(n).X3DNode::setStyle(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Contour2D &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     return t;
   }();

@@ -73,9 +73,9 @@ public:
    * @brief Gets the value of shape. AccessType: initializeOnly
    * @details The shape field provides a geometry proxy for specifying which
    * geometry best represents the collidable object.
-   * @return SFNode The current value of shape.
+   * @return const SFNode& The current value of shape.
    */
-  SFNode getShape() const { return _shape; }
+  const SFNode &getShape() const { return _shape; }
 
   /**
    * @brief Acceptable node types for the shape field.

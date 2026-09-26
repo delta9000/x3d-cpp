@@ -84,9 +84,9 @@ public:
   /**
    * @brief Gets the value of duration_changed. AccessType: outputOnly
    * @details or -1.
-   * @return SFTime The current value of duration_changed.
+   * @return const SFTime& The current value of duration_changed.
    */
-  SFTime getDuration_changed() const { return _duration_changed; }
+  const SFTime &getDuration_changed() const { return _duration_changed; }
 
   /**
    * @brief Emit an output value on duration_changed. AccessType: outputOnly
@@ -103,9 +103,9 @@ public:
    * @brief Gets the value of loop. AccessType: inputOutput
    * @details Repeat indefinitely when loop=true, repeat only once when
    * loop=false.
-   * @return SFBool The current value of loop.
+   * @return const SFBool& The current value of loop.
    */
-  SFBool getLoop() const { return _loop; }
+  const SFBool &getLoop() const { return _loop; }
 
   /**
    * @brief Sets the value of loop. AccessType: inputOutput
@@ -118,9 +118,9 @@ public:
   /**
    * @brief Gets the value of pitch. AccessType: inputOutput
    * @details Multiplier for the rate at which sampled sound is played.
-   * @return SFFloat The current value of pitch.
+   * @return const SFFloat& The current value of pitch.
    */
-  SFFloat getPitch() const { return _pitch; }
+  const SFFloat &getPitch() const { return _pitch; }
 
   /**
    * @brief Sets the value of pitch. AccessType: inputOutput

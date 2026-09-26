@@ -72,9 +72,9 @@ public:
   /**
    * @brief Gets the value of color. AccessType: inputOutput
    * @details
-   * @return SFColor The current value of color.
+   * @return const SFColor& The current value of color.
    */
-  SFColor getColor() const { return _color; }
+  const SFColor &getColor() const { return _color; }
 
   /**
    * @brief Sets the value of color. AccessType: inputOutput
@@ -107,9 +107,9 @@ public:
   /**
    * @brief Gets the value of fogType. AccessType: inputOutput
    * @details
-   * @return FogTypeChoices The current value of fogType.
+   * @return const FogTypeChoices& The current value of fogType.
    */
-  FogTypeChoices getFogType() const { return _fogType; }
+  const FogTypeChoices &getFogType() const { return _fogType; }
 
   /**
    * @brief Sets the value of fogType. AccessType: inputOutput
@@ -121,9 +121,9 @@ public:
   /**
    * @brief Gets the value of visibilityRange. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of visibilityRange.
+   * @return const SFFloat& The current value of visibilityRange.
    */
-  SFFloat getVisibilityRange() const { return _visibilityRange; }
+  const SFFloat &getVisibilityRange() const { return _visibilityRange; }
 
   /**
    * @brief Sets the value of visibilityRange. AccessType: inputOutput

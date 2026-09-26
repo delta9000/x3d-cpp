@@ -80,9 +80,9 @@ public:
   /**
    * @brief Gets the value of innerRadius. AccessType: initializeOnly
    * @details Inner circle radius, greater than or equal to 0.
-   * @return SFFloat The current value of innerRadius.
+   * @return const SFFloat& The current value of innerRadius.
    */
-  SFFloat getInnerRadius() const { return _innerRadius; }
+  const SFFloat &getInnerRadius() const { return _innerRadius; }
   /**
    * @brief Data-layer write of innerRadius (reader/init ingest path).
    * @details innerRadius is initializeOnly: author-settable at parse
@@ -93,9 +93,9 @@ public:
   /**
    * @brief Gets the value of outerRadius. AccessType: initializeOnly
    * @details Outer radius of circle, greater than or equal to inner radius.
-   * @return SFFloat The current value of outerRadius.
+   * @return const SFFloat& The current value of outerRadius.
    */
-  SFFloat getOuterRadius() const { return _outerRadius; }
+  const SFFloat &getOuterRadius() const { return _outerRadius; }
   /**
    * @brief Data-layer write of outerRadius (reader/init ingest path).
    * @details outerRadius is initializeOnly: author-settable at parse
@@ -108,9 +108,9 @@ public:
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse

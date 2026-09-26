@@ -31,6 +31,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const RigidBodyCollection &>(n).getAutoDisable(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -49,6 +57,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .X3DBoundedObject::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -65,6 +81,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .X3DBoundedObject::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -84,6 +108,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .X3DBoundedObject::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -100,6 +132,13 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n).getBodies(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -119,6 +158,13 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n).getCollider(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -135,6 +181,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .getConstantForceMix(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -154,6 +208,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .getContactSurfaceThickness(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -171,6 +233,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .getDisableAngularSpeed(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -190,6 +260,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .getDisableLinearSpeed(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -206,6 +284,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const RigidBodyCollection &>(n).getDisableTime(),
+              &typeid(SFTime)};
+        }
 
     });
 
@@ -224,6 +310,13 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n).getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -240,6 +333,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .getErrorCorrection(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -258,6 +359,13 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n).getGravity(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -274,6 +382,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -292,6 +408,13 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n).getIterations(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -308,6 +431,13 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n).getJoints(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -327,6 +457,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .getMaxCorrectionSpeed(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -343,6 +481,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -361,6 +507,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const RigidBodyCollection &>(n).getPreferAccuracy(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(
@@ -375,6 +529,10 @@ const FieldTable &RigidBodyCollection::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  nullptr
 
         });
 
@@ -393,6 +551,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const RigidBodyCollection &>(n)
+                       .X3DBoundedObject::getVisible(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -409,6 +575,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -427,6 +601,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(
@@ -443,6 +625,14 @@ const FieldTable &RigidBodyCollection::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const RigidBodyCollection &>(n)
+                                 .X3DNode::getClass_(),
+                            &typeid(SFString)};
+                  }
 
         });
 
@@ -461,6 +651,14 @@ const FieldTable &RigidBodyCollection::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -477,6 +675,14 @@ const FieldTable &RigidBodyCollection::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

@@ -113,9 +113,9 @@ public:
    * @brief Gets the value of category. AccessType: initializeOnly
    * @details Integer enumerations value for main category that describes the
    * entity, semantics of each code varies according to domain.
-   * @return SFInt32 The current value of category.
+   * @return const SFInt32& The current value of category.
    */
-  SFInt32 getCategory() const { return _category; }
+  const SFInt32 &getCategory() const { return _category; }
   /**
    * @brief Data-layer write of category (reader/init ingest path).
    * @details category is initializeOnly: author-settable at parse
@@ -127,9 +127,9 @@ public:
    * @brief Gets the value of country. AccessType: initializeOnly
    * @details Integer enumerations value for country to which the design of the
    * entity or its design specification is attributed.
-   * @return SFInt32 The current value of country.
+   * @return const SFInt32& The current value of country.
    */
-  SFInt32 getCountry() const { return _country; }
+  const SFInt32 &getCountry() const { return _country; }
   /**
    * @brief Data-layer write of country (reader/init ingest path).
    * @details country is initializeOnly: author-settable at parse
@@ -141,9 +141,9 @@ public:
    * @brief Gets the value of domain. AccessType: initializeOnly
    * @details Integer enumerations value for domain in which the entity
    * operates: LAND, AIR, SURFACE, SUBSURFACE, SPACE or OTHER.
-   * @return SFInt32 The current value of domain.
+   * @return const SFInt32& The current value of domain.
    */
-  SFInt32 getDomain() const { return _domain; }
+  const SFInt32 &getDomain() const { return _domain; }
   /**
    * @brief Data-layer write of domain (reader/init ingest path).
    * @details domain is initializeOnly: author-settable at parse
@@ -154,9 +154,9 @@ public:
   /**
    * @brief Gets the value of extra. AccessType: initializeOnly
    * @details Any extra information required to describe a particular entity.
-   * @return SFInt32 The current value of extra.
+   * @return const SFInt32& The current value of extra.
    */
-  SFInt32 getExtra() const { return _extra; }
+  const SFInt32 &getExtra() const { return _extra; }
   /**
    * @brief Data-layer write of extra (reader/init ingest path).
    * @details extra is initializeOnly: author-settable at parse
@@ -169,9 +169,9 @@ public:
    * @details Integer enumerations value for whether entity is a PLATFORM,
    * MUNITION, LIFE_FORM, ENVIRONMENTAL, CULTURAL_FEATURE, SUPPLY, RADIO,
    * EXPENDABLE, SENSOR_EMITTER or OTHER.
-   * @return SFInt32 The current value of kind.
+   * @return const SFInt32& The current value of kind.
    */
-  SFInt32 getKind() const { return _kind; }
+  const SFInt32 &getKind() const { return _kind; }
   /**
    * @brief Data-layer write of kind (reader/init ingest path).
    * @details kind is initializeOnly: author-settable at parse
@@ -183,9 +183,9 @@ public:
    * @brief Gets the value of specific. AccessType: initializeOnly
    * @details Specific information about an entity based on the subcategory
    * field.
-   * @return SFInt32 The current value of specific.
+   * @return const SFInt32& The current value of specific.
    */
-  SFInt32 getSpecific() const { return _specific; }
+  const SFInt32 &getSpecific() const { return _specific; }
   /**
    * @brief Data-layer write of specific (reader/init ingest path).
    * @details specific is initializeOnly: author-settable at parse
@@ -197,9 +197,9 @@ public:
    * @brief Gets the value of subcategory. AccessType: initializeOnly
    * @details Integer enumerations value for particular subcategory to which an
    * entity belongs based on the category field.
-   * @return SFInt32 The current value of subcategory.
+   * @return const SFInt32& The current value of subcategory.
    */
-  SFInt32 getSubcategory() const { return _subcategory; }
+  const SFInt32 &getSubcategory() const { return _subcategory; }
   /**
    * @brief Data-layer write of subcategory (reader/init ingest path).
    * @details subcategory is initializeOnly: author-settable at parse

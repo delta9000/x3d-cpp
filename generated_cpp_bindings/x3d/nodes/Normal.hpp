@@ -68,9 +68,9 @@ public:
    * @brief Gets the value of vector. AccessType: inputOutput
    * @details set of unit-length normal vectors, corresponding to indexed
    * polygons or vertices.
-   * @return MFVec3f The current value of vector.
+   * @return const MFVec3f& The current value of vector.
    */
-  MFVec3f getVector() const { return _vector; }
+  const MFVec3f &getVector() const { return _vector; }
 
   /**
    * @brief Sets the value of vector. AccessType: inputOutput

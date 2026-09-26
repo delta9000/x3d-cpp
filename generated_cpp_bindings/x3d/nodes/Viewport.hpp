@@ -76,9 +76,9 @@ public:
    * @brief Gets the value of clipBoundary. AccessType: inputOutput
    * @details clipBoundary is specified in fractions of the normal render
    * surface in the sequence left/right/bottom/top.
-   * @return MFFloat The current value of clipBoundary.
+   * @return const MFFloat& The current value of clipBoundary.
    */
-  MFFloat getClipBoundary() const { return _clipBoundary; }
+  const MFFloat &getClipBoundary() const { return _clipBoundary; }
 
   /**
    * @brief Sets the value of clipBoundary. AccessType: inputOutput

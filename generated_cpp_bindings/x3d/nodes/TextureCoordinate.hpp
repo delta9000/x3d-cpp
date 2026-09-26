@@ -70,9 +70,9 @@ public:
    * @brief Gets the value of point. AccessType: inputOutput
    * @details pairs of 2D (s,t) texture coordinates, either in range [0,1] or
    * higher if repeating.
-   * @return MFVec2f The current value of point.
+   * @return const MFVec2f& The current value of point.
    */
-  MFVec2f getPoint() const { return _point; }
+  const MFVec2f &getPoint() const { return _point; }
 
   /**
    * @brief Sets the value of point. AccessType: inputOutput

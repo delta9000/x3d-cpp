@@ -6,6 +6,7 @@
 #ifndef X3D_RUNTIME_VIEW_DEPENDENT_SYSTEM_HPP
 #define X3D_RUNTIME_VIEW_DEPENDENT_SYSTEM_HPP
 
+#include "FieldRead.hpp"
 #include "Billboard.hpp"
 #include "GeometryBounds.hpp"
 #include "Mat4.hpp"
@@ -23,9 +24,10 @@ using namespace x3d::core;
 // Number of nodes in a node's `children` MFNode slot (0 if absent).
 inline std::size_t lodChildCount(const X3DNode &n) {
   for (const auto &f : n.fields())
-    if (f.x3dName == std::string("children") && f.get &&
-        f.type == X3DFieldType::MFNode)
-      return std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(n)).size();
+    if (f.x3dName == "children" && f.type == X3DFieldType::MFNode) {
+      FieldRef<std::vector<std::shared_ptr<X3DNode>>> c(n, f);
+      return c ? c->size() : 0;
+    }
   return 0;
 }
 

@@ -31,6 +31,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getAttrib(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -49,6 +57,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getCcw(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -65,6 +81,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getColor(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -84,6 +108,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getColorPerVertex(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -100,6 +132,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getCoord(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -118,6 +158,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getFogCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -134,6 +182,13 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n).getIndex(),
+                  &typeid(MFInt32)};
+        }
 
     });
 
@@ -152,6 +207,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IndexedTriangleFanSet &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -169,6 +232,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -185,6 +256,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getNormal(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -204,6 +283,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getNormalPerVertex(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(
@@ -217,6 +304,10 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  nullptr
 
         });
 
@@ -236,6 +327,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getSolid(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -252,6 +351,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DComposedGeometryNode::getTexCoord(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -270,6 +377,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IndexedTriangleFanSet &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -286,6 +401,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IndexedTriangleFanSet &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -304,6 +427,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -321,6 +452,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IndexedTriangleFanSet &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -337,6 +476,14 @@ const FieldTable &IndexedTriangleFanSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleFanSet &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

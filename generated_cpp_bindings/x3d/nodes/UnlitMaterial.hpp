@@ -90,9 +90,9 @@ public:
   /**
    * @brief Gets the value of emissiveColor. AccessType: inputOutput
    * @details how much glowing light is emitted from this object.
-   * @return SFColor The current value of emissiveColor.
+   * @return const SFColor& The current value of emissiveColor.
    */
-  SFColor getEmissiveColor() const { return _emissiveColor; }
+  const SFColor &getEmissiveColor() const { return _emissiveColor; }
 
   /**
    * @brief Sets the value of emissiveColor. AccessType: inputOutput
@@ -129,9 +129,9 @@ public:
    * @details When applying emissiveColor for this material node, the contained
    * texture provides Physically Based Rendering (PBR) modulation for each
    * pixel.
-   * @return SFNode The current value of emissiveTexture.
+   * @return const SFNode& The current value of emissiveTexture.
    */
-  SFNode getEmissiveTexture() const { return _emissiveTexture; }
+  const SFNode &getEmissiveTexture() const { return _emissiveTexture; }
 
   /**
    * @brief Acceptable node types for the emissiveTexture field.
@@ -161,9 +161,9 @@ public:
    * @brief Gets the value of normalTexture. AccessType: inputOutput
    * @details When applying normalScale for this material node, the contained
    * texture modulates the texture across the surface.
-   * @return SFNode The current value of normalTexture.
+   * @return const SFNode& The current value of normalTexture.
    */
-  SFNode getNormalTexture() const { return _normalTexture; }
+  const SFNode &getNormalTexture() const { return _normalTexture; }
 
   /**
    * @brief Acceptable node types for the normalTexture field.
@@ -188,9 +188,9 @@ public:
   /**
    * @brief Gets the value of transparency. AccessType: inputOutput
    * @details how "clear" an object is: 1.
-   * @return SFFloat The current value of transparency.
+   * @return const SFFloat& The current value of transparency.
    */
-  SFFloat getTransparency() const { return _transparency; }
+  const SFFloat &getTransparency() const { return _transparency; }
 
   /**
    * @brief Sets the value of transparency. AccessType: inputOutput

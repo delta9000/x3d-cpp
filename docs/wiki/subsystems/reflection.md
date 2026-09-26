@@ -2,7 +2,7 @@
 title: Reflection Layer
 summary: Field descriptors, reflection thunks, and the node factory/registry that enable generic traversal and codec IO without per-node code.
 tags: [subsystem, reflection, descriptors, factory, registry, codegen]
-updated: 2026-06-20
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/generated-bindings.md
@@ -13,6 +13,7 @@ related:
   - ../decisions/0003-throw-on-range.md
   - ../decisions/0005-golden-files-in-git.md
   - ../decisions/0014-dynamic-field-foundation.md
+  - ../decisions/0049-zero-copy-field-reads.md
 ---
 
 # Reflection Layer
@@ -40,7 +41,7 @@ The layer is split across the Python generator (`src/x3d_cpp_gen/emit/`) and the
 | `generated_cpp_bindings/x3d/nodes/X3DNodeFactory.hpp` / `.cpp` | Committed golden: the factory definition (compiled into `x3d_cpp_nodes`) |
 | `generated_cpp_bindings/x3d/nodes/X3DInterfaceRegistry.hpp` / `.cpp` | Committed golden: the interface-id enum and membership tables |
 | `generated_cpp_bindings/<NodeName>.cpp` | Per-node golden: the `fields()` static (lambda-initialized `FieldTable`) and `accept()` double-dispatch body |
-| `runtime/FieldRead.hpp` | Exception-free reads of reflected values: `fieldValueAs<T>` (pointer-form `any_cast`; empty → null, a present value of the wrong type asserts in debug) and `enumToken` (an SFEnum/MFEnum field's token via `getEnumString`). Use these instead of `any_cast` inside `try`/`catch (...)`, which also swallows unrelated errors. |
+| `runtime/FieldRead.hpp` | Reads of reflected values. Zero-copy: `fieldPtr<T>` (borrow a generated field's member through `FieldInfo::view`), `FieldRef<T>` (borrow when possible, else box through `get`, e.g. for author fields) and `forEachChildNode` (walk a node's SFNode/MFNode children without copying a vector or bumping a refcount; ADR-0049). Exception-free: `fieldValueAs<T>` (pointer-form `any_cast`; empty → null, a present value of the wrong type asserts in debug) and `enumToken` (an SFEnum/MFEnum field's token via `getEnumString`). Use these instead of `any_cast` inside `try`/`catch (...)`, which also swallows unrelated errors. |
 | `runtime/events/DynamicField.hpp` | Runtime extension: `effectiveFields(node)` concatenates the generated `fields()` table with per-instance author `<field>` declarations; `DynamicFieldStore` holds the side-table |
 | `runtime/X3DRangeValidate.hpp` | Runtime helper: `collectRangeWarnings()` walks a scene calling `validateRanges()` on each node (the per-node `validateRanges` is generated) |
 
@@ -67,9 +68,13 @@ struct FieldInfo {
     std::function<void(X3DNode&, const std::any&)>   set;
     std::function<std::string(const X3DNode&)>       getEnumString;   // SFEnum/MFEnum only
     std::function<void(X3DNode&, const std::string&)> setEnumString;  // SFEnum/MFEnum only
+    FieldView (*view)(const X3DNode&) = nullptr;  // zero-copy read (ADR-0049)
     bool isNode() const;   bool isEnum() const;
-    bool isReadable() const; bool isWritable() const;
+    bool isReadable() const; bool isWritable() const; bool isViewable() const;
 };
+
+// Borrowed pointer to a field's stored member plus its C++ type (ADR-0049).
+struct FieldView { const void* data; const std::type_info* type; };
 
 using FieldTable = std::vector<FieldInfo>;
 
@@ -127,6 +132,8 @@ public:
 
 - **`FieldInfo::get` / `FieldInfo::set` thunks** — bound by each node's generated `fields()` implementation. The thunks call strongly-typed accessors (`getSizeUnchecked()`, `setSizeUnchecked()`) via `dynamic_cast` to the concrete node type, boxing/unboxing the value as `std::any`. Constrained `inputOutput` fields route their set thunk through the `set<Name>Unchecked()` path (the lenient read path); range enforcement stays in the public `set<Name>()`. `initializeOnly` fields also use the unchecked path (no public setter).
 
+- **`FieldInfo::view` thunk** — a plain function pointer emitted for every readable generated field. It returns the address of the member (through the field's `const T&` getter) and `&typeid(T)`, so `fieldPtr<T>` can hand out a type-checked `const T*` with no `std::any`, no copy and no `std::function` call. It is null for `inputOnly` fields and for fields with no stored member: synthesized author fields (`DynamicFieldStore`) and the hand-written `ExternalGeometry` table. `FieldRef<T>` falls back to `get` there. A borrowed pointer is valid while the node lives, and it reads the new value after a write (ADR-0049).
+
 - **`FieldDescriptor::inherited_from`** — when a field is inherited through a diamond base (`X3DNode`, `X3DGeometryNode`, etc.), `descriptors.py` records the ancestor in `inherited_from`. The thunk generator emits base-qualified calls (`X3DNode::getMetadata()`) to resolve the ambiguity, making the generated `.cpp` compile cleanly despite `public virtual` multiple inheritance.
 
 - **`SFEnum` / `MFEnum` tags + `getEnumString` / `setEnumString`** — a bounded enum field's C++ type is a generated `enum class`, opaque to a generic codec. The two string-typed thunks let codecs round-trip the token without knowing the concrete type. Emitted by `descriptors.py._build_enum_descriptor()`.
@@ -155,6 +162,7 @@ public:
 
 ## Related specs and ADRs
 
+- [ADR-0049: Zero-Copy Field Reads](../decisions/0049-zero-copy-field-reads.md) — `const T&` getters, the `FieldInfo::view` thunk, and the `FieldRead.hpp` borrowing helpers.
 - [ADR-0003: Throw on Range](../decisions/0003-throw-on-range.md) — the decision that typed `set<Name>()` throws `std::out_of_range` while the reflection `set` thunk is non-validating (lenient read); determines the `reader_setter_call` / `setter_unchecked_name` routing in `FieldDescriptor`.
 - [ADR-0005: Golden Files in Git](../decisions/0005-golden-files-in-git.md) — the commitment that generated headers (including all reflection artifacts) are committed and byte-identical; drives the golden-gate tests and the `DynamicField.hpp` side-table design.
 - [ADR-0014: Dynamic Field Foundation](../decisions/0014-dynamic-field-foundation.md) — the decision to keep author `<field>` declarations in a per-node side-table (`DynamicFieldStore`) rather than modifying the generated nodes; extends the reflection surface via `effectiveFields()`.

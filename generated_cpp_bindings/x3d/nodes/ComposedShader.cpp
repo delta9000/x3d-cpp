@@ -26,6 +26,10 @@ const FieldTable &ComposedShader::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  nullptr
+
         });
 
     t.push_back(FieldInfo{
@@ -41,6 +45,13 @@ const FieldTable &ComposedShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).getField(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -55,6 +66,13 @@ const FieldTable &ComposedShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -73,6 +91,14 @@ const FieldTable &ComposedShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n)
+                       .X3DShaderNode::getIsSelected(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -89,6 +115,14 @@ const FieldTable &ComposedShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n)
+                       .X3DShaderNode::getIsValid(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -107,6 +141,14 @@ const FieldTable &ComposedShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n)
+                       .X3DShaderNode::getLanguage(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -124,6 +166,13 @@ const FieldTable &ComposedShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -138,6 +187,13 @@ const FieldTable &ComposedShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).getParts(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -156,6 +212,13 @@ const FieldTable &ComposedShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -172,6 +235,13 @@ const FieldTable &ComposedShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -190,6 +260,13 @@ const FieldTable &ComposedShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -207,6 +284,13 @@ const FieldTable &ComposedShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -223,6 +307,13 @@ const FieldTable &ComposedShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedShader &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

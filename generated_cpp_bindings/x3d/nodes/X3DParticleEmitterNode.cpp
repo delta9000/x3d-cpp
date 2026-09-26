@@ -31,6 +31,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DParticleEmitterNode &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,13 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DParticleEmitterNode &>(n).getMass(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -65,6 +80,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DParticleEmitterNode &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +104,13 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DParticleEmitterNode &>(n).getOn(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -99,6 +129,13 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DParticleEmitterNode &>(n).getSpeed(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +152,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DParticleEmitterNode &>(n).getSurfaceArea(),
+              &typeid(SFFloat)};
+        }
 
     });
 
@@ -133,6 +178,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DParticleEmitterNode &>(n).getVariation(),
+              &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -149,6 +202,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DParticleEmitterNode &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -167,6 +228,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DParticleEmitterNode &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -183,6 +252,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DParticleEmitterNode &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -201,6 +278,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DParticleEmitterNode &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -217,6 +302,14 @@ const FieldTable &X3DParticleEmitterNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DParticleEmitterNode &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

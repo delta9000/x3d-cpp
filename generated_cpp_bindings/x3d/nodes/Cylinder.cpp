@@ -27,6 +27,13 @@ const FieldTable &Cylinder::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).getBottom(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -43,6 +50,13 @@ const FieldTable &Cylinder::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).getHeight(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -57,6 +71,13 @@ const FieldTable &Cylinder::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -75,6 +96,13 @@ const FieldTable &Cylinder::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -91,6 +119,13 @@ const FieldTable &Cylinder::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).getRadius(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -105,6 +140,13 @@ const FieldTable &Cylinder::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).getSide(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -122,6 +164,13 @@ const FieldTable &Cylinder::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).getSolid(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -136,6 +185,12 @@ const FieldTable &Cylinder::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).getTop(), &typeid(SFBool)};
+        }
 
     });
 
@@ -153,6 +208,13 @@ const FieldTable &Cylinder::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -169,24 +231,38 @@ const FieldTable &Cylinder::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"class", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "class", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const Cylinder &>(n).X3DNode::getClass_());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const Cylinder &>(n).X3DNode::getClass_());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<Cylinder &>(n).X3DNode::setClass_(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<Cylinder &>(n).X3DNode::setClass_(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -202,24 +278,38 @@ const FieldTable &Cylinder::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"style", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "style", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const Cylinder &>(n).X3DNode::getStyle());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const Cylinder &>(n).X3DNode::getStyle());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<Cylinder &>(n).X3DNode::setStyle(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<Cylinder &>(n).X3DNode::setStyle(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Cylinder &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     return t;
   }();

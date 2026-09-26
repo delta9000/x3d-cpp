@@ -73,9 +73,9 @@ public:
    * @brief Gets the value of collidable. AccessType: initializeOnly
    * @details The collidable field holds a reference to a single nested item of
    * a collidable scene graph.
-   * @return SFNode The current value of collidable.
+   * @return const SFNode& The current value of collidable.
    */
-  SFNode getCollidable() const { return _collidable; }
+  const SFNode &getCollidable() const { return _collidable; }
 
   /**
    * @brief Acceptable node types for the collidable field.

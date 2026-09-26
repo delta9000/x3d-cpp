@@ -99,9 +99,9 @@ public:
   /**
    * @brief Gets the value of axis. AccessType: inputOutput
    * @details axis is normalized vector specifying direction of motion.
-   * @return SFVec3f The current value of axis.
+   * @return const SFVec3f& The current value of axis.
    */
-  SFVec3f getAxis() const { return _axis; }
+  const SFVec3f &getAxis() const { return _axis; }
 
   /**
    * @brief Sets the value of axis. AccessType: inputOutput
@@ -116,9 +116,9 @@ public:
    * @brief Gets the value of maxSeparation. AccessType: inputOutput
    * @details maxSeparation is maximum separation distance between the two
    * bodies.
-   * @return SFFloat The current value of maxSeparation.
+   * @return const SFFloat& The current value of maxSeparation.
    */
-  SFFloat getMaxSeparation() const { return _maxSeparation; }
+  const SFFloat &getMaxSeparation() const { return _maxSeparation; }
 
   /**
    * @brief Sets the value of maxSeparation. AccessType: inputOutput
@@ -132,9 +132,9 @@ public:
    * @brief Gets the value of minSeparation. AccessType: inputOutput
    * @details minSeparation is minimum separation distance between the two
    * bodies.
-   * @return SFFloat The current value of minSeparation.
+   * @return const SFFloat& The current value of minSeparation.
    */
-  SFFloat getMinSeparation() const { return _minSeparation; }
+  const SFFloat &getMinSeparation() const { return _minSeparation; }
 
   /**
    * @brief Sets the value of minSeparation. AccessType: inputOutput
@@ -148,9 +148,9 @@ public:
    * @brief Gets the value of separation. AccessType: outputOnly
    * @details separation indicates final separation distance between the two
    * bodies.
-   * @return SFFloat The current value of separation.
+   * @return const SFFloat& The current value of separation.
    */
-  SFFloat getSeparation() const { return _separation; }
+  const SFFloat &getSeparation() const { return _separation; }
 
   /**
    * @brief Emit an output value on separation. AccessType: outputOnly
@@ -167,9 +167,9 @@ public:
    * @brief Gets the value of separationRate. AccessType: outputOnly
    * @details separationRate indicates change in separation distance over time
    * between the two bodies.
-   * @return SFFloat The current value of separationRate.
+   * @return const SFFloat& The current value of separationRate.
    */
-  SFFloat getSeparationRate() const { return _separationRate; }
+  const SFFloat &getSeparationRate() const { return _separationRate; }
 
   /**
    * @brief Emit an output value on separationRate. AccessType: outputOnly
@@ -187,9 +187,9 @@ public:
    * @details sliderForce value is used to apply a force (specified in force
    * base units) along the axis of the slider in equal and opposite directions
    * to the two bodies.
-   * @return SFFloat The current value of sliderForce.
+   * @return const SFFloat& The current value of sliderForce.
    */
-  SFFloat getSliderForce() const { return _sliderForce; }
+  const SFFloat &getSliderForce() const { return _sliderForce; }
 
   /**
    * @brief Sets the value of sliderForce. AccessType: inputOutput
@@ -204,9 +204,9 @@ public:
    * @brief Gets the value of stopBounce. AccessType: inputOutput
    * @details stopBounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return SFFloat The current value of stopBounce.
+   * @return const SFFloat& The current value of stopBounce.
    */
-  SFFloat getStopBounce() const { return _stopBounce; }
+  const SFFloat &getStopBounce() const { return _stopBounce; }
 
   /**
    * @brief Sets the value of stopBounce. AccessType: inputOutput
@@ -220,9 +220,9 @@ public:
    * @brief Gets the value of stopErrorCorrection. AccessType: inputOutput
    * @details stopErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return SFFloat The current value of stopErrorCorrection.
+   * @return const SFFloat& The current value of stopErrorCorrection.
    */
-  SFFloat getStopErrorCorrection() const { return _stopErrorCorrection; }
+  const SFFloat &getStopErrorCorrection() const { return _stopErrorCorrection; }
 
   /**
    * @brief Sets the value of stopErrorCorrection. AccessType: inputOutput

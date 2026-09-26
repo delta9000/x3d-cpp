@@ -82,9 +82,9 @@ public:
    * @brief Gets the value of endAngle. AccessType: initializeOnly
    * @details Arc extends from startAngle counterclockwise to endAngle, in
    * radians.
-   * @return SFFloat The current value of endAngle.
+   * @return const SFFloat& The current value of endAngle.
    */
-  SFFloat getEndAngle() const { return _endAngle; }
+  const SFFloat &getEndAngle() const { return _endAngle; }
   /**
    * @brief Data-layer write of endAngle (reader/init ingest path).
    * @details endAngle is initializeOnly: author-settable at parse
@@ -95,9 +95,9 @@ public:
   /**
    * @brief Gets the value of radius. AccessType: initializeOnly
    * @details circle radius, of which the arc is a portion.
-   * @return SFFloat The current value of radius.
+   * @return const SFFloat& The current value of radius.
    */
-  SFFloat getRadius() const { return _radius; }
+  const SFFloat &getRadius() const { return _radius; }
   /**
    * @brief Data-layer write of radius (reader/init ingest path).
    * @details radius is initializeOnly: author-settable at parse
@@ -109,9 +109,9 @@ public:
    * @brief Gets the value of startAngle. AccessType: initializeOnly
    * @details Arc extends from startAngle counterclockwise to endAngle, in
    * radians.
-   * @return SFFloat The current value of startAngle.
+   * @return const SFFloat& The current value of startAngle.
    */
-  SFFloat getStartAngle() const { return _startAngle; }
+  const SFFloat &getStartAngle() const { return _startAngle; }
   /**
    * @brief Data-layer write of startAngle (reader/init ingest path).
    * @details startAngle is initializeOnly: author-settable at parse

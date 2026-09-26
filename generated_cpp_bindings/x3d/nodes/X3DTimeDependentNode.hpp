@@ -81,9 +81,9 @@ public:
   /**
    * @brief Gets the value of description. AccessType: inputOutput
    * @details
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -97,9 +97,9 @@ public:
   /**
    * @brief Gets the value of elapsedTime. AccessType: outputOnly
    * @details
-   * @return SFTime The current value of elapsedTime.
+   * @return const SFTime& The current value of elapsedTime.
    */
-  SFTime getElapsedTime() const { return _elapsedTime; }
+  const SFTime &getElapsedTime() const { return _elapsedTime; }
 
   /**
    * @brief Emit an output value on elapsedTime. AccessType: outputOnly
@@ -115,9 +115,9 @@ public:
   /**
    * @brief Gets the value of isActive. AccessType: outputOnly
    * @details
-   * @return SFBool The current value of isActive.
+   * @return const SFBool& The current value of isActive.
    */
-  SFBool getIsActive() const { return _isActive; }
+  const SFBool &getIsActive() const { return _isActive; }
 
   /**
    * @brief Emit an output value on isActive. AccessType: outputOnly
@@ -133,9 +133,9 @@ public:
   /**
    * @brief Gets the value of isPaused. AccessType: outputOnly
    * @details
-   * @return SFBool The current value of isPaused.
+   * @return const SFBool& The current value of isPaused.
    */
-  SFBool getIsPaused() const { return _isPaused; }
+  const SFBool &getIsPaused() const { return _isPaused; }
 
   /**
    * @brief Emit an output value on isPaused. AccessType: outputOnly
@@ -151,9 +151,9 @@ public:
   /**
    * @brief Gets the value of pauseTime. AccessType: inputOutput
    * @details
-   * @return SFTime The current value of pauseTime.
+   * @return const SFTime& The current value of pauseTime.
    */
-  SFTime getPauseTime() const { return _pauseTime; }
+  const SFTime &getPauseTime() const { return _pauseTime; }
 
   /**
    * @brief Sets the value of pauseTime. AccessType: inputOutput
@@ -167,9 +167,9 @@ public:
   /**
    * @brief Gets the value of resumeTime. AccessType: inputOutput
    * @details
-   * @return SFTime The current value of resumeTime.
+   * @return const SFTime& The current value of resumeTime.
    */
-  SFTime getResumeTime() const { return _resumeTime; }
+  const SFTime &getResumeTime() const { return _resumeTime; }
 
   /**
    * @brief Sets the value of resumeTime. AccessType: inputOutput
@@ -183,9 +183,9 @@ public:
   /**
    * @brief Gets the value of startTime. AccessType: inputOutput
    * @details
-   * @return SFTime The current value of startTime.
+   * @return const SFTime& The current value of startTime.
    */
-  SFTime getStartTime() const { return _startTime; }
+  const SFTime &getStartTime() const { return _startTime; }
 
   /**
    * @brief Sets the value of startTime. AccessType: inputOutput
@@ -199,9 +199,9 @@ public:
   /**
    * @brief Gets the value of stopTime. AccessType: inputOutput
    * @details
-   * @return SFTime The current value of stopTime.
+   * @return const SFTime& The current value of stopTime.
    */
-  SFTime getStopTime() const { return _stopTime; }
+  const SFTime &getStopTime() const { return _stopTime; }
 
   /**
    * @brief Sets the value of stopTime. AccessType: inputOutput

@@ -31,6 +31,13 @@ const FieldTable &TextureTransform3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureTransform3D &>(n).getCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +54,13 @@ const FieldTable &TextureTransform3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureTransform3D &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -65,6 +79,13 @@ const FieldTable &TextureTransform3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureTransform3D &>(n).getMapping(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +102,14 @@ const FieldTable &TextureTransform3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureTransform3D &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -99,24 +128,38 @@ const FieldTable &TextureTransform3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureTransform3D &>(n).getRotation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"scale", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "scale", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const TextureTransform3D &>(n).getScale());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const TextureTransform3D &>(n).getScale());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<TextureTransform3D &>(n).setScale(
-                        std::any_cast<SFVec3f>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<TextureTransform3D &>(n).setScale(
+              std::any_cast<SFVec3f>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureTransform3D &>(n).getScale(),
+                  &typeid(SFVec3f)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "translation", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -132,6 +175,13 @@ const FieldTable &TextureTransform3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureTransform3D &>(n).getTranslation(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -150,6 +200,14 @@ const FieldTable &TextureTransform3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureTransform3D &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -166,6 +224,14 @@ const FieldTable &TextureTransform3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureTransform3D &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -184,6 +250,14 @@ const FieldTable &TextureTransform3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureTransform3D &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -201,6 +275,13 @@ const FieldTable &TextureTransform3D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureTransform3D &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -217,6 +298,14 @@ const FieldTable &TextureTransform3D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureTransform3D &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

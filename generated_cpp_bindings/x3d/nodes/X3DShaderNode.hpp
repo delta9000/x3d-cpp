@@ -80,9 +80,9 @@ public:
   /**
    * @brief Gets the value of isSelected. AccessType: outputOnly
    * @details
-   * @return SFBool The current value of isSelected.
+   * @return const SFBool& The current value of isSelected.
    */
-  SFBool getIsSelected() const { return _isSelected; }
+  const SFBool &getIsSelected() const { return _isSelected; }
 
   /**
    * @brief Emit an output value on isSelected. AccessType: outputOnly
@@ -98,9 +98,9 @@ public:
   /**
    * @brief Gets the value of isValid. AccessType: outputOnly
    * @details
-   * @return SFBool The current value of isValid.
+   * @return const SFBool& The current value of isValid.
    */
-  SFBool getIsValid() const { return _isValid; }
+  const SFBool &getIsValid() const { return _isValid; }
 
   /**
    * @brief Emit an output value on isValid. AccessType: outputOnly
@@ -116,9 +116,9 @@ public:
   /**
    * @brief Gets the value of language. AccessType: initializeOnly
    * @details
-   * @return SFString The current value of language.
+   * @return const SFString& The current value of language.
    */
-  SFString getLanguage() const { return _language; }
+  const SFString &getLanguage() const { return _language; }
   /**
    * @brief Data-layer write of language (reader/init ingest path).
    * @details language is initializeOnly: author-settable at parse

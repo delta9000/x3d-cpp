@@ -72,9 +72,9 @@ public:
    * @brief Gets the value of activeLayer. AccessType: inputOutput
    * @details activeLayer field specifies the layer in which navigation takes
    * place.
-   * @return SFInt32 The current value of activeLayer.
+   * @return const SFInt32& The current value of activeLayer.
    */
-  SFInt32 getActiveLayer() const { return _activeLayer; }
+  const SFInt32 &getActiveLayer() const { return _activeLayer; }
 
   /**
    * @brief Sets the value of activeLayer. AccessType: inputOutput
@@ -129,9 +129,9 @@ public:
   /**
    * @brief Gets the value of order. AccessType: inputOutput
    * @details The order list defines the order in which layers are rendered.
-   * @return MFInt32 The current value of order.
+   * @return const MFInt32& The current value of order.
    */
-  MFInt32 getOrder() const { return _order; }
+  const MFInt32 &getOrder() const { return _order; }
 
   /**
    * @brief Sets the value of order. AccessType: inputOutput

@@ -64,9 +64,9 @@ public:
    * @brief Gets the value of keyValue. AccessType: inputOutput
    * @details Output values for linear interpolation, each corresponding to an
    * input-fraction value in the key array.
-   * @return MFColor The current value of keyValue.
+   * @return const MFColor& The current value of keyValue.
    */
-  MFColor getKeyValue() const { return _keyValue; }
+  const MFColor &getKeyValue() const { return _keyValue; }
 
   /**
    * @brief Sets the value of keyValue. AccessType: inputOutput
@@ -101,9 +101,9 @@ public:
    * @brief Gets the value of value_changed. AccessType: outputOnly
    * @details Linearly interpolated output value determined by current key time
    * and corresponding keyValue pair.
-   * @return SFColor The current value of value_changed.
+   * @return const SFColor& The current value of value_changed.
    */
-  SFColor getValue_changed() const { return _value_changed; }
+  const SFColor &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

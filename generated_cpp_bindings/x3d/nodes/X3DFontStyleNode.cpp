@@ -16,22 +16,29 @@ const FieldTable &X3DFontStyleNode::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
 
-    t.push_back(
-        FieldInfo{"class", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "class", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const X3DFontStyleNode &>(n).getClass_());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const X3DFontStyleNode &>(n).getClass_());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<X3DFontStyleNode &>(n).setClass_(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<X3DFontStyleNode &>(n).setClass_(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DFontStyleNode &>(n).getClass_(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -45,6 +52,13 @@ const FieldTable &X3DFontStyleNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DFontStyleNode &>(n).getId(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -60,6 +74,13 @@ const FieldTable &X3DFontStyleNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DFontStyleNode &>(n).getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -78,6 +99,13 @@ const FieldTable &X3DFontStyleNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DFontStyleNode &>(n).getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -95,6 +123,13 @@ const FieldTable &X3DFontStyleNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DFontStyleNode &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -111,6 +146,13 @@ const FieldTable &X3DFontStyleNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DFontStyleNode &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 

@@ -104,9 +104,9 @@ public:
    * @brief Gets the value of centerOfRotation. AccessType: inputOutput
    * @details centerOfRotation specifies center point about which to rotate
    * user's eyepoint when in EXAMINE or LOOKAT mode.
-   * @return SFVec3d The current value of centerOfRotation.
+   * @return const SFVec3d& The current value of centerOfRotation.
    */
-  SFVec3d getCenterOfRotation() const { return _centerOfRotation; }
+  const SFVec3d &getCenterOfRotation() const { return _centerOfRotation; }
 
   /**
    * @brief Sets the value of centerOfRotation. AccessType: inputOutput
@@ -125,9 +125,9 @@ public:
    * @brief Gets the value of fieldOfView. AccessType: inputOutput
    * @details Preferred minimum viewing angle from this viewpoint in radians,
    * providing minimum height or minimum width (whichever is smaller).
-   * @return SFFloat The current value of fieldOfView.
+   * @return const SFFloat& The current value of fieldOfView.
    */
-  SFFloat getFieldOfView() const { return _fieldOfView; }
+  const SFFloat &getFieldOfView() const { return _fieldOfView; }
 
   /**
    * @brief Sets the value of fieldOfView. AccessType: inputOutput
@@ -141,9 +141,9 @@ public:
    * @brief Gets the value of geoOrigin. AccessType: initializeOnly
    * @details Single contained GeoOrigin node that can specify a local
    * coordinate frame for extended precision.
-   * @return SFNode The current value of geoOrigin.
+   * @return const SFNode& The current value of geoOrigin.
    */
-  SFNode getGeoOrigin() const { return _geoOrigin; }
+  const SFNode &getGeoOrigin() const { return _geoOrigin; }
 
   /**
    * @brief Acceptable node types for the geoOrigin field.
@@ -165,9 +165,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -179,9 +179,9 @@ public:
    * @brief Gets the value of position. AccessType: inputOutput
    * @details position relative to local georeferenced coordinate system, in
    * proper format.
-   * @return SFVec3d The current value of position.
+   * @return const SFVec3d& The current value of position.
    */
-  SFVec3d getPosition() const { return _position; }
+  const SFVec3d &getPosition() const { return _position; }
 
   /**
    * @brief Sets the value of position. AccessType: inputOutput
@@ -197,9 +197,9 @@ public:
    * @brief Gets the value of speedFactor. AccessType: initializeOnly
    * @details speedFactor is a multiplier to modify the original elevation-based
    * speed that is set automatically by the browser.
-   * @return SFFloat The current value of speedFactor.
+   * @return const SFFloat& The current value of speedFactor.
    */
-  SFFloat getSpeedFactor() const { return _speedFactor; }
+  const SFFloat &getSpeedFactor() const { return _speedFactor; }
   /**
    * @brief Data-layer write of speedFactor (reader/init ingest path).
    * @details speedFactor is initializeOnly: author-settable at parse

@@ -126,9 +126,9 @@ public:
   /**
    * @brief Gets the value of maxChannelCount. AccessType: inputOutput
    * @details [maxChannelCount.
-   * @return SFInt32 The current value of maxChannelCount.
+   * @return const SFInt32& The current value of maxChannelCount.
    */
-  SFInt32 getMaxChannelCount() const { return _maxChannelCount; }
+  const SFInt32 &getMaxChannelCount() const { return _maxChannelCount; }
 
   /**
    * @brief Sets the value of maxChannelCount. AccessType: inputOutput

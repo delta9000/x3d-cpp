@@ -62,9 +62,9 @@ public:
   /**
    * @brief Gets the value of depth. AccessType: inputOutput
    * @details depth contains a set of 3D coordinate (triplet) point values.
-   * @return MFFloat The current value of depth.
+   * @return const MFFloat& The current value of depth.
    */
-  MFFloat getDepth() const { return _depth; }
+  const MFFloat &getDepth() const { return _depth; }
 
   /**
    * @brief Sets the value of depth. AccessType: inputOutput

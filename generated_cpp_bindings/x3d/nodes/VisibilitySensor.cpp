@@ -16,22 +16,29 @@ const FieldTable &VisibilitySensor::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
 
-    t.push_back(
-        FieldInfo{"center", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "center", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const VisibilitySensor &>(n).getCenter());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const VisibilitySensor &>(n).getCenter());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<VisibilitySensor &>(n).setCenter(
-                        std::any_cast<SFVec3f>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<VisibilitySensor &>(n).setCenter(
+              std::any_cast<SFVec3f>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n).getCenter(),
+                  &typeid(SFVec3f)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -47,6 +54,14 @@ const FieldTable &VisibilitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -65,6 +80,14 @@ const FieldTable &VisibilitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n)
+                       .X3DSensorNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +104,13 @@ const FieldTable &VisibilitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n).getEnterTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -99,6 +129,13 @@ const FieldTable &VisibilitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n).getExitTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +152,13 @@ const FieldTable &VisibilitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -133,6 +177,14 @@ const FieldTable &VisibilitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -149,6 +201,14 @@ const FieldTable &VisibilitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const VisibilitySensor &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -168,6 +228,14 @@ const FieldTable &VisibilitySensor::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const VisibilitySensor &>(n)
+                                 .X3DEnvironmentalSensorNode::getSize(),
+                            &typeid(SFVec3f)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -184,6 +252,13 @@ const FieldTable &VisibilitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -202,6 +277,13 @@ const FieldTable &VisibilitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -218,6 +300,14 @@ const FieldTable &VisibilitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const VisibilitySensor &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -236,6 +326,13 @@ const FieldTable &VisibilitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const VisibilitySensor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -252,6 +349,14 @@ const FieldTable &VisibilitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const VisibilitySensor &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

@@ -32,6 +32,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DLightNode::getAmbientIntensity(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -50,6 +58,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DTextureProjectorNode::getAspectRatio(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -66,6 +82,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DLightNode::getColor(),
+                  &typeid(SFColor)};
+        }
 
     });
 
@@ -85,6 +109,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DTextureProjectorNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -101,6 +133,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DTextureProjectorNode::getDirection(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -120,6 +160,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DTextureProjectorNode::getFarDistance(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -136,6 +184,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .getFieldOfView(),
+                  &typeid(SFVec4f)};
+        }
 
     });
 
@@ -154,6 +210,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DTextureProjectorNode::getGlobal(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -170,6 +234,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DLightNode::getIntensity(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -188,6 +260,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -205,6 +285,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DTextureProjectorNode::getLocation(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -221,6 +309,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -240,6 +336,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DTextureProjectorNode::getNearDistance(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -256,6 +360,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DLightNode::getOn(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -275,6 +387,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DLightNode::getShadowIntensity(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -291,6 +411,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DLightNode::getShadows(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -309,6 +437,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DTextureProjectorNode::getTexture(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -325,6 +461,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -343,6 +487,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -359,6 +511,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -377,6 +537,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -393,6 +561,14 @@ const FieldTable &TextureProjectorParallel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProjectorParallel &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

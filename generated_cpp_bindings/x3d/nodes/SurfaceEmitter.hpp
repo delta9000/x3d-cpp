@@ -67,9 +67,9 @@ public:
   /**
    * @brief Gets the value of surface. AccessType: initializeOnly
    * @details The geometry node provides geometry used as the emitting surface.
-   * @return SFNode The current value of surface.
+   * @return const SFNode& The current value of surface.
    */
-  SFNode getSurface() const { return _surface; }
+  const SFNode &getSurface() const { return _surface; }
 
   /**
    * @brief Acceptable node types for the surface field.

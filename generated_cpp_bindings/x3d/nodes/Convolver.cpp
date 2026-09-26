@@ -28,6 +28,13 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).getBuffer(),
+                  &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -44,6 +51,14 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DSoundProcessingNode::getChannelCount(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -71,6 +86,14 @@ const FieldTable &Convolver::fields() const {
           if (from_string(s, ev))
             dynamic_cast<Convolver &>(n)
                 .X3DSoundProcessingNode::setChannelCountMode(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DSoundProcessingNode::getChannelCountMode(),
+                  &typeid(ChannelCountModeChoices)};
         }
 
     });
@@ -104,6 +127,14 @@ const FieldTable &Convolver::fields() const {
                 .X3DSoundProcessingNode::setChannelInterpretation(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DSoundProcessingNode::getChannelInterpretation(),
+                  &typeid(ChannelInterpretationChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -118,6 +149,13 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -136,6 +174,14 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DTimeDependentNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -152,6 +198,14 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DTimeDependentNode::getElapsedTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -170,6 +224,14 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DSoundProcessingNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -187,6 +249,14 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DSoundProcessingNode::getGain(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -201,6 +271,13 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -219,6 +296,14 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DTimeDependentNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -235,6 +320,14 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DTimeDependentNode::getIsPaused(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -253,6 +346,13 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -267,6 +367,13 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).getNormalize(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -285,6 +392,14 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DTimeDependentNode::getPauseTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -301,6 +416,14 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DTimeDependentNode::getResumeTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -319,6 +442,14 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DTimeDependentNode::getStartTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -335,6 +466,14 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n)
+                       .X3DTimeDependentNode::getStopTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -354,6 +493,14 @@ const FieldTable &Convolver::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const Convolver &>(n)
+                                 .X3DSoundProcessingNode::getTailTime(),
+                            &typeid(SFTime)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -370,6 +517,13 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -385,6 +539,13 @@ const FieldTable &Convolver::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -403,6 +564,13 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -419,24 +587,38 @@ const FieldTable &Convolver::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"style", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "style", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const Convolver &>(n).X3DNode::getStyle());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const Convolver &>(n).X3DNode::getStyle());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<Convolver &>(n).X3DNode::setStyle(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<Convolver &>(n).X3DNode::setStyle(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Convolver &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     return t;
   }();

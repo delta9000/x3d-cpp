@@ -106,9 +106,9 @@ public:
   /**
    * @brief Gets the value of duration_changed. AccessType: outputOnly
    * @details or -1.
-   * @return SFTime The current value of duration_changed.
+   * @return const SFTime& The current value of duration_changed.
    */
-  SFTime getDuration_changed() const { return _duration_changed; }
+  const SFTime &getDuration_changed() const { return _duration_changed; }
 
   /**
    * @brief Emit an output value on duration_changed. AccessType: outputOnly
@@ -125,9 +125,9 @@ public:
    * @brief Gets the value of loop. AccessType: inputOutput
    * @details Repeat indefinitely when loop=true, repeat only once when
    * loop=false.
-   * @return SFBool The current value of loop.
+   * @return const SFBool& The current value of loop.
    */
-  SFBool getLoop() const { return _loop; }
+  const SFBool &getLoop() const { return _loop; }
 
   /**
    * @brief Sets the value of loop. AccessType: inputOutput
@@ -140,9 +140,9 @@ public:
   /**
    * @brief Gets the value of pitch. AccessType: inputOutput
    * @details Multiplier for the rate at which sampled sound is played.
-   * @return SFFloat The current value of pitch.
+   * @return const SFFloat& The current value of pitch.
    */
-  SFFloat getPitch() const { return _pitch; }
+  const SFFloat &getPitch() const { return _pitch; }
 
   /**
    * @brief Sets the value of pitch. AccessType: inputOutput
@@ -154,9 +154,9 @@ public:
   /**
    * @brief Gets the value of speed. AccessType: inputOutput
    * @details Factor for how fast the movie (or soundtrack) is played.
-   * @return SFFloat The current value of speed.
+   * @return const SFFloat& The current value of speed.
    */
-  SFFloat getSpeed() const { return _speed; }
+  const SFFloat &getSpeed() const { return _speed; }
 
   /**
    * @brief Sets the value of speed. AccessType: inputOutput
@@ -169,9 +169,9 @@ public:
    * @brief Gets the value of textureProperties. AccessType: initializeOnly
    * @details Single contained TextureProperties node that can specify
    * additional visual attributes applied to corresponding texture images.
-   * @return SFNode The current value of textureProperties.
+   * @return const SFNode& The current value of textureProperties.
    */
-  SFNode getTextureProperties() const { return _textureProperties; }
+  const SFNode &getTextureProperties() const { return _textureProperties; }
 
   /**
    * @brief Acceptable node types for the textureProperties field.

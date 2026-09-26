@@ -65,9 +65,9 @@ public:
   /**
    * @brief Gets the value of info. AccessType: inputOutput
    * @details Additional information about this model.
-   * @return MFString The current value of info.
+   * @return const MFString& The current value of info.
    */
-  MFString getInfo() const { return _info; }
+  const MFString &getInfo() const { return _info; }
 
   /**
    * @brief Sets the value of info. AccessType: inputOutput
@@ -81,9 +81,9 @@ public:
   /**
    * @brief Gets the value of title. AccessType: inputOutput
    * @details title of this world, placed in window title.
-   * @return SFString The current value of title.
+   * @return const SFString& The current value of title.
    */
-  SFString getTitle() const { return _title; }
+  const SFString &getTitle() const { return _title; }
 
   /**
    * @brief Sets the value of title. AccessType: inputOutput

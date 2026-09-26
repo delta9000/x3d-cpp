@@ -153,9 +153,9 @@ public:
    * @brief Gets the value of fftSize. AccessType: inputOutput
    * @details fftSize represents size of Fast Fourier Transform (FFT) used to
    * determine frequency domain.
-   * @return SFInt32 The current value of fftSize.
+   * @return const SFInt32& The current value of fftSize.
    */
-  SFInt32 getFftSize() const { return _fftSize; }
+  const SFInt32 &getFftSize() const { return _fftSize; }
 
   /**
    * @brief Sets the value of fftSize. AccessType: inputOutput
@@ -183,9 +183,9 @@ public:
    * @brief Gets the value of frequencyBinCount. AccessType: inputOutput
    * @details frequencyBinCount is half of fftSize and generally equates to
    * number of data values available for the visualization.
-   * @return SFInt32 The current value of frequencyBinCount.
+   * @return const SFInt32& The current value of frequencyBinCount.
    */
-  SFInt32 getFrequencyBinCount() const { return _frequencyBinCount; }
+  const SFInt32 &getFrequencyBinCount() const { return _frequencyBinCount; }
 
   /**
    * @brief Sets the value of frequencyBinCount. AccessType: inputOutput
@@ -216,9 +216,9 @@ public:
    * @brief Gets the value of maxDecibels. AccessType: inputOutput
    * @details maxDecibels represents maximum power value in scaling range for
    * FFT analysis data.
-   * @return SFFloat The current value of maxDecibels.
+   * @return const SFFloat& The current value of maxDecibels.
    */
-  SFFloat getMaxDecibels() const { return _maxDecibels; }
+  const SFFloat &getMaxDecibels() const { return _maxDecibels; }
 
   /**
    * @brief Sets the value of maxDecibels. AccessType: inputOutput
@@ -232,9 +232,9 @@ public:
    * @brief Gets the value of minDecibels. AccessType: inputOutput
    * @details minDecibels represents minimum power value in scaling range for
    * FFT analysis data.
-   * @return SFFloat The current value of minDecibels.
+   * @return const SFFloat& The current value of minDecibels.
    */
-  SFFloat getMinDecibels() const { return _minDecibels; }
+  const SFFloat &getMinDecibels() const { return _minDecibels; }
 
   /**
    * @brief Sets the value of minDecibels. AccessType: inputOutput
@@ -248,9 +248,11 @@ public:
    * @brief Gets the value of smoothingTimeConstant. AccessType: inputOutput
    * @details smoothingTimeConstant represents averaging constant during last
    * analysis frame.
-   * @return SFFloat The current value of smoothingTimeConstant.
+   * @return const SFFloat& The current value of smoothingTimeConstant.
    */
-  SFFloat getSmoothingTimeConstant() const { return _smoothingTimeConstant; }
+  const SFFloat &getSmoothingTimeConstant() const {
+    return _smoothingTimeConstant;
+  }
 
   /**
    * @brief Sets the value of smoothingTimeConstant. AccessType: inputOutput

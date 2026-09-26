@@ -32,6 +32,14 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n)
+                       .X3DNBodyCollidableNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,14 @@ const FieldTable &CollidableOffset::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n)
+                       .X3DNBodyCollidableNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -67,6 +83,14 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n)
+                       .X3DNBodyCollidableNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -85,6 +109,13 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n).getCollidable(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -101,6 +132,14 @@ const FieldTable &CollidableOffset::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n)
+                       .X3DNBodyCollidableNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -119,6 +158,13 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -135,6 +181,14 @@ const FieldTable &CollidableOffset::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CollidableOffset &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -154,6 +208,14 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n)
+                       .X3DNBodyCollidableNode::getRotation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -172,6 +234,14 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n)
+                       .X3DNBodyCollidableNode::getTranslation(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -188,6 +258,14 @@ const FieldTable &CollidableOffset::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n)
+                       .X3DNBodyCollidableNode::getVisible(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -206,6 +284,13 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -222,6 +307,13 @@ const FieldTable &CollidableOffset::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -240,6 +332,14 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CollidableOffset &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -257,6 +357,13 @@ const FieldTable &CollidableOffset::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollidableOffset &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -273,6 +380,14 @@ const FieldTable &CollidableOffset::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CollidableOffset &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

@@ -144,9 +144,9 @@ public:
   /**
    * @brief Gets the value of center. AccessType: inputOutput
    * @details Translation offset from origin of local coordinate system.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -161,9 +161,9 @@ public:
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Author-provided prose that describes intended purpose of this
    * node.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -180,9 +180,9 @@ public:
    * @details Contains metadata keyword=value pairs, where approved keyword
    * terms are humanoidVersion authorName authorEmail copyright creationDate
    * usageRestrictions age gender height and weight.
-   * @return MFString The current value of info.
+   * @return const MFString& The current value of info.
    */
-  MFString getInfo() const { return _info; }
+  const MFString &getInfo() const { return _info; }
 
   /**
    * @brief Sets the value of info. AccessType: inputOutput
@@ -199,9 +199,11 @@ public:
    * @brief Gets the value of jointBindingPositions. AccessType: inputOutput
    * @details Specifies an array of position values for each HAnimJoint node in
    * the joints field, in order, corresponding to each binding pose.
-   * @return MFVec3f The current value of jointBindingPositions.
+   * @return const MFVec3f& The current value of jointBindingPositions.
    */
-  MFVec3f getJointBindingPositions() const { return _jointBindingPositions; }
+  const MFVec3f &getJointBindingPositions() const {
+    return _jointBindingPositions;
+  }
 
   /**
    * @brief Sets the value of jointBindingPositions. AccessType: inputOutput
@@ -223,9 +225,11 @@ public:
    * @brief Gets the value of jointBindingRotations. AccessType: inputOutput
    * @details Specifies an array of rotation values for each HAnimJoint node in
    * the joints field, in order, corresponding to each binding pose.
-   * @return MFRotation The current value of jointBindingRotations.
+   * @return const MFRotation& The current value of jointBindingRotations.
    */
-  MFRotation getJointBindingRotations() const { return _jointBindingRotations; }
+  const MFRotation &getJointBindingRotations() const {
+    return _jointBindingRotations;
+  }
 
   /**
    * @brief Sets the value of jointBindingRotations. AccessType: inputOutput
@@ -247,9 +251,9 @@ public:
    * @brief Gets the value of jointBindingScales. AccessType: inputOutput
    * @details Specifies an array of scale values for each HAnimJoint node in the
    * joints field, in order, corresponding to each binding pose.
-   * @return MFVec3f The current value of jointBindingScales.
+   * @return const MFVec3f& The current value of jointBindingScales.
    */
-  MFVec3f getJointBindingScales() const { return _jointBindingScales; }
+  const MFVec3f &getJointBindingScales() const { return _jointBindingScales; }
 
   /**
    * @brief Sets the value of jointBindingScales. AccessType: inputOutput
@@ -298,9 +302,9 @@ public:
   /**
    * @brief Gets the value of loa. AccessType: inputOutput
    * @details Level Of Articulation 0.
-   * @return SFInt32 The current value of loa.
+   * @return const SFInt32& The current value of loa.
    */
-  SFInt32 getLoa() const { return _loa; }
+  const SFInt32 &getLoa() const { return _loa; }
 
   /**
    * @brief Sets the value of loa. AccessType: inputOutput
@@ -353,9 +357,9 @@ public:
    * @brief Gets the value of motionsEnabled. AccessType: inputOutput
    * @details Array of boolean values corresponding to HAnimMotion nodes
    * indicating which can animate the HAnimHumanoid.
-   * @return MFBool The current value of motionsEnabled.
+   * @return const MFBool& The current value of motionsEnabled.
    */
-  MFBool getMotionsEnabled() const { return _motionsEnabled; }
+  const MFBool &getMotionsEnabled() const { return _motionsEnabled; }
 
   /**
    * @brief Sets the value of motionsEnabled. AccessType: inputOutput
@@ -371,9 +375,9 @@ public:
    * @brief Gets the value of name. AccessType: inputOutput
    * @details Unique name attribute must be defined so that each HAnimHumanoid
    * node in a scene can be identified at run time for animation purposes.
-   * @return SFString The current value of name.
+   * @return const SFString& The current value of name.
    */
-  SFString getName() const { return _name; }
+  const SFString &getName() const { return _name; }
 
   /**
    * @brief Sets the value of name. AccessType: inputOutput
@@ -388,9 +392,9 @@ public:
   /**
    * @brief Gets the value of rotation. AccessType: inputOutput
    * @details Orientation of children relative to local coordinate system.
-   * @return SFRotation The current value of rotation.
+   * @return const SFRotation& The current value of rotation.
    */
-  SFRotation getRotation() const { return _rotation; }
+  const SFRotation &getRotation() const { return _rotation; }
 
   /**
    * @brief Sets the value of rotation. AccessType: inputOutput
@@ -405,9 +409,9 @@ public:
    * @brief Gets the value of scale. AccessType: inputOutput
    * @details Non-uniform x-y-z scale of child coordinate system, adjusted by
    * center and scaleOrientation.
-   * @return SFVec3f The current value of scale.
+   * @return const SFVec3f& The current value of scale.
    */
-  SFVec3f getScale() const { return _scale; }
+  const SFVec3f &getScale() const { return _scale; }
 
   /**
    * @brief Sets the value of scale. AccessType: inputOutput
@@ -423,9 +427,9 @@ public:
    * @brief Gets the value of scaleOrientation. AccessType: inputOutput
    * @details Preliminary rotation of coordinate system before scaling (to allow
    * scaling around arbitrary orientations).
-   * @return SFRotation The current value of scaleOrientation.
+   * @return const SFRotation& The current value of scaleOrientation.
    */
-  SFRotation getScaleOrientation() const { return _scaleOrientation; }
+  const SFRotation &getScaleOrientation() const { return _scaleOrientation; }
 
   /**
    * @brief Sets the value of scaleOrientation. AccessType: inputOutput
@@ -503,9 +507,11 @@ public:
    * @brief Gets the value of skeletalConfiguration. AccessType: inputOutput
    * @details Models sharing a common skeletal configuration can share
    * animations and binding poses.
-   * @return SFString The current value of skeletalConfiguration.
+   * @return const SFString& The current value of skeletalConfiguration.
    */
-  SFString getSkeletalConfiguration() const { return _skeletalConfiguration; }
+  const SFString &getSkeletalConfiguration() const {
+    return _skeletalConfiguration;
+  }
 
   /**
    * @brief Sets the value of skeletalConfiguration. AccessType: inputOutput
@@ -584,9 +590,9 @@ public:
    * @brief Gets the value of skinBindingCoords. AccessType: inputOutput
    * @details Array of Coordinate nodes to handle non-default source pose so
    * that both skin and skeleton can be in same binding pose.
-   * @return SFNode The current value of skinBindingCoords.
+   * @return const SFNode& The current value of skinBindingCoords.
    */
-  SFNode getSkinBindingCoords() const { return _skinBindingCoords; }
+  const SFNode &getSkinBindingCoords() const { return _skinBindingCoords; }
 
   /**
    * @brief Acceptable node types for the skinBindingCoords field.
@@ -617,9 +623,9 @@ public:
    * @brief Gets the value of skinBindingNormals. AccessType: inputOutput
    * @details Array of Normal nodes to handle non-default source pose so that
    * both skin and skeleton can be in same binding pose.
-   * @return SFNode The current value of skinBindingNormals.
+   * @return const SFNode& The current value of skinBindingNormals.
    */
-  SFNode getSkinBindingNormals() const { return _skinBindingNormals; }
+  const SFNode &getSkinBindingNormals() const { return _skinBindingNormals; }
 
   /**
    * @brief Acceptable node types for the skinBindingNormals field.
@@ -651,9 +657,9 @@ public:
   /**
    * @brief Gets the value of skinCoord. AccessType: inputOutput
    * @details Coordinate node utilized by indexed mesh definitions for skin.
-   * @return SFNode The current value of skinCoord.
+   * @return const SFNode& The current value of skinCoord.
    */
-  SFNode getSkinCoord() const { return _skinCoord; }
+  const SFNode &getSkinCoord() const { return _skinCoord; }
 
   /**
    * @brief Acceptable node types for the skinCoord field.
@@ -678,9 +684,9 @@ public:
   /**
    * @brief Gets the value of skinNormal. AccessType: inputOutput
    * @details Single Normal node utilized by indexed mesh definitions for skin.
-   * @return SFNode The current value of skinNormal.
+   * @return const SFNode& The current value of skinNormal.
    */
-  SFNode getSkinNormal() const { return _skinNormal; }
+  const SFNode &getSkinNormal() const { return _skinNormal; }
 
   /**
    * @brief Acceptable node types for the skinNormal field.
@@ -704,9 +710,9 @@ public:
   /**
    * @brief Gets the value of translation. AccessType: inputOutput
    * @details Position of children relative to local coordinate system.
-   * @return SFVec3f The current value of translation.
+   * @return const SFVec3f& The current value of translation.
    */
-  SFVec3f getTranslation() const { return _translation; }
+  const SFVec3f &getTranslation() const { return _translation; }
 
   /**
    * @brief Sets the value of translation. AccessType: inputOutput
@@ -720,9 +726,9 @@ public:
   /**
    * @brief Gets the value of version. AccessType: inputOutput
    * @details HAnimHumanoid version, where allowed value is 2.
-   * @return HanimVersionChoices The current value of version.
+   * @return const HanimVersionChoices& The current value of version.
    */
-  HanimVersionChoices getVersion() const { return _version; }
+  const HanimVersionChoices &getVersion() const { return _version; }
 
   /**
    * @brief Sets the value of version. AccessType: inputOutput

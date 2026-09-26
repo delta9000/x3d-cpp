@@ -68,9 +68,9 @@ public:
    * @details Output event containing 3D points on surface of underlying
    * pickingGeometry computed by the picking intersection computations, given in
    * the local coordinate system.
-   * @return MFVec3f The current value of pickedPoint.
+   * @return const MFVec3f& The current value of pickedPoint.
    */
-  MFVec3f getPickedPoint() const { return _pickedPoint; }
+  const MFVec3f &getPickedPoint() const { return _pickedPoint; }
 
   /**
    * @brief Emit an output value on pickedPoint. AccessType: outputOnly

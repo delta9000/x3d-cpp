@@ -32,6 +32,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ComposedCubeMapTexture &>(n).getBackTexture(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -50,6 +58,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .getBottomTexture(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -66,6 +82,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .X3DTextureNode::getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -85,6 +109,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .getFrontTexture(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -101,6 +133,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ComposedCubeMapTexture &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -120,6 +160,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ComposedCubeMapTexture &>(n).getLeftTexture(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -136,6 +184,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -155,6 +211,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .getRightTexture(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -172,6 +236,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .getTextureProperties(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -191,6 +263,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ComposedCubeMapTexture &>(n).getTopTexture(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -207,6 +287,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -225,6 +313,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -241,6 +337,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -259,6 +363,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ComposedCubeMapTexture &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -275,6 +387,14 @@ const FieldTable &ComposedCubeMapTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ComposedCubeMapTexture &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

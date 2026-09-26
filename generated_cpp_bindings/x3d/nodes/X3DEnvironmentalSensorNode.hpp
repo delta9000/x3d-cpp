@@ -66,9 +66,9 @@ public:
   /**
    * @brief Gets the value of size. AccessType: inputOutput
    * @details
-   * @return SFVec3f The current value of size.
+   * @return const SFVec3f& The current value of size.
    */
-  SFVec3f getSize() const { return _size; }
+  const SFVec3f &getSize() const { return _size; }
 
   /**
    * @brief Sets the value of size. AccessType: inputOutput

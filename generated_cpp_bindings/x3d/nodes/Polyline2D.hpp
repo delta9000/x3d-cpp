@@ -62,9 +62,9 @@ public:
   /**
    * @brief Gets the value of lineSegments. AccessType: initializeOnly
    * @details Coordinates of vertices connected into contiguous Polyline2D.
-   * @return MFVec2f The current value of lineSegments.
+   * @return const MFVec2f& The current value of lineSegments.
    */
-  MFVec2f getLineSegments() const { return _lineSegments; }
+  const MFVec2f &getLineSegments() const { return _lineSegments; }
   /**
    * @brief Data-layer write of lineSegments (reader/init ingest path).
    * @details lineSegments is initializeOnly: author-settable at parse

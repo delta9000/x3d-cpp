@@ -53,7 +53,7 @@ def _read(rendered, name):
 
 def test_appearance_alpha_mode_is_enum(rendered):
     raw, src = _read(rendered, "Appearance.hpp")
-    assert "AlphaModeChoices getAlphaMode()" in src
+    assert "const AlphaModeChoices& getAlphaMode()" in src
     assert "AlphaModeChoices _alphaMode{ AlphaModeChoices::AUTO }" in src
     # Must NOT be a plain std::string member any more.
     assert "std::string _alphaMode" not in src
@@ -81,22 +81,29 @@ def test_no_inaccessible_base_inheritance_all_virtual(rendered):
     assert "public X3D" not in class_line  # only 'public virtual X3D...'
 
 
-def test_mfnode_getters_return_const_ref(rendered):
-    # MFNode getters hand out a reference to the member instead of copying the
-    # vector (and bumping every child's refcount) on each read.
+def test_getters_return_const_ref(rendered):
+    # Every getter hands out a reference to the member instead of copying it
+    # (whole MF vectors, strings, node refcounts) on each read (ADR-0049).
     raw, src = _read(rendered, "X3DGroupingNode.hpp")
     assert "const MFNode& getChildren() const" in src
     raw, src = _read(rendered, "Appearance.hpp")
     assert "const MFNode& getShaders() const" in src
-
-
-def test_non_mfnode_getters_stay_by_value(rendered):
-    # Only MFNode getters change shape; value-typed getters keep the uniform
-    # by-value contract.
     raw, src = _read(rendered, "Transform.hpp")
-    assert "SFVec3f getTranslation() const" in src
+    assert "const SFVec3f& getTranslation() const" in src
     raw, src = _read(rendered, "Coordinate.hpp")
-    assert "MFVec3f getPoint() const" in src
+    assert "const MFVec3f& getPoint() const" in src
+
+
+def test_reflection_view_thunk(rendered):
+    # Readable fields carry a zero-copy view thunk typed by the member's C++
+    # type; write-only (inputOnly) fields have none.
+    raw, src = _read(rendered, "Coordinate.cpp")
+    assert "-> FieldView" in src
+    assert "&typeid(MFVec3f)" in src
+    from x3d_cpp_gen.emit.reflection import gen_reflection_header
+    header = gen_reflection_header()
+    assert "struct FieldView" in header
+    assert "FieldView (*view)(const X3DNode&) = nullptr;" in header
 
 
 def test_enums_header_generated(rendered):

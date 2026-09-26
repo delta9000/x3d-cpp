@@ -76,9 +76,9 @@ public:
   /**
    * @brief Gets the value of direction. AccessType: inputOutput
    * @details Orientation vector of light relative to local coordinate system.
-   * @return SFVec3f The current value of direction.
+   * @return const SFVec3f& The current value of direction.
    */
-  SFVec3f getDirection() const { return _direction; }
+  const SFVec3f &getDirection() const { return _direction; }
 
   /**
    * @brief Sets the value of direction. AccessType: inputOutput
@@ -93,9 +93,9 @@ public:
    * @brief Gets the value of global. AccessType: inputOutput
    * @details Global lights illuminate all objects within their volume of
    * lighting influence.
-   * @return SFBool The current value of global.
+   * @return const SFBool& The current value of global.
    */
-  SFBool getGlobal() const { return _global; }
+  const SFBool &getGlobal() const { return _global; }
 
   /**
    * @brief Sets the value of global. AccessType: inputOutput

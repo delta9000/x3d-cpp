@@ -292,9 +292,9 @@ public:
   /**
    * @brief Gets the value of address. AccessType: inputOutput
    * @details Multicast network address, or else 'localhost'.
-   * @return SFString The current value of address.
+   * @return const SFString& The current value of address.
    */
-  SFString getAddress() const { return _address; }
+  const SFString &getAddress() const { return _address; }
 
   /**
    * @brief Sets the value of address. AccessType: inputOutput
@@ -308,9 +308,9 @@ public:
   /**
    * @brief Gets the value of antennaLocation. AccessType: inputOutput
    * @details World coordinates for antenna location.
-   * @return SFVec3f The current value of antennaLocation.
+   * @return const SFVec3f& The current value of antennaLocation.
    */
-  SFVec3f getAntennaLocation() const { return _antennaLocation; }
+  const SFVec3f &getAntennaLocation() const { return _antennaLocation; }
 
   /**
    * @brief Sets the value of antennaLocation. AccessType: inputOutput
@@ -327,9 +327,11 @@ public:
   /**
    * @brief Gets the value of antennaPatternLength. AccessType: inputOutput
    * @details .
-   * @return SFInt32 The current value of antennaPatternLength.
+   * @return const SFInt32& The current value of antennaPatternLength.
    */
-  SFInt32 getAntennaPatternLength() const { return _antennaPatternLength; }
+  const SFInt32 &getAntennaPatternLength() const {
+    return _antennaPatternLength;
+  }
 
   /**
    * @brief Sets the value of antennaPatternLength. AccessType: inputOutput
@@ -345,9 +347,9 @@ public:
    * @brief Gets the value of antennaPatternType. AccessType: inputOutput
    * @details Antenna shape pattern: 0 for omnidirectional, 1 for beam, 2 for
    * spherical harmonic (deprecated), or optional higher value.
-   * @return SFInt32 The current value of antennaPatternType.
+   * @return const SFInt32& The current value of antennaPatternType.
    */
-  SFInt32 getAntennaPatternType() const { return _antennaPatternType; }
+  const SFInt32 &getAntennaPatternType() const { return _antennaPatternType; }
 
   /**
    * @brief Sets the value of antennaPatternType. AccessType: inputOutput
@@ -364,9 +366,9 @@ public:
    * @brief Gets the value of applicationID. AccessType: inputOutput
    * @details Each simulation application that can respond to simulation
    * management PDUs needs to have a unique applicationID.
-   * @return SFInt32 The current value of applicationID.
+   * @return const SFInt32& The current value of applicationID.
    */
-  SFInt32 getApplicationID() const { return _applicationID; }
+  const SFInt32 &getApplicationID() const { return _applicationID; }
 
   /**
    * @brief Sets the value of applicationID. AccessType: inputOutput
@@ -379,9 +381,9 @@ public:
   /**
    * @brief Gets the value of cryptoKeyID. AccessType: inputOutput
    * @details Nonzero value corresponding to the simulated cryptographic key.
-   * @return SFInt32 The current value of cryptoKeyID.
+   * @return const SFInt32& The current value of cryptoKeyID.
    */
-  SFInt32 getCryptoKeyID() const { return _cryptoKeyID; }
+  const SFInt32 &getCryptoKeyID() const { return _cryptoKeyID; }
 
   /**
    * @brief Sets the value of cryptoKeyID. AccessType: inputOutput
@@ -394,9 +396,9 @@ public:
    * @brief Gets the value of cryptoSystem. AccessType: inputOutput
    * @details Indicates type of crypto system being used, even if the encryption
    * equipment is not keyed.
-   * @return SFInt32 The current value of cryptoSystem.
+   * @return const SFInt32& The current value of cryptoSystem.
    */
-  SFInt32 getCryptoSystem() const { return _cryptoSystem; }
+  const SFInt32 &getCryptoSystem() const { return _cryptoSystem; }
 
   /**
    * @brief Sets the value of cryptoSystem. AccessType: inputOutput
@@ -409,9 +411,9 @@ public:
   /**
    * @brief Gets the value of entityID. AccessType: inputOutput
    * @details EntityID unique ID for entity within that application.
-   * @return SFInt32 The current value of entityID.
+   * @return const SFInt32& The current value of entityID.
    */
-  SFInt32 getEntityID() const { return _entityID; }
+  const SFInt32 &getEntityID() const { return _entityID; }
 
   /**
    * @brief Sets the value of entityID. AccessType: inputOutput
@@ -423,9 +425,9 @@ public:
   /**
    * @brief Gets the value of frequency. AccessType: inputOutput
    * @details Transmission frequency in Hz.
-   * @return SFInt32 The current value of frequency.
+   * @return const SFInt32& The current value of frequency.
    */
-  SFInt32 getFrequency() const { return _frequency; }
+  const SFInt32 &getFrequency() const { return _frequency; }
 
   /**
    * @brief Sets the value of frequency. AccessType: inputOutput
@@ -452,9 +454,9 @@ public:
    * @brief Gets the value of geoCoords. AccessType: inputOutput
    * @details Geographic location (specified in current geoSystem coordinates)
    * for children geometry (specified in relative coordinate system, in meters).
-   * @return SFVec3d The current value of geoCoords.
+   * @return const SFVec3d& The current value of geoCoords.
    */
-  SFVec3d getGeoCoords() const { return _geoCoords; }
+  const SFVec3d &getGeoCoords() const { return _geoCoords; }
 
   /**
    * @brief Sets the value of geoCoords. AccessType: inputOutput
@@ -470,9 +472,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -483,9 +485,9 @@ public:
   /**
    * @brief Gets the value of inputSource. AccessType: inputOutput
    * @details Source of transmission input.
-   * @return SFInt32 The current value of inputSource.
+   * @return const SFInt32& The current value of inputSource.
    */
-  SFInt32 getInputSource() const { return _inputSource; }
+  const SFInt32 &getInputSource() const { return _inputSource; }
 
   /**
    * @brief Sets the value of inputSource. AccessType: inputOutput
@@ -498,9 +500,9 @@ public:
    * @brief Gets the value of isNetworkReader. AccessType: outputOnly
    * @details Whether networkMode='remote' (listen to network as copy of remote
    * entity).
-   * @return SFBool The current value of isNetworkReader.
+   * @return const SFBool& The current value of isNetworkReader.
    */
-  SFBool getIsNetworkReader() const { return _isNetworkReader; }
+  const SFBool &getIsNetworkReader() const { return _isNetworkReader; }
 
   /**
    * @brief Emit an output value on isNetworkReader. AccessType: outputOnly
@@ -517,9 +519,9 @@ public:
    * @brief Gets the value of isNetworkWriter. AccessType: outputOnly
    * @details Whether networkMode='master' (output to network as master entity
    * at writeInterval).
-   * @return SFBool The current value of isNetworkWriter.
+   * @return const SFBool& The current value of isNetworkWriter.
    */
-  SFBool getIsNetworkWriter() const { return _isNetworkWriter; }
+  const SFBool &getIsNetworkWriter() const { return _isNetworkWriter; }
 
   /**
    * @brief Emit an output value on isNetworkWriter. AccessType: outputOnly
@@ -535,9 +537,9 @@ public:
   /**
    * @brief Gets the value of isRtpHeaderHeard. AccessType: outputOnly
    * @details Whether incoming DIS packets have an RTP header prepended.
-   * @return SFBool The current value of isRtpHeaderHeard.
+   * @return const SFBool& The current value of isRtpHeaderHeard.
    */
-  SFBool getIsRtpHeaderHeard() const { return _isRtpHeaderHeard; }
+  const SFBool &getIsRtpHeaderHeard() const { return _isRtpHeaderHeard; }
 
   /**
    * @brief Emit an output value on isRtpHeaderHeard. AccessType: outputOnly
@@ -554,9 +556,9 @@ public:
    * @brief Gets the value of isStandAlone. AccessType: outputOnly
    * @details Whether networkMode='local' (ignore network but still respond to
    * local events).
-   * @return SFBool The current value of isStandAlone.
+   * @return const SFBool& The current value of isStandAlone.
    */
-  SFBool getIsStandAlone() const { return _isStandAlone; }
+  const SFBool &getIsStandAlone() const { return _isStandAlone; }
 
   /**
    * @brief Emit an output value on isStandAlone. AccessType: outputOnly
@@ -573,9 +575,9 @@ public:
    * @brief Gets the value of lengthOfModulationParameters. AccessType:
    * inputOutput
    * @details .
-   * @return SFInt32 The current value of lengthOfModulationParameters.
+   * @return const SFInt32& The current value of lengthOfModulationParameters.
    */
-  SFInt32 getLengthOfModulationParameters() const {
+  const SFInt32 &getLengthOfModulationParameters() const {
     return _lengthOfModulationParameters;
   }
 
@@ -594,9 +596,11 @@ public:
    * @brief Gets the value of modulationTypeDetail. AccessType: inputOutput
    * @details Integer enumeration containing detailed information depending on
    * the major modulation type.
-   * @return SFInt32 The current value of modulationTypeDetail.
+   * @return const SFInt32& The current value of modulationTypeDetail.
    */
-  SFInt32 getModulationTypeDetail() const { return _modulationTypeDetail; }
+  const SFInt32 &getModulationTypeDetail() const {
+    return _modulationTypeDetail;
+  }
 
   /**
    * @brief Sets the value of modulationTypeDetail. AccessType: inputOutput
@@ -613,9 +617,9 @@ public:
    * @brief Gets the value of modulationTypeMajor. AccessType: inputOutput
    * @details Integer enumeration containing major classification of the
    * modulation type.
-   * @return SFInt32 The current value of modulationTypeMajor.
+   * @return const SFInt32& The current value of modulationTypeMajor.
    */
-  SFInt32 getModulationTypeMajor() const { return _modulationTypeMajor; }
+  const SFInt32 &getModulationTypeMajor() const { return _modulationTypeMajor; }
 
   /**
    * @brief Sets the value of modulationTypeMajor. AccessType: inputOutput
@@ -633,9 +637,9 @@ public:
    * inputOutput
    * @details Indicates the spread spectrum technique or combination of spread
    * spectrum techniques in use.
-   * @return SFInt32 The current value of modulationTypeSpreadSpectrum.
+   * @return const SFInt32& The current value of modulationTypeSpreadSpectrum.
    */
-  SFInt32 getModulationTypeSpreadSpectrum() const {
+  const SFInt32 &getModulationTypeSpreadSpectrum() const {
     return _modulationTypeSpreadSpectrum;
   }
 
@@ -656,9 +660,11 @@ public:
    * @details Specifies radio system associated with this Transmitter PDU and
    * used to interpret other fields whose values depend on a specific radio
    * system.
-   * @return SFInt32 The current value of modulationTypeSystem.
+   * @return const SFInt32& The current value of modulationTypeSystem.
    */
-  SFInt32 getModulationTypeSystem() const { return _modulationTypeSystem; }
+  const SFInt32 &getModulationTypeSystem() const {
+    return _modulationTypeSystem;
+  }
 
   /**
    * @brief Sets the value of modulationTypeSystem. AccessType: inputOutput
@@ -675,9 +681,9 @@ public:
   /**
    * @brief Gets the value of multicastRelayHost. AccessType: inputOutput
    * @details Fallback server address if multicast not available locally.
-   * @return SFString The current value of multicastRelayHost.
+   * @return const SFString& The current value of multicastRelayHost.
    */
-  SFString getMulticastRelayHost() const { return _multicastRelayHost; }
+  const SFString &getMulticastRelayHost() const { return _multicastRelayHost; }
 
   /**
    * @brief Sets the value of multicastRelayHost. AccessType: inputOutput
@@ -697,9 +703,9 @@ public:
   /**
    * @brief Gets the value of multicastRelayPort. AccessType: inputOutput
    * @details Fallback server port if multicast not available locally.
-   * @return SFInt32 The current value of multicastRelayPort.
+   * @return const SFInt32& The current value of multicastRelayPort.
    */
-  SFInt32 getMulticastRelayPort() const { return _multicastRelayPort; }
+  const SFInt32 &getMulticastRelayPort() const { return _multicastRelayPort; }
 
   /**
    * @brief Sets the value of multicastRelayPort. AccessType: inputOutput
@@ -715,9 +721,9 @@ public:
    * @brief Gets the value of networkMode. AccessType: inputOutput
    * @details Whether this entity is ignoring the network, sending DIS packets
    * to the network, or receiving DIS packets from the network.
-   * @return NetworkModeChoices The current value of networkMode.
+   * @return const NetworkModeChoices& The current value of networkMode.
    */
-  NetworkModeChoices getNetworkMode() const { return _networkMode; }
+  const NetworkModeChoices &getNetworkMode() const { return _networkMode; }
 
   /**
    * @brief Sets the value of networkMode. AccessType: inputOutput
@@ -730,9 +736,9 @@ public:
   /**
    * @brief Gets the value of port. AccessType: inputOutput
    * @details Multicast network port, for example: 3000.
-   * @return SFInt32 The current value of port.
+   * @return const SFInt32& The current value of port.
    */
-  SFInt32 getPort() const { return _port; }
+  const SFInt32 &getPort() const { return _port; }
 
   /**
    * @brief Sets the value of port. AccessType: inputOutput
@@ -745,9 +751,9 @@ public:
    * @brief Gets the value of power. AccessType: inputOutput
    * @details Power that radio would be capable of outputting if on and
    * transmitting, independent of actual transmit state of the radio.
-   * @return SFFloat The current value of power.
+   * @return const SFFloat& The current value of power.
    */
-  SFFloat getPower() const { return _power; }
+  const SFFloat &getPower() const { return _power; }
 
   /**
    * @brief Sets the value of power. AccessType: inputOutput
@@ -760,9 +766,9 @@ public:
   /**
    * @brief Gets the value of radioEntityTypeCategory. AccessType: inputOutput
    * @details Integer enumeration containing EntityType of transmitter radio.
-   * @return SFInt32 The current value of radioEntityTypeCategory.
+   * @return const SFInt32& The current value of radioEntityTypeCategory.
    */
-  SFInt32 getRadioEntityTypeCategory() const {
+  const SFInt32 &getRadioEntityTypeCategory() const {
     return _radioEntityTypeCategory;
   }
 
@@ -780,9 +786,11 @@ public:
    * @brief Gets the value of radioEntityTypeCountry. AccessType: inputOutput
    * @details Integer enumerations value for country to which the design of the
    * entity or its design specification is attributed.
-   * @return SFInt32 The current value of radioEntityTypeCountry.
+   * @return const SFInt32& The current value of radioEntityTypeCountry.
    */
-  SFInt32 getRadioEntityTypeCountry() const { return _radioEntityTypeCountry; }
+  const SFInt32 &getRadioEntityTypeCountry() const {
+    return _radioEntityTypeCountry;
+  }
 
   /**
    * @brief Sets the value of radioEntityTypeCountry. AccessType: inputOutput
@@ -799,9 +807,11 @@ public:
    * @brief Gets the value of radioEntityTypeDomain. AccessType: inputOutput
    * @details Integer enumerations value for domain in which the entity
    * operates: LAND, AIR, SURFACE, SUBSURFACE, SPACE or OTHER.
-   * @return SFInt32 The current value of radioEntityTypeDomain.
+   * @return const SFInt32& The current value of radioEntityTypeDomain.
    */
-  SFInt32 getRadioEntityTypeDomain() const { return _radioEntityTypeDomain; }
+  const SFInt32 &getRadioEntityTypeDomain() const {
+    return _radioEntityTypeDomain;
+  }
 
   /**
    * @brief Sets the value of radioEntityTypeDomain. AccessType: inputOutput
@@ -819,9 +829,9 @@ public:
    * @details Integer enumerations value for whether entity is a PLATFORM,
    * MUNITION, LIFE_FORM, ENVIRONMENTAL, CULTURAL_FEATURE, SUPPLY, RADIO,
    * EXPENDABLE, SENSOR_EMITTER or OTHER.
-   * @return SFInt32 The current value of radioEntityTypeKind.
+   * @return const SFInt32& The current value of radioEntityTypeKind.
    */
-  SFInt32 getRadioEntityTypeKind() const { return _radioEntityTypeKind; }
+  const SFInt32 &getRadioEntityTypeKind() const { return _radioEntityTypeKind; }
 
   /**
    * @brief Sets the value of radioEntityTypeKind. AccessType: inputOutput
@@ -840,9 +850,9 @@ public:
    * inputOutput
    * @details Integer enumerations value indicating nomenclature (name) for a
    * particular emitter.
-   * @return SFInt32 The current value of radioEntityTypeNomenclature.
+   * @return const SFInt32& The current value of radioEntityTypeNomenclature.
    */
-  SFInt32 getRadioEntityTypeNomenclature() const {
+  const SFInt32 &getRadioEntityTypeNomenclature() const {
     return _radioEntityTypeNomenclature;
   }
 
@@ -862,9 +872,10 @@ public:
    * @brief Gets the value of radioEntityTypeNomenclatureVersion. AccessType:
    * inputOutput
    * @details Named equipment version number.
-   * @return SFInt32 The current value of radioEntityTypeNomenclatureVersion.
+   * @return const SFInt32& The current value of
+   * radioEntityTypeNomenclatureVersion.
    */
-  SFInt32 getRadioEntityTypeNomenclatureVersion() const {
+  const SFInt32 &getRadioEntityTypeNomenclatureVersion() const {
     return _radioEntityTypeNomenclatureVersion;
   }
 
@@ -882,9 +893,9 @@ public:
   /**
    * @brief Gets the value of radioID. AccessType: inputOutput
    * @details Identifies a particular radio within a given entity.
-   * @return SFInt32 The current value of radioID.
+   * @return const SFInt32& The current value of radioID.
    */
-  SFInt32 getRadioID() const { return _radioID; }
+  const SFInt32 &getRadioID() const { return _radioID; }
 
   /**
    * @brief Sets the value of radioID. AccessType: inputOutput
@@ -896,9 +907,9 @@ public:
   /**
    * @brief Gets the value of readInterval. AccessType: inputOutput
    * @details Seconds between read updates, 0 means no reading.
-   * @return SFTime The current value of readInterval.
+   * @return const SFTime& The current value of readInterval.
    */
-  SFTime getReadInterval() const { return _readInterval; }
+  const SFTime &getReadInterval() const { return _readInterval; }
 
   /**
    * @brief Sets the value of readInterval. AccessType: inputOutput
@@ -931,9 +942,9 @@ public:
   /**
    * @brief Gets the value of relativeAntennaLocation. AccessType: inputOutput
    * @details Relative coordinates for antenna location.
-   * @return SFVec3f The current value of relativeAntennaLocation.
+   * @return const SFVec3f& The current value of relativeAntennaLocation.
    */
-  SFVec3f getRelativeAntennaLocation() const {
+  const SFVec3f &getRelativeAntennaLocation() const {
     return _relativeAntennaLocation;
   }
 
@@ -955,9 +966,9 @@ public:
   /**
    * @brief Gets the value of rtpHeaderExpected. AccessType: inputOutput
    * @details Whether RTP headers are prepended to DIS PDUs.
-   * @return SFBool The current value of rtpHeaderExpected.
+   * @return const SFBool& The current value of rtpHeaderExpected.
    */
-  SFBool getRtpHeaderExpected() const { return _rtpHeaderExpected; }
+  const SFBool &getRtpHeaderExpected() const { return _rtpHeaderExpected; }
 
   /**
    * @brief Sets the value of rtpHeaderExpected. AccessType: inputOutput
@@ -970,9 +981,9 @@ public:
    * @brief Gets the value of siteID. AccessType: inputOutput
    * @details Simulation/exercise siteID of the participating LAN or
    * organization.
-   * @return SFInt32 The current value of siteID.
+   * @return const SFInt32& The current value of siteID.
    */
-  SFInt32 getSiteID() const { return _siteID; }
+  const SFInt32 &getSiteID() const { return _siteID; }
 
   /**
    * @brief Sets the value of siteID. AccessType: inputOutput
@@ -985,9 +996,9 @@ public:
   /**
    * @brief Gets the value of timestamp. AccessType: outputOnly
    * @details DIS timestamp in X3D units (value 0.
-   * @return SFTime The current value of timestamp.
+   * @return const SFTime& The current value of timestamp.
    */
-  SFTime getTimestamp() const { return _timestamp; }
+  const SFTime &getTimestamp() const { return _timestamp; }
 
   /**
    * @brief Emit an output value on timestamp. AccessType: outputOnly
@@ -1006,9 +1017,9 @@ public:
    * @details Bandwidth of the particular transmitter measured between the
    * half-power (-3 dB) points (this value represents total bandwidth, not the
    * deviation from the center frequency).
-   * @return SFFloat The current value of transmitFrequencyBandwidth.
+   * @return const SFFloat& The current value of transmitFrequencyBandwidth.
    */
-  SFFloat getTransmitFrequencyBandwidth() const {
+  const SFFloat &getTransmitFrequencyBandwidth() const {
     return _transmitFrequencyBandwidth;
   }
 
@@ -1030,9 +1041,9 @@ public:
    * @details Specify radio transmission state where enumerations value 0 is for
    * off, value 1 for powered but not transmitting, or value 1 is for powered
    * and transmitting,.
-   * @return SFInt32 The current value of transmitState.
+   * @return const SFInt32& The current value of transmitState.
    */
-  SFInt32 getTransmitState() const { return _transmitState; }
+  const SFInt32 &getTransmitState() const { return _transmitState; }
 
   /**
    * @brief Sets the value of transmitState. AccessType: inputOutput
@@ -1047,9 +1058,9 @@ public:
    * @brief Gets the value of whichGeometry. AccessType: inputOutput
    * @details Select geometry to render: -1 for no geometry, 0 for text trace, 1
    * for default geometry, (optional) higher values to render different states.
-   * @return SFInt32 The current value of whichGeometry.
+   * @return const SFInt32& The current value of whichGeometry.
    */
-  SFInt32 getWhichGeometry() const { return _whichGeometry; }
+  const SFInt32 &getWhichGeometry() const { return _whichGeometry; }
 
   /**
    * @brief Sets the value of whichGeometry. AccessType: inputOutput
@@ -1062,9 +1073,9 @@ public:
   /**
    * @brief Gets the value of writeInterval. AccessType: inputOutput
    * @details Seconds between write updates, 0 means no writing (sending).
-   * @return SFTime The current value of writeInterval.
+   * @return const SFTime& The current value of writeInterval.
    */
-  SFTime getWriteInterval() const { return _writeInterval; }
+  const SFTime &getWriteInterval() const { return _writeInterval; }
 
   /**
    * @brief Sets the value of writeInterval. AccessType: inputOutput

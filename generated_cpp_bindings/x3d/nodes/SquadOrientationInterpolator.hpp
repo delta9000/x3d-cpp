@@ -72,9 +72,9 @@ public:
    * @brief Gets the value of keyValue. AccessType: inputOutput
    * @details Output values for nonlinear interpolation, each corresponding to
    * an input-fraction value in the key array.
-   * @return MFRotation The current value of keyValue.
+   * @return const MFRotation& The current value of keyValue.
    */
-  MFRotation getKeyValue() const { return _keyValue; }
+  const MFRotation &getKeyValue() const { return _keyValue; }
 
   /**
    * @brief Sets the value of keyValue. AccessType: inputOutput
@@ -91,9 +91,9 @@ public:
    * @details normalizeVelocity field specifies whether the velocity vectors are
    * normalized to produce smooth speed transitions, or transformed into
    * tangency vectors.
-   * @return SFBool The current value of normalizeVelocity.
+   * @return const SFBool& The current value of normalizeVelocity.
    */
-  SFBool getNormalizeVelocity() const { return _normalizeVelocity; }
+  const SFBool &getNormalizeVelocity() const { return _normalizeVelocity; }
 
   /**
    * @brief Sets the value of normalizeVelocity. AccessType: inputOutput
@@ -109,9 +109,9 @@ public:
    * @details Nonlinearly interpolated output value computed by using current
    * time fraction along with corresponding key, keyValue and keyVelocity
    * values.
-   * @return SFRotation The current value of value_changed.
+   * @return const SFRotation& The current value of value_changed.
    */
-  SFRotation getValue_changed() const { return _value_changed; }
+  const SFRotation &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

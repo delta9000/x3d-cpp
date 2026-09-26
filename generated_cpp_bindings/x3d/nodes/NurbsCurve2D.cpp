@@ -28,6 +28,13 @@ const FieldTable &NurbsCurve2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).getClosed(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -46,24 +53,39 @@ const FieldTable &NurbsCurve2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n)
+                       .X3DNurbsControlCurveNode::getControlPoint(),
+                  &typeid(MFVec2d)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
+    t.push_back(FieldInfo{
+        "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getIS());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getIS());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<NurbsCurve2D &>(n).X3DNode::setIS(
-                        std::any_cast<SFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<NurbsCurve2D &>(n).X3DNode::setIS(
+              std::any_cast<SFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "knot", X3DFieldType::MFDouble, AccessType::InitializeOnly, "",
@@ -78,6 +100,13 @@ const FieldTable &NurbsCurve2D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).getKnot(),
+                  &typeid(MFDouble)};
+        }
 
     });
 
@@ -96,6 +125,13 @@ const FieldTable &NurbsCurve2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -111,6 +147,13 @@ const FieldTable &NurbsCurve2D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).getOrder(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -129,6 +172,13 @@ const FieldTable &NurbsCurve2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).getTessellation(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -143,6 +193,13 @@ const FieldTable &NurbsCurve2D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).getWeight(),
+                  &typeid(MFDouble)};
+        }
 
     });
 
@@ -161,6 +218,13 @@ const FieldTable &NurbsCurve2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -177,6 +241,13 @@ const FieldTable &NurbsCurve2D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -195,24 +266,38 @@ const FieldTable &NurbsCurve2D::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"id", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "id", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getId());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getId());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<NurbsCurve2D &>(n).X3DNode::setId(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<NurbsCurve2D &>(n).X3DNode::setId(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -228,6 +313,13 @@ const FieldTable &NurbsCurve2D::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsCurve2D &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

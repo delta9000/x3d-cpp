@@ -93,9 +93,9 @@ public:
    * @brief Gets the value of axisRotation. AccessType: inputOutput
    * @details axisRotation determines local sensor coordinate system by rotating
    * the local coordinate system.
-   * @return SFRotation The current value of axisRotation.
+   * @return const SFRotation& The current value of axisRotation.
    */
-  SFRotation getAxisRotation() const { return _axisRotation; }
+  const SFRotation &getAxisRotation() const { return _axisRotation; }
 
   /**
    * @brief Sets the value of axisRotation. AccessType: inputOutput
@@ -112,9 +112,9 @@ public:
    * @details minPosition and maxPosition clamp translations to a range of
    * values measured from origin of Z=0 plane default maxPosition < minPosition
    * means no clamping.
-   * @return SFVec2f The current value of maxPosition.
+   * @return const SFVec2f& The current value of maxPosition.
    */
-  SFVec2f getMaxPosition() const { return _maxPosition; }
+  const SFVec2f &getMaxPosition() const { return _maxPosition; }
 
   /**
    * @brief Sets the value of maxPosition. AccessType: inputOutput
@@ -132,9 +132,9 @@ public:
    * @details minPosition and maxPosition clamp translations to a range of
    * values measured from origin of Z=0 plane default maxPosition < minPosition
    * means no clamping.
-   * @return SFVec2f The current value of minPosition.
+   * @return const SFVec2f& The current value of minPosition.
    */
-  SFVec2f getMinPosition() const { return _minPosition; }
+  const SFVec2f &getMinPosition() const { return _minPosition; }
 
   /**
    * @brief Sets the value of minPosition. AccessType: inputOutput
@@ -150,9 +150,9 @@ public:
   /**
    * @brief Gets the value of offset. AccessType: inputOutput
    * @details Sends event and remembers last value sensed.
-   * @return SFVec3f The current value of offset.
+   * @return const SFVec3f& The current value of offset.
    */
-  SFVec3f getOffset() const { return _offset; }
+  const SFVec3f &getOffset() const { return _offset; }
 
   /**
    * @brief Sets the value of offset. AccessType: inputOutput
@@ -167,9 +167,9 @@ public:
    * @brief Gets the value of translation_changed. AccessType: outputOnly
    * @details translation_changed events equal sum of relative translation
    * change plus offset value.
-   * @return SFVec3f The current value of translation_changed.
+   * @return const SFVec3f& The current value of translation_changed.
    */
-  SFVec3f getTranslation_changed() const { return _translation_changed; }
+  const SFVec3f &getTranslation_changed() const { return _translation_changed; }
 
   /**
    * @brief Emit an output value on translation_changed. AccessType: outputOnly

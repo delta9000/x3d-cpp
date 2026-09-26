@@ -29,6 +29,13 @@ const FieldTable &MetadataFloat::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MetadataFloat &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +52,14 @@ const FieldTable &MetadataFloat::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const MetadataFloat &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -63,6 +78,14 @@ const FieldTable &MetadataFloat::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const MetadataFloat &>(n)
+                                 .X3DMetadataObject::getName(),
+                            &typeid(SFString)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -80,6 +103,14 @@ const FieldTable &MetadataFloat::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MetadataFloat &>(n)
+                       .X3DMetadataObject::getReference(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -94,6 +125,13 @@ const FieldTable &MetadataFloat::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MetadataFloat &>(n).getValue(),
+                  &typeid(MFFloat)};
+        }
 
     });
 
@@ -112,6 +150,13 @@ const FieldTable &MetadataFloat::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MetadataFloat &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -128,6 +173,13 @@ const FieldTable &MetadataFloat::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MetadataFloat &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -146,6 +198,13 @@ const FieldTable &MetadataFloat::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MetadataFloat &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -163,6 +222,13 @@ const FieldTable &MetadataFloat::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MetadataFloat &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -179,6 +245,13 @@ const FieldTable &MetadataFloat::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MetadataFloat &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

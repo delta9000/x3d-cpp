@@ -47,6 +47,13 @@ const FieldTable &Layout::fields() const {
           dynamic_cast<Layout &>(n).setAlign(std::move(vec));
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).getAlign(),
+                  &typeid(std::vector<LayoutAlignChoices>)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -61,6 +68,13 @@ const FieldTable &Layout::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -79,6 +93,13 @@ const FieldTable &Layout::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -93,6 +114,13 @@ const FieldTable &Layout::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).getOffset(),
+                  &typeid(MFFloat)};
+        }
 
     });
 
@@ -127,6 +155,13 @@ const FieldTable &Layout::fields() const {
               vec.push_back(ev);
           }
           dynamic_cast<Layout &>(n).setOffsetUnits(std::move(vec));
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).getOffsetUnits(),
+                  &typeid(std::vector<LayoutUnitsChoices>)};
         }
 
     });
@@ -164,6 +199,13 @@ const FieldTable &Layout::fields() const {
           dynamic_cast<Layout &>(n).setScaleMode(std::move(vec));
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).getScaleMode(),
+                  &typeid(std::vector<LayoutScaleModeChoices>)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -178,6 +220,12 @@ const FieldTable &Layout::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).getSize(), &typeid(MFFloat)};
+        }
 
     });
 
@@ -214,6 +262,13 @@ const FieldTable &Layout::fields() const {
           dynamic_cast<Layout &>(n).setSizeUnits(std::move(vec));
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).getSizeUnits(),
+                  &typeid(std::vector<LayoutUnitsChoices>)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -229,6 +284,13 @@ const FieldTable &Layout::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -243,6 +305,13 @@ const FieldTable &Layout::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -260,6 +329,13 @@ const FieldTable &Layout::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -274,6 +350,13 @@ const FieldTable &Layout::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -290,6 +373,13 @@ const FieldTable &Layout::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layout &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

@@ -32,6 +32,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .getBoundaryOpacity(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -49,6 +57,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .X3DVolumeRenderStyleNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -68,6 +84,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -85,6 +109,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -104,6 +136,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .getOpacityFactor(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -121,6 +161,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .getRetainedOpacity(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -140,6 +188,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -157,6 +213,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -176,6 +240,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -194,6 +266,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -211,6 +291,14 @@ const FieldTable &BoundaryEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BoundaryEnhancementVolumeStyle &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

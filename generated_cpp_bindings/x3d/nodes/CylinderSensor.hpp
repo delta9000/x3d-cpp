@@ -99,9 +99,9 @@ public:
    * @brief Gets the value of axisRotation. AccessType: inputOutput
    * @details axisRotation determines local sensor coordinate system by rotating
    * the local coordinate system.
-   * @return SFRotation The current value of axisRotation.
+   * @return const SFRotation& The current value of axisRotation.
    */
-  SFRotation getAxisRotation() const { return _axisRotation; }
+  const SFRotation &getAxisRotation() const { return _axisRotation; }
 
   /**
    * @brief Sets the value of axisRotation. AccessType: inputOutput
@@ -118,9 +118,9 @@ public:
    * @details Help decide rotation behavior from initial relative bearing of
    * pointer drag: acute angle whether cylinder sides or end-cap disks of
    * virtual-geometry sensor are used for manipulation.
-   * @return SFFloat The current value of diskAngle.
+   * @return const SFFloat& The current value of diskAngle.
    */
-  SFFloat getDiskAngle() const { return _diskAngle; }
+  const SFFloat &getDiskAngle() const { return _diskAngle; }
 
   /**
    * @brief Sets the value of diskAngle. AccessType: inputOutput
@@ -149,9 +149,9 @@ public:
    * @brief Gets the value of maxAngle. AccessType: inputOutput
    * @details clamps rotation_changed events within range of min/max values
    * Hint: if minAngle > maxAngle, rotation is not clamped.
-   * @return SFFloat The current value of maxAngle.
+   * @return const SFFloat& The current value of maxAngle.
    */
-  SFFloat getMaxAngle() const { return _maxAngle; }
+  const SFFloat &getMaxAngle() const { return _maxAngle; }
 
   /**
    * @brief Sets the value of maxAngle. AccessType: inputOutput
@@ -165,9 +165,9 @@ public:
    * @brief Gets the value of minAngle. AccessType: inputOutput
    * @details clamps rotation_changed events within range of min/max values
    * Hint: if minAngle > maxAngle, rotation is not clamped.
-   * @return SFFloat The current value of minAngle.
+   * @return const SFFloat& The current value of minAngle.
    */
-  SFFloat getMinAngle() const { return _minAngle; }
+  const SFFloat &getMinAngle() const { return _minAngle; }
 
   /**
    * @brief Sets the value of minAngle. AccessType: inputOutput
@@ -180,9 +180,9 @@ public:
   /**
    * @brief Gets the value of offset. AccessType: inputOutput
    * @details Sends event and remembers last value sensed.
-   * @return SFFloat The current value of offset.
+   * @return const SFFloat& The current value of offset.
    */
-  SFFloat getOffset() const { return _offset; }
+  const SFFloat &getOffset() const { return _offset; }
 
   /**
    * @brief Sets the value of offset. AccessType: inputOutput
@@ -195,9 +195,9 @@ public:
    * @brief Gets the value of rotation_changed. AccessType: outputOnly
    * @details rotation_changed events equal sum of relative bearing changes plus
    * offset value about Y-axis in local coordinate system.
-   * @return SFRotation The current value of rotation_changed.
+   * @return const SFRotation& The current value of rotation_changed.
    */
-  SFRotation getRotation_changed() const { return _rotation_changed; }
+  const SFRotation &getRotation_changed() const { return _rotation_changed; }
 
   /**
    * @brief Emit an output value on rotation_changed. AccessType: outputOnly

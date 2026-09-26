@@ -67,9 +67,9 @@ public:
    * @brief Gets the value of pickedNormal. AccessType: outputOnly
    * @details Output event containing surface normal vectors computed by the
    * picking intersection computations.
-   * @return MFVec3f The current value of pickedNormal.
+   * @return const MFVec3f& The current value of pickedNormal.
    */
-  MFVec3f getPickedNormal() const { return _pickedNormal; }
+  const MFVec3f &getPickedNormal() const { return _pickedNormal; }
 
   /**
    * @brief Emit an output value on pickedNormal. AccessType: outputOnly
@@ -87,9 +87,9 @@ public:
    * @details Output event containing 3D points on surface of underlying
    * pickingGeometry computed by the picking intersection computations, given in
    * the local coordinate system.
-   * @return MFVec3f The current value of pickedPoint.
+   * @return const MFVec3f& The current value of pickedPoint.
    */
-  MFVec3f getPickedPoint() const { return _pickedPoint; }
+  const MFVec3f &getPickedPoint() const { return _pickedPoint; }
 
   /**
    * @brief Emit an output value on pickedPoint. AccessType: outputOnly
@@ -107,9 +107,9 @@ public:
    * @brief Gets the value of pickedTextureCoordinate. AccessType: outputOnly
    * @details Output event containing 3D texture coordinates of surfaces
    * computed by the picking intersection computations.
-   * @return MFVec3f The current value of pickedTextureCoordinate.
+   * @return const MFVec3f& The current value of pickedTextureCoordinate.
    */
-  MFVec3f getPickedTextureCoordinate() const {
+  const MFVec3f &getPickedTextureCoordinate() const {
     return _pickedTextureCoordinate;
   }
 

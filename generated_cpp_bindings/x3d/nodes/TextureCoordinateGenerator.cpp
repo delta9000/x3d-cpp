@@ -31,6 +31,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -49,6 +57,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .X3DSingleTextureCoordinateNode::getMapping(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -65,6 +81,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -92,6 +116,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
             dynamic_cast<TextureCoordinateGenerator &>(n).setMode(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureCoordinateGenerator &>(n).getMode(),
+              &typeid(TextureCoordinateGeneratorModeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -108,6 +140,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .getParameter(),
+                  &typeid(MFFloat)};
+        }
 
     });
 
@@ -126,6 +166,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -142,6 +190,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -160,6 +216,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -177,6 +241,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -193,6 +265,14 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

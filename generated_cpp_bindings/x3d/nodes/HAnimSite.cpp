@@ -27,6 +27,10 @@ const FieldTable &HAnimSite::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  nullptr
+
         });
 
     t.push_back(FieldInfo{
@@ -43,6 +47,14 @@ const FieldTable &HAnimSite::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n)
+                       .X3DGroupingNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -61,6 +73,14 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n)
+                       .X3DGroupingNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -78,6 +98,14 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n)
+                       .X3DGroupingNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -92,6 +120,13 @@ const FieldTable &HAnimSite::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).getCenter(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -110,6 +145,14 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n)
+                       .X3DGroupingNode::getChildren(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -126,6 +169,13 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -140,6 +190,13 @@ const FieldTable &HAnimSite::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -158,6 +215,13 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -173,6 +237,13 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).getName(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -187,6 +258,10 @@ const FieldTable &HAnimSite::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -204,6 +279,13 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).getRotation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -218,6 +300,13 @@ const FieldTable &HAnimSite::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).getScale(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -237,6 +326,13 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).getScaleOrientation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -252,6 +348,13 @@ const FieldTable &HAnimSite::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).getTranslation(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -270,6 +373,14 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const HAnimSite &>(n).X3DGroupingNode::getVisible(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -286,6 +397,13 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -301,6 +419,13 @@ const FieldTable &HAnimSite::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -319,6 +444,13 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -335,24 +467,38 @@ const FieldTable &HAnimSite::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"style", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "style", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const HAnimSite &>(n).X3DNode::getStyle());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const HAnimSite &>(n).X3DNode::getStyle());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<HAnimSite &>(n).X3DNode::setStyle(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<HAnimSite &>(n).X3DNode::setStyle(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSite &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     return t;
   }();

@@ -170,9 +170,9 @@ public:
    * @details ccw defines clockwise/counterclockwise ordering of vertex
    * coordinates, which in turn defines front/back orientation of polygon
    * normals according to Right-Hand Rule (RHR).
-   * @return SFBool The current value of ccw.
+   * @return const SFBool& The current value of ccw.
    */
-  SFBool getCcw() const { return _ccw; }
+  const SFBool &getCcw() const { return _ccw; }
   /**
    * @brief Data-layer write of ccw (reader/init ingest path).
    * @details ccw is initializeOnly: author-settable at parse
@@ -184,9 +184,9 @@ public:
    * @brief Gets the value of color. AccessType: inputOutput
    * @details Single contained Color or ColorRGBA node that can specify color
    * values applied to corresponding vertices according to colorPerVertex field.
-   * @return SFNode The current value of color.
+   * @return const SFNode& The current value of color.
    */
-  SFNode getColor() const { return _color; }
+  const SFNode &getColor() const { return _color; }
 
   /**
    * @brief Acceptable node types for the color field.
@@ -212,9 +212,9 @@ public:
    * @brief Gets the value of colorPerVertex. AccessType: initializeOnly
    * @details Whether Color node color values are applied to each point vertex
    * (true) or per quadrilateral (false).
-   * @return SFBool The current value of colorPerVertex.
+   * @return const SFBool& The current value of colorPerVertex.
    */
-  SFBool getColorPerVertex() const { return _colorPerVertex; }
+  const SFBool &getColorPerVertex() const { return _colorPerVertex; }
   /**
    * @brief Data-layer write of colorPerVertex (reader/init ingest path).
    * @details colorPerVertex is initializeOnly: author-settable at parse
@@ -228,9 +228,9 @@ public:
    * @brief Gets the value of creaseAngle. AccessType: initializeOnly
    * @details creaseAngle defines angle (in radians) for determining whether
    * adjacent polygons are drawn with sharp edges or smooth shading.
-   * @return SFFloat The current value of creaseAngle.
+   * @return const SFFloat& The current value of creaseAngle.
    */
-  SFFloat getCreaseAngle() const { return _creaseAngle; }
+  const SFFloat &getCreaseAngle() const { return _creaseAngle; }
   /**
    * @brief Data-layer write of creaseAngle (reader/init ingest path).
    * @details creaseAngle is initializeOnly: author-settable at parse
@@ -242,9 +242,9 @@ public:
    * @brief Gets the value of fogCoord. AccessType: inputOutput
    * @details Single contained FogCoordinate node that can specify depth
    * parameters for fog in corresponding geometry.
-   * @return SFNode The current value of fogCoord.
+   * @return const SFNode& The current value of fogCoord.
    */
-  SFNode getFogCoord() const { return _fogCoord; }
+  const SFNode &getFogCoord() const { return _fogCoord; }
 
   /**
    * @brief Acceptable node types for the fogCoord field.
@@ -270,9 +270,9 @@ public:
    * @brief Gets the value of height. AccessType: initializeOnly
    * @details Grid array of height vertices with upward direction along +Y axis,
    * with xDimension rows and zDimension columns.
-   * @return MFFloat The current value of height.
+   * @return const MFFloat& The current value of height.
    */
-  MFFloat getHeight() const { return _height; }
+  const MFFloat &getHeight() const { return _height; }
   /**
    * @brief Data-layer write of height (reader/init ingest path).
    * @details height is initializeOnly: author-settable at parse
@@ -285,9 +285,9 @@ public:
    * @details Single contained Normal node that can specify perpendicular
    * vectors for corresponding vertices to support rendering computations,
    * applied according to the normalPerVertex field.
-   * @return SFNode The current value of normal.
+   * @return const SFNode& The current value of normal.
    */
-  SFNode getNormal() const { return _normal; }
+  const SFNode &getNormal() const { return _normal; }
 
   /**
    * @brief Acceptable node types for the normal field.
@@ -314,9 +314,9 @@ public:
    * @brief Gets the value of normalPerVertex. AccessType: initializeOnly
    * @details Whether Normal node vector values are applied to each point vertex
    * (true) or per quadrilateral (false).
-   * @return SFBool The current value of normalPerVertex.
+   * @return const SFBool& The current value of normalPerVertex.
    */
-  SFBool getNormalPerVertex() const { return _normalPerVertex; }
+  const SFBool &getNormalPerVertex() const { return _normalPerVertex; }
   /**
    * @brief Data-layer write of normalPerVertex (reader/init ingest path).
    * @details normalPerVertex is initializeOnly: author-settable at parse
@@ -355,9 +355,9 @@ public:
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse
@@ -370,9 +370,9 @@ public:
    * @details Single contained TextureCoordinate, TextureCoordinateGenerator or
    * MultiTextureCoordinate node that can specify coordinates for texture
    * mapping onto corresponding geometry.
-   * @return SFNode The current value of texCoord.
+   * @return const SFNode& The current value of texCoord.
    */
-  SFNode getTexCoord() const { return _texCoord; }
+  const SFNode &getTexCoord() const { return _texCoord; }
 
   /**
    * @brief Acceptable node types for the texCoord field.
@@ -399,9 +399,9 @@ public:
   /**
    * @brief Gets the value of xDimension. AccessType: initializeOnly
    * @details Number of elements in the height array along X direction.
-   * @return SFInt32 The current value of xDimension.
+   * @return const SFInt32& The current value of xDimension.
    */
-  SFInt32 getXDimension() const { return _xDimension; }
+  const SFInt32 &getXDimension() const { return _xDimension; }
   /**
    * @brief Data-layer write of xDimension (reader/init ingest path).
    * @details xDimension is initializeOnly: author-settable at parse
@@ -412,9 +412,9 @@ public:
   /**
    * @brief Gets the value of xSpacing. AccessType: initializeOnly
    * @details Meters distance between grid-array vertices along X direction.
-   * @return SFFloat The current value of xSpacing.
+   * @return const SFFloat& The current value of xSpacing.
    */
-  SFFloat getXSpacing() const { return _xSpacing; }
+  const SFFloat &getXSpacing() const { return _xSpacing; }
   /**
    * @brief Data-layer write of xSpacing (reader/init ingest path).
    * @details xSpacing is initializeOnly: author-settable at parse
@@ -425,9 +425,9 @@ public:
   /**
    * @brief Gets the value of zDimension. AccessType: initializeOnly
    * @details Number of elements in the height array along Z direction.
-   * @return SFInt32 The current value of zDimension.
+   * @return const SFInt32& The current value of zDimension.
    */
-  SFInt32 getZDimension() const { return _zDimension; }
+  const SFInt32 &getZDimension() const { return _zDimension; }
   /**
    * @brief Data-layer write of zDimension (reader/init ingest path).
    * @details zDimension is initializeOnly: author-settable at parse
@@ -438,9 +438,9 @@ public:
   /**
    * @brief Gets the value of zSpacing. AccessType: initializeOnly
    * @details Meters distance between grid-array vertices along Z direction.
-   * @return SFFloat The current value of zSpacing.
+   * @return const SFFloat& The current value of zSpacing.
    */
-  SFFloat getZSpacing() const { return _zSpacing; }
+  const SFFloat &getZSpacing() const { return _zSpacing; }
   /**
    * @brief Data-layer write of zSpacing (reader/init ingest path).
    * @details zSpacing is initializeOnly: author-settable at parse

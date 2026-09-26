@@ -73,9 +73,9 @@ public:
   /**
    * @brief Gets the value of size. AccessType: initializeOnly
    * @details size x y z in meters.
-   * @return SFVec3f The current value of size.
+   * @return const SFVec3f& The current value of size.
    */
-  SFVec3f getSize() const { return _size; }
+  const SFVec3f &getSize() const { return _size; }
   /**
    * @brief Data-layer write of size (reader/init ingest path).
    * @details size is initializeOnly: author-settable at parse
@@ -88,9 +88,9 @@ public:
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse

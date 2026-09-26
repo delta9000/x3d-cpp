@@ -31,6 +31,13 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).getAttack(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +55,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DSoundProcessingNode::getChannelCount(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -75,6 +90,14 @@ const FieldTable &DynamicsCompressor::fields() const {
           if (from_string(s, ev))
             dynamic_cast<DynamicsCompressor &>(n)
                 .X3DSoundProcessingNode::setChannelCountMode(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DSoundProcessingNode::getChannelCountMode(),
+                  &typeid(ChannelCountModeChoices)};
         }
 
     });
@@ -108,6 +131,14 @@ const FieldTable &DynamicsCompressor::fields() const {
                 .X3DSoundProcessingNode::setChannelInterpretation(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DSoundProcessingNode::getChannelInterpretation(),
+                  &typeid(ChannelInterpretationChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -124,6 +155,13 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -142,6 +180,14 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DTimeDependentNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -158,6 +204,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DTimeDependentNode::getElapsedTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -176,6 +230,14 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DSoundProcessingNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -192,6 +254,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DSoundProcessingNode::getGain(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -210,6 +280,13 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -226,6 +303,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DTimeDependentNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -244,24 +329,39 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DTimeDependentNode::getIsPaused(),
+                  &typeid(SFBool)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"knee", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "knee", X3DFieldType::SFFloat, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const DynamicsCompressor &>(n).getKnee());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const DynamicsCompressor &>(n).getKnee());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<DynamicsCompressor &>(n).setKneeUnchecked(
-                        std::any_cast<SFFloat>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<DynamicsCompressor &>(n).setKneeUnchecked(
+              std::any_cast<SFFloat>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).getKnee(),
+                  &typeid(SFFloat)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -277,6 +377,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -295,24 +403,39 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DTimeDependentNode::getPauseTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"ratio", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "ratio", X3DFieldType::SFFloat, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const DynamicsCompressor &>(n).getRatio());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const DynamicsCompressor &>(n).getRatio());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<DynamicsCompressor &>(n).setRatioUnchecked(
-                        std::any_cast<SFFloat>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<DynamicsCompressor &>(n).setRatioUnchecked(
+              std::any_cast<SFFloat>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).getRatio(),
+                  &typeid(SFFloat)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "reduction", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -328,6 +451,13 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).getReduction(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -346,6 +476,13 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).getRelease(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -362,6 +499,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DTimeDependentNode::getResumeTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -380,6 +525,14 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DTimeDependentNode::getStartTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -396,6 +549,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n)
+                       .X3DTimeDependentNode::getStopTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -415,6 +576,14 @@ const FieldTable &DynamicsCompressor::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const DynamicsCompressor &>(n)
+                                 .X3DSoundProcessingNode::getTailTime(),
+                            &typeid(SFTime)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -431,6 +600,13 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).getThreshold(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -449,6 +625,14 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DynamicsCompressor &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -465,6 +649,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DynamicsCompressor &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -483,6 +675,14 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DynamicsCompressor &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -500,6 +700,13 @@ const FieldTable &DynamicsCompressor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DynamicsCompressor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -516,6 +723,14 @@ const FieldTable &DynamicsCompressor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DynamicsCompressor &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

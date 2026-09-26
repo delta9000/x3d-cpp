@@ -55,9 +55,9 @@ public:
   /**
    * @brief Gets the value of name. AccessType: inputOutput
    * @details
-   * @return SFString The current value of name.
+   * @return const SFString& The current value of name.
    */
-  SFString getName() const { return _name; }
+  const SFString &getName() const { return _name; }
 
   /**
    * @brief Sets the value of name. AccessType: inputOutput
@@ -71,9 +71,9 @@ public:
   /**
    * @brief Gets the value of reference. AccessType: inputOutput
    * @details
-   * @return SFString The current value of reference.
+   * @return const SFString& The current value of reference.
    */
-  SFString getReference() const { return _reference; }
+  const SFString &getReference() const { return _reference; }
 
   /**
    * @brief Sets the value of reference. AccessType: inputOutput

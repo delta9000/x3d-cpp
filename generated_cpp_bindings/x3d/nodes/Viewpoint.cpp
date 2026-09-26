@@ -29,6 +29,14 @@ const FieldTable &Viewpoint::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const Viewpoint &>(n)
+                                 .X3DBindableNode::getBindTime(),
+                            &typeid(SFTime)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -45,6 +53,13 @@ const FieldTable &Viewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).getCenterOfRotation(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -63,6 +78,14 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n)
+                       .X3DViewpointNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -80,6 +103,14 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n)
+                       .X3DViewpointNode::getFarDistance(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -96,6 +127,13 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).getFieldOfView(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -110,6 +148,13 @@ const FieldTable &Viewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -128,6 +173,14 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Viewpoint &>(n).X3DBindableNode::getIsBound(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -145,6 +198,14 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Viewpoint &>(n).X3DViewpointNode::getJump(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -161,6 +222,13 @@ const FieldTable &Viewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -180,6 +248,14 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n)
+                       .X3DViewpointNode::getNavigationInfo(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -196,6 +272,14 @@ const FieldTable &Viewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n)
+                       .X3DViewpointNode::getNearDistance(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -214,6 +298,14 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n)
+                       .X3DViewpointNode::getOrientation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -228,6 +320,13 @@ const FieldTable &Viewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).getPosition(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -246,6 +345,14 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n)
+                       .X3DViewpointNode::getRetainUserOffsets(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(
@@ -259,6 +366,10 @@ const FieldTable &Viewpoint::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  nullptr
 
         });
 
@@ -277,6 +388,14 @@ const FieldTable &Viewpoint::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const Viewpoint &>(n)
+                                 .X3DViewpointNode::getViewAll(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -293,6 +412,13 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -308,6 +434,13 @@ const FieldTable &Viewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -326,6 +459,13 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -342,24 +482,38 @@ const FieldTable &Viewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"style", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "style", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const Viewpoint &>(n).X3DNode::getStyle());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const Viewpoint &>(n).X3DNode::getStyle());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<Viewpoint &>(n).X3DNode::setStyle(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<Viewpoint &>(n).X3DNode::setStyle(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Viewpoint &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     return t;
   }();

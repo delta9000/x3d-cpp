@@ -71,9 +71,9 @@ public:
    * @brief Gets the value of numComponents. AccessType: initializeOnly
    * @details numComponents specifies how many consecutive floating-point values
    * should be grouped together per vertex.
-   * @return SFInt32 The current value of numComponents.
+   * @return const SFInt32& The current value of numComponents.
    */
-  SFInt32 getNumComponents() const { return _numComponents; }
+  const SFInt32 &getNumComponents() const { return _numComponents; }
   /**
    * @brief Data-layer write of numComponents (reader/init ingest path).
    * @details numComponents is initializeOnly: author-settable at parse
@@ -87,9 +87,9 @@ public:
    * @brief Gets the value of value. AccessType: inputOutput
    * @details value specifies an arbitrary collection of floating-point values
    * that will be passed to the shader as per-vertex information.
-   * @return MFFloat The current value of value.
+   * @return const MFFloat& The current value of value.
    */
-  MFFloat getValue() const { return _value; }
+  const MFFloat &getValue() const { return _value; }
 
   /**
    * @brief Sets the value of value. AccessType: inputOutput

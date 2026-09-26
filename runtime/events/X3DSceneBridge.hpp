@@ -9,6 +9,7 @@
 #ifndef X3D_RUNTIME_SCENE_BRIDGE_HPP
 #define X3D_RUNTIME_SCENE_BRIDGE_HPP
 
+#include "FieldRead.hpp"
 #include "X3DExecutionContext.hpp"
 #include "EventUtilitySystem.hpp"
 #include "FollowerRegistration.hpp"
@@ -310,17 +311,9 @@ template <class F> inline void forEachNode(const Scene &scene, F &&f) {
   std::function<void(X3DNode *)> rec = [&](X3DNode *n) {
     if (!n || !seen.insert(n).second) return;
     f(n);
-    for (const auto &fi : n->fields()) {
-      if (!fi.get) continue;
-      if (fi.type == X3DFieldType::SFNode) {
-        auto c = std::any_cast<std::shared_ptr<X3DNode>>(fi.get(*n));
-        if (c) rec(c.get());
-      } else if (fi.type == X3DFieldType::MFNode) {
-        for (const auto &c :
-             std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(fi.get(*n)))
-          if (c) rec(c.get());
-      }
-    }
+    forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+      rec(c.get());
+    });
   };
   for (const auto &r : scene.rootNodes) rec(r.get());
 }

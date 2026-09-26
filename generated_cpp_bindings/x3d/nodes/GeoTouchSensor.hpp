@@ -83,9 +83,9 @@ public:
    * @brief Gets the value of geoOrigin. AccessType: initializeOnly
    * @details Single contained GeoOrigin node that can specify a local
    * coordinate frame for extended precision.
-   * @return SFNode The current value of geoOrigin.
+   * @return const SFNode& The current value of geoOrigin.
    */
-  SFNode getGeoOrigin() const { return _geoOrigin; }
+  const SFNode &getGeoOrigin() const { return _geoOrigin; }
 
   /**
    * @brief Acceptable node types for the geoOrigin field.
@@ -107,9 +107,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (G D), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -121,9 +121,9 @@ public:
    * @brief Gets the value of hitGeoCoord_changed. AccessType: outputOnly
    * @details Output event containing 3D point on surface of underlying
    * geometry, given in GeoTouchSensor's local coordinate system.
-   * @return SFVec3d The current value of hitGeoCoord_changed.
+   * @return const SFVec3d& The current value of hitGeoCoord_changed.
    */
-  SFVec3d getHitGeoCoord_changed() const { return _hitGeoCoord_changed; }
+  const SFVec3d &getHitGeoCoord_changed() const { return _hitGeoCoord_changed; }
 
   /**
    * @brief Emit an output value on hitGeoCoord_changed. AccessType: outputOnly
@@ -142,9 +142,9 @@ public:
    * @brief Gets the value of hitNormal_changed. AccessType: outputOnly
    * @details Output event containing surface normal vector at the
    * hitGeoCoordinate.
-   * @return SFVec3f The current value of hitNormal_changed.
+   * @return const SFVec3f& The current value of hitNormal_changed.
    */
-  SFVec3f getHitNormal_changed() const { return _hitNormal_changed; }
+  const SFVec3f &getHitNormal_changed() const { return _hitNormal_changed; }
 
   /**
    * @brief Emit an output value on hitNormal_changed. AccessType: outputOnly
@@ -163,9 +163,9 @@ public:
    * @brief Gets the value of hitPoint_changed. AccessType: outputOnly
    * @details Output event containing 3D point on surface of underlying
    * geometry, given in geometry coordinates (not geographic coordinates).
-   * @return SFVec3f The current value of hitPoint_changed.
+   * @return const SFVec3f& The current value of hitPoint_changed.
    */
-  SFVec3f getHitPoint_changed() const { return _hitPoint_changed; }
+  const SFVec3f &getHitPoint_changed() const { return _hitPoint_changed; }
 
   /**
    * @brief Emit an output value on hitPoint_changed. AccessType: outputOnly
@@ -183,9 +183,9 @@ public:
    * @brief Gets the value of hitTexCoord_changed. AccessType: outputOnly
    * @details Output event containing texture coordinates of surface at the
    * hitGeoCoordinate.
-   * @return SFVec2f The current value of hitTexCoord_changed.
+   * @return const SFVec2f& The current value of hitTexCoord_changed.
    */
-  SFVec2f getHitTexCoord_changed() const { return _hitTexCoord_changed; }
+  const SFVec2f &getHitTexCoord_changed() const { return _hitTexCoord_changed; }
 
   /**
    * @brief Emit an output value on hitTexCoord_changed. AccessType: outputOnly

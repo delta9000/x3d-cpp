@@ -97,9 +97,9 @@ public:
    * @brief Gets the value of lighting. AccessType: inputOutput
    * @details Whether rendering calculates and applies shading effects to visual
    * output.
-   * @return SFBool The current value of lighting.
+   * @return const SFBool& The current value of lighting.
    */
-  SFBool getLighting() const { return _lighting; }
+  const SFBool &getLighting() const { return _lighting; }
 
   /**
    * @brief Sets the value of lighting. AccessType: inputOutput
@@ -113,9 +113,9 @@ public:
    * @brief Gets the value of material. AccessType: inputOutput
    * @details Colour and opacity is determined based on whether a value has been
    * specified for the material field.
-   * @return SFNode The current value of material.
+   * @return const SFNode& The current value of material.
    */
-  SFNode getMaterial() const { return _material; }
+  const SFNode &getMaterial() const { return _material; }
 
   /**
    * @brief Acceptable node types for the material field.
@@ -141,9 +141,9 @@ public:
    * @brief Gets the value of phaseFunction. AccessType: initializeOnly
    * @details define scattering model for implementations using global
    * illumination (NONE or Henyey-Greenstein phase function).
-   * @return SFString The current value of phaseFunction.
+   * @return const SFString& The current value of phaseFunction.
    */
-  SFString getPhaseFunction() const { return _phaseFunction; }
+  const SFString &getPhaseFunction() const { return _phaseFunction; }
   /**
    * @brief Data-layer write of phaseFunction (reader/init ingest path).
    * @details phaseFunction is initializeOnly: author-settable at parse
@@ -157,9 +157,9 @@ public:
    * @brief Gets the value of shadows. AccessType: inputOutput
    * @details Whether rendering calculates and applies shadows to visual output
    * (using global illumination model).
-   * @return SFBool The current value of shadows.
+   * @return const SFBool& The current value of shadows.
    */
-  SFBool getShadows() const { return _shadows; }
+  const SFBool &getShadows() const { return _shadows; }
 
   /**
    * @brief Sets the value of shadows. AccessType: inputOutput
@@ -173,9 +173,9 @@ public:
    * @brief Gets the value of surfaceNormals. AccessType: inputOutput
    * @details The surfaceNormals field contains a 3D texture with at least three
    * component values.
-   * @return SFNode The current value of surfaceNormals.
+   * @return const SFNode& The current value of surfaceNormals.
    */
-  SFNode getSurfaceNormals() const { return _surfaceNormals; }
+  const SFNode &getSurfaceNormals() const { return _surfaceNormals; }
 
   /**
    * @brief Acceptable node types for the surfaceNormals field.

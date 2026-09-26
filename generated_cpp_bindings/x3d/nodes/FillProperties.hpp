@@ -86,9 +86,9 @@ public:
   /**
    * @brief Gets the value of filled. AccessType: inputOutput
    * @details Whether or not associated geometry is filled.
-   * @return SFBool The current value of filled.
+   * @return const SFBool& The current value of filled.
    */
-  SFBool getFilled() const { return _filled; }
+  const SFBool &getFilled() const { return _filled; }
 
   /**
    * @brief Sets the value of filled. AccessType: inputOutput
@@ -100,9 +100,9 @@ public:
   /**
    * @brief Gets the value of hatchColor. AccessType: inputOutput
    * @details Color of the hatch pattern.
-   * @return SFColor The current value of hatchColor.
+   * @return const SFColor& The current value of hatchColor.
    */
-  SFColor getHatchColor() const { return _hatchColor; }
+  const SFColor &getHatchColor() const { return _hatchColor; }
 
   /**
    * @brief Sets the value of hatchColor. AccessType: inputOutput
@@ -135,9 +135,9 @@ public:
   /**
    * @brief Gets the value of hatched. AccessType: inputOutput
    * @details Whether or not associated geometry is hatched.
-   * @return SFBool The current value of hatched.
+   * @return const SFBool& The current value of hatched.
    */
-  SFBool getHatched() const { return _hatched; }
+  const SFBool &getHatched() const { return _hatched; }
 
   /**
    * @brief Sets the value of hatched. AccessType: inputOutput
@@ -150,9 +150,9 @@ public:
    * @brief Gets the value of hatchStyle. AccessType: inputOutput
    * @details hatchStyle selects a hatch pattern from ISO/IEC 9973 International
    * Register of Graphical Items.
-   * @return SFInt32 The current value of hatchStyle.
+   * @return const SFInt32& The current value of hatchStyle.
    */
-  SFInt32 getHatchStyle() const { return _hatchStyle; }
+  const SFInt32 &getHatchStyle() const { return _hatchStyle; }
 
   /**
    * @brief Sets the value of hatchStyle. AccessType: inputOutput

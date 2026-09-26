@@ -88,9 +88,9 @@ public:
    * @brief Gets the value of center. AccessType: inputOutput
    * @details center point in 2D (s,t) texture coordinates for rotation and
    * scaling.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -107,9 +107,9 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of mapping.
+   * @return const SFString& The current value of mapping.
    */
-  SFString getMapping() const { return _mapping; }
+  const SFString &getMapping() const { return _mapping; }
 
   /**
    * @brief Sets the value of mapping. AccessType: inputOutput
@@ -126,9 +126,9 @@ public:
    * @brief Gets the value of rotation. AccessType: inputOutput
    * @details rotation angle of texture about center (opposite effect appears on
    * geometry).
-   * @return SFRotation The current value of rotation.
+   * @return const SFRotation& The current value of rotation.
    */
-  SFRotation getRotation() const { return _rotation; }
+  const SFRotation &getRotation() const { return _rotation; }
 
   /**
    * @brief Sets the value of rotation. AccessType: inputOutput
@@ -144,9 +144,9 @@ public:
    * @brief Gets the value of scale. AccessType: inputOutput
    * @details Non-uniform planar scaling of texture about center (opposite
    * effect appears on geometry).
-   * @return SFVec3f The current value of scale.
+   * @return const SFVec3f& The current value of scale.
    */
-  SFVec3f getScale() const { return _scale; }
+  const SFVec3f &getScale() const { return _scale; }
 
   /**
    * @brief Sets the value of scale. AccessType: inputOutput
@@ -162,9 +162,9 @@ public:
    * @brief Gets the value of translation. AccessType: inputOutput
    * @details Lateral/vertical shift in 2D (s,t) texture coordinates (opposite
    * effect appears on geometry).
-   * @return SFVec3f The current value of translation.
+   * @return const SFVec3f& The current value of translation.
    */
-  SFVec3f getTranslation() const { return _translation; }
+  const SFVec3f &getTranslation() const { return _translation; }
 
   /**
    * @brief Sets the value of translation. AccessType: inputOutput

@@ -69,9 +69,9 @@ public:
    * @brief Gets the value of hitNormal_changed. AccessType: outputOnly
    * @details When pointing device selects geometry, send event containing
    * surface normal vector at the hitPoint.
-   * @return SFVec3f The current value of hitNormal_changed.
+   * @return const SFVec3f& The current value of hitNormal_changed.
    */
-  SFVec3f getHitNormal_changed() const { return _hitNormal_changed; }
+  const SFVec3f &getHitNormal_changed() const { return _hitNormal_changed; }
 
   /**
    * @brief Emit an output value on hitNormal_changed. AccessType: outputOnly
@@ -91,9 +91,9 @@ public:
    * @details When pointing device selects geometry, send event containing 3D
    * point on surface of underlying geometry, as measured in reference frame for
    * TouchSensor's local coordinate system.
-   * @return SFVec3f The current value of hitPoint_changed.
+   * @return const SFVec3f& The current value of hitPoint_changed.
    */
-  SFVec3f getHitPoint_changed() const { return _hitPoint_changed; }
+  const SFVec3f &getHitPoint_changed() const { return _hitPoint_changed; }
 
   /**
    * @brief Emit an output value on hitPoint_changed. AccessType: outputOnly
@@ -111,9 +111,9 @@ public:
    * @brief Gets the value of hitTexCoord_changed. AccessType: outputOnly
    * @details When pointing device selects geometry, send event containing
    * texture coordinates of surface at the hitPoint.
-   * @return SFVec2f The current value of hitTexCoord_changed.
+   * @return const SFVec2f& The current value of hitTexCoord_changed.
    */
-  SFVec2f getHitTexCoord_changed() const { return _hitTexCoord_changed; }
+  const SFVec2f &getHitTexCoord_changed() const { return _hitTexCoord_changed; }
 
   /**
    * @brief Emit an output value on hitTexCoord_changed. AccessType: outputOnly

@@ -81,9 +81,9 @@ public:
    * @brief Gets the value of fontStyle. AccessType: inputOutput
    * @details The fontStyle field can contain a FontStyle or ScreenFontStyle
    * node defining size, family, and style for presented text.
-   * @return SFNode The current value of fontStyle.
+   * @return const SFNode& The current value of fontStyle.
    */
-  SFNode getFontStyle() const { return _fontStyle; }
+  const SFNode &getFontStyle() const { return _fontStyle; }
 
   /**
    * @brief Acceptable node types for the fontStyle field.
@@ -109,9 +109,9 @@ public:
    * @brief Gets the value of length. AccessType: inputOutput
    * @details Array of length values for each text string in the local
    * coordinate system.
-   * @return MFFloat The current value of length.
+   * @return const MFFloat& The current value of length.
    */
-  MFFloat getLength() const { return _length; }
+  const MFFloat &getLength() const { return _length; }
 
   /**
    * @brief Sets the value of length. AccessType: inputOutput
@@ -146,9 +146,9 @@ public:
    * @brief Gets the value of lineBounds. AccessType: outputOnly
    * @details Array of 2D bounding box values for each line of text in the local
    * coordinate system.
-   * @return MFVec2f The current value of lineBounds.
+   * @return const MFVec2f& The current value of lineBounds.
    */
-  MFVec2f getLineBounds() const { return _lineBounds; }
+  const MFVec2f &getLineBounds() const { return _lineBounds; }
 
   /**
    * @brief Emit an output value on lineBounds. AccessType: outputOnly
@@ -165,9 +165,9 @@ public:
    * @brief Gets the value of maxExtent. AccessType: inputOutput
    * @details Limits/compresses all text strings if max string length is longer
    * than maxExtent, as measured in local coordinate system.
-   * @return SFFloat The current value of maxExtent.
+   * @return const SFFloat& The current value of maxExtent.
    */
-  SFFloat getMaxExtent() const { return _maxExtent; }
+  const SFFloat &getMaxExtent() const { return _maxExtent; }
 
   /**
    * @brief Sets the value of maxExtent. AccessType: inputOutput
@@ -195,9 +195,9 @@ public:
    * @brief Gets the value of origin. AccessType: outputOnly
    * @details origin of the text local coordinate system, in units of the
    * coordinate system in which the Text node is embedded.
-   * @return SFVec3f The current value of origin.
+   * @return const SFVec3f& The current value of origin.
    */
-  SFVec3f getOrigin() const { return _origin; }
+  const SFVec3f &getOrigin() const { return _origin; }
 
   /**
    * @brief Emit an output value on origin. AccessType: outputOnly
@@ -215,9 +215,9 @@ public:
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse
@@ -228,9 +228,9 @@ public:
   /**
    * @brief Gets the value of string. AccessType: inputOutput
    * @details Single or multiple string values to present as Text.
-   * @return MFString The current value of string.
+   * @return const MFString& The current value of string.
    */
-  MFString getString() const { return _string; }
+  const MFString &getString() const { return _string; }
 
   /**
    * @brief Sets the value of string. AccessType: inputOutput
@@ -245,9 +245,9 @@ public:
    * @brief Gets the value of textBounds. AccessType: outputOnly
    * @details 2D bounding box value for all lines of text in the local
    * coordinate system.
-   * @return SFVec2f The current value of textBounds.
+   * @return const SFVec2f& The current value of textBounds.
    */
-  SFVec2f getTextBounds() const { return _textBounds; }
+  const SFVec2f &getTextBounds() const { return _textBounds; }
 
   /**
    * @brief Emit an output value on textBounds. AccessType: outputOnly

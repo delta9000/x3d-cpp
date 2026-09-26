@@ -29,24 +29,38 @@ const FieldTable &Fog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DBindableNode::getBindTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"color", X3DFieldType::SFColor, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "color", X3DFieldType::SFColor, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const Fog &>(n).X3DFogObject::getColor());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const Fog &>(n).X3DFogObject::getColor());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<Fog &>(n).X3DFogObject::setColorUnchecked(
-                        std::any_cast<SFColor>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<Fog &>(n).X3DFogObject::setColorUnchecked(
+              std::any_cast<SFColor>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DFogObject::getColor(),
+                  &typeid(SFColor)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "fogType", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -72,6 +86,13 @@ const FieldTable &Fog::fields() const {
             dynamic_cast<Fog &>(n).X3DFogObject::setFogType(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DFogObject::getFogType(),
+                  &typeid(FogTypeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -86,6 +107,13 @@ const FieldTable &Fog::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -104,6 +132,13 @@ const FieldTable &Fog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DBindableNode::getIsBound(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -119,6 +154,13 @@ const FieldTable &Fog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{"set_bind", X3DFieldType::SFBool,
@@ -132,6 +174,10 @@ const FieldTable &Fog::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -150,6 +196,14 @@ const FieldTable &Fog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Fog &>(n).X3DFogObject::getVisibilityRange(),
+              &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -164,6 +218,13 @@ const FieldTable &Fog::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -180,6 +241,13 @@ const FieldTable &Fog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -194,6 +262,13 @@ const FieldTable &Fog::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -210,6 +285,13 @@ const FieldTable &Fog::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -224,6 +306,13 @@ const FieldTable &Fog::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Fog &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

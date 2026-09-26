@@ -73,9 +73,9 @@ public:
    * @brief Gets the value of deletionAllowed. AccessType: inputOutput
    * @details If deletionAllowed is true, then previously entered character in
    * enteredText can be removed.
-   * @return SFBool The current value of deletionAllowed.
+   * @return const SFBool& The current value of deletionAllowed.
    */
-  SFBool getDeletionAllowed() const { return _deletionAllowed; }
+  const SFBool &getDeletionAllowed() const { return _deletionAllowed; }
 
   /**
    * @brief Sets the value of deletionAllowed. AccessType: inputOutput
@@ -89,9 +89,9 @@ public:
    * @brief Gets the value of enteredText. AccessType: outputOnly
    * @details Events generated as character-producing keys are pressed on
    * keyboard.
-   * @return SFString The current value of enteredText.
+   * @return const SFString& The current value of enteredText.
    */
-  SFString getEnteredText() const { return _enteredText; }
+  const SFString &getEnteredText() const { return _enteredText; }
 
   /**
    * @brief Emit an output value on enteredText. AccessType: outputOnly
@@ -109,9 +109,9 @@ public:
    * @details Events generated when sequence of keystrokes matches keys in
    * terminationText string when this condition occurs, enteredText is moved to
    * finalText and enteredText is set to empty string.
-   * @return SFString The current value of finalText.
+   * @return const SFString& The current value of finalText.
    */
-  SFString getFinalText() const { return _finalText; }
+  const SFString &getFinalText() const { return _finalText; }
 
   /**
    * @brief Emit an output value on finalText. AccessType: outputOnly

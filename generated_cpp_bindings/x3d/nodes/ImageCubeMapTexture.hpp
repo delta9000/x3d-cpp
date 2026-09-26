@@ -79,9 +79,9 @@ public:
    * @brief Gets the value of textureProperties. AccessType: initializeOnly
    * @details Single contained TextureProperties node that can specify
    * additional visual attributes applied to corresponding texture images.
-   * @return SFNode The current value of textureProperties.
+   * @return const SFNode& The current value of textureProperties.
    */
-  SFNode getTextureProperties() const { return _textureProperties; }
+  const SFNode &getTextureProperties() const { return _textureProperties; }
 
   /**
    * @brief Acceptable node types for the textureProperties field.

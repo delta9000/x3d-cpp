@@ -31,6 +31,13 @@ const FieldTable &NormalInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NormalInterpolator &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +54,14 @@ const FieldTable &NormalInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NormalInterpolator &>(n)
+                       .X3DInterpolatorNode::getKey(),
+                  &typeid(MFFloat)};
+        }
 
     });
 
@@ -65,6 +80,13 @@ const FieldTable &NormalInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NormalInterpolator &>(n).getKeyValue(),
+                  &typeid(MFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +104,14 @@ const FieldTable &NormalInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NormalInterpolator &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -95,6 +125,10 @@ const FieldTable &NormalInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -113,6 +147,14 @@ const FieldTable &NormalInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NormalInterpolator &>(n).getValue_changed(),
+              &typeid(MFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -129,6 +171,14 @@ const FieldTable &NormalInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NormalInterpolator &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -147,6 +197,14 @@ const FieldTable &NormalInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NormalInterpolator &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -163,6 +221,14 @@ const FieldTable &NormalInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NormalInterpolator &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -181,6 +247,13 @@ const FieldTable &NormalInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NormalInterpolator &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -197,6 +270,14 @@ const FieldTable &NormalInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NormalInterpolator &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

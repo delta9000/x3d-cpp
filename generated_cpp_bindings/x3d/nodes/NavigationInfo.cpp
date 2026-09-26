@@ -29,6 +29,13 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).getAvatarSize(),
+                  &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +52,14 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n)
+                       .X3DBindableNode::getBindTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -63,6 +78,13 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).getHeadlight(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -79,6 +101,13 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -97,6 +126,14 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n)
+                       .X3DBindableNode::getIsBound(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -114,6 +151,14 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NavigationInfo &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -127,6 +172,10 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -143,6 +192,13 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).getSpeed(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -161,6 +217,14 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NavigationInfo &>(n).getTransitionComplete(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -177,6 +241,13 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).getTransitionTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -195,6 +266,13 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).getTransitionType(),
+                  &typeid(MFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -209,6 +287,13 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).getType(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -227,6 +312,13 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).getVisibilityLimit(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -243,6 +335,13 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -261,6 +360,13 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -277,6 +383,13 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -295,6 +408,13 @@ const FieldTable &NavigationInfo::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -311,6 +431,13 @@ const FieldTable &NavigationInfo::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

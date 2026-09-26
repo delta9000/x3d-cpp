@@ -66,9 +66,9 @@ public:
    * @brief Gets the value of value. AccessType: inputOutput
    * @details The value attribute is a strictly typed data array providing
    * relevant metadata information.
-   * @return MFInt32 The current value of value.
+   * @return const MFInt32& The current value of value.
    */
-  MFInt32 getValue() const { return _value; }
+  const MFInt32 &getValue() const { return _value; }
 
   /**
    * @brief Sets the value of value. AccessType: inputOutput

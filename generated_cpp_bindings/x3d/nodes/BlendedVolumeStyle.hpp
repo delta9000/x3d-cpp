@@ -114,9 +114,9 @@ public:
    * @details Single contained X3DComposableVolumeRenderStyleNode node that
    * defines specific rendering technique for data in the voxels field, and the
    * result is blended with parent VolumeData or SegmentedVoliumeData node.
-   * @return SFNode The current value of renderStyle.
+   * @return const SFNode& The current value of renderStyle.
    */
-  SFNode getRenderStyle() const { return _renderStyle; }
+  const SFNode &getRenderStyle() const { return _renderStyle; }
 
   /**
    * @brief Acceptable node types for the renderStyle field.
@@ -145,9 +145,9 @@ public:
    * @details Single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) that provides second set of raw voxel
    * information utilized by corresponding rendering styles.
-   * @return SFNode The current value of voxels.
+   * @return const SFNode& The current value of voxels.
    */
-  SFNode getVoxels() const { return _voxels; }
+  const SFNode &getVoxels() const { return _voxels; }
 
   /**
    * @brief Acceptable node types for the voxels field.
@@ -173,9 +173,9 @@ public:
   /**
    * @brief Gets the value of weightConstant1. AccessType: inputOutput
    * @details weightConstant1 is used when weightFunction1=CONSTANT.
-   * @return SFFloat The current value of weightConstant1.
+   * @return const SFFloat& The current value of weightConstant1.
    */
-  SFFloat getWeightConstant1() const { return _weightConstant1; }
+  const SFFloat &getWeightConstant1() const { return _weightConstant1; }
 
   /**
    * @brief Sets the value of weightConstant1. AccessType: inputOutput
@@ -204,9 +204,9 @@ public:
   /**
    * @brief Gets the value of weightConstant2. AccessType: inputOutput
    * @details weightConstant2 is used when weightFunction2=CONSTANT.
-   * @return SFFloat The current value of weightConstant2.
+   * @return const SFFloat& The current value of weightConstant2.
    */
-  SFFloat getWeightConstant2() const { return _weightConstant2; }
+  const SFFloat &getWeightConstant2() const { return _weightConstant2; }
 
   /**
    * @brief Sets the value of weightConstant2. AccessType: inputOutput
@@ -236,9 +236,9 @@ public:
    * @brief Gets the value of weightFunction1. AccessType: inputOutput
    * @details specifies 2D textures used to determine weight values when weight
    * function is set to TABLE.
-   * @return SFString The current value of weightFunction1.
+   * @return const SFString& The current value of weightFunction1.
    */
-  SFString getWeightFunction1() const { return _weightFunction1; }
+  const SFString &getWeightFunction1() const { return _weightFunction1; }
 
   /**
    * @brief Sets the value of weightFunction1. AccessType: inputOutput
@@ -257,9 +257,9 @@ public:
    * @brief Gets the value of weightFunction2. AccessType: inputOutput
    * @details specifies 2D textures used to determine weight values when weight
    * function is set to TABLE.
-   * @return SFString The current value of weightFunction2.
+   * @return const SFString& The current value of weightFunction2.
    */
-  SFString getWeightFunction2() const { return _weightFunction2; }
+  const SFString &getWeightFunction2() const { return _weightFunction2; }
 
   /**
    * @brief Sets the value of weightFunction2. AccessType: inputOutput
@@ -279,9 +279,11 @@ public:
    * @details The weightTransferFunction1 and weightTransferFunction2 fields
    * specify two-dimensional textures that are used to determine the weight
    * values when the weight function is set to "TABLE".
-   * @return SFNode The current value of weightTransferFunction1.
+   * @return const SFNode& The current value of weightTransferFunction1.
    */
-  SFNode getWeightTransferFunction1() const { return _weightTransferFunction1; }
+  const SFNode &getWeightTransferFunction1() const {
+    return _weightTransferFunction1;
+  }
 
   /**
    * @brief Acceptable node types for the weightTransferFunction1 field.
@@ -316,9 +318,11 @@ public:
    * @details The weightTransferFunction1 and weightTransferFunction2 fields
    * specify two-dimensional textures that are used to determine the weight
    * values when the weight function is set to "TABLE".
-   * @return SFNode The current value of weightTransferFunction2.
+   * @return const SFNode& The current value of weightTransferFunction2.
    */
-  SFNode getWeightTransferFunction2() const { return _weightTransferFunction2; }
+  const SFNode &getWeightTransferFunction2() const {
+    return _weightTransferFunction2;
+  }
 
   /**
    * @brief Acceptable node types for the weightTransferFunction2 field.

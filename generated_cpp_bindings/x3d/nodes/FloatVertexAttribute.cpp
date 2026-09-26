@@ -31,6 +31,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const FloatVertexAttribute &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const FloatVertexAttribute &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -66,6 +82,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const FloatVertexAttribute &>(n)
+                       .X3DVertexAttributeNode::getName(),
+                  &typeid(xs_nmtoken)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +106,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const FloatVertexAttribute &>(n).getNumComponents(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -100,6 +132,13 @@ const FieldTable &FloatVertexAttribute::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const FloatVertexAttribute &>(n).getValue(),
+                  &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -116,6 +155,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const FloatVertexAttribute &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -134,6 +181,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const FloatVertexAttribute &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -150,6 +205,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const FloatVertexAttribute &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -168,6 +231,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const FloatVertexAttribute &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -184,6 +255,14 @@ const FieldTable &FloatVertexAttribute::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const FloatVertexAttribute &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

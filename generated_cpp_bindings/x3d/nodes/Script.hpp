@@ -81,9 +81,9 @@ public:
    * @details Set directOutput true if Script has field reference(s) of type
    * SFNode/MFNode, and also uses direct access to modify attributes of a
    * referenced node in the Scene.
-   * @return SFBool The current value of directOutput.
+   * @return const SFBool& The current value of directOutput.
    */
-  SFBool getDirectOutput() const { return _directOutput; }
+  const SFBool &getDirectOutput() const { return _directOutput; }
   /**
    * @brief Data-layer write of directOutput (reader/init ingest path).
    * @details directOutput is initializeOnly: author-settable at parse
@@ -123,9 +123,9 @@ public:
    * @brief Gets the value of mustEvaluate. AccessType: initializeOnly
    * @details If mustEvaluate false, then the X3D player may delay sending input
    * events to Script until output events are needed.
-   * @return SFBool The current value of mustEvaluate.
+   * @return const SFBool& The current value of mustEvaluate.
    */
-  SFBool getMustEvaluate() const { return _mustEvaluate; }
+  const SFBool &getMustEvaluate() const { return _mustEvaluate; }
   /**
    * @brief Data-layer write of mustEvaluate (reader/init ingest path).
    * @details mustEvaluate is initializeOnly: author-settable at parse
@@ -138,9 +138,9 @@ public:
    * @details Embedded scripting source code can be contained within the parent
    * node as a plain-text CDATA block, without requiring escaping of special
    * characters.
-   * @return SFString The current value of sourceCode.
+   * @return const SFString& The current value of sourceCode.
    */
-  SFString getSourceCode() const { return _sourceCode; }
+  const SFString &getSourceCode() const { return _sourceCode; }
 
   /**
    * @brief Sets the value of sourceCode. AccessType: inputOutput

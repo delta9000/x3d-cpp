@@ -31,6 +31,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n)
+                       .getControlPoint(),
+                  &typeid(MFVec2f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsTextureCoordinate &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -65,6 +81,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +105,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsTextureCoordinate &>(n).getUDimension(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -99,6 +131,13 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n).getUKnot(),
+                  &typeid(MFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +154,13 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n).getUOrder(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -133,6 +179,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsTextureCoordinate &>(n).getVDimension(),
+              &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -149,6 +203,13 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n).getVKnot(),
+                  &typeid(MFDouble)};
+        }
 
     });
 
@@ -167,6 +228,13 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n).getVOrder(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -183,6 +251,13 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n).getWeight(),
+                  &typeid(MFDouble)};
+        }
 
     });
 
@@ -201,6 +276,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -217,6 +300,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -235,6 +326,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -252,6 +351,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsTextureCoordinate &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -268,6 +375,14 @@ const FieldTable &NurbsTextureCoordinate::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsTextureCoordinate &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

@@ -74,9 +74,9 @@ public:
   /**
    * @brief Gets the value of offset. AccessType: inputOutput
    * @details Sends event and remembers last value sensed.
-   * @return SFRotation The current value of offset.
+   * @return const SFRotation& The current value of offset.
    */
-  SFRotation getOffset() const { return _offset; }
+  const SFRotation &getOffset() const { return _offset; }
 
   /**
    * @brief Sets the value of offset. AccessType: inputOutput
@@ -91,9 +91,9 @@ public:
    * @brief Gets the value of rotation_changed. AccessType: outputOnly
    * @details rotation_changed events equal sum of relative bearing changes plus
    * offset value.
-   * @return SFRotation The current value of rotation_changed.
+   * @return const SFRotation& The current value of rotation_changed.
    */
-  SFRotation getRotation_changed() const { return _rotation_changed; }
+  const SFRotation &getRotation_changed() const { return _rotation_changed; }
 
   /**
    * @brief Emit an output value on rotation_changed. AccessType: outputOnly

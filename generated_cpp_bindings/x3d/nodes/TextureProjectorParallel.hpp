@@ -74,9 +74,9 @@ public:
    * @brief Gets the value of fieldOfView. AccessType: inputOutput
    * @details Minimum and maximum extents of projection texture in units of
    * local coordinate system.
-   * @return SFVec4f The current value of fieldOfView.
+   * @return const SFVec4f& The current value of fieldOfView.
    */
-  SFVec4f getFieldOfView() const { return _fieldOfView; }
+  const SFVec4f &getFieldOfView() const { return _fieldOfView; }
 
   /**
    * @brief Sets the value of fieldOfView. AccessType: inputOutput

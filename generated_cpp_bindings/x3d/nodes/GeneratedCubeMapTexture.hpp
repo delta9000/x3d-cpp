@@ -87,9 +87,9 @@ public:
    * @brief Gets the value of size. AccessType: initializeOnly
    * @details size indicates the resolution of the generated images in number of
    * pixels per side.
-   * @return SFInt32 The current value of size.
+   * @return const SFInt32& The current value of size.
    */
-  SFInt32 getSize() const { return _size; }
+  const SFInt32 &getSize() const { return _size; }
   /**
    * @brief Data-layer write of size (reader/init ingest path).
    * @details size is initializeOnly: author-settable at parse
@@ -101,9 +101,9 @@ public:
    * @brief Gets the value of textureProperties. AccessType: initializeOnly
    * @details Single contained TextureProperties node that can specify
    * additional visual attributes applied to corresponding texture images.
-   * @return SFNode The current value of textureProperties.
+   * @return const SFNode& The current value of textureProperties.
    */
-  SFNode getTextureProperties() const { return _textureProperties; }
+  const SFNode &getTextureProperties() const { return _textureProperties; }
 
   /**
    * @brief Acceptable node types for the textureProperties field.
@@ -127,9 +127,12 @@ public:
   /**
    * @brief Gets the value of update. AccessType: inputOutput
    * @details update controls regeneration of the texture.
-   * @return GeneratedCubeMapTextureUpdateChoices The current value of update.
+   * @return const GeneratedCubeMapTextureUpdateChoices& The current value of
+   * update.
    */
-  GeneratedCubeMapTextureUpdateChoices getUpdate() const { return _update; }
+  const GeneratedCubeMapTextureUpdateChoices &getUpdate() const {
+    return _update;
+  }
 
   /**
    * @brief Sets the value of update. AccessType: inputOutput

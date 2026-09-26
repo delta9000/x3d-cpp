@@ -114,9 +114,9 @@ public:
    * @brief Gets the value of avatarSize. AccessType: inputOutput
    * @details avatarSize triplet values define three separate parameters: (a)
    * collisionDistance between user and geometry, i.
-   * @return MFFloat The current value of avatarSize.
+   * @return const MFFloat& The current value of avatarSize.
    */
-  MFFloat getAvatarSize() const { return _avatarSize; }
+  const MFFloat &getAvatarSize() const { return _avatarSize; }
 
   /**
    * @brief Sets the value of avatarSize. AccessType: inputOutput
@@ -151,9 +151,9 @@ public:
    * @brief Gets the value of headlight. AccessType: inputOutput
    * @details Enable/disable directional light that always points in the
    * direction the user is looking.
-   * @return SFBool The current value of headlight.
+   * @return const SFBool& The current value of headlight.
    */
-  SFBool getHeadlight() const { return _headlight; }
+  const SFBool &getHeadlight() const { return _headlight; }
 
   /**
    * @brief Sets the value of headlight. AccessType: inputOutput
@@ -166,9 +166,9 @@ public:
   /**
    * @brief Gets the value of speed. AccessType: inputOutput
    * @details Default rate at which viewer travels through scene, meters/second.
-   * @return SFFloat The current value of speed.
+   * @return const SFFloat& The current value of speed.
    */
-  SFFloat getSpeed() const { return _speed; }
+  const SFFloat &getSpeed() const { return _speed; }
 
   /**
    * @brief Sets the value of speed. AccessType: inputOutput
@@ -194,9 +194,9 @@ public:
   /**
    * @brief Gets the value of transitionComplete. AccessType: outputOnly
    * @details Event signaling viewpoint transition complete.
-   * @return SFBool The current value of transitionComplete.
+   * @return const SFBool& The current value of transitionComplete.
    */
-  SFBool getTransitionComplete() const { return _transitionComplete; }
+  const SFBool &getTransitionComplete() const { return _transitionComplete; }
 
   /**
    * @brief Emit an output value on transitionComplete. AccessType: outputOnly
@@ -215,9 +215,9 @@ public:
    * @brief Gets the value of transitionTime. AccessType: inputOutput
    * @details transitionTime defines the expected duration of viewpoint
    * transition in seconds.
-   * @return SFTime The current value of transitionTime.
+   * @return const SFTime& The current value of transitionTime.
    */
-  SFTime getTransitionTime() const { return _transitionTime; }
+  const SFTime &getTransitionTime() const { return _transitionTime; }
 
   /**
    * @brief Sets the value of transitionTime. AccessType: inputOutput
@@ -253,9 +253,9 @@ public:
   /**
    * @brief Gets the value of transitionType. AccessType: inputOutput
    * @details Camera transition between viewpoints.
-   * @return MFString The current value of transitionType.
+   * @return const MFString& The current value of transitionType.
    */
-  MFString getTransitionType() const { return _transitionType; }
+  const MFString &getTransitionType() const { return _transitionType; }
 
   /**
    * @brief Sets the value of transitionType. AccessType: inputOutput
@@ -273,9 +273,9 @@ public:
    * @brief Gets the value of type. AccessType: inputOutput
    * @details Enter one or more quoted SFString values: "EXAMINE" "WALK" "FLY"
    * "LOOKAT" "EXPLORE" "ANY" "NONE".
-   * @return MFString The current value of type.
+   * @return const MFString& The current value of type.
    */
-  MFString getType() const { return _type; }
+  const MFString &getType() const { return _type; }
 
   /**
    * @brief Sets the value of type. AccessType: inputOutput
@@ -291,9 +291,9 @@ public:
    * @brief Gets the value of visibilityLimit. AccessType: inputOutput
    * @details Geometry beyond the visibilityLimit may not be rendered (far
    * clipping plane of the view frustrum).
-   * @return SFFloat The current value of visibilityLimit.
+   * @return const SFFloat& The current value of visibilityLimit.
    */
-  SFFloat getVisibilityLimit() const { return _visibilityLimit; }
+  const SFFloat &getVisibilityLimit() const { return _visibilityLimit; }
 
   /**
    * @brief Sets the value of visibilityLimit. AccessType: inputOutput

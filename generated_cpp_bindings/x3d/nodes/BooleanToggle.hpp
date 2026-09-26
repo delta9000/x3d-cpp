@@ -94,9 +94,9 @@ public:
   /**
    * @brief Gets the value of toggle. AccessType: inputOutput
    * @details Persistent state value that gets toggled or reset.
-   * @return SFBool The current value of toggle.
+   * @return const SFBool& The current value of toggle.
    */
-  SFBool getToggle() const { return _toggle; }
+  const SFBool &getToggle() const { return _toggle; }
 
   /**
    * @brief Sets the value of toggle. AccessType: inputOutput

@@ -88,9 +88,10 @@ public:
    * @brief Gets the value of channelCountMode. AccessType: inputOutput
    * @details channelCountMode determines how individual channels are counted
    * when up-mixing and down-mixing connections to any inputs.
-   * @return ChannelCountModeChoices The current value of channelCountMode.
+   * @return const ChannelCountModeChoices& The current value of
+   * channelCountMode.
    */
-  ChannelCountModeChoices getChannelCountMode() const {
+  const ChannelCountModeChoices &getChannelCountMode() const {
     return _channelCountMode;
   }
 
@@ -109,10 +110,10 @@ public:
    * @brief Gets the value of channelInterpretation. AccessType: inputOutput
    * @details channelInterpretation determines how individual channels are
    * treated when up-mixing and down-mixing connections to any inputs.
-   * @return ChannelInterpretationChoices The current value of
+   * @return const ChannelInterpretationChoices& The current value of
    * channelInterpretation.
    */
-  ChannelInterpretationChoices getChannelInterpretation() const {
+  const ChannelInterpretationChoices &getChannelInterpretation() const {
     return _channelInterpretation;
   }
 
@@ -131,9 +132,9 @@ public:
    * @brief Gets the value of streamIdentifier. AccessType: inputOutput
    * @details Stream identification TBD Hint: W3C Media Capture and Streams
    * https://www.
-   * @return SFString The current value of streamIdentifier.
+   * @return const SFString& The current value of streamIdentifier.
    */
-  SFString getStreamIdentifier() const { return _streamIdentifier; }
+  const SFString &getStreamIdentifier() const { return _streamIdentifier; }
 
   /**
    * @brief Sets the value of streamIdentifier. AccessType: inputOutput

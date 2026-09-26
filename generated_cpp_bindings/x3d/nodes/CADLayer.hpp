@@ -66,9 +66,9 @@ public:
   /**
    * @brief Gets the value of name. AccessType: inputOutput
    * @details Optional name for this particular CAD node.
-   * @return SFString The current value of name.
+   * @return const SFString& The current value of name.
    */
-  SFString getName() const { return _name; }
+  const SFString &getName() const { return _name; }
 
   /**
    * @brief Sets the value of name. AccessType: inputOutput

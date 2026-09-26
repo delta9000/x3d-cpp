@@ -87,9 +87,9 @@ public:
    * @brief Gets the value of attenuation. AccessType: inputOutput
    * @details attenuation array values [a, b, c] are set to default values if
    * undefined.
-   * @return SFVec3f The current value of attenuation.
+   * @return const SFVec3f& The current value of attenuation.
    */
-  SFVec3f getAttenuation() const { return _attenuation; }
+  const SFVec3f &getAttenuation() const { return _attenuation; }
 
   /**
    * @brief Sets the value of attenuation. AccessType: inputOutput
@@ -105,9 +105,9 @@ public:
    * @brief Gets the value of pointSizeMaxValue. AccessType: inputOutput
    * @details pointSizeMaxValue is maximum allowed scaling factor on nominal
    * browser point scaling.
-   * @return SFFloat The current value of pointSizeMaxValue.
+   * @return const SFFloat& The current value of pointSizeMaxValue.
    */
-  SFFloat getPointSizeMaxValue() const { return _pointSizeMaxValue; }
+  const SFFloat &getPointSizeMaxValue() const { return _pointSizeMaxValue; }
 
   /**
    * @brief Sets the value of pointSizeMaxValue. AccessType: inputOutput
@@ -138,9 +138,9 @@ public:
    * @brief Gets the value of pointSizeMinValue. AccessType: inputOutput
    * @details pointSizeMinValue is minimum allowed scaling factor on nominal
    * browser point scaling.
-   * @return SFFloat The current value of pointSizeMinValue.
+   * @return const SFFloat& The current value of pointSizeMinValue.
    */
-  SFFloat getPointSizeMinValue() const { return _pointSizeMinValue; }
+  const SFFloat &getPointSizeMinValue() const { return _pointSizeMinValue; }
 
   /**
    * @brief Sets the value of pointSizeMinValue. AccessType: inputOutput
@@ -172,9 +172,11 @@ public:
    * @details Nominal rendered point size is a browser-dependent minimum
    * renderable point size, which is then multiplied by an additional
    * pointSizeScaleFactor (which is greater than or equal to 1).
-   * @return SFFloat The current value of pointSizeScaleFactor.
+   * @return const SFFloat& The current value of pointSizeScaleFactor.
    */
-  SFFloat getPointSizeScaleFactor() const { return _pointSizeScaleFactor; }
+  const SFFloat &getPointSizeScaleFactor() const {
+    return _pointSizeScaleFactor;
+  }
 
   /**
    * @brief Sets the value of pointSizeScaleFactor. AccessType: inputOutput

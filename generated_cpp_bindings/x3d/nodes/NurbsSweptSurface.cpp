@@ -30,6 +30,13 @@ const FieldTable &NurbsSweptSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSweptSurface &>(n).getCcw(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(
@@ -48,6 +55,14 @@ const FieldTable &NurbsSweptSurface::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const NurbsSweptSurface &>(n)
+                                 .getCrossSectionCurve(),
+                            &typeid(SFNode)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -64,6 +79,13 @@ const FieldTable &NurbsSweptSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -82,24 +104,39 @@ const FieldTable &NurbsSweptSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSweptSurface &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
+    t.push_back(FieldInfo{
+        "solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const NurbsSweptSurface &>(n).getSolid());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const NurbsSweptSurface &>(n).getSolid());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<NurbsSweptSurface &>(n).setSolidUnchecked(
-                        std::any_cast<SFBool>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<NurbsSweptSurface &>(n).setSolidUnchecked(
+              std::any_cast<SFBool>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSweptSurface &>(n).getSolid(),
+                  &typeid(SFBool)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "trajectoryCurve", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -116,6 +153,14 @@ const FieldTable &NurbsSweptSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsSweptSurface &>(n).getTrajectoryCurve(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -134,6 +179,13 @@ const FieldTable &NurbsSweptSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -150,6 +202,13 @@ const FieldTable &NurbsSweptSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -168,6 +227,14 @@ const FieldTable &NurbsSweptSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -185,6 +252,13 @@ const FieldTable &NurbsSweptSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -201,6 +275,14 @@ const FieldTable &NurbsSweptSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

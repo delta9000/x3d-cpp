@@ -31,6 +31,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).getAnchorPoint(),
+              &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,13 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n).getAxis1(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -65,6 +80,13 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n).getAxis2(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +103,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .X3DRigidJointNode::getBody1(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -99,6 +129,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getBody1AnchorPoint(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +153,13 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n).getBody1Axis(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -133,6 +178,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .X3DRigidJointNode::getBody2(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -150,6 +203,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getBody2AnchorPoint(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -166,6 +227,13 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n).getBody2Axis(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -185,6 +253,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getDesiredAngularVelocity1(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -203,6 +279,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getDesiredAngularVelocity2(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -219,6 +303,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .X3DRigidJointNode::getForceOutput(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -237,6 +329,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).getHinge1Angle(),
+              &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -253,6 +353,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getHinge1AngleRate(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -271,6 +379,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).getHinge2Angle(),
+              &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -287,6 +403,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getHinge2AngleRate(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -305,6 +429,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -321,6 +453,13 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n).getMaxAngle1(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -339,6 +478,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).getMaxTorque1(),
+              &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -355,6 +502,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).getMaxTorque2(),
+              &typeid(SFFloat)};
+        }
 
     });
 
@@ -373,6 +528,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -390,6 +553,13 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n).getMinAngle1(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -406,6 +576,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).getStop1Bounce(),
+              &typeid(SFFloat)};
+        }
 
     });
 
@@ -425,6 +603,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getStop1ConstantForceMix(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -442,6 +628,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getStop1ErrorCorrection(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -461,6 +655,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getSuspensionErrorCorrection(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -477,6 +679,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .getSuspensionForce(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -495,6 +705,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -511,6 +729,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -529,6 +755,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -546,6 +780,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const DoubleAxisHingeJoint &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -562,6 +804,14 @@ const FieldTable &DoubleAxisHingeJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const DoubleAxisHingeJoint &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

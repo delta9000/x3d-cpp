@@ -27,6 +27,13 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -43,6 +50,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getConeInnerAngle(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -61,6 +75,13 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getConeOuterAngle(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -77,6 +98,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getConeOuterGain(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -95,6 +123,14 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n)
+                       .X3DSoundNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -110,6 +146,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getDirection(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -137,6 +180,13 @@ const FieldTable &SpatialSound::fields() const {
             dynamic_cast<SpatialSound &>(n).setDistanceModel(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getDistanceModel(),
+                  &typeid(DistanceModelChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -153,6 +203,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getDopplerEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -171,6 +228,14 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SpatialSound &>(n).X3DSoundNode::getEnabled(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -188,6 +253,13 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getEnableHRTF(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -202,6 +274,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getGain(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -219,24 +298,38 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getIntensity(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
+    t.push_back(FieldInfo{
+        "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const SpatialSound &>(n).X3DNode::getIS());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const SpatialSound &>(n).X3DNode::getIS());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<SpatialSound &>(n).X3DNode::setIS(
-                        std::any_cast<SFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<SpatialSound &>(n).X3DNode::setIS(
+              std::any_cast<SFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "location", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -251,6 +344,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getLocation(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -269,6 +369,13 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getMaxDistance(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -286,6 +393,13 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -301,6 +415,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getPriority(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -319,6 +440,13 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getReferenceDistance(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -335,6 +463,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getRolloffFactor(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -353,6 +488,13 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).getSpatialize(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -369,6 +511,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -387,6 +536,13 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -404,24 +560,38 @@ const FieldTable &SpatialSound::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"id", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "id", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const SpatialSound &>(n).X3DNode::getId());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const SpatialSound &>(n).X3DNode::getId());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<SpatialSound &>(n).X3DNode::setId(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<SpatialSound &>(n).X3DNode::setId(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -437,6 +607,13 @@ const FieldTable &SpatialSound::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SpatialSound &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

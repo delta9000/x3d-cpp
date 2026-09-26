@@ -66,9 +66,9 @@ public:
    * @brief Gets the value of index. AccessType: initializeOnly
    * @details index list specifies triangles by connecting Coordinate vertices,
    * each individual fan separated by -1 sentinel value.
-   * @return MFInt32 The current value of index.
+   * @return const MFInt32& The current value of index.
    */
-  MFInt32 getIndex() const { return _index; }
+  const MFInt32 &getIndex() const { return _index; }
   /**
    * @brief Data-layer write of index (reader/init ingest path).
    * @details index is initializeOnly: author-settable at parse

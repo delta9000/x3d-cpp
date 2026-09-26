@@ -123,10 +123,10 @@ public:
    * @brief Gets the value of appliedParameters. AccessType: inputOutput
    * @details Default global parameters for collision outputs of rigid body
    * physics system.
-   * @return std::vector<AppliedParametersChoices> The current value of
+   * @return const std::vector<AppliedParametersChoices>& The current value of
    * appliedParameters.
    */
-  std::vector<AppliedParametersChoices> getAppliedParameters() const {
+  const std::vector<AppliedParametersChoices> &getAppliedParameters() const {
     return _appliedParameters;
   }
 
@@ -151,9 +151,9 @@ public:
    * @brief Gets the value of bounce. AccessType: inputOutput
    * @details bounce indicates bounciness (0 = no bounce at all, 1 = maximum
    * bounce).
-   * @return SFFloat The current value of bounce.
+   * @return const SFFloat& The current value of bounce.
    */
-  SFFloat getBounce() const { return _bounce; }
+  const SFFloat &getBounce() const { return _bounce; }
 
   /**
    * @brief Sets the value of bounce. AccessType: inputOutput
@@ -212,9 +212,9 @@ public:
   /**
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Author-provided prose that describes intended purpose of the node.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -228,9 +228,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details Enables/disables node operation.
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -242,9 +242,11 @@ public:
   /**
    * @brief Gets the value of frictionCoefficients. AccessType: inputOutput
    * @details frictionCoefficients used for computing surface drag.
-   * @return SFVec2f The current value of frictionCoefficients.
+   * @return const SFVec2f& The current value of frictionCoefficients.
    */
-  SFVec2f getFrictionCoefficients() const { return _frictionCoefficients; }
+  const SFVec2f &getFrictionCoefficients() const {
+    return _frictionCoefficients;
+  }
 
   /**
    * @brief Sets the value of frictionCoefficients. AccessType: inputOutput
@@ -280,9 +282,9 @@ public:
   /**
    * @brief Gets the value of minBounceSpeed. AccessType: inputOutput
    * @details minBounceSpeed m/s needed to bounce.
-   * @return SFFloat The current value of minBounceSpeed.
+   * @return const SFFloat& The current value of minBounceSpeed.
    */
-  SFFloat getMinBounceSpeed() const { return _minBounceSpeed; }
+  const SFFloat &getMinBounceSpeed() const { return _minBounceSpeed; }
 
   /**
    * @brief Sets the value of minBounceSpeed. AccessType: inputOutput
@@ -310,9 +312,9 @@ public:
   /**
    * @brief Gets the value of slipFactors. AccessType: inputOutput
    * @details slipFactors used for computing surface drag.
-   * @return SFVec2f The current value of slipFactors.
+   * @return const SFVec2f& The current value of slipFactors.
    */
-  SFVec2f getSlipFactors() const { return _slipFactors; }
+  const SFVec2f &getSlipFactors() const { return _slipFactors; }
 
   /**
    * @brief Sets the value of slipFactors. AccessType: inputOutput
@@ -327,9 +329,9 @@ public:
    * @brief Gets the value of softnessConstantForceMix. AccessType: inputOutput
    * @details softnessConstantForceMix value applies a constant force value to
    * make colliding surfaces appear to be somewhat soft.
-   * @return SFFloat The current value of softnessConstantForceMix.
+   * @return const SFFloat& The current value of softnessConstantForceMix.
    */
-  SFFloat getSoftnessConstantForceMix() const {
+  const SFFloat &getSoftnessConstantForceMix() const {
     return _softnessConstantForceMix;
   }
 
@@ -363,9 +365,9 @@ public:
    * @details softnessErrorCorrection indicates fraction of collision error
    * fixed in a set of evaluations (0 = no error correction, 1 = all errors
    * corrected in single step).
-   * @return SFFloat The current value of softnessErrorCorrection.
+   * @return const SFFloat& The current value of softnessErrorCorrection.
    */
-  SFFloat getSoftnessErrorCorrection() const {
+  const SFFloat &getSoftnessErrorCorrection() const {
     return _softnessErrorCorrection;
   }
 
@@ -399,9 +401,9 @@ public:
    * @brief Gets the value of surfaceSpeed. AccessType: inputOutput
    * @details surfaceSpeed defines speed vectors for computing surface drag, if
    * contact surfaces move independently of bodies.
-   * @return SFVec2f The current value of surfaceSpeed.
+   * @return const SFVec2f& The current value of surfaceSpeed.
    */
-  SFVec2f getSurfaceSpeed() const { return _surfaceSpeed; }
+  const SFVec2f &getSurfaceSpeed() const { return _surfaceSpeed; }
 
   /**
    * @brief Sets the value of surfaceSpeed. AccessType: inputOutput

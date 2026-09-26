@@ -77,9 +77,9 @@ public:
    * @brief Gets the value of colorIndex. AccessType: initializeOnly
    * @details colorIndex values define the order in which Color|ColorRGBA values
    * are applied to polygons (or vertices).
-   * @return MFInt32 The current value of colorIndex.
+   * @return const MFInt32& The current value of colorIndex.
    */
-  MFInt32 getColorIndex() const { return _colorIndex; }
+  const MFInt32 &getColorIndex() const { return _colorIndex; }
   /**
    * @brief Data-layer write of colorIndex (reader/init ingest path).
    * @details colorIndex is initializeOnly: author-settable at parse
@@ -91,9 +91,9 @@ public:
    * @brief Gets the value of convex. AccessType: initializeOnly
    * @details The convex field is a hint to renderers whether all polygons in a
    * shape are convex (true), or possibly concave (false).
-   * @return SFBool The current value of convex.
+   * @return const SFBool& The current value of convex.
    */
-  SFBool getConvex() const { return _convex; }
+  const SFBool &getConvex() const { return _convex; }
   /**
    * @brief Data-layer write of convex (reader/init ingest path).
    * @details convex is initializeOnly: author-settable at parse
@@ -105,9 +105,9 @@ public:
    * @brief Gets the value of coordIndex. AccessType: initializeOnly
    * @details coordIndex indices provide the order in which coordinates are
    * applied to construct each polygon face.
-   * @return MFInt32 The current value of coordIndex.
+   * @return const MFInt32& The current value of coordIndex.
    */
-  MFInt32 getCoordIndex() const { return _coordIndex; }
+  const MFInt32 &getCoordIndex() const { return _coordIndex; }
   /**
    * @brief Data-layer write of coordIndex (reader/init ingest path).
    * @details coordIndex is initializeOnly: author-settable at parse
@@ -119,9 +119,9 @@ public:
    * @brief Gets the value of creaseAngle. AccessType: initializeOnly
    * @details creaseAngle defines angle (in radians) for determining whether
    * adjacent polygons are drawn with sharp edges or smooth shading.
-   * @return SFFloat The current value of creaseAngle.
+   * @return const SFFloat& The current value of creaseAngle.
    */
-  SFFloat getCreaseAngle() const { return _creaseAngle; }
+  const SFFloat &getCreaseAngle() const { return _creaseAngle; }
   /**
    * @brief Data-layer write of creaseAngle (reader/init ingest path).
    * @details creaseAngle is initializeOnly: author-settable at parse
@@ -133,9 +133,9 @@ public:
    * @brief Gets the value of normalIndex. AccessType: initializeOnly
    * @details normalIndex values define the order in which normal vectors are
    * applied to polygons (or vertices).
-   * @return MFInt32 The current value of normalIndex.
+   * @return const MFInt32& The current value of normalIndex.
    */
-  MFInt32 getNormalIndex() const { return _normalIndex; }
+  const MFInt32 &getNormalIndex() const { return _normalIndex; }
   /**
    * @brief Data-layer write of normalIndex (reader/init ingest path).
    * @details normalIndex is initializeOnly: author-settable at parse
@@ -251,9 +251,9 @@ public:
    * @brief Gets the value of texCoordIndex. AccessType: initializeOnly
    * @details List of texture-coordinate indices mapping attached texture to
    * corresponding coordinates.
-   * @return MFInt32 The current value of texCoordIndex.
+   * @return const MFInt32& The current value of texCoordIndex.
    */
-  MFInt32 getTexCoordIndex() const { return _texCoordIndex; }
+  const MFInt32 &getTexCoordIndex() const { return _texCoordIndex; }
   /**
    * @brief Data-layer write of texCoordIndex (reader/init ingest path).
    * @details texCoordIndex is initializeOnly: author-settable at parse

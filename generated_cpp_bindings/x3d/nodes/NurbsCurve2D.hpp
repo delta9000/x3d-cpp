@@ -80,9 +80,9 @@ public:
   /**
    * @brief Gets the value of closed. AccessType: initializeOnly
    * @details Whether or not the curve is closed (i.
-   * @return SFBool The current value of closed.
+   * @return const SFBool& The current value of closed.
    */
-  SFBool getClosed() const { return _closed; }
+  const SFBool &getClosed() const { return _closed; }
   /**
    * @brief Data-layer write of closed (reader/init ingest path).
    * @details closed is initializeOnly: author-settable at parse
@@ -94,9 +94,9 @@ public:
    * @brief Gets the value of knot. AccessType: initializeOnly
    * @details knot vector, where size = number of control points + order of
    * curve.
-   * @return MFDouble The current value of knot.
+   * @return const MFDouble& The current value of knot.
    */
-  MFDouble getKnot() const { return _knot; }
+  const MFDouble &getKnot() const { return _knot; }
   /**
    * @brief Data-layer write of knot (reader/init ingest path).
    * @details knot is initializeOnly: author-settable at parse
@@ -107,9 +107,9 @@ public:
   /**
    * @brief Gets the value of order. AccessType: initializeOnly
    * @details define order of surface by polynomials of degree = order-1.
-   * @return SFInt32 The current value of order.
+   * @return const SFInt32& The current value of order.
    */
-  SFInt32 getOrder() const { return _order; }
+  const SFInt32 &getOrder() const { return _order; }
   /**
    * @brief Data-layer write of order (reader/init ingest path).
    * @details order is initializeOnly: author-settable at parse
@@ -120,9 +120,9 @@ public:
   /**
    * @brief Gets the value of tessellation. AccessType: inputOutput
    * @details hint for surface tessellation.
-   * @return SFInt32 The current value of tessellation.
+   * @return const SFInt32& The current value of tessellation.
    */
-  SFInt32 getTessellation() const { return _tessellation; }
+  const SFInt32 &getTessellation() const { return _tessellation; }
 
   /**
    * @brief Sets the value of tessellation. AccessType: inputOutput
@@ -134,9 +134,9 @@ public:
   /**
    * @brief Gets the value of weight. AccessType: inputOutput
    * @details Vector assigning relative weight value to each control point.
-   * @return MFDouble The current value of weight.
+   * @return const MFDouble& The current value of weight.
    */
-  MFDouble getWeight() const { return _weight; }
+  const MFDouble &getWeight() const { return _weight; }
 
   /**
    * @brief Sets the value of weight. AccessType: inputOutput

@@ -106,9 +106,9 @@ public:
    * @brief Gets the value of attenuation. AccessType: inputOutput
    * @details Constant, linear-distance and squared-distance dropoff factors as
    * radial distance increases from the source.
-   * @return SFVec3f The current value of attenuation.
+   * @return const SFVec3f& The current value of attenuation.
    */
-  SFVec3f getAttenuation() const { return _attenuation; }
+  const SFVec3f &getAttenuation() const { return _attenuation; }
 
   /**
    * @brief Sets the value of attenuation. AccessType: inputOutput
@@ -143,9 +143,9 @@ public:
    * @brief Gets the value of beamWidth. AccessType: inputOutput
    * @details Inner conical solid angle (in radians) where light source has
    * uniform full intensity.
-   * @return SFFloat The current value of beamWidth.
+   * @return const SFFloat& The current value of beamWidth.
    */
-  SFFloat getBeamWidth() const { return _beamWidth; }
+  const SFFloat &getBeamWidth() const { return _beamWidth; }
 
   /**
    * @brief Sets the value of beamWidth. AccessType: inputOutput
@@ -173,9 +173,9 @@ public:
    * @brief Gets the value of cutOffAngle. AccessType: inputOutput
    * @details Outer conical solid angle (in radians) where light source
    * intensity becomes zero.
-   * @return SFFloat The current value of cutOffAngle.
+   * @return const SFFloat& The current value of cutOffAngle.
    */
-  SFFloat getCutOffAngle() const { return _cutOffAngle; }
+  const SFFloat &getCutOffAngle() const { return _cutOffAngle; }
 
   /**
    * @brief Sets the value of cutOffAngle. AccessType: inputOutput
@@ -202,9 +202,9 @@ public:
   /**
    * @brief Gets the value of direction. AccessType: inputOutput
    * @details Orientation vector of light relative to local coordinate system.
-   * @return SFVec3f The current value of direction.
+   * @return const SFVec3f& The current value of direction.
    */
-  SFVec3f getDirection() const { return _direction; }
+  const SFVec3f &getDirection() const { return _direction; }
 
   /**
    * @brief Sets the value of direction. AccessType: inputOutput
@@ -219,9 +219,9 @@ public:
    * @brief Gets the value of global. AccessType: inputOutput
    * @details Global lights illuminate all objects within their volume of
    * lighting influence.
-   * @return SFBool The current value of global.
+   * @return const SFBool& The current value of global.
    */
-  SFBool getGlobal() const { return _global; }
+  const SFBool &getGlobal() const { return _global; }
 
   /**
    * @brief Sets the value of global. AccessType: inputOutput
@@ -234,9 +234,9 @@ public:
   /**
    * @brief Gets the value of location. AccessType: inputOutput
    * @details Position of light relative to local coordinate system.
-   * @return SFVec3f The current value of location.
+   * @return const SFVec3f& The current value of location.
    */
-  SFVec3f getLocation() const { return _location; }
+  const SFVec3f &getLocation() const { return _location; }
 
   /**
    * @brief Sets the value of location. AccessType: inputOutput
@@ -251,9 +251,9 @@ public:
    * @brief Gets the value of radius. AccessType: inputOutput
    * @details Maximum effective distance of light relative to local light
    * position, affected by ancestor scaling.
-   * @return SFFloat The current value of radius.
+   * @return const SFFloat& The current value of radius.
    */
-  SFFloat getRadius() const { return _radius; }
+  const SFFloat &getRadius() const { return _radius; }
 
   /**
    * @brief Sets the value of radius. AccessType: inputOutput

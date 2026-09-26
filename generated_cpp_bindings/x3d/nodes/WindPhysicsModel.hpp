@@ -86,9 +86,9 @@ public:
    * @brief Gets the value of direction. AccessType: inputOutput
    * @details direction in which wind is travelling in the form of a normalized,
    * unit vector.
-   * @return SFVec3f The current value of direction.
+   * @return const SFVec3f& The current value of direction.
    */
-  SFVec3f getDirection() const { return _direction; }
+  const SFVec3f &getDirection() const { return _direction; }
 
   /**
    * @brief Sets the value of direction. AccessType: inputOutput
@@ -104,9 +104,9 @@ public:
    * @brief Gets the value of gustiness. AccessType: inputOutput
    * @details gustiness specifies how much wind speed varies from the average
    * speed.
-   * @return SFFloat The current value of gustiness.
+   * @return const SFFloat& The current value of gustiness.
    */
-  SFFloat getGustiness() const { return _gustiness; }
+  const SFFloat &getGustiness() const { return _gustiness; }
 
   /**
    * @brief Sets the value of gustiness. AccessType: inputOutput
@@ -134,9 +134,9 @@ public:
    * @brief Gets the value of speed. AccessType: inputOutput
    * @details Initial linear speed (default is m/s) imparted to all particles
    * along their direction of movement.
-   * @return SFFloat The current value of speed.
+   * @return const SFFloat& The current value of speed.
    */
-  SFFloat getSpeed() const { return _speed; }
+  const SFFloat &getSpeed() const { return _speed; }
 
   /**
    * @brief Sets the value of speed. AccessType: inputOutput
@@ -165,9 +165,9 @@ public:
    * @details turbulence field specifies how much the wind acts directly in line
    * with the direction, and how much variation is applied in directions other
    * than the wind direction.
-   * @return SFFloat The current value of turbulence.
+   * @return const SFFloat& The current value of turbulence.
    */
-  SFFloat getTurbulence() const { return _turbulence; }
+  const SFFloat &getTurbulence() const { return _turbulence; }
 
   /**
    * @brief Sets the value of turbulence. AccessType: inputOutput

@@ -27,6 +27,13 @@ const FieldTable &PolylineEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n).getCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -43,6 +50,13 @@ const FieldTable &PolylineEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n).getCoordIndex(),
+                  &typeid(MFInt32)};
+        }
 
     });
 
@@ -61,6 +75,13 @@ const FieldTable &PolylineEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n).getDirection(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -77,6 +98,13 @@ const FieldTable &PolylineEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -96,6 +124,14 @@ const FieldTable &PolylineEmitter::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const PolylineEmitter &>(n)
+                                 .X3DParticleEmitterNode::getMass(),
+                            &typeid(SFFloat)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -112,6 +148,14 @@ const FieldTable &PolylineEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PolylineEmitter &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -130,6 +174,14 @@ const FieldTable &PolylineEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n)
+                       .X3DParticleEmitterNode::getOn(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{"set_coordIndex", X3DFieldType::MFInt32,
@@ -143,6 +195,10 @@ const FieldTable &PolylineEmitter::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -162,6 +218,14 @@ const FieldTable &PolylineEmitter::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const PolylineEmitter &>(n)
+                                 .X3DParticleEmitterNode::getSpeed(),
+                            &typeid(SFFloat)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -179,6 +243,14 @@ const FieldTable &PolylineEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n)
+                       .X3DParticleEmitterNode::getSurfaceArea(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -198,6 +270,14 @@ const FieldTable &PolylineEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n)
+                       .X3DParticleEmitterNode::getVariation(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -214,6 +294,13 @@ const FieldTable &PolylineEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -232,6 +319,13 @@ const FieldTable &PolylineEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -248,6 +342,14 @@ const FieldTable &PolylineEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PolylineEmitter &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -266,6 +368,13 @@ const FieldTable &PolylineEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -282,6 +391,13 @@ const FieldTable &PolylineEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PolylineEmitter &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

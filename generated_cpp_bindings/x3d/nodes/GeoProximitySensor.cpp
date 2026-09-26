@@ -31,6 +31,13 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n).getCenter(),
+                  &typeid(SFVec3d)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -49,6 +56,14 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n)
+                       .getCenterOfRotation_changed(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -65,6 +80,14 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -83,6 +106,14 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n)
+                       .X3DSensorNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -99,6 +130,13 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n).getEnterTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -117,6 +155,13 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n).getExitTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -134,6 +179,13 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n).getGeoCenter(),
+                  &typeid(SFVec3d)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -150,6 +202,14 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n)
+                       .getGeoCoord_changed(),
+                  &typeid(SFVec3d)};
+        }
 
     });
 
@@ -169,6 +229,13 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n).getGeoOrigin(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -185,6 +252,13 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n).getGeoSystem(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -203,6 +277,13 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -220,6 +301,14 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -236,6 +325,14 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -255,6 +352,14 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n)
+                       .getOrientation_changed(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -271,6 +376,14 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n)
+                       .getPosition_changed(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -290,6 +403,14 @@ const FieldTable &GeoProximitySensor::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const GeoProximitySensor &>(n)
+                                 .X3DEnvironmentalSensorNode::getSize(),
+                            &typeid(SFVec3f)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -306,6 +427,14 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoProximitySensor &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -324,6 +453,14 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoProximitySensor &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -340,6 +477,14 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoProximitySensor &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -358,6 +503,13 @@ const FieldTable &GeoProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoProximitySensor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -374,6 +526,14 @@ const FieldTable &GeoProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoProximitySensor &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

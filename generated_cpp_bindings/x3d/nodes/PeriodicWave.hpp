@@ -72,9 +72,9 @@ public:
   /**
    * @brief Gets the value of optionsImag. AccessType: inputOutput
    * @details imaginary coefficients for defining a waveform.
-   * @return MFFloat The current value of optionsImag.
+   * @return const MFFloat& The current value of optionsImag.
    */
-  MFFloat getOptionsImag() const { return _optionsImag; }
+  const MFFloat &getOptionsImag() const { return _optionsImag; }
 
   /**
    * @brief Sets the value of optionsImag. AccessType: inputOutput
@@ -88,9 +88,9 @@ public:
   /**
    * @brief Gets the value of optionsReal. AccessType: inputOutput
    * @details real coefficients for defining a waveform.
-   * @return MFFloat The current value of optionsReal.
+   * @return const MFFloat& The current value of optionsReal.
    */
-  MFFloat getOptionsReal() const { return _optionsReal; }
+  const MFFloat &getOptionsReal() const { return _optionsReal; }
 
   /**
    * @brief Sets the value of optionsReal. AccessType: inputOutput
@@ -106,9 +106,9 @@ public:
    * @details The type field specifies shape of waveform to play, which can be
    * one of several provided values or else 'custom' to indicate that real and
    * imaginary coefficient arrays define a custom waveform.
-   * @return PeriodicWaveTypeChoices The current value of type.
+   * @return const PeriodicWaveTypeChoices& The current value of type.
    */
-  PeriodicWaveTypeChoices getType() const { return _type; }
+  const PeriodicWaveTypeChoices &getType() const { return _type; }
 
   /**
    * @brief Sets the value of type. AccessType: inputOutput

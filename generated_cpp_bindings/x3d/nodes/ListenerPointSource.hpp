@@ -104,9 +104,9 @@ public:
    * (due to relation motion between sources and listeners) are computed by
    * browser between virtual sound sources and active listening locations, then
    * applied to received frequency at active listening locations.
-   * @return SFBool The current value of dopplerEnabled.
+   * @return const SFBool& The current value of dopplerEnabled.
    */
-  SFBool getDopplerEnabled() const { return _dopplerEnabled; }
+  const SFBool &getDopplerEnabled() const { return _dopplerEnabled; }
 
   /**
    * @brief Sets the value of dopplerEnabled. AccessType: inputOutput
@@ -121,9 +121,9 @@ public:
   /**
    * @brief Gets the value of interauralDistance. AccessType: inputOutput
    * @details The interauralDistance field is.
-   * @return SFFloat The current value of interauralDistance.
+   * @return const SFFloat& The current value of interauralDistance.
    */
-  SFFloat getInterauralDistance() const { return _interauralDistance; }
+  const SFFloat &getInterauralDistance() const { return _interauralDistance; }
 
   /**
    * @brief Sets the value of interauralDistance. AccessType: inputOutput
@@ -153,9 +153,9 @@ public:
    * @brief Gets the value of orientation. AccessType: inputOutput
    * @details Rotation (axis, angle in radians) of listening point direction
    * relative to default -Z axis direction in local coordinate system.
-   * @return SFRotation The current value of orientation.
+   * @return const SFRotation& The current value of orientation.
    */
-  SFRotation getOrientation() const { return _orientation; }
+  const SFRotation &getOrientation() const { return _orientation; }
 
   /**
    * @brief Sets the value of orientation. AccessType: inputOutput
@@ -170,9 +170,9 @@ public:
   /**
    * @brief Gets the value of position. AccessType: inputOutput
    * @details position (x, y, z in meters) relative to local coordinate system.
-   * @return SFVec3f The current value of position.
+   * @return const SFVec3f& The current value of position.
    */
-  SFVec3f getPosition() const { return _position; }
+  const SFVec3f &getPosition() const { return _position; }
 
   /**
    * @brief Sets the value of position. AccessType: inputOutput
@@ -187,9 +187,9 @@ public:
    * @brief Gets the value of trackCurrentView. AccessType: inputOutput
    * @details If trackCurrentView field is true then position and orientation
    * match avatar's (user's) current view.
-   * @return SFBool The current value of trackCurrentView.
+   * @return const SFBool& The current value of trackCurrentView.
    */
-  SFBool getTrackCurrentView() const { return _trackCurrentView; }
+  const SFBool &getTrackCurrentView() const { return _trackCurrentView; }
 
   /**
    * @brief Sets the value of trackCurrentView. AccessType: inputOutput

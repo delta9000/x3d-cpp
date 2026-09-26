@@ -71,9 +71,9 @@ public:
   /**
    * @brief Gets the value of axisOfRotation. AccessType: inputOutput
    * @details axisOfRotation direction is relative to local coordinate system.
-   * @return SFVec3f The current value of axisOfRotation.
+   * @return const SFVec3f& The current value of axisOfRotation.
    */
-  SFVec3f getAxisOfRotation() const { return _axisOfRotation; }
+  const SFVec3f &getAxisOfRotation() const { return _axisOfRotation; }
 
   /**
    * @brief Sets the value of axisOfRotation. AccessType: inputOutput

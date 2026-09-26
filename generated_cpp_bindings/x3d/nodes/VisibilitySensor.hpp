@@ -72,9 +72,9 @@ public:
   /**
    * @brief Gets the value of center. AccessType: inputOutput
    * @details Translation offset from origin of local coordinate system.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -89,9 +89,9 @@ public:
    * @brief Gets the value of enterTime. AccessType: outputOnly
    * @details Time event generated when user's camera enters visibility region
    * for sensor.
-   * @return SFTime The current value of enterTime.
+   * @return const SFTime& The current value of enterTime.
    */
-  SFTime getEnterTime() const { return _enterTime; }
+  const SFTime &getEnterTime() const { return _enterTime; }
 
   /**
    * @brief Emit an output value on enterTime. AccessType: outputOnly
@@ -108,9 +108,9 @@ public:
    * @brief Gets the value of exitTime. AccessType: outputOnly
    * @details Time event generated when user's camera exits visibility region
    * for sensor.
-   * @return SFTime The current value of exitTime.
+   * @return const SFTime& The current value of exitTime.
    */
-  SFTime getExitTime() const { return _exitTime; }
+  const SFTime &getExitTime() const { return _exitTime; }
 
   /**
    * @brief Emit an output value on exitTime. AccessType: outputOnly

@@ -84,6 +84,15 @@ const FieldTable& {{ class_name }}::fields() const {
             nullptr,
             nullptr
             {% endif %}
+            ,
+            {% if field.is_readable %}
+            [](const X3DNode& n) -> FieldView {
+                return {&dynamic_cast<const {{ class_name }}&>(n).{{ field.getter_call }}(),
+                        &typeid({{ field.cpp_type }})};
+            }
+            {% else %}
+            nullptr
+            {% endif %}
         });
         {% endfor %}
         return t;

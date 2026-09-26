@@ -68,9 +68,9 @@ public:
    * @brief Gets the value of force. AccessType: inputOutput
    * @details force field indicates strength and direction of the propelling
    * force on the particles (for example, default is Earth's gravity).
-   * @return SFVec3f The current value of force.
+   * @return const SFVec3f& The current value of force.
    */
-  SFVec3f getForce() const { return _force; }
+  const SFVec3f &getForce() const { return _force; }
 
   /**
    * @brief Sets the value of force. AccessType: inputOutput

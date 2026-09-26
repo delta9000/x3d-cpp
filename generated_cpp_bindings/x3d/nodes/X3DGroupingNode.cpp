@@ -26,6 +26,10 @@ const FieldTable &X3DGroupingNode::fields() const {
 
                           nullptr, nullptr
 
+                          ,
+
+                          nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -42,6 +46,13 @@ const FieldTable &X3DGroupingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -60,6 +71,13 @@ const FieldTable &X3DGroupingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -76,6 +94,13 @@ const FieldTable &X3DGroupingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -94,6 +119,13 @@ const FieldTable &X3DGroupingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -110,6 +142,13 @@ const FieldTable &X3DGroupingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -128,6 +167,14 @@ const FieldTable &X3DGroupingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DGroupingNode &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{"removeChildren", X3DFieldType::MFNode,
@@ -142,24 +189,35 @@ const FieldTable &X3DGroupingNode::fields() const {
 
                           nullptr, nullptr
 
+                          ,
+
+                          nullptr
+
     });
 
-    t.push_back(
-        FieldInfo{"visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const X3DGroupingNode &>(n).getVisible());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const X3DGroupingNode &>(n).getVisible());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<X3DGroupingNode &>(n).setVisible(
-                        std::any_cast<SFBool>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<X3DGroupingNode &>(n).setVisible(
+              std::any_cast<SFBool>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).getVisible(),
+                  &typeid(SFBool)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -175,6 +233,13 @@ const FieldTable &X3DGroupingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -193,6 +258,13 @@ const FieldTable &X3DGroupingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -209,6 +281,14 @@ const FieldTable &X3DGroupingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DGroupingNode &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -227,6 +307,13 @@ const FieldTable &X3DGroupingNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -243,6 +330,13 @@ const FieldTable &X3DGroupingNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DGroupingNode &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

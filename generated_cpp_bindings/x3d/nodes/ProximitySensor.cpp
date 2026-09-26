@@ -28,6 +28,13 @@ const FieldTable &ProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n).getCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -46,6 +53,14 @@ const FieldTable &ProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n)
+                       .getCenterOfRotation_changed(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -62,6 +77,14 @@ const FieldTable &ProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -80,6 +103,14 @@ const FieldTable &ProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n)
+                       .X3DSensorNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -97,24 +128,38 @@ const FieldTable &ProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n).getEnterTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"exitTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "exitTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const ProximitySensor &>(n).getExitTime());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const ProximitySensor &>(n).getExitTime());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<ProximitySensor &>(n).emitExitTime(
-                        std::any_cast<SFTime>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ProximitySensor &>(n).emitExitTime(
+              std::any_cast<SFTime>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n).getExitTime(),
+                  &typeid(SFTime)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -130,6 +175,13 @@ const FieldTable &ProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -148,6 +200,14 @@ const FieldTable &ProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -164,6 +224,14 @@ const FieldTable &ProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ProximitySensor &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -183,6 +251,14 @@ const FieldTable &ProximitySensor::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const ProximitySensor &>(n)
+                                 .getOrientation_changed(),
+                            &typeid(SFRotation)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -199,6 +275,14 @@ const FieldTable &ProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ProximitySensor &>(n).getPosition_changed(),
+              &typeid(SFVec3f)};
+        }
 
     });
 
@@ -218,6 +302,14 @@ const FieldTable &ProximitySensor::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const ProximitySensor &>(n)
+                                 .X3DEnvironmentalSensorNode::getSize(),
+                            &typeid(SFVec3f)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -234,6 +326,13 @@ const FieldTable &ProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -252,6 +351,13 @@ const FieldTable &ProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -268,6 +374,14 @@ const FieldTable &ProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ProximitySensor &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -286,6 +400,13 @@ const FieldTable &ProximitySensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -302,6 +423,13 @@ const FieldTable &ProximitySensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProximitySensor &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

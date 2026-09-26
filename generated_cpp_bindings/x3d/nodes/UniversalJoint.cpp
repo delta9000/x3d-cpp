@@ -29,6 +29,13 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).getAnchorPoint(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -44,6 +51,13 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).getAxis1(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -58,6 +72,13 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).getAxis2(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -76,6 +97,14 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n)
+                       .X3DRigidJointNode::getBody1(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -92,6 +121,14 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const UniversalJoint &>(n).getBody1AnchorPoint(),
+              &typeid(SFVec3f)};
+        }
 
     });
 
@@ -110,6 +147,13 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).getBody1Axis(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -126,6 +170,14 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n)
+                       .X3DRigidJointNode::getBody2(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -144,6 +196,14 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const UniversalJoint &>(n).getBody2AnchorPoint(),
+              &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -160,6 +220,13 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).getBody2Axis(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -178,6 +245,14 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n)
+                       .X3DRigidJointNode::getForceOutput(),
+                  &typeid(MFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -194,6 +269,13 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -212,6 +294,14 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const UniversalJoint &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -228,6 +318,13 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).getStop1Bounce(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -247,6 +344,14 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n)
+                       .getStop1ErrorCorrection(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -263,6 +368,13 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).getStop2Bounce(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -282,6 +394,14 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n)
+                       .getStop2ErrorCorrection(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -298,6 +418,13 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -316,6 +443,13 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -332,6 +466,13 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -350,6 +491,13 @@ const FieldTable &UniversalJoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -366,6 +514,13 @@ const FieldTable &UniversalJoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UniversalJoint &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

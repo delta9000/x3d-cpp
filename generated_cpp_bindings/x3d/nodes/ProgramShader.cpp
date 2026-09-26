@@ -26,6 +26,10 @@ const FieldTable &ProgramShader::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  nullptr
+
         });
 
     t.push_back(FieldInfo{
@@ -42,6 +46,13 @@ const FieldTable &ProgramShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -60,6 +71,14 @@ const FieldTable &ProgramShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n)
+                       .X3DShaderNode::getIsSelected(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(
@@ -76,6 +95,14 @@ const FieldTable &ProgramShader::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const ProgramShader &>(n)
+                                 .X3DShaderNode::getIsValid(),
+                            &typeid(SFBool)};
+                  }
 
         });
 
@@ -94,6 +121,14 @@ const FieldTable &ProgramShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n)
+                       .X3DShaderNode::getLanguage(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -111,6 +146,14 @@ const FieldTable &ProgramShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ProgramShader &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -126,6 +169,13 @@ const FieldTable &ProgramShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n).getPrograms(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -144,6 +194,13 @@ const FieldTable &ProgramShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -160,6 +217,13 @@ const FieldTable &ProgramShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -178,6 +242,13 @@ const FieldTable &ProgramShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -195,6 +266,13 @@ const FieldTable &ProgramShader::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -211,6 +289,13 @@ const FieldTable &ProgramShader::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProgramShader &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

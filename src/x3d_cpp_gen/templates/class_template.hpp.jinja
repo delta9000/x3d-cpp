@@ -121,12 +121,12 @@ public:
     {% endif %}
 
     {% for field in fields %}
-    {#- Getter: readable for inputOutput / initializeOnly / outputOnly. MFNode
-        getters return const& -- copying the child vector on every read bumps
-        every child's refcount for nothing (grouping-heavy scenes poll these per
-        tick); every other type keeps the uniform by-value contract. -#}
+    {#- Getter: readable for inputOutput / initializeOnly / outputOnly. Every
+        getter returns const& to the member: a by-value getter copied whole MF
+        vectors and strings (and bumped node refcounts) on every read, and the
+        reflection `view` thunk borrows through the same accessor (ADR-0049). -#}
     {% if field.is_readable %}
-    {%- set getter_return = "const MFNode&" if field.cpp_type == "MFNode" else field.cpp_type %}
+    {%- set getter_return = "const " ~ field.cpp_type ~ "&" %}
     /**
      * @brief Gets the value of {{ field.x3d_name }}. AccessType: {{ field.access_type }}
      * @details {{ field.description }}

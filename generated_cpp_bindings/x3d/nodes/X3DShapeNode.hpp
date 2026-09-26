@@ -102,9 +102,9 @@ public:
   /**
    * @brief Gets the value of appearance. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of appearance.
+   * @return const SFNode& The current value of appearance.
    */
-  SFNode getAppearance() const { return _appearance; }
+  const SFNode &getAppearance() const { return _appearance; }
 
   /**
    * @brief Acceptable node types for the appearance field.
@@ -128,9 +128,9 @@ public:
   /**
    * @brief Gets the value of bboxCenter. AccessType: initializeOnly
    * @details
-   * @return SFVec3f The current value of bboxCenter.
+   * @return const SFVec3f& The current value of bboxCenter.
    */
-  SFVec3f getBboxCenter() const { return _bboxCenter; }
+  const SFVec3f &getBboxCenter() const { return _bboxCenter; }
   /**
    * @brief Data-layer write of bboxCenter (reader/init ingest path).
    * @details bboxCenter is initializeOnly: author-settable at parse
@@ -141,9 +141,9 @@ public:
   /**
    * @brief Gets the value of bboxDisplay. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of bboxDisplay.
+   * @return const SFBool& The current value of bboxDisplay.
    */
-  SFBool getBboxDisplay() const { return _bboxDisplay; }
+  const SFBool &getBboxDisplay() const { return _bboxDisplay; }
 
   /**
    * @brief Sets the value of bboxDisplay. AccessType: inputOutput
@@ -155,9 +155,9 @@ public:
   /**
    * @brief Gets the value of bboxSize. AccessType: initializeOnly
    * @details
-   * @return SFVec3f The current value of bboxSize.
+   * @return const SFVec3f& The current value of bboxSize.
    */
-  SFVec3f getBboxSize() const { return _bboxSize; }
+  const SFVec3f &getBboxSize() const { return _bboxSize; }
   /**
    * @brief Data-layer write of bboxSize (reader/init ingest path).
    * @details bboxSize is initializeOnly: author-settable at parse
@@ -168,9 +168,9 @@ public:
   /**
    * @brief Gets the value of castShadow. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of castShadow.
+   * @return const SFBool& The current value of castShadow.
    */
-  SFBool getCastShadow() const { return _castShadow; }
+  const SFBool &getCastShadow() const { return _castShadow; }
 
   /**
    * @brief Sets the value of castShadow. AccessType: inputOutput
@@ -182,9 +182,9 @@ public:
   /**
    * @brief Gets the value of geometry. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of geometry.
+   * @return const SFNode& The current value of geometry.
    */
-  SFNode getGeometry() const { return _geometry; }
+  const SFNode &getGeometry() const { return _geometry; }
 
   /**
    * @brief Acceptable node types for the geometry field.
@@ -208,9 +208,9 @@ public:
   /**
    * @brief Gets the value of visible. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of visible.
+   * @return const SFBool& The current value of visible.
    */
-  SFBool getVisible() const { return _visible; }
+  const SFBool &getVisible() const { return _visible; }
 
   /**
    * @brief Sets the value of visible. AccessType: inputOutput

@@ -159,9 +159,9 @@ public:
   /**
    * @brief Gets the value of center. AccessType: inputOutput
    * @details Translation offset from origin of local coordinate system.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -203,9 +203,9 @@ public:
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Author-provided prose that describes intended purpose of this
    * node.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -249,9 +249,9 @@ public:
    * @brief Gets the value of limitOrientation. AccessType: inputOutput
    * @details Orientation of upper/lower rotation limits, relative to HAnimJoint
    * center.
-   * @return SFRotation The current value of limitOrientation.
+   * @return const SFRotation& The current value of limitOrientation.
    */
-  SFRotation getLimitOrientation() const { return _limitOrientation; }
+  const SFRotation &getLimitOrientation() const { return _limitOrientation; }
 
   /**
    * @brief Sets the value of limitOrientation. AccessType: inputOutput
@@ -272,9 +272,9 @@ public:
   /**
    * @brief Gets the value of llimit. AccessType: inputOutput
    * @details Lower limit for minimum joint rotation in radians.
-   * @return MFFloat The current value of llimit.
+   * @return const MFFloat& The current value of llimit.
    */
-  MFFloat getLlimit() const { return _llimit; }
+  const MFFloat &getLlimit() const { return _llimit; }
 
   /**
    * @brief Sets the value of llimit. AccessType: inputOutput
@@ -289,9 +289,9 @@ public:
    * @brief Gets the value of name. AccessType: inputOutput
    * @details Unique name attribute must be defined so that HAnimJoint node can
    * be identified at run time for animation purposes.
-   * @return SFString The current value of name.
+   * @return const SFString& The current value of name.
    */
-  SFString getName() const { return _name; }
+  const SFString &getName() const { return _name; }
 
   /**
    * @brief Sets the value of name. AccessType: inputOutput
@@ -342,9 +342,9 @@ public:
   /**
    * @brief Gets the value of rotation. AccessType: inputOutput
    * @details Orientation of children relative to local coordinate system.
-   * @return SFRotation The current value of rotation.
+   * @return const SFRotation& The current value of rotation.
    */
-  SFRotation getRotation() const { return _rotation; }
+  const SFRotation &getRotation() const { return _rotation; }
 
   /**
    * @brief Sets the value of rotation. AccessType: inputOutput
@@ -359,9 +359,9 @@ public:
    * @brief Gets the value of scale. AccessType: inputOutput
    * @details Non-uniform x-y-z scale of child coordinate system, adjusted by
    * center and scaleOrientation.
-   * @return SFVec3f The current value of scale.
+   * @return const SFVec3f& The current value of scale.
    */
-  SFVec3f getScale() const { return _scale; }
+  const SFVec3f &getScale() const { return _scale; }
 
   /**
    * @brief Sets the value of scale. AccessType: inputOutput
@@ -377,9 +377,9 @@ public:
    * @brief Gets the value of scaleOrientation. AccessType: inputOutput
    * @details Preliminary rotation of coordinate system before scaling (to allow
    * scaling around arbitrary orientations).
-   * @return SFRotation The current value of scaleOrientation.
+   * @return const SFRotation& The current value of scaleOrientation.
    */
-  SFRotation getScaleOrientation() const { return _scaleOrientation; }
+  const SFRotation &getScaleOrientation() const { return _scaleOrientation; }
 
   /**
    * @brief Sets the value of scaleOrientation. AccessType: inputOutput
@@ -401,9 +401,9 @@ public:
    * @brief Gets the value of skinCoordIndex. AccessType: inputOutput
    * @details Coordinate index values referencing which vertices are influenced
    * by the HAnimJoint.
-   * @return MFInt32 The current value of skinCoordIndex.
+   * @return const MFInt32& The current value of skinCoordIndex.
    */
-  MFInt32 getSkinCoordIndex() const { return _skinCoordIndex; }
+  const MFInt32 &getSkinCoordIndex() const { return _skinCoordIndex; }
 
   /**
    * @brief Sets the value of skinCoordIndex. AccessType: inputOutput
@@ -440,9 +440,9 @@ public:
    * @brief Gets the value of skinCoordWeight. AccessType: inputOutput
    * @details Weight deformation values for the corresponding values in the
    * skinCoordIndex field.
-   * @return MFFloat The current value of skinCoordWeight.
+   * @return const MFFloat& The current value of skinCoordWeight.
    */
-  MFFloat getSkinCoordWeight() const { return _skinCoordWeight; }
+  const MFFloat &getSkinCoordWeight() const { return _skinCoordWeight; }
 
   /**
    * @brief Sets the value of skinCoordWeight. AccessType: inputOutput
@@ -462,9 +462,9 @@ public:
    * @details A scale factor of (1 - stiffness) is applied around the
    * corresponding axis (X, Y, or Z for entries 0, 1 and 2 of the stiffness
    * field).
-   * @return MFFloat The current value of stiffness.
+   * @return const MFFloat& The current value of stiffness.
    */
-  MFFloat getStiffness() const { return _stiffness; }
+  const MFFloat &getStiffness() const { return _stiffness; }
 
   /**
    * @brief Sets the value of stiffness. AccessType: inputOutput
@@ -499,9 +499,9 @@ public:
   /**
    * @brief Gets the value of translation. AccessType: inputOutput
    * @details Position of children relative to local coordinate system.
-   * @return SFVec3f The current value of translation.
+   * @return const SFVec3f& The current value of translation.
    */
-  SFVec3f getTranslation() const { return _translation; }
+  const SFVec3f &getTranslation() const { return _translation; }
 
   /**
    * @brief Sets the value of translation. AccessType: inputOutput
@@ -515,9 +515,9 @@ public:
   /**
    * @brief Gets the value of ulimit. AccessType: inputOutput
    * @details Upper limit for maximum joint rotation in radians.
-   * @return MFFloat The current value of ulimit.
+   * @return const MFFloat& The current value of ulimit.
    */
-  MFFloat getUlimit() const { return _ulimit; }
+  const MFFloat &getUlimit() const { return _ulimit; }
 
   /**
    * @brief Sets the value of ulimit. AccessType: inputOutput

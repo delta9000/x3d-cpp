@@ -80,9 +80,9 @@ public:
    * @brief Gets the value of alpha. AccessType: inputOutput
    * @details The alpha field defines the alpha (1-transparency) base value for
    * mode operations.
-   * @return SFFloat The current value of alpha.
+   * @return const SFFloat& The current value of alpha.
    */
-  SFFloat getAlpha() const { return _alpha; }
+  const SFFloat &getAlpha() const { return _alpha; }
 
   /**
    * @brief Sets the value of alpha. AccessType: inputOutput
@@ -109,9 +109,9 @@ public:
   /**
    * @brief Gets the value of color. AccessType: inputOutput
    * @details The color field defines the RGB base values for mode operations.
-   * @return SFColor The current value of color.
+   * @return const SFColor& The current value of color.
    */
-  SFColor getColor() const { return _color; }
+  const SFColor &getColor() const { return _color; }
 
   /**
    * @brief Sets the value of color. AccessType: inputOutput
@@ -145,9 +145,9 @@ public:
    * @brief Gets the value of function. AccessType: inputOutput
    * @details function operators COMPLEMENT or ALPHAREPLICATE can be applied
    * after the mode blending operation.
-   * @return MFString The current value of function.
+   * @return const MFString& The current value of function.
    */
-  MFString getFunction() const { return _function; }
+  const MFString &getFunction() const { return _function; }
 
   /**
    * @brief Sets the value of function. AccessType: inputOutput
@@ -163,9 +163,9 @@ public:
    * @brief Gets the value of mode. AccessType: inputOutput
    * @details mode field indicates the type of blending operation, both for
    * color and for alpha channel.
-   * @return MFString The current value of mode.
+   * @return const MFString& The current value of mode.
    */
-  MFString getMode() const { return _mode; }
+  const MFString &getMode() const { return _mode; }
 
   /**
    * @brief Sets the value of mode. AccessType: inputOutput
@@ -181,9 +181,9 @@ public:
    * @brief Gets the value of source. AccessType: inputOutput
    * @details source field determines whether each image source is treated as
    * DIFFUSE, SPECULAR or a multiplicative FACTOR.
-   * @return MFString The current value of source.
+   * @return const MFString& The current value of source.
    */
-  MFString getSource() const { return _source; }
+  const MFString &getSource() const { return _source; }
 
   /**
    * @brief Sets the value of source. AccessType: inputOutput

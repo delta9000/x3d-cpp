@@ -93,9 +93,9 @@ public:
    * @brief Gets the value of absorption. AccessType: inputOutput
    * @details specifies the sound absorption coefficient of a surface, meaning
    * the ratio of sound intensity not reflected by a surface.
-   * @return SFFloat The current value of absorption.
+   * @return const SFFloat& The current value of absorption.
    */
-  SFFloat getAbsorption() const { return _absorption; }
+  const SFFloat &getAbsorption() const { return _absorption; }
 
   /**
    * @brief Sets the value of absorption. AccessType: inputOutput
@@ -123,9 +123,9 @@ public:
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Author-provided prose that describes intended purpose of the url
    * asset.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -141,9 +141,9 @@ public:
    * @brief Gets the value of diffuse. AccessType: inputOutput
    * @details diffuse coefficient of sound reflection indicates how much of the
    * incident sound energy is reflected back in multiple directions.
-   * @return SFFloat The current value of diffuse.
+   * @return const SFFloat& The current value of diffuse.
    */
-  SFFloat getDiffuse() const { return _diffuse; }
+  const SFFloat &getDiffuse() const { return _diffuse; }
 
   /**
    * @brief Sets the value of diffuse. AccessType: inputOutput
@@ -170,9 +170,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details Enables/disables node operation.
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -186,9 +186,9 @@ public:
    * @details sound refraction coefficient of a medium, which determines change
    * in propagation direction of sound wave when obliquely crossing boundary
    * between two mediums where its speed is different.
-   * @return SFFloat The current value of refraction.
+   * @return const SFFloat& The current value of refraction.
    */
-  SFFloat getRefraction() const { return _refraction; }
+  const SFFloat &getRefraction() const { return _refraction; }
 
   /**
    * @brief Sets the value of refraction. AccessType: inputOutput
@@ -218,9 +218,9 @@ public:
    * @details specular coefficient of sound reflection striking a plane surface,
    * directly reflected back into space, where angle of reflection equals angle
    * of incidence.
-   * @return SFFloat The current value of specular.
+   * @return const SFFloat& The current value of specular.
    */
-  SFFloat getSpecular() const { return _specular; }
+  const SFFloat &getSpecular() const { return _specular; }
 
   /**
    * @brief Sets the value of specular. AccessType: inputOutput

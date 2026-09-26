@@ -28,6 +28,13 @@ const FieldTable &LineProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LineProperties &>(n).getApplied(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +52,13 @@ const FieldTable &LineProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LineProperties &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -61,6 +75,13 @@ const FieldTable &LineProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LineProperties &>(n).getLinetype(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -80,6 +101,14 @@ const FieldTable &LineProperties::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const LineProperties &>(n)
+                                 .getLinewidthScaleFactor(),
+                            &typeid(SFFloat)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -96,6 +125,14 @@ const FieldTable &LineProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const LineProperties &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -114,6 +151,13 @@ const FieldTable &LineProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LineProperties &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -130,6 +174,13 @@ const FieldTable &LineProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LineProperties &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -148,6 +199,13 @@ const FieldTable &LineProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LineProperties &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -165,6 +223,13 @@ const FieldTable &LineProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LineProperties &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -181,6 +246,13 @@ const FieldTable &LineProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const LineProperties &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

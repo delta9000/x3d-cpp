@@ -70,9 +70,9 @@ public:
    * @brief Gets the value of parameter. AccessType: inputOutput
    * @details If provided, parameter tells the X3D player where to to redirect
    * the loaded url.
-   * @return MFString The current value of parameter.
+   * @return const MFString& The current value of parameter.
    */
-  MFString getParameter() const { return _parameter; }
+  const MFString &getParameter() const { return _parameter; }
 
   /**
    * @brief Sets the value of parameter. AccessType: inputOutput

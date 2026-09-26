@@ -66,9 +66,9 @@ public:
   /**
    * @brief Gets the value of point. AccessType: inputOutput
    * @details point contains a set of 3D coordinate (triplet) point values.
-   * @return MFVec3d The current value of point.
+   * @return const MFVec3d& The current value of point.
    */
-  MFVec3d getPoint() const { return _point; }
+  const MFVec3d &getPoint() const { return _point; }
 
   /**
    * @brief Sets the value of point. AccessType: inputOutput

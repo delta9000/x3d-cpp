@@ -131,9 +131,11 @@ public:
    * @brief Gets the value of oversample. AccessType: inputOutput
    * @details The oversample field is specifies what type of oversampling (if
    * any) should be used when applying the shaping curve.
-   * @return WaveShaperOversampleChoices The current value of oversample.
+   * @return const WaveShaperOversampleChoices& The current value of oversample.
    */
-  WaveShaperOversampleChoices getOversample() const { return _oversample; }
+  const WaveShaperOversampleChoices &getOversample() const {
+    return _oversample;
+  }
 
   /**
    * @brief Sets the value of oversample. AccessType: inputOutput
