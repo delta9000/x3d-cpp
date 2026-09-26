@@ -68,7 +68,8 @@ std::size_t n        = ex.itemCount();
 
 // Scene-level read-outs (recomputed per call).
 CameraDesc    cam  = ex.camera();
-BackgroundDesc bg  = ex.background();
+BackgroundDesc bg  = ex.background(); // sky/ground gradient + six panorama face TextureRefs
+                                      // (Background *Url / TextureBackground *Texture) + transparency.
 FogDesc       fog  = ex.fog(); // bound Fog (§24.4.2); visibilityRange world-scaled, 0 = off.
 std::vector<LightDesc> lights = ex.lights(); // fresh collect; or:
 const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // from last fullSnapshot()

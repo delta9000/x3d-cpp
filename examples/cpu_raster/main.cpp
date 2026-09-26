@@ -181,34 +181,35 @@ int main(int argc, char **argv) {
   opt.height = height;
   opt.glyphAtlas = &font.atlas;
 
-  // Skybox: resolve the bound Background's six panorama faces (if any) through
-  // the same proc:/.ppm/.png resolver used for ImageTexture, then bind them.
+  // Skybox: the bound Background's six panorama faces from the extraction
+  // seam (BackgroundDesc: Background *Url lists or TextureBackground face
+  // nodes), url faces resolved through the same proc:/.ppm/.png resolver used
+  // for ImageTexture. transparency 1 means the background does not draw.
   cr::render_detail::SkyboxTextures skybox;
   {
-    ex::TextureResolver texResolve = cr::makeTextureResolver(dirOf(scenePath));
-    if (const X3DNode *bg = ctx.boundBackground()) {
-      auto faceTex = [&](const char *field) -> cr::Texture {
-        auto urls = x3d::runtime::geombounds::getField<MFString>(*bg, field, {});
-        for (const std::string &u : urls) { // ordered fallback
-          ex::TexturePixelResult r = texResolve(u);
-          if (r.ready() && !r.pixels->rgba.empty()) {
-            const auto &p = *r.pixels;
-            // srgb=false: the skybox is written straight to the display
-            // framebuffer (no lighting, no shader gamma re-encode), so sample
-            // the faces as display-referred — not decoded to linear.
-            return cr::Texture::fromRGBA8(p.rgba.data(), static_cast<int>(p.width),
-                                          static_cast<int>(p.height), true, true,
-                                          /*srgb=*/false);
-          }
-        }
-        return {};
-      };
-      skybox.front = faceTex("frontUrl");
-      skybox.back = faceTex("backUrl");
-      skybox.right = faceTex("rightUrl");
-      skybox.left = faceTex("leftUrl");
-      skybox.top = faceTex("topUrl");
-      skybox.bottom = faceTex("bottomUrl");
+    const ex::BackgroundDesc bg = extractor.background();
+    std::vector<ex::TextureRef> faces{bg.front, bg.back, bg.right, bg.left, bg.top, bg.bottom};
+    ex::resolveTextureRefs(faces, cr::makeTextureResolver(dirOf(scenePath)));
+    auto faceTex = [](const ex::TextureRef &r) -> cr::Texture {
+      // srgb=false: the skybox is written straight to the display framebuffer
+      // (no lighting, no shader gamma re-encode), so sample the faces as
+      // display-referred — not decoded to linear.
+      if (r.source == ex::TextureRef::Source::Inline) return cr::Texture::fromRef(r, /*srgb=*/false);
+      if (r.resolvedPixels.ready() && !r.resolvedPixels.pixels->rgba.empty()) {
+        const auto &p = *r.resolvedPixels.pixels;
+        return cr::Texture::fromRGBA8(p.rgba.data(), static_cast<int>(p.width),
+                                      static_cast<int>(p.height), true, true,
+                                      /*srgb=*/false);
+      }
+      return {};
+    };
+    if (bg.transparency < 1.0f) {
+      skybox.front = faceTex(faces[0]);
+      skybox.back = faceTex(faces[1]);
+      skybox.right = faceTex(faces[2]);
+      skybox.left = faceTex(faces[3]);
+      skybox.top = faceTex(faces[4]);
+      skybox.bottom = faceTex(faces[5]);
     }
   }
   if (skybox.any()) opt.skybox = &skybox;

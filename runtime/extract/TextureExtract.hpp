@@ -326,6 +326,10 @@ inline void resolveTextureRefs(
     std::unordered_map<std::string, TexturePixelResult> *memo = nullptr) {
   if (!resolver) return; // defensive: never call a null std::function.
   for (TextureRef &ref : refs) {
+    if (ref.source == TextureRef::Source::Cube) { // resolve each face (CMT-1)
+      resolveTextureRefs(ref.cubeFaces, resolver, memo);
+      continue;
+    }
     if (ref.source != TextureRef::Source::Url) continue; // Inline/Movie: skip.
     TexturePixelResult result = TexturePixelResult::makeFailed();
     for (const std::string &url : ref.url) {

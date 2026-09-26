@@ -1313,10 +1313,9 @@
   interfaces: [X3DBackgroundNode]
   clause: "24.4.5"
   severity: major
-  status: open
-  behaves: inert
+  status: closed
   summary: "TextureBackground texture faces never read — renders identically to a plain Background."
-  note: "Only binding-stack recognition exists (BindingSystem.hpp:80-85); the six face-texture fields (back/front/left/right/top/bottomTexture) are read nowhere in runtime/. `behaves: inert` forces the matrix to ✗ for the node's own feature; full skybox texturing tracking blocked on cube/sky texture render support. (sweep 2026-06-25)"
+  note: "Closed 2026-09-26: the six TextureBackground face textures reach BackgroundDesc via refOf (ImageTexture -> Url, PixelTexture -> Inline, MovieTexture -> Movie); cpu_raster renders them as the skybox (see SEAM-BACKGROUND)."
 - id: GEO-1
   nodes: [GeoViewpoint]
   component: Geospatial
@@ -1347,9 +1346,9 @@
   component: CubeMapTexturing
   clause: "34.4.1"
   severity: major
-  status: open
+  status: closed
   summary: "ComposedCubeMapTexture face textures silently dropped by MaterialSystem refOf()."
-  note: "runtime/extract/MaterialSystem.hpp:98-125 dispatches PixelTexture/MovieTexture then falls through to a 'url' branch; ComposedCubeMapTexture has no url field (faces are SFNode children), so it yields an empty TextureRef. No runtime code reads the six face-texture SFNodes. At minimum refOf() should recognise X3DEnvironmentTextureNode rather than silently mis-bucketing it. (sweep 2026-06-25)"
+  note: "Closed 2026-09-26: refOf maps ComposedCubeMapTexture to Source::Cube with cubeFaces in front/back/left/right/top/bottom order, and resolveTextureRefs resolves each face (background_desc_test). No bundled renderer samples cube maps yet; ImageCubeMapTexture stays a Url ref and GeneratedCubeMapTexture is not rendered."
 - id: LAY-1
   nodes: [LayerSet]
   component: Layering
@@ -2125,14 +2124,9 @@
   component: EnvironmentalEffects
   clause: "24.4.2, 24.4.4"
   severity: major
-  status: open
+  status: closed
   summary: BackgroundDesc surfaces only sky/ground gradient — the six panorama *Url faces, TextureBackground textures, and Background.transparency never reach the seam; the gallery skybox only works because the example reads the *Url fields straight off the node.
-  note: >-
-    background() SceneExtractor.hpp:351-363 + BackgroundDesc RenderItem.hpp:520-527 carry no panorama;
-    examples/cpu_raster/main.cpp:204-209 bypasses the seam via node reflection, masking the gap. Fix: put
-    the six *Url slots, transparency, and TextureBackground texture nodes on BackgroundDesc so the skybox
-    is reproducible from the contract. (extraction-seam review.)
-
+  note: "Closed 2026-09-26: BackgroundDesc carries front/back/left/right/top/bottom TextureRefs (Background *Url lists as Source::Url, TextureBackground face nodes through refOf) plus transparency and hasPanorama(). cpu_raster builds its skybox from the descriptor and no longer reads the node (background_desc_test). poc_renderer still draws only the gradient."
 - id: SEAM-2D-NURBS
   nodes: [Disk2D, Arc2D, Circle2D, Rectangle2D]
   component: Geometry2D

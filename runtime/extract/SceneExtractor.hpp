@@ -419,6 +419,20 @@ public:
           geombounds::getField<std::vector<SFColor>>(*b, "groundColor", {});
       bg.groundAngle =
           geombounds::getField<std::vector<float>>(*b, "groundAngle", {});
+      bg.transparency = geombounds::getField<float>(*b, "transparency", 0.0f);
+      // Panorama faces (§24.4.2 *Url lists, §24.4.5 *Texture nodes).
+      const bool textured = b->nodeTypeName() == "TextureBackground";
+      TextureRef *faces[] = {&bg.front, &bg.back, &bg.left, &bg.right, &bg.top, &bg.bottom};
+      const char *names[] = {"front", "back", "left", "right", "top", "bottom"};
+      for (int i = 0; i < 6; ++i) {
+        if (textured) {
+          *faces[i] = matsys::refOf(geombounds::getNode(*b, (std::string(names[i]) + "Texture").c_str()),
+                            TextureRef::Slot::BaseColor);
+        } else {
+          faces[i]->source = TextureRef::Source::Url;
+          faces[i]->url = geombounds::getField<MFString>(*b, (std::string(names[i]) + "Url").c_str(), {});
+        }
+      }
     }
     bg.backgroundChanged = true;
     return bg;

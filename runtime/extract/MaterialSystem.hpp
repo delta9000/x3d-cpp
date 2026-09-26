@@ -106,6 +106,12 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
   } else if (t == "MovieTexture") {
     ref.source = TextureRef::Source::Movie;
     ref.url = geombounds::getField<MFString>(*texNode, "url", {});
+  } else if (t == "ComposedCubeMapTexture") {
+    // §34.4.1: six SFNode face textures, no url (CMT-1).
+    ref.source = TextureRef::Source::Cube;
+    for (const char *face : {"frontTexture", "backTexture", "leftTexture", "rightTexture",
+                             "topTexture", "bottomTexture"})
+      ref.cubeFaces.push_back(refOf(geombounds::getNode(*texNode, face), slot));
   } else {
     // ImageTexture and the long tail: a URL list, surfaced verbatim.
     ref.source = TextureRef::Source::Url;

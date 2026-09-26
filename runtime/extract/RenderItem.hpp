@@ -282,6 +282,7 @@ struct TextureRef {
     Url,    // ImageTexture / url list — resolve outside the SDK.
     Inline, // PixelTexture — pixels carried inline below.
     Movie,  // MovieTexture — descriptor-only, not exercised by PoC.
+    Cube,   // ComposedCubeMapTexture (§34.4.1): six face refs in cubeFaces.
     Buffer  // Phase 1 binary extension: raw bytes provided by the embedder.
             // bufferBytes carries the raw encoded bytes; mimeHint is a MIME
             // type hint ("image/png", "image/jpeg", etc.). The SDK does NOT
@@ -299,6 +300,9 @@ struct TextureRef {
   SFImage inlinePixels;    // PixelTexture content when source == Inline.
   int channel = 0;         // MultiTexture stage; descriptor-only, not exercised by PoC.
   SFString texCoordMapping; // X3D v4 xxxTextureMapping label; empty = UV set 0.
+  // Source::Cube only: the six face refs in the order front, back, left,
+  // right, top, bottom (an unauthored face is a default Url ref, empty url).
+  std::vector<TextureRef> cubeFaces;
 
   // T-TEX (v1-closure): resolved decoded pixels, threaded by TextureExtract.hpp
   // after the embedder's TextureResolver callback returns. Starts as makeFailed()
@@ -593,6 +597,27 @@ struct BackgroundDesc {
   std::vector<float> skyAngle;
   std::vector<SFColor> groundColor;
   std::vector<float> groundAngle;
+
+  // Panorama cube (§24.4.1/§24.4.4): one TextureRef per face, populated for both
+  // Background (from the six *Url MFString fields, Source::Url) and
+  // TextureBackground (from the six *Texture SFNodes). Order is
+  // front, back, left, right, top, bottom. A face is an empty (default) ref
+  // when unauthored; `hasPanorama` is true when ANY face carries content
+  // (a url entry, inline pixels, or a resolved cube ref). Faces are displayed
+  // as authored (no sRGB decode) per ADR-0027.
+  TextureRef front, back, left, right, top, bottom;
+  bool hasPanorama() const {
+    auto any = [](const TextureRef &r) {
+      return !r.url.empty() || r.source == TextureRef::Source::Inline ||
+             !r.cubeFaces.empty();
+    };
+    return any(front) || any(back) || any(left) || any(right) || any(top) ||
+           any(bottom);
+  }
+
+  // §24.4.1 transparency: 0 = opaque background, 1 = fully transparent (the
+  // background does not draw). Default 0 (plain Background has no such field).
+  float transparency = 0.0f;
 
   bool backgroundChanged = false; // surfaced for a caching consumer.
 };

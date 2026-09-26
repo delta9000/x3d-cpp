@@ -10,6 +10,6 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Immersive, Full._
 
 ## Findings
 
-- **CMT-1** [major/OPEN] — §34.4.1: ComposedCubeMapTexture face textures silently dropped by MaterialSystem refOf().
-  - runtime/extract/MaterialSystem.hpp:98-125 dispatches PixelTexture/MovieTexture then falls through to a 'url' branch; ComposedCubeMapTexture has no url field (faces are SFNode children), so it yields an empty TextureRef. No runtime code reads the six face-texture SFNodes. At minimum refOf() should recognise X3DEnvironmentTextureNode rather than silently mis-bucketing it. (sweep 2026-06-25)
+- **CMT-1** [major/CLOSED] — §34.4.1: ComposedCubeMapTexture face textures silently dropped by MaterialSystem refOf().
+  - Closed 2026-09-26: refOf maps ComposedCubeMapTexture to Source::Cube with cubeFaces in front/back/left/right/top/bottom order, and resolveTextureRefs resolves each face (background_desc_test). No bundled renderer samples cube maps yet; ImageCubeMapTexture stays a Url ref and GeneratedCubeMapTexture is not rendered.
 

@@ -604,7 +604,7 @@
       "name": "EnvironmentalEffects",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "7.2.2; 24.4.2, 24.4.4",
           "exists": true,
@@ -692,7 +692,7 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "7.2.2; 24.4.5; 24.4.2, 24.4.4",
           "exists": true,
@@ -8644,7 +8644,6 @@
       "summary": "Fog is inert \u2014 bound and round-tripped, but no fog effect reaches the shader."
     },
     {
-      "behaves": "inert",
       "clause": "24.4.5",
       "id": "ENV-11",
       "interfaces": [
@@ -8653,9 +8652,9 @@
       "nodes": [
         "TextureBackground"
       ],
-      "note": "Only binding-stack recognition exists (BindingSystem.hpp:80-85); the six face-texture fields (back/front/left/right/top/bottomTexture) are read nowhere in runtime/. `behaves: inert` forces the matrix to \u2717 for the node's own feature; full skybox texturing tracking blocked on cube/sky texture render support. (sweep 2026-06-25)",
+      "note": "Closed 2026-09-26: the six TextureBackground face textures reach BackgroundDesc via refOf (ImageTexture -> Url, PixelTexture -> Inline, MovieTexture -> Movie); cpu_raster renders them as the skybox (see SEAM-BACKGROUND).",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "TextureBackground texture faces never read \u2014 renders identically to a plain Background."
     },
     {
@@ -8711,9 +8710,9 @@
       "nodes": [
         "ComposedCubeMapTexture"
       ],
-      "note": "runtime/extract/MaterialSystem.hpp:98-125 dispatches PixelTexture/MovieTexture then falls through to a 'url' branch; ComposedCubeMapTexture has no url field (faces are SFNode children), so it yields an empty TextureRef. No runtime code reads the six face-texture SFNodes. At minimum refOf() should recognise X3DEnvironmentTextureNode rather than silently mis-bucketing it. (sweep 2026-06-25)",
+      "note": "Closed 2026-09-26: refOf maps ComposedCubeMapTexture to Source::Cube with cubeFaces in front/back/left/right/top/bottom order, and resolveTextureRefs resolves each face (background_desc_test). No bundled renderer samples cube maps yet; ImageCubeMapTexture stays a Url ref and GeneratedCubeMapTexture is not rendered.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "ComposedCubeMapTexture face textures silently dropped by MaterialSystem refOf()."
     },
     {
@@ -9602,9 +9601,9 @@
         "Background",
         "TextureBackground"
       ],
-      "note": "background() SceneExtractor.hpp:351-363 + BackgroundDesc RenderItem.hpp:520-527 carry no panorama; examples/cpu_raster/main.cpp:204-209 bypasses the seam via node reflection, masking the gap. Fix: put the six *Url slots, transparency, and TextureBackground texture nodes on BackgroundDesc so the skybox is reproducible from the contract. (extraction-seam review.)",
+      "note": "Closed 2026-09-26: BackgroundDesc carries front/back/left/right/top/bottom TextureRefs (Background *Url lists as Source::Url, TextureBackground face nodes through refOf) plus transparency and hasPanorama(). cpu_raster builds its skybox from the descriptor and no longer reads the node (background_desc_test). poc_renderer still draws only the gradient.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "BackgroundDesc surfaces only sky/ground gradient \u2014 the six panorama *Url faces, TextureBackground textures, and Background.transparency never reach the seam; the gallery skybox only works because the example reads the *Url fields straight off the node."
     },
     {
@@ -9848,7 +9847,7 @@
     ]
   },
   "summary": {
-    "closed_count": 173,
+    "closed_count": 176,
     "component_count": 36,
     "deferred_count": 30,
     "finding_count": 221,
@@ -9867,7 +9866,6 @@
       "ReceiverPdu",
       "SignalPdu",
       "StreamAudioSource",
-      "TextureBackground",
       "TransmitterPdu",
       "VolumePickSensor",
       "WaveShaper"
@@ -9875,7 +9873,7 @@
     "open_by_severity": {
       "critical": 2,
       "low": 3,
-      "major": 23,
+      "major": 20,
       "minor": 20
     }
   },
