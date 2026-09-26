@@ -11,6 +11,13 @@ The single zoom-out for X3D SDK conformance. **Start at [`INDEX.md`](INDEX.md).*
 | [`model.json`](model.json) | machine/agent/RAG-queryable merged model | generated — don't edit |
 | [`findings.yaml`](findings.yaml) | **behavioral judgments — the source of truth** | ✏️ **edit this** |
 | [`profiles.yaml`](profiles.yaml) | ISO profile → component-level reference table | ✏️ reviewed reference |
+| [`sai-services.yaml`](sai-services.yaml) | x3d-cpp's SAI service register (rows split out of `x3d-sai`, ADR-0047) | ✏️ **edit this** |
+
+The SAI service register is separate from `findings.yaml`: it records which ISO
+19775-2 services x3d-cpp implements and the CTest/doctest case proving each. Its
+own gate is `mise run sai-services` (`scripts/check_sai_services.py`), which
+validates the schema and that every cited test name exists in the C++ sources;
+`tests/test_sai_services.py` runs the same check under pytest.
 
 ## The split: facts vs judgments
 

@@ -104,3 +104,11 @@ assertion, since neither repo can resolve the other's CTest names.
 The pre-split branch head `8e2a000` is preserved as the tag
 `archive/sai-semantic-kernel`. That tag also retains 18 non-SAI planning documents that
 existed only on that branch.
+
+## Update — 2026-09-26
+
+The 29 x3d-cpp rows became a working register: they now live at
+`docs/conformance/sai-services.yaml`, carrying a `schema_version` and their own
+`defaults:` merge anchors, and are validated by `scripts/check_sai_services.py`
+(`mise run sai-services`, also run under `uv run pytest`). The first validator run
+found four cited evidence names with no x3d-cpp counterpart and corrected them.
