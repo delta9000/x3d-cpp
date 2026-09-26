@@ -32,6 +32,7 @@ dev = [
 ]
 docs = [
     "mkdocs-material>=9.7.6",
+    "mkdocs>=1.6,<2",  # Material does not support MkDocs 2.0
 ]
 
 [tool.pytest.ini_options]
