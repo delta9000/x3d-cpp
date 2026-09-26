@@ -1,7 +1,5 @@
 # C1 — Declaration/Definition Split into a Compiled Node Library — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Move the heavy generated definitions (the reflection `fields()` FieldTable + `std::function` thunks, `validateRanges()`, the `checkRanges*` statics, `accept()`, and the `X3DNodeFactory` registry) out of the per-node headers into generated `.cpp` files compiled once into a static library, so consumers stop re-instantiating and re-codegen-ing them per TU.
 
 **Architecture:** The codegen emits a lean `<Node>.hpp` (class + members + inline trivial accessors + declarations of the heavy virtuals) plus a `<Node>.cpp` (out-of-line definitions). `X3DNodeFactory.hpp` becomes declarations-only; `X3DNodeFactory.cpp` holds the node-including registry. A new CMake `STATIC` target `x3d_cpp_nodes` compiles all generated `*.cpp` once; `x3d_cpp::x3d_cpp` links it transitively, so all tests and `runtime/` link the lib instead of recompiling the definitions. Behavior is byte-for-byte identical at runtime — the same code, relocated out-of-line.

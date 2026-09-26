@@ -1,7 +1,5 @@
 # Compile Topology Follow-up Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Remove accidental node-library work from header CI, compile the doctest
 entry point once, and eliminate the all-node factory compile straggler without
 changing public APIs.

@@ -1,7 +1,5 @@
 # Runtime/Gen Split Pivot — Registry-as-Protocol Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Land the codegen-emitted `InterfaceId`/`InterfaceRegistry` protocol, then make the hand-written behavior layer query it instead of `dynamic_cast`/string-name dispatch, and collapse the 8 per-type interpolator systems into 2 templated systems — de-risking the future-proof-architecture pivot with each step independently shippable.
 
 **Architecture:** The scene graph stays the truth; codegen emits a registry (node-type-name → transitive-closure set of `InterfaceId`) as the *protocol*; hand-written behaviors query the registry. The registry is generated **centrally** (one `X3DInterfaceRegistry.hpp/.cpp` pair, mirroring `X3DNodeFactory`), NOT as per-node static arrays — this keeps all ~200 existing golden headers byte-identical. ComponentStore SoA projections and the scene-index filter chain come later (Phases 4–5), gated on profiling evidence and on the registry landing first.

@@ -1,7 +1,5 @@
 # initializeOnly Write-Path Fix Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Make `initializeOnly` fields writable at the data/initialization layer (so readers and PROTO expansion populate them) by emitting a `set<Name>Unchecked()` + reflection `set` thunk for them, without adding any public typed `set<Name>()`.
 
 **Architecture:** A two-line change in the descriptor IR (`has_data_setter` predicate + `reader_setter_call` routing) plus three guard changes in the node template, then a full golden regeneration. The reflection `set` thunk becomes non-null for `initializeOnly` fields, so the existing reflection-driven readers populate them with no reader-logic change.

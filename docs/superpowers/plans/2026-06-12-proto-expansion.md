@@ -1,7 +1,5 @@
 # PROTO / EXTERNPROTO Expansion Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Eagerly expand `<ProtoInstance>` (local and file-resolved EXTERNPROTO) into concrete node trees at the parse front door, with full IS wiring (value forwarding + body routes + external-route redirection into the event cascade) and `<ProtoInstance>` round-trip preserved.
 
 **Architecture:** Reflection-driven deep clone of the prototype body per instance; value-forward interface fields via the `FieldInfo` get/set thunks; pre-resolve body-internal ROUTEs to a dedicated `Scene.resolvedProtoRoutes` channel (respecting proto-local DEF scope); record interface→body redirects in `Scene.protoRedirects` for the bridge to rewrite external routes. The expanded primary node is spliced into its parent slot via a captured parent back-reference; a scene-side `expandedSources` map keeps the round-trip link off the generated `X3DNode` so the codegen golden stays byte-identical.

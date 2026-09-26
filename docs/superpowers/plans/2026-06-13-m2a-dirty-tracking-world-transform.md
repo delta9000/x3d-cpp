@@ -1,7 +1,5 @@
 # M2a — Dirty-Tracking + World-Transform Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Build the M2 foundation — a per-node dirty-tracking layer fed by the event cascade, plus incremental world-transform propagation down the Transform hierarchy — entirely in side tables so the generated header tree stays byte-identical.
 
 **Architecture:** New header-only runtime: `runtime/math/Mat4.hpp` (4×4 float math + X3D TRS composition), `runtime/scene/DirtyTracker.hpp` (per-node category bits + changed list), `runtime/scene/TransformSystem.hpp` (transform-hierarchy index + world-transform side table + incremental propagation). The `EventCascade` gains a field-observer hook; `X3DExecutionContext::tick` runs a post-cascade propagation pass and exposes a pull API (`changedNodes()` + `worldTransform(node)`). World transforms and dirty state are keyed by `const X3DNode*` — no codegen, golden stays byte-identical.

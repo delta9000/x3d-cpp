@@ -1,7 +1,5 @@
 # Namespace the Generated Bindings (`x3d::core` + `x3d::nodes`) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Move all 685 generated X3D binding types out of the global namespace into `x3d::core` (vocabulary) and `x3d::nodes` (node classes), with headers physically laid out under `x3d/core/` and `x3d/nodes/` to match (API-1 + API-2).
 
 **Architecture:** The entire `generated_cpp_bindings/` tree is emitter output, so the type *definitions* move via a focused change in `src/x3d_cpp_gen/` plus a regen. The emitter already has a tested node-class namespace wrapper (`--namespace`, byte-identical when empty); we set it to `x3d::nodes` and add new `x3d::core` wrapping for the three foundation headers, the subdir layout, and the `SFNode`/`X3DNode` cross-namespace seam. Consumers (~110 files) migrate by dependency layer so each layer compiles once the layers beneath it are done.

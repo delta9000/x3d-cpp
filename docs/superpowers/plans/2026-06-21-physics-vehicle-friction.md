@@ -1,7 +1,5 @@
 # §37 Vehicle Sim + Per-Contact Friction & Bounce — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Author `CollisionCollection.frictionCoefficients` + `bounce` as per-contact combined friction/restitution, and demonstrate it with a rear-wheel-drive vehicle that drives under tyre friction (plus a bounce test).
 
 **Architecture:** A new `setContactResponse(world, friction, restitution)` seam method routes authored values to the existing per-world Jolt `ContactListener` (`ContactCollector`), which sets `ioSettings.mCombinedFriction`/`mCombinedRestitution` per contact. `PhysicsSystem` reads each `RigidBodyCollection`'s `collider → CollisionCollection` and applies non-default values. The vehicle = chassis + 4 cylinder wheels on free `SingleAxisHingeJoint` axles; rear wheels driven by `torques`.

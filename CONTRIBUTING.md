@@ -76,7 +76,6 @@ and `mise run docs-drift` exists because of it.
 
 ## How work is tracked
 
-Tasks come from the [GitHub Project](https://github.com/users/delta9000/projects/2)
-(`scripts/pick-card.sh --list`). The card→issue→branch→PR→docs→Done chain and the
-Definition of Ready/Done are in
-[`docs/contributor/card-to-done-workflow.md`](docs/contributor/card-to-done-workflow.md).
+To-dos are plain GitHub issues. Behavioral / spec-conformance gaps go in
+[`docs/conformance/findings.yaml`](docs/conformance/findings.yaml) instead. Branch off
+`main`, get `mise run ci` green, open a PR.

@@ -1,70 +1,46 @@
 # x3d-cpp — project instructions
 
-Headless, renderer-agnostic X3D domain-runtime SDK. Task runner is **mise** (`mise tasks`);
-the canonical knowledge home is the in-repo wiki (`docs/wiki/`, served by `mise run docs`).
+Headless, renderer-agnostic X3D domain-runtime SDK. One-person project: correctness matters,
+process doesn't. Task runner is **mise** (`mise tasks`); the in-repo wiki (`docs/wiki/`,
+`mise run docs`) is the knowledge home.
 
-**How work flows here.** Tasks come from the [GitHub Project](https://github.com/users/delta9000/projects/2)
-(`scripts/pick-card.sh --list`). Take a card → documented completion via
-`docs/contributor/card-to-done-workflow.md` (Definition of Ready/Done; the
-card→issue→branch→PR→docs→Done chain). Multi-agent execution discipline:
-`docs/contributor/workflow-subagent-discipline.md`.
+Work is: branch off `main`, make the change, `mise run ci` green, docs updated in the same
+diff, PR. To-dos are plain GitHub issues; conformance gaps go in
+`docs/conformance/findings.yaml`. No specs, plans, or cards required — write an ADR
+(`docs/wiki/decisions/NNNN-*.md`) only when you make a binding design decision.
 
-## Docs are part of the diff (anti-drift discipline)
+## Docs are part of the diff
 
-The docs have drifted from the code before (e.g. `physics.md` claimed "no events surfaced"
-after contact-reporting shipped; the Followers runtime shipped with no doc page at all).
-To stop that, treat the **living docs as part of any code change** — not a follow-up.
+The docs have drifted from the code before (`physics.md` claimed "no events surfaced" after
+contact reporting shipped; Followers shipped with no page). When you change `runtime/`,
+`tools/`, or `include/x3d/`:
 
-When you change code under `runtime/`, `tools/`, or `include/x3d/`, before you call the
-work done:
+1. Run `mise run docs-drift` (uncommitted work; or `working` / `<rev>`). Check the `CITES`
+   hits first; a `[NEW FILE]` with no citations probably needs a page. Advisory only.
+2. Update what it flags in the same change:
+   - `docs/wiki/subsystems/<name>.md` (new subsystem → new page + `mkdocs.yml` nav +
+     `docs/wiki/coverage.md` row)
+   - `docs/conformance/findings.yaml`, then `mise run conformance` (never hand-edit the
+     generated `.md`)
+   - `docs/sdk/v1-capabilities.md`
+   - root `NOTICE` if you added a third-party dependency or backend
+3. If symbols moved: `mise run code-ingest` / `mise run docs-ingest`.
 
-1. **Run the drift suggester** on your change — ideally *before* you commit:
-   ```
-   mise run docs-drift            # no arg = your uncommitted work (HEAD if the tree is clean)
-   mise run docs-drift working    # force the uncommitted-vs-HEAD check (incl. untracked files)
-   mise run docs-drift <rev>      # a specific commit
-   ```
-   It RAGs the diff against the living docs and prints a review-list. **Review the `CITES`
-   hits first** — a doc that names the code you touched is the most likely to be stale; a
-   `[NEW FILE]` with no citations probably needs a brand-new page. It is advisory (always
-   exits 0); the judgment call is yours.
-
-2. **Update the docs it flags, in the same change.** The living docs that track code:
-   - `docs/wiki/subsystems/<name>.md` — the subsystem page (create one if you shipped a
-     new subsystem; add it to `mkdocs.yml` nav + a `docs/wiki/coverage.md` row).
-   - `docs/wiki/coverage.md` — subsystem/ADR/guide coverage table + counts.
-   - `docs/conformance/findings.yaml` — the conformance source of truth (then
-     `mise run conformance` regenerates the view; never hand-edit the generated `.md`).
-   - `docs/sdk/v1-capabilities.md` — capability claims.
-   - `docs/wiki/decisions/NNNN-*.md` — a new ADR if you made a binding design decision.
-
-   `docs/superpowers/` (dated specs/plans) is the **historical record** — cite it, don't
-   edit it.
-
-   **Deferral tracking (no longer a doc):** `docs/superpowers/BACKLOG.md` is **deprecated**
-   (2026-06-22). Deferrals now live in two complementary trackers — pick by kind:
-   - *Behavioral / spec-conformance* gaps → `docs/conformance/findings.yaml` (above).
-   - *Engineering / planning* deferrals (build, codec, extraction, SDK, seams) → the
-     [GitHub Project](https://github.com/users/delta9000/projects/2) (`gh project item-list 2 --owner delta9000`;
-     create needs the `project` auth scope). Don't reopen BACKLOG.md as a tracker.
-
-3. **Refresh the RAG stores when symbols move** so search/drift stays accurate:
-   `mise run code-ingest` (C++) and `mise run docs-ingest` (docs).
+`docs/superpowers/` and `docs/plans/` are a frozen archive of old specs and plans. Cite them,
+don't edit them, don't add to them.
 
 ## Verify before claiming "shipped / covered"
 
-Don't relay doc language about what's done — read the code and enumerate what's actually
-wired vs. ignored (this is how the `physics.md` and Followers gaps were caught). For
-partial seams, list the ignored fields explicitly.
+Don't relay doc language about what's done — read the code and list what's actually wired
+vs. ignored. For partial seams, name the ignored fields.
 
-## Gates (what actually hard-fails)
+## Gates
 
-`mise run ci` runs tests + golden + `conformance-gate` + build + cli-gate-regression.
-The wiki's strict gate is `mise run docs-build` (dead links / nav orphans). Drift that a
-gate *can't* catch (semantic staleness) is what `mise run docs-drift` is for.
+`mise run ci` is what hard-fails (`mise tasks info ci` lists its parts). `mise run ci-all`
+adds sanitizers and the example renderers; run it before pushing risky C++ changes.
+`mise run docs-build` is the wiki's strict gate (dead links, nav orphans).
 
-## Commit conventions
+## Commits
 
-Do **not** put `Claude-Session:` trailers or any `claude.ai/code/session_…` URLs in commit
-messages or PR bodies — this is a shared repo and that history is public to collaborators.
-Keep commit messages and PR bodies tool-agnostic.
+No `Claude-Session:` trailers or `claude.ai/code/session_…` URLs in commits or PR bodies.
+Keep them tool-agnostic.

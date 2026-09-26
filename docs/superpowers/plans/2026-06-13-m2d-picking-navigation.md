@@ -1,7 +1,5 @@
 # M2d — Picking / Ray + Navigation Math Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** A renderer-agnostic ray/picking engine (broad-phase by M2b world AABBs, narrow-phase against geometry in local frame, closest hit) plus the navigation-math primitive (camera view matrix from the M2c-bound Viewpoint), all pure math + a node-graph traversal — golden byte-identical.
 
 **Architecture:** `runtime/math/Mat4.hpp` gains `transformDirection` + general `inverse`; `runtime/math/Ray.hpp` (Ray); `runtime/math/Intersect.hpp` (ray-AABB/sphere/triangle); `runtime/scene/PickSystem.hpp` (DFS accumulating world transforms, broad+narrow phase, triangle extraction, `worldOf`). Wired into `X3DExecutionContext` with `pick()` + `viewMatrix()`. Reuses M2b's `geombounds::getField/getNode/hasField` + `localGeometryBounds` and `TransformSystem::localMatrix`. No codegen.

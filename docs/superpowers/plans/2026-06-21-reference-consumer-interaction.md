@@ -1,7 +1,5 @@
 # Reference Browser Consumer — Interaction Increment Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Make the existing `examples/poc_renderer` interactive — clicking geometry fires pointing-device sensors and mouse+WASD drives navigation — by feeding glfw input into the SDK seam and attaching the two interaction systems, with a spec-faithful nav-vs-sensor arbitration referee.
 
 **Architecture:** Approach A — the consumer owns *input* (device → `setPointer`/`setKey`), the SDK systems own *behavior* (`PickSystem` picks, `PointingSensorSystem` fires sensors, `NavigationSystem` moves the bound Viewpoint). A per-tick "pointer consumed by sensor" flag on `X3DExecutionContext`, set by `PointingSensorSystem` and honored by `NavigationSystem`, gives the sensor grab exclusive pointer ownership (§20.2.1).

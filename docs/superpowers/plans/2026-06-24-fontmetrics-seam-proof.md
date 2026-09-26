@@ -1,7 +1,5 @@
 # FontMetrics Seam Genericity Proof — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Prove the `FontMetrics` seam generic by adding two independent real backends (stb_truetype + FreeType) that return bit-identical `advanceEm` for the same glyph, gated by a CI swap-test, then freeze the interface `[EXPERIMENTAL]` → `[STABLE]`.
 
 **Architecture:** Mirror the proven TextureResolver pattern (ADR-0024): each backend is a flag-gated STATIC lib (`X3D_CPP_BUILD_*`, OFF default) whose heavy dependency is linked PRIVATE in one TU and never leaks to consumers; one grouped doctest binary (`x3d_text_tests`) drives identical font fixtures through both backends and asserts identical observable behavior; a dedicated CI job gates it. No `#ifdef` in core. Both backends take the same `family → font-file` map, so their inputs are identical and only the library differs.

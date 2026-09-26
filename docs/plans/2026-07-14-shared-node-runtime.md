@@ -1,7 +1,5 @@
 # Shared Generated-Node Runtime Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Link one generated-node runtime into all consumers by default, retain an explicitly tested static mode, and reduce sanitizer CI storage below 10 GB.
 
 **Architecture:** `x3d_cpp_nodes` selects `SHARED` from a project-specific default-on option and `STATIC` from its opt-out, independent of third-party `BUILD_SHARED_LIBS` settings. Its public target and aliases stay stable; installation exports all artifact kinds, and the generated standalone test source is filtered out before target creation.

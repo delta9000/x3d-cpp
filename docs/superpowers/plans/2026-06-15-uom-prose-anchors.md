@@ -1,7 +1,5 @@
 # UOM ↔ Spec-Prose Anchors Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Build a deterministic node→prose anchor map linking every UOM node to its governing ISO-19775-1 prose section, exposed as a `spec_rag.py` dev lookup and a conformance coverage cross-check.
 
 **Architecture:** A pure-Python builder (`conformance/prose_anchors.py`) parses `<span id="…">` heading anchors from the prose markdown mirror and exact-matches them against the union of committed manifest node names, emitting a committed `prose_anchors.json`. `spec_rag.py` consumes that artifact for `node`/`field` lookups; field-level prose stays query-time (no nondeterministic data committed). Mirrors the existing `manifest.py` build / `validate.py` consume split.

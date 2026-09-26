@@ -1,7 +1,5 @@
 # Asset-Import Consumer + `x3d_cpp::authoring` Slim Target — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Ship a headless write-side canonical consumer (`x3d_asset_import`) that converts models (via an `ImportSource` seam; assimp backend) into standards-compliant X3D 4.0, linking a new footprint-gated `x3d_cpp::authoring` slim target.
 
 **Architecture:** A linear pipeline — `ImportSource` backend → `ImportScene` POD IR → `emit` (IR→`X3DDocument`, links *only* `x3d_cpp::authoring`) → self-validate (range-check + profile-fit) → serialize (+ consumer-side texture pipeline writing `assets/`). Backends and the texture pipeline never touch the slim target.

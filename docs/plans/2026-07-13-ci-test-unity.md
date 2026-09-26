@@ -1,7 +1,5 @@
 # Smaller CI Behavior Builds Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Preserve the complete behavior and sanitizer suites while materially reducing their compiler-command count and live build-tree footprint.
 
 **Architecture:** CMake will unity-batch only the five existing multi-source doctest executables, capped at eight sources per generated translation unit and protected by per-source unique identifiers. The sanitizer configuration remains Debug ASan/UBSan but overrides full debug records with level-one debug information suitable for symbolized CI reports.
