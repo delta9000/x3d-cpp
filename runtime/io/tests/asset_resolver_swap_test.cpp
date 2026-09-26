@@ -198,8 +198,11 @@ int main() {
   assert(port > 0);
   std::cerr << "[swap-test] HTTP server on http://127.0.0.1:" << port << "\n";
 
-  // 2. Resolve backend A (libcurl HTTP).
-  auto backendA = x3d::runtime::io::curl::makeHttpResolver();
+  // 2. Resolve backend A (libcurl HTTP). The fixture server is on 127.0.0.1,
+  //    so opt in to private-network destinations (SEC-6 default blocks them).
+  auto backendA = x3d::runtime::io::curl::makeHttpResolver(
+      x3d::runtime::io::curl::HttpResolverOptions{
+          /*allowPrivateNetworks=*/true});
   assert(static_cast<bool>(backendA));
 
   // 3. Resolve backend B (AWS S3). Skip the swap loop if minio isn't up.

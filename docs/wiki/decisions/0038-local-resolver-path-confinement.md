@@ -112,7 +112,8 @@ seam's job; an embedder needing them supplies its own resolver.
   parsing on another thread would not inherit it (the default resolvers do not).
 - Confinement is lexical-after-canonicalization, not a sandbox: it bounds the
   *default file resolver*, not an embedder's custom resolver. SSRF/response-size
-  hardening of the network (`curl`) resolver is a separate decision (SEC-6).
+  hardening of the network (`curl`) resolver (SEC-6) is documented in the
+  [Asset Resolver / IO Seam subsystem](../subsystems/system-asset-io.md).
 
 ## Related
 
