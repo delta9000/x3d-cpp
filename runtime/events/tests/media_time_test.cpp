@@ -49,15 +49,15 @@ TEST_CASE("media_time_test") {
     check(r.active(), "audio: isActive TRUE at startTime");
     r.ctx.tick(2.0);
     check(r.active() && deq(r.elapsed(), 1.0), "audio: elapsedTime counts playback");
-    r.node->setPauseTime(2.0);
+    r.node->setPauseTime(2.5);  // 1.5 s of the 2 s pass played by the pause
     r.ctx.tick(2.5);
     check(r.paused(), "audio: pauseTime pauses (isPaused TRUE)");
     r.node->setResumeTime(3.0);
     r.ctx.tick(3.0);
     check(!r.paused(), "audio: resumeTime resumes");
-    r.ctx.tick(3.9);
+    r.ctx.tick(3.4);  // 0.5 s left after resuming at 3.0; without the pause it ended at 3.0
     check(r.active(), "audio: the paused span does not count toward the pass");
-    r.ctx.tick(4.1);
+    r.ctx.tick(3.6);
     check(!r.active(), "audio: a non-looping clip stops after duration / pitch");
   }
   { // Looping clip keeps playing past one pass.
