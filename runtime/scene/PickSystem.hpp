@@ -467,6 +467,12 @@ private:
   void evaluate(const Ray &worldRay, X3DNode *shape, const Mat4 &worldM,
                 const Aabb &worldAabb, const extract::PathKey &path,
                 PickResult &best) const {
+    // Layer.pickable is inputOutput: inspect the retained path on every pick so
+    // toggling it takes effect without invalidating the geometry placement cache.
+    for (const X3DNode *n : path)
+      if (n->nodeTypeName() == "Layer" &&
+          !geombounds::getField<bool>(*n, "pickable", true))
+        return;
     if (!rayAabb(worldRay, worldAabb)) return;
     auto geom = geombounds::getNode(*shape, "geometry");
     if (!geom) return;

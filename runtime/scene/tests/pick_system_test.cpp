@@ -323,3 +323,35 @@ TEST_CASE("pick_system_test") {
 
   return;
 }
+
+TEST_CASE("pick_system_skips_non_pickable_layer_and_hits_layer_behind") {
+  auto frontLayer = createX3DNode("Layer");
+  setF(frontLayer, "pickable", std::any(false));
+  addChild(frontLayer, shapeWith(createX3DNode("Box")));
+
+  auto backLayer = createX3DNode("Layer");
+  auto backTransform = createX3DNode("Transform");
+  setF(backTransform, "translation", std::any(SFVec3f{0, 0, -5}));
+  addChild(backTransform, shapeWith(createX3DNode("Box")));
+  addChild(backLayer, backTransform);
+
+  auto layerSet = createX3DNode("LayerSet");
+  setF(layerSet, "layers", std::any(std::vector<std::shared_ptr<X3DNode>>{frontLayer, backLayer}));
+  Scene scene;
+  scene.addRootNode(layerSet);
+  TransformSystem ts; ts.buildIndex(scene);
+  BoundsSystem bs; bs.buildBounds(scene, ts);
+  PickSystem ps; ps.build(scene);
+
+  const Ray ray{{0, 0, 10}, {0, 0, -1}};
+  auto hit = ps.pickClosest(ray, bs, {0, 0, 0}, {0, 1, 0}, x3d::kMaxGraphWalkVisits, &ts);
+  REQUIRE(hit.hit);
+  CHECK(hit.path.size() >= 2);
+  CHECK(hit.path[1] == backLayer.get());
+
+  // The pick index stays cached, while inputOutput pickable changes are observed live.
+  setF(frontLayer, "pickable", std::any(true));
+  auto frontHit = ps.pickClosest(ray, bs, {0, 0, 0}, {0, 1, 0}, x3d::kMaxGraphWalkVisits, &ts);
+  REQUIRE(frontHit.hit);
+  CHECK(frontHit.path[1] == frontLayer.get());
+}
