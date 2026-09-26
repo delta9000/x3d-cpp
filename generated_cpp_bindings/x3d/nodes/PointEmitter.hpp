@@ -74,9 +74,9 @@ public:
   /**
    * @brief Gets the value of direction. AccessType: inputOutput
    * @details Initial direction from which particles emanate.
-   * @return SFVec3f The current value of direction.
+   * @return const SFVec3f& The current value of direction.
    */
-  SFVec3f getDirection() const { return _direction; }
+  const SFVec3f &getDirection() const { return _direction; }
 
   /**
    * @brief Sets the value of direction. AccessType: inputOutput
@@ -90,9 +90,9 @@ public:
   /**
    * @brief Gets the value of position. AccessType: inputOutput
    * @details Point from which particles emanate.
-   * @return SFVec3f The current value of position.
+   * @return const SFVec3f& The current value of position.
    */
-  SFVec3f getPosition() const { return _position; }
+  const SFVec3f &getPosition() const { return _position; }
 
   /**
    * @brief Sets the value of position. AccessType: inputOutput

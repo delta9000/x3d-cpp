@@ -108,9 +108,9 @@ public:
   /**
    * @brief Gets the value of IS. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of IS.
+   * @return const SFNode& The current value of IS.
    */
-  SFNode getIS() const { return _IS; }
+  const SFNode &getIS() const { return _IS; }
 
   /**
    * @brief Acceptable node types for the IS field.
@@ -136,9 +136,9 @@ public:
    * @details Information about this node can be contained in a MetadataBoolean,
    * MetadataDouble, MetadataFloat, MetadataInteger, MetadataString or
    * MetadataSet node.
-   * @return SFNode The current value of metadata.
+   * @return const SFNode& The current value of metadata.
    */
-  SFNode getMetadata() const { return _metadata; }
+  const SFNode &getMetadata() const { return _metadata; }
 
   /**
    * @brief Acceptable node types for the metadata field.

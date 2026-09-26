@@ -69,9 +69,9 @@ public:
    * @brief Gets the value of geometry. AccessType: inputOutput
    * @details Single contained geometry node provides the geometry used for each
    * particle when the parent ParticleSystem node has geometryType=GEOMETRY.
-   * @return SFNode The current value of geometry.
+   * @return const SFNode& The current value of geometry.
    */
-  SFNode getGeometry() const { return _geometry; }
+  const SFNode &getGeometry() const { return _geometry; }
 
   /**
    * @brief Acceptable node types for the geometry field.

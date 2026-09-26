@@ -92,9 +92,9 @@ public:
    * @brief Gets the value of center. AccessType: initializeOnly
    * @details Viewer range from geographic-coordinates center triggers quadtree
    * loading/unloading.
-   * @return SFVec3d The current value of center.
+   * @return const SFVec3d& The current value of center.
    */
-  SFVec3d getCenter() const { return _center; }
+  const SFVec3d &getCenter() const { return _center; }
   /**
    * @brief Data-layer write of center (reader/init ingest path).
    * @details center is initializeOnly: author-settable at parse
@@ -105,9 +105,9 @@ public:
   /**
    * @brief Gets the value of child1Url. AccessType: initializeOnly
    * @details quadtree geometry loaded when viewer is within range.
-   * @return MFString The current value of child1Url.
+   * @return const MFString& The current value of child1Url.
    */
-  MFString getChild1Url() const { return _child1Url; }
+  const MFString &getChild1Url() const { return _child1Url; }
   /**
    * @brief Data-layer write of child1Url (reader/init ingest path).
    * @details child1Url is initializeOnly: author-settable at parse
@@ -118,9 +118,9 @@ public:
   /**
    * @brief Gets the value of child2Url. AccessType: initializeOnly
    * @details quadtree geometry loaded when viewer is within range.
-   * @return MFString The current value of child2Url.
+   * @return const MFString& The current value of child2Url.
    */
-  MFString getChild2Url() const { return _child2Url; }
+  const MFString &getChild2Url() const { return _child2Url; }
   /**
    * @brief Data-layer write of child2Url (reader/init ingest path).
    * @details child2Url is initializeOnly: author-settable at parse
@@ -131,9 +131,9 @@ public:
   /**
    * @brief Gets the value of child3Url. AccessType: initializeOnly
    * @details quadtree geometry loaded when viewer is within range.
-   * @return MFString The current value of child3Url.
+   * @return const MFString& The current value of child3Url.
    */
-  MFString getChild3Url() const { return _child3Url; }
+  const MFString &getChild3Url() const { return _child3Url; }
   /**
    * @brief Data-layer write of child3Url (reader/init ingest path).
    * @details child3Url is initializeOnly: author-settable at parse
@@ -144,9 +144,9 @@ public:
   /**
    * @brief Gets the value of child4Url. AccessType: initializeOnly
    * @details quadtree geometry loaded when viewer is within range.
-   * @return MFString The current value of child4Url.
+   * @return const MFString& The current value of child4Url.
    */
-  MFString getChild4Url() const { return _child4Url; }
+  const MFString &getChild4Url() const { return _child4Url; }
   /**
    * @brief Data-layer write of child4Url (reader/init ingest path).
    * @details child4Url is initializeOnly: author-settable at parse
@@ -187,9 +187,9 @@ public:
    * @brief Gets the value of geoOrigin. AccessType: initializeOnly
    * @details Single contained GeoOrigin node that can specify a local
    * coordinate frame for extended precision.
-   * @return SFNode The current value of geoOrigin.
+   * @return const SFNode& The current value of geoOrigin.
    */
-  SFNode getGeoOrigin() const { return _geoOrigin; }
+  const SFNode &getGeoOrigin() const { return _geoOrigin; }
 
   /**
    * @brief Acceptable node types for the geoOrigin field.
@@ -211,9 +211,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -227,9 +227,9 @@ public:
    * is generated, with value 0 or 1, where 0 indicates the rootNode field and 1
    * indicates the nodes specified by the child1Url, child2Url, child3Url, and
    * child4Url fields.
-   * @return SFInt32 The current value of level_changed.
+   * @return const SFInt32& The current value of level_changed.
    */
-  SFInt32 getLevel_changed() const { return _level_changed; }
+  const SFInt32 &getLevel_changed() const { return _level_changed; }
 
   /**
    * @brief Emit an output value on level_changed. AccessType: outputOnly
@@ -248,9 +248,9 @@ public:
    * @brief Gets the value of range. AccessType: initializeOnly
    * @details Viewer range from geographic-coordinates center triggers quadtree
    * loading/unloading.
-   * @return SFFloat The current value of range.
+   * @return const SFFloat& The current value of range.
    */
-  SFFloat getRange() const { return _range; }
+  const SFFloat &getRange() const { return _range; }
   /**
    * @brief Data-layer write of range (reader/init ingest path).
    * @details range is initializeOnly: author-settable at parse
@@ -284,9 +284,9 @@ public:
   /**
    * @brief Gets the value of rootUrl. AccessType: initializeOnly
    * @details url for scene providing geometry for the root tile.
-   * @return MFString The current value of rootUrl.
+   * @return const MFString& The current value of rootUrl.
    */
-  MFString getRootUrl() const { return _rootUrl; }
+  const MFString &getRootUrl() const { return _rootUrl; }
   /**
    * @brief Data-layer write of rootUrl (reader/init ingest path).
    * @details rootUrl is initializeOnly: author-settable at parse

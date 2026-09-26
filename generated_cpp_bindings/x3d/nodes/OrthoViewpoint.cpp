@@ -29,6 +29,14 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DBindableNode::getBindTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +53,14 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const OrthoViewpoint &>(n).getCenterOfRotation(),
+              &typeid(SFVec3f)};
+        }
 
     });
 
@@ -63,6 +79,14 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DViewpointNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -79,6 +103,14 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DViewpointNode::getFarDistance(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -97,6 +129,13 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n).getFieldOfView(),
+                  &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -113,6 +152,13 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -131,6 +177,14 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DBindableNode::getIsBound(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(
@@ -148,6 +202,14 @@ const FieldTable &OrthoViewpoint::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const OrthoViewpoint &>(n)
+                                 .X3DViewpointNode::getJump(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -164,6 +226,14 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const OrthoViewpoint &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -183,6 +253,14 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DViewpointNode::getNavigationInfo(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -199,6 +277,14 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DViewpointNode::getNearDistance(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -217,6 +303,14 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DViewpointNode::getOrientation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -233,6 +327,13 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n).getPosition(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -251,6 +352,14 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DViewpointNode::getRetainUserOffsets(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -264,6 +373,10 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -282,6 +395,14 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n)
+                       .X3DViewpointNode::getViewAll(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -298,6 +419,13 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -316,6 +444,13 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -332,6 +467,13 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -350,6 +492,13 @@ const FieldTable &OrthoViewpoint::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -366,6 +515,13 @@ const FieldTable &OrthoViewpoint::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const OrthoViewpoint &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

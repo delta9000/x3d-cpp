@@ -73,9 +73,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details Enables/disables node operation.
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -91,9 +91,9 @@ public:
    * fourth component d being distance from the origin), a point (x,y,z) is
    * visible to the user, with regards to the clipping plane, if a*x+b*y+c*z+d
    * is greater than 0.
-   * @return SFVec4f The current value of plane.
+   * @return const SFVec4f& The current value of plane.
    */
-  SFVec4f getPlane() const { return _plane; }
+  const SFVec4f &getPlane() const { return _plane; }
 
   /**
    * @brief Sets the value of plane. AccessType: inputOutput

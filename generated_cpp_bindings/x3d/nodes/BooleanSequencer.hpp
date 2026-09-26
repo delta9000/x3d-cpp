@@ -64,9 +64,9 @@ public:
    * @brief Gets the value of keyValue. AccessType: inputOutput
    * @details Output values for linear sequencing, each corresponding to an
    * input-fraction value in the key array.
-   * @return MFBool The current value of keyValue.
+   * @return const MFBool& The current value of keyValue.
    */
-  MFBool getKeyValue() const { return _keyValue; }
+  const MFBool &getKeyValue() const { return _keyValue; }
 
   /**
    * @brief Sets the value of keyValue. AccessType: inputOutput
@@ -82,9 +82,9 @@ public:
    * @brief Gets the value of value_changed. AccessType: outputOnly
    * @details Single intermittent output value determined by current key time
    * and corresponding keyValue entry.
-   * @return SFBool The current value of value_changed.
+   * @return const SFBool& The current value of value_changed.
    */
-  SFBool getValue_changed() const { return _value_changed; }
+  const SFBool &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

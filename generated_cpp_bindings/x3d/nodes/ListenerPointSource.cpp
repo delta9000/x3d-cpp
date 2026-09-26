@@ -31,6 +31,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DTimeDependentNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ListenerPointSource &>(n).getDopplerEnabled(),
+              &typeid(SFBool)};
+        }
 
     });
 
@@ -65,6 +81,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DTimeDependentNode::getElapsedTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +106,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DSoundSourceNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -98,6 +130,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DSoundSourceNode::getGain(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -117,6 +157,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .getInterauralDistance(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -133,6 +181,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ListenerPointSource &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -151,6 +207,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DTimeDependentNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -167,6 +231,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DTimeDependentNode::getIsPaused(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -185,6 +257,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -201,6 +281,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ListenerPointSource &>(n).getOrientation(),
+              &typeid(SFRotation)};
+        }
 
     });
 
@@ -219,6 +307,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DTimeDependentNode::getPauseTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -235,6 +331,13 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n).getPosition(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -253,6 +356,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DTimeDependentNode::getResumeTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -269,6 +380,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DTimeDependentNode::getStartTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -287,6 +406,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .X3DTimeDependentNode::getStopTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -303,6 +430,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ListenerPointSource &>(n)
+                       .getTrackCurrentView(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -321,6 +456,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ListenerPointSource &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -337,6 +480,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ListenerPointSource &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -355,6 +506,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const ListenerPointSource &>(n)
+                                 .X3DNode::getClass_(),
+                            &typeid(SFString)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -372,6 +531,14 @@ const FieldTable &ListenerPointSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ListenerPointSource &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -388,6 +555,14 @@ const FieldTable &ListenerPointSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ListenerPointSource &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

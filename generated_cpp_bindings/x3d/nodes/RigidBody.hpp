@@ -199,9 +199,11 @@ public:
    * @brief Gets the value of angularDampingFactor. AccessType: inputOutput
    * @details angularDampingFactor automatically damps a portion of body motion
    * over time.
-   * @return SFFloat The current value of angularDampingFactor.
+   * @return const SFFloat& The current value of angularDampingFactor.
    */
-  SFFloat getAngularDampingFactor() const { return _angularDampingFactor; }
+  const SFFloat &getAngularDampingFactor() const {
+    return _angularDampingFactor;
+  }
 
   /**
    * @brief Sets the value of angularDampingFactor. AccessType: inputOutput
@@ -218,9 +220,9 @@ public:
    * @brief Gets the value of angularVelocity. AccessType: inputOutput
    * @details angularVelocity sets constant velocity value to object every
    * frame, and reports updates by physics model.
-   * @return SFVec3f The current value of angularVelocity.
+   * @return const SFVec3f& The current value of angularVelocity.
    */
-  SFVec3f getAngularVelocity() const { return _angularVelocity; }
+  const SFVec3f &getAngularVelocity() const { return _angularVelocity; }
 
   /**
    * @brief Sets the value of angularVelocity. AccessType: inputOutput
@@ -239,9 +241,9 @@ public:
    * @brief Gets the value of autoDamp. AccessType: inputOutput
    * @details autoDamp enables/disables angularDampingFactor and
    * linearDampingFactor.
-   * @return SFBool The current value of autoDamp.
+   * @return const SFBool& The current value of autoDamp.
    */
-  SFBool getAutoDamp() const { return _autoDamp; }
+  const SFBool &getAutoDamp() const { return _autoDamp; }
 
   /**
    * @brief Sets the value of autoDamp. AccessType: inputOutput
@@ -255,9 +257,9 @@ public:
    * @brief Gets the value of autoDisable. AccessType: inputOutput
    * @details autoDisable toggles operation of disableAngularSpeed,
    * disableLinearSpeed, disableTime.
-   * @return SFBool The current value of autoDisable.
+   * @return const SFBool& The current value of autoDisable.
    */
-  SFBool getAutoDisable() const { return _autoDisable; }
+  const SFBool &getAutoDisable() const { return _autoDisable; }
 
   /**
    * @brief Sets the value of autoDisable. AccessType: inputOutput
@@ -271,9 +273,9 @@ public:
    * @brief Gets the value of centerOfMass. AccessType: inputOutput
    * @details centerOfMass defines local center of mass for physics
    * calculations.
-   * @return SFVec3f The current value of centerOfMass.
+   * @return const SFVec3f& The current value of centerOfMass.
    */
-  SFVec3f getCenterOfMass() const { return _centerOfMass; }
+  const SFVec3f &getCenterOfMass() const { return _centerOfMass; }
 
   /**
    * @brief Sets the value of centerOfMass. AccessType: inputOutput
@@ -290,9 +292,9 @@ public:
    * @details disableAngularSpeed defines lower-limit tolerance value when body
    * is considered at rest and not part of rigid body calculations, reducing
    * numeric instabilities.
-   * @return SFFloat The current value of disableAngularSpeed.
+   * @return const SFFloat& The current value of disableAngularSpeed.
    */
-  SFFloat getDisableAngularSpeed() const { return _disableAngularSpeed; }
+  const SFFloat &getDisableAngularSpeed() const { return _disableAngularSpeed; }
 
   /**
    * @brief Sets the value of disableAngularSpeed. AccessType: inputOutput
@@ -311,9 +313,9 @@ public:
    * @details disableLinearSpeed defines lower-limit tolerance value when body
    * is considered at rest and not part of rigid body calculation, reducing
    * numeric instabilitiess.
-   * @return SFFloat The current value of disableLinearSpeed.
+   * @return const SFFloat& The current value of disableLinearSpeed.
    */
-  SFFloat getDisableLinearSpeed() const { return _disableLinearSpeed; }
+  const SFFloat &getDisableLinearSpeed() const { return _disableLinearSpeed; }
 
   /**
    * @brief Sets the value of disableLinearSpeed. AccessType: inputOutput
@@ -331,9 +333,9 @@ public:
    * @brief Gets the value of disableTime. AccessType: inputOutput
    * @details disableTime defines interval when body becomes at rest and not
    * part of rigid body calculations, reducing numeric instabilities.
-   * @return SFTime The current value of disableTime.
+   * @return const SFTime& The current value of disableTime.
    */
-  SFTime getDisableTime() const { return _disableTime; }
+  const SFTime &getDisableTime() const { return _disableTime; }
 
   /**
    * @brief Sets the value of disableTime. AccessType: inputOutput
@@ -367,9 +369,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details Enables/disables node operation.
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -382,9 +384,9 @@ public:
    * @brief Gets the value of finiteRotationAxis. AccessType: inputOutput
    * @details finiteRotationAxis specifies vector around which the object
    * rotates.
-   * @return SFVec3f The current value of finiteRotationAxis.
+   * @return const SFVec3f& The current value of finiteRotationAxis.
    */
-  SFVec3f getFiniteRotationAxis() const { return _finiteRotationAxis; }
+  const SFVec3f &getFiniteRotationAxis() const { return _finiteRotationAxis; }
 
   /**
    * @brief Sets the value of finiteRotationAxis. AccessType: inputOutput
@@ -405,9 +407,9 @@ public:
   /**
    * @brief Gets the value of fixed. AccessType: inputOutput
    * @details fixed indicates whether body is able to move.
-   * @return SFBool The current value of fixed.
+   * @return const SFBool& The current value of fixed.
    */
-  SFBool getFixed() const { return _fixed; }
+  const SFBool &getFixed() const { return _fixed; }
 
   /**
    * @brief Sets the value of fixed. AccessType: inputOutput
@@ -420,9 +422,9 @@ public:
    * @brief Gets the value of forces. AccessType: inputOutput
    * @details forces defines linear force values applied to the object every
    * frame.
-   * @return MFVec3f The current value of forces.
+   * @return const MFVec3f& The current value of forces.
    */
-  MFVec3f getForces() const { return _forces; }
+  const MFVec3f &getForces() const { return _forces; }
 
   /**
    * @brief Sets the value of forces. AccessType: inputOutput
@@ -467,9 +469,9 @@ public:
   /**
    * @brief Gets the value of inertia. AccessType: inputOutput
    * @details inertia matrix defines a 3x2 inertia tensor matrix.
-   * @return SFMatrix3f The current value of inertia.
+   * @return const SFMatrix3f& The current value of inertia.
    */
-  SFMatrix3f getInertia() const { return _inertia; }
+  const SFMatrix3f &getInertia() const { return _inertia; }
 
   /**
    * @brief Sets the value of inertia. AccessType: inputOutput
@@ -484,9 +486,9 @@ public:
    * @brief Gets the value of linearDampingFactor. AccessType: inputOutput
    * @details linearDampingFactor automatically damps a portion of body motion
    * over time.
-   * @return SFFloat The current value of linearDampingFactor.
+   * @return const SFFloat& The current value of linearDampingFactor.
    */
-  SFFloat getLinearDampingFactor() const { return _linearDampingFactor; }
+  const SFFloat &getLinearDampingFactor() const { return _linearDampingFactor; }
 
   /**
    * @brief Sets the value of linearDampingFactor. AccessType: inputOutput
@@ -503,9 +505,9 @@ public:
    * @brief Gets the value of linearVelocity. AccessType: inputOutput
    * @details linearVelocity sets constant velocity value to object every frame,
    * and reports updates by physics model.
-   * @return SFVec3f The current value of linearVelocity.
+   * @return const SFVec3f& The current value of linearVelocity.
    */
-  SFVec3f getLinearVelocity() const { return _linearVelocity; }
+  const SFVec3f &getLinearVelocity() const { return _linearVelocity; }
 
   /**
    * @brief Sets the value of linearVelocity. AccessType: inputOutput
@@ -523,9 +525,9 @@ public:
   /**
    * @brief Gets the value of mass. AccessType: inputOutput
    * @details mass of the body in kilograms.
-   * @return SFFloat The current value of mass.
+   * @return const SFFloat& The current value of mass.
    */
-  SFFloat getMass() const { return _mass; }
+  const SFFloat &getMass() const { return _mass; }
 
   /**
    * @brief Sets the value of mass. AccessType: inputOutput
@@ -538,9 +540,9 @@ public:
    * @brief Gets the value of massDensityModel. AccessType: inputOutput
    * @details The massDensityModel field is used to describe the geometry type
    * and dimensions used to calculate the mass density in the physics model.
-   * @return SFNode The current value of massDensityModel.
+   * @return const SFNode& The current value of massDensityModel.
    */
-  SFNode getMassDensityModel() const { return _massDensityModel; }
+  const SFNode &getMassDensityModel() const { return _massDensityModel; }
 
   /**
    * @brief Acceptable node types for the massDensityModel field.
@@ -569,9 +571,9 @@ public:
    * @brief Gets the value of orientation. AccessType: inputOutput
    * @details orientation sets body direction in world space, then reports
    * physics updates.
-   * @return SFRotation The current value of orientation.
+   * @return const SFRotation& The current value of orientation.
    */
-  SFRotation getOrientation() const { return _orientation; }
+  const SFRotation &getOrientation() const { return _orientation; }
 
   /**
    * @brief Sets the value of orientation. AccessType: inputOutput
@@ -587,9 +589,9 @@ public:
    * @brief Gets the value of position. AccessType: inputOutput
    * @details position sets body location in world space, then reports physics
    * updates.
-   * @return SFVec3f The current value of position.
+   * @return const SFVec3f& The current value of position.
    */
-  SFVec3f getPosition() const { return _position; }
+  const SFVec3f &getPosition() const { return _position; }
 
   /**
    * @brief Sets the value of position. AccessType: inputOutput
@@ -605,9 +607,9 @@ public:
    * @brief Gets the value of torques. AccessType: inputOutput
    * @details torques defines rotational force values applied to the object
    * every frame.
-   * @return MFVec3f The current value of torques.
+   * @return const MFVec3f& The current value of torques.
    */
-  MFVec3f getTorques() const { return _torques; }
+  const MFVec3f &getTorques() const { return _torques; }
 
   /**
    * @brief Sets the value of torques. AccessType: inputOutput
@@ -623,9 +625,9 @@ public:
    * @brief Gets the value of useFiniteRotation. AccessType: inputOutput
    * @details useFiniteRotation enables/disables higher-resolution, higher-cost
    * computational method for calculating rotations.
-   * @return SFBool The current value of useFiniteRotation.
+   * @return const SFBool& The current value of useFiniteRotation.
    */
-  SFBool getUseFiniteRotation() const { return _useFiniteRotation; }
+  const SFBool &getUseFiniteRotation() const { return _useFiniteRotation; }
 
   /**
    * @brief Sets the value of useFiniteRotation. AccessType: inputOutput
@@ -639,9 +641,9 @@ public:
    * @brief Gets the value of useGlobalGravity. AccessType: inputOutput
    * @details useGlobalGravity indicates whether this particular body is
    * influenced by parent RigidBodyCollection's gravity setting.
-   * @return SFBool The current value of useGlobalGravity.
+   * @return const SFBool& The current value of useGlobalGravity.
    */
-  SFBool getUseGlobalGravity() const { return _useGlobalGravity; }
+  const SFBool &getUseGlobalGravity() const { return _useGlobalGravity; }
 
   /**
    * @brief Sets the value of useGlobalGravity. AccessType: inputOutput

@@ -29,6 +29,14 @@ const FieldTable &ChannelMerger::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n)
+                       .X3DSoundChannelNode::getChannelCount(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -55,6 +63,14 @@ const FieldTable &ChannelMerger::fields() const {
           if (from_string(s, ev))
             dynamic_cast<ChannelMerger &>(n)
                 .X3DSoundChannelNode::setChannelCountMode(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n)
+                       .X3DSoundChannelNode::getChannelCountMode(),
+                  &typeid(ChannelCountModeChoices)};
         }
 
     });
@@ -87,6 +103,14 @@ const FieldTable &ChannelMerger::fields() const {
                 .X3DSoundChannelNode::setChannelInterpretation(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n)
+                       .X3DSoundChannelNode::getChannelInterpretation(),
+                  &typeid(ChannelInterpretationChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -102,6 +126,13 @@ const FieldTable &ChannelMerger::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -120,6 +151,14 @@ const FieldTable &ChannelMerger::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n)
+                       .X3DSoundNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(
@@ -136,6 +175,14 @@ const FieldTable &ChannelMerger::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const ChannelMerger &>(n)
+                                 .X3DSoundNode::getEnabled(),
+                            &typeid(SFBool)};
+                  }
 
         });
 
@@ -154,6 +201,14 @@ const FieldTable &ChannelMerger::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n)
+                       .X3DSoundChannelNode::getGain(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -170,6 +225,13 @@ const FieldTable &ChannelMerger::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -188,6 +250,14 @@ const FieldTable &ChannelMerger::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ChannelMerger &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -204,6 +274,13 @@ const FieldTable &ChannelMerger::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -222,6 +299,13 @@ const FieldTable &ChannelMerger::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -238,6 +322,13 @@ const FieldTable &ChannelMerger::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -256,6 +347,13 @@ const FieldTable &ChannelMerger::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -272,6 +370,13 @@ const FieldTable &ChannelMerger::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

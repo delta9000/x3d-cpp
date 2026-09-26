@@ -29,6 +29,14 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(
@@ -46,25 +54,40 @@ const FieldTable &GeoTouchSensor::fields() const {
 
                   nullptr, nullptr
 
-        });
+                  ,
 
-    t.push_back(
-        FieldInfo{"geoOrigin", X3DFieldType::SFNode, AccessType::InitializeOnly,
-                  "geoOrigin",
-
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const GeoTouchSensor &>(n).getGeoOrigin());
-                  },
-
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<GeoTouchSensor &>(n).setGeoOriginUnchecked(
-                        std::any_cast<SFNode>(v));
-                  },
-
-                  nullptr, nullptr
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const GeoTouchSensor &>(n)
+                                 .X3DSensorNode::getEnabled(),
+                            &typeid(SFBool)};
+                  }
 
         });
+
+    t.push_back(FieldInfo{
+        "geoOrigin", X3DFieldType::SFNode, AccessType::InitializeOnly,
+        "geoOrigin",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoTouchSensor &>(n).getGeoOrigin());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoTouchSensor &>(n).setGeoOriginUnchecked(
+              std::any_cast<SFNode>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n).getGeoOrigin(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "geoSystem", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -80,6 +103,13 @@ const FieldTable &GeoTouchSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n).getGeoSystem(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -99,6 +129,14 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoTouchSensor &>(n).getHitGeoCoord_changed(),
+              &typeid(SFVec3d)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -116,6 +154,14 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoTouchSensor &>(n).getHitNormal_changed(),
+              &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -132,6 +178,14 @@ const FieldTable &GeoTouchSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoTouchSensor &>(n).getHitPoint_changed(),
+              &typeid(SFVec3f)};
+        }
 
     });
 
@@ -151,6 +205,14 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoTouchSensor &>(n).getHitTexCoord_changed(),
+              &typeid(SFVec2f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -168,6 +230,13 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -184,6 +253,14 @@ const FieldTable &GeoTouchSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -203,6 +280,14 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n)
+                       .X3DPointingDeviceSensorNode::getIsOver(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -219,6 +304,14 @@ const FieldTable &GeoTouchSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoTouchSensor &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -237,6 +330,14 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n)
+                       .X3DTouchSensorNode::getTouchTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -253,6 +354,13 @@ const FieldTable &GeoTouchSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -271,6 +379,13 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -287,6 +402,13 @@ const FieldTable &GeoTouchSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -305,6 +427,13 @@ const FieldTable &GeoTouchSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -321,6 +450,13 @@ const FieldTable &GeoTouchSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoTouchSensor &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

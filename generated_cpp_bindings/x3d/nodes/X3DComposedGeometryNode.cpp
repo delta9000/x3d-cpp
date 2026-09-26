@@ -31,6 +31,13 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n).getAttrib(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +54,13 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n).getCcw(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -65,6 +79,13 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n).getColor(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +102,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .getColorPerVertex(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -99,6 +128,13 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n).getCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +151,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DComposedGeometryNode &>(n).getFogCoord(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -133,6 +177,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -149,6 +201,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -167,6 +227,13 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n).getNormal(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -183,6 +250,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .getNormalPerVertex(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -201,6 +276,13 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n).getSolid(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -217,6 +299,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DComposedGeometryNode &>(n).getTexCoord(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -235,6 +325,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -251,6 +349,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -269,6 +375,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -286,6 +400,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -302,6 +424,14 @@ const FieldTable &X3DComposedGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DComposedGeometryNode &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

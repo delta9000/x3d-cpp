@@ -28,24 +28,38 @@ const FieldTable &PointEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).getDirection(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
+    t.push_back(FieldInfo{
+        "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const PointEmitter &>(n).X3DNode::getIS());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const PointEmitter &>(n).X3DNode::getIS());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<PointEmitter &>(n).X3DNode::setIS(
-                        std::any_cast<SFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<PointEmitter &>(n).X3DNode::setIS(
+              std::any_cast<SFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(
         FieldInfo{"mass", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -62,6 +76,14 @@ const FieldTable &PointEmitter::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const PointEmitter &>(n)
+                                 .X3DParticleEmitterNode::getMass(),
+                            &typeid(SFFloat)};
+                  }
 
         });
 
@@ -80,6 +102,13 @@ const FieldTable &PointEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -97,6 +126,14 @@ const FieldTable &PointEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n)
+                       .X3DParticleEmitterNode::getOn(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -112,6 +149,13 @@ const FieldTable &PointEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).getPosition(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -131,6 +175,14 @@ const FieldTable &PointEmitter::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const PointEmitter &>(n)
+                                 .X3DParticleEmitterNode::getSpeed(),
+                            &typeid(SFFloat)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -148,6 +200,14 @@ const FieldTable &PointEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n)
+                       .X3DParticleEmitterNode::getSurfaceArea(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -167,6 +227,14 @@ const FieldTable &PointEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n)
+                       .X3DParticleEmitterNode::getVariation(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -183,6 +251,13 @@ const FieldTable &PointEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -201,6 +276,13 @@ const FieldTable &PointEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -218,24 +300,38 @@ const FieldTable &PointEmitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"id", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "id", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const PointEmitter &>(n).X3DNode::getId());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const PointEmitter &>(n).X3DNode::getId());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<PointEmitter &>(n).X3DNode::setId(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<PointEmitter &>(n).X3DNode::setId(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -251,6 +347,13 @@ const FieldTable &PointEmitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointEmitter &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

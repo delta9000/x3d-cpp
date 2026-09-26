@@ -84,9 +84,9 @@ public:
    * @details The detune ffield is an a-rate AudioParam representing detuning of
    * oscillation in cents (though the AudioParam returned is read-only, the
    * value it represents is not).
-   * @return SFFloat The current value of detune.
+   * @return const SFFloat& The current value of detune.
    */
-  SFFloat getDetune() const { return _detune; }
+  const SFFloat &getDetune() const { return _detune; }
 
   /**
    * @brief Sets the value of detune. AccessType: inputOutput
@@ -114,9 +114,9 @@ public:
   /**
    * @brief Gets the value of frequency. AccessType: inputOutput
    * @details The frequency of oscillation in hertz.
-   * @return SFFloat The current value of frequency.
+   * @return const SFFloat& The current value of frequency.
    */
-  SFFloat getFrequency() const { return _frequency; }
+  const SFFloat &getFrequency() const { return _frequency; }
 
   /**
    * @brief Sets the value of frequency. AccessType: inputOutput

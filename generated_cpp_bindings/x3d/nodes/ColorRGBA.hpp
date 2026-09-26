@@ -67,9 +67,9 @@ public:
   /**
    * @brief Gets the value of color. AccessType: inputOutput
    * @details The color field defines an array of 4-tuple RGBA colors.
-   * @return MFColorRGBA The current value of color.
+   * @return const MFColorRGBA& The current value of color.
    */
-  MFColorRGBA getColor() const { return _color; }
+  const MFColorRGBA &getColor() const { return _color; }
 
   /**
    * @brief Sets the value of color. AccessType: inputOutput

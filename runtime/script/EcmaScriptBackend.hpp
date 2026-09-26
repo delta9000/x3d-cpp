@@ -29,7 +29,10 @@ extern "C" {
 }
 
 #include <any>
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -53,6 +56,22 @@ namespace x3d::runtime {
  */
 class EcmaScriptBackend : public ScriptEngine {
 public:
+  /// Per-script deadline for one call into script code (see callBudget()).
+  /// Public only so Duktape's C timeout hook can read it.
+  struct CallDeadline {
+    bool armed = false;
+    std::chrono::steady_clock::time_point at{};
+  };
+
+  /// Per-script heap state, passed to Duktape as the heap udata: the call
+  /// deadline, plus the byte counts of the counting allocator that enforces
+  /// memoryLimit() for this script alone.
+  struct HeapState {
+    CallDeadline deadline;
+    std::size_t used = 0;
+    std::size_t limit = 0; ///< 0 = unlimited
+  };
+
   EcmaScriptBackend() = default;
   ~EcmaScriptBackend() override;
 
@@ -107,6 +126,8 @@ public:
    * @brief Call eventsProcessed() if it exists in the script.
    */
   void eventsProcessed(ScriptHandle handle, double timestamp) override;
+  void updateField(ScriptHandle handle, const std::string &name,
+                   const std::any &value, X3DFieldType type) override;
 
   // -------------------------------------------------------------------------
   // Marshalling (public so the unit test can round-trip without a script).
@@ -139,6 +160,9 @@ private:
     duk_context *ctx = nullptr;
     X3DNode *node = nullptr;  // owning Script node (not owned here)
     SaiContext *sai = nullptr; // SAI surface (not owned here)
+    // The heap's udata: read by Duktape's exec-timeout check (callBudget())
+    // and by the counting allocator (memoryLimit()). Must outlive the heap.
+    std::unique_ptr<HeapState> heap;
   };
 
   // Retrieve the entry for `handle`; returns nullptr if invalid.

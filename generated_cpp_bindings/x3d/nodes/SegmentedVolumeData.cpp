@@ -32,6 +32,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SegmentedVolumeData &>(n)
+                       .X3DVolumeDataNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SegmentedVolumeData &>(n)
+                       .X3DVolumeDataNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -67,6 +83,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SegmentedVolumeData &>(n)
+                       .X3DVolumeDataNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -83,6 +107,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SegmentedVolumeData &>(n)
+                       .X3DVolumeDataNode::getDimensions(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -101,6 +133,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -117,6 +157,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SegmentedVolumeData &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -136,6 +184,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SegmentedVolumeData &>(n).getRenderStyle(),
+              &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -152,6 +208,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SegmentedVolumeData &>(n).getSegmentEnabled(),
+              &typeid(MFBool)};
+        }
 
     });
 
@@ -171,6 +235,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SegmentedVolumeData &>(n)
+                       .getSegmentIdentifiers(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -187,6 +259,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SegmentedVolumeData &>(n)
+                       .X3DVolumeDataNode::getVisible(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -205,6 +285,13 @@ const FieldTable &SegmentedVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SegmentedVolumeData &>(n).getVoxels(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -221,6 +308,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -239,6 +334,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(
@@ -255,6 +358,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const SegmentedVolumeData &>(n)
+                                 .X3DNode::getClass_(),
+                            &typeid(SFString)};
+                  }
 
         });
 
@@ -273,6 +384,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -289,6 +408,14 @@ const FieldTable &SegmentedVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

@@ -31,6 +31,13 @@ const FieldTable &AcousticProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n).getAbsorption(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +54,13 @@ const FieldTable &AcousticProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n).getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -65,6 +79,13 @@ const FieldTable &AcousticProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n).getDiffuse(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +102,13 @@ const FieldTable &AcousticProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n).getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -99,6 +127,13 @@ const FieldTable &AcousticProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +150,14 @@ const FieldTable &AcousticProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -133,6 +176,13 @@ const FieldTable &AcousticProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n).getRefraction(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -149,6 +199,13 @@ const FieldTable &AcousticProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n).getSpecular(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -167,6 +224,14 @@ const FieldTable &AcousticProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const AcousticProperties &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -183,6 +248,14 @@ const FieldTable &AcousticProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const AcousticProperties &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -201,6 +274,14 @@ const FieldTable &AcousticProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const AcousticProperties &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -218,6 +299,13 @@ const FieldTable &AcousticProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AcousticProperties &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -234,6 +322,14 @@ const FieldTable &AcousticProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const AcousticProperties &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

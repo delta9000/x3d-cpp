@@ -78,9 +78,9 @@ public:
   /**
    * @brief Gets the value of center. AccessType: inputOutput
    * @details Translation offset from origin of local coordinate system.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -95,9 +95,9 @@ public:
    * @brief Gets the value of enterTime. AccessType: outputOnly
    * @details Time event generated when targetObject enters the box region for
    * sensor.
-   * @return SFTime The current value of enterTime.
+   * @return const SFTime& The current value of enterTime.
    */
-  SFTime getEnterTime() const { return _enterTime; }
+  const SFTime &getEnterTime() const { return _enterTime; }
 
   /**
    * @brief Emit an output value on enterTime. AccessType: outputOnly
@@ -114,9 +114,9 @@ public:
    * @brief Gets the value of exitTime. AccessType: outputOnly
    * @details Time event generated when targetObject exits the box region for
    * sensor.
-   * @return SFTime The current value of exitTime.
+   * @return const SFTime& The current value of exitTime.
    */
-  SFTime getExitTime() const { return _exitTime; }
+  const SFTime &getExitTime() const { return _exitTime; }
 
   /**
    * @brief Emit an output value on exitTime. AccessType: outputOnly
@@ -133,9 +133,11 @@ public:
    * @brief Gets the value of orientation_changed. AccessType: outputOnly
    * @details Sends rotation event relative to center whenever the target object
    * is contained within the box region and results change.
-   * @return SFRotation The current value of orientation_changed.
+   * @return const SFRotation& The current value of orientation_changed.
    */
-  SFRotation getOrientation_changed() const { return _orientation_changed; }
+  const SFRotation &getOrientation_changed() const {
+    return _orientation_changed;
+  }
 
   /**
    * @brief Emit an output value on orientation_changed. AccessType: outputOnly
@@ -154,9 +156,9 @@ public:
    * @brief Gets the value of position_changed. AccessType: outputOnly
    * @details Sends translation event relative to center whenever the target
    * object is contained within the box region and results change.
-   * @return SFVec3f The current value of position_changed.
+   * @return const SFVec3f& The current value of position_changed.
    */
-  SFVec3f getPosition_changed() const { return _position_changed; }
+  const SFVec3f &getPosition_changed() const { return _position_changed; }
 
   /**
    * @brief Emit an output value on position_changed. AccessType: outputOnly
@@ -173,9 +175,9 @@ public:
    * @brief Gets the value of targetObject. AccessType: inputOutput
    * @details targetObject is the movable geometry represented by any valid
    * X3DGroupingNode or X3DShapeNode which may enter or exit the box.
-   * @return SFNode The current value of targetObject.
+   * @return const SFNode& The current value of targetObject.
    */
-  SFNode getTargetObject() const { return _targetObject; }
+  const SFNode &getTargetObject() const { return _targetObject; }
 
   /**
    * @brief Acceptable node types for the targetObject field.

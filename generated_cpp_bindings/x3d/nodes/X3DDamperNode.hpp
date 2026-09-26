@@ -79,9 +79,9 @@ public:
   /**
    * @brief Gets the value of order. AccessType: initializeOnly
    * @details
-   * @return SFInt32 The current value of order.
+   * @return const SFInt32& The current value of order.
    */
-  SFInt32 getOrder() const { return _order; }
+  const SFInt32 &getOrder() const { return _order; }
   /**
    * @brief Data-layer write of order (reader/init ingest path).
    * @details order is initializeOnly: author-settable at parse
@@ -92,9 +92,9 @@ public:
   /**
    * @brief Gets the value of tau. AccessType: inputOutput
    * @details
-   * @return SFTime The current value of tau.
+   * @return const SFTime& The current value of tau.
    */
-  SFTime getTau() const { return _tau; }
+  const SFTime &getTau() const { return _tau; }
 
   /**
    * @brief Sets the value of tau. AccessType: inputOutput
@@ -127,9 +127,9 @@ public:
   /**
    * @brief Gets the value of tolerance. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of tolerance.
+   * @return const SFFloat& The current value of tolerance.
    */
-  SFFloat getTolerance() const { return _tolerance; }
+  const SFFloat &getTolerance() const { return _tolerance; }
 
   /**
    * @brief Sets the value of tolerance. AccessType: inputOutput

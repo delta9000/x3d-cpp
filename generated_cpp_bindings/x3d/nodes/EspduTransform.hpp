@@ -385,9 +385,9 @@ public:
   /**
    * @brief Gets the value of address. AccessType: inputOutput
    * @details Multicast network address, or else 'localhost'; Example: 224.
-   * @return SFString The current value of address.
+   * @return const SFString& The current value of address.
    */
-  SFString getAddress() const { return _address; }
+  const SFString &getAddress() const { return _address; }
 
   /**
    * @brief Sets the value of address. AccessType: inputOutput
@@ -402,9 +402,9 @@ public:
    * @brief Gets the value of applicationID. AccessType: inputOutput
    * @details Simulation/exercise applicationID is unique for application at
    * that site.
-   * @return SFInt32 The current value of applicationID.
+   * @return const SFInt32& The current value of applicationID.
    */
-  SFInt32 getApplicationID() const { return _applicationID; }
+  const SFInt32 &getApplicationID() const { return _applicationID; }
 
   /**
    * @brief Sets the value of applicationID. AccessType: inputOutput
@@ -419,9 +419,9 @@ public:
    * inputOutput
    * @details Information required for representation of the entity's visual
    * appearance and position of its articulated parts.
-   * @return MFFloat The current value of articulationParameterArray.
+   * @return const MFFloat& The current value of articulationParameterArray.
    */
-  MFFloat getArticulationParameterArray() const {
+  const MFFloat &getArticulationParameterArray() const {
     return _articulationParameterArray;
   }
 
@@ -447,10 +447,10 @@ public:
    * AccessType: inputOutput
    * @details Array of change counters, each incremented when an articulated
    * parameter is updated.
-   * @return MFInt32 The current value of
+   * @return const MFInt32& The current value of
    * articulationParameterChangeIndicatorArray.
    */
-  MFInt32 getArticulationParameterChangeIndicatorArray() const {
+  const MFInt32 &getArticulationParameterChangeIndicatorArray() const {
     return _articulationParameterChangeIndicatorArray;
   }
 
@@ -476,9 +476,9 @@ public:
    * inputOutput
    * @details Number of articulated parameters attached to this entity state
    * PDU.
-   * @return SFInt32 The current value of articulationParameterCount.
+   * @return const SFInt32& The current value of articulationParameterCount.
    */
-  SFInt32 getArticulationParameterCount() const {
+  const SFInt32 &getArticulationParameterCount() const {
     return _articulationParameterCount;
   }
 
@@ -498,9 +498,10 @@ public:
    * @brief Gets the value of articulationParameterDesignatorArray. AccessType:
    * inputOutput
    * @details Array of designators for each articulated parameter.
-   * @return MFInt32 The current value of articulationParameterDesignatorArray.
+   * @return const MFInt32& The current value of
+   * articulationParameterDesignatorArray.
    */
-  MFInt32 getArticulationParameterDesignatorArray() const {
+  const MFInt32 &getArticulationParameterDesignatorArray() const {
     return _articulationParameterDesignatorArray;
   }
 
@@ -524,10 +525,10 @@ public:
    * @brief Gets the value of articulationParameterIdPartAttachedToArray.
    * AccessType: inputOutput
    * @details Array of ID parts that each articulated parameter is attached to.
-   * @return MFInt32 The current value of
+   * @return const MFInt32& The current value of
    * articulationParameterIdPartAttachedToArray.
    */
-  MFInt32 getArticulationParameterIdPartAttachedToArray() const {
+  const MFInt32 &getArticulationParameterIdPartAttachedToArray() const {
     return _articulationParameterIdPartAttachedToArray;
   }
 
@@ -551,9 +552,9 @@ public:
    * @brief Gets the value of articulationParameterTypeArray. AccessType:
    * inputOutput
    * @details Array of type enumerations for each articulated parameter element.
-   * @return MFInt32 The current value of articulationParameterTypeArray.
+   * @return const MFInt32& The current value of articulationParameterTypeArray.
    */
-  MFInt32 getArticulationParameterTypeArray() const {
+  const MFInt32 &getArticulationParameterTypeArray() const {
     return _articulationParameterTypeArray;
   }
 
@@ -577,9 +578,10 @@ public:
    * @brief Gets the value of articulationParameterValue0_changed. AccessType:
    * outputOnly
    * @details Get element of user-defined payload array.
-   * @return SFFloat The current value of articulationParameterValue0_changed.
+   * @return const SFFloat& The current value of
+   * articulationParameterValue0_changed.
    */
-  SFFloat getArticulationParameterValue0_changed() const {
+  const SFFloat &getArticulationParameterValue0_changed() const {
     return _articulationParameterValue0_changed;
   }
 
@@ -601,9 +603,10 @@ public:
    * @brief Gets the value of articulationParameterValue1_changed. AccessType:
    * outputOnly
    * @details Get element of user-defined payload array.
-   * @return SFFloat The current value of articulationParameterValue1_changed.
+   * @return const SFFloat& The current value of
+   * articulationParameterValue1_changed.
    */
-  SFFloat getArticulationParameterValue1_changed() const {
+  const SFFloat &getArticulationParameterValue1_changed() const {
     return _articulationParameterValue1_changed;
   }
 
@@ -625,9 +628,10 @@ public:
    * @brief Gets the value of articulationParameterValue2_changed. AccessType:
    * outputOnly
    * @details Get element of user-defined payload array.
-   * @return SFFloat The current value of articulationParameterValue2_changed.
+   * @return const SFFloat& The current value of
+   * articulationParameterValue2_changed.
    */
-  SFFloat getArticulationParameterValue2_changed() const {
+  const SFFloat &getArticulationParameterValue2_changed() const {
     return _articulationParameterValue2_changed;
   }
 
@@ -649,9 +653,10 @@ public:
    * @brief Gets the value of articulationParameterValue3_changed. AccessType:
    * outputOnly
    * @details Get element of user-defined payload array.
-   * @return SFFloat The current value of articulationParameterValue3_changed.
+   * @return const SFFloat& The current value of
+   * articulationParameterValue3_changed.
    */
-  SFFloat getArticulationParameterValue3_changed() const {
+  const SFFloat &getArticulationParameterValue3_changed() const {
     return _articulationParameterValue3_changed;
   }
 
@@ -673,9 +678,10 @@ public:
    * @brief Gets the value of articulationParameterValue4_changed. AccessType:
    * outputOnly
    * @details Get element of user-defined payload array.
-   * @return SFFloat The current value of articulationParameterValue4_changed.
+   * @return const SFFloat& The current value of
+   * articulationParameterValue4_changed.
    */
-  SFFloat getArticulationParameterValue4_changed() const {
+  const SFFloat &getArticulationParameterValue4_changed() const {
     return _articulationParameterValue4_changed;
   }
 
@@ -697,9 +703,10 @@ public:
    * @brief Gets the value of articulationParameterValue5_changed. AccessType:
    * outputOnly
    * @details Get element of user-defined payload array.
-   * @return SFFloat The current value of articulationParameterValue5_changed.
+   * @return const SFFloat& The current value of
+   * articulationParameterValue5_changed.
    */
-  SFFloat getArticulationParameterValue5_changed() const {
+  const SFFloat &getArticulationParameterValue5_changed() const {
     return _articulationParameterValue5_changed;
   }
 
@@ -721,9 +728,10 @@ public:
    * @brief Gets the value of articulationParameterValue6_changed. AccessType:
    * outputOnly
    * @details Get element of user-defined payload array.
-   * @return SFFloat The current value of articulationParameterValue6_changed.
+   * @return const SFFloat& The current value of
+   * articulationParameterValue6_changed.
    */
-  SFFloat getArticulationParameterValue6_changed() const {
+  const SFFloat &getArticulationParameterValue6_changed() const {
     return _articulationParameterValue6_changed;
   }
 
@@ -745,9 +753,10 @@ public:
    * @brief Gets the value of articulationParameterValue7_changed. AccessType:
    * outputOnly
    * @details Get element of user-defined payload array.
-   * @return SFFloat The current value of articulationParameterValue7_changed.
+   * @return const SFFloat& The current value of
+   * articulationParameterValue7_changed.
    */
-  SFFloat getArticulationParameterValue7_changed() const {
+  const SFFloat &getArticulationParameterValue7_changed() const {
     return _articulationParameterValue7_changed;
   }
 
@@ -768,9 +777,9 @@ public:
   /**
    * @brief Gets the value of center. AccessType: inputOutput
    * @details Translation offset from origin of local coordinate system.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -786,9 +795,9 @@ public:
    * @details When were we collided with? Warning: it is an error to define this
    * transient outputOnly field in an X3D file, instead only use it a source for
    * ROUTE events.
-   * @return SFTime The current value of collideTime.
+   * @return const SFTime& The current value of collideTime.
    */
-  SFTime getCollideTime() const { return _collideTime; }
+  const SFTime &getCollideTime() const { return _collideTime; }
 
   /**
    * @brief Emit an output value on collideTime. AccessType: outputOnly
@@ -805,9 +814,9 @@ public:
   /**
    * @brief Gets the value of collisionType. AccessType: inputOutput
    * @details Integer enumeration for type of collision: ELASTIC or INELASTIC.
-   * @return SFInt32 The current value of collisionType.
+   * @return const SFInt32& The current value of collisionType.
    */
-  SFInt32 getCollisionType() const { return _collisionType; }
+  const SFInt32 &getCollisionType() const { return _collisionType; }
 
   /**
    * @brief Sets the value of collisionType. AccessType: inputOutput
@@ -820,9 +829,9 @@ public:
    * @brief Gets the value of deadReckoning. AccessType: inputOutput
    * @details Dead reckoning algorithm being used to project
    * position/orientation with velocities/accelerations.
-   * @return SFInt32 The current value of deadReckoning.
+   * @return const SFInt32& The current value of deadReckoning.
    */
-  SFInt32 getDeadReckoning() const { return _deadReckoning; }
+  const SFInt32 &getDeadReckoning() const { return _deadReckoning; }
 
   /**
    * @brief Sets the value of deadReckoning. AccessType: inputOutput
@@ -835,9 +844,9 @@ public:
   /**
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Author-provided prose that describes intended purpose of the node.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -851,9 +860,9 @@ public:
   /**
    * @brief Gets the value of detonateTime. AccessType: outputOnly
    * @details When were we detonated?.
-   * @return SFTime The current value of detonateTime.
+   * @return const SFTime& The current value of detonateTime.
    */
-  SFTime getDetonateTime() const { return _detonateTime; }
+  const SFTime &getDetonateTime() const { return _detonateTime; }
 
   /**
    * @brief Emit an output value on detonateTime. AccessType: outputOnly
@@ -869,9 +878,9 @@ public:
   /**
    * @brief Gets the value of detonationLocation. AccessType: inputOutput
    * @details World coordinates for detonationLocation.
-   * @return SFVec3f The current value of detonationLocation.
+   * @return const SFVec3f& The current value of detonationLocation.
    */
-  SFVec3f getDetonationLocation() const { return _detonationLocation; }
+  const SFVec3f &getDetonationLocation() const { return _detonationLocation; }
 
   /**
    * @brief Sets the value of detonationLocation. AccessType: inputOutput
@@ -892,9 +901,9 @@ public:
    * @brief Gets the value of detonationRelativeLocation. AccessType:
    * inputOutput
    * @details Relative coordinates for detonation location.
-   * @return SFVec3f The current value of detonationRelativeLocation.
+   * @return const SFVec3f& The current value of detonationRelativeLocation.
    */
-  SFVec3f getDetonationRelativeLocation() const {
+  const SFVec3f &getDetonationRelativeLocation() const {
     return _detonationRelativeLocation;
   }
 
@@ -918,9 +927,9 @@ public:
    * @brief Gets the value of detonationResult. AccessType: inputOutput
    * @details Integer enumeration for type of detonation and result that
    * occurred.
-   * @return SFInt32 The current value of detonationResult.
+   * @return const SFInt32& The current value of detonationResult.
    */
-  SFInt32 getDetonationResult() const { return _detonationResult; }
+  const SFInt32 &getDetonationResult() const { return _detonationResult; }
 
   /**
    * @brief Sets the value of detonationResult. AccessType: inputOutput
@@ -933,9 +942,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details Enables/disables the sensor node.
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -948,9 +957,9 @@ public:
    * @brief Gets the value of entityCategory. AccessType: inputOutput
    * @details Integer enumerations value for main category that describes the
    * entity, semantics of each code varies according to domain.
-   * @return SFInt32 The current value of entityCategory.
+   * @return const SFInt32& The current value of entityCategory.
    */
-  SFInt32 getEntityCategory() const { return _entityCategory; }
+  const SFInt32 &getEntityCategory() const { return _entityCategory; }
 
   /**
    * @brief Sets the value of entityCategory. AccessType: inputOutput
@@ -964,9 +973,9 @@ public:
    * @brief Gets the value of entityCountry. AccessType: inputOutput
    * @details Integer enumerations value for country to which the design of the
    * entity or its design specification is attributed.
-   * @return SFInt32 The current value of entityCountry.
+   * @return const SFInt32& The current value of entityCountry.
    */
-  SFInt32 getEntityCountry() const { return _entityCountry; }
+  const SFInt32 &getEntityCountry() const { return _entityCountry; }
 
   /**
    * @brief Sets the value of entityCountry. AccessType: inputOutput
@@ -980,9 +989,9 @@ public:
    * @brief Gets the value of entityDomain. AccessType: inputOutput
    * @details Integer enumerations value for domain in which the entity
    * operates: LAND, AIR, SURFACE, SUBSURFACE, SPACE or OTHER.
-   * @return SFInt32 The current value of entityDomain.
+   * @return const SFInt32& The current value of entityDomain.
    */
-  SFInt32 getEntityDomain() const { return _entityDomain; }
+  const SFInt32 &getEntityDomain() const { return _entityDomain; }
 
   /**
    * @brief Sets the value of entityDomain. AccessType: inputOutput
@@ -995,9 +1004,9 @@ public:
   /**
    * @brief Gets the value of entityExtra. AccessType: inputOutput
    * @details Any extra information required to describe a particular entity.
-   * @return SFInt32 The current value of entityExtra.
+   * @return const SFInt32& The current value of entityExtra.
    */
-  SFInt32 getEntityExtra() const { return _entityExtra; }
+  const SFInt32 &getEntityExtra() const { return _entityExtra; }
 
   /**
    * @brief Sets the value of entityExtra. AccessType: inputOutput
@@ -1010,9 +1019,9 @@ public:
    * @brief Gets the value of entityID. AccessType: inputOutput
    * @details Simulation/exercise entityID is a unique ID for a single entity
    * within that application.
-   * @return SFInt32 The current value of entityID.
+   * @return const SFInt32& The current value of entityID.
    */
-  SFInt32 getEntityID() const { return _entityID; }
+  const SFInt32 &getEntityID() const { return _entityID; }
 
   /**
    * @brief Sets the value of entityID. AccessType: inputOutput
@@ -1027,9 +1036,9 @@ public:
    * @details Integer enumerations value for whether entity is a PLATFORM,
    * MUNITION, LIFE_FORM, ENVIRONMENTAL, CULTURAL_FEATURE, SUPPLY, RADIO,
    * EXPENDABLE, SENSOR_EMITTER or OTHER.
-   * @return SFInt32 The current value of entityKind.
+   * @return const SFInt32& The current value of entityKind.
    */
-  SFInt32 getEntityKind() const { return _entityKind; }
+  const SFInt32 &getEntityKind() const { return _entityKind; }
 
   /**
    * @brief Sets the value of entityKind. AccessType: inputOutput
@@ -1044,9 +1053,9 @@ public:
    * @brief Gets the value of entitySpecific. AccessType: inputOutput
    * @details Specific information about an entity based on the Subcategory
    * field.
-   * @return SFInt32 The current value of entitySpecific.
+   * @return const SFInt32& The current value of entitySpecific.
    */
-  SFInt32 getEntitySpecific() const { return _entitySpecific; }
+  const SFInt32 &getEntitySpecific() const { return _entitySpecific; }
 
   /**
    * @brief Sets the value of entitySpecific. AccessType: inputOutput
@@ -1060,9 +1069,9 @@ public:
    * @brief Gets the value of entitySubcategory. AccessType: inputOutput
    * @details Integer enumerations value for particular subcategory to which an
    * entity belongs based on the category field.
-   * @return SFInt32 The current value of entitySubcategory.
+   * @return const SFInt32& The current value of entitySubcategory.
    */
-  SFInt32 getEntitySubcategory() const { return _entitySubcategory; }
+  const SFInt32 &getEntitySubcategory() const { return _entitySubcategory; }
 
   /**
    * @brief Sets the value of entitySubcategory. AccessType: inputOutput
@@ -1079,9 +1088,9 @@ public:
    * @brief Gets the value of eventApplicationID. AccessType: inputOutput
    * @details Simulation/exercise eventApplicationID is unique for events
    * generated from application at that site.
-   * @return SFInt32 The current value of eventApplicationID.
+   * @return const SFInt32& The current value of eventApplicationID.
    */
-  SFInt32 getEventApplicationID() const { return _eventApplicationID; }
+  const SFInt32 &getEventApplicationID() const { return _eventApplicationID; }
 
   /**
    * @brief Sets the value of eventApplicationID. AccessType: inputOutput
@@ -1098,9 +1107,9 @@ public:
    * @brief Gets the value of eventEntityID. AccessType: inputOutput
    * @details For a given event, simulation/exercise entityID is a unique ID for
    * a single entity within that application.
-   * @return SFInt32 The current value of eventEntityID.
+   * @return const SFInt32& The current value of eventEntityID.
    */
-  SFInt32 getEventEntityID() const { return _eventEntityID; }
+  const SFInt32 &getEventEntityID() const { return _eventEntityID; }
 
   /**
    * @brief Sets the value of eventEntityID. AccessType: inputOutput
@@ -1113,9 +1122,9 @@ public:
   /**
    * @brief Gets the value of eventNumber. AccessType: inputOutput
    * @details Sequential number of each event issued by an application.
-   * @return SFInt32 The current value of eventNumber.
+   * @return const SFInt32& The current value of eventNumber.
    */
-  SFInt32 getEventNumber() const { return _eventNumber; }
+  const SFInt32 &getEventNumber() const { return _eventNumber; }
 
   /**
    * @brief Sets the value of eventNumber. AccessType: inputOutput
@@ -1128,9 +1137,9 @@ public:
    * @brief Gets the value of eventSiteID. AccessType: inputOutput
    * @details Simulation/exercise siteID of the participating LAN or
    * organization.
-   * @return SFInt32 The current value of eventSiteID.
+   * @return const SFInt32& The current value of eventSiteID.
    */
-  SFInt32 getEventSiteID() const { return _eventSiteID; }
+  const SFInt32 &getEventSiteID() const { return _eventSiteID; }
 
   /**
    * @brief Sets the value of eventSiteID. AccessType: inputOutput
@@ -1143,9 +1152,9 @@ public:
   /**
    * @brief Gets the value of fired1. AccessType: inputOutput
    * @details Has the primary weapon (Fire PDU) been fired?.
-   * @return SFBool The current value of fired1.
+   * @return const SFBool& The current value of fired1.
    */
-  SFBool getFired1() const { return _fired1; }
+  const SFBool &getFired1() const { return _fired1; }
 
   /**
    * @brief Sets the value of fired1. AccessType: inputOutput
@@ -1157,9 +1166,9 @@ public:
   /**
    * @brief Gets the value of fired2. AccessType: inputOutput
    * @details Has the secondary weapon (Fire PDU) been fired?.
-   * @return SFBool The current value of fired2.
+   * @return const SFBool& The current value of fired2.
    */
-  SFBool getFired2() const { return _fired2; }
+  const SFBool &getFired2() const { return _fired2; }
 
   /**
    * @brief Sets the value of fired2. AccessType: inputOutput
@@ -1173,9 +1182,9 @@ public:
    * @details When did we shoot a weapon (Fire PDU)? Warning: it is an error to
    * define this transient outputOnly field in an X3D file, instead only use it
    * a source for ROUTE events.
-   * @return SFTime The current value of firedTime.
+   * @return const SFTime& The current value of firedTime.
    */
-  SFTime getFiredTime() const { return _firedTime; }
+  const SFTime &getFiredTime() const { return _firedTime; }
 
   /**
    * @brief Emit an output value on firedTime. AccessType: outputOnly
@@ -1192,9 +1201,9 @@ public:
   /**
    * @brief Gets the value of fireMissionIndex. AccessType: inputOutput
    * @details .
-   * @return SFInt32 The current value of fireMissionIndex.
+   * @return const SFInt32& The current value of fireMissionIndex.
    */
-  SFInt32 getFireMissionIndex() const { return _fireMissionIndex; }
+  const SFInt32 &getFireMissionIndex() const { return _fireMissionIndex; }
 
   /**
    * @brief Sets the value of fireMissionIndex. AccessType: inputOutput
@@ -1208,9 +1217,9 @@ public:
    * @details Range (three dimension, straight-line distance) that the firing
    * entity's fire control system has assumed for computing the fire control
    * solution if a weapon and if the value is known.
-   * @return SFFloat The current value of firingRange.
+   * @return const SFFloat& The current value of firingRange.
    */
-  SFFloat getFiringRange() const { return _firingRange; }
+  const SFFloat &getFiringRange() const { return _firingRange; }
 
   /**
    * @brief Sets the value of firingRange. AccessType: inputOutput
@@ -1224,9 +1233,9 @@ public:
   /**
    * @brief Gets the value of firingRate. AccessType: inputOutput
    * @details Rate at which munitions are fired.
-   * @return SFInt32 The current value of firingRate.
+   * @return const SFInt32& The current value of firingRate.
    */
-  SFInt32 getFiringRate() const { return _firingRate; }
+  const SFInt32 &getFiringRate() const { return _firingRate; }
 
   /**
    * @brief Sets the value of firingRate. AccessType: inputOutput
@@ -1239,9 +1248,9 @@ public:
    * @brief Gets the value of forceID. AccessType: inputOutput
    * @details forceID determines the team membership of the issuing entity, and
    * whether FRIENDLY OPPOSING or NEUTRAL or OTHER.
-   * @return SFInt32 The current value of forceID.
+   * @return const SFInt32& The current value of forceID.
    */
-  SFInt32 getForceID() const { return _forceID; }
+  const SFInt32 &getForceID() const { return _forceID; }
 
   /**
    * @brief Sets the value of forceID. AccessType: inputOutput
@@ -1254,9 +1263,9 @@ public:
   /**
    * @brief Gets the value of fuse. AccessType: inputOutput
    * @details Integer enumerations value for type of fuse on the munition.
-   * @return SFInt32 The current value of fuse.
+   * @return const SFInt32& The current value of fuse.
    */
-  SFInt32 getFuse() const { return _fuse; }
+  const SFInt32 &getFuse() const { return _fuse; }
 
   /**
    * @brief Sets the value of fuse. AccessType: inputOutput
@@ -1269,9 +1278,9 @@ public:
    * @brief Gets the value of geoCoords. AccessType: inputOutput
    * @details Geographic location (specified in current geoSystem coordinates)
    * for children geometry (specified in relative coordinate system, in meters).
-   * @return SFVec3d The current value of geoCoords.
+   * @return const SFVec3d& The current value of geoCoords.
    */
-  SFVec3d getGeoCoords() const { return _geoCoords; }
+  const SFVec3d &getGeoCoords() const { return _geoCoords; }
 
   /**
    * @brief Sets the value of geoCoords. AccessType: inputOutput
@@ -1287,9 +1296,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -1302,9 +1311,9 @@ public:
    * @details Have we received a network update recently? Warning: it is an
    * error to define this transient outputOnly field in an X3D file, instead
    * only use it a source for ROUTE events.
-   * @return SFBool The current value of isActive.
+   * @return const SFBool& The current value of isActive.
    */
-  SFBool getIsActive() const { return _isActive; }
+  const SFBool &getIsActive() const { return _isActive; }
 
   /**
    * @brief Emit an output value on isActive. AccessType: outputOnly
@@ -1323,9 +1332,9 @@ public:
    * @details Has a matching CollisionPDU reported a collision? Warning: it is
    * an error to define this transient outputOnly field in an X3D file, instead
    * only use it a source for ROUTE events.
-   * @return SFBool The current value of isCollided.
+   * @return const SFBool& The current value of isCollided.
    */
-  SFBool getIsCollided() const { return _isCollided; }
+  const SFBool &getIsCollided() const { return _isCollided; }
 
   /**
    * @brief Emit an output value on isCollided. AccessType: outputOnly
@@ -1344,9 +1353,9 @@ public:
    * @details Has a matching DetonationPDU reported a detonation? Warning: it is
    * an error to define this transient outputOnly field in an X3D file, instead
    * only use it a source for ROUTE events.
-   * @return SFBool The current value of isDetonated.
+   * @return const SFBool& The current value of isDetonated.
    */
-  SFBool getIsDetonated() const { return _isDetonated; }
+  const SFBool &getIsDetonated() const { return _isDetonated; }
 
   /**
    * @brief Emit an output value on isDetonated. AccessType: outputOnly
@@ -1364,9 +1373,9 @@ public:
    * @brief Gets the value of isNetworkReader. AccessType: outputOnly
    * @details Whether networkMode='remote' (listen to network as copy of remote
    * entity).
-   * @return SFBool The current value of isNetworkReader.
+   * @return const SFBool& The current value of isNetworkReader.
    */
-  SFBool getIsNetworkReader() const { return _isNetworkReader; }
+  const SFBool &getIsNetworkReader() const { return _isNetworkReader; }
 
   /**
    * @brief Emit an output value on isNetworkReader. AccessType: outputOnly
@@ -1383,9 +1392,9 @@ public:
    * @brief Gets the value of isNetworkWriter. AccessType: outputOnly
    * @details Whether networkMode='master' (output to network as master entity
    * at writeInterval).
-   * @return SFBool The current value of isNetworkWriter.
+   * @return const SFBool& The current value of isNetworkWriter.
    */
-  SFBool getIsNetworkWriter() const { return _isNetworkWriter; }
+  const SFBool &getIsNetworkWriter() const { return _isNetworkWriter; }
 
   /**
    * @brief Emit an output value on isNetworkWriter. AccessType: outputOnly
@@ -1401,9 +1410,9 @@ public:
   /**
    * @brief Gets the value of isRtpHeaderHeard. AccessType: outputOnly
    * @details Whether incoming DIS packets have an RTP header prepended.
-   * @return SFBool The current value of isRtpHeaderHeard.
+   * @return const SFBool& The current value of isRtpHeaderHeard.
    */
-  SFBool getIsRtpHeaderHeard() const { return _isRtpHeaderHeard; }
+  const SFBool &getIsRtpHeaderHeard() const { return _isRtpHeaderHeard; }
 
   /**
    * @brief Emit an output value on isRtpHeaderHeard. AccessType: outputOnly
@@ -1420,9 +1429,9 @@ public:
    * @brief Gets the value of isStandAlone. AccessType: outputOnly
    * @details Whether networkMode='local' (ignore network but still respond to
    * local events).
-   * @return SFBool The current value of isStandAlone.
+   * @return const SFBool& The current value of isStandAlone.
    */
-  SFBool getIsStandAlone() const { return _isStandAlone; }
+  const SFBool &getIsStandAlone() const { return _isStandAlone; }
 
   /**
    * @brief Emit an output value on isStandAlone. AccessType: outputOnly
@@ -1440,9 +1449,9 @@ public:
    * @details Acceleration of the entity relative to the rotating Earth in
    * either world or entity coordinates, depending on the dead reckoning
    * algorithm used.
-   * @return SFVec3f The current value of linearAcceleration.
+   * @return const SFVec3f& The current value of linearAcceleration.
    */
-  SFVec3f getLinearAcceleration() const { return _linearAcceleration; }
+  const SFVec3f &getLinearAcceleration() const { return _linearAcceleration; }
 
   /**
    * @brief Sets the value of linearAcceleration. AccessType: inputOutput
@@ -1466,9 +1475,9 @@ public:
    * @details Velocity of the entity relative to the rotating Earth in either
    * world or entity coordinates, depending on the dead reckoning algorithm
    * used.
-   * @return SFVec3f The current value of linearVelocity.
+   * @return const SFVec3f& The current value of linearVelocity.
    */
-  SFVec3f getLinearVelocity() const { return _linearVelocity; }
+  const SFVec3f &getLinearVelocity() const { return _linearVelocity; }
 
   /**
    * @brief Sets the value of linearVelocity. AccessType: inputOutput
@@ -1487,9 +1496,9 @@ public:
   /**
    * @brief Gets the value of marking. AccessType: inputOutput
    * @details Maximum of 11 characters for simple entity label.
-   * @return SFString The current value of marking.
+   * @return const SFString& The current value of marking.
    */
-  SFString getMarking() const { return _marking; }
+  const SFString &getMarking() const { return _marking; }
 
   /**
    * @brief Sets the value of marking. AccessType: inputOutput
@@ -1503,9 +1512,9 @@ public:
   /**
    * @brief Gets the value of multicastRelayHost. AccessType: inputOutput
    * @details Fallback server address if multicast not available locally.
-   * @return SFString The current value of multicastRelayHost.
+   * @return const SFString& The current value of multicastRelayHost.
    */
-  SFString getMulticastRelayHost() const { return _multicastRelayHost; }
+  const SFString &getMulticastRelayHost() const { return _multicastRelayHost; }
 
   /**
    * @brief Sets the value of multicastRelayHost. AccessType: inputOutput
@@ -1525,9 +1534,9 @@ public:
   /**
    * @brief Gets the value of multicastRelayPort. AccessType: inputOutput
    * @details Fallback server port if multicast not available locally.
-   * @return SFInt32 The current value of multicastRelayPort.
+   * @return const SFInt32& The current value of multicastRelayPort.
    */
-  SFInt32 getMulticastRelayPort() const { return _multicastRelayPort; }
+  const SFInt32 &getMulticastRelayPort() const { return _multicastRelayPort; }
 
   /**
    * @brief Sets the value of multicastRelayPort. AccessType: inputOutput
@@ -1542,9 +1551,11 @@ public:
   /**
    * @brief Gets the value of munitionApplicationID. AccessType: inputOutput
    * @details munitionApplicationID, unique for application at that site.
-   * @return SFInt32 The current value of munitionApplicationID.
+   * @return const SFInt32& The current value of munitionApplicationID.
    */
-  SFInt32 getMunitionApplicationID() const { return _munitionApplicationID; }
+  const SFInt32 &getMunitionApplicationID() const {
+    return _munitionApplicationID;
+  }
 
   /**
    * @brief Sets the value of munitionApplicationID. AccessType: inputOutput
@@ -1560,9 +1571,9 @@ public:
    * @brief Gets the value of munitionEndPoint. AccessType: inputOutput
    * @details Final point of the munition path from firing weapon to detonation
    * or impact, in exercise coordinates.
-   * @return SFVec3f The current value of munitionEndPoint.
+   * @return const SFVec3f& The current value of munitionEndPoint.
    */
-  SFVec3f getMunitionEndPoint() const { return _munitionEndPoint; }
+  const SFVec3f &getMunitionEndPoint() const { return _munitionEndPoint; }
 
   /**
    * @brief Sets the value of munitionEndPoint. AccessType: inputOutput
@@ -1581,9 +1592,9 @@ public:
    * @brief Gets the value of munitionEntityID. AccessType: inputOutput
    * @details munitionEntityID is unique ID for entity firing munition within
    * that application.
-   * @return SFInt32 The current value of munitionEntityID.
+   * @return const SFInt32& The current value of munitionEntityID.
    */
-  SFInt32 getMunitionEntityID() const { return _munitionEntityID; }
+  const SFInt32 &getMunitionEntityID() const { return _munitionEntityID; }
 
   /**
    * @brief Sets the value of munitionEntityID. AccessType: inputOutput
@@ -1596,9 +1607,9 @@ public:
   /**
    * @brief Gets the value of munitionQuantity. AccessType: inputOutput
    * @details Quantity of munitions fired.
-   * @return SFInt32 The current value of munitionQuantity.
+   * @return const SFInt32& The current value of munitionQuantity.
    */
-  SFInt32 getMunitionQuantity() const { return _munitionQuantity; }
+  const SFInt32 &getMunitionQuantity() const { return _munitionQuantity; }
 
   /**
    * @brief Sets the value of munitionQuantity. AccessType: inputOutput
@@ -1610,9 +1621,9 @@ public:
   /**
    * @brief Gets the value of munitionSiteID. AccessType: inputOutput
    * @details Munition siteID of the participating LAN or organization.
-   * @return SFInt32 The current value of munitionSiteID.
+   * @return const SFInt32& The current value of munitionSiteID.
    */
-  SFInt32 getMunitionSiteID() const { return _munitionSiteID; }
+  const SFInt32 &getMunitionSiteID() const { return _munitionSiteID; }
 
   /**
    * @brief Sets the value of munitionSiteID. AccessType: inputOutput
@@ -1625,9 +1636,9 @@ public:
    * @brief Gets the value of munitionStartPoint. AccessType: inputOutput
    * @details Initial point of the munition path from firing weapon to
    * detonation or impact, in exercise coordinates.
-   * @return SFVec3f The current value of munitionStartPoint.
+   * @return const SFVec3f& The current value of munitionStartPoint.
    */
-  SFVec3f getMunitionStartPoint() const { return _munitionStartPoint; }
+  const SFVec3f &getMunitionStartPoint() const { return _munitionStartPoint; }
 
   /**
    * @brief Sets the value of munitionStartPoint. AccessType: inputOutput
@@ -1649,9 +1660,9 @@ public:
    * @brief Gets the value of networkMode. AccessType: inputOutput
    * @details Whether this entity is ignoring the network, sending DIS packets
    * to the network, or receiving DIS packets from the network.
-   * @return NetworkModeChoices The current value of networkMode.
+   * @return const NetworkModeChoices& The current value of networkMode.
    */
-  NetworkModeChoices getNetworkMode() const { return _networkMode; }
+  const NetworkModeChoices &getNetworkMode() const { return _networkMode; }
 
   /**
    * @brief Sets the value of networkMode. AccessType: inputOutput
@@ -1665,9 +1676,9 @@ public:
    * @brief Gets the value of port. AccessType: inputOutput
    * @details Network connection port number (EXAMPLE 3000) for sending or
    * receiving DIS messages.
-   * @return SFInt32 The current value of port.
+   * @return const SFInt32& The current value of port.
    */
-  SFInt32 getPort() const { return _port; }
+  const SFInt32 &getPort() const { return _port; }
 
   /**
    * @brief Sets the value of port. AccessType: inputOutput
@@ -1680,9 +1691,9 @@ public:
   /**
    * @brief Gets the value of readInterval. AccessType: inputOutput
    * @details Seconds between read updates, 0 means no reading.
-   * @return SFTime The current value of readInterval.
+   * @return const SFTime& The current value of readInterval.
    */
-  SFTime getReadInterval() const { return _readInterval; }
+  const SFTime &getReadInterval() const { return _readInterval; }
 
   /**
    * @brief Sets the value of readInterval. AccessType: inputOutput
@@ -1716,9 +1727,9 @@ public:
    * @brief Gets the value of rotation. AccessType: inputOutput
    * @details Orientation of children relative to local coordinate system,
    * usually read from (or written to) remote, networked EspduTransform nodes.
-   * @return SFRotation The current value of rotation.
+   * @return const SFRotation& The current value of rotation.
    */
-  SFRotation getRotation() const { return _rotation; }
+  const SFRotation &getRotation() const { return _rotation; }
 
   /**
    * @brief Sets the value of rotation. AccessType: inputOutput
@@ -1733,9 +1744,9 @@ public:
   /**
    * @brief Gets the value of rtpHeaderExpected. AccessType: inputOutput
    * @details Whether RTP headers are prepended to DIS PDUs.
-   * @return SFBool The current value of rtpHeaderExpected.
+   * @return const SFBool& The current value of rtpHeaderExpected.
    */
-  SFBool getRtpHeaderExpected() const { return _rtpHeaderExpected; }
+  const SFBool &getRtpHeaderExpected() const { return _rtpHeaderExpected; }
 
   /**
    * @brief Sets the value of rtpHeaderExpected. AccessType: inputOutput
@@ -1748,9 +1759,9 @@ public:
    * @brief Gets the value of scale. AccessType: inputOutput
    * @details Non-uniform x-y-z scale of child coordinate system, adjusted by
    * center and scaleOrientation.
-   * @return SFVec3f The current value of scale.
+   * @return const SFVec3f& The current value of scale.
    */
-  SFVec3f getScale() const { return _scale; }
+  const SFVec3f &getScale() const { return _scale; }
 
   /**
    * @brief Sets the value of scale. AccessType: inputOutput
@@ -1766,9 +1777,9 @@ public:
    * @brief Gets the value of scaleOrientation. AccessType: inputOutput
    * @details Preliminary rotation of coordinate system before scaling (to allow
    * scaling around arbitrary orientations).
-   * @return SFRotation The current value of scaleOrientation.
+   * @return const SFRotation& The current value of scaleOrientation.
    */
-  SFRotation getScaleOrientation() const { return _scaleOrientation; }
+  const SFRotation &getScaleOrientation() const { return _scaleOrientation; }
 
   /**
    * @brief Sets the value of scaleOrientation. AccessType: inputOutput
@@ -1998,9 +2009,9 @@ public:
    * @brief Gets the value of siteID. AccessType: inputOutput
    * @details Simulation/exercise siteID of the participating LAN or
    * organization.
-   * @return SFInt32 The current value of siteID.
+   * @return const SFInt32& The current value of siteID.
    */
-  SFInt32 getSiteID() const { return _siteID; }
+  const SFInt32 &getSiteID() const { return _siteID; }
 
   /**
    * @brief Sets the value of siteID. AccessType: inputOutput
@@ -2014,9 +2025,9 @@ public:
    * @brief Gets the value of timestamp. AccessType: outputOnly
    * @details DIS timestamp received from latest PDU update, converted to X3D
    * SFTime units.
-   * @return SFTime The current value of timestamp.
+   * @return const SFTime& The current value of timestamp.
    */
-  SFTime getTimestamp() const { return _timestamp; }
+  const SFTime &getTimestamp() const { return _timestamp; }
 
   /**
    * @brief Emit an output value on timestamp. AccessType: outputOnly
@@ -2033,9 +2044,9 @@ public:
    * @brief Gets the value of translation. AccessType: inputOutput
    * @details Position of children relative to local coordinate system, usually
    * read from (or written to) remote, networked EspduTransform nodes.
-   * @return SFVec3f The current value of translation.
+   * @return const SFVec3f& The current value of translation.
    */
-  SFVec3f getTranslation() const { return _translation; }
+  const SFVec3f &getTranslation() const { return _translation; }
 
   /**
    * @brief Sets the value of translation. AccessType: inputOutput
@@ -2050,9 +2061,9 @@ public:
   /**
    * @brief Gets the value of warhead. AccessType: inputOutput
    * @details Integer enumerations value for type of warhead on the munition.
-   * @return SFInt32 The current value of warhead.
+   * @return const SFInt32& The current value of warhead.
    */
-  SFInt32 getWarhead() const { return _warhead; }
+  const SFInt32 &getWarhead() const { return _warhead; }
 
   /**
    * @brief Sets the value of warhead. AccessType: inputOutput
@@ -2064,9 +2075,9 @@ public:
   /**
    * @brief Gets the value of writeInterval. AccessType: inputOutput
    * @details Seconds between write updates, 0 means no writing (sending).
-   * @return SFTime The current value of writeInterval.
+   * @return const SFTime& The current value of writeInterval.
    */
-  SFTime getWriteInterval() const { return _writeInterval; }
+  const SFTime &getWriteInterval() const { return _writeInterval; }
 
   /**
    * @brief Sets the value of writeInterval. AccessType: inputOutput

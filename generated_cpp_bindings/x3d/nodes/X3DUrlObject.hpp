@@ -74,9 +74,9 @@ public:
   /**
    * @brief Gets the value of autoRefresh. AccessType: inputOutput
    * @details
-   * @return SFTime The current value of autoRefresh.
+   * @return const SFTime& The current value of autoRefresh.
    */
-  SFTime getAutoRefresh() const { return _autoRefresh; }
+  const SFTime &getAutoRefresh() const { return _autoRefresh; }
 
   /**
    * @brief Sets the value of autoRefresh. AccessType: inputOutput
@@ -109,9 +109,11 @@ public:
   /**
    * @brief Gets the value of autoRefreshTimeLimit. AccessType: inputOutput
    * @details
-   * @return SFTime The current value of autoRefreshTimeLimit.
+   * @return const SFTime& The current value of autoRefreshTimeLimit.
    */
-  SFTime getAutoRefreshTimeLimit() const { return _autoRefreshTimeLimit; }
+  const SFTime &getAutoRefreshTimeLimit() const {
+    return _autoRefreshTimeLimit;
+  }
 
   /**
    * @brief Sets the value of autoRefreshTimeLimit. AccessType: inputOutput
@@ -147,9 +149,9 @@ public:
   /**
    * @brief Gets the value of description. AccessType: inputOutput
    * @details
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -163,9 +165,9 @@ public:
   /**
    * @brief Gets the value of load. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of load.
+   * @return const SFBool& The current value of load.
    */
-  SFBool getLoad() const { return _load; }
+  const SFBool &getLoad() const { return _load; }
 
   /**
    * @brief Sets the value of load. AccessType: inputOutput
@@ -177,9 +179,9 @@ public:
   /**
    * @brief Gets the value of url. AccessType: inputOutput
    * @details
-   * @return MFString The current value of url.
+   * @return const MFString& The current value of url.
    */
-  MFString getUrl() const { return _url; }
+  const MFString &getUrl() const { return _url; }
 
   /**
    * @brief Sets the value of url. AccessType: inputOutput

@@ -66,9 +66,9 @@ public:
    * @brief Gets the value of keyValue. AccessType: inputOutput
    * @details Output values for linear interpolation, each corresponding to an
    * input-fraction value in the key array.
-   * @return MFVec3f The current value of keyValue.
+   * @return const MFVec3f& The current value of keyValue.
    */
-  MFVec3f getKeyValue() const { return _keyValue; }
+  const MFVec3f &getKeyValue() const { return _keyValue; }
 
   /**
    * @brief Sets the value of keyValue. AccessType: inputOutput
@@ -84,9 +84,9 @@ public:
    * @brief Gets the value of value_changed. AccessType: outputOnly
    * @details Linearly interpolated output value determined by current key time
    * and corresponding keyValue pair.
-   * @return MFVec3f The current value of value_changed.
+   * @return const MFVec3f& The current value of value_changed.
    */
-  MFVec3f getValue_changed() const { return _value_changed; }
+  const MFVec3f &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

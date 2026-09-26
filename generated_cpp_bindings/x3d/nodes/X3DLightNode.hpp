@@ -95,9 +95,9 @@ public:
   /**
    * @brief Gets the value of ambientIntensity. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of ambientIntensity.
+   * @return const SFFloat& The current value of ambientIntensity.
    */
-  SFFloat getAmbientIntensity() const { return _ambientIntensity; }
+  const SFFloat &getAmbientIntensity() const { return _ambientIntensity; }
 
   /**
    * @brief Sets the value of ambientIntensity. AccessType: inputOutput
@@ -126,9 +126,9 @@ public:
   /**
    * @brief Gets the value of color. AccessType: inputOutput
    * @details
-   * @return SFColor The current value of color.
+   * @return const SFColor& The current value of color.
    */
-  SFColor getColor() const { return _color; }
+  const SFColor &getColor() const { return _color; }
 
   /**
    * @brief Sets the value of color. AccessType: inputOutput
@@ -161,9 +161,9 @@ public:
   /**
    * @brief Gets the value of intensity. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of intensity.
+   * @return const SFFloat& The current value of intensity.
    */
-  SFFloat getIntensity() const { return _intensity; }
+  const SFFloat &getIntensity() const { return _intensity; }
 
   /**
    * @brief Sets the value of intensity. AccessType: inputOutput
@@ -189,9 +189,9 @@ public:
   /**
    * @brief Gets the value of on. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of on.
+   * @return const SFBool& The current value of on.
    */
-  SFBool getOn() const { return _on; }
+  const SFBool &getOn() const { return _on; }
 
   /**
    * @brief Sets the value of on. AccessType: inputOutput
@@ -203,9 +203,9 @@ public:
   /**
    * @brief Gets the value of shadowIntensity. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of shadowIntensity.
+   * @return const SFFloat& The current value of shadowIntensity.
    */
-  SFFloat getShadowIntensity() const { return _shadowIntensity; }
+  const SFFloat &getShadowIntensity() const { return _shadowIntensity; }
 
   /**
    * @brief Sets the value of shadowIntensity. AccessType: inputOutput
@@ -234,9 +234,9 @@ public:
   /**
    * @brief Gets the value of shadows. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of shadows.
+   * @return const SFBool& The current value of shadows.
    */
-  SFBool getShadows() const { return _shadows; }
+  const SFBool &getShadows() const { return _shadows; }
 
   /**
    * @brief Sets the value of shadows. AccessType: inputOutput

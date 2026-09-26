@@ -27,6 +27,10 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +49,14 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n)
+                       .X3DGroupingNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -61,6 +73,14 @@ const FieldTable &HAnimSegment::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n)
+                       .X3DGroupingNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -79,6 +99,14 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n)
+                       .X3DGroupingNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -95,6 +123,13 @@ const FieldTable &HAnimSegment::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).getCenterOfMass(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -113,6 +148,14 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n)
+                       .X3DGroupingNode::getChildren(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -127,6 +170,13 @@ const FieldTable &HAnimSegment::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).getCoord(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -145,42 +195,63 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"displacers", X3DFieldType::MFNode, AccessType::InputOutput,
-                  "displacers",
+    t.push_back(FieldInfo{
+        "displacers", X3DFieldType::MFNode, AccessType::InputOutput,
+        "displacers",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const HAnimSegment &>(n).getDisplacers());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const HAnimSegment &>(n).getDisplacers());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<HAnimSegment &>(n).setDisplacers(
-                        std::any_cast<MFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<HAnimSegment &>(n).setDisplacers(
+              std::any_cast<MFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
 
-    t.push_back(
-        FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).getDisplacers(),
+                  &typeid(MFNode)};
+        }
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const HAnimSegment &>(n).X3DNode::getIS());
-                  },
+    });
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<HAnimSegment &>(n).X3DNode::setIS(
-                        std::any_cast<SFNode>(v));
-                  },
+    t.push_back(FieldInfo{
+        "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
 
-                  nullptr, nullptr
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const HAnimSegment &>(n).X3DNode::getIS());
+        },
 
-        });
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<HAnimSegment &>(n).X3DNode::setIS(
+              std::any_cast<SFNode>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "mass", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -195,6 +266,13 @@ const FieldTable &HAnimSegment::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).getMass(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -213,6 +291,13 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -230,6 +315,13 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).getMomentsOfInertia(),
+                  &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -245,6 +337,13 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).getName(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -259,6 +358,10 @@ const FieldTable &HAnimSegment::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -277,6 +380,14 @@ const FieldTable &HAnimSegment::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const HAnimSegment &>(n)
+                                 .X3DGroupingNode::getVisible(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -293,6 +404,13 @@ const FieldTable &HAnimSegment::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -311,6 +429,13 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -328,24 +453,38 @@ const FieldTable &HAnimSegment::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"id", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "id", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const HAnimSegment &>(n).X3DNode::getId());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const HAnimSegment &>(n).X3DNode::getId());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<HAnimSegment &>(n).X3DNode::setId(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<HAnimSegment &>(n).X3DNode::setId(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -361,6 +500,13 @@ const FieldTable &HAnimSegment::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimSegment &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

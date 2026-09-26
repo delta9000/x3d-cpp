@@ -132,9 +132,9 @@ public:
   /**
    * @brief Gets the value of baseColor. AccessType: inputOutput
    * @details similar to diffuseColor, TODO define more precisely.
-   * @return SFColor The current value of baseColor.
+   * @return const SFColor& The current value of baseColor.
    */
-  SFColor getBaseColor() const { return _baseColor; }
+  const SFColor &getBaseColor() const { return _baseColor; }
 
   /**
    * @brief Sets the value of baseColor. AccessType: inputOutput
@@ -169,9 +169,9 @@ public:
    * @details When applying baseColor for this material node, the contained
    * texture provides Physically Based Rendering (PBR) modulation for each
    * pixel.
-   * @return SFNode The current value of baseTexture.
+   * @return const SFNode& The current value of baseTexture.
    */
-  SFNode getBaseTexture() const { return _baseTexture; }
+  const SFNode &getBaseTexture() const { return _baseTexture; }
 
   /**
    * @brief Acceptable node types for the baseTexture field.
@@ -199,9 +199,9 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of baseTextureMapping.
+   * @return const SFString& The current value of baseTextureMapping.
    */
-  SFString getBaseTextureMapping() const { return _baseTextureMapping; }
+  const SFString &getBaseTextureMapping() const { return _baseTextureMapping; }
 
   /**
    * @brief Sets the value of baseTextureMapping. AccessType: inputOutput
@@ -223,9 +223,9 @@ public:
   /**
    * @brief Gets the value of emissiveColor. AccessType: inputOutput
    * @details how much glowing light is emitted from this object.
-   * @return SFColor The current value of emissiveColor.
+   * @return const SFColor& The current value of emissiveColor.
    */
-  SFColor getEmissiveColor() const { return _emissiveColor; }
+  const SFColor &getEmissiveColor() const { return _emissiveColor; }
 
   /**
    * @brief Sets the value of emissiveColor. AccessType: inputOutput
@@ -262,9 +262,9 @@ public:
    * @details When applying emissiveColor for this material node, the contained
    * texture provides Physically Based Rendering (PBR) modulation for each
    * pixel.
-   * @return SFNode The current value of emissiveTexture.
+   * @return const SFNode& The current value of emissiveTexture.
    */
-  SFNode getEmissiveTexture() const { return _emissiveTexture; }
+  const SFNode &getEmissiveTexture() const { return _emissiveTexture; }
 
   /**
    * @brief Acceptable node types for the emissiveTexture field.
@@ -293,9 +293,9 @@ public:
   /**
    * @brief Gets the value of metallic. AccessType: inputOutput
    * @details metallic is a PBR parameter (TODO elaborate).
-   * @return SFFloat The current value of metallic.
+   * @return const SFFloat& The current value of metallic.
    */
-  SFFloat getMetallic() const { return _metallic; }
+  const SFFloat &getMetallic() const { return _metallic; }
 
   /**
    * @brief Sets the value of metallic. AccessType: inputOutput
@@ -323,9 +323,9 @@ public:
    * @details When applying metallic for this material node, the contained
    * texture provides Physically Based Rendering (PBR) modulation for each
    * pixel.
-   * @return SFNode The current value of metallicRoughnessTexture.
+   * @return const SFNode& The current value of metallicRoughnessTexture.
    */
-  SFNode getMetallicRoughnessTexture() const {
+  const SFNode &getMetallicRoughnessTexture() const {
     return _metallicRoughnessTexture;
   }
 
@@ -363,9 +363,10 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of metallicRoughnessTextureMapping.
+   * @return const SFString& The current value of
+   * metallicRoughnessTextureMapping.
    */
-  SFString getMetallicRoughnessTextureMapping() const {
+  const SFString &getMetallicRoughnessTextureMapping() const {
     return _metallicRoughnessTextureMapping;
   }
 
@@ -391,9 +392,9 @@ public:
    * @brief Gets the value of normalTexture. AccessType: inputOutput
    * @details When applying normalScale for this material node, the contained
    * texture modulates the texture across the surface.
-   * @return SFNode The current value of normalTexture.
+   * @return const SFNode& The current value of normalTexture.
    */
-  SFNode getNormalTexture() const { return _normalTexture; }
+  const SFNode &getNormalTexture() const { return _normalTexture; }
 
   /**
    * @brief Acceptable node types for the normalTexture field.
@@ -419,9 +420,9 @@ public:
    * @brief Gets the value of occlusionStrength. AccessType: inputOutput
    * @details occlusionStrength indicates areas of indirect lighting, typically
    * called ambient occlusion.
-   * @return SFFloat The current value of occlusionStrength.
+   * @return const SFFloat& The current value of occlusionStrength.
    */
-  SFFloat getOcclusionStrength() const { return _occlusionStrength; }
+  const SFFloat &getOcclusionStrength() const { return _occlusionStrength; }
 
   /**
    * @brief Sets the value of occlusionStrength. AccessType: inputOutput
@@ -453,9 +454,9 @@ public:
    * @details When applying occlusionStrength for this material node, the
    * contained texture provides Physically Based Rendering (PBR) modulation for
    * each pixel.
-   * @return SFNode The current value of occlusionTexture.
+   * @return const SFNode& The current value of occlusionTexture.
    */
-  SFNode getOcclusionTexture() const { return _occlusionTexture; }
+  const SFNode &getOcclusionTexture() const { return _occlusionTexture; }
 
   /**
    * @brief Acceptable node types for the occlusionTexture field.
@@ -486,9 +487,9 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of occlusionTextureMapping.
+   * @return const SFString& The current value of occlusionTextureMapping.
    */
-  SFString getOcclusionTextureMapping() const {
+  const SFString &getOcclusionTextureMapping() const {
     return _occlusionTextureMapping;
   }
 
@@ -512,9 +513,9 @@ public:
   /**
    * @brief Gets the value of roughness. AccessType: inputOutput
    * @details roughness is a PBR parameter (TODO elaborate).
-   * @return SFFloat The current value of roughness.
+   * @return const SFFloat& The current value of roughness.
    */
-  SFFloat getRoughness() const { return _roughness; }
+  const SFFloat &getRoughness() const { return _roughness; }
 
   /**
    * @brief Sets the value of roughness. AccessType: inputOutput
@@ -540,9 +541,9 @@ public:
   /**
    * @brief Gets the value of transparency. AccessType: inputOutput
    * @details how "clear" an object is: 1.
-   * @return SFFloat The current value of transparency.
+   * @return const SFFloat& The current value of transparency.
    */
-  SFFloat getTransparency() const { return _transparency; }
+  const SFFloat &getTransparency() const { return _transparency; }
 
   /**
    * @brief Sets the value of transparency. AccessType: inputOutput

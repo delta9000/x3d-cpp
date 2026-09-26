@@ -84,9 +84,9 @@ public:
   /**
    * @brief Gets the value of objectType. AccessType: inputOutput
    * @details
-   * @return MFString The current value of objectType.
+   * @return const MFString& The current value of objectType.
    */
-  MFString getObjectType() const { return _objectType; }
+  const MFString &getObjectType() const { return _objectType; }
 
   /**
    * @brief Sets the value of objectType. AccessType: inputOutput
@@ -100,9 +100,9 @@ public:
   /**
    * @brief Gets the value of pickable. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of pickable.
+   * @return const SFBool& The current value of pickable.
    */
-  SFBool getPickable() const { return _pickable; }
+  const SFBool &getPickable() const { return _pickable; }
 
   /**
    * @brief Sets the value of pickable. AccessType: inputOutput
@@ -114,9 +114,9 @@ public:
   /**
    * @brief Gets the value of viewport. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of viewport.
+   * @return const SFNode& The current value of viewport.
    */
-  SFNode getViewport() const { return _viewport; }
+  const SFNode &getViewport() const { return _viewport; }
 
   /**
    * @brief Acceptable node types for the viewport field.
@@ -140,9 +140,9 @@ public:
   /**
    * @brief Gets the value of visible. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of visible.
+   * @return const SFBool& The current value of visible.
    */
-  SFBool getVisible() const { return _visible; }
+  const SFBool &getVisible() const { return _visible; }
 
   /**
    * @brief Sets the value of visible. AccessType: inputOutput

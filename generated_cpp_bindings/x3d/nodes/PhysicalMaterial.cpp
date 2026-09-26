@@ -31,6 +31,13 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).getBaseColor(),
+                  &typeid(SFColor)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +55,13 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).getBaseTexture(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -67,6 +81,14 @@ const FieldTable &PhysicalMaterial::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const PhysicalMaterial &>(n)
+                                 .getBaseTextureMapping(),
+                            &typeid(SFString)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -83,6 +105,13 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).getEmissiveColor(),
+                  &typeid(SFColor)};
+        }
 
     });
 
@@ -101,6 +130,14 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PhysicalMaterial &>(n).getEmissiveTexture(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -122,6 +159,14 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n)
+                       .X3DOneSidedMaterialNode::getEmissiveTextureMapping(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -138,6 +183,13 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -156,6 +208,14 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -172,6 +232,13 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).getMetallic(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -191,6 +258,14 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n)
+                       .getMetallicRoughnessTexture(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -208,6 +283,14 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n)
+                       .getMetallicRoughnessTextureMapping(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -227,6 +310,14 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n)
+                       .X3DOneSidedMaterialNode::getNormalScale(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -244,6 +335,13 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).getNormalTexture(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -265,6 +363,14 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n)
+                       .X3DOneSidedMaterialNode::getNormalTextureMapping(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -281,6 +387,14 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PhysicalMaterial &>(n).getOcclusionStrength(),
+              &typeid(SFFloat)};
+        }
 
     });
 
@@ -300,6 +414,14 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PhysicalMaterial &>(n).getOcclusionTexture(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -318,6 +440,14 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n)
+                       .getOcclusionTextureMapping(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -334,6 +464,13 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).getRoughness(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -352,6 +489,13 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).getTransparency(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -368,6 +512,13 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -386,6 +537,13 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -402,6 +560,14 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -420,6 +586,13 @@ const FieldTable &PhysicalMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -436,6 +609,14 @@ const FieldTable &PhysicalMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

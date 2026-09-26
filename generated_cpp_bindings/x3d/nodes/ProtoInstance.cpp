@@ -14,23 +14,30 @@ const FieldTable &ProtoInstance::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
 
-    t.push_back(
-        FieldInfo{"fieldValue", X3DFieldType::MFNode, AccessType::InputOutput,
-                  "fieldValue",
+    t.push_back(FieldInfo{
+        "fieldValue", X3DFieldType::MFNode, AccessType::InputOutput,
+        "fieldValue",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const ProtoInstance &>(n).getFieldValue());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const ProtoInstance &>(n).getFieldValue());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<ProtoInstance &>(n).setFieldValue(
-                        std::any_cast<MFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ProtoInstance &>(n).setFieldValue(
+              std::any_cast<MFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n).getFieldValue(),
+                  &typeid(MFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -46,6 +53,14 @@ const FieldTable &ProtoInstance::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n)
+                       .X3DPrototypeInstance::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -64,6 +79,14 @@ const FieldTable &ProtoInstance::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n)
+                       .X3DPrototypeInstance::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -78,6 +101,13 @@ const FieldTable &ProtoInstance::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n).getName(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -96,6 +126,13 @@ const FieldTable &ProtoInstance::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -112,6 +149,13 @@ const FieldTable &ProtoInstance::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -130,6 +174,13 @@ const FieldTable &ProtoInstance::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -147,6 +198,13 @@ const FieldTable &ProtoInstance::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -163,6 +221,13 @@ const FieldTable &ProtoInstance::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ProtoInstance &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

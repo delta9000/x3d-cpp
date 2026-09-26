@@ -88,9 +88,9 @@ public:
    * @brief Gets the value of triggerTime. AccessType: outputOnly
    * @details triggerTime is output time event, sent when input event
    * set_boolean is true.
-   * @return SFTime The current value of triggerTime.
+   * @return const SFTime& The current value of triggerTime.
    */
-  SFTime getTriggerTime() const { return _triggerTime; }
+  const SFTime &getTriggerTime() const { return _triggerTime; }
 
   /**
    * @brief Emit an output value on triggerTime. AccessType: outputOnly

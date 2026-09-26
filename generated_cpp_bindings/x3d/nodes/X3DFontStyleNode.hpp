@@ -69,9 +69,9 @@ public:
    * @details The class attribute on each X3D node and statement is a
    * space-separated list of classes, reserved for use by Cascading Style Sheets
    * (CSS) and XML stylesheets.
-   * @return SFString The current value of class.
+   * @return const SFString& The current value of class.
    */
-  SFString getClass_() const { return _class_; }
+  const SFString &getClass_() const { return _class_; }
 
   /**
    * @brief Sets the value of class. AccessType: inputOutput
@@ -88,9 +88,9 @@ public:
    * @brief Gets the value of id. AccessType: inputOutput
    * @details The id attribute on each X3D node and statement is considered a
    * unique identifier when used as part of an encompassing HTML/DOM context.
-   * @return SFString The current value of id.
+   * @return const SFString& The current value of id.
    */
-  SFString getId() const { return _id; }
+  const SFString &getId() const { return _id; }
 
   /**
    * @brief Sets the value of id. AccessType: inputOutput
@@ -105,9 +105,9 @@ public:
   /**
    * @brief Gets the value of IS. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of IS.
+   * @return const SFNode& The current value of IS.
    */
-  SFNode getIS() const { return _IS; }
+  const SFNode &getIS() const { return _IS; }
 
   /**
    * @brief Acceptable node types for the IS field.
@@ -131,9 +131,9 @@ public:
   /**
    * @brief Gets the value of metadata. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of metadata.
+   * @return const SFNode& The current value of metadata.
    */
-  SFNode getMetadata() const { return _metadata; }
+  const SFNode &getMetadata() const { return _metadata; }
 
   /**
    * @brief Acceptable node types for the metadata field.

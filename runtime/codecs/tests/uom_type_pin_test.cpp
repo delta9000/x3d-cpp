@@ -28,11 +28,12 @@ using namespace x3d::core;
 
 namespace {
 
-// Compile-time: the generated `gain` accessor returns SFFloat (float), not an
+// Compile-time: the generated `gain` accessor yields SFFloat (float), not an
 // integer. If the UOM/codegen ever drifts to the prose's SFInt32, this fails to
 // build — the strongest possible regression guard.
 static_assert(
-    std::is_same_v<decltype(std::declval<const x3d::nodes::ListenerPointSource>().getGain()),
+    std::is_same_v<std::remove_cvref_t<decltype(
+                       std::declval<const x3d::nodes::ListenerPointSource>().getGain())>,
                    SFFloat>,
     "ListenerPointSource::gain must be SFFloat (X3DUOM); ISO 19775 §16.4.13 "
     "prose says SFInt32 and is an upstream erratum — do not 'fix' the binding "

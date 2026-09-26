@@ -104,9 +104,9 @@ public:
   /**
    * @brief Gets the value of bboxCenter. AccessType: initializeOnly
    * @details
-   * @return SFVec3f The current value of bboxCenter.
+   * @return const SFVec3f& The current value of bboxCenter.
    */
-  SFVec3f getBboxCenter() const { return _bboxCenter; }
+  const SFVec3f &getBboxCenter() const { return _bboxCenter; }
   /**
    * @brief Data-layer write of bboxCenter (reader/init ingest path).
    * @details bboxCenter is initializeOnly: author-settable at parse
@@ -117,9 +117,9 @@ public:
   /**
    * @brief Gets the value of bboxDisplay. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of bboxDisplay.
+   * @return const SFBool& The current value of bboxDisplay.
    */
-  SFBool getBboxDisplay() const { return _bboxDisplay; }
+  const SFBool &getBboxDisplay() const { return _bboxDisplay; }
 
   /**
    * @brief Sets the value of bboxDisplay. AccessType: inputOutput
@@ -131,9 +131,9 @@ public:
   /**
    * @brief Gets the value of bboxSize. AccessType: initializeOnly
    * @details
-   * @return SFVec3f The current value of bboxSize.
+   * @return const SFVec3f& The current value of bboxSize.
    */
-  SFVec3f getBboxSize() const { return _bboxSize; }
+  const SFVec3f &getBboxSize() const { return _bboxSize; }
   /**
    * @brief Data-layer write of bboxSize (reader/init ingest path).
    * @details bboxSize is initializeOnly: author-settable at parse
@@ -144,9 +144,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -158,9 +158,9 @@ public:
   /**
    * @brief Gets the value of rotation. AccessType: inputOutput
    * @details
-   * @return SFRotation The current value of rotation.
+   * @return const SFRotation& The current value of rotation.
    */
-  SFRotation getRotation() const { return _rotation; }
+  const SFRotation &getRotation() const { return _rotation; }
 
   /**
    * @brief Sets the value of rotation. AccessType: inputOutput
@@ -174,9 +174,9 @@ public:
   /**
    * @brief Gets the value of translation. AccessType: inputOutput
    * @details
-   * @return SFVec3f The current value of translation.
+   * @return const SFVec3f& The current value of translation.
    */
-  SFVec3f getTranslation() const { return _translation; }
+  const SFVec3f &getTranslation() const { return _translation; }
 
   /**
    * @brief Sets the value of translation. AccessType: inputOutput
@@ -190,9 +190,9 @@ public:
   /**
    * @brief Gets the value of visible. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of visible.
+   * @return const SFBool& The current value of visible.
    */
-  SFBool getVisible() const { return _visible; }
+  const SFBool &getVisible() const { return _visible; }
 
   /**
    * @brief Sets the value of visible. AccessType: inputOutput

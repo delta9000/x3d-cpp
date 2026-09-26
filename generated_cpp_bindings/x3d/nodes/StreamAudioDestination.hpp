@@ -121,9 +121,9 @@ public:
    * @brief Gets the value of streamIdentifier. AccessType: inputOutput
    * @details Stream identification TBD Hint: W3C Media Capture and Streams
    * https://www.
-   * @return SFString The current value of streamIdentifier.
+   * @return const SFString& The current value of streamIdentifier.
    */
-  SFString getStreamIdentifier() const { return _streamIdentifier; }
+  const SFString &getStreamIdentifier() const { return _streamIdentifier; }
 
   /**
    * @brief Sets the value of streamIdentifier. AccessType: inputOutput

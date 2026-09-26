@@ -40,6 +40,14 @@ const FieldTable &StreamAudioSource::fields() const {
             dynamic_cast<StreamAudioSource &>(n).setChannelCountMode(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const StreamAudioSource &>(n).getChannelCountMode(),
+              &typeid(ChannelCountModeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -67,6 +75,14 @@ const FieldTable &StreamAudioSource::fields() const {
             dynamic_cast<StreamAudioSource &>(n).setChannelInterpretation(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .getChannelInterpretation(),
+                  &typeid(ChannelInterpretationChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -83,6 +99,14 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DTimeDependentNode::getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -101,6 +125,14 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DTimeDependentNode::getElapsedTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -117,6 +149,14 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DSoundSourceNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -135,6 +175,14 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DSoundSourceNode::getGain(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -151,6 +199,13 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -169,6 +224,14 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DTimeDependentNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -185,6 +248,14 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DTimeDependentNode::getIsPaused(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -203,6 +274,14 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -219,6 +298,14 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DTimeDependentNode::getPauseTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -237,6 +324,14 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DTimeDependentNode::getResumeTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -253,6 +348,14 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DTimeDependentNode::getStartTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -271,6 +374,14 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n)
+                       .X3DTimeDependentNode::getStopTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -287,6 +398,14 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const StreamAudioSource &>(n).getStreamIdentifier(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -305,6 +424,13 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -321,6 +447,13 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -339,6 +472,14 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const StreamAudioSource &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -356,6 +497,13 @@ const FieldTable &StreamAudioSource::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const StreamAudioSource &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -372,6 +520,14 @@ const FieldTable &StreamAudioSource::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const StreamAudioSource &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

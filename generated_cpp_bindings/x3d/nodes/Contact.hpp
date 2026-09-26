@@ -160,10 +160,10 @@ public:
    * @brief Gets the value of appliedParameters. AccessType: inputOutput
    * @details Default global parameters for collision outputs of rigid body
    * physics system.
-   * @return std::vector<AppliedParametersChoices> The current value of
+   * @return const std::vector<AppliedParametersChoices>& The current value of
    * appliedParameters.
    */
-  std::vector<AppliedParametersChoices> getAppliedParameters() const {
+  const std::vector<AppliedParametersChoices> &getAppliedParameters() const {
     return _appliedParameters;
   }
 
@@ -189,9 +189,9 @@ public:
    * @details The body1 and body2 fields specify two top-level nodes that should
    * be evaluated in the physics model as a single set of interactions with
    * respect to each other.
-   * @return SFNode The current value of body1.
+   * @return const SFNode& The current value of body1.
    */
-  SFNode getBody1() const { return _body1; }
+  const SFNode &getBody1() const { return _body1; }
 
   /**
    * @brief Acceptable node types for the body1 field.
@@ -219,9 +219,9 @@ public:
    * @details The body1 and body2 fields specify two top-level nodes that should
    * be evaluated in the physics model as a single set of interactions with
    * respect to each other.
-   * @return SFNode The current value of body2.
+   * @return const SFNode& The current value of body2.
    */
-  SFNode getBody2() const { return _body2; }
+  const SFNode &getBody2() const { return _body2; }
 
   /**
    * @brief Acceptable node types for the body2 field.
@@ -248,9 +248,9 @@ public:
    * @brief Gets the value of bounce. AccessType: inputOutput
    * @details bounce indicates bounciness (0 = no bounce at all, 1 = maximum
    * bounce).
-   * @return SFFloat The current value of bounce.
+   * @return const SFFloat& The current value of bounce.
    */
-  SFFloat getBounce() const { return _bounce; }
+  const SFFloat &getBounce() const { return _bounce; }
 
   /**
    * @brief Sets the value of bounce. AccessType: inputOutput
@@ -278,9 +278,9 @@ public:
    * @brief Gets the value of contactNormal. AccessType: inputOutput
    * @details contactNormal is unit vector describing normal between two
    * colliding bodies.
-   * @return SFVec3f The current value of contactNormal.
+   * @return const SFVec3f& The current value of contactNormal.
    */
-  SFVec3f getContactNormal() const { return _contactNormal; }
+  const SFVec3f &getContactNormal() const { return _contactNormal; }
 
   /**
    * @brief Sets the value of contactNormal. AccessType: inputOutput
@@ -296,9 +296,9 @@ public:
    * @brief Gets the value of depth. AccessType: inputOutput
    * @details depth indicates how deep the current intersection is along normal
    * vector.
-   * @return SFFloat The current value of depth.
+   * @return const SFFloat& The current value of depth.
    */
-  SFFloat getDepth() const { return _depth; }
+  const SFFloat &getDepth() const { return _depth; }
 
   /**
    * @brief Sets the value of depth. AccessType: inputOutput
@@ -311,9 +311,11 @@ public:
   /**
    * @brief Gets the value of frictionCoefficients. AccessType: inputOutput
    * @details frictionCoefficients used for computing surface drag.
-   * @return SFVec2f The current value of frictionCoefficients.
+   * @return const SFVec2f& The current value of frictionCoefficients.
    */
-  SFVec2f getFrictionCoefficients() const { return _frictionCoefficients; }
+  const SFVec2f &getFrictionCoefficients() const {
+    return _frictionCoefficients;
+  }
 
   /**
    * @brief Sets the value of frictionCoefficients. AccessType: inputOutput
@@ -349,9 +351,9 @@ public:
   /**
    * @brief Gets the value of frictionDirection. AccessType: inputOutput
    * @details frictionDirection controls friction vector.
-   * @return SFVec3f The current value of frictionDirection.
+   * @return const SFVec3f& The current value of frictionDirection.
    */
-  SFVec3f getFrictionDirection() const { return _frictionDirection; }
+  const SFVec3f &getFrictionDirection() const { return _frictionDirection; }
 
   /**
    * @brief Sets the value of frictionDirection. AccessType: inputOutput
@@ -372,9 +374,9 @@ public:
    * @brief Gets the value of geometry1. AccessType: inputOutput
    * @details The geometry1 and geometry2 fields specify collision-related
    * information about body1 and body2.
-   * @return SFNode The current value of geometry1.
+   * @return const SFNode& The current value of geometry1.
    */
-  SFNode getGeometry1() const { return _geometry1; }
+  const SFNode &getGeometry1() const { return _geometry1; }
 
   /**
    * @brief Acceptable node types for the geometry1 field.
@@ -400,9 +402,9 @@ public:
    * @brief Gets the value of geometry2. AccessType: inputOutput
    * @details The geometry1 and geometry2 fields specify collision-related
    * information about body1 and body2.
-   * @return SFNode The current value of geometry2.
+   * @return const SFNode& The current value of geometry2.
    */
-  SFNode getGeometry2() const { return _geometry2; }
+  const SFNode &getGeometry2() const { return _geometry2; }
 
   /**
    * @brief Acceptable node types for the geometry2 field.
@@ -427,9 +429,9 @@ public:
   /**
    * @brief Gets the value of minBounceSpeed. AccessType: inputOutput
    * @details minBounceSpeed m/s needed to bounce.
-   * @return SFFloat The current value of minBounceSpeed.
+   * @return const SFFloat& The current value of minBounceSpeed.
    */
-  SFFloat getMinBounceSpeed() const { return _minBounceSpeed; }
+  const SFFloat &getMinBounceSpeed() const { return _minBounceSpeed; }
 
   /**
    * @brief Sets the value of minBounceSpeed. AccessType: inputOutput
@@ -457,9 +459,9 @@ public:
   /**
    * @brief Gets the value of position. AccessType: inputOutput
    * @details position (x, y, z in meters) of exact location of collision.
-   * @return SFVec3f The current value of position.
+   * @return const SFVec3f& The current value of position.
    */
-  SFVec3f getPosition() const { return _position; }
+  const SFVec3f &getPosition() const { return _position; }
 
   /**
    * @brief Sets the value of position. AccessType: inputOutput
@@ -473,9 +475,9 @@ public:
   /**
    * @brief Gets the value of slipCoefficients. AccessType: inputOutput
    * @details slipCoefficients used for computing surface drag.
-   * @return SFVec2f The current value of slipCoefficients.
+   * @return const SFVec2f& The current value of slipCoefficients.
    */
-  SFVec2f getSlipCoefficients() const { return _slipCoefficients; }
+  const SFVec2f &getSlipCoefficients() const { return _slipCoefficients; }
 
   /**
    * @brief Sets the value of slipCoefficients. AccessType: inputOutput
@@ -493,9 +495,9 @@ public:
    * @brief Gets the value of softnessConstantForceMix. AccessType: inputOutput
    * @details softnessConstantForceMix value applies a constant force value to
    * make colliding surfaces appear to be somewhat soft.
-   * @return SFFloat The current value of softnessConstantForceMix.
+   * @return const SFFloat& The current value of softnessConstantForceMix.
    */
-  SFFloat getSoftnessConstantForceMix() const {
+  const SFFloat &getSoftnessConstantForceMix() const {
     return _softnessConstantForceMix;
   }
 
@@ -529,9 +531,9 @@ public:
    * @details softnessErrorCorrection indicates fraction of collision error
    * fixed in a set of evaluations (0 = no error correction, 1 = all errors
    * corrected in single step).
-   * @return SFFloat The current value of softnessErrorCorrection.
+   * @return const SFFloat& The current value of softnessErrorCorrection.
    */
-  SFFloat getSoftnessErrorCorrection() const {
+  const SFFloat &getSoftnessErrorCorrection() const {
     return _softnessErrorCorrection;
   }
 
@@ -565,9 +567,9 @@ public:
    * @brief Gets the value of surfaceSpeed. AccessType: inputOutput
    * @details surfaceSpeed defines speed vectors for computing surface drag, if
    * contact surfaces move independently of bodies.
-   * @return SFVec2f The current value of surfaceSpeed.
+   * @return const SFVec2f& The current value of surfaceSpeed.
    */
-  SFVec2f getSurfaceSpeed() const { return _surfaceSpeed; }
+  const SFVec2f &getSurfaceSpeed() const { return _surfaceSpeed; }
 
   /**
    * @brief Sets the value of surfaceSpeed. AccessType: inputOutput

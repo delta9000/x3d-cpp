@@ -78,9 +78,9 @@ public:
   /**
    * @brief Gets the value of cycleInterval. AccessType: inputOutput
    * @details cycleInterval is loop duration in seconds.
-   * @return SFTime The current value of cycleInterval.
+   * @return const SFTime& The current value of cycleInterval.
    */
-  SFTime getCycleInterval() const { return _cycleInterval; }
+  const SFTime &getCycleInterval() const { return _cycleInterval; }
 
   /**
    * @brief Sets the value of cycleInterval. AccessType: inputOutput
@@ -117,9 +117,9 @@ public:
    * @details cycleTime sends a time outputOnly at startTime, and also at the
    * beginning of each new cycle (useful for synchronization with other
    * time-based objects).
-   * @return SFTime The current value of cycleTime.
+   * @return const SFTime& The current value of cycleTime.
    */
-  SFTime getCycleTime() const { return _cycleTime; }
+  const SFTime &getCycleTime() const { return _cycleTime; }
 
   /**
    * @brief Emit an output value on cycleTime. AccessType: outputOnly
@@ -137,9 +137,9 @@ public:
    * @brief Gets the value of fraction_changed. AccessType: outputOnly
    * @details fraction_changed continuously sends value in range [0,1] showing
    * time progress in the current cycle.
-   * @return SFFloat The current value of fraction_changed.
+   * @return const SFFloat& The current value of fraction_changed.
    */
-  SFFloat getFraction_changed() const { return _fraction_changed; }
+  const SFFloat &getFraction_changed() const { return _fraction_changed; }
 
   /**
    * @brief Emit an output value on fraction_changed. AccessType: outputOnly
@@ -156,9 +156,9 @@ public:
    * @brief Gets the value of loop. AccessType: inputOutput
    * @details Repeat indefinitely when loop=true, repeat only once when
    * loop=false.
-   * @return SFBool The current value of loop.
+   * @return const SFBool& The current value of loop.
    */
-  SFBool getLoop() const { return _loop; }
+  const SFBool &getLoop() const { return _loop; }
 
   /**
    * @brief Sets the value of loop. AccessType: inputOutput
@@ -171,9 +171,9 @@ public:
   /**
    * @brief Gets the value of time. AccessType: outputOnly
    * @details Time continuously sends the absolute time (value 0.
-   * @return SFTime The current value of time.
+   * @return const SFTime& The current value of time.
    */
-  SFTime getTime() const { return _time; }
+  const SFTime &getTime() const { return _time; }
 
   /**
    * @brief Emit an output value on time. AccessType: outputOnly

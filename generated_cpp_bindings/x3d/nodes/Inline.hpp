@@ -77,9 +77,9 @@ public:
    * @brief Gets the value of global. AccessType: inputOutput
    * @details The global field controls potential external scoping effects of
    * lights found within an Inline scene.
-   * @return SFBool The current value of global.
+   * @return const SFBool& The current value of global.
    */
-  SFBool getGlobal() const { return _global; }
+  const SFBool &getGlobal() const { return _global; }
 
   /**
    * @brief Sets the value of global. AccessType: inputOutput

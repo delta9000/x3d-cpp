@@ -32,6 +32,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .X3DVolumeRenderStyleNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -50,6 +58,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -67,6 +83,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -87,6 +111,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .getSilhouetteBoundaryOpacity(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -105,6 +137,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .getSilhouetteRetainedOpacity(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -125,6 +165,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .getSilhouetteSharpness(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -144,6 +192,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .getSurfaceNormals(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -161,6 +217,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -180,6 +244,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -197,6 +269,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -216,6 +296,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -233,6 +321,14 @@ const FieldTable &SilhouetteEnhancementVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SilhouetteEnhancementVolumeStyle &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

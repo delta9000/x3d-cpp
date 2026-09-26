@@ -80,9 +80,9 @@ public:
   /**
    * @brief Gets the value of applied. AccessType: inputOutput
    * @details Whether or not LineProperties are applied to associated geometry.
-   * @return SFBool The current value of applied.
+   * @return const SFBool& The current value of applied.
    */
-  SFBool getApplied() const { return _applied; }
+  const SFBool &getApplied() const { return _applied; }
 
   /**
    * @brief Sets the value of applied. AccessType: inputOutput
@@ -95,9 +95,9 @@ public:
    * @brief Gets the value of linetype. AccessType: inputOutput
    * @details linetype selects a line pattern, with solid default if defined
    * value isn't supported.
-   * @return SFInt32 The current value of linetype.
+   * @return const SFInt32& The current value of linetype.
    */
-  SFInt32 getLinetype() const { return _linetype; }
+  const SFInt32 &getLinetype() const { return _linetype; }
 
   /**
    * @brief Sets the value of linetype. AccessType: inputOutput
@@ -126,9 +126,11 @@ public:
    * @details linewidthScaleFactor is a scale factor multiplied by
    * browser-dependent nominal linewidth, mapped to nearest available line
    * width.
-   * @return SFFloat The current value of linewidthScaleFactor.
+   * @return const SFFloat& The current value of linewidthScaleFactor.
    */
-  SFFloat getLinewidthScaleFactor() const { return _linewidthScaleFactor; }
+  const SFFloat &getLinewidthScaleFactor() const {
+    return _linewidthScaleFactor;
+  }
 
   /**
    * @brief Sets the value of linewidthScaleFactor. AccessType: inputOutput

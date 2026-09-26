@@ -138,9 +138,9 @@ public:
   /**
    * @brief Gets the value of ccw. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of ccw.
+   * @return const SFBool& The current value of ccw.
    */
-  SFBool getCcw() const { return _ccw; }
+  const SFBool &getCcw() const { return _ccw; }
   /**
    * @brief Data-layer write of ccw (reader/init ingest path).
    * @details ccw is initializeOnly: author-settable at parse
@@ -151,9 +151,9 @@ public:
   /**
    * @brief Gets the value of color. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of color.
+   * @return const SFNode& The current value of color.
    */
-  SFNode getColor() const { return _color; }
+  const SFNode &getColor() const { return _color; }
 
   /**
    * @brief Acceptable node types for the color field.
@@ -177,9 +177,9 @@ public:
   /**
    * @brief Gets the value of colorPerVertex. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of colorPerVertex.
+   * @return const SFBool& The current value of colorPerVertex.
    */
-  SFBool getColorPerVertex() const { return _colorPerVertex; }
+  const SFBool &getColorPerVertex() const { return _colorPerVertex; }
   /**
    * @brief Data-layer write of colorPerVertex (reader/init ingest path).
    * @details colorPerVertex is initializeOnly: author-settable at parse
@@ -192,9 +192,9 @@ public:
   /**
    * @brief Gets the value of coord. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of coord.
+   * @return const SFNode& The current value of coord.
    */
-  SFNode getCoord() const { return _coord; }
+  const SFNode &getCoord() const { return _coord; }
 
   /**
    * @brief Acceptable node types for the coord field.
@@ -218,9 +218,9 @@ public:
   /**
    * @brief Gets the value of fogCoord. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of fogCoord.
+   * @return const SFNode& The current value of fogCoord.
    */
-  SFNode getFogCoord() const { return _fogCoord; }
+  const SFNode &getFogCoord() const { return _fogCoord; }
 
   /**
    * @brief Acceptable node types for the fogCoord field.
@@ -244,9 +244,9 @@ public:
   /**
    * @brief Gets the value of normal. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of normal.
+   * @return const SFNode& The current value of normal.
    */
-  SFNode getNormal() const { return _normal; }
+  const SFNode &getNormal() const { return _normal; }
 
   /**
    * @brief Acceptable node types for the normal field.
@@ -270,9 +270,9 @@ public:
   /**
    * @brief Gets the value of normalPerVertex. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of normalPerVertex.
+   * @return const SFBool& The current value of normalPerVertex.
    */
-  SFBool getNormalPerVertex() const { return _normalPerVertex; }
+  const SFBool &getNormalPerVertex() const { return _normalPerVertex; }
   /**
    * @brief Data-layer write of normalPerVertex (reader/init ingest path).
    * @details normalPerVertex is initializeOnly: author-settable at parse
@@ -285,9 +285,9 @@ public:
   /**
    * @brief Gets the value of solid. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse
@@ -298,9 +298,9 @@ public:
   /**
    * @brief Gets the value of texCoord. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of texCoord.
+   * @return const SFNode& The current value of texCoord.
    */
-  SFNode getTexCoord() const { return _texCoord; }
+  const SFNode &getTexCoord() const { return _texCoord; }
 
   /**
    * @brief Acceptable node types for the texCoord field.

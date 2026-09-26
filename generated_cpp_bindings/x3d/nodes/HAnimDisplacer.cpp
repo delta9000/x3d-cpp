@@ -29,6 +29,13 @@ const FieldTable &HAnimDisplacer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).getCoordIndex(),
+                  &typeid(MFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +52,13 @@ const FieldTable &HAnimDisplacer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -63,6 +77,13 @@ const FieldTable &HAnimDisplacer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).getDisplacements(),
+                  &typeid(MFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -79,6 +100,13 @@ const FieldTable &HAnimDisplacer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -97,6 +125,14 @@ const FieldTable &HAnimDisplacer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const HAnimDisplacer &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -111,6 +147,13 @@ const FieldTable &HAnimDisplacer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).getName(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -127,6 +170,13 @@ const FieldTable &HAnimDisplacer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).getWeight(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -145,6 +195,13 @@ const FieldTable &HAnimDisplacer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -161,6 +218,13 @@ const FieldTable &HAnimDisplacer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -179,6 +243,13 @@ const FieldTable &HAnimDisplacer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -196,6 +267,13 @@ const FieldTable &HAnimDisplacer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -212,6 +290,13 @@ const FieldTable &HAnimDisplacer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const HAnimDisplacer &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

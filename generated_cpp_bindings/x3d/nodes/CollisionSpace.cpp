@@ -30,6 +30,14 @@ const FieldTable &CollisionSpace::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n)
+                       .X3DNBodyCollisionSpaceNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,14 @@ const FieldTable &CollisionSpace::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n)
+                       .X3DNBodyCollisionSpaceNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -66,6 +82,14 @@ const FieldTable &CollisionSpace::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n)
+                       .X3DNBodyCollisionSpaceNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -84,6 +108,13 @@ const FieldTable &CollisionSpace::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n).getCollidables(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -100,6 +131,14 @@ const FieldTable &CollisionSpace::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n)
+                       .X3DNBodyCollisionSpaceNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -118,6 +157,13 @@ const FieldTable &CollisionSpace::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -134,6 +180,14 @@ const FieldTable &CollisionSpace::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CollisionSpace &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -152,6 +206,13 @@ const FieldTable &CollisionSpace::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n).getUseGeometry(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -168,6 +229,14 @@ const FieldTable &CollisionSpace::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n)
+                       .X3DNBodyCollisionSpaceNode::getVisible(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -186,6 +255,13 @@ const FieldTable &CollisionSpace::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -202,6 +278,13 @@ const FieldTable &CollisionSpace::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -220,6 +303,13 @@ const FieldTable &CollisionSpace::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -237,6 +327,13 @@ const FieldTable &CollisionSpace::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -253,6 +350,13 @@ const FieldTable &CollisionSpace::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CollisionSpace &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

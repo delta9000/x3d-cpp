@@ -170,9 +170,9 @@ public:
   /**
    * @brief Gets the value of tessellationScale. AccessType: inputOutput
    * @details scale for surface tessellation in children NurbsSurface nodes.
-   * @return SFFloat The current value of tessellationScale.
+   * @return const SFFloat& The current value of tessellationScale.
    */
-  SFFloat getTessellationScale() const { return _tessellationScale; }
+  const SFFloat &getTessellationScale() const { return _tessellationScale; }
 
   /**
    * @brief Sets the value of tessellationScale. AccessType: inputOutput

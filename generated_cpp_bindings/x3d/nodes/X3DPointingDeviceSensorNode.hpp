@@ -59,9 +59,9 @@ public:
   /**
    * @brief Gets the value of isOver. AccessType: outputOnly
    * @details
-   * @return SFBool The current value of isOver.
+   * @return const SFBool& The current value of isOver.
    */
-  SFBool getIsOver() const { return _isOver; }
+  const SFBool &getIsOver() const { return _isOver; }
 
   /**
    * @brief Emit an output value on isOver. AccessType: outputOnly

@@ -112,9 +112,9 @@ public:
    * @brief Gets the value of geoCenter. AccessType: inputOutput
    * @details Translation offset from origin of local coordinate system, applied
    * prior to rotation or scaling.
-   * @return SFVec3d The current value of geoCenter.
+   * @return const SFVec3d& The current value of geoCenter.
    */
-  SFVec3d getGeoCenter() const { return _geoCenter; }
+  const SFVec3d &getGeoCenter() const { return _geoCenter; }
 
   /**
    * @brief Sets the value of geoCenter. AccessType: inputOutput
@@ -130,9 +130,9 @@ public:
    * @brief Gets the value of geoOrigin. AccessType: initializeOnly
    * @details Single contained GeoOrigin node that can specify a local
    * coordinate frame for extended precision.
-   * @return SFNode The current value of geoOrigin.
+   * @return const SFNode& The current value of geoOrigin.
    */
-  SFNode getGeoOrigin() const { return _geoOrigin; }
+  const SFNode &getGeoOrigin() const { return _geoOrigin; }
 
   /**
    * @brief Acceptable node types for the geoOrigin field.
@@ -154,9 +154,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -168,9 +168,9 @@ public:
    * @brief Gets the value of rotation. AccessType: inputOutput
    * @details Orientation (axis, angle in radians) of children relative to local
    * coordinate system.
-   * @return SFRotation The current value of rotation.
+   * @return const SFRotation& The current value of rotation.
    */
-  SFRotation getRotation() const { return _rotation; }
+  const SFRotation &getRotation() const { return _rotation; }
 
   /**
    * @brief Sets the value of rotation. AccessType: inputOutput
@@ -186,9 +186,9 @@ public:
    * @brief Gets the value of scale. AccessType: inputOutput
    * @details Non-uniform x-y-z scale of child coordinate system, adjusted by
    * center and scaleOrientation.
-   * @return SFVec3f The current value of scale.
+   * @return const SFVec3f& The current value of scale.
    */
-  SFVec3f getScale() const { return _scale; }
+  const SFVec3f &getScale() const { return _scale; }
 
   /**
    * @brief Sets the value of scale. AccessType: inputOutput
@@ -204,9 +204,9 @@ public:
    * @brief Gets the value of scaleOrientation. AccessType: inputOutput
    * @details Preliminary rotation of coordinate sys tem before scaling (to
    * allow scaling around arbitrary orientations).
-   * @return SFRotation The current value of scaleOrientation.
+   * @return const SFRotation& The current value of scaleOrientation.
    */
-  SFRotation getScaleOrientation() const { return _scaleOrientation; }
+  const SFRotation &getScaleOrientation() const { return _scaleOrientation; }
 
   /**
    * @brief Sets the value of scaleOrientation. AccessType: inputOutput
@@ -228,9 +228,9 @@ public:
    * @brief Gets the value of translation. AccessType: inputOutput
    * @details Position (x, y, z in meters) of children relative to local
    * coordinate system.
-   * @return SFVec3f The current value of translation.
+   * @return const SFVec3f& The current value of translation.
    */
-  SFVec3f getTranslation() const { return _translation; }
+  const SFVec3f &getTranslation() const { return _translation; }
 
   /**
    * @brief Sets the value of translation. AccessType: inputOutput

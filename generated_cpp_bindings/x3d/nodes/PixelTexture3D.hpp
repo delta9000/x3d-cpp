@@ -76,9 +76,9 @@ public:
    * @details image describes raw data for this 3D texture: number of components
    * to the image [0,4], width, height and depth of the texture, followed by
    * (width x height x depth) pixel values.
-   * @return MFInt32 The current value of image.
+   * @return const MFInt32& The current value of image.
    */
-  MFInt32 getImage() const { return _image; }
+  const MFInt32 &getImage() const { return _image; }
 
   /**
    * @brief Sets the value of image. AccessType: inputOutput

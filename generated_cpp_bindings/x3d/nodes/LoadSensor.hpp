@@ -101,9 +101,9 @@ public:
    * @brief Gets the value of isLoaded. AccessType: outputOnly
    * @details Notify when all watchList child nodes are loaded, or at least one
    * has failed.
-   * @return SFBool The current value of isLoaded.
+   * @return const SFBool& The current value of isLoaded.
    */
-  SFBool getIsLoaded() const { return _isLoaded; }
+  const SFBool &getIsLoaded() const { return _isLoaded; }
 
   /**
    * @brief Emit an output value on isLoaded. AccessType: outputOnly
@@ -119,9 +119,9 @@ public:
   /**
    * @brief Gets the value of loadTime. AccessType: outputOnly
    * @details Time of successful load complete, not sent on failure.
-   * @return SFTime The current value of loadTime.
+   * @return const SFTime& The current value of loadTime.
    */
-  SFTime getLoadTime() const { return _loadTime; }
+  const SFTime &getLoadTime() const { return _loadTime; }
 
   /**
    * @brief Emit an output value on loadTime. AccessType: outputOnly
@@ -137,9 +137,9 @@ public:
   /**
    * @brief Gets the value of progress. AccessType: outputOnly
    * @details Sends 0.
-   * @return SFFloat The current value of progress.
+   * @return const SFFloat& The current value of progress.
    */
-  SFFloat getProgress() const { return _progress; }
+  const SFFloat &getProgress() const { return _progress; }
 
   /**
    * @brief Emit an output value on progress. AccessType: outputOnly
@@ -156,9 +156,9 @@ public:
    * @brief Gets the value of timeOut. AccessType: inputOutput
    * @details Time in seconds of maximum load duration prior to declaring
    * failure.
-   * @return SFTime The current value of timeOut.
+   * @return const SFTime& The current value of timeOut.
    */
-  SFTime getTimeOut() const { return _timeOut; }
+  const SFTime &getTimeOut() const { return _timeOut; }
 
   /**
    * @brief Sets the value of timeOut. AccessType: inputOutput

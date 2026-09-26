@@ -74,9 +74,9 @@ public:
   /**
    * @brief Gets the value of groundAngle. AccessType: inputOutput
    * @details
-   * @return MFFloat The current value of groundAngle.
+   * @return const MFFloat& The current value of groundAngle.
    */
-  MFFloat getGroundAngle() const { return _groundAngle; }
+  const MFFloat &getGroundAngle() const { return _groundAngle; }
 
   /**
    * @brief Sets the value of groundAngle. AccessType: inputOutput
@@ -109,9 +109,9 @@ public:
   /**
    * @brief Gets the value of groundColor. AccessType: inputOutput
    * @details
-   * @return MFColor The current value of groundColor.
+   * @return const MFColor& The current value of groundColor.
    */
-  MFColor getGroundColor() const { return _groundColor; }
+  const MFColor &getGroundColor() const { return _groundColor; }
 
   /**
    * @brief Sets the value of groundColor. AccessType: inputOutput
@@ -144,9 +144,9 @@ public:
   /**
    * @brief Gets the value of skyAngle. AccessType: inputOutput
    * @details
-   * @return MFFloat The current value of skyAngle.
+   * @return const MFFloat& The current value of skyAngle.
    */
-  MFFloat getSkyAngle() const { return _skyAngle; }
+  const MFFloat &getSkyAngle() const { return _skyAngle; }
 
   /**
    * @brief Sets the value of skyAngle. AccessType: inputOutput
@@ -179,9 +179,9 @@ public:
   /**
    * @brief Gets the value of skyColor. AccessType: inputOutput
    * @details
-   * @return MFColor The current value of skyColor.
+   * @return const MFColor& The current value of skyColor.
    */
-  MFColor getSkyColor() const { return _skyColor; }
+  const MFColor &getSkyColor() const { return _skyColor; }
 
   /**
    * @brief Sets the value of skyColor. AccessType: inputOutput
@@ -214,9 +214,9 @@ public:
   /**
    * @brief Gets the value of transparency. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of transparency.
+   * @return const SFFloat& The current value of transparency.
    */
-  SFFloat getTransparency() const { return _transparency; }
+  const SFFloat &getTransparency() const { return _transparency; }
 
   /**
    * @brief Sets the value of transparency. AccessType: inputOutput

@@ -31,6 +31,13 @@ const FieldTable &IntegerSequencer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IntegerSequencer &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +54,14 @@ const FieldTable &IntegerSequencer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IntegerSequencer &>(n)
+                       .X3DSequencerNode::getKey(),
+                  &typeid(MFFloat)};
+        }
 
     });
 
@@ -65,6 +80,13 @@ const FieldTable &IntegerSequencer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IntegerSequencer &>(n).getKeyValue(),
+                  &typeid(MFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +104,14 @@ const FieldTable &IntegerSequencer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IntegerSequencer &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -95,6 +125,10 @@ const FieldTable &IntegerSequencer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -110,6 +144,10 @@ const FieldTable &IntegerSequencer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -123,6 +161,10 @@ const FieldTable &IntegerSequencer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -141,6 +183,13 @@ const FieldTable &IntegerSequencer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IntegerSequencer &>(n).getValue_changed(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -157,6 +206,13 @@ const FieldTable &IntegerSequencer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IntegerSequencer &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -175,6 +231,13 @@ const FieldTable &IntegerSequencer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IntegerSequencer &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -191,6 +254,14 @@ const FieldTable &IntegerSequencer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IntegerSequencer &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -209,6 +280,13 @@ const FieldTable &IntegerSequencer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IntegerSequencer &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -225,6 +303,14 @@ const FieldTable &IntegerSequencer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IntegerSequencer &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

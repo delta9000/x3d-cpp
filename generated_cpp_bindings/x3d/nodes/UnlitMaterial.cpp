@@ -29,6 +29,13 @@ const FieldTable &UnlitMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).getEmissiveColor(),
+                  &typeid(SFColor)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -46,6 +53,13 @@ const FieldTable &UnlitMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).getEmissiveTexture(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -67,6 +81,14 @@ const FieldTable &UnlitMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n)
+                       .X3DOneSidedMaterialNode::getEmissiveTextureMapping(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -84,6 +106,13 @@ const FieldTable &UnlitMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -100,6 +129,14 @@ const FieldTable &UnlitMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const UnlitMaterial &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -119,6 +156,14 @@ const FieldTable &UnlitMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n)
+                       .X3DOneSidedMaterialNode::getNormalScale(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -136,6 +181,13 @@ const FieldTable &UnlitMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).getNormalTexture(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -157,6 +209,14 @@ const FieldTable &UnlitMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n)
+                       .X3DOneSidedMaterialNode::getNormalTextureMapping(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -173,6 +233,13 @@ const FieldTable &UnlitMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).getTransparency(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -191,6 +258,13 @@ const FieldTable &UnlitMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -207,6 +281,13 @@ const FieldTable &UnlitMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -225,6 +306,13 @@ const FieldTable &UnlitMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -242,6 +330,13 @@ const FieldTable &UnlitMaterial::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -258,6 +353,13 @@ const FieldTable &UnlitMaterial::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const UnlitMaterial &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

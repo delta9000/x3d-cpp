@@ -63,9 +63,9 @@ public:
    * @brief Gets the value of easeInEaseOut. AccessType: inputOutput
    * @details Array of paired values for easeOut fraction and easeIn fraction
    * within each key interval.
-   * @return MFVec2f The current value of easeInEaseOut.
+   * @return const MFVec2f& The current value of easeInEaseOut.
    */
-  MFVec2f getEaseInEaseOut() const { return _easeInEaseOut; }
+  const MFVec2f &getEaseInEaseOut() const { return _easeInEaseOut; }
 
   /**
    * @brief Sets the value of easeInEaseOut. AccessType: inputOutput
@@ -82,9 +82,9 @@ public:
    * @details Definition values for linear-interpolation function input
    * intervals, listed in non-decreasing order and corresponding to
    * easeInEaseOut array.
-   * @return MFFloat The current value of key.
+   * @return const MFFloat& The current value of key.
    */
-  MFFloat getKey() const { return _key; }
+  const MFFloat &getKey() const { return _key; }
 
   /**
    * @brief Sets the value of key. AccessType: inputOutput
@@ -102,9 +102,9 @@ public:
    * @details Interpolated output value determined by current key time,
    * corresponding easeInEaseOut smoothing intervals, and corresponding key
    * pair.
-   * @return SFFloat The current value of modifiedFraction_changed.
+   * @return const SFFloat& The current value of modifiedFraction_changed.
    */
-  SFFloat getModifiedFraction_changed() const {
+  const SFFloat &getModifiedFraction_changed() const {
     return _modifiedFraction_changed;
   }
 

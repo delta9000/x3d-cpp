@@ -90,9 +90,9 @@ public:
    * @brief Gets the value of triggerTrue. AccessType: outputOnly
    * @details triggerTrue outputs a true value whenever a triggerTime event is
    * received.
-   * @return SFBool The current value of triggerTrue.
+   * @return const SFBool& The current value of triggerTrue.
    */
-  SFBool getTriggerTrue() const { return _triggerTrue; }
+  const SFBool &getTriggerTrue() const { return _triggerTrue; }
 
   /**
    * @brief Emit an output value on triggerTrue. AccessType: outputOnly

@@ -32,6 +32,14 @@ const FieldTable &AudioDestination::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n)
+                       .X3DSoundDestinationNode::getChannelCount(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -58,6 +66,14 @@ const FieldTable &AudioDestination::fields() const {
           if (from_string(s, ev))
             dynamic_cast<AudioDestination &>(n)
                 .X3DSoundDestinationNode::setChannelCountMode(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n)
+                       .X3DSoundDestinationNode::getChannelCountMode(),
+                  &typeid(ChannelCountModeChoices)};
         }
 
     });
@@ -91,6 +107,14 @@ const FieldTable &AudioDestination::fields() const {
                 .X3DSoundDestinationNode::setChannelInterpretation(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n)
+                       .X3DSoundDestinationNode::getChannelInterpretation(),
+                  &typeid(ChannelInterpretationChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -107,6 +131,13 @@ const FieldTable &AudioDestination::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -125,6 +156,14 @@ const FieldTable &AudioDestination::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n)
+                       .X3DSoundNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -141,6 +180,14 @@ const FieldTable &AudioDestination::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n)
+                       .X3DSoundNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -159,6 +206,14 @@ const FieldTable &AudioDestination::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n)
+                       .X3DSoundDestinationNode::getGain(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -175,6 +230,13 @@ const FieldTable &AudioDestination::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -193,6 +255,14 @@ const FieldTable &AudioDestination::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n)
+                       .X3DSoundDestinationNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -209,6 +279,14 @@ const FieldTable &AudioDestination::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const AudioDestination &>(n).getMaxChannelCount(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -228,6 +306,14 @@ const FieldTable &AudioDestination::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n)
+                       .X3DSoundDestinationNode::getMediaDeviceID(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -244,6 +330,14 @@ const FieldTable &AudioDestination::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const AudioDestination &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -262,6 +356,13 @@ const FieldTable &AudioDestination::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -278,6 +379,13 @@ const FieldTable &AudioDestination::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -296,6 +404,14 @@ const FieldTable &AudioDestination::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const AudioDestination &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -313,6 +429,13 @@ const FieldTable &AudioDestination::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const AudioDestination &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -329,6 +452,14 @@ const FieldTable &AudioDestination::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const AudioDestination &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

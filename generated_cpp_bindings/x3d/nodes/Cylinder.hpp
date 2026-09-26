@@ -97,9 +97,9 @@ public:
   /**
    * @brief Gets the value of bottom. AccessType: inputOutput
    * @details Whether to draw bottom (inside faces are never drawn).
-   * @return SFBool The current value of bottom.
+   * @return const SFBool& The current value of bottom.
    */
-  SFBool getBottom() const { return _bottom; }
+  const SFBool &getBottom() const { return _bottom; }
 
   /**
    * @brief Sets the value of bottom. AccessType: inputOutput
@@ -111,9 +111,9 @@ public:
   /**
    * @brief Gets the value of height. AccessType: initializeOnly
    * @details Size in meters.
-   * @return SFFloat The current value of height.
+   * @return const SFFloat& The current value of height.
    */
-  SFFloat getHeight() const { return _height; }
+  const SFFloat &getHeight() const { return _height; }
   /**
    * @brief Data-layer write of height (reader/init ingest path).
    * @details height is initializeOnly: author-settable at parse
@@ -124,9 +124,9 @@ public:
   /**
    * @brief Gets the value of radius. AccessType: initializeOnly
    * @details Size in meters.
-   * @return SFFloat The current value of radius.
+   * @return const SFFloat& The current value of radius.
    */
-  SFFloat getRadius() const { return _radius; }
+  const SFFloat &getRadius() const { return _radius; }
   /**
    * @brief Data-layer write of radius (reader/init ingest path).
    * @details radius is initializeOnly: author-settable at parse
@@ -137,9 +137,9 @@ public:
   /**
    * @brief Gets the value of side. AccessType: inputOutput
    * @details Whether to draw sides (inside faces are never drawn).
-   * @return SFBool The current value of side.
+   * @return const SFBool& The current value of side.
    */
-  SFBool getSide() const { return _side; }
+  const SFBool &getSide() const { return _side; }
 
   /**
    * @brief Sets the value of side. AccessType: inputOutput
@@ -153,9 +153,9 @@ public:
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse
@@ -166,9 +166,9 @@ public:
   /**
    * @brief Gets the value of top. AccessType: inputOutput
    * @details Whether to draw top (inside faces are never drawn).
-   * @return SFBool The current value of top.
+   * @return const SFBool& The current value of top.
    */
-  SFBool getTop() const { return _top; }
+  const SFBool &getTop() const { return _top; }
 
   /**
    * @brief Sets the value of top. AccessType: inputOutput

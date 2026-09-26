@@ -76,9 +76,9 @@ public:
   /**
    * @brief Gets the value of body1. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of body1.
+   * @return const SFNode& The current value of body1.
    */
-  SFNode getBody1() const { return _body1; }
+  const SFNode &getBody1() const { return _body1; }
 
   /**
    * @brief Acceptable node types for the body1 field.
@@ -102,9 +102,9 @@ public:
   /**
    * @brief Gets the value of body2. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of body2.
+   * @return const SFNode& The current value of body2.
    */
-  SFNode getBody2() const { return _body2; }
+  const SFNode &getBody2() const { return _body2; }
 
   /**
    * @brief Acceptable node types for the body2 field.
@@ -128,9 +128,9 @@ public:
   /**
    * @brief Gets the value of forceOutput. AccessType: inputOutput
    * @details
-   * @return MFString The current value of forceOutput.
+   * @return const MFString& The current value of forceOutput.
    */
-  MFString getForceOutput() const { return _forceOutput; }
+  const MFString &getForceOutput() const { return _forceOutput; }
 
   /**
    * @brief Sets the value of forceOutput. AccessType: inputOutput

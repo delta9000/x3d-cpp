@@ -29,6 +29,14 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n)
+                       .X3DDragSensorNode::getAutoOffset(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +53,13 @@ const FieldTable &CylinderSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).getAxisRotation(),
+                  &typeid(SFRotation)};
+        }
 
     });
 
@@ -63,6 +78,14 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -79,6 +102,13 @@ const FieldTable &CylinderSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).getDiskAngle(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -97,6 +127,14 @@ const FieldTable &CylinderSensor::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const CylinderSensor &>(n)
+                                 .X3DSensorNode::getEnabled(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -114,6 +152,13 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -130,6 +175,14 @@ const FieldTable &CylinderSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -149,6 +202,14 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n)
+                       .X3DPointingDeviceSensorNode::getIsOver(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -165,6 +226,13 @@ const FieldTable &CylinderSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).getMaxAngle(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -183,6 +251,14 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CylinderSensor &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -200,6 +276,13 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).getMinAngle(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -215,6 +298,13 @@ const FieldTable &CylinderSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).getOffset(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -234,6 +324,14 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CylinderSensor &>(n).getRotation_changed(),
+              &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -252,6 +350,14 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n)
+                       .X3DDragSensorNode::getTrackPoint_changed(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -268,6 +374,13 @@ const FieldTable &CylinderSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -286,6 +399,13 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -302,6 +422,13 @@ const FieldTable &CylinderSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -320,6 +447,13 @@ const FieldTable &CylinderSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -336,6 +470,13 @@ const FieldTable &CylinderSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CylinderSensor &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

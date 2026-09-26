@@ -103,9 +103,9 @@ public:
   /**
    * @brief Gets the value of description. AccessType: inputOutput
    * @details
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -119,9 +119,9 @@ public:
   /**
    * @brief Gets the value of farDistance. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of farDistance.
+   * @return const SFFloat& The current value of farDistance.
    */
-  SFFloat getFarDistance() const { return _farDistance; }
+  const SFFloat &getFarDistance() const { return _farDistance; }
 
   /**
    * @brief Sets the value of farDistance. AccessType: inputOutput
@@ -133,9 +133,9 @@ public:
   /**
    * @brief Gets the value of jump. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of jump.
+   * @return const SFBool& The current value of jump.
    */
-  SFBool getJump() const { return _jump; }
+  const SFBool &getJump() const { return _jump; }
 
   /**
    * @brief Sets the value of jump. AccessType: inputOutput
@@ -147,9 +147,9 @@ public:
   /**
    * @brief Gets the value of navigationInfo. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of navigationInfo.
+   * @return const SFNode& The current value of navigationInfo.
    */
-  SFNode getNavigationInfo() const { return _navigationInfo; }
+  const SFNode &getNavigationInfo() const { return _navigationInfo; }
 
   /**
    * @brief Acceptable node types for the navigationInfo field.
@@ -173,9 +173,9 @@ public:
   /**
    * @brief Gets the value of nearDistance. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of nearDistance.
+   * @return const SFFloat& The current value of nearDistance.
    */
-  SFFloat getNearDistance() const { return _nearDistance; }
+  const SFFloat &getNearDistance() const { return _nearDistance; }
 
   /**
    * @brief Sets the value of nearDistance. AccessType: inputOutput
@@ -187,9 +187,9 @@ public:
   /**
    * @brief Gets the value of orientation. AccessType: inputOutput
    * @details
-   * @return SFRotation The current value of orientation.
+   * @return const SFRotation& The current value of orientation.
    */
-  SFRotation getOrientation() const { return _orientation; }
+  const SFRotation &getOrientation() const { return _orientation; }
 
   /**
    * @brief Sets the value of orientation. AccessType: inputOutput
@@ -203,9 +203,9 @@ public:
   /**
    * @brief Gets the value of retainUserOffsets. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of retainUserOffsets.
+   * @return const SFBool& The current value of retainUserOffsets.
    */
-  SFBool getRetainUserOffsets() const { return _retainUserOffsets; }
+  const SFBool &getRetainUserOffsets() const { return _retainUserOffsets; }
 
   /**
    * @brief Sets the value of retainUserOffsets. AccessType: inputOutput
@@ -217,9 +217,9 @@ public:
   /**
    * @brief Gets the value of viewAll. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of viewAll.
+   * @return const SFBool& The current value of viewAll.
    */
-  SFBool getViewAll() const { return _viewAll; }
+  const SFBool &getViewAll() const { return _viewAll; }
 
   /**
    * @brief Sets the value of viewAll. AccessType: inputOutput

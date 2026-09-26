@@ -80,9 +80,11 @@ public:
   /**
    * @brief Gets the value of initialDestination. AccessType: initializeOnly
    * @details Initial destination value for this node.
-   * @return SFRotation The current value of initialDestination.
+   * @return const SFRotation& The current value of initialDestination.
    */
-  SFRotation getInitialDestination() const { return _initialDestination; }
+  const SFRotation &getInitialDestination() const {
+    return _initialDestination;
+  }
   /**
    * @brief Data-layer write of initialDestination (reader/init ingest path).
    * @details initialDestination is initializeOnly: author-settable at parse
@@ -96,9 +98,9 @@ public:
   /**
    * @brief Gets the value of initialValue. AccessType: initializeOnly
    * @details Initial starting value for this node.
-   * @return SFRotation The current value of initialValue.
+   * @return const SFRotation& The current value of initialValue.
    */
-  SFRotation getInitialValue() const { return _initialValue; }
+  const SFRotation &getInitialValue() const { return _initialValue; }
   /**
    * @brief Data-layer write of initialValue (reader/init ingest path).
    * @details initialValue is initializeOnly: author-settable at parse
@@ -161,9 +163,9 @@ public:
    * @brief Gets the value of value_changed. AccessType: outputOnly
    * @details Computed output value that approaches within tolerance of
    * destination value, as determined by elapsed time, order and tau.
-   * @return SFRotation The current value of value_changed.
+   * @return const SFRotation& The current value of value_changed.
    */
-  SFRotation getValue_changed() const { return _value_changed; }
+  const SFRotation &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

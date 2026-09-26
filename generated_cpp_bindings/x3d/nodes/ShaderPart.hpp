@@ -71,9 +71,9 @@ public:
    * @details Embedded scripting source code can be contained within the parent
    * node as a plain-text CDATA block, without requiring escaping of special
    * characters.
-   * @return SFString The current value of sourceCode.
+   * @return const SFString& The current value of sourceCode.
    */
-  SFString getSourceCode() const { return _sourceCode; }
+  const SFString &getSourceCode() const { return _sourceCode; }
 
   /**
    * @brief Sets the value of sourceCode. AccessType: inputOutput
@@ -90,9 +90,9 @@ public:
    * @brief Gets the value of type. AccessType: initializeOnly
    * @details type indicates whether this ShaderProgram is a vertex or fragment
    * (pixel) shader.
-   * @return SFString The current value of type.
+   * @return const SFString& The current value of type.
    */
-  SFString getType() const { return _type; }
+  const SFString &getType() const { return _type; }
   /**
    * @brief Data-layer write of type (reader/init ingest path).
    * @details type is initializeOnly: author-settable at parse

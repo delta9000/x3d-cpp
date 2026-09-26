@@ -32,24 +32,39 @@ const FieldTable &ForcePhysicsModel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ForcePhysicsModel &>(n)
+                       .X3DParticlePhysicsModelNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"force", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "force", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const ForcePhysicsModel &>(n).getForce());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const ForcePhysicsModel &>(n).getForce());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<ForcePhysicsModel &>(n).setForce(
-                        std::any_cast<SFVec3f>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ForcePhysicsModel &>(n).setForce(
+              std::any_cast<SFVec3f>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ForcePhysicsModel &>(n).getForce(),
+                  &typeid(SFVec3f)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -65,6 +80,13 @@ const FieldTable &ForcePhysicsModel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ForcePhysicsModel &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -83,6 +105,14 @@ const FieldTable &ForcePhysicsModel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ForcePhysicsModel &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -99,6 +129,13 @@ const FieldTable &ForcePhysicsModel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ForcePhysicsModel &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -117,6 +154,13 @@ const FieldTable &ForcePhysicsModel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ForcePhysicsModel &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -133,6 +177,14 @@ const FieldTable &ForcePhysicsModel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ForcePhysicsModel &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -151,6 +203,13 @@ const FieldTable &ForcePhysicsModel::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ForcePhysicsModel &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -167,6 +226,14 @@ const FieldTable &ForcePhysicsModel::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ForcePhysicsModel &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

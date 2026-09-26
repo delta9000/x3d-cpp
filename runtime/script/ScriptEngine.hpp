@@ -14,6 +14,8 @@
 #include "x3d/core/X3DReflection.hpp"  // X3DFieldType (type tag carried alongside values)
 
 #include <any>
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -56,6 +58,39 @@ inline constexpr ScriptHandle kInvalidScriptHandle = 0;
 class ScriptEngine {
 public:
   virtual ~ScriptEngine() = default;
+
+  /// Default wall-clock budget for one call into script code.
+  static constexpr std::chrono::milliseconds kDefaultCallBudget{2000};
+
+  /**
+   * @brief Bound how long one call into script code may run.
+   * @details Script source comes from the document, so a handler (or the
+   *          script's top level) that never returns would otherwise hang the
+   *          host. Each entry into script code (load, initialize, one invoke,
+   *          prepareEvents, eventsProcessed, shutdown) gets this much wall-clock
+   *          time, including reading its outputs back. A call that exceeds it
+   *          is interrupted and treated as a script error; the script stays
+   *          loaded and later calls get a fresh budget. Zero disables the limit.
+   *          A backend without an interrupt mechanism may ignore it.
+   */
+  void setCallBudget(std::chrono::milliseconds budget) { callBudget_ = budget; }
+  std::chrono::milliseconds callBudget() const { return callBudget_; }
+
+  /// Default cap on a script's heap, in bytes.
+  static constexpr std::size_t kDefaultMemoryLimit = std::size_t{256} << 20;
+
+  /**
+   * @brief Cap how much memory script code may allocate, in bytes.
+   * @details Within its call budget a script could still allocate gigabytes
+   *          and get the host killed. Past the cap an allocation fails; the
+   *          engine collects garbage and retries, then raises an out-of-memory
+   *          error, which is contained like any other script error. Applies to
+   *          scripts loaded after the call. Zero disables the cap. How it is
+   *          counted is backend-specific (per script, or per engine instance
+   *          when scripts share one heap); see the backend's documentation.
+   */
+  void setMemoryLimit(std::size_t bytes) { memoryLimit_ = bytes; }
+  std::size_t memoryLimit() const { return memoryLimit_; }
 
   /**
    * @brief Compile `source` for `scriptNode`; return a handle (or invalid).
@@ -106,6 +141,22 @@ public:
    *          this timestamp were invoked.
    */
   virtual void eventsProcessed(ScriptHandle handle, double timestamp) = 0;
+
+  /**
+   * @brief An inputOutput author field received a value from outside the
+   *        script (a ROUTE or another script's SAI write).
+   * @details Update the script's own view of the field (e.g. a JS global) so
+   *          the script reads the new value, and so the backend's readback
+   *          does not treat the script's stale copy as a fresh write. Invokes
+   *          no handler. The default does nothing, for backends with no
+   *          script-side copy of field values.
+   */
+  virtual void updateField(ScriptHandle /*handle*/, const std::string & /*name*/,
+                           const std::any & /*value*/, X3DFieldType /*type*/) {}
+
+private:
+  std::chrono::milliseconds callBudget_{kDefaultCallBudget};
+  std::size_t memoryLimit_ = kDefaultMemoryLimit;
 };
 
 } // namespace x3d::runtime

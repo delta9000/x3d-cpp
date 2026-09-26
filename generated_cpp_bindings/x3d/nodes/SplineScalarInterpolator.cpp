@@ -31,6 +31,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SplineScalarInterpolator &>(n).getClosed(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -65,6 +81,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .X3DInterpolatorNode::getKey(),
+                  &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +105,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const SplineScalarInterpolator &>(n).getKeyValue(),
+              &typeid(MFFloat)};
+        }
 
     });
 
@@ -99,6 +131,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .getKeyVelocity(),
+                  &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +155,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -133,6 +181,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .getNormalizeVelocity(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -146,6 +202,10 @@ const FieldTable &SplineScalarInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -164,6 +224,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .getValue_changed(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -180,6 +248,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -198,6 +274,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -214,6 +298,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -232,6 +324,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -248,6 +348,14 @@ const FieldTable &SplineScalarInterpolator::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const SplineScalarInterpolator &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

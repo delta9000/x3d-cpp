@@ -4,6 +4,7 @@
 #ifndef X3D_RUNTIME_BOUNDS_SYSTEM_HPP
 #define X3D_RUNTIME_BOUNDS_SYSTEM_HPP
 
+#include "FieldRead.hpp"
 #include "Aabb.hpp"
 #include "DirtyTracker.hpp"
 #include "GeometryBounds.hpp"
@@ -66,16 +67,9 @@ private:
     // not re-walk its subtree per path (multiplicative explosion / hang). Its parent
     // edge is still recorded above on every reference, so the bounds union stays exact.
     if (!indexed_.insert(n).second) return;
-    for (const auto &f : n->fields()) {
-      if (!f.get) continue;
-      if (f.type == X3DFieldType::SFNode) {
-        auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
-        if (c) index(c.get(), n);
-      } else if (f.type == X3DFieldType::MFNode) {
-        for (const auto &c : std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*n)))
-          if (c) index(c.get(), n);
-      }
-    }
+    forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+      index(c.get(), n);
+    });
   }
 
   // Author bbox override iff every component of bboxSize >= 0.

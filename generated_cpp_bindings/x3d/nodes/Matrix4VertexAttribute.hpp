@@ -65,9 +65,9 @@ public:
    * @brief Gets the value of value. AccessType: inputOutput
    * @details value specifies an arbitrary collection of matrix values that will
    * be passed to the shader as per-vertex information.
-   * @return MFMatrix4f The current value of value.
+   * @return const MFMatrix4f& The current value of value.
    */
-  MFMatrix4f getValue() const { return _value; }
+  const MFMatrix4f &getValue() const { return _value; }
 
   /**
    * @brief Sets the value of value. AccessType: inputOutput

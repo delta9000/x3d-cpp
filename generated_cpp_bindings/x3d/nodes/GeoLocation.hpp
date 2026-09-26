@@ -86,9 +86,9 @@ public:
    * @brief Gets the value of geoCoords. AccessType: inputOutput
    * @details Geographic location (specified in current geoSystem coordinates)
    * for children geometry (specified in relative coordinate system, in meters).
-   * @return SFVec3d The current value of geoCoords.
+   * @return const SFVec3d& The current value of geoCoords.
    */
-  SFVec3d getGeoCoords() const { return _geoCoords; }
+  const SFVec3d &getGeoCoords() const { return _geoCoords; }
 
   /**
    * @brief Sets the value of geoCoords. AccessType: inputOutput
@@ -104,9 +104,9 @@ public:
    * @brief Gets the value of geoOrigin. AccessType: initializeOnly
    * @details Single contained GeoOrigin node that can specify a local
    * coordinate frame for extended precision.
-   * @return SFNode The current value of geoOrigin.
+   * @return const SFNode& The current value of geoOrigin.
    */
-  SFNode getGeoOrigin() const { return _geoOrigin; }
+  const SFNode &getGeoOrigin() const { return _geoOrigin; }
 
   /**
    * @brief Acceptable node types for the geoOrigin field.
@@ -128,9 +128,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse

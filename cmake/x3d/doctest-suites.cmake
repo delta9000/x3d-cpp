@@ -91,6 +91,7 @@ endif()
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_parse_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_clone_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/field_view_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_expand_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_nested_body_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/json_proto_test.cpp"

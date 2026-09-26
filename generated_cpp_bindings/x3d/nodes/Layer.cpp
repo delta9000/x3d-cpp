@@ -26,6 +26,10 @@ const FieldTable &Layer::fields() const {
 
                           nullptr, nullptr
 
+                          ,
+
+                          nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -41,6 +45,13 @@ const FieldTable &Layer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -55,6 +66,13 @@ const FieldTable &Layer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -73,6 +91,13 @@ const FieldTable &Layer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -89,6 +114,13 @@ const FieldTable &Layer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DLayerNode::getObjectType(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -107,6 +139,13 @@ const FieldTable &Layer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DLayerNode::getPickable(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{"removeChildren", X3DFieldType::MFNode,
@@ -120,6 +159,10 @@ const FieldTable &Layer::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -138,6 +181,13 @@ const FieldTable &Layer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DLayerNode::getViewport(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -155,6 +205,13 @@ const FieldTable &Layer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DLayerNode::getVisible(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -170,6 +227,13 @@ const FieldTable &Layer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -184,6 +248,13 @@ const FieldTable &Layer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -201,6 +272,13 @@ const FieldTable &Layer::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -215,6 +293,13 @@ const FieldTable &Layer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -231,6 +316,13 @@ const FieldTable &Layer::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Layer &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

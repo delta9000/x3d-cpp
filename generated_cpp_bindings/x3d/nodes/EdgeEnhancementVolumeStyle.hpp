@@ -83,9 +83,9 @@ public:
   /**
    * @brief Gets the value of edgeColor. AccessType: inputOutput
    * @details color used to highlight edges.
-   * @return SFColorRGBA The current value of edgeColor.
+   * @return const SFColorRGBA& The current value of edgeColor.
    */
-  SFColorRGBA getEdgeColor() const { return _edgeColor; }
+  const SFColorRGBA &getEdgeColor() const { return _edgeColor; }
 
   /**
    * @brief Sets the value of edgeColor. AccessType: inputOutput
@@ -119,9 +119,9 @@ public:
    * @brief Gets the value of gradientThreshold. AccessType: inputOutput
    * @details minimum angle (in radians) away from view-direction vector for
    * surface normal before applying enhancement.
-   * @return SFFloat The current value of gradientThreshold.
+   * @return const SFFloat& The current value of gradientThreshold.
    */
-  SFFloat getGradientThreshold() const { return _gradientThreshold; }
+  const SFFloat &getGradientThreshold() const { return _gradientThreshold; }
 
   /**
    * @brief Sets the value of gradientThreshold. AccessType: inputOutput
@@ -152,9 +152,9 @@ public:
    * @brief Gets the value of surfaceNormals. AccessType: inputOutput
    * @details The surfaceNormals field contains a 3D texture with at least three
    * component values.
-   * @return SFNode The current value of surfaceNormals.
+   * @return const SFNode& The current value of surfaceNormals.
    */
-  SFNode getSurfaceNormals() const { return _surfaceNormals; }
+  const SFNode &getSurfaceNormals() const { return _surfaceNormals; }
 
   /**
    * @brief Acceptable node types for the surfaceNormals field.

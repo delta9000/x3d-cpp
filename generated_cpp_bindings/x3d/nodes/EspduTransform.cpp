@@ -27,6 +27,10 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -42,6 +46,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getAddress(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -60,6 +71,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getApplicationID(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -77,6 +95,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterArray(),
+                  &typeid(MFFloat)};
+        }
 
     });
 
@@ -97,6 +123,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterChangeIndicatorArray(),
+                  &typeid(MFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,24 +149,40 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterCount(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
-    t.push_back(FieldInfo{"articulationParameterDesignatorArray",
-                          X3DFieldType::MFInt32, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "articulationParameterDesignatorArray", X3DFieldType::MFInt32,
+        AccessType::InputOutput, "",
 
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterDesignatorArray());
-                          },
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterDesignatorArray());
+        },
 
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .setArticulationParameterDesignatorArray(
-                                    std::any_cast<MFInt32>(v));
-                          },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .setArticulationParameterDesignatorArray(
+                  std::any_cast<MFInt32>(v));
+        },
 
-                          nullptr, nullptr
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterDesignatorArray(),
+                  &typeid(MFInt32)};
+        }
 
     });
 
@@ -153,6 +203,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterIdPartAttachedToArray(),
+                  &typeid(MFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -171,157 +229,229 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
-    });
+        ,
 
-    t.push_back(FieldInfo{"articulationParameterValue0_changed",
-                          X3DFieldType::SFFloat, AccessType::OutputOnly, "",
-
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterValue0_changed());
-                          },
-
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .emitArticulationParameterValue0_changed(
-                                    std::any_cast<SFFloat>(v));
-                          },
-
-                          nullptr, nullptr
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterTypeArray(),
+                  &typeid(MFInt32)};
+        }
 
     });
 
-    t.push_back(FieldInfo{"articulationParameterValue1_changed",
-                          X3DFieldType::SFFloat, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "articulationParameterValue0_changed", X3DFieldType::SFFloat,
+        AccessType::OutputOnly, "",
 
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterValue1_changed());
-                          },
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterValue0_changed());
+        },
 
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .emitArticulationParameterValue1_changed(
-                                    std::any_cast<SFFloat>(v));
-                          },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .emitArticulationParameterValue0_changed(
+                  std::any_cast<SFFloat>(v));
+        },
 
-                          nullptr, nullptr
+        nullptr, nullptr
 
-    });
+        ,
 
-    t.push_back(FieldInfo{"articulationParameterValue2_changed",
-                          X3DFieldType::SFFloat, AccessType::OutputOnly, "",
-
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterValue2_changed());
-                          },
-
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .emitArticulationParameterValue2_changed(
-                                    std::any_cast<SFFloat>(v));
-                          },
-
-                          nullptr, nullptr
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterValue0_changed(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
-    t.push_back(FieldInfo{"articulationParameterValue3_changed",
-                          X3DFieldType::SFFloat, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "articulationParameterValue1_changed", X3DFieldType::SFFloat,
+        AccessType::OutputOnly, "",
 
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterValue3_changed());
-                          },
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterValue1_changed());
+        },
 
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .emitArticulationParameterValue3_changed(
-                                    std::any_cast<SFFloat>(v));
-                          },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .emitArticulationParameterValue1_changed(
+                  std::any_cast<SFFloat>(v));
+        },
 
-                          nullptr, nullptr
+        nullptr, nullptr
 
-    });
+        ,
 
-    t.push_back(FieldInfo{"articulationParameterValue4_changed",
-                          X3DFieldType::SFFloat, AccessType::OutputOnly, "",
-
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterValue4_changed());
-                          },
-
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .emitArticulationParameterValue4_changed(
-                                    std::any_cast<SFFloat>(v));
-                          },
-
-                          nullptr, nullptr
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterValue1_changed(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
-    t.push_back(FieldInfo{"articulationParameterValue5_changed",
-                          X3DFieldType::SFFloat, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "articulationParameterValue2_changed", X3DFieldType::SFFloat,
+        AccessType::OutputOnly, "",
 
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterValue5_changed());
-                          },
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterValue2_changed());
+        },
 
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .emitArticulationParameterValue5_changed(
-                                    std::any_cast<SFFloat>(v));
-                          },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .emitArticulationParameterValue2_changed(
+                  std::any_cast<SFFloat>(v));
+        },
 
-                          nullptr, nullptr
+        nullptr, nullptr
 
-    });
+        ,
 
-    t.push_back(FieldInfo{"articulationParameterValue6_changed",
-                          X3DFieldType::SFFloat, AccessType::OutputOnly, "",
-
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterValue6_changed());
-                          },
-
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .emitArticulationParameterValue6_changed(
-                                    std::any_cast<SFFloat>(v));
-                          },
-
-                          nullptr, nullptr
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterValue2_changed(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
-    t.push_back(FieldInfo{"articulationParameterValue7_changed",
-                          X3DFieldType::SFFloat, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "articulationParameterValue3_changed", X3DFieldType::SFFloat,
+        AccessType::OutputOnly, "",
 
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const EspduTransform &>(n)
-                                    .getArticulationParameterValue7_changed());
-                          },
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterValue3_changed());
+        },
 
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<EspduTransform &>(n)
-                                .emitArticulationParameterValue7_changed(
-                                    std::any_cast<SFFloat>(v));
-                          },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .emitArticulationParameterValue3_changed(
+                  std::any_cast<SFFloat>(v));
+        },
 
-                          nullptr, nullptr
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterValue3_changed(),
+                  &typeid(SFFloat)};
+        }
+
+    });
+
+    t.push_back(FieldInfo{
+        "articulationParameterValue4_changed", X3DFieldType::SFFloat,
+        AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterValue4_changed());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .emitArticulationParameterValue4_changed(
+                  std::any_cast<SFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterValue4_changed(),
+                  &typeid(SFFloat)};
+        }
+
+    });
+
+    t.push_back(FieldInfo{
+        "articulationParameterValue5_changed", X3DFieldType::SFFloat,
+        AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterValue5_changed());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .emitArticulationParameterValue5_changed(
+                  std::any_cast<SFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterValue5_changed(),
+                  &typeid(SFFloat)};
+        }
+
+    });
+
+    t.push_back(FieldInfo{
+        "articulationParameterValue6_changed", X3DFieldType::SFFloat,
+        AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterValue6_changed());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .emitArticulationParameterValue6_changed(
+                  std::any_cast<SFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterValue6_changed(),
+                  &typeid(SFFloat)};
+        }
+
+    });
+
+    t.push_back(FieldInfo{
+        "articulationParameterValue7_changed", X3DFieldType::SFFloat,
+        AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const EspduTransform &>(n)
+                              .getArticulationParameterValue7_changed());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n)
+              .emitArticulationParameterValue7_changed(
+                  std::any_cast<SFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getArticulationParameterValue7_changed(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -341,6 +471,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .X3DGroupingNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -357,6 +495,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .X3DGroupingNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -375,6 +521,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .X3DGroupingNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -390,6 +544,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getCenter(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -408,6 +569,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .X3DGroupingNode::getChildren(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -424,6 +593,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getCollideTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -442,6 +618,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getCollisionType(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -458,6 +641,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getDeadReckoning(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -476,6 +666,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -492,6 +689,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getDetonateTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -511,6 +715,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getDetonationLocation(),
+              &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -529,6 +741,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .getDetonationRelativeLocation(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -546,6 +766,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getDetonationResult(),
+              &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -561,6 +789,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -579,6 +814,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEntityCategory(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -595,6 +837,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEntityCountry(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -613,6 +862,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEntityDomain(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -629,6 +885,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEntityExtra(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -647,6 +910,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEntityID(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -663,6 +933,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEntityKind(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -681,6 +958,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEntitySpecific(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -697,6 +981,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getEntitySubcategory(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -716,6 +1008,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getEventApplicationID(),
+              &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -732,6 +1032,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEventEntityID(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -750,6 +1057,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEventNumber(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -767,6 +1081,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getEventSiteID(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -781,6 +1102,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getFired1(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -797,24 +1125,38 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getFired2(),
+                  &typeid(SFBool)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"firedTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "firedTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const EspduTransform &>(n).getFiredTime());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const EspduTransform &>(n).getFiredTime());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<EspduTransform &>(n).emitFiredTime(
-                        std::any_cast<SFTime>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n).emitFiredTime(
+              std::any_cast<SFTime>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getFiredTime(),
+                  &typeid(SFTime)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "fireMissionIndex", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -830,6 +1172,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getFireMissionIndex(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -848,6 +1198,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getFiringRange(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -865,6 +1222,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getFiringRate(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -881,6 +1245,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getForceID(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -895,6 +1266,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getFuse(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -913,6 +1291,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getGeoCoords(),
+                  &typeid(SFVec3d)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -929,6 +1314,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getGeoSystem(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -947,24 +1339,38 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const EspduTransform &>(n).getIsActive());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const EspduTransform &>(n).getIsActive());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<EspduTransform &>(n).emitIsActive(
-                        std::any_cast<SFBool>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n).emitIsActive(
+              std::any_cast<SFBool>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getIsActive(),
+                  &typeid(SFBool)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "isCollided", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -980,6 +1386,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getIsCollided(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -998,6 +1411,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getIsDetonated(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1014,6 +1434,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getIsNetworkReader(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -1032,6 +1459,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getIsNetworkWriter(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1049,6 +1483,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getIsRtpHeaderHeard(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1065,6 +1507,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getIsStandAlone(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -1084,6 +1533,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getLinearAcceleration(),
+              &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1101,6 +1558,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getLinearVelocity(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1116,6 +1580,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getMarking(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -1133,6 +1604,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -1152,6 +1631,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getMulticastRelayHost(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1169,6 +1656,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getMulticastRelayPort(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -1188,6 +1683,14 @@ const FieldTable &EspduTransform::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const EspduTransform &>(n)
+                                 .getMunitionApplicationID(),
+                            &typeid(SFInt32)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -1204,6 +1707,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getMunitionEndPoint(),
+              &typeid(SFVec3f)};
+        }
 
     });
 
@@ -1222,6 +1733,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getMunitionEntityID(),
+              &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1238,6 +1757,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getMunitionQuantity(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -1256,6 +1783,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getMunitionSiteID(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1273,6 +1807,14 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getMunitionStartPoint(),
+              &typeid(SFVec3f)};
+        }
 
     });
 
@@ -1300,6 +1842,13 @@ const FieldTable &EspduTransform::fields() const {
             dynamic_cast<EspduTransform &>(n).setNetworkMode(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getNetworkMode(),
+                  &typeid(NetworkModeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1314,6 +1863,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getPort(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -1332,6 +1888,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getReadInterval(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1346,6 +1909,10 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -1364,6 +1931,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getRotation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1381,6 +1955,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getRtpHeaderExpected(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1395,6 +1977,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getScale(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -1414,6 +2003,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EspduTransform &>(n).getScaleOrientation(),
+              &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1428,6 +2025,10 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -1444,6 +2045,10 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -1458,6 +2063,10 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -1474,6 +2083,10 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -1488,6 +2101,10 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -1504,6 +2121,10 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -1519,6 +2140,10 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -1533,6 +2158,10 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -1550,24 +2179,38 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getSiteID(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"timestamp", X3DFieldType::SFTime, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "timestamp", X3DFieldType::SFTime, AccessType::OutputOnly, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const EspduTransform &>(n).getTimestamp());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const EspduTransform &>(n).getTimestamp());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<EspduTransform &>(n).emitTimestamp(
-                        std::any_cast<SFTime>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<EspduTransform &>(n).emitTimestamp(
+              std::any_cast<SFTime>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getTimestamp(),
+                  &typeid(SFTime)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "translation", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -1583,6 +2226,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getTranslation(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -1601,6 +2251,14 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n)
+                       .X3DGroupingNode::getVisible(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1616,6 +2274,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getWarhead(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -1634,6 +2299,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).getWriteInterval(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1650,6 +2322,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -1668,6 +2347,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1684,6 +2370,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -1702,6 +2395,13 @@ const FieldTable &EspduTransform::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -1718,6 +2418,13 @@ const FieldTable &EspduTransform::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EspduTransform &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

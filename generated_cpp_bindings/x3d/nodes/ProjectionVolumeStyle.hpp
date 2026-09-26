@@ -76,9 +76,9 @@ public:
   /**
    * @brief Gets the value of intensityThreshold. AccessType: inputOutput
    * @details Threshold value used when type=MIN (LMIP) or type=MAX (MIP).
-   * @return SFFloat The current value of intensityThreshold.
+   * @return const SFFloat& The current value of intensityThreshold.
    */
-  SFFloat getIntensityThreshold() const { return _intensityThreshold; }
+  const SFFloat &getIntensityThreshold() const { return _intensityThreshold; }
 
   /**
    * @brief Sets the value of intensityThreshold. AccessType: inputOutput
@@ -108,9 +108,9 @@ public:
    * @brief Gets the value of type. AccessType: inputOutput
    * @details If type=MAX then Maximum Intensity Projection (MIP) or Least MIP
    * (LMIP) algorithm is used to generate output color.
-   * @return ProjectionVolumeStyleTypeChoices The current value of type.
+   * @return const ProjectionVolumeStyleTypeChoices& The current value of type.
    */
-  ProjectionVolumeStyleTypeChoices getType() const { return _type; }
+  const ProjectionVolumeStyleTypeChoices &getType() const { return _type; }
 
   /**
    * @brief Sets the value of type. AccessType: inputOutput

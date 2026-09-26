@@ -94,9 +94,9 @@ public:
   /**
    * @brief Gets the value of centerOfMass. AccessType: inputOutput
    * @details Location within segment of center of mass.
-   * @return SFVec3f The current value of centerOfMass.
+   * @return const SFVec3f& The current value of centerOfMass.
    */
-  SFVec3f getCenterOfMass() const { return _centerOfMass; }
+  const SFVec3f &getCenterOfMass() const { return _centerOfMass; }
 
   /**
    * @brief Sets the value of centerOfMass. AccessType: inputOutput
@@ -112,9 +112,9 @@ public:
    * @details the coord field is used for HAnimSegment objects that have
    * deformable meshes and shall contain coordinates referenced from the
    * IndexedFaceSet for the paarent HAnimSegment object.
-   * @return SFNode The current value of coord.
+   * @return const SFNode& The current value of coord.
    */
-  SFNode getCoord() const { return _coord; }
+  const SFNode &getCoord() const { return _coord; }
 
   /**
    * @brief Acceptable node types for the coord field.
@@ -142,9 +142,9 @@ public:
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Author-provided prose that describes intended purpose of this
    * node.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -188,9 +188,9 @@ public:
    * @brief Gets the value of mass. AccessType: inputOutput
    * @details Total mass of the segment, 0 if not available, defined in mass
    * base units (default is kilograms).
-   * @return SFFloat The current value of mass.
+   * @return const SFFloat& The current value of mass.
    */
-  SFFloat getMass() const { return _mass; }
+  const SFFloat &getMass() const { return _mass; }
 
   /**
    * @brief Sets the value of mass. AccessType: inputOutput
@@ -217,9 +217,9 @@ public:
   /**
    * @brief Gets the value of momentsOfInertia. AccessType: inputOutput
    * @details 3x3 moments of inertia matrix.
-   * @return MFFloat The current value of momentsOfInertia.
+   * @return const MFFloat& The current value of momentsOfInertia.
    */
-  MFFloat getMomentsOfInertia() const { return _momentsOfInertia; }
+  const MFFloat &getMomentsOfInertia() const { return _momentsOfInertia; }
 
   /**
    * @brief Sets the value of momentsOfInertia. AccessType: inputOutput
@@ -256,9 +256,9 @@ public:
    * @brief Gets the value of name. AccessType: inputOutput
    * @details Unique name attribute must be defined so that HAnimSegment node
    * can be identified at run time for animation purposes.
-   * @return SFString The current value of name.
+   * @return const SFString& The current value of name.
    */
-  SFString getName() const { return _name; }
+  const SFString &getName() const { return _name; }
 
   /**
    * @brief Sets the value of name. AccessType: inputOutput

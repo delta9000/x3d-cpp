@@ -67,9 +67,9 @@ public:
   /**
    * @brief Gets the value of duration. AccessType: initializeOnly
    * @details
-   * @return SFTime The current value of duration.
+   * @return const SFTime& The current value of duration.
    */
-  SFTime getDuration() const { return _duration; }
+  const SFTime &getDuration() const { return _duration; }
   /**
    * @brief Data-layer write of duration (reader/init ingest path).
    * @details duration is initializeOnly: author-settable at parse

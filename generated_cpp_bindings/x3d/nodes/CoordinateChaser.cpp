@@ -31,6 +31,14 @@ const FieldTable &CoordinateChaser::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n)
+                       .X3DChaserNode::getDuration(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -49,6 +57,14 @@ const FieldTable &CoordinateChaser::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n)
+                       .getInitialDestination(),
+                  &typeid(MFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -65,6 +81,13 @@ const FieldTable &CoordinateChaser::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n).getInitialValue(),
+                  &typeid(MFVec3f)};
+        }
 
     });
 
@@ -83,6 +106,13 @@ const FieldTable &CoordinateChaser::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -99,6 +129,14 @@ const FieldTable &CoordinateChaser::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n)
+                       .X3DFollowerNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -117,6 +155,14 @@ const FieldTable &CoordinateChaser::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CoordinateChaser &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -131,6 +177,10 @@ const FieldTable &CoordinateChaser::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{"set_value", X3DFieldType::MFVec3f,
@@ -144,6 +194,10 @@ const FieldTable &CoordinateChaser::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -162,6 +216,13 @@ const FieldTable &CoordinateChaser::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n).getValue_changed(),
+                  &typeid(MFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -178,6 +239,13 @@ const FieldTable &CoordinateChaser::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -196,6 +264,13 @@ const FieldTable &CoordinateChaser::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -212,6 +287,14 @@ const FieldTable &CoordinateChaser::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CoordinateChaser &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -230,6 +313,13 @@ const FieldTable &CoordinateChaser::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateChaser &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -246,6 +336,14 @@ const FieldTable &CoordinateChaser::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CoordinateChaser &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

@@ -59,9 +59,9 @@ public:
   /**
    * @brief Gets the value of key. AccessType: inputOutput
    * @details
-   * @return MFFloat The current value of key.
+   * @return const MFFloat& The current value of key.
    */
-  MFFloat getKey() const { return _key; }
+  const MFFloat &getKey() const { return _key; }
 
   /**
    * @brief Sets the value of key. AccessType: inputOutput

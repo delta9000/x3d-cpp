@@ -79,9 +79,9 @@ public:
    * @brief Gets the value of image. AccessType: inputOutput
    * @details Defines image: width, height, number_of_components per each pixel
    * value, and list of pixel_values.
-   * @return SFImage The current value of image.
+   * @return const SFImage& The current value of image.
    */
-  SFImage getImage() const { return _image; }
+  const SFImage &getImage() const { return _image; }
 
   /**
    * @brief Sets the value of image. AccessType: inputOutput

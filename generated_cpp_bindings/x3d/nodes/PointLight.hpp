@@ -88,9 +88,9 @@ public:
    * @brief Gets the value of attenuation. AccessType: inputOutput
    * @details Constant, linear-distance and squared-distance dropoff factors as
    * radial distance increases from the source.
-   * @return SFVec3f The current value of attenuation.
+   * @return const SFVec3f& The current value of attenuation.
    */
-  SFVec3f getAttenuation() const { return _attenuation; }
+  const SFVec3f &getAttenuation() const { return _attenuation; }
 
   /**
    * @brief Sets the value of attenuation. AccessType: inputOutput
@@ -125,9 +125,9 @@ public:
    * @brief Gets the value of global. AccessType: inputOutput
    * @details Global lights illuminate all objects within their volume of
    * lighting influence.
-   * @return SFBool The current value of global.
+   * @return const SFBool& The current value of global.
    */
-  SFBool getGlobal() const { return _global; }
+  const SFBool &getGlobal() const { return _global; }
 
   /**
    * @brief Sets the value of global. AccessType: inputOutput
@@ -140,9 +140,9 @@ public:
   /**
    * @brief Gets the value of location. AccessType: inputOutput
    * @details Position of light relative to local coordinate system.
-   * @return SFVec3f The current value of location.
+   * @return const SFVec3f& The current value of location.
    */
-  SFVec3f getLocation() const { return _location; }
+  const SFVec3f &getLocation() const { return _location; }
 
   /**
    * @brief Sets the value of location. AccessType: inputOutput
@@ -157,9 +157,9 @@ public:
    * @brief Gets the value of radius. AccessType: inputOutput
    * @details Maximum effective distance of light relative to local light
    * position, affected by ancestor scaling.
-   * @return SFFloat The current value of radius.
+   * @return const SFFloat& The current value of radius.
    */
-  SFFloat getRadius() const { return _radius; }
+  const SFFloat &getRadius() const { return _radius; }
 
   /**
    * @brief Sets the value of radius. AccessType: inputOutput

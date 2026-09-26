@@ -29,6 +29,14 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n)
+                       .X3DComposedGeometryNode::getAttrib(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(
@@ -47,6 +55,14 @@ const FieldTable &IndexedFaceSet::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const IndexedFaceSet &>(n)
+                                 .X3DComposedGeometryNode::getCcw(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -64,6 +80,14 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n)
+                       .X3DComposedGeometryNode::getColor(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -80,6 +104,13 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).getColorIndex(),
+                  &typeid(MFInt32)};
+        }
 
     });
 
@@ -99,6 +130,14 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n)
+                       .X3DComposedGeometryNode::getColorPerVertex(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -114,6 +153,13 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).getConvex(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -132,6 +178,14 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n)
+                       .X3DComposedGeometryNode::getCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -148,6 +202,13 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).getCoordIndex(),
+                  &typeid(MFInt32)};
+        }
 
     });
 
@@ -166,6 +227,13 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).getCreaseAngle(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -182,6 +250,14 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n)
+                       .X3DComposedGeometryNode::getFogCoord(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -200,6 +276,13 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -216,6 +299,14 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IndexedFaceSet &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -234,6 +325,14 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n)
+                       .X3DComposedGeometryNode::getNormal(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -250,6 +349,13 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).getNormalIndex(),
+                  &typeid(MFInt32)};
+        }
 
     });
 
@@ -269,6 +375,14 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n)
+                       .X3DComposedGeometryNode::getNormalPerVertex(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{"set_colorIndex", X3DFieldType::MFInt32,
@@ -282,6 +396,10 @@ const FieldTable &IndexedFaceSet::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -297,6 +415,10 @@ const FieldTable &IndexedFaceSet::fields() const {
 
                           nullptr, nullptr
 
+                          ,
+
+                          nullptr
+
     });
 
     t.push_back(FieldInfo{"set_normalIndex", X3DFieldType::MFInt32,
@@ -311,6 +433,10 @@ const FieldTable &IndexedFaceSet::fields() const {
 
                           nullptr, nullptr
 
+                          ,
+
+                          nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -324,6 +450,10 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -343,6 +473,14 @@ const FieldTable &IndexedFaceSet::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const IndexedFaceSet &>(n)
+                                 .X3DComposedGeometryNode::getSolid(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -359,6 +497,14 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n)
+                       .X3DComposedGeometryNode::getTexCoord(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -377,6 +523,13 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).getTexCoordIndex(),
+                  &typeid(MFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -393,6 +546,13 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -411,6 +571,13 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -427,6 +594,13 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -445,6 +619,13 @@ const FieldTable &IndexedFaceSet::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -461,6 +642,13 @@ const FieldTable &IndexedFaceSet::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedFaceSet &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

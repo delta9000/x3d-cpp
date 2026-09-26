@@ -58,9 +58,9 @@ public:
   /**
    * @brief Gets the value of name. AccessType: initializeOnly
    * @details
-   * @return xs_nmtoken The current value of name.
+   * @return const xs_nmtoken& The current value of name.
    */
-  xs_nmtoken getName() const { return _name; }
+  const xs_nmtoken &getName() const { return _name; }
   /**
    * @brief Data-layer write of name (reader/init ingest path).
    * @details name is initializeOnly: author-settable at parse

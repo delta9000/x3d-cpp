@@ -132,9 +132,9 @@ public:
    * @brief Gets the value of color. AccessType: initializeOnly
    * @details The color field contains Color|ColorRGBA nodes as a series of
    * color values to be used at the given colorKey points in time.
-   * @return SFNode The current value of color.
+   * @return const SFNode& The current value of color.
    */
-  SFNode getColor() const { return _color; }
+  const SFNode &getColor() const { return _color; }
 
   /**
    * @brief Acceptable node types for the color field.
@@ -156,9 +156,9 @@ public:
    * @brief Gets the value of colorKey. AccessType: initializeOnly
    * @details Array of time intervals in seconds, corresponding to particle
    * lifetime, that are used to interpolate color array values.
-   * @return MFFloat The current value of colorKey.
+   * @return const MFFloat& The current value of colorKey.
    */
-  MFFloat getColorKey() const { return _colorKey; }
+  const MFFloat &getColorKey() const { return _colorKey; }
   /**
    * @brief Data-layer write of colorKey (reader/init ingest path).
    * @details colorKey is initializeOnly: author-settable at parse
@@ -171,9 +171,9 @@ public:
    * @details Enables/disables creation of new particles, while any existing
    * particles remain in existence and continue to animate until the end of
    * their lifetimes.
-   * @return SFBool The current value of createParticles.
+   * @return const SFBool& The current value of createParticles.
    */
-  SFBool getCreateParticles() const { return _createParticles; }
+  const SFBool &getCreateParticles() const { return _createParticles; }
 
   /**
    * @brief Sets the value of createParticles. AccessType: inputOutput
@@ -188,9 +188,9 @@ public:
    * @brief Gets the value of emitter. AccessType: initializeOnly
    * @details The emitter field specifies the type of emitter geometry and
    * properties that the particles are given for their initial positions.
-   * @return SFNode The current value of emitter.
+   * @return const SFNode& The current value of emitter.
    */
-  SFNode getEmitter() const { return _emitter; }
+  const SFNode &getEmitter() const { return _emitter; }
 
   /**
    * @brief Acceptable node types for the emitter field.
@@ -211,9 +211,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details Enables/disables node operation.
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -226,9 +226,9 @@ public:
    * @brief Gets the value of geometry. AccessType: inputOutput
    * @details Single contained geometry node provides geometry used for each
    * particle when geometryType=GEOMETRY.
-   * @return SFNode The current value of geometry.
+   * @return const SFNode& The current value of geometry.
    */
-  SFNode getGeometry() const { return _geometry; }
+  const SFNode &getGeometry() const { return _geometry; }
 
   /**
    * @brief Acceptable node types for the geometry field.
@@ -253,9 +253,9 @@ public:
   /**
    * @brief Gets the value of geometryType. AccessType: initializeOnly
    * @details specifies type of geometry used to represent individual particles.
-   * @return SFString The current value of geometryType.
+   * @return const SFString& The current value of geometryType.
    */
-  SFString getGeometryType() const { return _geometryType; }
+  const SFString &getGeometryType() const { return _geometryType; }
   /**
    * @brief Data-layer write of geometryType (reader/init ingest path).
    * @details geometryType is initializeOnly: author-settable at parse
@@ -268,9 +268,9 @@ public:
   /**
    * @brief Gets the value of isActive. AccessType: outputOnly
    * @details isActive true/false events are sent when playback starts/stops.
-   * @return SFBool The current value of isActive.
+   * @return const SFBool& The current value of isActive.
    */
-  SFBool getIsActive() const { return _isActive; }
+  const SFBool &getIsActive() const { return _isActive; }
 
   /**
    * @brief Emit an output value on isActive. AccessType: outputOnly
@@ -286,9 +286,9 @@ public:
   /**
    * @brief Gets the value of lifetimeVariation. AccessType: inputOutput
    * @details TODO not properly defined in X3D spedification.
-   * @return SFFloat The current value of lifetimeVariation.
+   * @return const SFFloat& The current value of lifetimeVariation.
    */
-  SFFloat getLifetimeVariation() const { return _lifetimeVariation; }
+  const SFFloat &getLifetimeVariation() const { return _lifetimeVariation; }
 
   /**
    * @brief Sets the value of lifetimeVariation. AccessType: inputOutput
@@ -318,9 +318,9 @@ public:
    * @brief Gets the value of maxParticles. AccessType: inputOutput
    * @details Maximum number of particles to be generated at one time (subject
    * to player limitations).
-   * @return SFInt32 The current value of maxParticles.
+   * @return const SFInt32& The current value of maxParticles.
    */
-  SFInt32 getMaxParticles() const { return _maxParticles; }
+  const SFInt32 &getMaxParticles() const { return _maxParticles; }
 
   /**
    * @brief Sets the value of maxParticles. AccessType: inputOutput
@@ -347,9 +347,9 @@ public:
   /**
    * @brief Gets the value of particleLifetime. AccessType: inputOutput
    * @details TODO not properly defined in X3D spedification.
-   * @return SFFloat The current value of particleLifetime.
+   * @return const SFFloat& The current value of particleLifetime.
    */
-  SFFloat getParticleLifetime() const { return _particleLifetime; }
+  const SFFloat &getParticleLifetime() const { return _particleLifetime; }
 
   /**
    * @brief Sets the value of particleLifetime. AccessType: inputOutput
@@ -379,9 +379,9 @@ public:
    * @brief Gets the value of particleSize. AccessType: inputOutput
    * @details particleSize describes width and height dimensions for each
    * particle in length base units (default is meters).
-   * @return SFVec2f The current value of particleSize.
+   * @return const SFVec2f& The current value of particleSize.
    */
-  SFVec2f getParticleSize() const { return _particleSize; }
+  const SFVec2f &getParticleSize() const { return _particleSize; }
 
   /**
    * @brief Sets the value of particleSize. AccessType: inputOutput
@@ -441,9 +441,9 @@ public:
    * @brief Gets the value of texCoord. AccessType: initializeOnly
    * @details texture coordinates of the provided texture(s) in the Appearance
    * node, over time.
-   * @return SFNode The current value of texCoord.
+   * @return const SFNode& The current value of texCoord.
    */
-  SFNode getTexCoord() const { return _texCoord; }
+  const SFNode &getTexCoord() const { return _texCoord; }
 
   /**
    * @brief Acceptable node types for the texCoord field.
@@ -467,9 +467,9 @@ public:
    * @brief Gets the value of texCoordKey. AccessType: initializeOnly
    * @details Array of time intervals in seconds, corresponding to particle
    * lifetime, that are used to sequence texCoord array values.
-   * @return MFFloat The current value of texCoordKey.
+   * @return const MFFloat& The current value of texCoordKey.
    */
-  MFFloat getTexCoordKey() const { return _texCoordKey; }
+  const MFFloat &getTexCoordKey() const { return _texCoordKey; }
   /**
    * @brief Data-layer write of texCoordKey (reader/init ingest path).
    * @details texCoordKey is initializeOnly: author-settable at parse

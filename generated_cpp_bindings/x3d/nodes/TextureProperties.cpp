@@ -31,6 +31,14 @@ const FieldTable &TextureProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n)
+                       .getAnisotropicDegree(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,13 @@ const FieldTable &TextureProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n).getBorderColor(),
+                  &typeid(SFColorRGBA)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -64,6 +79,13 @@ const FieldTable &TextureProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n).getBorderWidth(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -89,6 +111,14 @@ const FieldTable &TextureProperties::fields() const {
           TextureBoundaryModeChoices ev;
           if (from_string(s, ev))
             dynamic_cast<TextureProperties &>(n).setBoundaryModeR(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureProperties &>(n).getBoundaryModeR(),
+              &typeid(TextureBoundaryModeChoices)};
         }
 
     });
@@ -117,6 +147,14 @@ const FieldTable &TextureProperties::fields() const {
             dynamic_cast<TextureProperties &>(n).setBoundaryModeS(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureProperties &>(n).getBoundaryModeS(),
+              &typeid(TextureBoundaryModeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -143,6 +181,14 @@ const FieldTable &TextureProperties::fields() const {
             dynamic_cast<TextureProperties &>(n).setBoundaryModeT(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureProperties &>(n).getBoundaryModeT(),
+              &typeid(TextureBoundaryModeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -160,6 +206,14 @@ const FieldTable &TextureProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureProperties &>(n).getGenerateMipMaps(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -176,6 +230,13 @@ const FieldTable &TextureProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -204,6 +265,14 @@ const FieldTable &TextureProperties::fields() const {
             dynamic_cast<TextureProperties &>(n).setMagnificationFilter(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n)
+                       .getMagnificationFilter(),
+                  &typeid(TextureMagnificationModeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -220,6 +289,14 @@ const FieldTable &TextureProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -245,6 +322,14 @@ const FieldTable &TextureProperties::fields() const {
           TextureMinificationModeChoices ev;
           if (from_string(s, ev))
             dynamic_cast<TextureProperties &>(n).setMinificationFilter(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n)
+                       .getMinificationFilter(),
+                  &typeid(TextureMinificationModeChoices)};
         }
 
     });
@@ -273,6 +358,14 @@ const FieldTable &TextureProperties::fields() const {
             dynamic_cast<TextureProperties &>(n).setTextureCompression(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n)
+                       .getTextureCompression(),
+                  &typeid(TextureCompressionModeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -289,6 +382,14 @@ const FieldTable &TextureProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureProperties &>(n).getTexturePriority(),
+              &typeid(SFFloat)};
+        }
 
     });
 
@@ -307,6 +408,13 @@ const FieldTable &TextureProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -323,6 +431,13 @@ const FieldTable &TextureProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -341,6 +456,14 @@ const FieldTable &TextureProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureProperties &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -358,6 +481,13 @@ const FieldTable &TextureProperties::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TextureProperties &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -374,6 +504,14 @@ const FieldTable &TextureProperties::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TextureProperties &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

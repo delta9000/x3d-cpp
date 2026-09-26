@@ -143,9 +143,9 @@ public:
    * @brief Gets the value of ambientIntensity. AccessType: inputOutput
    * @details how much ambient omnidirectional light is reflected from all light
    * sources.
-   * @return SFFloat The current value of ambientIntensity.
+   * @return const SFFloat& The current value of ambientIntensity.
    */
-  SFFloat getAmbientIntensity() const { return _ambientIntensity; }
+  const SFFloat &getAmbientIntensity() const { return _ambientIntensity; }
 
   /**
    * @brief Sets the value of ambientIntensity. AccessType: inputOutput
@@ -176,9 +176,11 @@ public:
    * @brief Gets the value of backAmbientIntensity. AccessType: inputOutput
    * @details how much ambient omnidirectional light is reflected from all light
    * sources.
-   * @return SFFloat The current value of backAmbientIntensity.
+   * @return const SFFloat& The current value of backAmbientIntensity.
    */
-  SFFloat getBackAmbientIntensity() const { return _backAmbientIntensity; }
+  const SFFloat &getBackAmbientIntensity() const {
+    return _backAmbientIntensity;
+  }
 
   /**
    * @brief Sets the value of backAmbientIntensity. AccessType: inputOutput
@@ -209,9 +211,9 @@ public:
    * @brief Gets the value of backDiffuseColor. AccessType: inputOutput
    * @details how much direct, angle-dependent light is reflected from all light
    * sources.
-   * @return SFColor The current value of backDiffuseColor.
+   * @return const SFColor& The current value of backDiffuseColor.
    */
-  SFColor getBackDiffuseColor() const { return _backDiffuseColor; }
+  const SFColor &getBackDiffuseColor() const { return _backDiffuseColor; }
 
   /**
    * @brief Sets the value of backDiffuseColor. AccessType: inputOutput
@@ -248,9 +250,9 @@ public:
   /**
    * @brief Gets the value of backEmissiveColor. AccessType: inputOutput
    * @details how much glowing light is emitted from this object.
-   * @return SFColor The current value of backEmissiveColor.
+   * @return const SFColor& The current value of backEmissiveColor.
    */
-  SFColor getBackEmissiveColor() const { return _backEmissiveColor; }
+  const SFColor &getBackEmissiveColor() const { return _backEmissiveColor; }
 
   /**
    * @brief Sets the value of backEmissiveColor. AccessType: inputOutput
@@ -287,9 +289,9 @@ public:
    * @brief Gets the value of backShininess. AccessType: inputOutput
    * @details Lower shininess values provide soft specular glows, while higher
    * values result in sharper, smaller highlights.
-   * @return SFFloat The current value of backShininess.
+   * @return const SFFloat& The current value of backShininess.
    */
-  SFFloat getBackShininess() const { return _backShininess; }
+  const SFFloat &getBackShininess() const { return _backShininess; }
 
   /**
    * @brief Sets the value of backShininess. AccessType: inputOutput
@@ -319,9 +321,9 @@ public:
    * @brief Gets the value of backSpecularColor. AccessType: inputOutput
    * @details specular highlights are brightness reflections (example: shiny
    * spots on an apple).
-   * @return SFColor The current value of backSpecularColor.
+   * @return const SFColor& The current value of backSpecularColor.
    */
-  SFColor getBackSpecularColor() const { return _backSpecularColor; }
+  const SFColor &getBackSpecularColor() const { return _backSpecularColor; }
 
   /**
    * @brief Sets the value of backSpecularColor. AccessType: inputOutput
@@ -358,9 +360,9 @@ public:
   /**
    * @brief Gets the value of backTransparency. AccessType: inputOutput
    * @details how "clear" an object is: 1.
-   * @return SFFloat The current value of backTransparency.
+   * @return const SFFloat& The current value of backTransparency.
    */
-  SFFloat getBackTransparency() const { return _backTransparency; }
+  const SFFloat &getBackTransparency() const { return _backTransparency; }
 
   /**
    * @brief Sets the value of backTransparency. AccessType: inputOutput
@@ -390,9 +392,9 @@ public:
    * @brief Gets the value of diffuseColor. AccessType: inputOutput
    * @details how much direct, angle-dependent light is reflected from all light
    * sources.
-   * @return SFColor The current value of diffuseColor.
+   * @return const SFColor& The current value of diffuseColor.
    */
-  SFColor getDiffuseColor() const { return _diffuseColor; }
+  const SFColor &getDiffuseColor() const { return _diffuseColor; }
 
   /**
    * @brief Sets the value of diffuseColor. AccessType: inputOutput
@@ -426,9 +428,9 @@ public:
   /**
    * @brief Gets the value of emissiveColor. AccessType: inputOutput
    * @details how much glowing light is emitted from this object.
-   * @return SFColor The current value of emissiveColor.
+   * @return const SFColor& The current value of emissiveColor.
    */
-  SFColor getEmissiveColor() const { return _emissiveColor; }
+  const SFColor &getEmissiveColor() const { return _emissiveColor; }
 
   /**
    * @brief Sets the value of emissiveColor. AccessType: inputOutput
@@ -464,9 +466,9 @@ public:
    * @brief Gets the value of separateBackColor. AccessType: inputOutput
    * @details separateBackColor determines whether separate Material values are
    * used for back faces.
-   * @return SFBool The current value of separateBackColor.
+   * @return const SFBool& The current value of separateBackColor.
    */
-  SFBool getSeparateBackColor() const { return _separateBackColor; }
+  const SFBool &getSeparateBackColor() const { return _separateBackColor; }
 
   /**
    * @brief Sets the value of separateBackColor. AccessType: inputOutput
@@ -480,9 +482,9 @@ public:
    * @brief Gets the value of shininess. AccessType: inputOutput
    * @details Lower shininess values provide soft specular glows, while higher
    * values result in sharper, smaller highlights.
-   * @return SFFloat The current value of shininess.
+   * @return const SFFloat& The current value of shininess.
    */
-  SFFloat getShininess() const { return _shininess; }
+  const SFFloat &getShininess() const { return _shininess; }
 
   /**
    * @brief Sets the value of shininess. AccessType: inputOutput
@@ -510,9 +512,9 @@ public:
    * @brief Gets the value of specularColor. AccessType: inputOutput
    * @details specular highlights are brightness reflections (example: shiny
    * spots on an apple).
-   * @return SFColor The current value of specularColor.
+   * @return const SFColor& The current value of specularColor.
    */
-  SFColor getSpecularColor() const { return _specularColor; }
+  const SFColor &getSpecularColor() const { return _specularColor; }
 
   /**
    * @brief Sets the value of specularColor. AccessType: inputOutput
@@ -548,9 +550,9 @@ public:
   /**
    * @brief Gets the value of transparency. AccessType: inputOutput
    * @details how "clear" an object is: 1.
-   * @return SFFloat The current value of transparency.
+   * @return const SFFloat& The current value of transparency.
    */
-  SFFloat getTransparency() const { return _transparency; }
+  const SFFloat &getTransparency() const { return _transparency; }
 
   /**
    * @brief Sets the value of transparency. AccessType: inputOutput

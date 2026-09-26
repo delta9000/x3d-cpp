@@ -151,9 +151,9 @@ public:
    * @brief Gets the value of ambientIntensity. AccessType: inputOutput
    * @details how much ambient omnidirectional light is reflected from all light
    * sources.
-   * @return SFFloat The current value of ambientIntensity.
+   * @return const SFFloat& The current value of ambientIntensity.
    */
-  SFFloat getAmbientIntensity() const { return _ambientIntensity; }
+  const SFFloat &getAmbientIntensity() const { return _ambientIntensity; }
 
   /**
    * @brief Sets the value of ambientIntensity. AccessType: inputOutput
@@ -185,9 +185,9 @@ public:
    * @details When applying ambientIntensity for this material node, the
    * contained texture provides Physically Based Rendering (PBR) modulation for
    * each pixel.
-   * @return SFNode The current value of ambientTexture.
+   * @return const SFNode& The current value of ambientTexture.
    */
-  SFNode getAmbientTexture() const { return _ambientTexture; }
+  const SFNode &getAmbientTexture() const { return _ambientTexture; }
 
   /**
    * @brief Acceptable node types for the ambientTexture field.
@@ -215,9 +215,11 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of ambientTextureMapping.
+   * @return const SFString& The current value of ambientTextureMapping.
    */
-  SFString getAmbientTextureMapping() const { return _ambientTextureMapping; }
+  const SFString &getAmbientTextureMapping() const {
+    return _ambientTextureMapping;
+  }
 
   /**
    * @brief Sets the value of ambientTextureMapping. AccessType: inputOutput
@@ -240,9 +242,9 @@ public:
    * @brief Gets the value of diffuseColor. AccessType: inputOutput
    * @details how much direct, angle-dependent light is reflected from all light
    * sources.
-   * @return SFColor The current value of diffuseColor.
+   * @return const SFColor& The current value of diffuseColor.
    */
-  SFColor getDiffuseColor() const { return _diffuseColor; }
+  const SFColor &getDiffuseColor() const { return _diffuseColor; }
 
   /**
    * @brief Sets the value of diffuseColor. AccessType: inputOutput
@@ -278,9 +280,9 @@ public:
    * @details When applying diffuseColor for this material node, the contained
    * texture provides Physically Based Rendering (PBR) modulation for each
    * pixel.
-   * @return SFNode The current value of diffuseTexture.
+   * @return const SFNode& The current value of diffuseTexture.
    */
-  SFNode getDiffuseTexture() const { return _diffuseTexture; }
+  const SFNode &getDiffuseTexture() const { return _diffuseTexture; }
 
   /**
    * @brief Acceptable node types for the diffuseTexture field.
@@ -308,9 +310,11 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of diffuseTextureMapping.
+   * @return const SFString& The current value of diffuseTextureMapping.
    */
-  SFString getDiffuseTextureMapping() const { return _diffuseTextureMapping; }
+  const SFString &getDiffuseTextureMapping() const {
+    return _diffuseTextureMapping;
+  }
 
   /**
    * @brief Sets the value of diffuseTextureMapping. AccessType: inputOutput
@@ -332,9 +336,9 @@ public:
   /**
    * @brief Gets the value of emissiveColor. AccessType: inputOutput
    * @details how much glowing light is emitted from this object.
-   * @return SFColor The current value of emissiveColor.
+   * @return const SFColor& The current value of emissiveColor.
    */
-  SFColor getEmissiveColor() const { return _emissiveColor; }
+  const SFColor &getEmissiveColor() const { return _emissiveColor; }
 
   /**
    * @brief Sets the value of emissiveColor. AccessType: inputOutput
@@ -371,9 +375,9 @@ public:
    * @details When applying emissiveColor for this material node, the contained
    * texture provides Physically Based Rendering (PBR) modulation for each
    * pixel.
-   * @return SFNode The current value of emissiveTexture.
+   * @return const SFNode& The current value of emissiveTexture.
    */
-  SFNode getEmissiveTexture() const { return _emissiveTexture; }
+  const SFNode &getEmissiveTexture() const { return _emissiveTexture; }
 
   /**
    * @brief Acceptable node types for the emissiveTexture field.
@@ -403,9 +407,9 @@ public:
    * @brief Gets the value of normalTexture. AccessType: inputOutput
    * @details When applying normalScale for this material node, the contained
    * texture modulates the texture across the surface.
-   * @return SFNode The current value of normalTexture.
+   * @return const SFNode& The current value of normalTexture.
    */
-  SFNode getNormalTexture() const { return _normalTexture; }
+  const SFNode &getNormalTexture() const { return _normalTexture; }
 
   /**
    * @brief Acceptable node types for the normalTexture field.
@@ -431,9 +435,9 @@ public:
    * @brief Gets the value of occlusionStrength. AccessType: inputOutput
    * @details occlusionStrength indicates areas of indirect lighting, typically
    * called ambient occlusion.
-   * @return SFFloat The current value of occlusionStrength.
+   * @return const SFFloat& The current value of occlusionStrength.
    */
-  SFFloat getOcclusionStrength() const { return _occlusionStrength; }
+  const SFFloat &getOcclusionStrength() const { return _occlusionStrength; }
 
   /**
    * @brief Sets the value of occlusionStrength. AccessType: inputOutput
@@ -465,9 +469,9 @@ public:
    * @details When applying occlusionStrength for this material node, the
    * contained texture provides Physically Based Rendering (PBR) modulation for
    * each pixel.
-   * @return SFNode The current value of occlusionTexture.
+   * @return const SFNode& The current value of occlusionTexture.
    */
-  SFNode getOcclusionTexture() const { return _occlusionTexture; }
+  const SFNode &getOcclusionTexture() const { return _occlusionTexture; }
 
   /**
    * @brief Acceptable node types for the occlusionTexture field.
@@ -498,9 +502,9 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of occlusionTextureMapping.
+   * @return const SFString& The current value of occlusionTextureMapping.
    */
-  SFString getOcclusionTextureMapping() const {
+  const SFString &getOcclusionTextureMapping() const {
     return _occlusionTextureMapping;
   }
 
@@ -525,9 +529,9 @@ public:
    * @brief Gets the value of shininess. AccessType: inputOutput
    * @details Lower shininess values provide soft specular glows, while higher
    * values result in sharper, smaller highlights.
-   * @return SFFloat The current value of shininess.
+   * @return const SFFloat& The current value of shininess.
    */
-  SFFloat getShininess() const { return _shininess; }
+  const SFFloat &getShininess() const { return _shininess; }
 
   /**
    * @brief Sets the value of shininess. AccessType: inputOutput
@@ -556,9 +560,9 @@ public:
    * @details When applying shininess for this material node, the contained
    * texture provides Physically Based Rendering (PBR) modulation for each
    * pixel.
-   * @return SFNode The current value of shininessTexture.
+   * @return const SFNode& The current value of shininessTexture.
    */
-  SFNode getShininessTexture() const { return _shininessTexture; }
+  const SFNode &getShininessTexture() const { return _shininessTexture; }
 
   /**
    * @brief Acceptable node types for the shininessTexture field.
@@ -589,9 +593,9 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of shininessTextureMapping.
+   * @return const SFString& The current value of shininessTextureMapping.
    */
-  SFString getShininessTextureMapping() const {
+  const SFString &getShininessTextureMapping() const {
     return _shininessTextureMapping;
   }
 
@@ -616,9 +620,9 @@ public:
    * @brief Gets the value of specularColor. AccessType: inputOutput
    * @details specular highlights are brightness reflections (example: shiny
    * spots on an apple).
-   * @return SFColor The current value of specularColor.
+   * @return const SFColor& The current value of specularColor.
    */
-  SFColor getSpecularColor() const { return _specularColor; }
+  const SFColor &getSpecularColor() const { return _specularColor; }
 
   /**
    * @brief Sets the value of specularColor. AccessType: inputOutput
@@ -656,9 +660,9 @@ public:
    * @details When applying specularColor for this material node, the contained
    * texture provides Physically Based Rendering (PBR) modulation for each
    * pixel.
-   * @return SFNode The current value of specularTexture.
+   * @return const SFNode& The current value of specularTexture.
    */
-  SFNode getSpecularTexture() const { return _specularTexture; }
+  const SFNode &getSpecularTexture() const { return _specularTexture; }
 
   /**
    * @brief Acceptable node types for the specularTexture field.
@@ -689,9 +693,11 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of specularTextureMapping.
+   * @return const SFString& The current value of specularTextureMapping.
    */
-  SFString getSpecularTextureMapping() const { return _specularTextureMapping; }
+  const SFString &getSpecularTextureMapping() const {
+    return _specularTextureMapping;
+  }
 
   /**
    * @brief Sets the value of specularTextureMapping. AccessType: inputOutput
@@ -713,9 +719,9 @@ public:
   /**
    * @brief Gets the value of transparency. AccessType: inputOutput
    * @details how "clear" an object is: 1.
-   * @return SFFloat The current value of transparency.
+   * @return const SFFloat& The current value of transparency.
    */
-  SFFloat getTransparency() const { return _transparency; }
+  const SFFloat &getTransparency() const { return _transparency; }
 
   /**
    * @brief Sets the value of transparency. AccessType: inputOutput

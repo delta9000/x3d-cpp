@@ -86,9 +86,9 @@ public:
    * @details controlPoint defines a set of control points of dimension
    * uDimension by vDimension, and defines a mesh where the points do not have
    * uniform spacing.
-   * @return MFVec2f The current value of controlPoint.
+   * @return const MFVec2f& The current value of controlPoint.
    */
-  MFVec2f getControlPoint() const { return _controlPoint; }
+  const MFVec2f &getControlPoint() const { return _controlPoint; }
 
   /**
    * @brief Sets the value of controlPoint. AccessType: inputOutput
@@ -104,9 +104,9 @@ public:
   /**
    * @brief Gets the value of uDimension. AccessType: initializeOnly
    * @details Number of control points in u dimension.
-   * @return SFInt32 The current value of uDimension.
+   * @return const SFInt32& The current value of uDimension.
    */
-  SFInt32 getUDimension() const { return _uDimension; }
+  const SFInt32 &getUDimension() const { return _uDimension; }
   /**
    * @brief Data-layer write of uDimension (reader/init ingest path).
    * @details uDimension is initializeOnly: author-settable at parse
@@ -118,9 +118,9 @@ public:
    * @brief Gets the value of uKnot. AccessType: initializeOnly
    * @details Knot vector, where size = number of control points + order of
    * curve.
-   * @return MFDouble The current value of uKnot.
+   * @return const MFDouble& The current value of uKnot.
    */
-  MFDouble getUKnot() const { return _uKnot; }
+  const MFDouble &getUKnot() const { return _uKnot; }
   /**
    * @brief Data-layer write of uKnot (reader/init ingest path).
    * @details uKnot is initializeOnly: author-settable at parse
@@ -131,9 +131,9 @@ public:
   /**
    * @brief Gets the value of uOrder. AccessType: initializeOnly
    * @details Define order of surface by polynomials of degree = order-1.
-   * @return SFInt32 The current value of uOrder.
+   * @return const SFInt32& The current value of uOrder.
    */
-  SFInt32 getUOrder() const { return _uOrder; }
+  const SFInt32 &getUOrder() const { return _uOrder; }
   /**
    * @brief Data-layer write of uOrder (reader/init ingest path).
    * @details uOrder is initializeOnly: author-settable at parse
@@ -144,9 +144,9 @@ public:
   /**
    * @brief Gets the value of vDimension. AccessType: initializeOnly
    * @details Number of control points in v dimension.
-   * @return SFInt32 The current value of vDimension.
+   * @return const SFInt32& The current value of vDimension.
    */
-  SFInt32 getVDimension() const { return _vDimension; }
+  const SFInt32 &getVDimension() const { return _vDimension; }
   /**
    * @brief Data-layer write of vDimension (reader/init ingest path).
    * @details vDimension is initializeOnly: author-settable at parse
@@ -158,9 +158,9 @@ public:
    * @brief Gets the value of vKnot. AccessType: initializeOnly
    * @details Knot vector, where size = number of control points + order of
    * curve.
-   * @return MFDouble The current value of vKnot.
+   * @return const MFDouble& The current value of vKnot.
    */
-  MFDouble getVKnot() const { return _vKnot; }
+  const MFDouble &getVKnot() const { return _vKnot; }
   /**
    * @brief Data-layer write of vKnot (reader/init ingest path).
    * @details vKnot is initializeOnly: author-settable at parse
@@ -171,9 +171,9 @@ public:
   /**
    * @brief Gets the value of vOrder. AccessType: initializeOnly
    * @details Define order of surface by polynomials of degree = order-1.
-   * @return SFInt32 The current value of vOrder.
+   * @return const SFInt32& The current value of vOrder.
    */
-  SFInt32 getVOrder() const { return _vOrder; }
+  const SFInt32 &getVOrder() const { return _vOrder; }
   /**
    * @brief Data-layer write of vOrder (reader/init ingest path).
    * @details vOrder is initializeOnly: author-settable at parse
@@ -185,9 +185,9 @@ public:
    * @brief Gets the value of weight. AccessType: inputOutput
    * @details Output values for linear interpolation, each corresponding to
    * knots.
-   * @return MFDouble The current value of weight.
+   * @return const MFDouble& The current value of weight.
    */
-  MFDouble getWeight() const { return _weight; }
+  const MFDouble &getWeight() const { return _weight; }
 
   /**
    * @brief Sets the value of weight. AccessType: inputOutput

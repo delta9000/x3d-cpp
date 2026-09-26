@@ -31,6 +31,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BlendedVolumeStyle &>(n)
+                       .X3DVolumeRenderStyleNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,13 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -64,6 +79,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BlendedVolumeStyle &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -83,6 +106,13 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BlendedVolumeStyle &>(n).getRenderStyle(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -99,6 +129,13 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BlendedVolumeStyle &>(n).getVoxels(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -117,6 +154,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BlendedVolumeStyle &>(n).getWeightConstant1(),
+              &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -133,6 +178,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BlendedVolumeStyle &>(n).getWeightConstant2(),
+              &typeid(SFFloat)};
+        }
 
     });
 
@@ -151,6 +204,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BlendedVolumeStyle &>(n).getWeightFunction1(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -167,6 +228,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BlendedVolumeStyle &>(n).getWeightFunction2(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -186,6 +255,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BlendedVolumeStyle &>(n)
+                       .getWeightTransferFunction1(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -204,6 +281,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BlendedVolumeStyle &>(n)
+                       .getWeightTransferFunction2(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -220,6 +305,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -238,6 +331,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -254,6 +355,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -272,6 +381,13 @@ const FieldTable &BlendedVolumeStyle::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -288,6 +404,14 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

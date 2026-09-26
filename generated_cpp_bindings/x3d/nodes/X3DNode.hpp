@@ -67,9 +67,9 @@ public:
    * @brief Gets the value of IS. AccessType: inputOutput
    * @details IS/connect statements define prototype connections between
    * ProtoInterface fields and node fields within a ProtoBody.
-   * @return SFNode The current value of IS.
+   * @return const SFNode& The current value of IS.
    */
-  SFNode getIS() const { return _IS; }
+  const SFNode &getIS() const { return _IS; }
 
   /**
    * @brief Acceptable node types for the IS field.
@@ -96,9 +96,9 @@ public:
    * @details Information about this node can be contained in a MetadataBoolean,
    * MetadataDouble, MetadataFloat, MetadataInteger, MetadataString or
    * MetadataSet node.
-   * @return SFNode The current value of metadata.
+   * @return const SFNode& The current value of metadata.
    */
-  SFNode getMetadata() const { return _metadata; }
+  const SFNode &getMetadata() const { return _metadata; }
 
   /**
    * @brief Acceptable node types for the metadata field.
@@ -125,9 +125,9 @@ public:
    * @brief Gets the value of DEF. AccessType: inputOutput
    * @details DEF defines a unique ID name for each node, referenceable by other
    * nodes.
-   * @return SFString The current value of DEF.
+   * @return const SFString& The current value of DEF.
    */
-  SFString getDEF() const { return _DEF; }
+  const SFString &getDEF() const { return _DEF; }
 
   /**
    * @brief Sets the value of DEF. AccessType: inputOutput
@@ -144,9 +144,9 @@ public:
    * @details USE means reuse an already DEF-ed node ID, excluding all child
    * nodes and all other attributes (except for containerField, which can have a
    * different value).
-   * @return SFString The current value of USE.
+   * @return const SFString& The current value of USE.
    */
-  SFString getUSE() const { return _USE; }
+  const SFString &getUSE() const { return _USE; }
 
   /**
    * @brief Sets the value of USE. AccessType: inputOutput
@@ -164,9 +164,9 @@ public:
    * @details The class attribute is a space-separated list of classes, reserved
    * for use by Cascading Style Sheets (CSS) and XML stylesheets. This attribute
    * is only functional if the X3D model is loaded within an HTML page.
-   * @return SFString The current value of class.
+   * @return const SFString& The current value of class.
    */
-  SFString getClass_() const { return _class_; }
+  const SFString &getClass_() const { return _class_; }
 
   /**
    * @brief Sets the value of class. AccessType: inputOutput
@@ -185,9 +185,9 @@ public:
    * HTML5/DOM pages, independent of DEF labeling and internal X3D node
    * referencing. This attribute is only functional if the X3D model is loaded
    * within an HTML page.
-   * @return SFString The current value of id.
+   * @return const SFString& The current value of id.
    */
-  SFString getId() const { return _id; }
+  const SFString &getId() const { return _id; }
 
   /**
    * @brief Sets the value of id. AccessType: inputOutput
@@ -207,9 +207,9 @@ public:
    * styling, reserved for use by Cascading Style Sheets (CSS) and XML
    * stylesheets. This attribute is only functional if the X3D model is loaded
    * within an HTML page.
-   * @return SFString The current value of style.
+   * @return const SFString& The current value of style.
    */
-  SFString getStyle() const { return _style; }
+  const SFString &getStyle() const { return _style; }
 
   /**
    * @brief Sets the value of style. AccessType: inputOutput

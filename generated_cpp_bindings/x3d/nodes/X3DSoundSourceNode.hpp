@@ -75,9 +75,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput
@@ -89,9 +89,9 @@ public:
   /**
    * @brief Gets the value of gain. AccessType: inputOutput
    * @details
-   * @return SFFloat The current value of gain.
+   * @return const SFFloat& The current value of gain.
    */
-  SFFloat getGain() const { return _gain; }
+  const SFFloat &getGain() const { return _gain; }
 
   /**
    * @brief Sets the value of gain. AccessType: inputOutput

@@ -31,6 +31,14 @@ const FieldTable &X3DBackgroundNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n)
+                       .X3DBindableNode::getBindTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -47,6 +55,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).getGroundAngle(),
+                  &typeid(MFFloat)};
+        }
 
     });
 
@@ -65,6 +80,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).getGroundColor(),
+                  &typeid(MFColor)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +103,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -99,6 +128,14 @@ const FieldTable &X3DBackgroundNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n)
+                       .X3DBindableNode::getIsBound(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -116,6 +153,14 @@ const FieldTable &X3DBackgroundNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -129,6 +174,10 @@ const FieldTable &X3DBackgroundNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        nullptr
 
     });
 
@@ -147,6 +196,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).getSkyAngle(),
+                  &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -163,6 +219,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).getSkyColor(),
+                  &typeid(MFColor)};
+        }
 
     });
 
@@ -181,6 +244,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).getTransparency(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -197,6 +267,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -215,6 +292,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -231,6 +315,14 @@ const FieldTable &X3DBackgroundNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DBackgroundNode &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -249,6 +341,13 @@ const FieldTable &X3DBackgroundNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DBackgroundNode &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -265,6 +364,14 @@ const FieldTable &X3DBackgroundNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DBackgroundNode &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

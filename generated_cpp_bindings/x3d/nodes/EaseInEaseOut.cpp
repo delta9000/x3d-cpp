@@ -29,6 +29,13 @@ const FieldTable &EaseInEaseOut::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n).getEaseInEaseOut(),
+                  &typeid(MFVec2f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -46,6 +53,13 @@ const FieldTable &EaseInEaseOut::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -60,6 +74,13 @@ const FieldTable &EaseInEaseOut::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n).getKey(),
+                  &typeid(MFFloat)};
+        }
 
     });
 
@@ -77,6 +98,14 @@ const FieldTable &EaseInEaseOut::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const EaseInEaseOut &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -96,6 +125,14 @@ const FieldTable &EaseInEaseOut::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n)
+                       .getModifiedFraction_changed(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{"set_fraction", X3DFieldType::SFFloat,
@@ -109,6 +146,10 @@ const FieldTable &EaseInEaseOut::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -127,6 +168,13 @@ const FieldTable &EaseInEaseOut::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -143,6 +191,13 @@ const FieldTable &EaseInEaseOut::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -161,6 +216,13 @@ const FieldTable &EaseInEaseOut::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -178,6 +240,13 @@ const FieldTable &EaseInEaseOut::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -194,6 +263,13 @@ const FieldTable &EaseInEaseOut::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const EaseInEaseOut &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

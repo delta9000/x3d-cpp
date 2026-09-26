@@ -70,9 +70,9 @@ public:
   /**
    * @brief Gets the value of mediaDeviceID. AccessType: inputOutput
    * @details mediaDeviceID field provides ID parameter functionality.
-   * @return SFString The current value of mediaDeviceID.
+   * @return const SFString& The current value of mediaDeviceID.
    */
-  SFString getMediaDeviceID() const { return _mediaDeviceID; }
+  const SFString &getMediaDeviceID() const { return _mediaDeviceID; }
 
   /**
    * @brief Sets the value of mediaDeviceID. AccessType: inputOutput

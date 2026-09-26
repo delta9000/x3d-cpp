@@ -134,9 +134,9 @@ public:
   /**
    * @brief Gets the value of delayTime. AccessType: inputOutput
    * @details delayTime is duration of delay (in seconds) to apply.
-   * @return SFTime The current value of delayTime.
+   * @return const SFTime& The current value of delayTime.
    */
-  SFTime getDelayTime() const { return _delayTime; }
+  const SFTime &getDelayTime() const { return _delayTime; }
 
   /**
    * @brief Sets the value of delayTime. AccessType: inputOutput
@@ -170,9 +170,9 @@ public:
    * @brief Gets the value of maxDelayTime. AccessType: inputOutput
    * @details maxDelayTime is duration of maximum amount of delay (in seconds)
    * that can be applied.
-   * @return SFTime The current value of maxDelayTime.
+   * @return const SFTime& The current value of maxDelayTime.
    */
-  SFTime getMaxDelayTime() const { return _maxDelayTime; }
+  const SFTime &getMaxDelayTime() const { return _maxDelayTime; }
 
   /**
    * @brief Sets the value of maxDelayTime. AccessType: inputOutput

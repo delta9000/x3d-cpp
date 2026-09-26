@@ -25,6 +25,7 @@
 #ifndef X3D_RUNTIME_EXTRACT_LIGHT_SYSTEM_HPP
 #define X3D_RUNTIME_EXTRACT_LIGHT_SYSTEM_HPP
 
+#include "FieldRead.hpp"
 #include "GeometryBounds.hpp"  // geombounds::getField/getNode/hasField
 #include "Mat4.hpp"            // transformDirection/transformPoint
 #include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
@@ -121,17 +122,9 @@ private:
     // grouping node, else the inherited one (a non-grouping passthrough keeps
     // the enclosing group as the scope anchor).
     const X3DNode *childScope = isGroupingNode(n) ? n : scopeRoot;
-    for (const auto &f : n->fields()) {
-      if (!f.get) continue;
-      if (f.type == X3DFieldType::SFNode) {
-        auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
-        if (c) walk(c.get(), here, childScope, out, budget, depth + 1);
-      } else if (f.type == X3DFieldType::MFNode) {
-        for (const auto &c :
-             std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*n)))
-          if (c) walk(c.get(), here, childScope, out, budget, depth + 1);
-      }
-    }
+    forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+      walk(c.get(), here, childScope, out, budget, depth + 1);
+    });
   }
 
   // Read every light field reflection-generic by spec name; world-resolve the

@@ -89,9 +89,9 @@ public:
   /**
    * @brief Gets the value of silhouetteBoundaryOpacity. AccessType: inputOutput
    * @details amount of the silhouette enhancement to use.
-   * @return SFFloat The current value of silhouetteBoundaryOpacity.
+   * @return const SFFloat& The current value of silhouetteBoundaryOpacity.
    */
-  SFFloat getSilhouetteBoundaryOpacity() const {
+  const SFFloat &getSilhouetteBoundaryOpacity() const {
     return _silhouetteBoundaryOpacity;
   }
 
@@ -122,9 +122,9 @@ public:
   /**
    * @brief Gets the value of silhouetteRetainedOpacity. AccessType: inputOutput
    * @details scaling of non-silhouette regions.
-   * @return SFFloat The current value of silhouetteRetainedOpacity.
+   * @return const SFFloat& The current value of silhouetteRetainedOpacity.
    */
-  SFFloat getSilhouetteRetainedOpacity() const {
+  const SFFloat &getSilhouetteRetainedOpacity() const {
     return _silhouetteRetainedOpacity;
   }
 
@@ -155,9 +155,9 @@ public:
   /**
    * @brief Gets the value of silhouetteSharpness. AccessType: inputOutput
    * @details power function to control sharpness of the silhouette.
-   * @return SFFloat The current value of silhouetteSharpness.
+   * @return const SFFloat& The current value of silhouetteSharpness.
    */
-  SFFloat getSilhouetteSharpness() const { return _silhouetteSharpness; }
+  const SFFloat &getSilhouetteSharpness() const { return _silhouetteSharpness; }
 
   /**
    * @brief Sets the value of silhouetteSharpness. AccessType: inputOutput
@@ -187,9 +187,9 @@ public:
    * @brief Gets the value of surfaceNormals. AccessType: inputOutput
    * @details The surfaceNormals field contains a 3D texture with at least three
    * component values.
-   * @return SFNode The current value of surfaceNormals.
+   * @return const SFNode& The current value of surfaceNormals.
    */
-  SFNode getSurfaceNormals() const { return _surfaceNormals; }
+  const SFNode &getSurfaceNormals() const { return _surfaceNormals; }
 
   /**
    * @brief Acceptable node types for the surfaceNormals field.

@@ -85,9 +85,9 @@ public:
    * @brief Gets the value of centerOfRotation. AccessType: inputOutput
    * @details centerOfRotation specifies center point about which to rotate
    * user's eyepoint when in EXAMINE or LOOKAT mode.
-   * @return SFVec3f The current value of centerOfRotation.
+   * @return const SFVec3f& The current value of centerOfRotation.
    */
-  SFVec3f getCenterOfRotation() const { return _centerOfRotation; }
+  const SFVec3f &getCenterOfRotation() const { return _centerOfRotation; }
 
   /**
    * @brief Sets the value of centerOfRotation. AccessType: inputOutput
@@ -106,9 +106,9 @@ public:
    * @brief Gets the value of fieldOfView. AccessType: inputOutput
    * @details Preferred minimum viewing angle from this viewpoint in radians,
    * providing minimum height or minimum width (whichever is smaller).
-   * @return SFFloat The current value of fieldOfView.
+   * @return const SFFloat& The current value of fieldOfView.
    */
-  SFFloat getFieldOfView() const { return _fieldOfView; }
+  const SFFloat &getFieldOfView() const { return _fieldOfView; }
 
   /**
    * @brief Sets the value of fieldOfView. AccessType: inputOutput
@@ -121,9 +121,9 @@ public:
   /**
    * @brief Gets the value of position. AccessType: inputOutput
    * @details position (x, y, z in meters) relative to local coordinate system.
-   * @return SFVec3f The current value of position.
+   * @return const SFVec3f& The current value of position.
    */
-  SFVec3f getPosition() const { return _position; }
+  const SFVec3f &getPosition() const { return _position; }
 
   /**
    * @brief Sets the value of position. AccessType: inputOutput

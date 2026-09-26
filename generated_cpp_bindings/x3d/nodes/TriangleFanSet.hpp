@@ -65,9 +65,9 @@ public:
   /**
    * @brief Gets the value of fanCount. AccessType: inputOutput
    * @details fanCount array provides number of vertices in each fan.
-   * @return MFInt32 The current value of fanCount.
+   * @return const MFInt32& The current value of fanCount.
    */
-  MFInt32 getFanCount() const { return _fanCount; }
+  const MFInt32 &getFanCount() const { return _fanCount; }
 
   /**
    * @brief Sets the value of fanCount. AccessType: inputOutput

@@ -74,9 +74,9 @@ public:
   /**
    * @brief Gets the value of whichChoice. AccessType: inputOutput
    * @details Index of active child choice, counting from 0.
-   * @return SFInt32 The current value of whichChoice.
+   * @return const SFInt32& The current value of whichChoice.
    */
-  SFInt32 getWhichChoice() const { return _whichChoice; }
+  const SFInt32 &getWhichChoice() const { return _whichChoice; }
 
   /**
    * @brief Sets the value of whichChoice. AccessType: inputOutput

@@ -125,9 +125,9 @@ public:
   /**
    * @brief Gets the value of controlPoint. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of controlPoint.
+   * @return const SFNode& The current value of controlPoint.
    */
-  SFNode getControlPoint() const { return _controlPoint; }
+  const SFNode &getControlPoint() const { return _controlPoint; }
 
   /**
    * @brief Acceptable node types for the controlPoint field.
@@ -152,9 +152,9 @@ public:
   /**
    * @brief Gets the value of solid. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse
@@ -165,9 +165,9 @@ public:
   /**
    * @brief Gets the value of texCoord. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of texCoord.
+   * @return const SFNode& The current value of texCoord.
    */
-  SFNode getTexCoord() const { return _texCoord; }
+  const SFNode &getTexCoord() const { return _texCoord; }
 
   /**
    * @brief Acceptable node types for the texCoord field.
@@ -193,9 +193,9 @@ public:
   /**
    * @brief Gets the value of uClosed. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of uClosed.
+   * @return const SFBool& The current value of uClosed.
    */
-  SFBool getUClosed() const { return _uClosed; }
+  const SFBool &getUClosed() const { return _uClosed; }
   /**
    * @brief Data-layer write of uClosed (reader/init ingest path).
    * @details uClosed is initializeOnly: author-settable at parse
@@ -206,9 +206,9 @@ public:
   /**
    * @brief Gets the value of uDimension. AccessType: initializeOnly
    * @details
-   * @return SFInt32 The current value of uDimension.
+   * @return const SFInt32& The current value of uDimension.
    */
-  SFInt32 getUDimension() const { return _uDimension; }
+  const SFInt32 &getUDimension() const { return _uDimension; }
   /**
    * @brief Data-layer write of uDimension (reader/init ingest path).
    * @details uDimension is initializeOnly: author-settable at parse
@@ -219,9 +219,9 @@ public:
   /**
    * @brief Gets the value of uKnot. AccessType: initializeOnly
    * @details
-   * @return MFDouble The current value of uKnot.
+   * @return const MFDouble& The current value of uKnot.
    */
-  MFDouble getUKnot() const { return _uKnot; }
+  const MFDouble &getUKnot() const { return _uKnot; }
   /**
    * @brief Data-layer write of uKnot (reader/init ingest path).
    * @details uKnot is initializeOnly: author-settable at parse
@@ -232,9 +232,9 @@ public:
   /**
    * @brief Gets the value of uOrder. AccessType: initializeOnly
    * @details
-   * @return SFInt32 The current value of uOrder.
+   * @return const SFInt32& The current value of uOrder.
    */
-  SFInt32 getUOrder() const { return _uOrder; }
+  const SFInt32 &getUOrder() const { return _uOrder; }
   /**
    * @brief Data-layer write of uOrder (reader/init ingest path).
    * @details uOrder is initializeOnly: author-settable at parse
@@ -245,9 +245,9 @@ public:
   /**
    * @brief Gets the value of uTessellation. AccessType: inputOutput
    * @details
-   * @return SFInt32 The current value of uTessellation.
+   * @return const SFInt32& The current value of uTessellation.
    */
-  SFInt32 getUTessellation() const { return _uTessellation; }
+  const SFInt32 &getUTessellation() const { return _uTessellation; }
 
   /**
    * @brief Sets the value of uTessellation. AccessType: inputOutput
@@ -259,9 +259,9 @@ public:
   /**
    * @brief Gets the value of vClosed. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of vClosed.
+   * @return const SFBool& The current value of vClosed.
    */
-  SFBool getVClosed() const { return _vClosed; }
+  const SFBool &getVClosed() const { return _vClosed; }
   /**
    * @brief Data-layer write of vClosed (reader/init ingest path).
    * @details vClosed is initializeOnly: author-settable at parse
@@ -272,9 +272,9 @@ public:
   /**
    * @brief Gets the value of vDimension. AccessType: initializeOnly
    * @details
-   * @return SFInt32 The current value of vDimension.
+   * @return const SFInt32& The current value of vDimension.
    */
-  SFInt32 getVDimension() const { return _vDimension; }
+  const SFInt32 &getVDimension() const { return _vDimension; }
   /**
    * @brief Data-layer write of vDimension (reader/init ingest path).
    * @details vDimension is initializeOnly: author-settable at parse
@@ -285,9 +285,9 @@ public:
   /**
    * @brief Gets the value of vKnot. AccessType: initializeOnly
    * @details
-   * @return MFDouble The current value of vKnot.
+   * @return const MFDouble& The current value of vKnot.
    */
-  MFDouble getVKnot() const { return _vKnot; }
+  const MFDouble &getVKnot() const { return _vKnot; }
   /**
    * @brief Data-layer write of vKnot (reader/init ingest path).
    * @details vKnot is initializeOnly: author-settable at parse
@@ -298,9 +298,9 @@ public:
   /**
    * @brief Gets the value of vOrder. AccessType: initializeOnly
    * @details
-   * @return SFInt32 The current value of vOrder.
+   * @return const SFInt32& The current value of vOrder.
    */
-  SFInt32 getVOrder() const { return _vOrder; }
+  const SFInt32 &getVOrder() const { return _vOrder; }
   /**
    * @brief Data-layer write of vOrder (reader/init ingest path).
    * @details vOrder is initializeOnly: author-settable at parse
@@ -311,9 +311,9 @@ public:
   /**
    * @brief Gets the value of vTessellation. AccessType: inputOutput
    * @details
-   * @return SFInt32 The current value of vTessellation.
+   * @return const SFInt32& The current value of vTessellation.
    */
-  SFInt32 getVTessellation() const { return _vTessellation; }
+  const SFInt32 &getVTessellation() const { return _vTessellation; }
 
   /**
    * @brief Sets the value of vTessellation. AccessType: inputOutput
@@ -325,9 +325,9 @@ public:
   /**
    * @brief Gets the value of weight. AccessType: inputOutput
    * @details
-   * @return MFDouble The current value of weight.
+   * @return const MFDouble& The current value of weight.
    */
-  MFDouble getWeight() const { return _weight; }
+  const MFDouble &getWeight() const { return _weight; }
 
   /**
    * @brief Sets the value of weight. AccessType: inputOutput

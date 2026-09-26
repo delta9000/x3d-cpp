@@ -68,9 +68,9 @@ public:
    * @brief Gets the value of point. AccessType: inputOutput
    * @details triplets of 3D (s,t,r) texture coordinates, either in range [0,1]
    * or higher if repeating.
-   * @return MFVec3f The current value of point.
+   * @return const MFVec3f& The current value of point.
    */
-  MFVec3f getPoint() const { return _point; }
+  const MFVec3f &getPoint() const { return _point; }
 
   /**
    * @brief Sets the value of point. AccessType: inputOutput

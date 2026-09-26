@@ -2971,7 +2971,17 @@ typedef struct duk_hthread duk_context;
 #undef DUK_USE_EXEC_INDIRECT_BOUND_CHECK
 #undef DUK_USE_EXEC_PREFER_SIZE
 #define DUK_USE_EXEC_REGCONST_OPTIMIZE
-#undef DUK_USE_EXEC_TIMEOUT_CHECK
+/* x3d-cpp local change: bound script run time. Duktape calls this every few
+ * hundred thousand bytecode instructions with the heap udata (the backend's
+ * per-script HeapState); a nonzero return interrupts execution with a
+ * RangeError, and keeps doing so until the backend disarms the deadline, so a
+ * script cannot catch its way past it. Defined in EcmaScriptBackend.cpp.
+ */
+#if defined(__cplusplus)
+extern "C"
+#endif
+int x3d_duk_exec_timeout_check(void *udata);
+#define DUK_USE_EXEC_TIMEOUT_CHECK(udata) x3d_duk_exec_timeout_check((udata))
 #undef DUK_USE_EXPLICIT_NULL_INIT
 #undef DUK_USE_EXTSTR_FREE
 #undef DUK_USE_EXTSTR_INTERN_CHECK
@@ -3013,7 +3023,7 @@ typedef struct duk_hthread duk_context;
 #define DUK_USE_HTML_COMMENTS
 #define DUK_USE_IDCHAR_FASTPATH
 #undef DUK_USE_INJECT_HEAP_ALLOC_ERROR
-#undef DUK_USE_INTERRUPT_COUNTER
+#define DUK_USE_INTERRUPT_COUNTER  /* x3d-cpp: required by DUK_USE_EXEC_TIMEOUT_CHECK */
 #undef DUK_USE_INTERRUPT_DEBUG_FIXUP
 #define DUK_USE_JC
 #define DUK_USE_JSON_BUILTIN

@@ -36,6 +36,8 @@
 #include "DynamicField.hpp"
 #include "SaiContext.hpp"
 #include "X3DExecutionContext.hpp"
+#include "x3d/nodes/Transform.hpp"
+#include "X3DSceneBridge.hpp"
 
 #include "x3d/nodes/Script.hpp"
 
@@ -269,6 +271,101 @@ void testRealCorpusNotInert() {
 
 } // namespace
 
+// ---------------------------------------------------------------------------
+// (d) SCRIPT-EVENTIN end to end: a document ROUTE into a Script eventIn runs
+//     the handler with no embedder bridging (§29.2), and the handler's output
+//     ROUTEs on into the scene within the same tick.
+//       Src.translation -> S.set_pos (inputOnly) ; S.pos (outputOnly) -> T.translation
+// ---------------------------------------------------------------------------
+void testRoutedEventInEndToEnd() {
+  dynamicFieldStore().clear();
+  const std::string xml = R"(<X3D profile='Immersive' version='4.0'><Scene>
+  <Transform DEF='Src'/>
+  <Transform DEF='T'/>
+  <Script DEF='S' mustEvaluate='true'>
+    <field name='set_pos' type='SFVec3f' accessType='inputOnly'/>
+    <field name='pos' type='SFVec3f' accessType='outputOnly'/>
+    <![CDATA[ecmascript:
+      function set_pos(v, t) { pos = { x: v.x * 2, y: v.y * 2, z: v.z * 2 }; }
+    ]]>
+  </Script>
+  <ROUTE fromNode='Src' fromField='translation' toNode='S' toField='set_pos'/>
+  <ROUTE fromNode='S' fromField='pos' toNode='T' toField='translation'/>
+</Scene></X3D>)";
+
+  codec::XmlReader reader;
+  runtime::X3DDocument doc = reader.readDocument(xml);
+  std::vector<ProtoWarning> warnings;
+  expandScene(doc.scene, codec::noopProtoResolver, "", warnings);
+
+  std::vector<Script *> scripts;
+  for (auto &root : doc.scene.rootNodes) collectScripts(root.get(), scripts);
+  auto src = doc.scene.resolve("Src");
+  auto t = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("T"));
+  check(scripts.size() == 1 && src && t, "eventIn e2e: scene parsed");
+  if (scripts.empty() || !src || !t) return;
+
+  X3DExecutionContext ctx;
+  auto backend = std::make_shared<EcmaScriptBackend>();
+  auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
+  ctx.addScriptSystem(sys);
+  sys->attach(scripts[0], ctx);
+  const BridgeResult bridged = ctx.buildFrom(doc.scene);
+  check(bridged.ok() && bridged.routesAdded == 2,
+        "eventIn e2e: both document ROUTEs wired");
+
+  ctx.postEvent(src.get(), "translation", std::any(SFVec3f{1, 2, 3}));
+  ctx.tick(1.0);
+  const SFVec3f p = t->getTranslation();
+  check(p.x == 2 && p.y == 4 && p.z == 6,
+        "eventIn e2e: ROUTE -> Script handler -> ROUTE moved T in one tick");
+}
+
+// ---------------------------------------------------------------------------
+// (e) A ROUTEd write to a Script's inputOutput author field must stick: the
+//     script sees the new value, and a later handler that does not touch the
+//     field must not write the stale script-side value back over it.
+// ---------------------------------------------------------------------------
+void testRoutedInputOutputSticks() {
+  dynamicFieldStore().clear();
+  const std::string xml = R"(<X3D profile='Immersive' version='4.0'><Scene>
+  <Script DEF='S' mustEvaluate='true'>
+    <field name='level' type='SFFloat' accessType='inputOutput' value='0'/>
+    <field name='poke' type='SFBool' accessType='inputOnly'/>
+    <field name='seen' type='SFFloat' accessType='outputOnly'/>
+    <![CDATA[ecmascript:
+      function poke(v, t) { seen = level; }
+    ]]>
+  </Script>
+</Scene></X3D>)";
+  codec::XmlReader reader;
+  runtime::X3DDocument doc = reader.readDocument(xml);
+  std::vector<ProtoWarning> warnings;
+  expandScene(doc.scene, codec::noopProtoResolver, "", warnings);
+  std::vector<Script *> scripts;
+  for (auto &root : doc.scene.rootNodes) collectScripts(root.get(), scripts);
+  if (scripts.empty()) { check(false, "inputOutput: scene parsed"); return; }
+  Script *script = scripts[0];
+
+  X3DExecutionContext ctx;
+  auto backend = std::make_shared<EcmaScriptBackend>();
+  auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
+  ctx.addScriptSystem(sys);
+  sys->attach(script, ctx);
+
+  ctx.postEvent(script, "level", std::any(SFFloat(0.5f)));
+  ctx.tick(1.0);
+  ctx.postEvent(script, "poke", std::any(SFBool(true)));
+  ctx.tick(2.0);
+
+  std::any level = dynamicFieldStore().getValue(*script, "level");
+  std::any seen = dynamicFieldStore().getValue(*script, "seen");
+  check(level.has_value() && std::any_cast<SFFloat>(level) == 0.5f,
+        "inputOutput: a routed write is not reverted by a later handler");
+  check(seen.has_value() && std::any_cast<SFFloat>(seen) == 0.5f,
+        "inputOutput: the script sees the routed value");
+}
+
 int main(int argc, char **argv) {
   // argv[1] is the test-data dir (CMake passes it); fall back to the in-tree
   // path so the binary is runnable standalone.
@@ -278,6 +375,8 @@ int main(int argc, char **argv) {
   testXmlFixture(dataDir);
   testVrmlFixture(dataDir);
   testRealCorpusNotInert();
+  testRoutedEventInEndToEnd();
+  testRoutedInputOutputSticks();
 
   dynamicFieldStore().clear();  // leave the global store clean for other tests
   if (failures == 0) {

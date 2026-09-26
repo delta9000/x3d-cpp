@@ -32,6 +32,14 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n)
+                       .getInitialDestination(),
+                  &typeid(MFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,13 @@ const FieldTable &CoordinateDamper::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n).getInitialValue(),
+                  &typeid(MFVec3f)};
+        }
 
     });
 
@@ -66,6 +81,13 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +104,14 @@ const FieldTable &CoordinateDamper::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n)
+                       .X3DFollowerNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -100,6 +130,14 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CoordinateDamper &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -117,6 +155,14 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n)
+                       .X3DDamperNode::getOrder(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -131,6 +177,10 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        nullptr
+
     });
 
     t.push_back(FieldInfo{"set_value", X3DFieldType::MFVec3f,
@@ -144,6 +194,10 @@ const FieldTable &CoordinateDamper::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -162,6 +216,14 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n)
+                       .X3DDamperNode::getTau(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -178,6 +240,14 @@ const FieldTable &CoordinateDamper::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n)
+                       .X3DDamperNode::getTolerance(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -196,6 +266,13 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n).getValue_changed(),
+                  &typeid(MFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -212,6 +289,13 @@ const FieldTable &CoordinateDamper::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -230,6 +314,13 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -246,6 +337,14 @@ const FieldTable &CoordinateDamper::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CoordinateDamper &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -264,6 +363,13 @@ const FieldTable &CoordinateDamper::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CoordinateDamper &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -280,6 +386,14 @@ const FieldTable &CoordinateDamper::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CoordinateDamper &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

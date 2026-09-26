@@ -132,9 +132,9 @@ public:
    * information required to locate and size the layout region of the
    * LayoutGroup node relative to its parent’s layout region, and also to scale
    * the contents of the LayoutGroup.
-   * @return SFNode The current value of layout.
+   * @return const SFNode& The current value of layout.
    */
-  SFNode getLayout() const { return _layout; }
+  const SFNode &getLayout() const { return _layout; }
 
   /**
    * @brief Acceptable node types for the layout field.

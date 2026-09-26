@@ -33,6 +33,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getControlPoint(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -50,6 +58,13 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -66,6 +81,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -85,6 +108,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getSolid(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -102,6 +133,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getTexCoord(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -121,6 +160,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getUClosed(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -138,6 +185,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getUDimension(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -157,6 +212,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getUKnot(),
+                  &typeid(MFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -174,6 +237,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getUOrder(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -193,6 +264,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getUTessellation(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -210,6 +289,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getVClosed(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -229,6 +316,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getVDimension(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -246,6 +341,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getVKnot(),
+                  &typeid(MFDouble)};
+        }
 
     });
 
@@ -265,6 +368,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getVOrder(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -282,6 +393,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getVTessellation(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -301,6 +420,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n)
+                       .X3DNurbsSurfaceGeometryNode::getWeight(),
+                  &typeid(MFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -317,6 +444,13 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -335,6 +469,13 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -351,6 +492,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -369,6 +518,13 @@ const FieldTable &NurbsPatchSurface::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -385,6 +541,14 @@ const FieldTable &NurbsPatchSurface::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

@@ -28,6 +28,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getAddress(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -44,6 +51,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getAntennaLocation(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -63,6 +77,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const TransmitterPdu &>(n)
+                                 .getAntennaPatternLength(),
+                            &typeid(SFInt32)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -81,6 +103,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TransmitterPdu &>(n).getAntennaPatternType(),
+              &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -97,6 +127,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getApplicationID(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -116,6 +153,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .X3DBoundedObject::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -132,6 +177,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .X3DBoundedObject::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -151,6 +204,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .X3DBoundedObject::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -167,6 +228,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getCryptoKeyID(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -185,6 +253,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getCryptoSystem(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -201,6 +276,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -219,6 +302,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const TransmitterPdu &>(n)
+                                 .X3DSensorNode::getEnabled(),
+                            &typeid(SFBool)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -235,6 +326,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getEntityID(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -253,6 +351,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getFrequency(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -269,6 +374,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getGeoCoords(),
+                  &typeid(SFVec3d)};
+        }
 
     });
 
@@ -287,6 +399,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getGeoSystem(),
+                  &typeid(MFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -303,6 +422,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getInputSource(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -321,6 +447,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -337,6 +470,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -355,6 +496,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getIsNetworkReader(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -371,6 +519,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getIsNetworkWriter(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -389,6 +544,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TransmitterPdu &>(n).getIsRtpHeaderHeard(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -405,6 +568,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getIsStandAlone(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -424,6 +594,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .getLengthOfModulationParameters(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -440,6 +618,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TransmitterPdu &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -459,6 +645,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const TransmitterPdu &>(n)
+                                 .getModulationTypeDetail(),
+                            &typeid(SFInt32)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -476,6 +670,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TransmitterPdu &>(n).getModulationTypeMajor(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -495,6 +697,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .getModulationTypeSpreadSpectrum(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(
@@ -512,6 +722,14 @@ const FieldTable &TransmitterPdu::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const TransmitterPdu &>(n)
+                                 .getModulationTypeSystem(),
+                            &typeid(SFInt32)};
+                  }
 
         });
 
@@ -531,6 +749,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TransmitterPdu &>(n).getMulticastRelayHost(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -548,6 +774,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TransmitterPdu &>(n).getMulticastRelayPort(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -575,6 +809,13 @@ const FieldTable &TransmitterPdu::fields() const {
             dynamic_cast<TransmitterPdu &>(n).setNetworkMode(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getNetworkMode(),
+                  &typeid(NetworkModeChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -590,6 +831,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getPort(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -604,6 +852,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getPower(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -623,6 +878,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .getRadioEntityTypeCategory(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(
@@ -640,6 +903,14 @@ const FieldTable &TransmitterPdu::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const TransmitterPdu &>(n)
+                                 .getRadioEntityTypeCountry(),
+                            &typeid(SFInt32)};
+                  }
 
         });
 
@@ -659,6 +930,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const TransmitterPdu &>(n)
+                                 .getRadioEntityTypeDomain(),
+                            &typeid(SFInt32)};
+                  }
+
         });
 
     t.push_back(FieldInfo{
@@ -676,6 +955,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TransmitterPdu &>(n).getRadioEntityTypeKind(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -695,6 +982,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .getRadioEntityTypeNomenclature(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -713,6 +1008,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .getRadioEntityTypeNomenclatureVersion(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -728,6 +1031,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getRadioID(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -745,6 +1055,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getReadInterval(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -764,6 +1081,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .getRelativeAntennaLocation(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -781,6 +1106,14 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const TransmitterPdu &>(n).getRtpHeaderExpected(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -797,24 +1130,38 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getSiteID(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"timestamp", X3DFieldType::SFTime, AccessType::OutputOnly, "",
+    t.push_back(FieldInfo{
+        "timestamp", X3DFieldType::SFTime, AccessType::OutputOnly, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const TransmitterPdu &>(n).getTimestamp());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const TransmitterPdu &>(n).getTimestamp());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<TransmitterPdu &>(n).emitTimestamp(
-                        std::any_cast<SFTime>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<TransmitterPdu &>(n).emitTimestamp(
+              std::any_cast<SFTime>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getTimestamp(),
+                  &typeid(SFTime)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "transmitFrequencyBandwidth", X3DFieldType::SFFloat,
@@ -831,6 +1178,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .getTransmitFrequencyBandwidth(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -849,6 +1204,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getTransmitState(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -865,6 +1227,14 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n)
+                       .X3DBoundedObject::getVisible(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -883,6 +1253,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getWhichGeometry(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -899,6 +1276,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).getWriteInterval(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -917,6 +1301,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -933,6 +1324,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -951,6 +1349,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -968,6 +1373,13 @@ const FieldTable &TransmitterPdu::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -984,6 +1396,13 @@ const FieldTable &TransmitterPdu::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

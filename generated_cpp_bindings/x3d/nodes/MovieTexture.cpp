@@ -29,24 +29,40 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DUrlObject::getAutoRefresh(),
+                  &typeid(SFTime)};
+        }
+
     });
 
-    t.push_back(FieldInfo{"autoRefreshTimeLimit", X3DFieldType::SFTime,
-                          AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "autoRefreshTimeLimit", X3DFieldType::SFTime, AccessType::InputOutput,
+        "",
 
-                          [](const X3DNode &n) -> std::any {
-                            return std::any(
-                                dynamic_cast<const MovieTexture &>(n)
-                                    .X3DUrlObject::getAutoRefreshTimeLimit());
-                          },
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const MovieTexture &>(n)
+                              .X3DUrlObject::getAutoRefreshTimeLimit());
+        },
 
-                          [](X3DNode &n, const std::any &v) {
-                            dynamic_cast<MovieTexture &>(n)
-                                .X3DUrlObject::setAutoRefreshTimeLimitUnchecked(
-                                    std::any_cast<SFTime>(v));
-                          },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<MovieTexture &>(n)
+              .X3DUrlObject::setAutoRefreshTimeLimitUnchecked(
+                  std::any_cast<SFTime>(v));
+        },
 
-                          nullptr, nullptr
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DUrlObject::getAutoRefreshTimeLimit(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -65,6 +81,14 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DUrlObject::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -81,6 +105,13 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).getDuration_changed(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -99,6 +130,14 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTimeDependentNode::getElapsedTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -115,6 +154,14 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DSoundSourceNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -133,24 +180,39 @@ const FieldTable &MovieTexture::fields() const {
 
                   nullptr, nullptr
 
-        });
+                  ,
 
-    t.push_back(
-        FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
-
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const MovieTexture &>(n).X3DNode::getIS());
-                  },
-
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<MovieTexture &>(n).X3DNode::setIS(
-                        std::any_cast<SFNode>(v));
-                  },
-
-                  nullptr, nullptr
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const MovieTexture &>(n)
+                                 .X3DSoundSourceNode::getGain(),
+                            &typeid(SFFloat)};
+                  }
 
         });
+
+    t.push_back(FieldInfo{
+        "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const MovieTexture &>(n).X3DNode::getIS());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<MovieTexture &>(n).X3DNode::setIS(
+              std::any_cast<SFNode>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -166,6 +228,14 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTimeDependentNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -184,6 +254,14 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTimeDependentNode::getIsPaused(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -201,6 +279,14 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const MovieTexture &>(n).X3DUrlObject::getLoad(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -215,6 +301,13 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).getLoop(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -233,6 +326,13 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -250,6 +350,14 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTimeDependentNode::getPauseTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -264,6 +372,13 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).getPitch(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -282,6 +397,14 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTexture2DNode::getRepeatS(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -298,6 +421,14 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTexture2DNode::getRepeatT(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -316,6 +447,14 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTimeDependentNode::getResumeTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -330,6 +469,13 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).getSpeed(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -348,6 +494,14 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTimeDependentNode::getStartTime(),
+                  &typeid(SFTime)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -364,6 +518,14 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n)
+                       .X3DTimeDependentNode::getStopTime(),
+                  &typeid(SFTime)};
+        }
 
     });
 
@@ -383,6 +545,13 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).getTextureProperties(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -399,6 +568,13 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).X3DUrlObject::getUrl(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -417,6 +593,13 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -433,6 +616,13 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -451,24 +641,38 @@ const FieldTable &MovieTexture::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"id", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "id", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const MovieTexture &>(n).X3DNode::getId());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const MovieTexture &>(n).X3DNode::getId());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<MovieTexture &>(n).X3DNode::setId(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<MovieTexture &>(n).X3DNode::setId(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -484,6 +688,13 @@ const FieldTable &MovieTexture::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const MovieTexture &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

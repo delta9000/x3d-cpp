@@ -87,6 +87,39 @@ with a Script could crash the embedder. Test T15f reproduced this.
   clears the exception, and seeding clears an exception from a throwing setter.
   T15f runs the same five hostile cases against both engines.
 
+### Call budget (amended 2026-09-25)
+
+A handler, or a script's top level, that never returns used to hang the host.
+Script source comes from the document, so this is the same exposure as above.
+
+- `ScriptEngine::setCallBudget()` sets the wall-clock budget. The default is
+  `kDefaultCallBudget` (2 s), and zero disables it.
+- Each public entry into script code gets its own budget: `load` (the top
+  level), `initialize`, one `invoke`, `prepareEvents`, `eventsProcessed` and
+  `shutdown`. The budget covers reading the call's outputs back.
+- Duktape builds with `DUK_USE_INTERRUPT_COUNTER` and `DUK_USE_EXEC_TIMEOUT_CHECK`
+  (local `duk_config.h` changes). The heap udata is the script's `CallDeadline`.
+  Once the deadline passes, Duktape raises a `RangeError` and keeps raising it
+  until the deadline is disarmed, so a `try`/`catch` loop cannot outlast it.
+- QuickJS uses `JS_SetInterruptHandler` on the shared runtime, which raises an
+  uncatchable "interrupted" error.
+- An interrupted call is a script error: it is logged, and the script stays
+  loaded. A load whose top level times out fails. T15g covers a plain infinite
+  loop, a catch-and-continue loop, unbounded recursion (stopped by each
+  engine's own recursion limit) and a top-level loop against both engines.
+- Within its budget a script could still allocate gigabytes, so
+  `ScriptEngine::setMemoryLimit()` caps script heaps. The default is
+  `kDefaultMemoryLimit` (256 MiB), and zero disables it.
+  - Duktape allocates through a counting allocator per script. Each block
+    carries a size header, and the counts live in the heap udata `HeapState`
+    alongside the deadline. Past the cap an allocation fails, Duktape collects
+    garbage and retries, then raises "alloc failed".
+  - QuickJS uses `JS_SetMemoryLimit` on the shared runtime, so there the cap
+    covers all of that backend's scripts together.
+  - Either way the out-of-memory error is contained like any script error.
+    T15h stops an allocate-forever handler at a 16 MiB cap (peak process RSS
+    28 MB) well inside a 10 s budget, and the script keeps working.
+
 ## Consequences
 
 - A script can no longer fabricate a node reference. The worst it can do is name
@@ -100,9 +133,9 @@ with a Script could crash the embedder. Test T15f reproduced this.
 - Tests that passed stack nodes through `SFNode(&node, [](X3DNode *) {})`
   relied on the old borrowed-pointer semantics. They now use `make_shared`.
 - A script can no longer crash the host through a throwing accessor, `toJSON`
-  or Proxy (see "Engine error containment"). The embedder's remaining exposure
-  is resource use, such as an infinite loop in a handler, which neither engine
-  bounds today.
+  or Proxy (see "Engine error containment"), or hang it or exhaust memory with
+  a runaway loop (see "Call budget"). Native stack depth is bounded by each
+  engine's own recursion limits (T15g).
 
 ## Related
 
@@ -110,4 +143,4 @@ with a Script could crash the embedder. Test T15f reproduced this.
 - [ADR-0014: Dynamic Field Foundation](0014-dynamic-field-foundation.md): the
   author-field store, whose raw-pointer keying was fixed in the same change
 - Tests: `runtime/script/tests/ecmascript_backend_test.cpp` and
-  `quickjs_backend_test.cpp` (T15b, T15c, T15d, T15f)
+  `quickjs_backend_test.cpp` (T15b, T15c, T15d, T15f, T15g, T15h)

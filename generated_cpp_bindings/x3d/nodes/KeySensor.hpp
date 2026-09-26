@@ -66,9 +66,9 @@ public:
    * @brief Gets the value of actionKeyPress. AccessType: outputOnly
    * @details action key press gives following values: HOME=000 END=1001
    * PGUP=1002 PGDN=1003 UP=1004 DOWN=1005 LEFT=1006 RIGHT=1007 F1.
-   * @return SFInt32 The current value of actionKeyPress.
+   * @return const SFInt32& The current value of actionKeyPress.
    */
-  SFInt32 getActionKeyPress() const { return _actionKeyPress; }
+  const SFInt32 &getActionKeyPress() const { return _actionKeyPress; }
 
   /**
    * @brief Emit an output value on actionKeyPress. AccessType: outputOnly
@@ -85,9 +85,9 @@ public:
    * @brief Gets the value of actionKeyRelease. AccessType: outputOnly
    * @details action key release gives following values: HOME=000 END=1001
    * PGUP=1002 PGDN=1003 UP=1004 DOWN=1005 LEFT=1006 RIGHT=1007 F1.
-   * @return SFInt32 The current value of actionKeyRelease.
+   * @return const SFInt32& The current value of actionKeyRelease.
    */
-  SFInt32 getActionKeyRelease() const { return _actionKeyRelease; }
+  const SFInt32 &getActionKeyRelease() const { return _actionKeyRelease; }
 
   /**
    * @brief Emit an output value on actionKeyRelease. AccessType: outputOnly
@@ -104,9 +104,9 @@ public:
    * @brief Gets the value of altKey. AccessType: outputOnly
    * @details altKey generates true event when pressed, false event when
    * released.
-   * @return SFBool The current value of altKey.
+   * @return const SFBool& The current value of altKey.
    */
-  SFBool getAltKey() const { return _altKey; }
+  const SFBool &getAltKey() const { return _altKey; }
 
   /**
    * @brief Emit an output value on altKey. AccessType: outputOnly
@@ -123,9 +123,9 @@ public:
    * @brief Gets the value of controlKey. AccessType: outputOnly
    * @details controlKey generates true event when pressed, false event when
    * released.
-   * @return SFBool The current value of controlKey.
+   * @return const SFBool& The current value of controlKey.
    */
-  SFBool getControlKey() const { return _controlKey; }
+  const SFBool &getControlKey() const { return _controlKey; }
 
   /**
    * @brief Emit an output value on controlKey. AccessType: outputOnly
@@ -142,9 +142,9 @@ public:
    * @brief Gets the value of keyPress. AccessType: outputOnly
    * @details Events generated when user presses character-producing keys on
    * keyboard produces integer UTF-8 character values.
-   * @return SFString The current value of keyPress.
+   * @return const SFString& The current value of keyPress.
    */
-  SFString getKeyPress() const { return _keyPress; }
+  const SFString &getKeyPress() const { return _keyPress; }
 
   /**
    * @brief Emit an output value on keyPress. AccessType: outputOnly
@@ -161,9 +161,9 @@ public:
    * @brief Gets the value of keyRelease. AccessType: outputOnly
    * @details Events generated when user releases character-producing keys on
    * keyboard produces integer UTF-8 character values.
-   * @return SFString The current value of keyRelease.
+   * @return const SFString& The current value of keyRelease.
    */
-  SFString getKeyRelease() const { return _keyRelease; }
+  const SFString &getKeyRelease() const { return _keyRelease; }
 
   /**
    * @brief Emit an output value on keyRelease. AccessType: outputOnly
@@ -180,9 +180,9 @@ public:
    * @brief Gets the value of shiftKey. AccessType: outputOnly
    * @details shiftKey generates true event when pressed, false event when
    * released.
-   * @return SFBool The current value of shiftKey.
+   * @return const SFBool& The current value of shiftKey.
    */
-  SFBool getShiftKey() const { return _shiftKey; }
+  const SFBool &getShiftKey() const { return _shiftKey; }
 
   /**
    * @brief Emit an output value on shiftKey. AccessType: outputOnly

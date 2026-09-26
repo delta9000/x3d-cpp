@@ -88,9 +88,9 @@ public:
    * @brief Gets the value of center. AccessType: inputOutput
    * @details center specifies center point of proximity box within which
    * ViewpointGroup is usable and displayed on viewpoint list.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -137,9 +137,9 @@ public:
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Text description or navigation hint to identify this
    * ViewpointGroup.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -155,9 +155,9 @@ public:
    * @brief Gets the value of displayed. AccessType: inputOutput
    * @details displayed determines whether this ViewpointGroup is displayed in
    * the current viewpoint list.
-   * @return SFBool The current value of displayed.
+   * @return const SFBool& The current value of displayed.
    */
-  SFBool getDisplayed() const { return _displayed; }
+  const SFBool &getDisplayed() const { return _displayed; }
 
   /**
    * @brief Sets the value of displayed. AccessType: inputOutput
@@ -171,9 +171,9 @@ public:
    * @brief Gets the value of retainUserOffsets. AccessType: inputOutput
    * @details Retain (true) or reset to zero (false) any prior user navigation
    * offsets from defined viewpoint position, orientation.
-   * @return SFBool The current value of retainUserOffsets.
+   * @return const SFBool& The current value of retainUserOffsets.
    */
-  SFBool getRetainUserOffsets() const { return _retainUserOffsets; }
+  const SFBool &getRetainUserOffsets() const { return _retainUserOffsets; }
 
   /**
    * @brief Sets the value of retainUserOffsets. AccessType: inputOutput
@@ -188,9 +188,9 @@ public:
    * @details size of Proximity box around center location, oriented within
    * local transformation frame, within which ViewpointGroup is usable and
    * displayed on viewpoint list.
-   * @return SFVec3f The current value of size.
+   * @return const SFVec3f& The current value of size.
    */
-  SFVec3f getSize() const { return _size; }
+  const SFVec3f &getSize() const { return _size; }
 
   /**
    * @brief Sets the value of size. AccessType: inputOutput

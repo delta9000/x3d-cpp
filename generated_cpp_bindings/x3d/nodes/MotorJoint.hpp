@@ -166,9 +166,9 @@ public:
    * @details autoCalc controls whether user manually provides individual angle
    * rotations each frame (false) or if angle values are automatically
    * calculated by motor implementations (true).
-   * @return SFBool The current value of autoCalc.
+   * @return const SFBool& The current value of autoCalc.
    */
-  SFBool getAutoCalc() const { return _autoCalc; }
+  const SFBool &getAutoCalc() const { return _autoCalc; }
   /**
    * @brief Data-layer write of autoCalc (reader/init ingest path).
    * @details autoCalc is initializeOnly: author-settable at parse
@@ -180,9 +180,9 @@ public:
    * @brief Gets the value of axis1Angle. AccessType: inputOutput
    * @details axis1Angle (radians) is rotation angle for corresponding motor
    * axis when in user-calculated mode.
-   * @return SFFloat The current value of axis1Angle.
+   * @return const SFFloat& The current value of axis1Angle.
    */
-  SFFloat getAxis1Angle() const { return _axis1Angle; }
+  const SFFloat &getAxis1Angle() const { return _axis1Angle; }
 
   /**
    * @brief Sets the value of axis1Angle. AccessType: inputOutput
@@ -196,9 +196,9 @@ public:
    * @brief Gets the value of axis1Torque. AccessType: inputOutput
    * @details axis1Torque is rotational torque applied by corresponding motor
    * axis when in user-calculated mode.
-   * @return SFFloat The current value of axis1Torque.
+   * @return const SFFloat& The current value of axis1Torque.
    */
-  SFFloat getAxis1Torque() const { return _axis1Torque; }
+  const SFFloat &getAxis1Torque() const { return _axis1Torque; }
 
   /**
    * @brief Sets the value of axis1Torque. AccessType: inputOutput
@@ -212,9 +212,9 @@ public:
    * @brief Gets the value of axis2Angle. AccessType: inputOutput
    * @details axis2Angle (radians) is rotation angle for corresponding motor
    * axis when in user-calculated mode.
-   * @return SFFloat The current value of axis2Angle.
+   * @return const SFFloat& The current value of axis2Angle.
    */
-  SFFloat getAxis2Angle() const { return _axis2Angle; }
+  const SFFloat &getAxis2Angle() const { return _axis2Angle; }
 
   /**
    * @brief Sets the value of axis2Angle. AccessType: inputOutput
@@ -228,9 +228,9 @@ public:
    * @brief Gets the value of axis2Torque. AccessType: inputOutput
    * @details axis2Torque is rotational torque applied by corresponding motor
    * axis when in user-calculated mode.
-   * @return SFFloat The current value of axis2Torque.
+   * @return const SFFloat& The current value of axis2Torque.
    */
-  SFFloat getAxis2Torque() const { return _axis2Torque; }
+  const SFFloat &getAxis2Torque() const { return _axis2Torque; }
 
   /**
    * @brief Sets the value of axis2Torque. AccessType: inputOutput
@@ -244,9 +244,9 @@ public:
    * @brief Gets the value of axis3Angle. AccessType: inputOutput
    * @details axis3Angle (radians) is rotation angle for corresponding motor
    * axis when in user-calculated mode.
-   * @return SFFloat The current value of axis3Angle.
+   * @return const SFFloat& The current value of axis3Angle.
    */
-  SFFloat getAxis3Angle() const { return _axis3Angle; }
+  const SFFloat &getAxis3Angle() const { return _axis3Angle; }
 
   /**
    * @brief Sets the value of axis3Angle. AccessType: inputOutput
@@ -260,9 +260,9 @@ public:
    * @brief Gets the value of axis3Torque. AccessType: inputOutput
    * @details axis3Torque is rotational torque applied by corresponding motor
    * axis when in user-calculated mode.
-   * @return SFFloat The current value of axis3Torque.
+   * @return const SFFloat& The current value of axis3Torque.
    */
-  SFFloat getAxis3Torque() const { return _axis3Torque; }
+  const SFFloat &getAxis3Torque() const { return _axis3Torque; }
 
   /**
    * @brief Sets the value of axis3Torque. AccessType: inputOutput
@@ -275,9 +275,9 @@ public:
   /**
    * @brief Gets the value of enabledAxes. AccessType: inputOutput
    * @details enabledAxes indicates which motor axes are active.
-   * @return SFInt32 The current value of enabledAxes.
+   * @return const SFInt32& The current value of enabledAxes.
    */
-  SFInt32 getEnabledAxes() const { return _enabledAxes; }
+  const SFInt32 &getEnabledAxes() const { return _enabledAxes; }
 
   /**
    * @brief Sets the value of enabledAxes. AccessType: inputOutput
@@ -304,9 +304,9 @@ public:
    * @brief Gets the value of motor1Angle. AccessType: outputOnly
    * @details motor1Angle provides calculated angle of rotation (radians) for
    * this motor joint from last frame.
-   * @return SFFloat The current value of motor1Angle.
+   * @return const SFFloat& The current value of motor1Angle.
    */
-  SFFloat getMotor1Angle() const { return _motor1Angle; }
+  const SFFloat &getMotor1Angle() const { return _motor1Angle; }
 
   /**
    * @brief Emit an output value on motor1Angle. AccessType: outputOnly
@@ -323,9 +323,9 @@ public:
    * @brief Gets the value of motor1AngleRate. AccessType: outputOnly
    * @details motor1AngleRate provides calculated anglular rotation rate
    * (radians/second) for this motor joint from last frame.
-   * @return SFFloat The current value of motor1AngleRate.
+   * @return const SFFloat& The current value of motor1AngleRate.
    */
-  SFFloat getMotor1AngleRate() const { return _motor1AngleRate; }
+  const SFFloat &getMotor1AngleRate() const { return _motor1AngleRate; }
 
   /**
    * @brief Emit an output value on motor1AngleRate. AccessType: outputOnly
@@ -341,9 +341,9 @@ public:
   /**
    * @brief Gets the value of motor1Axis. AccessType: inputOutput
    * @details motor1Axis defines axis vector of corresponding motor axis.
-   * @return SFVec3f The current value of motor1Axis.
+   * @return const SFVec3f& The current value of motor1Axis.
    */
-  SFVec3f getMotor1Axis() const { return _motor1Axis; }
+  const SFVec3f &getMotor1Axis() const { return _motor1Axis; }
 
   /**
    * @brief Sets the value of motor1Axis. AccessType: inputOutput
@@ -358,9 +358,9 @@ public:
    * @brief Gets the value of motor2Angle. AccessType: outputOnly
    * @details motor2Angle provides calculated angle of rotation (radians) for
    * this motor joint from last frame.
-   * @return SFFloat The current value of motor2Angle.
+   * @return const SFFloat& The current value of motor2Angle.
    */
-  SFFloat getMotor2Angle() const { return _motor2Angle; }
+  const SFFloat &getMotor2Angle() const { return _motor2Angle; }
 
   /**
    * @brief Emit an output value on motor2Angle. AccessType: outputOnly
@@ -377,9 +377,9 @@ public:
    * @brief Gets the value of motor2AngleRate. AccessType: outputOnly
    * @details motor2AngleRate provides calculated anglular rotation rate
    * (radians/second) for this motor joint from last frame.
-   * @return SFFloat The current value of motor2AngleRate.
+   * @return const SFFloat& The current value of motor2AngleRate.
    */
-  SFFloat getMotor2AngleRate() const { return _motor2AngleRate; }
+  const SFFloat &getMotor2AngleRate() const { return _motor2AngleRate; }
 
   /**
    * @brief Emit an output value on motor2AngleRate. AccessType: outputOnly
@@ -395,9 +395,9 @@ public:
   /**
    * @brief Gets the value of motor2Axis. AccessType: inputOutput
    * @details motor2Axis defines axis vector of corresponding motor axis.
-   * @return SFVec3f The current value of motor2Axis.
+   * @return const SFVec3f& The current value of motor2Axis.
    */
-  SFVec3f getMotor2Axis() const { return _motor2Axis; }
+  const SFVec3f &getMotor2Axis() const { return _motor2Axis; }
 
   /**
    * @brief Sets the value of motor2Axis. AccessType: inputOutput
@@ -412,9 +412,9 @@ public:
    * @brief Gets the value of motor3Angle. AccessType: outputOnly
    * @details motor3Angle provides calculated angle of rotation (radians) for
    * this motor joint from last frame.
-   * @return SFFloat The current value of motor3Angle.
+   * @return const SFFloat& The current value of motor3Angle.
    */
-  SFFloat getMotor3Angle() const { return _motor3Angle; }
+  const SFFloat &getMotor3Angle() const { return _motor3Angle; }
 
   /**
    * @brief Emit an output value on motor3Angle. AccessType: outputOnly
@@ -431,9 +431,9 @@ public:
    * @brief Gets the value of motor3AngleRate. AccessType: outputOnly
    * @details motor3AngleRate provides calculated anglular rotation rate
    * (radians/second) for this motor joint from last frame.
-   * @return SFFloat The current value of motor3AngleRate.
+   * @return const SFFloat& The current value of motor3AngleRate.
    */
-  SFFloat getMotor3AngleRate() const { return _motor3AngleRate; }
+  const SFFloat &getMotor3AngleRate() const { return _motor3AngleRate; }
 
   /**
    * @brief Emit an output value on motor3AngleRate. AccessType: outputOnly
@@ -449,9 +449,9 @@ public:
   /**
    * @brief Gets the value of motor3Axis. AccessType: inputOutput
    * @details motor3Axis defines axis vector of corresponding motor axis.
-   * @return SFVec3f The current value of motor3Axis.
+   * @return const SFVec3f& The current value of motor3Axis.
    */
-  SFVec3f getMotor3Axis() const { return _motor3Axis; }
+  const SFVec3f &getMotor3Axis() const { return _motor3Axis; }
 
   /**
    * @brief Sets the value of motor3Axis. AccessType: inputOutput
@@ -466,9 +466,9 @@ public:
    * @brief Gets the value of stop1Bounce. AccessType: inputOutput
    * @details stop1Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return SFFloat The current value of stop1Bounce.
+   * @return const SFFloat& The current value of stop1Bounce.
    */
-  SFFloat getStop1Bounce() const { return _stop1Bounce; }
+  const SFFloat &getStop1Bounce() const { return _stop1Bounce; }
 
   /**
    * @brief Sets the value of stop1Bounce. AccessType: inputOutput
@@ -482,9 +482,11 @@ public:
    * @brief Gets the value of stop1ErrorCorrection. AccessType: inputOutput
    * @details stop1ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return SFFloat The current value of stop1ErrorCorrection.
+   * @return const SFFloat& The current value of stop1ErrorCorrection.
    */
-  SFFloat getStop1ErrorCorrection() const { return _stop1ErrorCorrection; }
+  const SFFloat &getStop1ErrorCorrection() const {
+    return _stop1ErrorCorrection;
+  }
 
   /**
    * @brief Sets the value of stop1ErrorCorrection. AccessType: inputOutput
@@ -501,9 +503,9 @@ public:
    * @brief Gets the value of stop2Bounce. AccessType: inputOutput
    * @details stop2Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return SFFloat The current value of stop2Bounce.
+   * @return const SFFloat& The current value of stop2Bounce.
    */
-  SFFloat getStop2Bounce() const { return _stop2Bounce; }
+  const SFFloat &getStop2Bounce() const { return _stop2Bounce; }
 
   /**
    * @brief Sets the value of stop2Bounce. AccessType: inputOutput
@@ -517,9 +519,11 @@ public:
    * @brief Gets the value of stop2ErrorCorrection. AccessType: inputOutput
    * @details stop2ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return SFFloat The current value of stop2ErrorCorrection.
+   * @return const SFFloat& The current value of stop2ErrorCorrection.
    */
-  SFFloat getStop2ErrorCorrection() const { return _stop2ErrorCorrection; }
+  const SFFloat &getStop2ErrorCorrection() const {
+    return _stop2ErrorCorrection;
+  }
 
   /**
    * @brief Sets the value of stop2ErrorCorrection. AccessType: inputOutput
@@ -536,9 +540,9 @@ public:
    * @brief Gets the value of stop3Bounce. AccessType: inputOutput
    * @details stop3Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return SFFloat The current value of stop3Bounce.
+   * @return const SFFloat& The current value of stop3Bounce.
    */
-  SFFloat getStop3Bounce() const { return _stop3Bounce; }
+  const SFFloat &getStop3Bounce() const { return _stop3Bounce; }
 
   /**
    * @brief Sets the value of stop3Bounce. AccessType: inputOutput
@@ -552,9 +556,11 @@ public:
    * @brief Gets the value of stop3ErrorCorrection. AccessType: inputOutput
    * @details stop3ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return SFFloat The current value of stop3ErrorCorrection.
+   * @return const SFFloat& The current value of stop3ErrorCorrection.
    */
-  SFFloat getStop3ErrorCorrection() const { return _stop3ErrorCorrection; }
+  const SFFloat &getStop3ErrorCorrection() const {
+    return _stop3ErrorCorrection;
+  }
 
   /**
    * @brief Sets the value of stop3ErrorCorrection. AccessType: inputOutput

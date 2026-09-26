@@ -70,9 +70,9 @@ public:
   /**
    * @brief Gets the value of integerKey. AccessType: inputOutput
    * @details integerKey is value for output when triggered.
-   * @return SFInt32 The current value of integerKey.
+   * @return const SFInt32& The current value of integerKey.
    */
-  SFInt32 getIntegerKey() const { return _integerKey; }
+  const SFInt32 &getIntegerKey() const { return _integerKey; }
 
   /**
    * @brief Sets the value of integerKey. AccessType: inputOutput
@@ -108,9 +108,9 @@ public:
    * @brief Gets the value of triggerValue. AccessType: outputOnly
    * @details triggerValue provides integer event output matching integerKey
    * when true set_boolean received.
-   * @return SFInt32 The current value of triggerValue.
+   * @return const SFInt32& The current value of triggerValue.
    */
-  SFInt32 getTriggerValue() const { return _triggerValue; }
+  const SFInt32 &getTriggerValue() const { return _triggerValue; }
 
   /**
    * @brief Emit an output value on triggerValue. AccessType: outputOnly

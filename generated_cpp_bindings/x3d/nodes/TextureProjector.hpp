@@ -80,9 +80,9 @@ public:
    * @brief Gets the value of fieldOfView. AccessType: inputOutput
    * @details Preferred minimum viewing angle for this projection in radians,
    * providing minimum height or minimum width (whichever is smaller).
-   * @return SFFloat The current value of fieldOfView.
+   * @return const SFFloat& The current value of fieldOfView.
    */
-  SFFloat getFieldOfView() const { return _fieldOfView; }
+  const SFFloat &getFieldOfView() const { return _fieldOfView; }
 
   /**
    * @brief Sets the value of fieldOfView. AccessType: inputOutput
@@ -110,9 +110,9 @@ public:
    * @brief Gets the value of upVector. AccessType: inputOutput
    * @details upVector describes the roll of the camera by saying which
    * direction is up for the camera's orientation.
-   * @return SFVec3f The current value of upVector.
+   * @return const SFVec3f& The current value of upVector.
    */
-  SFVec3f getUpVector() const { return _upVector; }
+  const SFVec3f &getUpVector() const { return _upVector; }
 
   /**
    * @brief Sets the value of upVector. AccessType: inputOutput

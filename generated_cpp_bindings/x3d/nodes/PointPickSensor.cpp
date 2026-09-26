@@ -29,6 +29,14 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DSensorNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +53,14 @@ const FieldTable &PointPickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DSensorNode::getEnabled(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -65,6 +81,14 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DPickSensorNode::getIntersectionType(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +106,13 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -98,6 +129,14 @@ const FieldTable &PointPickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DSensorNode::getIsActive(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -127,6 +166,14 @@ const FieldTable &PointPickSensor::fields() const {
                 .X3DPickSensorNode::setMatchCriterion(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DPickSensorNode::getMatchCriterion(),
+                  &typeid(PickSensorMatchCriterionChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -144,6 +191,14 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PointPickSensor &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -160,6 +215,14 @@ const FieldTable &PointPickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DPickSensorNode::getObjectType(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -179,6 +242,14 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DPickSensorNode::getPickedGeometry(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -195,6 +266,13 @@ const FieldTable &PointPickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n).getPickedPoint(),
+                  &typeid(MFVec3f)};
+        }
 
     });
 
@@ -214,6 +292,14 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DPickSensorNode::getPickingGeometry(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -231,6 +317,14 @@ const FieldTable &PointPickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DPickSensorNode::getPickTarget(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -250,6 +344,14 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n)
+                       .X3DPickSensorNode::getSortOrder(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -266,6 +368,13 @@ const FieldTable &PointPickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -284,6 +393,13 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -300,6 +416,14 @@ const FieldTable &PointPickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const PointPickSensor &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -318,6 +442,13 @@ const FieldTable &PointPickSensor::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -334,6 +465,13 @@ const FieldTable &PointPickSensor::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const PointPickSensor &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

@@ -4809,8 +4809,10 @@
         "SCRIPT-EVENTIN",
         "SCRIPT-HOSTILE-VALUE-ABORT",
         "SCRIPT-OUTPUTONLY-REEMIT",
+        "SCRIPT-RUNAWAY-HANG",
         "SCRIPT-SAI-ADDROUTE-VALIDATE",
-        "SCRIPT-SFNODE-REFERENCE"
+        "SCRIPT-SFNODE-REFERENCE",
+        "SCRIPT-UNBOUNDED-MEMORY"
       ],
       "levels": [
         1
@@ -4837,8 +4839,10 @@
             "SCRIPT-EVENTIN",
             "SCRIPT-HOSTILE-VALUE-ABORT",
             "SCRIPT-OUTPUTONLY-REEMIT",
+            "SCRIPT-RUNAWAY-HANG",
             "SCRIPT-SAI-ADDROUTE-VALIDATE",
-            "SCRIPT-SFNODE-REFERENCE"
+            "SCRIPT-SFNODE-REFERENCE",
+            "SCRIPT-UNBOUNDED-MEMORY"
           ],
           "geometry": false,
           "interfaces": [
@@ -9361,10 +9365,10 @@
       "nodes": [
         "Script"
       ],
-      "note": "PARTIALLY ADDRESSED. deliver() (X3DEventCascade.hpp) used to scan only the STATIC fields() table; Script/ComposedShader author fields live in effectiveFields()/the dynamic store, so the lookup missed and the event evaporated (buildRoutes resolved the sink via effectiveFields, X3DSceneBridge.hpp:74). deliver() now FALLS BACK to dynamicFieldStore().authorFields() when the static table misses, so a routed value (incl. `set_url`) reaches the author field's store entry (regression: cascade_author_field_test). REMAINING: nothing in the SDK forwards that stored write to ScriptSystem::deliverInputEvent, and eventsProcessed() is still gated on receivedEventThisTick, so the script function does not auto-run \u2014 the embedder must poll author-input fields post-cascade and call deliverInputEvent (the x3d-bgfx browser does this). Full fix: an in-SDK bridge from a Script author-field write to ScriptSystem::deliverInputEvent. (event-model review.)",
+      "note": "deliver() (X3DEventCascade.hpp) falls back to dynamicFieldStore().authorFields() when the static table misses, so a routed value (incl. `set_url`) reaches the author field's store entry (cascade_author_field_test). The cascade now also notifies author-input listeners after such a write, and addScriptSystem registers ScriptSystem::onAuthorInput as one. An inputOnly event goes to deliverInputEvent (so mustEvaluate batching and eventsProcessed apply as for any input); an inputOutput event updates the script's global through ScriptEngine::updateField, so a later readback does not revert the routed value. EMBEDDER NOTE: a browser that polled author-input fields after the cascade and called deliverInputEvent itself must drop that bridge, or each event runs its handler twice. Tests: script_system (mock), script_corpus_e2e (routed eventIn and inputOutput end to end), ecmascript/quickjs backend T15i.",
       "severity": "major",
-      "status": "open",
-      "summary": "A ROUTE into a Script eventIn/inputOutput now lands in the author-field store, but the write is not auto-forwarded to the script engine \u2014 the canonical sensor->Script->scene pattern still needs embedder wiring at tick time."
+      "status": "fixed",
+      "summary": "A ROUTE into a Script inputOnly field now runs the script function of the same name, and a routed inputOutput value reaches the script's variable; before, both stopped in the author-field store and needed embedder wiring."
     },
     {
       "clause": "22.4.5",
@@ -9420,6 +9424,34 @@
       "severity": "minor",
       "status": "fixed",
       "summary": "Browser.addRoute accepted any endpoints \u2014 a null node, an unknown field, a non-output source, a non-input sink or mismatched types all went straight into the live route graph."
+    },
+    {
+      "clause": "29.2.4 (ECMAScript binding 19777-1)",
+      "id": "SCRIPT-RUNAWAY-HANG",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "ScriptEngine::setCallBudget (default 2 s) bounds every entry into script code. Duktape uses its exec-timeout check (DUK_USE_EXEC_TIMEOUT_CHECK, local duk_config.h change) and QuickJS uses JS_SetInterruptHandler. An interrupted call is logged as a script error and the script stays loaded; a catch-and-continue loop cannot outlast it. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15g.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A Script handler or top level that never returned hung the host; neither engine bounded script run time."
+    },
+    {
+      "clause": "29.2.4 (ECMAScript binding 19777-1)",
+      "id": "SCRIPT-UNBOUNDED-MEMORY",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "ScriptEngine::setMemoryLimit (default 256 MiB). Duktape uses a counting allocator per script; QuickJS uses JS_SetMemoryLimit on its shared runtime, so there it caps the scripts' combined heap. Past the cap an allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15h.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A Script could allocate without bound and get the host process killed; neither engine capped script memory."
     },
     {
       "clause": "29.2.4 (ECMAScript binding 19777-1)",
@@ -9719,10 +9751,10 @@
     ]
   },
   "summary": {
-    "closed_count": 128,
+    "closed_count": 131,
     "component_count": 36,
     "deferred_count": 39,
-    "finding_count": 215,
+    "finding_count": 217,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -9748,7 +9780,7 @@
     "open_by_severity": {
       "critical": 3,
       "low": 6,
-      "major": 40,
+      "major": 39,
       "minor": 38
     }
   },

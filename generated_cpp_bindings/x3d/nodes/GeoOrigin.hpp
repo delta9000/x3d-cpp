@@ -82,9 +82,9 @@ public:
    * @brief Gets the value of geoCoords. AccessType: inputOutput
    * @details Defines absolute geographic location (and implicit local
    * coordinate frame).
-   * @return SFVec3d The current value of geoCoords.
+   * @return const SFVec3d& The current value of geoCoords.
    */
-  SFVec3d getGeoCoords() const { return _geoCoords; }
+  const SFVec3d &getGeoCoords() const { return _geoCoords; }
 
   /**
    * @brief Sets the value of geoCoords. AccessType: inputOutput
@@ -100,9 +100,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -116,9 +116,9 @@ public:
    * that local-up direction aligns with VRML Y axis rotateYUp false means local
    * up-direction is relative to planet surface rotateYUp true allows proper
    * operation of NavigationInfo modes FLY, WALK.
-   * @return SFBool The current value of rotateYUp.
+   * @return const SFBool& The current value of rotateYUp.
    */
-  SFBool getRotateYUp() const { return _rotateYUp; }
+  const SFBool &getRotateYUp() const { return _rotateYUp; }
   /**
    * @brief Data-layer write of rotateYUp (reader/init ingest path).
    * @details rotateYUp is initializeOnly: author-settable at parse

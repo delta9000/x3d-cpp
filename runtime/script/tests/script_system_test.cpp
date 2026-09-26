@@ -21,6 +21,7 @@
 
 #include "ScriptSystem.hpp"
 
+#include "DynamicField.hpp"
 #include "SaiContext.hpp"
 #include "ScriptEngine.hpp"
 #include "tests/MockScriptEngine.hpp"
@@ -324,6 +325,53 @@ void testShutdownOnTeardown() {
 
 } // namespace
 
+// --- a ROUTE into a Script eventIn runs its handler (SCRIPT-EVENTIN) ---------
+// ISO/IEC 19775-1 §29.2: an event arriving at a Script's inputOnly field invokes
+// the function of that name, within the same cascade, at the current timestamp;
+// eventsProcessed() follows once the batch drains. No embedder bridging.
+void testRoutedEventInvokesHandler() {
+  X3DExecutionContext ctx;
+  Script script = makeScript();
+  Transform source;
+  dynamicFieldStore().addAuthorField(
+      script, AuthorFieldDecl{"set_pos", X3DFieldType::SFVec3f,
+                              AccessType::InputOnly, {}});
+  dynamicFieldStore().addAuthorField(
+      script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
+                              AccessType::InputOutput, std::any(SFFloat(0))});
+
+  auto engine = std::make_shared<MockScriptEngine>();
+  auto sys = std::make_shared<ScriptSystem>(engine, "x3d-cpp-gen", "4.0");
+  ctx.addScriptSystem(sys);
+  sys->attach(&script, ctx);
+  ctx.addRoute(FieldAddress{&source, "translation"},
+               FieldAddress{&script, "set_pos"});
+
+  ctx.postEvent(&source, "translation", std::any(SFVec3f{1, 2, 3}));
+  ctx.tick(5.0);
+  check(engine->count("invoke") == 1,
+        "SCRIPT-EVENTIN: a ROUTEd event into an inputOnly field invokes once");
+  const int inv = indexOf(*engine, "invoke");
+  check(inv >= 0 && engine->calls[inv].eventName == "set_pos" &&
+            engine->calls[inv].timestamp == 5.0,
+        "SCRIPT-EVENTIN: the handler of that name runs at the tick timestamp");
+  check(indexOf(*engine, "eventsProcessed") > inv,
+        "SCRIPT-EVENTIN: eventsProcessed follows the routed event");
+
+  // A direct post to the eventIn is an event too.
+  ctx.postEvent(&script, "set_pos", std::any(SFVec3f{4, 5, 6}));
+  ctx.tick(6.0);
+  check(engine->count("invoke") == 2,
+        "SCRIPT-EVENTIN: a direct post to an inputOnly field invokes too");
+
+  // An inputOutput author field stores the value but is not a handler call.
+  ctx.postEvent(&script, "level", std::any(SFFloat(0.5f)));
+  ctx.tick(7.0);
+  check(engine->count("invoke") == 2,
+        "SCRIPT-EVENTIN: an inputOutput author field write invokes nothing");
+  dynamicFieldStore().erase(script);
+}
+
 int main() {
   testShutdownOnTeardown();
   testInitializeBeforeFirstEvent();
@@ -334,6 +382,7 @@ int main() {
   testSetUrlReload();
   testDirectOutputGate();
   testMustEvaluateEagerVsLazy();
+  testRoutedEventInvokesHandler();
 
   if (failures == 0) {
     std::cout << "ALL SCRIPT SYSTEM TESTS PASSED\n";

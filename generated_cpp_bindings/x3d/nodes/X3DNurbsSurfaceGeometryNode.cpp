@@ -32,6 +32,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .getControlPoint(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -66,6 +82,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -82,6 +106,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getSolid(),
+              &typeid(SFBool)};
+        }
 
     });
 
@@ -100,6 +132,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .getTexCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -116,6 +156,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .getUClosed(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -134,6 +182,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .getUDimension(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -150,6 +206,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getUKnot(),
+              &typeid(MFDouble)};
+        }
 
     });
 
@@ -168,6 +232,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getUOrder(),
+              &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -184,6 +256,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .getUTessellation(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -202,6 +282,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .getVClosed(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -218,6 +306,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .getVDimension(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -236,6 +332,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getVKnot(),
+              &typeid(MFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -252,6 +356,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getVOrder(),
+              &typeid(SFInt32)};
+        }
 
     });
 
@@ -270,6 +382,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .getVTessellation(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -286,6 +406,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getWeight(),
+              &typeid(MFDouble)};
+        }
 
     });
 
@@ -304,6 +432,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -320,6 +456,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -338,6 +482,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -355,6 +507,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -371,6 +531,14 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

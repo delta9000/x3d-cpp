@@ -67,9 +67,9 @@ public:
    * @brief Gets the value of backUrl. AccessType: inputOutput
    * @details Image background panorama between ground/sky backdrop and scene's
    * geometry.
-   * @return MFString The current value of backUrl.
+   * @return const MFString& The current value of backUrl.
    */
-  MFString getBackUrl() const { return _backUrl; }
+  const MFString &getBackUrl() const { return _backUrl; }
 
   /**
    * @brief Sets the value of backUrl. AccessType: inputOutput
@@ -85,9 +85,9 @@ public:
    * @brief Gets the value of bottomUrl. AccessType: inputOutput
    * @details Image background panorama between ground/sky backdrop and scene's
    * geometry.
-   * @return MFString The current value of bottomUrl.
+   * @return const MFString& The current value of bottomUrl.
    */
-  MFString getBottomUrl() const { return _bottomUrl; }
+  const MFString &getBottomUrl() const { return _bottomUrl; }
 
   /**
    * @brief Sets the value of bottomUrl. AccessType: inputOutput
@@ -103,9 +103,9 @@ public:
    * @brief Gets the value of frontUrl. AccessType: inputOutput
    * @details Image background panorama between ground/sky backdrop and scene's
    * geometry.
-   * @return MFString The current value of frontUrl.
+   * @return const MFString& The current value of frontUrl.
    */
-  MFString getFrontUrl() const { return _frontUrl; }
+  const MFString &getFrontUrl() const { return _frontUrl; }
 
   /**
    * @brief Sets the value of frontUrl. AccessType: inputOutput
@@ -121,9 +121,9 @@ public:
    * @brief Gets the value of leftUrl. AccessType: inputOutput
    * @details Image background panorama between ground/sky backdrop and scene's
    * geometry.
-   * @return MFString The current value of leftUrl.
+   * @return const MFString& The current value of leftUrl.
    */
-  MFString getLeftUrl() const { return _leftUrl; }
+  const MFString &getLeftUrl() const { return _leftUrl; }
 
   /**
    * @brief Sets the value of leftUrl. AccessType: inputOutput
@@ -139,9 +139,9 @@ public:
    * @brief Gets the value of rightUrl. AccessType: inputOutput
    * @details Image background panorama between ground/sky backdrop and scene's
    * geometry.
-   * @return MFString The current value of rightUrl.
+   * @return const MFString& The current value of rightUrl.
    */
-  MFString getRightUrl() const { return _rightUrl; }
+  const MFString &getRightUrl() const { return _rightUrl; }
 
   /**
    * @brief Sets the value of rightUrl. AccessType: inputOutput
@@ -157,9 +157,9 @@ public:
    * @brief Gets the value of topUrl. AccessType: inputOutput
    * @details Image background panorama between ground/sky backdrop and scene's
    * geometry.
-   * @return MFString The current value of topUrl.
+   * @return const MFString& The current value of topUrl.
    */
-  MFString getTopUrl() const { return _topUrl; }
+  const MFString &getTopUrl() const { return _topUrl; }
 
   /**
    * @brief Sets the value of topUrl. AccessType: inputOutput

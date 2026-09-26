@@ -27,6 +27,10 @@ const FieldTable &Group::fields() const {
 
                   nullptr, nullptr
 
+                  ,
+
+                  nullptr
+
         });
 
     t.push_back(FieldInfo{
@@ -43,6 +47,14 @@ const FieldTable &Group::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Group &>(n).X3DGroupingNode::getBboxCenter(),
+              &typeid(SFVec3f)};
+        }
 
     });
 
@@ -61,6 +73,14 @@ const FieldTable &Group::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Group &>(n).X3DGroupingNode::getBboxDisplay(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -77,6 +97,14 @@ const FieldTable &Group::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Group &>(n).X3DGroupingNode::getBboxSize(),
+              &typeid(SFVec3f)};
+        }
 
     });
 
@@ -95,6 +123,14 @@ const FieldTable &Group::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const Group &>(n).X3DGroupingNode::getChildren(),
+              &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -109,6 +145,13 @@ const FieldTable &Group::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Group &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -127,6 +170,13 @@ const FieldTable &Group::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Group &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(
@@ -141,6 +191,10 @@ const FieldTable &Group::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  nullptr
 
         });
 
@@ -159,6 +213,13 @@ const FieldTable &Group::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Group &>(n).X3DGroupingNode::getVisible(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -174,6 +235,13 @@ const FieldTable &Group::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Group &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -188,6 +256,13 @@ const FieldTable &Group::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Group &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -205,6 +280,13 @@ const FieldTable &Group::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Group &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -219,6 +301,13 @@ const FieldTable &Group::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Group &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -235,6 +324,13 @@ const FieldTable &Group::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const Group &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

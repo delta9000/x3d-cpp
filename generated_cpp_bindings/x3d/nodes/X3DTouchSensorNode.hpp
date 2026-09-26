@@ -61,9 +61,9 @@ public:
   /**
    * @brief Gets the value of touchTime. AccessType: outputOnly
    * @details
-   * @return SFTime The current value of touchTime.
+   * @return const SFTime& The current value of touchTime.
    */
-  SFTime getTouchTime() const { return _touchTime; }
+  const SFTime &getTouchTime() const { return _touchTime; }
 
   /**
    * @brief Emit an output value on touchTime. AccessType: outputOnly

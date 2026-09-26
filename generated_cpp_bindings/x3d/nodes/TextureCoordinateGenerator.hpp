@@ -79,9 +79,10 @@ public:
    * @brief Gets the value of mode. AccessType: inputOutput
    * @details parameter field defines the algorithm used to compute texture
    * coordinates.
-   * @return TextureCoordinateGeneratorModeChoices The current value of mode.
+   * @return const TextureCoordinateGeneratorModeChoices& The current value of
+   * mode.
    */
-  TextureCoordinateGeneratorModeChoices getMode() const { return _mode; }
+  const TextureCoordinateGeneratorModeChoices &getMode() const { return _mode; }
 
   /**
    * @brief Sets the value of mode. AccessType: inputOutput
@@ -101,9 +102,9 @@ public:
    * SPHERE-REFLECT mode, parameter[0] contains index of refraction and
    * parameter[1 to 3] contains the eye point in local coordinates for
    * SPHERE-REFLECT-LOCAL mode.
-   * @return MFFloat The current value of parameter.
+   * @return const MFFloat& The current value of parameter.
    */
-  MFFloat getParameter() const { return _parameter; }
+  const MFFloat &getParameter() const { return _parameter; }
 
   /**
    * @brief Sets the value of parameter. AccessType: inputOutput

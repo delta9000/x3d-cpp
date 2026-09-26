@@ -25,6 +25,7 @@
 #ifndef X3D_RUNTIME_POINTING_SENSOR_SYSTEM_HPP
 #define X3D_RUNTIME_POINTING_SENSOR_SYSTEM_HPP
 
+#include "FieldRead.hpp"
 #include "GeometryBounds.hpp" // geombounds::getField (reflection-generic reads)
 #include "Mat4.hpp"
 #include "PickSystem.hpp"
@@ -264,37 +265,15 @@ private:
   // First enabled pointing-device sensor among the direct children of `group`.
   static X3DNode *enabledSensorChildOf(const X3DNode *group) {
     X3DNode *found = nullptr;
-    PickSystemChildWalker::forEachChild(group, [&](const X3DNode *c) {
+    if (!group)
+      return nullptr;
+    forEachChildNode(*group, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
       if (!found)
-        if (X3DNode *s = asEnabledPointingSensor(c))
+        if (X3DNode *s = asEnabledPointingSensor(c.get()))
           found = s;
     });
     return found;
   }
-
-  // Re-expose PickSystem's child traversal (SFNode/MFNode reflection) without
-  // duplicating it. PickSystem::forEachChild is private; mirror its body here in
-  // a tiny local helper so this System depends only on the reflected field API.
-  struct PickSystemChildWalker {
-    template <class F> static void forEachChild(const X3DNode *n, F &&f) {
-      if (!n)
-        return;
-      for (const auto &fi : n->fields()) {
-        if (!fi.get)
-          continue;
-        if (fi.type == X3DFieldType::SFNode) {
-          auto c = std::any_cast<std::shared_ptr<X3DNode>>(fi.get(*n));
-          if (c)
-            f(c.get());
-        } else if (fi.type == X3DFieldType::MFNode) {
-          for (const auto &c :
-               std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(fi.get(*n)))
-            if (c)
-              f(c.get());
-        }
-      }
-    }
-  };
 
   // ---- TouchSensor output emission (unchanged from the M2.5 seam) -----------
   // Each emit goes through the cascade so any ROUTEs fan out at `now`. We post

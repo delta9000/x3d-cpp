@@ -32,6 +32,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .X3DVolumeDataNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -48,6 +56,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .X3DVolumeDataNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -67,6 +83,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .X3DVolumeDataNode::getBboxSize(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -83,6 +107,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .getContourStepSize(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -101,6 +133,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .X3DVolumeDataNode::getDimensions(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -117,6 +157,13 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n).getGradients(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -135,6 +182,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IsoSurfaceVolumeData &>(n).X3DNode::getIS(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -151,6 +206,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -170,6 +233,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IsoSurfaceVolumeData &>(n).getRenderStyle(),
+              &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -186,6 +257,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .getSurfaceTolerance(),
+                  &typeid(SFFloat)};
+        }
 
     });
 
@@ -204,6 +283,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IsoSurfaceVolumeData &>(n).getSurfaceValues(),
+              &typeid(MFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -220,6 +307,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .X3DVolumeDataNode::getVisible(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -238,6 +333,13 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n).getVoxels(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -254,6 +356,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IsoSurfaceVolumeData &>(n).X3DNode::getDEF(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -272,6 +382,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IsoSurfaceVolumeData &>(n).X3DNode::getUSE(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -288,6 +406,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -306,6 +432,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const IsoSurfaceVolumeData &>(n).X3DNode::getId(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -322,6 +456,14 @@ const FieldTable &IsoSurfaceVolumeData::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IsoSurfaceVolumeData &>(n)
+                       .X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

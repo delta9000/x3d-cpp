@@ -90,9 +90,9 @@ public:
    * @details ccw defines clockwise/counterclockwise ordering of vertex
    * coordinates, which in turn defines front/back orientation of polygon
    * normals according to Right-Hand Rule (RHR).
-   * @return SFBool The current value of ccw.
+   * @return const SFBool& The current value of ccw.
    */
-  SFBool getCcw() const { return _ccw; }
+  const SFBool &getCcw() const { return _ccw; }
   /**
    * @brief Data-layer write of ccw (reader/init ingest path).
    * @details ccw is initializeOnly: author-settable at parse
@@ -104,9 +104,9 @@ public:
    * @brief Gets the value of profileCurve. AccessType: inputOutput
    * @details 2D curve in the yz-plane that describes the cross-sectional shape
    * of the object.
-   * @return SFNode The current value of profileCurve.
+   * @return const SFNode& The current value of profileCurve.
    */
-  SFNode getProfileCurve() const { return _profileCurve; }
+  const SFNode &getProfileCurve() const { return _profileCurve; }
 
   /**
    * @brief Acceptable node types for the profileCurve field.
@@ -133,9 +133,9 @@ public:
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return SFBool The current value of solid.
+   * @return const SFBool& The current value of solid.
    */
-  SFBool getSolid() const { return _solid; }
+  const SFBool &getSolid() const { return _solid; }
   /**
    * @brief Data-layer write of solid (reader/init ingest path).
    * @details solid is initializeOnly: author-settable at parse
@@ -147,9 +147,9 @@ public:
    * @brief Gets the value of trajectoryCurve. AccessType: inputOutput
    * @details 2D curve in the xz-plane that describes path over which to trace
    * the cross-section.
-   * @return SFNode The current value of trajectoryCurve.
+   * @return const SFNode& The current value of trajectoryCurve.
    */
-  SFNode getTrajectoryCurve() const { return _trajectoryCurve; }
+  const SFNode &getTrajectoryCurve() const { return _trajectoryCurve; }
 
   /**
    * @brief Acceptable node types for the trajectoryCurve field.

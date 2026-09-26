@@ -75,9 +75,9 @@ public:
    * @brief Gets the value of channelSelection. AccessType: inputOutput
    * @details channelSelection is single channel of interest from those provided
    * by input nodes.
-   * @return SFInt32 The current value of channelSelection.
+   * @return const SFInt32& The current value of channelSelection.
    */
-  SFInt32 getChannelSelection() const { return _channelSelection; }
+  const SFInt32 &getChannelSelection() const { return _channelSelection; }
 
   /**
    * @brief Sets the value of channelSelection. AccessType: inputOutput

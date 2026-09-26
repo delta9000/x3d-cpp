@@ -209,9 +209,9 @@ public:
    * @brief Gets the value of coneInnerAngle. AccessType: inputOutput
    * @details coneInnerAngle is centered along direction and defines the inner
    * conical volume, inside of which no source gain reduction occurs.
-   * @return SFFloat The current value of coneInnerAngle.
+   * @return const SFFloat& The current value of coneInnerAngle.
    */
-  SFFloat getConeInnerAngle() const { return _coneInnerAngle; }
+  const SFFloat &getConeInnerAngle() const { return _coneInnerAngle; }
 
   /**
    * @brief Sets the value of coneInnerAngle. AccessType: inputOutput
@@ -242,9 +242,9 @@ public:
    * @details coneOuterAngle is centered along direction and defines an outer
    * conical volume, within which the sound gain decreases linearly from full
    * gain to coneOuterGain.
-   * @return SFFloat The current value of coneOuterAngle.
+   * @return const SFFloat& The current value of coneOuterAngle.
    */
-  SFFloat getConeOuterAngle() const { return _coneOuterAngle; }
+  const SFFloat &getConeOuterAngle() const { return _coneOuterAngle; }
 
   /**
    * @brief Sets the value of coneOuterAngle. AccessType: inputOutput
@@ -274,9 +274,9 @@ public:
   /**
    * @brief Gets the value of coneOuterGain. AccessType: inputOutput
    * @details coneOuterGain is minimum gain value found outside coneOuterAngle.
-   * @return SFFloat The current value of coneOuterGain.
+   * @return const SFFloat& The current value of coneOuterGain.
    */
-  SFFloat getConeOuterGain() const { return _coneOuterGain; }
+  const SFFloat &getConeOuterGain() const { return _coneOuterGain; }
 
   /**
    * @brief Sets the value of coneOuterGain. AccessType: inputOutput
@@ -288,9 +288,9 @@ public:
   /**
    * @brief Gets the value of direction. AccessType: inputOutput
    * @details direction of sound axis, relative to local coordinate system.
-   * @return SFVec3f The current value of direction.
+   * @return const SFVec3f& The current value of direction.
    */
-  SFVec3f getDirection() const { return _direction; }
+  const SFVec3f &getDirection() const { return _direction; }
 
   /**
    * @brief Sets the value of direction. AccessType: inputOutput
@@ -306,9 +306,11 @@ public:
    * @details distanceModel determines how field specifies which algorithm to
    * use for sound attenuation, corresponding to distance between an audio
    * source and a listener, as it moves away from the listener.
-   * @return DistanceModelChoices The current value of distanceModel.
+   * @return const DistanceModelChoices& The current value of distanceModel.
    */
-  DistanceModelChoices getDistanceModel() const { return _distanceModel; }
+  const DistanceModelChoices &getDistanceModel() const {
+    return _distanceModel;
+  }
 
   /**
    * @brief Sets the value of distanceModel. AccessType: inputOutput
@@ -328,9 +330,9 @@ public:
    * (due to relation motion between sources and listeners) are computed by
    * browser between virtual sound sources and active listening locations, then
    * applied to received frequency at active listening locations.
-   * @return SFBool The current value of dopplerEnabled.
+   * @return const SFBool& The current value of dopplerEnabled.
    */
-  SFBool getDopplerEnabled() const { return _dopplerEnabled; }
+  const SFBool &getDopplerEnabled() const { return _dopplerEnabled; }
 
   /**
    * @brief Sets the value of dopplerEnabled. AccessType: inputOutput
@@ -346,9 +348,9 @@ public:
    * @brief Gets the value of enableHRTF. AccessType: inputOutput
    * @details enableHRTF enables/disables Head Related Transfer Function (HRTF)
    * auralization, if available.
-   * @return SFBool The current value of enableHRTF.
+   * @return const SFBool& The current value of enableHRTF.
    */
-  SFBool getEnableHRTF() const { return _enableHRTF; }
+  const SFBool &getEnableHRTF() const { return _enableHRTF; }
 
   /**
    * @brief Sets the value of enableHRTF. AccessType: inputOutput
@@ -362,9 +364,9 @@ public:
    * @brief Gets the value of gain. AccessType: inputOutput
    * @details The gain field is a factor that represents the amount of linear
    * amplification to apply to the output of the node.
-   * @return SFFloat The current value of gain.
+   * @return const SFFloat& The current value of gain.
    */
-  SFFloat getGain() const { return _gain; }
+  const SFFloat &getGain() const { return _gain; }
 
   /**
    * @brief Sets the value of gain. AccessType: inputOutput
@@ -377,9 +379,9 @@ public:
   /**
    * @brief Gets the value of intensity. AccessType: inputOutput
    * @details Factor [0,1] adjusting loudness (decibels) of emitted sound.
-   * @return SFFloat The current value of intensity.
+   * @return const SFFloat& The current value of intensity.
    */
-  SFFloat getIntensity() const { return _intensity; }
+  const SFFloat &getIntensity() const { return _intensity; }
 
   /**
    * @brief Sets the value of intensity. AccessType: inputOutput
@@ -406,9 +408,9 @@ public:
    * @brief Gets the value of location. AccessType: inputOutput
    * @details Position of sound ellipsoid center, relative to local coordinate
    * system.
-   * @return SFVec3f The current value of location.
+   * @return const SFVec3f& The current value of location.
    */
-  SFVec3f getLocation() const { return _location; }
+  const SFVec3f &getLocation() const { return _location; }
 
   /**
    * @brief Sets the value of location. AccessType: inputOutput
@@ -425,9 +427,9 @@ public:
    * @details maxDistance is the maximum distance where sound is renderable
    * between source and listener, after which no reduction in sound volume
    * occurs.
-   * @return SFFloat The current value of maxDistance.
+   * @return const SFFloat& The current value of maxDistance.
    */
-  SFFloat getMaxDistance() const { return _maxDistance; }
+  const SFFloat &getMaxDistance() const { return _maxDistance; }
 
   /**
    * @brief Sets the value of maxDistance. AccessType: inputOutput
@@ -455,9 +457,9 @@ public:
   /**
    * @brief Gets the value of priority. AccessType: inputOutput
    * @details Player hint [0,1] if needed to choose which sounds to play.
-   * @return SFFloat The current value of priority.
+   * @return const SFFloat& The current value of priority.
    */
-  SFFloat getPriority() const { return _priority; }
+  const SFFloat &getPriority() const { return _priority; }
 
   /**
    * @brief Sets the value of priority. AccessType: inputOutput
@@ -484,9 +486,9 @@ public:
    * @brief Gets the value of referenceDistance. AccessType: inputOutput
    * @details referenceDistance for reducing volume as source moves further from
    * the listener.
-   * @return SFFloat The current value of referenceDistance.
+   * @return const SFFloat& The current value of referenceDistance.
    */
-  SFFloat getReferenceDistance() const { return _referenceDistance; }
+  const SFFloat &getReferenceDistance() const { return _referenceDistance; }
 
   /**
    * @brief Sets the value of referenceDistance. AccessType: inputOutput
@@ -517,9 +519,9 @@ public:
    * @brief Gets the value of rolloffFactor. AccessType: inputOutput
    * @details rolloffFactor indicates how quickly volume is reduced as source
    * moves further from listener.
-   * @return SFFloat The current value of rolloffFactor.
+   * @return const SFFloat& The current value of rolloffFactor.
    */
-  SFFloat getRolloffFactor() const { return _rolloffFactor; }
+  const SFFloat &getRolloffFactor() const { return _rolloffFactor; }
 
   /**
    * @brief Sets the value of rolloffFactor. AccessType: inputOutput
@@ -548,9 +550,9 @@ public:
   /**
    * @brief Gets the value of spatialize. AccessType: initializeOnly
    * @details Whether to spatialize sound playback relative to viewer.
-   * @return SFBool The current value of spatialize.
+   * @return const SFBool& The current value of spatialize.
    */
-  SFBool getSpatialize() const { return _spatialize; }
+  const SFBool &getSpatialize() const { return _spatialize; }
   /**
    * @brief Data-layer write of spatialize (reader/init ingest path).
    * @details spatialize is initializeOnly: author-settable at parse

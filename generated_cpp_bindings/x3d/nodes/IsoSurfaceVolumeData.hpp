@@ -91,9 +91,9 @@ public:
    * @brief Gets the value of contourStepSize. AccessType: inputOutput
    * @details If contourStepSize is non-zero, also render all isosurfaces that
    * are multiples of that step size from initial surface value.
-   * @return SFFloat The current value of contourStepSize.
+   * @return const SFFloat& The current value of contourStepSize.
    */
-  SFFloat getContourStepSize() const { return _contourStepSize; }
+  const SFFloat &getContourStepSize() const { return _contourStepSize; }
 
   /**
    * @brief Sets the value of contourStepSize. AccessType: inputOutput
@@ -109,9 +109,9 @@ public:
    * ImageTexture3D, PixelTexture3D) that provides explicit per-voxel gradient
    * direction information for determining surface boundaries, rather than
    * having it implicitly calculated by the implementation.
-   * @return SFNode The current value of gradients.
+   * @return const SFNode& The current value of gradients.
    */
-  SFNode getGradients() const { return _gradients; }
+  const SFNode &getGradients() const { return _gradients; }
 
   /**
    * @brief Acceptable node types for the gradients field.
@@ -169,9 +169,9 @@ public:
    * @brief Gets the value of surfaceTolerance. AccessType: inputOutput
    * @details Threshold for gradient magnitude for voxel inolusion in
    * isosurface.
-   * @return SFFloat The current value of surfaceTolerance.
+   * @return const SFFloat& The current value of surfaceTolerance.
    */
-  SFFloat getSurfaceTolerance() const { return _surfaceTolerance; }
+  const SFFloat &getSurfaceTolerance() const { return _surfaceTolerance; }
 
   /**
    * @brief Sets the value of surfaceTolerance. AccessType: inputOutput
@@ -202,9 +202,9 @@ public:
    * @brief Gets the value of surfaceValues. AccessType: inputOutput
    * @details If surfaceValues has one value defined, render corresponding
    * isosurface plus any isosurfaces based on contourStepSize.
-   * @return MFFloat The current value of surfaceValues.
+   * @return const MFFloat& The current value of surfaceValues.
    */
-  MFFloat getSurfaceValues() const { return _surfaceValues; }
+  const MFFloat &getSurfaceValues() const { return _surfaceValues; }
 
   /**
    * @brief Sets the value of surfaceValues. AccessType: inputOutput
@@ -221,9 +221,9 @@ public:
    * @details Single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) that provides raw voxel information
    * utilized by corresponding rendering styles.
-   * @return SFNode The current value of voxels.
+   * @return const SFNode& The current value of voxels.
    */
-  SFNode getVoxels() const { return _voxels; }
+  const SFNode &getVoxels() const { return _voxels; }
 
   /**
    * @brief Acceptable node types for the voxels field.

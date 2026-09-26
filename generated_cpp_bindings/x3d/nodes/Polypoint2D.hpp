@@ -62,9 +62,9 @@ public:
   /**
    * @brief Gets the value of point. AccessType: inputOutput
    * @details 2D coordinates of vertices.
-   * @return MFVec2f The current value of point.
+   * @return const MFVec2f& The current value of point.
    */
-  MFVec2f getPoint() const { return _point; }
+  const MFVec2f &getPoint() const { return _point; }
 
   /**
    * @brief Sets the value of point. AccessType: inputOutput

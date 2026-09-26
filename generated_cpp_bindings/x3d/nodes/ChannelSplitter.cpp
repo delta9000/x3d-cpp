@@ -29,6 +29,14 @@ const FieldTable &ChannelSplitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n)
+                       .X3DSoundChannelNode::getChannelCount(),
+                  &typeid(SFInt32)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -55,6 +63,14 @@ const FieldTable &ChannelSplitter::fields() const {
           if (from_string(s, ev))
             dynamic_cast<ChannelSplitter &>(n)
                 .X3DSoundChannelNode::setChannelCountMode(ev);
+        }
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n)
+                       .X3DSoundChannelNode::getChannelCountMode(),
+                  &typeid(ChannelCountModeChoices)};
         }
 
     });
@@ -87,6 +103,14 @@ const FieldTable &ChannelSplitter::fields() const {
                 .X3DSoundChannelNode::setChannelInterpretation(ev);
         }
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n)
+                       .X3DSoundChannelNode::getChannelInterpretation(),
+                  &typeid(ChannelInterpretationChoices)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -103,6 +127,13 @@ const FieldTable &ChannelSplitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -121,6 +152,14 @@ const FieldTable &ChannelSplitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n)
+                       .X3DSoundNode::getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(
@@ -137,6 +176,14 @@ const FieldTable &ChannelSplitter::fields() const {
                   },
 
                   nullptr, nullptr
+
+                  ,
+
+                  [](const X3DNode &n) -> FieldView {
+                    return {&dynamic_cast<const ChannelSplitter &>(n)
+                                 .X3DSoundNode::getEnabled(),
+                            &typeid(SFBool)};
+                  }
 
         });
 
@@ -155,6 +202,14 @@ const FieldTable &ChannelSplitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n)
+                       .X3DSoundChannelNode::getGain(),
+                  &typeid(SFFloat)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -171,6 +226,13 @@ const FieldTable &ChannelSplitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -189,6 +251,14 @@ const FieldTable &ChannelSplitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ChannelSplitter &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -205,6 +275,13 @@ const FieldTable &ChannelSplitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n).getOutputs(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -223,6 +300,13 @@ const FieldTable &ChannelSplitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -239,6 +323,13 @@ const FieldTable &ChannelSplitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -257,6 +348,14 @@ const FieldTable &ChannelSplitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ChannelSplitter &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -274,6 +373,13 @@ const FieldTable &ChannelSplitter::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -290,6 +396,13 @@ const FieldTable &ChannelSplitter::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ChannelSplitter &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

@@ -124,9 +124,9 @@ public:
   /**
    * @brief Gets the value of direction. AccessType: inputOutput
    * @details direction of sound axis, relative to local coordinate system.
-   * @return SFVec3f The current value of direction.
+   * @return const SFVec3f& The current value of direction.
    */
-  SFVec3f getDirection() const { return _direction; }
+  const SFVec3f &getDirection() const { return _direction; }
 
   /**
    * @brief Sets the value of direction. AccessType: inputOutput
@@ -140,9 +140,9 @@ public:
   /**
    * @brief Gets the value of intensity. AccessType: inputOutput
    * @details Factor [0,1] adjusting loudness (decibels) of emitted sound.
-   * @return SFFloat The current value of intensity.
+   * @return const SFFloat& The current value of intensity.
    */
-  SFFloat getIntensity() const { return _intensity; }
+  const SFFloat &getIntensity() const { return _intensity; }
 
   /**
    * @brief Sets the value of intensity. AccessType: inputOutput
@@ -169,9 +169,9 @@ public:
    * @brief Gets the value of location. AccessType: inputOutput
    * @details Position of sound ellipsoid center, relative to local coordinate
    * system.
-   * @return SFVec3f The current value of location.
+   * @return const SFVec3f& The current value of location.
    */
-  SFVec3f getLocation() const { return _location; }
+  const SFVec3f &getLocation() const { return _location; }
 
   /**
    * @brief Sets the value of location. AccessType: inputOutput
@@ -186,9 +186,9 @@ public:
   /**
    * @brief Gets the value of maxBack. AccessType: inputOutput
    * @details Outer (zero loudness)ellipsoid distance along back direction.
-   * @return SFFloat The current value of maxBack.
+   * @return const SFFloat& The current value of maxBack.
    */
-  SFFloat getMaxBack() const { return _maxBack; }
+  const SFFloat &getMaxBack() const { return _maxBack; }
 
   /**
    * @brief Sets the value of maxBack. AccessType: inputOutput
@@ -214,9 +214,9 @@ public:
   /**
    * @brief Gets the value of maxFront. AccessType: inputOutput
    * @details Outer (zero loudness)ellipsoid distance along front direction.
-   * @return SFFloat The current value of maxFront.
+   * @return const SFFloat& The current value of maxFront.
    */
-  SFFloat getMaxFront() const { return _maxFront; }
+  const SFFloat &getMaxFront() const { return _maxFront; }
 
   /**
    * @brief Sets the value of maxFront. AccessType: inputOutput
@@ -242,9 +242,9 @@ public:
   /**
    * @brief Gets the value of minBack. AccessType: inputOutput
    * @details Inner (full loudness) ellipsoid distance along back direction.
-   * @return SFFloat The current value of minBack.
+   * @return const SFFloat& The current value of minBack.
    */
-  SFFloat getMinBack() const { return _minBack; }
+  const SFFloat &getMinBack() const { return _minBack; }
 
   /**
    * @brief Sets the value of minBack. AccessType: inputOutput
@@ -270,9 +270,9 @@ public:
   /**
    * @brief Gets the value of minFront. AccessType: inputOutput
    * @details Inner (full loudness) ellipsoid distance along front direction.
-   * @return SFFloat The current value of minFront.
+   * @return const SFFloat& The current value of minFront.
    */
-  SFFloat getMinFront() const { return _minFront; }
+  const SFFloat &getMinFront() const { return _minFront; }
 
   /**
    * @brief Sets the value of minFront. AccessType: inputOutput
@@ -298,9 +298,9 @@ public:
   /**
    * @brief Gets the value of priority. AccessType: inputOutput
    * @details Player hint [0,1] if needed to choose which sounds to play.
-   * @return SFFloat The current value of priority.
+   * @return const SFFloat& The current value of priority.
    */
-  SFFloat getPriority() const { return _priority; }
+  const SFFloat &getPriority() const { return _priority; }
 
   /**
    * @brief Sets the value of priority. AccessType: inputOutput
@@ -327,9 +327,9 @@ public:
    * @brief Gets the value of source. AccessType: inputOutput
    * @details sound source for the Sound node, either an AudioClip node or a
    * MovieTexture node.
-   * @return SFNode The current value of source.
+   * @return const SFNode& The current value of source.
    */
-  SFNode getSource() const { return _source; }
+  const SFNode &getSource() const { return _source; }
 
   /**
    * @brief Acceptable node types for the source field.
@@ -354,9 +354,9 @@ public:
   /**
    * @brief Gets the value of spatialize. AccessType: initializeOnly
    * @details Whether to spatialize sound playback relative to viewer.
-   * @return SFBool The current value of spatialize.
+   * @return const SFBool& The current value of spatialize.
    */
-  SFBool getSpatialize() const { return _spatialize; }
+  const SFBool &getSpatialize() const { return _spatialize; }
   /**
    * @brief Data-layer write of spatialize (reader/init ingest path).
    * @details spatialize is initializeOnly: author-settable at parse

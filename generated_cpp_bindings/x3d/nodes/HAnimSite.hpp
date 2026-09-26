@@ -104,9 +104,9 @@ public:
   /**
    * @brief Gets the value of center. AccessType: inputOutput
    * @details Default location of this HAnimSite, i.
-   * @return SFVec3f The current value of center.
+   * @return const SFVec3f& The current value of center.
    */
-  SFVec3f getCenter() const { return _center; }
+  const SFVec3f &getCenter() const { return _center; }
 
   /**
    * @brief Sets the value of center. AccessType: inputOutput
@@ -121,9 +121,9 @@ public:
    * @brief Gets the value of description. AccessType: inputOutput
    * @details Author-provided prose that describes intended purpose of this
    * node.
-   * @return SFString The current value of description.
+   * @return const SFString& The current value of description.
    */
-  SFString getDescription() const { return _description; }
+  const SFString &getDescription() const { return _description; }
 
   /**
    * @brief Sets the value of description. AccessType: inputOutput
@@ -139,9 +139,9 @@ public:
    * @brief Gets the value of name. AccessType: inputOutput
    * @details Unique name attribute must be defined so that HAnimSite node can
    * be identified at run time for animation purposes.
-   * @return SFString The current value of name.
+   * @return const SFString& The current value of name.
    */
-  SFString getName() const { return _name; }
+  const SFString &getName() const { return _name; }
 
   /**
    * @brief Sets the value of name. AccessType: inputOutput
@@ -156,9 +156,9 @@ public:
   /**
    * @brief Gets the value of rotation. AccessType: inputOutput
    * @details Orientation of children relative to local coordinate system.
-   * @return SFRotation The current value of rotation.
+   * @return const SFRotation& The current value of rotation.
    */
-  SFRotation getRotation() const { return _rotation; }
+  const SFRotation &getRotation() const { return _rotation; }
 
   /**
    * @brief Sets the value of rotation. AccessType: inputOutput
@@ -173,9 +173,9 @@ public:
    * @brief Gets the value of scale. AccessType: inputOutput
    * @details Non-uniform x-y-z scale of child coordinate system, adjusted by
    * center and scaleOrientation.
-   * @return SFVec3f The current value of scale.
+   * @return const SFVec3f& The current value of scale.
    */
-  SFVec3f getScale() const { return _scale; }
+  const SFVec3f &getScale() const { return _scale; }
 
   /**
    * @brief Sets the value of scale. AccessType: inputOutput
@@ -191,9 +191,9 @@ public:
    * @brief Gets the value of scaleOrientation. AccessType: inputOutput
    * @details Preliminary rotation of coordinate system before scaling (to allow
    * scaling around arbitrary orientations).
-   * @return SFRotation The current value of scaleOrientation.
+   * @return const SFRotation& The current value of scaleOrientation.
    */
-  SFRotation getScaleOrientation() const { return _scaleOrientation; }
+  const SFRotation &getScaleOrientation() const { return _scaleOrientation; }
 
   /**
    * @brief Sets the value of scaleOrientation. AccessType: inputOutput
@@ -214,9 +214,9 @@ public:
   /**
    * @brief Gets the value of translation. AccessType: inputOutput
    * @details Position of children relative to local coordinate system.
-   * @return SFVec3f The current value of translation.
+   * @return const SFVec3f& The current value of translation.
    */
-  SFVec3f getTranslation() const { return _translation; }
+  const SFVec3f &getTranslation() const { return _translation; }
 
   /**
    * @brief Sets the value of translation. AccessType: inputOutput

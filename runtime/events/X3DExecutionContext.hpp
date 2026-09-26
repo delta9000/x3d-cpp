@@ -184,6 +184,13 @@ public:
     systems_.insert(systems_.begin(), sys);  // FIRST: prepareEvents before routes
     addPostCascadeHook(
         [sys](X3DExecutionContext &ctx) { sys->runEventsProcessed(ctx); });
+    // §29.2: an event reaching a Script's inputOnly author field (a ROUTE, or
+    // any direct post) runs its handler -- no embedder polling needed.
+    cascade_.addAuthorInputListener(
+        [this, sys](const FieldAddress &addr, const FieldInfo &info,
+                    const std::any &value) {
+          sys->onAuthorInput(addr.node, info, value, *this);
+        });
   }
 
   /** @brief Seed an event; processed by the next process()/tick() drain. */

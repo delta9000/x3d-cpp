@@ -68,9 +68,9 @@ public:
    * @brief Gets the value of point. AccessType: inputOutput
    * @details 4-tuple values of 4D texture coordinates, either in range [0,1] or
    * higher if repeating.
-   * @return MFVec4f The current value of point.
+   * @return const MFVec4f& The current value of point.
    */
-  MFVec4f getPoint() const { return _point; }
+  const MFVec4f &getPoint() const { return _point; }
 
   /**
    * @brief Sets the value of point. AccessType: inputOutput

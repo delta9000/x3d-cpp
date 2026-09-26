@@ -79,9 +79,9 @@ public:
   /**
    * @brief Gets the value of repeatS. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of repeatS.
+   * @return const SFBool& The current value of repeatS.
    */
-  SFBool getRepeatS() const { return _repeatS; }
+  const SFBool &getRepeatS() const { return _repeatS; }
   /**
    * @brief Data-layer write of repeatS (reader/init ingest path).
    * @details repeatS is initializeOnly: author-settable at parse
@@ -92,9 +92,9 @@ public:
   /**
    * @brief Gets the value of repeatT. AccessType: initializeOnly
    * @details
-   * @return SFBool The current value of repeatT.
+   * @return const SFBool& The current value of repeatT.
    */
-  SFBool getRepeatT() const { return _repeatT; }
+  const SFBool &getRepeatT() const { return _repeatT; }
   /**
    * @brief Data-layer write of repeatT (reader/init ingest path).
    * @details repeatT is initializeOnly: author-settable at parse
@@ -105,9 +105,9 @@ public:
   /**
    * @brief Gets the value of textureProperties. AccessType: initializeOnly
    * @details
-   * @return SFNode The current value of textureProperties.
+   * @return const SFNode& The current value of textureProperties.
    */
-  SFNode getTextureProperties() const { return _textureProperties; }
+  const SFNode &getTextureProperties() const { return _textureProperties; }
 
   /**
    * @brief Acceptable node types for the textureProperties field.

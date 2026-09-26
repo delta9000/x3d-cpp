@@ -95,9 +95,9 @@ public:
    * @brief Gets the value of summary. AccessType: inputOutput
    * @details The summary string array contains a set of keyword/value pairs,
    * with each keyword and its subsequent value contained in separate strings.
-   * @return MFString The current value of summary.
+   * @return const MFString& The current value of summary.
    */
-  MFString getSummary() const { return _summary; }
+  const MFString &getSummary() const { return _summary; }
 
   /**
    * @brief Sets the value of summary. AccessType: inputOutput

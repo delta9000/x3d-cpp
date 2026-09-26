@@ -140,9 +140,9 @@ public:
    * @details anisotropicDegree defines minimum degree of anisotropy to account
    * for in texture filtering (1=no effect for symmetric filtering, otherwise
    * provide higher value).
-   * @return SFFloat The current value of anisotropicDegree.
+   * @return const SFFloat& The current value of anisotropicDegree.
    */
-  SFFloat getAnisotropicDegree() const { return _anisotropicDegree; }
+  const SFFloat &getAnisotropicDegree() const { return _anisotropicDegree; }
 
   /**
    * @brief Sets the value of anisotropicDegree. AccessType: inputOutput
@@ -173,9 +173,9 @@ public:
   /**
    * @brief Gets the value of borderColor. AccessType: inputOutput
    * @details borderColor defines border pixel color.
-   * @return SFColorRGBA The current value of borderColor.
+   * @return const SFColorRGBA& The current value of borderColor.
    */
-  SFColorRGBA getBorderColor() const { return _borderColor; }
+  const SFColorRGBA &getBorderColor() const { return _borderColor; }
 
   /**
    * @brief Sets the value of borderColor. AccessType: inputOutput
@@ -210,9 +210,9 @@ public:
   /**
    * @brief Gets the value of borderWidth. AccessType: inputOutput
    * @details borderWidth number of pixels for texture border.
-   * @return SFInt32 The current value of borderWidth.
+   * @return const SFInt32& The current value of borderWidth.
    */
-  SFInt32 getBorderWidth() const { return _borderWidth; }
+  const SFInt32 &getBorderWidth() const { return _borderWidth; }
 
   /**
    * @brief Sets the value of borderWidth. AccessType: inputOutput
@@ -238,9 +238,12 @@ public:
   /**
    * @brief Gets the value of boundaryModeR. AccessType: inputOutput
    * @details boundaryModeR describes handling of texture-coordinate boundaries.
-   * @return TextureBoundaryModeChoices The current value of boundaryModeR.
+   * @return const TextureBoundaryModeChoices& The current value of
+   * boundaryModeR.
    */
-  TextureBoundaryModeChoices getBoundaryModeR() const { return _boundaryModeR; }
+  const TextureBoundaryModeChoices &getBoundaryModeR() const {
+    return _boundaryModeR;
+  }
 
   /**
    * @brief Sets the value of boundaryModeR. AccessType: inputOutput
@@ -255,9 +258,12 @@ public:
   /**
    * @brief Gets the value of boundaryModeS. AccessType: inputOutput
    * @details boundaryModeS describes handling of texture-coordinate boundaries.
-   * @return TextureBoundaryModeChoices The current value of boundaryModeS.
+   * @return const TextureBoundaryModeChoices& The current value of
+   * boundaryModeS.
    */
-  TextureBoundaryModeChoices getBoundaryModeS() const { return _boundaryModeS; }
+  const TextureBoundaryModeChoices &getBoundaryModeS() const {
+    return _boundaryModeS;
+  }
 
   /**
    * @brief Sets the value of boundaryModeS. AccessType: inputOutput
@@ -272,9 +278,12 @@ public:
   /**
    * @brief Gets the value of boundaryModeT. AccessType: inputOutput
    * @details boundaryModeT describes handling of texture-coordinate boundaries.
-   * @return TextureBoundaryModeChoices The current value of boundaryModeT.
+   * @return const TextureBoundaryModeChoices& The current value of
+   * boundaryModeT.
    */
-  TextureBoundaryModeChoices getBoundaryModeT() const { return _boundaryModeT; }
+  const TextureBoundaryModeChoices &getBoundaryModeT() const {
+    return _boundaryModeT;
+  }
 
   /**
    * @brief Sets the value of boundaryModeT. AccessType: inputOutput
@@ -289,9 +298,9 @@ public:
   /**
    * @brief Gets the value of generateMipMaps. AccessType: initializeOnly
    * @details Determines whether MIPMAPs are generated for texture images.
-   * @return SFBool The current value of generateMipMaps.
+   * @return const SFBool& The current value of generateMipMaps.
    */
-  SFBool getGenerateMipMaps() const { return _generateMipMaps; }
+  const SFBool &getGenerateMipMaps() const { return _generateMipMaps; }
   /**
    * @brief Data-layer write of generateMipMaps (reader/init ingest path).
    * @details generateMipMaps is initializeOnly: author-settable at parse
@@ -305,10 +314,10 @@ public:
    * @brief Gets the value of magnificationFilter. AccessType: inputOutput
    * @details magnificationFilter indicates texture filter when image is smaller
    * than screen space representation.
-   * @return TextureMagnificationModeChoices The current value of
+   * @return const TextureMagnificationModeChoices& The current value of
    * magnificationFilter.
    */
-  TextureMagnificationModeChoices getMagnificationFilter() const {
+  const TextureMagnificationModeChoices &getMagnificationFilter() const {
     return _magnificationFilter;
   }
 
@@ -327,10 +336,10 @@ public:
    * @brief Gets the value of minificationFilter. AccessType: inputOutput
    * @details minificationFilter indicates texture filter when image is larger
    * than screen space representation.
-   * @return TextureMinificationModeChoices The current value of
+   * @return const TextureMinificationModeChoices& The current value of
    * minificationFilter.
    */
-  TextureMinificationModeChoices getMinificationFilter() const {
+  const TextureMinificationModeChoices &getMinificationFilter() const {
     return _minificationFilter;
   }
 
@@ -348,10 +357,10 @@ public:
   /**
    * @brief Gets the value of textureCompression. AccessType: inputOutput
    * @details textureCompression indicates compression algorithm selection mode.
-   * @return TextureCompressionModeChoices The current value of
+   * @return const TextureCompressionModeChoices& The current value of
    * textureCompression.
    */
-  TextureCompressionModeChoices getTextureCompression() const {
+  const TextureCompressionModeChoices &getTextureCompression() const {
     return _textureCompression;
   }
 
@@ -370,9 +379,9 @@ public:
    * @details texturePriority defines relative priority for this texture when
    * allocating texture memory, an important rendering resource in graphics-card
    * hardware.
-   * @return SFFloat The current value of texturePriority.
+   * @return const SFFloat& The current value of texturePriority.
    */
-  SFFloat getTexturePriority() const { return _texturePriority; }
+  const SFFloat &getTexturePriority() const { return _texturePriority; }
 
   /**
    * @brief Sets the value of texturePriority. AccessType: inputOutput

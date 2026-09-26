@@ -8,6 +8,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Zero-copy reflection reads.** `FieldInfo::view` returns a type-tagged
+  pointer to a generated field's stored member. `runtime/FieldRead.hpp` adds
+  `fieldPtr<T>`, `FieldRef<T>` (borrows when it can, boxes through `get` for
+  author fields) and `forEachChildNode`. The runtime's scene walks (transform,
+  bounds, binding, pick, pointing, light, extraction, Inline expansion, PROTO
+  cloning) now borrow child lists instead of copying them. ADR-0049.
 - **`operator==`/`!=` on the generated value structs** (`SFVec3f`, `SFColor`,
   `SFRotation`, the matrix types, `SFImage`, …) — C++20 defaulted, exact
   member-wise comparison. Equality is vocabulary, not math: no epsilon, and
@@ -15,12 +21,14 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Changed
 
-- **`MFNode` getters return `const MFNode&` instead of a copy** (e.g.
-  `X3DGroupingNode::getChildren()`). Reading a grouping node's children no
-  longer copies the vector and bumps every child's refcount. Callers that
-  mutated the returned temporary (a silent no-op before) now fail to compile;
-  take an explicit copy if you need one. All other getters keep the by-value
-  contract.
+- **Every generated getter returns `const T&` to its member** (previously only
+  `MFNode` getters did). Reading an MF field, a string or an `SFNode` no longer
+  copies it or bumps a refcount. `auto x = node.getX();` still copies. A
+  reference bound with `const auto& x = node.getX();` now aliases the member:
+  it sees later writes and must not outlive the node. Callers that mutated the
+  returned temporary (a silent no-op before) now fail to compile; take an
+  explicit copy if you need one. `decltype(node.getX())` is now a reference
+  type. ADR-0049.
 
 - The binding generator now **fails closed when the UOM contains a field type
   it doesn't support**, listing the affected fields instead of silently

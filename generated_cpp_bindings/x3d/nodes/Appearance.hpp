@@ -127,9 +127,9 @@ public:
    * @brief Gets the value of acousticProperties. AccessType: inputOutput
    * @details Single contained acousticProperties node that can specify
    * additional acoustic attributes applied to associated surface geometry.
-   * @return SFNode The current value of acousticProperties.
+   * @return const SFNode& The current value of acousticProperties.
    */
-  SFNode getAcousticProperties() const { return _acousticProperties; }
+  const SFNode &getAcousticProperties() const { return _acousticProperties; }
 
   /**
    * @brief Acceptable node types for the acousticProperties field.
@@ -162,9 +162,9 @@ public:
    * @brief Gets the value of alphaCutoff. AccessType: inputOutput
    * @details Threshold value used for pixel rendering either transparent or
    * opaque, used when alphaMode="MASK".
-   * @return SFFloat The current value of alphaCutoff.
+   * @return const SFFloat& The current value of alphaCutoff.
    */
-  SFFloat getAlphaCutoff() const { return _alphaCutoff; }
+  const SFFloat &getAlphaCutoff() const { return _alphaCutoff; }
 
   /**
    * @brief Sets the value of alphaCutoff. AccessType: inputOutput
@@ -192,9 +192,9 @@ public:
    * @brief Gets the value of alphaMode. AccessType: inputOutput
    * @details Provides options for control of alpha transparency handling for
    * textures.
-   * @return AlphaModeChoices The current value of alphaMode.
+   * @return const AlphaModeChoices& The current value of alphaMode.
    */
-  AlphaModeChoices getAlphaMode() const { return _alphaMode; }
+  const AlphaModeChoices &getAlphaMode() const { return _alphaMode; }
 
   /**
    * @brief Sets the value of alphaMode. AccessType: inputOutput
@@ -207,9 +207,9 @@ public:
   /**
    * @brief Gets the value of backMaterial. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of backMaterial.
+   * @return const SFNode& The current value of backMaterial.
    */
-  SFNode getBackMaterial() const { return _backMaterial; }
+  const SFNode &getBackMaterial() const { return _backMaterial; }
 
   /**
    * @brief Acceptable node types for the backMaterial field.
@@ -235,9 +235,9 @@ public:
    * @details Single contained FillProperties node that can specify additional
    * visual attributes applied to polygonal areas of corresponding geometry, on
    * top of whatever other appearance is already defined.
-   * @return SFNode The current value of fillProperties.
+   * @return const SFNode& The current value of fillProperties.
    */
-  SFNode getFillProperties() const { return _fillProperties; }
+  const SFNode &getFillProperties() const { return _fillProperties; }
 
   /**
    * @brief Acceptable node types for the fillProperties field.
@@ -264,9 +264,9 @@ public:
    * @brief Gets the value of lineProperties. AccessType: inputOutput
    * @details Single contained LineProperties node that can specify additional
    * visual attributes applied to corresponding line geometry.
-   * @return SFNode The current value of lineProperties.
+   * @return const SFNode& The current value of lineProperties.
    */
-  SFNode getLineProperties() const { return _lineProperties; }
+  const SFNode &getLineProperties() const { return _lineProperties; }
 
   /**
    * @brief Acceptable node types for the lineProperties field.
@@ -292,9 +292,9 @@ public:
    * @brief Gets the value of material. AccessType: inputOutput
    * @details Single contained Material node that can specify visual attributes
    * for lighting response (color types, transparency, etc.
-   * @return SFNode The current value of material.
+   * @return const SFNode& The current value of material.
    */
-  SFNode getMaterial() const { return _material; }
+  const SFNode &getMaterial() const { return _material; }
 
   /**
    * @brief Acceptable node types for the material field.
@@ -320,9 +320,9 @@ public:
    * @brief Gets the value of pointProperties. AccessType: inputOutput
    * @details Single contained PointProperties node that can specify additional
    * visual attributes applied to corresponding point geometry.
-   * @return SFNode The current value of pointProperties.
+   * @return const SFNode& The current value of pointProperties.
    */
-  SFNode getPointProperties() const { return _pointProperties; }
+  const SFNode &getPointProperties() const { return _pointProperties; }
 
   /**
    * @brief Acceptable node types for the pointProperties field.
@@ -381,9 +381,9 @@ public:
    * @brief Gets the value of texture. AccessType: inputOutput
    * @details Single contained texture node (ImageTexture, MovieTexture,
    * PixelTexture, MultiTexture) that maps image(s) to surface geometry.
-   * @return SFNode The current value of texture.
+   * @return const SFNode& The current value of texture.
    */
-  SFNode getTexture() const { return _texture; }
+  const SFNode &getTexture() const { return _texture; }
 
   /**
    * @brief Acceptable node types for the texture field.
@@ -409,9 +409,9 @@ public:
    * @brief Gets the value of textureTransform. AccessType: inputOutput
    * @details Single contained TextureTransform node that defines 2D
    * transformation applied to texture coordinates.
-   * @return SFNode The current value of textureTransform.
+   * @return const SFNode& The current value of textureTransform.
    */
-  SFNode getTextureTransform() const { return _textureTransform; }
+  const SFNode &getTextureTransform() const { return _textureTransform; }
 
   /**
    * @brief Acceptable node types for the textureTransform field.

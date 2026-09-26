@@ -28,6 +28,13 @@ const FieldTable &ViewpointGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).getCenter(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -44,6 +51,13 @@ const FieldTable &ViewpointGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
 
     });
 
@@ -62,6 +76,13 @@ const FieldTable &ViewpointGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).getDescription(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -78,6 +99,13 @@ const FieldTable &ViewpointGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).getDisplayed(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -96,6 +124,13 @@ const FieldTable &ViewpointGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -112,6 +147,14 @@ const FieldTable &ViewpointGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ViewpointGroup &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
 
     });
 
@@ -130,6 +173,14 @@ const FieldTable &ViewpointGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const ViewpointGroup &>(n).getRetainUserOffsets(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -144,6 +195,13 @@ const FieldTable &ViewpointGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).getSize(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -162,6 +220,13 @@ const FieldTable &ViewpointGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -178,6 +243,13 @@ const FieldTable &ViewpointGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -196,6 +268,13 @@ const FieldTable &ViewpointGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -213,6 +292,13 @@ const FieldTable &ViewpointGroup::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -229,6 +315,13 @@ const FieldTable &ViewpointGroup::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ViewpointGroup &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

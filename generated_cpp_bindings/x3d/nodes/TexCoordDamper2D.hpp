@@ -66,9 +66,9 @@ public:
   /**
    * @brief Gets the value of initialDestination. AccessType: initializeOnly
    * @details Initial destination value for this node.
-   * @return MFVec2f The current value of initialDestination.
+   * @return const MFVec2f& The current value of initialDestination.
    */
-  MFVec2f getInitialDestination() const { return _initialDestination; }
+  const MFVec2f &getInitialDestination() const { return _initialDestination; }
   /**
    * @brief Data-layer write of initialDestination (reader/init ingest path).
    * @details initialDestination is initializeOnly: author-settable at parse
@@ -82,9 +82,9 @@ public:
   /**
    * @brief Gets the value of initialValue. AccessType: initializeOnly
    * @details Initial starting value for this node.
-   * @return MFVec2f The current value of initialValue.
+   * @return const MFVec2f& The current value of initialValue.
    */
-  MFVec2f getInitialValue() const { return _initialValue; }
+  const MFVec2f &getInitialValue() const { return _initialValue; }
   /**
    * @brief Data-layer write of initialValue (reader/init ingest path).
    * @details initialValue is initializeOnly: author-settable at parse
@@ -145,9 +145,9 @@ public:
    * @brief Gets the value of value_changed. AccessType: outputOnly
    * @details Computed output value that approaches within tolerance of
    * destination value, as determined by elapsed time, order and tau.
-   * @return MFVec2f The current value of value_changed.
+   * @return const MFVec2f& The current value of value_changed.
    */
-  MFVec2f getValue_changed() const { return _value_changed; }
+  const MFVec2f &getValue_changed() const { return _value_changed; }
 
   /**
    * @brief Emit an output value on value_changed. AccessType: outputOnly

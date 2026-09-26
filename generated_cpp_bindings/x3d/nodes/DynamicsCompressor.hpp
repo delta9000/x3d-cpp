@@ -102,9 +102,9 @@ public:
    * @brief Gets the value of attack. AccessType: inputOutput
    * @details The attack field is the duration of time (in seconds) to reduce
    * the gain by 10dB.
-   * @return SFTime The current value of attack.
+   * @return const SFTime& The current value of attack.
    */
-  SFTime getAttack() const { return _attack; }
+  const SFTime &getAttack() const { return _attack; }
 
   /**
    * @brief Sets the value of attack. AccessType: inputOutput
@@ -191,9 +191,9 @@ public:
    * @brief Gets the value of knee. AccessType: inputOutput
    * @details knee field contains a decibel value representing range above
    * threshold where the curve smoothly transitions to compressed portion.
-   * @return SFFloat The current value of knee.
+   * @return const SFFloat& The current value of knee.
    */
-  SFFloat getKnee() const { return _knee; }
+  const SFFloat &getKnee() const { return _knee; }
 
   /**
    * @brief Sets the value of knee. AccessType: inputOutput
@@ -221,9 +221,9 @@ public:
    * @brief Gets the value of ratio. AccessType: inputOutput
    * @details ratio field represents amount of input change, in dB, needed for 1
    * dB change in output.
-   * @return SFFloat The current value of ratio.
+   * @return const SFFloat& The current value of ratio.
    */
-  SFFloat getRatio() const { return _ratio; }
+  const SFFloat &getRatio() const { return _ratio; }
 
   /**
    * @brief Sets the value of ratio. AccessType: inputOutput
@@ -251,9 +251,9 @@ public:
    * @brief Gets the value of reduction. AccessType: outputOnly
    * @details reduction field provides amount of gain reduction in dB currently
    * applied by compressor to signal.
-   * @return SFFloat The current value of reduction.
+   * @return const SFFloat& The current value of reduction.
    */
-  SFFloat getReduction() const { return _reduction; }
+  const SFFloat &getReduction() const { return _reduction; }
 
   /**
    * @brief Emit an output value on reduction. AccessType: outputOnly
@@ -270,9 +270,9 @@ public:
    * @brief Gets the value of release. AccessType: inputOutput
    * @details release field represents amount of time (in seconds) to increase
    * gain by 10dB.
-   * @return SFTime The current value of release.
+   * @return const SFTime& The current value of release.
    */
-  SFTime getRelease() const { return _release; }
+  const SFTime &getRelease() const { return _release; }
 
   /**
    * @brief Sets the value of release. AccessType: inputOutput
@@ -307,9 +307,9 @@ public:
    * @brief Gets the value of threshold. AccessType: inputOutput
    * @details threshold field represents decibel value above which compression
    * starts taking effect.
-   * @return SFFloat The current value of threshold.
+   * @return const SFFloat& The current value of threshold.
    */
-  SFFloat getThreshold() const { return _threshold; }
+  const SFFloat &getThreshold() const { return _threshold; }
 
   /**
    * @brief Sets the value of threshold. AccessType: inputOutput

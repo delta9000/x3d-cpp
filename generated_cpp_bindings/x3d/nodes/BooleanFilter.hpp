@@ -62,9 +62,9 @@ public:
    * @brief Gets the value of inputFalse. AccessType: outputOnly
    * @details inputFalse only passes a false value, which occurs when
    * set_boolean is false.
-   * @return SFBool The current value of inputFalse.
+   * @return const SFBool& The current value of inputFalse.
    */
-  SFBool getInputFalse() const { return _inputFalse; }
+  const SFBool &getInputFalse() const { return _inputFalse; }
 
   /**
    * @brief Emit an output value on inputFalse. AccessType: outputOnly
@@ -81,9 +81,9 @@ public:
    * @brief Gets the value of inputNegate. AccessType: outputOnly
    * @details inputNegate is an output event that provides an opposite value by
    * negating set_boolean input.
-   * @return SFBool The current value of inputNegate.
+   * @return const SFBool& The current value of inputNegate.
    */
-  SFBool getInputNegate() const { return _inputNegate; }
+  const SFBool &getInputNegate() const { return _inputNegate; }
 
   /**
    * @brief Emit an output value on inputNegate. AccessType: outputOnly
@@ -100,9 +100,9 @@ public:
    * @brief Gets the value of inputTrue. AccessType: outputOnly
    * @details inputTrue only passes a true value, which occurs when set_boolean
    * input is true.
-   * @return SFBool The current value of inputTrue.
+   * @return const SFBool& The current value of inputTrue.
    */
-  SFBool getInputTrue() const { return _inputTrue; }
+  const SFBool &getInputTrue() const { return _inputTrue; }
 
   /**
    * @brief Emit an output value on inputTrue. AccessType: outputOnly

@@ -94,9 +94,9 @@ public:
   /**
    * @brief Gets the value of intersectionType. AccessType: initializeOnly
    * @details
-   * @return SFString The current value of intersectionType.
+   * @return const SFString& The current value of intersectionType.
    */
-  SFString getIntersectionType() const { return _intersectionType; }
+  const SFString &getIntersectionType() const { return _intersectionType; }
   /**
    * @brief Data-layer write of intersectionType (reader/init ingest path).
    * @details intersectionType is initializeOnly: author-settable at parse
@@ -109,10 +109,10 @@ public:
   /**
    * @brief Gets the value of matchCriterion. AccessType: inputOutput
    * @details
-   * @return PickSensorMatchCriterionChoices The current value of
+   * @return const PickSensorMatchCriterionChoices& The current value of
    * matchCriterion.
    */
-  PickSensorMatchCriterionChoices getMatchCriterion() const {
+  const PickSensorMatchCriterionChoices &getMatchCriterion() const {
     return _matchCriterion;
   }
 
@@ -129,9 +129,9 @@ public:
   /**
    * @brief Gets the value of objectType. AccessType: inputOutput
    * @details
-   * @return MFString The current value of objectType.
+   * @return const MFString& The current value of objectType.
    */
-  MFString getObjectType() const { return _objectType; }
+  const MFString &getObjectType() const { return _objectType; }
 
   /**
    * @brief Sets the value of objectType. AccessType: inputOutput
@@ -173,9 +173,9 @@ public:
   /**
    * @brief Gets the value of pickingGeometry. AccessType: inputOutput
    * @details
-   * @return SFNode The current value of pickingGeometry.
+   * @return const SFNode& The current value of pickingGeometry.
    */
-  SFNode getPickingGeometry() const { return _pickingGeometry; }
+  const SFNode &getPickingGeometry() const { return _pickingGeometry; }
 
   /**
    * @brief Acceptable node types for the pickingGeometry field.
@@ -229,9 +229,9 @@ public:
   /**
    * @brief Gets the value of sortOrder. AccessType: initializeOnly
    * @details
-   * @return SFString The current value of sortOrder.
+   * @return const SFString& The current value of sortOrder.
    */
-  SFString getSortOrder() const { return _sortOrder; }
+  const SFString &getSortOrder() const { return _sortOrder; }
   /**
    * @brief Data-layer write of sortOrder (reader/init ingest path).
    * @details sortOrder is initializeOnly: author-settable at parse

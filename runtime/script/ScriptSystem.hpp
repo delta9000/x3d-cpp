@@ -207,6 +207,29 @@ public:
   }
 
   /**
+   * @brief Cascade listener: an event was delivered to an author inputOnly
+   *        field (installed by X3DExecutionContext::addScriptSystem).
+   * @details ISO/IEC 19775-1 §29.2: an event arriving at a Script's eventIn
+   *          (inputOnly) invokes the script's function of that name with the
+   *          value and the current timestamp. An event to an inputOutput author
+   *          field updates the script's view of that field, so the script reads
+   *          the new value and does not later write its stale copy back. Ignores
+   *          nodes that are not Scripts enrolled in this system (another
+   *          language's system, or a shader's uniform).
+   */
+  void onAuthorInput(X3DNode *node, const FieldInfo &info,
+                     const std::any &value, X3DExecutionContext &ctx) {
+    auto *script = dynamic_cast<x3d::nodes::Script *>(node);
+    Entry *e = script ? entryFor(script) : nullptr;
+    if (!e) return;
+    if (info.access == AccessType::InputOnly) {
+      deliverInputEvent(script, info.x3dName, value, info.type, ctx.now());
+    } else if (e->handle != kInvalidScriptHandle) {
+      engine_->updateField(e->handle, info.x3dName, value, info.type);
+    }
+  }
+
+  /**
    * @brief Deliver a set_url event: shutdown old, swap url, load + initialize.
    * @details §29.2.2/§29.2.3: changing url shuts the running script down then
    *          loads + initializes the new content. The inline url is decoded; an

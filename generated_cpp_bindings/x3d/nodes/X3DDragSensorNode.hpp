@@ -67,9 +67,9 @@ public:
   /**
    * @brief Gets the value of autoOffset. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of autoOffset.
+   * @return const SFBool& The current value of autoOffset.
    */
-  SFBool getAutoOffset() const { return _autoOffset; }
+  const SFBool &getAutoOffset() const { return _autoOffset; }
 
   /**
    * @brief Sets the value of autoOffset. AccessType: inputOutput
@@ -81,9 +81,9 @@ public:
   /**
    * @brief Gets the value of trackPoint_changed. AccessType: outputOnly
    * @details
-   * @return SFVec3f The current value of trackPoint_changed.
+   * @return const SFVec3f& The current value of trackPoint_changed.
    */
-  SFVec3f getTrackPoint_changed() const { return _trackPoint_changed; }
+  const SFVec3f &getTrackPoint_changed() const { return _trackPoint_changed; }
 
   /**
    * @brief Emit an output value on trackPoint_changed. AccessType: outputOnly

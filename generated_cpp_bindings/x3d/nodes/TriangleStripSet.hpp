@@ -65,9 +65,9 @@ public:
   /**
    * @brief Gets the value of stripCount. AccessType: inputOutput
    * @details stripCount array provides number of vertices in each strip.
-   * @return MFInt32 The current value of stripCount.
+   * @return const MFInt32& The current value of stripCount.
    */
-  MFInt32 getStripCount() const { return _stripCount; }
+  const MFInt32 &getStripCount() const { return _stripCount; }
 
   /**
    * @brief Sets the value of stripCount. AccessType: inputOutput

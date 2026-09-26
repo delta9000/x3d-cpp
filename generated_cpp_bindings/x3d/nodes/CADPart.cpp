@@ -26,6 +26,10 @@ const FieldTable &CADPart::fields() const {
 
                           nullptr, nullptr
 
+                          ,
+
+                          nullptr
+
     });
 
     t.push_back(FieldInfo{
@@ -42,6 +46,14 @@ const FieldTable &CADPart::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n)
+                       .X3DGroupingNode::getBboxCenter(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -60,6 +72,14 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n)
+                       .X3DGroupingNode::getBboxDisplay(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -77,6 +97,14 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CADPart &>(n).X3DGroupingNode::getBboxSize(),
+              &typeid(SFVec3f)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -91,6 +119,13 @@ const FieldTable &CADPart::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).getCenter(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -107,6 +142,13 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).getChildren(),
+                  &typeid(MFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -121,6 +163,13 @@ const FieldTable &CADPart::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -139,6 +188,13 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).X3DNode::getMetadata(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -156,6 +212,14 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n)
+                       .X3DProductStructureChildNode::getName(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{"removeChildren", X3DFieldType::MFNode,
@@ -169,6 +233,10 @@ const FieldTable &CADPart::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -185,6 +253,13 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).getRotation(),
+                  &typeid(SFRotation)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -200,25 +275,39 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).getScale(),
+                  &typeid(SFVec3f)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"scaleOrientation", X3DFieldType::SFRotation,
-                  AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "scaleOrientation", X3DFieldType::SFRotation, AccessType::InputOutput,
+        "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const CADPart &>(n).getScaleOrientation());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const CADPart &>(n).getScaleOrientation());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<CADPart &>(n).setScaleOrientation(
-                        std::any_cast<SFRotation>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<CADPart &>(n).setScaleOrientation(
+              std::any_cast<SFRotation>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).getScaleOrientation(),
+                  &typeid(SFRotation)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "translation", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -232,6 +321,13 @@ const FieldTable &CADPart::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).getTranslation(),
+                  &typeid(SFVec3f)};
+        }
 
     });
 
@@ -250,6 +346,14 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const CADPart &>(n).X3DGroupingNode::getVisible(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -265,6 +369,13 @@ const FieldTable &CADPart::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -282,24 +393,38 @@ const FieldTable &CADPart::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"class", X3DFieldType::SFString, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "class", X3DFieldType::SFString, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const CADPart &>(n).X3DNode::getClass_());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const CADPart &>(n).X3DNode::getClass_());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<CADPart &>(n).X3DNode::setClass_(
-                        std::any_cast<SFString>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<CADPart &>(n).X3DNode::setClass_(
+              std::any_cast<SFString>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).X3DNode::getClass_(),
+                  &typeid(SFString)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -313,6 +438,13 @@ const FieldTable &CADPart::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -329,6 +461,13 @@ const FieldTable &CADPart::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const CADPart &>(n).X3DNode::getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

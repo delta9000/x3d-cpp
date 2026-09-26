@@ -30,6 +30,13 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getCcw(),
+                  &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -45,6 +52,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getColor(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -63,6 +77,14 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoElevationGrid &>(n).getColorPerVertex(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -80,6 +102,13 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getCreaseAngle(),
+                  &typeid(SFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -96,6 +125,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getGeoGridOrigin(),
+                  &typeid(SFVec3d)};
+        }
 
     });
 
@@ -115,6 +151,13 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getGeoOrigin(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -131,6 +174,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getGeoSystem(),
+                  &typeid(MFString)};
+        }
 
     });
 
@@ -149,6 +199,13 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getHeight(),
+                  &typeid(MFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -165,6 +222,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getIS(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -183,6 +247,14 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getMetadata(),
+              &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -199,6 +271,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getNormal(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -217,6 +296,14 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoElevationGrid &>(n).getNormalPerVertex(),
+              &typeid(SFBool)};
+        }
+
     });
 
     t.push_back(FieldInfo{"set_height", X3DFieldType::MFDouble,
@@ -230,6 +317,10 @@ const FieldTable &GeoElevationGrid::fields() const {
                           },
 
                           nullptr, nullptr
+
+                          ,
+
+                          nullptr
 
     });
 
@@ -246,6 +337,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getSolid(),
+                  &typeid(SFBool)};
+        }
 
     });
 
@@ -264,6 +362,13 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getTexCoord(),
+                  &typeid(SFNode)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -280,6 +385,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getXDimension(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -298,24 +410,38 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getXSpacing(),
+                  &typeid(SFDouble)};
+        }
+
     });
 
-    t.push_back(
-        FieldInfo{"yScale", X3DFieldType::SFFloat, AccessType::InputOutput, "",
+    t.push_back(FieldInfo{
+        "yScale", X3DFieldType::SFFloat, AccessType::InputOutput, "",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(
-                        dynamic_cast<const GeoElevationGrid &>(n).getYScale());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const GeoElevationGrid &>(n).getYScale());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<GeoElevationGrid &>(n).setYScaleUnchecked(
-                        std::any_cast<SFFloat>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<GeoElevationGrid &>(n).setYScaleUnchecked(
+              std::any_cast<SFFloat>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getYScale(),
+                  &typeid(SFFloat)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "zDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -331,6 +457,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getZDimension(),
+                  &typeid(SFInt32)};
+        }
 
     });
 
@@ -349,6 +482,13 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).getZSpacing(),
+                  &typeid(SFDouble)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -365,6 +505,13 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getDEF(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -383,6 +530,13 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getUSE(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -399,6 +553,14 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getClass_(),
+              &typeid(SFString)};
+        }
 
     });
 
@@ -417,6 +579,13 @@ const FieldTable &GeoElevationGrid::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getId(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -433,6 +602,14 @@ const FieldTable &GeoElevationGrid::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getStyle(),
+              &typeid(SFString)};
+        }
 
     });
 

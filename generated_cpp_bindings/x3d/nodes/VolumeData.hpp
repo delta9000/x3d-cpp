@@ -79,9 +79,9 @@ public:
    * @brief Gets the value of renderStyle. AccessType: inputOutput
    * @details Single contained X3DVolumeRenderStyleNode node that defines
    * specific rendering technique for this volumetric object.
-   * @return SFNode The current value of renderStyle.
+   * @return const SFNode& The current value of renderStyle.
    */
-  SFNode getRenderStyle() const { return _renderStyle; }
+  const SFNode &getRenderStyle() const { return _renderStyle; }
 
   /**
    * @brief Acceptable node types for the renderStyle field.
@@ -108,9 +108,9 @@ public:
    * @details Single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) that provides raw voxel information
    * utilized by corresponding rendering styles.
-   * @return SFNode The current value of voxels.
+   * @return const SFNode& The current value of voxels.
    */
-  SFNode getVoxels() const { return _voxels; }
+  const SFNode &getVoxels() const { return _voxels; }
 
   /**
    * @brief Acceptable node types for the voxels field.

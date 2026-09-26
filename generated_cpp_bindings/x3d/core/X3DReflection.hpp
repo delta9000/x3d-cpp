@@ -5,6 +5,7 @@
 #include <any>
 #include <functional>
 #include <string>
+#include <typeinfo>
 #include <vector>
 
 namespace x3d::nodes { class X3DNode; }
@@ -78,6 +79,18 @@ enum class AccessType {
 };
 
 /**
+ * @brief A borrowed, type-tagged pointer to a field's stored value.
+ * @details `data` points at the node's member; `type` is the member's
+ *          C++ type (the same type `get` boxes). The pointer stays valid
+ *          while the node lives; a later write changes what it reads.
+ *          Both are null when the field has no stored value to borrow.
+ */
+struct FieldView {
+    const void* data = nullptr;
+    const std::type_info* type = nullptr;
+};
+
+/**
  * @brief Type-erased, node-agnostic description of one X3D field.
  * @details `get`/`set` are thunks bound by each node that read/write the
  *          field's strongly-typed member through the node's existing
@@ -86,6 +99,9 @@ enum class AccessType {
  *          std::vector<std::shared_ptr<X3DNode>>). Switch on `type` to know
  *          how to interpret it. `get` is empty for write-only (inputOnly)
  *          fields; `set` is empty for non-inputOutput (read-only) fields.
+ *          `view` reads the same value without boxing or copying it; it is
+ *          null where `get` is empty and for fields with no stored member
+ *          (e.g. synthesized author fields), so fall back to `get` there.
  */
 struct FieldInfo {
     std::string x3dName;
@@ -105,6 +121,9 @@ struct FieldInfo {
     // tokens. Both are empty for non-enum fields.
     std::function<std::string(const X3DNode&)> getEnumString;
     std::function<void(X3DNode&, const std::string&)> setEnumString;
+    // Zero-copy read of the stored value (null if there is none to borrow).
+    // A plain function pointer: no std::function call overhead.
+    FieldView (*view)(const X3DNode&) = nullptr;
 
     bool isNode() const {
         return type == X3DFieldType::SFNode || type == X3DFieldType::MFNode;
@@ -114,6 +133,7 @@ struct FieldInfo {
     }
     bool isReadable() const { return static_cast<bool>(get); }
     bool isWritable() const { return static_cast<bool>(set); }
+    bool isViewable() const { return view != nullptr; }
 };
 
 /**

@@ -60,9 +60,9 @@ public:
   /**
    * @brief Gets the value of pickable. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of pickable.
+   * @return const SFBool& The current value of pickable.
    */
-  SFBool getPickable() const { return _pickable; }
+  const SFBool &getPickable() const { return _pickable; }
 
   /**
    * @brief Sets the value of pickable. AccessType: inputOutput

@@ -25,6 +25,8 @@
 #include "x3d/nodes/Transform.hpp"
 
 #include <any>
+#include <chrono>
+#include <cstddef>
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -595,6 +597,158 @@ int main() {
       backend.shutdown(h);
       dynamicFieldStore().erase(script);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // T15g: call budget. A handler (or the script's top level) that never
+  //       returns is interrupted after callBudget() instead of hanging the
+  //       host -- even if it tries to catch the interruption and keep going --
+  //       and the script keeps working afterwards.
+  // -------------------------------------------------------------------------
+  {
+    using Clock = std::chrono::steady_clock;
+    const auto budget = std::chrono::milliseconds(200);
+    const auto limit = std::chrono::seconds(5); // generous: sanitizer builds
+    backend.setCallBudget(budget);
+
+    struct LoopCase {
+      const char *what;
+      const char *handler;
+    };
+    const LoopCase cases[] = {
+        {"infinite loop", "function go(v, t) { for (;;) {} }"},
+        {"catch-and-continue loop",
+         "function go(v, t) {"
+         "  for (;;) { try { for (;;) {} } catch (e) {} } }"},
+        // Bounded by the engine's own recursion limit, not the budget.
+        {"unbounded recursion",
+         "function go(v, t) { (function r() { r(); })(); }"},
+    };
+    for (const LoopCase &c : cases) {
+      X3DExecutionContext ctx;
+      Script script;
+      SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+      dynamicFieldStore().addAuthorField(
+          script, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                  AccessType::OutputOnly, {}});
+      ScriptHandle h = backend.load(
+          script, std::string(c.handler) + "function fine(v, t) { ok = 7; }",
+          sai);
+      check(h != kInvalidScriptHandle,
+            std::string("T15g: load script (") + c.what + ")");
+      backend.initialize(h);
+      const auto start = Clock::now();
+      backend.invoke(h, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+      check(Clock::now() - start < limit,
+            std::string("T15g: ") + c.what + " is interrupted");
+      backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
+      std::any ok = dynamicFieldStore().getValue(script, "ok");
+      check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
+            std::string("T15g: script still works after ") + c.what);
+      backend.shutdown(h);
+      dynamicFieldStore().erase(script);
+    }
+
+    {
+      X3DExecutionContext ctx;
+      Script script;
+      SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+      const auto start = Clock::now();
+      ScriptHandle h = backend.load(script, "for (;;) {}", sai);
+      check(h == kInvalidScriptHandle && Clock::now() - start < limit,
+            "T15g: a top-level infinite loop fails the load instead of hanging");
+    }
+    backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
+  }
+
+  // -------------------------------------------------------------------------
+  // T15h: memory limit. A handler that allocates without bound is stopped by
+  //       memoryLimit() -- well inside a generous call budget, so the memory
+  //       cap, not the clock, ends it -- and the script keeps working.
+  // -------------------------------------------------------------------------
+  {
+    using Clock = std::chrono::steady_clock;
+    backend.setCallBudget(std::chrono::seconds(10));
+    backend.setMemoryLimit(std::size_t{16} << 20);
+
+    X3DExecutionContext ctx;
+    Script script;
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                AccessType::OutputOnly, {}});
+    // Each string is ~1 MB and unique (engines may intern equal strings).
+    ScriptHandle h = backend.load(script,
+        "var hog = [], i = 0;"
+        "function go(v, t) {"
+        "  for (;;) hog.push(new Array(100000).join('xxxxxxxxxx') + (i++)); }"
+        "function fine(v, t) { hog = null; ok = 7; }", sai);
+    check(h != kInvalidScriptHandle, "T15h: load allocating script");
+    backend.initialize(h);
+    const auto start = Clock::now();
+    backend.invoke(h, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    check(Clock::now() - start < std::chrono::seconds(5),
+          "T15h: unbounded allocation is stopped by the memory limit");
+    backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
+    std::any ok = dynamicFieldStore().getValue(script, "ok");
+    check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
+          "T15h: script still works after hitting the memory limit");
+    backend.shutdown(h);
+    dynamicFieldStore().erase(script);
+    backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
+    backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
+  }
+
+  // -------------------------------------------------------------------------
+  // T15i: updateField. An inputOutput author field written from outside the
+  //       script reaches its JS global, is not echoed back as an output, and a
+  //       throwing setter on that global is contained.
+  // -------------------------------------------------------------------------
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
+                                AccessType::InputOutput, std::any(0.0f)});
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"seen", X3DFieldType::SFFloat,
+                                AccessType::OutputOnly, {}});
+    ScriptHandle h = backend.load(script,
+        "function poke(v, t) { seen = level; }", sai);
+    check(h != kInvalidScriptHandle, "T15i: load updateField script");
+    backend.initialize(h);
+    dynamicFieldStore().setValue(script, "level", std::any(0.5f));
+    backend.updateField(h, "level", std::any(0.5f), X3DFieldType::SFFloat);
+    backend.invoke(h, "poke", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    std::any seen = dynamicFieldStore().getValue(script, "seen");
+    check(seen.has_value() && std::any_cast<float>(seen) == 0.5f,
+          "T15i: the script sees the updated inputOutput value");
+    std::any level = dynamicFieldStore().getValue(script, "level");
+    check(level.has_value() && std::any_cast<float>(level) == 0.5f,
+          "T15i: the update is not reverted by readback");
+    backend.shutdown(h);
+    dynamicFieldStore().erase(script);
+
+    Script hostile;
+    SaiContext sai2(ctx, hostile, "x3d-cpp-gen", "dev");
+    dynamicFieldStore().addAuthorField(
+        hostile, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                 AccessType::OutputOnly, {}});
+    ScriptHandle h2 = backend.load(hostile,
+        "Object.defineProperty(this, 'level', {"
+        "  set: function (v) { throw new Error('no'); },"
+        "  get: function () { return 1; }, configurable: true });"
+        "function fine(v, t) { ok = 7; }", sai2);
+    check(h2 != kInvalidScriptHandle, "T15i: load throwing-setter script");
+    backend.initialize(h2);
+    backend.updateField(h2, "level", std::any(0.5f), X3DFieldType::SFFloat);
+    backend.invoke(h2, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
+    std::any ok = dynamicFieldStore().getValue(hostile, "ok");
+    check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
+          "T15i: a throwing setter on update is contained");
+    backend.shutdown(h2);
+    dynamicFieldStore().erase(hostile);
   }
 
   // -------------------------------------------------------------------------

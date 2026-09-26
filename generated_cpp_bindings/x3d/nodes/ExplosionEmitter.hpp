@@ -68,9 +68,9 @@ public:
   /**
    * @brief Gets the value of position. AccessType: inputOutput
    * @details Point from which particles emanate.
-   * @return SFVec3f The current value of position.
+   * @return const SFVec3f& The current value of position.
    */
-  SFVec3f getPosition() const { return _position; }
+  const SFVec3f &getPosition() const { return _position; }
 
   /**
    * @brief Sets the value of position. AccessType: inputOutput

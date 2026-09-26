@@ -117,9 +117,9 @@ public:
   /**
    * @brief Gets the value of address. AccessType: inputOutput
    * @details Multicast network address, or else 'localhost'.
-   * @return SFString The current value of address.
+   * @return const SFString& The current value of address.
    */
-  SFString getAddress() const { return _address; }
+  const SFString &getAddress() const { return _address; }
 
   /**
    * @brief Sets the value of address. AccessType: inputOutput
@@ -134,9 +134,9 @@ public:
    * @brief Gets the value of applicationID. AccessType: inputOutput
    * @details Each simulation application that can respond to simulation
    * management PDUs needs to have a unique applicationID.
-   * @return SFInt32 The current value of applicationID.
+   * @return const SFInt32& The current value of applicationID.
    */
-  SFInt32 getApplicationID() const { return _applicationID; }
+  const SFInt32 &getApplicationID() const { return _applicationID; }
 
   /**
    * @brief Sets the value of applicationID. AccessType: inputOutput
@@ -177,9 +177,9 @@ public:
   /**
    * @brief Gets the value of port. AccessType: inputOutput
    * @details Multicast network port, for example: 3000.
-   * @return SFInt32 The current value of port.
+   * @return const SFInt32& The current value of port.
    */
-  SFInt32 getPort() const { return _port; }
+  const SFInt32 &getPort() const { return _port; }
 
   /**
    * @brief Sets the value of port. AccessType: inputOutput
@@ -223,9 +223,9 @@ public:
    * @brief Gets the value of siteID. AccessType: inputOutput
    * @details Simulation/exercise siteID of the participating LAN or
    * organization.
-   * @return SFInt32 The current value of siteID.
+   * @return const SFInt32& The current value of siteID.
    */
-  SFInt32 getSiteID() const { return _siteID; }
+  const SFInt32 &getSiteID() const { return _siteID; }
 
   /**
    * @brief Sets the value of siteID. AccessType: inputOutput

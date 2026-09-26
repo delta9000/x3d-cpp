@@ -1,13 +1,16 @@
 // ProtoNameMaps.hpp
-// Inverse name maps for X3DFieldType and AccessType — the string->enum
-// direction lives in XmlReader; these free functions go the other way.
+// Name maps for X3DFieldType and AccessType. fieldTypeName() is the single
+// source of truth for field-type names; fieldTypeFromName() inverts it.
 //
-// Reused by XmlWriter, JsonWriter, VrmlWriter. Do NOT depend on any writer.
+// Reused by the writers (XmlWriter, JsonWriter, VrmlWriter, CanonicalXmlWriter)
+// and the readers (XML, ClassicVRML, JSON). Do NOT depend on any reader/writer.
 // Header-only, namespace x3d::codec.
 #ifndef X3D_PROTO_NAME_MAPS_HPP
 #define X3D_PROTO_NAME_MAPS_HPP
 
 #include "x3d/core/X3DReflection.hpp"
+
+#include <string_view>
 
 namespace x3d::codec {
 
@@ -64,6 +67,18 @@ inline const char *fieldTypeName(X3DFieldType t) {
   case X3DFieldType::MFEnum:       return "MFString";  // ditto
   }
   return "SFString"; // unreachable; silence -Wreturn-type
+}
+
+/// Inverse of fieldTypeName(): the field type named `name` (e.g. "SFVec3f").
+/// An unknown name reads as SFString, the lenient-reader fallback. Walks the
+/// enum in order, so "SFString"/"MFString" resolve to the string types, not to
+/// the SFEnum/MFEnum entries that fieldTypeName() also spells that way.
+inline X3DFieldType fieldTypeFromName(std::string_view name) {
+  for (int i = 0; i <= static_cast<int>(X3DFieldType::MFEnum); ++i) {
+    const auto t = static_cast<X3DFieldType>(i);
+    if (name == fieldTypeName(t)) return t;
+  }
+  return X3DFieldType::SFString;
 }
 
 /// Returns the X3D accessType string for an AccessType enumerator.

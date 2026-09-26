@@ -78,9 +78,9 @@ public:
    * @brief Gets the value of geoOrigin. AccessType: initializeOnly
    * @details Single contained GeoOrigin node that can specify a local
    * coordinate frame for extended precision.
-   * @return SFNode The current value of geoOrigin.
+   * @return const SFNode& The current value of geoOrigin.
    */
-  SFNode getGeoOrigin() const { return _geoOrigin; }
+  const SFNode &getGeoOrigin() const { return _geoOrigin; }
 
   /**
    * @brief Acceptable node types for the geoOrigin field.
@@ -102,9 +102,9 @@ public:
    * @brief Gets the value of geoSystem. AccessType: initializeOnly
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return MFString The current value of geoSystem.
+   * @return const MFString& The current value of geoSystem.
    */
-  MFString getGeoSystem() const { return _geoSystem; }
+  const MFString &getGeoSystem() const { return _geoSystem; }
   /**
    * @brief Data-layer write of geoSystem (reader/init ingest path).
    * @details geoSystem is initializeOnly: author-settable at parse
@@ -117,9 +117,9 @@ public:
    * @details point contains a set of actual 3D geographic coordinates, provided
    * in geoSystem format can split strings if desired: "x1 y1 z1 x2 y2 z2" or
    * "x1 y1 z1", "x2 y2 z2".
-   * @return MFVec3d The current value of point.
+   * @return const MFVec3d& The current value of point.
    */
-  MFVec3d getPoint() const { return _point; }
+  const MFVec3d &getPoint() const { return _point; }
 
   /**
    * @brief Sets the value of point. AccessType: inputOutput

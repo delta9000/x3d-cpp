@@ -74,9 +74,9 @@ public:
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return SFString The current value of mapping.
+   * @return const SFString& The current value of mapping.
    */
-  SFString getMapping() const { return _mapping; }
+  const SFString &getMapping() const { return _mapping; }
 
   /**
    * @brief Sets the value of mapping. AccessType: inputOutput
@@ -93,9 +93,9 @@ public:
    * @brief Gets the value of matrix. AccessType: inputOutput
    * @details matrix is a generalized, unfiltered 4x4 transformation matrix to
    * modify texture (opposite effect appears on geometry).
-   * @return SFMatrix4f The current value of matrix.
+   * @return const SFMatrix4f& The current value of matrix.
    */
-  SFMatrix4f getMatrix() const { return _matrix; }
+  const SFMatrix4f &getMatrix() const { return _matrix; }
 
   /**
    * @brief Sets the value of matrix. AccessType: inputOutput

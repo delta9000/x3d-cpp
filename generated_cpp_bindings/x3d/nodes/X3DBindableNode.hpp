@@ -58,9 +58,9 @@ public:
   /**
    * @brief Gets the value of bindTime. AccessType: outputOnly
    * @details
-   * @return SFTime The current value of bindTime.
+   * @return const SFTime& The current value of bindTime.
    */
-  SFTime getBindTime() const { return _bindTime; }
+  const SFTime &getBindTime() const { return _bindTime; }
 
   /**
    * @brief Emit an output value on bindTime. AccessType: outputOnly
@@ -76,9 +76,9 @@ public:
   /**
    * @brief Gets the value of isBound. AccessType: outputOnly
    * @details
-   * @return SFBool The current value of isBound.
+   * @return const SFBool& The current value of isBound.
    */
-  SFBool getIsBound() const { return _isBound; }
+  const SFBool &getIsBound() const { return _isBound; }
 
   /**
    * @brief Emit an output value on isBound. AccessType: outputOnly

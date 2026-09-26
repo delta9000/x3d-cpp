@@ -63,9 +63,9 @@ public:
   /**
    * @brief Gets the value of enabled. AccessType: inputOutput
    * @details
-   * @return SFBool The current value of enabled.
+   * @return const SFBool& The current value of enabled.
    */
-  SFBool getEnabled() const { return _enabled; }
+  const SFBool &getEnabled() const { return _enabled; }
 
   /**
    * @brief Sets the value of enabled. AccessType: inputOutput

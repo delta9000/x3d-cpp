@@ -14,20 +14,26 @@ const FieldTable &X3DNode::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
 
-    t.push_back(
-        FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
+    t.push_back(FieldInfo{
+        "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
 
-                  [](const X3DNode &n) -> std::any {
-                    return std::any(dynamic_cast<const X3DNode &>(n).getIS());
-                  },
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const X3DNode &>(n).getIS());
+        },
 
-                  [](X3DNode &n, const std::any &v) {
-                    dynamic_cast<X3DNode &>(n).setIS(std::any_cast<SFNode>(v));
-                  },
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<X3DNode &>(n).setIS(std::any_cast<SFNode>(v));
+        },
 
-                  nullptr, nullptr
+        nullptr, nullptr
 
-        });
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNode &>(n).getIS(), &typeid(SFNode)};
+        }
+
+    });
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -41,6 +47,13 @@ const FieldTable &X3DNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNode &>(n).getMetadata(),
+                  &typeid(SFNode)};
+        }
 
     });
 
@@ -57,6 +70,13 @@ const FieldTable &X3DNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNode &>(n).getDEF(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -71,6 +91,13 @@ const FieldTable &X3DNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNode &>(n).getUSE(),
+                  &typeid(SFString)};
+        }
 
     });
 
@@ -87,6 +114,13 @@ const FieldTable &X3DNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNode &>(n).getClass_(),
+                  &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -102,6 +136,12 @@ const FieldTable &X3DNode::fields() const {
 
         nullptr, nullptr
 
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNode &>(n).getId(), &typeid(SFString)};
+        }
+
     });
 
     t.push_back(FieldInfo{
@@ -116,6 +156,13 @@ const FieldTable &X3DNode::fields() const {
         },
 
         nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const X3DNode &>(n).getStyle(),
+                  &typeid(SFString)};
+        }
 
     });
 

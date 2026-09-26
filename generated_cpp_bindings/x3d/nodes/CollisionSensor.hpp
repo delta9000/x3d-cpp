@@ -71,9 +71,9 @@ public:
    * @details The collider field specifies a CollisionCollection node that holds
    * a collidables field of nodes and spaces that are to be included in
    * collision-detection computations.
-   * @return SFNode The current value of collider.
+   * @return const SFNode& The current value of collider.
    */
-  SFNode getCollider() const { return _collider; }
+  const SFNode &getCollider() const { return _collider; }
 
   /**
    * @brief Acceptable node types for the collider field.

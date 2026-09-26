@@ -104,9 +104,9 @@ public:
   /**
    * @brief Gets the value of anchorPoint. AccessType: inputOutput
    * @details anchorPoint is joint center, specified in world coordinates.
-   * @return SFVec3f The current value of anchorPoint.
+   * @return const SFVec3f& The current value of anchorPoint.
    */
-  SFVec3f getAnchorPoint() const { return _anchorPoint; }
+  const SFVec3f &getAnchorPoint() const { return _anchorPoint; }
 
   /**
    * @brief Sets the value of anchorPoint. AccessType: inputOutput
@@ -120,9 +120,9 @@ public:
   /**
    * @brief Gets the value of axis1. AccessType: inputOutput
    * @details axis1 defines axis vector of joint connection to body1.
-   * @return SFVec3f The current value of axis1.
+   * @return const SFVec3f& The current value of axis1.
    */
-  SFVec3f getAxis1() const { return _axis1; }
+  const SFVec3f &getAxis1() const { return _axis1; }
 
   /**
    * @brief Sets the value of axis1. AccessType: inputOutput
@@ -136,9 +136,9 @@ public:
   /**
    * @brief Gets the value of axis2. AccessType: inputOutput
    * @details axis2 defines axis vector of joint connection to body2.
-   * @return SFVec3f The current value of axis2.
+   * @return const SFVec3f& The current value of axis2.
    */
-  SFVec3f getAxis2() const { return _axis2; }
+  const SFVec3f &getAxis2() const { return _axis2; }
 
   /**
    * @brief Sets the value of axis2. AccessType: inputOutput
@@ -153,9 +153,9 @@ public:
    * @brief Gets the value of body1AnchorPoint. AccessType: outputOnly
    * @details body1AnchorPoint describes anchorPoint position relative to local
    * coordinate reference frame.
-   * @return SFVec3f The current value of body1AnchorPoint.
+   * @return const SFVec3f& The current value of body1AnchorPoint.
    */
-  SFVec3f getBody1AnchorPoint() const { return _body1AnchorPoint; }
+  const SFVec3f &getBody1AnchorPoint() const { return _body1AnchorPoint; }
 
   /**
    * @brief Emit an output value on body1AnchorPoint. AccessType: outputOnly
@@ -172,9 +172,9 @@ public:
    * @brief Gets the value of body1Axis. AccessType: outputOnly
    * @details body1Axis describes report the current location of the anchor
    * point relative to the corresponding body.
-   * @return SFVec3f The current value of body1Axis.
+   * @return const SFVec3f& The current value of body1Axis.
    */
-  SFVec3f getBody1Axis() const { return _body1Axis; }
+  const SFVec3f &getBody1Axis() const { return _body1Axis; }
 
   /**
    * @brief Emit an output value on body1Axis. AccessType: outputOnly
@@ -191,9 +191,9 @@ public:
    * @brief Gets the value of body2AnchorPoint. AccessType: outputOnly
    * @details body2AnchorPoint describes anchorPoint position relative to local
    * coordinate reference frame.
-   * @return SFVec3f The current value of body2AnchorPoint.
+   * @return const SFVec3f& The current value of body2AnchorPoint.
    */
-  SFVec3f getBody2AnchorPoint() const { return _body2AnchorPoint; }
+  const SFVec3f &getBody2AnchorPoint() const { return _body2AnchorPoint; }
 
   /**
    * @brief Emit an output value on body2AnchorPoint. AccessType: outputOnly
@@ -210,9 +210,9 @@ public:
    * @brief Gets the value of body2Axis. AccessType: outputOnly
    * @details body1Axis describes report the current location of the anchor
    * point relative to the corresponding body.
-   * @return SFVec3f The current value of body2Axis.
+   * @return const SFVec3f& The current value of body2Axis.
    */
-  SFVec3f getBody2Axis() const { return _body2Axis; }
+  const SFVec3f &getBody2Axis() const { return _body2Axis; }
 
   /**
    * @brief Emit an output value on body2Axis. AccessType: outputOnly
@@ -229,9 +229,9 @@ public:
    * @brief Gets the value of stop1Bounce. AccessType: inputOutput
    * @details stop1Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return SFFloat The current value of stop1Bounce.
+   * @return const SFFloat& The current value of stop1Bounce.
    */
-  SFFloat getStop1Bounce() const { return _stop1Bounce; }
+  const SFFloat &getStop1Bounce() const { return _stop1Bounce; }
 
   /**
    * @brief Sets the value of stop1Bounce. AccessType: inputOutput
@@ -259,9 +259,11 @@ public:
    * @brief Gets the value of stop1ErrorCorrection. AccessType: inputOutput
    * @details stop1ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return SFFloat The current value of stop1ErrorCorrection.
+   * @return const SFFloat& The current value of stop1ErrorCorrection.
    */
-  SFFloat getStop1ErrorCorrection() const { return _stop1ErrorCorrection; }
+  const SFFloat &getStop1ErrorCorrection() const {
+    return _stop1ErrorCorrection;
+  }
 
   /**
    * @brief Sets the value of stop1ErrorCorrection. AccessType: inputOutput
@@ -292,9 +294,9 @@ public:
    * @brief Gets the value of stop2Bounce. AccessType: inputOutput
    * @details stop2Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return SFFloat The current value of stop2Bounce.
+   * @return const SFFloat& The current value of stop2Bounce.
    */
-  SFFloat getStop2Bounce() const { return _stop2Bounce; }
+  const SFFloat &getStop2Bounce() const { return _stop2Bounce; }
 
   /**
    * @brief Sets the value of stop2Bounce. AccessType: inputOutput
@@ -322,9 +324,11 @@ public:
    * @brief Gets the value of stop2ErrorCorrection. AccessType: inputOutput
    * @details stop2ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return SFFloat The current value of stop2ErrorCorrection.
+   * @return const SFFloat& The current value of stop2ErrorCorrection.
    */
-  SFFloat getStop2ErrorCorrection() const { return _stop2ErrorCorrection; }
+  const SFFloat &getStop2ErrorCorrection() const {
+    return _stop2ErrorCorrection;
+  }
 
   /**
    * @brief Sets the value of stop2ErrorCorrection. AccessType: inputOutput

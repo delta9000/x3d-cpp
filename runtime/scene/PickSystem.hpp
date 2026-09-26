@@ -8,6 +8,7 @@
 #ifndef X3D_RUNTIME_PICK_SYSTEM_HPP
 #define X3D_RUNTIME_PICK_SYSTEM_HPP
 
+#include "FieldRead.hpp"
 #include "Billboard.hpp"      // billboardLocalMatrix (§23.4.1, M2e)
 #include "BoundsSystem.hpp"
 #include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
@@ -418,16 +419,9 @@ private:
 
   template <class F>
   static void forEachChild(const X3DNode *n, F &&f) {
-    for (const auto &fi : n->fields()) {
-      if (!fi.get) continue;
-      if (fi.type == X3DFieldType::SFNode) {
-        auto c = std::any_cast<std::shared_ptr<X3DNode>>(fi.get(*n));
-        if (c) f(c.get());
-      } else if (fi.type == X3DFieldType::MFNode) {
-        for (const auto &c : std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(fi.get(*n)))
-          if (c) f(c.get());
-      }
-    }
+    forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+      f(c.get());
+    });
   }
 
   std::vector<X3DNode *> roots_;

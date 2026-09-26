@@ -86,9 +86,9 @@ public:
   /**
    * @brief Gets the value of coord. AccessType: inputOutput
    * @details Coordinates for the geometry used as the emitting volume.
-   * @return SFNode The current value of coord.
+   * @return const SFNode& The current value of coord.
    */
-  SFNode getCoord() const { return _coord; }
+  const SFNode &getCoord() const { return _coord; }
 
   /**
    * @brief Acceptable node types for the coord field.
@@ -113,9 +113,9 @@ public:
    * @brief Gets the value of coordIndex. AccessType: initializeOnly
    * @details coordIndex indices are applied to contained Coordinate values in
    * order to define randomly generated initial geometry of the particles.
-   * @return MFInt32 The current value of coordIndex.
+   * @return const MFInt32& The current value of coordIndex.
    */
-  MFInt32 getCoordIndex() const { return _coordIndex; }
+  const MFInt32 &getCoordIndex() const { return _coordIndex; }
   /**
    * @brief Data-layer write of coordIndex (reader/init ingest path).
    * @details coordIndex is initializeOnly: author-settable at parse
@@ -126,9 +126,9 @@ public:
   /**
    * @brief Gets the value of direction. AccessType: inputOutput
    * @details Initial direction from which particles emanate.
-   * @return SFVec3f The current value of direction.
+   * @return const SFVec3f& The current value of direction.
    */
-  SFVec3f getDirection() const { return _direction; }
+  const SFVec3f &getDirection() const { return _direction; }
 
   /**
    * @brief Sets the value of direction. AccessType: inputOutput
@@ -161,9 +161,9 @@ public:
   /**
    * @brief Gets the value of internal. AccessType: initializeOnly
    * @details TODO, X3D specification is undefined.
-   * @return SFBool The current value of internal.
+   * @return const SFBool& The current value of internal.
    */
-  SFBool getInternal() const { return _internal; }
+  const SFBool &getInternal() const { return _internal; }
   /**
    * @brief Data-layer write of internal (reader/init ingest path).
    * @details internal is initializeOnly: author-settable at parse
