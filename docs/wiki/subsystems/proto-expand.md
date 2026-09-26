@@ -2,7 +2,7 @@
 title: "PROTO/EXTERNPROTO Expansion"
 summary: Clones and splices PROTO/EXTERNPROTO instances into the live scene graph after parsing, forwarding field values and wiring IS-connections.
 tags: [subsystem, proto, externproto, expansion, is-connection]
-updated: 2026-06-24
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/parse-readers.md
@@ -27,6 +27,7 @@ The boundary owned by this subsystem is: from collected `Scene::protoInstances` 
 | `runtime/X3DProtoClone.hpp` | `deepClone` — deep-copies a node tree via the reflection layer; preserves DEF/USE shared identity within the clone; `FallbackNodeCreator` hook for ext nodes |
 | `runtime/X3DProto.hpp` | Data model: `ProtoDeclaration`, `ExternProtoDeclaration`, `ProtoBody`, `ProtoField`, `ProtoFieldValue`, `ProtoInstance`, `IsConnection`, `ResolvedProtoRoute`, `ProtoRedirect`, `ProtoWarning` |
 | `runtime/parse/X3DProtoResolver.hpp` | `ProtoDeclarationResolver` function type + `noopProtoResolver` default |
+| `runtime/parse/AssetProtoResolver.hpp` | `protoResolverFrom(AssetResolver)` — EXTERNPROTO resolution over the AssetResolver seam |
 | `runtime/parse/X3DParse.hpp` | Front door `parseDocument` — invokes `expandScene` after the reader and range-warning passes; defines `localFileProtoResolver` (file-local default) |
 | `runtime/X3DScene.hpp` | `Scene` — owns `protoInstances`, `resolvedProtoRoutes`, `protoRedirects`, `expandedSources`, `protoDeclarations`, `externProtoDeclarations` |
 
@@ -85,6 +86,8 @@ Both `expandScene` and `expandInstance` are inline, header-only functions in `ru
 
 - **`ProtoDeclarationResolver` callback** — the single pluggable seam for EXTERNPROTO resolution. The default (`localFileProtoResolver` in `runtime/parse/X3DParse.hpp`) resolves file-relative urls, parses the target file, and returns its matching `ProtoDeclaration`. It skips http/https/urn urls (embedder-override territory) and uses a `thread_local` active-file stack to terminate cross-file EXTERN cycles. Embedders replace this with a network fetch, virtual FS, or content-addressable cache. The ext firewall wires its own resolver via `x3d::runtime::ext::install()` (see `runtime/ext/ExtResolver.hpp`), which intercepts ExternalGeometry URNs before falling through to the base resolver.
 
+- **`protoResolverFrom` adapter** — `runtime/parse/AssetProtoResolver.hpp` adapts the renderer-agnostic [`AssetResolver`](system-asset-io.md) seam into a `ProtoDeclarationResolver`, so an embedder can plug a routed http/s3 backend into parse-time expansion. `protoResolverFrom(AssetResolver, Encoding hint = Unknown)` walks each url in order, strips a `#ProtoName` fragment, fetches the document bytes (`AssetKind::ExternProto`), sniffs the encoding, parses with `parseDocument`, and returns the named declaration (fragment) or the document's first. `Failed` skips to the next candidate; `Pending` is a hard error at this parse-time call site (contract B) and yields null; it never throws. `urn:` resolves only when the injected resolver owns that scheme (e.g. a `makeSchemeRouter` with a `"urn"` entry). Like the default resolver, it keeps a `thread_local` set of urls currently being resolved, so a self- or mutually-referencing EXTERNPROTO terminates (a re-entered url resolves to null) instead of recursing without bound.
+
 - **`FallbackNodeCreator` hook** — `runtime/X3DProtoClone.hpp` exposes a process-global `FallbackNodeCreator` function object. When `deepClone` cannot create a node via the generated `X3DNodeFactory`, it tries this hook. `x3d::runtime::ext::install()` populates it so that ext extension nodes (not in the generated factory) can be cloned without modifying the generated layer. The hook is set-once at single-threaded setup time; concurrent writes during cloning are not synchronized.
 
 - **`Scene` expansion tables** — `expandScene` writes to three `Scene` fields that other subsystems consume:
@@ -112,6 +115,7 @@ The test suite is split between unit tests that exercise `expandInstance`/`expan
 | `x3d_proto_front_door` | End-to-end XML parse → `parseDocument` → expansion → scene check (`runtime/parse/tests/proto_front_door_test.cpp`) |
 | `x3d_parse_tests` (`proto_nested_body_test`) | Nested `ProtoInstance` inside a body: correct per-instance expansion and attachment (`runtime/parse/tests/proto_nested_body_test.cpp`) |
 | `x3d_parse_tests` (`vrml97_proto_test`) | PROTO capture + expansion via the VRML97 reader (`runtime/parse/tests/vrml97_proto_test.cpp`) |
+| `x3d_parse_tests` (`asset_proto_resolver_test`) | `protoResolverFrom`: fetch → parse → filter/fragment selection over a fake in-memory `AssetResolver`; `Failed` skip, `Pending` hard error, `urn` via a scheme router (`runtime/parse/tests/asset_proto_resolver_test.cpp`) |
 | `x3d_codecs_tests` (`proto_roundtrip_test`) | XML round-trip: parse → expand → re-serialize → reparse (`runtime/codecs/tests/proto_roundtrip_test.cpp`) |
 | `x3d_codecs_tests` (`proto_instance_roundtrip_test`) | Un-expanded instance re-emitted via `expandedSources` / `expanded` flag (AUD-B) (`runtime/codecs/tests/proto_instance_roundtrip_test.cpp`) |
 | `x3d_codecs_tests` (`nested_protoinstance_roundtrip_test`) | Nested instance round-trip via the SDK façade (`runtime/codecs/tests/nested_protoinstance_roundtrip_test.cpp`) |

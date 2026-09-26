@@ -126,7 +126,10 @@ findings currently note "Blocked on the asset-resolver/IO seam"):
   `docs/wiki/subsystems/system-loadsensor.md`. (NSN-11 Anchor cases (b)/(c)
   deferred to the policy hook.)
 - **PRF-6** — http/urn EXTERNPROTO: the parse-time `ProtoDeclarationResolver` becomes
-  writeable for `http://` / `urn:` URLs (its own future swap-test is a separate card).
+  writeable for `http://` / `urn:` URLs. The two composer pieces now ship: `makeSchemeRouter`
+  (`runtime/extract/SchemeRouter.hpp`) dispatches by URL scheme, and `protoResolverFrom`
+  (`runtime/parse/AssetProtoResolver.hpp`) adapts an `AssetResolver` into a
+  `ProtoDeclarationResolver`. urn resolves only when the router owns that scheme.
 - **CONF-CRITIC-2** — Script external-URL: scripts with `@url` can fetch external bytes.
 - **SCR-005** — Script autoRefresh / autoRefreshTimeLimit: periodic re-fetch becomes
   possible.
@@ -174,8 +177,8 @@ seam's file/http/s3 routes. `makeMultiFormatTextureResolver(map<ImageFormat, Tex
 magic bytes and dispatches to the one registered decoder before calling it**, so each decoder only
 ever sees input it owns and `Failed` stays unambiguous — no `Unsupported` status, the frozen seam
 type is unchanged. (TGA has no leading magic, so it is routed by a conservative header check as a
-last resort.) This is the rule [ADR-0024 §7] adopts and AssetResolver's `makeSchemeRouter` will
-mirror.
+last resort.) This is the rule [ADR-0024 §7] adopts and AssetResolver's `makeSchemeRouter`
+(`runtime/extract/SchemeRouter.hpp`) mirrors.
 
 ### Scope honesty
 
