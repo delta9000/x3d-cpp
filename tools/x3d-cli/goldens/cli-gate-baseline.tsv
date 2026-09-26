@@ -170,14 +170,14 @@ validate:x3d-code/www.web3d.org/x3d/content/examples/Basic/Medical/BonesRightFoo
 validate:x3d-code/www.web3d.org/x3d/content/examples/Basic/Security/HelloWorldSignedDecrypted.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/Basic/UniversalMediaMaterials/SummerExamples.x3d	FAIL
 validate:x3d-code/www.web3d.org/x3d/content/examples/Basic/Web3dOutreach/X3d4Cube.x3d	PASS
-validate:x3d-code/www.web3d.org/x3d/content/examples/Basic/development/Geometry2dComponentExternProtos.x3d	PASS
+validate:x3d-code/www.web3d.org/x3d/content/examples/Basic/development/Geometry2dComponentExternProtos.x3d	FAIL
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/Appearance/ImageTexture/greyscale_jpg_diffuseColor.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/Appearance/MovieTexture/stopltstartlooptrue.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/BindableNodes/Background/set_skycolor2.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/GeometricProperties/Color/pointset_color_first.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/Geometry/Extrusion/test_texture.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/GroupingNodes/Collision/proxynochildren.x3d	FAIL
-validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/Lights/DirectionalLight/test_intensitysim.x3d	FAIL
+validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/Lights/DirectionalLight/test_intensitysim.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/Miscellaneous/Script/ScriptNodeFieldControl_EcmaScript.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/STEP/CTC05/NistCtc05Asme1Ap203Occ.x3d	PASS
 validate:x3d-code/www.web3d.org/x3d/content/examples/ConformanceNist/Sensors/VisibilitySensor/centersize.x3d	PASS

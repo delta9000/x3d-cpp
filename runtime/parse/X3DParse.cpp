@@ -60,6 +60,23 @@ void quarantineBuiltinShadowingProtos(runtime::X3DDocument &doc) {
             return false;
           }),
       externs.end());
+
+  // Instances bound to a dropped declaration at read time resolve to the
+  // built-in instead (ADR-0033: "as if the rogue PROTO were absent").
+  for (runtime::ProtoInstance &inst : doc.scene.protoInstances) {
+    if (!isBuiltin(inst.name)) continue;
+    const bool localGone =
+        inst.declaration &&
+        std::find(decls.begin(), decls.end(), inst.declaration) == decls.end();
+    const bool externGone =
+        inst.externDeclaration &&
+        std::find(externs.begin(), externs.end(), inst.externDeclaration) == externs.end();
+    if (localGone || externGone) {
+      inst.declaration.reset();
+      inst.externDeclaration.reset();
+      inst.builtinFallback = true;
+    }
+  }
 }
 
 } // namespace

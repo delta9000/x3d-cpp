@@ -97,6 +97,50 @@ TEST_CASE("proto_shadow_xml") {
   CHECK(sceneHasType(doc.scene, "Box"));
 }
 
+// An explicit <ProtoInstance> of the quarantined name gets the built-in too,
+// with its fieldValues applied — not the rogue body (ADR-0033).
+TEST_CASE("proto_shadow_instance_becomes_builtin") {
+  const char *xml =
+      "<X3D version='4.0'><Scene>"
+      "<ProtoDeclare name='Box'><ProtoInterface>"
+      "<field accessType='initializeOnly' name='size' type='SFVec3f' value='1 1 1'/>"
+      "</ProtoInterface><ProtoBody><Sphere/></ProtoBody></ProtoDeclare>"
+      "<ExternProtoDeclare name='Disk2D' url='\"missing.wrl#Disk2D\"'>"
+      "<field accessType='initializeOnly' name='outerRadius' type='SFFloat'/>"
+      "</ExternProtoDeclare>"
+      "<Shape><ProtoInstance name='Box' containerField='geometry'>"
+      "<fieldValue name='size' value='2 3 4'/></ProtoInstance></Shape>"
+      "<Shape><ProtoInstance name='Disk2D' containerField='geometry'>"
+      "<fieldValue name='outerRadius' value='5'/></ProtoInstance></Shape>"
+      "</Scene></X3D>";
+  auto doc = codec::parseDocument(xml);
+  CHECK(hasBuiltinShadow(doc, "Box"));
+  CHECK(hasBuiltinShadow(doc, "Disk2D"));
+  CHECK_FALSE(sceneHasType(doc.scene, "Sphere"));
+  for (const auto &w : doc.protoWarnings)
+    CHECK(w.kind == runtime::ProtoWarning::Kind::BuiltinShadow); // no unresolved-extern noise
+  REQUIRE(doc.scene.rootNodes.size() == 2);
+  auto geomOf = [](const std::shared_ptr<nodes::X3DNode> &shape) {
+    for (const auto &f : shape->fields())
+      if (f.x3dName == "geometry")
+        return std::any_cast<std::shared_ptr<nodes::X3DNode>>(f.get(*shape));
+    return std::shared_ptr<nodes::X3DNode>{};
+  };
+  auto field = [](const std::shared_ptr<nodes::X3DNode> &n, const char *name) {
+    for (const auto &f : n->fields())
+      if (f.x3dName == name) return f.get(*n);
+    return std::any{};
+  };
+  auto box = geomOf(doc.scene.rootNodes[0]);
+  REQUIRE(box);
+  CHECK(box->nodeTypeName() == "Box");
+  CHECK(std::any_cast<core::SFVec3f>(field(box, "size")).y == doctest::Approx(3.0f));
+  auto disk = geomOf(doc.scene.rootNodes[1]);
+  REQUIRE(disk);
+  CHECK(disk->nodeTypeName() == "Disk2D");
+  CHECK(std::any_cast<float>(field(disk, "outerRadius")) == doctest::Approx(5.0f));
+}
+
 TEST_CASE("proto_shadow_classicvrml") {
   const char *vrml =
       "#X3D V4.0 utf8\n"
@@ -156,6 +200,26 @@ TEST_CASE("unknown_node_clean_no_warning") {
   auto doc = codec::parseDocument(
       "<X3D version='4.0'><Scene><Shape><Box/></Shape></Scene></X3D>");
   CHECK(doc.readerWarnings.empty());
+}
+
+// A ROUTE among a node's children is a scene (or PROTO body) statement, not an
+// unknown node: it is kept and not diagnosed (it used to be dropped silently).
+TEST_CASE("nested_route_xml_is_kept") {
+  auto doc = codec::parseDocument(
+      "<X3D version='4.0'><Scene><TimeSensor DEF='T'/><Transform>"
+      "<TouchSensor DEF='S'/>"
+      "<ROUTE fromNode='S' fromField='isOver' toNode='T' toField='enabled'/>"
+      "</Transform>"
+      "<ProtoDeclare name='P'><ProtoBody><Group><TimeSensor DEF='A'/><TimeSensor DEF='B'/>"
+      "<ROUTE fromNode='A' fromField='isActive' toNode='B' toField='enabled'/>"
+      "</Group></ProtoBody></ProtoDeclare></Scene></X3D>");
+  CHECK_FALSE(hasUnknownNode(doc));
+  REQUIRE(doc.scene.routes.size() == 1);
+  CHECK(doc.scene.routes[0].fromNode == "S");
+  CHECK(doc.scene.routes[0].toField == "enabled");
+  REQUIRE(doc.scene.protoDeclarations.size() == 1);
+  REQUIRE(doc.scene.protoDeclarations[0]->body.routes.size() == 1);
+  CHECK(doc.scene.protoDeclarations[0]->body.routes[0].fromNode == "A");
 }
 
 // ── DIAG-PROFILE-COERCE: unknown token diagnosed + preserved on write ────────

@@ -5,6 +5,7 @@
 #include "X3DProtoClone.hpp"
 #include "X3DScene.hpp"
 #include "parse/X3DProtoResolver.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
 #include <memory>
@@ -330,6 +331,38 @@ expandInstance(ProtoInstance &inst, Scene &scene,
   return primary;
 }
 
+/// ADR-0033 fallback: an instance of a quarantined built-in-shadowing PROTO
+/// becomes the built-in node, its fieldValues applied to same-named fields.
+inline std::shared_ptr<X3DNode> instantiateBuiltin(const ProtoInstance &inst,
+                                                   std::vector<ProtoWarning> &warnings) {
+  auto node = x3d::nodes::X3DNodeFactory::create(inst.name);
+  if (!node) return nullptr;
+  node->setDEF(inst.DEF);
+  for (const ProtoFieldValue &fv : inst.fieldValues) {
+    const FieldInfo *fi = nullptr;
+    for (const auto &f : node->fields())
+      if (f.x3dName == fv.name) { fi = &f; break; }
+    if (!fi || !fi->set) {
+      warnings.push_back({ProtoWarning::Kind::UnknownField, inst.name, fv.name});
+      continue;
+    }
+    try {
+      if (fi->type == X3DFieldType::SFNode)
+        fi->set(*node, std::any(fv.nodeValue.empty() ? std::shared_ptr<X3DNode>{}
+                                                     : fv.nodeValue.front()));
+      else if (fi->type == X3DFieldType::MFNode)
+        fi->set(*node, std::any(fv.nodeValue));
+      else if (fi->isEnum() && fi->setEnumString && fv.value.type() == typeid(std::string))
+        fi->setEnumString(*node, std::any_cast<const std::string &>(fv.value));
+      else if (fv.value.has_value())
+        fi->set(*node, fv.value);
+    } catch (const std::exception &) {
+      warnings.push_back({ProtoWarning::Kind::InterfaceMismatch, inst.name, fv.name});
+    }
+  }
+  return node;
+}
+
 /// Expand every captured ProtoInstance in `scene`, splicing primaries into
 /// place. Front-door entry point. Collects diagnostics into `warnings`.
 inline void expandScene(Scene &scene,
@@ -341,6 +374,18 @@ inline void expandScene(Scene &scene,
     // (lenient-read policy). Any escaping exception becomes a ProtoWarning and
     // the remaining instances still expand.
     try {
+      if (inst.builtinFallback) {
+        // Written back as the plain built-in node, not re-emitted as an instance.
+        auto node = instantiateBuiltin(inst, warnings);
+        if (!node) continue;
+        auto parent = inst.parent.lock();
+        if (!parent)
+          scene.addRootNode(node);
+        else
+          proto_detail::attachToParent(parent, inst.parentField, node);
+        inst.expanded = true;
+        continue;
+      }
       ExpandGuard guard;
       auto primary =
           expandInstance(inst, scene, resolver, baseUrl, guard, warnings);

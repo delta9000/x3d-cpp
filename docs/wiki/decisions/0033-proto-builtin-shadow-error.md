@@ -14,7 +14,7 @@ related:
 ## Status
 
 Accepted — 2026-06-25 (implemented 2026-06-26 as `quarantineBuiltinShadowingProtos` in
-`runtime/parse/X3DParse.cpp`). Conformance finding `PROTO-SHADOW`. Sibling to ADR-0001 (ext-firewall).
+`runtime/parse/X3DParse.cpp`). Since 2026-09-26 a `ProtoInstance` already bound to a quarantined declaration is re-pointed to the built-in: expansion creates the factory node and applies its fieldValues by name (`instantiateBuiltin`, `proto_shadow_instance_becomes_builtin`). Conformance finding `PROTO-SHADOW`. Sibling to ADR-0001 (ext-firewall).
 
 ## Context
 

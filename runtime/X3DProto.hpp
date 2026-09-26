@@ -191,6 +191,11 @@ public:
   // re-emit them directly from scene.protoInstances or they are lost (AUD-B).
   bool expanded = false;
 
+  // ADR-0033: this instance named a PROTO/EXTERNPROTO that was quarantined for
+  // shadowing a built-in node type. Expansion creates the built-in instead and
+  // applies the fieldValues to its fields by name.
+  bool builtinFallback = false;
+
   /**
    * @brief Expand this instance into a concrete node tree. STUB.
    * @details Full PROTO expansion (cloning the ProtoBody, substituting field

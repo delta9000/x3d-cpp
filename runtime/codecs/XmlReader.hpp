@@ -241,6 +241,17 @@ private:
       // DynamicFieldStore), not routed as node children.
       if (childEl->name == "field")
         continue;
+      // <IS> is read by collectIsConnections above, not a child node.
+      if (childEl->name == "IS")
+        continue;
+      // A ROUTE may appear among a node's children (§4.4.8.2 / XML encoding):
+      // it belongs to the enclosing scene or PROTO body, not the node.
+      if (childEl->name == "ROUTE") {
+        auto &routes = currentProtoBody ? currentProtoBody->routes : scene.routes;
+        routes.emplace_back(childEl->attrOr("fromNode", ""), childEl->attrOr("fromField", ""),
+                            childEl->attrOr("toNode", ""), childEl->attrOr("toField", ""));
+        continue;
+      }
       // PROTO statements nested inside a node: capture into the scene data
       // model rather than the parent's node fields. A <ProtoInstance> records
       // its placement (this node + the slot it would occupy) so a later
