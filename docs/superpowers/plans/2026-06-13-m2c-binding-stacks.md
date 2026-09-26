@@ -1,7 +1,5 @@
 # M2c — Binding Stacks Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Implement the X3D binding-stack protocol for Viewpoint/NavigationInfo/Background/Fog — a per-category stack whose top is the bound node, driven by `set_bind` events on the M1 cascade, firing `isBound`/`bindTime` on transitions — in a context-owned side structure (golden byte-identical).
 
 **Architecture:** `runtime/scene/BindingStack.hpp` (one-category stack logic with an Emit callback), `runtime/scene/BindingSystem.hpp` (category map, enrol bindable nodes + wire their `set_bind` handler, default-bind, bound query), wired into `X3DExecutionContext` with a pull API. `set_bind` flows through the existing cascade (its reflection thunk calls `onSet_bind` → the registered handler), which `postEvent`s `isBound`/`bindTime` into the same drain. No `tick` reorder, no codegen.

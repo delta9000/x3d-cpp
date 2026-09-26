@@ -1,7 +1,5 @@
 # §37 Vehicle Dynamics Demonstration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Prove the shipped RigidBodyPhysics seam handles vehicle dynamics — a skid-steer pivot (turn), cornering stability, an incline climb, and brake/reverse — via gated tests + two CLI golden fixtures, with zero production-code change.
 
 **Architecture:** Every maneuver reuses the existing vehicle (chassis + 4 cylinder wheels on free `SingleAxisHingeJoint` axles + the merged per-contact friction path) driven by per-wheel torque. Gated C++ tests build the vehicle at the backend level (`JoltBackend` + `setContactResponse`, mirroring the validated spike); two CLI fixtures (`sim-vehicle-pivot`, `sim-vehicle-ramp`) exercise the full §37-node path.

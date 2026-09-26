@@ -1,7 +1,5 @@
 # Compiled Runtime Shared Library Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Compile the high-fan-out hand-written codec, parser, and mesh implementations once into installed shared runtime layers while preserving the public facades, behavior, and all-static compatibility.
 
 **Architecture:** Keep the public `headers -> nodes -> authoring_runtime -> runtime` graph acyclic. Both compiled runtime layers follow the existing shared-node mode (shared by default, all three layers static when `X3D_CPP_SHARED_NODES=OFF`). Move non-template bodies out of public headers subsystem by subsystem, retain templates and declaration-required layout in headers, and stop only after the retained waves exceed the measured 10% affected-group threshold.

@@ -1,7 +1,5 @@
 # Binding Generator Fix Sweep Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Close the 9 highest-leverage correctness/maintainability/robustness gaps found by two independent reviews of `src/x3d_cpp_gen/` (the C++ binding generator): a broad architectural review (fable model, prioritized per explicit instruction) plus a narrower diff review of the just-merged Clang matrix-brace fix (PR #73 / issue #72).
 
 **Architecture:** No architectural rewrite. Each task is an independently mergeable, narrowly-scoped fix inside the existing generator/descriptor/backend/template layering. The one deferred item — fully consolidating the ~6 scattered per-type fact tables into `model/types.py`'s `TypeRegistry` as the single source of truth (fable finding #1's "north star") — is intentionally OUT of this sweep; it is a large migration (would need to re-derive `generator.py`'s `FIELD_TYPE_MAPPING`/struct bodies and the test template's `defaultsEqual` overloads from one table while proving byte-identical golden output) that deserves its own dedicated plan. This sweep instead closes the specific, acute instance of that risk class that just caused a real bug (`_STRUCT_ARITY`'s hand-maintained `row_size`) and adds a coverage-completeness safety net, without attempting the full migration.

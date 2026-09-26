@@ -1,7 +1,5 @@
 # Build and CI Compile-Structure Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Cut cold compile and PR latency while ensuring every compiled target has an explicit production, behavioral, compile-contract, or opt-in purpose, then move high-cost hand-written runtime implementations into compiled libraries.
 
 **Architecture:** Phase one makes the existing graph intentional: explicit target taxonomy, aggregate behavior/sanitizer/header-contract targets, scoped CI jobs, Debug sanitizers, and removal of accidental C++ compilation from Python namespace tests. Phase two introduces an acyclic headers → generated nodes → authoring runtime → full runtime topology and migrates measured high-fan-out non-template implementations out of headers in subsystem waves.

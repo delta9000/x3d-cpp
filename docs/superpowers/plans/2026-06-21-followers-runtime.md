@@ -1,7 +1,5 @@
 # Followers Component Runtime Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Give the 14 inert Followers nodes (Chasers + Dampers) a runtime so routing `set_destination` produces smooth time-driven `value_changed` events.
 
 **Architecture:** Two templated `System` subclasses mirroring `InterpolatorSystem` — `DamperSystem<NodeT,ValueT>` (IIR cascade of `order` lerp-filters, `α=e^(−dt/τ)`) and `ChaserSystem<NodeT,ValueT>` (re-basing linear ramp reaching the destination `duration` after the last input). Both are stateful (per-node state held in the System) and time-driven (`attach` registers `set_destination`/`set_value` handlers; `update(now)` advances + emits). A `FollowerArith<T>` trait supplies `lerp`/`dist` per value type (vector / slerp / element-wise). Registered via `makeFollowerSystems()` and wired by `attachFollowers` next to the interpolators.

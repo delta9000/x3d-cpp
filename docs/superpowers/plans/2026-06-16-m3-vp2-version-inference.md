@@ -1,7 +1,5 @@
 # M3 VP-2 — Version-Inference Ladder + VRML97→3.0 Floor Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Give the 133 unversioned `.x3d` corpus files a real per-version oracle (instead of `skipped_no_manifest`) via a deterministic, evidence-stamped inference ladder, and stop the runtime ever emitting the invalid `#X3D V2.0` header by flooring VRML97 (and any sub-3.0 version) to X3D 3.0 at read and write time.
 
 **Architecture:** Two independent surfaces, both **codegen-free** (golden hash must stay byte-identical):

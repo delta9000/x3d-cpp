@@ -1,7 +1,5 @@
 # Skybox (Background 6-URL panorama cube) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Render the X3D `Background` node's six panorama faces (`frontUrl/backUrl/leftUrl/rightUrl/topUrl/bottomUrl`) as a textured cube around the viewer in the headless CPU rasterizer, composited over the existing sky/ground gradient with alpha.
 
 **Architecture:** Extends the per-pixel Background gradient already in `SceneRender.hpp` (PR #27). Each background pixel already unprojects its view ray to a world-space direction; a skybox just (a) selects which cube face that direction hits and the face UV, (b) samples that face's texture, and (c) composites it over the gradient using the texel alpha (§Background: panorama draws in front of the gradient, alpha lets the gradient show through). Face textures are resolved by `main.cpp` through the existing `makeTextureResolver` (`proc:`/`.ppm`/`PixelTexture`) and handed to the renderer via a new `RenderOptions` hook, mirroring the `glyphAtlas` pattern. No SDK/extraction changes — the rasterizer reads the bound `Background` node's URL fields directly, exactly as it already reads `skyColor`.

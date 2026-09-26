@@ -1,7 +1,5 @@
 # M2e — LOD / Visibility Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Add the view-dependent scene-graph runtime layer — LOD distance selection, Billboard view-facing rotation, ProximitySensor/VisibilitySensor, and visibility culling — driven by the bound Viewpoint.
 
 **Architecture:** One `ViewDependentSystem` (run each `tick()`) owns the event-emitting logic (LOD `level_changed`, sensor enter/exit). Render-time selection (which LOD child, Billboard rotation) plugs into the per-path world accumulation already done by `SceneExtractor::walk` and `PickSystem::worldOfRec` (M2C-1 idiom — never the static `TransformSystem.world_` table). Runtime-only; the generated layer and golden output are untouched.

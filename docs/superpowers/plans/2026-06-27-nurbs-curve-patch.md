@@ -1,7 +1,5 @@
 # NURBS Curve + Patch Surface Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Make `NurbsCurve` and `NurbsPatchSurface` produce renderable geometry (line + triangle mesh with analytic normals) through the existing extraction pipeline.
 
 **Architecture:** A node-free math unit `runtime/extract/NurbsEval.hpp` (namespace `x3d::runtime::extract::nurbs`) implements Cox–de Boor evaluation, rational weighting, periodic/closed handling, and analytic surface normals (quotient rule). Two thin arms in `MeshBuilder.hpp` read X3D fields and call it. `GeometryBounds.hpp` gets convex-hull (control-point AABB) bounds. The existing `externalGeometryResolver` stays the unrecognized-geometry fallback (now serving the deferred trimmed/swept/swung nodes).

@@ -1,7 +1,5 @@
 # M2b — Bounding Volumes Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Add axis-aligned bounding volumes — a per-node local-frame AABB computed from geometry, unioned bottom-up through the grouping hierarchy, with world-space bounds as a lazy query composing M2a's `worldTransform()` — entirely in side tables so the generated header tree stays byte-identical.
 
 **Architecture:** New header-only runtime: `runtime/math/Aabb.hpp` (AABB type), `runtime/scene/GeometryBounds.hpp` (`localGeometryBounds` type dispatch over primitives + a reflection-generic `coord`/`controlPoint` mesh path + ElevationGrid/Extrusion/Text/Geo), `runtime/scene/BoundsSystem.hpp` (full-graph parent index + local-bounds side table + bottom-up build/propagate + world-bounds query). Wired into `X3DExecutionContext::tick` after the M2a transform pass, with a pull API. Side tables keyed by `const X3DNode*` — no codegen, golden byte-identical.

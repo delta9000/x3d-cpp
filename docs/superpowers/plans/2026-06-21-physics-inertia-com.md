@@ -1,7 +1,5 @@
 # §37 RigidBody inertia + centerOfMass Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Honor `RigidBody.inertia` (explicit tensor) and `RigidBody.centerOfMass` (COM offset) in the Jolt physics seam, demonstrated and verified by an open-loop quadcopter flight sim — partially closing CONF-RBP-INERTIA.
 
 **Architecture:** Both fields take effect at body-creation time. A new backend-neutral `MassProperties` struct replaces `addBody`'s `float mass`. `PhysicsSystem` reads the RigidBody fields and uses non-default detection (inertia ≠ identity, COM ≠ 0) to populate it. `JoltBackend` maps it to `EOverrideMassProperties::MassAndInertiaProvided` + a `Mat44` tensor and an `OffsetCenterOfMassShape` wrap, and reads pose back from the body origin (`GetPosition`) so `RigidBody.position` stays the authored reference point regardless of COM offset.

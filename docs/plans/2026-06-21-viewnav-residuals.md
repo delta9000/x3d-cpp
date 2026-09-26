@@ -1,7 +1,5 @@
 # Viewnav Residuals Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Close the three deferred-minor conformance findings (BIND-09, NAV-LOOKAT-SCALE, NAV-FLY-ROLL) remaining after the CONF-VIEWNAV cluster shipped.
 
 **Architecture:** Three independent TDD sub-tasks, each its own commit. P1 verifies the LOOKAT-SCALE finding with a test first (RTC-8 pattern: if the test passes, the finding is INVALID). P2 threads a `BindTransition` side-channel through `X3DExecutionContext` so `ViewpointBindSystem` can distinguish a push (set_bind TRUE) from a pop (set_bind FALSE / delete) and apply §23.3.1 r6.3 (restore the popped-to vp's stored offset). P3 rewrites FLY orientation as yaw/pitch scalars reconstructed each step, with re-decomposition on mode/bind switches, eliminating horizon-roll drift. Single conformance-view regen at the end.
@@ -1074,11 +1072,3 @@ Expected:
 Run: `git log --oneline -6`
 Expected: the four phase commits (P1 verification, P2 BIND-09, P3 NAV-FLY-ROLL, P4 conformance closure) on top of `4dafa72` (the design doc).
 
----
-
-## Reference: Skills to invoke during execution
-
-- @superpowers:executing-plans — task-by-task execution with checkpoints.
-- @superpowers:test-driven-development — every fix is test-first.
-- @superpowers:systematic-debugging — if a test fails unexpectedly, before patching code.
-- @superpowers:verification-before-completion — run the Final verification block above before claiming done.
