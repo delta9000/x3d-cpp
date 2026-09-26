@@ -664,11 +664,15 @@ int main() {
   // -------------------------------------------------------------------------
   // T15h: memory limit. A handler that allocates without bound is stopped by
   //       memoryLimit() -- well inside a generous call budget, so the memory
-  //       cap, not the clock, ends it -- and the script keeps working.
+  //       cap, not the clock, ends it -- and the script keeps working. The
+  //       check is causal, not a speed bound: the call must end well before
+  //       the budget could have ended it. Sanitizer builds spend seconds in
+  //       garbage collection near the cap, so a fixed wall-clock bound flakes.
   // -------------------------------------------------------------------------
   {
     using Clock = std::chrono::steady_clock;
-    backend.setCallBudget(std::chrono::seconds(10));
+    const auto budget = std::chrono::seconds(60);
+    backend.setCallBudget(budget);
     backend.setMemoryLimit(std::size_t{16} << 20);
 
     X3DExecutionContext ctx;
@@ -687,7 +691,7 @@ int main() {
     backend.initialize(h);
     const auto start = Clock::now();
     backend.invoke(h, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
-    check(Clock::now() - start < std::chrono::seconds(5),
+    check(Clock::now() - start < budget / 2,
           "T15h: unbounded allocation is stopped by the memory limit");
     backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
     std::any ok = dynamicFieldStore().getValue(script, "ok");
