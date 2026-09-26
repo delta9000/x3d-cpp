@@ -16,6 +16,7 @@
 #include "InterpolatorRegistration.hpp"
 #include "KeyDeviceSensorSystem.hpp"
 #include "LoadSensorSystem.hpp"
+#include "MediaTimeSystem.hpp"
 #include "NavigationSystem.hpp"
 #include "PointingSensorSystem.hpp"
 #include "TimeSensorSystem.hpp"
@@ -454,6 +455,9 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   auto tss = std::make_shared<TimeSensorSystem>();        // §8 Time — the clock
   detail::forEachNode(scene, [&](X3DNode *n) { tss->attach(n, ctx); });
   ctx.addSystem(tss);
+  auto media = std::make_shared<MediaTimeSystem>(); // §8.2.4 AudioClip/MovieTexture timing
+  detail::forEachNode(scene, [&](X3DNode *n) { media->attach(n, ctx); });
+  ctx.addSystem(media);
   attachInterpolators(scene, ctx);    // §19 keyframe animation
   attachFollowers(scene, ctx);        // §39 damper/chaser smoothing
   attachEventUtilities(scene, ctx);   // §30 trigger/sequencer/filter logic

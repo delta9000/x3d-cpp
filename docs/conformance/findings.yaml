@@ -60,9 +60,9 @@
   interfaces: [X3DSoundSourceNode]
   clause: "8.2.4.1, 16.4.2, 18.4.2"
   severity: major
-  status: deferred
+  status: closed
   summary: AudioClip/MovieTexture have no time-lifecycle System — startTime/loop/isActive inert.
-  note: Blocked on the media/duration_changed seam — audio sources beyond OscillatorSource are not built (SND-4); the time-dependent lifecycle for sound sources is also inert (SND-2).
+  note: "MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip and MovieTexture: enabled, loop, and a cycle of duration_changed / pitch (AudioClip) or / speed (MovieTexture); an unknown duration plays until stopTime (media_time_test). Decoding and playback remain separate (SND-4)."
 - id: TDN-6
   nodes: [TimeSensor]
   clause: "8.2.4.4"
