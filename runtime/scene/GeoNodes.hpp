@@ -90,12 +90,12 @@ inline SFVec3d gridCoordinate(const X3DNode &n, int i, int j, double elevation) 
   const double z = static_cast<double>(j) * fieldOf<double>(n, "zSpacing", 1.0);
   const GeoSystem sys = systemOf(n);
   if (sys.frame == GeoSystem::Frame::GD)
-    return sys.longitudeFirst ? SFVec3d{o.x + x, o.y + z, o.z + elevation}
-                              : SFVec3d{o.x + z, o.y + x, o.z + elevation};
+    return sys.longitudeFirst ? SFVec3d{o.x + x, o.y + z, elevation}
+                              : SFVec3d{o.x + z, o.y + x, elevation};
   if (sys.frame == GeoSystem::Frame::UTM)
-    return sys.eastingFirst ? SFVec3d{o.x + x, o.y + z, o.z + elevation}
-                            : SFVec3d{o.x + z, o.y + x, o.z + elevation};
-  return SFVec3d{o.x + x, o.y + z, o.z + elevation};
+    return sys.eastingFirst ? SFVec3d{o.x + x, o.y + z, elevation}
+                            : SFVec3d{o.x + z, o.y + x, elevation};
+  return SFVec3d{o.x + x, o.y + z, elevation};
 }
 
 /// The world matrix of the local tangent frame at a coordinate authored on

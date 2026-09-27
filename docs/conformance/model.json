@@ -1860,6 +1860,13 @@
         "GEO-1",
         "GEO-2",
         "GEO-3",
+        "GEO-AUDIT-1",
+        "GEO-AUDIT-2",
+        "GEO-AUDIT-3",
+        "GEO-AUDIT-4",
+        "GEO-AUDIT-5",
+        "GEO-AUDIT-6",
+        "GEO-GEOID-DEFAULT",
         "GEOLOD-1",
         "GEOSYSTEM",
         "INTERP-02",
@@ -1877,11 +1884,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.3.1; 25.2.3",
+          "clause": "25.3.1; 25.2.3; 25.2.3, 25.2.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-2",
+            "GEO-AUDIT-3",
+            "GEO-GEOID-DEFAULT",
             "GEOSYSTEM"
           ],
           "geometry": false,
@@ -1899,13 +1908,16 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "13.3.4, 25.3.2; 13.3.4; 25.3.1",
+          "clause": "13.3.4, 25.3.2; 13.3.4; 25.3.1; 25.3.2; 25.2.3, 25.2.4; 25.2.3",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "EXT-001",
             "EXT-003",
-            "GEO-2"
+            "GEO-2",
+            "GEO-AUDIT-1",
+            "GEO-AUDIT-3",
+            "GEO-GEOID-DEFAULT"
           ],
           "geometry": true,
           "interfaces": [
@@ -1921,10 +1933,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.3.4",
+          "clause": "25.3.4; 25.2.3, 25.2.4; 25.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GEO-AUDIT-3",
+            "GEO-GEOID-DEFAULT",
             "GEOLOD-1"
           ],
           "geometry": false,
@@ -1942,10 +1956,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.2.3",
+          "clause": "25.2.3; 25.2.3, 25.2.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GEO-AUDIT-3",
+            "GEO-GEOID-DEFAULT",
             "GEOSYSTEM"
           ],
           "geometry": false,
@@ -1964,10 +1980,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "25.3.5",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "GEO-AUDIT-2"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DChildNode",
@@ -1984,10 +2002,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "25.2.3, 25.2.4; 25.2.3",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "GEO-AUDIT-3",
+            "GEO-GEOID-DEFAULT"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode"
@@ -1999,13 +2020,15 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "19.3.1; \u2014; 25",
+          "clause": "19.3.1; \u2014; 25; 25.2.3, 25.2.4; 25.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-GEO",
+            "GEO-AUDIT-3",
+            "GEO-GEOID-DEFAULT",
             "INTERP-02",
             "PIV-1"
           ],
@@ -2022,15 +2045,19 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "25.3.8; 22.4.1; 25; 25.2.3",
+          "clause": "25.3.8; 22.4.1; 25; 25.2.3; 25.2.3, 25.2.4; 22.4.1, 25.3.8",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-GEO",
             "ENV-02",
             "ENV-03",
+            "GEO-AUDIT-3",
+            "GEO-AUDIT-5",
+            "GEO-AUDIT-6",
+            "GEO-GEOID-DEFAULT",
             "GEOSYSTEM"
           ],
           "geometry": false,
@@ -2047,12 +2074,14 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "25.3.9",
+          "clause": "25.3.9; 25.2.3, 25.2.4; 25.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GEO-AUDIT-3",
+            "GEO-GEOID-DEFAULT",
             "TSN-1",
             "TSN-2"
           ],
@@ -2073,10 +2102,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "25.2.3, 25.2.4; 25.2.3",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "GEO-AUDIT-3",
+            "GEO-GEOID-DEFAULT"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -2093,7 +2125,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3; 25.2.3, 25.2.4; 23.4.4, 25.3.11; 22.4.1, 25.3.8",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2108,6 +2140,10 @@
             "BIND-09",
             "GEO-1",
             "GEO-3",
+            "GEO-AUDIT-3",
+            "GEO-AUDIT-4",
+            "GEO-AUDIT-5",
+            "GEO-GEOID-DEFAULT",
             "GEOSYSTEM",
             "NAV-FLY-ROLL"
           ],
@@ -9354,6 +9390,109 @@
       "summary": "geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning."
     },
     {
+      "clause": "25.3.2",
+      "component": "Geospatial",
+      "id": "GEO-AUDIT-1",
+      "nodes": [
+        "GeoElevationGrid"
+      ],
+      "note": "gridCoordinate now uses each scaled height as the absolute elevation; mesh and bounds share that conversion. Regression: GeoElevationGrid heights are absolute elevations regardless of geoGridOrigin altitude.",
+      "severity": "major",
+      "status": "closed",
+      "summary": "GeoElevationGrid added geoGridOrigin altitude to absolute height samples."
+    },
+    {
+      "clause": "25.3.5",
+      "component": "Geospatial",
+      "id": "GEO-AUDIT-2",
+      "nodes": [
+        "GeoMetadata"
+      ],
+      "note": "SceneExtractor skips GeoMetadata.data and nonvisual metadata fields, including MetadataSet.value. Regression: GeoMetadata data references do not create render items.",
+      "severity": "major",
+      "status": "closed",
+      "summary": "GeoMetadata.data references were rendered as scene content."
+    },
+    {
+      "clause": "25.2.3, 25.2.4",
+      "component": "Geospatial",
+      "id": "GEO-AUDIT-3",
+      "nodes": [
+        "GeoCoordinate",
+        "GeoElevationGrid",
+        "GeoLOD",
+        "GeoLocation",
+        "GeoOrigin",
+        "GeoPositionInterpolator",
+        "GeoProximitySensor",
+        "GeoTouchSensor",
+        "GeoTransform",
+        "GeoViewpoint"
+      ],
+      "note": "Validation now runs on every geoSystem field and reuses parseGeoSystem and ellipsoidByCode; it accepts AA, ordering tokens, GDC/GCC, and WGS84 while retaining warnings for unknown tokens, N, and bad UTM zones. Regression: geoSystem validation accepts spec tokens on every geospatial node. This completes GEOSYSTEM.",
+      "severity": "minor",
+      "status": "closed",
+      "summary": "geoSystem validation rejected valid ellipsoid and ordering tokens and omitted nodes."
+    },
+    {
+      "clause": "23.4.4, 25.3.11",
+      "component": "Geospatial",
+      "id": "GEO-AUDIT-4",
+      "nodes": [
+        "GeoViewpoint"
+      ],
+      "note": "NavigationSystem converts the picked pivot with geo::fromWorld and writes SFVec3d. Regression: GeoViewpoint LOOKAT updates geographic centerOfRotation. This completes the GeoViewpoint centerOfRotation path after GEO-1.",
+      "severity": "major",
+      "status": "closed",
+      "summary": "LOOKAT wrote a Cartesian SFVec3f to GeoViewpoint.centerOfRotation."
+    },
+    {
+      "clause": "22.4.1, 25.3.8",
+      "component": "Geospatial",
+      "id": "GEO-AUDIT-5",
+      "nodes": [
+        "GeoProximitySensor",
+        "GeoViewpoint"
+      ],
+      "note": "ViewDependentSystem reads SFVec3d and converts it with geo::toWorld before parent and sensor transforms. Regression: GeoProximitySensor reports GeoViewpoint geographic centerOfRotation.",
+      "severity": "critical",
+      "status": "closed",
+      "summary": "GeoProximitySensor read GeoViewpoint.centerOfRotation as SFVec3f and crashed in debug."
+    },
+    {
+      "clause": "25.3.8",
+      "component": "Geospatial",
+      "id": "GEO-AUDIT-6",
+      "nodes": [
+        "GeoProximitySensor"
+      ],
+      "note": "Reviewed, convention kept (ADR-0053): geographic coordinates are placed in the node's local frame, with ancestor transforms applied on top as for any geometry, so geoCoord_changed converts the viewer position in the sensor's frame (it agrees with GeoCoordinate content displaced by the same Transform). The audit's world-frame reading was not adopted; GeoTouchSensor.hitGeoCoord_changed was aligned to the same local frame. Tests: GeoProximitySensor geoCoord is in the sensor's local geo frame; test_geo_touch_under_transform.",
+      "severity": "major",
+      "status": "closed",
+      "summary": "GeoProximitySensor.geoCoord_changed dropped the sensor ancestor transform."
+    },
+    {
+      "clause": "25.2.3",
+      "component": "Geospatial",
+      "id": "GEO-GEOID-DEFAULT",
+      "nodes": [
+        "GeoCoordinate",
+        "GeoElevationGrid",
+        "GeoLOD",
+        "GeoLocation",
+        "GeoOrigin",
+        "GeoPositionInterpolator",
+        "GeoProximitySensor",
+        "GeoTouchSensor",
+        "GeoTransform",
+        "GeoViewpoint"
+      ],
+      "note": "ADR-0053 deliberately keeps this fallback. A future fix needs a default geoid source (an injected grid or a first-party coarse model), plus an optional diagnostic when WGS84 is used without one.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "Default backend has no geoid model, so WGS84 heights are converted as ellipsoidal."
+    },
+    {
       "clause": "16.4.13",
       "component": "Sound",
       "id": "SND-GAIN-TYPE",
@@ -10480,10 +10619,10 @@
     ]
   },
   "summary": {
-    "closed_count": 230,
+    "closed_count": 236,
     "component_count": 36,
     "deferred_count": 24,
-    "finding_count": 259,
+    "finding_count": 266,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -10505,7 +10644,7 @@
     "open_by_severity": {
       "low": 2,
       "major": 14,
-      "minor": 13
+      "minor": 14
     }
   },
   "unresolved_findings": []

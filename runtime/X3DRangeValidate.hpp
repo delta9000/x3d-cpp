@@ -9,6 +9,7 @@
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/OrthoViewpoint.hpp"
 #include "x3d/nodes/X3DBackgroundNode.hpp"
+#include "GeoProjection.hpp"
 
 #include <any>
 #include <algorithm>
@@ -64,46 +65,50 @@ inline void validateSpecial(const x3d::nodes::X3DNode &node,
       }
     }
   }
-  if (node.nodeTypeName() == "GeoCoordinate" || node.nodeTypeName() == "GeoLocation" ||
-      node.nodeTypeName() == "GeoViewpoint" || node.nodeTypeName() == "GeoProximitySensor") {
-    for (const core::FieldInfo &f : node.fields()) {
-      if (f.x3dName != "geoSystem") continue;
-      const auto tokens = std::any_cast<std::vector<std::string>>(f.get(node));
-      auto bad = [&](const std::string &why) { add(node, "geoSystem", "GEOSYSTEM_TOKEN", why, out); };
-      if (tokens.empty()) { bad("missing spatial reference frame"); continue; }
-      const auto &frame = tokens.front();
-      if (frame != "GD" && frame != "GDC" && frame != "GC" && frame != "GCC" && frame != "UTM" && frame != "WM") {
-        bad("unknown spatial reference frame '" + frame + "'"); continue;
-      }
-      static const std::unordered_set<std::string> ellipsoids = {"AM","AN","BN","BR","CC","CD","EA","EB","EC","ED","EE","EF","FA","HE","HO","ID","IN","KA","RF","SA","WD","WE","WGS84"};
-      bool zone = false, south = false, ellipsoid = false;
-      for (size_t i = 1; i < tokens.size(); ++i) {
-        const auto &t = tokens[i];
-        if (t == "N") { bad("'N' is undefined; northern hemisphere is the default"); continue; }
-        const bool zoneToken = frame == "UTM" && t.size() >= 2 && t[0] == 'Z';
-        const bool suffixSouth = zoneToken && t.back() == 'S';
-        const size_t zoneEnd = suffixSouth ? t.size() - 1 : t.size();
-        if (zoneToken && zoneEnd > 1 &&
-            std::all_of(t.begin()+1, t.begin()+zoneEnd, [](unsigned char c){ return std::isdigit(c); })) {
-          unsigned n = 0;
-          const auto [end, ec] = std::from_chars(t.data() + 1, t.data() + zoneEnd, n);
-          if (zone || ec != std::errc{} || end != t.data() + zoneEnd || n < 1 || n > 60)
-            bad("invalid or repeated UTM zone '" + t + "'");
-          else {
-            zone = true;
-            if (suffixSouth) south = true;
-          }
-        } else if (frame == "UTM" && t == "S") {
-          if (south) bad("repeated UTM hemisphere token 'S'"); else south = true;
-        } else if (ellipsoids.count(t)) {
-          if (ellipsoid) bad("repeated ellipsoid token '" + t + "'"); else ellipsoid = true;
-        } else bad("unsupported token '" + t + "'");
-      }
-      if (frame == "UTM" && !zone) bad("UTM requires a Z1 through Z60 zone token");
-      if (frame != "UTM" && south) bad("hemisphere token is only valid with UTM");
-      if ((frame == "GC" || frame == "GCC" || frame == "WM") && tokens.size() > 1)
-        bad("spatial reference frame '" + frame + "' does not support optional tokens");
+  for (const core::FieldInfo &f : node.fields()) {
+    if (f.x3dName != "geoSystem") continue;
+    const auto tokens = std::any_cast<std::vector<std::string>>(f.get(node));
+    auto bad = [&](const std::string &why) { add(node, "geoSystem", "GEOSYSTEM_TOKEN", why, out); };
+    if (tokens.empty()) { bad("missing spatial reference frame"); continue; }
+    const auto &frame = tokens.front();
+    if (frame != "GD" && frame != "GDC" && frame != "GC" && frame != "GCC" &&
+        frame != "UTM" && frame != "WM") {
+      bad("unknown spatial reference frame '" + frame + "'");
+      continue;
     }
+    const auto system = runtime::geo::parseGeoSystem(tokens);
+    const bool utm = system.frame == runtime::geo::GeoSystem::Frame::UTM;
+    const bool gd = system.frame == runtime::geo::GeoSystem::Frame::GD;
+    bool zone = false, south = false, ellipsoid = false, geoid = false;
+    for (std::size_t i = 1; i < tokens.size(); ++i) {
+      const auto &t = tokens[i];
+      runtime::geo::Ellipsoid e;
+      if (t == "N") {
+        bad("'N' is undefined; northern hemisphere is the default");
+      } else if (utm && t.size() > 1 && t[0] == 'Z') {
+        unsigned n = 0;
+        const auto [end, ec] = std::from_chars(t.data() + 1, t.data() + t.size(), n);
+        if (zone || ec != std::errc{} || end != t.data() + t.size() ||
+            n < 1 || n > 60 || system.zone != static_cast<int>(n))
+          bad("invalid or repeated UTM zone '" + t + "'");
+        else zone = true;
+      } else if (utm && t == "S") {
+        if (south) bad("repeated UTM hemisphere token 'S'");
+        else south = true;
+      } else if ((gd && (t == "latitude_first" || t == "longitude_first")) ||
+                 (utm && (t == "northing_first" || t == "easting_first"))) {
+        // Ordering is interpreted by parseGeoSystem above.
+      } else if ((gd || utm) && t == "WGS84") {
+        if (geoid) bad("repeated geoid token 'WGS84'");
+        else geoid = true;
+      } else if ((gd || utm) && runtime::geo::ellipsoidByCode(t, e)) {
+        if (ellipsoid) bad("repeated ellipsoid token '" + t + "'");
+        else ellipsoid = true;
+      } else {
+        bad("unsupported token '" + t + "'");
+      }
+    }
+    if (utm && !zone) bad("UTM requires a Z1 through Z60 zone token");
   }
 }
 

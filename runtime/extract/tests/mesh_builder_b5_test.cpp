@@ -108,6 +108,22 @@ TEST_CASE("GeoElevationGrid UTM spacing advances eastings and northings") {
   CHECK(mesh.positions.size() == 6);
 }
 
+TEST_CASE("GeoElevationGrid heights are absolute elevations regardless of geoGridOrigin altitude") {
+  auto grid = createX3DNode("GeoElevationGrid");
+  setGeoField(grid, "geoOrigin", localOrigin());
+  setGeoField(grid, "geoGridOrigin", SFVec3d{0, 0, 100});
+  setGeoField(grid, "xDimension", 2);
+  setGeoField(grid, "zDimension", 2);
+  setGeoField(grid, "xSpacing", 0.00001);
+  setGeoField(grid, "zSpacing", 0.00001);
+  setGeoField(grid, "height", std::vector<double>(4, 10));
+  const MeshData mesh = buildLocalMesh(grid.get());
+  REQUIRE(mesh.positions.size() == 6);
+  CHECK(mesh.positions[0].y == doctest::Approx(10).epsilon(0.001));
+  const Aabb bounds = localGeometryBounds(grid.get());
+  CHECK(bounds.max.y == doctest::Approx(10).epsilon(0.001));
+}
+
 TEST_CASE("height grid lattice indices and degenerate guards remain intact") {
   auto planar = createX3DNode("ElevationGrid");
   setGeoField(planar, "xDimension", 3);

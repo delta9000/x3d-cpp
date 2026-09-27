@@ -60,6 +60,15 @@ static std::shared_ptr<X3DNode> makeTriShape() {
   return shape;
 }
 
+TEST_CASE("GeoMetadata data references do not create render items") {
+  auto metadata = createX3DNode("GeoMetadata");
+  setF(metadata, "data", std::any(MFNode{makeTriShape()}));
+  Scene scene; scene.addRootNode(metadata);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  CHECK(ex.fullSnapshot().added.empty());
+}
+
 TEST_CASE("scene_extractor_t7_test") {
   // === 1) Switch whichChoice = -1 (default) draws NOTHING ===================
   {

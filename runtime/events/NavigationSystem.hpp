@@ -576,12 +576,14 @@ private:
     SFVec3f upLocal = norm(parentInv.transformDirection(SFVec3f{0,1,0}));
     SFRotation targetOri = lookRotation(dirLocal, upLocal);
 
-    // Set centerOfRotation now (§23.4.4: pivot for subsequent EXAMINE).
-    // Result discarded deliberately: `vp` is the bound Viewpoint this function
-    // already dereferenced, and centerOfRotation is an inputOutput field every
-    // Viewpoint carries — the write cannot fail. A non-Viewpoint here would be a
-    // BindingSystem bug, not a caller mistake this path can act on.
-    (void)ctx.writeField(vp, "centerOfRotation", std::any(SFVec3f{centerLocal}));
+    // Set the pivot for subsequent EXAMINE in the bound viewpoint's own frame.
+    if (vp->nodeTypeName() == "GeoViewpoint") {
+      SFVec3d geoCenter;
+      if (geo::fromWorld(*vp, centerLocal, geoCenter))
+        (void)ctx.writeField(vp, "centerOfRotation", std::any(geoCenter));
+    } else {
+      (void)ctx.writeField(vp, "centerOfRotation", std::any(centerLocal));
+    }
 
     // Begin transition from the CURRENT effective eye (offset-aware).
     lookat_.start = effPos(ctx, vp);

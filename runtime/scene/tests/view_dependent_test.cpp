@@ -1008,6 +1008,50 @@ TEST_CASE("proximity_center_of_rotation_requires_lookat") {
   CHECK((p.x == 99 && p.y == 99 && p.z == 99));
 }
 
+TEST_CASE("GeoProximitySensor reports GeoViewpoint geographic centerOfRotation") {
+  auto origin = localGeoOrigin();
+  auto nav = createX3DNode("NavigationInfo");
+  setF(nav, "type", std::any(std::vector<std::string>{"LOOKAT"}));
+  auto ps = createX3DNode("GeoProximitySensor");
+  setF(ps, "geoOrigin", std::any(origin));
+  setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
+  auto vp = createX3DNode("GeoViewpoint");
+  setF(vp, "geoOrigin", std::any(origin));
+  setF(vp, "position", std::any(SFVec3d{0, 0, 0}));
+  setF(vp, "centerOfRotation", std::any(SFVec3d{0, 0, 2}));
+  Scene scene; scene.addRootNode(nav); scene.addRootNode(vp); scene.addRootNode(ps);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  REQUIRE(getF<SFBool>(ps, "isActive"));
+  const auto cor = getF<SFVec3f>(ps, "centerOfRotation_changed");
+  CHECK(cor.y == doctest::Approx(2).epsilon(0.001));
+}
+
+// ADR-0053: geographic coordinates are placed in the node's local frame, with
+// ancestor transforms applied on top like any geometry. A viewer at world x=5
+// inside a sensor translated +5 stands at the sensor's own geographic origin.
+TEST_CASE("GeoProximitySensor geoCoord is in the sensor's local geo frame") {
+  auto ps = createX3DNode("GeoProximitySensor");
+  setF(ps, "geoOrigin", std::any(localGeoOrigin()));
+  setF(ps, "size", std::any(SFVec3f{20, 20, 20}));
+  auto parent = createX3DNode("Transform");
+  setF(parent, "translation", std::any(SFVec3f{5, 0, 0}));
+  setF(parent, "children", std::any(MFNode{ps}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{5, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(parent);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0);
+  REQUIRE(getF<SFBool>(ps, "isActive"));
+  SFVec3f reported;
+  REQUIRE(geo::toWorld(*ps, getF<SFVec3d>(ps, "geoCoord_changed"), reported));
+  CHECK(std::fabs(reported.x) < 1e-3f);
+}
+
 TEST_CASE("view_dependent_test") {
   testGeoProximity();
   testGeoProximityUseUnion();

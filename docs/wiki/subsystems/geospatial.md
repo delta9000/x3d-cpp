@@ -29,11 +29,11 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 | `runtime/io/proj/tests/proj_geo_swap_test.cpp` | Grid swap-test against the built-in backend on six ellipsoids, including polar and antimeridian cases; checked-in small geoid fixture and optional external grid case. |
 | `runtime/math/GeoFrame.hpp` | SDK-side conversions shared by every backend: authored coordinate ↔ geodetic ↔ geocentric (axis order, degrees, geoid heights, Web Mercator), the local east/up/south basis, `OriginFrame` (GeoOrigin, `rotateYUp`), `tangentFrame`; and the process-wide backend (`projection()` / `setProjection()`). |
 | `runtime/scene/GeoNodes.hpp` | Node glue: `systemOf`, `originOf`, `toWorld` (one point or a list), `fromWorld`, `tangentFrameOf` — reads `geoSystem`, `geoOrigin`, `geoCoords`, `rotateYUp` by reflection. |
-| `runtime/scene/GeometryBounds.hpp` and `runtime/extract/MeshBuilder.cpp` | Convert GeoCoordinate lists and GeoElevationGrid lattices through the node helpers for bounds and meshes. |
+| `runtime/scene/GeometryBounds.hpp` and `runtime/extract/MeshBuilder.cpp` | Convert GeoCoordinate lists and GeoElevationGrid lattices through the node helpers for bounds and meshes; grid heights are absolute elevations, so `geoGridOrigin.z` is not added. |
 | `runtime/scene/TransformSystem.hpp` | GeoLocation tangent placement and GeoTransform tangent-frame TRS, shared by scene walks. |
-| `runtime/events/X3DExecutionContext.hpp` and `runtime/events/NavigationSystem.hpp` | Geographic GeoViewpoint camera pose, center of rotation, and elevation-based speed. |
+| `runtime/events/X3DExecutionContext.hpp` and `runtime/events/NavigationSystem.hpp` | Geographic GeoViewpoint camera pose, center of rotation (including LOOKAT updates), and elevation-based speed. |
 | `runtime/events/GeoPositionInterpolatorSystem.hpp` | Interpolates in the authored geoSystem, then projects the result to world coordinates. |
-| `runtime/scene/ViewDependentSystem.hpp` | GeoProximitySensor's tangent box and geographic viewer output; GeoLOD range selection and children events. |
+| `runtime/scene/ViewDependentSystem.hpp` | GeoProximitySensor's tangent box, world-position geographic output, and GeoViewpoint center-of-rotation output; GeoLOD range selection and children events. |
 | `runtime/events/PointingSensorSystem.hpp` | GeoTouchSensor pick events and geographic hit coordinates. |
 | `runtime/math/tests/geo_projection_test.cpp` | Reference values from PROJ 9.8 on WGS84, Clarke 1866, Airy and International ellipsoids; UTM north/south/zone edges; Web Mercator; parsing; the geoid hook; GeoOrigin frames; node glue. |
 
@@ -50,9 +50,10 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
   float.
 - **No datum shifts:** each ellipsoid's geometry maps into the one earth-fixed
   frame; GC and WM are WGS84.
-- **Geoid:** the `"WGS84"` option adds the backend's geoid undulation; the
-  built-in backend has none unless the application supplies a function, in
-  which case geoid-relative heights are converted to ellipsoidal heights.
+- **Geoid:** the `"WGS84"` option adds the backend's geoid undulation. The
+  built-in backend has none unless the application supplies a function; by
+  default it treats geoid-relative heights as ellipsoidal. This deliberate
+  ADR-0053 limitation is tracked as GEO-GEOID-DEFAULT in the conformance register.
 
 ## Status
 
@@ -60,12 +61,14 @@ The conversion core ships and is tested against PROJ, and every Geospatial
 node converts through it:
 
 - **Geometry and bounds:** GeoCoordinate points; GeoElevationGrid lattices
-  (east/longitude columns, north/latitude rows, `height × yScale`, authored
-  normals rotated from the tangent frame).
+  (east/longitude columns, north/latitude rows, absolute `height × yScale`,
+  authored normals rotated from the tangent frame). GeoMetadata.data and
+  metadata references are not rendered.
 - **Transforms:** GeoLocation (tangent frame at `geoCoords`) and GeoTransform
   (TRS inside the `geoCenter` tangent frame).
 - **Camera:** GeoViewpoint position, orientation relative to the tangent frame,
-  centre of rotation, and navigation speed `elevation / 10 × speedFactor`.
+  geographic centre of rotation (including LOOKAT), and navigation speed
+  `elevation / 10 × speedFactor`.
   Avatar size and visibility-limit scaling remain open (GEO-3).
 - **Behaviour:** GeoPositionInterpolator interpolates in its geoSystem;
   GeoProximitySensor (tangent box at `geoCenter`, `geoCoord_changed`);

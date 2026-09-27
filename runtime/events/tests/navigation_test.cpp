@@ -553,3 +553,28 @@ TEST_CASE("GeoLocation geoCoords updates its child camera") {
   ctx.tick(1.0);
   CHECK(feq(ctx.cameraWorldPosition().y, 50.0f, 0.01f));
 }
+
+TEST_CASE("GeoViewpoint LOOKAT updates geographic centerOfRotation") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoCoords", std::any(SFVec3d{0, 0, 0}));
+  setF(origin, "rotateYUp", std::any(true));
+  auto vp = createX3DNode("GeoViewpoint");
+  setF(vp, "geoOrigin", std::any(origin));
+  setF(vp, "position", std::any(SFVec3d{0, 0, 10}));
+  setF(vp, "centerOfRotation", std::any(SFVec3d{0, 0, 2}));
+  auto nav = createX3DNode("NavigationInfo");
+  setF(nav, "type", std::any(std::vector<std::string>{"LOOKAT"}));
+  setF(nav, "transitionTime", std::any(SFTime{0}));
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(createX3DNode("Box")));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(nav); scene.addRootNode(shape);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  ctx.addSystem(std::make_shared<NavigationSystem>());
+  ctx.tick(0);
+  ctx.setPointerPresent(true);
+  ctx.setPointer(Ray{{0, 10, 0}, {0, -1, 0}});
+  ctx.setPointerScreen(0, 0);
+  ctx.setPointerButton(true);
+  ctx.tick(1);
+  CHECK(geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0, 0, 2}).z == doctest::Approx(0));
+}

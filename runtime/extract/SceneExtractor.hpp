@@ -776,6 +776,10 @@ private:
     // Collision/StaticGroup/...): every SFNode + MFNode field slot. Gated to node
     // slots only (never metadata scalars); inputOnly slots have no getter.
     forEachChildNode(*n, [&](const FieldInfo &f, const std::shared_ptr<X3DNode> &c) {
+      // Metadata references describe scene content; they are not placements.
+      if (f.x3dName == "metadata" ||
+          (t == "GeoMetadata" && f.x3dName == "data") ||
+          (t == "MetadataSet" && f.x3dName == "value")) return;
       // COL-2 §23.4.2: Collision.proxy is collision-only geometry — never rendered.
       if (t == "Collision" && f.x3dName == "proxy") return;
       // CAD-1 §32.4.2: CADFace.shape accepts only Shape|LOD|Transform; a

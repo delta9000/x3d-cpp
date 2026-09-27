@@ -10,6 +10,7 @@
 #include "x3d/nodes/OrthoViewpoint.hpp"
 #include "x3d/nodes/TextureProjectorParallel.hpp"
 #include "x3d/nodes/GeoCoordinate.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 #include "x3d/nodes/Shape.hpp"
 #include "X3DParse.hpp"
 
@@ -142,4 +143,40 @@ TEST_CASE("range_warnings_test") {
 
   std::cout << "range_warnings_test OK\n";
   return;
+}
+
+TEST_CASE("geoSystem validation accepts spec tokens on every geospatial node") {
+  const std::vector<std::string> names = {
+      "GeoCoordinate", "GeoElevationGrid", "GeoLOD", "GeoLocation", "GeoOrigin",
+      "GeoPositionInterpolator", "GeoProximitySensor", "GeoTouchSensor",
+      "GeoTransform", "GeoViewpoint"};
+  auto hasWarning = [](const X3DNode &node) {
+    const auto diagnostics = collectRangeWarnings(node);
+    return std::any_of(diagnostics.begin(), diagnostics.end(), [](const auto &d) {
+      return d.detail.find("GEOSYSTEM_TOKEN") != std::string::npos;
+    });
+  };
+  for (const auto &name : names) {
+    auto node = createX3DNode(name);
+    REQUIRE(node);
+    for (const auto &f : node->fields()) if (f.x3dName == "geoSystem") {
+      f.set(*node, std::any(MFString{"GD", "AA", "longitude_first", "WGS84"}));
+      CHECK_FALSE(hasWarning(*node));
+      f.set(*node, std::any(MFString{"invalid"}));
+      CHECK(hasWarning(*node));
+    }
+  }
+  auto geo = std::make_shared<GeoCoordinate>();
+  for (const auto &tokens : {MFString{"GDC", "latitude_first"},
+                             MFString{"GCC"}, MFString{"WM"},
+                             MFString{"UTM", "Z10", "S", "AA", "easting_first"}}) {
+    geo->setGeoSystemUnchecked(tokens);
+    CHECK_FALSE(hasWarning(*geo));
+  }
+  geo->setGeoSystemUnchecked({"UTM", "Z10", "N"});
+  CHECK(hasWarning(*geo));
+  geo->setGeoSystemUnchecked({"UTM", "Z61"});
+  CHECK(hasWarning(*geo));
+  geo->setGeoSystemUnchecked({"UTM"});
+  CHECK(hasWarning(*geo));
 }

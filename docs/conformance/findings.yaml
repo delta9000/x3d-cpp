@@ -1726,6 +1726,62 @@
     tokens without mutation; range_warnings_test covers GD, UTM Z10 S, N and garbage.
     The validator accepts WM (Web Mercator). The vendored X3D UOM is left as published (it still
     lacks WM), so the generated enumeration does not list it; the open enum stores it regardless.
+- id: GEO-AUDIT-1
+  nodes: [GeoElevationGrid]
+  component: Geospatial
+  clause: "25.3.2"
+  severity: major
+  status: closed
+  summary: GeoElevationGrid added geoGridOrigin altitude to absolute height samples.
+  note: "gridCoordinate now uses each scaled height as the absolute elevation; mesh and bounds share that conversion. Regression: GeoElevationGrid heights are absolute elevations regardless of geoGridOrigin altitude."
+- id: GEO-AUDIT-2
+  nodes: [GeoMetadata]
+  component: Geospatial
+  clause: "25.3.5"
+  severity: major
+  status: closed
+  summary: GeoMetadata.data references were rendered as scene content.
+  note: "SceneExtractor skips GeoMetadata.data and nonvisual metadata fields, including MetadataSet.value. Regression: GeoMetadata data references do not create render items."
+- id: GEO-AUDIT-3
+  nodes: [GeoCoordinate, GeoElevationGrid, GeoLOD, GeoLocation, GeoOrigin, GeoPositionInterpolator, GeoProximitySensor, GeoTouchSensor, GeoTransform, GeoViewpoint]
+  component: Geospatial
+  clause: "25.2.3, 25.2.4"
+  severity: minor
+  status: closed
+  summary: geoSystem validation rejected valid ellipsoid and ordering tokens and omitted nodes.
+  note: "Validation now runs on every geoSystem field and reuses parseGeoSystem and ellipsoidByCode; it accepts AA, ordering tokens, GDC/GCC, and WGS84 while retaining warnings for unknown tokens, N, and bad UTM zones. Regression: geoSystem validation accepts spec tokens on every geospatial node. This completes GEOSYSTEM."
+- id: GEO-AUDIT-4
+  nodes: [GeoViewpoint]
+  component: Geospatial
+  clause: "23.4.4, 25.3.11"
+  severity: major
+  status: closed
+  summary: LOOKAT wrote a Cartesian SFVec3f to GeoViewpoint.centerOfRotation.
+  note: "NavigationSystem converts the picked pivot with geo::fromWorld and writes SFVec3d. Regression: GeoViewpoint LOOKAT updates geographic centerOfRotation. This completes the GeoViewpoint centerOfRotation path after GEO-1."
+- id: GEO-AUDIT-5
+  nodes: [GeoProximitySensor, GeoViewpoint]
+  component: Geospatial
+  clause: "22.4.1, 25.3.8"
+  severity: critical
+  status: closed
+  summary: GeoProximitySensor read GeoViewpoint.centerOfRotation as SFVec3f and crashed in debug.
+  note: "ViewDependentSystem reads SFVec3d and converts it with geo::toWorld before parent and sensor transforms. Regression: GeoProximitySensor reports GeoViewpoint geographic centerOfRotation."
+- id: GEO-AUDIT-6
+  nodes: [GeoProximitySensor]
+  component: Geospatial
+  clause: "25.3.8"
+  severity: major
+  status: closed
+  summary: GeoProximitySensor.geoCoord_changed dropped the sensor ancestor transform.
+  note: "Reviewed, convention kept (ADR-0053): geographic coordinates are placed in the node's local frame, with ancestor transforms applied on top as for any geometry, so geoCoord_changed converts the viewer position in the sensor's frame (it agrees with GeoCoordinate content displaced by the same Transform). The audit's world-frame reading was not adopted; GeoTouchSensor.hitGeoCoord_changed was aligned to the same local frame. Tests: GeoProximitySensor geoCoord is in the sensor's local geo frame; test_geo_touch_under_transform."
+- id: GEO-GEOID-DEFAULT
+  nodes: [GeoCoordinate, GeoElevationGrid, GeoLOD, GeoLocation, GeoOrigin, GeoPositionInterpolator, GeoProximitySensor, GeoTouchSensor, GeoTransform, GeoViewpoint]
+  component: Geospatial
+  clause: "25.2.3"
+  severity: minor
+  status: open
+  summary: Default backend has no geoid model, so WGS84 heights are converted as ellipsoidal.
+  note: "ADR-0053 deliberately keeps this fallback. A future fix needs a default geoid source (an injected grid or a first-party coarse model), plus an optional diagnostic when WGS84 is used without one."
 - id: SND-GAIN-TYPE
   nodes: [ListenerPointSource]
   component: Sound
