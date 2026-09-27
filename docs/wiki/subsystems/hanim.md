@@ -112,33 +112,33 @@ only when a binding field changes: the humanoid's skin or binding fields, a
 joint's `skinCoordIndex` / `skinCoordWeight`, or the skeleton structure.
 
 CPU consumers call `SceneExtractor::deformedMesh(id)`. It evaluates the pose,
-deforms the source coordinates and maps them to the expanded corners. Authored
-normals are mapped through their normal indices; each corner's normal uses the
-influences of that corner's source coordinate, even when `normalIndex` differs
-from `coordIndex`. Otherwise normals are
-regenerated with the geometry's winding and `creaseAngle`. The `cpu_raster`
-example draws skins this way.
+deforms the source coordinates and maps them to the expanded corners. Each
+corner's normal is its bind normal (the authored `skinNormal` /
+`skinBindingNormals` entry through the corner's normal index, else the normal
+the mesh builder generated for the bind pose) skinned through the palette's
+inverse transpose with the influences of the corner's source *coordinate*, so
+`normalIndex` may differ from `coordIndex`. The `cpu_raster` example draws
+skins this way.
 
-`poc_renderer` now evaluates extracted directional, point, and spot lights in
-its Phong and PBR fragment paths. Positional lights use eye-space locations,
-radius cutoff, X3D attenuation, and the spot beam/cutoff falloff; the existing
-headlight still reserves one of eight light slots. This lighting is independent
-of the shared skin vertex layout.
+`poc_renderer` skins on the GPU with the same math. It uploads each skin item's
+per-corner (offset, count) ranges and its uncapped (joint, weight) influences
+once, as a vertex attribute and a buffer texture. On `updatedSkinPose` it
+evaluates the pose and replaces only the palette buffer; the vertex shaders
+blend positions and inverse-transpose normals. Only skins with Joint displacers
+use `deformedMesh()` instead, refreshing their mesh on pose updates.
 
-`poc_renderer` uploads a skin item's expanded-corner CSR ranges and uncapped
-influences once to OpenGL buffer textures. On `updatedSkinPose`, it evaluates
-the pose and replaces only the matrix palette buffer. Its vertex shaders blend
-positions and inverse-transpose normals. Items with Joint displacers use
-`deformedMesh()` and refresh their GPU mesh on pose updates: the reference
-applies the sparse offsets after skinning along each owning joint's axes.
-Items without authored skin normals use the same exact CPU path, because the
-reference regenerates and crease-smooths normals from posed triangles.
+Both renderers flip the front face under a negative-determinant world
+transform (`ccw` XOR reflection). Leif and Lily use `ccw=false` under the
+humanoid scale `1 1 -1`.
 
-For a negative-determinant world transform, both renderers reverse the mesh's
-`ccw` front-face setting during culling. Generated normals already honor
-`ccw=false` in mesh extraction; the normal matrix then transforms them through
-the reflection. Leif uses this combination (`ccw=false`, humanoid scale
-`1 1 -1`), so culling the wrong faces made its skin appear black.
+### Visual verification
+
+Posed archive humanoids (ROUTEs stripped, fixed joint rotations, one fixed
+camera) were rendered in `cpu_raster`, `poc_renderer` and an independent X3D
+browser. Poses agree for JoeKick, Leif, Lily and BoxMan2. The archive files are
+not committed, so this is a manual check; the committed GL regressions are
+`x3d_poc_skin_gl` (GPU skin against precomputed deformed geometry, including a
+five-influence vertex) and `x3d_poc_positional_light_gl`.
 
 ## Motion
 
