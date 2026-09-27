@@ -30,6 +30,8 @@ inline void deform(const SkinBinding &binding, const SkinPose &, std::vector<SFV
   if (normals) *normals = binding.bindNormals;
 }
 
+inline bool displaceSegmentPoints(const X3DNode &, std::vector<SFVec3f> &) { return false; }
+
 } // namespace x3d::runtime::hanim
 
 #endif // X3D_RUNTIME_HANIM_SKIN_IMPL_HPP
