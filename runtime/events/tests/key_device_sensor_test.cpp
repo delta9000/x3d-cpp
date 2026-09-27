@@ -19,6 +19,7 @@
 #include "x3d/nodes/KeySensor.hpp"
 #include "x3d/nodes/StringSensor.hpp"
 #include "x3d/nodes/TimeSensor.hpp"
+#include "x3d/nodes/WorldInfo.hpp"
 
 #include "X3DFieldAddress.hpp"
 
@@ -220,4 +221,34 @@ TEST_CASE("key_device_sensor_test") {
   if (failures) { std::cerr << failures << " check(s) failed\n"; CHECK(false); return; }
   std::cout << "all key-device-sensor tests passed\n";
   return;
+}
+
+TEST_CASE("StringSensor deletion removes one UTF-8 character") {
+  auto sensor = std::make_shared<StringSensor>();
+  X3DExecutionContext ctx;
+  wire(ctx, sensor.get());
+  ctx.pushKeyCharacter("a", true);
+  ctx.pushKeyCharacter("\xC3\xA9", true); // U+00E9, encoded in two bytes
+  ctx.tick(1.0);
+  REQUIRE(sensor->getEnteredText() == "a\xC3\xA9");
+  ctx.pushStringDeletion();
+  ctx.tick(2.0);
+  CHECK(sensor->getEnteredText() == "a");
+}
+
+TEST_CASE("StringSensor enteredText field resets silently at termination") {
+  auto sensor = std::make_shared<StringSensor>();
+  auto sink = std::make_shared<WorldInfo>();
+  X3DExecutionContext ctx;
+  wire(ctx, sensor.get());
+  ctx.addRoute(FieldAddress{sensor.get(), "enteredText"},
+               FieldAddress{sink.get(), "title"});
+  ctx.pushKeyCharacter("a", true);
+  ctx.tick(1.0);
+  REQUIRE(sensor->getEnteredText() == "a");
+  ctx.pushStringTerminator();
+  ctx.tick(2.0);
+  CHECK(sensor->getFinalText() == "a");
+  CHECK(sensor->getEnteredText().empty());
+  CHECK(sink->getTitle() == "a"); // reset has no enteredText event
 }

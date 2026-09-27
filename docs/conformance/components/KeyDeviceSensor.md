@@ -5,14 +5,10 @@ _Generated. Levels 1,2 · 2 nodes · profiles: Interactive, Immersive, Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | KeySensor | 1 | ✓ | — | ✓ | KDS-1, KDS-10, KDS-2, KDS-3, KDS-4, KDS-5, KDS-6 | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
-| StringSensor | 2 | ✓ | — | ◑ | AUD-KDS-1, AUD-KDS-2, KDS-1, KDS-10, KDS-6, KDS-7, KDS-8, KDS-9 | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
+| StringSensor | 2 | ✓ | — | ✓ | AUD-KDS-1, AUD-KDS-2, KDS-1, KDS-10, KDS-6, KDS-7, KDS-8, KDS-9 | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
 
 ## Findings
 
-- **AUD-KDS-1** [minor/OPEN] — §21.4.2: Deletion removes one UTF-8 byte instead of one character.
-  - enteredText.pop_back() on a multibyte character leaves an invalid suffix. Incomplete fix of KDS-7. Probe: 'audit StringSensor deletion removes one UTF-8 character'.
-- **AUD-KDS-2** [minor/OPEN] — §21.4.2: enteredText is not cleared after finalText is generated.
-  - Spec: 'After the finalText field event has been generated, the enteredText field is set to the empty string but no event is generated.' Incomplete fix of KDS-8. Probe: 'audit StringSensor enteredText field resets silently at termination'.
 - **KDS-1** [critical/CLOSED `85b90b0`] — §21.4.1, 21.4.2: No System drives KeySensor/StringSensor — all output events permanently silent (KeyState seam only feeds NavigationSystem).
   - Next fix cluster — a KeyDeviceSensorSystem + KeyState char-seam extension (mirror attachEventUtilities). Drives KDS-2..10.
 - **KDS-2** [critical/CLOSED `85b90b0`] — §21.4.1: keyPress/keyRelease must carry a single UTF-8 character; KeyState stores only opaque int key codes (no char value).
@@ -27,4 +23,8 @@ _Generated. Levels 1,2 · 2 nodes · profiles: Interactive, Immersive, Full._
   - Shared seam extension underpinning KDS-1..9.
 - **KDS-6** [minor/CLOSED] — §21.2: Key-device exclusive-focus arbitration — enabling one sensor must send enabled=FALSE to the others — unimplemented.
   - Enabling a KeySensor/StringSensor sends enabled FALSE to every other enabled key device sensor (§21.2 'only one key device sensor may be active at a time'), via a field-write listener (events_misc_test).
+- **AUD-KDS-1** [minor/CLOSED] — §21.4.2: Deletion removes one UTF-8 byte instead of one character.
+  - StringSensor deletion removes all bytes of the final UTF-8 character. Covered by 'StringSensor deletion removes one UTF-8 character'.
+- **AUD-KDS-2** [minor/CLOSED] — §21.4.2: enteredText is not cleared after finalText is generated.
+  - StringSensor clears the stored enteredText output field after posting finalText without posting an enteredText event. Covered by 'StringSensor enteredText field resets silently at termination'.
 

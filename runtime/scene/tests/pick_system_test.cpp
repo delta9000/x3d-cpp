@@ -47,6 +47,44 @@ static void attachCoord(const std::shared_ptr<X3DNode>& geom, std::vector<SFVec3
   setF(geom, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(std::move(pts)))));
 }
 
+TEST_CASE("pick index follows live Switch selection") {
+  auto sw = createX3DNode("Switch");
+  auto shape = shapeWith(createX3DNode("Box"));
+  addChild(sw, shape);
+  Scene scene; scene.addRootNode(sw);
+  TransformSystem ts; ts.buildIndex(scene);
+  BoundsSystem bs; bs.buildBounds(scene, ts);
+  PickSystem ps; ps.build(scene);
+  const Ray ray{{0,0,10},{0,0,-1}};
+  CHECK_FALSE(ps.pickClosest(ray, bs, {0,0,0}, {0,1,0}, x3d::kMaxGraphWalkVisits, &ts).hit);
+  setF(sw, "whichChoice", std::any(SFInt32{0}));
+  CHECK(ps.pickClosest(ray, bs, {0,0,0}, {0,1,0}, x3d::kMaxGraphWalkVisits, &ts).hit);
+  CHECK(ps.lastIndexVisits() == 0);
+  setF(sw, "whichChoice", std::any(SFInt32{-1}));
+  CHECK_FALSE(ps.pickClosest(ray, bs, {0,0,0}, {0,1,0}, x3d::kMaxGraphWalkVisits, &ts).hit);
+  CHECK(ps.lastIndexVisits() == 0);
+}
+
+TEST_CASE("pick index follows live LOD level") {
+  auto lod = createX3DNode("LOD");
+  setF(lod, "range", std::any(std::vector<SFFloat>{5.0f}));
+  addChild(lod, shapeWith(createX3DNode("Box")));
+  auto moved = createX3DNode("Transform");
+  setF(moved, "translation", std::any(SFVec3f{5,0,0}));
+  addChild(moved, shapeWith(createX3DNode("Box")));
+  addChild(lod, moved);
+  Scene scene; scene.addRootNode(lod);
+  TransformSystem ts; ts.buildIndex(scene);
+  BoundsSystem bs; bs.buildBounds(scene, ts);
+  PickSystem ps; ps.build(scene);
+  const Ray ray{{0,0,10},{0,0,-1}};
+  CHECK(ps.pickClosest(ray, bs, {0,0,0}, {0,1,0}, x3d::kMaxGraphWalkVisits, &ts).hit);
+  CHECK_FALSE(ps.pickClosest(ray, bs, {0,0,10}, {0,1,0}, x3d::kMaxGraphWalkVisits, &ts).hit);
+  CHECK(ps.lastIndexVisits() == 0);
+  CHECK(ps.pickClosest(ray, bs, {0,0,0}, {0,1,0}, x3d::kMaxGraphWalkVisits, &ts).hit);
+  CHECK(ps.lastIndexVisits() == 0);
+}
+
 TEST_CASE("pick_system_test") {
   // Transform(+5x) > Shape > Box(size 2). Ray from (5,0,10) toward -z hits z=1.
   auto T = createX3DNode("Transform"); setF(T, "translation", std::any(SFVec3f{5,0,0}));

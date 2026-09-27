@@ -13,6 +13,7 @@
 #include "BoundsSystem.hpp"
 #include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField, localGeometryBounds
+#include "LODSelection.hpp"
 #include "Intersect.hpp"
 #include "Mat4.hpp"
 #include "MeshBuilder.hpp" // extract::buildLocalMesh — promoted exact-triangle extraction
@@ -129,13 +130,14 @@ public:
       if (takeStatic) {
         const Placement &p = statics_[i++];
         ++lastCandidateTests_;
-        evaluate(worldRay, p.node, p.worldM, p.aabb, p.path, best);
+        evaluate(worldRay, p.node, p.worldM, p.aabb, p.path,
+                 cameraPos, cameraUp, best);
       } else {
         const Placement &p = billboards_[j++];
         ++lastCandidateTests_;
         const Mat4 wm = liveWorldM(p.path, cameraPos, cameraUp);
         const Aabb wb = bounds.localBounds(p.node).transformed(wm);
-        evaluate(worldRay, p.node, wm, wb, p.path, best);
+        evaluate(worldRay, p.node, wm, wb, p.path, cameraPos, cameraUp, best);
       }
     }
     best.budgetExceeded = budgetTripped_;
@@ -462,11 +464,48 @@ private:
     return m;
   }
 
+  // §10.4.3/§23.4.3: picking follows the active transformation path (ADR-0034).
+  // Check live selection so Switch and camera-driven LOD changes do not require
+  // rebuilding the geometry-placement index.
+  static bool pathActive(const extract::PathKey &path, const SFVec3f &cameraPos,
+                         const SFVec3f &cameraUp) {
+    Mat4 world = Mat4::identity();
+    for (std::size_t i = 0; i + 1 < path.size(); ++i) {
+      const X3DNode *n = path[i];
+      if (TransformSystem::isTransform(n))
+        world = world * TransformSystem::localMatrix(n);
+      const std::string type = n->nodeTypeName();
+      if (type == "Switch" || type == "LOD") {
+        const auto kids = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+            *n, "children", {});
+        int selected = geombounds::getField<int>(*n, "whichChoice", -1);
+        if (type == "LOD") {
+          if (kids.empty()) return false;
+          const SFVec3f center = geombounds::getField<SFVec3f>(*n, "center", {0, 0, 0});
+          const SFVec3f eye = world.inverse().transformPoint(cameraPos);
+          const float dx = eye.x - center.x, dy = eye.y - center.y, dz = eye.z - center.z;
+          const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+          selected = lodSelectLevel(*n, distance);
+          selected = std::min(selected, static_cast<int>(kids.size()) - 1);
+        }
+        if (selected < 0 || selected >= static_cast<int>(kids.size()) ||
+            kids[selected].get() != path[i + 1]) return false;
+      }
+      if (type == "Billboard") {
+        const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
+        world = world * billboardLocalMatrix(world, cameraPos, cameraUp, axis);
+      }
+    }
+    return true;
+  }
+
   // Broad-phase (cached/live world AABB) + narrow-phase one placement; update
   // best-so-far with the same strict-< tie-break as the reflective walk.
   void evaluate(const Ray &worldRay, X3DNode *shape, const Mat4 &worldM,
                 const Aabb &worldAabb, const extract::PathKey &path,
+                const SFVec3f &cameraPos, const SFVec3f &cameraUp,
                 PickResult &best) const {
+    if (!pathActive(path, cameraPos, cameraUp)) return;
     // Layer.pickable is inputOutput: inspect the retained path on every pick so
     // toggling it takes effect without invalidating the geometry placement cache.
     for (const X3DNode *n : path)

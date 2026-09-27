@@ -9,6 +9,7 @@
 #include "FieldRead.hpp"
 #include "Billboard.hpp"
 #include "GeometryBounds.hpp"
+#include "LODSelection.hpp"
 #include "Mat4.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
@@ -31,15 +32,6 @@ inline std::size_t lodChildCount(const X3DNode &n) {
       return c ? c->size() : 0;
     }
   return 0;
-}
-
-// §23.4.3 LOD step function L(d): level = number of ranges d meets-or-exceeds.
-inline int lodSelectLevel(const X3DNode &lod, float distToCenter) {
-  const auto range = geombounds::getField<std::vector<float>>(lod, "range", {});
-  if (range.empty()) return 0;                 // empty -> browser choice: highest detail
-  int level = 0;
-  for (float r : range) { if (distToCenter >= r) ++level; else break; }
-  return level;
 }
 
 class ViewDependentSystem : public System {
