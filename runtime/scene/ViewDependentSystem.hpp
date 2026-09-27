@@ -9,6 +9,7 @@
 #include "FieldRead.hpp"
 #include "Billboard.hpp"
 #include "GeometryBounds.hpp"
+#include "GeoNodes.hpp"
 #include "LODSelection.hpp"
 #include "Mat4.hpp"
 #include "RecursionLimits.hpp"
@@ -42,8 +43,9 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     (void)ctx;
     const std::string t = node ? node->nodeTypeName() : "";
-    if (t == "LOD") lodLevel_.emplace(node, -1);
-    else if (t == "ProximitySensor" || t == "VisibilitySensor" || t == "TransformSensor") {
+    if (t == "LOD" || t == "GeoLOD") lodLevel_.emplace(node, -1);
+    else if (t == "ProximitySensor" || t == "GeoProximitySensor" ||
+             t == "VisibilitySensor" || t == "TransformSensor") {
       sensorActive_.emplace(node, false);
       sensorBelowValid_ = false;
     }
@@ -81,6 +83,28 @@ public:
     (void)now;
     const SFVec3f eye = ctx.cameraWorldPosition();
     for (auto &[node, last] : lodLevel_) {
+      if (node->nodeTypeName() == "GeoLOD") {
+        // §25.3.4: range is measured in metres from the geospatial center.
+        SFVec3f centerWorld;
+        const SFVec3d authored = geombounds::getField<SFVec3d>(*node, "center", {0, 0, 0});
+        if (!geo::toWorld(*node, authored, centerWorld)) continue;
+        const SFVec3f eyeLocal = ctx.worldTransform(node).inverse().transformPoint(eye);
+        const float range = geombounds::getField<float>(*node, "range", 10.0f);
+        const int lvl = viewdep::len(viewdep::sub(eyeLocal, centerWorld)) < range ? 1 : 0;
+        if (lvl != last) {
+          last = lvl;
+          const auto root = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+              *node, "rootNode", {});
+          // Child-URL tiles are not loaded yet (GEOLOD-1): until they are, the
+          // root tile stays the displayed content at level 1 too.
+          const auto &children = root;
+          ctx.postEvent(node, "children", std::any(children));
+          ctx.postEvent(node, "level_changed", std::any(static_cast<SFInt32>(lvl)));
+          ctx.markActiveChildChanged(node);
+          if (levelHook_) levelHook_(node, lvl);
+        }
+        continue;
+      }
       // Per-node convenience level via primary-path world transform (documented
       // per-node-event / per-path-render split, M2C-1). worldTransform(node) is
       // the first-path world matrix; identity if unknown.
@@ -129,7 +153,8 @@ public:
         deactivateIfActive(node, active, now, ctx);
         continue;
       }
-      if (node->nodeTypeName() == "ProximitySensor") updateProximity(node, active, now, ctx);
+      if (node->nodeTypeName() == "ProximitySensor" ||
+          node->nodeTypeName() == "GeoProximitySensor") updateProximity(node, active, now, ctx);
       else if (node->nodeTypeName() == "VisibilitySensor") updateVisibility(node, active, now, ctx);
       else if (node->nodeTypeName() == "TransformSensor") updateTransform(node, active, now, ctx);
     }
@@ -364,7 +389,18 @@ private:
       return;
     }
     const SFVec3f eyeWorld = ctx.cameraWorldPosition();
-    const SFVec3f center = geombounds::getField<SFVec3f>(*node, "center", {0, 0, 0});
+    const bool geographic = node->nodeTypeName() == "GeoProximitySensor";
+    Mat4 tangent = Mat4::identity();
+    if (geographic) {
+      // §25.3.8: the sensor box is tangent to the ellipsoid at geoCenter.
+      const SFVec3d geoCenter = geombounds::getField<SFVec3d>(*node, "geoCenter", {0, 0, 0});
+      if (!geo::tangentFrameOf(*node, geoCenter, tangent)) {
+        deactivateIfActive(node, last, now, ctx);
+        return;
+      }
+    }
+    const SFVec3f center = geographic ? SFVec3f{0, 0, 0} :
+        geombounds::getField<SFVec3f>(*node, "center", {0, 0, 0});
     const SFVec3f size = geombounds::getField<SFVec3f>(*node, "size", {0, 0, 0});
     auto &pst = proxState_[node];
     // §22.4.1: DEF/USE boxes form a union; ADR-0034 limits it to active paths.
@@ -372,7 +408,7 @@ private:
     Mat4 w = pst.world;
     const auto &paths = sensorPaths_[node];
     for (std::size_t i = 0; i < paths.size(); ++i) {
-      const Mat4 &path = paths[i];
+      const Mat4 path = geographic ? paths[i] * tangent : paths[i];
       if (insideBox(path.inverse().transformPoint(eyeWorld), center, size)) {
         w = path;
         pst.pathIndex = i;
@@ -380,7 +416,10 @@ private:
         break;
       }
     }
-    if (!inside && !paths.empty()) w = paths[std::min(pst.pathIndex, paths.size() - 1)];
+    if (!inside && !paths.empty()) {
+      w = paths[std::min(pst.pathIndex, paths.size() - 1)];
+      if (geographic) w = w * tangent;
+    }
     const Mat4 inv = w.inverse();
     const SFVec3f eyeLocal = inv.transformPoint(eyeWorld);
     if (inside || last) {
@@ -389,8 +428,16 @@ private:
       const SFVec3f upLocal = viewdep::norm(inv.transformDirection(ctx.cameraWorldUp()));
       const SFRotation ori = lookAtRotation(fwdLocal, upLocal);
       // ENV-04: emit only when the viewer pose actually changes, not every tick.
-      if (!pst.has || !vecEq(eyeLocal, pst.pos))
+      if (!pst.has || !vecEq(eyeLocal, pst.pos)) {
         ctx.postEvent(node, "position_changed", std::any(eyeLocal));
+        if (geographic) {
+          // §25.3.8: pair each position_changed with its geoSystem coordinate.
+          SFVec3d coords;
+          const Mat4 parent = w * tangent.inverse();
+          if (geo::fromWorld(*node, parent.inverse().transformPoint(eyeWorld), coords))
+            ctx.postEvent(node, "geoCoord_changed", std::any(coords));
+        }
+      }
       if (!pst.has || !rotEq(ori, pst.ori))
         ctx.postEvent(node, "orientation_changed", std::any(ori));
       pst.has = true;

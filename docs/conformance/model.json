@@ -1859,6 +1859,7 @@
         "ENV-03",
         "GEO-1",
         "GEO-2",
+        "GEOLOD-1",
         "GEOSYSTEM",
         "INTERP-02",
         "NAV-FLY-ROLL",
@@ -1919,10 +1920,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "25.3.4",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "GEOLOD-1"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -1995,7 +1998,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 25",
           "exists": true,
@@ -2018,7 +2021,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "25.3.8; 22.4.1; 25; 25.2.3",
           "exists": true,
@@ -2043,7 +2046,7 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "25.3.9",
           "exists": true,
@@ -7231,9 +7234,9 @@
       "nodes": [
         "GeoProximitySensor"
       ],
-      "note": "Blocked on geo-projection (Geospatial deferred). See CONF-GEO.",
+      "note": "Fixed: ViewDependentSystem evaluates the tangent box at geoCenter through active paths, emits the ProximitySensor edge and pose outputs, and pairs position_changed with geoCoord_changed via fromWorld. Includes DEF/USE union and disable behavior. Covered by view_dependent_test.",
       "severity": "major",
-      "status": "deferred",
+      "status": "closed",
       "summary": "GeoProximitySensor has no System and no geoCoord_changed."
     },
     {
@@ -7243,7 +7246,7 @@
         "ProximitySensor",
         "GeoProximitySensor"
       ],
-      "note": "ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).",
+      "note": "ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.",
       "severity": "minor",
       "status": "closed",
       "summary": "centerOfRotation_changed never emitted."
@@ -7491,9 +7494,9 @@
         "GeoProximitySensor",
         "GeoPositionInterpolator"
       ],
-      "note": "Blocked on the GeoProjection seam (geoSystem/geoOrigin \u2192 local Cartesian). Drives ENV-02; GeoTouchSensor = TSN-1/2.",
+      "note": "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2; GeoLOD URL loading remains open as GEOLOD-1.",
       "severity": "minor",
-      "status": "deferred",
+      "status": "closed",
       "summary": "Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing)."
     },
     {
@@ -7991,9 +7994,9 @@
       "nodes": [
         "GeoTouchSensor"
       ],
-      "note": "Resolution is a small add, but the node is only useful with TSN-2; deferred with the Geospatial seam (CONF-GEO).",
+      "note": "Fixed: PointingSensorSystem resolves GeoTouchSensor through the TouchSensor hover/grab/release path.",
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "GeoTouchSensor is never resolved in the pointing-device cycle (PointingSensorSystem hard-checks nodeTypeName()==\"TouchSensor\") \u2014 receives no pointer events.",
       "wave": 4
     },
@@ -8003,11 +8006,23 @@
       "nodes": [
         "GeoTouchSensor"
       ],
-      "note": "Blocked on the GeoProjection seam (ECEF\u2192geodetic). See CONF-GEO.",
+      "note": "Fixed: hitGeoCoord_changed converts the world hit through GeoNodes::fromWorld, alongside TouchSensor outputs; covered by a box pick regression.",
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.",
       "wave": 4
+    },
+    {
+      "clause": "25.3.4",
+      "component": "Geospatial",
+      "id": "GEOLOD-1",
+      "nodes": [
+        "GeoLOD"
+      ],
+      "note": "Remaining: connect URL tiles to InlineRuntimeSystem loading/unloading, wait for all requested child tiles before switching, and render only the selected tile set. Current children output contains rootNode outside range and an empty set inside range.",
+      "severity": "major",
+      "status": "open",
+      "summary": "GeoLOD selects a distance level and emits children/level_changed, but does not load rootUrl or child1Url through child4Url."
     },
     {
       "clause": "10.3.10",
@@ -10362,6 +10377,10 @@
       "EaseInEaseOut",
       "Fog",
       "Gain",
+      "GeoLOD",
+      "GeoPositionInterpolator",
+      "GeoProximitySensor",
+      "GeoTouchSensor",
       "GeoViewpoint",
       "HAnimHumanoid",
       "HAnimJoint",
@@ -10445,10 +10464,10 @@
     ]
   },
   "summary": {
-    "closed_count": 226,
+    "closed_count": 230,
     "component_count": 36,
-    "deferred_count": 28,
-    "finding_count": 257,
+    "deferred_count": 24,
+    "finding_count": 258,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -10456,7 +10475,6 @@
       "Delay",
       "DynamicsCompressor",
       "EspduTransform",
-      "GeoTouchSensor",
       "LinePickSensor",
       "MicrophoneSource",
       "PointPickSensor",
@@ -10469,10 +10487,9 @@
       "WaveShaper"
     ],
     "open_by_severity": {
-      "critical": 2,
       "low": 2,
       "major": 14,
-      "minor": 13
+      "minor": 12
     }
   },
   "unresolved_findings": []

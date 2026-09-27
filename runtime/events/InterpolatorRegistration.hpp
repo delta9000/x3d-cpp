@@ -9,6 +9,7 @@
 #define X3D_RUNTIME_INTERPOLATOR_REGISTRATION_HPP
 
 #include "InterpolatorSystem.hpp"
+#include "GeoPositionInterpolatorSystem.hpp"
 #include "NurbsInterpolatorSystem.hpp"
 #include "SplineInterpolatorSystem.hpp"
 #include "X3DExecutionContext.hpp"
@@ -42,6 +43,7 @@ inline std::vector<std::shared_ptr<System>> makeInterpolatorSystems() {
       [](const float &a, const float &b, float t) { return lerpf(a, b, t); }));
   systems.push_back(std::make_shared<InterpolatorSystem<xn::PositionInterpolator, SFVec3f>>(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); }));
+  systems.push_back(std::make_shared<GeoPositionInterpolatorSystem>());
   systems.push_back(std::make_shared<InterpolatorSystem<xn::PositionInterpolator2D, SFVec2f>>(
       [](const SFVec2f &a, const SFVec2f &b, float t) { return lerpVec2(a, b, t); }));
   systems.push_back(std::make_shared<InterpolatorSystem<xn::ColorInterpolator, SFColor>>(

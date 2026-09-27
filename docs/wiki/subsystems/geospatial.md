@@ -27,6 +27,9 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 | `runtime/math/GeoBuiltinProjection.hpp` | The default backend: closed-form geodetic → geocentric, iterative inverse, Krüger 6th-order UTM (Karney 2011). No dependencies, no IO; accepts an optional geoid function. |
 | `runtime/math/GeoFrame.hpp` | SDK-side conversions shared by every backend: authored coordinate ↔ geodetic ↔ geocentric (axis order, degrees, geoid heights, Web Mercator), the local east/up/south basis, `OriginFrame` (GeoOrigin, `rotateYUp`), `tangentFrame`; and the process-wide backend (`projection()` / `setProjection()`). |
 | `runtime/scene/GeoNodes.hpp` | Node glue: `systemOf`, `originOf`, `toWorld` (one point or a list), `fromWorld`, `tangentFrameOf` — reads `geoSystem`, `geoOrigin`, `geoCoords`, `rotateYUp` by reflection. |
+| `runtime/events/GeoPositionInterpolatorSystem.hpp` | Interpolates in the authored geoSystem, then projects the result to world coordinates. |
+| `runtime/scene/ViewDependentSystem.hpp` | GeoProximitySensor's tangent box and geographic viewer output; GeoLOD range selection and children events. |
+| `runtime/events/PointingSensorSystem.hpp` | GeoTouchSensor pick events and geographic hit coordinates. |
 | `runtime/math/tests/geo_projection_test.cpp` | Reference values from PROJ 9.8 on WGS84, Clarke 1866, Airy and International ellipsoids; UTM north/south/zone edges; Web Mercator; parsing; the geoid hook; GeoOrigin frames; node glue. |
 
 ## Conventions
@@ -48,7 +51,8 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 
 ## Status
 
-The conversion core ships and is tested against PROJ. Wiring into the node
-types (geometry, transforms, the camera, interpolator and sensors) and the
-optional PROJ backend with its swap-test are listed per node in
-`docs/conformance/findings.yaml` (CONF-GEO, ENV-02, TSN-1, TSN-2).
+The conversion core ships and is tested against PROJ. GeoPositionInterpolator,
+GeoProximitySensor and GeoTouchSensor use the shared conversion helpers.
+GeoLOD selects its level and emits children events; URL tile loading and
+selected-tile rendering remain open (GEOLOD-1). The optional PROJ backend and
+its swap-test are tracked in `docs/conformance/findings.yaml`.
