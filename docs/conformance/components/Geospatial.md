@@ -7,13 +7,13 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 | GeoCoordinate | 1 | ✓ | — | — | GEO-2, GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, ROUTE-IO-ALIAS | X3DCoordinateNode, X3DGeometricPropertyNode |
 | GeoElevationGrid | 1 | ✓ | ✓ | — | EXT-001, EXT-003, GEO-2, GEO-AUDIT-1, GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS | X3DGeometryNode |
 | GeoLOD | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOLOD-1, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| GeoLocation | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| GeoLocation | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | GeoMetadata | 1 | ✓ | — | — | GEO-AUDIT-2, ROUTE-IO-ALIAS | X3DChildNode, X3DInfoNode, X3DUrlObject |
 | GeoOrigin | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS |  |
 | GeoPositionInterpolator | 1 | ✓ | — | ✓ | CONF-GEO, GEO-AUDIT-3, GEO-GEOID-DEFAULT, INTERP-02, PIV-1, ROUTE-IO-ALIAS | X3DChildNode, X3DInterpolatorNode |
 | GeoProximitySensor | 2 | ✓ | — | ✓ | CONF-GEO, ENV-02, ENV-03, GEO-AUDIT-3, GEO-AUDIT-5, GEO-AUDIT-6, GEO-GEOID-DEFAULT, GEOSYSTEM, ROUTE-IO-ALIAS | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 | GeoTouchSensor | 1 | ✓ | — | ✓ | GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS, TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
-| GeoTransform | 2 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| GeoTransform | 2 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | GeoViewpoint | 1 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEO-3, GEO-AUDIT-3, GEO-AUDIT-4, GEO-AUDIT-5, GEO-GEOID-DEFAULT, GEOSYSTEM, NAV-FLY-ROLL, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 
 ## Findings

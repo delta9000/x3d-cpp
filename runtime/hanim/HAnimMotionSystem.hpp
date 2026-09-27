@@ -73,6 +73,7 @@ class HAnimMotionSystem : public System {
     bool active = false, stopped = false;
   };
   std::vector<Playback> playbacks_;
+  std::unordered_map<HAnimHumanoid *, std::vector<std::shared_ptr<X3DNode>>> motionLists_;
 
   static void collectJoints(X3DNode *node, std::unordered_map<std::string, HAnimJoint *> &out,
                             std::unordered_set<X3DNode *> &seen) {
@@ -173,19 +174,30 @@ class HAnimMotionSystem : public System {
     }
   }
 
-public:
-  void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    auto *humanoid = dynamic_cast<HAnimHumanoid *>(node);
-    if (!humanoid) return;
+  // Bring the playbacks of `humanoid` in line with its current motions list
+  // (an [in,out] field, §26.3.2): keep the state of motions still referenced,
+  // add new ones, and drop the rest.
+  void sync(HAnimHumanoid *humanoid, X3DExecutionContext &ctx) {
     const auto &motions = humanoid->getMotions();
+    std::vector<Playback> kept;
     for (std::size_t i = 0; i < motions.size(); ++i) {
       auto *motion = dynamic_cast<HAnimMotion *>(motions[i].get());
       if (!motion) continue;
+      auto it = std::find_if(playbacks_.begin(), playbacks_.end(), [&](const Playback &p) {
+        return p.humanoid == humanoid && p.motion == motion;
+      });
+      if (it != playbacks_.end()) {
+        Playback p = std::move(*it);
+        p.motionSlot = i;
+        playbacks_.erase(it);
+        kept.push_back(std::move(p));
+        continue;
+      }
       Playback playback;
       playback.humanoid = humanoid;
       playback.motion = motion;
       playback.motionSlot = i;
-      playbacks_.push_back(std::move(playback));
+      kept.push_back(std::move(playback));
       // Draft 2.1 §6.3: TRUE steps once and wraps; FALSE is inert.
       motion->setOnNextHandler([this, motion, &ctx](const SFBool &v) {
         if (v) step(motion, 1, ctx);
@@ -194,6 +206,19 @@ public:
         if (v) step(motion, -1, ctx);
       });
     }
+    for (const Playback &p : playbacks_) if (p.humanoid == humanoid) {
+      p.motion->setOnNextHandler({}); p.motion->setOnPreviousHandler({});
+    }
+    std::erase_if(playbacks_, [humanoid](const Playback &p) { return p.humanoid == humanoid; });
+    for (Playback &p : kept) playbacks_.push_back(std::move(p));
+    motionLists_[humanoid] = motions;
+  }
+
+public:
+  void attach(X3DNode *node, X3DExecutionContext &ctx) override {
+    auto *humanoid = dynamic_cast<HAnimHumanoid *>(node);
+    if (!humanoid) return;
+    sync(humanoid, ctx);
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     auto *humanoid = dynamic_cast<HAnimHumanoid *>(node);
@@ -202,8 +227,11 @@ public:
       p.motion->setOnNextHandler({}); p.motion->setOnPreviousHandler({});
     }
     std::erase_if(playbacks_, [humanoid](const Playback &p) { return p.humanoid == humanoid; });
+    motionLists_.erase(humanoid);
   }
   void update(double now, X3DExecutionContext &ctx) override {
+    for (auto &[humanoid, list] : motionLists_)
+      if (humanoid->getMotions() != list) sync(humanoid, ctx);
     for (Playback &p : playbacks_) {
       if (p.tick == ctx.tickGeneration()) continue; // tick's cascade may re-evaluate systems
       p.tick = ctx.tickGeneration();

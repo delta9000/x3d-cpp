@@ -41,10 +41,12 @@ placement.
   and weight sums are recorded in `diagnostics`.
 - **Bind pose.** Authored `skinBindingCoords` / `skinBindingNormals` replace the
   skin source arrays; `Coordinate` and `CoordinateDouble` are both accepted.
-  `jointBindingPositions` / `Rotations` / `Scales` give each joint's bind
-  matrix, associated by position in the `joints` list; a single value applies
-  to every joint. Without these fields every inverse bind matrix is the
-  identity: the v1 and BASIC rest pose.
+  `jointBindingPositions` / `Rotations` / `Scales` replace each joint's own
+  translation, rotation and scale in the binding pose (19774-1 §6.2), associated
+  by position in the `joints` list; a single value applies to every joint. The
+  joint keeps its `center` and `scaleOrientation`, and its bind matrix composes
+  down the skeleton from its parents' bind matrices. Without these fields every
+  inverse bind matrix is the identity: the v1 and BASIC rest pose.
 
 `evaluatePose()` walks the skeleton and composes the same local matrices as
 `TransformSystem`, excluding the humanoid's own transform, so everything stays
@@ -78,10 +80,17 @@ applies only when the geometry's `coord` is that Segment's `coord`. The authored
 Coordinate is not modified and no `point_changed` is emitted.
 
 A weight or displacement edit rebuilds the Segment mesh through
-`updatedGeometry`. The raw mesh cache is keyed by geometry, so a geometry
-placed under two Segments that share one Coordinate is displaced by whichever
-Segment built it first. `PickSystem` builds meshes without a Segment and picks
-against the undisplaced points.
+`updatedGeometry`. Displaced meshes are cached per (geometry, Segment), and
+each placement finds its Segment from its own path. A geometry under two
+Segments that share one Coordinate therefore gets each Segment's displacement,
+and `delta()` and `fullSnapshot()` agree. Undisplaced geometry stays shared.
+`PickSystem` builds meshes without a Segment and picks against the undisplaced
+points.
+
+## Sites
+
+HAnimSite is a transform: its `translation`, `rotation`, `scale`,
+`scaleOrientation` and `center` place its children, like HAnimJoint.
 
 ## Extraction
 
@@ -113,6 +122,10 @@ yet and draws the bind pose.
 
 `HAnimMotionSystem` (`runtime/hanim/HAnimMotionSystem.hpp`, registered by
 `attachStandardRuntime`) plays each motion in `HAnimHumanoid.motions`.
+
+**Motions list.** `HAnimHumanoid.motions` is `[in,out]`. When it changes, the
+system re-syncs on the next tick: new motions start, removed ones stop, and
+motions still referenced keep their playback state.
 
 **Gating.** Playback needs both the humanoid's `motionsEnabled` entry and the
 motion's `enabled` field; an absent `motionsEnabled` entry means enabled.

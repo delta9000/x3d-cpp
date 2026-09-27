@@ -4,10 +4,10 @@ _Generated. Levels 1,2 · 6 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| CADAssembly | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DProductStructureChildNode |
+| CADAssembly | 2 | ✓ | — | — | GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DProductStructureChildNode |
 | CADFace | 2 | ✓ | — | — | CAD-1, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DProductStructureChildNode |
-| CADLayer | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| CADPart | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DProductStructureChildNode |
+| CADLayer | 2 | ✓ | — | — | GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| CADPart | 2 | ✓ | — | — | GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DProductStructureChildNode |
 | IndexedQuadSet | 1 | ✓ | ✓ | — | ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
 | QuadSet | 1 | ✓ | ✓ | — | ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
 

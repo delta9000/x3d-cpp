@@ -8,6 +8,7 @@
 
 #include <any>
 #include <memory>
+#include <string>
 #include <vector>
 
 using namespace x3d::core;
@@ -130,4 +131,74 @@ TEST_CASE("HAnim skin accepts direct geometry") {
   REQUIRE(snapshot.added.size() == 1);
   CHECK(extractor.item(snapshot.added.front()).skin->sourceCoordIndex ==
         std::vector<std::uint32_t>{0,1,2});
+}
+
+TEST_CASE("Segment-shared geometry keeps per-Segment displacement in snapshot and delta") {
+  auto coord = createX3DNode("Coordinate");
+  set(coord, "point", std::vector<SFVec3f>{{0,0,0}, {1,0,0}, {0,1,0}, {1,1,0}});
+  auto sharedShape = shapeWith(coord);
+  auto makeSegment = [&](float displacement, const char *name) {
+    auto segment = createX3DNode("HAnimSegment");
+    auto displacer = createX3DNode("HAnimDisplacer");
+    set(segment, "name", std::string(name));
+    set(displacer, "name", std::string(name) + "_action");
+    set(displacer, "coordIndex", std::vector<int>{0});
+    set(displacer, "displacements", std::vector<SFVec3f>{{0,0,displacement}});
+    set(displacer, "weight", 1.0f);
+    set(segment, "coord", std::shared_ptr<X3DNode>(coord));
+    set(segment, "displacers", std::vector<std::shared_ptr<X3DNode>>{displacer});
+    set(segment, "children", std::vector<std::shared_ptr<X3DNode>>{sharedShape});
+    return std::pair{segment,displacer};
+  };
+  auto [firstSegment, firstDisplacer] = makeSegment(1, "first");
+  auto [secondSegment, secondDisplacer] = makeSegment(2, "second");
+  auto joint = createX3DNode("HAnimJoint");
+  set(joint, "name", std::string("humanoid_root"));
+  set(joint, "children", std::vector<std::shared_ptr<X3DNode>>{firstSegment,secondSegment});
+  auto humanoid = createX3DNode("HAnimHumanoid");
+  set(humanoid, "name", std::string("audit_humanoid"));
+  set(humanoid, "skeleton", std::vector<std::shared_ptr<X3DNode>>{joint});
+  Scene scene; scene.addRootNode(humanoid);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene); ctx.buildFrom(scene);
+  SceneExtractor extractor(ctx,scene);
+  auto initial = extractor.fullSnapshot();
+  REQUIRE(initial.added.size()==2);
+  CHECK(extractor.item(initial.added[0]).mesh->positions[0].z==doctest::Approx(1));
+  CHECK(extractor.item(initial.added[1]).mesh->positions[0].z==doctest::Approx(2));
+  ctx.tick(1);
+  REQUIRE(ctx.writeField(secondDisplacer.get(), "weight", std::any(3.0f))==FieldWriteResult::Ok);
+  auto changed=extractor.delta();
+  REQUIRE(changed.updatedGeometry.size()==1);
+  auto deltaFirst=extractor.item(initial.added[0]).mesh->positions[0].z;
+  auto deltaSecond=extractor.item(initial.added[1]).mesh->positions[0].z;
+  extractor.fullSnapshot();
+  CHECK(deltaFirst==doctest::Approx(extractor.item(initial.added[0]).mesh->positions[0].z));
+  CHECK(deltaSecond==doctest::Approx(extractor.item(initial.added[1]).mesh->positions[0].z));
+}
+
+TEST_CASE("HAnimSite transforms its child geometry") {
+  auto coord = createX3DNode("Coordinate");
+  set(coord, "point", std::vector<SFVec3f>{{0,0,0}, {1,0,0}, {0,1,0}});
+  auto geom = createX3DNode("TriangleSet");
+  set(geom, "coord", std::shared_ptr<X3DNode>(coord));
+  auto shape = createX3DNode("Shape");
+  set(shape, "geometry", std::shared_ptr<X3DNode>(geom));
+  auto site = createX3DNode("HAnimSite");
+  set(site, "name", std::string("marker_pt"));
+  set(site, "translation", SFVec3f{2,3,4});
+  set(site, "children", std::vector<std::shared_ptr<X3DNode>>{shape});
+  auto humanoid = createX3DNode("HAnimHumanoid");
+  set(humanoid, "name", std::string("figure"));
+  set(humanoid, "skeleton", std::vector<std::shared_ptr<X3DNode>>{site});
+  Scene scene;
+  scene.addRootNode(humanoid);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  SceneExtractor extractor(ctx, scene);
+  auto snapshot = extractor.fullSnapshot();
+  REQUIRE(snapshot.added.size() == 1);
+  const auto origin = extractor.item(snapshot.added[0]).worldTransform.transformPoint({0,0,0});
+  CHECK(origin.x == doctest::Approx(2));
+  CHECK(origin.y == doctest::Approx(3));
+  CHECK(origin.z == doctest::Approx(4));
 }

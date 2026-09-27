@@ -198,6 +198,7 @@ public:
     if (!n) return false;
     const std::string t = n->nodeTypeName();
     return t == "Transform" || t == "HAnimHumanoid" || t == "HAnimJoint" ||
+           t == "HAnimSite" || // 19774-1 §6.5: Site has its own coordinate system
            t == "CADPart" || t == "GeoLocation" || t == "GeoTransform";
   }
 

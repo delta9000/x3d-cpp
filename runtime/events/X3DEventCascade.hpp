@@ -121,6 +121,13 @@ public:
     while (!pending_.empty()) {
       Delivery d = std::move(pending_.front());
       pending_.pop_front();
+      // An empty value is a re-read request (editChildren): deliver the
+      // field's value as it stands now.
+      if (!d.value.has_value() && d.target.node) {
+        for (const auto &info : d.target.node->fields())
+          if (info.x3dName == d.target.field && info.get) d.value = info.get(*d.target.node);
+        if (!d.value.has_value()) continue;
+      }
 
       // Normalize field aliases before cap-check + delivery so that a SEED
       // posted as `set_translation` and a ROUTE to `translation` share the
@@ -227,6 +234,9 @@ private:
     if (!addr.node) {
       return;
     }
+    if (addr.field == "addChildren" || addr.field == "removeChildren") {
+      if (editChildren(addr, value)) return;
+    }
     for (const auto &info : addr.node->fields()) {
       if (info.x3dName == addr.field) {
         if (info.set) {
@@ -253,6 +263,40 @@ private:
         return;
       }
     }
+  }
+
+  /// X3D §10.2.1: addChildren appends nodes not already among the children;
+  /// removeChildren removes the listed nodes, ignoring absent ones. The edit is
+  /// applied immediately and a `children` event carrying the then-current
+  /// value follows in this cascade, so the field is marked dirty and ROUTEs
+  /// from children_changed fire. Returns false when the node has no writable
+  /// MFNode `children` field.
+  bool editChildren(const FieldAddress &addr, const std::any &value) {
+    using Nodes = std::vector<std::shared_ptr<X3DNode>>;
+    const Nodes *delta = std::any_cast<Nodes>(&value);
+    if (!delta) return false;
+    for (const auto &info : addr.node->fields()) {
+      if (info.x3dName != "children" || info.type != X3DFieldType::MFNode ||
+          !info.get || !info.set)
+        continue;
+      Nodes children = std::any_cast<Nodes>(info.get(*addr.node));
+      if (addr.field == "addChildren") {
+        for (const auto &n : *delta)
+          if (n && std::find(children.begin(), children.end(), n) == children.end())
+            children.push_back(n);
+      } else {
+        std::erase_if(children, [&](const auto &c) {
+          return std::find(delta->begin(), delta->end(), c) != delta->end();
+        });
+      }
+      // Apply now so a later add/remove in this cascade sees this result, then
+      // queue a re-read of the final value for dirty tracking and fan-out.
+      info.set(*addr.node, std::any(std::move(children)));
+      pending_.push_back(
+          Delivery{FieldAddress{addr.node, "children"}, std::any{}, /*routed=*/false});
+      return true;
+    }
+    return false;
   }
 
   const EventGraph &graph_;
