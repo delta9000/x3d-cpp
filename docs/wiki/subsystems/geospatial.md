@@ -33,7 +33,7 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 | `runtime/scene/TransformSystem.hpp` | GeoLocation tangent placement and GeoTransform tangent-frame TRS, shared by scene walks. |
 | `runtime/events/X3DExecutionContext.hpp` and `runtime/events/NavigationSystem.hpp` | Geographic GeoViewpoint camera pose, center of rotation, and elevation-based speed. |
 | `runtime/events/GeoPositionInterpolatorSystem.hpp` | Interpolates in the authored geoSystem, then projects the result to world coordinates. |
-| `runtime/scene/ViewDependentSystem.hpp` | GeoProximitySensor's tangent box and geographic viewer output; GeoLOD range selection and children events. |
+| `runtime/scene/ViewDependentSystem.hpp` and `runtime/events/InlineRuntimeSystem.hpp` | GeoProximitySensor's tangent box and geographic viewer output; GeoLOD range selection, URL tile loading, and children events. |
 | `runtime/events/PointingSensorSystem.hpp` | GeoTouchSensor pick events and geographic hit coordinates. |
 | `runtime/math/tests/geo_projection_test.cpp` | Reference values from PROJ 9.8 on WGS84, Clarke 1866, Airy and International ellipsoids; UTM north/south/zone edges; Web Mercator; parsing; the geoid hook; GeoOrigin frames; node glue. |
 
@@ -66,12 +66,14 @@ node converts through it:
   (TRS inside the `geoCenter` tangent frame).
 - **Camera:** GeoViewpoint position, orientation relative to the tangent frame,
   centre of rotation, and navigation speed `elevation / 10 × speedFactor`.
-  Avatar size and visibility-limit scaling remain open (GEO-3).
+  Avatar size and a finite visibility limit are multiplied by
+  `max(1, elevation / 10)` (never below the authored values); an unlimited
+  visibility limit stays unlimited (ADR-0054).
 - **Behaviour:** GeoPositionInterpolator interpolates in its geoSystem;
   GeoProximitySensor (tangent box at `geoCenter`, `geoCoord_changed`);
-  GeoTouchSensor (`hitGeoCoord_changed`); GeoLOD level selection. GeoLOD does
-  not load its URL tiles yet, so the root tile is shown at every level
-  (GEOLOD-1).
+  GeoTouchSensor (`hitGeoCoord_changed`); GeoLOD loads rootUrl when rootNode is
+  empty, waits for all specified child URLs before switching, and unloads
+  children outside range. The children output and extractor use the displayed set.
 - **Optional PROJ backend** (`-DX3D_CPP_BUILD_PROJ=ON`) with the swap-test
   `x3d_proj_geo_swap`: worst differences against the built-in backend are
   0 m geocentric, 3 nm UTM, 3e-11° latitude and 3.7 µm height (PROJ's

@@ -431,7 +431,7 @@
   severity: minor
   status: closed
   summary: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
-  note: "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2; GeoLOD URL loading remains open as GEOLOD-1."
+  note: "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2."
 - id: CONF-NAV-COLLISION
   nodes: [Collision, CollisionSensor]
   component: Navigation
@@ -806,9 +806,9 @@
   component: Geospatial
   clause: "25.3.4"
   severity: major
-  status: open
-  summary: GeoLOD selects a distance level and emits children/level_changed, but does not load rootUrl or child1Url through child4Url.
-  note: "Remaining: connect URL tiles to InlineRuntimeSystem loading/unloading, wait for all requested child tiles before switching, and render only the selected tile set. The root tile is shown (and reported as children) at every level until tiles load."
+  status: closed
+  summary: GeoLOD selects and displays URL tiles by range.
+  note: "Closed 2026-09-27: InlineRuntimeSystem resolves rootUrl when rootNode is empty, waits for all specified child URLs, switches children and level_changed with the displayed set, and unloads child tiles on exit. The extractor walks only that set. Covered by GeoLOD URL tiles wait, switch, unload, and recurse."
 
 # X3DGroupingNode active-child (§10/§23) — Switch full-snapshot clean, incremental
 # delta() fixed (SW-DELTA-1); LOD partial; Collision inert
@@ -1338,9 +1338,9 @@
   component: Geospatial
   clause: "25.3.11"
   severity: minor
-  status: open
-  summary: "GeoViewpoint does not scale navigation avatarSize or visibilityLimit with elevation."
-  note: "The elevation-based movement speed and speedFactor are wired. Section 25.3.11 also recommends adapting avatarSize and visibilityLimit as elevation changes; NavigationSystem still reads NavigationInfo's ordinary values."
+  status: closed
+  summary: "GeoViewpoint scales navigation avatarSize and visibilityLimit with elevation."
+  note: "Closed: NavigationSystem multiplies the bound NavigationInfo avatarSize, and a finite visibilityLimit, by max(1, elevation / 10) while a GeoViewpoint is bound (ADR-0054); an unlimited limit (0) stays unlimited and the authored values are restored when another viewpoint binds. Tests: GeoViewpoint scales avatar and visibility with elevation; GeoViewpoint keeps an unlimited visibilityLimit unlimited."
 - id: G2D-1
   nodes: [Arc2D, ArcClose2D, Circle2D, Disk2D, Polyline2D, Polypoint2D, Rectangle2D, TriangleSet2D]
   component: Geometry2D

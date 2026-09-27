@@ -4,7 +4,10 @@
 #include "InlineExpand.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
+#include "GeoNodes.hpp"
+#include "ViewDependentSystem.hpp"
 #include "x3d/nodes/Inline.hpp"
+#include "x3d/nodes/GeoLOD.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -33,15 +36,26 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &) override {
     if (dynamic_cast<x3d::nodes::Inline *>(node) && seen_.insert(node).second)
       inlines_.push_back(node);
+    if (auto *lod = dynamic_cast<x3d::nodes::GeoLOD *>(node);
+        lod && (!lod->getRootUrl().empty() || !lod->getChild1Url().empty() ||
+                !lod->getChild2Url().empty() || !lod->getChild3Url().empty() ||
+                !lod->getChild4Url().empty()))
+      geoLods_.try_emplace(lod);
   }
 
   void detach(X3DNode *node, X3DExecutionContext &) override {
+    geoLods_.erase(node);
     if (!seen_.erase(node)) return;
     inlines_.erase(std::remove(inlines_.begin(), inlines_.end(), node), inlines_.end());
     attempted_.erase(node);
   }
 
   void update(double, X3DExecutionContext &ctx) override {
+    std::vector<X3DNode *> lods;
+    for (const auto &[node, _] : geoLods_) lods.push_back(node);
+    for (auto *node : lods)
+      if (auto it = geoLods_.find(node); it != geoLods_.end())
+        updateGeoLod(node, it->second, ctx);
     // A parent unload can remove nested Inlines during this pass.
     for (X3DNode *n : std::vector<X3DNode *>(inlines_)) {
       if (!seen_.count(n)) continue;
@@ -111,6 +125,178 @@ public:
   }
 
 private:
+  struct Tile {
+    std::shared_ptr<Scene> scene;
+    std::shared_ptr<X3DNode> group;
+    bool everAttached = false;
+  };
+  struct GeoLodState {
+    Tile root;
+    Tile children[4];
+    int displayed = -1;
+  };
+
+  Tile loadTile(const MFString &urls) {
+    if (urls.empty()) return {};
+    auto inl = std::make_shared<x3d::nodes::Inline>();
+    inl->setUrl(urls);
+    Scene tile;
+    tile.rootNodes.push_back(inl);
+    std::vector<InlineWarning> tileWarnings;
+    expandInlines(tile, resolver_, baseUrl_, tileWarnings);
+    auto child = tile.expandedInlineScenes.find(inl.get());
+    if (child == tile.expandedInlineScenes.end()) return {};
+    return {child->second, tile.rootNodes.front()};
+  }
+
+  void retireTile(Tile &tile, X3DExecutionContext &ctx) {
+    if (!tile.group) return;
+    if (!tile.everAttached) { tile = {}; return; }
+    std::unordered_set<const X3DNode *> nodes;
+    std::function<void(X3DNode *)> collect = [&](X3DNode *n) {
+      if (!n || !nodes.insert(n).second) return;
+      forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+        collect(c.get());
+      });
+    };
+    collect(tile.group.get());
+    for (const auto &peer : tile.scene->protoPeerNodes) collect(peer.get());
+    std::vector<X3DNode *> nested;
+    for (const auto &[n, entry] : loaded_)
+      if (entry.parent && nodes.count(entry.parent)) nested.push_back(n);
+    for (auto *n : nested) unload(n, ctx);
+    nodes.clear();
+    collect(tile.group.get());
+    for (const auto &peer : tile.scene->protoPeerNodes) collect(peer.get());
+    ctx.detachNodes(nodes);
+    scene_.resolvedInlineRoutes.erase(std::remove_if(scene_.resolvedInlineRoutes.begin(),
+        scene_.resolvedInlineRoutes.end(), [&](const ResolvedProtoRoute &r) {
+          return nodes.count(r.from.get()) || nodes.count(r.to.get());
+        }), scene_.resolvedInlineRoutes.end());
+    tile = {};
+  }
+
+  void showGeoLod(x3d::nodes::GeoLOD *lod, GeoLodState &state, int level,
+                  X3DExecutionContext &ctx) {
+    if (state.displayed >= 0) {
+      std::unordered_set<const X3DNode *> oldNodes;
+      std::function<void(X3DNode *)> collect = [&](X3DNode *n) {
+        if (!n || !oldNodes.insert(n).second) return;
+        forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+          collect(c.get());
+        });
+      };
+      for (const auto &n : lod->getChildren()) collect(n.get());
+      auto collectPeers = [&](const Tile &tile) {
+        if (tile.scene)
+          for (const auto &peer : tile.scene->protoPeerNodes) collect(peer.get());
+      };
+      if (state.displayed == 0) collectPeers(state.root);
+      else for (const auto &tile : state.children) collectPeers(tile);
+      ctx.detachNodes(oldNodes);
+      scene_.resolvedInlineRoutes.erase(std::remove_if(scene_.resolvedInlineRoutes.begin(),
+          scene_.resolvedInlineRoutes.end(), [&](const ResolvedProtoRoute &r) {
+            return oldNodes.count(r.from.get()) || oldNodes.count(r.to.get());
+          }), scene_.resolvedInlineRoutes.end());
+    }
+    MFNode displayed;
+    if (level == 0) {
+      displayed = lod->getRootNode();
+      if (displayed.empty() && state.root.group) displayed.push_back(state.root.group);
+    } else {
+      for (const Tile &tile : state.children)
+        if (tile.group) displayed.push_back(tile.group);
+    }
+    lod->emitChildren(displayed);
+    lod->emitLevel_changed(level);
+    ctx.postEvent(lod, "children", std::any(displayed));
+    ctx.postEvent(lod, "level_changed", std::any(static_cast<SFInt32>(level)));
+    ctx.markActiveChildChanged(lod);
+    ctx.refreshSceneTopology(scene_);
+    ctx.markSceneTopologyChanged();
+    auto addRoutes = [&](Tile &tile) {
+      if (!tile.scene) return;
+      const auto first = scene_.resolvedInlineRoutes.size();
+      inline_detail::hoistChildRoutes(*tile.scene, scene_.resolvedInlineRoutes);
+      for (std::size_t i = first; i < scene_.resolvedInlineRoutes.size(); ++i) {
+        const auto &r = scene_.resolvedInlineRoutes[i];
+        if (r.from && r.to)
+          ctx.addRoute({r.from.get(), r.fromField}, {r.to.get(), r.toField});
+      }
+    };
+    if (level == 0) addRoutes(state.root);
+    else for (auto &tile : state.children) addRoutes(tile);
+    for (const auto &node : displayed) {
+      if (!node) continue;
+      ctx.attachNewSubtree(node.get());
+    }
+    auto attachPeers = [&](const Tile &tile) {
+      if (tile.scene)
+        for (const auto &peer : tile.scene->protoPeerNodes)
+          ctx.attachNewSubtree(peer.get());
+    };
+    if (level == 0) attachPeers(state.root);
+    else for (const auto &tile : state.children) attachPeers(tile);
+    if (level == 0) state.root.everAttached = static_cast<bool>(state.root.group);
+    else for (auto &tile : state.children)
+      if (tile.group) tile.everAttached = true;
+    if (level == 0 && !lod->getRootNode().empty()) {
+      std::unordered_set<const X3DNode *> active;
+      std::function<void(X3DNode *)> collect = [&](X3DNode *n) {
+        if (!n || !active.insert(n).second) return;
+        forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+          collect(c.get());
+        });
+      };
+      for (const auto &node : displayed) collect(node.get());
+      for (const Route &r : scene_.routes) {
+        auto from = r.from.lock(), to = r.to.lock();
+        if (from && to && (active.count(from.get()) || active.count(to.get())))
+          ctx.addRoute({from.get(), r.fromField}, {to.get(), r.toField});
+      }
+    }
+    state.displayed = level;
+  }
+
+  void updateGeoLod(X3DNode *node, GeoLodState &state, X3DExecutionContext &ctx) {
+    auto *lod = dynamic_cast<x3d::nodes::GeoLOD *>(node);
+    if (!lod) return;
+    SFVec3f center;
+    if (!geo::toWorld(*lod, lod->getCenter(), center)) return;
+    const SFVec3f eye = ctx.worldTransform(lod).inverse().transformPoint(ctx.cameraWorldPosition());
+    const bool near = viewdep::len(viewdep::sub(eye, center)) < lod->getRange();
+    const int wasDisplayed = state.displayed;
+    const bool rootPending = lod->getRootNode().empty() && !state.root.group;
+    if (rootPending)
+      state.root = loadTile(lod->getRootUrl());
+    bool childrenReady = false;
+    if (near) {
+      const MFString urls[4] = {lod->getChild1Url(), lod->getChild2Url(),
+                                lod->getChild3Url(), lod->getChild4Url()};
+      bool ready = true;
+      bool requested = false;
+      for (int i = 0; i < 4; ++i) {
+        if (urls[i].empty()) continue;
+        requested = true;
+        if (!state.children[i].group) state.children[i] = loadTile(urls[i]);
+        ready &= static_cast<bool>(state.children[i].group);
+      }
+      childrenReady = requested && ready;
+    } else {
+      if (state.displayed == 1 &&
+          (!lod->getRootNode().empty() || state.root.group))
+        showGeoLod(lod, state, 0, ctx);
+      if (state.displayed != 1)
+        for (auto &tile : state.children) retireTile(tile, ctx);
+    }
+    if (state.displayed < 0)
+      showGeoLod(lod, state, childrenReady ? 1 : 0, ctx);
+    else if (childrenReady && state.displayed != 1)
+      showGeoLod(lod, state, 1, ctx);
+    else if (rootPending && state.root.group && wasDisplayed == 0)
+      showGeoLod(lod, state, 0, ctx);
+  }
+
   struct Loaded {
     std::shared_ptr<X3DNode> original, group;
     X3DNode *parent;
@@ -198,6 +384,7 @@ private:
   std::unordered_set<X3DNode *> seen_;
   std::unordered_map<X3DNode *, MFString> attempted_;
   std::unordered_map<X3DNode *, Loaded> loaded_;
+  std::unordered_map<X3DNode *, GeoLodState> geoLods_;
   std::vector<InlineWarning> warnings_;
 };
 
