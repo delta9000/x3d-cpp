@@ -127,7 +127,7 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 
 - **Hermite spline** (`SplineInterpolation.hpp`): implements the §19.2.4 algorithm — Hermite basis (h00, h01, h10, h11), per-segment F+/F- non-uniform-interval tangent scaling, optional author `keyVelocity` (size 2 = endpoints only, size N = per-key), `normalizeVelocity` chord-length scaling, closed-loop key/value wrap, and open-curve zero-tangent endpoint overrides.
 
-- **SquadOrientationInterpolator**: Shoemake Squad in quaternion space (§19.4.13). N=2 reduces to plain SLERP, matching `OrientationInterpolator`. (`normalizeVelocity` is currently read by nothing — `INTERP-03`, open.)
+- **SquadOrientationInterpolator**: Shoemake Squad in quaternion space (§19.4.13). When `normalizeVelocity` is TRUE, its quaternion-space angular tangents are scaled to the total key-path length as specified by §19.2.3; the FALSE path preserves the existing Squad calculation. N=2 reduces to plain SLERP.
 
 - **EaseInEaseOut** (§19.4.4): the ten-step algorithm; the eased local fraction is remapped to the global key domain so the output is directly usable as a downstream interpolator's `set_fraction`.
 

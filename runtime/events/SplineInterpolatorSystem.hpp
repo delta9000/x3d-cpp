@@ -51,7 +51,7 @@ public:
       ctx.postEvent(
           interp, "value_changed",
           std::any(squadOrientation(interp->getKey(), interp->getKeyValue(),
-                                    fraction)));
+                                    fraction, interp->getNormalizeVelocity())));
     });
   }
 };

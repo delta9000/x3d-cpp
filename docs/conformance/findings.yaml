@@ -715,7 +715,7 @@
   status: fixed
   wave: 3
   summary: No follower System — chasers (FIR) / dampers (IIR) never advance value_changed per tick. Whole family inert.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-2
   interfaces: [X3DFollowerNode]
   clause: "39.3.3"
@@ -723,7 +723,7 @@
   status: fixed
   wave: 3
   summary: set_destination must drive isActive TRUE + begin per-tick value_changed emission toward the destination — unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-3
   interfaces: [X3DFollowerNode]
   clause: "39.3.3"
@@ -731,7 +731,7 @@
   status: fixed
   wave: 3
   summary: set_value must abort the in-progress transition and emit value_changed with the received value same-step — unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-4
   interfaces: [X3DFollowerNode]
   clause: "39.3.3"
@@ -739,15 +739,15 @@
   status: fixed
   wave: 3
   summary: Initialization (initialValue/initialDestination → one value_changed; isActive seed) unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-5
   interfaces: [X3DChaserNode]
   clause: "39.3.1"
   severity: minor
-  status: deferred
+  status: closed
   wave: 3
-  summary: Chaser FIR ring buffer (time-stamped set_destination events over the duration window) unimplemented.
-  note: "ChaserSystem ships as a re-basing single-transition lerp (reaches destination `duration` after the last set_destination); for non-overlapping use this is spec-equivalent. The literal FIR ring-buffer / overlapping-transition superposition (multiple set_destination events within one duration window accumulating via independent taps) is not implemented — deferred (tracked as FOL-OVL)."
+  summary: Chaser FIR superposition of overlapping set_destination transitions.
+  note: "Closed: ChaserSystem applies the §39.3.1 cosine response to timestamped destination-delta taps, summing scalar/vector/color values and composing rotation deltas with quaternion slerp. Covered by follower_conformance_test's scalar response, overlapping scalar, and OrientationChaser assertions."
 - id: FOL-6
   interfaces: [X3DDamperNode]
   clause: "39.3.2"
@@ -755,7 +755,7 @@
   status: fixed
   wave: 3
   summary: Damper IIR cascade (order chained filters, o_n = d_n + (o_{n-1}-d_n)·e^(-ΔT/τ)) unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-7
   interfaces: [X3DDamperNode]
   clause: "39.3.2"
@@ -763,7 +763,7 @@
   status: fixed
   wave: 3
   summary: Damper tolerance-based settle (isActive→FALSE when output within tolerance of destination) unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-9
   nodes: [CoordinateChaser, CoordinateDamper, TexCoordChaser2D, TexCoordDamper2D]
   clause: "39.4.3, 39.4.4"
@@ -771,7 +771,7 @@
   status: fixed
   wave: 3
   summary: MF (array) followers must transition element-wise and converge per-element — unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 
 # ── Wave-4 fanout (2026-06-19, run wf_be659767-7d1): sensors + grouping active-child ──
 # 26 audited → 25 confirmed (rejected NSN-8 1/3). Closes the behavioral-interface
@@ -1558,9 +1558,9 @@
   nodes: [SquadOrientationInterpolator]
   clause: "19.4.13"
   severity: low
-  status: open
-  summary: "SquadOrientationInterpolator.normalizeVelocity is read by nothing."
-  note: "SplineInterpolatorSystem.hpp:49-56 calls squadOrientation(key,keyValue,fraction); squadOrientation (SplineInterpolation.hpp:199-201) has no normalizeVelocity parameter and the field (binding getNormalizeVelocity, SquadOrientationInterpolator.hpp:94) is never read. §19.4.13/§19.2.3 default FALSE. (sweep 2026-06-25)"
+  status: closed
+  summary: "SquadOrientationInterpolator.normalizeVelocity is ignored by quaternion spline interpolation."
+  note: "Closed: the system passes normalizeVelocity into Squad interpolation, which scales quaternion-space angular tangents to total key-path length when TRUE. The FALSE path preserves the previous computation. Covered by interpolator_conformance_test's normalized Squad tangent assertion."
 - id: CAD-1
   nodes: [CADFace]
   component: CADGeometry
