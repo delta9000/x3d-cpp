@@ -8971,10 +8971,10 @@
       "nodes": [
         "HAnimMotion"
       ],
-      "note": "generated_cpp_bindings/HAnimMotion.hpp has channels/values/frameIndex/frameDuration/loop/enabled/startFrame/endFrame; no runtime system drives frames or emits cycleTime/elapsedTime/frameCount per \u00a726.3.4. Blocked on the HAnim animation subsystem. (sweep 2026-06-25)",
+      "note": "HAnimMotionSystem drives referenced motions, honours enable gates, frame controls and channel masks, and emits frameCount/cycleTime/elapsedTime. Synthetic regression tests cover two joints, Euler order, stepping, looping, gating and ignored groups. (2026-09-27)",
       "severity": "major",
-      "status": "deferred",
-      "summary": "HAnimMotion animation driver entirely missing \u2014 no frame advancement."
+      "status": "fixed",
+      "summary": "HAnimMotion plays frame-major channels through the event context."
     },
     {
       "clause": "33.4.1, 33.4.2",
@@ -10539,6 +10539,7 @@
       "GeoViewpoint",
       "HAnimHumanoid",
       "HAnimJoint",
+      "HAnimMotion",
       "IndexedFaceSet",
       "IndexedLineSet",
       "IndexedTriangleFanSet",
@@ -10619,9 +10620,9 @@
     ]
   },
   "summary": {
-    "closed_count": 239,
+    "closed_count": 240,
     "component_count": 36,
-    "deferred_count": 24,
+    "deferred_count": 23,
     "finding_count": 266,
     "inert_behavioral_nodes": [
       "Analyser",
@@ -10643,7 +10644,7 @@
     ],
     "open_by_severity": {
       "low": 2,
-      "major": 13,
+      "major": 12,
       "minor": 12
     }
   },

@@ -204,6 +204,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pointing_sensor_skip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pointer_arbitration_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/standard_runtime_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/hanim_motion_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/nav_arbitration_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/interactive_wiring_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/drag_math_test.cpp"
