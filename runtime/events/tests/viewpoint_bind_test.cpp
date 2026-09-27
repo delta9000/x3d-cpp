@@ -269,6 +269,62 @@ void test_pop_animates_over_transition_time() {
 
 } // namespace
 
+TEST_CASE("viewpoint_unbinds_its_navigation_info") {
+  auto navA = std::make_shared<NavigationInfo>();
+  auto navB = std::make_shared<NavigationInfo>();
+  auto A = std::make_shared<Viewpoint>();
+  auto B = std::make_shared<Viewpoint>();
+  A->setNavigationInfo(std::static_pointer_cast<X3DNode>(navA));
+  B->setNavigationInfo(std::static_pointer_cast<X3DNode>(navB));
+  Scene scene; scene.addRootNode(navA); scene.addRootNode(A); scene.addRootNode(B);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  attachViewpointBind(ctx);
+  ctx.tick(0.0);
+  ctx.postEvent(B.get(), "set_bind", std::any(SFBool{true}));
+  ctx.tick(1.0);
+  ctx.tick(1.0);
+  REQUIRE(ctx.boundNavigationInfo() == navB.get());
+  ctx.postEvent(B.get(), "set_bind", std::any(SFBool{false}));
+  ctx.tick(2.0);
+  ctx.tick(2.0);
+  CHECK(ctx.boundNavigationInfo() == navA.get());
+  ctx.postEvent(navA.get(), "set_bind", std::any(SFBool{false}));
+  ctx.tick(3.0);
+  CHECK(ctx.boundNavigationInfo() != navB.get());
+}
+
+TEST_CASE("teleport_transition_signals_complete") {
+  auto nav = std::make_shared<NavigationInfo>();
+  nav->setTransitionType(std::vector<std::string>{"TELEPORT"});
+  auto A = std::make_shared<Viewpoint>();
+  auto B = std::make_shared<Viewpoint>();
+  B->setPosition(SFVec3f{0, 0, 100});
+  Scene scene; scene.addRootNode(nav); scene.addRootNode(A); scene.addRootNode(B);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  attachViewpointBind(ctx);
+  ctx.tick(0.0);
+  ctx.postEvent(B.get(), "set_bind", std::any(SFBool{true}));
+  ctx.tick(1.0);
+  ctx.tick(1.0);
+  CHECK(nav->getTransitionComplete());
+}
+
+TEST_CASE("zero_duration_transition_signals_complete") {
+  auto nav = std::make_shared<NavigationInfo>();
+  nav->setTransitionTime(0.0);
+  auto A = std::make_shared<Viewpoint>();
+  auto B = std::make_shared<Viewpoint>();
+  B->setPosition(SFVec3f{0, 0, 100});
+  Scene scene; scene.addRootNode(nav); scene.addRootNode(A); scene.addRootNode(B);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  attachViewpointBind(ctx);
+  ctx.tick(0.0);
+  ctx.postEvent(B.get(), "set_bind", std::any(SFBool{true}));
+  ctx.tick(1.0);
+  ctx.tick(1.0);
+  CHECK(nav->getTransitionComplete());
+}
+
 TEST_CASE("viewpoint_bind_test") {
   test_jump_false_continuous();
   test_jump_true_snaps();

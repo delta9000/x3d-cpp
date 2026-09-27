@@ -11,11 +11,13 @@
 #include "GeometryBounds.hpp"
 #include "LODSelection.hpp"
 #include "Mat4.hpp"
+#include "RecursionLimits.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -41,9 +43,14 @@ public:
     (void)ctx;
     const std::string t = node ? node->nodeTypeName() : "";
     if (t == "LOD") lodLevel_.emplace(node, -1);
-    else if (t == "ProximitySensor" || t == "VisibilitySensor" || t == "TransformSensor")
+    else if (t == "ProximitySensor" || t == "VisibilitySensor" || t == "TransformSensor") {
       sensorActive_.emplace(node, false);
+      sensorBelowValid_ = false;
+    }
   }
+
+  // A capped path walk may leave some sensor instances unevaluated this tick.
+  bool budgetExceeded() const { return budgetExceeded_; }
 
   // Test/observer seam: invoked when an LOD's announced level changes.
   void setLevelChangedHook(std::function<void(X3DNode *, int)> h) { levelHook_ = std::move(h); }
@@ -92,11 +99,22 @@ public:
     // the transformation hierarchy. Compute the active set once (roots -> active
     // children only) and deactivate any attached sensor not in it; re-enabling a
     // branch lets the per-sensor update re-fire enter on the next tick.
-    std::unordered_set<const X3DNode *> reachable;
+    sensorPaths_.clear();
     const bool gate = !ctx.sceneRoots().empty();
-    if (gate) collectActive(ctx, reachable);
+    budgetExceeded_ = false;
+    if (gate) {
+      bool structureDirty = false;
+      for (const X3DNode *changed : ctx.dirtyTracker().changedNodes())
+        if (ctx.dirtyTracker().flags(changed) & DirtyChildren) { structureDirty = true; break; }
+      if (!sensorBelowValid_ || cachedCtx_ != &ctx ||
+          cachedTransformRevision_ != ctx.transformRevision() || structureDirty)
+        rebuildSensorBelow(ctx);
+      collectActive(ctx);
+    }
+    else for (const auto &[node, active] : sensorActive_)
+      sensorPaths_[node].push_back(ctx.worldTransformAny(node));
     for (auto &[node, active] : sensorActive_) {
-      if (gate && !reachable.count(node)) {
+      if (gate && !sensorPaths_.count(node)) {
         deactivateIfActive(node, active, now, ctx);
         continue;
       }
@@ -110,15 +128,46 @@ private:
   std::function<void(X3DNode *, int)> levelHook_;
   std::function<void(X3DNode *, bool, double)> sensorHook_;
 
-  // ENV-07: on the disable edge of an active sensor, fire isActive=FALSE/exitTime
-  // (a disabled sensor is no longer active) and reset so a later re-enable re-fires
-  // enter. Idempotent once already inactive.
-  void deactivateIfActive(X3DNode *node, bool &last, double now, X3DExecutionContext &ctx) {
+  // Cache potential sensor descendants across ticks. Include unselected children:
+  // Switch/LOD selection is applied only by the active per-path walk.
+  void rebuildSensorBelow(X3DExecutionContext &ctx) {
+    sensorBelow_.clear();
+    std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> parents;
+    std::unordered_set<const X3DNode *> seen;
+    std::vector<const X3DNode *> pending(ctx.sceneRoots().begin(), ctx.sceneRoots().end());
+    while (!pending.empty()) {
+      const X3DNode *n = pending.back(); pending.pop_back();
+      if (!n || !seen.insert(n).second) continue;
+      forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+        if (c) {
+          parents[c.get()].push_back(n);
+          pending.push_back(c.get());
+        }
+      });
+    }
+    pending.clear();
+    for (const X3DNode *n : seen)
+      if (sensorActive_.count(const_cast<X3DNode *>(n)) && sensorBelow_.insert(n).second)
+        pending.push_back(n);
+    while (!pending.empty()) {
+      const X3DNode *n = pending.back(); pending.pop_back();
+      for (const X3DNode *parent : parents[n])
+        if (sensorBelow_.insert(parent).second) pending.push_back(parent);
+    }
+    cachedCtx_ = &ctx;
+    cachedTransformRevision_ = ctx.transformRevision();
+    sensorBelowValid_ = true;
+  }
+
+  // §22.4.1: disabling an active sensor clears isActive without an exitTime.
+  // A path removal still reports the exit edge (ADR-0034).
+  void deactivateIfActive(X3DNode *node, bool &last, double now,
+                          X3DExecutionContext &ctx, bool exitTime = true) {
     if (!last) return;
     last = false;
     motion_.erase(node); // ENV-08: stale viewer motion; next enter reports its own tick
     ctx.postEvent(node, "isActive", std::any(false));
-    ctx.postEvent(node, "exitTime", std::any(static_cast<SFTime>(now)));
+    if (exitTime) ctx.postEvent(node, "exitTime", std::any(static_cast<SFTime>(now)));
     if (sensorHook_) sensorHook_(node, false, now);
   }
 
@@ -137,40 +186,46 @@ private:
   // from the scene roots, mirroring the extractor's render-time cull — a Switch
   // descends only children[whichChoice], a LOD only the level the extractor would
   // choose (camera distance in the LOD's local frame). Union over DEF/USE.
-  void collectActive(X3DExecutionContext &ctx,
-                     std::unordered_set<const X3DNode *> &out) const {
+  void collectActive(X3DExecutionContext &ctx) {
     std::unordered_set<const X3DNode *> seen;
-    for (const X3DNode *r : ctx.sceneRoots()) collectActiveFrom(r, ctx, out, seen);
+    // Sensor walks can run more than once per tick during a route cascade.
+    WalkBudget budget(100'000);
+    for (const X3DNode *r : ctx.sceneRoots())
+      collectActiveFrom(r, ctx, Mat4::identity(), seen, budget);
+    budgetExceeded_ = budget.tripped;
   }
   void collectActiveFrom(const X3DNode *n, X3DExecutionContext &ctx,
-                         std::unordered_set<const X3DNode *> &out,
-                         std::unordered_set<const X3DNode *> &seen) const {
-    if (!n || !seen.insert(n).second) return;
-    out.insert(n);
+                         Mat4 world, std::unordered_set<const X3DNode *> &seen,
+                         WalkBudget &budget) {
+    if (!n || !sensorBelow_.count(n) || !budget.spend()) return;
+    if (seen.size() >= kMaxNestingDepth || !seen.insert(n).second) return;
+    if (TransformSystem::isTransform(n)) world = world * TransformSystem::localMatrix(n);
+    if (sensorActive_.count(const_cast<X3DNode *>(n))) {
+      auto &paths = sensorPaths_[n];
+      if (paths.empty() || paths.back().m != world.m) paths.push_back(world);
+    }
     const std::string t = n->nodeTypeName();
     if (t == "Switch") {
       const int which = geombounds::getField<int>(*n, "whichChoice", -1);
       const auto &kids = childrenOf(*n);
       if (which >= 0 && which < static_cast<int>(kids.size()) && kids[which])
-        collectActiveFrom(kids[which].get(), ctx, out, seen);
-      return;
-    }
-    if (t == "LOD") {
+        collectActiveFrom(kids[which].get(), ctx, world, seen, budget);
+    } else if (t == "LOD") {
       const auto &kids = childrenOf(*n);
       if (!kids.empty()) {
-        const Mat4 w = ctx.worldTransformAny(n);
         const SFVec3f center = geombounds::getField<SFVec3f>(*n, "center", {0, 0, 0});
-        const SFVec3f eyeLocal = w.inverse().transformPoint(ctx.cameraWorldPosition());
+        const SFVec3f eyeLocal = world.inverse().transformPoint(ctx.cameraWorldPosition());
         const float d = viewdep::len(viewdep::sub(eyeLocal, center));
         int lvl = lodSelectLevel(*n, d);
         if (lvl >= static_cast<int>(kids.size())) lvl = static_cast<int>(kids.size()) - 1;
-        if (kids[lvl]) collectActiveFrom(kids[lvl].get(), ctx, out, seen);
+        if (kids[lvl]) collectActiveFrom(kids[lvl].get(), ctx, world, seen, budget);
       }
-      return;
+    } else {
+      forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+        collectActiveFrom(c.get(), ctx, world, seen, budget);
+      });
     }
-    forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      collectActiveFrom(c.get(), ctx, out, seen);
-    });
+    seen.erase(n);
   }
 
   // ENV-08: fraction (0..1) along the straight world-space segment p0->p1 at
@@ -294,21 +349,31 @@ private:
 
   void updateProximity(X3DNode *node, bool &last, double now, X3DExecutionContext &ctx) {
     if (!geombounds::getField<bool>(*node, "enabled", true)) {
-      deactivateIfActive(node, last, now, ctx); // ENV-07: disable deactivates (fires exit)
+      deactivateIfActive(node, last, now, ctx, false);
       return;
     }
-    // The sensor is a non-Transform node: its coordinate system is the nearest
-    // ancestor Transform's world frame (full matrix, ancestor scale included).
-    const Mat4 w = ctx.worldTransformAny(node);
-    const Mat4 inv = w.inverse();
     const SFVec3f eyeWorld = ctx.cameraWorldPosition();
-    const SFVec3f eyeLocal = inv.transformPoint(eyeWorld);
     const SFVec3f center = geombounds::getField<SFVec3f>(*node, "center", {0, 0, 0});
     const SFVec3f size = geombounds::getField<SFVec3f>(*node, "size", {0, 0, 0});
-    const bool inside = insideBox(eyeLocal, center, size);
     auto &pst = proxState_[node];
-    if (inside) {
-      // position/orientation in sensor coordinate system (§22.4.1).
+    // §22.4.1: DEF/USE boxes form a union; ADR-0034 limits it to active paths.
+    bool inside = false;
+    Mat4 w = pst.world;
+    const auto &paths = sensorPaths_[node];
+    for (std::size_t i = 0; i < paths.size(); ++i) {
+      const Mat4 &path = paths[i];
+      if (insideBox(path.inverse().transformPoint(eyeWorld), center, size)) {
+        w = path;
+        pst.pathIndex = i;
+        inside = true;
+        break;
+      }
+    }
+    if (!inside && !paths.empty()) w = paths[std::min(pst.pathIndex, paths.size() - 1)];
+    const Mat4 inv = w.inverse();
+    const SFVec3f eyeLocal = inv.transformPoint(eyeWorld);
+    if (inside || last) {
+      // §22.4.1: pose outputs include the exit instant.
       const SFVec3f fwdLocal = viewdep::norm(inv.transformDirection(viewMatrixForward(ctx)));
       const SFVec3f upLocal = viewdep::norm(inv.transformDirection(ctx.cameraWorldUp()));
       const SFRotation ori = lookAtRotation(fwdLocal, upLocal);
@@ -320,21 +385,22 @@ private:
       pst.has = true;
       pst.pos = eyeLocal;
       pst.ori = ori;
-      // ENV-03 (§22.4.1): the bound Viewpoint's centerOfRotation (default 0 0 0)
-      // expressed in the sensor's frame, change-gated like the pose outputs.
-      X3DNode *vp = ctx.boundViewpoint();
-      const SFVec3f cor =
-          vp ? geombounds::getField<SFVec3f>(*vp, "centerOfRotation", {0, 0, 0})
-             : SFVec3f{0, 0, 0};
-      // centerOfRotation is in the Viewpoint's own local frame (§23.4.6):
-      // lift it to world through the Viewpoint's transform, then into the
-      // sensor's frame.
-      const SFVec3f corWorld = vp ? ctx.worldOf(vp).transformPoint(cor) : cor;
-      const SFVec3f corLocal = inv.transformPoint(corWorld);
-      if (!pst.corHas || !vecEq(corLocal, pst.cor))
-        ctx.postEvent(node, "centerOfRotation_changed", std::any(corLocal));
-      pst.corHas = true;
-      pst.cor = corLocal;
+      // §22.4.1: centerOfRotation_changed is available only with LOOKAT navigation.
+      X3DNode *nav = ctx.boundNavigationInfo();
+      const auto types = nav ? geombounds::getField<std::vector<std::string>>(*nav, "type", {})
+                             : std::vector<std::string>{};
+      if (std::find(types.begin(), types.end(), "LOOKAT") != types.end()) {
+        X3DNode *vp = ctx.boundViewpoint();
+        const SFVec3f cor = vp ? geombounds::getField<SFVec3f>(*vp, "centerOfRotation", {0, 0, 0})
+                               : SFVec3f{0, 0, 0};
+        const SFVec3f corWorld = vp ? ctx.worldOf(vp).transformPoint(cor) : cor;
+        const SFVec3f corLocal = inv.transformPoint(corWorld);
+        if (!pst.corHas || !vecEq(corLocal, pst.cor))
+          ctx.postEvent(node, "centerOfRotation_changed", std::any(corLocal));
+        pst.corHas = true;
+        pst.cor = corLocal;
+      } else pst.corHas = false;
+      pst.world = w;
     }
     // ENV-08 (§22.4.1): report the boundary-crossing time of the viewer's
     // straight-line motion between the two ticks, not merely the tick `now`.
@@ -362,15 +428,16 @@ private:
   // viewer crosses, unlike ProximitySensor's box.
   void updateVisibility(X3DNode *node, bool &last, double now, X3DExecutionContext &ctx) {
     if (!geombounds::getField<bool>(*node, "enabled", true)) {
-      deactivateIfActive(node, last, now, ctx); // ENV-07
+      deactivateIfActive(node, last, now, ctx, false);
       return;
     }
     const SFVec3f size = geombounds::getField<SFVec3f>(*node, "size", {0, 0, 0});
     bool visible = false;
     if (size.x > 0 && size.y > 0 && size.z > 0) {
-      const Mat4 w = ctx.worldTransformAny(node);
       const SFVec3f center = geombounds::getField<SFVec3f>(*node, "center", {0, 0, 0});
-      visible = boxInFrustum(w, center, size, ctx);
+      // §22.4.3: visibility is the union of active DEF/USE instances.
+      for (const Mat4 &w : sensorPaths_[node])
+        if (boxInFrustum(w, center, size, ctx)) { visible = true; break; }
     }
     if (visible != last) {
       last = visible;
@@ -454,6 +521,8 @@ private:
   struct ProxState {
     bool has = false; SFVec3f pos{}; SFRotation ori{};
     bool corHas = false; SFVec3f cor{};
+    Mat4 world = Mat4::identity();
+    std::size_t pathIndex = 0;
   };
 
   // ENV-08: previous tick's viewer world position + time, for interpolating the
@@ -469,6 +538,12 @@ private:
   std::unordered_map<X3DNode *, ProxState> proxState_;
   std::unordered_map<X3DNode *, TransformSensorState> trSensorState_;
   std::unordered_map<X3DNode *, MotionState> motion_;
+  std::unordered_map<const X3DNode *, std::vector<Mat4>> sensorPaths_;
+  std::unordered_set<const X3DNode *> sensorBelow_;
+  const X3DExecutionContext *cachedCtx_ = nullptr;
+  std::uint64_t cachedTransformRevision_ = 0;
+  bool sensorBelowValid_ = false;
+  bool budgetExceeded_ = false;
 };
 
 } // namespace x3d::runtime

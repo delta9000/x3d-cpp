@@ -350,10 +350,8 @@ static void testProximityReEnable() {
   CHECK((enters == 2));                              // ENV-07: re-fires enter
 }
 
-// ENV-07 (§22.4.1): disabling a sensor while it is active must deactivate it —
-// emit isActive=FALSE/exitTime — not silently go quiet (else routed consumers
-// stay stuck TRUE).
-static void testProximityDisableFiresExit() {
+// ENV-07 (§22.4.1): disabling an active sensor clears isActive for routed consumers.
+static void testProximityDisableDeactivates() {
   auto ps = createX3DNode("ProximitySensor"); setF(ps, "size", std::any(SFVec3f{10, 10, 10}));
   auto vp = createX3DNode("Viewpoint"); setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
   Scene scene; scene.addRootNode(vp); scene.addRootNode(ps);
@@ -362,7 +360,7 @@ static void testProximityDisableFiresExit() {
   bool sawExit = false; vds->setSensorHook([&](X3DNode *n, bool a, double) { if (n == ps.get() && !a) sawExit = true; });
   ctx.tick(0.0);                                       // enter (active)
   setF(ps, "enabled", std::any(SFBool{false}));
-  ctx.tick(1.0);                                       // disable while active -> exit
+  ctx.tick(1.0);                                       // disable while active -> inactive
   CHECK((sawExit));
 }
 
@@ -560,6 +558,8 @@ static void testTransformSensorScaleRotation() {
 // The bound Viewpoint's centerOfRotation (default 0 0 0) is emitted in the
 // sensor's frame on entry, change-gated like position/orientation_changed.
 static void testProximityCenterOfRotationChanged() {
+  auto nav = createX3DNode("NavigationInfo");
+  setF(nav, "type", std::any(std::vector<std::string>{"LOOKAT"}));
   auto ps = createX3DNode("ProximitySensor");
   setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
   auto tf = createX3DNode("Transform");
@@ -569,7 +569,7 @@ static void testProximityCenterOfRotationChanged() {
   auto vp = createX3DNode("Viewpoint");
   setF(vp, "position", std::any(SFVec3f{10, 0, 0}));      // viewer inside the sensor box
   setF(vp, "centerOfRotation", std::any(SFVec3f{2, 3, 4}));
-  Scene scene; scene.addRootNode(vp); scene.addRootNode(tf);
+  Scene scene; scene.addRootNode(nav); scene.addRootNode(vp); scene.addRootNode(tf);
   X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
   auto vds = std::make_shared<ViewDependentSystem>(); vds->attach(ps.get(), ctx); ctx.addSystem(vds);
   ctx.tick(0.0);
@@ -592,7 +592,7 @@ static void testProximityCenterOfRotationChanged() {
   setF(tf2, "translation", std::any(SFVec3f{10, 0, 0}));
   for (auto &f : tf2->fields()) if (f.x3dName == "children" && f.set)
     f.set(*tf2, std::any(std::vector<std::shared_ptr<X3DNode>>{ps2}));
-  Scene s2; s2.addRootNode(vpT); s2.addRootNode(tf2);
+  Scene s2; s2.addRootNode(nav); s2.addRootNode(vpT); s2.addRootNode(tf2);
   X3DExecutionContext c2; c2.buildSceneGraph(s2);
   auto v2 = std::make_shared<ViewDependentSystem>(); v2->attach(ps2.get(), c2); c2.addSystem(v2);
   c2.tick(0.0);
@@ -743,12 +743,204 @@ static void testProximityInterpolatedEdgeTime() {
   CHECK((feq((float)exit, 7.5f)));
 }
 
+TEST_CASE("disabling_proximity_sensor_sends_no_exit_time") {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(ps);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  int deactivations = 0;
+  vds->setSensorHook([&](X3DNode *n, bool active, double) {
+    if (n == ps.get() && !active) ++deactivations;
+  });
+  ctx.tick(0.0);
+  setF(ps, "enabled", std::any(SFBool{false}));
+  ctx.tick(1.0);
+  CHECK(deactivations == 1);
+  CHECK(getF<SFBool>(ps, "isActive") == false);
+  CHECK(getF<SFTime>(ps, "exitTime") == 0.0);
+}
+
+TEST_CASE("disabling_visibility_sensor_sends_no_exit_time") {
+  auto vs = createX3DNode("VisibilitySensor");
+  setF(vs, "size", std::any(SFVec3f{4, 4, 4}));
+  auto vp = createX3DNode("Viewpoint");
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(vs);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(vs.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  REQUIRE(getF<SFBool>(vs, "isActive"));
+  setF(vs, "enabled", std::any(SFBool{false}));
+  ctx.tick(1.0);
+  CHECK_FALSE(getF<SFBool>(vs, "isActive"));
+  CHECK(getF<SFTime>(vs, "exitTime") == 0.0);
+}
+
+TEST_CASE("proximity_sensor_uses_union_of_active_instances") {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{4, 4, 4}));
+  auto far = createX3DNode("Transform");
+  auto near = createX3DNode("Transform");
+  setF(far, "translation", std::any(SFVec3f{100, 0, 0}));
+  setF(far, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{ps}));
+  setF(near, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{ps}));
+  auto sw = createX3DNode("Switch");
+  setF(sw, "whichChoice", std::any(SFInt32{0}));
+  setF(sw, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{near}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(sw); scene.addRootNode(far);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  bool active = false;
+  vds->setSensorHook([&](X3DNode *n, bool a, double) {
+    if (n == ps.get()) active = a;
+  });
+  ctx.tick(0.0);
+  CHECK(active);
+  setF(sw, "whichChoice", std::any(SFInt32{-1}));
+  ctx.tick(1.0);
+  CHECK_FALSE(active);
+}
+
+TEST_CASE("visibility_sensor_uses_union_of_active_instances") {
+  auto vs = createX3DNode("VisibilitySensor");
+  setF(vs, "size", std::any(SFVec3f{4, 4, 4}));
+  auto far = createX3DNode("Transform");
+  auto near = createX3DNode("Transform");
+  setF(far, "translation", std::any(SFVec3f{100, 0, 0}));
+  setF(far, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{vs}));
+  setF(near, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{vs}));
+  auto lod = createX3DNode("LOD");
+  setF(lod, "range", std::any(std::vector<float>{100.0f}));
+  setF(lod, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{near, createX3DNode("Shape")}));
+  auto vp = createX3DNode("Viewpoint");
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(lod); scene.addRootNode(far);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(vs.get(), ctx); ctx.addSystem(vds);
+  bool active = false;
+  vds->setSensorHook([&](X3DNode *n, bool a, double) {
+    if (n == vs.get()) active = a;
+  });
+  ctx.tick(0.0);
+  CHECK(active);
+  setF(lod, "range", std::any(std::vector<float>{0.0f}));
+  ctx.tick(1.0);
+  CHECK_FALSE(active);
+}
+
+static std::shared_ptr<X3DNode> sensorDoublingDag(
+    int depth, std::shared_ptr<X3DNode> leaf) {
+  for (int i = 0; i < depth; ++i) {
+    auto group = createX3DNode("Group");
+    setF(group, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{leaf, leaf}));
+    leaf = group;
+  }
+  return leaf;
+}
+
+TEST_CASE("view_dependent_sensor_path_walk_is_budgeted") {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{4, 4, 4}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(sensorDoublingDag(24, ps));
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  CHECK(vds->budgetExceeded());
+  CHECK(getF<SFBool>(ps, "isActive"));
+}
+
+TEST_CASE("view_dependent_prunes_sensor_free_dag") {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{4, 4, 4}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(ps);
+  scene.addRootNode(sensorDoublingDag(24, createX3DNode("Group")));
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  CHECK_FALSE(vds->budgetExceeded());
+  CHECK(getF<SFBool>(ps, "isActive"));
+}
+
+TEST_CASE("view_dependent_rebuilds_sensor_reachability_after_child_change") {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{4, 4, 4}));
+  auto group = createX3DNode("Group");
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(group);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  CHECK_FALSE(getF<SFBool>(ps, "isActive"));
+  ctx.postEvent(group.get(), "children",
+      std::any(std::vector<std::shared_ptr<X3DNode>>{ps}));
+  ctx.tick(1.0);
+  CHECK(getF<SFBool>(ps, "isActive"));
+}
+
+TEST_CASE("proximity_sensor_reports_position_on_exit") {
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{4, 4, 4}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  auto sink = createX3DNode("Transform");
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(ps); scene.addRootNode(sink);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.addRoute(FieldAddress{ps.get(), "position_changed"}, FieldAddress{sink.get(), "translation"});
+  ctx.addRoute(FieldAddress{ps.get(), "orientation_changed"}, FieldAddress{sink.get(), "rotation"});
+  ctx.tick(0.0);
+  setF(sink, "translation", std::any(SFVec3f{99, 99, 99}));
+  setF(vp, "position", std::any(SFVec3f{0, 0, 5}));
+  setF(vp, "orientation", std::any(SFRotation{0, 1, 0, 1.5708f}));
+  ctx.tick(1.0);
+  const SFVec3f p = getF<SFVec3f>(sink, "translation");
+  CHECK((p.z != 99));
+  CHECK(getF<SFRotation>(sink, "rotation").angle != 0.0f);
+}
+
+TEST_CASE("proximity_center_of_rotation_requires_lookat") {
+  auto nav = createX3DNode("NavigationInfo");
+  setF(nav, "type", std::any(std::vector<std::string>{"EXAMINE"}));
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "centerOfRotation", std::any(SFVec3f{2, 3, 4}));
+  auto sink = createX3DNode("Transform");
+  setF(sink, "translation", std::any(SFVec3f{99, 99, 99}));
+  Scene scene; scene.addRootNode(nav); scene.addRootNode(vp);
+  scene.addRootNode(ps); scene.addRootNode(sink);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.addRoute(FieldAddress{ps.get(), "centerOfRotation_changed"},
+               FieldAddress{sink.get(), "translation"});
+  ctx.tick(0.0);
+  const SFVec3f p = getF<SFVec3f>(sink, "translation");
+  CHECK((p.x == 99 && p.y == 99 && p.z == 99));
+}
+
 TEST_CASE("view_dependent_test") {
   testCameraPose();
   testLodLevelClamp();
   testProximityChangeGate();
   testProximityReEnable();
-  testProximityDisableFiresExit();
+  testProximityDisableDeactivates();
   testBillboardAxis();
   testBillboardViewerAlign();
   testBillboardInExtractor();
