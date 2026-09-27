@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Immersive" version="3.3">
+  <Scene>
+    <NavigationInfo headlight="true"/>
+    <Viewpoint position="0 0 5"/>
+    <HAnimHumanoid DEF="Figure" name="Figure">
+      <Coordinate DEF="SkinPoints" containerField="skinCoord" point="-1 -1 0 1 -1 0 1 1 0 -1 1 0"/>
+      <Normal DEF="SkinNormals" containerField="skinNormal" vector="0 0 1 0 0 1 0 0 1 0 0 1"/>
+      <HAnimJoint DEF="Bend" containerField="skeleton" name="Bend" rotation="0 1 0 1" skinCoordIndex="0" skinCoordWeight="1"/>
+      <HAnimJoint USE="Bend" containerField="joints"/>
+      <Group containerField="skin">
+        <Shape>
+          <Appearance><Material diffuseColor="0.9 0.7 0.3"/></Appearance>
+          <IndexedFaceSet coordIndex="0 1 2 -1 0 2 3 -1" normalIndex="3 0 1 -1 3 1 2 -1" solid="false">
+            <Coordinate USE="SkinPoints"/>
+            <Normal USE="SkinNormals"/>
+          </IndexedFaceSet>
+        </Shape>
+      </Group>
+    </HAnimHumanoid>
+  </Scene>
+</X3D>
