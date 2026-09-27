@@ -314,6 +314,7 @@ static void testExtendedSampler() {
     setEnum(tp, "minificationFilter", "AVG_PIXEL_AVG_MIPMAP");
     setF(tp, "generateMipMaps", std::any(true));
     setF(tp, "anisotropicDegree", std::any(4.0f));
+    setF(tp, "borderColor", std::any(SFColorRGBA{0.2f, 0.3f, 0.4f, 0.5f}));
     auto tex = createX3DNode("ImageTexture");
     setF(tex, "textureProperties", std::any(std::shared_ptr<X3DNode>(tp)));
 
@@ -324,6 +325,7 @@ static void testExtendedSampler() {
     CHECK((s.minificationFilter == MinFilter::AvgPixelAvgMipmap));
     CHECK((s.generateMipmaps == true));
     CHECK((feq(s.anisotropicDegree, 4.0f)));
+    CHECK((feq(s.borderColor.r, 0.2f) && feq(s.borderColor.a, 0.5f)));
   }
   // 3D textures carry repeatR; without TextureProperties it derives boundaryModeR (T3D-2).
   {

@@ -6,8 +6,7 @@
 //
 // SAMPLER STATE: the §18.4.9 wrap/filter modes the extractor surfaces on
 // TextureRef::extSampler are honored: REPEAT, CLAMP, CLAMP_TO_EDGE,
-// CLAMP_TO_BOUNDARY (border color, default = the TextureProperties default
-// 0,0,0,0 — borderColor is not currently extracted), and MIRRORED_REPEAT.
+// CLAMP_TO_BOUNDARY (TextureProperties borderColor), and MIRRORED_REPEAT.
 // Each mode clamps to its own §18.4.9 Table 18.7 range; under bilinear
 // filtering CLAMP and CLAMP_TO_BOUNDARY let the outermost taps read the border
 // colour, so CLAMP differs from CLAMP_TO_EDGE near the edge.
@@ -151,6 +150,8 @@ public:
     Sampler s;
     s.wrapS = ref.extSampler.boundaryModeS;
     s.wrapT = ref.extSampler.boundaryModeT;
+    const auto &c = ref.extSampler.borderColor;
+    s.borderColor = {c.r, c.g, c.b, c.a};
     s.nearestMagnification = magIsNearest(ref.extSampler.magnificationFilter);
     return s;
   }

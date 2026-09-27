@@ -144,6 +144,12 @@ public:
     systems_.push_back(std::move(system));
   }
 
+  template <class T> T *findSystem() const {
+    for (const auto &system : systems_)
+      if (auto *match = dynamic_cast<T *>(system.get())) return match;
+    return nullptr;
+  }
+
   /**
    * @brief Deprecated compatibility shim: adapt an ActiveNode to a System.
    * @details Wraps the per-node ActiveNode in a one-node System so existing
@@ -196,6 +202,10 @@ public:
   /** @brief Seed an event; processed by the next process()/tick() drain. */
   void postEvent(X3DNode *node, const std::string &field, std::any value) {
     cascade_.postEvent(node, field, std::move(value));
+  }
+
+  void addDeliveryFilter(std::function<bool(const FieldAddress &)> filter) {
+    cascade_.addDeliveryFilter(std::move(filter));
   }
 
   /**

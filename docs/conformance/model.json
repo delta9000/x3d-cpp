@@ -608,7 +608,7 @@
       "name": "EnvironmentalEffects",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "7.2.2; 24.4.2, 24.4.4; 24.2.1",
           "exists": true,
@@ -697,7 +697,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "7.2.2; 24.4.5; 24.4.2, 24.4.4; 24.2.1",
           "exists": true,
@@ -10178,9 +10178,9 @@
         "Background",
         "TextureBackground"
       ],
-      "note": "Spec: angles are 'restricted to non-decreasing values'. Per the lenient-read policy (ADR-0003) the fix is a validation warning, not a rejection.",
+      "note": "Range validation emits BACKGROUND_ANGLE_ORDER warnings for decreasing skyAngle and groundAngle, preserving lenient reads (ADR-0003). Test: Background reports decreasing sky and ground angles.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "Decreasing skyAngle/groundAngle values are accepted silently."
     },
     {
@@ -10191,9 +10191,9 @@
         "TextureBackground",
         "MultiTexture"
       ],
-      "note": "refOf treats MultiTexture as a url texture with no url. Incomplete fix of ENV-11. Probe: 'audit TextureBackground preserves MultiTexture face'.",
+      "note": "TextureRef now carries MultiTexture panorama stages and BackgroundDesc counts populated stages. Test: TextureBackground preserves MultiTexture panorama face. Completes ENV-11.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "A MultiTexture panorama face is dropped from BackgroundDesc."
     },
     {
@@ -10205,9 +10205,9 @@
         "MovieTexture",
         "X3DUrlObject"
       ],
-      "note": "Probe: 'audit ImageTexture load FALSE suppresses URL fetch'.",
+      "note": "Texture refs omit URL candidates while load is FALSE, so the consumer resolver cannot fetch them. Test: ImageTexture load FALSE suppresses URL fetch.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "load FALSE on a texture still fetches its url."
     },
     {
@@ -10217,9 +10217,9 @@
       "nodes": [
         "MultiTexture"
       ],
-      "note": "Only a channel ordinal is extracted per stage.",
+      "note": "TextureRef now retains ordered MultiTexture stages with mode, source, function, color and alpha, including defaults; resolver enrichment traverses stages. Test: MultiTexture stages preserve blend controls.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "MultiTexture mode/source/function/color/alpha never reach the descriptor, so stages cannot be blended as authored."
     },
     {
@@ -10229,9 +10229,9 @@
       "nodes": [
         "TextureProperties"
       ],
-      "note": "Already noted in TXF-4.",
+      "note": "TextureProperties.borderColor now reaches ExtendedSamplerParams and the CPU reference sampler. Test: texture_extract_test custom borderColor assertions.",
       "severity": "low",
-      "status": "open",
+      "status": "closed",
       "summary": "borderColor (deprecated in v4.0) is not extracted."
     },
     {
@@ -10241,9 +10241,9 @@
       "nodes": [
         "MovieTexture"
       ],
-      "note": "Spec: 'set_speed events are ignored while the movie is playing.' Incomplete fix of TDN-5. Probe: 'audit MovieTexture ignores speed changes while active'.",
+      "note": "Active MovieTexture speed deliveries are ignored and MediaTimeSystem holds the activation rate for cycle timing. Test: MovieTexture ignores speed changes while active. Completes TDN-5.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "set_speed changes an active movie's cycle; it must be ignored while playing."
     },
     {
@@ -10253,9 +10253,9 @@
       "nodes": [
         "AudioClip"
       ],
-      "note": "Spec: 'A set_pitch event to an active AudioClip is ignored and no pitch_changed field is generated.' Incomplete fix of TDN-5/ADR-0050. Probe: 'audit AudioClip ignores pitch changes while active'.",
+      "note": "Active AudioClip pitch deliveries are ignored; MediaTimeSystem and SoundSystem use the activation pitch for timing and PlaybackRate. Tests: AudioClip ignores pitch changes while active; sound_immersive_test activation pitch case. Completes TDN-5/ADR-0050.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "set_pitch changes an active clip's timing and playback rate; it must be ignored."
     },
     {
@@ -10265,9 +10265,9 @@
       "nodes": [
         "MovieTexture"
       ],
-      "note": "The consumer needs a documented way to report a loaded movie's duration so the time lifecycle and routes see it.",
+      "note": "The additive reportMovieDuration(context, movie, seconds) helper posts duration_changed through the cascade after consumer loading, feeding routes and MediaTimeSystem. Test: consumer reported MovieTexture duration drives lifecycle.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "MovieTexture never sends duration_changed: the SDK opens no media (ADR-0041) and the MovieDecoder seam carries no duration."
     },
     {
@@ -10278,7 +10278,7 @@
         "Sound",
         "MovieTexture"
       ],
-      "note": "Needs movie audio (the MovieDecoder seam is frame-only).",
+      "note": "Still open: MovieDecoder returns video frames only; SoundSystem needs decoded audio samples, format and timing to build a Buffer source. Adding those to FrameResult alone would not supply a timed audio stream, so this needs a movie-audio decoder/source contract before Sound.source MovieTexture can play.",
       "severity": "major",
       "status": "open",
       "summary": "Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources."
@@ -10439,7 +10439,7 @@
     ]
   },
   "summary": {
-    "closed_count": 190,
+    "closed_count": 198,
     "component_count": 36,
     "deferred_count": 28,
     "finding_count": 257,
@@ -10464,9 +10464,9 @@
     ],
     "open_by_severity": {
       "critical": 2,
-      "low": 4,
-      "major": 32,
-      "minor": 29
+      "low": 3,
+      "major": 29,
+      "minor": 25
     }
   },
   "unresolved_findings": []

@@ -5,6 +5,8 @@
 
 #include "AudioBackend.hpp"
 #include "SoundSystem.hpp"
+#include "RecordingBackend.hpp"
+#include "MediaTimeSystem.hpp"
 #include "WavDecoder.hpp"
 #include "dsp/BuiltinDspBackend.hpp"
 #include "tests/dsp_metrics.hpp"
@@ -117,11 +119,39 @@ static void testSoundClipScene() {
   CHECK(rmsStereo(lr) < 1e-6, "scene: isPaused silences the clip");
 }
 
+static void testActivePitchStaysAtActivationRate() {
+  auto clip = std::make_shared<AudioClip>();
+  clip->setUrl(MFString{"tone.wav"});
+  auto snd = std::make_shared<Sound>();
+  snd->setSource(clip);
+  auto backend = std::make_shared<RecordingBackend>();
+  SoundSystem sound(backend);
+  sound.setAssetResolver([&](const std::string &, extract::AssetKind) {
+    return extract::AssetResult::makeReady(makeWav16(8000, 1, 48000));
+  });
+  sound.setAudioDecoder(io::wav::makeWavDecoder());
+  X3DExecutionContext ctx;
+  auto media = std::make_shared<MediaTimeSystem>();
+  media->attach(clip.get(), ctx);
+  ctx.addSystem(media);
+  sound.attach(snd.get(), ctx);
+  ctx.tick(0.0);
+  sound.update(0.0, ctx);
+  clip->setPitch(3.0f); // direct write cannot change an active clip's playback rate.
+  ctx.tick(1.0);
+  sound.update(1.0, ctx);
+  float rate = -1.0f;
+  for (const auto &p : backend->setParams)
+    if (p.param == Param::PlaybackRate) rate = p.value;
+  CHECK(rate == 1.0f, "scene: active AudioClip retains its activation pitch in the backend");
+}
+
 int main() {
   x3d::test::runImmersiveFixtures([] { return std::make_shared<BuiltinDspBackend>(); },
                                   [](bool ok, const char *msg) { CHECK(ok, msg); });
   testWav();
   testSoundClipScene();
+  testActivePitchStaysAtActivationRate();
   if (g_failures == 0) std::fprintf(stderr, "sound_immersive_test: ALL PASS\n");
   return g_failures == 0 ? 0 : 1;
 }

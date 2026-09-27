@@ -49,6 +49,7 @@
 #include "AssetResolver.hpp"
 
 #include "X3DExecutionContext.hpp"
+#include "MediaTimeSystem.hpp"
 #include "X3DSystem.hpp"
 
 #include "x3d/nodes/AudioClip.hpp"
@@ -256,6 +257,7 @@ private:
       handle = backend_->createNode(NodeKind::Gain, p);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // AudioClip: a Buffer node once its bytes are fetched and decoded.
+      fallbackPitch_[clip] = clip->getPitch();
       const ClipLoad load = loadClip(clip, handle);
       if (load == ClipLoad::Pending) pendingClips_.push_back({clip, parent});
       if (load != ClipLoad::Ready) return kInvalidNodeHandle;
@@ -314,7 +316,11 @@ private:
       const bool active = clip->X3DTimeDependentNode::getIsActive();
       const bool paused = clip->X3DTimeDependentNode::getIsPaused();
       backend_->setParam(handle, Param::PlaybackState, !active ? 0.0f : paused ? 2.0f : 1.0f);
-      backend_->setParam(handle, Param::PlaybackRate, clip->getPitch());
+      // §16.4.2: retain the pitch captured at activation.
+      const auto *media = ctx_ ? ctx_->findSystem<MediaTimeSystem>() : nullptr;
+      if (!active) fallbackPitch_[clip] = clip->getPitch();
+      backend_->setParam(handle, Param::PlaybackRate,
+                         media ? static_cast<float>(media->playbackRate(clip)) : fallbackPitch_[clip]);
       backend_->setParam(handle, Param::Gain, clip->getGain());
     } else if (auto *dest = dynamic_cast<x3d::nodes::AudioDestination *>(node)) {
       backend_->setParam(handle, Param::Gain, dest->getGain());
@@ -541,6 +547,7 @@ private:
 
   std::vector<SoundEntry> sounds_;
   std::vector<PendingClip> pendingClips_;
+  std::unordered_map<x3d::nodes::AudioClip *, float> fallbackPitch_;
   extract::AssetResolver resolver_;
   AudioDecoder decoder_ = makeNullAudioDecoder();
   X3DExecutionContext *ctx_ = nullptr;
