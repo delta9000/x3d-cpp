@@ -127,9 +127,12 @@ TEST_CASE("joint and segment displacers read live weights") {
   geo->setCoord(c); shape->setGeometry(geo); reusedShape->setGeometry(geo);
   segment->setChildren({shape,reusedShape}); // USE of the same geometry/Coordinate
   segment->setDisplacers({d}); h->setSegments({segment});
-  compileBinding(*h);
   p=c->getPoint();
-  CHECK(displaceSegmentPoints(*c,p)); xy(p[0],0,0);
+  // Displacer coordIndex refers to the Segment's own coord (§26.3.4).
+  CHECK_FALSE(displaceSegmentPoints(*segment,*c,p)); xy(p[0],1,0);
+  segment->setCoord(c);
+  CHECK(displaceSegmentPoints(*segment,*c,p)); xy(p[0],0,0);
+  CHECK(c->getPoint()[0].x==1); // authored Coordinate untouched
 }
 TEST_CASE("bad input diagnostics and weighted skeleton-only joints") {
   auto c=std::make_shared<Coordinate>(); c->setPoint({{1,0,0}});

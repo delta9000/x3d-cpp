@@ -53,27 +53,6 @@ inline SFVec3f normalByInverse(const Mat4 &m, SFVec3f n) {
           m.m[4]*n.x+m.m[5]*n.y+m.m[6]*n.z,
           m.m[8]*n.x+m.m[9]*n.y+m.m[10]*n.z};
 }
-// Compile-time reverse index. Weak owners keep no scene alive after binding use.
-inline std::unordered_map<const X3DNode *, std::vector<std::weak_ptr<X3DNode>>> segments;
-inline void indexSegment(const Ptr &segment) {
-  std::unordered_set<const X3DNode *> visited, coords;
-  auto record = [&](const Ptr &coord) {
-    if (coord && coords.insert(coord.get()).second) {
-      auto &owners = segments[coord.get()];
-      if (std::none_of(owners.begin(),owners.end(),[&](const auto &w){return w.lock()==segment;}))
-        owners.push_back(segment);
-    }
-  };
-  record(node(*segment,"coord"));
-  auto walk = [&](auto &&self, const Ptr &n) -> void {
-    if (!n || !visited.insert(n.get()).second) return;
-    if (dynamic_cast<const HAnimSegment *>(n.get())) return; // nearest Segment owns its geometry
-    record(node(*n,"coord"));
-    self(self,node(*n,"geometry"));
-    for (const auto &c : nodes(*n,"children")) self(self,c);
-  };
-  for (const auto &c : nodes(*segment,"children")) walk(walk,c);
-}
 } // namespace detail
 
 inline SkinBinding compileBinding(const X3DNode &humanoid) {
@@ -104,12 +83,9 @@ inline SkinBinding compileBinding(const X3DNode &humanoid) {
     if (!n || !visited.insert(n.get()).second) return;
     if (auto *j=dynamic_cast<const HAnimJoint *>(n.get()))
       if (!j->getSkinCoordIndex().empty() && seen.insert(n.get()).second) b.joints.push_back(n.get());
-    if (dynamic_cast<const HAnimSegment *>(n.get())) indexSegment(n);
     for (const auto &c : nodes(*n,"children")) self(self,c);
   };
   for (const auto &n : h->getSkeleton()) walk(walk,n);
-  for (const auto &n : h->getSegments())
-    if (n && dynamic_cast<const HAnimSegment *>(n.get())) indexSegment(n);
   const auto &bp=h->getJointBindingPositions();
   const auto &br=h->getJointBindingRotations();
   const auto &bs=h->getJointBindingScales();
@@ -235,30 +211,23 @@ inline void deform(const SkinBinding &b,const SkinPose &pose,std::vector<SFVec3f
   }
 }
 
-inline bool displaceSegmentPoints(const X3DNode &coordNode,std::vector<SFVec3f> &points) {
+inline bool displaceSegmentPoints(const X3DNode &segmentNode, const X3DNode &coordNode,
+                                  std::vector<SFVec3f> &points) {
   using namespace detail;
-  auto it=segments.find(&coordNode);
-  if (it==segments.end()) return false;
+  auto *segment=dynamic_cast<const HAnimSegment *>(&segmentNode);
+  if (!segment || segment->getCoord().get()!=&coordNode) return false;
   bool changed=false;
-  auto &owners=it->second;
-  owners.erase(std::remove_if(owners.begin(),owners.end(),[](const auto &w){return w.expired();}),owners.end());
-  for (const auto &weak : owners) {
-    auto owner=weak.lock();
-    auto *segment=dynamic_cast<const HAnimSegment *>(owner.get());
-    if (!segment) continue;
-    // §26.3.1: Segment displacements are in Segment coordinates.
-    for (const auto &n : segment->getDisplacers()) {
-      auto *d=dynamic_cast<const HAnimDisplacer *>(n.get());
-      if (!d || d->getWeight()==0) continue;
-      const auto &ids=d->getCoordIndex();
-      const auto &ds=d->getDisplacements();
-      for (size_t k=0;k<std::min(ids.size(),ds.size());++k)
-        if (ids[k]>=0 && size_t(ids[k])<points.size()) {
-          points[ids[k]]=add(points[ids[k]],mul(ds[k],d->getWeight())); changed=true;
-        }
-    }
+  // §26.3.1: Segment displacements are in Segment coordinates.
+  for (const auto &n : segment->getDisplacers()) {
+    auto *d=dynamic_cast<const HAnimDisplacer *>(n.get());
+    if (!d || d->getWeight()==0) continue;
+    const auto &ids=d->getCoordIndex();
+    const auto &ds=d->getDisplacements();
+    for (size_t k=0;k<std::min(ids.size(),ds.size());++k)
+      if (ids[k]>=0 && size_t(ids[k])<points.size()) {
+        points[ids[k]]=add(points[ids[k]],mul(ds[k],d->getWeight())); changed=true;
+      }
   }
-  if (owners.empty()) segments.erase(it);
   return changed;
 }
 } // namespace x3d::runtime::hanim

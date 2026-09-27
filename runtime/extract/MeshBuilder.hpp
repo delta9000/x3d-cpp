@@ -124,6 +124,12 @@ struct MeshBuildOptions {
   // (and check SceneExtractor::budgetExceeded() to detect truncation).
   std::size_t maxWalkVisits = kMaxGraphWalkVisits;
 
+  // The HAnimSegment enclosing the geometry being built, or null. When the
+  // geometry's coord is that Segment's coord, the Segment's displacers are
+  // applied to the points (ISO/IEC 19774-1 §6.6; ADR-0055). Set per build by
+  // SceneExtractor; the authored Coordinate is never modified.
+  const X3DNode *hanimSegment = nullptr;
+
   // NRB-4: how NurbsCurve/NurbsPatchSurface interpret (controlPoint, weight).
   // Default Premultiplied matches the entire shipping X3D ecosystem (FreeWRL,
   // view3dscene/Castle, InstantPlayer, White Dune, X3DOM) so weighted NURBS

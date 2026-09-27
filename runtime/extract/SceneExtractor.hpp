@@ -180,6 +180,7 @@ public:
     // state, so no mesh survives from a previous snapshot. Within THIS walk the
     // caches then collapse N placements onto one build/one allocation.
     rawMeshCache_.clear();
+    segmentOf_.clear();
     bakedMeshCache_.clear();
     textureMemo_.clear();
 
@@ -317,7 +318,7 @@ public:
           // N dependent placements re-share a single new allocation instead of
           // taking N full copies of it (ADR-0045).
           evictMeshCache(geomNode);
-          MeshRef mesh = cachedRawMesh(geomNode, nullptr);
+          MeshRef mesh = cachedRawMesh(geomNode, nullptr, segmentOfGeom(geomNode));
           for (RenderItemId id : gids) {
             RenderItem &rec = items_[id];
             rec.geometry.contentVersion++;
@@ -611,10 +612,10 @@ private:
         add(skinBindingDeps_, node);
       }
       forEachChildNode(*node, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &child) {
-        if (field.x3dName == "displacers" && node->nodeTypeName() == "HAnimJoint") {
+        // A displacer's weight is live pose state (SkinPose::displacerWeight);
+        // only its coordIndex/displacements are compiled, and those are rare edits.
+        if (field.x3dName == "displacers" && node->nodeTypeName() == "HAnimJoint")
           add(skinPoseDeps_, child.get());
-          add(skinBindingDeps_, child.get());
-        }
         if (field.x3dName == "children" || field.x3dName == "displacers" ||
             field.x3dName == "skeleton") self(self, child.get());
       });
@@ -824,7 +825,13 @@ private:
       if (auto geom = geombounds::getNode(*n, "geometry")) {
         bool recognized = false;
         // ADR-0045: build-once per DISTINCT geometry node, not per placement.
-        MeshRef mesh = cachedRawMesh(geom.get(), &recognized);
+        // ISO/IEC 19774-1 §6.6: the nearest enclosing Segment's displacers
+        // deform this geometry's points (when it uses that Segment's coord).
+        const X3DNode *segment = nullptr;
+        for (auto it = path.rbegin(); it != path.rend() && !segment; ++it)
+          if ((*it)->nodeTypeName() == "HAnimSegment") segment = *it;
+        if (segment) segmentOf_[geom.get()] = segment;
+        MeshRef mesh = cachedRawMesh(geom.get(), &recognized, segment);
         // T-TEXT: a Text node also EMITS its outputOnly fields (textBounds/
         // lineBounds/origin). buildLocalMesh produces the glyph geometry only;
         // here, owning the non-const node, we recompute the layout once and set
@@ -1195,6 +1202,13 @@ private:
 
   // Raw (pre-TextureTransform) build, keyed by geometry node.
   std::unordered_map<const X3DNode *, RawMeshEntry> rawMeshCache_;
+  // Geometry -> nearest enclosing HAnimSegment, recorded by the walk so a
+  // delta() rebuild displaces with the same Segment.
+  std::unordered_map<const X3DNode *, const X3DNode *> segmentOf_;
+  const X3DNode *segmentOfGeom(const X3DNode *geom) const {
+    auto it = segmentOf_.find(geom);
+    return it == segmentOf_.end() ? nullptr : it->second;
+  }
   // TextureTransform-baked variants, keyed by (geometry node, params bytes). Only
   // populated when a TextureTransform is actually authored — the common
   // untransformed case shares the raw entry directly and allocates nothing here.
@@ -1223,11 +1237,22 @@ private:
   }
 
   // The one place buildLocalMesh() is called. `recognized` may be null.
-  MeshRef cachedRawMesh(const X3DNode *geom, bool *recognized) {
+  // `segment` is the enclosing HAnimSegment, if any. The cache stays keyed by
+  // geometry: a geometry placed under two Segments that share one Coordinate
+  // is displaced by whichever Segment built it first.
+  MeshRef cachedRawMesh(const X3DNode *geom, bool *recognized,
+                        const X3DNode *segment = nullptr) {
     auto it = rawMeshCache_.find(geom);
     if (it == rawMeshCache_.end()) {
       bool rec = false;
-      MeshData built = buildLocalMesh(geom, meshOptions_, &rec);
+      MeshData built;
+      if (segment) {
+        MeshBuildOptions options = meshOptions_;
+        options.hanimSegment = segment;
+        built = buildLocalMesh(geom, options, &rec);
+      } else {
+        built = buildLocalMesh(geom, meshOptions_, &rec);
+      }
       it = rawMeshCache_
                .emplace(geom,
                         RawMeshEntry{std::make_shared<const MeshData>(

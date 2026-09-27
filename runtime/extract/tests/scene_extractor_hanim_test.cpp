@@ -2,6 +2,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
 #include "X3DScene.hpp"
+#include "x3d/nodes/Coordinate.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "doctest/doctest.h"
 
@@ -45,6 +46,10 @@ TEST_CASE("HAnim skin placement, corner remap, pose delta and snapshot") {
   set(segment, "displacers", std::vector<std::shared_ptr<X3DNode>>{displacer});
   set(segment, "children", std::vector<std::shared_ptr<X3DNode>>{shapeWith(segmentCoord)});
   set(joint, "children", std::vector<std::shared_ptr<X3DNode>>{segment});
+  auto jointDisplacer = createX3DNode("HAnimDisplacer");
+  set(jointDisplacer, "coordIndex", std::vector<int>{1});
+  set(jointDisplacer, "displacements", std::vector<SFVec3f>{{0,0,1}});
+  set(joint, "displacers", std::vector<std::shared_ptr<X3DNode>>{jointDisplacer});
   auto humanoid = createX3DNode("HAnimHumanoid");
   set(humanoid, "skinCoord", std::shared_ptr<X3DNode>(coord));
   set(humanoid, "skin", std::vector<std::shared_ptr<X3DNode>>{skin});
@@ -66,8 +71,9 @@ TEST_CASE("HAnim skin placement, corner remap, pose delta and snapshot") {
   CHECK(item.skin->sourceCoordIndex == std::vector<std::uint32_t>{0,1,2,0,2,3});
   CHECK(item.skin->sourceCoordIndex.size() == item.mesh->positions.size());
   const auto bind = extractor.deformedMesh(skinId);
-  CHECK(bind.positions == item.mesh->positions); // stub core: update when deform lands.
+  CHECK(bind.positions == item.mesh->positions); // rest pose: deformed == bind
 
+  const auto restBinding = extractor.item(skinId).skin->binding;
   ctx.tick(1.0);
   REQUIRE(ctx.writeField(joint.get(), "rotation", std::any(SFRotation{0,0,1,1})) ==
           FieldWriteResult::Ok);
@@ -78,6 +84,7 @@ TEST_CASE("HAnim skin placement, corner remap, pose delta and snapshot") {
   CHECK(version > 0);
   extractor.fullSnapshot();
   CHECK(extractor.item(skinId).skin->poseVersion == version);
+  CHECK(extractor.item(skinId).skin->binding == restBinding); // pose change: no recompile
 
   ctx.tick(2.0);
   REQUIRE(ctx.writeField(displacer.get(), "weight", std::any(1.0f)) ==
@@ -85,11 +92,19 @@ TEST_CASE("HAnim skin placement, corner remap, pose delta and snapshot") {
   auto segmentChange = extractor.delta();
   CHECK(segmentChange.updatedGeometry == std::vector<RenderItemId>{first.added[0]});
   CHECK(segmentChange.updatedSkinPose.empty());
-  // The core's current stub returns the original points; this assertion changes
-  // to displaced positions when displaceSegmentPoints is implemented.
-  CHECK(extractor.item(first.added[0]).mesh->positions[0].z == 0.0f);
+  // Segment displacer (0,0,1) at weight 1 moves the Segment mesh's point 0.
+  CHECK(extractor.item(first.added[0]).mesh->positions[0].z == 1.0f);
+  CHECK(extractor.item(first.added[0]).mesh->positions[1].z == 0.0f);
+  // The authored Coordinate is untouched.
+  CHECK(std::dynamic_pointer_cast<Coordinate>(segmentCoord)->getPoint()[0].z == 0.0f);
 
   const auto oldBinding = extractor.item(skinId).skin->binding;
+  ctx.tick(2.5);
+  REQUIRE(ctx.writeField(jointDisplacer.get(), "weight", std::any(0.5f)) ==
+          FieldWriteResult::Ok);
+  auto weightChange = extractor.delta();
+  CHECK(weightChange.updatedSkinPose == std::vector<RenderItemId>{skinId});
+  CHECK(extractor.item(skinId).skin->binding == oldBinding); // weight is pose, not binding
   ctx.tick(3.0);
   REQUIRE(ctx.writeField(joint.get(), "skinCoordWeight", std::any(std::vector<float>{1.0f})) ==
           FieldWriteResult::Ok);

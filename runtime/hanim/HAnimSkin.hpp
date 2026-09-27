@@ -93,13 +93,14 @@ SkinPose evaluatePose(const SkinBinding &binding);
 void deform(const SkinBinding &binding, const SkinPose &pose, std::vector<SFVec3f> &positions,
             std::vector<SFVec3f> *normals);
 
-/// Segment displacers (§26.3.1 HAnimDisplacer on an HAnimSegment): apply every
-/// displacer of the Segment that owns `coordNode` to `points` (that
-/// Coordinate's points, in Segment coordinates), weighted by each displacer's
-/// current weight. Returns false when `coordNode` is not a Segment's geometry
-/// coordinate or no displacer applies (points untouched). Extraction calls this
-/// when building a Segment's mesh; the authored Coordinate is never modified.
-bool displaceSegmentPoints(const X3DNode &coordNode, std::vector<SFVec3f> &points);
+/// Segment displacers (§26.3.1 HAnimDisplacer on an HAnimSegment): when
+/// `coordNode` is `segment`'s coord, add every displacer of `segment`, weighted
+/// by its current weight, to `points` (that Coordinate's points, in Segment
+/// coordinates). Returns false when `coordNode` is not the Segment's coord or no
+/// displacer applies (points untouched). Extraction calls this when building a
+/// mesh under a Segment; the authored Coordinate is never modified.
+bool displaceSegmentPoints(const X3DNode &segment, const X3DNode &coordNode,
+                           std::vector<SFVec3f> &points);
 
 } // namespace x3d::runtime::hanim
 

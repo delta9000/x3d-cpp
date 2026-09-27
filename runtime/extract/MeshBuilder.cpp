@@ -1580,7 +1580,8 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     return mesh;
   auto pts = geombounds::getPointsLenient(*coord, "point");
   // ISO/IEC 19774-1 §6.6: Segment displacers act in Segment coordinates.
-  hanim::displaceSegmentPoints(*coord, pts);
+  if (opt.hanimSegment)
+    hanim::displaceSegmentPoints(*opt.hanimSegment, *coord, pts);
   if (pts.empty())
     return mesh;
 
