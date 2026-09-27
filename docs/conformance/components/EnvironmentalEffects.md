@@ -4,11 +4,11 @@ _Generated. Levels 1,2,3,4 · 5 nodes · profiles: Interchange, Interactive, Imm
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Background | 1 | ✓ | — | ✓ | AUD-BG-1, BIND-06, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
-| Fog | 2 | ✓ | — | ✓ | BIND-06, ENV-10 | X3DBindableNode, X3DChildNode, X3DFogObject |
-| FogCoordinate | 4 | ✓ | — | — | — | X3DGeometricPropertyNode |
-| LocalFog | 4 | ✓ | — | — | — | X3DChildNode, X3DFogObject |
-| TextureBackground | 3 | ✓ | — | ✓ | AUD-BG-1, AUD-BG-2, BIND-06, ENV-11, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
+| Background | 1 | ✓ | — | ✓ | AUD-BG-1, BIND-06, ROUTE-IO-ALIAS, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
+| Fog | 2 | ✓ | — | ✓ | BIND-06, ENV-10, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DFogObject |
+| FogCoordinate | 4 | ✓ | — | — | ROUTE-IO-ALIAS | X3DGeometricPropertyNode |
+| LocalFog | 4 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode, X3DFogObject |
+| TextureBackground | 3 | ✓ | — | ✓ | AUD-BG-1, AUD-BG-2, BIND-06, ENV-11, ROUTE-IO-ALIAS, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
 
 ## Findings
 

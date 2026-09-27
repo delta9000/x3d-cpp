@@ -206,6 +206,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_parse_tests
         x3d_extract_tests
         x3d_events_tests
+        x3d_hanim_skin_tests
         x3d_fileresolver_test)
     if(NOT X3D_CPP_SAN)
         list(APPEND _x3d_behavior_tests x3d_install_embed_smoke)

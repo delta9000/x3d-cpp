@@ -5,6 +5,12 @@
 if(X3D_CPP_BUILD_TESTS)
     enable_testing()
 
+    add_executable(x3d_hanim_skin_tests
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/hanim/tests/hanim_skin_test.cpp")
+    x3d_set_target_purpose(x3d_hanim_skin_tests behavior)
+    target_link_libraries(x3d_hanim_skin_tests PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    add_test(NAME x3d_hanim_skin_tests COMMAND x3d_hanim_skin_tests)
+
     set(X3D_CPP_HEADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings")
 
     # Collect all generated headers. CONFIGURE_DEPENDS re-globs on rebuild if
@@ -43,6 +49,9 @@ if(X3D_CPP_BUILD_TESTS)
     file(GLOB X3D_CPP_PARSE_HEADERS CONFIGURE_DEPENDS "${X3D_CPP_PARSE_DIR}/*.hpp")
     list(LENGTH X3D_CPP_PARSE_HEADERS X3D_CPP_PARSE_HEADER_COUNT)
     message(STATUS "x3d_cpp: found ${X3D_CPP_PARSE_HEADER_COUNT} parse front-end headers to compile-test")
+
+    set(X3D_CPP_HANIM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime/hanim")
+    file(GLOB X3D_CPP_HANIM_HEADERS CONFIGURE_DEPENDS "${X3D_CPP_HANIM_DIR}/*.hpp")
 
     # (1) Aggregate target: one .cpp that #includes all generated headers plus
     #     the runtime umbrella and builds it. This proves the whole set is
@@ -114,6 +123,10 @@ if(X3D_CPP_BUILD_TESTS)
         foreach(_hdr IN LISTS X3D_CPP_PARSE_HEADERS)
             _x3d_add_header_isolation_source(
                 parse "${X3D_CPP_PARSE_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_HANIM_HEADERS)
+            _x3d_add_header_isolation_source(
+                hanim "${X3D_CPP_HANIM_DIR}" "${_hdr}")
         endforeach()
 
         add_library(x3d_header_isolation OBJECT EXCLUDE_FROM_ALL

@@ -4,9 +4,9 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ComposedCubeMapTexture | 1 | ✓ | — | — | CMT-1 | X3DAppearanceChildNode, X3DEnvironmentTextureNode, X3DTextureNode |
-| GeneratedCubeMapTexture | 3 | ✓ | — | — | — | X3DAppearanceChildNode, X3DEnvironmentTextureNode, X3DTextureNode |
-| ImageCubeMapTexture | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DEnvironmentTextureNode, X3DTextureNode, X3DUrlObject |
+| ComposedCubeMapTexture | 1 | ✓ | — | — | CMT-1, ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DEnvironmentTextureNode, X3DTextureNode |
+| GeneratedCubeMapTexture | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DEnvironmentTextureNode, X3DTextureNode |
+| ImageCubeMapTexture | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DEnvironmentTextureNode, X3DTextureNode, X3DUrlObject |
 
 ## Findings
 

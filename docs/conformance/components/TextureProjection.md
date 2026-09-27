@@ -4,8 +4,8 @@ _Generated. Levels 2 · 2 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| TextureProjector | 2 | ✓ | — | — | TPJ-1 | X3DChildNode, X3DLightNode, X3DTextureProjectorNode |
-| TextureProjectorParallel | 2 | ✓ | — | — | FOV-TYPE, TPJ-1, TPJ-2 | X3DChildNode, X3DLightNode, X3DTextureProjectorNode |
+| TextureProjector | 2 | ✓ | — | — | ROUTE-IO-ALIAS, TPJ-1 | X3DChildNode, X3DLightNode, X3DTextureProjectorNode |
+| TextureProjectorParallel | 2 | ✓ | — | — | FOV-TYPE, ROUTE-IO-ALIAS, TPJ-1, TPJ-2 | X3DChildNode, X3DLightNode, X3DTextureProjectorNode |
 
 ## Findings
 

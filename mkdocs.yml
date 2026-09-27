@@ -54,6 +54,7 @@ nav:
           - Execution Context: subsystems/execution-context.md
           - Dirty Tracking, Transforms, and Bounds: subsystems/dirty-bounds-transform.md
           - Math Core: subsystems/math.md
+          - H-Anim: subsystems/hanim.md
       - Codecs & Parse:
           - Codec Writers: subsystems/codecs-writers.md
           - Canonical XML Writer: subsystems/canonical-xml.md
@@ -80,6 +81,7 @@ nav:
           - Sound (§16 audio graph): subsystems/sound.md
       - Extract:
           - Extraction Pipeline: subsystems/extract.md
+          - H-Anim Extraction: subsystems/hanim.md
           - Texture, Material, and Light Extraction: subsystems/extract-textures.md
           - Materials (§12 discriminated union + backMaterial): subsystems/materials.md
           - Shaders (ComposedShader + binding plan): subsystems/shaders.md
@@ -149,6 +151,7 @@ nav:
       - "ADR-0052: Movie Audio Uses the Existing PCM Buffer Source": decisions/0052-movie-audio-buffer-source.md
       - "ADR-0053: Geospatial Coordinates Through a GeoProjection Seam With a First-Party Default": decisions/0053-geo-projection-seam.md
       - "ADR-0054: GeoLOD Tiles and GeoViewpoint Navigation Scale": decisions/0054-geolod-tiles-navigation-scale.md
+      - "ADR-0055: H-Anim Skinning Through a Descriptor With a Reference CPU Skinner": decisions/0055-hanim-skinning-descriptor.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

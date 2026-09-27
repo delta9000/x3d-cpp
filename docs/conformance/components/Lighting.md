@@ -4,9 +4,9 @@ _Generated. Levels 1,2 · 3 nodes · profiles: Interchange, Interactive, Immersi
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| DirectionalLight | 1 | ✓ | — | — | AUD-LGT-2, LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
-| PointLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
-| SpotLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
+| DirectionalLight | 1 | ✓ | — | — | AUD-LGT-2, LGT-1, LGT-2, LGT-3, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
+| PointLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, LGT-1, LGT-2, LGT-3, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
+| SpotLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, LGT-1, LGT-2, LGT-3, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
 
 ## Findings
 

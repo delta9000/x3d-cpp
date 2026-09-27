@@ -4,20 +4,20 @@ _Generated. Levels 1,2 · 14 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| BallJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT | X3DRigidJointNode |
-| CollidableOffset | 1 | ✓ | — | — | CONF-RBP-GEOM | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
-| CollidableShape | 1 | ✓ | — | — | CONF-RBP-GEOM | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
-| CollisionCollection | 1 | ✓ | — | — | CONF-RBP, CONF-RBP-FRICTION-BOUNCE | X3DBoundedObject, X3DChildNode |
-| CollisionSensor | 1 | ✓ | — | ✓ | CONF-NAV-COLLISION, CONF-RBP | X3DChildNode, X3DSensorNode |
-| CollisionSpace | 1 | ✓ | — | — | CONF-RBP | X3DBoundedObject, X3DNBodyCollisionSpaceNode |
-| Contact | 2 | ✓ | — | — | CONF-RBP |  |
-| DoubleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS | X3DRigidJointNode |
-| MotorJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS | X3DRigidJointNode |
-| RigidBody | 2 | ✓ | — | — | CONF-RBP-DAMP, CONF-RBP-ENABLED, CONF-RBP-FORCES, CONF-RBP-INERTIA | X3DBoundedObject, X3DChildNode |
-| RigidBodyCollection | 2 | ✓ | — | — | CONF-RBP-CAP, CONF-RBP-DETERMINISM, CONF-RBP-SOLVER | X3DBoundedObject, X3DChildNode |
-| SingleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-HINGE-LIMITS, CONF-RBP-JOINT-OUT | X3DRigidJointNode |
-| SliderJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT | X3DRigidJointNode |
-| UniversalJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS | X3DRigidJointNode |
+| BallJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| CollidableOffset | 1 | ✓ | — | — | CONF-RBP-GEOM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
+| CollidableShape | 1 | ✓ | — | — | CONF-RBP-GEOM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
+| CollisionCollection | 1 | ✓ | — | — | CONF-RBP, CONF-RBP-FRICTION-BOUNCE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| CollisionSensor | 1 | ✓ | — | ✓ | CONF-NAV-COLLISION, CONF-RBP, ROUTE-IO-ALIAS | X3DChildNode, X3DSensorNode |
+| CollisionSpace | 1 | ✓ | — | — | CONF-RBP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DNBodyCollisionSpaceNode |
+| Contact | 2 | ✓ | — | — | CONF-RBP, ROUTE-IO-ALIAS |  |
+| DoubleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| MotorJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| RigidBody | 2 | ✓ | — | — | CONF-RBP-DAMP, CONF-RBP-ENABLED, CONF-RBP-FORCES, CONF-RBP-INERTIA, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| RigidBodyCollection | 2 | ✓ | — | — | CONF-RBP-CAP, CONF-RBP-DETERMINISM, CONF-RBP-SOLVER, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| SingleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-HINGE-LIMITS, CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| SliderJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| UniversalJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
 
 ## Findings
 

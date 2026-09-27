@@ -65,6 +65,7 @@
 #include "MaterialSystem.hpp"      // extract::materialOf (T5)
 #include "NavigationSystem.hpp"    // implicit GeoViewpoint visibility limit
 #include "MeshBuilder.hpp"         // extract::buildLocalMesh (all types, T2/T3/T4)
+#include "HAnimSkin.hpp"
 #include "PackedMesh.hpp"          // PackedMesh (Phase 1 binary geometry)
 #include "RecursionLimits.hpp"     // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "RenderItem.hpp"          // RenderItem descriptors + RenderDelta
@@ -110,6 +111,13 @@ struct RenderItem {
   // (ADR-0045). Never null — a Packed item points at emptyMeshRef() — so
   // `item.mesh->positions` needs no null check.
   MeshRef mesh = emptyMeshRef();
+  struct SkinDesc {
+    std::shared_ptr<const hanim::SkinBinding> binding;
+    std::vector<std::uint32_t> sourceCoordIndex;
+    std::vector<std::uint32_t> sourceNormalIndex;
+    std::uint64_t poseVersion = 0;
+  };
+  std::optional<SkinDesc> skin;
 
   // Phase 1 binary geometry union. For AoS items (all pre-Phase-1 paths),
   // geometry_ext.kind == AoS and geometry_ext.aos is empty (mesh above is the
@@ -157,10 +165,13 @@ public:
   // the three reverse indices + the entry-matrix cache and returns EVERY item in
   // `added` (so frame 0 and frame N share one upload path).
   RenderDelta fullSnapshot() {
+    syncSkinChanges();
     items_.clear();
     index_.clear();
     transformDeps_.clear();
     geomDeps_.clear();
+    skinPoseDeps_.clear();
+    skinBindingDeps_.clear();
     materialDeps_.clear();
     geomNodeOf_.clear();
     entryMatrix_.clear();
@@ -169,6 +180,7 @@ public:
     // state, so no mesh survives from a previous snapshot. Within THIS walk the
     // caches then collapse N placements onto one build/one allocation.
     rawMeshCache_.clear();
+    segmentOf_.clear();
     bakedMeshCache_.clear();
     textureMemo_.clear();
 
@@ -261,6 +273,7 @@ public:
     const std::uint64_t gen = ctx_.tickGeneration();
     if (gen == lastDeltaGen_) return {}; // no advance since the last delta().
     lastDeltaGen_ = gen;
+    const auto changedSkins = syncSkinChanges();
 
     // #21: fresh node-visit budget for this tick's incremental re-walks (a dirty
     // subtree can also be a wide acyclic fan-out).
@@ -305,7 +318,7 @@ public:
           // N dependent placements re-share a single new allocation instead of
           // taking N full copies of it (ADR-0045).
           evictMeshCache(geomNode);
-          MeshRef mesh = cachedRawMesh(geomNode, nullptr);
+          MeshRef mesh = cachedRawMesh(geomNode, nullptr, segmentOfGeom(geomNode));
           for (RenderItemId id : gids) {
             RenderItem &rec = items_[id];
             rec.geometry.contentVersion++;
@@ -328,7 +341,23 @@ public:
       }
 
       // --- DirtyChildren on a grouping node => subtree re-walk ----------------
-      if (f & DirtyChildren) rewalkSubtree(n, delta);
+      if ((f & DirtyChildren) ||
+          (f & DirtyField && n->nodeTypeName() == "HAnimHumanoid"))
+        rewalkSubtree(n, delta);
+    }
+
+    for (RenderItemId id = 0; id < items_.size(); ++id) {
+      if (std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end() ||
+          std::find(delta.added.begin(), delta.added.end(), id) != delta.added.end())
+        continue;
+      auto &rec = items_[id];
+      if (!rec.skin || !rec.skin->binding) continue;
+      const X3DNode *humanoid = rec.skin->binding->humanoid;
+      if (changedSkins.count(humanoid)) {
+        rec.skin->binding = skinBinding(humanoid);
+        rec.skin->poseVersion = skinVersions_[humanoid];
+        delta.updatedSkinPose.push_back(id);
+      }
     }
 
     // camera/lights/background are recomputed full each tick by the consumer; the
@@ -346,6 +375,46 @@ public:
   // Dense-id accessors (the consumer keys arrays on RenderItemId).
   const RenderItem &item(RenderItemId id) const { return items_.at(id); }
   std::size_t itemCount() const { return items_.size(); }
+
+  // CPU fallback for a skin item. The returned mesh owns its expanded corners.
+  MeshData deformedMesh(RenderItemId id) const {
+    const RenderItem &rec = item(id);
+    MeshData out = *rec.mesh;
+    if (!rec.skin) return out;
+    const auto &skin = *rec.skin;
+    auto pose = hanim::evaluatePose(*skin.binding);
+    std::vector<SFVec3f> positions, normals;
+    hanim::deform(*skin.binding, pose, positions, &normals);
+    if (positions.empty()) return out; // temporary core stub has no bind data.
+    for (std::size_t i = 0; i < out.positions.size() && i < skin.sourceCoordIndex.size(); ++i)
+      if (skin.sourceCoordIndex[i] < positions.size())
+        out.positions[i] = positions[skin.sourceCoordIndex[i]];
+    if (!normals.empty() && skin.sourceNormalIndex.size() == out.positions.size()) {
+      for (std::size_t i = 0; i < out.normals.size(); ++i)
+        if (skin.sourceNormalIndex[i] < normals.size())
+          out.normals[i] = normals[skin.sourceNormalIndex[i]];
+    } else if (out.topology == Topology::Triangles) {
+      for (std::size_t i = 0; i + 2 < out.positions.size(); i += 3) {
+        SFVec3f n = mesh_detail::faceNormal(out.positions[i], out.positions[i+1], out.positions[i+2]);
+        if (!out.ccw) n = {-n.x, -n.y, -n.z};
+        out.normals[i] = out.normals[i+1] = out.normals[i+2] = n;
+      }
+      const X3DNode *geom = rec.geometry.node;
+      if (geom && geombounds::getField<bool>(*geom, "normalPerVertex", true)) {
+        const std::string type = geom->nodeTypeName();
+        float crease = 0.0f;
+        if (type == "IndexedFaceSet")
+          crease = geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
+        else if (type == "IndexedTriangleSet" || type == "TriangleSet" ||
+                 type == "IndexedTriangleStripSet" || type == "IndexedTriangleFanSet" ||
+                 type == "QuadSet" || type == "IndexedQuadSet")
+          crease = 3.14159265358979323846f;
+        if (crease > 0.0f)
+          mesh_detail::creaseSmoothNormals(out, skin.sourceCoordIndex, crease);
+      }
+    }
+    return out;
+  }
 
   // --- reverse-index read-outs (the T8 delta() resolution surface) ----------
   // Each returns the RenderItemIds affected by a change on the given node; an
@@ -519,6 +588,64 @@ public:
 private:
   using DepMap = std::unordered_map<const X3DNode *, std::vector<RenderItemId>>;
 
+  std::shared_ptr<const hanim::SkinBinding> skinBinding(const X3DNode *humanoid) {
+    auto &binding = skinBindings_[humanoid];
+    if (!binding) binding = std::make_shared<const hanim::SkinBinding>(hanim::compileBinding(*humanoid));
+    return binding;
+  }
+
+  void registerSkinDeps(const X3DNode *humanoid) {
+    auto add = [&](auto &deps, const X3DNode *node) {
+      if (!node) return;
+      auto &owners = deps[node];
+      if (std::find(owners.begin(), owners.end(), humanoid) == owners.end())
+        owners.push_back(humanoid);
+    };
+    add(skinBindingDeps_, humanoid);
+    for (const char *field : {"skinCoord", "skinNormal", "skinBindingCoords", "skinBindingNormals"})
+      add(skinBindingDeps_, geombounds::getNode(*humanoid, field).get());
+    std::unordered_set<const X3DNode *> visited;
+    auto visit = [&](auto &&self, const X3DNode *node) -> void {
+      if (!node || !visited.insert(node).second) return;
+      if (node->nodeTypeName() == "HAnimJoint") {
+        add(skinPoseDeps_, node);
+        add(skinBindingDeps_, node);
+      }
+      forEachChildNode(*node, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &child) {
+        // A displacer's weight is live pose state (SkinPose::displacerWeight);
+        // only its coordIndex/displacements are compiled, and those are rare edits.
+        if (field.x3dName == "displacers" && node->nodeTypeName() == "HAnimJoint")
+          add(skinPoseDeps_, child.get());
+        if (field.x3dName == "children" || field.x3dName == "displacers" ||
+            field.x3dName == "skeleton") self(self, child.get());
+      });
+    };
+    for (const char *field : {"skeleton", "joints"}) {
+      auto nodes = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(*humanoid, field, {});
+      for (const auto &node : nodes) visit(visit, node.get());
+    }
+  }
+
+  std::unordered_set<const X3DNode *> syncSkinChanges() {
+    std::unordered_set<const X3DNode *> changed;
+    const auto gen = ctx_.tickGeneration();
+    if (skinSyncGen_ == gen) return changed;
+    skinSyncGen_ = gen;
+    const auto &dirty = ctx_.dirtyTracker();
+    for (const X3DNode *node : dirty.changedNodes()) {
+      const unsigned flags = dirty.flags(node);
+      if (flags & (DirtyLocalTransform | DirtyField | DirtyChildren))
+        for (const X3DNode *humanoid : skinPoseDeps_[node]) changed.insert(humanoid);
+      if (flags & (DirtyField | DirtyChildren))
+        for (const X3DNode *humanoid : skinBindingDeps_[node]) {
+          skinBindings_.erase(humanoid);
+          changed.insert(humanoid);
+        }
+    }
+    for (const X3DNode *humanoid : changed) ++skinVersions_[humanoid];
+    return changed;
+  }
+
   // Delegates to TransformSystem so all transform-bearing types stay in sync.
   // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
   static bool isTransform(const X3DNode *n) {
@@ -687,11 +814,24 @@ private:
 
     // RenderItem emission is anchored strictly on hasField("geometry") at a Shape
     // — exactly PickSystem::pickNode, not on DFS leafness.
+    const bool underShape = std::any_of(path.begin(), path.end() - 1,
+        [](const X3DNode *ancestor) { return ancestor->nodeTypeName() == "Shape"; });
+    if (activeSkinHumanoid_ && !underShape && recognizedGeometryType(n->nodeTypeName())) {
+      // X3D §26.3.2 also permits geometry nodes directly in Humanoid.skin.
+      MeshRef mesh = cachedRawMesh(n, nullptr);
+      if (!mesh->indices.empty()) emit(*n, path, here, n, std::move(mesh), delta);
+    }
     if (geombounds::hasField(*n, "geometry")) {
       if (auto geom = geombounds::getNode(*n, "geometry")) {
         bool recognized = false;
         // ADR-0045: build-once per DISTINCT geometry node, not per placement.
-        MeshRef mesh = cachedRawMesh(geom.get(), &recognized);
+        // ISO/IEC 19774-1 §6.6: the nearest enclosing Segment's displacers
+        // deform this geometry's points (when it uses that Segment's coord).
+        const X3DNode *segment = nullptr;
+        for (auto it = path.rbegin(); it != path.rend() && !segment; ++it)
+          if ((*it)->nodeTypeName() == "HAnimSegment") segment = *it;
+        if (segment) segmentOf_[geom.get()] = segment;
+        MeshRef mesh = cachedRawMesh(geom.get(), &recognized, segment);
         // T-TEXT: a Text node also EMITS its outputOnly fields (textBounds/
         // lineBounds/origin). buildLocalMesh produces the glyph geometry only;
         // here, owning the non-const node, we recompute the layout once and set
@@ -770,6 +910,19 @@ private:
         if (ordinal >= 0 && static_cast<std::size_t>(ordinal) < layers.size() &&
             layers[static_cast<std::size_t>(ordinal)])
           walk(layers[static_cast<std::size_t>(ordinal)].get(), here, path, delta);
+      path.pop_back();
+      return;
+    }
+
+    if (t == "HAnimHumanoid") {
+      // X3D §26.3.2: reference lists are not visual placements.
+      const auto skeleton = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(*n, "skeleton", {});
+      for (const auto &child : skeleton) if (child) walk(child.get(), here, path, delta);
+      const auto skin = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(*n, "skin", {});
+      const X3DNode *previous = activeSkinHumanoid_;
+      activeSkinHumanoid_ = n;
+      for (const auto &child : skin) if (child) walk(child.get(), here, path, delta);
+      activeSkinHumanoid_ = previous;
       path.pop_back();
       return;
     }
@@ -873,6 +1026,16 @@ private:
     // Global lights always apply; scoped lights apply when their scopeRoot is
     // an ancestor (appears anywhere) on the item's path.
     tagLights(items_[id], path);
+    if (activeSkinHumanoid_) {
+      auto &rec = items_[id];
+      rec.skin = RenderItem::SkinDesc{skinBinding(activeSkinHumanoid_),
+                                      rec.mesh->sourceCoordIndex,
+                                      rec.mesh->sourceNormalIndex,
+                                      skinVersions_[activeSkinHumanoid_]};
+      registerSkinDeps(activeSkinHumanoid_);
+    } else {
+      items_[id].skin.reset();
+    }
 
     buildReverseIndices(id, path, geom, appearance.get());
     delta.added.push_back(id);
@@ -976,6 +1139,14 @@ private:
         appendDep(geomDeps_, c.get(), id);
         geomNodeOf_[c.get()] = geom;
       });
+      for (const X3DNode *ancestor : path) {
+        if (ancestor->nodeTypeName() != "HAnimSegment") continue;
+        forEachChildNode(*ancestor, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &child) {
+          if (field.x3dName != "displacers") return;
+          appendDep(geomDeps_, child.get(), id);
+          geomNodeOf_[child.get()] = geom;
+        });
+      }
     }
 
     // materialDeps: every appearance-subtree node reachable from the Shape
@@ -1031,6 +1202,13 @@ private:
 
   // Raw (pre-TextureTransform) build, keyed by geometry node.
   std::unordered_map<const X3DNode *, RawMeshEntry> rawMeshCache_;
+  // Geometry -> nearest enclosing HAnimSegment, recorded by the walk so a
+  // delta() rebuild displaces with the same Segment.
+  std::unordered_map<const X3DNode *, const X3DNode *> segmentOf_;
+  const X3DNode *segmentOfGeom(const X3DNode *geom) const {
+    auto it = segmentOf_.find(geom);
+    return it == segmentOf_.end() ? nullptr : it->second;
+  }
   // TextureTransform-baked variants, keyed by (geometry node, params bytes). Only
   // populated when a TextureTransform is actually authored — the common
   // untransformed case shares the raw entry directly and allocates nothing here.
@@ -1059,11 +1237,22 @@ private:
   }
 
   // The one place buildLocalMesh() is called. `recognized` may be null.
-  MeshRef cachedRawMesh(const X3DNode *geom, bool *recognized) {
+  // `segment` is the enclosing HAnimSegment, if any. The cache stays keyed by
+  // geometry: a geometry placed under two Segments that share one Coordinate
+  // is displaced by whichever Segment built it first.
+  MeshRef cachedRawMesh(const X3DNode *geom, bool *recognized,
+                        const X3DNode *segment = nullptr) {
     auto it = rawMeshCache_.find(geom);
     if (it == rawMeshCache_.end()) {
       bool rec = false;
-      MeshData built = buildLocalMesh(geom, meshOptions_, &rec);
+      MeshData built;
+      if (segment) {
+        MeshBuildOptions options = meshOptions_;
+        options.hanimSegment = segment;
+        built = buildLocalMesh(geom, options, &rec);
+      } else {
+        built = buildLocalMesh(geom, meshOptions_, &rec);
+      }
       it = rawMeshCache_
                .emplace(geom,
                         RawMeshEntry{std::make_shared<const MeshData>(
@@ -1140,6 +1329,12 @@ private:
   DepMap transformDeps_;
   DepMap geomDeps_;
   DepMap materialDeps_;
+  std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> skinPoseDeps_;
+  std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> skinBindingDeps_;
+  std::unordered_map<const X3DNode *, std::shared_ptr<const hanim::SkinBinding>> skinBindings_;
+  std::unordered_map<const X3DNode *, std::uint64_t> skinVersions_;
+  std::uint64_t skinSyncGen_ = UINT64_MAX;
+  const X3DNode *activeSkinHumanoid_ = nullptr;
   // A content child-node (Coordinate/Normal/...) -> the geometry node whose mesh
   // delta() must re-extract when that child's content field changes.
   std::unordered_map<const X3DNode *, const X3DNode *> geomNodeOf_;

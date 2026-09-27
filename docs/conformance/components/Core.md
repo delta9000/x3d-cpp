@@ -4,14 +4,14 @@ _Generated. Levels 1,2 · 9 nodes · profiles: Interchange, Interactive, Immersi
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| MetadataBoolean | 1 | ✓ | — | — | — | X3DMetadataObject |
-| MetadataDouble | 1 | ✓ | — | — | — | X3DMetadataObject |
-| MetadataFloat | 1 | ✓ | — | — | — | X3DMetadataObject |
-| MetadataInteger | 1 | ✓ | — | — | — | X3DMetadataObject |
-| MetadataSet | 1 | ✓ | — | — | — | X3DMetadataObject |
-| MetadataString | 1 | ✓ | — | — | ENC-C14N-ATTR, ENC-JSON-CTRL, ENC-MFSTRING-READ, ENC-VRML-STRING | X3DMetadataObject |
-| ProtoInstance | 2 | ✓ | — | — | AUD-PROTO-1, PROTO-IS-001, PROTO-SHADOW | X3DChildNode, X3DPrototypeInstance |
-| WorldInfo | 1 | ✓ | — | — | DIAG-PROFILE-COERCE, DIAG-UNKNOWN-NODE, ENC-JSON-UNIT | X3DChildNode, X3DInfoNode |
+| MetadataBoolean | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DMetadataObject |
+| MetadataDouble | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DMetadataObject |
+| MetadataFloat | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DMetadataObject |
+| MetadataInteger | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DMetadataObject |
+| MetadataSet | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DMetadataObject |
+| MetadataString | 1 | ✓ | — | — | ENC-C14N-ATTR, ENC-JSON-CTRL, ENC-MFSTRING-READ, ENC-VRML-STRING, ROUTE-IO-ALIAS | X3DMetadataObject |
+| ProtoInstance | 2 | ✓ | — | — | AUD-PROTO-1, PROTO-IS-001, PROTO-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DPrototypeInstance |
+| WorldInfo | 1 | ✓ | — | — | DIAG-PROFILE-COERCE, DIAG-UNKNOWN-NODE, ENC-JSON-UNIT, ROUTE-IO-ALIAS | X3DChildNode, X3DInfoNode |
 | X3DStatement | 1 | ✓ | — | — | — |  |
 
 ## Findings
@@ -23,6 +23,8 @@ _Generated. Levels 1,2 · 9 nodes · profiles: Interchange, Interactive, Immersi
   - Proven on real corpus ConformanceNist/.../greyscale_jpg_diffuseColor.x3d: a META description with an inner quote writes `META "description" "...adding a "red"..."` and re-reads truncated at the inner quote, dropping the rest plus the next four <meta> lines. MFString probe: a 5-element field with a backslash/quote becomes 6 elements. Fix: VrmlWriter must emit '"'->'\"' and '\\'->'\\\\' on every SFString/MFString/META. Affects descriptions, licenses, any string-bearing field through a .x3dv hop. (round-trip sweep; confirms an earlier static prediction.) CLOSE: by the time of the fix only META still wrote raw (SFString/MFString paths had gained vrmlEscapeString/fmtMFString escaping earlier); META name/content now escape too. Regression: codec_string_hardening_test (XML -> VRML -> reparse with embedded quote + backslash).
 - **ENC-JSON-UNIT** [major/FIXED `1e3c51d`] — §ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT: X3D-JSON writer has no slot for UNIT declarations — <unit> is silently dropped on XML/VRML->JSON, so every angle/length value then means something different with no warning.
   - Probe: `<unit category='angle' name='degrees' conversionFactor='0.0174533'/>` survives into ClassicVRML (`UNIT angle degrees 0.0174533`) but is absent from the JSON and the round-trip XML. JsonReader.hpp:111-119 READS "unit" back, so the asymmetry is the tell. Fix: emit the `unit` array in JsonWriter.hpp writeHead, mirroring `meta`. (round-trip sweep, confirms a static prediction.) CLOSE: JsonWriter::writeHead emits the unit array in the exact shape JsonReader reads ("@category"/"@name"/"@conversionFactor"). Regression: codec_string_hardening_test.
+- **ROUTE-IO-ALIAS** [major/FIXED] — §4.4.2.2, 4.4.8.2: Document ROUTEs using set_zzz / zzz_changed aliases of an inputOutput field were rejected.
+  - The scene bridge matched ROUTE field names exactly, so any ROUTE to set_rotation, set_translation, set_enabled, set_startTime or from zzz_changed was dropped with an "unknown field" diagnostic (670 of 1,329 archive files with ROUTEs use such an alias; Leif lost 242 routes). detail::findEndpoint now accepts set_zzz on the sink side and zzz_changed on the source side for inputOutput fields and registers the route under the canonical name. Test: scene_bridge_test testInputOutputAliases. (2026-09-27)
 - **AUD-PROTO-1** [major/CLOSED] — §4.4.4.3: Peer nodes after the first in a PROTO body are never enrolled, so a peer TimeSensor/Script never runs.
   - Expanded PROTO body peers are retained in Scene::protoPeerNodes and included in standard runtime system enrollment without adding them to render roots. Regression: proto_peer_timesensor_remains_active.
 - **ENC-C14N-ATTR** [minor/FIXED `1e3c51d`] — §X3D Canonical Form (X3DC14N); W3C C14N attr normalization: X3DC14N attribute escaping omits tab/newline/CR (`&#x9; &#xA; &#xD;`) — a canonical file with multiline meta/MFString is non-portable (any conformant reader normalizes the raw tab/newline to a space).
