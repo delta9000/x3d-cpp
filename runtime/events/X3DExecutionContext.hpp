@@ -198,6 +198,10 @@ public:
     cascade_.postEvent(node, field, std::move(value));
   }
 
+  void addInputFilter(std::function<bool(const FieldAddress &, const std::any &)> filter) {
+    cascade_.addInputFilter(std::move(filter));
+  }
+
   /**
    * @brief Dirty-aware direct field write for use by Systems.
    * @details Writes `value` into `field` on `node` via reflection, then calls
@@ -234,6 +238,8 @@ public:
                                             const std::string &field,
                                             std::any value) {
     if (!node) return FieldWriteResult::NullNode;
+    if (!cascade_.acceptsInput(FieldAddress{node, resolveFieldAlias(node, field)}, value))
+      return FieldWriteResult::Ok;
     for (const auto &info : node->fields()) {
       if (info.x3dName != field) continue;
       // Defensive: no node type currently reaches this. `outputOnly` does NOT

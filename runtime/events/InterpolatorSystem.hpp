@@ -29,6 +29,9 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *interp = dynamic_cast<NodeT *>(node);
     if (!interp) return;
+    // §19.3.1: readback before set_fraction starts at keyValue[0].
+    if (!interp->getKeyValue().empty())
+      interp->emitValue_changed(interp->getKeyValue().front());
     LerpFn lerp = lerp_;
     interp->setOnSet_fractionHandler(
         [&ctx, interp, lerp](const SFFloat &fraction) {
@@ -57,6 +60,13 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *interp = dynamic_cast<NodeT *>(node);
     if (!interp) return;
+    // §19.3.1: initialize the first value_changed row without an event.
+    const auto &values = interp->getKeyValue();
+    if (!values.empty()) {
+      const std::size_t width = interp->getKey().empty()
+                                    ? 1 : values.size() / interp->getKey().size();
+      interp->emitValue_changed(std::vector<ElemT>(values.begin(), values.begin() + width));
+    }
     LerpFn lerp = lerp_;
     interp->setOnSet_fractionHandler(
         [&ctx, interp, lerp](const SFFloat &fraction) {

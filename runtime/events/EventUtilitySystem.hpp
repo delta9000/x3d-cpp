@@ -112,7 +112,12 @@ inline std::size_t sequencerStepIndex(const MFFloat &key, float t) {
   const std::size_t n = key.size();
   if (n == 0) return 0;
   if (t <= key.front()) return 0;
-  if (t >= key.back()) return n - 1;
+  if (t >= key.back()) {
+    // §30.2.4: the first value at a repeated final key wins.
+    std::size_t i = n - 1;
+    while (i > 0 && key[i - 1] == key[i]) --i;
+    return i;
+  }
   std::size_t i = 0;
   for (std::size_t k = 0; k < n; ++k)
     if (key[k] <= t) i = k;

@@ -5,17 +5,15 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | BooleanFilter | 1 | ✓ | — | ✓ | EUF-1, EUF-4, EUF-5 | X3DChildNode |
-| BooleanSequencer | 1 | ✓ | — | ◑ | AUD-SEQ-1, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
+| BooleanSequencer | 1 | ✓ | — | ✓ | AUD-SEQ-1, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
 | BooleanToggle | 1 | ✓ | — | ✓ | EUF-2, EUF-5 | X3DChildNode |
 | BooleanTrigger | 1 | ✓ | — | ✓ | TRIG-1, TRIG-6 | X3DChildNode, X3DTriggerNode |
-| IntegerSequencer | 1 | ✓ | — | ◑ | AUD-SEQ-1, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
+| IntegerSequencer | 1 | ✓ | — | ✓ | AUD-SEQ-1, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
 | IntegerTrigger | 1 | ✓ | — | ✓ | TRIG-2, TRIG-4, TRIG-6 | X3DChildNode, X3DTriggerNode |
 | TimeTrigger | 1 | ✓ | — | ✓ | TRIG-3, TRIG-5, TRIG-6 | X3DChildNode, X3DTriggerNode |
 
 ## Findings
 
-- **AUD-SEQ-1** [minor/OPEN] — §30.2.4: With a duplicated final key, the sequencer returns the last keyValue instead of the first.
-  - Spec: 'only the first defined value for keyValue is used.' The t >= key.back() shortcut runs before the duplicate-key tie break. Incomplete fix of SEQ-7. Probe: audit_integer_sequencer_duplicate_last_key_uses_first_value.
 - **TRIG-1** [critical/CLOSED `47c0714`] — §30.4.4: BooleanTrigger never emits triggerTrue=TRUE on set_triggerTime — handler is the empty default (no System).
   - set_triggerTimeHandler is never wired; every ROUTE into set_triggerTime is dropped.
 - **TRIG-2** [critical/CLOSED `47c0714`] — §30.4.6: IntegerTrigger never emits triggerValue=integerKey on set_boolean=TRUE (and never applies the TRUE-only filter) — no System.
@@ -37,4 +35,6 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 - **EUF-4** [major/CLOSED `47c0714`] — §30.4.1: BooleanFilter must emit exactly one of inputTrue/inputFalse per event (not both) plus inputNegate — selection logic absent.
 - **EUF-5** [major/CLOSED `47c0714`] — §30.4.1, 30.4.3: No production wiring for the event-filter/toggle nodes (no attach for BooleanFilter/BooleanToggle).
 - **TRIG-5** [minor/CLOSED `47c0714`] — §30.4.7: TimeTrigger must fire on FALSE as well as TRUE (boolean value ignored) — relevant once TRIG-3 is implemented.
+- **AUD-SEQ-1** [minor/CLOSED] — §30.2.4: With a duplicated final key, the sequencer returns the last keyValue instead of the first.
+  - The final-key clamp walks backward over equal final keys, including for fractions beyond the key range. Regression: integer_sequencer_duplicate_last_key_uses_first_value.
 

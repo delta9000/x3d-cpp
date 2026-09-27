@@ -106,6 +106,12 @@ class EventCascade {
   dirty-tracking. The `x3d sim` field tracer uses snapshot-diff instead of this
   slot (see [ADR-0009: sim snapshot-diff](../decisions/0009-sim-snapshot-diff.md)).
 
+- **Input filter** — `X3DTimeDependentSystem` registers a shared filter for its
+  attached nodes. The cascade checks it before recording a field production,
+  writing the field, or forwarding ROUTEs. An active time-dependent node ignores
+  `startTime` and `stopTime <= startTime` inputs (§8.2.4.3); direct runtime field
+  writes use the same filter. The ordered stop-then-start restart is allowed.
+
 - **Timestamp lifecycle owned by execution context** — `X3DExecutionContext::tick`
   calls `cascade_.beginTimestamp()` once, then loops
   `cascade_.process(false)` (continuing the same timestamp) after each System

@@ -900,7 +900,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "30.2.4, 30.3.1; 30.2.4; 30.3.1",
           "exists": true,
@@ -977,7 +977,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "30.2.4, 30.3.1; 30.2.4; 30.3.1",
           "exists": true,
@@ -2397,7 +2397,7 @@
       "name": "Interpolation",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "19.3.1; \u2014",
           "exists": true,
@@ -2423,7 +2423,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "19.3.1; \u2014",
           "exists": true,
@@ -2491,7 +2491,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "19.3.1; \u2014",
           "exists": true,
@@ -2517,7 +2517,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "19.3.1; \u2014",
           "exists": true,
@@ -2543,7 +2543,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "19.3.1; \u2014",
           "exists": true,
@@ -2591,7 +2591,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "19.3.1; \u2014",
           "exists": true,
@@ -5496,10 +5496,11 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.12, 16.4.4",
+          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.12, 16.4.4; 8.2.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "AUD-TIME-3",
             "SND-1",
             "SND-2",
             "SND-8"
@@ -5680,10 +5681,11 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.12, 16.4.4",
+          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.12, 16.4.4; 8.2.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "AUD-TIME-3",
             "SND-1",
             "SND-2",
             "SND-8"
@@ -5752,10 +5754,11 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.15, 16.4.18",
+          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.15, 16.4.18; 8.2.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "AUD-TIME-3",
             "SND-1",
             "SND-2",
             "SND-9"
@@ -6548,7 +6551,7 @@
       "name": "Time",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1; 8.2.2, 8.2.4.4",
           "exists": true,
@@ -9817,9 +9820,9 @@
       "nodes": [
         "TimeSensor"
       ],
-      "note": "Spec: 'At the time when the node resumes, the fraction_changed event continues from its value when paused.' X3DTimeDependentSystem.hpp shifts timeBase by the authored times while pause/resume take effect at the observing tick. Incomplete fix of TDN-8. Probe: audit_timesensor_late_resume_keeps_fraction_frozen.",
+      "note": "X3DTimeDependentSystem now shifts the elapsed and cycle bases by the actual tick-to-tick paused span. Regression: timesensor_late_resume_keeps_fraction_frozen.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "A late resume shifts the clock by resumeTime-pauseTime instead of the actual paused span, so fraction_changed jumps on resume."
     },
     {
@@ -9829,9 +9832,9 @@
       "nodes": [
         "TimeSensor"
       ],
-      "note": "Spec: the final event is generated as evaluated at stopTime. Probe: audit_timesensor_stop_uses_stop_time_for_final_output.",
+      "note": "A scheduled stop evaluates final outputs at stopTime; a set_stopTime received after its requested time still evaluates at the receiving tick. Regression: timesensor_stop_uses_stop_time_for_final_output.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "A stop detected after stopTime emits the final values evaluated at the tick instead of at stopTime."
     },
     {
@@ -9841,11 +9844,14 @@
       "nodes": [
         "TimeSensor",
         "AudioClip",
-        "MovieTexture"
+        "MovieTexture",
+        "Gain",
+        "BiquadFilter",
+        "OscillatorSource"
       ],
-      "note": "Spec: such events 'are ignored'. The cascade writes every input field; the system only snapshots startTime. Incomplete fix of TDN-4. Probe: audit_timesensor_ignores_start_and_invalid_stop_while_active.",
+      "note": "The shared X3DTimeDependentSystem registers a cascade/direct-write input filter for all attached time-dependent nodes; it rejects active startTime and stopTime <= active startTime before field writes or route fan-out, while allowing ordered stop-then-start restart. Regressions: timesensor_ignores_start_and_invalid_stop_while_active, time_dependent_nodes_ignore_active_timing_inputs.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "set_startTime (and set_stopTime <= startTime) to an active node still overwrite the field and emit *_changed."
     },
     {
@@ -9855,9 +9861,9 @@
       "nodes": [
         "TimeSensor"
       ],
-      "note": "Spec: negative absolute times are valid (before 1970); pause when now >= pauseTime > resumeTime. Probe: audit_timesensor_accepts_negative_absolute_pause_time.",
+      "note": "The shared pause/resume guards no longer require positive absolute times. Regression: timesensor_accepts_negative_absolute_pause_time.",
       "severity": "low",
-      "status": "open",
+      "status": "closed",
       "summary": "A negative absolute pauseTime never pauses (the code also requires pauseTime > 0)."
     },
     {
@@ -9867,9 +9873,9 @@
       "nodes": [
         "TimeSensor"
       ],
-      "note": "Spec: 'fraction_changed events continue to increase smoothly at a correspondingly faster or slower rate.' Fraction is recomputed from activation time over the current interval. Probe: audit_timesensor_cycle_interval_change_keeps_fraction_continuous.",
+      "note": "The cycle phase uses a separate base rebased from the last evaluated tick, leaving elapsedTime independent; a new interval below elapsed cycle duration completes that cycle. Regressions: timesensor_cycle_interval_change_keeps_fraction_continuous, timesensor_shorter_interval_completes_current_cycle.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "Changing cycleInterval during an active loop makes fraction_changed jump instead of continuing smoothly at the new rate."
     },
     {
@@ -9880,9 +9886,9 @@
         "IntegerSequencer",
         "BooleanSequencer"
       ],
-      "note": "Spec: 'only the first defined value for keyValue is used.' The t >= key.back() shortcut runs before the duplicate-key tie break. Incomplete fix of SEQ-7. Probe: audit_integer_sequencer_duplicate_last_key_uses_first_value.",
+      "note": "The final-key clamp walks backward over equal final keys, including for fractions beyond the key range. Regression: integer_sequencer_duplicate_last_key_uses_first_value.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "With a duplicated final key, the sequencer returns the last keyValue instead of the first."
     },
     {
@@ -9897,9 +9903,9 @@
         "CoordinateInterpolator",
         "NormalInterpolator"
       ],
-      "note": "Spec: 'keyValue[0] is returned if keyValue is not empty.' Probe: audit_interpolator_initial_value_readback.",
+      "note": "The hand-written linear, spline, and Squad attach paths initialize value_changed from the first authored keyValue or row without posting an event. Regression: interpolator_initial_value_readback.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "value_changed read before any input returns the field default instead of keyValue[0]."
     },
     {
@@ -10439,7 +10445,7 @@
     ]
   },
   "summary": {
-    "closed_count": 190,
+    "closed_count": 197,
     "component_count": 36,
     "deferred_count": 28,
     "finding_count": 257,
@@ -10464,9 +10470,9 @@
     ],
     "open_by_severity": {
       "critical": 2,
-      "low": 4,
-      "major": 32,
-      "minor": 29
+      "low": 3,
+      "major": 29,
+      "minor": 26
     }
   },
   "unresolved_findings": []

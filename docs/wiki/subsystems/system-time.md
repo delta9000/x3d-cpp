@@ -26,7 +26,7 @@ The Time System advances time-dependent nodes one tick at a time and emits their
 | `runtime/events/TimeSensorBehavior.hpp` | Earlier, minimal `ActiveNode` seed: drives `fraction_changed` only, over one cycle (or looped), with no `isActive`/pause/`cycleTime`/`elapsedTime` support. Used by `animation_test`; superseded by `TimeSensorSystem`. |
 | `runtime/events/X3DSystem.hpp` | `System` base class — defines `attach(node, ctx)` and the default no-op `update(now, ctx)`. `X3DTimeDependentSystem` inherits from `System`. |
 | `runtime/events/tests/timesensor_test.cpp` | Lifecycle edge-case test suite (doctest case `timesensor_test` in the `x3d_events_tests` target). |
-| `runtime/events/tests/timesensor_rtc_test.cpp` | Regression suite for four spec-conformance bugs RTC-1..RTC-4 (doctest case `timesensor_rtc_test` in the `x3d_events_tests` target). |
+| `runtime/events/tests/timesensor_rtc_test.cpp` | Regression suite for RTC-1..RTC-4 and the AUD-TIME clock/input cases in `x3d_events_tests`. |
 | `runtime/events/tests/animation_test.cpp` | End-to-end animation chain test using `TimeSensorBehavior` (doctest case `animation_test` in the `x3d_events_tests` target). |
 
 ## Interfaces and seams
@@ -58,6 +58,8 @@ sys->attach(timeSensorNode, ctx);
 | `active` | Whether the node is currently active. |
 | `paused` | Whether the node is paused (outputs frozen). |
 | `timeBase` | Effective activation origin, shifted forward by any paused spans so that `elapsed = now - timeBase` excludes paused intervals. |
+| `cycleBase` / `cycleInterval` / `lastCycleTick` | Cycle phase and last evaluated tick. Changing `cycleInterval` rebases cycle phase without changing elapsed time; an interval shorter than the elapsed cycle completes that cycle. |
+| `pausedAt` | Tick when pausing took effect; the resume shift excludes the entire observed paused span. |
 | `activeStartTime` | `startTime` snapshotted at activation; the lifecycle uses this frozen value while active (spec §8.2.4.3 requires `set_startTime` to be ignored mid-run). |
 | `completed` / `completedStartTime` | Re-activation guard: a finished single-shot must not auto-restart unless a new `startTime` is set. |
 | `lastCycleAnnounced` | Index of the last cycle whose `cycleTime` pulse was emitted; ensures exactly one pulse per boundary. |
@@ -70,6 +72,7 @@ State lives in the system, never on the node — the node and its reflection `Fi
 - **`emitCycleOutputs` (virtual hook)** — Derived systems override this to emit their node-specific continuous outputs each active, unpaused tick. `TimeSensorSystem` emits `time` and `fraction_changed` here.
 - **`emitCycleTime` (virtual hook)** — Derived systems override this to emit a cycle-start pulse. `TimeSensorSystem` emits `cycleTime` here.
 - **`readEnabled` / `readLoop` / `readCycleInterval` (virtual reads)** — Overridable per node type. `MediaTimeSystem` (`runtime/events/MediaTimeSystem.hpp`, attached by `attachStandardRuntime`) uses them for `AudioClip` and `MovieTexture`: `enabled`, `loop`, and a cycle of one media pass, `duration_changed` divided by `pitch` / `speed`; an unknown duration (-1 before load) plays until `stopTime` (TDN-5).
+- **Timing input filter** — The shared base registers a filter with the execution context when a node is attached. It rejects active `startTime` and `stopTime <= startTime` input events before the cascade writes or routes them (§8.2.4.3). This covers TimeSensor, AudioClip, MovieTexture, and SoundTimeSystem's v4 sound nodes; ordered stop-then-start restart remains accepted.
 - **`ctx.postEvent`** — All output writes go through `X3DExecutionContext::postEvent`; the cascade fans them out to connected ROUTEs in the same tick. See [Routes](../subsystems/routes.md).
 - **Interpolator downstream** — `fraction_changed` from `TimeSensorSystem` is the canonical clock signal that drives interpolators. See [Interpolator System](../subsystems/system-interpolators.md).
 - **Sensor layer** — `TimeSensorSystem` is one of the sensor-like systems registered through the `System`/`X3DActiveNode` pattern. See [Sensors](../subsystems/sensors.md).
@@ -113,6 +116,7 @@ absolute instant. This is a deliberate contract, not a bug — see finding `TIME
   - **RTC-2**: A looping sensor emits `fraction_changed == 1.0` at each exact cycle-boundary tick (spec §8.4.1 boundary rule: `if (f==0 && now>startTime) fraction_changed=1`).
   - **RTC-3**: `cycleTime` value equals `startTime + cycleIndex * cycleInterval` (the cycle-start time), not the tick's `now`.
   - **RTC-4**: `set_enabled FALSE` while active emits the final `time`/`fraction_changed`/`elapsedTime` outputs **before** `isActive=FALSE`.
+- The same test file has named cases for AUD-TIME-1..5: late resume uses the observed paused span, scheduled stop evaluates at stopTime, active timing inputs are ignored across time-dependent node families, negative absolute pause/resume times work, and a changed cycleInterval preserves fraction continuity or completes a cycle when shortened below its elapsed duration.
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `animation_test`) — `runtime/events/tests/animation_test.cpp`. End-to-end chain test: `TimeSensorBehavior` → `PositionInterpolator` → `Transform.translation`, confirming the full clock → cascade → interpolator → field-write pipeline.
 
 ## Related specs and ADRs

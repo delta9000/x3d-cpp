@@ -30,6 +30,7 @@
 #include "x3d/nodes/SplineScalarInterpolator.hpp"
 #include "x3d/nodes/SquadOrientationInterpolator.hpp"
 #include "x3d/nodes/Coordinate.hpp"
+#include "x3d/nodes/CoordinateInterpolator.hpp"
 #include "x3d/nodes/NurbsPositionInterpolator.hpp"
 #include "x3d/nodes/NurbsOrientationInterpolator.hpp"
 #include "x3d/nodes/NurbsSurfaceInterpolator.hpp"
@@ -72,12 +73,12 @@ void test_empty_key_no_event() {
   auto interp = std::make_shared<ScalarInterpolator>();
   interp->setKey(MFFloat{});                 // empty key
   interp->setKeyValue(MFFloat{1.0f, 2.0f});  // non-empty values
-  interp->emitValue_changed(SFFloat{99.0f}); // sentinel
 
   X3DExecutionContext ctx;
   InterpolatorSystem<ScalarInterpolator, float> sys(
       [](const float &a, const float &b, float t) { return lerpf(a, b, t); });
   sys.attach(interp.get(), ctx);
+  interp->emitValue_changed(SFFloat{99.0f}); // sentinel after initial readback
 
   post(ctx, interp.get(), 0.5f);
   check(feq(interp->getValue_changed(), 99.0f),
@@ -172,10 +173,10 @@ void test_spline_empty_key() {
   auto sp = std::make_shared<SplineScalarInterpolator>();
   sp->setKey(MFFloat{});
   sp->setKeyValue(MFFloat{1.0f, 2.0f});
-  sp->emitValue_changed(SFFloat{77.0f});
   X3DExecutionContext ctx;
   SplineInterpolatorSystem<SplineScalarInterpolator, float> sys;
   sys.attach(sp.get(), ctx);
+  sp->emitValue_changed(SFFloat{77.0f});
   post(ctx, sp.get(), 0.5f);
   check(feq(sp->getValue_changed(), 77.0f),
         "spline empty key: no value_changed (sentinel kept)");
@@ -365,4 +366,33 @@ TEST_CASE("interpolator_conformance_test") {
   }
   std::cout << "all interpolator-conformance tests passed\n";
   return;
+}
+
+
+TEST_CASE("interpolator_initial_value_readback") {
+  ScalarInterpolator scalar;
+  scalar.setKeyValue(MFFloat{4.0f, 8.0f});
+  X3DExecutionContext ctx;
+  InterpolatorSystem<ScalarInterpolator, float> scalarSystem(
+      [](const float &a, const float &b, float t) { return lerpf(a, b, t); });
+  scalarSystem.attach(&scalar, ctx);
+  INFO("ScalarInterpolator initial value_changed = " << scalar.getValue_changed());
+  CHECK(feq(scalar.getValue_changed(), 4.0f));
+
+  CoordinateInterpolator coord;
+  coord.setKey(MFFloat{0.0f, 1.0f});
+  coord.setKeyValue(MFVec3f{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11, 12}});
+  MultiInterpolatorSystem<CoordinateInterpolator, SFVec3f> coordSystem(
+      [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); });
+  coordSystem.attach(&coord, ctx);
+  INFO("CoordinateInterpolator initial value_changed size = " << coord.getValue_changed().size());
+  CHECK(coord.getValue_changed().size() == 2);
+  if (coord.getValue_changed().size() == 2)
+    CHECK(feq(coord.getValue_changed()[0].x, 1.0f));
+
+  SplineScalarInterpolator spline;
+  spline.setKeyValue(MFFloat{5.0f, 9.0f});
+  SplineInterpolatorSystem<SplineScalarInterpolator, float> splineSystem;
+  splineSystem.attach(&spline, ctx);
+  CHECK(feq(spline.getValue_changed(), 5.0f));
 }

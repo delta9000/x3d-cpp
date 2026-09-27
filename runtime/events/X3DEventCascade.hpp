@@ -116,6 +116,8 @@ public:
       FieldAddress norm{d.target.node,
                         resolveFieldAlias(d.target.node, d.target.field)};
 
+      if (!acceptsInput(norm, d.value)) continue;
+
       const bool firstProduction = produced_.insert(norm).second;
 
       // RTC-5 per-field cap: drop a ROUTED delivery whose field was already
@@ -156,6 +158,16 @@ public:
   /// Used by the runtime to feed the dirty-tracking layer; null by default.
   void setFieldObserver(std::function<void(const FieldAddress &)> obs) {
     observer_ = std::move(obs);
+  }
+
+  void addInputFilter(std::function<bool(const FieldAddress &, const std::any &)> filter) {
+    inputFilters_.push_back(std::move(filter));
+  }
+
+  bool acceptsInput(const FieldAddress &addr, const std::any &value) const {
+    for (const auto &filter : inputFilters_)
+      if (!filter(addr, value)) return false;
+    return true;
   }
 
   /// Called when an event is delivered to an author-declared inputOnly or
@@ -234,6 +246,7 @@ private:
   const EventGraph &graph_;
   std::deque<Delivery> pending_;
   std::function<void(const FieldAddress &)> observer_;
+  std::vector<std::function<bool(const FieldAddress &, const std::any &)>> inputFilters_;
   std::vector<AuthorInputListener> authorInputListeners_;
   // Per-timestamp guards (reset by beginTimestamp). They persist across the
   // several process() calls one tick may make (the §4.4.8.3 step-4 re-eval

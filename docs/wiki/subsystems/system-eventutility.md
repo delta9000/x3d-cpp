@@ -45,7 +45,8 @@ The sequencer stepwise-selection rule (`sequencerStepIndex`) deserves explicit
 notation: it is the largest index `i` such that `key[i] <= t`, boundary-clamped
 at both ends. On duplicate key values, the lowest index wins (SEQ-7: "first
 definition wins") — implemented by walking back while `key[i] == t && key[i-1]
-== key[i]`. This is NOT linear interpolation.
+== key[i]`. The final-key clamp also walks back over equal final keys for fractions
+at or beyond that key (AUD-SEQ-1). This is NOT linear interpolation.
 
 ## Key files
 
@@ -149,6 +150,8 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
     wrap-around.
   - SEQ-7: duplicate key values → lowest index wins (confirmed with a
     four-key fixture).
+  - AUD-SEQ-1: repeated final keys select their first value at and beyond the
+    final fraction.
   - Production wiring (`attachEventUtilities`) is smoke-tested end-to-end
     via a `BooleanToggle` and `IntegerSequencer` exercised through the cascade.
 

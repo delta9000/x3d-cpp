@@ -7,7 +7,7 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 | Analyser | 2 | ✓ | — | ✗ | SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | AudioClip | 1 | ✓ | — | ◑ | AUD-MEDIA-2, AUD-TIME-3, MULTI-INHERIT, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
 | AudioDestination | 2 | ✓ | — | — | SND-7 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
-| BiquadFilter | 2 | ✓ | — | ◑ | SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| BiquadFilter | 2 | ✓ | — | ◑ | AUD-TIME-3, SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | BufferAudioSource | 2 | ✓ | — | ✗ | SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
 | ChannelMerger | 2 | ✓ | — | — | SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
 | ChannelSelector | 2 | ✓ | — | — | SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
@@ -15,10 +15,10 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 | Convolver | 2 | ✓ | — | ✗ | SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | Delay | 2 | ✓ | — | ✗ | SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | DynamicsCompressor | 2 | ✓ | — | ✗ | SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| Gain | 2 | ✓ | — | ◑ | SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| Gain | 2 | ✓ | — | ◑ | AUD-TIME-3, SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | ListenerPointSource | 2 | ✓ | — | ◑ | SND-3, SND-GAIN-TYPE | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | MicrophoneSource | 2 | ✓ | — | ✗ | SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
-| OscillatorSource | 2 | ✓ | — | ◑ | SND-1, SND-2, SND-9 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
+| OscillatorSource | 2 | ✓ | — | ◑ | AUD-TIME-3, SND-1, SND-2, SND-9 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | PeriodicWave | 2 | ✓ | — | — | SND-9 | X3DChildNode, X3DSoundNode |
 | Sound | 1 | ✓ | — | — | AUD-MEDIA-4 | X3DChildNode, X3DSoundNode |
 | SpatialSound | 2 | ✓ | — | — | SND-3 | X3DChildNode, X3DSoundNode |

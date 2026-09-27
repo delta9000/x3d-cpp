@@ -247,3 +247,20 @@ TEST_CASE("event_utility_test") {
   std::cout << "all event-utility tests passed\n";
   return;
 }
+
+
+TEST_CASE("integer_sequencer_duplicate_last_key_uses_first_value") {
+  auto n = std::make_shared<IntegerSequencer>();
+  n->setKey(MFFloat{0.0f, 1.0f, 1.0f});
+  n->setKeyValue(MFInt32{10, 20, 30});
+  X3DExecutionContext ctx;
+  SequencerSystem<IntegerSequencer, SFInt32> sys;
+  sys.attach(n.get(), ctx);
+  ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{1.0f}));
+  ctx.process();
+  INFO("value at duplicate last key = " << n->getValue_changed());
+  CHECK(n->getValue_changed() == 20);
+  ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{2.0f}));
+  ctx.process();
+  CHECK(n->getValue_changed() == 20);
+}

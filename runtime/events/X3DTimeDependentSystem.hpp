@@ -45,8 +45,12 @@ using namespace x3d::core;
 class X3DTimeDependentSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    (void)ctx;
     if (auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node)) {
+      if (state_.empty()) {
+        ctx.addInputFilter([this, &ctx](const FieldAddress &addr, const std::any &value) {
+          return acceptTimingInput(addr, value, ctx.now());
+        });
+      }
       state_.emplace(tdn, State{});
     }
   }
@@ -64,12 +68,18 @@ protected:
   struct State {
     bool active = false;
     bool paused = false;
-    // Effective start of the current activation (== startTime at activation,
-    // shifted forward by any paused span so elapsed/fraction exclude pauses).
+    // Effective start of the current activation, shifted by paused spans for
+    // elapsedTime. cycleBase tracks the fraction separately.
     double timeBase = 0.0;
+    double cycleBase = 0.0;
+    double cycleInterval = 1.0;
+    double lastCycleTick = 0.0;
+    double pausedAt = 0.0;
+    double stopInputAt = 0.0;
+    bool restartAllowed = false;
+    bool stopInputInPast = false;
     // startTime snapshotted at activation. While active, the spec (8.2.4.3)
-    // requires set_startTime events to be ignored, so the lifecycle reads this
-    // frozen value rather than the (possibly ROUTE-mutated) live node field.
+    // requires set_startTime events to be ignored.
     double activeStartTime = 0.0;
     // True once the node completed its run (single-shot end / loop-end). A
     // completed node must NOT auto-restart until a NEW startTime is set
@@ -154,6 +164,28 @@ protected:
   }
 
 private:
+  bool acceptTimingInput(const FieldAddress &addr, const std::any &value,
+                         double now) {
+    if (addr.field != "startTime" && addr.field != "stopTime") return true;
+    auto *node = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(addr.node);
+    auto it = state_.find(node);
+    if (it == state_.end() || !it->second.active) return true;
+    State &st = it->second;
+    // §8.2.4.3: active nodes ignore startTime and stopTime <= startTime.
+    if (addr.field == "startTime") {
+      if (!st.restartAllowed || st.stopInputAt != now) return false;
+      st.restartAllowed = false;
+    } else if (addr.field == "stopTime") {
+      const auto *stop = std::any_cast<SFTime>(&value);
+      if (!stop) return true;
+      if (*stop <= st.activeStartTime) return false;
+      st.stopInputInPast = *stop <= now;
+      st.stopInputAt = now;
+      st.restartAllowed = *stop == now;
+    }
+    return true;
+  }
+
   /**
    * @brief Run one tick of the lifecycle for a single node.
    */
@@ -171,6 +203,18 @@ private:
     // / cycle-start division math (RTC-1).
     const double cycle = effectiveCycle(node);
     const double gCycle = guardCycle(cycle);
+    if (st.active && gCycle != st.cycleInterval) {
+      // §8.4.1: retain the reached phase when cycleInterval changes.
+      if (std::isfinite(gCycle) && std::isfinite(st.cycleInterval)) {
+        const double cycles = (st.lastCycleTick - st.cycleBase) / st.cycleInterval;
+        const double elapsedCycle = (cycles - st.lastCycleAnnounced) * st.cycleInterval;
+        // §8.4.1: a new interval shorter than the elapsed cycle completes it.
+        st.cycleBase = gCycle < elapsedCycle
+            ? st.lastCycleTick - (st.lastCycleAnnounced + 1) * gCycle
+            : st.lastCycleTick - cycles * gCycle;
+      }
+      st.cycleInterval = gCycle;
+    }
 
     // --- deactivation: disabled, or a real stopTime has been reached ---
     if (st.active) {
@@ -191,8 +235,12 @@ private:
           st.paused = false;
         }
         st.timeBase = liveStart;
+        st.cycleBase = liveStart;
+        st.cycleInterval = gCycle;
+        st.lastCycleTick = liveStart;
         st.activeStartTime = liveStart;
         st.lastCycleAnnounced = 0;
+        st.stopInputInPast = false;
         emitCycleTime(node, liveStart, ctx);
       } else if (stoppedByDisable || stoppedByStopTime) {
         // Spec 8.4.1: a TimeSensor is guaranteed to generate final time and
@@ -200,13 +248,17 @@ private:
         // this tick's continuous outputs (time/fraction_changed/elapsedTime)
         // BEFORE isActive=FALSE (RTC-4). Skip for paused (frozen) sensors.
         if (!st.paused) {
-          const double sinceStart = now - st.timeBase;
+          // §8.4.1: a scheduled stop is evaluated at stopTime; a past
+          // set_stopTime received now is evaluated at the receiving tick.
+          const double finalNow = stoppedByDisable ? now
+              : st.stopInputInPast ? st.stopInputAt : stopTime;
+          const double elapsed = finalNow - st.timeBase;
           const double frac =
-              fractionWithBoundary(sinceStart, gCycle, startTime, now,
+              fractionWithBoundary(finalNow - st.cycleBase, gCycle, startTime, finalNow,
                                    readLoop(node));
           emit<SFTime>(ctx, node, "elapsedTime",
-                       static_cast<SFTime>(sinceStart));
-          emitCycleOutputs(node, frac, now, sinceStart, ctx);
+                       static_cast<SFTime>(elapsed));
+          emitCycleOutputs(node, frac, finalNow, elapsed, ctx);
         }
         deactivate(node, st, now, cycle, ctx);
         return;
@@ -243,18 +295,18 @@ private:
     // was last announced (st.lastCycleAnnounced): a fresh single-shot is cycle
     // 0; a node that looped then had set_loop FALSE finishes whichever cycle it
     // is in. A degenerate cycleInterval <= 0 still completes after one tick.
-    const double sinceStart = now - st.timeBase;
+    const double cycleSinceStart = now - st.cycleBase;
     if (!readLoop(node)) {
       const double endOfCurrentCycle =
           cycle > 0.0 ? (st.lastCycleAnnounced + 1) * gCycle : 0.0;
-      if (sinceStart >= endOfCurrentCycle) {
+      if (cycleSinceStart >= endOfCurrentCycle) {
         // Emit the final fraction (1.0) + cycle-boundary elapsed, then
-        // deactivate. TDN-7: the final `time` carries the EXACT cycle boundary
-        // (timeBase + endOfCurrentCycle), not the (possibly overshooting) tick
+        // deactivate. TDN-7: the final `time` carries the exact cycle boundary
+        // (cycleBase + endOfCurrentCycle), not the (possibly overshooting) tick
         // now. The re-activation guard (st.completed) keeps this final value
         // frozen on subsequent ticks.
-        const double elapsed = endOfCurrentCycle;
-        const double boundaryNow = st.timeBase + endOfCurrentCycle;
+        const double boundaryNow = st.cycleBase + endOfCurrentCycle;
+        const double elapsed = boundaryNow - st.timeBase;
         emit<SFTime>(ctx, node, "elapsedTime", static_cast<SFTime>(elapsed));
         emitCycleOutputs(node, 1.0, boundaryNow, elapsed, ctx);
         st.completed = true;
@@ -266,21 +318,21 @@ private:
 
     // --- cycle boundary detection (loop): announce each new cycle once ---
     // Index via the guarded cycle (RTC-1: never divide by a raw cycle <= 0).
-    const long cycleIndex = static_cast<long>(sinceStart / gCycle);
+    const long cycleIndex = static_cast<long>(cycleSinceStart / gCycle);
     if (cycleIndex != st.lastCycleAnnounced) {
       st.lastCycleAnnounced = cycleIndex;
-      // cycleTime == "time at the beginning of the current cycle" ==
-      // startTime + cycleIndex*cycleInterval (RTC-3), NOT the tick's `now`.
-      emitCycleTime(node, startTime + cycleIndex * gCycle, ctx);
+      // cycleTime is the current cycle's start, not the tick's `now` (RTC-3).
+      emitCycleTime(node, st.cycleBase + cycleIndex * gCycle, ctx);
     }
 
     // --- continuous outputs ---
     const double frac =
-        fractionWithBoundary(sinceStart, gCycle, startTime, now,
+        fractionWithBoundary(cycleSinceStart, gCycle, startTime, now,
                              readLoop(node));
-    const double elapsed = sinceStart;
+    const double elapsed = now - st.timeBase;
     emit<SFTime>(ctx, node, "elapsedTime", static_cast<SFTime>(elapsed));
     emitCycleOutputs(node, frac, now, elapsed, ctx);
+    st.lastCycleTick = now;
   }
 
   void activate(x3d::nodes::X3DTimeDependentNode *node, State &st, double startTime,
@@ -288,10 +340,14 @@ private:
     st.active = true;
     st.paused = false;
     st.timeBase = startTime;
+    st.cycleBase = startTime;
+    st.cycleInterval = guardCycle(effectiveCycle(node));
+    st.lastCycleTick = now;
     st.activeStartTime = startTime;
     st.completed = false;
+    st.restartAllowed = false;
+    st.stopInputInPast = false;
     st.lastCycleAnnounced = 0;
-    (void)now;
     emit<SFBool>(ctx, node, "isActive", true);
     // The first cycle begins at startTime: announce it with the cycle-start
     // time (== startTime), not the activation tick's `now` (RTC-3).
@@ -307,6 +363,8 @@ private:
       st.paused = false;
     }
     st.active = false;
+    st.restartAllowed = false;
+    st.stopInputInPast = false;
     st.lastCycleAnnounced = -1;
     emit<SFBool>(ctx, node, "isActive", false);
   }
@@ -319,8 +377,10 @@ private:
     if (!st.paused) {
       // Pause when pauseTime is in (resumeTime, now]. (pauseTime > resumeTime
       // disambiguates a stale pauseTime that has since been superseded.)
-      if (pauseTime > resumeTime && pauseTime > 0.0 && pauseTime <= now) {
+      if (pauseTime > resumeTime && pauseTime <= now) {
         st.paused = true;
+        st.pausedAt = now;
+        st.lastCycleTick = now;
         emit<SFBool>(ctx, node, "isPaused", true);
         // §8.2.4.4: pauseTime_changed at the pause edge, "with the timestamp
         // indicating when pausing occurred" — the simulation time now, not the
@@ -332,11 +392,14 @@ private:
       // Resume when resumeTime is in (pauseTime, now]. §8.2.4.4 requires
       // resumeTime STRICTLY greater than pauseTime (symmetric with the strict
       // pause guard above), so resumeTime == pauseTime must not resume.
-      if (resumeTime > 0.0 && resumeTime <= now && resumeTime > pauseTime) {
+      if (resumeTime <= now && resumeTime > pauseTime) {
         st.paused = false;
         // Shift the time base forward by the paused span so elapsed/fraction
         // continue from where they froze (exclude the paused interval).
-        st.timeBase += (resumeTime - pauseTime);
+        const double pausedSpan = now - st.pausedAt;
+        st.timeBase += pausedSpan;
+        st.cycleBase += pausedSpan;
+        st.lastCycleTick += pausedSpan;
         emit<SFBool>(ctx, node, "isPaused", false);
         // §8.2.4.4: resumeTime_changed "reporting the simulation time when the
         // node was resumed" (TDN-2, CONF-TDN1V) — now, as at the pause edge.

@@ -29,6 +29,9 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *interp = dynamic_cast<NodeT *>(node);
     if (!interp) return;
+    // §19.3.1: first keyValue is readable before set_fraction, without an event.
+    if (!interp->getKeyValue().empty())
+      interp->emitValue_changed(interp->getKeyValue().front());
     interp->setOnSet_fractionHandler([&ctx, interp](const SFFloat &fraction) {
       if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
       ctx.postEvent(interp, "value_changed",
@@ -46,6 +49,8 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *interp = dynamic_cast<x3d::nodes::SquadOrientationInterpolator *>(node);
     if (!interp) return;
+    if (!interp->getKeyValue().empty())
+      interp->emitValue_changed(interp->getKeyValue().front());
     interp->setOnSet_fractionHandler([&ctx, interp](const SFFloat &fraction) {
       if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
       ctx.postEvent(

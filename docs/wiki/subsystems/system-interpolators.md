@@ -21,7 +21,7 @@ The Interpolator System animates scene-graph field values by responding to `set_
 |---|---|
 | `runtime/events/Interpolation.hpp` | Shared linear-interpolation math: `KeySpan`/`locateKeySpan`, scalar/vector lerps (`lerpf`, `lerpVec2`, `lerpVec3`), HSV color conversion (`rgbToHsv`/`hsvToRgb`/`lerpColorHsv`), quaternion SLERP (`Quat`, `slerp`, `slerpRotation`, `slerpNormal`), and the generic dispatch templates `interpolateValue` and `interpolateMulti`. |
 | `runtime/events/SplineInterpolation.hpp` | Non-linear math: §19.2.4 Hermite spline (`hermiteSpline<T>`), §19.4.13 Squad quaternion interpolation (`squadOrientation`), §19.4.4 ease-in/ease-out fraction modifier (`easeInEaseOut`), and quaternion algebra helpers (`quatMul`, `quatConj`, `quatLog`, `quatExp`, `squadIntermediate`). |
-| `runtime/events/InterpolatorSystem.hpp` | Two generic `System` subclasses: `InterpolatorSystem<NodeT,ValueT>` (single-value family) and `MultiInterpolatorSystem<NodeT,ElemT>` (multi-value / flat keyValue family). Both register a `set_fraction` handler that calls `interpolateValue` or `interpolateMulti` and posts `value_changed` via `X3DExecutionContext::postEvent`. |
+| `runtime/events/InterpolatorSystem.hpp` | Two generic `System` subclasses: `InterpolatorSystem<NodeT,ValueT>` (single-value family) and `MultiInterpolatorSystem<NodeT,ElemT>` (multi-value / flat keyValue family). On attach they initialize output readback from the first authored keyValue without sending an event; their `set_fraction` handlers post later `value_changed` events through the cascade. |
 | `runtime/events/SplineInterpolatorSystem.hpp` | Three concrete `System` subclasses for the non-linear family: `SplineInterpolatorSystem<NodeT,ValueT>` (Hermite spline), `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` (emits `modifiedFraction_changed`). |
 | `runtime/events/InterpolatorRegistration.hpp` | `makeInterpolatorSystems()` — the single source of truth for the complete interpolator-system list. `registerInterpolatorSystems(ctx)` add-registers them. `attachInterpolators(scene, ctx)` (the production caller, defined in `runtime/events/X3DSceneBridge.hpp`) walks the scene and calls each system's `attach` on every node. |
 | `runtime/events/NurbsInterpolatorSystem.hpp` | Three §27 systems reuse `runtime/extract/NurbsEval.hpp` for curve positions, tangent orientations, and surface positions/normals. |
@@ -115,6 +115,7 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 ### Spec-conformance annotations
 
 - **INTERP-02** (§19.3.1): an interpolator with an empty `key` field must emit no `value_changed` event. All systems carry a live empty-key guard (`if (interp->getKey().empty()) return;`) checked at event time, so a later non-empty `key` re-enables emission without re-attaching.
+- **AUD-INTERP-1** (§19.3.1): before a `set_fraction` input, output readback is the first authored keyValue (or first multi-value row). Linear, spline, and Squad attachment initialize that stored readback directly and emit no ROUTE event.
 
 - **INTERP-01** (§19.2.4, §19.4.10-13): the Hermite Spline, Squad, and EaseInEaseOut nodes previously had no System; `set_fraction` fired a no-op generated default. `SplineInterpolatorSystem`, `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` close this gap.
 
@@ -140,6 +141,7 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `interpolator_conformance_test`) — behavioral conformance tests (`runtime/events/tests/interpolator_conformance_test.cpp`). Closes INTERP-02 (empty-key guard: sentinel value held after `set_fraction`; re-enabled after non-empty key assigned), INTERP-01 (Hermite scalar 2-key and 3-key exact values; author `keyVelocity` endpoint form; SplinePositionInterpolator component values; Squad N=2 reduces to SLERP; EaseInEaseOut three piecewise regions; S>1 rescaling path), and PIV-1 (`attachInterpolators` wires ScalarInterpolator and SplinePositionInterpolator via scene-walk, no manual per-node attach). All expected values are hand-computed from the normative §19.2.4 Hermite basis and §19.4.4 algorithm.
 - NRB-2 coverage in the same test: degree-1 curve interpolation, rational quarter-circle position and tangent rotation, bilinear patch position/normal, and degenerate curve input.
+- `interpolator_initial_value_readback` checks scalar, multi-value, and spline readback after attachment and before any input event.
 
 ## Related specs and ADRs
 
