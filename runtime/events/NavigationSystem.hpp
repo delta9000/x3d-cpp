@@ -84,18 +84,35 @@ public:
     touched_.erase(std::remove(touched_.begin(), touched_.end(), node), touched_.end());
     colliding_.erase(std::remove(colliding_.begin(), colliding_.end(), node), colliding_.end());
     if (lastFlyVp_ == node) { lastFlyVp_ = nullptr; flyOrientValid_ = false; }
+    if (geoNav_ == node) {
+      if (geoScaled_) {
+        geoNav_->setAvatarSize(baseAvatar_);
+        geoNav_->setVisibilityLimit(baseVisibility_);
+      }
+      geoNav_ = nullptr; geoScaled_ = false;
+    }
   }
 
   // Override the scene's NavigationInfo.type (dev affordance: the consumer's
   // mode-cycle key). std::nullopt = scene-driven (default).
   void setForcedMode(std::optional<Mode> m) { forcedMode_ = m; }
 
+
   void update(double now, X3DExecutionContext &ctx) override {
     // BIND-03: any bound X3DViewpointNode (Viewpoint/Ortho/Geo) — boundViewpoint()
     // returns whichever is bound; read its pose via reflection, never a typed cast.
     X3DNode *vp = ctx.boundViewpoint();
-    if (!vp) { lastNow_ = now; haveTime_ = true; return; }
+    if (!vp) {
+      if (geoNav_ && geoScaled_) {
+        geoNav_->setAvatarSize(baseAvatar_);
+        geoNav_->setVisibilityLimit(baseVisibility_);
+        geoScaled_ = false;
+      }
+      geoAvatarFactor_ = 1.0f;
+      lastNow_ = now; haveTime_ = true; return;
+    }
     NavigationInfo *nav = dynamic_cast<NavigationInfo *>(ctx.boundNavigationInfo());
+    scaleGeoNavigation(vp, nav, ctx);
 
     const double dt = haveTime_ ? (now - lastNow_) : 0.0;
     lastNow_ = now;
@@ -420,6 +437,59 @@ private:
   struct Avatar {
     float radius = 0.25f, height = 1.6f, step = 0.75f; // §23.4.4 defaults
   };
+  void scaleGeoNavigation(X3DNode *vp, NavigationInfo *nav,
+                          X3DExecutionContext &ctx) {
+    geoAvatarFactor_ = 1.0f;
+    if (nav != geoNav_) {
+      if (geoNav_ && geoScaled_) {
+        geoNav_->setAvatarSize(baseAvatar_);
+        geoNav_->setVisibilityLimit(baseVisibility_);
+      }
+      geoNav_ = nav;
+      geoScaled_ = false;
+      if (nav) {
+        baseAvatar_ = nav->getAvatarSize();
+        baseVisibility_ = nav->getVisibilityLimit();
+      }
+    }
+    if (vp->nodeTypeName() == "GeoViewpoint") {
+      SFVec3d authored;
+      double lat, lon, elevation;
+      if (geo::fromWorld(*vp, ctx.cameraWorldPosition(), authored) &&
+          geo::toGeodetic(geo::systemOf(*vp), authored, lat, lon, elevation)) {
+        // §25.3.11 gives only the speed formula (elevation / 10); for avatarSize
+        // and visibilityLimit it asks for "an appropriate value". Grow them with
+        // altitude but never shrink below the authored values: avatarSize also
+        // sets collision distance and the near clip, so a tiny avatar near the
+        // ground would break both (ADR-0054).
+        geoAvatarFactor_ = static_cast<float>(std::max(1.0, elevation / 10.0));
+      }
+    }
+    if (!nav) return;
+    if (geoScaled_ && (nav->getAvatarSize() != scaledAvatar_ ||
+                       nav->getVisibilityLimit() != scaledVisibility_)) {
+      baseAvatar_ = nav->getAvatarSize();
+      baseVisibility_ = nav->getVisibilityLimit();
+    }
+    if (vp->nodeTypeName() != "GeoViewpoint") {
+      if (geoScaled_) {
+        nav->setAvatarSize(baseAvatar_);
+        nav->setVisibilityLimit(baseVisibility_);
+        geoScaled_ = false;
+      }
+      return;
+    }
+    const float factor = geoAvatarFactor_;
+    MFFloat avatar = baseAvatar_;
+    for (float &v : avatar) v *= factor;
+    nav->setAvatarSize(avatar);
+    // visibilityLimit 0 means unlimited (§23.4.4) and stays unlimited; only an
+    // authored finite limit scales.
+    nav->setVisibilityLimit(baseVisibility_ > 0 ? baseVisibility_ * factor : baseVisibility_);
+    scaledAvatar_ = nav->getAvatarSize();
+    scaledVisibility_ = nav->getVisibilityLimit();
+    geoScaled_ = true;
+  }
   // World frame of the bound viewpoint's parent, its uniform scale and world up.
   struct Frame {
     Mat4 world;
@@ -436,13 +506,15 @@ private:
   }
   // avatarSize is scaled by the bound viewpoint's transform hierarchy, so the
   // world-space avatar is the authored one times the frame's scale.
-  static Avatar avatarOf(NavigationInfo *nav, float scale) {
+  static Avatar avatarOf(NavigationInfo *nav, float scale, float geoFactor) {
     Avatar a;
     if (nav) {
       const MFFloat &s = nav->getAvatarSize();
       if (s.size() > 0) a.radius = s[0];
       if (s.size() > 1) a.height = s[1];
       if (s.size() > 2) a.step = s[2];
+    } else {
+      a.radius *= geoFactor; a.height *= geoFactor; a.step *= geoFactor;
     }
     a.radius *= scale; a.height *= scale; a.step *= scale;
     return a;
@@ -461,7 +533,7 @@ private:
   SFVec3f resolveMove(X3DExecutionContext &ctx, X3DNode *vp, NavigationInfo *nav,
                       const SFVec3f &fromL, const SFVec3f &toL, bool walk) {
     const Frame f = frameOf(ctx, vp);
-    const Avatar a = avatarOf(nav, f.scale);
+    const Avatar a = avatarOf(nav, f.scale, geoAvatarFactor_);
     const SFVec3f from = f.world.transformPoint(fromL);
     const SFVec3f to = f.world.transformPoint(toL);
     const SFVec3f mv = sub(to, from);
@@ -491,7 +563,7 @@ private:
   bool followTerrain(X3DExecutionContext &ctx, X3DNode *vp, NavigationInfo *nav,
                      SFVec3f &P, double dt) {
     const Frame f = frameOf(ctx, vp);
-    const Avatar a = avatarOf(nav, f.scale);
+    const Avatar a = avatarOf(nav, f.scale, geoAvatarFactor_);
     const SFVec3f eye = f.world.transformPoint(P);
     const SFVec3f down = mul(f.up, -1.0f);
     PickResult g = ctx.collide(Ray{eye, down}, a.height * kGroundSearch);
@@ -517,7 +589,7 @@ private:
   void keepContact(X3DExecutionContext &ctx, X3DNode *vp, NavigationInfo *nav) {
     if (!touched_.empty() || colliding_.empty() || !haveBlockedDir_) return;
     const Frame f = frameOf(ctx, vp);
-    const Avatar a = avatarOf(nav, f.scale);
+    const Avatar a = avatarOf(nav, f.scale, geoAvatarFactor_);
     const SFVec3f eye = f.world.transformPoint(effPos(ctx, vp));
     std::vector<X3DNode *> groups;
     PickResult h = ctx.collide(Ray{eye, blockedDir_}, a.radius * 1.01f + 1e-4f, &groups);
@@ -576,12 +648,14 @@ private:
     SFVec3f upLocal = norm(parentInv.transformDirection(SFVec3f{0,1,0}));
     SFRotation targetOri = lookRotation(dirLocal, upLocal);
 
-    // Set centerOfRotation now (§23.4.4: pivot for subsequent EXAMINE).
-    // Result discarded deliberately: `vp` is the bound Viewpoint this function
-    // already dereferenced, and centerOfRotation is an inputOutput field every
-    // Viewpoint carries — the write cannot fail. A non-Viewpoint here would be a
-    // BindingSystem bug, not a caller mistake this path can act on.
-    (void)ctx.writeField(vp, "centerOfRotation", std::any(SFVec3f{centerLocal}));
+    // Set the pivot for subsequent EXAMINE in the bound viewpoint's own frame.
+    if (vp->nodeTypeName() == "GeoViewpoint") {
+      SFVec3d geoCenter;
+      if (geo::fromWorld(*vp, centerLocal, geoCenter))
+        (void)ctx.writeField(vp, "centerOfRotation", std::any(geoCenter));
+    } else {
+      (void)ctx.writeField(vp, "centerOfRotation", std::any(centerLocal));
+    }
 
     // Begin transition from the CURRENT effective eye (offset-aware).
     lookat_.start = effPos(ctx, vp);
@@ -636,6 +710,13 @@ private:
 
   // ---- cross-tick state -----------------------------------------------------
   double lastNow_ = 0.0;
+  NavigationInfo *geoNav_ = nullptr;
+  MFFloat baseAvatar_;
+  MFFloat scaledAvatar_;
+  float baseVisibility_ = 0.0f;
+  float scaledVisibility_ = 0.0f;
+  bool geoScaled_ = false;
+  float geoAvatarFactor_ = 1.0f;
   bool haveTime_ = false;
   unsigned long lastPointerRev_ = static_cast<unsigned long>(-1);
   bool dragActive_ = false;

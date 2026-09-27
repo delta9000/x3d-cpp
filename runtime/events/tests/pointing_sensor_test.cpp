@@ -125,6 +125,32 @@ void test_geo_touch() {
         "GeoTouchSensor hitGeoCoord matches picked box face");
 }
 
+// ADR-0053: under a translated parent the geographic hit is the geo form of
+// the sensor-local hit point (the frame hitPoint_changed uses), not of the raw
+// world point.
+void test_geo_touch_under_transform() {
+  auto origin = std::make_shared<GeoOrigin>();
+  origin->setGeoSystemUnchecked(MFString{"GC"});
+  origin->setGeoCoords(SFVec3d{6378137, 0, 0});
+  auto xf = std::make_shared<Transform>();
+  xf->setTranslation(SFVec3f{5, 0, 0});
+  auto sensor = std::make_shared<GeoTouchSensor>();
+  sensor->setGeoOriginUnchecked(origin);
+  addChild(xf, sensor);
+  addChild(xf, boxShape());
+  Scene scene; scene.addRootNode(xf);
+  Rig r; r.build(scene);
+  r.ctx.setPointerPresent(true);
+  r.ctx.setPointer(Ray{{5, 0, 10}, {0, 0, -1}});
+  r.ctx.tick(1.0);
+  SFVec3d expected;
+  check(geo::fromWorld(*sensor, SFVec3f{0, 0, 1}, expected), "local geo hit converts");
+  const auto actual = sensor->getHitGeoCoord_changed();
+  check(std::fabs(actual.x - expected.x) < 1e-6 && std::fabs(actual.y - expected.y) < 1e-6 &&
+            std::fabs(actual.z - expected.z) < 1e-3,
+        "GeoTouchSensor hitGeoCoord uses the sensor-local hit under a Transform");
+}
+
 // ---------------------------------------------------------------------------
 // (1) isOver enter/leave + no-event-when-unchanged.
 // ---------------------------------------------------------------------------
@@ -565,6 +591,7 @@ void test_planesensor_offset_and_clamp() {
 
 TEST_CASE("pointing_sensor_test") {
   test_geo_touch();
+  test_geo_touch_under_transform();
   test_isOver_and_no_event_when_unchanged();
   test_lowest_sensor_wins();
   test_nearest_geometry();

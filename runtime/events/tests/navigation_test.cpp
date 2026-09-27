@@ -532,6 +532,63 @@ TEST_CASE("GeoViewpoint navigation speed follows elevation and speedFactor") {
   CHECK(dist(before, after) == doctest::Approx(20.0f).epsilon(0.02));
 }
 
+TEST_CASE("GeoViewpoint scales avatar and visibility with elevation") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoCoords", std::any(SFVec3d{0,0,0}));
+  setF(origin, "rotateYUp", std::any(true));
+  auto vp = createX3DNode("GeoViewpoint");
+  setF(vp, "geoOrigin", std::any(origin));
+  setF(vp, "position", std::any(SFVec3d{0,0,100}));
+  setF(vp, "speedFactor", std::any(2.0f));
+  auto navNode = createX3DNode("NavigationInfo");
+  auto &nav = dynamic_cast<NavigationInfo &>(*navNode);
+  nav.setAvatarSize({0.25f, 1.6f, 0.75f});
+  nav.setVisibilityLimit(50.0f);
+  Scene scene;
+  scene.addRootNode(vp);
+  scene.addRootNode(navNode);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.addSystem(std::make_shared<NavigationSystem>());
+  ctx.tick(0.0);
+  CHECK(nav.getAvatarSize()[0] == doctest::Approx(2.5f));
+  CHECK(nav.getAvatarSize()[1] == doctest::Approx(16.0f));
+  CHECK(nav.getAvatarSize()[2] == doctest::Approx(7.5f));
+  CHECK(nav.getVisibilityLimit() == doctest::Approx(500.0f));
+  ctx.tick(1.0);  // no compounding across ticks
+  CHECK(nav.getAvatarSize()[0] == doctest::Approx(2.5f));
+  CHECK(nav.getVisibilityLimit() == doctest::Approx(500.0f));
+
+  // Near the ground the authored values come back: the multiplier never drops
+  // below 1 (avatarSize sets the collision distance and near clip).
+  setF(vp, "position", std::any(SFVec3d{0,0,5}));
+  ctx.tick(2.0);
+  CHECK(nav.getAvatarSize()[0] == doctest::Approx(0.25f));
+  CHECK(nav.getAvatarSize()[1] == doctest::Approx(1.6f));
+  CHECK(nav.getVisibilityLimit() == doctest::Approx(50.0f));
+}
+
+TEST_CASE("GeoViewpoint keeps an unlimited visibilityLimit unlimited") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoCoords", std::any(SFVec3d{0,0,0}));
+  setF(origin, "rotateYUp", std::any(true));
+  auto vp = createX3DNode("GeoViewpoint");
+  setF(vp, "geoOrigin", std::any(origin));
+  setF(vp, "position", std::any(SFVec3d{0,0,500}));
+  auto navNode = createX3DNode("NavigationInfo");
+  auto &nav = dynamic_cast<NavigationInfo &>(*navNode);
+  Scene scene;
+  scene.addRootNode(vp);
+  scene.addRootNode(navNode);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.addSystem(std::make_shared<NavigationSystem>());
+  ctx.tick(0.0);
+  CHECK(nav.getVisibilityLimit() == doctest::Approx(0.0f));  // §23.4.4: 0 = unlimited
+  CHECK(nav.getAvatarSize()[0] == doctest::Approx(0.25f * 50.0f));
+}
+
+
 TEST_CASE("GeoLocation geoCoords updates its child camera") {
   auto origin = createX3DNode("GeoOrigin");
   setF(origin, "geoCoords", std::any(SFVec3d{0,0,0}));
@@ -552,4 +609,29 @@ TEST_CASE("GeoLocation geoCoords updates its child camera") {
         FieldWriteResult::Ok);
   ctx.tick(1.0);
   CHECK(feq(ctx.cameraWorldPosition().y, 50.0f, 0.01f));
+}
+
+TEST_CASE("GeoViewpoint LOOKAT updates geographic centerOfRotation") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoCoords", std::any(SFVec3d{0, 0, 0}));
+  setF(origin, "rotateYUp", std::any(true));
+  auto vp = createX3DNode("GeoViewpoint");
+  setF(vp, "geoOrigin", std::any(origin));
+  setF(vp, "position", std::any(SFVec3d{0, 0, 10}));
+  setF(vp, "centerOfRotation", std::any(SFVec3d{0, 0, 2}));
+  auto nav = createX3DNode("NavigationInfo");
+  setF(nav, "type", std::any(std::vector<std::string>{"LOOKAT"}));
+  setF(nav, "transitionTime", std::any(SFTime{0}));
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(createX3DNode("Box")));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(nav); scene.addRootNode(shape);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  ctx.addSystem(std::make_shared<NavigationSystem>());
+  ctx.tick(0);
+  ctx.setPointerPresent(true);
+  ctx.setPointer(Ray{{0, 10, 0}, {0, -1, 0}});
+  ctx.setPointerScreen(0, 0);
+  ctx.setPointerButton(true);
+  ctx.tick(1);
+  CHECK(geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0, 0, 2}).z == doctest::Approx(0));
 }

@@ -95,6 +95,13 @@ both. It also provides the geoid when the application points it at a grid.
   is pure, so a per-context injection would thread a pointer through every
   one of them for no behavioural gain. An application that wants PROJ sets it
   once before building scenes; the setter is not synchronised.
+- **Frame of the converted coordinates.** A node's geographic coordinates
+  are converted into that node's local coordinate system (relative to its
+  GeoOrigin); ancestor transforms then apply on top, exactly as for any other
+  geometry. Outputs that report geography (GeoProximitySensor
+  `geoCoord_changed`, GeoTouchSensor `hitGeoCoord_changed`, GeoViewpoint's
+  LOOKAT `centerOfRotation`) convert from the node's local frame, so they agree
+  with geo content displaced by the same Transform.
 - **Precision (§25.2.5).** Geocentric values are ~6.4e6 m, so conversions stay
   in double until a point is made relative to its GeoOrigin; only then is it
   narrowed to the float vectors the runtime uses. A node without a GeoOrigin

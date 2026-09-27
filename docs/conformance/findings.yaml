@@ -431,7 +431,7 @@
   severity: minor
   status: closed
   summary: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
-  note: "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2; GeoLOD URL loading remains open as GEOLOD-1."
+  note: "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2."
 - id: CONF-NAV-COLLISION
   nodes: [Collision, CollisionSensor]
   component: Navigation
@@ -806,9 +806,9 @@
   component: Geospatial
   clause: "25.3.4"
   severity: major
-  status: open
-  summary: GeoLOD selects a distance level and emits children/level_changed, but does not load rootUrl or child1Url through child4Url.
-  note: "Remaining: connect URL tiles to InlineRuntimeSystem loading/unloading, wait for all requested child tiles before switching, and render only the selected tile set. The root tile is shown (and reported as children) at every level until tiles load."
+  status: closed
+  summary: GeoLOD selects and displays URL tiles by range.
+  note: "Closed 2026-09-27: InlineRuntimeSystem resolves rootUrl when rootNode is empty, waits for all specified child URLs, switches children and level_changed with the displayed set, and unloads child tiles on exit. The extractor walks only that set. Covered by GeoLOD URL tiles wait, switch, unload, and recurse."
 
 # X3DGroupingNode active-child (§10/§23) — Switch full-snapshot clean, incremental
 # delta() fixed (SW-DELTA-1); LOD partial; Collision inert
@@ -1338,9 +1338,9 @@
   component: Geospatial
   clause: "25.3.11"
   severity: minor
-  status: open
-  summary: "GeoViewpoint does not scale navigation avatarSize or visibilityLimit with elevation."
-  note: "The elevation-based movement speed and speedFactor are wired. Section 25.3.11 also recommends adapting avatarSize and visibilityLimit as elevation changes; NavigationSystem still reads NavigationInfo's ordinary values."
+  status: closed
+  summary: "GeoViewpoint scales navigation avatarSize and visibilityLimit with elevation."
+  note: "Closed: NavigationSystem multiplies the bound NavigationInfo avatarSize, and a finite visibilityLimit, by max(1, elevation / 10) while a GeoViewpoint is bound (ADR-0054); an unlimited limit (0) stays unlimited and the authored values are restored when another viewpoint binds. Tests: GeoViewpoint scales avatar and visibility with elevation; GeoViewpoint keeps an unlimited visibilityLimit unlimited."
 - id: G2D-1
   nodes: [Arc2D, ArcClose2D, Circle2D, Disk2D, Polyline2D, Polypoint2D, Rectangle2D, TriangleSet2D]
   component: Geometry2D
@@ -1726,6 +1726,62 @@
     tokens without mutation; range_warnings_test covers GD, UTM Z10 S, N and garbage.
     The validator accepts WM (Web Mercator). The vendored X3D UOM is left as published (it still
     lacks WM), so the generated enumeration does not list it; the open enum stores it regardless.
+- id: GEO-AUDIT-1
+  nodes: [GeoElevationGrid]
+  component: Geospatial
+  clause: "25.3.2"
+  severity: major
+  status: closed
+  summary: GeoElevationGrid added geoGridOrigin altitude to absolute height samples.
+  note: "gridCoordinate now uses each scaled height as the absolute elevation; mesh and bounds share that conversion. Regression: GeoElevationGrid heights are absolute elevations regardless of geoGridOrigin altitude."
+- id: GEO-AUDIT-2
+  nodes: [GeoMetadata]
+  component: Geospatial
+  clause: "25.3.5"
+  severity: major
+  status: closed
+  summary: GeoMetadata.data references were rendered as scene content.
+  note: "SceneExtractor skips GeoMetadata.data and nonvisual metadata fields, including MetadataSet.value. Regression: GeoMetadata data references do not create render items."
+- id: GEO-AUDIT-3
+  nodes: [GeoCoordinate, GeoElevationGrid, GeoLOD, GeoLocation, GeoOrigin, GeoPositionInterpolator, GeoProximitySensor, GeoTouchSensor, GeoTransform, GeoViewpoint]
+  component: Geospatial
+  clause: "25.2.3, 25.2.4"
+  severity: minor
+  status: closed
+  summary: geoSystem validation rejected valid ellipsoid and ordering tokens and omitted nodes.
+  note: "Validation now runs on every geoSystem field and reuses parseGeoSystem and ellipsoidByCode; it accepts AA, ordering tokens, GDC/GCC, and WGS84 while retaining warnings for unknown tokens, N, and bad UTM zones. Regression: geoSystem validation accepts spec tokens on every geospatial node. This completes GEOSYSTEM."
+- id: GEO-AUDIT-4
+  nodes: [GeoViewpoint]
+  component: Geospatial
+  clause: "23.4.4, 25.3.11"
+  severity: major
+  status: closed
+  summary: LOOKAT wrote a Cartesian SFVec3f to GeoViewpoint.centerOfRotation.
+  note: "NavigationSystem converts the picked pivot with geo::fromWorld and writes SFVec3d. Regression: GeoViewpoint LOOKAT updates geographic centerOfRotation. This completes the GeoViewpoint centerOfRotation path after GEO-1."
+- id: GEO-AUDIT-5
+  nodes: [GeoProximitySensor, GeoViewpoint]
+  component: Geospatial
+  clause: "22.4.1, 25.3.8"
+  severity: critical
+  status: closed
+  summary: GeoProximitySensor read GeoViewpoint.centerOfRotation as SFVec3f and crashed in debug.
+  note: "ViewDependentSystem reads SFVec3d and converts it with geo::toWorld before parent and sensor transforms. Regression: GeoProximitySensor reports GeoViewpoint geographic centerOfRotation."
+- id: GEO-AUDIT-6
+  nodes: [GeoProximitySensor]
+  component: Geospatial
+  clause: "25.3.8"
+  severity: major
+  status: closed
+  summary: GeoProximitySensor.geoCoord_changed dropped the sensor ancestor transform.
+  note: "Reviewed, convention kept (ADR-0053): geographic coordinates are placed in the node's local frame, with ancestor transforms applied on top as for any geometry, so geoCoord_changed converts the viewer position in the sensor's frame (it agrees with GeoCoordinate content displaced by the same Transform). The audit's world-frame reading was not adopted; GeoTouchSensor.hitGeoCoord_changed was aligned to the same local frame. Tests: GeoProximitySensor geoCoord is in the sensor's local geo frame; test_geo_touch_under_transform."
+- id: GEO-GEOID-DEFAULT
+  nodes: [GeoCoordinate, GeoElevationGrid, GeoLOD, GeoLocation, GeoOrigin, GeoPositionInterpolator, GeoProximitySensor, GeoTouchSensor, GeoTransform, GeoViewpoint]
+  component: Geospatial
+  clause: "25.2.3"
+  severity: minor
+  status: closed
+  summary: Default backend has no geoid model, so WGS84 heights are converted as ellipsoidal.
+  note: "Closed 2026-09-27: runtime/io/tinygeoid/TinygeoidGeoid.hpp (vendored tinygeoid, MIT, header-only, no dependencies) gives the built-in backend a WGS84 geoid from a .tng grid (e.g. EGM2008 2.5′ via tng_pack); the optional PROJ backend takes a PROJ grid. The grid data (~150 MB for EGM2008) is supplied by the application, so a build without one still converts WGS84 heights as ellipsoidal, as documented in geospatial.md. Tests: geoid: tinygeoid supplies the WGS84 geoid...; geoid: a .tng file loads..."
 - id: SND-GAIN-TYPE
   nodes: [ListenerPointSource]
   component: Sound

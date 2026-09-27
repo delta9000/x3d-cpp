@@ -84,19 +84,18 @@ public:
     const SFVec3f eye = ctx.cameraWorldPosition();
     for (auto &[node, last] : lodLevel_) {
       if (node->nodeTypeName() == "GeoLOD") {
-        // §25.3.4: range is measured in metres from the geospatial center.
-        SFVec3f centerWorld;
-        const SFVec3d authored = geombounds::getField<SFVec3d>(*node, "center", {0, 0, 0});
-        if (!geo::toWorld(*node, authored, centerWorld)) continue;
-        const SFVec3f eyeLocal = ctx.worldTransform(node).inverse().transformPoint(eye);
-        const float range = geombounds::getField<float>(*node, "range", 10.0f);
-        const int lvl = viewdep::len(viewdep::sub(eyeLocal, centerWorld)) < range ? 1 : 0;
+        // URL-backed GeoLODs are driven by InlineRuntimeSystem, which waits for
+        // the requested tile set before changing the displayed level.
+        if (!geombounds::getField<MFString>(*node, "rootUrl", {}).empty() ||
+            !geombounds::getField<MFString>(*node, "child1Url", {}).empty() ||
+            !geombounds::getField<MFString>(*node, "child2Url", {}).empty() ||
+            !geombounds::getField<MFString>(*node, "child3Url", {}).empty() ||
+            !geombounds::getField<MFString>(*node, "child4Url", {}).empty()) continue;
+        const int lvl = 0; // no child URLs: the authored root remains displayed
         if (lvl != last) {
           last = lvl;
           const auto root = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
               *node, "rootNode", {});
-          // Child-URL tiles are not loaded yet (GEOLOD-1): until they are, the
-          // root tile stays the displayed content at level 1 too.
           const auto &children = root;
           ctx.postEvent(node, "children", std::any(children));
           ctx.postEvent(node, "level_changed", std::any(static_cast<SFInt32>(lvl)));
@@ -256,6 +255,11 @@ private:
         if (lvl >= static_cast<int>(kids.size())) lvl = static_cast<int>(kids.size()) - 1;
         if (kids[lvl]) collectActiveFrom(kids[lvl].get(), ctx, world, seen, budget);
       }
+    } else if (t == "GeoLOD") {
+      auto kids = childrenOf(*n);
+      if (kids.empty()) kids = geombounds::getField<MFNode>(*n, "rootNode", {});
+      for (const auto &kid : kids)
+        if (kid) collectActiveFrom(kid.get(), ctx, world, seen, budget);
     } else {
       forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
         collectActiveFrom(c.get(), ctx, world, seen, budget);
@@ -433,6 +437,8 @@ private:
         if (geographic) {
           // §25.3.8: pair each position_changed with its geoSystem coordinate.
           SFVec3d coords;
+          // Geographic coordinates live in the sensor's local frame (ADR-0053):
+          // ancestor transforms place the geo content, so undo them first.
           const Mat4 parent = w * tangent.inverse();
           if (geo::fromWorld(*node, parent.inverse().transformPoint(eyeWorld), coords))
             ctx.postEvent(node, "geoCoord_changed", std::any(coords));
@@ -449,8 +455,11 @@ private:
                              : std::vector<std::string>{};
       if (std::find(types.begin(), types.end(), "LOOKAT") != types.end()) {
         X3DNode *vp = ctx.boundViewpoint();
-        const SFVec3f cor = vp ? geombounds::getField<SFVec3f>(*vp, "centerOfRotation", {0, 0, 0})
-                               : SFVec3f{0, 0, 0};
+        SFVec3f cor{0, 0, 0};
+        if (vp && vp->nodeTypeName() == "GeoViewpoint")
+          geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0, 0, 0}), cor);
+        else if (vp)
+          cor = geombounds::getField<SFVec3f>(*vp, "centerOfRotation", {0, 0, 0});
         const SFVec3f corWorld = vp ? ctx.worldOf(vp).transformPoint(cor) : cor;
         const SFVec3f corLocal = inv.transformPoint(corWorld);
         if (!pst.corHas || !vecEq(corLocal, pst.cor))
