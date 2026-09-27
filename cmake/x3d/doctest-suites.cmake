@@ -11,6 +11,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/mat4_inverse_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/vec_math_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/intersect_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/geo_projection_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/geometry_bounds_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/getfield_typecheck_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/dirty_tracker_test.cpp"

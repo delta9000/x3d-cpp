@@ -66,6 +66,7 @@ nav:
           - Time System: subsystems/system-time.md
           - Interpolator System: subsystems/system-interpolators.md
           - Followers System: subsystems/system-followers.md
+          - Geospatial: subsystems/geospatial.md
           - EventUtility System: subsystems/system-eventutility.md
           - View-Dependent System: subsystems/system-viewdependent.md
           - Viewpoint Binding System: subsystems/system-viewpointbind.md
@@ -146,6 +147,7 @@ nav:
       - "ADR-0050: Decoded PCM and the Sound Ellipsoid Cross the AudioBackend Seam": decisions/0050-audio-pcm-and-ellipsoid-seam.md
       - "ADR-0051: Deferred Inline Expansion Uses the Parse Resolver and Live Runtime Enrollment": decisions/0051-runtime-inline-expansion.md
       - "ADR-0052: Movie Audio Uses the Existing PCM Buffer Source": decisions/0052-movie-audio-buffer-source.md
+      - "ADR-0053: Geospatial Coordinates Through a GeoProjection Seam With a First-Party Default": decisions/0053-geo-projection-seam.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
