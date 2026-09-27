@@ -53,6 +53,24 @@ inline SFVec3f normalByInverse(const Mat4 &m, SFVec3f n) {
           m.m[4]*n.x+m.m[5]*n.y+m.m[6]*n.z,
           m.m[8]*n.x+m.m[9]*n.y+m.m[10]*n.z};
 }
+inline SFVec3f deformCornerNormal(const SkinBinding &b,
+                                 const std::vector<Mat4> &inversePalette,
+                                 std::uint32_t coordinate, std::uint32_t normal) {
+  if (normal >= b.bindNormals.size()) return {};
+  const SFVec3f bind = b.bindNormals[normal];
+  const std::size_t source = coordinate;
+  if (source + 1 >= b.influenceOffset.size()) return bind;
+  const auto first = b.influenceOffset[source];
+  const auto last = b.influenceOffset[source + 1];
+  if (first == last) return bind;
+  SFVec3f sum{0,0,0};
+  for (auto k = first; k < last; ++k) {
+    const auto &in = b.influences[k];
+    if (in.joint < inversePalette.size())
+      sum = add(sum, mul(normalByInverse(inversePalette[in.joint], bind), in.weight));
+  }
+  return unit(sum, bind);
+}
 } // namespace detail
 
 inline SkinBinding compileBinding(const X3DNode &humanoid) {

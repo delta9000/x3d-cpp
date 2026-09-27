@@ -113,7 +113,9 @@ joint's `skinCoordIndex` / `skinCoordWeight`, or the skeleton structure.
 
 CPU consumers call `SceneExtractor::deformedMesh(id)`. It evaluates the pose,
 deforms the source coordinates and maps them to the expanded corners. Authored
-normals are mapped through their normal indices. Otherwise normals are
+normals are mapped through their normal indices; each corner's normal uses the
+influences of that corner's source coordinate, even when `normalIndex` differs
+from `coordIndex`. Otherwise normals are
 regenerated with the geometry's winding and `creaseAngle`. The `cpu_raster`
 example draws skins this way.
 
@@ -125,6 +127,12 @@ positions and inverse-transpose normals. Items with Joint displacers use
 applies the sparse offsets after skinning along each owning joint's axes.
 Items without authored skin normals use the same exact CPU path, because the
 reference regenerates and crease-smooths normals from posed triangles.
+
+For a negative-determinant world transform, both renderers reverse the mesh's
+`ccw` front-face setting during culling. Generated normals already honor
+`ccw=false` in mesh extraction; the normal matrix then transforms them through
+the reflection. Leif uses this combination (`ccw=false`, humanoid scale
+`1 1 -1`), so culling the wrong faces made its skin appear black.
 
 ## Motion
 
@@ -178,7 +186,6 @@ because the published 2.0 motion-node page could not be retrieved. Units follow
 - `skeletalConfiguration`, `loa`.
 - The mass properties.
 
-`skinNormal` is assumed to be indexed like `skinCoord`.
 
 ## Tests
 

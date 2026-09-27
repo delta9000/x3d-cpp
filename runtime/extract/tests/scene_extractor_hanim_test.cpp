@@ -7,6 +7,7 @@
 #include "doctest/doctest.h"
 
 #include <any>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -131,6 +132,44 @@ TEST_CASE("HAnim skin accepts direct geometry") {
   REQUIRE(snapshot.added.size() == 1);
   CHECK(extractor.item(snapshot.added.front()).skin->sourceCoordIndex ==
         std::vector<std::uint32_t>{0,1,2});
+}
+
+TEST_CASE("HAnim skin normalIndex follows each corner's coordinate influences") {
+  auto coord = createX3DNode("Coordinate");
+  set(coord, "point", std::vector<SFVec3f>{{-1,-1,0}, {1,-1,0}, {1,1,0}, {-1,1,0}});
+  auto normal = createX3DNode("Normal");
+  set(normal, "vector", std::vector<SFVec3f>(4, {0,0,1}));
+  auto geom = createX3DNode("IndexedFaceSet");
+  set(geom, "coord", std::shared_ptr<X3DNode>(coord));
+  set(geom, "normal", std::shared_ptr<X3DNode>(normal));
+  set(geom, "coordIndex", std::vector<int>{0,1,2,-1,0,2,3,-1});
+  set(geom, "normalIndex", std::vector<int>{3,0,1,-1,3,1,2,-1});
+  auto shape = createX3DNode("Shape");
+  set(shape, "geometry", std::shared_ptr<X3DNode>(geom));
+  auto joint = createX3DNode("HAnimJoint");
+  set(joint, "skinCoordIndex", std::vector<int>{0});
+  set(joint, "skinCoordWeight", std::vector<float>{1});
+  set(joint, "rotation", SFRotation{0,1,0,1});
+  auto humanoid = createX3DNode("HAnimHumanoid");
+  set(humanoid, "skinCoord", std::shared_ptr<X3DNode>(coord));
+  set(humanoid, "skinNormal", std::shared_ptr<X3DNode>(normal));
+  set(humanoid, "skin", std::vector<std::shared_ptr<X3DNode>>{shape});
+  set(humanoid, "skeleton", std::vector<std::shared_ptr<X3DNode>>{joint});
+  set(humanoid, "joints", std::vector<std::shared_ptr<X3DNode>>{joint});
+  Scene scene; scene.addRootNode(humanoid);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor extractor(ctx, scene);
+  auto snapshot = extractor.fullSnapshot();
+  REQUIRE(snapshot.added.size() == 1);
+  const auto id = snapshot.added[0];
+  CHECK(extractor.item(id).skin->sourceNormalIndex ==
+        std::vector<std::uint32_t>{3,0,1,3,1,2});
+  const auto mesh = extractor.deformedMesh(id);
+  CHECK(mesh.normals[0].x == doctest::Approx(std::sin(1.0f)));
+  CHECK(mesh.normals[3].x == doctest::Approx(std::sin(1.0f)));
+  CHECK(mesh.normals[1].x == doctest::Approx(0));
+  CHECK(mesh.normals[2].x == doctest::Approx(0));
+  CHECK(mesh.normals[5].x == doctest::Approx(0));
 }
 
 TEST_CASE("Segment-shared geometry keeps per-Segment displacement in snapshot and delta") {

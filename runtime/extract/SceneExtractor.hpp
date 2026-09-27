@@ -385,16 +385,23 @@ public:
     if (!rec.skin) return out;
     const auto &skin = *rec.skin;
     auto pose = hanim::evaluatePose(*skin.binding);
-    std::vector<SFVec3f> positions, normals;
-    hanim::deform(*skin.binding, pose, positions, &normals);
+    std::vector<SFVec3f> positions;
+    hanim::deform(*skin.binding, pose, positions, nullptr);
     if (positions.empty()) return out; // temporary core stub has no bind data.
     for (std::size_t i = 0; i < out.positions.size() && i < skin.sourceCoordIndex.size(); ++i)
       if (skin.sourceCoordIndex[i] < positions.size())
         out.positions[i] = positions[skin.sourceCoordIndex[i]];
-    if (!normals.empty() && skin.sourceNormalIndex.size() == out.positions.size()) {
+    if (!skin.binding->bindNormals.empty() &&
+        skin.sourceNormalIndex.size() == out.positions.size() &&
+        skin.sourceCoordIndex.size() == out.positions.size()) {
+      std::vector<Mat4> inversePalette;
+      inversePalette.reserve(pose.palette.size());
+      for (const auto &matrix : pose.palette) inversePalette.push_back(matrix.inverse());
       for (std::size_t i = 0; i < out.normals.size(); ++i)
-        if (skin.sourceNormalIndex[i] < normals.size())
-          out.normals[i] = normals[skin.sourceNormalIndex[i]];
+        if (skin.sourceNormalIndex[i] < skin.binding->bindNormals.size())
+          out.normals[i] = hanim::detail::deformCornerNormal(
+              *skin.binding, inversePalette, skin.sourceCoordIndex[i],
+              skin.sourceNormalIndex[i]);
     } else if (out.topology == Topology::Triangles) {
       for (std::size_t i = 0; i + 2 < out.positions.size(); i += 3) {
         SFVec3f n = mesh_detail::faceNormal(out.positions[i], out.positions[i+1], out.positions[i+2]);

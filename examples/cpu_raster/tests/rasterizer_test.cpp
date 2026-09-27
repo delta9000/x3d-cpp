@@ -88,6 +88,22 @@ int main() {
     CHECK(near(fb.colorAt(8, 8).x, 1.0f));
   }
 
+  // Reflection swaps the visible face of a closed surface. A Z mirror leaves
+  // screen winding unchanged, so ccw alone would draw the far face instead.
+  {
+    Framebuffer fb(16, 16);
+    fb.clear({0, 0, 0});
+    Rasterizer r(fb);
+    const g::mat4 mirror(x3d::runtime::Mat4::scale({1, 1, -1}));
+    auto red = [](const FragmentInput &, g::vec4 &o) { o = {1, 0, 0, 1}; return true; };
+    auto green = [](const FragmentInput &, g::vec4 &o) { o = {0, 1, 0, 1}; return true; };
+    r.drawTriangles(quad(-0.5f), {0, 2, 1, 0, 3, 2}, mirror, I, I, I3,
+                    true, true, BlendMode::Opaque, green);
+    r.drawTriangles(quad(0.5f), quadIdx(), mirror, I, I, I3,
+                    true, true, BlendMode::Opaque, red);
+    CHECK(near(fb.colorAt(8, 8).y, 1.0f));
+  }
+
   // ---- Perspective-correct varying: interpolate texcoord across the quad ----
   {
     Framebuffer fb(32, 32);

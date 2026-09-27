@@ -1775,11 +1775,11 @@ int main(int argc, char **argv) {
       };
 
       // Helper: per-draw culling from mesh winding/solidity.
-      auto applyCull = [&](const GpuMesh &g) {
+      auto applyCull = [&](const GpuMesh &g, const x3d::runtime::Mat4 &model) {
         if (g.solid) {
           glEnable(GL_CULL_FACE);
           glCullFace(GL_BACK);
-          glFrontFace(g.ccw ? GL_CCW : GL_CW);
+          glFrontFace(poc::frontFaceCCW(g.ccw, model) ? GL_CCW : GL_CW);
         } else {
           glDisable(GL_CULL_FACE);
         }
@@ -1952,7 +1952,7 @@ int main(int argc, char **argv) {
             bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);
             bindTex(3, uSpecularTex, uHasSpecularTex, 0);
           }
-          applyCull(g);
+          applyCull(g, it.worldTransform);
 
         // ----------------------------------------------------------------
         // PATH 3: PBR — metallic-roughness analytic BRDF (no IBL: Phase 4 deferred).
@@ -2034,7 +2034,7 @@ int main(int argc, char **argv) {
             bindTex(3, uPbrMRTex,          uPbrHasMRTex,          0);
             bindTex(4, uPbrOcclusionTex,   uPbrHasOcclusionTex,   0);
           }
-          applyCull(g);
+          applyCull(g, it.worldTransform);
 
         // ----------------------------------------------------------------
         // PATH 4: AUTHOR-SHADER (ComposedShader via ShaderBindingPlan).
@@ -2174,7 +2174,7 @@ int main(int argc, char **argv) {
               }
             }
           }
-          applyCull(g);
+          applyCull(g, it.worldTransform);
         }
 
         // §12.4.6: line width applies on both lit and unlit paths.

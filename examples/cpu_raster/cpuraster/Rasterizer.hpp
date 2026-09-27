@@ -72,6 +72,11 @@ public:
                      const FragmentShader &fs) {
     const glsl::mat4 mv = view * model;
     const glsl::mat4 mvp = proj * mv;
+    const auto &m = model.m;
+    const float det = m[0] * (m[5] * m[10] - m[6] * m[9]) -
+                      m[4] * (m[1] * m[10] - m[2] * m[9]) +
+                      m[8] * (m[1] * m[6] - m[2] * m[5]);
+    const bool frontCCW = ccw != (det < 0.0f);
     for (std::size_t i = 0; i + 2 < indices.size(); i += 3) {
       std::array<ClipVertex, 3> tri;
       for (int k = 0; k < 3; ++k) {
@@ -87,7 +92,7 @@ public:
       // Near-plane clip -> 0,1, or 2 triangles (fan).
       std::vector<ClipVertex> poly = clipNear({tri[0], tri[1], tri[2]});
       for (std::size_t t = 0; t + 2 < poly.size(); ++t)
-        rasterTriangle(poly[0], poly[t + 1], poly[t + 2], ccw, solid, blend, fs);
+        rasterTriangle(poly[0], poly[t + 1], poly[t + 2], frontCCW, solid, blend, fs);
     }
   }
 

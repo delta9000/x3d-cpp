@@ -8,6 +8,14 @@
 
 namespace poc {
 
+inline bool frontFaceCCW(bool ccw, const x3d::runtime::Mat4 &model) {
+  const auto &m = model.m;
+  const float det = m[0] * (m[5] * m[10] - m[6] * m[9]) -
+                    m[4] * (m[1] * m[10] - m[2] * m[9]) +
+                    m[8] * (m[1] * m[6] - m[2] * m[5]);
+  return ccw != (det < 0.0f);
+}
+
 inline std::array<float, 9> identityNormalMatrix3() {
   return {1.0f, 0.0f, 0.0f,
           0.0f, 1.0f, 0.0f,
