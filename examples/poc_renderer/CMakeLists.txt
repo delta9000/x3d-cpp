@@ -183,3 +183,8 @@ add_test(NAME x3d_poc_draw_math COMMAND x3d_poc_draw_math)
 add_test(NAME x3d_poc_skin_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/skin_gl_test.py"
             $<TARGET_FILE:x3d_poc_renderer> "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+
+# Real GL regression: positional lighting must reach both fragment paths.
+add_test(NAME x3d_poc_positional_light_gl
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/positional_light_gl_test.py"
+            $<TARGET_FILE:x3d_poc_renderer>)

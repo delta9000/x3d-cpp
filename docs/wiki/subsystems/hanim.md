@@ -119,6 +119,12 @@ from `coordIndex`. Otherwise normals are
 regenerated with the geometry's winding and `creaseAngle`. The `cpu_raster`
 example draws skins this way.
 
+`poc_renderer` now evaluates extracted directional, point, and spot lights in
+its Phong and PBR fragment paths. Positional lights use eye-space locations,
+radius cutoff, X3D attenuation, and the spot beam/cutoff falloff; the existing
+headlight still reserves one of eight light slots. This lighting is independent
+of the shared skin vertex layout.
+
 `poc_renderer` uploads a skin item's expanded-corner CSR ranges and uncapped
 influences once to OpenGL buffer textures. On `updatedSkinPose`, it evaluates
 the pose and replaces only the matrix palette buffer. Its vertex shaders blend

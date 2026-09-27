@@ -19,7 +19,7 @@
 //     back-face CULLING honoring MeshData.ccw/solid. The bound NavigationInfo
 //     headlight (§23.4.4) is an additional camera-space directional light
 //     whenever headlight is TRUE (default), independent of the scene's lights;
-//     the extractor's world-resolved LightDesc Directionals (global=false lights
+//     the extractor's world-resolved LightDescs (global=false lights
 //     are NOT promoted to scene-wide) light the scene too.
 //
 // PHASE 5 (material-shader PoC program):
@@ -411,12 +411,18 @@ SFVec3f toEyeDir(const Mat4 &view, const SFVec3f &worldDir) {
   return view.transformDirection(worldDir);
 }
 
-// A directional light reduced to what the lit shader consumes: a direction of
-// TRAVEL in eye space + an RGB color premultiplied by intensity.
+// An extracted light in eye space, with RGB color premultiplied by intensity.
 struct EyeLight {
   SFVec3f dirEye{0.0f, 0.0f, -1.0f};
   SFColor color{1.0f, 1.0f, 1.0f}; // already * intensity.
   float ambientIntensity = 0.0f;   // §17.2.2.4 per-light ambientIntensity.
+  bool positional = false;
+  SFVec3f posEye{0.0f, 0.0f, 0.0f};
+  SFVec3f attenuation{1.0f, 0.0f, 0.0f};
+  float radius = 100.0f;
+  bool spot = false;
+  float beamWidth = 1.5708f;
+  float cutOffAngle = 0.7854f;
 };
 
 inline constexpr int kMaxLights = 8;
@@ -427,7 +433,7 @@ inline constexpr int kMaxLights = 8;
 // existing kMaxLights convention above).
 inline constexpr int kMaxBgBands = 8;
 
-// Build the active eye-space directional-light set for this frame from the
+// Build the active eye-space light set for this frame from the
 // extractor's world-resolved LightDesc list and the bound NavigationInfo
 // headlight flag.
 //
@@ -447,10 +453,18 @@ std::vector<EyeLight> buildEyeLights(const std::vector<ex::LightDesc> &lights,
   const std::size_t cap = headlightOn ? static_cast<std::size_t>(kMaxLights - 1)
                                       : static_cast<std::size_t>(kMaxLights);
   for (const ex::LightDesc &L : lights) {
-    if (L.type != ex::LightDesc::Type::Directional) continue; // PoC: directional only.
     if (out.size() >= cap) break;
     EyeLight e;
     e.dirEye = toEyeDir(view, L.worldDirection);
+    if (L.type != ex::LightDesc::Type::Directional) {
+      e.positional = true;
+      e.posEye = view.transformPoint(L.worldLocation);
+      e.attenuation = L.attenuation;
+      e.radius = L.radius;
+      e.spot = L.type == ex::LightDesc::Type::Spot;
+      e.beamWidth = L.beamWidth;
+      e.cutOffAngle = L.cutOffAngle;
+    }
     e.color = SFColor{L.color.r * L.intensity, L.color.g * L.intensity,
                       L.color.b * L.intensity};
     e.ambientIntensity = L.ambientIntensity;
@@ -1034,9 +1048,8 @@ int main(int argc, char **argv) {
     // are present at the seam — the bound NavigationInfo headlight flag, the
     // active world-resolved light count, and the first item's material color +
     // whether its mesh carries normals (a lit draw needs a shading normal). Per
-    // §23.4.4 the headlight is added on top of any authored directional lights
-    // when headlight is TRUE, so the effective lit-light count is
-    // min(directional, cap) + (headlight?1:0), where the headlight reserves one
+    // §23.4.4 the headlight is added on top of authored lights when TRUE.
+    // The effective count caps all authored light types and reserves one
     // of the kMaxLights slots.
     bool headlightOn = true;
     if (const X3DNode *nav = ctx.boundNavigationInfo())
@@ -1046,11 +1059,11 @@ int main(int argc, char **argv) {
     std::size_t directional = 0;
     for (const auto &L : lights)
       if (L.type == ex::LightDesc::Type::Directional) ++directional;
-    const std::size_t dirCap =
+    const std::size_t lightCap =
         headlightOn ? static_cast<std::size_t>(kMaxLights - 1)
                     : static_cast<std::size_t>(kMaxLights);
     const std::size_t litLights =
-        std::min(directional, dirCap) + (headlightOn ? 1u : 0u);
+        std::min(lights.size(), lightCap) + (headlightOn ? 1u : 0u);
     bool firstHasNormals =
         items ? extractor.item(snap.added.front()).mesh->hasNormals : false;
     SFColorRGBA c0 =
@@ -1068,10 +1081,10 @@ int main(int argc, char **argv) {
         ++transparentItems;
     }
     std::fprintf(stderr,
-                 "[poc] headless lit: headlight=%s directional_lights=%zu "
+                 "[poc] headless lit: headlight=%s directional_lights=%zu authored_lights=%zu "
                  "effective_lit_lights=%zu item[0] hasNormals=%s "
                  "diffuse=rgba(%.2f,%.2f,%.2f,%.2f) transparent_items=%zu\n",
-                 headlightOn ? "true" : "false", directional, litLights,
+                 headlightOn ? "true" : "false", directional, lights.size(), litLights,
                  firstHasNormals ? "true" : "false", c0.r, c0.g, c0.b, c0.a,
                  transparentItems);
 
@@ -1729,6 +1742,11 @@ int main(int argc, char **argv) {
       float lightDir[kMaxLights * 3] = {0};
       float lightCol[kMaxLights * 3] = {0};
       float lightAmb[kMaxLights] = {0};
+      int lightType[kMaxLights] = {0}; // 0 directional, 1 point, 2 spot.
+      float lightPos[kMaxLights * 3] = {0};
+      float lightAtt[kMaxLights * 3] = {0};
+      float lightRadius[kMaxLights] = {0};
+      float lightCone[kMaxLights * 2] = {0};
       for (int i = 0; i < numLights && i < kMaxLights; ++i) {
         lightDir[i * 3 + 0] = eyeLights[i].dirEye.x;
         lightDir[i * 3 + 1] = eyeLights[i].dirEye.y;
@@ -1737,6 +1755,16 @@ int main(int argc, char **argv) {
         lightCol[i * 3 + 1] = eyeLights[i].color.g;
         lightCol[i * 3 + 2] = eyeLights[i].color.b;
         lightAmb[i] = eyeLights[i].ambientIntensity;
+        lightType[i] = eyeLights[i].positional ? (eyeLights[i].spot ? 2 : 1) : 0;
+        lightPos[i * 3 + 0] = eyeLights[i].posEye.x;
+        lightPos[i * 3 + 1] = eyeLights[i].posEye.y;
+        lightPos[i * 3 + 2] = eyeLights[i].posEye.z;
+        lightAtt[i * 3 + 0] = eyeLights[i].attenuation.x;
+        lightAtt[i * 3 + 1] = eyeLights[i].attenuation.y;
+        lightAtt[i * 3 + 2] = eyeLights[i].attenuation.z;
+        lightRadius[i] = eyeLights[i].radius;
+        lightCone[i * 2 + 0] = eyeLights[i].beamWidth;
+        lightCone[i * 2 + 1] = eyeLights[i].cutOffAngle;
       }
 
       // Helper: bind a texture on the given unit; fall back to whiteTex if tex==0.
@@ -1749,13 +1777,18 @@ int main(int argc, char **argv) {
       };
 
       // Helper: upload standard eye-space lights to a program (already bound).
-      auto uploadLights = [&](GLint locNum, GLint locDir, GLint locCol,
+      auto uploadLights = [&](GLuint program, GLint locNum, GLint locDir, GLint locCol,
                               GLint locAmb) {
         if (locNum >= 0) glUniform1i(locNum, numLights);
         if (numLights > 0) {
           if (locDir >= 0) glUniform3fv(locDir, numLights, lightDir);
           if (locCol >= 0) glUniform3fv(locCol, numLights, lightCol);
           if (locAmb >= 0) glUniform1fv(locAmb, numLights, lightAmb);
+          glUniform1iv(glGetUniformLocation(program, "uLightType"), numLights, lightType);
+          glUniform3fv(glGetUniformLocation(program, "uLightPosEye"), numLights, lightPos);
+          glUniform3fv(glGetUniformLocation(program, "uLightAttenuation"), numLights, lightAtt);
+          glUniform1fv(glGetUniformLocation(program, "uLightRadius"), numLights, lightRadius);
+          glUniform2fv(glGetUniformLocation(program, "uLightCone"), numLights, lightCone);
         }
       };
 
@@ -1879,7 +1912,7 @@ int main(int argc, char **argv) {
             glUseProgram(phongProg);
             glUniformMatrix4fv(uView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uProj, 1, GL_FALSE, proj.m.data());
-            uploadLights(uNumLights, uLightDirEye, uLightColor, uLightAmbient);
+            uploadLights(phongProg, uNumLights, uLightDirEye, uLightColor, uLightAmbient);
             uploadFog(uFogColor, uFogType, uFogRange);
             boundProg = phongProg;
           }
@@ -1958,7 +1991,7 @@ int main(int argc, char **argv) {
             glUseProgram(pbrProg);
             glUniformMatrix4fv(uPbrView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uPbrProj, 1, GL_FALSE, proj.m.data());
-            uploadLights(uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
+            uploadLights(pbrProg, uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
             uploadFog(uPbrFogColor, uPbrFogType, uPbrFogRange);
             boundProg = pbrProg;
           }
