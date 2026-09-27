@@ -43,9 +43,14 @@ invariants required by the spec:
 - **Animated transitions** (BIND-05): unless the governing `NavigationInfo` has
   `transitionType[0] = TELEPORT` or `transitionTime = 0`, the effective camera
   animates from the old position/orientation to the new one over `transitionTime`
-  seconds, then posts `transitionComplete` to the NavigationInfo. A
+  seconds. Animated and instantaneous transitions both post `transitionComplete`
+  to the NavigationInfo. A
   rotation-only bind (same eye position, different orientation) also triggers the
   animation.
+
+When a Viewpoint is unbound, its dedicated `navigationInfo` receives
+`set_bind FALSE`; the newly bound Viewpoint's dedicated node receives
+`set_bind TRUE`.
 
 The subsystem is split into three orthogonal layers, each independently testable:
 `BindingStack` (pure LIFO stack logic), `BindingSystem` (scene enrolment,

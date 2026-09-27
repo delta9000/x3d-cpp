@@ -53,7 +53,7 @@ callers still compile. New sensor families implement `System` directly.
 | `runtime/events/TimeSensorBehavior.hpp` | Legacy `ActiveNode`: drives `fraction_changed` only, no `isActive`/pause/`cycleTime`. Used by `animation_test`; superseded by `TimeSensorSystem`. |
 | `runtime/events/PointingSensorSystem.hpp` | Pointing-device sensor driver: `TouchSensor` + drag sensors (`PlaneSensor`, `SphereSensor`, `CylinderSensor`). Resolves pointer ray vs. scene each tick via `ctx.pick()`; manages the grab. No `attach` enrollment needed — sensors are resolved live from the pick path. |
 | `runtime/events/KeyDeviceSensorSystem.hpp` | Key-device sensor driver: `KeySensor` (§21.4.1) + `StringSensor` (§21.4.2). Drains `ctx.keyState().events` on each tick and emits spec-mandated outputs to every enrolled enabled sensor. |
-| `runtime/scene/ViewDependentSystem.hpp` | View-dependent sensor driver: `ProximitySensor` (viewer-in-box) + `VisibilitySensor` (sensor box vs. six view-frustum planes) + `TransformSensor` (targetObject-AABB-in-sensor-box) enter/exit. Also drives LOD level selection and gates all three sensor types to the active transformation hierarchy (ADR-0034: a non-selected `Switch` child / inactive `LOD` level counts as removed). Runs in `update(now, ctx)` using `ctx.cameraWorldPosition()`, `ctx.viewMatrix()`, `ctx.worldTransformAny(...)`, and `ctx.sceneRoots()`. |
+| `runtime/scene/ViewDependentSystem.hpp` | View-dependent sensor driver: `ProximitySensor` (viewer-in-box) + `VisibilitySensor` (sensor box vs. six view-frustum planes) + `TransformSensor` (targetObject-AABB-in-sensor-box) enter/exit. Also drives LOD level selection and gates all three sensor types to the active transformation hierarchy (ADR-0034: a non-selected `Switch` child / inactive `LOD` level counts as removed). Runs in `update(now, ctx)` using the camera pose and per-path transforms from `ctx.sceneRoots()`; TransformSensor also uses `ctx.worldTransformAny(...)`. |
 
 ## Interfaces and seams
 
@@ -145,9 +145,9 @@ go through the cascade seam.
   reads the camera pose here; the browser sets this by binding a `Viewpoint` (or
   by direct `viewMatrix` injection for head-tracked CAVE setups).
 
-- **`ctx.worldTransform(node)`** — `ViewDependentSystem` transforms the viewer
-  position into the sensor's local coordinate system for `ProximitySensor`'s
-  inside-box test and for `VisibilitySensor`'s box-to-world projection.
+- **Active path matrices** — `ViewDependentSystem` accumulates each active
+  transform path to a ProximitySensor or VisibilitySensor. DEF/USE instances
+  contribute separate boxes to the union, including ancestor scale.
 
 - **`ctx.pick(ray)` / `ctx.worldOf(node)`** — `PointingSensorSystem` uses
   `pick()` to resolve the pointing ray against the scene's `PickSystem` and

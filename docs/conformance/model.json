@@ -756,7 +756,7 @@
       "name": "EnvironmentalSensor",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "22.4.1; 22.4.1, 22.4.3; 22.4, 22.4.3",
           "exists": true,
@@ -813,7 +813,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "22.4.3; 22.4.1, 22.4.3; 22.4.1; 22.4, 22.4.3",
           "exists": true,
@@ -3492,7 +3492,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "23.4.4; 7.2.2; 22.4.1; 23.3.1",
           "exists": true,
@@ -9980,9 +9980,9 @@
         "ProximitySensor",
         "VisibilitySensor"
       ],
-      "note": "Spec: 'A disabled sensor does not send events.' Resolution: keep the isActive FALSE edge (as \u00a720.4.2 prescribes for pointing sensors, so routed state does not dangle) but emit no exitTime. Probe: audit_disabled_proximity_sensor_sends_no_exit.",
+      "note": "Disabling an active ProximitySensor or VisibilitySensor now emits isActive FALSE for routed state (following \u00a720.4.2 pointing-sensor precedent) but no exitTime. Covered by disabling_proximity_sensor_sends_no_exit_time and disabling_visibility_sensor_sends_no_exit_time.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "Disabling an active sensor emits exitTime."
     },
     {
@@ -9993,9 +9993,9 @@
         "ProximitySensor",
         "VisibilitySensor"
       ],
-      "note": "Spec: 'Instanced (DEF/USE) ProximitySensor nodes use the union of all the boxes' (same for VisibilitySensor); ADR-0034 also states the union. Probes: audit_proximity_sensor_uses_union_of_instances, audit_visibility_sensor_uses_union_of_instances.",
+      "note": "ProximitySensor and VisibilitySensor now evaluate the union of per-path boxes, limited to active paths by ADR-0034. Covered by proximity_sensor_uses_union_of_active_instances and visibility_sensor_uses_union_of_active_instances.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "DEF/USE sensor instances are evaluated through one transform path, not the union of all instances."
     },
     {
@@ -10005,9 +10005,9 @@
       "nodes": [
         "ProximitySensor"
       ],
-      "note": "Spec: pose events are sent 'including enter and exit times'. Probe: audit_proximity_sensor_reports_position_on_exit.",
+      "note": "ProximitySensor now emits changed position and orientation at the exit instant. Covered by proximity_sensor_reports_position_on_exit.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "No position_changed/orientation_changed at exit time."
     },
     {
@@ -10018,9 +10018,9 @@
         "ProximitySensor",
         "NavigationInfo"
       ],
-      "note": "Spec: 'only generated when the currently bound NavigationInfo node includes LOOKAT navigation.' Incomplete fix of ENV-03. Probe: audit_proximity_center_of_rotation_requires_lookat.",
+      "note": "ProximitySensor now emits centerOfRotation_changed only while the bound NavigationInfo includes LOOKAT. Covered by proximity_center_of_rotation_requires_lookat and testProximityCenterOfRotationChanged.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "centerOfRotation_changed fires without LOOKAT in the bound NavigationInfo."
     },
     {
@@ -10031,9 +10031,9 @@
         "Viewpoint",
         "NavigationInfo"
       ],
-      "note": "Spec: the NavigationInfo receives set_bind FALSE 'at the time when the parent node is unbound.' Incomplete fix of BIND-02. Probe: audit_viewpoint_unbinds_its_navigation_info.",
+      "note": "ViewpointBindSystem now sends set_bind FALSE to a Viewpoint's dedicated NavigationInfo when its parent is unbound. Covered by viewpoint_unbinds_its_navigation_info.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "A Viewpoint's dedicated NavigationInfo is not unbound when the Viewpoint is unbound."
     },
     {
@@ -10044,9 +10044,9 @@
         "NavigationInfo",
         "Viewpoint"
       ],
-      "note": "Spec: 'When a transition completes, a transitionComplete event is signaled.' Incomplete fix of BIND-05. Probe: audit_teleport_transition_signals_complete.",
+      "note": "ViewpointBindSystem now emits transitionComplete for TELEPORT and zero-duration camera transitions. Covered by teleport_transition_signals_complete and zero_duration_transition_signals_complete.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "TELEPORT (and zero-duration) transitions never emit transitionComplete."
     },
     {
@@ -10439,7 +10439,7 @@
     ]
   },
   "summary": {
-    "closed_count": 190,
+    "closed_count": 196,
     "component_count": 36,
     "deferred_count": 28,
     "finding_count": 257,
@@ -10465,8 +10465,8 @@
     "open_by_severity": {
       "critical": 2,
       "low": 4,
-      "major": 32,
-      "minor": 29
+      "major": 30,
+      "minor": 25
     }
   },
   "unresolved_findings": []
