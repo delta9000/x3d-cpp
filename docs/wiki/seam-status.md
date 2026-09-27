@@ -2,7 +2,7 @@
 title: Seam-Status Matrix
 summary: The live tracker for the product's core thesis — every renderer/engine seam is proven generic only when a second independent backend runs identical fixtures to identical observable behavior, gated in CI. One row per seam; GREEN = interface frozen + ≥2 backends + a CI-gated swap-test.
 tags: [seam, tracker, genericity, swap-test, thesis, meta]
-updated: 2026-06-24
+updated: 2026-09-27
 related:
   - index.md
   - coverage.md
@@ -14,6 +14,7 @@ related:
   - subsystems/system-texture-decode.md
   - subsystems/sound.md
   - decisions/0025-fontmetrics-second-backend-swap-test.md
+  - decisions/0053-geo-projection-seam.md
   - subsystems/system-font-metrics.md
   - subsystems/system-script-sai.md
   - subsystems/system-texture-decode.md
@@ -43,7 +44,7 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | **Audio (AudioBackend)** | **STABLE** | BuiltinDsp | miniaudio (MiniaudioBackend) | `x3d_sound_swaptest` ✓ | thesis-completion (SND-3 partial) |
 | **FontMetrics** | **STABLE** | stb_truetype (StbttFontMetrics) | FreeType (FreetypeFontMetrics) | `x3d_text_tests` ✓ | thesis-completion (no findings) |
 | **TextureResolver** | **STABLE** | stb_image (StbTextureResolver) | wuffs v0.3.4 (WuffsTextureResolver) | `x3d_texture_tests` ✓ | thesis-completion (no findings) |
-| GeoProjection | EXPERIMENTAL | flat-fallback | — pending | — | — |
+| GeoProjection | FROZEN (ADR-0053) | BuiltinGeoProjection | PROJ (`X3D_CPP_BUILD_PROJ`) | `x3d_proj_geo_swap` (toleranced) | CONF-GEO (node wiring) |
 | **MovieDecoder** | **STABLE** | pl_mpeg / MPEG-1 (PlMpegMovieDecoder, [ADR-0041](decisions/0041-moviedecoder-seam-royalty-free-defaults.md)) | libtheora / Ogg-Theora (TheoraMovieDecoder) | `x3d_movie_tests` ✓ (shared per-backend contract, not bit-swap — see ADR-0041) | MovieTexture conformance blanks (MPEG-1 fixed) |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer / CAVE (1) | — pending | — | — |
 
