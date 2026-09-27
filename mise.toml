@@ -53,6 +53,14 @@ cmake --build --preset dev
 ctest --preset dev -j "$(nproc)"
 """
 
+[tasks.proj-swap]
+description = "Build and run the optional PROJ GeoProjection swap-test (requires libproj-dev)."
+run = """
+cmake --preset dev -DX3D_CPP_BUILD_PROJ=ON
+cmake --build --preset dev --target x3d_proj_geo_swap -j4
+ctest --preset dev -R x3d_proj_geo_swap -V
+"""
+
 # Fast local pre-flight for the GitHub MSVC job: cross-compile the
 # x86_64-pc-windows-msvc target with clang-cl + xwin and run it under wine — no
 # Windows machine. clang-cl emulates MSVC but is not identical, so the GitHub

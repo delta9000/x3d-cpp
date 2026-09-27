@@ -364,6 +364,23 @@ jobs:
       - name: Swap-test (BuiltinDsp vs miniaudio, headless — no audio device)
         run: ctest --test-dir build --output-on-failure -R x3d_sound_swaptest
 
+  proj-swap:
+    name: GeoProjection seam swap-test
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Install compiler and PROJ
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold libproj-dev
+      - name: Configure (PROJ backend ON)
+        run: cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_PROJ=ON
+      - name: Build GeoProjection swap-test
+        run: cmake --build build --target x3d_proj_geo_swap -j4
+      - name: Swap-test (built-in vs PROJ)
+        run: ctest --test-dir build --output-on-failure -R x3d_proj_geo_swap -V
+
   # FontMetrics seam (ADR-0025): two independent backends — stb_truetype
   # (vendored single header) and FreeType (vcpkg) — must return BIT-IDENTICAL
   # advanceEm for the same glyph, plus Failed-parity on absent codepoints. stb is

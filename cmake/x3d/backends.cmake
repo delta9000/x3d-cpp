@@ -2,6 +2,27 @@
 # Included in order from the top-level CMakeLists.txt (include(), so it shares
 # the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
+# §25.2.3 ellipsoid projections and optional WGS84 geoid (ADR-0053).
+option(X3D_CPP_BUILD_PROJ "Build PROJ GeoProjection backend (OFF default)" OFF)
+if(X3D_CPP_BUILD_PROJ)
+    find_package(PROJ REQUIRED)
+    add_library(x3d_proj STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/proj/ProjGeoProjection.cpp")
+    target_link_libraries(x3d_proj PUBLIC x3d_cpp::x3d_cpp PRIVATE PROJ::proj)
+    target_include_directories(x3d_proj PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/proj"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math")
+    if(X3D_CPP_BUILD_TESTS)
+        enable_testing()
+        add_executable(x3d_proj_geo_swap
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/proj/tests/proj_geo_swap_test.cpp")
+        target_link_libraries(x3d_proj_geo_swap PRIVATE x3d_proj)
+        target_compile_definitions(x3d_proj_geo_swap PRIVATE
+            X3D_PROJ_TEST_GRID="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/proj/tests/sample_geoid.gtx")
+        add_test(NAME x3d_proj_geo_swap COMMAND x3d_proj_geo_swap)
+    endif()
+endif()
+
 # ---------------------------------------------------------------------------
 # Jolt Physics backend (runtime/physics/jolt/). The flag-gated example backend
 # for the engine-agnostic PhysicsBackend seam (runtime/physics/PhysicsBackend.hpp
