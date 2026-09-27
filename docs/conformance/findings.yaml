@@ -1432,9 +1432,9 @@
   component: NURBS
   clause: "27.4.5"
   severity: major
-  status: deferred
+  status: closed
   summary: "NURBS interpolator set_fraction handlers are dead — value_changed never emitted."
-  note: "NurbsOrientationInterpolator.hpp:158-161 onSet_fraction() is a no-op unless a handler is set; InterpolatorRegistration.hpp:35-61 registers 13 systems but none of the three NURBS interpolators. Events to set_fraction are dropped. Blocked on the NURBS evaluation subsystem (NRB-1). (sweep 2026-06-25)"
+  note: "Registered event systems for all three NURBS interpolators reuse runtime/extract/NurbsEval.hpp for rational curve and surface evaluation; tangent orientation follows increasing knot direction. Covered by interpolator_conformance_test (linear curve, rational quarter circle/tangent, bilinear surface, degenerate input)."
 - id: NRB-4
   nodes: [NurbsCurve, NurbsPatchSurface]
   interfaces: [X3DNurbsControlCurveNode, X3DNurbsSurfaceGeometryNode]

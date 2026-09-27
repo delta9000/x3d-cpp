@@ -5,6 +5,7 @@
 // surfaces with analytic normals. Operates on plain arrays — no X3D-node or
 // MeshBuilder dependency. All formulas machine-verified against a CAS.
 #include "x3d/core/X3Dtypes.hpp"
+#include <algorithm>
 #include <vector>
 #include <cmath>
 
@@ -283,6 +284,36 @@ inline std::vector<SFVec3f> tessellateCurve(const CurveDef& in, int segments) {
     out.push_back(SFVec3f{ (float)(x*inv), (float)(y*inv), (float)(z*inv) });
   }
   return out;
+}
+
+// Evaluate a curve at its normalized parameter (0..1). Returns false for an
+// unusable definition; callers can then suppress the corresponding event.
+inline bool evalCurve(const CurveDef& in, double fraction, SFVec3f& point) {
+  CurveDef c = detail::prepareCurve(in);
+  const int n = (int)c.cp.size();
+  if (c.order < 2 || n < c.order || !std::isfinite(fraction) ||
+      (int)c.knot.size() != n + c.order) return false;
+  for (int i = 0; i < n; ++i)
+    if (!std::isfinite(c.knot[i]) || (i && c.knot[i] < c.knot[i-1])) return false;
+  if (!std::isfinite(c.knot[n]) || c.knot[n] < c.knot[c.order-1]) return false;
+  const double u0 = c.knot[c.order-1], u1 = c.knot[n];
+  if (!(u1 > u0)) return false;
+  const double u = u0 + std::clamp(fraction, 0.0, 1.0) * (u1-u0);
+  int span = detail::findSpan(n, c.order, u, c.knot);
+  std::vector<double> basis(c.order);
+  detail::basisFuns(span, u, c.order, c.knot, basis.data());
+  double x=0, y=0, z=0, w=0;
+  for (int a=0; a<c.order; ++a) {
+    int idx=span-c.order+1+a;
+    double wi=c.w[idx], b=basis[a];
+    if (!std::isfinite(wi) || !std::isfinite(c.cp[idx].x) ||
+        !std::isfinite(c.cp[idx].y) || !std::isfinite(c.cp[idx].z)) return false;
+    double num = c.weightMode == NurbsWeightMode::Euclidean ? b*wi : b;
+    x += num*c.cp[idx].x; y += num*c.cp[idx].y; z += num*c.cp[idx].z; w += b*wi;
+  }
+  if (!std::isfinite(w) || std::abs(w) <= 1e-20) return false;
+  point = SFVec3f{(float)(x/w), (float)(y/w), (float)(z/w)};
+  return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
 }
 
 inline std::vector<SurfaceSample> tessellateSurface(const SurfaceDef& in,
