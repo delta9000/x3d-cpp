@@ -257,16 +257,16 @@
   nodes: [GeoProximitySensor]
   clause: "25.3.8"
   severity: major
-  status: deferred
+  status: closed
   summary: GeoProximitySensor has no System and no geoCoord_changed.
-  note: "GeoProjection and GeoViewpoint camera wiring now exist; GeoProximitySensor activation and geographic coordinate outputs still need implementation."
+  note: "Fixed: ViewDependentSystem evaluates the tangent box at geoCenter through active paths, emits the ProximitySensor edge and pose outputs, and pairs position_changed with geoCoord_changed via fromWorld. Includes DEF/USE union and disable behavior. Covered by view_dependent_test."
 - id: ENV-03
   nodes: [ProximitySensor, GeoProximitySensor]
   clause: "22.4.1"
   severity: minor
   status: closed
   summary: centerOfRotation_changed never emitted.
-  note: ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).
+  note: ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.
 - id: ENV-04
   nodes: [ProximitySensor]
   clause: "22.4.1"
@@ -429,9 +429,9 @@
   nodes: [GeoProximitySensor, GeoPositionInterpolator]
   clause: "25"
   severity: minor
-  status: deferred
-  summary: Geospatial behavioral nodes have no System despite an available coordinate conversion core.
-  note: The GeoProjection core and geometry/transform/camera wiring now exist. GeoProximitySensor and GeoPositionInterpolator behavior still has no System; ENV-02 and TSN-1/2 track related sensor behavior.
+  status: closed
+  summary: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
+  note: "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2; GeoLOD URL loading remains open as GEOLOD-1."
 - id: CONF-NAV-COLLISION
   nodes: [Collision, CollisionSensor]
   component: Navigation
@@ -788,18 +788,27 @@
   nodes: [GeoTouchSensor]
   clause: "25.3.9"
   severity: critical
-  status: deferred
+  status: closed
   wave: 4
   summary: GeoTouchSensor is never resolved in the pointing-device cycle (PointingSensorSystem hard-checks nodeTypeName()=="TouchSensor") — receives no pointer events.
-  note: "GeoProjection and geometry/camera wiring now exist; GeoTouchSensor still needs its enabled field behavior and TSN-2 geographic hit output."
+  note: "Fixed: PointingSensorSystem resolves GeoTouchSensor through the TouchSensor hover/grab/release path."
 - id: TSN-2
   nodes: [GeoTouchSensor]
   clause: "25.3.9"
   severity: critical
-  status: deferred
+  status: closed
   wave: 4
   summary: hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.
-  note: "GeoProjection and inverse conversion helpers now exist; GeoTouchSensor still needs hitGeoCoord_changed from the picked world hit point."
+  note: "Fixed: hitGeoCoord_changed converts the world hit through GeoNodes::fromWorld, alongside TouchSensor outputs; covered by a box pick regression."
+
+- id: GEOLOD-1
+  nodes: [GeoLOD]
+  component: Geospatial
+  clause: "25.3.4"
+  severity: major
+  status: open
+  summary: GeoLOD selects a distance level and emits children/level_changed, but does not load rootUrl or child1Url through child4Url.
+  note: "Remaining: connect URL tiles to InlineRuntimeSystem loading/unloading, wait for all requested child tiles before switching, and render only the selected tile set. The root tile is shown (and reported as children) at every level until tiles load."
 
 # X3DGroupingNode active-child (§10/§23) — Switch full-snapshot clean, incremental
 # delta() fixed (SW-DELTA-1); LOD partial; Collision inert

@@ -21,7 +21,7 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 - **AUD-ENV-3** [major/CLOSED] — §22.4.1, 22.4.3: DEF/USE sensor instances are evaluated through one transform path, not the union of all instances.
   - ProximitySensor and VisibilitySensor now evaluate the union of per-path boxes, limited to active paths by ADR-0034. Covered by proximity_sensor_uses_union_of_active_instances and visibility_sensor_uses_union_of_active_instances.
 - **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
-  - ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).
+  - ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.
 - **ENV-04** [minor/CLOSED `2b84a99`] — §22.4.1: position/orientation_changed fire every tick even when the viewer is still (no change-gate).
 - **ENV-05** [minor/CLOSED] — §22.4.3: Cone (not frustum) test → false isActive=FALSE in wide-aspect periphery.
   - Six view-frustum planes from Viewpoint.fieldOfView (smaller angle) + ViewVolume aspect; per-axis so wide aspect widens only the horizontal half-angle.

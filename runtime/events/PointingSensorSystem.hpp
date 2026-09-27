@@ -26,6 +26,7 @@
 #define X3D_RUNTIME_POINTING_SENSOR_SYSTEM_HPP
 
 #include "FieldRead.hpp"
+#include "GeoNodes.hpp"
 #include "GeometryBounds.hpp" // geombounds::getField (reflection-generic reads)
 #include "Mat4.hpp"
 #include "PickSystem.hpp"
@@ -41,6 +42,7 @@
 #include "x3d/nodes/PlaneSensor.hpp"           // emit* + accessors (generated)
 #include "x3d/nodes/SphereSensor.hpp"          // emit* + accessors (generated)
 #include "x3d/nodes/TouchSensor.hpp"           // emit* + nodeTypeName/getEnabled (generated)
+#include "x3d/nodes/GeoTouchSensor.hpp"
 #include "x3d/nodes/X3DSensorNode.hpp"         // getEnabled (generic enabled probe)
 
 #include <cmath>
@@ -141,7 +143,7 @@ public:
       for (auto &a : active_) {
         const bool stillOver = contains(resolved, a.node);
         if (isTouchSensor(a.node)) {
-          if (stillOver) emitHit(ctx, asTouch(a.node), pick);
+          if (stillOver) emitHit(ctx, a.node, pick);
         } else {
           emitDragMotion(ctx, a, ps.ray);
         }
@@ -153,7 +155,7 @@ public:
         if (!ps.buttonDown) {
           emitActive(ctx, a.node, false);
           if (isTouchSensor(a.node)) {
-            if (stillOver) emitTouch(ctx, asTouch(a.node), now);
+            if (stillOver) emitTouch(ctx, a.node, now);
           } else {
             emitDragDeactivate(ctx, a);
           }
@@ -193,7 +195,7 @@ public:
     // d. Hit outputs (only while over a resolved TouchSensor). Drag sensors do
     //    not emit any tracking output until activated (§20.2.2).
     for (X3DNode *s : resolved)
-      if (isTouchSensor(s)) emitHit(ctx, asTouch(s), pick);
+      if (isTouchSensor(s)) emitHit(ctx, s, pick);
 
     // e. Activation: button-down edge while over ⇒ grab begins (§20.2.1).
     if (!resolved.empty() && ps.buttonDown && !buttonWasDown_) {
@@ -231,7 +233,8 @@ private:
   // ---- sensor type predicates ----------------------------------------------
 
   static bool isTouchSensor(const X3DNode *n) {
-    return n && n->nodeTypeName() == "TouchSensor";
+    return n && (n->nodeTypeName() == "TouchSensor" ||
+                 n->nodeTypeName() == "GeoTouchSensor");
   }
   static bool isDragSensor(const X3DNode *n) {
     if (!n)
@@ -241,10 +244,6 @@ private:
   }
   static bool isPointingSensor(const X3DNode *n) {
     return isTouchSensor(n) || isDragSensor(n);
-  }
-
-  static x3d::nodes::TouchSensor *asTouch(X3DNode *n) {
-    return dynamic_cast<x3d::nodes::TouchSensor *>(n);
   }
 
   // ---- sensor resolution ----------------------------------------------------
@@ -302,13 +301,13 @@ private:
   static void emitActive(X3DExecutionContext &ctx, X3DNode *s, bool v) {
     ctx.postEvent(s, "isActive", std::any(SFBool{v}));
   }
-  static void emitTouch(X3DExecutionContext &ctx, x3d::nodes::TouchSensor *ts, double now) {
+  static void emitTouch(X3DExecutionContext &ctx, X3DNode *ts, double now) {
     ctx.postEvent(ts, "touchTime", std::any(SFTime{now}));
   }
 
   // hitPoint/hitNormal in the sensor's coordinate frame; hitTexCoord raw
   // (surface attribute, NOT spatially transformed) — §5.1 of the M2.5 design.
-  static void emitHit(X3DExecutionContext &ctx, x3d::nodes::TouchSensor *ts,
+  static void emitHit(X3DExecutionContext &ctx, X3DNode *ts,
                       const PickResult &pick) {
     const Mat4 M = ctx.worldOf(ts);
     const Mat4 inv = M.inverse();
@@ -322,6 +321,12 @@ private:
     ctx.postEvent(ts, "hitPoint_changed", std::any(SFVec3f{localPoint}));
     ctx.postEvent(ts, "hitNormal_changed", std::any(SFVec3f{localNormal}));
     ctx.postEvent(ts, "hitTexCoord_changed", std::any(SFVec2f{pick.texCoord}));
+    // §25.3.9: the geo output is the picked world point in this sensor's geoSystem.
+    if (ts->nodeTypeName() == "GeoTouchSensor") {
+      SFVec3d geoPoint;
+      if (geo::fromWorld(*ts, pick.point, geoPoint))
+        ctx.postEvent(ts, "hitGeoCoord_changed", std::any(geoPoint));
+    }
   }
 
   // ---- drag-sensor glue (§20.2.2 + §20.4.x) ---------------------------------

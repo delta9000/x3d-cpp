@@ -745,6 +745,18 @@ private:
       return;
     }
 
+    if (t == "GeoLOD") {
+      // §25.3.5: GeoLOD shows its root tile or its loaded child tiles; `children`
+      // is an output mirroring that choice, so walking it as well would draw the
+      // root twice. Child-URL tiles are not loaded yet (GEOLOD-1), so the root
+      // is the displayed content at every level.
+      for (const auto &c : geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+               *n, "rootNode", {}))
+        if (c) walk(c.get(), here, path, delta);
+      path.pop_back();
+      return;
+    }
+
     if (t == "LayerSet") {
       const auto layers = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
           *n, "layers", {});

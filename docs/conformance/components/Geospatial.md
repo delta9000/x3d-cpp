@@ -6,32 +6,30 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 |------|-----|--------|---------|---------|----------|------------|
 | GeoCoordinate | 1 | ✓ | — | — | GEO-2, GEOSYSTEM | X3DCoordinateNode, X3DGeometricPropertyNode |
 | GeoElevationGrid | 1 | ✓ | ✓ | — | EXT-001, EXT-003, GEO-2 | X3DGeometryNode |
-| GeoLOD | 1 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode |
+| GeoLOD | 1 | ✓ | — | — | GEOLOD-1 | X3DBoundedObject, X3DChildNode |
 | GeoLocation | 1 | ✓ | — | — | GEOSYSTEM | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | GeoMetadata | 1 | ✓ | — | — | — | X3DChildNode, X3DInfoNode, X3DUrlObject |
 | GeoOrigin | 1 | ✓ | — | — | — |  |
-| GeoPositionInterpolator | 1 | ✓ | — | ◑ | CONF-GEO, INTERP-02, PIV-1 | X3DChildNode, X3DInterpolatorNode |
-| GeoProximitySensor | 2 | ✓ | — | ◑ | CONF-GEO, ENV-02, ENV-03, GEOSYSTEM | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
-| GeoTouchSensor | 1 | ✓ | — | ✗ | TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
+| GeoPositionInterpolator | 1 | ✓ | — | ✓ | CONF-GEO, INTERP-02, PIV-1 | X3DChildNode, X3DInterpolatorNode |
+| GeoProximitySensor | 2 | ✓ | — | ✓ | CONF-GEO, ENV-02, ENV-03, GEOSYSTEM | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| GeoTouchSensor | 1 | ✓ | — | ✓ | TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
 | GeoTransform | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | GeoViewpoint | 1 | ✓ | — | ◑ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEO-3, GEOSYSTEM, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 
 ## Findings
 
-- **TSN-1** [critical/DEFERRED] — §25.3.9: GeoTouchSensor is never resolved in the pointing-device cycle (PointingSensorSystem hard-checks nodeTypeName()=="TouchSensor") — receives no pointer events.
-  - GeoProjection and geometry/camera wiring now exist; GeoTouchSensor still needs its enabled field behavior and TSN-2 geographic hit output.
-- **TSN-2** [critical/DEFERRED] — §25.3.9: hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.
-  - GeoProjection and inverse conversion helpers now exist; GeoTouchSensor still needs hitGeoCoord_changed from the picked world hit point.
-- **ENV-02** [major/DEFERRED] — §25.3.8: GeoProximitySensor has no System and no geoCoord_changed.
-  - GeoProjection and GeoViewpoint camera wiring now exist; GeoProximitySensor activation and geographic coordinate outputs still need implementation.
-- **CONF-GEO** [minor/DEFERRED] — §25: Geospatial behavioral nodes have no System despite an available coordinate conversion core.
-  - The GeoProjection core and geometry/transform/camera wiring now exist. GeoProximitySensor and GeoPositionInterpolator behavior still has no System; ENV-02 and TSN-1/2 track related sensor behavior.
+- **GEOLOD-1** [major/OPEN] — §25.3.4: GeoLOD selects a distance level and emits children/level_changed, but does not load rootUrl or child1Url through child4Url.
+  - Remaining: connect URL tiles to InlineRuntimeSystem loading/unloading, wait for all requested child tiles before switching, and render only the selected tile set. The root tile is shown (and reported as children) at every level until tiles load.
 - **GEO-3** [minor/OPEN] — §25.3.11: GeoViewpoint does not scale navigation avatarSize or visibilityLimit with elevation.
   - The elevation-based movement speed and speedFactor are wired. Section 25.3.11 also recommends adapting avatarSize and visibilityLimit as elevation changes; NavigationSystem still reads NavigationInfo's ordinary values.
 - **BIND-01** [critical/CLOSED `e3235ee`] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
   - CONF-VIEWNAV — needs a user-offset-state design (authored pose vs accumulated offset) before fixing BIND-01..08 as one cluster.
 - **BIND-02** [critical/CLOSED `95d1107`] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.
   - CONF-VIEWNAV cluster.
+- **TSN-1** [critical/CLOSED] — §25.3.9: GeoTouchSensor is never resolved in the pointing-device cycle (PointingSensorSystem hard-checks nodeTypeName()=="TouchSensor") — receives no pointer events.
+  - Fixed: PointingSensorSystem resolves GeoTouchSensor through the TouchSensor hover/grab/release path.
+- **TSN-2** [critical/CLOSED] — §25.3.9: hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.
+  - Fixed: hitGeoCoord_changed converts the world hit through GeoNodes::fromWorld, alongside TouchSensor outputs; covered by a box pick regression.
 - **INTERP-02** [major/CLOSED `07c31ca`] — §19.3.1: Empty key must emit no events; added a live empty-key guard to all interpolator Systems.
 - **BIND-03** [major/CLOSED `e3235ee`] — §23.3.1: dynamic_cast<Viewpoint*> in NavigationSystem disables navigation for non-Viewpoint viewpoints.
   - CONF-VIEWNAV cluster.
@@ -45,11 +43,15 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - CONF-VIEWNAV cluster.
 - **BIND-08** [major/CLOSED `2af9570`] — §23.3.1: Per-viewpoint stored relative transform on push-down not captured/restored.
   - CONF-VIEWNAV cluster.
+- **ENV-02** [major/CLOSED] — §25.3.8: GeoProximitySensor has no System and no geoCoord_changed.
+  - Fixed: ViewDependentSystem evaluates the tangent box at geoCenter through active paths, emits the ProximitySensor edge and pose outputs, and pairs position_changed with geoCoord_changed via fromWorld. Includes DEF/USE union and disable behavior. Covered by view_dependent_test.
 - **GEO-1** [major/CLOSED] — §25.3.11: GeoViewpoint.position silently reads as zero (SFVec3d/SFVec3f type mismatch).
   - Closed 2026-09-27: GeoViewpoint.position converts through geo::tangentFrameOf in X3DExecutionContext and NavigationSystem; orientation is relative to local east/up/south. centerOfRotation converts with geo::toWorld, and navigation speed tracks elevation/10 times speedFactor. Regressions: geospatial transforms and viewpoint, GeoViewpoint navigation speed. Earlier SFVec3d type mismatch coverage remains.
 - **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
-  - ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).
+  - ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.
 - **PIV-1** [minor/CLOSED `07c31ca`] — §—: registerInterpolatorSystems had no production caller; added attachInterpolators scene-walk wiring + makeInterpolatorSystems factory.
+- **CONF-GEO** [minor/CLOSED] — §25: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
+  - Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2; GeoLOD URL loading remains open as GEOLOD-1.
 - **BIND-09** [minor/CLOSED] — §23.3.1: Pop (unbind/delete) does not apply the §23.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind.
   - Needs push-vs-pop signaling from BindingSystem to distinguish rule 5.1 (reset) from 6.3 (restore stored offset). Per-node offset persists; only the reset-on-rebind path differs. CAVE doesn't exercise viewpoint stacks.
 - **GEO-2** [minor/CLOSED] — §25.3.1: Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float).

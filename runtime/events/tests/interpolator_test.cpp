@@ -10,6 +10,7 @@
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
+#include "GeoPositionInterpolatorSystem.hpp"
 #include "Interpolation.hpp"
 #include "X3DExecutionContext.hpp"
 
@@ -19,6 +20,8 @@
 #include "x3d/nodes/NormalInterpolator.hpp"
 #include "x3d/nodes/OrientationInterpolator.hpp"
 #include "x3d/nodes/PositionInterpolator.hpp"
+#include "x3d/nodes/GeoPositionInterpolator.hpp"
+#include "x3d/nodes/GeoOrigin.hpp"
 #include "x3d/nodes/PositionInterpolator2D.hpp"
 #include "x3d/nodes/ScalarInterpolator.hpp"
 
@@ -100,6 +103,29 @@ void test_position() {
   v = interp->getValue_changed();
   check(feq(v.x, 0) && feq(v.y, 0) && feq(v.z, 0),
         "position f=-1 (off-key) clamps to front");
+}
+
+void test_geo_position() {
+  auto origin = std::make_shared<GeoOrigin>();
+  origin->setGeoSystemUnchecked(MFString{"GC"});
+  origin->setGeoCoords(SFVec3d{6378137, 0, 0});
+  origin->setRotateYUpUnchecked(true);
+  auto interp = std::make_shared<GeoPositionInterpolator>();
+  interp->setGeoOriginUnchecked(origin);
+  interp->setKey(MFFloat{0, 1});
+  interp->setKeyValue(MFVec3d{{0, 0, 0}, {0, 0.002, 0}});
+  X3DExecutionContext ctx;
+  GeoPositionInterpolatorSystem sys;
+  sys.attach(interp.get(), ctx);
+  post(ctx, interp.get(), 0.5f);
+  const auto geoValue = interp->getGeovalue_changed();
+  const auto world = interp->getValue_changed();
+  SFVec3f expected;
+  check(geo::toWorld(*interp, SFVec3d{0, 0.001, 0}, expected), "geo midpoint projects");
+  check(std::fabs(geoValue.x) < 1e-10 && std::fabs(geoValue.y - 0.001) < 1e-10,
+        "geo interpolator midpoint stays in geoSystem");
+  check(feq(world.x, expected.x) && feq(world.y, expected.y) && feq(world.z, expected.z),
+        "geo interpolator world output projects midpoint");
 }
 
 // -- PositionInterpolator2D -------------------------------------------------
@@ -286,6 +312,7 @@ void test_multi_interpolator_scene() {
 } // namespace
 
 TEST_CASE("interpolator_test") {
+  test_geo_position();
   test_scalar();
   test_position();
   test_position2d();

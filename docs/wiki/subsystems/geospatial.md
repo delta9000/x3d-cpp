@@ -30,6 +30,9 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 | `runtime/scene/GeometryBounds.hpp` and `runtime/extract/MeshBuilder.cpp` | Convert GeoCoordinate lists and GeoElevationGrid lattices through the node helpers for bounds and meshes. |
 | `runtime/scene/TransformSystem.hpp` | GeoLocation tangent placement and GeoTransform tangent-frame TRS, shared by scene walks. |
 | `runtime/events/X3DExecutionContext.hpp` and `runtime/events/NavigationSystem.hpp` | Geographic GeoViewpoint camera pose, center of rotation, and elevation-based speed. |
+| `runtime/events/GeoPositionInterpolatorSystem.hpp` | Interpolates in the authored geoSystem, then projects the result to world coordinates. |
+| `runtime/scene/ViewDependentSystem.hpp` | GeoProximitySensor's tangent box and geographic viewer output; GeoLOD range selection and children events. |
+| `runtime/events/PointingSensorSystem.hpp` | GeoTouchSensor pick events and geographic hit coordinates. |
 | `runtime/math/tests/geo_projection_test.cpp` | Reference values from PROJ 9.8 on WGS84, Clarke 1866, Airy and International ellipsoids; UTM north/south/zone edges; Web Mercator; parsing; the geoid hook; GeoOrigin frames; node glue. |
 
 ## Conventions
@@ -51,12 +54,23 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 
 ## Status
 
-The conversion core ships and is tested against PROJ. GeoCoordinate and
-GeoElevationGrid meshes and bounds, GeoLocation and GeoTransform matrices, and
-GeoViewpoint camera and navigation are wired through the node helpers. The
-GeoElevationGrid grid follows east/longitude columns and north/latitude rows;
-authored normals rotate from the local tangent frame. GeoViewpoint movement
-uses elevation / 10 times speedFactor. Behavioral nodes (GeoProximitySensor,
-GeoPositionInterpolator, GeoTouchSensor) and the optional PROJ swap-test remain
-tracked in `docs/conformance/findings.yaml` (CONF-GEO, ENV-02, TSN-1, TSN-2).
-GeoViewpoint avatar size and visibility range scaling remains open as GEO-3.
+The conversion core ships and is tested against PROJ, and every Geospatial
+node converts through it:
+
+- **Geometry and bounds:** GeoCoordinate points; GeoElevationGrid lattices
+  (east/longitude columns, north/latitude rows, `height × yScale`, authored
+  normals rotated from the tangent frame).
+- **Transforms:** GeoLocation (tangent frame at `geoCoords`) and GeoTransform
+  (TRS inside the `geoCenter` tangent frame).
+- **Camera:** GeoViewpoint position, orientation relative to the tangent frame,
+  centre of rotation, and navigation speed `elevation / 10 × speedFactor`.
+  Avatar size and visibility-limit scaling remain open (GEO-3).
+- **Behaviour:** GeoPositionInterpolator interpolates in its geoSystem;
+  GeoProximitySensor (tangent box at `geoCenter`, `geoCoord_changed`);
+  GeoTouchSensor (`hitGeoCoord_changed`); GeoLOD level selection. GeoLOD does
+  not load its URL tiles yet, so the root tile is shown at every level
+  (GEOLOD-1).
+- **Optional PROJ backend** (`-DX3D_CPP_BUILD_PROJ=ON`) with the swap-test
+  `x3d_proj_geo_swap`: worst differences against the built-in backend are
+  0 m geocentric, 3 nm UTM, 3e-11° latitude and 3.7 µm height (PROJ's
+  non-iterated inverse).

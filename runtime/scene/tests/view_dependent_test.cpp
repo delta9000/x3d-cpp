@@ -10,6 +10,7 @@
 #include "x3d/nodes/TransformSensor.hpp"
 #include "Aabb.hpp"
 #include "TransformSystem.hpp"
+#include "GeoNodes.hpp"
 #include <any>
 #include "doctest/doctest.h"
 #include <cmath>
@@ -180,6 +181,78 @@ static void testProximitySensor() {
   // ENV-08: exitTime is the interpolated boundary crossing between t=2 (eye z=1)
   // and t=5 (eye z=5): 2 + 3*(2-1)/(5-1) = 2.75, not the tick time.
   CHECK((!active && feq((float)exit, 2.75f)));        // exited mid-flight at t=2.75
+}
+
+static std::shared_ptr<X3DNode> localGeoOrigin() {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoSystem", std::any(std::vector<std::string>{"GC"}));
+  setF(origin, "geoCoords", std::any(SFVec3d{6378137, 0, 0}));
+  setF(origin, "rotateYUp", std::any(SFBool{true}));
+  return origin;
+}
+
+static void testGeoProximity() {
+  auto ps = createX3DNode("GeoProximitySensor");
+  setF(ps, "geoOrigin", std::any(localGeoOrigin()));
+  setF(ps, "geoCenter", std::any(SFVec3d{0, 0, 0}));
+  setF(ps, "size", std::any(SFVec3f{20, 20, 20}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(ps);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  CHECK(getF<SFBool>(ps, "isActive"));
+  const SFVec3d coords = getF<SFVec3d>(ps, "geoCoord_changed");
+  SFVec3f roundTrip;
+  CHECK(geo::toWorld(*ps, coords, roundTrip));
+  CHECK((feq(roundTrip.x, 0) && feq(roundTrip.y, 0) && feq(roundTrip.z, 0)));
+  setF(vp, "position", std::any(SFVec3f{0, 0, 30}));
+  ctx.tick(1.0);
+  CHECK_FALSE(getF<SFBool>(ps, "isActive"));
+  CHECK(getF<SFTime>(ps, "exitTime") > 0);
+}
+
+static void testGeoProximityUseUnion() {
+  auto ps = createX3DNode("GeoProximitySensor");
+  setF(ps, "geoOrigin", std::any(localGeoOrigin()));
+  setF(ps, "size", std::any(SFVec3f{20, 20, 20}));
+  auto a = createX3DNode("Transform");
+  auto b = createX3DNode("Transform");
+  setF(b, "translation", std::any(SFVec3f{100, 0, 0}));
+  setF(a, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{ps}));
+  setF(b, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{ps}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{100, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(a); scene.addRootNode(b);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  CHECK(getF<SFBool>(ps, "isActive"));
+}
+
+static void testGeoLodLevels() {
+  auto lod = createX3DNode("GeoLOD");
+  setF(lod, "geoOrigin", std::any(localGeoOrigin()));
+  setF(lod, "range", std::any(SFFloat{10}));
+  auto root = createX3DNode("Group");
+  setF(lod, "rootNode", std::any(std::vector<std::shared_ptr<X3DNode>>{root}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 30}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(lod);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(lod.get(), ctx); ctx.addSystem(vds);
+  ctx.tick(0.0);
+  CHECK(getF<SFInt32>(lod, "level_changed") == 0);
+  CHECK(getF<std::vector<std::shared_ptr<X3DNode>>>(lod, "children").size() == 1);
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  ctx.tick(1.0);
+  CHECK(getF<SFInt32>(lod, "level_changed") == 1);
+  // Child-URL tiles are not loaded yet (GEOLOD-1): the root tile stays displayed.
+  CHECK(getF<std::vector<std::shared_ptr<X3DNode>>>(lod, "children").size() == 1);
 }
 
 static void testProximityLoadTime() {
@@ -936,6 +1009,9 @@ TEST_CASE("proximity_center_of_rotation_requires_lookat") {
 }
 
 TEST_CASE("view_dependent_test") {
+  testGeoProximity();
+  testGeoProximityUseUnion();
+  testGeoLodLevels();
   testCameraPose();
   testLodLevelClamp();
   testProximityChangeGate();
