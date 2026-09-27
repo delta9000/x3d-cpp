@@ -63,6 +63,7 @@
 #include "LightSystem.hpp"         // extract::LightSystem (T6)
 #include "Mat4.hpp"
 #include "MaterialSystem.hpp"      // extract::materialOf (T5)
+#include "NavigationSystem.hpp"    // implicit GeoViewpoint visibility limit
 #include "MeshBuilder.hpp"         // extract::buildLocalMesh (all types, T2/T3/T4)
 #include "PackedMesh.hpp"          // PackedMesh (Phase 1 binary geometry)
 #include "RecursionLimits.hpp"     // MEM-1: kMaxNestingDepth (walk DoS guard)
@@ -746,12 +747,13 @@ private:
     }
 
     if (t == "GeoLOD") {
-      // §25.3.5: GeoLOD shows its root tile or its loaded child tiles; `children`
-      // is an output mirroring that choice, so walking it as well would draw the
-      // root twice. Child-URL tiles are not loaded yet (GEOLOD-1), so the root
-      // is the displayed content at every level.
-      for (const auto &c : geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
-               *n, "rootNode", {}))
+      // children is the currently displayed tile set, populated by the view
+      // system or the URL tile loader. The authored rootNode is not a second path.
+      auto displayed = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+          *n, "children", {});
+      if (displayed.empty()) displayed = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+          *n, "rootNode", {});
+      for (const auto &c : displayed)
         if (c) walk(c.get(), here, path, delta);
       path.pop_back();
       return;

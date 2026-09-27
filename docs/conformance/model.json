@@ -2123,7 +2123,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3; 25.2.3, 25.2.4; 23.4.4, 25.3.11; 22.4.1, 25.3.8",
           "exists": true,
@@ -7532,7 +7532,7 @@
         "GeoProximitySensor",
         "GeoPositionInterpolator"
       ],
-      "note": "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2; GeoLOD URL loading remains open as GEOLOD-1.",
+      "note": "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2.",
       "severity": "minor",
       "status": "closed",
       "summary": "Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing)."
@@ -8057,10 +8057,10 @@
       "nodes": [
         "GeoLOD"
       ],
-      "note": "Remaining: connect URL tiles to InlineRuntimeSystem loading/unloading, wait for all requested child tiles before switching, and render only the selected tile set. The root tile is shown (and reported as children) at every level until tiles load.",
+      "note": "Closed 2026-09-27: InlineRuntimeSystem resolves rootUrl when rootNode is empty, waits for all specified child URLs, switches children and level_changed with the displayed set, and unloads child tiles on exit. The extractor walks only that set. Covered by GeoLOD URL tiles wait, switch, unload, and recurse.",
       "severity": "major",
-      "status": "open",
-      "summary": "GeoLOD selects a distance level and emits children/level_changed, but does not load rootUrl or child1Url through child4Url."
+      "status": "closed",
+      "summary": "GeoLOD selects and displays URL tiles by range."
     },
     {
       "clause": "10.3.10",
@@ -8845,10 +8845,10 @@
       "nodes": [
         "GeoViewpoint"
       ],
-      "note": "The elevation-based movement speed and speedFactor are wired. Section 25.3.11 also recommends adapting avatarSize and visibilityLimit as elevation changes; NavigationSystem still reads NavigationInfo's ordinary values.",
+      "note": "Closed: NavigationSystem multiplies the bound NavigationInfo avatarSize, and a finite visibilityLimit, by max(1, elevation / 10) while a GeoViewpoint is bound (ADR-0054); an unlimited limit (0) stays unlimited and the authored values are restored when another viewpoint binds. Tests: GeoViewpoint scales avatar and visibility with elevation; GeoViewpoint keeps an unlimited visibilityLimit unlimited.",
       "severity": "minor",
-      "status": "open",
-      "summary": "GeoViewpoint does not scale navigation avatarSize or visibilityLimit with elevation."
+      "status": "closed",
+      "summary": "GeoViewpoint scales navigation avatarSize and visibilityLimit with elevation."
     },
     {
       "clause": "14.3",
@@ -10619,7 +10619,7 @@
     ]
   },
   "summary": {
-    "closed_count": 237,
+    "closed_count": 239,
     "component_count": 36,
     "deferred_count": 24,
     "finding_count": 266,
@@ -10643,8 +10643,8 @@
     ],
     "open_by_severity": {
       "low": 2,
-      "major": 14,
-      "minor": 13
+      "major": 13,
+      "minor": 12
     }
   },
   "unresolved_findings": []

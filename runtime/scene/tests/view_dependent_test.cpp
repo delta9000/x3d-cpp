@@ -250,9 +250,74 @@ static void testGeoLodLevels() {
   CHECK(getF<std::vector<std::shared_ptr<X3DNode>>>(lod, "children").size() == 1);
   setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
   ctx.tick(1.0);
-  CHECK(getF<SFInt32>(lod, "level_changed") == 1);
-  // Child-URL tiles are not loaded yet (GEOLOD-1): the root tile stays displayed.
+  CHECK(getF<SFInt32>(lod, "level_changed") == 0);
   CHECK(getF<std::vector<std::shared_ptr<X3DNode>>>(lod, "children").size() == 1);
+}
+
+TEST_CASE("GeoLOD URL tiles wait, switch, unload, and recurse") {
+  auto shape = [] {
+    auto box = createX3DNode("Box");
+    auto item = createX3DNode("Shape");
+    setF(item, "geometry", std::any(std::shared_ptr<X3DNode>(box)));
+    return item;
+  };
+  auto lod = createX3DNode("GeoLOD");
+  setF(lod, "geoOrigin", std::any(localGeoOrigin()));
+  setF(lod, "range", std::any(SFFloat{10}));
+  setF(lod, "rootUrl", std::any(MFString{"root"}));
+  setF(lod, "child1Url", std::any(MFString{"one"}));
+  setF(lod, "child2Url", std::any(MFString{"two"}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 30}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(lod);
+  int twoAttempts = 0;
+  int oneLoads = 0;
+  std::shared_ptr<X3DNode> nestedLod;
+  InlineResolver resolver = [&](const std::vector<std::string> &urls,
+                                const std::string &) -> std::shared_ptr<Scene> {
+    if (urls.empty()) return {};
+    if (urls[0] == "two" && ++twoAttempts == 1) return {};
+    auto tile = std::make_shared<Scene>();
+    if (urls[0] == "one") {
+      ++oneLoads;
+      auto nested = createX3DNode("GeoLOD");
+      setF(nested, "geoOrigin", std::any(localGeoOrigin()));
+      setF(nested, "range", std::any(SFFloat{10}));
+      setF(nested, "rootNode", std::any(MFNode{shape()}));
+      setF(nested, "child1Url", std::any(MFString{"nested"}));
+      nestedLod = nested;
+      tile->addRootNode(nested);
+    } else tile->addRootNode(shape());
+    return tile;
+  };
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  attachStandardRuntime(scene, ctx, nullptr, resolver);
+  extract::SceneExtractor ex(ctx, scene);
+  ctx.tick(0.0);
+  CHECK(getF<SFInt32>(lod, "level_changed") == 0);
+  CHECK(getF<MFNode>(lod, "children").size() == 1);
+  CHECK(ex.fullSnapshot().added.size() == 1);
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  ctx.tick(1.0);
+  CHECK(getF<SFInt32>(lod, "level_changed") == 0);
+  CHECK(ex.fullSnapshot().added.size() == 1); // pending child never blanks root
+  ctx.tick(2.0);
+  CHECK(getF<SFInt32>(lod, "level_changed") == 1);
+  CHECK(getF<MFNode>(lod, "children").size() == 2);
+  CHECK(ex.fullSnapshot().added.size() == 2);
+  ctx.tick(3.0); // nested GeoLOD's URL tile
+  REQUIRE(nestedLod);
+  CHECK(getF<SFInt32>(nestedLod, "level_changed") == 1);
+  CHECK(getF<MFNode>(nestedLod, "children").size() == 1);
+  CHECK(ex.fullSnapshot().added.size() == 2);
+  setF(vp, "position", std::any(SFVec3f{0, 0, 30}));
+  ctx.tick(4.0);
+  CHECK(getF<SFInt32>(lod, "level_changed") == 0);
+  CHECK(getF<MFNode>(lod, "children").size() == 1);
+  CHECK(ex.fullSnapshot().added.size() == 1);
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  ctx.tick(5.0);
+  CHECK(oneLoads == 2); // leaving range released the child tile
 }
 
 static void testProximityLoadTime() {
