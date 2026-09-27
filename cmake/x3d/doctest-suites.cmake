@@ -12,6 +12,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/vec_math_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/intersect_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/geo_projection_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tinygeoid/tests/tinygeoid_geoid_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/geometry_bounds_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/getfield_typecheck_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/dirty_tracker_test.cpp"
@@ -37,7 +38,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     target_link_libraries(x3d_geometry_scene_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_geometry_scene_tests PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tinygeoid")
     # poc_triangle_asset_test needs its fixture path (was a per-target define).
     target_compile_definitions(x3d_geometry_scene_tests PRIVATE
         "X3D_POC_TRIANGLE_ASSET=\"${CMAKE_CURRENT_SOURCE_DIR}/examples/poc_renderer/assets/triangle.x3d\"")

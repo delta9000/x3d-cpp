@@ -76,6 +76,11 @@ example; no part of it is committed here.
                      the default build stays MIT / Public-Domain-clean.)
   stb_truetype.h    runtime/io/stbtt/vendor/stb_truetype.h   MIT OR Public Domain  (-DX3D_CPP_BUILD_STBTT=ON or -DX3D_CPP_BUILD_POC=ON)
                     (see runtime/io/stbtt/vendor/STB_TRUETYPE_LICENSE.txt)
+  tinygeoid         runtime/io/tinygeoid/vendor/tinygeoid.hpp  MIT  (© Ben Sandbrook;
+                    github.com/delta9000/tinygeoid @ a3276eb; see
+                    runtime/io/tinygeoid/vendor/TINYGEOID_LICENSE.txt. Optional
+                    WGS84 geoid for the built-in GeoProjection backend; the
+                    geoid grid data itself is supplied by the application.)
   Liberation Fonts  third_party/fonts/*.ttf                   OFL-1.1
                     (see third_party/fonts/OFL.txt; SERIF/SANS/TYPEWRITER faces
                      shared by the SDK text tests AND the PoC renderer's glyph
