@@ -386,7 +386,8 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
 
   auto drawOne = [&](ex::RenderItemId id, BlendMode blend) {
     const ex::RenderItem &it = extractor.item(id);
-    const ex::MeshData &mesh = *it.mesh;
+    const ex::MeshData deformed = it.skin ? extractor.deformedMesh(id) : ex::MeshData{};
+    const ex::MeshData &mesh = it.skin ? deformed : *it.mesh;
     if (mesh.positions.empty() || mesh.indices.empty()) return;
     const std::vector<Vertex> verts = toVertices(mesh);
     const glsl::mat4 modelG(it.worldTransform);

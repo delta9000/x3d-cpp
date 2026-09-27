@@ -179,6 +179,9 @@ struct MeshData {
   // distinct). Parallel to `positions` when present; EMPTY for geometry whose
   // corners have no shared-lattice identity (composed sets, analytic primitives).
   std::vector<std::uint32_t> latticeIndex;
+  // Source Coordinate and Normal indices for each expanded corner (§26.3.2).
+  std::vector<std::uint32_t> sourceCoordIndex;
+  std::vector<std::uint32_t> sourceNormalIndex;
 
   Topology topology = Topology::Triangles; // B4: Triangles (default) / Lines / Points.
   bool ccw = true;        // winding: X3D default true (CCW front).
@@ -680,6 +683,7 @@ struct RenderDelta {
   std::vector<RenderItemId> removed;
   std::vector<RenderItemId> updatedTransform;
   std::vector<RenderItemId> updatedGeometry;
+  std::vector<RenderItemId> updatedSkinPose;
   std::vector<RenderItemId> updatedMaterial;
 
   bool cameraChanged = false;

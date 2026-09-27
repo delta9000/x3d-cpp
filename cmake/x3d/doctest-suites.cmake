@@ -160,6 +160,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_b2_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_col2_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_cad1_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_hanim_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/light_system_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_m25_5_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_audit_test.cpp"

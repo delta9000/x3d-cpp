@@ -13,12 +13,12 @@ _Generated. Levels 1,2 · 6 nodes · profiles: Full._
 
 ## Findings
 
-- **HAN-1** [major/DEFERRED] — §26.3.2, 26.3.3: HAnim skin deformation (skinCoord/skinNormal/skinCoordWeight) unimplemented.
-  - runtime/extract/PackedMesh.hpp:54-55 marks Joints/Weights vertex attribs 'Phase 2+' (TODO at :120); no code reads skinCoord/skinNormal/skinCoordIndex/skinCoordWeight to produce deformed geometry. Blocked on a skinning subsystem. (sweep 2026-06-25)
-- **HAN-2** [major/DEFERRED] — §26.3.1: HAnimDisplacer morphing (coordIndex/displacements/weight) entirely inert.
-  - generated_cpp_bindings/HAnimDisplacer.hpp has the fields; no runtime code references 'displace'/HAnimDisplacer. §26.3.1 requires coordIndex+displacements vertex-group offsetting. Blocked on the morph/deformation subsystem (HAN-1). (sweep 2026-06-25)
+- **HAN-1** [major/DEFERRED] — §26.3.2, 26.3.3: HAnim skin extraction and pose deltas implemented; deformation core pending.
+  - ADR-0055 presentation path emits skin once, retains source-coordinate indices per corner, shares a SkinBinding, reports updatedSkinPose, and exposes SceneExtractor::deformedMesh. HAnimSkinImpl.hpp is still a stub, so joint weights do not yet deform the output. (2026-09-27)
+- **HAN-2** [major/DEFERRED] — §26.3.1: HAnimDisplacer extraction hooks exist; deformation core pending.
+  - MeshBuilder passes Segment coordinates through hanim::displaceSegmentPoints and skin pose deltas watch Joint displacers. HAnimSkinImpl.hpp is still a stub, so displacement math remains pending. (2026-09-27)
 - **HAN-3** [major/DEFERRED] — §26.3.4: HAnimMotion animation driver entirely missing — no frame advancement.
   - generated_cpp_bindings/HAnimMotion.hpp has channels/values/frameIndex/frameDuration/loop/enabled/startFrame/endFrame; no runtime system drives frames or emits cycleTime/elapsedTime/frameCount per §26.3.4. Blocked on the HAnim animation subsystem. (sweep 2026-06-25)
-- **HANIM-DISP** [minor/DEFERRED] — §26.3.1, 26.3.5: HAnimDisplacer is inert; displacement never applied to Segment coord.point and no point_changed emitted.
-  - X3D defers to ISO/IEC 19774 6.6 which is also silent on whether evaluating a Displacer mutates coord.point. X_ITE applies in-shader (no mutation); Plesch's pointOutput_Tongue.x3d ROUTEs the displaced coord.point (needs mutation). Policy (ADR-0032) - a DisplacerSystem makes coord.point's current value the weighted sum (neutral pose retained internally, non-destructive) and emits point_changed on the Segment's Coordinate node. Deferred on the DisplacerSystem. Today only TransformSystem references HAnim; coordIndex/displacements/weight are loaded but never consumed. 4.1 - unresolved upstream (2025 thread left it open to browser interpretation); engine ahead of spec.
+- **HANIM-DISP** [minor/DEFERRED] — §26.3.1, 26.3.5: Segment displacement extraction hook exists; deformation core pending.
+  - ADR-0055 supersedes the earlier write-back proposal: Segment mesh extraction calls hanim::displaceSegmentPoints without changing authored Coordinate.point. The implementation in HAnimSkinImpl.hpp is still a stub. The X3D/ISO texts do not require a point_changed event from this evaluation, so no such event is emitted. (2026-09-27)
 
