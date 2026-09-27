@@ -361,6 +361,10 @@ XmlWriter::writeProtoFieldElement(const runtime::ProtoField &f) {
   fe->setAttr("name", f.name);
   fe->setAttr("type", fieldTypeName(f.type));
   fe->setAttr("accessType", accessTypeName(f.access));
+  if (!f.appinfo.empty())
+    fe->setAttr("appinfo", f.appinfo);
+  if (!f.documentation.empty())
+    fe->setAttr("documentation", f.documentation);
   if (!f.nodeDefault.empty()) {
     for (const auto &n : f.nodeDefault) {
       auto ce = writeNodeElement(n, "");

@@ -89,6 +89,8 @@ struct ReaderWarning {
  */
 struct ProtoField {
   std::string name;
+  std::string appinfo;
+  std::string documentation;
   X3DFieldType type = X3DFieldType::SFString;
   AccessType access = AccessType::InputOutput;
 

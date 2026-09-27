@@ -408,6 +408,8 @@ private:
         continue;
       runtime::ProtoField f;
       f.name = c->attrOr("name", "");
+      f.appinfo = c->attrOr("appinfo", "");
+      f.documentation = c->attrOr("documentation", "");
       f.type = mapFieldType(c->attrOr("type", "SFString"));
       f.access = mapAccessType(c->attrOr("accessType", "inputOutput"));
       if (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode) {

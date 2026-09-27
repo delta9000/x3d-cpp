@@ -16,6 +16,36 @@
 namespace x3d::codec {
 using x3d::nodes::X3DNodeFactory;
 
+namespace {
+
+std::string defaultVrmlValue(X3DFieldType type) {
+  if (type == X3DFieldType::SFNode)
+    return "NULL";
+  if (type == X3DFieldType::MFNode || type == X3DFieldType::MFEnum)
+    return "";
+  if (type == X3DFieldType::SFEnum)
+    return "\"\"";
+  return formatValue(type, parseValue(type, ""));
+}
+
+} // namespace
+
+void VrmlWriter::writeInterfaceValue(std::ostringstream &os,
+                                     X3DFieldType type,
+                                     const std::any &value) {
+  const std::string val = value.has_value()
+                              ? formatValue(type, value)
+                              : defaultVrmlValue(type);
+  if (type == X3DFieldType::SFString)
+    os << " \"" << vrmlEscapeString(val) << "\"";
+  else if (type == X3DFieldType::SFEnum)
+    os << " " << (value.has_value() ? val : "\"\"");
+  else if (type == X3DFieldType::MFEnum || isMultiField(type))
+    os << " [ " << vrmlBoolCase(type, val) << " ]";
+  else
+    os << " " << vrmlBoolCase(type, val);
+}
+
 std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
   seen_.clear();
   defaults_.clear();
@@ -238,25 +268,24 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
     os << "  " << accessTypeName(f.access) << " " << fieldTypeName(f.type)
        << " " << f.name;
     if (!f.nodeDefault.empty()) {
-      os << " [\n";
       VrmlWriter bodyWriter;
+      if (f.type == X3DFieldType::MFNode) {
+        os << " [\n";
+      } else {
+        os << " ";
+      }
       for (const auto &n : f.nodeDefault) {
         if (!n)
           continue;
         std::ostringstream nos;
-        bodyWriter.writeNode(nos, n, 2);
+        bodyWriter.writeNode(nos, n, f.type == X3DFieldType::MFNode ? 2 : 1);
         os << nos.str() << "\n";
       }
-      os << "  ]";
-    } else if (f.value.has_value() && (f.access == AccessType::InitializeOnly ||
-                                       f.access == AccessType::InputOutput)) {
-      std::string valStr = formatValue(f.type, f.value);
-      if (f.type == X3DFieldType::SFString)
-        os << " \"" << vrmlEscapeString(valStr) << "\"";
-      else if (isMultiField(f.type))
-        os << " [ " << vrmlBoolCase(f.type, valStr) << " ]";
-      else
-        os << " " << vrmlBoolCase(f.type, valStr);
+      if (f.type == X3DFieldType::MFNode)
+        os << "  ]";
+    } else if (f.access == AccessType::InitializeOnly ||
+               f.access == AccessType::InputOutput) {
+      writeInterfaceValue(os, f.type, f.value);
     }
     os << "\n";
   }
@@ -507,18 +536,8 @@ void VrmlWriter::writeAuthorFields(std::ostringstream &os, const X3DNode &node,
        << f.x3dName;
     const bool valued = f.access == AccessType::InitializeOnly ||
                         f.access == AccessType::InputOutput;
-    if (valued && f.get) {
-      std::any v = f.get(node);
-      if (v.has_value()) {
-        std::string valStr = formatValue(f.type, v);
-        if (f.type == X3DFieldType::SFString)
-          os << " \"" << vrmlEscapeString(valStr) << "\"";
-        else if (isMultiField(f.type))
-          os << " [ " << vrmlBoolCase(f.type, valStr) << " ]";
-        else
-          os << " " << vrmlBoolCase(f.type, valStr);
-      }
-    }
+    if (valued)
+      writeInterfaceValue(os, f.type, f.get ? f.get(node) : std::any{});
     os << "\n";
   }
 }
