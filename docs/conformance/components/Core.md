@@ -10,12 +10,14 @@ _Generated. Levels 1,2 · 9 nodes · profiles: Interchange, Interactive, Immersi
 | MetadataInteger | 1 | ✓ | — | — | — | X3DMetadataObject |
 | MetadataSet | 1 | ✓ | — | — | — | X3DMetadataObject |
 | MetadataString | 1 | ✓ | — | — | ENC-C14N-ATTR, ENC-JSON-CTRL, ENC-MFSTRING-READ, ENC-VRML-STRING | X3DMetadataObject |
-| ProtoInstance | 2 | ✓ | — | — | PROTO-IS-001, PROTO-SHADOW | X3DChildNode, X3DPrototypeInstance |
+| ProtoInstance | 2 | ✓ | — | — | AUD-PROTO-1, PROTO-IS-001, PROTO-SHADOW | X3DChildNode, X3DPrototypeInstance |
 | WorldInfo | 1 | ✓ | — | — | DIAG-PROFILE-COERCE, DIAG-UNKNOWN-NODE, ENC-JSON-UNIT | X3DChildNode, X3DInfoNode |
 | X3DStatement | 1 | ✓ | — | — | — |  |
 
 ## Findings
 
+- **AUD-PROTO-1** [major/OPEN] — §4.4.4.3: Peer nodes after the first in a PROTO body are never enrolled, so a peer TimeSensor/Script never runs.
+  - Spec: peer nodes 'are not displayed but remain active.' Probe: audit_proto_peer_timesensor_remains_active.
 - **PROTO-IS-001** [major/FIXED] — §4.4.4: Nested ProtoInstance `MFNode` overrides did not propagate through inner `IS/connect`; inner proto defaulted its own field value.
 - **PROTO-SHADOW** [major/CLOSED] — §4.4.4: PROTO reusing a built-in node name silently shadows the built-in (proto table resolved before factory; no collision check at registration) - a security hazard per Mantis 1492.
   - Closed by quarantining any ProtoDeclare/ExternProtoDeclare whose name is in X3DNodeFactory::registry() at the parse front door (quarantineBuiltinShadowingProtos, ADR-0033): the declaration is dropped, the built-in keeps the name, and a ProtoWarning{Kind::BuiltinShadow} is recorded for every encoding (lenient; a strict embedder may treat it as fatal). Regression: x3d_parse_tests core_diagnostics_test (proto_shadow_xml/classicvrml/json, all fail without the quarantine).

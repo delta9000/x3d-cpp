@@ -5,7 +5,7 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | Analyser | 2 | ✓ | — | ✗ | SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| AudioClip | 1 | ✓ | — | ✓ | MULTI-INHERIT, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
+| AudioClip | 1 | ✓ | — | ◑ | AUD-MEDIA-2, AUD-TIME-3, MULTI-INHERIT, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
 | AudioDestination | 2 | ✓ | — | — | SND-7 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
 | BiquadFilter | 2 | ✓ | — | ◑ | SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | BufferAudioSource | 2 | ✓ | — | ✗ | SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
@@ -20,7 +20,7 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 | MicrophoneSource | 2 | ✓ | — | ✗ | SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | OscillatorSource | 2 | ✓ | — | ◑ | SND-1, SND-2, SND-9 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | PeriodicWave | 2 | ✓ | — | — | SND-9 | X3DChildNode, X3DSoundNode |
-| Sound | 1 | ✓ | — | — | — | X3DChildNode, X3DSoundNode |
+| Sound | 1 | ✓ | — | — | AUD-MEDIA-4 | X3DChildNode, X3DSoundNode |
 | SpatialSound | 2 | ✓ | — | — | SND-3 | X3DChildNode, X3DSoundNode |
 | StreamAudioDestination | 2 | ✓ | — | — | SND-7 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
 | StreamAudioSource | 2 | ✓ | — | ✗ | SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
@@ -34,6 +34,10 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
   - The classic Sound node's ellipsoid (minFront/maxFront/minBack/maxBack, direction, intensity, spatialize) crosses the seam as geometry via DistanceModel::Ellipsoid and both backends evaluate it (swap-test F4, sound_immersive_test), so Sound is off this finding. SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion — not a novel or low-priority ask — worth weighting accordingly when scheduling v2.
 - **SND-4** [major/DEFERRED] — §16.4.5, 16.4.20, 16.4.14: Audio source breadth — OscillatorSource and AudioClip are built; BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early).
   - AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; isActive/isPaused (MediaTimeSystem, TDN-5), pitch and gain drive playback. Not read: AudioClip.description. BufferAudioSource can reuse the Buffer node (its buffer field is already PCM); StreamAudioSource and MicrophoneSource need a streaming/capture contract.
+- **AUD-MEDIA-2** [major/OPEN] — §16.4.2: set_pitch changes an active clip's timing and playback rate; it must be ignored.
+  - Spec: 'A set_pitch event to an active AudioClip is ignored and no pitch_changed field is generated.' Incomplete fix of TDN-5/ADR-0050. Probe: 'audit AudioClip ignores pitch changes while active'.
+- **AUD-MEDIA-4** [major/OPEN] — §16.4.17: Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources.
+  - Needs movie audio (the MovieDecoder seam is frame-only).
 - **SND-5** [minor/DEFERRED] — §16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21: Sound-processing breadth — only Gain + BiquadFilter are built; Analyser/Convolver/Delay/DynamicsCompressor/WaveShaper subtrees are skipped.
   - Each is a clean AudioBackend extension point (add a NodeKind + DSP in the backend .cpp). No new seam needed — deferred on demand (no consumer yet).
 - **SND-6** [minor/DEFERRED] — §16.4.10, 16.4.11, 16.4.8: Channels + multi-channel PARTIALLY UNBLOCKED — stereo render path (renderStereo) landed (ADR-0026); ChannelMerger/Selector/Splitter still not built; channelCount/channelCountMode/channelInterpretation still ignored.

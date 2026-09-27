@@ -8,7 +8,7 @@ _Generated. Levels 1,2,3,4,5 · 10 nodes · profiles: Interchange, Interactive, 
 | Appearance | 1 | ✓ | — | — | MAT-001, MAT-006, MAT-009, MAT-010 | X3DAppearanceNode |
 | FillProperties | 3 | ✓ | — | — | — | X3DAppearanceChildNode |
 | LineProperties | 2 | ✓ | — | — | SEAM-LINEPOINT | X3DAppearanceChildNode |
-| Material | 1 | ✓ | — | — | MAT-002, MAT-003, MAT-004, MAT-005, MAT-006, MAT-007, MAT-009, MAT-010 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
+| Material | 1 | ✓ | — | — | AUD-RND-2, MAT-002, MAT-003, MAT-004, MAT-005, MAT-006, MAT-007, MAT-009, MAT-010 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
 | PhysicalMaterial | 2 | ✓ | — | — | MAT-005, MAT-006, MAT-007, MAT-008, MAT-009, MAT-010, MAT-011 | X3DAppearanceChildNode, X3DMaterialNode, X3DOneSidedMaterialNode |
 | PointProperties | 5 | ✓ | — | — | SEAM-LINEPOINT | X3DAppearanceChildNode |
 | Shape | 1 | ✓ | — | — | MAT-001 | X3DBoundedObject, X3DChildNode, X3DShapeNode |

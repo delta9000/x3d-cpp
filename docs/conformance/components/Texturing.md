@@ -4,20 +4,30 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ImageTexture | 1 | ✓ | — | — | TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
-| MovieTexture | 3 | ✓ | — | ✓ | MULTI-INHERIT, TDN-5, VIS-MOVIE-DECODE | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
-| MultiTexture | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureNode |
+| ImageTexture | 1 | ✓ | — | — | AUD-TEX-1, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
+| MovieTexture | 3 | ✓ | — | ◑ | AUD-MEDIA-1, AUD-MEDIA-3, AUD-MEDIA-4, AUD-TEX-1, AUD-TIME-3, MULTI-INHERIT, TDN-5, VIS-MOVIE-DECODE | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
+| MultiTexture | 2 | ✓ | — | — | AUD-BG-2, AUD-TEX-2 | X3DAppearanceChildNode, X3DTextureNode |
 | MultiTextureCoordinate | 2 | ✓ | — | — | TXT-6 | X3DGeometricPropertyNode, X3DTextureCoordinateNode |
 | MultiTextureTransform | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureTransformNode |
 | PixelTexture | 1 | ✓ | — | — | ENC-VRML-SFIMAGE, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode |
 | TextureCoordinate | 1 | ✓ | — | — | — | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
 | TextureCoordinateGenerator | 2 | ✓ | — | — | TXF-2 | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
-| TextureProperties | 2 | ✓ | — | — | TXF-4 |  |
+| TextureProperties | 2 | ✓ | — | — | AUD-TEX-3, TXF-4 |  |
 | TextureTransform | 1 | ✓ | — | — | TXF-1, TXF-3 | X3DAppearanceChildNode, X3DTextureTransformNode |
 | X3DSingleTextureTransformNode | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureTransformNode |
 
 ## Findings
 
+- **AUD-TEX-2** [major/OPEN] — §18.4.3: MultiTexture mode/source/function/color/alpha never reach the descriptor, so stages cannot be blended as authored.
+  - Only a channel ordinal is extracted per stage.
+- **AUD-MEDIA-1** [major/OPEN] — §18.4.2: set_speed changes an active movie's cycle; it must be ignored while playing.
+  - Spec: 'set_speed events are ignored while the movie is playing.' Incomplete fix of TDN-5. Probe: 'audit MovieTexture ignores speed changes while active'.
+- **AUD-TEX-1** [minor/OPEN] — §9.3.2, 18.4.1: load FALSE on a texture still fetches its url.
+  - Probe: 'audit ImageTexture load FALSE suppresses URL fetch'.
+- **AUD-MEDIA-3** [minor/OPEN] — §18.4.2: MovieTexture never sends duration_changed: the SDK opens no media (ADR-0041) and the MovieDecoder seam carries no duration.
+  - The consumer needs a documented way to report a loaded movie's duration so the time lifecycle and routes see it.
+- **AUD-TEX-3** [low/OPEN] — §18.4.9: borderColor (deprecated in v4.0) is not extracted.
+  - Already noted in TXF-4.
 - **TDN-5** [major/CLOSED] — §8.2.4.1, 16.4.2, 18.4.2: AudioClip/MovieTexture have no time-lifecycle System — startTime/loop/isActive inert.
   - MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip and MovieTexture: enabled, loop, and a cycle of duration_changed / pitch (AudioClip) or / speed (MovieTexture); an unknown duration plays until stopTime (media_time_test). Decoding and playback remain separate (SND-4).
 - **TXF-2** [major/CLOSED] — §18.4.8: TextureCoordinateGenerator UVs (SPHERE/CAMERASPACE*) are view-dependent per-vertex and must be computed at render time — the descriptor is surfaced but no UVs are produced.

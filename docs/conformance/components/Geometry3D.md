@@ -8,12 +8,14 @@ _Generated. Levels 1,2,3,4 · 7 nodes · profiles: Interchange, Interactive, Imm
 | Cone | 1 | ✓ | ✓ | — | TXF-1 | X3DGeometryNode |
 | Cylinder | 1 | ✓ | ✓ | — | TXF-1 | X3DGeometryNode |
 | ElevationGrid | 3 | ✓ | ✓ | — | EXT-001, EXT-003, TXF-2, VIS-ELEV-SPACING-EMPTY | X3DGeometryNode |
-| Extrusion | 4 | ✓ | ✓ | — | EXTRUSION-SCP, VIS-EXTRUSION-EMPTY | X3DGeometryNode |
+| Extrusion | 4 | ✓ | ✓ | — | AUD-EXT-1, EXTRUSION-SCP, VIS-EXTRUSION-EMPTY | X3DGeometryNode |
 | IndexedFaceSet | 2 | ✓ | ✓ | — | TXF-2 | X3DComposedGeometryNode, X3DGeometryNode |
 | Sphere | 1 | ✓ | ✓ | — | TXF-1, VIS-SPHERE-NOUV | X3DGeometryNode |
 
 ## Findings
 
+- **AUD-EXT-1** [major/OPEN] — §13.3.5.6, 11.2.3: Caps are fanned from vertex 0 even with convex FALSE, so a concave cap covers its notch.
+  - Probe: audit_extrusion_concave_cap_does_not_cover_notch.
 - **EXT-001** [major/CLOSED] — §13.3.4, 25.3.2: ElevationGrid/GeoElevationGrid drop authored color + normal nodes (colorPerVertex/normalPerVertex ignored) — only auto flat normals, no vertex colors.
   - emitHeightGrid (MeshBuilder.hpp, shared by both grids) now resolves authored Color/Normal via buildAttrs() and honors colorPerVertex/normalPerVertex per §13.3.4: per-vertex indexes the LATTICE vertex (row*xDim+col), per-quad indexes the CELL (row*(xDim-1)+col). An authored Normal also suppresses the generated-flat/crease path. Regression: mesh_builder_ext001_test.cpp (per-vertex and per-quad colour/normal, ElevationGrid + GeoElevationGrid). (2026-06-27)
 - **EXT-003** [major/CLOSED] — §13.3.4: ElevationGrid/GeoElevationGrid cells were wound backwards — with the default ccw=TRUE the generated face normals pointed −Y (down), so the surface was lit from below and, under a consumer's default solid=TRUE back-face cull, the whole terrain vanished when viewed from above.

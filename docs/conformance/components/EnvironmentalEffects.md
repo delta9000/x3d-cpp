@@ -4,14 +4,18 @@ _Generated. Levels 1,2,3,4 · 5 nodes · profiles: Interchange, Interactive, Imm
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Background | 1 | ✓ | — | ✓ | BIND-06, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
+| Background | 1 | ✓ | — | ◑ | AUD-BG-1, BIND-06, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
 | Fog | 2 | ✓ | — | ✓ | BIND-06, ENV-10 | X3DBindableNode, X3DChildNode, X3DFogObject |
 | FogCoordinate | 4 | ✓ | — | — | — | X3DGeometricPropertyNode |
 | LocalFog | 4 | ✓ | — | — | — | X3DChildNode, X3DFogObject |
-| TextureBackground | 3 | ✓ | — | ✓ | BIND-06, ENV-11, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
+| TextureBackground | 3 | ✓ | — | ◑ | AUD-BG-1, AUD-BG-2, BIND-06, ENV-11, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
 
 ## Findings
 
+- **AUD-BG-1** [minor/OPEN] — §24.2.1: Decreasing skyAngle/groundAngle values are accepted silently.
+  - Spec: angles are 'restricted to non-decreasing values'. Per the lenient-read policy (ADR-0003) the fix is a validation warning, not a rejection.
+- **AUD-BG-2** [minor/OPEN] — §24.4.5: A MultiTexture panorama face is dropped from BackgroundDesc.
+  - refOf treats MultiTexture as a url texture with no url. Incomplete fix of ENV-11. Probe: 'audit TextureBackground preserves MultiTexture face'.
 - **BIND-06** [major/CLOSED `95d1107`] — §7.2.2: Deleted bound node doesn't behave as set_bind FALSE (raw ptrs, no removeNode/detach).
   - Shared with a System detach() hook; CONF-VIEWNAV cluster.
 - **ENV-10** [major/CLOSED] — §24.4.2: Fog is inert — bound and round-tripped, but no fog effect reaches the shader.

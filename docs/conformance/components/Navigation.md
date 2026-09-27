@@ -7,13 +7,17 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 | Billboard | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | Collision | 2 | ✓ | — | ✓ | COL-1, COL-2, COL-3, CONF-NAV-COLLISION | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DSensorNode |
 | LOD | 2 | ✓ | — | — | LOD-1, LOD-DELTA-1, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| NavigationInfo | 1 | ✓ | — | ✓ | BIND-05, BIND-06 | X3DBindableNode, X3DChildNode |
+| NavigationInfo | 1 | ✓ | — | ◑ | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06 | X3DBindableNode, X3DChildNode |
 | OrthoViewpoint | 3 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
-| Viewpoint | 1 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, NAV-FLY-ROLL, NAV-LOOKAT-SCALE | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, NAV-FLY-ROLL, NAV-LOOKAT-SCALE | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 | ViewpointGroup | 3 | ✓ | — | — | — | X3DChildNode |
 
 ## Findings
 
+- **AUD-NAV-1** [major/OPEN] — §23.3.1: A Viewpoint's dedicated NavigationInfo is not unbound when the Viewpoint is unbound.
+  - Spec: the NavigationInfo receives set_bind FALSE 'at the time when the parent node is unbound.' Incomplete fix of BIND-02. Probe: audit_viewpoint_unbinds_its_navigation_info.
+- **AUD-NAV-2** [minor/OPEN] — §23.4.4: TELEPORT (and zero-duration) transitions never emit transitionComplete.
+  - Spec: 'When a transition completes, a transitionComplete event is signaled.' Incomplete fix of BIND-05. Probe: audit_teleport_transition_signals_complete.
 - **BIND-01** [critical/CLOSED `e3235ee`] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
   - CONF-VIEWNAV — needs a user-offset-state design (authored pose vs accumulated offset) before fixing BIND-01..08 as one cluster.
 - **BIND-02** [critical/CLOSED `95d1107`] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.

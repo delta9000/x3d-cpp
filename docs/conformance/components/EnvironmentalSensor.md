@@ -4,12 +4,20 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ProximitySensor | 1 | ✓ | — | ✓ | ENV-03, ENV-04, ENV-06, ENV-07, ENV-08, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| ProximitySensor | 1 | ✓ | — | ◑ | AUD-ENV-2, AUD-ENV-3, AUD-ENV-4, AUD-ENV-5, ENV-03, ENV-04, ENV-06, ENV-07, ENV-08, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 | TransformSensor | 3 | ✓ | — | ✓ | ENV-01, SENSOR-SWITCH, TRANSFORMSENSOR-SCALE | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
-| VisibilitySensor | 2 | ✓ | — | ✓ | ENV-05, ENV-06, ENV-07, ENV-09, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| VisibilitySensor | 2 | ✓ | — | ◑ | AUD-ENV-2, AUD-ENV-3, ENV-05, ENV-06, ENV-07, ENV-09, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 
 ## Findings
 
+- **AUD-ENV-3** [major/OPEN] — §22.4.1, 22.4.3: DEF/USE sensor instances are evaluated through one transform path, not the union of all instances.
+  - Spec: 'Instanced (DEF/USE) ProximitySensor nodes use the union of all the boxes' (same for VisibilitySensor); ADR-0034 also states the union. Probes: audit_proximity_sensor_uses_union_of_instances, audit_visibility_sensor_uses_union_of_instances.
+- **AUD-ENV-2** [minor/OPEN] — §22.4.1: Disabling an active sensor emits exitTime.
+  - Spec: 'A disabled sensor does not send events.' Resolution: keep the isActive FALSE edge (as §20.4.2 prescribes for pointing sensors, so routed state does not dangle) but emit no exitTime. Probe: audit_disabled_proximity_sensor_sends_no_exit.
+- **AUD-ENV-4** [minor/OPEN] — §22.4.1: No position_changed/orientation_changed at exit time.
+  - Spec: pose events are sent 'including enter and exit times'. Probe: audit_proximity_sensor_reports_position_on_exit.
+- **AUD-ENV-5** [minor/OPEN] — §22.4.1: centerOfRotation_changed fires without LOOKAT in the bound NavigationInfo.
+  - Spec: 'only generated when the currently bound NavigationInfo node includes LOOKAT navigation.' Incomplete fix of ENV-03. Probe: audit_proximity_center_of_rotation_requires_lookat.
 - **ENV-01** [critical/CLOSED] — §22.4.2: TransformSensor has no System — node inert (no isActive/position/orientation_changed).
 - **ENV-06** [major/CLOSED] — §22.4.1, 22.4.3: Dynamic removal of an active sensor doesn't fire isActive FALSE/exitTime (no detach).
   - update() computes active-path reachability from scene roots (Switch/LOD aware, ADR-0034) and deactivates unreachable sensors via the existing deactivateIfActive path.

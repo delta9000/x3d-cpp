@@ -4,12 +4,16 @@ _Generated. Levels 1,2 · 3 nodes · profiles: Interchange, Interactive, Immersi
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| DirectionalLight | 1 | ✓ | — | — | LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
-| PointLight | 2 | ✓ | — | — | LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
-| SpotLight | 2 | ✓ | — | — | LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
+| DirectionalLight | 1 | ✓ | — | — | AUD-LGT-2, LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
+| PointLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
+| SpotLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, LGT-1, LGT-2, LGT-3 | X3DChildNode, X3DLightNode |
 
 ## Findings
 
+- **AUD-LGT-1** [major/OPEN] — §17.4.2, 17.4.3: Light radius ignores ancestor scale.
+  - Spec: 'scales affect radius'. LightSystem transforms location but copies radius. Probes: audit_point_light_radius_scales_with_parent_transform, audit_spot_light_radius_scales_with_parent_transform.
+- **AUD-LGT-2** [major/OPEN] — §10.4.3: Lights in an unchosen Switch branch (or inactive LOD level) still illuminate.
+  - LightSystem visits every child; geometry extraction follows only the traversed branch. Probe: audit_light_under_inactive_switch_does_not_illuminate.
 - **LGT-2** [major/FIXED] — §17.2.2.4: Per-light ambientIntensity (LightSystem.hpp extracts it) was read by NO consumer.
   - §17.2.2.4 sums per light ambientIntensity_i · attenuation_i · spot_i · diffuseColor · material.ambientIntensity. LightDesc.ambientIntensity was populated (runtime/extract/LightSystem.hpp:141) but dropped at the consumer seam. FIXED: the reference evaluator (examples/cpu_raster/cpuraster/MaterialShader.hpp) + the PoC GLSL (examples/poc_renderer/shaders/lit.frag, pbr.frag) now add a per-light ambient term; EyeLight carries ambientIntensity and poc main.cpp uploads uLightAmbient[]. Today's squared-diffuse ambient convention (card RND-2, an ADR-0027 open question) is unchanged. (card RND-3 part 1)
 - **LGT-3** [major/FIXED] — §23.4.4: NavigationInfo.headlight TRUE (default) must turn on a headlight regardless of scene lights; both consumers only added it when the scene had no lights.

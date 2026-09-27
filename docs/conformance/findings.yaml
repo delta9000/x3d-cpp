@@ -2239,3 +2239,295 @@
     x3d_movie_tests semantics-contract test and by rendering Appearance/Appearance/movietexture.x3d (the VTS card plays on
     box/sphere/cone/cylinder). Theora since shipped as MovieDecoder Backend B (TheoraMovieDecoder, seam-status.md — the
     seam is STABLE); WebM remains a follow-up. MovieTexture time-lifecycle nuance tracked by TDN-5.
+
+# Immersive-profile audit 2026-09-26: six independent spec-vs-code passes over every Immersive node.
+# Each PROVEN entry has a failing probe test named in its note. AUD-ENV-1 (sensors under an unchosen
+# Switch/LOD) was rejected: it conflicts with ADR-0034, an accepted decision on a spec ambiguity.
+- id: AUD-TIME-1
+  nodes: [TimeSensor]
+  component: Time
+  clause: "8.2.4.4"
+  severity: major
+  status: open
+  summary: "A late resume shifts the clock by resumeTime-pauseTime instead of the actual paused span, so fraction_changed jumps on resume."
+  note: "Spec: 'At the time when the node resumes, the fraction_changed event continues from its value when paused.' X3DTimeDependentSystem.hpp shifts timeBase by the authored times while pause/resume take effect at the observing tick. Incomplete fix of TDN-8. Probe: audit_timesensor_late_resume_keeps_fraction_frozen."
+- id: AUD-TIME-2
+  nodes: [TimeSensor]
+  component: Time
+  clause: "8.4.1"
+  severity: minor
+  status: open
+  summary: "A stop detected after stopTime emits the final values evaluated at the tick instead of at stopTime."
+  note: "Spec: the final event is generated as evaluated at stopTime. Probe: audit_timesensor_stop_uses_stop_time_for_final_output."
+- id: AUD-TIME-3
+  nodes: [TimeSensor, AudioClip, MovieTexture]
+  component: Time
+  clause: "8.2.4.3"
+  severity: major
+  status: open
+  summary: "set_startTime (and set_stopTime <= startTime) to an active node still overwrite the field and emit *_changed."
+  note: "Spec: such events 'are ignored'. The cascade writes every input field; the system only snapshots startTime. Incomplete fix of TDN-4. Probe: audit_timesensor_ignores_start_and_invalid_stop_while_active."
+- id: AUD-TIME-4
+  nodes: [TimeSensor]
+  component: Time
+  clause: "8.2.2, 8.2.4.4"
+  severity: low
+  status: open
+  summary: "A negative absolute pauseTime never pauses (the code also requires pauseTime > 0)."
+  note: "Spec: negative absolute times are valid (before 1970); pause when now >= pauseTime > resumeTime. Probe: audit_timesensor_accepts_negative_absolute_pause_time."
+- id: AUD-TIME-5
+  nodes: [TimeSensor]
+  component: Time
+  clause: "8.4.1"
+  severity: major
+  status: open
+  summary: "Changing cycleInterval during an active loop makes fraction_changed jump instead of continuing smoothly at the new rate."
+  note: "Spec: 'fraction_changed events continue to increase smoothly at a correspondingly faster or slower rate.' Fraction is recomputed from activation time over the current interval. Probe: audit_timesensor_cycle_interval_change_keeps_fraction_continuous."
+- id: AUD-SEQ-1
+  nodes: [IntegerSequencer, BooleanSequencer]
+  component: EventUtilities
+  clause: "30.2.4"
+  severity: minor
+  status: open
+  summary: "With a duplicated final key, the sequencer returns the last keyValue instead of the first."
+  note: "Spec: 'only the first defined value for keyValue is used.' The t >= key.back() shortcut runs before the duplicate-key tie break. Incomplete fix of SEQ-7. Probe: audit_integer_sequencer_duplicate_last_key_uses_first_value."
+- id: AUD-INTERP-1
+  nodes: [ScalarInterpolator, PositionInterpolator, OrientationInterpolator, ColorInterpolator, CoordinateInterpolator, NormalInterpolator]
+  component: Interpolation
+  clause: "19.3.1"
+  severity: minor
+  status: open
+  summary: "value_changed read before any input returns the field default instead of keyValue[0]."
+  note: "Spec: 'keyValue[0] is returned if keyValue is not empty.' Probe: audit_interpolator_initial_value_readback."
+- id: AUD-PDS-1
+  nodes: [TouchSensor, PlaneSensor, CylinderSensor, SphereSensor]
+  component: PointingDeviceSensor
+  clause: "20.2.1"
+  severity: major
+  status: open
+  summary: "Pointing sensors tied for lowest do not activate together; only the first sibling sensor gets the event."
+  note: "Spec: tied sensors are 'activated simultaneously and independently'. PointingSensorSystem keeps a single over_/active_. Probe: 'audit tied lowest pointing sensors all receive the event'."
+- id: AUD-PDS-2
+  nodes: [TouchSensor, PlaneSensor, CylinderSensor, SphereSensor]
+  component: PointingDeviceSensor
+  clause: "20.4.2"
+  severity: major
+  status: open
+  summary: "Disabling an active sensor deactivates it only on the next pointer update."
+  note: "Spec: on enabled FALSE while active the sensor 'outputs an isActive FALSE event'. The update returns early when the pointer revision is unchanged. Incomplete fix of DS-2. Probe: 'audit disabling an active PlaneSensor deactivates without pointer motion'."
+- id: AUD-PDS-3
+  nodes: [TouchSensor, PlaneSensor, CylinderSensor, SphereSensor, Switch]
+  component: PointingDeviceSensor
+  clause: "10.4.3, 20.2.3"
+  severity: major
+  status: open
+  summary: "Geometry in an unchosen Switch branch is still pickable and can occlude visible geometry."
+  note: "PickSystem enumerates every Switch child; picking should follow the traversed (rendered) branch as the extractor does. Probe: 'audit pointing sensors ignore geometry in an unchosen Switch branch'."
+- id: AUD-KDS-1
+  nodes: [StringSensor]
+  component: KeyDeviceSensor
+  clause: "21.4.2"
+  severity: minor
+  status: open
+  summary: "Deletion removes one UTF-8 byte instead of one character."
+  note: "enteredText.pop_back() on a multibyte character leaves an invalid suffix. Incomplete fix of KDS-7. Probe: 'audit StringSensor deletion removes one UTF-8 character'."
+- id: AUD-KDS-2
+  nodes: [StringSensor]
+  component: KeyDeviceSensor
+  clause: "21.4.2"
+  severity: minor
+  status: open
+  summary: "enteredText is not cleared after finalText is generated."
+  note: "Spec: 'After the finalText field event has been generated, the enteredText field is set to the empty string but no event is generated.' Incomplete fix of KDS-8. Probe: 'audit StringSensor enteredText field resets silently at termination'."
+- id: AUD-ENV-2
+  nodes: [ProximitySensor, VisibilitySensor]
+  component: EnvironmentalSensor
+  clause: "22.4.1"
+  severity: minor
+  status: open
+  summary: "Disabling an active sensor emits exitTime."
+  note: "Spec: 'A disabled sensor does not send events.' Resolution: keep the isActive FALSE edge (as §20.4.2 prescribes for pointing sensors, so routed state does not dangle) but emit no exitTime. Probe: audit_disabled_proximity_sensor_sends_no_exit."
+- id: AUD-ENV-3
+  nodes: [ProximitySensor, VisibilitySensor]
+  component: EnvironmentalSensor
+  clause: "22.4.1, 22.4.3"
+  severity: major
+  status: open
+  summary: "DEF/USE sensor instances are evaluated through one transform path, not the union of all instances."
+  note: "Spec: 'Instanced (DEF/USE) ProximitySensor nodes use the union of all the boxes' (same for VisibilitySensor); ADR-0034 also states the union. Probes: audit_proximity_sensor_uses_union_of_instances, audit_visibility_sensor_uses_union_of_instances."
+- id: AUD-ENV-4
+  nodes: [ProximitySensor]
+  component: EnvironmentalSensor
+  clause: "22.4.1"
+  severity: minor
+  status: open
+  summary: "No position_changed/orientation_changed at exit time."
+  note: "Spec: pose events are sent 'including enter and exit times'. Probe: audit_proximity_sensor_reports_position_on_exit."
+- id: AUD-ENV-5
+  nodes: [ProximitySensor, NavigationInfo]
+  component: EnvironmentalSensor
+  clause: "22.4.1"
+  severity: minor
+  status: open
+  summary: "centerOfRotation_changed fires without LOOKAT in the bound NavigationInfo."
+  note: "Spec: 'only generated when the currently bound NavigationInfo node includes LOOKAT navigation.' Incomplete fix of ENV-03. Probe: audit_proximity_center_of_rotation_requires_lookat."
+- id: AUD-NAV-1
+  nodes: [Viewpoint, NavigationInfo]
+  component: Navigation
+  clause: "23.3.1"
+  severity: major
+  status: open
+  summary: "A Viewpoint's dedicated NavigationInfo is not unbound when the Viewpoint is unbound."
+  note: "Spec: the NavigationInfo receives set_bind FALSE 'at the time when the parent node is unbound.' Incomplete fix of BIND-02. Probe: audit_viewpoint_unbinds_its_navigation_info."
+- id: AUD-NAV-2
+  nodes: [NavigationInfo, Viewpoint]
+  component: Navigation
+  clause: "23.4.4"
+  severity: minor
+  status: open
+  summary: "TELEPORT (and zero-duration) transitions never emit transitionComplete."
+  note: "Spec: 'When a transition completes, a transitionComplete event is signaled.' Incomplete fix of BIND-05. Probe: audit_teleport_transition_signals_complete."
+- id: AUD-PROTO-1
+  nodes: [ProtoInstance]
+  component: Core
+  clause: "4.4.4.3"
+  severity: major
+  status: open
+  summary: "Peer nodes after the first in a PROTO body are never enrolled, so a peer TimeSensor/Script never runs."
+  note: "Spec: peer nodes 'are not displayed but remain active.' Probe: audit_proto_peer_timesensor_remains_active."
+- id: AUD-NET-1
+  nodes: [Inline, IMPORT, EXPORT]
+  component: Networking
+  clause: "9.2.5"
+  severity: major
+  status: open
+  summary: "IMPORT resolves an Inline DEF that the Inline never EXPORTed."
+  note: "Spec: 'Only nodes that are exported from within the Inline via an EXPORT statement may be imported.' InlineExpand falls back to the child DEF map. Incomplete fix of IMPORT-EXPORT-WIRE. Probe: audit_import_requires_explicit_export."
+- id: AUD-NET-2
+  nodes: [Inline]
+  component: Networking
+  clause: "9.4.2"
+  severity: major
+  status: open
+  summary: "An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing."
+  note: "Spec: the URL may be loaded 'at a later time by sending a TRUE event to the load field'. Expansion only runs inside parseDocument. Probe: audit_inline_load_true_event_expands_content."
+- id: AUD-NET-3
+  nodes: [LoadSensor, Anchor, Viewpoint]
+  component: Networking
+  clause: "9.4.3"
+  severity: minor
+  status: open
+  summary: "LoadSensor counts an Anchor's target Viewpoint as loaded before it is bound."
+  note: "Spec: 'the asset is loaded when the Viewpoint is bound.' Incomplete fix of NSN-11. Probe: events_misc_test 'AUDIT: Anchor target existing but never bound'."
+- id: AUD-LGT-1
+  nodes: [PointLight, SpotLight]
+  component: Lighting
+  clause: "17.4.2, 17.4.3"
+  severity: major
+  status: open
+  summary: "Light radius ignores ancestor scale."
+  note: "Spec: 'scales affect radius'. LightSystem transforms location but copies radius. Probes: audit_point_light_radius_scales_with_parent_transform, audit_spot_light_radius_scales_with_parent_transform."
+- id: AUD-LGT-2
+  nodes: [DirectionalLight, PointLight, SpotLight, Switch]
+  component: Lighting
+  clause: "10.4.3"
+  severity: major
+  status: open
+  summary: "Lights in an unchosen Switch branch (or inactive LOD level) still illuminate."
+  note: "LightSystem visits every child; geometry extraction follows only the traversed branch. Probe: audit_light_under_inactive_switch_does_not_illuminate."
+- id: AUD-EXT-1
+  nodes: [Extrusion]
+  component: Geometry3D
+  clause: "13.3.5.6, 11.2.3"
+  severity: major
+  status: open
+  summary: "Caps are fanned from vertex 0 even with convex FALSE, so a concave cap covers its notch."
+  note: "Probe: audit_extrusion_concave_cap_does_not_cover_notch."
+- id: AUD-RND-1
+  nodes: [LineSet, IndexedLineSet, PointSet]
+  component: Rendering
+  clause: "11.2.2.5"
+  severity: minor
+  status: open
+  summary: "Authored normals on points/lines are dropped, so they can never be lit."
+  note: "Spec: with a Normal node, 'points and lines shall be rendered using the same lighting equations'. Probe: audit_line_and_point_normals_enable_lighting."
+- id: AUD-RND-2
+  nodes: [LineSet, IndexedLineSet, PointSet, Material]
+  component: Rendering
+  clause: "11.2.2.5"
+  severity: minor
+  status: open
+  summary: "Unlit points/lines take the Material's diffuse colour instead of emissiveColor."
+  note: "Spec: 'geometry shall be rendered as unlit and only the emissiveColor is used.' Probe: audit_line_set_material_uses_emissive_color."
+- id: AUD-BG-1
+  nodes: [Background, TextureBackground]
+  component: EnvironmentalEffects
+  clause: "24.2.1"
+  severity: minor
+  status: open
+  summary: "Decreasing skyAngle/groundAngle values are accepted silently."
+  note: "Spec: angles are 'restricted to non-decreasing values'. Per the lenient-read policy (ADR-0003) the fix is a validation warning, not a rejection."
+- id: AUD-BG-2
+  nodes: [TextureBackground, MultiTexture]
+  component: EnvironmentalEffects
+  clause: "24.4.5"
+  severity: minor
+  status: open
+  summary: "A MultiTexture panorama face is dropped from BackgroundDesc."
+  note: "refOf treats MultiTexture as a url texture with no url. Incomplete fix of ENV-11. Probe: 'audit TextureBackground preserves MultiTexture face'."
+- id: AUD-TEX-1
+  nodes: [ImageTexture, MovieTexture, X3DUrlObject]
+  component: Texturing
+  clause: "9.3.2, 18.4.1"
+  severity: minor
+  status: open
+  summary: "load FALSE on a texture still fetches its url."
+  note: "Probe: 'audit ImageTexture load FALSE suppresses URL fetch'."
+- id: AUD-TEX-2
+  nodes: [MultiTexture]
+  component: Texturing
+  clause: "18.4.3"
+  severity: major
+  status: open
+  summary: "MultiTexture mode/source/function/color/alpha never reach the descriptor, so stages cannot be blended as authored."
+  note: "Only a channel ordinal is extracted per stage."
+- id: AUD-TEX-3
+  nodes: [TextureProperties]
+  component: Texturing
+  clause: "18.4.9"
+  severity: low
+  status: open
+  summary: "borderColor (deprecated in v4.0) is not extracted."
+  note: "Already noted in TXF-4."
+- id: AUD-MEDIA-1
+  nodes: [MovieTexture]
+  component: Texturing
+  clause: "18.4.2"
+  severity: major
+  status: open
+  summary: "set_speed changes an active movie's cycle; it must be ignored while playing."
+  note: "Spec: 'set_speed events are ignored while the movie is playing.' Incomplete fix of TDN-5. Probe: 'audit MovieTexture ignores speed changes while active'."
+- id: AUD-MEDIA-2
+  nodes: [AudioClip]
+  component: Sound
+  clause: "16.4.2"
+  severity: major
+  status: open
+  summary: "set_pitch changes an active clip's timing and playback rate; it must be ignored."
+  note: "Spec: 'A set_pitch event to an active AudioClip is ignored and no pitch_changed field is generated.' Incomplete fix of TDN-5/ADR-0050. Probe: 'audit AudioClip ignores pitch changes while active'."
+- id: AUD-MEDIA-3
+  nodes: [MovieTexture]
+  component: Texturing
+  clause: "18.4.2"
+  severity: minor
+  status: open
+  summary: "MovieTexture never sends duration_changed: the SDK opens no media (ADR-0041) and the MovieDecoder seam carries no duration."
+  note: "The consumer needs a documented way to report a loaded movie's duration so the time lifecycle and routes see it."
+- id: AUD-MEDIA-4
+  nodes: [Sound, MovieTexture]
+  component: Sound
+  clause: "16.4.17"
+  severity: major
+  status: open
+  summary: "Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources."
+  note: "Needs movie audio (the MovieDecoder seam is frame-only)."

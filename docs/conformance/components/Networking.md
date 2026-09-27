@@ -4,12 +4,18 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interchange, Interactive, Immersi
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Anchor | 2 | ✓ | — | — | NSN-11 | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
-| Inline | 2 | ✓ | — | — | IMPORT-EXPORT-WIRE, NSN-12 | X3DBoundedObject, X3DChildNode, X3DUrlObject |
-| LoadSensor | 3 | ✓ | — | ✓ | NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9 | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
+| Anchor | 2 | ✓ | — | — | AUD-NET-3, NSN-11 | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
+| Inline | 2 | ✓ | — | — | AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, NSN-12 | X3DBoundedObject, X3DChildNode, X3DUrlObject |
+| LoadSensor | 3 | ✓ | — | ◑ | AUD-NET-3, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9 | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 
 ## Findings
 
+- **AUD-NET-1** [major/OPEN] — §9.2.5: IMPORT resolves an Inline DEF that the Inline never EXPORTed.
+  - Spec: 'Only nodes that are exported from within the Inline via an EXPORT statement may be imported.' InlineExpand falls back to the child DEF map. Incomplete fix of IMPORT-EXPORT-WIRE. Probe: audit_import_requires_explicit_export.
+- **AUD-NET-2** [major/OPEN] — §9.4.2: An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing.
+  - Spec: the URL may be loaded 'at a later time by sending a TRUE event to the load field'. Expansion only runs inside parseDocument. Probe: audit_inline_load_true_event_expands_content.
+- **AUD-NET-3** [minor/OPEN] — §9.4.3: LoadSensor counts an Anchor's target Viewpoint as loaded before it is bound.
+  - Spec: 'the asset is loaded when the Viewpoint is bound.' Incomplete fix of NSN-11. Probe: events_misc_test 'AUDIT: Anchor target existing but never bound'.
 - **NSN-2** [critical/CLOSED `9bb71c2`] — §9.4.3: isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.
 - **NSN-3** [critical/CLOSED `9bb71c2`] — §9.4.3: isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.
 - **NSN-4** [critical/CLOSED `9bb71c2`] — §9.4.3: loadTime (now, on successful completion only) not emitted.

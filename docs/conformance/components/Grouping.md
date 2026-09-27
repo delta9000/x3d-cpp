@@ -6,7 +6,7 @@ _Generated. Levels 1,2,3 · 4 nodes · profiles: Interchange, Interactive, Immer
 |------|-----|--------|---------|---------|----------|------------|
 | Group | 1 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | StaticGroup | 3 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode |
-| Switch | 2 | ✓ | — | — | SENSOR-SWITCH, SW-DELTA-1 | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| Switch | 2 | ✓ | — | — | AUD-LGT-2, AUD-PDS-3, SENSOR-SWITCH, SW-DELTA-1 | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | Transform | 1 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 
 ## Findings

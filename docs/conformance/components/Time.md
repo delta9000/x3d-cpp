@@ -4,10 +4,20 @@ _Generated. Levels 1 · 1 nodes · profiles: Interchange, Interactive, Immersive
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| TimeSensor | 1 | ✓ | — | ✓ | CONF-CRITIC-1, CONF-TDN1V, TDN-1, TDN-2, TDN-3, TDN-4, TDN-6, TDN-7, TDN-8, TIME-ORIGIN-1 | X3DChildNode, X3DSensorNode, X3DTimeDependentNode |
+| TimeSensor | 1 | ✓ | — | ◑ | AUD-TIME-1, AUD-TIME-2, AUD-TIME-3, AUD-TIME-4, AUD-TIME-5, CONF-CRITIC-1, CONF-TDN1V, TDN-1, TDN-2, TDN-3, TDN-4, TDN-6, TDN-7, TDN-8, TIME-ORIGIN-1 | X3DChildNode, X3DSensorNode, X3DTimeDependentNode |
 
 ## Findings
 
+- **AUD-TIME-1** [major/OPEN] — §8.2.4.4: A late resume shifts the clock by resumeTime-pauseTime instead of the actual paused span, so fraction_changed jumps on resume.
+  - Spec: 'At the time when the node resumes, the fraction_changed event continues from its value when paused.' X3DTimeDependentSystem.hpp shifts timeBase by the authored times while pause/resume take effect at the observing tick. Incomplete fix of TDN-8. Probe: audit_timesensor_late_resume_keeps_fraction_frozen.
+- **AUD-TIME-3** [major/OPEN] — §8.2.4.3: set_startTime (and set_stopTime <= startTime) to an active node still overwrite the field and emit *_changed.
+  - Spec: such events 'are ignored'. The cascade writes every input field; the system only snapshots startTime. Incomplete fix of TDN-4. Probe: audit_timesensor_ignores_start_and_invalid_stop_while_active.
+- **AUD-TIME-5** [major/OPEN] — §8.4.1: Changing cycleInterval during an active loop makes fraction_changed jump instead of continuing smoothly at the new rate.
+  - Spec: 'fraction_changed events continue to increase smoothly at a correspondingly faster or slower rate.' Fraction is recomputed from activation time over the current interval. Probe: audit_timesensor_cycle_interval_change_keeps_fraction_continuous.
+- **AUD-TIME-2** [minor/OPEN] — §8.4.1: A stop detected after stopTime emits the final values evaluated at the tick instead of at stopTime.
+  - Spec: the final event is generated as evaluated at stopTime. Probe: audit_timesensor_stop_uses_stop_time_for_final_output.
+- **AUD-TIME-4** [low/OPEN] — §8.2.2, 8.2.4.4: A negative absolute pauseTime never pauses (the code also requires pauseTime > 0).
+  - Spec: negative absolute times are valid (before 1970); pause when now >= pauseTime > resumeTime. Probe: audit_timesensor_accepts_negative_absolute_pause_time.
 - **TDN-1** [major/FIXED `e92042e`] — §8.2.4.4: pauseTime_changed emitted at the pause edge.
 - **TDN-2** [major/FIXED `e92042e`] — §8.2.4.4: resumeTime_changed emitted at the resume edge.
 - **TDN-3** [major/FIXED `c7d2c21`] — §8.2.4.3: loop=FALSE finishes the current cycle instead of deactivating next tick.
