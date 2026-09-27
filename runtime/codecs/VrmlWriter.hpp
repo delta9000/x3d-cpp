@@ -19,6 +19,7 @@
 #ifndef X3D_VRML_WRITER_HPP
 #define X3D_VRML_WRITER_HPP
 
+#include <any>
 #include <iosfwd>
 #include <memory>
 #include <string>
@@ -70,6 +71,8 @@ private:
   // bracket MF values (single/empty included) — always grammatical, never
   // lossy.
   static bool isMultiField(X3DFieldType t);
+  static void writeInterfaceValue(std::ostringstream &os, X3DFieldType type,
+                                  const std::any &value);
 
   // ClassicVRML SFString literals are double-quoted; embedded backslash and
   // double-quote must be escaped (\\ and \"). MFString self-escapes via

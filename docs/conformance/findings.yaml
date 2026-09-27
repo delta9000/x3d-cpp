@@ -1853,37 +1853,37 @@
   clause: "ISO 19776-2; 19775-1 4.4.4"
   severity: minor
   status: open
-  summary: ProtoDeclare/ExternProtoDeclare `appinfo` and `documentation` attributes are dropped through the ClassicVRML hop — the most common drift in the sweep (31 of 44 scenes).
+  summary: ProtoDeclare/ExternProtoDeclare and field `appinfo`/`documentation` survive XML and JSON, but are not representable in ClassicVRML and are lost on that hop.
   note: >-
-    XML->JSON direct keeps all appinfos (PajekVisualizationPrototypes.x3d); XML->VRML drops them to
-    zero. The whole Savage/KelpForest prototype-tooltip layer evaporates. Fix: carry
-    appinfo/documentation through the ClassicVRML path (X3D-Edit round-trips via comment/metadata
-    convention); at minimum keep them clean through JSON. (round-trip sweep.)
+    XML and JSON readers/writers preserve declaration and field metadata. Regression:
+    proto_appinfo_json_roundtrip_test. ISO/IEC 19776-2 ClassicVRML PROTO/EXTERNPROTO/interface
+    syntax has no appinfo or documentation production; comments are not a semantic metadata slot.
+    ClassicVRML conversion therefore remains lossy for these attributes.
 
 - id: ENC-PROTO-CONNECT
   nodes: [ProtoBody, connect]
   interfaces: [X3DPrototypeInstance]
   clause: "ISO 19776; 19775-1 4.4.4 (IS/connect)"
   severity: major
-  status: open
+  status: closed
   summary: ProtoBody `<connect>` IS-wiring is dropped on round-trip (5 scenes) — the proto declares fine but no longer drives anything inside its body.
   note: >-
-    CanopyPrototype.x3d, F18 wheel prototypes, PajekVisualizationPrototypes.x3d lose
-    `<connect nodeField=... protoField=.../>`. Distinct from PROTO-IS-001 (that was expansion-time
-    MFNode override propagation, now fixed) — this is SERIALIZATION dropping the connect element in a
-    writer. Fix: treat <connect>/IS as load-bearing in every encoder. (round-trip sweep.)
+    XML, JSON, and ClassicVRML writers emit the body's IS bindings, including nested nodes; matching
+    readers restore them. ClassicVRML now emits a type-default value for valueless initializeOnly and
+    inputOutput author/interface declarations, so the following IS statement cannot be consumed as a
+    value. Regression: proto_is_json_vrml_roundtrip_test and proto_author_field_is_roundtrip_test.
+    Corpus checks: CanopyPrototype.x3d 4 -> 4 connects; PajekVisualizationPrototypes.x3d 32 -> 32.
 
 - id: ENC-SFNODE-DEFAULT
   nodes: [ProtoDeclare, field]
   interfaces: [X3DPrototypeInstance]
   clause: "ISO 19776; 19775-1 4.4.4"
   severity: minor
-  status: open
+  status: closed
   summary: A proto `<field type='SFNode'>` default child node collapses to empty on round-trip — instances relying on the default get nothing.
   note: >-
-    SeaStarHighResolutionPrototype.x3d, runtime/.../NewShape.wrl: an SFNode field whose default value
-    is an `<Appearance><Material/></Appearance>` re-serializes as `<field ... type='SFNode'/>`.
-    Fix: serialize SFNode field default children in all encodings. (round-trip sweep.)
+    SFNode/MFNode default children are serialized in XML and JSON; ClassicVRML emits an SFNode default
+    as a bare node (and MFNode defaults as a list). Regression: proto_sfnode_default_roundtrip_test.
 
 - id: ENC-CDATA-SCRIPT
   nodes: [Script]

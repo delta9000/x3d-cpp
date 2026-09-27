@@ -309,6 +309,8 @@ void JsonReader::readJsonInterfaceFields(const json::Value &iface,
       return;
     runtime::ProtoField pf;
     pf.name = strMember(f, "@name");
+    pf.appinfo = strMember(f, "@appinfo");
+    pf.documentation = strMember(f, "@documentation");
     pf.type = mapProtoFieldType(strMember(f, "@type"));
     pf.access =
         mapProtoAccessType(strMemberOr(f, "@accessType", "inputOutput"));
