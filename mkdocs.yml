@@ -145,6 +145,7 @@ nav:
       - "ADR-0049: Zero-Copy Field Reads": decisions/0049-zero-copy-field-reads.md
       - "ADR-0050: Decoded PCM and the Sound Ellipsoid Cross the AudioBackend Seam": decisions/0050-audio-pcm-and-ellipsoid-seam.md
       - "ADR-0051: Deferred Inline Expansion Uses the Parse Resolver and Live Runtime Enrollment": decisions/0051-runtime-inline-expansion.md
+      - "ADR-0052: Movie Audio Uses the Existing PCM Buffer Source": decisions/0052-movie-audio-buffer-source.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

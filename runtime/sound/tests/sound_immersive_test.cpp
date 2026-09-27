@@ -15,6 +15,7 @@
 #include "X3DExecutionContext.hpp"
 
 #include "x3d/nodes/AudioClip.hpp"
+#include "x3d/nodes/MovieTexture.hpp"
 #include "x3d/nodes/Sound.hpp"
 
 #include <cmath>
@@ -146,12 +147,66 @@ static void testActivePitchStaysAtActivationRate() {
   CHECK(rate == 1.0f, "scene: active AudioClip retains its activation pitch in the backend");
 }
 
+static void testMovieTextureSourceLifecycle() {
+  auto movie = std::make_shared<MovieTexture>();
+  movie->setUrl(MFString{"movie.mpg"});
+  movie->setLoad(false);
+  movie->setStartTime(1.0);
+  movie->setStopTime(4.0);
+  movie->setSpeed(2.0f);
+  auto snd = std::make_shared<Sound>();
+  snd->setSource(movie);
+  SoundSystem sound(std::make_shared<BuiltinDspBackend>());
+  int fetches = 0;
+  sound.setAssetResolver([&](const std::string &, extract::AssetKind kind) {
+    ++fetches;
+    CHECK(kind == extract::AssetKind::Movie, "movie source resolves as movie media");
+    return extract::AssetResult::makeReady({1});
+  });
+  sound.setMovieAudioDecoder([](const std::vector<std::uint8_t> &) {
+    DecodedAudio audio;
+    audio.ok = true;
+    audio.sampleRate = 48000.0f;
+    audio.samples.resize(48000);
+    for (std::size_t i = 0; i < audio.samples.size(); ++i)
+      audio.samples[i] = 0.5f * std::sin(2.0 * 3.141592653589793 * 1000.0 * i / 48000.0);
+    return audio;
+  });
+  X3DExecutionContext ctx;
+  auto media = std::make_shared<MediaTimeSystem>();
+  media->attach(movie.get(), ctx);
+  ctx.addSystem(media);
+  reportMovieDuration(ctx, *movie, 6.0);
+  ctx.process();
+  sound.attach(snd.get(), ctx);
+  std::vector<float> lr;
+  auto levelAt = [&](double t) {
+    ctx.tick(t);
+    sound.update(t, ctx);
+    sound.renderStereo(x3d::test::kImmFrames, x3d::test::kImmSR, lr);
+    return rmsStereo(lr);
+  };
+  CHECK(levelAt(0.0) < 1e-6, "movie audio is silent before activation");
+  CHECK(fetches == 0, "load FALSE defers movie audio fetch");
+  movie->setLoad(true);
+  CHECK(levelAt(1.0) > 0.05, "movie audio plays while active");
+  CHECK(fetches == 1, "movie audio is fetched once when load becomes TRUE");
+  movie->setSpeed(4.0f); // active speed remains captured at 2.
+  CHECK(levelAt(1.5) > 0.05, "movie audio keeps playing after active speed write");
+  movie->setPauseTime(2.0);
+  CHECK(levelAt(2.0) < 1e-6, "movie audio pauses with MovieTexture");
+  movie->setResumeTime(3.0);
+  CHECK(levelAt(3.0) > 0.05, "movie audio resumes with MovieTexture");
+  CHECK(levelAt(4.0) < 1e-6, "movie audio stops with MovieTexture");
+}
+
 int main() {
   x3d::test::runImmersiveFixtures([] { return std::make_shared<BuiltinDspBackend>(); },
                                   [](bool ok, const char *msg) { CHECK(ok, msg); });
   testWav();
   testSoundClipScene();
   testActivePitchStaysAtActivationRate();
+  testMovieTextureSourceLifecycle();
   if (g_failures == 0) std::fprintf(stderr, "sound_immersive_test: ALL PASS\n");
   return g_failures == 0 ? 0 : 1;
 }

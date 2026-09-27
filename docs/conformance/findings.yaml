@@ -2528,6 +2528,6 @@
   component: Sound
   clause: "16.4.17"
   severity: major
-  status: open
+  status: closed
   summary: "Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources."
-  note: "Still open: MovieDecoder returns video frames only; SoundSystem needs decoded audio samples, format and timing to build a Buffer source. Adding those to FrameResult alone would not supply a timed audio stream, so this needs a movie-audio decoder/source contract before Sound.source MovieTexture can play."
+  note: "SoundSystem resolves MovieTexture media through an injected movie-audio decoder and creates a PCM Buffer driven by isActive/isPaused and activation speed (ADR-0052). Tests: testMovieTextureSourceLifecycle and pl_mpeg decodes a movie MP2 track to mono PCM."

@@ -6100,7 +6100,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 23.4.1; 8.2.4.3; 9.3.2, 18.4.1; 18.4.2; 16.4.17",
           "exists": true,
@@ -10284,9 +10284,9 @@
         "Sound",
         "MovieTexture"
       ],
-      "note": "Still open: MovieDecoder returns video frames only; SoundSystem needs decoded audio samples, format and timing to build a Buffer source. Adding those to FrameResult alone would not supply a timed audio stream, so this needs a movie-audio decoder/source contract before Sound.source MovieTexture can play.",
+      "note": "SoundSystem resolves MovieTexture media through an injected movie-audio decoder and creates a PCM Buffer driven by isActive/isPaused and activation speed (ADR-0052). Tests: testMovieTextureSourceLifecycle and pl_mpeg decodes a movie MP2 track to mono PCM.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources."
     }
   ],
@@ -10445,7 +10445,7 @@
     ]
   },
   "summary": {
-    "closed_count": 224,
+    "closed_count": 225,
     "component_count": 36,
     "deferred_count": 28,
     "finding_count": 257,
@@ -10471,7 +10471,7 @@
     "open_by_severity": {
       "critical": 2,
       "low": 2,
-      "major": 16,
+      "major": 15,
       "minor": 13
     }
   },

@@ -41,6 +41,8 @@
 // their PCM crosses once (ADR-0050); a Pending fetch is retried each tick.
 // Their playback state follows the AudioClip time lifecycle (isActive /
 // isPaused, MediaTimeSystem) and pitch.
+// A MovieTexture source uses a separately injected movie-audio decoder and
+// the same Buffer path; MediaTimeSystem supplies its lifecycle and speed.
 #ifndef X3D_RUNTIME_SOUND_SYSTEM_HPP
 #define X3D_RUNTIME_SOUND_SYSTEM_HPP
 
@@ -57,6 +59,7 @@
 #include "x3d/nodes/BiquadFilter.hpp"
 #include "x3d/nodes/Gain.hpp"
 #include "x3d/nodes/ListenerPointSource.hpp"
+#include "x3d/nodes/MovieTexture.hpp"
 #include "x3d/nodes/OscillatorSource.hpp"
 #include "x3d/nodes/Sound.hpp"
 #include "x3d/nodes/SpatialSound.hpp"
@@ -170,6 +173,8 @@ public:
   void setAssetResolver(extract::AssetResolver r) { resolver_ = std::move(r); }
   /** @brief AudioClip decoder (null / default -> clips stay silent). */
   void setAudioDecoder(AudioDecoder d) { decoder_ = std::move(d); }
+  /** @brief MovieTexture audio decoder (null / default -> movies stay silent). */
+  void setMovieAudioDecoder(AudioDecoder d) { movieAudioDecoder_ = std::move(d); }
 
   /**
    * @brief Render one AudioDestination's graph to a stereo interleaved buffer.
@@ -198,6 +203,7 @@ public:
     if (!backend_) return;
     ctx_ = &ctx;
     retryPendingClips();
+    retryPendingMovies();
     for (const auto &m : map_) pushParams(m.first, m.second);
     for (const SoundEntry &se : sounds_) pushSound(se, ctx);
   }
@@ -261,6 +267,11 @@ private:
       const ClipLoad load = loadClip(clip, handle);
       if (load == ClipLoad::Pending) pendingClips_.push_back({clip, parent});
       if (load != ClipLoad::Ready) return kInvalidNodeHandle;
+    } else if (auto *movie = dynamic_cast<x3d::nodes::MovieTexture *>(node)) {
+      fallbackSpeed_[movie] = movie->getSpeed();
+      const ClipLoad load = loadMovieAudio(movie, handle);
+      if (load == ClipLoad::Pending) pendingMovies_.push_back({movie, parent});
+      if (load != ClipLoad::Ready) return kInvalidNodeHandle;
     } else if (auto *ss = dynamic_cast<SpatialSound *>(node)) {
       // SpatialSound as an audio-graph child (§16 allows nesting): insert a
       // Panner carrying the resolved positions. The SpatialSound's own
@@ -322,6 +333,15 @@ private:
       backend_->setParam(handle, Param::PlaybackRate,
                          media ? static_cast<float>(media->playbackRate(clip)) : fallbackPitch_[clip]);
       backend_->setParam(handle, Param::Gain, clip->getGain());
+    } else if (auto *movie = dynamic_cast<x3d::nodes::MovieTexture *>(node)) {
+      // §16.4.17 / §18.4.2: movie audio follows its active/paused state and activation speed.
+      const bool active = movie->X3DTimeDependentNode::getIsActive();
+      const bool paused = movie->X3DTimeDependentNode::getIsPaused();
+      backend_->setParam(handle, Param::PlaybackState, !active ? 0.0f : paused ? 2.0f : 1.0f);
+      const auto *media = ctx_ ? ctx_->findSystem<MediaTimeSystem>() : nullptr;
+      if (!active) fallbackSpeed_[movie] = movie->getSpeed();
+      backend_->setParam(handle, Param::PlaybackRate,
+                         media ? static_cast<float>(media->playbackRate(movie)) : fallbackSpeed_[movie]);
     } else if (auto *dest = dynamic_cast<x3d::nodes::AudioDestination *>(node)) {
       backend_->setParam(handle, Param::Gain, dest->getGain());
     }
@@ -454,6 +474,10 @@ private:
     x3d::nodes::AudioClip *clip;
     NodeHandle parent;
   };
+  struct PendingMovie {
+    x3d::nodes::MovieTexture *movie;
+    NodeHandle parent;
+  };
   enum class ClipLoad { Ready, Pending, Failed };
 
   // Fetch the clip's urls in order and decode the first that loads. Ready
@@ -482,6 +506,24 @@ private:
     return pending ? ClipLoad::Pending : ClipLoad::Failed;
   }
 
+  ClipLoad loadMovieAudio(x3d::nodes::MovieTexture *movie, NodeHandle &out) {
+    if (!resolver_ || !movieAudioDecoder_) return ClipLoad::Failed;
+    if (!movie->getLoad()) return ClipLoad::Pending;
+    for (const std::string &url : movie->getUrl()) {
+      const extract::AssetResult r = resolver_(url, extract::AssetKind::Movie);
+      if (r.pending()) return ClipLoad::Pending;
+      if (!r.ready()) continue;
+      DecodedAudio audio = movieAudioDecoder_(r.bytes);
+      if (!audio.ok || audio.samples.empty() || audio.sampleRate <= 0.0f) continue;
+      NodeParams bp;
+      bp.samples = std::move(audio.samples);
+      bp.sampleRate = audio.sampleRate;
+      out = backend_->createNode(NodeKind::Buffer, bp);
+      return out == kInvalidNodeHandle ? ClipLoad::Failed : ClipLoad::Ready;
+    }
+    return ClipLoad::Failed;
+  }
+
   void retryPendingClips() {
     for (auto it = pendingClips_.begin(); it != pendingClips_.end();) {
       NodeHandle h = kInvalidNodeHandle;
@@ -492,6 +534,19 @@ private:
         backend_->connect(it->parent, h);
       }
       it = pendingClips_.erase(it);
+    }
+  }
+
+  void retryPendingMovies() {
+    for (auto it = pendingMovies_.begin(); it != pendingMovies_.end();) {
+      NodeHandle h = kInvalidNodeHandle;
+      const ClipLoad load = loadMovieAudio(it->movie, h);
+      if (load == ClipLoad::Pending) { ++it; continue; }
+      if (load == ClipLoad::Ready) {
+        map_.emplace(it->movie, h);
+        backend_->connect(it->parent, h);
+      }
+      it = pendingMovies_.erase(it);
     }
   }
 
@@ -547,9 +602,12 @@ private:
 
   std::vector<SoundEntry> sounds_;
   std::vector<PendingClip> pendingClips_;
+  std::vector<PendingMovie> pendingMovies_;
   std::unordered_map<x3d::nodes::AudioClip *, float> fallbackPitch_;
+  std::unordered_map<x3d::nodes::MovieTexture *, float> fallbackSpeed_;
   extract::AssetResolver resolver_;
   AudioDecoder decoder_ = makeNullAudioDecoder();
+  AudioDecoder movieAudioDecoder_;
   X3DExecutionContext *ctx_ = nullptr;
 
   std::shared_ptr<AudioBackend> backend_;

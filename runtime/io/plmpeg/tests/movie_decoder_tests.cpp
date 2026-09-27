@@ -154,6 +154,20 @@ TEST_CASE("MovieDecoder contract: pl_mpeg / MPEG-1 (Backend A)") {
       readFixture(PLMPEG_FIXTURES_DIR, "redsquare.m1v"), 32, 32);
 }
 
+TEST_CASE("pl_mpeg decodes a movie MP2 track to mono PCM") {
+  // Existing redsquare.m1v is video-only; red_tone.mpg is a generated 32x32 red/MPEG-1 + 1 kHz MP2 fixture.
+  // Regenerate: ffmpeg -f lavfi -i color=c=red:s=32x32:r=25 -f lavfi -i sine=frequency=1000:sample_rate=32000 \
+  //   -t 0.4 -c:v mpeg1video -b:v 100k -c:a mp2 -b:a 64k -f mpeg red_tone.mpg
+  const auto decode = x3d::runtime::io::plmpeg::makePlMpegMovieAudioDecoder();
+  const auto audio = decode(readFixture(PLMPEG_FIXTURES_DIR, "red_tone.mpg"));
+  REQUIRE(audio.ok);
+  CHECK(audio.sampleRate == 32000.0f);
+  CHECK(audio.duration() > 0.35);
+  CHECK(audio.duration() < 0.5);
+  CHECK_FALSE(audio.samples.empty());
+  CHECK_FALSE(decode(readFixture(PLMPEG_FIXTURES_DIR, "redsquare.m1v")).ok);
+}
+
 #ifdef X3D_MOVIE_HAVE_THEORA
 TEST_CASE("MovieDecoder contract: libtheora / Ogg-Theora (Backend B)") {
   runContract(

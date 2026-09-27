@@ -32,7 +32,7 @@
 // model and break backend-swappability.
 //
 // Sample-buffer extension (ADR-0050): decoded PCM crosses ONCE, at createNode,
-// for a Buffer source (an AudioClip decoded app-side through the AudioDecoder
+// for a Buffer source (an AudioClip or MovieTexture decoded through the AudioDecoder
 // seam). Nothing else carries samples inbound; playback (cursor, rate, looping)
 // is the backend's own DSP, driven only by the PlaybackState / PlaybackRate
 // scalars.

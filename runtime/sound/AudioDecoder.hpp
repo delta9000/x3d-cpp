@@ -1,5 +1,5 @@
 // AudioDecoder.hpp — the audio decode seam (ADR-0050).
-// An AudioClip's bytes (fetched through the AssetResolver seam) become mono PCM
+// An AudioClip's or MovieTexture's bytes (fetched through the AssetResolver seam) become mono PCM
 // here, app-side, before crossing the AudioBackend seam once as a Buffer node.
 // IO-free: the SDK ships only the null default; a concrete decoder (e.g. the
 // reference WAV reader in runtime/io/wav, or a full codec library) is injected
