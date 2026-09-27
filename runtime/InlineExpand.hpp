@@ -124,7 +124,9 @@ inline bool replaceInParent(X3DNode &parent, const X3DNode *target,
 /// Expand every load=TRUE Inline in `scene`. Lenient: failures become warnings.
 inline void expandInlines(Scene &scene, const InlineResolver &resolver,
                           const std::string &baseUrl,
-                          std::vector<InlineWarning> &warnings) {
+                          std::vector<InlineWarning> &warnings,
+                          const std::function<void(X3DNode *,
+                              const std::shared_ptr<X3DNode> &)> &onExpanded = {}) {
   using namespace inline_detail;
 
   // Collect (parent, inlineNode) pairs first, so we don't mutate fields mid-walk.
@@ -168,6 +170,8 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     // copy child.defs into scene.defs).
     auto group = makeGroup(child->rootNodes);
     hoistChildRoutes(*child, scene.resolvedInlineRoutes);
+    for (const auto &peer : child->protoPeerNodes)
+      scene.protoPeerNodes.push_back(peer);
     scene.expandedInlines[group.get()] = inl; // preserve for writer round-trip
     // Retain the child scene so a parent <IMPORT ...> can resolve an imported
     // DEF/EXPORT against it (§9.2). Keyed by the ORIGINAL Inline node.
@@ -178,6 +182,7 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
       for (auto &r : scene.rootNodes)
         if (r.get() == inl.get()) { r = group; break; }
     }
+    if (onExpanded) onExpanded(parent, group);
   };
 
   for (auto &site : sites) expandOne(site.inl, site.parent);
@@ -204,14 +209,17 @@ inline void wireInlineImports(Scene &scene) {
     if (childIt == scene.expandedInlineScenes.end() || !childIt->second)
       continue;
     Scene &child = *childIt->second;
-    // The parent names the child's EXPORT alias; fall back to the DEF itself.
-    std::string childName = imp.importedDEF;
+    // §9.2.5: only names explicitly exported by the child are importable.
+    std::string childName;
     for (const Export &ex : child.exports) {
-      if (ex.as == imp.importedDEF && !ex.localDEF.empty()) {
+      if ((ex.as.empty() ? ex.localDEF : ex.as) == imp.importedDEF &&
+          !ex.localDEF.empty()) {
         childName = ex.localDEF;
         break;
       }
     }
+    if (childName.empty())
+      continue;
     auto node = child.resolve(childName);
     if (!node)
       continue;

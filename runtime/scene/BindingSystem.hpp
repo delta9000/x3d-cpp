@@ -38,7 +38,12 @@ public:
     sink_ = std::move(sink);
     for (const auto &root : scene.rootNodes)
       if (root) walk(root.get());
+    for (const auto &peer : scene.protoPeerNodes)
+      if (peer) walk(peer.get());
   }
+
+  // Dynamically loaded Inline content is enrolled without initial binding.
+  void enrollAdditional(X3DNode *root) { if (root) walk(root); }
 
   // Bind the first enrolled node of each category that has no current top.
   // Runs at build time (no active cascade) -> set isBound + bindTime directly

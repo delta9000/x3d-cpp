@@ -10,10 +10,12 @@
 #include "BoundsSystem.hpp"
 #include "CycleBreaker.hpp"
 #include "DirtyTracker.hpp"
+#include "FieldRead.hpp"
 #include "HeadPose.hpp"
 #include "KeyState.hpp"
 #include "PickSystem.hpp"
 #include "PointerState.hpp"
+#include "RecursionLimits.hpp"
 #include "ViewpointOffset.hpp"
 #include "TransformSystem.hpp"
 #include "X3DActiveNode.hpp"
@@ -28,6 +30,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace x3d::runtime {
@@ -129,6 +132,28 @@ public:
     pick_.build(scene);
     cascade_.setFieldObserver(
         [this](const FieldAddress &a) { onFieldWritten(a); });
+  }
+
+  // Called after an Inline subtree is spliced into the live Scene.
+  void refreshSceneTopology(Scene &scene) {
+    transforms_.buildIndex(scene);
+    bounds_.buildBounds(scene, transforms_);
+    pick_.build(scene);
+  }
+
+  void attachNewSubtree(X3DNode *root) {
+    std::unordered_set<const X3DNode *> seen;
+    std::function<void(X3DNode *, std::size_t)> walk =
+        [&](X3DNode *n, std::size_t depth) {
+          if (!n || depth >= kMaxNestingDepth || !seen.insert(n).second) return;
+          for (const auto &s : systems_) s->attach(n, *this);
+          forEachChildNode(*n, [&](const FieldInfo &,
+                                   const std::shared_ptr<X3DNode> &c) {
+            walk(c.get(), depth + 1);
+          });
+        };
+    walk(root, 0);
+    bindings_.enrollAdditional(root);
   }
 
   /** @brief Remove all registered ROUTEs from the execution context. */

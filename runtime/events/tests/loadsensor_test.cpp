@@ -466,8 +466,8 @@ TEST_CASE("LoadSensor: embedded scheme resolves Ready with no resolver call") {
   CHECK(calls == 0); // bytes are in the url string
 }
 
-TEST_CASE("LoadSensor: Anchor '#Name' → Ready iff a Viewpoint DEF exists") {
-  { // viewpoint present → Ready without a resolver call
+TEST_CASE("LoadSensor: Anchor '#Name' is Ready when its Viewpoint is bound") {
+  { // the first viewpoint is bound by default → Ready without a resolver call
     int calls = 0;
     Scene scene;
     X3DExecutionContext ctx;

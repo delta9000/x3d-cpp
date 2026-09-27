@@ -160,6 +160,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
   for (const auto &bn : decl->body.nodes) {
     auto c = deepClone(bn, cloneMap);
     if (!primary) primary = c;
+    else scene.protoPeerNodes.push_back(c); // §4.4.4.3: peers remain active.
   }
   if (primary) primary->setDEF(inst.DEF);
 

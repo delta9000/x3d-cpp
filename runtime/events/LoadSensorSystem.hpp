@@ -226,6 +226,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       auto [it, inserted] = st.children.try_emplace(c, ChildState{});
       ChildState &cs = it->second;
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
+      const bool anchor = c->nodeTypeName() == "Anchor";
       if (inserted) {
         cs.preseeded = pre;
         if (pre && detail_loadsensor::hasUnloadedInline(*c))
@@ -234,7 +235,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
           setChildStatus(cs, c, ls, ChildStatus::Ready);
         if (!pre && uo) {
           cs.lastUrl = uo->getUrl();
-          cs.lastLoad = uo->getLoad();
+          cs.lastLoad = anchor ? true : uo->getLoad();
         }
         // A newly watched child that still needs loading reopens a terminal
         // sensor (membership growth is an NSN-7 reset) and restarts the window.
@@ -245,7 +246,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       } else if (!pre && uo) {
         // NSN-7 poll-and-diff on the inputOutput url/load fields.
         MFString curUrl = uo->getUrl();
-        const bool curLoad = uo->getLoad();
+        const bool curLoad = anchor ? true : uo->getLoad();
         if (curUrl != cs.lastUrl) {
           setChildStatus(cs, c, ls, ChildStatus::Loading);
           cs.candidate = 0;
@@ -285,7 +286,8 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
           cs.status == ChildStatus::Failed)
         continue;
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
-      const bool load = uo ? static_cast<bool>(uo->getLoad()) : true;
+      const bool anchor = c->nodeTypeName() == "Anchor";
+      const bool load = uo && !anchor ? static_cast<bool>(uo->getLoad()) : true;
       if (!load) {
         cs.status = ChildStatus::NotStarted; // load=FALSE holds the child idle
         continue;
@@ -300,13 +302,15 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       bool called = false;
       while (cs.candidate < urls.size()) {
         const std::string &u = urls[cs.candidate];
-        // Anchor default policy: "#Name" is loaded iff a Viewpoint DEF exists;
-        // otherwise it falls through to the resolver (which fails for a bare
-        // fragment), yielding a Failed child.
-        if (!u.empty() && u[0] == '#' && scene_ &&
-            detail_loadsensor::isViewpointDef(*scene_, u.substr(1))) {
-          setChildStatus(cs, c, ls, ChildStatus::Ready);
-          break;
+        if (anchor && !u.empty() && u[0] == '#') {
+          if (scene_ && detail_loadsensor::isViewpointDef(*scene_, u.substr(1))) {
+            // §9.4.3: a same-scene Anchor target loads when bound.
+            if (ctx.boundViewpoint() == scene_->resolve(u.substr(1)).get())
+              setChildStatus(cs, c, ls, ChildStatus::Ready);
+            else
+              cs.status = ChildStatus::NotStarted;
+            break;
+          }
         }
         if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(u)) {
           setChildStatus(cs, c, ls, ChildStatus::Ready);

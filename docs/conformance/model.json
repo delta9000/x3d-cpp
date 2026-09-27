@@ -3693,7 +3693,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "9.4.3; 9.4.3, 9.4.1",
           "exists": true,
@@ -10056,9 +10056,9 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "Spec: peer nodes 'are not displayed but remain active.' Probe: audit_proto_peer_timesensor_remains_active.",
+      "note": "Expanded PROTO body peers are retained in Scene::protoPeerNodes and included in standard runtime system enrollment without adding them to render roots. Regression: proto_peer_timesensor_remains_active.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "Peer nodes after the first in a PROTO body are never enrolled, so a peer TimeSensor/Script never runs."
     },
     {
@@ -10070,9 +10070,9 @@
         "IMPORT",
         "EXPORT"
       ],
-      "note": "Spec: 'Only nodes that are exported from within the Inline via an EXPORT statement may be imported.' InlineExpand falls back to the child DEF map. Incomplete fix of IMPORT-EXPORT-WIRE. Probe: audit_import_requires_explicit_export.",
+      "note": "wireInlineImports now requires an explicit child EXPORT whose public name matches importedDEF; a private DEF no longer becomes a parent alias. Regression: import_requires_explicit_export.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "IMPORT resolves an Inline DEF that the Inline never EXPORTed."
     },
     {
@@ -10082,7 +10082,7 @@
       "nodes": [
         "Inline"
       ],
-      "note": "Spec: the URL may be loaded 'at a later time by sending a TRUE event to the load field'. Expansion only runs inside parseDocument. Probe: audit_inline_load_true_event_expands_content.",
+      "note": "Partial: with an injected InlineResolver and base URL, InlineRuntimeSystem now handles load=TRUE after parse through expandInlines, splices content, enrolls new nodes with live systems, wires child and newly resolved IMPORT routes, and marks root/nested content for full snapshot and incremental delta (inline_load_true_event_expands_content, inline_nested_late_load_appears_in_delta, inline_late_load_wires_import_route). Still open: load=FALSE must detach and remove the old subtree, its system registrations, routes, IMPORT aliases, binding/pick state, and render items; url changes on an already loaded Inline must perform that removal then resolve and splice replacement content. System has no detach interface yet.",
       "severity": "major",
       "status": "open",
       "summary": "An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing."
@@ -10096,9 +10096,9 @@
         "Anchor",
         "Viewpoint"
       ],
-      "note": "Spec: 'the asset is loaded when the Viewpoint is bound.' Incomplete fix of NSN-11. Probe: events_misc_test 'AUDIT: Anchor target existing but never bound'.",
+      "note": "LoadSensor now waits until the Anchor's #Viewpoint target is actually bound, and ignores Anchor.load as required by \u00a79.4.1. Regression: events_misc_test checks unbound then bound target with load FALSE.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "LoadSensor counts an Anchor's target Viewpoint as loaded before it is bound."
     },
     {
@@ -10439,7 +10439,7 @@
     ]
   },
   "summary": {
-    "closed_count": 190,
+    "closed_count": 193,
     "component_count": 36,
     "deferred_count": 28,
     "finding_count": 257,
@@ -10465,8 +10465,8 @@
     "open_by_severity": {
       "critical": 2,
       "low": 4,
-      "major": 32,
-      "minor": 29
+      "major": 30,
+      "minor": 28
     }
   },
   "unresolved_findings": []

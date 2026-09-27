@@ -135,6 +135,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0048-script-node-handles.md` | Script engines never hold a C++ node pointer: each backend interns nodes into a per-script `NodeHandleTable` (weak_ptr slots) and hands the engine an unforgeable id (Duktape hidden symbol / QuickJS class opaque). Resolution yields the node's real owning `shared_ptr` (ECMAScript-binding node-reference semantics), or null for unknown ids and destroyed nodes. Replaces forgeable raw pointers and no-op-deleter aliases. `Browser.addRoute` validates like a document ROUTE | `runtime/script/NodeHandleTable.hpp`, `runtime/script/SaiContext.hpp`, `runtime/script/tests/ecmascript_backend_test.cpp` |
 | covered | `decisions/0049-zero-copy-field-reads.md` | Every generated getter returns `const T&`; `FieldInfo::view` hands out a type-tagged pointer to the stored member; `FieldRead.hpp` adds `fieldPtr<T>` / `FieldRef<T>` / `forEachChildNode`, so reflection reads and scene walks borrow instead of boxing and copying. Author fields fall back to `get` | `runtime/FieldRead.hpp`, `src/x3d_cpp_gen/emit/reflection.py`, `runtime/parse/tests/field_view_test.cpp` |
 | covered | `decisions/0050-audio-pcm-and-ellipsoid-seam.md` | Immersive `Sound` + `AudioClip`: decoded mono PCM crosses the AudioBackend seam once as a `Buffer` node (fetch via `AssetResolver`, decode via the `AudioDecoder` function seam, reference WAV decoder in `runtime/io/wav/`), and the §16.4.17 ellipsoid crosses as geometry (`DistanceModel::Ellipsoid`); both backends implement both, swap-test F4/F5 | `runtime/sound/AudioBackend.hpp`, `runtime/sound/AudioDecoder.hpp`, `runtime/io/wav/WavDecoder.hpp`, `runtime/sound/tests/immersive_fixtures.hpp` |
+| covered | `decisions/0051-runtime-inline-expansion.md` | Deferred Inline uses the parse resolver and enrolls loaded content in the live runtime; detach contract remains open | `runtime/events/InlineRuntimeSystem.hpp`, `runtime/InlineExpand.hpp` |
 
 ## 3. Guides
 
@@ -168,10 +169,10 @@ Top-level live trackers (a tracker is a page that tracks an ongoing, cross-cutti
 | Category | Total | Covered | Planned |
 |---|---|---|---|
 | Subsystems | 43 | 43 | 0 |
-| Decisions (ADRs) | 49 | 49 | 0 |
+| Decisions (ADRs) | 51 | 51 | 0 |
 | Guides | 6 | 6 | 0 |
 | Trackers | 1 | 1 | 0 |
-| **Total** | **99** | **99** | **0** |
+| **Total** | **101** | **101** | **0** |
 
 > ADR coverage (`decisions/*.md` ⇄ this table) is enforced by `mise run coverage-gate`
 > (`scripts/coverage_gate.py`), which fails CI on any ADR file missing a row or any
