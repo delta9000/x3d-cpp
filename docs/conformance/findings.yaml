@@ -2304,41 +2304,41 @@
   component: PointingDeviceSensor
   clause: "20.2.1"
   severity: major
-  status: open
+  status: closed
   summary: "Pointing sensors tied for lowest do not activate together; only the first sibling sensor gets the event."
-  note: "Spec: tied sensors are 'activated simultaneously and independently'. PointingSensorSystem keeps a single over_/active_. Probe: 'audit tied lowest pointing sensors all receive the event'."
+  note: "PointingSensorSystem resolves all tied lowest siblings and retains independent active drag state for each. Covered by 'tied lowest pointing sensors all receive the event' and 'tied PlaneSensors retain independent drag offsets'."
 - id: AUD-PDS-2
   nodes: [TouchSensor, PlaneSensor, CylinderSensor, SphereSensor]
   component: PointingDeviceSensor
   clause: "20.4.2"
   severity: major
-  status: open
+  status: closed
   summary: "Disabling an active sensor deactivates it only on the next pointer update."
-  note: "Spec: on enabled FALSE while active the sensor 'outputs an isActive FALSE event'. The update returns early when the pointer revision is unchanged. Incomplete fix of DS-2. Probe: 'audit disabling an active PlaneSensor deactivates without pointer motion'."
+  note: "PointingSensorSystem checks enabled before its pointer-revision gate and deactivates disabled grabbed sensors on the next tick without pointer motion. Covered by 'disabling an active PlaneSensor deactivates without pointer motion'."
 - id: AUD-PDS-3
   nodes: [TouchSensor, PlaneSensor, CylinderSensor, SphereSensor, Switch]
   component: PointingDeviceSensor
   clause: "10.4.3, 20.2.3"
   severity: major
-  status: open
+  status: closed
   summary: "Geometry in an unchosen Switch branch is still pickable and can occlude visible geometry."
-  note: "PickSystem enumerates every Switch child; picking should follow the traversed (rendered) branch as the extractor does. Probe: 'audit pointing sensors ignore geometry in an unchosen Switch branch'."
+  note: "PickSystem checks each cached placement against live Switch and LOD selection on every pick, matching the extractor's active transformation path without stale index entries. Covered by 'pointing sensors ignore geometry in an unchosen Switch branch', 'pick index follows live Switch selection', and 'pick index follows live LOD level'."
 - id: AUD-KDS-1
   nodes: [StringSensor]
   component: KeyDeviceSensor
   clause: "21.4.2"
   severity: minor
-  status: open
+  status: closed
   summary: "Deletion removes one UTF-8 byte instead of one character."
-  note: "enteredText.pop_back() on a multibyte character leaves an invalid suffix. Incomplete fix of KDS-7. Probe: 'audit StringSensor deletion removes one UTF-8 character'."
+  note: "StringSensor deletion removes all bytes of the final UTF-8 character. Covered by 'StringSensor deletion removes one UTF-8 character'."
 - id: AUD-KDS-2
   nodes: [StringSensor]
   component: KeyDeviceSensor
   clause: "21.4.2"
   severity: minor
-  status: open
+  status: closed
   summary: "enteredText is not cleared after finalText is generated."
-  note: "Spec: 'After the finalText field event has been generated, the enteredText field is set to the empty string but no event is generated.' Incomplete fix of KDS-8. Probe: 'audit StringSensor enteredText field resets silently at termination'."
+  note: "StringSensor clears the stored enteredText output field after posting finalText without posting an enteredText event. Covered by 'StringSensor enteredText field resets silently at termination'."
 - id: AUD-ENV-2
   nodes: [ProximitySensor, VisibilitySensor]
   component: EnvironmentalSensor

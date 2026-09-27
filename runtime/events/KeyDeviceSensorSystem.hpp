@@ -130,7 +130,12 @@ private:
       }
       if (e.deletion) {
         if (s->getDeletionAllowed() && !st.text.empty()) {
-          st.text.pop_back();
+          // §21.4.2 deletes one UTF-8 character, not one byte.
+          while (!st.text.empty()) {
+            const auto byte = static_cast<unsigned char>(st.text.back());
+            st.text.pop_back();
+            if ((byte & 0xC0) != 0x80) break;
+          }
           textChanged = true;
         }
         continue; // deletionAllowed=FALSE -> ignored
@@ -143,7 +148,11 @@ private:
       st.text += e.character;
       textChanged = true;
     }
-    if (finalText) ctx.postEvent(s, "finalText", std::any(SFString{*finalText}));
+    if (finalText) {
+      ctx.postEvent(s, "finalText", std::any(SFString{*finalText}));
+      // §21.4.2 resets the stored output field without an enteredText event.
+      s->emitEnteredText(SFString{});
+    }
     if (isActive) ctx.postEvent(s, "isActive", std::any(SFBool{*isActive}));
     if (textChanged) ctx.postEvent(s, "enteredText", std::any(SFString{st.text}));
   }

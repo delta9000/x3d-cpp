@@ -2769,7 +2769,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "21.4.1, 21.4.2; 21.2; 21.4.2",
           "exists": true,
@@ -4072,7 +4072,7 @@
       "name": "PointingDeviceSensor",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "20.4.1; 20.4.x; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
@@ -4101,7 +4101,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "20.4.x; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
@@ -4129,7 +4129,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "20.4.x; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
@@ -4157,7 +4157,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "20.4.4; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
@@ -9912,9 +9912,9 @@
         "CylinderSensor",
         "SphereSensor"
       ],
-      "note": "Spec: tied sensors are 'activated simultaneously and independently'. PointingSensorSystem keeps a single over_/active_. Probe: 'audit tied lowest pointing sensors all receive the event'.",
+      "note": "PointingSensorSystem resolves all tied lowest siblings and retains independent active drag state for each. Covered by 'tied lowest pointing sensors all receive the event' and 'tied PlaneSensors retain independent drag offsets'.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "Pointing sensors tied for lowest do not activate together; only the first sibling sensor gets the event."
     },
     {
@@ -9927,9 +9927,9 @@
         "CylinderSensor",
         "SphereSensor"
       ],
-      "note": "Spec: on enabled FALSE while active the sensor 'outputs an isActive FALSE event'. The update returns early when the pointer revision is unchanged. Incomplete fix of DS-2. Probe: 'audit disabling an active PlaneSensor deactivates without pointer motion'.",
+      "note": "PointingSensorSystem checks enabled before its pointer-revision gate and deactivates disabled grabbed sensors on the next tick without pointer motion. Covered by 'disabling an active PlaneSensor deactivates without pointer motion'.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "Disabling an active sensor deactivates it only on the next pointer update."
     },
     {
@@ -9943,9 +9943,9 @@
         "SphereSensor",
         "Switch"
       ],
-      "note": "PickSystem enumerates every Switch child; picking should follow the traversed (rendered) branch as the extractor does. Probe: 'audit pointing sensors ignore geometry in an unchosen Switch branch'.",
+      "note": "PickSystem checks each cached placement against live Switch and LOD selection on every pick, matching the extractor's active transformation path without stale index entries. Covered by 'pointing sensors ignore geometry in an unchosen Switch branch', 'pick index follows live Switch selection', and 'pick index follows live LOD level'.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "Geometry in an unchosen Switch branch is still pickable and can occlude visible geometry."
     },
     {
@@ -9955,9 +9955,9 @@
       "nodes": [
         "StringSensor"
       ],
-      "note": "enteredText.pop_back() on a multibyte character leaves an invalid suffix. Incomplete fix of KDS-7. Probe: 'audit StringSensor deletion removes one UTF-8 character'.",
+      "note": "StringSensor deletion removes all bytes of the final UTF-8 character. Covered by 'StringSensor deletion removes one UTF-8 character'.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "Deletion removes one UTF-8 byte instead of one character."
     },
     {
@@ -9967,9 +9967,9 @@
       "nodes": [
         "StringSensor"
       ],
-      "note": "Spec: 'After the finalText field event has been generated, the enteredText field is set to the empty string but no event is generated.' Incomplete fix of KDS-8. Probe: 'audit StringSensor enteredText field resets silently at termination'.",
+      "note": "StringSensor clears the stored enteredText output field after posting finalText without posting an enteredText event. Covered by 'StringSensor enteredText field resets silently at termination'.",
       "severity": "minor",
-      "status": "open",
+      "status": "closed",
       "summary": "enteredText is not cleared after finalText is generated."
     },
     {
@@ -10439,7 +10439,7 @@
     ]
   },
   "summary": {
-    "closed_count": 190,
+    "closed_count": 195,
     "component_count": 36,
     "deferred_count": 28,
     "finding_count": 257,
@@ -10465,8 +10465,8 @@
     "open_by_severity": {
       "critical": 2,
       "low": 4,
-      "major": 32,
-      "minor": 29
+      "major": 29,
+      "minor": 27
     }
   },
   "unresolved_findings": []
