@@ -105,10 +105,10 @@ tracker is the [Seam-Status Matrix](../seam-status.md).
 | Asset resolution | `[STABLE]` ([ADR-0023](../decisions/0023-assetresolver-second-backend-swap-test.md); libcurl + S3) | `AssetResolver`, `AssetResult`, `AssetStatus`, `AssetKind` | `function<AssetResult(url, AssetKind)>`; render-time may return `Pending`; parse-time must answer synchronously |
 | Texture decode | `[STABLE]` ([ADR-0024](../decisions/0024-textureresolver-second-backend-swap-test.md); stb_image + wuffs) | `TextureResolver`, `TexturePixelResult`, `TexturePixels`, `TextureResolveStatus`, `TextureRef`, `SamplerParams` | `function<TexturePixelResult(url)>`; embedder maps url → decoded RGBA pixels |
 | Font metrics | `[STABLE]` ([ADR-0025](../decisions/0025-fontmetrics-second-backend-swap-test.md); stb_truetype + FreeType) | `FontMetrics`, `FontKey`, `GlyphMetrics`, `GlyphResult`, `GlyphStatus`, `makeMonospaceStub` | `function<GlyphResult(const FontKey&)>`; SDK does all Text layout; default = monospaced stub (advanceEm 0.6) |
-| Geo-projection | `[EXPERIMENTAL]` — no second backend yet; shape may still gain fields | `GeoProjection`, `GeoSystemDesc` | `function<SFVec3f(SFVec3d, double elev, GeoSystemDesc)>`; supplied via `MeshBuildOptions::geoProjection`; empty ⇒ flat fallback |
+| Geo-projection | Frozen by ADR-0053; optional PROJ backend pending | `runtime::geo::GeoProjection`, `runtime::geo::projection`, `runtime::geo::setProjection` | Process-wide ellipsoid backend; built-in default. Node conversion uses `GeoNodes.hpp`. |
 | Script / SAI | `[STABLE]` ([ADR-0022](../decisions/0022-scriptengine-second-backend-swap-test.md); Duktape + QuickJS) | `ScriptEngine`, `ScriptSystem`, `SaiContext`, `ScriptHandle`, `kInvalidScriptHandle` | Abstract engine; wrap in `ScriptSystem`, register via `ctx.addScriptSystem`; `SaiContext` is the backend↔runtime channel |
 
-Also re-exported: `MeshBuildOptions` — tessellation density knobs (`sphereRings`, `sphereSegments`, `radialSlices`, `geoProjection`, `fontMetrics`).
+Also re-exported: `MeshBuildOptions` — tessellation density knobs (`sphereRings`, `sphereSegments`, `radialSlices`, `fontMetrics`).
 
 ### Seam points
 

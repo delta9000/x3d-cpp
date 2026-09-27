@@ -1859,6 +1859,8 @@
         "ENV-03",
         "GEO-1",
         "GEO-2",
+        "GEO-3",
+        "GEOLOD-1",
         "GEOSYSTEM",
         "INTERP-02",
         "NAV-FLY-ROLL",
@@ -1919,10 +1921,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "25.3.4",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "GEOLOD-1"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -1995,7 +1999,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 25",
           "exists": true,
@@ -2018,7 +2022,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "25.3.8; 22.4.1; 25; 25.2.3",
           "exists": true,
@@ -2043,7 +2047,7 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "conformant",
           "behavioral": true,
           "clause": "25.3.9",
           "exists": true,
@@ -2087,7 +2091,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
           "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3",
           "exists": true,
@@ -2103,6 +2107,7 @@
             "BIND-08",
             "BIND-09",
             "GEO-1",
+            "GEO-3",
             "GEOSYSTEM",
             "NAV-FLY-ROLL"
           ],
@@ -7231,9 +7236,9 @@
       "nodes": [
         "GeoProximitySensor"
       ],
-      "note": "Blocked on geo-projection (Geospatial deferred). See CONF-GEO.",
+      "note": "Fixed: ViewDependentSystem evaluates the tangent box at geoCenter through active paths, emits the ProximitySensor edge and pose outputs, and pairs position_changed with geoCoord_changed via fromWorld. Includes DEF/USE union and disable behavior. Covered by view_dependent_test.",
       "severity": "major",
-      "status": "deferred",
+      "status": "closed",
       "summary": "GeoProximitySensor has no System and no geoCoord_changed."
     },
     {
@@ -7243,7 +7248,7 @@
         "ProximitySensor",
         "GeoProximitySensor"
       ],
-      "note": "ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).",
+      "note": "ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.",
       "severity": "minor",
       "status": "closed",
       "summary": "centerOfRotation_changed never emitted."
@@ -7491,9 +7496,9 @@
         "GeoProximitySensor",
         "GeoPositionInterpolator"
       ],
-      "note": "Blocked on the GeoProjection seam (geoSystem/geoOrigin \u2192 local Cartesian). Drives ENV-02; GeoTouchSensor = TSN-1/2.",
+      "note": "Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2; GeoLOD URL loading remains open as GEOLOD-1.",
       "severity": "minor",
-      "status": "deferred",
+      "status": "closed",
       "summary": "Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing)."
     },
     {
@@ -7991,9 +7996,9 @@
       "nodes": [
         "GeoTouchSensor"
       ],
-      "note": "Resolution is a small add, but the node is only useful with TSN-2; deferred with the Geospatial seam (CONF-GEO).",
+      "note": "Fixed: PointingSensorSystem resolves GeoTouchSensor through the TouchSensor hover/grab/release path.",
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "GeoTouchSensor is never resolved in the pointing-device cycle (PointingSensorSystem hard-checks nodeTypeName()==\"TouchSensor\") \u2014 receives no pointer events.",
       "wave": 4
     },
@@ -8003,11 +8008,23 @@
       "nodes": [
         "GeoTouchSensor"
       ],
-      "note": "Blocked on the GeoProjection seam (ECEF\u2192geodetic). See CONF-GEO.",
+      "note": "Fixed: hitGeoCoord_changed converts the world hit through GeoNodes::fromWorld, alongside TouchSensor outputs; covered by a box pick regression.",
       "severity": "critical",
-      "status": "deferred",
+      "status": "closed",
       "summary": "hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.",
       "wave": 4
+    },
+    {
+      "clause": "25.3.4",
+      "component": "Geospatial",
+      "id": "GEOLOD-1",
+      "nodes": [
+        "GeoLOD"
+      ],
+      "note": "Remaining: connect URL tiles to InlineRuntimeSystem loading/unloading, wait for all requested child tiles before switching, and render only the selected tile set. The root tile is shown (and reported as children) at every level until tiles load.",
+      "severity": "major",
+      "status": "open",
+      "summary": "GeoLOD selects a distance level and emits children/level_changed, but does not load rootUrl or child1Url through child4Url."
     },
     {
       "clause": "10.3.10",
@@ -8780,10 +8797,22 @@
       "nodes": [
         "GeoViewpoint"
       ],
-      "note": "Was: position read via getField<SFVec3f> on an SFVec3d field \u2192 camera pinned to origin. Fixed by geombounds::getVec3fLenient at ALL bound-viewpoint read sites \u2014 X3DExecutionContext::viewMatrix AND NavigationSystem::poseOf (position) + cor (centerOfRotation), the latter found by the systematic getField-type audit. getField now asserts on such mismatches in debug. Tested in getfield_typecheck_test.cpp + navigation_geoviewpoint_examine. Residue tracked as GitHub issues: #34 (OrthoViewpoint.fieldOfView MFFloat), #35 (write-side centerOfRotation persist). (sweep 2026-06-25, fixed same day)",
+      "note": "Closed 2026-09-27: GeoViewpoint.position converts through geo::tangentFrameOf in X3DExecutionContext and NavigationSystem; orientation is relative to local east/up/south. centerOfRotation converts with geo::toWorld, and navigation speed tracks elevation/10 times speedFactor. Regressions: geospatial transforms and viewpoint, GeoViewpoint navigation speed. Earlier SFVec3d type mismatch coverage remains.",
       "severity": "major",
-      "status": "fixed",
+      "status": "closed",
       "summary": "GeoViewpoint.position silently reads as zero (SFVec3d/SFVec3f type mismatch)."
+    },
+    {
+      "clause": "25.3.11",
+      "component": "Geospatial",
+      "id": "GEO-3",
+      "nodes": [
+        "GeoViewpoint"
+      ],
+      "note": "The elevation-based movement speed and speedFactor are wired. Section 25.3.11 also recommends adapting avatarSize and visibilityLimit as elevation changes; NavigationSystem still reads NavigationInfo's ordinary values.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "GeoViewpoint does not scale navigation avatarSize or visibilityLimit with elevation."
     },
     {
       "clause": "14.3",
@@ -9033,9 +9062,9 @@
         "CoordinateDouble",
         "GeoElevationGrid"
       ],
-      "note": "Was: coord points read via getField<vector<SFVec3f>> on GeoCoordinate/CoordinateDouble MFVec3d 'point' \u2192 empty mesh; GeoElevationGrid SFDouble spacing + MFDouble height read as float in the bounds path. Fixed across MeshBuilder extract AND GeometryBounds (pointsBounds + GeoElevationGrid handler) via geombounds::getPointsLenient + new getFloatLenient/getFloatsLenient. Sibling bounds/grid sites found by the systematic getField-type audit. Tested in getfield_typecheck_test.cpp + geometry_bounds_test (GeoCoordinate IFS + GeoElevationGrid). (sweep 2026-06-25, fixed same day)",
+      "note": "Closed 2026-09-27: GeoCoordinate MFVec3d points now convert in one list through geo::toWorld for mesh and bounds; CoordinateDouble remains Cartesian. GeoElevationGrid lattice, elevation, authored tangent normals, and bounds convert through GeoNodes. Earlier type mismatch coverage remains. Regressions: mesh_builder_b5_test.cpp and geometry_bounds_test.cpp.",
       "severity": "minor",
-      "status": "fixed",
+      "status": "closed",
       "summary": "Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float)."
     },
     {
@@ -10362,6 +10391,12 @@
       "EaseInEaseOut",
       "Fog",
       "Gain",
+      "GeoLOD",
+      "GeoLocation",
+      "GeoPositionInterpolator",
+      "GeoProximitySensor",
+      "GeoTouchSensor",
+      "GeoTransform",
       "GeoViewpoint",
       "HAnimHumanoid",
       "HAnimJoint",
@@ -10445,10 +10480,10 @@
     ]
   },
   "summary": {
-    "closed_count": 226,
+    "closed_count": 230,
     "component_count": 36,
-    "deferred_count": 28,
-    "finding_count": 257,
+    "deferred_count": 24,
+    "finding_count": 259,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -10456,7 +10491,6 @@
       "Delay",
       "DynamicsCompressor",
       "EspduTransform",
-      "GeoTouchSensor",
       "LinePickSensor",
       "MicrophoneSource",
       "PointPickSensor",
@@ -10469,7 +10503,6 @@
       "WaveShaper"
     ],
     "open_by_severity": {
-      "critical": 2,
       "low": 2,
       "major": 14,
       "minor": 13

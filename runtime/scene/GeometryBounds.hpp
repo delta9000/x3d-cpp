@@ -4,6 +4,7 @@
 #define X3D_RUNTIME_GEOMETRY_BOUNDS_HPP
 
 #include "Aabb.hpp"
+#include "GeoNodes.hpp"
 #include "FieldRead.hpp"     // enumToken — FontStyle enum fields (justify/family/style)
 #include "FontMetrics.hpp"   // extract::FontMetrics seam
 #include "TextLayout.hpp"    // extract::computeTextLayout + textLayoutExtent
@@ -78,6 +79,8 @@ inline std::vector<SFVec3f> getPointsLenient(const X3DNode &n, const char *name)
   if (readField(n, name, f) == FieldRead::Ok) return f;
   std::vector<SFVec3d> d;
   if (readField(n, name, d) == FieldRead::Ok) {
+    // §25.3.1: GeoCoordinate points use the node's own geographic frame.
+    if (n.nodeTypeName() == "GeoCoordinate") return geo::toWorld(n, d);
     std::vector<SFVec3f> out;
     out.reserve(d.size());
     for (const auto &p : d) out.push_back(SFVec3f{(float)p.x, (float)p.y, (float)p.z});
@@ -368,7 +371,23 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
   if (hasField(*geom, "controlPoint"))
     return pointsBounds(getNode(*geom, "controlPoint"));
 
-  if (t == "ElevationGrid" || t == "GeoElevationGrid") {
+  if (t == "GeoElevationGrid") {
+    // §25.3.2: bound the converted curved lattice, including yScale.
+    Aabb r;
+    const int xd = getField<int>(*geom, "xDimension", 0);
+    const int zd = getField<int>(*geom, "zDimension", 0);
+    const auto heights = getField<std::vector<double>>(*geom, "height", {});
+    const float scale = getField<float>(*geom, "yScale", 1.0f);
+    if (xd <= 0 || zd <= 0 || heights.size() < static_cast<std::size_t>(xd) * zd) return r;
+    for (int j = 0; j < zd; ++j)
+      for (int i = 0; i < xd; ++i) {
+        SFVec3f p;
+        const double h = heights[static_cast<std::size_t>(j) * xd + i] * scale;
+        if (geo::toWorld(*geom, geo::gridCoordinate(*geom, i, j, h), p)) r.expand(p);
+      }
+    return r;
+  }
+  if (t == "ElevationGrid") {
     // Best-effort grid bound in the raw local frame (Geo* is not geo-projected —
     // see backlog M2B-2). x/z from dimensions*spacing, y from the height range.
     int xd = getField<int>(*geom, "xDimension", 0);

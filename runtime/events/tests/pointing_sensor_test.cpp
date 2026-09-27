@@ -32,6 +32,9 @@
 #include "x3d/nodes/Switch.hpp"
 #include "x3d/nodes/TextureCoordinate.hpp"
 #include "x3d/nodes/TouchSensor.hpp"
+#include "x3d/nodes/GeoTouchSensor.hpp"
+#include "x3d/nodes/GeoOrigin.hpp"
+#include "GeoNodes.hpp"
 #include "x3d/nodes/Transform.hpp"
 
 #include <any>
@@ -91,6 +94,36 @@ struct Rig {
 
 // Drive a ray straight down -Z from z=10 toward the origin.
 Ray downZ() { return Ray{{0, 0, 10}, {0, 0, -1}}; }
+
+void test_geo_touch() {
+  auto origin = std::make_shared<GeoOrigin>();
+  origin->setGeoSystemUnchecked(MFString{"GC"});
+  origin->setGeoCoords(SFVec3d{6378137, 0, 0});
+  auto group = std::make_shared<Group>();
+  auto sensor = std::make_shared<GeoTouchSensor>();
+  sensor->setGeoOriginUnchecked(origin);
+  addChild(group, sensor);
+  addChild(group, boxShape());
+  Scene scene; scene.addRootNode(group);
+  Rig r; r.build(scene);
+  r.ctx.setPointerPresent(true);
+  r.ctx.setPointer(downZ());
+  r.ctx.tick(1.0);
+  r.ctx.setPointerButton(true);
+  r.ctx.tick(1.5);
+  check(sensor->getIsActive(), "GeoTouchSensor activates on box pick");
+  r.ctx.setPointerButton(false);
+  r.ctx.tick(2.0);
+  check(!sensor->getIsActive() && sensor->getTouchTime() == 2.0,
+        "GeoTouchSensor emits touchTime on release");
+  SFVec3d expected;
+  check(geo::fromWorld(*sensor, SFVec3f{0, 0, 1}, expected), "geo hit converts");
+  const auto actual = sensor->getHitGeoCoord_changed();
+  check(std::fabs(actual.x - expected.x) < 1e-6 &&
+        std::fabs(actual.y - expected.y) < 1e-6 &&
+        std::fabs(actual.z - expected.z) < 1e-3,
+        "GeoTouchSensor hitGeoCoord matches picked box face");
+}
 
 // ---------------------------------------------------------------------------
 // (1) isOver enter/leave + no-event-when-unchanged.
@@ -531,6 +564,7 @@ void test_planesensor_offset_and_clamp() {
 } // namespace
 
 TEST_CASE("pointing_sensor_test") {
+  test_geo_touch();
   test_isOver_and_no_event_when_unchanged();
   test_lowest_sensor_wins();
   test_nearest_geometry();

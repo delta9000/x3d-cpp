@@ -19,6 +19,7 @@
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
+#include "x3d/nodes/GeoLOD.hpp"
 
 #include <any>
 #include "doctest/doctest.h"
@@ -98,6 +99,21 @@ TEST_CASE("scene_extractor_t7_test") {
       if (n == child0.get()) throughChild0 = true;
     }
     CHECK((throughChild1 && !throughChild0));
+  }
+
+  // === 2b) GeoLOD draws its root tile once, not again via its children output ===
+  {
+    auto lod = std::make_shared<x3d::nodes::GeoLOD>();
+    auto tile = makeTriShape();
+    lod->setRootNodeUnchecked(MFNode{tile});
+    lod->emitChildren(MFNode{tile});  // what ViewDependentSystem reports
+    Scene scene;
+    scene.addRootNode(lod);
+    X3DExecutionContext ctx;
+    ctx.buildSceneGraph(scene);
+    extract::SceneExtractor ex(ctx, scene);
+    auto snap = ex.fullSnapshot();
+    CHECK((snap.added.size() == 1));
   }
 
   // === 3) LOD draws exactly ONE child (level-0 static selection) ============

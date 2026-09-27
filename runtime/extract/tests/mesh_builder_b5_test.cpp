@@ -1,177 +1,129 @@
-// mesh_builder_b5_test.cpp — Browser-level B5 acceptance: GeoElevationGrid
-// extracts geometry via the FLAT-FALLBACK, the lattice-index-retaining form is
-// preserved on both grid types, and the GeoProjection embedder seam (threaded
-// via MeshBuildOptions) is honored when wired.
-//
-// Proofs:
-//   1) GeoElevationGrid with NO projection wired -> flat-fallback emits
-//      (xDim-1)*(zDim-1)*2 triangles (the single biggest corpus unlock: a
-//      terrain tile goes 0 -> >0 items). recognizedGeometryType("GeoElevation
-//      Grid") is now true.
-//   2) Flat-fallback geometry: elevation (yScale-applied) lands on +Y; the
-//      planar XZ layout steps by xSpacing/zSpacing offset by geoGridOrigin.
-//   3) LATTICE-INDEX-RETAINING form: MeshData.latticeIndex is parallel to
-//      positions and carries row*xDim+col per corner (what B6 needs). The
-//      existing ElevationGrid emitter retains it the same way.
-//   4) GeoProjection SEAM: a wired projection std::function is invoked per
-//      lattice vertex and its returned LOCAL position is what lands in the mesh
-//      (the SDK does no geodesy itself); the GeoSystemDesc carries the raw
-//      geoSystem + geoGridOrigin verbatim.
-//   5) Degenerate/short-height grids are guarded (empty mesh, no OOB read).
 #include "MeshBuilder.hpp"
-
-#include "x3d/nodes/X3DNode.hpp"
+#include "GeometryBounds.hpp"
+#include "GeoNodes.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
-
-#include <any>
 #include "doctest/doctest.h"
+#include <any>
 #include <cmath>
-#include <memory>
-#include <string>
-#include <vector>
 
-using namespace x3d::runtime;
-using namespace x3d::runtime::extract;
 using namespace x3d::core;
 using namespace x3d::nodes;
+using namespace x3d::runtime;
+using namespace x3d::runtime::extract;
 
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
+static void setGeoField(const std::shared_ptr<X3DNode> &n, const char *name, std::any value) {
   for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
+    if (f.x3dName == name && f.set) { f.set(*n, std::move(value)); return; }
 }
 
-static bool posEq(const MeshData &m, std::size_t i, const SFVec3f &p) {
-  return feq(m.positions[i].x, p.x) && feq(m.positions[i].y, p.y) &&
-         feq(m.positions[i].z, p.z);
+static std::shared_ptr<X3DNode> localOrigin() {
+  auto origin = createX3DNode("GeoOrigin");
+  setGeoField(origin, "geoCoords", SFVec3d{0,0,0});
+  setGeoField(origin, "rotateYUp", true);
+  return origin;
 }
 
-TEST_CASE("mesh_builder_b5_test") {
-  // recognizedGeometryType now lists GeoElevationGrid.
-  CHECK((recognizedGeometryType("GeoElevationGrid")));
+TEST_CASE("GeoCoordinate IFS uses node geoSystem and GeoOrigin; CoordinateDouble stays Cartesian") {
+  auto origin = localOrigin();
+  auto coord = createX3DNode("GeoCoordinate");
+  setGeoField(coord, "geoOrigin", origin);
+  setGeoField(coord, "point", std::vector<SFVec3d>{{0,0,0}, {0,0.00001,0}, {0.00001,0,0}});
+  auto ifs = createX3DNode("IndexedFaceSet");
+  setGeoField(ifs, "coord", coord);
+  setGeoField(ifs, "coordIndex", std::vector<int>{0,1,2,-1});
+  MeshData mesh = buildLocalMesh(ifs.get());
+  REQUIRE(mesh.positions.size() == 3);
+  CHECK(mesh.positions[0].x == doctest::Approx(0).epsilon(0.01));
+  CHECK(mesh.positions[1].x == doctest::Approx(1.1132).epsilon(0.01));
+  CHECK(mesh.positions[2].z == doctest::Approx(-1.1057).epsilon(0.01));
+  Aabb bounds = localGeometryBounds(ifs.get());
+  CHECK(bounds.max.x == doctest::Approx(1.1132).epsilon(0.01));
+  CHECK(bounds.min.z == doctest::Approx(-1.1057).epsilon(0.01));
 
-  // ---- 1+2. GeoElevationGrid flat-fallback: 2x2 grid -> 1 cell -> 2 tris ----
-  {
-    auto g = createX3DNode("GeoElevationGrid");
-    setF(g, "xDimension", std::any(2));
-    setF(g, "zDimension", std::any(2));
-    setF(g, "xSpacing", std::any(2.0));       // SFDouble
-    setF(g, "zSpacing", std::any(3.0));       // SFDouble
-    setF(g, "yScale", std::any(1.0f));        // SFFloat
-    setF(g, "geoSystem", std::any(std::vector<std::string>{"GD"}));
-    setF(g, "geoGridOrigin", std::any(SFVec3d{0.0, 0.0, 0.0}));
-    // height MFDouble, row-major (col + row*xDim). One raised corner.
-    setF(g, "height", std::any(std::vector<double>{0.0, 0.0, 0.0, 5.0}));
+  auto plain = createX3DNode("CoordinateDouble");
+  setGeoField(plain, "point", std::vector<SFVec3d>{{2,3,4}});
+  auto points = geombounds::getPointsLenient(*plain, "point");
+  REQUIRE(points.size() == 1);
+  CHECK(points[0].x == 2);
+  CHECK(points[0].y == 3);
+}
 
-    MeshData m = buildLocalMesh(g.get()); // NO projection -> flat-fallback.
-    CHECK((m.indices.size() == 6)); // (2-1)*(2-1)=1 cell -> 2 tris.
-    CHECK((!m.positions.empty())); // the corpus unlock: 0 -> >0.
-
-    // Flat-fallback: X=col*xSpacing, Y=elevation, Z=row*zSpacing.
-    // Raised corner (i=1,j=1) -> (2, 5, 3).
-    bool sawCorner = false, sawOrigin = false;
-    for (std::size_t i = 0; i < m.positions.size(); ++i) {
-      if (posEq(m, i, SFVec3f{2.0f, 5.0f, 3.0f})) sawCorner = true;
-      if (posEq(m, i, SFVec3f{0.0f, 0.0f, 0.0f})) sawOrigin = true;
+TEST_CASE("GeoElevationGrid uses geographic lattice, elevation, tangent normals, and bounds") {
+  auto grid = createX3DNode("GeoElevationGrid");
+  setGeoField(grid, "geoOrigin", localOrigin());
+  setGeoField(grid, "xDimension", 2);
+  setGeoField(grid, "zDimension", 2);
+  setGeoField(grid, "xSpacing", 0.00001);
+  setGeoField(grid, "zSpacing", 0.00001);
+  setGeoField(grid, "yScale", 2.0f);
+  setGeoField(grid, "height", std::vector<double>(4, 0));
+  MeshData flat = buildLocalMesh(grid.get());
+  REQUIRE(flat.normals.size() == 6);
+  for (const auto &normal : flat.normals) CHECK(normal.y > 0.99f);
+  setGeoField(grid, "height", std::vector<double>{0,0,0,5});
+  MeshData mesh = buildLocalMesh(grid.get());
+  REQUIRE(mesh.positions.size() == 6);
+  CHECK(mesh.latticeIndex.size() == 6);
+  CHECK(mesh.texcoords.size() == 6);
+  bool foundRaised = false;
+  for (std::size_t i = 0; i < mesh.positions.size(); ++i) {
+    if (mesh.latticeIndex[i] == 3) {
+      CHECK(mesh.positions[i].x == doctest::Approx(1.1132).epsilon(0.01));
+      CHECK(mesh.positions[i].y == doctest::Approx(10).epsilon(0.01));
+      CHECK(mesh.positions[i].z == doctest::Approx(-1.1057).epsilon(0.01));
+      foundRaised = true;
     }
-    CHECK((sawCorner && sawOrigin));
-
-    // ---- 3. lattice-index-retaining form ----------------------------------
-    CHECK((m.latticeIndex.size() == m.positions.size()));
-    // Every corner's latticeIndex < xDim*zDim, and the corner whose position is
-    // the raised (1,1) vertex must carry lattice id 1*2+1 = 3.
-    for (std::size_t i = 0; i < m.positions.size(); ++i) {
-      CHECK((m.latticeIndex[i] < 4u));
-      if (posEq(m, i, SFVec3f{2.0f, 5.0f, 3.0f})) CHECK((m.latticeIndex[i] == 3u));
-      if (posEq(m, i, SFVec3f{0.0f, 0.0f, 0.0f})) CHECK((m.latticeIndex[i] == 0u));
-    }
   }
+  CHECK(foundRaised);
+  Aabb bound = localGeometryBounds(grid.get());
+  CHECK(bound.max.y == doctest::Approx(10).epsilon(0.01));
+  CHECK(bound.max.x == doctest::Approx(1.1132).epsilon(0.01));
 
-  // ---- 2b. yScale scales the elevation -------------------------------------
-  {
-    auto g = createX3DNode("GeoElevationGrid");
-    setF(g, "xDimension", std::any(2));
-    setF(g, "zDimension", std::any(2));
-    setF(g, "xSpacing", std::any(1.0));
-    setF(g, "zSpacing", std::any(1.0));
-    setF(g, "yScale", std::any(10.0f));
-    setF(g, "height", std::any(std::vector<double>{0.0, 0.0, 0.0, 2.0}));
-    MeshData m = buildLocalMesh(g.get());
-    bool sawScaled = false;
-    for (std::size_t i = 0; i < m.positions.size(); ++i)
-      if (feq(m.positions[i].y, 20.0f)) sawScaled = true; // 2 * yScale 10.
-    CHECK((sawScaled));
-  }
+  auto normal = createX3DNode("Normal");
+  setGeoField(normal, "vector", std::vector<SFVec3f>(4, {0,1,0}));
+  setGeoField(grid, "normal", normal);
+  MeshData lit = buildLocalMesh(grid.get());
+  REQUIRE(lit.normals.size() == 6);
+  for (const auto &n : lit.normals) CHECK(n.y == doctest::Approx(1).epsilon(0.001));
+  setGeoField(grid, "geoGridOrigin", SFVec3d{0,1,0});
+  setGeoField(normal, "vector", std::vector<SFVec3f>(4, {1,0,0}));
+  MeshData angled = buildLocalMesh(grid.get());
+  REQUIRE(angled.normals.size() == 6);
+  CHECK(angled.normals[0].y == doctest::Approx(-0.0174524).epsilon(0.01));
+}
 
-  // ---- 4. GeoProjection seam is invoked + GeoSystemDesc carried verbatim ----
-  {
-    auto g = createX3DNode("GeoElevationGrid");
-    setF(g, "xDimension", std::any(2));
-    setF(g, "zDimension", std::any(2));
-    setF(g, "xSpacing", std::any(1.0));
-    setF(g, "zSpacing", std::any(1.0));
-    setF(g, "geoSystem", std::any(std::vector<std::string>{"UTM", "Z17"}));
-    setF(g, "geoGridOrigin", std::any(SFVec3d{100.0, 200.0, 0.0}));
-    setF(g, "height", std::any(std::vector<double>{1.0, 1.0, 1.0, 1.0}));
+TEST_CASE("GeoElevationGrid UTM spacing advances eastings and northings") {
+  auto grid = createX3DNode("GeoElevationGrid");
+  setGeoField(grid, "geoSystem", std::vector<std::string>{"UTM","Z31"});
+  setGeoField(grid, "geoGridOrigin", SFVec3d{0,500000,0});
+  setGeoField(grid, "xDimension", 2);
+  setGeoField(grid, "zDimension", 2);
+  setGeoField(grid, "xSpacing", 2.0);
+  setGeoField(grid, "zSpacing", 3.0);
+  setGeoField(grid, "height", std::vector<double>(4, 0));
+  const auto a = geo::gridCoordinate(*grid, 1, 1, 0);
+  CHECK(a.x == 3);
+  CHECK(a.y == 500002);
+  MeshData mesh = buildLocalMesh(grid.get());
+  CHECK(mesh.positions.size() == 6);
+}
 
-    int calls = 0;
-    bool sawSystem = false, sawOrigin = false;
-    MeshBuildOptions opt;
-    opt.geoProjection = [&](const SFVec3d &geoCoord, double elevation,
-                            const GeoSystemDesc &sys) -> SFVec3f {
-      ++calls;
-      if (sys.geoSystem.size() == 2 && sys.geoSystem[0] == "UTM" &&
-          sys.geoSystem[1] == "Z17")
-        sawSystem = true;
-      if (feq(static_cast<float>(sys.geoGridOrigin.x), 100.0f) &&
-          feq(static_cast<float>(sys.geoGridOrigin.y), 200.0f))
-        sawOrigin = true;
-      // Map to a recognizable local frame: scale elevation onto +Y, sentinel X.
-      return SFVec3f{42.0f, static_cast<float>(elevation), 7.0f};
-      (void)geoCoord;
-    };
+TEST_CASE("height grid lattice indices and degenerate guards remain intact") {
+  auto planar = createX3DNode("ElevationGrid");
+  setGeoField(planar, "xDimension", 3);
+  setGeoField(planar, "zDimension", 2);
+  setGeoField(planar, "height", std::vector<float>(6, 0));
+  MeshData plain = buildLocalMesh(planar.get());
+  CHECK(plain.indices.size() == 12);
+  CHECK(plain.latticeIndex.size() == plain.positions.size());
+  for (auto id : plain.latticeIndex) CHECK(id < 6u);
 
-    MeshData m = buildLocalMesh(g.get(), opt);
-    CHECK((m.indices.size() == 6));
-    CHECK((calls > 0 && sawSystem && sawOrigin));
-    // Every emitted position came from the projection (sentinel X=42, Z=7).
-    for (std::size_t i = 0; i < m.positions.size(); ++i)
-      CHECK((feq(m.positions[i].x, 42.0f) && feq(m.positions[i].z, 7.0f) &&
-             feq(m.positions[i].y, 1.0f)));
-  }
-
-  // ---- 3b. ElevationGrid ALSO retains its lattice map (refactor parity) -----
-  {
-    auto g = createX3DNode("ElevationGrid");
-    setF(g, "xDimension", std::any(3));
-    setF(g, "zDimension", std::any(2));
-    setF(g, "xSpacing", std::any(1.0f));
-    setF(g, "zSpacing", std::any(1.0f));
-    setF(g, "height", std::any(std::vector<float>(6, 0.0f)));
-    MeshData m = buildLocalMesh(g.get());
-    CHECK((m.indices.size() == 12)); // (3-1)*(2-1)=2 cells -> 4 tris.
-    CHECK((m.latticeIndex.size() == m.positions.size()));
-    for (std::uint32_t lid : m.latticeIndex) CHECK((lid < 6u)); // < xDim*zDim.
-  }
-
-  // ---- 5. Degenerate / short-height guards ---------------------------------
-  {
-    auto g = createX3DNode("GeoElevationGrid");
-    setF(g, "xDimension", std::any(2));
-    setF(g, "zDimension", std::any(2));
-    setF(g, "height", std::any(std::vector<double>{0.0})); // need 4.
-    MeshData m = buildLocalMesh(g.get());
-    CHECK((m.positions.empty() && m.indices.empty()));
-  }
-  {
-    auto g = createX3DNode("GeoElevationGrid");
-    setF(g, "xDimension", std::any(1)); // degenerate dim.
-    setF(g, "zDimension", std::any(1));
-    setF(g, "height", std::any(std::vector<double>{0.0}));
-    MeshData m = buildLocalMesh(g.get());
-    CHECK((m.indices.empty()));
-  }
-
-  return;
+  auto geoGrid = createX3DNode("GeoElevationGrid");
+  setGeoField(geoGrid, "xDimension", 2);
+  setGeoField(geoGrid, "zDimension", 2);
+  setGeoField(geoGrid, "height", std::vector<double>{0});
+  CHECK(buildLocalMesh(geoGrid.get()).positions.empty());
+  setGeoField(geoGrid, "xDimension", 1);
+  setGeoField(geoGrid, "zDimension", 1);
+  CHECK(buildLocalMesh(geoGrid.get()).indices.empty());
 }

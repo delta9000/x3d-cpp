@@ -139,12 +139,8 @@ public:
   // Holds the ctx (camera/dirty pull surface) and the scene (root traversal).
   // X3DExecutionContext intentionally does NOT expose its roots, so the scene is
   // passed alongside it — the PoC main owns both. Both must outlive the extractor.
-  // The embedder may supply MeshBuildOptions ONCE at construction (B5): the geo
-  // projection seam and tessellation density. It is held by value (copyable) and
-  // FORWARDED to every buildLocalMesh call (full walk + delta re-extract), so the
-  // SDK never calls geodesy itself — it invokes the embedder std::function. With
-  // the default (no geoProjection wired) GeoElevationGrid renders via flat-
-  // fallback. Defaulted so existing callers are source-compatible.
+  // The embedder may supply MeshBuildOptions once for tessellation density and
+  // resource callbacks; geographic geometry uses the shared GeoProjection backend.
   // The embedder may ALSO supply a TextureResolver (T-TEX): the SDK never decodes
   // image bytes — it threads the embedder's decoded pixels onto each emitted
   // TextureRef.resolvedPixels (Source::Url only; Inline/Movie are skipped). The
@@ -745,6 +741,18 @@ private:
     if (t == "Switch" || t == "LOD") {
       if (auto child = traversedChild(*n, here, ctx_.cameraWorldPosition()))
         walk(child.get(), here, path, delta);
+      path.pop_back();
+      return;
+    }
+
+    if (t == "GeoLOD") {
+      // §25.3.5: GeoLOD shows its root tile or its loaded child tiles; `children`
+      // is an output mirroring that choice, so walking it as well would draw the
+      // root twice. Child-URL tiles are not loaded yet (GEOLOD-1), so the root
+      // is the displayed content at every level.
+      for (const auto &c : geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+               *n, "rootNode", {}))
+        if (c) walk(c.get(), here, path, delta);
       path.pop_back();
       return;
     }

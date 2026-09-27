@@ -151,7 +151,7 @@ do not assume a blanket answer.
 | Asset | `sdk::AssetResolver` | bytes for a url (`AssetKind` Texture/Movie/Inline/ExternProto). Render-time may return `Pending`; parse-time (Inline/ExternProto) must be sync `Ready`/`Failed`. |
 | Texture | `sdk::TextureResolver` | decoded RGBA pixels for a url (`width`, `height`, bytes). The SDK threads the result onto `TextureRef`. |
 | Font | `sdk::FontMetrics` | per-glyph advance + optional atlas UV / outline. The SDK does all Text layout. Defaults to `makeMonospaceStub()`. |
-| Geo | `sdk::GeoProjection` | geographic coordinate → local Cartesian, supplied via `MeshBuildOptions::geoProjection`. Empty = flat-fallback (unanchored). |
+| Geo | `runtime::geo::GeoProjection` | Built-in ellipsoid backend by default; install another through `runtime::geo::setProjection()` before building scenes. |
 | Script | `sdk::ScriptEngine` | a language backend (e.g. ECMAScript). Wrap in `sdk::ScriptSystem`, register with `ctx.addScriptSystem(ss)`. `SaiContext` is the backend↔runtime channel. |
 
 ### Implementing a seam

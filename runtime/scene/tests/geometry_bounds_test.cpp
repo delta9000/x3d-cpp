@@ -77,6 +77,7 @@ TEST_CASE("geometry_bounds_test") {
   // an empty AABB (it was read as MFVec3f and silently dropped).
   auto gifs = createX3DNode("IndexedFaceSet");
   auto gcoord = createX3DNode("GeoCoordinate");
+  setF(gcoord, "geoSystem", std::any(std::vector<std::string>{"GC"}));
   setF(gcoord, "point",
        std::any(std::vector<SFVec3d>{{0, 0, 0}, {2, 4, 6}, {-1, -1, 0}}));
   setF(gifs, "coord", std::any(std::shared_ptr<X3DNode>(gcoord)));
@@ -92,7 +93,7 @@ TEST_CASE("geometry_bounds_test") {
   setF(geg, "zSpacing", std::any(SFDouble{5.0}));
   setF(geg, "height", std::any(MFDouble{0, 1, 2, 3, 4, 5}));
   Aabb gg = localGeometryBounds(geg.get());
-  CHECK((feq(gg.max.x, 4) && feq(gg.max.z, 5) && feq(gg.max.y, 5)));
+  CHECK((!gg.empty && gg.max.x > gg.min.x && gg.max.z > gg.min.z));
 
   // NurbsCurve / NurbsPatchSurface: AABB over control points (convex hull).
   {

@@ -10,6 +10,7 @@
 #define X3D_RUNTIME_TRANSFORM_SYSTEM_HPP
 
 #include "FieldRead.hpp"
+#include "GeoNodes.hpp"
 #include "DirtyTracker.hpp"
 #include "Mat4.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -169,6 +170,21 @@ public:
   // reflection. Public so BoundsSystem/PickSystem/LightSystem can reuse it.
   static Mat4 localMatrix(const X3DNode *n) {
     ++localMatrixCalls_;
+    const std::string type = n->nodeTypeName();
+    if (type == "GeoLocation") {
+      Mat4 frame;
+      return geo::tangentFrameOf(*n, geo::fieldOf<SFVec3d>(*n, "geoCoords", {0,0,0}), frame)
+                 ? frame : Mat4::identity(); // §25.3.3: east/up/south at geoCoords
+    }
+    if (type == "GeoTransform") {
+      Mat4 frame;
+      if (!geo::tangentFrameOf(*n, geo::fieldOf<SFVec3d>(*n, "geoCenter", {0,0,0}), frame))
+        return Mat4::identity();
+      // §25.3.10: ordinary Transform fields operate in the geoCenter tangent frame.
+      return frame * transformMatrix(getVec(n, "translation"), getRot(n, "rotation"),
+                                     getVec(n, "scale"), {0,0,0},
+                                     getRot(n, "scaleOrientation")) * frame.inverse();
+    }
     return transformMatrix(getVec(n, "translation"), getRot(n, "rotation"),
                            getVec(n, "scale"), getVec(n, "center"),
                            getRot(n, "scaleOrientation"));
@@ -182,7 +198,7 @@ public:
     if (!n) return false;
     const std::string t = n->nodeTypeName();
     return t == "Transform" || t == "HAnimHumanoid" || t == "HAnimJoint" ||
-           t == "CADPart";
+           t == "CADPart" || t == "GeoLocation" || t == "GeoTransform";
   }
 
 private:

@@ -115,7 +115,7 @@ Beyond the parse path's own local-file reads (`parseFile`), the SDK performs no 
 | **AssetResolver** | `runtime/extract/AssetResolver.hpp` — `function<AssetResult(url, AssetKind)>` | URL→bytes. One type, two contracts: render-time may return `Pending` (retry next frame); parse-time (Inline/ExternProto) must answer `Ready`/`Failed` synchronously. `AssetKind` ∈ {Texture, Movie, Inline, ExternProto, ExternalGeometry}. |
 | **TextureResolver** | `runtime/extract/TextureResolver.hpp` — `function<TexturePixelResult(url)>` | url→decoded RGBA pixels; the SDK threads the result onto `TextureRef` so a consumer binds without re-resolving. |
 | **FontMetrics** | `runtime/extract/FontMetrics.hpp` — `function<GlyphResult(const FontKey&)>` | Per-codepoint advance + optional atlas UV/outline; the SDK does all `Text` layout. Default = `makeMonospaceStub` (advanceEm 0.6). |
-| **GeoProjection** | `runtime/extract/MeshBuilder.hpp` — `function<SFVec3f(SFVec3d geoCoord, double elev, GeoSystemDesc)>` | Geodetic→Cartesian. Supplied via `MeshBuildOptions::geoProjection`; empty ⇒ flat fallback. |
+| **GeoProjection** | `runtime/math/GeoProjection.hpp` — ellipsoid conversion backend | BuiltinGeoProjection ships by default; optional PROJ backend can be installed through `geo::setProjection()`. |
 
 ### The ext firewall — a one-way dependency, not a seam
 

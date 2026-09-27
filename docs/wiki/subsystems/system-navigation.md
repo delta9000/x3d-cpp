@@ -61,7 +61,7 @@ struct HeadPose {
 
 ### Seam points
 
-- **`X3DExecutionContext::boundViewpoint()`** — returns the currently bound `X3DViewpointNode`-derived node (Viewpoint / OrthoViewpoint / GeoViewpoint). Navigation reads its `position`, `orientation`, `centerOfRotation`, and `fieldOfView` via the reflection accessor `geombounds::getField<T>`, and writes the effective pose back through `ctx.setViewpointOffset`. It never casts to a concrete type.
+- **`X3DExecutionContext::boundViewpoint()`** — returns the currently bound `X3DViewpointNode`-derived node (Viewpoint / OrthoViewpoint / GeoViewpoint). Navigation reads its `position`, `orientation`, `centerOfRotation`, and `fieldOfView` via reflection; GeoViewpoint positions and centers are converted through GeoNodes and its orientation uses the tangent frame, and writes the effective pose back through `ctx.setViewpointOffset`. It never casts to a concrete type.
 
 - **`X3DExecutionContext::boundNavigationInfo()`** — returns the bound `NavigationInfo`. Navigation reads `getType()` to resolve the active mode (first recognized value wins, §23.4.4), `getSpeed()` for FLY translation scaling, and `getTransitionTime()`/`getTransitionType()` for LOOKAT animation. It calls `ctx.postEvent(nav, "transitionComplete", …)` at the end of a LOOKAT transition.
 
