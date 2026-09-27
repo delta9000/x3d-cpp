@@ -318,15 +318,28 @@ inline MeshData buildTextMesh(const X3DNode &textNode, const FontMetrics &fm,
       }
 
       if (fs.horizontal) {
-        // minor (Y) cell: baseline+descender .. baseline+ascender ≈ size tall.
-        const float y0 = baseY - 0.2f * size; // descender
-        const float y1 = baseY + 0.8f * size; // ascender
-        emitQuad(m0, y0, m1, y1, u0, v0, u1, v1);
+        if (g.metrics.hasGlyphBox) {
+          const float x0 = pen + dir * g.metrics.bearingX * size * glyphScale;
+          const float x1 = x0 + dir * g.metrics.sizeX * size * glyphScale;
+          const float y0 = baseY + (g.metrics.top - g.metrics.sizeY) * size;
+          const float y1 = baseY + g.metrics.top * size;
+          emitQuad(std::min(x0, x1), y0, std::max(x0, x1), y1, u0, v0, u1, v1);
+        } else {
+          emitQuad(m0, baseY - 0.2f * size, m1, baseY + 0.8f * size,
+                   u0, v0, u1, v1);
+        }
       } else {
-        // vertical: major axis is Y, the cell spans the column width on X.
-        const float x0 = baseX - 0.2f * size;
-        const float x1 = baseX + 0.8f * size;
-        emitQuad(x0, m0, x1, m1, u0, v0, u1, v1);
+        if (g.metrics.hasGlyphBox) {
+          const float x0 = baseX + g.metrics.bearingX * size;
+          const float x1 = x0 + g.metrics.sizeX * size;
+          const float y0 = pen + dir * g.metrics.top * size * glyphScale;
+          const float y1 = y0 - dir * g.metrics.sizeY * size * glyphScale;
+          emitQuad(std::min(x0, x1), std::min(y0, y1), std::max(x0, x1),
+                   std::max(y0, y1), u0, v0, u1, v1);
+        } else {
+          emitQuad(baseX - 0.2f * size, m0, baseX + 0.8f * size, m1,
+                   u0, v0, u1, v1);
+        }
       }
       pen += dir * a;
     }

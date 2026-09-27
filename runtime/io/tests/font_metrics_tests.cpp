@@ -88,6 +88,13 @@ TEST_CASE("fontmetrics_swap_advance_exact_equal") {
       CHECK((gb.ready()));
       // The proof: two independent libraries, bit-identical advanceEm.
       CHECK((ga.metrics.advanceEm == gb.metrics.advanceEm));
+      CHECK((ga.metrics.bearingX == gb.metrics.bearingX));
+      CHECK((ga.metrics.sizeX == gb.metrics.sizeX));
+      CHECK((ga.metrics.sizeY == gb.metrics.sizeY));
+      CHECK((ga.metrics.top == gb.metrics.top));
+      CHECK((ga.metrics.ascent == gb.metrics.ascent));
+      CHECK((ga.metrics.descent == gb.metrics.descent));
+      CHECK((ga.metrics.hasGlyphBox == gb.metrics.hasGlyphBox));
     }
   }
 }

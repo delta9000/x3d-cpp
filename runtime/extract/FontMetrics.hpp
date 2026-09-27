@@ -62,6 +62,13 @@ struct GlyphMetrics {
   bool  hasAtlasUv = false;
   float u0 = 0.0f, v0 = 0.0f; // atlas UV bottom-left corner (GL convention).
   float u1 = 0.0f, v1 = 0.0f; // atlas UV top-right corner.
+  float bearingX = 0.0f;    // glyph box left from pen, in em units.
+  float sizeX = 0.6f;       // glyph box width, in em units.
+  float sizeY = 1.0f;       // glyph box height, in em units.
+  float top = 0.8f;         // glyph box top above baseline, in em units.
+  float ascent = 0.8f;      // font ascent above baseline, in em units.
+  float descent = -0.2f;    // font descent below baseline, in em units.
+  bool hasGlyphBox = false; // false keeps the legacy advance-cell quad.
 };
 
 // ---------------------------------------------------------------------------
@@ -151,7 +158,9 @@ inline std::string resolveFontFamily(const std::vector<std::string> &families,
 // ---------------------------------------------------------------------------
 inline FontMetrics makeMonospaceStub() {
   return [](const FontKey&) -> GlyphResult {
-    return GlyphResult::makeReady(GlyphMetrics{0.6f, false, 0.f, 0.f, 0.f, 0.f});
+    GlyphMetrics metrics;
+    metrics.advanceEm = 0.6f;
+    return GlyphResult::makeReady(metrics);
   };
 }
 
