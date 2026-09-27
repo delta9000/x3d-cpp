@@ -7,6 +7,9 @@
 #include "x3d/nodes/Appearance.hpp"
 #include "x3d/nodes/Group.hpp"
 #include "x3d/nodes/Material.hpp"
+#include "x3d/nodes/OrthoViewpoint.hpp"
+#include "x3d/nodes/TextureProjectorParallel.hpp"
+#include "x3d/nodes/GeoCoordinate.hpp"
 #include "x3d/nodes/Shape.hpp"
 #include "X3DParse.hpp"
 
@@ -20,6 +23,34 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 TEST_CASE("range_warnings_test") {
+  auto checkCode = [](const auto &node, const std::string &code) {
+    const auto ds = collectRangeWarnings(*node);
+    return std::any_of(ds.begin(), ds.end(), [&](const auto &d) { return d.detail.find(code) != std::string::npos; });
+  };
+  for (size_t n : {3u, 5u}) {
+    auto ortho = std::make_shared<OrthoViewpoint>();
+    ortho->setFieldOfView(std::vector<float>(n, 1.f));
+    CHECK(checkCode(ortho, "FOV_TUPLE_ARITY"));
+  }
+  auto ortho = std::make_shared<OrthoViewpoint>();
+  ortho->setFieldOfView(std::vector<float>{2, 0, 1, 1});
+  CHECK(checkCode(ortho, "FOV_EXTENT_ORDER"));
+  CHECK(range_detail::orthoFieldOfView4(*ortho).has_value());
+  auto projector = std::make_shared<TextureProjectorParallel>();
+  projector->setFieldOfView(SFVec4f{2, 0, 1, 1});
+  CHECK(checkCode(projector, "FOV_EXTENT_ORDER"));
+  projector->setFieldOfView(SFVec4f{0, 0, 1, 1});
+  CHECK(collectRangeWarnings(*projector).empty());
+  auto geo = std::make_shared<GeoCoordinate>();
+  geo->setGeoSystemUnchecked({"UTM", "Z10", "S"});
+  CHECK(collectRangeWarnings(*geo).empty());
+  geo->setGeoSystemUnchecked({"UTM", "Z10", "N"});
+  CHECK(checkCode(geo, "GEOSYSTEM_TOKEN"));
+  geo->setGeoSystemUnchecked({"garbage"});
+  CHECK(checkCode(geo, "GEOSYSTEM_TOKEN"));
+  geo->setGeoSystemUnchecked({"GD", "WE"});
+  CHECK(collectRangeWarnings(*geo).empty());
+
   // (a) a Material with an out-of-range specularColor component reports it.
   auto mat = std::make_shared<Material>();
   SFColor bad;

@@ -18,6 +18,8 @@ The Navigation System drives the bound Viewpoint from the consumer-supplied inpu
 
 The system also provides the `HeadPose` seam through which a CAVE consumer can inject a per-wall head-tracking pose that is composed onto the effective view after the navigation offset.
 
+The parse-time range diagnostic walk also checks orthographic `fieldOfView` values as a four-value extent tuple. `OrthoViewpoint` retains its ClassicVRML-compatible `MFFloat` storage; `range_detail::orthoFieldOfView4()` provides a fixed `SFVec4f` view for valid tuples.
+
 ## Key files
 
 | File | Role |

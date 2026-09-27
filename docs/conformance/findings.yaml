@@ -1602,14 +1602,17 @@
   nodes: [OrthoViewpoint, TextureProjectorParallel]
   clause: "23.4.5, 42.4.2"
   severity: minor
-  status: open
+  status: closed
   summary: "fieldOfView is the same 4-tuple but typed MFFloat (OrthoViewpoint) vs SFVec4f (TextureProjectorParallel); OrthoViewpoint arity/ordering unvalidated."
   note: >-
     Do NOT retype MFFloat->SFVec4f (breaks ClassicVRML brackets vs the sfvec4fValue grammar;
     Mantis 1398/1468). Policy (ADR-0030) - keep MFFloat storage; add size==4 normalization
     (FOV_TUPLE_ARITY warning) + min<max ordering check (FOV_EXTENT_ORDER) applied to BOTH nodes;
     add a non-breaking SFVec4f convenience accessor. Sites OrthoViewpoint.hpp:111/177,
-    TextureProjectorParallel.hpp:77. 4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView
+    TextureProjectorParallel.hpp:77. Closed 2026-09-26: runtime/X3DRangeValidate.hpp emits
+    FOV_TUPLE_ARITY and FOV_EXTENT_ORDER for both nodes and exposes orthoFieldOfView4;
+    runtime/parse/tests/range_warnings_test.cpp covers arities 3/5 and ordering.
+    4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView
     MFFloat (committee declined the retype for the same reason), so validate-don't-retype is correct.
 - id: EXTRUSION-SCP
   nodes: [Extrusion]
@@ -1693,7 +1696,7 @@
   component: Geospatial
   clause: "25.2.3"
   severity: minor
-  status: open
+  status: closed
   summary: "geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning."
   note: >-
     Per ADR-0003 keep the value; add a geoSystem token validator (SRF GD|GDC|GC|GCC|UTM|WM + UTM
@@ -1702,7 +1705,10 @@
     northern alias + warning (Mantis 938). UOM cannot enforce (additionalEnumerationValuesAllowed
     = true). Also add the missing WM (Web Mercator) enumeration to geoSystemSpatialReferenceFrameValues.
     Site GeoCoordinate.hpp:111 setGeoSystemUnchecked. 4.1 - unresolved (4.1 UOM still lacks WM, enum
-    still open); engine validator + WM add are ahead of spec.
+    Closed 2026-09-26: runtime/X3DRangeValidate.hpp validates frame, zone and option
+    tokens without mutation; range_warnings_test covers GD, UTM Z10 S, N and garbage.
+    The validator accepts WM (Web Mercator). The vendored X3D UOM is left as published (it still
+    lacks WM), so the generated enumeration does not list it; the open enum stores it regardless.
 - id: SND-GAIN-TYPE
   nodes: [ListenerPointSource]
   component: Sound

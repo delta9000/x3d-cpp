@@ -14,7 +14,7 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 | GeoProximitySensor | 2 | ✓ | — | ◑ | CONF-GEO, ENV-02, ENV-03, GEOSYSTEM | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 | GeoTouchSensor | 1 | ✓ | — | ✗ | TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
 | GeoTransform | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| GeoViewpoint | 1 | ✓ | — | ◑ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEOSYSTEM, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| GeoViewpoint | 1 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEOSYSTEM, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 
 ## Findings
 
@@ -26,8 +26,6 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - Blocked on geo-projection (Geospatial deferred). See CONF-GEO.
 - **CONF-GEO** [minor/DEFERRED] — §25: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
   - Blocked on the GeoProjection seam (geoSystem/geoOrigin → local Cartesian). Drives ENV-02; GeoTouchSensor = TSN-1/2.
-- **GEOSYSTEM** [minor/OPEN] — §25.2.3: geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning.
-  - Per ADR-0003 keep the value; add a geoSystem token validator (SRF GD|GDC|GC|GCC|UTM|WM + UTM Z<n>/optional S/ellipsoid/ordering grammar) emitting RangeDiagnostic-style warnings, never rejecting. N is undefined (only S exists; northern is the UTM default) — tolerate as a no-op northern alias + warning (Mantis 938). UOM cannot enforce (additionalEnumerationValuesAllowed = true). Also add the missing WM (Web Mercator) enumeration to geoSystemSpatialReferenceFrameValues. Site GeoCoordinate.hpp:111 setGeoSystemUnchecked. 4.1 - unresolved (4.1 UOM still lacks WM, enum still open); engine validator + WM add are ahead of spec.
 - **BIND-01** [critical/CLOSED `e3235ee`] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
   - CONF-VIEWNAV — needs a user-offset-state design (authored pose vs accumulated offset) before fixing BIND-01..08 as one cluster.
 - **BIND-02** [critical/CLOSED `95d1107`] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.
@@ -54,6 +52,8 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - Needs push-vs-pop signaling from BindingSystem to distinguish rule 5.1 (reset) from 6.3 (restore stored offset). Per-node offset persists; only the reset-on-rebind path differs. CAVE doesn't exercise viewpoint stacks.
 - **GEO-2** [minor/FIXED] — §25.3.1: Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float).
   - Was: coord points read via getField<vector<SFVec3f>> on GeoCoordinate/CoordinateDouble MFVec3d 'point' → empty mesh; GeoElevationGrid SFDouble spacing + MFDouble height read as float in the bounds path. Fixed across MeshBuilder extract AND GeometryBounds (pointsBounds + GeoElevationGrid handler) via geombounds::getPointsLenient + new getFloatLenient/getFloatsLenient. Sibling bounds/grid sites found by the systematic getField-type audit. Tested in getfield_typecheck_test.cpp + geometry_bounds_test (GeoCoordinate IFS + GeoElevationGrid). (sweep 2026-06-25, fixed same day)
+- **GEOSYSTEM** [minor/CLOSED] — §25.2.3: geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning.
+  - Per ADR-0003 keep the value; add a geoSystem token validator (SRF GD|GDC|GC|GCC|UTM|WM + UTM Z<n>/optional S/ellipsoid/ordering grammar) emitting RangeDiagnostic-style warnings, never rejecting. N is undefined (only S exists; northern is the UTM default) — tolerate as a no-op northern alias + warning (Mantis 938). UOM cannot enforce (additionalEnumerationValuesAllowed = true). Also add the missing WM (Web Mercator) enumeration to geoSystemSpatialReferenceFrameValues. Site GeoCoordinate.hpp:111 setGeoSystemUnchecked. 4.1 - unresolved (4.1 UOM still lacks WM, enum Closed 2026-09-26: runtime/X3DRangeValidate.hpp validates frame, zone and option tokens without mutation; range_warnings_test covers GD, UTM Z10 S, N and garbage. The validator accepts WM (Web Mercator). The vendored X3D UOM is left as published (it still lacks WM), so the generated enumeration does not list it; the open enum stores it regardless.
 - **NAV-FLY-ROLL** [low/CLOSED] — §23.4.4: FLY accumulates orientation incrementally (yaw-about-world-up + pitch-about-local-right), so a long mixed drag can introduce gradual horizon roll.
   - Pre-existing (unchanged by the offset model). Re-level to world-up each step (decompose to yaw/pitch) if a consumer needs roll-free fly.
 
