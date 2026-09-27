@@ -81,6 +81,7 @@ nav:
           - Sound (§16 audio graph): subsystems/sound.md
       - Extract:
           - Extraction Pipeline: subsystems/extract.md
+          - H-Anim Extraction: subsystems/hanim.md
           - Texture, Material, and Light Extraction: subsystems/extract-textures.md
           - Materials (§12 discriminated union + backMaterial): subsystems/materials.md
           - Shaders (ComposedShader + binding plan): subsystems/shaders.md

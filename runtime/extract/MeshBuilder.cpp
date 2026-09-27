@@ -1,4 +1,5 @@
 #include "MeshBuilder.hpp"
+#include "HAnimSkin.hpp"
 
 #include "GeometryBounds.hpp"
 #include "NurbsEval.hpp"
@@ -1577,7 +1578,9 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
   auto coord = geombounds::getNode(*geom, "coord");
   if (!coord)
     return mesh;
-  const auto pts = geombounds::getPointsLenient(*coord, "point");
+  auto pts = geombounds::getPointsLenient(*coord, "point");
+  // ISO/IEC 19774-1 §6.6: Segment displacers act in Segment coordinates.
+  hanim::displaceSegmentPoints(*coord, pts);
   if (pts.empty())
     return mesh;
 
@@ -1613,6 +1616,10 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     sourceId.push_back(static_cast<std::uint32_t>(ca.coord));
     sourceId.push_back(static_cast<std::uint32_t>(cb.coord));
     sourceId.push_back(static_cast<std::uint32_t>(cc.coord));
+    mesh.sourceCoordIndex.insert(mesh.sourceCoordIndex.end(),
+                                 {static_cast<std::uint32_t>(ca.coord),
+                                  static_cast<std::uint32_t>(cb.coord),
+                                  static_cast<std::uint32_t>(cc.coord)});
 
     if (mesh.vertexAttributes.empty() && !attrs.vertexAttributes.empty()) {
       mesh.vertexAttributes = attrs.vertexAttributes;
@@ -1644,6 +1651,11 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
       mesh.normals.push_back(pickN(ca));
       mesh.normals.push_back(pickN(cb));
       mesh.normals.push_back(pickN(cc));
+      for (const Corner &cr : corners) {
+        int s = AttrResolvers::pickIndex(attrs.normals, attrs.normalIndex,
+                                         attrs.normalPerVertex, cr);
+        mesh.sourceNormalIndex.push_back(s < 0 ? UINT32_MAX : static_cast<std::uint32_t>(s));
+      }
     } else {
       // GENERATED face normal. Per rendering.md §11.4.x / geometry3D.md
       // §13.3.x, ccw=FALSE reverses the direction of the GENERATED normal. We
@@ -1879,10 +1891,13 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     const auto emitVertex = [&](const Corner &cr) {
       mesh.positions.push_back(pts[cr.coord]);
       mesh.indices.push_back(static_cast<std::uint32_t>(mesh.indices.size()));
+      mesh.sourceCoordIndex.push_back(static_cast<std::uint32_t>(cr.coord));
       if (attrs.hasNormal)
         mesh.normals.push_back(cr.coord < static_cast<int>(attrs.normals.size())
                                    ? attrs.normals[cr.coord]
                                    : SFVec3f{0, 0, 0});
+      if (attrs.hasNormal)
+        mesh.sourceNormalIndex.push_back(static_cast<std::uint32_t>(cr.coord));
       if (attrs.hasColor) {
         int s = AttrResolvers::pickIndex(attrs.colors, attrs.colorIndex,
                                          attrs.colorPerVertex, cr);
