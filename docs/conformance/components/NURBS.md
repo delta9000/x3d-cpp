@@ -4,19 +4,19 @@ _Generated. Levels 1,2,3,4 · 13 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Contour2D | 4 | ✓ | — | — | — |  |
-| ContourPolyline2D | 3 | ✓ | — | — | — | X3DNurbsControlCurveNode |
-| NurbsCurve | 1 | ✓ | ✓ | — | CONTAINERFIELD-FALSEPOS, NRB-1, NRB-4 | X3DGeometryNode, X3DParametricGeometryNode |
-| NurbsCurve2D | 3 | ✓ | — | — | — | X3DNurbsControlCurveNode |
-| NurbsOrientationInterpolator | 1 | ✓ | — | — | NRB-2 | X3DChildNode |
-| NurbsPatchSurface | 1 | ✓ | ✓ | — | NRB-1, NRB-4 | X3DGeometryNode, X3DNurbsSurfaceGeometryNode, X3DParametricGeometryNode |
-| NurbsPositionInterpolator | 1 | ✓ | — | — | NRB-2 | X3DChildNode |
-| NurbsSet | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode |
-| NurbsSurfaceInterpolator | 1 | ✓ | — | — | NRB-2 | X3DChildNode |
-| NurbsSweptSurface | 3 | ✓ | ✗ | — | NRB-3 | X3DGeometryNode, X3DParametricGeometryNode |
-| NurbsSwungSurface | 3 | ✓ | ✗ | — | NRB-3 | X3DGeometryNode, X3DParametricGeometryNode |
-| NurbsTextureCoordinate | 1 | ✓ | — | — | — |  |
-| NurbsTrimmedSurface | 4 | ✓ | ✗ | — | NRB-3 | X3DGeometryNode, X3DNurbsSurfaceGeometryNode, X3DParametricGeometryNode |
+| Contour2D | 4 | ✓ | — | — | ROUTE-IO-ALIAS |  |
+| ContourPolyline2D | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DNurbsControlCurveNode |
+| NurbsCurve | 1 | ✓ | ✓ | — | CONTAINERFIELD-FALSEPOS, NRB-1, NRB-4, ROUTE-IO-ALIAS | X3DGeometryNode, X3DParametricGeometryNode |
+| NurbsCurve2D | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DNurbsControlCurveNode |
+| NurbsOrientationInterpolator | 1 | ✓ | — | — | NRB-2, ROUTE-IO-ALIAS | X3DChildNode |
+| NurbsPatchSurface | 1 | ✓ | ✓ | — | NRB-1, NRB-4, ROUTE-IO-ALIAS | X3DGeometryNode, X3DNurbsSurfaceGeometryNode, X3DParametricGeometryNode |
+| NurbsPositionInterpolator | 1 | ✓ | — | — | NRB-2, ROUTE-IO-ALIAS | X3DChildNode |
+| NurbsSet | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| NurbsSurfaceInterpolator | 1 | ✓ | — | — | NRB-2, ROUTE-IO-ALIAS | X3DChildNode |
+| NurbsSweptSurface | 3 | ✓ | ✗ | — | NRB-3, ROUTE-IO-ALIAS | X3DGeometryNode, X3DParametricGeometryNode |
+| NurbsSwungSurface | 3 | ✓ | ✗ | — | NRB-3, ROUTE-IO-ALIAS | X3DGeometryNode, X3DParametricGeometryNode |
+| NurbsTextureCoordinate | 1 | ✓ | — | — | ROUTE-IO-ALIAS |  |
+| NurbsTrimmedSurface | 4 | ✓ | ✗ | — | NRB-3, ROUTE-IO-ALIAS | X3DGeometryNode, X3DNurbsSurfaceGeometryNode, X3DParametricGeometryNode |
 
 ## Findings
 

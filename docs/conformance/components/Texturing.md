@@ -4,17 +4,17 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ImageTexture | 1 | ✓ | — | — | AUD-TEX-1, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
-| MovieTexture | 3 | ✓ | — | ✓ | AUD-MEDIA-1, AUD-MEDIA-3, AUD-MEDIA-4, AUD-TEX-1, AUD-TIME-3, MULTI-INHERIT, TDN-5, VIS-MOVIE-DECODE | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
-| MultiTexture | 2 | ✓ | — | — | AUD-BG-2, AUD-TEX-2 | X3DAppearanceChildNode, X3DTextureNode |
-| MultiTextureCoordinate | 2 | ✓ | — | — | TXT-6 | X3DGeometricPropertyNode, X3DTextureCoordinateNode |
-| MultiTextureTransform | 2 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureTransformNode |
-| PixelTexture | 1 | ✓ | — | — | ENC-VRML-SFIMAGE, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode |
-| TextureCoordinate | 1 | ✓ | — | — | — | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
-| TextureCoordinateGenerator | 2 | ✓ | — | — | TXF-2 | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
-| TextureProperties | 2 | ✓ | — | — | AUD-TEX-3, TXF-4 |  |
-| TextureTransform | 1 | ✓ | — | — | TXF-1, TXF-3 | X3DAppearanceChildNode, X3DTextureTransformNode |
-| X3DSingleTextureTransformNode | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DTextureTransformNode |
+| ImageTexture | 1 | ✓ | — | — | AUD-TEX-1, ROUTE-IO-ALIAS, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
+| MovieTexture | 3 | ✓ | — | ✓ | AUD-MEDIA-1, AUD-MEDIA-3, AUD-MEDIA-4, AUD-TEX-1, AUD-TIME-3, MULTI-INHERIT, ROUTE-IO-ALIAS, TDN-5, VIS-MOVIE-DECODE | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
+| MultiTexture | 2 | ✓ | — | — | AUD-BG-2, AUD-TEX-2, ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DTextureNode |
+| MultiTextureCoordinate | 2 | ✓ | — | — | ROUTE-IO-ALIAS, TXT-6 | X3DGeometricPropertyNode, X3DTextureCoordinateNode |
+| MultiTextureTransform | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DTextureTransformNode |
+| PixelTexture | 1 | ✓ | — | — | ENC-VRML-SFIMAGE, ROUTE-IO-ALIAS, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode |
+| TextureCoordinate | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
+| TextureCoordinateGenerator | 2 | ✓ | — | — | ROUTE-IO-ALIAS, TXF-2 | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
+| TextureProperties | 2 | ✓ | — | — | AUD-TEX-3, ROUTE-IO-ALIAS, TXF-4 |  |
+| TextureTransform | 1 | ✓ | — | — | ROUTE-IO-ALIAS, TXF-1, TXF-3 | X3DAppearanceChildNode, X3DTextureTransformNode |
+| X3DSingleTextureTransformNode | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DTextureTransformNode |
 
 ## Findings
 

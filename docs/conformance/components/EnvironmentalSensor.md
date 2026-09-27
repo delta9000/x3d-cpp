@@ -4,9 +4,9 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ProximitySensor | 1 | ✓ | — | ✓ | AUD-ENV-2, AUD-ENV-3, AUD-ENV-4, AUD-ENV-5, ENV-03, ENV-04, ENV-06, ENV-07, ENV-08, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
-| TransformSensor | 3 | ✓ | — | ✓ | ENV-01, SENSOR-SWITCH, TRANSFORMSENSOR-SCALE | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
-| VisibilitySensor | 2 | ✓ | — | ✓ | AUD-ENV-2, AUD-ENV-3, ENV-05, ENV-06, ENV-07, ENV-09, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| ProximitySensor | 1 | ✓ | — | ✓ | AUD-ENV-2, AUD-ENV-3, AUD-ENV-4, AUD-ENV-5, ENV-03, ENV-04, ENV-06, ENV-07, ENV-08, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| TransformSensor | 3 | ✓ | — | ✓ | ENV-01, ROUTE-IO-ALIAS, SENSOR-SWITCH, TRANSFORMSENSOR-SCALE | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| VisibilitySensor | 2 | ✓ | — | ✓ | AUD-ENV-2, AUD-ENV-3, ENV-05, ENV-06, ENV-07, ENV-09, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 
 ## Findings
 

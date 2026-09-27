@@ -90,6 +90,26 @@ inline std::optional<FieldInfo> findField(const X3DNode &node,
   return std::nullopt;
 }
 
+/// Resolve a ROUTE endpoint name, accepting the §4.4.2.2 aliases of an
+/// inputOutput field `zzz`: `set_zzz` on the sink side and `zzz_changed` on
+/// the source side. An exact field name always wins. The returned FieldInfo
+/// carries the canonical name the route must be registered under.
+inline std::optional<FieldInfo> findEndpoint(const X3DNode &node,
+                                             const std::string &x3dName,
+                                             bool asSource) {
+  if (auto exact = findField(node, x3dName)) return exact;
+  std::string base;
+  if (!asSource && x3dName.rfind("set_", 0) == 0)
+    base = x3dName.substr(4);
+  else if (asSource && x3dName.size() > 8 &&
+           x3dName.compare(x3dName.size() - 8, 8, "_changed") == 0)
+    base = x3dName.substr(0, x3dName.size() - 8);
+  if (base.empty()) return std::nullopt;
+  auto field = findField(node, base);
+  if (field && field->access == AccessType::InputOutput) return field;
+  return std::nullopt;
+}
+
 /// A ROUTE source must be readable-as-event: outputOnly or inputOutput.
 inline bool isRoutableSource(AccessType a) {
   return a == AccessType::OutputOnly || a == AccessType::InputOutput;
@@ -176,7 +196,7 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
     // §4.4.8.2). The opposite endpoint is a regular Scene DEF-resolved node
     // here, not a redirect target, so its field must exist on the node.
     std::optional<FieldInfo> otherInfo =
-        detail::findField(*other.node, other.field);
+        detail::findEndpoint(*other.node, other.field, /*asSource=*/!asSource);
     if (!otherInfo) {
       // The opposite endpoint is unknown — the normal route path would reject
       // this anyway; do the same on the redirect path so diagnostics stay
@@ -223,10 +243,11 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
                  "' to '" + other.field + "'"});
         continue;
       }
+      const FieldAddress otherCanonical{other.node, otherInfo->x3dName};
       if (asSource) {
-        ctx.addRoute({t.targetNode.get(), t.targetField}, other);
+        ctx.addRoute({t.targetNode.get(), t.targetField}, otherCanonical);
       } else {
-        ctx.addRoute(other, {t.targetNode.get(), t.targetField});
+        ctx.addRoute(otherCanonical, {t.targetNode.get(), t.targetField});
       }
       ++result.routesAdded;
     }
@@ -248,7 +269,7 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
     // endpoint(s) instead of being rejected (the opposite endpoint is taken as
     // the route's other side, resolved below by normal lookup).
     std::optional<FieldInfo> fromField =
-        detail::findField(*fromNode, route.fromField);
+        detail::findEndpoint(*fromNode, route.fromField, /*asSource=*/true);
     if (!fromField) {
       if (redirectEndpoint(fromNode.get(), route.fromField, /*asSource=*/true,
                            {toNode.get(), route.toField}, i)) {
@@ -259,7 +280,8 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
                   route.fromNode + "'"});
       continue;
     }
-    std::optional<FieldInfo> toField = detail::findField(*toNode, route.toField);
+    std::optional<FieldInfo> toField =
+        detail::findEndpoint(*toNode, route.toField, /*asSource=*/false);
     if (!toField) {
       if (redirectEndpoint(toNode.get(), route.toField, /*asSource=*/false,
                            {fromNode.get(), route.fromField}, i)) {
@@ -297,8 +319,9 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
     }
 
     // Valid: register the edge. The context only observes the nodes.
-    ctx.addRoute({fromNode.get(), route.fromField},
-                 {toNode.get(), route.toField});
+    // Register under the canonical names (aliases resolved above).
+    ctx.addRoute({fromNode.get(), fromField->x3dName},
+                 {toNode.get(), toField->x3dName});
     ++result.routesAdded;
   }
 

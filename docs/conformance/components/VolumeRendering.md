@@ -4,19 +4,19 @@ _Generated. Levels 1,2,3 · 13 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| BlendedVolumeStyle | 3 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| BoundaryEnhancementVolumeStyle | 2 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| CartoonVolumeStyle | 3 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| ComposedVolumeStyle | 3 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| EdgeEnhancementVolumeStyle | 2 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| IsoSurfaceVolumeData | 2 | ✓ | — | — | VOL-1 | X3DBoundedObject, X3DChildNode, X3DVolumeDataNode |
-| OpacityMapVolumeStyle | 1 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| ProjectionVolumeStyle | 2 | ✓ | — | — | — | X3DVolumeRenderStyleNode |
-| SegmentedVolumeData | 2 | ✓ | — | — | VOL-1 | X3DBoundedObject, X3DChildNode, X3DVolumeDataNode |
-| ShadedVolumeStyle | 3 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| SilhouetteEnhancementVolumeStyle | 2 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| ToneMappedVolumeStyle | 2 | ✓ | — | — | — | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
-| VolumeData | 1 | ✓ | — | — | VOL-1 | X3DBoundedObject, X3DChildNode, X3DVolumeDataNode |
+| BlendedVolumeStyle | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| BoundaryEnhancementVolumeStyle | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| CartoonVolumeStyle | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| ComposedVolumeStyle | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| EdgeEnhancementVolumeStyle | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| IsoSurfaceVolumeData | 2 | ✓ | — | — | ROUTE-IO-ALIAS, VOL-1 | X3DBoundedObject, X3DChildNode, X3DVolumeDataNode |
+| OpacityMapVolumeStyle | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| ProjectionVolumeStyle | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DVolumeRenderStyleNode |
+| SegmentedVolumeData | 2 | ✓ | — | — | ROUTE-IO-ALIAS, VOL-1 | X3DBoundedObject, X3DChildNode, X3DVolumeDataNode |
+| ShadedVolumeStyle | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| SilhouetteEnhancementVolumeStyle | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| ToneMappedVolumeStyle | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DComposableVolumeRenderStyleNode, X3DVolumeRenderStyleNode |
+| VolumeData | 1 | ✓ | — | — | ROUTE-IO-ALIAS, VOL-1 | X3DBoundedObject, X3DChildNode, X3DVolumeDataNode |
 
 ## Findings
 

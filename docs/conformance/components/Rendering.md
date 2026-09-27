@@ -4,21 +4,21 @@ _Generated. Levels 1,2,3,5 · 15 nodes · profiles: Interchange, Interactive, Im
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ClipPlane | 5 | ✓ | — | — | — | X3DChildNode |
-| Color | 1 | ✓ | — | — | — | X3DColorNode, X3DGeometricPropertyNode |
-| ColorRGBA | 1 | ✓ | — | — | — | X3DColorNode, X3DGeometricPropertyNode |
-| Coordinate | 1 | ✓ | — | — | CONTAINERFIELD-FALSEPOS | X3DCoordinateNode, X3DGeometricPropertyNode |
-| CoordinateDouble | 1 | ✓ | — | — | GEO-2 | X3DCoordinateNode, X3DGeometricPropertyNode |
-| IndexedLineSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2, SEAM-LINEPOINT | X3DGeometryNode |
-| IndexedTriangleFanSet | 3 | ✓ | ✓ | — | EXT-002 | X3DComposedGeometryNode, X3DGeometryNode |
-| IndexedTriangleSet | 3 | ✓ | ✓ | — | — | X3DComposedGeometryNode, X3DGeometryNode |
-| IndexedTriangleStripSet | 3 | ✓ | ✓ | — | EXT-002 | X3DComposedGeometryNode, X3DGeometryNode |
-| LineSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2 | X3DGeometryNode |
-| Normal | 2 | ✓ | — | — | — | X3DGeometricPropertyNode, X3DNormalNode |
-| PointSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2, SEAM-LINEPOINT | X3DGeometryNode |
-| TriangleFanSet | 3 | ✓ | ✓ | — | EXT-002 | X3DComposedGeometryNode, X3DGeometryNode |
-| TriangleSet | 3 | ✓ | ✓ | — | — | X3DComposedGeometryNode, X3DGeometryNode |
-| TriangleStripSet | 3 | ✓ | ✓ | — | EXT-002 | X3DComposedGeometryNode, X3DGeometryNode |
+| ClipPlane | 5 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode |
+| Color | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DColorNode, X3DGeometricPropertyNode |
+| ColorRGBA | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DColorNode, X3DGeometricPropertyNode |
+| Coordinate | 1 | ✓ | — | — | CONTAINERFIELD-FALSEPOS, ROUTE-IO-ALIAS | X3DCoordinateNode, X3DGeometricPropertyNode |
+| CoordinateDouble | 1 | ✓ | — | — | GEO-2, ROUTE-IO-ALIAS | X3DCoordinateNode, X3DGeometricPropertyNode |
+| IndexedLineSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2, ROUTE-IO-ALIAS, SEAM-LINEPOINT | X3DGeometryNode |
+| IndexedTriangleFanSet | 3 | ✓ | ✓ | — | EXT-002, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
+| IndexedTriangleSet | 3 | ✓ | ✓ | — | ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
+| IndexedTriangleStripSet | 3 | ✓ | ✓ | — | EXT-002, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
+| LineSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2, ROUTE-IO-ALIAS | X3DGeometryNode |
+| Normal | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DGeometricPropertyNode, X3DNormalNode |
+| PointSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2, ROUTE-IO-ALIAS, SEAM-LINEPOINT | X3DGeometryNode |
+| TriangleFanSet | 3 | ✓ | ✓ | — | EXT-002, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
+| TriangleSet | 3 | ✓ | ✓ | — | ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
+| TriangleStripSet | 3 | ✓ | ✓ | — | EXT-002, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
 
 ## Findings
 

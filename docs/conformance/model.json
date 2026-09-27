@@ -13,10 +13,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -34,11 +36,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "32.4.2",
+          "clause": "32.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CAD-1"
+            "CAD-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -56,10 +59,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -76,10 +81,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -97,10 +104,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": true,
           "interfaces": [
             "X3DComposedGeometryNode",
@@ -116,10 +125,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": true,
           "interfaces": [
             "X3DComposedGeometryNode",
@@ -148,7 +159,8 @@
         "ENC-MFSTRING-READ",
         "ENC-VRML-STRING",
         "PROTO-IS-001",
-        "PROTO-SHADOW"
+        "PROTO-SHADOW",
+        "ROUTE-IO-ALIAS"
       ],
       "levels": [
         1,
@@ -159,10 +171,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DMetadataObject",
@@ -180,10 +194,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DMetadataObject",
@@ -201,10 +217,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DMetadataObject",
@@ -222,10 +240,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DMetadataObject",
@@ -243,10 +263,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DMetadataObject",
@@ -264,14 +286,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO 19776-2 5.3 (sfstringValue/mfstringValue); X3D Canonical Form (X3DC14N); W3C C14N attr normalization; ISO 19776-2 5.3 (mfstringValue); ISO 19776-3; RFC 8259",
+          "clause": "ISO 19776-2 5.3 (sfstringValue/mfstringValue); X3D Canonical Form (X3DC14N); W3C C14N attr normalization; ISO 19776-2 5.3 (mfstringValue); ISO 19776-3; RFC 8259; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ENC-C14N-ATTR",
             "ENC-JSON-CTRL",
             "ENC-MFSTRING-READ",
-            "ENC-VRML-STRING"
+            "ENC-VRML-STRING",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -290,13 +313,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.4; 4.4.4.3",
+          "clause": "4.4.4; 4.4.2.2, 4.4.8.2; 4.4.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-PROTO-1",
             "PROTO-IS-001",
-            "PROTO-SHADOW"
+            "PROTO-SHADOW",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -314,13 +338,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT; ISO 19776-1; 19775-1 7; 7.2.5.3 (profile)",
+          "clause": "ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT; 4.4.2.2, 4.4.8.2; ISO 19776-1; 19775-1 7; 7.2.5.3 (profile)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "DIAG-PROFILE-COERCE",
             "DIAG-UNKNOWN-NODE",
-            "ENC-JSON-UNIT"
+            "ENC-JSON-UNIT",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -377,11 +402,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "34.4.1",
+          "clause": "34.4.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CMT-1"
+            "CMT-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -400,10 +426,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -420,10 +448,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -457,10 +487,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DChildNode",
@@ -475,10 +507,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DChildNode",
@@ -493,13 +527,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "28.2.3, 28.3",
+          "clause": "28.2.3, 28.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "NSN-10"
+            "NSN-10",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -517,13 +552,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "28.2.3, 28.3",
+          "clause": "28.2.3, 28.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "NSN-10"
+            "NSN-10",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -540,13 +576,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "28.2.3, 28.3",
+          "clause": "28.2.3, 28.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "NSN-10"
+            "NSN-10",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -563,13 +600,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "28.2.3, 28.3",
+          "clause": "28.2.3, 28.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "NSN-10"
+            "NSN-10",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -610,12 +648,13 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "7.2.2; 24.4.2, 24.4.4; 24.2.1",
+          "clause": "7.2.2; 4.4.2.2, 4.4.8.2; 24.4.2, 24.4.4; 24.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-BG-1",
             "BIND-06",
+            "ROUTE-IO-ALIAS",
             "SEAM-BACKGROUND"
           ],
           "geometry": false,
@@ -637,12 +676,13 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "7.2.2; 24.4.2",
+          "clause": "7.2.2; 24.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "BIND-06",
-            "ENV-10"
+            "ENV-10",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -662,10 +702,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DGeometricPropertyNode",
@@ -680,10 +722,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DChildNode",
@@ -699,7 +743,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "7.2.2; 24.4.5; 24.4.2, 24.4.4; 24.2.1",
+          "clause": "7.2.2; 24.4.5; 4.4.2.2, 4.4.8.2; 24.4.2, 24.4.4; 24.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -707,6 +751,7 @@
             "AUD-BG-2",
             "BIND-06",
             "ENV-11",
+            "ROUTE-IO-ALIAS",
             "SEAM-BACKGROUND"
           ],
           "geometry": false,
@@ -758,7 +803,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "22.4.1; 22.4.1, 22.4.3; 22.4, 22.4.3",
+          "clause": "22.4.1; 22.4.1, 22.4.3; 22.4, 22.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -771,6 +816,7 @@
             "ENV-06",
             "ENV-07",
             "ENV-08",
+            "ROUTE-IO-ALIAS",
             "SENSOR-SWITCH"
           ],
           "geometry": false,
@@ -791,11 +837,12 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "22.4.2; 22.4, 22.4.3; 22.4.5",
+          "clause": "22.4.2; 22.4, 22.4.3; 22.4.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ENV-01",
+            "ROUTE-IO-ALIAS",
             "SENSOR-SWITCH",
             "TRANSFORMSENSOR-SCALE"
           ],
@@ -815,7 +862,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "22.4.3; 22.4.1, 22.4.3; 22.4.1; 22.4, 22.4.3",
+          "clause": "22.4.3; 22.4.1, 22.4.3; 22.4.1; 22.4, 22.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -825,6 +872,7 @@
             "ENV-06",
             "ENV-07",
             "ENV-09",
+            "ROUTE-IO-ALIAS",
             "SENSOR-SWITCH"
           ],
           "geometry": false,
@@ -878,13 +926,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "30.4.1; 30.4.1, 30.4.3",
+          "clause": "30.4.1; 30.4.1, 30.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "EUF-1",
             "EUF-4",
-            "EUF-5"
+            "EUF-5",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -902,11 +951,12 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "30.2.4, 30.3.1; 30.2.4; 30.3.1",
+          "clause": "30.2.4, 30.3.1; 30.2.4; 30.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-SEQ-1",
+            "ROUTE-IO-ALIAS",
             "SEQ-1",
             "SEQ-2",
             "SEQ-3",
@@ -932,12 +982,13 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "30.4.3; 30.4.1, 30.4.3",
+          "clause": "30.4.3; 30.4.1, 30.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "EUF-2",
-            "EUF-5"
+            "EUF-5",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -955,10 +1006,11 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "30.4.4; 30.2.3",
+          "clause": "30.4.4; 30.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TRIG-1",
             "TRIG-6"
           ],
@@ -979,11 +1031,12 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "30.2.4, 30.3.1; 30.2.4; 30.3.1",
+          "clause": "30.2.4, 30.3.1; 30.2.4; 30.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-SEQ-1",
+            "ROUTE-IO-ALIAS",
             "SEQ-1",
             "SEQ-2",
             "SEQ-3",
@@ -1009,10 +1062,11 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "30.4.6; 30.2.3",
+          "clause": "30.4.6; 30.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TRIG-2",
             "TRIG-4",
             "TRIG-6"
@@ -1034,10 +1088,11 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "30.4.7; 30.2.3",
+          "clause": "30.4.7; 30.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TRIG-3",
             "TRIG-5",
             "TRIG-6"
@@ -1082,7 +1137,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1090,7 +1145,8 @@
             "FOL-2",
             "FOL-3",
             "FOL-4",
-            "FOL-5"
+            "FOL-5",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1108,7 +1164,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1117,7 +1173,8 @@
             "FOL-3",
             "FOL-4",
             "FOL-6",
-            "FOL-7"
+            "FOL-7",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1135,7 +1192,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 39.4.3, 39.4.4",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 39.4.3, 39.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1144,7 +1201,8 @@
             "FOL-3",
             "FOL-4",
             "FOL-5",
-            "FOL-9"
+            "FOL-9",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1162,7 +1220,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 39.4.3, 39.4.4",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 39.4.3, 39.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1172,7 +1230,8 @@
             "FOL-4",
             "FOL-6",
             "FOL-7",
-            "FOL-9"
+            "FOL-9",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1190,7 +1249,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1198,7 +1257,8 @@
             "FOL-2",
             "FOL-3",
             "FOL-4",
-            "FOL-5"
+            "FOL-5",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1216,7 +1276,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1225,7 +1285,8 @@
             "FOL-3",
             "FOL-4",
             "FOL-6",
-            "FOL-7"
+            "FOL-7",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1243,7 +1304,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1251,7 +1312,8 @@
             "FOL-2",
             "FOL-3",
             "FOL-4",
-            "FOL-5"
+            "FOL-5",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1269,7 +1331,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1277,7 +1339,8 @@
             "FOL-2",
             "FOL-3",
             "FOL-4",
-            "FOL-5"
+            "FOL-5",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1295,7 +1358,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1304,7 +1367,8 @@
             "FOL-3",
             "FOL-4",
             "FOL-6",
-            "FOL-7"
+            "FOL-7",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1322,7 +1386,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1331,7 +1395,8 @@
             "FOL-3",
             "FOL-4",
             "FOL-6",
-            "FOL-7"
+            "FOL-7",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1349,7 +1414,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1357,7 +1422,8 @@
             "FOL-2",
             "FOL-3",
             "FOL-4",
-            "FOL-5"
+            "FOL-5",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1375,7 +1441,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1384,7 +1450,8 @@
             "FOL-3",
             "FOL-4",
             "FOL-6",
-            "FOL-7"
+            "FOL-7",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1402,7 +1469,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 39.4.3, 39.4.4",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 39.4.3, 39.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1411,7 +1478,8 @@
             "FOL-3",
             "FOL-4",
             "FOL-5",
-            "FOL-9"
+            "FOL-9",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1429,7 +1497,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 39.4.3, 39.4.4",
+          "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 39.4.3, 39.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -1439,7 +1507,8 @@
             "FOL-4",
             "FOL-6",
             "FOL-7",
-            "FOL-9"
+            "FOL-9",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1474,12 +1543,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "14.3; 14 (Geometry2D)",
+          "clause": "14.3; 4.4.2.2, 4.4.8.2; 14 (Geometry2D)",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2",
+            "ROUTE-IO-ALIAS",
             "SEAM-2D-NURBS"
           ],
           "geometry": true,
@@ -1496,12 +1566,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "14.3",
+          "clause": "14.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "G2D-1",
-            "G2D-2"
+            "G2D-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -1517,12 +1588,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "14.3; 14 (Geometry2D)",
+          "clause": "14.3; 4.4.2.2, 4.4.8.2; 14 (Geometry2D)",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2",
+            "ROUTE-IO-ALIAS",
             "SEAM-2D-NURBS"
           ],
           "geometry": true,
@@ -1539,12 +1611,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "14.3; 14 (Geometry2D)",
+          "clause": "14.3; 4.4.2.2, 4.4.8.2; 14 (Geometry2D)",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2",
+            "ROUTE-IO-ALIAS",
             "SEAM-2D-NURBS"
           ],
           "geometry": true,
@@ -1561,12 +1634,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "14.3",
+          "clause": "14.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "G2D-1",
-            "G2D-2"
+            "G2D-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -1583,12 +1657,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "14.3",
+          "clause": "14.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "G2D-1",
-            "G2D-2"
+            "G2D-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -1605,12 +1680,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "14.3; 14 (Geometry2D)",
+          "clause": "14.3; 4.4.2.2, 4.4.8.2; 14 (Geometry2D)",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "G2D-1",
             "G2D-2",
+            "ROUTE-IO-ALIAS",
             "SEAM-2D-NURBS"
           ],
           "geometry": true,
@@ -1628,12 +1704,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "14.3",
+          "clause": "14.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "G2D-1",
-            "G2D-2"
+            "G2D-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -1673,10 +1750,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.10",
+          "clause": "18.4.10; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TXF-1"
           ],
           "geometry": true,
@@ -1696,10 +1774,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.10",
+          "clause": "18.4.10; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TXF-1"
           ],
           "geometry": true,
@@ -1719,10 +1798,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.10",
+          "clause": "18.4.10; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TXF-1"
           ],
           "geometry": true,
@@ -1742,12 +1822,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "13.3.4, 25.3.2; 13.3.4; 18.4.8",
+          "clause": "13.3.4, 25.3.2; 13.3.4; 18.4.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "EXT-001",
             "EXT-003",
+            "ROUTE-IO-ALIAS",
             "TXF-2",
             "VIS-ELEV-SPACING-EMPTY"
           ],
@@ -1767,12 +1848,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "13.3.5.4.5; 13.3.5; 13.3.5.6, 11.2.3",
+          "clause": "13.3.5.4.5; 4.4.2.2, 4.4.8.2; 13.3.5; 13.3.5.6, 11.2.3",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "AUD-EXT-1",
             "EXTRUSION-SCP",
+            "ROUTE-IO-ALIAS",
             "VIS-EXTRUSION-EMPTY"
           ],
           "geometry": true,
@@ -1790,10 +1872,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.8",
+          "clause": "18.4.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TXF-2"
           ],
           "geometry": true,
@@ -1814,10 +1897,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.10; 13.3.6, 18.4.10",
+          "clause": "18.4.10; 4.4.2.2, 4.4.8.2; 13.3.6, 18.4.10",
           "exists": true,
           "extracts": "yes",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TXF-1",
             "VIS-SPHERE-NOUV"
           ],
@@ -1884,14 +1968,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.3.1; 25.2.3; 25.2.3, 25.2.4",
+          "clause": "25.3.1; 25.2.3; 25.2.3, 25.2.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-2",
             "GEO-AUDIT-3",
             "GEO-GEOID-DEFAULT",
-            "GEOSYSTEM"
+            "GEOSYSTEM",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1908,7 +1993,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "13.3.4, 25.3.2; 13.3.4; 25.3.1; 25.3.2; 25.2.3, 25.2.4; 25.2.3",
+          "clause": "13.3.4, 25.3.2; 13.3.4; 25.3.1; 25.3.2; 25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
@@ -1917,7 +2002,8 @@
             "GEO-2",
             "GEO-AUDIT-1",
             "GEO-AUDIT-3",
-            "GEO-GEOID-DEFAULT"
+            "GEO-GEOID-DEFAULT",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -1933,13 +2019,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.3.4; 25.2.3, 25.2.4; 25.2.3",
+          "clause": "25.3.4; 25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-AUDIT-3",
             "GEO-GEOID-DEFAULT",
-            "GEOLOD-1"
+            "GEOLOD-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1956,13 +2043,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.2.3; 25.2.3, 25.2.4",
+          "clause": "25.2.3; 25.2.3, 25.2.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-AUDIT-3",
             "GEO-GEOID-DEFAULT",
-            "GEOSYSTEM"
+            "GEOSYSTEM",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -1980,11 +2068,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.3.5",
+          "clause": "25.3.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "GEO-AUDIT-2"
+            "GEO-AUDIT-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2002,12 +2091,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.2.3, 25.2.4; 25.2.3",
+          "clause": "25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-AUDIT-3",
-            "GEO-GEOID-DEFAULT"
+            "GEO-GEOID-DEFAULT",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2022,7 +2112,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014; 25; 25.2.3, 25.2.4; 25.2.3",
+          "clause": "19.3.1; \u2014; 25; 25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2030,7 +2120,8 @@
             "GEO-AUDIT-3",
             "GEO-GEOID-DEFAULT",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2047,7 +2138,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "25.3.8; 22.4.1; 25; 25.2.3; 25.2.3, 25.2.4; 22.4.1, 25.3.8",
+          "clause": "25.3.8; 22.4.1; 25; 25.2.3; 25.2.3, 25.2.4; 22.4.1, 25.3.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2058,7 +2149,8 @@
             "GEO-AUDIT-5",
             "GEO-AUDIT-6",
             "GEO-GEOID-DEFAULT",
-            "GEOSYSTEM"
+            "GEOSYSTEM",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2076,12 +2168,13 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "25.3.9; 25.2.3, 25.2.4; 25.2.3",
+          "clause": "25.3.9; 25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-AUDIT-3",
             "GEO-GEOID-DEFAULT",
+            "ROUTE-IO-ALIAS",
             "TSN-1",
             "TSN-2"
           ],
@@ -2102,12 +2195,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.2.3, 25.2.4; 25.2.3",
+          "clause": "25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-AUDIT-3",
-            "GEO-GEOID-DEFAULT"
+            "GEO-GEOID-DEFAULT",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2125,7 +2219,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3; 25.2.3, 25.2.4; 23.4.4, 25.3.11; 22.4.1, 25.3.8",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3; 25.2.3, 25.2.4; 23.4.4, 25.3.11; 22.4.1, 25.3.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2145,7 +2239,8 @@
             "GEO-AUDIT-5",
             "GEO-GEOID-DEFAULT",
             "GEOSYSTEM",
-            "NAV-FLY-ROLL"
+            "NAV-FLY-ROLL",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2180,10 +2275,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -2203,10 +2300,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -2222,12 +2321,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "10.3.10; 22.4, 22.4.3; 10.4.3, 20.2.3; 10.4.3",
+          "clause": "10.3.10; 22.4, 22.4.3; 4.4.2.2, 4.4.8.2; 10.4.3, 20.2.3; 10.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-LGT-2",
             "AUD-PDS-3",
+            "ROUTE-IO-ALIAS",
             "SENSOR-SWITCH",
             "SW-DELTA-1"
           ],
@@ -2249,10 +2349,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -2293,12 +2395,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.1; 26.3.1, 26.3.5",
+          "clause": "26.3.1; 26.3.1, 26.3.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "HAN-2",
-            "HANIM-DISP"
+            "HANIM-DISP",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2314,11 +2417,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.2, 26.3.3",
+          "clause": "26.3.2, 26.3.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "HAN-1"
+            "HAN-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2335,11 +2439,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.2, 26.3.3",
+          "clause": "26.3.2, 26.3.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "HAN-1"
+            "HAN-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2356,11 +2461,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.4",
+          "clause": "26.3.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "HAN-3"
+            "HAN-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2376,11 +2482,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.1, 26.3.5",
+          "clause": "26.3.1, 26.3.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "HANIM-DISP"
+            "HANIM-DISP",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2398,10 +2505,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -2440,13 +2549,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014",
+          "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-INTERP-1",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2466,13 +2576,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014",
+          "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-INTERP-1",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2492,12 +2603,13 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014",
+          "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2514,11 +2626,12 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.2.4, 19.4.10-13",
+          "clause": "19.2.4, 19.4.10-13; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "INTERP-01"
+            "INTERP-01",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2534,13 +2647,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014",
+          "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-INTERP-1",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2560,13 +2674,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014",
+          "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-INTERP-1",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2586,13 +2701,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014",
+          "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-INTERP-1",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2612,12 +2728,13 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014",
+          "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2634,13 +2751,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.3.1; \u2014",
+          "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-INTERP-1",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2660,13 +2778,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014",
+          "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "INTERP-01",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2683,13 +2802,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014",
+          "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "INTERP-01",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2706,13 +2826,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014",
+          "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "INTERP-01",
             "INTERP-02",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2729,14 +2850,15 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 19.4.13",
+          "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 19.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "INTERP-01",
             "INTERP-02",
             "INTERP-03",
-            "PIV-1"
+            "PIV-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2782,7 +2904,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "21.4.1, 21.4.2; 21.4.1; 21.2",
+          "clause": "21.4.1, 21.4.2; 21.4.1; 21.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2792,7 +2914,8 @@
             "KDS-3",
             "KDS-4",
             "KDS-5",
-            "KDS-6"
+            "KDS-6",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2812,7 +2935,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "21.4.1, 21.4.2; 21.2; 21.4.2",
+          "clause": "21.4.1, 21.4.2; 21.2; 21.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2823,7 +2946,8 @@
             "KDS-6",
             "KDS-7",
             "KDS-8",
-            "KDS-9"
+            "KDS-9",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2861,12 +2985,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "35.3.1; 35.4.3",
+          "clause": "35.3.1; 35.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "LAY-2",
-            "LAY-3"
+            "LAY-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2883,11 +3008,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "35.4.2",
+          "clause": "35.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "LAY-1"
+            "LAY-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -2902,11 +3028,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "35.4.3",
+          "clause": "35.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "LAY-3",
+            "ROUTE-IO-ALIAS",
             "VIEWPORT-CLIP"
           ],
           "geometry": false,
@@ -2941,10 +3068,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DChildNode",
@@ -2960,10 +3089,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -2980,10 +3111,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DLayerNode",
@@ -2999,11 +3132,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "36.4.4",
+          "clause": "36.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "LYT-1"
+            "LYT-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3019,10 +3153,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -3059,14 +3195,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1; 17.2.2.4; 23.4.4; 10.4.3",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 10.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-LGT-2",
             "LGT-1",
             "LGT-2",
-            "LGT-3"
+            "LGT-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3086,7 +3223,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1; 17.2.2.4; 23.4.4; 17.4.2, 17.4.3; 10.4.3",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 17.4.2, 17.4.3; 10.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3094,7 +3231,8 @@
             "AUD-LGT-2",
             "LGT-1",
             "LGT-2",
-            "LGT-3"
+            "LGT-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3113,7 +3251,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1; 17.2.2.4; 23.4.4; 17.4.2, 17.4.3; 10.4.3",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 17.4.2, 17.4.3; 10.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3121,7 +3259,8 @@
             "AUD-LGT-2",
             "LGT-1",
             "LGT-2",
-            "LGT-3"
+            "LGT-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3164,10 +3303,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode"
@@ -3181,10 +3322,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3199,13 +3342,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4; 27.3; ISO 19776-1 (containerField)",
+          "clause": "27.4; 27.3; 4.4.2.2, 4.4.8.2; ISO 19776-1 (containerField)",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "CONTAINERFIELD-FALSEPOS",
             "NRB-1",
-            "NRB-4"
+            "NRB-4",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -3222,10 +3366,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3240,11 +3386,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4.5",
+          "clause": "27.4.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "NRB-2"
+            "NRB-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3260,12 +3407,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4; 27.3",
+          "clause": "27.4; 27.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "NRB-1",
-            "NRB-4"
+            "NRB-4",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -3283,11 +3431,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4.5",
+          "clause": "27.4.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "NRB-2"
+            "NRB-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3303,10 +3452,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -3322,11 +3473,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4.5",
+          "clause": "27.4.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "NRB-2"
+            "NRB-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3342,11 +3494,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4",
+          "clause": "27.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "no",
           "findings": [
-            "NRB-3"
+            "NRB-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -3363,11 +3516,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4",
+          "clause": "27.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "no",
           "findings": [
-            "NRB-3"
+            "NRB-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -3384,10 +3538,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode"
@@ -3401,11 +3557,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "27.4",
+          "clause": "27.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "no",
           "findings": [
-            "NRB-3"
+            "NRB-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -3459,10 +3616,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -3481,14 +3640,15 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "23.2.4, 23.3.2; 23.4.2",
+          "clause": "23.2.4, 23.3.2; 23.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "COL-1",
             "COL-2",
             "COL-3",
-            "CONF-NAV-COLLISION"
+            "CONF-NAV-COLLISION",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3509,12 +3669,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "23.4.3; 22.4, 22.4.3",
+          "clause": "23.4.3; 22.4, 22.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "LOD-1",
             "LOD-DELTA-1",
+            "ROUTE-IO-ALIAS",
             "SENSOR-SWITCH"
           ],
           "geometry": false,
@@ -3535,7 +3696,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "23.4.4; 7.2.2; 22.4.1; 23.3.1",
+          "clause": "23.4.4; 7.2.2; 4.4.2.2, 4.4.8.2; 22.4.1; 23.3.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3543,7 +3704,8 @@
             "AUD-NAV-1",
             "AUD-NAV-2",
             "BIND-05",
-            "BIND-06"
+            "BIND-06",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3563,7 +3725,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 23.4.5, 42.4.2",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 23.4.5, 42.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3577,7 +3739,8 @@
             "BIND-08",
             "BIND-09",
             "FOV-TYPE",
-            "NAV-FLY-ROLL"
+            "NAV-FLY-ROLL",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3595,7 +3758,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 9.4.3",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 4.4.2.2, 4.4.8.2; 9.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3611,7 +3774,8 @@
             "BIND-08",
             "BIND-09",
             "NAV-FLY-ROLL",
-            "NAV-LOOKAT-SCALE"
+            "NAV-LOOKAT-SCALE",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3632,10 +3796,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DChildNode",
@@ -3681,12 +3847,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "9.4.3, 9.4.1; 9.4.3",
+          "clause": "9.4.3, 9.4.1; 4.4.2.2, 4.4.8.2; 9.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-NET-3",
-            "NSN-11"
+            "NSN-11",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3708,14 +3875,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "9.4.3; 9.4.2; 4.4.6; 9.2.5; 9.4.2",
+          "clause": "9.4.3; 9.4.2; 4.4.6; 4.4.2.2, 4.4.8.2; 9.2.5; 9.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-NET-1",
             "AUD-NET-2",
             "IMPORT-EXPORT-WIRE",
-            "NSN-12"
+            "NSN-12",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3736,7 +3904,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "9.4.3; 9.4.3, 9.4.1",
+          "clause": "9.4.3; 9.4.3, 9.4.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3750,7 +3918,8 @@
             "NSN-5",
             "NSN-6",
             "NSN-7",
-            "NSN-9"
+            "NSN-9",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3787,10 +3956,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3805,10 +3976,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3823,10 +3996,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3841,10 +4016,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3859,11 +4036,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "40.4",
+          "clause": "40.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "PRT-1"
+            "PRT-1",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -3881,10 +4059,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3899,10 +4079,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3917,10 +4099,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3935,10 +4119,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3953,10 +4139,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -3985,13 +4173,14 @@
       "name": "Picking",
       "nodes": [
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "38",
+          "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-PICKSENSOR"
+            "CONF-PICKSENSOR",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4009,10 +4198,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DBoundedObject",
@@ -4028,13 +4219,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "38",
+          "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-PICKSENSOR"
+            "CONF-PICKSENSOR",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4050,13 +4242,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "38",
+          "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-PICKSENSOR"
+            "CONF-PICKSENSOR",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4072,13 +4265,14 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "38",
+          "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-PICKSENSOR"
+            "CONF-PICKSENSOR",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4115,7 +4309,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "20.4.1; 20.4.x; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
+          "clause": "20.4.1; 20.4.x; 4.4.2.2, 4.4.8.2; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -4123,7 +4317,8 @@
             "AUD-PDS-2",
             "AUD-PDS-3",
             "DS-1",
-            "DS-2"
+            "DS-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4144,14 +4339,15 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "20.4.x; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
+          "clause": "20.4.x; 4.4.2.2, 4.4.8.2; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-PDS-1",
             "AUD-PDS-2",
             "AUD-PDS-3",
-            "DS-2"
+            "DS-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4172,14 +4368,15 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "20.4.x; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
+          "clause": "20.4.x; 4.4.2.2, 4.4.8.2; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-PDS-1",
             "AUD-PDS-2",
             "AUD-PDS-3",
-            "DS-2"
+            "DS-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4200,14 +4397,15 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "20.4.4; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
+          "clause": "20.4.4; 4.4.2.2, 4.4.8.2; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-PDS-1",
             "AUD-PDS-2",
             "AUD-PDS-3",
-            "CONF-CRITIC-3"
+            "CONF-CRITIC-3",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4250,10 +4448,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DChildNode",
@@ -4268,10 +4468,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DColorNode",
@@ -4290,10 +4492,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DColorNode",
@@ -4312,11 +4516,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO 19776-1 (containerField)",
+          "clause": "4.4.2.2, 4.4.8.2; ISO 19776-1 (containerField)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONTAINERFIELD-FALSEPOS"
+            "CONTAINERFIELD-FALSEPOS",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4336,11 +4541,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.3.1",
+          "clause": "25.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "GEO-2"
+            "GEO-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4360,12 +4566,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.4.6 (LineProperties), 12.4.8 (PointProperties); 11.2.2.5",
+          "clause": "4.4.2.2, 4.4.8.2; 12.4.6 (LineProperties), 12.4.8 (PointProperties); 11.2.2.5",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "AUD-RND-1",
             "AUD-RND-2",
+            "ROUTE-IO-ALIAS",
             "SEAM-LINEPOINT"
           ],
           "geometry": true,
@@ -4385,11 +4592,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.3.2, 11.4.13, 11.4.15",
+          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
-            "EXT-002"
+            "EXT-002",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -4409,10 +4617,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": true,
           "interfaces": [
             "X3DComposedGeometryNode",
@@ -4431,11 +4641,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.3.2, 11.4.13, 11.4.15",
+          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
-            "EXT-002"
+            "EXT-002",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -4455,12 +4666,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.2.2.5",
+          "clause": "4.4.2.2, 4.4.8.2; 11.2.2.5",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "AUD-RND-1",
-            "AUD-RND-2"
+            "AUD-RND-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -4479,10 +4691,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DGeometricPropertyNode",
@@ -4501,12 +4715,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.4.6 (LineProperties), 12.4.8 (PointProperties); 11.2.2.5",
+          "clause": "4.4.2.2, 4.4.8.2; 12.4.6 (LineProperties), 12.4.8 (PointProperties); 11.2.2.5",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "AUD-RND-1",
             "AUD-RND-2",
+            "ROUTE-IO-ALIAS",
             "SEAM-LINEPOINT"
           ],
           "geometry": true,
@@ -4526,11 +4741,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.3.2, 11.4.13, 11.4.15",
+          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
-            "EXT-002"
+            "EXT-002",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -4550,10 +4766,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": true,
           "interfaces": [
             "X3DComposedGeometryNode",
@@ -4572,11 +4790,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.3.2, 11.4.13, 11.4.15",
+          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "yes",
           "findings": [
-            "EXT-002"
+            "EXT-002",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": true,
           "interfaces": [
@@ -4626,11 +4845,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP-JOINT-OUT"
+            "CONF-RBP-JOINT-OUT",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4646,11 +4866,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP-GEOM"
+            "CONF-RBP-GEOM",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4668,11 +4889,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP-GEOM"
+            "CONF-RBP-GEOM",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4690,12 +4912,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-RBP",
-            "CONF-RBP-FRICTION-BOUNCE"
+            "CONF-RBP-FRICTION-BOUNCE",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4712,12 +4935,13 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "23.2.4, 23.3.2; 37",
+          "clause": "23.2.4, 23.3.2; 37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-NAV-COLLISION",
-            "CONF-RBP"
+            "CONF-RBP",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4734,11 +4958,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP"
+            "CONF-RBP",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4755,11 +4980,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP"
+            "CONF-RBP",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4774,11 +5000,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP-JOINTS"
+            "CONF-RBP-JOINTS",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4794,11 +5021,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP-JOINTS"
+            "CONF-RBP-JOINTS",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4814,14 +5042,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-RBP-DAMP",
             "CONF-RBP-ENABLED",
             "CONF-RBP-FORCES",
-            "CONF-RBP-INERTIA"
+            "CONF-RBP-INERTIA",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4838,13 +5067,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-RBP-CAP",
             "CONF-RBP-DETERMINISM",
-            "CONF-RBP-SOLVER"
+            "CONF-RBP-SOLVER",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4861,12 +5091,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-RBP-HINGE-LIMITS",
-            "CONF-RBP-JOINT-OUT"
+            "CONF-RBP-JOINT-OUT",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4882,11 +5113,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP-JOINT-OUT"
+            "CONF-RBP-JOINT-OUT",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4902,11 +5134,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "37",
+          "clause": "37; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "CONF-RBP-JOINTS"
+            "CONF-RBP-JOINTS",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -4952,13 +5185,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference)",
+          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-CRITIC-2",
             "DO-CASCADE",
             "ENC-CDATA-SCRIPT",
+            "ROUTE-IO-ALIAS",
             "SCR-001",
             "SCR-002",
             "SCR-003",
@@ -5006,10 +5240,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -5026,10 +5262,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "31.4.2",
+          "clause": "31.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SHDR-1"
           ],
           "geometry": false,
@@ -5047,10 +5284,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "31.4.2",
+          "clause": "31.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SHDR-1"
           ],
           "geometry": false,
@@ -5068,10 +5306,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "31.4.2",
+          "clause": "31.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SHDR-1"
           ],
           "geometry": false,
@@ -5089,10 +5328,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -5110,10 +5351,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -5129,10 +5372,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -5147,10 +5392,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -5196,10 +5443,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -5214,14 +5463,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.4.2, 17.2.2.4; 12.2.3, 12.4.2; 12.4.2",
+          "clause": "12.4.2, 17.2.2.4; 12.2.3, 12.4.2; 12.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "MAT-001",
             "MAT-006",
             "MAT-009",
-            "MAT-010"
+            "MAT-010",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -5240,10 +5490,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -5258,10 +5510,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.4.6 (LineProperties), 12.4.8 (PointProperties)",
+          "clause": "4.4.2.2, 4.4.8.2; 12.4.6 (LineProperties), 12.4.8 (PointProperties)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SEAM-LINEPOINT"
           ],
           "geometry": false,
@@ -5279,7 +5532,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.4.5, 17.2.2.5; 12.4.5; 12.3.4; 12.2.3, 12.4.2; 12.4.5, 17.2.3; 12.4.2; 11.2.2.5",
+          "clause": "12.4.5, 17.2.2.5; 12.4.5; 12.3.4; 12.2.3, 12.4.2; 12.4.5, 17.2.3; 12.4.2; 4.4.2.2, 4.4.8.2; 11.2.2.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5291,7 +5544,8 @@
             "MAT-006",
             "MAT-007",
             "MAT-009",
-            "MAT-010"
+            "MAT-010",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -5312,7 +5566,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.3.4; 12.2.3, 12.4.2; 12.4.5, 17.2.3; 17.2.3; 12.4.2; 12.4.6",
+          "clause": "12.3.4; 12.2.3, 12.4.2; 12.4.5, 17.2.3; 17.2.3; 12.4.2; 12.4.6; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5322,7 +5576,8 @@
             "MAT-008",
             "MAT-009",
             "MAT-010",
-            "MAT-011"
+            "MAT-011",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -5341,10 +5596,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.4.6 (LineProperties), 12.4.8 (PointProperties)",
+          "clause": "4.4.2.2, 4.4.8.2; 12.4.6 (LineProperties), 12.4.8 (PointProperties)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SEAM-LINEPOINT"
           ],
           "geometry": false,
@@ -5361,11 +5617,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.4.2, 17.2.2.4",
+          "clause": "12.4.2, 17.2.2.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "MAT-001"
+            "MAT-001",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -5386,10 +5643,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -5405,13 +5664,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "12.3.4; 12.4.5, 17.2.3; 12.4.2; 12.4.10",
+          "clause": "12.3.4; 12.4.5, 17.2.3; 12.4.2; 12.4.10; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "MAT-005",
             "MAT-007",
             "MAT-009",
+            "ROUTE-IO-ALIAS",
             "UNLIT-EMISSIVE"
           ],
           "geometry": false,
@@ -5462,12 +5722,13 @@
       "name": "Sound",
       "nodes": [
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21",
+          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-5"
           ],
           "geometry": false,
@@ -5487,13 +5748,14 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 8.2.4.3; 16.4.2",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 4.4.2.2, 4.4.8.2; 8.2.4.3; 16.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-MEDIA-2",
             "AUD-TIME-3",
             "MULTI-INHERIT",
+            "ROUTE-IO-ALIAS",
             "TDN-5"
           ],
           "geometry": false,
@@ -5515,10 +5777,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.3, 16.4.19",
+          "clause": "16.4.3, 16.4.19; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-7"
           ],
           "geometry": false,
@@ -5537,11 +5800,12 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.12, 16.4.4; 8.2.4.3",
+          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.12, 16.4.4; 4.4.2.2, 4.4.8.2; 8.2.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-TIME-3",
+            "ROUTE-IO-ALIAS",
             "SND-1",
             "SND-2",
             "SND-8"
@@ -5561,12 +5825,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.5, 16.4.20, 16.4.14",
+          "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-4"
           ],
           "geometry": false,
@@ -5587,10 +5852,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.10, 16.4.11, 16.4.8",
+          "clause": "16.4.10, 16.4.11, 16.4.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-6"
           ],
           "geometry": false,
@@ -5609,10 +5875,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.10, 16.4.11, 16.4.8",
+          "clause": "16.4.10, 16.4.11, 16.4.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-6"
           ],
           "geometry": false,
@@ -5631,10 +5898,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.10, 16.4.11, 16.4.8",
+          "clause": "16.4.10, 16.4.11, 16.4.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-6"
           ],
           "geometry": false,
@@ -5651,12 +5919,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21",
+          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-5"
           ],
           "geometry": false,
@@ -5674,12 +5943,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21",
+          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-5"
           ],
           "geometry": false,
@@ -5697,12 +5967,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21",
+          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-5"
           ],
           "geometry": false,
@@ -5722,11 +5993,12 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.12, 16.4.4; 8.2.4.3",
+          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.12, 16.4.4; 4.4.2.2, 4.4.8.2; 8.2.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-TIME-3",
+            "ROUTE-IO-ALIAS",
             "SND-1",
             "SND-2",
             "SND-8"
@@ -5748,10 +6020,11 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.16, 16.4.13; 16.4.13",
+          "clause": "16.4.16, 16.4.13; 16.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-3",
             "SND-GAIN-TYPE"
           ],
@@ -5770,12 +6043,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.5, 16.4.20, 16.4.14",
+          "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-4"
           ],
           "geometry": false,
@@ -5795,11 +6069,12 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.15, 16.4.18; 8.2.4.3",
+          "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.15, 16.4.18; 4.4.2.2, 4.4.8.2; 8.2.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-TIME-3",
+            "ROUTE-IO-ALIAS",
             "SND-1",
             "SND-2",
             "SND-9"
@@ -5821,10 +6096,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.15, 16.4.18",
+          "clause": "16.4.15, 16.4.18; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-9"
           ],
           "geometry": false,
@@ -5842,11 +6118,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.17",
+          "clause": "4.4.2.2, 4.4.8.2; 16.4.17",
           "exists": true,
           "extracts": "n/a",
           "findings": [
-            "AUD-MEDIA-4"
+            "AUD-MEDIA-4",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -5864,10 +6141,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.16, 16.4.13",
+          "clause": "16.4.16, 16.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-3"
           ],
           "geometry": false,
@@ -5885,10 +6163,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.3, 16.4.19",
+          "clause": "16.4.3, 16.4.19; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-7"
           ],
           "geometry": false,
@@ -5905,12 +6184,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.5, 16.4.20, 16.4.14",
+          "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-4"
           ],
           "geometry": false,
@@ -5928,12 +6208,13 @@
           ]
         },
         {
-          "behaves": "inert",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21",
+          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SND-5"
           ],
           "geometry": false,
@@ -5972,10 +6253,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "15.2.2.3; 15.2.2.2; 15.4.2, 15.4.1",
+          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SEAM-TEXT-METRICS",
             "TXT-1",
             "TXT-2",
@@ -5997,10 +6279,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "15.2.2.3; 15.2.2.2; 15.4.2, 15.4.1",
+          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1",
           "exists": true,
           "extracts": "yes",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "SEAM-TEXT-METRICS",
             "TXT-1",
             "TXT-2",
@@ -6039,10 +6322,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "42.4.2",
+          "clause": "42.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TPJ-1"
           ],
           "geometry": false,
@@ -6061,11 +6345,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "42.4.2; 23.4.5, 42.4.2",
+          "clause": "42.4.2; 23.4.5, 42.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "FOV-TYPE",
+            "ROUTE-IO-ALIAS",
             "TPJ-1",
             "TPJ-2"
           ],
@@ -6115,11 +6400,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.9; 9.3.2, 18.4.1",
+          "clause": "18.4.9; 4.4.2.2, 4.4.8.2; 9.3.2, 18.4.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-TEX-1",
+            "ROUTE-IO-ALIAS",
             "TXF-4"
           ],
           "geometry": false,
@@ -6143,7 +6429,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 23.4.1; 8.2.4.3; 9.3.2, 18.4.1; 18.4.2; 16.4.17",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 4.4.2.2, 4.4.8.2; 23.4.1; 8.2.4.3; 9.3.2, 18.4.1; 18.4.2; 16.4.17",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6153,6 +6439,7 @@
             "AUD-TEX-1",
             "AUD-TIME-3",
             "MULTI-INHERIT",
+            "ROUTE-IO-ALIAS",
             "TDN-5",
             "VIS-MOVIE-DECODE"
           ],
@@ -6179,12 +6466,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "24.4.5; 18.4.3",
+          "clause": "4.4.2.2, 4.4.8.2; 24.4.5; 18.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-BG-2",
-            "AUD-TEX-2"
+            "AUD-TEX-2",
+            "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
           "interfaces": [
@@ -6204,10 +6492,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.4",
+          "clause": "18.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TXT-6"
           ],
           "geometry": false,
@@ -6228,10 +6517,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -6250,11 +6541,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.9; ISO 19776-2 5.3 (sfimageValue)",
+          "clause": "18.4.9; ISO 19776-2 5.3 (sfimageValue); 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ENC-VRML-SFIMAGE",
+            "ROUTE-IO-ALIAS",
             "TXF-4"
           ],
           "geometry": false,
@@ -6277,10 +6569,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DGeometricPropertyNode",
@@ -6300,10 +6594,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.8",
+          "clause": "18.4.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TXF-2"
           ],
           "geometry": false,
@@ -6325,11 +6620,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.9",
+          "clause": "18.4.9; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-TEX-3",
+            "ROUTE-IO-ALIAS",
             "TXF-4"
           ],
           "geometry": false,
@@ -6348,10 +6644,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.10",
+          "clause": "18.4.10; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "TXF-1",
             "TXF-3"
           ],
@@ -6373,10 +6670,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -6415,10 +6714,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1, 33.4.2; 33.4.1",
+          "clause": "33.4.1, 33.4.2; 33.4.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "T3D-1",
             "T3D-2"
           ],
@@ -6438,10 +6738,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1, 33.4.2; 33.4.1",
+          "clause": "33.4.1, 33.4.2; 33.4.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "T3D-1",
             "T3D-2"
           ],
@@ -6462,10 +6763,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1",
+          "clause": "33.4.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "T3D-2"
           ],
           "geometry": false,
@@ -6484,10 +6786,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.4",
+          "clause": "33.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "T3D-3"
           ],
           "geometry": false,
@@ -6506,10 +6809,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.4",
+          "clause": "33.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "T3D-3"
           ],
           "geometry": false,
@@ -6528,10 +6832,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -6547,10 +6853,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DAppearanceChildNode",
@@ -6594,7 +6902,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1; 8.2.2, 8.2.4.4",
+          "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1; 4.4.2.2, 4.4.8.2; 8.2.2, 8.2.4.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6605,6 +6913,7 @@
             "AUD-TIME-5",
             "CONF-CRITIC-1",
             "CONF-TDN1V",
+            "ROUTE-IO-ALIAS",
             "TDN-1",
             "TDN-2",
             "TDN-3",
@@ -6652,10 +6961,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6671,10 +6982,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6690,10 +7003,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6709,10 +7024,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6728,10 +7045,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6747,10 +7066,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "41.4.1-41.4.13",
+          "clause": "41.4.1-41.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "VOL-1"
           ],
           "geometry": false,
@@ -6769,10 +7089,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6788,10 +7110,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DNode",
@@ -6806,10 +7130,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "41.4.1-41.4.13",
+          "clause": "41.4.1-41.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "VOL-1"
           ],
           "geometry": false,
@@ -6828,10 +7153,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6847,10 +7174,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6866,10 +7195,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "",
+          "clause": "4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
-          "findings": [],
+          "findings": [
+            "ROUTE-IO-ALIAS"
+          ],
           "geometry": false,
           "interfaces": [
             "X3DComposableVolumeRenderStyleNode",
@@ -6885,10 +7216,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "41.4.1-41.4.13",
+          "clause": "41.4.1-41.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "ROUTE-IO-ALIAS",
             "VOL-1"
           ],
           "geometry": false,
@@ -8947,10 +9279,10 @@
         "HAnimHumanoid",
         "HAnimJoint"
       ],
-      "note": "runtime/hanim/HAnimSkinImpl.hpp now compiles source coordinates, variable-width normalized influences and bind matrices, evaluates joint palettes, and deforms positions/normals. Extraction does not yet consume the binding or publish deformed geometry, so authored skins remain static in rendered scenes. (2026-09-27)",
+      "note": "runtime/hanim/HAnimSkin.hpp compiles an immutable SkinBinding per humanoid (bind positions and normals, uncapped normalized CSR influences, inverse bind matrices from the v2 jointBinding* fields or identity for the v1 rest pose) and evaluates a humanoid-local palette each tick. SceneExtractor emits the skin once from HAnimHumanoid.skin with RenderItem::skin (binding plus per-corner source coordinate/normal indices), reports pose-only changes in RenderDelta::updatedSkinPose, and recompiles the binding only on binding-field edits. deformedMesh() runs the reference CPU skinner; the cpu_raster example draws with it. Verified on archive BoxMan2, JoeKick, Leif and Gramps. Not wired: poc_renderer does not consume the descriptor (draws the bind pose); llimit/ulimit/limitOrientation/stiffness, skeletalConfiguration, loa and the mass properties are informational and ignored; skinNormal is assumed to be indexed like skinCoord. (2026-09-27)",
       "severity": "major",
-      "status": "deferred",
-      "summary": "HAnim skin deformation core exists but is not connected to extraction."
+      "status": "fixed",
+      "summary": "HAnim skins deform with the skeleton (ADR-0055)."
     },
     {
       "clause": "26.3.1",
@@ -8959,10 +9291,10 @@
       "nodes": [
         "HAnimDisplacer"
       ],
-      "note": "runtime/hanim/HAnimSkinImpl.hpp applies Joint displacers after skinning and Segment displacers to caller-owned points. Extraction and event scheduling do not yet call these functions, so morphing is not visible in rendered scenes. (2026-09-27)",
+      "note": "Joint displacers are part of the SkinBinding and apply after skinning along the owning joint's axes; their weight is SkinPose state, so animating it reports updatedSkinPose without recompiling the binding. Segment displacers apply to the Segment's own coord when the extractor builds a mesh under that Segment (MeshBuildOptions::hanimSegment); a weight or displacement edit rebuilds that mesh through updatedGeometry. Tests: hanim_skin_test, scene_extractor_hanim_test. (2026-09-27)",
       "severity": "major",
-      "status": "deferred",
-      "summary": "HAnimDisplacer math exists but is not connected to extraction."
+      "status": "fixed",
+      "summary": "HAnimDisplacer morphs Joint skins and Segment meshes with live weights."
     },
     {
       "clause": "26.3.4",
@@ -9325,10 +9657,10 @@
         "HAnimDisplacer",
         "HAnimSegment"
       ],
-      "note": "ADR-0055 resolves Segment displacement as a caller-owned mesh deformation without changing the authored Coordinate. runtime/hanim/HAnimSkinImpl.hpp implements that calculation and a reverse lookup for Segment geometry coordinates. Extraction does not yet call it, and no point_changed event is emitted; the earlier ADR-0032 mutation policy is superseded for this core. (2026-09-27)",
+      "note": "ADR-0055 resolves the policy: displacement is applied to the mesh built for the Segment's coord, never written back into Coordinate.point, so no point_changed event is emitted (superseding the ADR-0032 mutation policy). The extractor passes the nearest enclosing HAnimSegment to the mesh builder. PickSystem builds meshes without a Segment and so picks against the undisplaced points. (2026-09-27)",
       "severity": "minor",
-      "status": "deferred",
-      "summary": "Segment displacer output is not connected to extracted geometry."
+      "status": "fixed",
+      "summary": "Segment displacers deform the extracted Segment mesh; the authored Coordinate is unchanged."
     },
     {
       "clause": "8.4.1, 8.2.4.4",
@@ -9770,6 +10102,18 @@
       "severity": "low",
       "status": "closed",
       "summary": "An explicit same-value assignment to a Script outputOnly field is suppressed \u2014 strict X3D semantics say an explicit eventOut assignment generates an event regardless of value."
+    },
+    {
+      "clause": "4.4.2.2, 4.4.8.2",
+      "component": "Core",
+      "id": "ROUTE-IO-ALIAS",
+      "interfaces": [
+        "X3DNode"
+      ],
+      "note": "The scene bridge matched ROUTE field names exactly, so any ROUTE to set_rotation, set_translation, set_enabled, set_startTime or from zzz_changed was dropped with an \"unknown field\" diagnostic (670 of 1,329 archive files with ROUTEs use such an alias; Leif lost 242 routes). detail::findEndpoint now accepts set_zzz on the sink side and zzz_changed on the source side for inputOutput fields and registers the route under the canonical name. Test: scene_bridge_test testInputOutputAliases. (2026-09-27)",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Document ROUTEs using set_zzz / zzz_changed aliases of an inputOutput field were rejected."
     },
     {
       "clause": "ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7",
@@ -10620,32 +10964,15 @@
     ]
   },
   "summary": {
-    "closed_count": 240,
+    "closed_count": 244,
     "component_count": 36,
-    "deferred_count": 23,
-    "finding_count": 266,
-    "inert_behavioral_nodes": [
-      "Analyser",
-      "BufferAudioSource",
-      "Convolver",
-      "Delay",
-      "DynamicsCompressor",
-      "EspduTransform",
-      "LinePickSensor",
-      "MicrophoneSource",
-      "PointPickSensor",
-      "PrimitivePickSensor",
-      "ReceiverPdu",
-      "SignalPdu",
-      "StreamAudioSource",
-      "TransmitterPdu",
-      "VolumePickSensor",
-      "WaveShaper"
-    ],
+    "deferred_count": 20,
+    "finding_count": 267,
+    "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 12,
-      "minor": 12
+      "major": 10,
+      "minor": 11
     }
   },
   "unresolved_findings": []

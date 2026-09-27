@@ -4,10 +4,10 @@ _Generated. Levels 1 · 4 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| CylinderSensor | 1 | ✓ | — | ✓ | AUD-PDS-1, AUD-PDS-2, AUD-PDS-3, DS-1, DS-2 | X3DChildNode, X3DDragSensorNode, X3DPointingDeviceSensorNode, X3DSensorNode |
-| PlaneSensor | 1 | ✓ | — | ✓ | AUD-PDS-1, AUD-PDS-2, AUD-PDS-3, DS-2 | X3DChildNode, X3DDragSensorNode, X3DPointingDeviceSensorNode, X3DSensorNode |
-| SphereSensor | 1 | ✓ | — | ✓ | AUD-PDS-1, AUD-PDS-2, AUD-PDS-3, DS-2 | X3DChildNode, X3DDragSensorNode, X3DPointingDeviceSensorNode, X3DSensorNode |
-| TouchSensor | 1 | ✓ | — | ✓ | AUD-PDS-1, AUD-PDS-2, AUD-PDS-3, CONF-CRITIC-3 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
+| CylinderSensor | 1 | ✓ | — | ✓ | AUD-PDS-1, AUD-PDS-2, AUD-PDS-3, DS-1, DS-2, ROUTE-IO-ALIAS | X3DChildNode, X3DDragSensorNode, X3DPointingDeviceSensorNode, X3DSensorNode |
+| PlaneSensor | 1 | ✓ | — | ✓ | AUD-PDS-1, AUD-PDS-2, AUD-PDS-3, DS-2, ROUTE-IO-ALIAS | X3DChildNode, X3DDragSensorNode, X3DPointingDeviceSensorNode, X3DSensorNode |
+| SphereSensor | 1 | ✓ | — | ✓ | AUD-PDS-1, AUD-PDS-2, AUD-PDS-3, DS-2, ROUTE-IO-ALIAS | X3DChildNode, X3DDragSensorNode, X3DPointingDeviceSensorNode, X3DSensorNode |
+| TouchSensor | 1 | ✓ | — | ✓ | AUD-PDS-1, AUD-PDS-2, AUD-PDS-3, CONF-CRITIC-3, ROUTE-IO-ALIAS | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
 
 ## Findings
 

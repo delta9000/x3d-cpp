@@ -4,16 +4,16 @@ _Generated. Levels 1,2 · 10 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| BoundedPhysicsModel | 2 | ✓ | — | — | — | X3DParticlePhysicsModelNode |
-| ConeEmitter | 1 | ✓ | — | — | — | X3DParticleEmitterNode |
-| ExplosionEmitter | 1 | ✓ | — | — | — | X3DParticleEmitterNode |
-| ForcePhysicsModel | 1 | ✓ | — | — | — | X3DParticlePhysicsModelNode |
-| ParticleSystem | 2 | ✓ | — | — | PRT-1 | X3DBoundedObject, X3DChildNode, X3DShapeNode |
-| PointEmitter | 1 | ✓ | — | — | — | X3DParticleEmitterNode |
-| PolylineEmitter | 1 | ✓ | — | — | — | X3DParticleEmitterNode |
-| SurfaceEmitter | 2 | ✓ | — | — | — | X3DParticleEmitterNode |
-| VolumeEmitter | 2 | ✓ | — | — | — | X3DParticleEmitterNode |
-| WindPhysicsModel | 1 | ✓ | — | — | — | X3DParticlePhysicsModelNode |
+| BoundedPhysicsModel | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticlePhysicsModelNode |
+| ConeEmitter | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticleEmitterNode |
+| ExplosionEmitter | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticleEmitterNode |
+| ForcePhysicsModel | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticlePhysicsModelNode |
+| ParticleSystem | 2 | ✓ | — | — | PRT-1, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DShapeNode |
+| PointEmitter | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticleEmitterNode |
+| PolylineEmitter | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticleEmitterNode |
+| SurfaceEmitter | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticleEmitterNode |
+| VolumeEmitter | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticleEmitterNode |
+| WindPhysicsModel | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DParticlePhysicsModelNode |
 
 ## Findings
 

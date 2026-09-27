@@ -4,7 +4,9 @@ summary: A humanoid's skin compiles into an immutable SkinBinding (bind position
 tags: [adr, hanim, skinning, extraction]
 updated: 2026-09-27
 related:
+  - ../subsystems/hanim.md
   - ../subsystems/extract.md
+  - 0032-hanimdisplacer-routable-coordpoint.md
   - 0045-shared-mesh-instancing.md
 ---
 
@@ -12,7 +14,7 @@ related:
 
 ## Status
 
-Accepted
+Accepted. Supersedes [ADR-0032](0032-hanimdisplacer-routable-coordpoint.md).
 
 ## Context
 

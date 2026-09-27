@@ -4,9 +4,9 @@ _Generated. Levels 1 · 3 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Layer | 1 | ✓ | — | — | LAY-2, LAY-3 | X3DLayerNode, X3DPickableObject |
-| LayerSet | 1 | ✓ | — | — | LAY-1 |  |
-| Viewport | 1 | ✓ | — | — | LAY-3, VIEWPORT-CLIP | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DViewportNode |
+| Layer | 1 | ✓ | — | — | LAY-2, LAY-3, ROUTE-IO-ALIAS | X3DLayerNode, X3DPickableObject |
+| LayerSet | 1 | ✓ | — | — | LAY-1, ROUTE-IO-ALIAS |  |
+| Viewport | 1 | ✓ | — | — | LAY-3, ROUTE-IO-ALIAS, VIEWPORT-CLIP | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DViewportNode |
 
 ## Findings
 

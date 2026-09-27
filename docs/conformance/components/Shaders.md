@@ -4,14 +4,14 @@ _Generated. Levels 1 · 8 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ComposedShader | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DProgrammableShaderObject, X3DShaderNode |
-| FloatVertexAttribute | 1 | ✓ | — | — | SHDR-1 | X3DGeometricPropertyNode, X3DVertexAttributeNode |
-| Matrix3VertexAttribute | 1 | ✓ | — | — | SHDR-1 | X3DGeometricPropertyNode, X3DVertexAttributeNode |
-| Matrix4VertexAttribute | 1 | ✓ | — | — | SHDR-1 | X3DGeometricPropertyNode, X3DVertexAttributeNode |
-| PackagedShader | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DProgrammableShaderObject, X3DShaderNode, X3DUrlObject |
-| ProgramShader | 1 | ✓ | — | — | — | X3DAppearanceChildNode, X3DShaderNode |
-| ShaderPart | 1 | ✓ | — | — | — | X3DUrlObject |
-| ShaderProgram | 1 | ✓ | — | — | — | X3DProgrammableShaderObject, X3DUrlObject |
+| ComposedShader | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DProgrammableShaderObject, X3DShaderNode |
+| FloatVertexAttribute | 1 | ✓ | — | — | ROUTE-IO-ALIAS, SHDR-1 | X3DGeometricPropertyNode, X3DVertexAttributeNode |
+| Matrix3VertexAttribute | 1 | ✓ | — | — | ROUTE-IO-ALIAS, SHDR-1 | X3DGeometricPropertyNode, X3DVertexAttributeNode |
+| Matrix4VertexAttribute | 1 | ✓ | — | — | ROUTE-IO-ALIAS, SHDR-1 | X3DGeometricPropertyNode, X3DVertexAttributeNode |
+| PackagedShader | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DProgrammableShaderObject, X3DShaderNode, X3DUrlObject |
+| ProgramShader | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DShaderNode |
+| ShaderPart | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DUrlObject |
+| ShaderProgram | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DProgrammableShaderObject, X3DUrlObject |
 
 ## Findings
 

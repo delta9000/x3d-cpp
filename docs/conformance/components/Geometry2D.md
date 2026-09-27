@@ -4,14 +4,14 @@ _Generated. Levels 1,2 · 8 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Arc2D | 2 | ✓ | ✓ | — | G2D-1, G2D-2, SEAM-2D-NURBS | X3DGeometryNode |
-| ArcClose2D | 2 | ✓ | ✓ | — | G2D-1, G2D-2 | X3DGeometryNode |
-| Circle2D | 2 | ✓ | ✓ | — | G2D-1, G2D-2, SEAM-2D-NURBS | X3DGeometryNode |
-| Disk2D | 2 | ✓ | ✓ | — | G2D-1, G2D-2, SEAM-2D-NURBS | X3DGeometryNode |
-| Polyline2D | 1 | ✓ | ✓ | — | G2D-1, G2D-2 | X3DGeometryNode |
-| Polypoint2D | 1 | ✓ | ✓ | — | G2D-1, G2D-2 | X3DGeometryNode |
-| Rectangle2D | 1 | ✓ | ✓ | — | G2D-1, G2D-2, SEAM-2D-NURBS | X3DGeometryNode |
-| TriangleSet2D | 1 | ✓ | ✓ | — | G2D-1, G2D-2 | X3DGeometryNode |
+| Arc2D | 2 | ✓ | ✓ | — | G2D-1, G2D-2, ROUTE-IO-ALIAS, SEAM-2D-NURBS | X3DGeometryNode |
+| ArcClose2D | 2 | ✓ | ✓ | — | G2D-1, G2D-2, ROUTE-IO-ALIAS | X3DGeometryNode |
+| Circle2D | 2 | ✓ | ✓ | — | G2D-1, G2D-2, ROUTE-IO-ALIAS, SEAM-2D-NURBS | X3DGeometryNode |
+| Disk2D | 2 | ✓ | ✓ | — | G2D-1, G2D-2, ROUTE-IO-ALIAS, SEAM-2D-NURBS | X3DGeometryNode |
+| Polyline2D | 1 | ✓ | ✓ | — | G2D-1, G2D-2, ROUTE-IO-ALIAS | X3DGeometryNode |
+| Polypoint2D | 1 | ✓ | ✓ | — | G2D-1, G2D-2, ROUTE-IO-ALIAS | X3DGeometryNode |
+| Rectangle2D | 1 | ✓ | ✓ | — | G2D-1, G2D-2, ROUTE-IO-ALIAS, SEAM-2D-NURBS | X3DGeometryNode |
+| TriangleSet2D | 1 | ✓ | ✓ | — | G2D-1, G2D-2, ROUTE-IO-ALIAS | X3DGeometryNode |
 
 ## Findings
 

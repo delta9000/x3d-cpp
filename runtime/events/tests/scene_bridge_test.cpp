@@ -299,6 +299,37 @@ void testProtoRouteRedirect() {
 
 } // namespace
 
+// §4.4.2.2: an inputOutput field zzz is addressable as set_zzz (sink) and
+// zzz_changed (source). Document ROUTEs using the aliases must wire and
+// deliver; the aliases are side-specific.
+void testInputOutputAliases() {
+  auto clock = std::make_shared<TimeSensor>();
+  auto interp = std::make_shared<PositionInterpolator>();
+  interp->setKey({0, 1});
+  interp->setKeyValue({{0, 0, 0}, {2, 0, 0}});
+  auto mover = std::make_shared<Transform>();
+  auto follower = std::make_shared<Transform>();
+  Scene scene;
+  scene.define("Clock", clock);
+  scene.define("Path", interp);
+  scene.define("Mover", mover);
+  scene.define("Follower", follower);
+  scene.routes.emplace_back("Path", "value_changed", "Mover", "set_translation");
+  scene.routes.emplace_back("Mover", "translation_changed", "Follower", "set_translation");
+  // index 2: set_ is input-only; not a source.
+  scene.routes.emplace_back("Mover", "set_translation", "Follower", "translation");
+  // index 3: _changed is output-only; not a sink.
+  scene.routes.emplace_back("Path", "value_changed", "Follower", "translation_changed");
+  X3DExecutionContext ctx;
+  BridgeResult r = buildRoutes(scene, ctx);
+  check(r.routesAdded == 2, "set_/_changed alias routes added");
+  check(r.rejected.size() == 2, "wrong-side aliases rejected");
+  ctx.postEvent(interp.get(), "value_changed", std::any(SFVec3f{1, 0, 0}));
+  ctx.tick(0.0);
+  check(veq(tr(mover), 1, 0, 0), "set_translation alias delivers");
+  check(veq(tr(follower), 1, 0, 0), "translation_changed alias fans out");
+}
+
 int main(int argc, char **argv) {
   if (argc > 1) {
     g_dataDir = argv[1];
@@ -311,6 +342,7 @@ int main(int argc, char **argv) {
   test_load_and_tick();
   testInitializeOnlyNotRoutableSink();
   testProtoRouteRedirect();
+  testInputOutputAliases();
 
   if (failures) {
     std::cerr << failures << " check(s) failed\n";

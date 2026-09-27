@@ -4,8 +4,8 @@ _Generated. Levels 1 · 2 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| FontStyle | 1 | ✓ | — | — | SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5 | X3DFontStyleNode |
-| Text | 1 | ✓ | ✓ | — | SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5 | X3DGeometryNode |
+| FontStyle | 1 | ✓ | — | — | ROUTE-IO-ALIAS, SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5 | X3DFontStyleNode |
+| Text | 1 | ✓ | ✓ | — | ROUTE-IO-ALIAS, SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5 | X3DGeometryNode |
 
 ## Findings
 

@@ -1397,17 +1397,34 @@
   component: HAnim
   clause: "26.3.2, 26.3.3"
   severity: major
-  status: deferred
-  summary: "HAnim skin deformation core exists but is not connected to extraction."
-  note: "runtime/hanim/HAnimSkinImpl.hpp now compiles source coordinates, variable-width normalized influences and bind matrices, evaluates joint palettes, and deforms positions/normals. Extraction does not yet consume the binding or publish deformed geometry, so authored skins remain static in rendered scenes. (2026-09-27)"
+  status: fixed
+  summary: "HAnim skins deform with the skeleton (ADR-0055)."
+  note: >-
+    runtime/hanim/HAnimSkin.hpp compiles an immutable SkinBinding per humanoid (bind positions and
+    normals, uncapped normalized CSR influences, inverse bind matrices from the v2 jointBinding*
+    fields or identity for the v1 rest pose) and evaluates a humanoid-local palette each tick.
+    SceneExtractor emits the skin once from HAnimHumanoid.skin with RenderItem::skin (binding plus
+    per-corner source coordinate/normal indices), reports pose-only changes in
+    RenderDelta::updatedSkinPose, and recompiles the binding only on binding-field edits.
+    deformedMesh() runs the reference CPU skinner; the cpu_raster example draws with it.
+    Verified on archive BoxMan2, JoeKick, Leif and Gramps. Not wired: poc_renderer does not consume
+    the descriptor (draws the bind pose); llimit/ulimit/limitOrientation/stiffness,
+    skeletalConfiguration, loa and the mass properties are informational and ignored; skinNormal is
+    assumed to be indexed like skinCoord. (2026-09-27)
 - id: HAN-2
   nodes: [HAnimDisplacer]
   component: HAnim
   clause: "26.3.1"
   severity: major
-  status: deferred
-  summary: "HAnimDisplacer math exists but is not connected to extraction."
-  note: "runtime/hanim/HAnimSkinImpl.hpp applies Joint displacers after skinning and Segment displacers to caller-owned points. Extraction and event scheduling do not yet call these functions, so morphing is not visible in rendered scenes. (2026-09-27)"
+  status: fixed
+  summary: "HAnimDisplacer morphs Joint skins and Segment meshes with live weights."
+  note: >-
+    Joint displacers are part of the SkinBinding and apply after skinning along the owning joint's
+    axes; their weight is SkinPose state, so animating it reports updatedSkinPose without
+    recompiling the binding. Segment displacers apply to the Segment's own coord when the extractor
+    builds a mesh under that Segment (MeshBuildOptions::hanimSegment); a weight or displacement
+    edit rebuilds that mesh through updatedGeometry. Tests: hanim_skin_test,
+    scene_extractor_hanim_test. (2026-09-27)
 - id: HAN-3
   nodes: [HAnimMotion]
   component: HAnim
@@ -1649,13 +1666,14 @@
   component: HAnim
   clause: "26.3.1, 26.3.5"
   severity: minor
-  status: deferred
-  summary: "Segment displacer output is not connected to extracted geometry."
+  status: fixed
+  summary: "Segment displacers deform the extracted Segment mesh; the authored Coordinate is unchanged."
   note: >-
-    ADR-0055 resolves Segment displacement as a caller-owned mesh deformation without changing the
-    authored Coordinate. runtime/hanim/HAnimSkinImpl.hpp implements that calculation and a reverse
-    lookup for Segment geometry coordinates. Extraction does not yet call it, and no point_changed
-    event is emitted; the earlier ADR-0032 mutation policy is superseded for this core. (2026-09-27)
+    ADR-0055 resolves the policy: displacement is applied to the mesh built for the Segment's coord,
+    never written back into Coordinate.point, so no point_changed event is emitted (superseding the
+    ADR-0032 mutation policy). The extractor passes the nearest enclosing HAnimSegment to the mesh
+    builder. PickSystem builds meshes without a Segment and so picks against the undisplaced
+    points. (2026-09-27)
 - id: TDN-8
   nodes: [TimeSensor]
   interfaces: [X3DTimeDependentNode]
@@ -2086,6 +2104,20 @@
     (runtime/script/EcmaScriptBackend.cpp, runtime/script/QuickJsBackend.cpp); an outputOnly re-assignment
     always emits. Tested in x3d_ecmascript_backend (T18).
 
+- id: ROUTE-IO-ALIAS
+  interfaces: [X3DNode]
+  component: Core
+  clause: "4.4.2.2, 4.4.8.2"
+  severity: major
+  status: fixed
+  summary: "Document ROUTEs using set_zzz / zzz_changed aliases of an inputOutput field were rejected."
+  note: >-
+    The scene bridge matched ROUTE field names exactly, so any ROUTE to set_rotation,
+    set_translation, set_enabled, set_startTime or from zzz_changed was dropped with an
+    "unknown field" diagnostic (670 of 1,329 archive files with ROUTEs use such an alias; Leif
+    lost 242 routes). detail::findEndpoint now accepts set_zzz on the sink side and zzz_changed on
+    the source side for inputOutput fields and registers the route under the canonical name.
+    Test: scene_bridge_test testInputOutputAliases. (2026-09-27)
 - id: SCRIPT-SAI-ADDROUTE-VALIDATE
   nodes: [Script]
   interfaces: [X3DScriptNode]

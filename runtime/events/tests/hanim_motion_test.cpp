@@ -152,7 +152,7 @@ TEST_CASE("HAnimMotion gating, IGNORED, enabled channels and range") {
 TEST_CASE("HAnimMotion Korean archive smoke when X3D_ARCHIVE_DIR is set") {
   const char *dir = std::getenv("X3D_ARCHIVE_DIR");
   if (!dir) return;
-  const auto file = std::filesystem::path(dir) / "Specifications" /
+  const auto file = std::filesystem::path(dir) / "HumanoidAnimation" / "Specifications" /
       "KoreanCharacterMotionAnnexD01Jin.x3d";
   std::ifstream stream(file);
   REQUIRE(stream.good());
