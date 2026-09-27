@@ -174,7 +174,10 @@ public:
         [node](const SoundEntry &e) { return e.node == node; }), sounds_.end());
     pendingClips_.erase(std::remove_if(pendingClips_.begin(), pendingClips_.end(),
         [node](const PendingClip &e) { return e.clip == node; }), pendingClips_.end());
+    pendingMovies_.erase(std::remove_if(pendingMovies_.begin(), pendingMovies_.end(),
+        [node](const PendingMovie &e) { return e.movie == node; }), pendingMovies_.end());
     fallbackPitch_.erase(dynamic_cast<x3d::nodes::AudioClip *>(node));
+    fallbackSpeed_.erase(dynamic_cast<x3d::nodes::MovieTexture *>(node));
     if (listener_ == node) listener_ = nullptr;
     map_.erase(node);
   }

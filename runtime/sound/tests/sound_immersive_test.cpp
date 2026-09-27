@@ -200,6 +200,33 @@ static void testMovieTextureSourceLifecycle() {
   CHECK(levelAt(4.0) < 1e-6, "movie audio stops with MovieTexture");
 }
 
+// ADR-0051 detach: a MovieTexture whose audio is still pending (load FALSE)
+// is removed with its Inline and freed; later ticks must not touch it (the
+// sanitizer build turns a stale pending entry into a use-after-free report).
+static void testDetachDropsPendingMovie() {
+  auto movie = std::make_shared<MovieTexture>();
+  movie->setUrl(MFString{"movie.mpg"});
+  movie->setLoad(false);
+  auto snd = std::make_shared<Sound>();
+  snd->setSource(movie);
+  SoundSystem sound(std::make_shared<BuiltinDspBackend>());
+  int fetches = 0;
+  sound.setAssetResolver([&](const std::string &, extract::AssetKind) {
+    ++fetches;
+    return extract::AssetResult::makeReady({1});
+  });
+  sound.setMovieAudioDecoder([](const std::vector<std::uint8_t> &) { return DecodedAudio{}; });
+  X3DExecutionContext ctx;
+  sound.attach(snd.get(), ctx);
+  sound.update(0.0, ctx);
+  sound.detach(movie.get(), ctx);
+  sound.detach(snd.get(), ctx);
+  snd->setSource(nullptr);
+  movie.reset();  // the unloaded content is freed
+  sound.update(1.0, ctx);
+  CHECK(fetches == 0, "a detached pending movie is never retried");
+}
+
 int main() {
   x3d::test::runImmersiveFixtures([] { return std::make_shared<BuiltinDspBackend>(); },
                                   [](bool ok, const char *msg) { CHECK(ok, msg); });
@@ -207,6 +234,7 @@ int main() {
   testSoundClipScene();
   testActivePitchStaysAtActivationRate();
   testMovieTextureSourceLifecycle();
+  testDetachDropsPendingMovie();
   if (g_failures == 0) std::fprintf(stderr, "sound_immersive_test: ALL PASS\n");
   return g_failures == 0 ? 0 : 1;
 }
