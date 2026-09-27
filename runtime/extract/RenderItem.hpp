@@ -165,6 +165,16 @@ struct MeshData {
   std::vector<std::vector<SFVec2f>> texcoordSets;
   std::vector<SFColorRGBA> colors;
 
+  // X3D §31.4.2 custom per-vertex streams. Values are vertex-major, with
+  // `components` floats per emitted position; `name` is the shader attribute
+  // name authored on the X3DVertexAttributeNode.
+  struct VertexAttribute {
+    std::string name;
+    std::uint32_t components = 0;
+    std::vector<float> values;
+  };
+  std::vector<VertexAttribute> vertexAttributes;
+
   // LATTICE-INDEX-RETAINING form (B5/B6). For lattice-derived geometry
   // (ElevationGrid, GeoElevationGrid, and B3 Extrusion) every EXPANDED corner in
   // `positions` carries the id of the UNIQUE source lattice/control vertex it was

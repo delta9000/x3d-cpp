@@ -252,3 +252,40 @@ TEST_CASE("mesh_builder_t3_test") {
 
   return;
 }
+
+TEST_CASE("custom vertex attributes follow expanded coordinate vertices") {
+  auto makeAttributes = [](const std::shared_ptr<X3DNode> &g) {
+    auto f = createX3DNode("FloatVertexAttribute");
+    setF(f, "name", std::any(std::string("weights")));
+    setF(f, "numComponents", std::any(SFInt32{3}));
+    setF(f, "value", std::any(std::vector<float>{1,2,3, 4,5,6, 7,8,9, 10,11,12}));
+    auto m = createX3DNode("Matrix3VertexAttribute");
+    setF(m, "name", std::any(std::string("basis")));
+    MFMatrix3f matrices(4);
+    for (int v = 0; v < 4; ++v)
+      for (int r = 0; r < 3; ++r)
+        for (int c = 0; c < 3; ++c) matrices[v].matrix[r][c] = float(v * 9 + r * 3 + c);
+    setF(m, "value", std::any(std::move(matrices)));
+    setF(g, "attrib", std::any(MFNode{f, m}));
+  };
+  for (const char *type : {"IndexedFaceSet", "TriangleSet"}) {
+    auto g = createX3DNode(type);
+    attachCoord(g, {{0,0,0},{1,0,0},{1,1,0},{0,1,0}});
+    if (std::string(type) == "IndexedFaceSet") setF(g, "coordIndex", std::any(std::vector<int>{2,0,3,1,-1}));
+    makeAttributes(g);
+    const MeshData mesh = buildLocalMesh(g.get());
+    REQUIRE(mesh.vertexAttributes.size() == 2);
+    CHECK(mesh.vertexAttributes[0].name == "weights");
+    CHECK(mesh.vertexAttributes[0].components == 3);
+    CHECK(mesh.vertexAttributes[1].name == "basis");
+    CHECK(mesh.vertexAttributes[1].components == 9);
+    REQUIRE(mesh.vertexAttributes[0].values.size() == mesh.positions.size() * 3);
+    REQUIRE(mesh.vertexAttributes[1].values.size() == mesh.positions.size() * 9);
+    for (std::size_t i = 0; i < mesh.positions.size(); ++i) {
+      const int source = mesh.positions[i].y == 0.0f ? int(mesh.positions[i].x)
+                                                     : 3 - int(mesh.positions[i].x);
+      for (int c = 0; c < 3; ++c) CHECK(mesh.vertexAttributes[0].values[i * 3 + c] == float(source * 3 + c + 1));
+      for (int c = 0; c < 9; ++c) CHECK(mesh.vertexAttributes[1].values[i * 9 + c] == float(source * 9 + c));
+    }
+  }
+}

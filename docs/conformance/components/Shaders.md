@@ -15,6 +15,6 @@ _Generated. Levels 1 · 8 nodes · profiles: Full._
 
 ## Findings
 
-- **SHDR-1** [minor/OPEN] — §31.4.2: Custom vertex-attribute nodes silently dropped — 'attrib' children never read.
-  - runtime/extract/MeshBuilder.hpp:514-549 (buildAttrs) reads normal/color/texCoord but never the 'attrib' containerField, so all three X3DVertexAttributeNode types are unreachable from extraction. Not in shaders.md. (sweep 2026-06-25)
+- **SHDR-1** [minor/CLOSED] — §31.4.2: Custom vertex-attribute nodes silently dropped — 'attrib' children never read.
+  - Fixed: MeshBuilder extracts FloatVertexAttribute (1-4 components), Matrix3VertexAttribute (9), and Matrix4VertexAttribute (16) into named MeshData vertex streams, expanded by coordIndex alongside positions. Covered by custom vertex attributes follow expanded coordinate vertices in mesh_builder_t3_test.cpp.
 

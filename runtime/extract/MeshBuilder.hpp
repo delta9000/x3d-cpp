@@ -306,6 +306,8 @@ struct AttrResolvers {
   std::vector<SFColorRGBA> colors; // promoted (Color->RGBA) or ColorRGBA
   std::vector<SFVec2f> texcoords;  // authored TextureCoordinate.point
   std::vector<std::vector<SFVec2f>> texcoordSets;
+  std::vector<MeshData::VertexAttribute> vertexAttributes;
+  std::vector<std::vector<float>> vertexAttributeValues;
 
   std::vector<int> normalIndex;
   std::vector<int> colorIndex;
