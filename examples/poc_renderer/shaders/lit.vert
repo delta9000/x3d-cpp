@@ -16,7 +16,6 @@ layout(location = 2) in vec4 aColor;
 layout(location = 3) in vec2 aTexCoord; // B8: X3D LOCAL (bottom-left = GL); no flip.
 
 layout(location = 4) in uvec2 aSkinRange;
-layout(location = 5) in uvec2 aNormalSkinRange;
 uniform bool uSkinEnabled;
 uniform samplerBuffer uInfluences;
 uniform samplerBuffer uPalette;
@@ -35,10 +34,10 @@ vec3 skinPosition(vec3 bindPos) {
 }
 
 vec3 skinNormal(vec3 bindNormal) {
-    if (!uSkinEnabled || aNormalSkinRange.y == 0u) return bindNormal;
+    if (!uSkinEnabled || aSkinRange.y == 0u) return bindNormal;
     vec3 result = vec3(0.0);
-    for (uint k = 0u; k < aNormalSkinRange.y; ++k) {
-        vec2 influence = texelFetch(uInfluences, int(aNormalSkinRange.x + k)).rg;
+    for (uint k = 0u; k < aSkinRange.y; ++k) {
+        vec2 influence = texelFetch(uInfluences, int(aSkinRange.x + k)).rg;
         int base = int(influence.x) * 7 + 4;
         mat3 normal = mat3(texelFetch(uPalette, base).xyz,
                            texelFetch(uPalette, base + 1).xyz,

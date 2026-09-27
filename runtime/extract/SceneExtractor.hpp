@@ -391,35 +391,25 @@ public:
     for (std::size_t i = 0; i < out.positions.size() && i < skin.sourceCoordIndex.size(); ++i)
       if (skin.sourceCoordIndex[i] < positions.size())
         out.positions[i] = positions[skin.sourceCoordIndex[i]];
-    if (!skin.binding->bindNormals.empty() &&
-        skin.sourceNormalIndex.size() == out.positions.size() &&
-        skin.sourceCoordIndex.size() == out.positions.size()) {
+    // Normals: each corner's bind normal (authored skinNormal /
+    // skinBindingNormals via its normal index, else the normal the mesh
+    // builder generated for the bind pose) skinned with the influences of the
+    // corner's source coordinate, as the GPU path does (ADR-0055).
+    const bool authored = !skin.binding->bindNormals.empty() &&
+                          skin.sourceNormalIndex.size() == out.positions.size();
+    if (skin.sourceCoordIndex.size() == out.positions.size() &&
+        out.normals.size() == out.positions.size() && (authored || rec.mesh->hasNormals)) {
       std::vector<Mat4> inversePalette;
       inversePalette.reserve(pose.palette.size());
       for (const auto &matrix : pose.palette) inversePalette.push_back(matrix.inverse());
-      for (std::size_t i = 0; i < out.normals.size(); ++i)
-        if (skin.sourceNormalIndex[i] < skin.binding->bindNormals.size())
+      for (std::size_t i = 0; i < out.normals.size(); ++i) {
+        if (authored && skin.sourceNormalIndex[i] < skin.binding->bindNormals.size())
           out.normals[i] = hanim::detail::deformCornerNormal(
               *skin.binding, inversePalette, skin.sourceCoordIndex[i],
               skin.sourceNormalIndex[i]);
-    } else if (out.topology == Topology::Triangles) {
-      for (std::size_t i = 0; i + 2 < out.positions.size(); i += 3) {
-        SFVec3f n = mesh_detail::faceNormal(out.positions[i], out.positions[i+1], out.positions[i+2]);
-        if (!out.ccw) n = {-n.x, -n.y, -n.z};
-        out.normals[i] = out.normals[i+1] = out.normals[i+2] = n;
-      }
-      const X3DNode *geom = rec.geometry.node;
-      if (geom && geombounds::getField<bool>(*geom, "normalPerVertex", true)) {
-        const std::string type = geom->nodeTypeName();
-        float crease = 0.0f;
-        if (type == "IndexedFaceSet")
-          crease = geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
-        else if (type == "IndexedTriangleSet" || type == "TriangleSet" ||
-                 type == "IndexedTriangleStripSet" || type == "IndexedTriangleFanSet" ||
-                 type == "QuadSet" || type == "IndexedQuadSet")
-          crease = 3.14159265358979323846f;
-        if (crease > 0.0f)
-          mesh_detail::creaseSmoothNormals(out, skin.sourceCoordIndex, crease);
+        else
+          out.normals[i] = hanim::detail::deformNormalWithCoordinate(
+              *skin.binding, inversePalette, skin.sourceCoordIndex[i], rec.mesh->normals[i]);
       }
     }
     return out;

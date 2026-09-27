@@ -284,17 +284,14 @@ GpuSkin uploadSkin(const ex::RenderItem &item, const ex::MeshData &mesh,
   s.cpuFallback = cpuFallback;
   if (cpuFallback) return s;
   const auto &b = *item.skin->binding;
-  std::vector<std::uint32_t> ranges(item.skin->sourceCoordIndex.size() * 4);
+  // Per corner: (offset, count) into the influence buffer for the corner's
+  // source COORDINATE. Its normal is skinned with the same influences.
+  std::vector<std::uint32_t> ranges(item.skin->sourceCoordIndex.size() * 2);
   for (std::size_t i = 0; i < item.skin->sourceCoordIndex.size(); ++i) {
     auto source = item.skin->sourceCoordIndex[i];
     if (source < b.bindPositions.size() && source + 1 < b.influenceOffset.size()) {
-      ranges[i * 4] = b.influenceOffset[source];
-      ranges[i * 4 + 1] = b.influenceOffset[source + 1] - ranges[i * 4];
-    }
-    auto normal = item.skin->sourceNormalIndex[i];
-    if (normal < b.bindNormals.size() && normal + 1 < b.influenceOffset.size()) {
-      ranges[i * 4 + 2] = b.influenceOffset[normal];
-      ranges[i * 4 + 3] = b.influenceOffset[normal + 1] - ranges[i * 4 + 2];
+      ranges[i * 2] = b.influenceOffset[source];
+      ranges[i * 2 + 1] = b.influenceOffset[source + 1] - ranges[i * 2];
     }
   }
   glGenBuffers(1, &s.ranges);
@@ -302,10 +299,7 @@ GpuSkin uploadSkin(const ex::RenderItem &item, const ex::MeshData &mesh,
   glBindBuffer(GL_ARRAY_BUFFER, s.ranges);
   glBufferData(GL_ARRAY_BUFFER, ranges.size() * sizeof(std::uint32_t), ranges.data(), GL_STATIC_DRAW);
   glEnableVertexAttribArray(4);
-  glVertexAttribIPointer(4, 2, GL_UNSIGNED_INT, 4 * sizeof(std::uint32_t), nullptr);
-  glEnableVertexAttribArray(5);
-  glVertexAttribIPointer(5, 2, GL_UNSIGNED_INT, 4 * sizeof(std::uint32_t),
-                        reinterpret_cast<void *>(2 * sizeof(std::uint32_t)));
+  glVertexAttribIPointer(4, 2, GL_UNSIGNED_INT, 2 * sizeof(std::uint32_t), nullptr);
   glBindVertexArray(0);
   std::vector<float> pairs;
   pairs.reserve(b.influences.size() * 2);
@@ -1400,12 +1394,10 @@ int main(int argc, char **argv) {
   auto acquireSkin = [&](ex::RenderItemId id) {
     const auto &it = extractor.item(id);
     if (!it.skin) return;
-    // The CPU reference regenerates normals for geometry without authored
-    // skin normals. Joint displacers also affect positions after skinning.
-    // Both require the exact reference mesh, including its normal smoothing.
+    // Joint displacers add offsets after skinning; those skins use the
+    // reference CPU mesh. Everything else skins on the GPU.
     bool fallback = !it.skin->binding->displacers.empty() ||
-                    it.skin->sourceCoordIndex.size() != it.mesh->positions.size() ||
-                    it.skin->sourceNormalIndex.size() != it.mesh->positions.size();
+                    it.skin->sourceCoordIndex.size() != it.mesh->positions.size();
     ex::MeshData bindMesh = *it.mesh;
     if (!fallback) {
       const auto &binding = *it.skin->binding;
@@ -1413,9 +1405,13 @@ int main(int argc, char **argv) {
         auto source = it.skin->sourceCoordIndex[i];
         if (source < binding.bindPositions.size())
           bindMesh.positions[i] = binding.bindPositions[source];
-        auto normal = it.skin->sourceNormalIndex[i];
-        if (normal < binding.bindNormals.size())
-          bindMesh.normals[i] = binding.bindNormals[normal];
+        // Authored bind normal when present; otherwise keep the normal the
+        // mesh builder generated for the bind pose.
+        if (i < it.skin->sourceNormalIndex.size() && i < bindMesh.normals.size()) {
+          auto normal = it.skin->sourceNormalIndex[i];
+          if (normal < binding.bindNormals.size())
+            bindMesh.normals[i] = binding.bindNormals[normal];
+        }
       }
     }
     GpuSkin skin = uploadSkin(it, fallback ? extractor.deformedMesh(id) : bindMesh, fallback);
