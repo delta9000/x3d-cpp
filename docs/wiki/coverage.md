@@ -39,6 +39,7 @@ Every top-level functional area gets one page. The canonical list follows the ar
 | covered | `subsystems/templates.md` | Jinja2 emit templates (class header/impl, test) | `src/x3d_cpp_gen/templates/class_template.{hpp,cpp}.jinja`, `test_template.cpp.jinja` |
 | covered | `subsystems/generated-bindings.md` | The committed, golden-locked generated C++ node bindings | `generated_cpp_bindings/` |
 | covered | `subsystems/scene-graph.md` | Runtime core: scene graph, DEF/USE sharing, document/scene model | `runtime/X3DScene.hpp`, `X3DDocument.hpp`, `X3DRuntime.hpp`, `runtime/scene/` |
+| covered (partial) | `subsystems/hanim.md` | HAnim skin binding, pose, CPU deformation, and displacers; extraction and event wiring remain separate | `runtime/hanim/` |
 | covered | `subsystems/reflection.md` | Reflection layer: field descriptors, reflection thunks, factory/registry | `src/x3d_cpp_gen/emit/reflection.py`, `descriptors.py`, `registry.py`, `factory.py` |
 | covered | `subsystems/execution-context.md` | Execution context: per-tick driver, field-write seam, scene bridge | `runtime/events/X3DExecutionContext.hpp`, `X3DSceneBridge.hpp`, `X3DActiveNode.hpp` |
 | covered | `subsystems/dirty-bounds-transform.md` | Dirty-tracking + world-transform propagation + bounding volumes | `runtime/scene/DirtyTracker.hpp`, `TransformSystem.hpp`, `BoundsSystem.hpp`, `GeometryBounds.hpp`, `CycleBreaker.hpp` |

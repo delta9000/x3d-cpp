@@ -54,6 +54,7 @@ nav:
           - Execution Context: subsystems/execution-context.md
           - Dirty Tracking, Transforms, and Bounds: subsystems/dirty-bounds-transform.md
           - Math Core: subsystems/math.md
+          - HAnim Deformation Core: subsystems/hanim.md
       - Codecs & Parse:
           - Codec Writers: subsystems/codecs-writers.md
           - Canonical XML Writer: subsystems/canonical-xml.md
