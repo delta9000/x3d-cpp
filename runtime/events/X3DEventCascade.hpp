@@ -9,6 +9,7 @@
 #include "DynamicField.hpp"   // author-field (Script) delivery fallback
 #include "x3d/nodes/X3DNode.hpp"
 
+#include <algorithm>
 #include <any>
 #include <deque>
 #include <functional>
@@ -77,6 +78,17 @@ public:
   void beginTimestamp() {
     fired_.clear();
     produced_.clear();
+  }
+
+  void removeNodes(const std::unordered_set<const X3DNode *> &nodes) {
+    pending_.erase(std::remove_if(pending_.begin(), pending_.end(), [&](const Delivery &d) {
+      return nodes.count(d.target.node) != 0;
+    }), pending_.end());
+    for (auto it = produced_.begin(); it != produced_.end();)
+      if (nodes.count(it->node)) it = produced_.erase(it); else ++it;
+    for (auto it = fired_.begin(); it != fired_.end();)
+      if (nodes.count(it->from.node) || nodes.count(it->to.node)) it = fired_.erase(it);
+      else ++it;
   }
 
   /**

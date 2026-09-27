@@ -41,6 +41,9 @@ public:
                         interp->getNormalizeVelocity(), fraction)));
     });
   }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<NodeT *>(node)) n->setOnSet_fractionHandler({});
+  }
 };
 
 /// §19.4.13 Squad orientation interpolator.
@@ -59,6 +62,10 @@ public:
                                     fraction, interp->getNormalizeVelocity())));
     });
   }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::SquadOrientationInterpolator *>(node))
+      n->setOnSet_fractionHandler({});
+  }
 };
 
 /// §19.4.4 EaseInEaseOut fraction modifier.
@@ -72,6 +79,10 @@ public:
                     std::any(SFFloat{easeInEaseOut(
                         ease->getKey(), ease->getEaseInEaseOut(), fraction)}));
     });
+  }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::EaseInEaseOut *>(node))
+      n->setOnSet_fractionHandler({});
   }
 };
 

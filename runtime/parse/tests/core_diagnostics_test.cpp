@@ -14,8 +14,10 @@
 #include "SceneExtractor.hpp"
 #include "x3d/nodes/TimeSensor.hpp"
 #include "x3d/nodes/Transform.hpp"
+#include "x3d/nodes/Viewpoint.hpp"
 
 #include <any>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -429,6 +431,202 @@ TEST_CASE("inline_nested_late_load_appears_in_delta") {
   auto delta = extractor.delta();
   REQUIRE(delta.added.size() == 1);
   CHECK(extractor.item(delta.added[0]).worldTransform.m[12] == doctest::Approx(5.0));
+}
+
+TEST_CASE("inline_load_unload_reload_detaches_content_and_reports_removal") {
+  const char *parent =
+      "<X3D version='4.0'><Scene><Viewpoint DEF='Outside'/>"
+      "<Inline DEF='Inl' load='false' url='one.x3d'/>"
+      "<IMPORT inlineDEF='Inl' importedDEF='Mover' AS='Imported'/>"
+      "<Transform DEF='Driver'/>"
+      "<ROUTE fromNode='Driver' fromField='translation_changed' "
+      "toNode='Imported' toField='set_translation'/>"
+      "</Scene></X3D>";
+  const char *child =
+      "<X3D version='4.0'><Scene><Transform DEF='Mover'>"
+      "<Shape><Box/></Shape></Transform><Viewpoint DEF='Inside'/>"
+      "<TimeSensor DEF='Clock' cycleInterval='10'/>"
+      "<EXPORT localDEF='Mover'/></Scene></X3D>";
+  int resolves = 0;
+  auto resolver = [&](const std::vector<std::string> &,
+                      const std::string &) -> std::shared_ptr<runtime::Scene> {
+    ++resolves;
+    auto sub = codec::parseDocument(child);
+    return std::make_shared<runtime::Scene>(std::move(sub.scene));
+  };
+  auto doc = codec::parseDocument(parent, codec::Encoding::Unknown, "",
+                                  codec::localFileProtoResolver, resolver);
+  auto inl = std::dynamic_pointer_cast<nodes::Inline>(doc.scene.resolve("Inl"));
+  auto driver = doc.scene.resolve("Driver");
+  REQUIRE(inl != nullptr);
+  REQUIRE(driver != nullptr);
+  runtime::X3DExecutionContext ctx;
+  ctx.buildSceneGraph(doc.scene);
+  ctx.buildFrom(doc.scene);
+  runtime::attachStandardRuntime(doc.scene, ctx, nullptr, resolver);
+  runtime::extract::SceneExtractor extractor(ctx, doc.scene);
+  extractor.fullSnapshot();
+
+  ctx.postEvent(inl.get(), "load", std::any(core::SFBool{true}));
+  ctx.tick(1.0);
+  REQUIRE(extractor.delta().added.size() == 1);
+  auto loaded = doc.scene.expandedInlineScenes.at(inl.get());
+  auto mover = std::dynamic_pointer_cast<nodes::Transform>(loaded->resolve("Mover"));
+  auto inside = std::dynamic_pointer_cast<nodes::Viewpoint>(loaded->resolve("Inside"));
+  auto clock = std::dynamic_pointer_cast<nodes::TimeSensor>(loaded->resolve("Clock"));
+  REQUIRE(mover != nullptr);
+  REQUIRE(inside != nullptr);
+  REQUIRE(clock != nullptr);
+  ctx.postEvent(inside.get(), "set_bind", std::any(core::SFBool{true}));
+  ctx.tick(2.0);
+  CHECK(ctx.boundViewpoint() == inside.get());
+  extractor.delta();
+
+  ctx.postEvent(inl.get(), "load", std::any(core::SFBool{false}));
+  ctx.postEvent(driver.get(), "translation", std::any(core::SFVec3f{4, 5, 6}));
+  ctx.tick(3.0);
+  CHECK(doc.scene.resolve("Imported") == nullptr);
+  CHECK(ctx.boundViewpoint() != inside.get());
+  CHECK_FALSE(inside->getIsBound());
+  CHECK(extractor.delta().removed.size() == 1);
+  CHECK(extractor.fullSnapshot().added.empty());
+  CHECK_FALSE(sceneHasType(doc.scene, "Shape"));
+  const auto before = mover->getTranslation();
+  ctx.postEvent(driver.get(), "translation", std::any(core::SFVec3f{7, 8, 9}));
+  ctx.postEvent(clock.get(), "enabled", std::any(core::SFBool{false}));
+  ctx.tick(4.0);
+  CHECK(mover->getTranslation() == before);
+  CHECK(clock->getEnabled());
+  CHECK(ctx.writeField(mover.get(), "translation", std::any(core::SFVec3f{1, 1, 1})) ==
+        runtime::FieldWriteResult::DetachedNode);
+
+  ctx.postEvent(inl.get(), "load", std::any(core::SFBool{true}));
+  ctx.tick(5.0);
+  CHECK(resolves == 2);
+  CHECK(extractor.delta().added.size() == 1);
+  CHECK(doc.scene.resolve("Imported") != nullptr);
+  auto replacement = std::dynamic_pointer_cast<nodes::Transform>(doc.scene.resolve("Imported"));
+  REQUIRE(replacement != nullptr);
+  ctx.postEvent(driver.get(), "translation", std::any(core::SFVec3f{2, 3, 4}));
+  ctx.tick(6.0);
+  CHECK(replacement->getTranslation() == core::SFVec3f{2, 3, 4});
+}
+
+TEST_CASE("inline_url_change_replaces_loaded_content") {
+  const char *parent =
+      "<X3D version='4.0'><Scene>"
+      "<Inline DEF='Inl' url='one.x3d'/>"
+      "<IMPORT inlineDEF='Inl' importedDEF='Mover' AS='Imported'/>"
+      "</Scene></X3D>";
+  auto resolver = [&](const std::vector<std::string> &urls,
+                      const std::string &) -> std::shared_ptr<runtime::Scene> {
+    const bool second = !urls.empty() && urls.front() == "two.x3d";
+    const char *first =
+        "<X3D version='4.0'><Scene><Transform DEF='Mover'>"
+        "<Shape><Box/></Shape></Transform><EXPORT localDEF='Mover'/></Scene></X3D>";
+    const char *next =
+        "<X3D version='4.0'><Scene><Transform DEF='Mover'>"
+        "<Shape><Sphere/></Shape></Transform><EXPORT localDEF='Mover'/></Scene></X3D>";
+    auto sub = codec::parseDocument(second ? next : first);
+    return std::make_shared<runtime::Scene>(std::move(sub.scene));
+  };
+  auto doc = codec::parseDocument(parent, codec::Encoding::Unknown, "",
+                                  codec::localFileProtoResolver, resolver);
+  auto inl = std::dynamic_pointer_cast<nodes::Inline>(doc.scene.resolve("Inl"));
+  auto old = doc.scene.resolve("Imported");
+  REQUIRE(inl != nullptr);
+  REQUIRE(old != nullptr);
+  runtime::X3DExecutionContext ctx;
+  ctx.buildSceneGraph(doc.scene);
+  ctx.buildFrom(doc.scene);
+  runtime::attachStandardRuntime(doc.scene, ctx, nullptr, resolver);
+  runtime::extract::SceneExtractor extractor(ctx, doc.scene);
+  REQUIRE(extractor.fullSnapshot().added.size() == 1);
+  ctx.postEvent(inl.get(), "url", std::any(core::MFString{"two.x3d"}));
+  ctx.tick(1.0);
+  auto delta = extractor.delta();
+  CHECK(delta.removed.size() == 1);
+  CHECK(delta.added.size() == 1);
+  CHECK(doc.scene.resolve("Imported") != old);
+  CHECK(sceneHasType(doc.scene, "Sphere"));
+  CHECK_FALSE(sceneHasType(doc.scene, "Box"));
+}
+
+TEST_CASE("nested_inline_loaded_with_parent_can_unload") {
+  const char *parent =
+      "<X3D version='4.0'><Scene><Inline DEF='Outer' load='false' url='outer.x3d'/>"
+      "</Scene></X3D>";
+  std::function<std::shared_ptr<runtime::Scene>(
+      const std::vector<std::string> &, const std::string &)> resolver;
+  resolver = [&](const std::vector<std::string> &urls,
+                 const std::string &) -> std::shared_ptr<runtime::Scene> {
+    const bool outer = !urls.empty() && urls.front() == "outer.x3d";
+    const char *xml = outer
+        ? "<X3D version='4.0'><Scene><Inline DEF='Inner' url='inner.x3d'/></Scene></X3D>"
+        : "<X3D version='4.0'><Scene><Shape><Box/></Shape></Scene></X3D>";
+    auto sub = codec::parseDocument(xml, codec::Encoding::Unknown, "",
+                                    codec::localFileProtoResolver, resolver);
+    return std::make_shared<runtime::Scene>(std::move(sub.scene));
+  };
+  auto doc = codec::parseDocument(parent, codec::Encoding::Unknown, "",
+                                  codec::localFileProtoResolver, resolver);
+  auto outer = std::dynamic_pointer_cast<nodes::Inline>(doc.scene.resolve("Outer"));
+  REQUIRE(outer != nullptr);
+  runtime::X3DExecutionContext ctx;
+  ctx.buildSceneGraph(doc.scene);
+  ctx.buildFrom(doc.scene);
+  runtime::attachStandardRuntime(doc.scene, ctx, nullptr, resolver);
+  runtime::extract::SceneExtractor extractor(ctx, doc.scene);
+  extractor.fullSnapshot();
+  ctx.postEvent(outer.get(), "load", std::any(core::SFBool{true}));
+  ctx.tick(1.0);
+  REQUIRE(extractor.delta().added.size() == 1);
+  std::shared_ptr<nodes::Inline> inner;
+  for (const auto &[_, original] : doc.scene.expandedInlines)
+    if (original->getDEF() == "Inner")
+      inner = std::dynamic_pointer_cast<nodes::Inline>(original);
+  REQUIRE(inner != nullptr);
+  ctx.postEvent(inner.get(), "load", std::any(core::SFBool{false}));
+  ctx.tick(2.0);
+  CHECK(extractor.delta().removed.size() == 1);
+  CHECK_FALSE(sceneHasType(doc.scene, "Shape"));
+  ctx.postEvent(outer.get(), "load", std::any(core::SFBool{false}));
+  ctx.tick(3.0);
+  CHECK(doc.scene.expandedInlines.empty());
+}
+
+TEST_CASE("inline_repeated_replacement_drops_unowned_nodes") {
+  const char *parent =
+      "<X3D version='4.0'><Scene><Inline DEF='Inl' load='false' url='a.x3d'/>"
+      "</Scene></X3D>";
+  auto resolver = [&](const std::vector<std::string> &,
+                      const std::string &) -> std::shared_ptr<runtime::Scene> {
+    auto sub = codec::parseDocument(
+        "<X3D version='4.0'><Scene><TimeSensor cycleInterval='10'/>"
+        "<Shape><Box/></Shape></Scene></X3D>");
+    return std::make_shared<runtime::Scene>(std::move(sub.scene));
+  };
+  auto doc = codec::parseDocument(parent, codec::Encoding::Unknown, "",
+                                  codec::localFileProtoResolver, resolver);
+  auto inl = std::dynamic_pointer_cast<nodes::Inline>(doc.scene.resolve("Inl"));
+  REQUIRE(inl != nullptr);
+  runtime::X3DExecutionContext ctx;
+  ctx.buildSceneGraph(doc.scene);
+  ctx.buildFrom(doc.scene);
+  runtime::attachStandardRuntime(doc.scene, ctx, nullptr, resolver);
+  runtime::extract::SceneExtractor extractor(ctx, doc.scene);
+  extractor.fullSnapshot();
+  ctx.postEvent(inl.get(), "load", std::any(core::SFBool{true}));
+  ctx.tick(1.0);
+  extractor.delta();
+  for (int i = 0; i < 12; ++i) {
+    ctx.postEvent(inl.get(), "url",
+                  std::any(core::MFString{i % 2 ? "a.x3d" : "b.x3d"}));
+    ctx.tick(2.0 + i);
+    auto d = extractor.delta();
+    CHECK(d.added.size() == 1);
+    CHECK(d.removed.size() == 1);
+  }
 }
 
 TEST_CASE("metadata_worldinfo_xml_roundtrip") {

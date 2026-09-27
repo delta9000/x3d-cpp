@@ -64,6 +64,7 @@
 #include "x3d/nodes/Sound.hpp"
 #include "x3d/nodes/SpatialSound.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <unordered_map>
@@ -117,6 +118,7 @@ public:
       NodeHandle destHandle = backend_->createNode(NodeKind::Destination, dp);
       if (destHandle == kInvalidNodeHandle) return;
       destinations_.push_back(destHandle);
+      rootDest_[snd] = destHandle;
       NodeHandle panner = backend_->createNode(NodeKind::Panner, soundPannerParams(snd, ctx));
       if (panner == kInvalidNodeHandle) return;
       backend_->connect(destHandle, panner);
@@ -132,6 +134,7 @@ public:
       NodeHandle destHandle = backend_->createNode(NodeKind::Destination, dp);
       if (destHandle == kInvalidNodeHandle) return;
       map_.emplace(dest, destHandle);
+      rootDest_[dest] = destHandle;
       destinations_.push_back(destHandle);
       for (const auto &child : dest->getChildren())
         buildChild(child.get(), destHandle);
@@ -146,6 +149,7 @@ public:
       NodeHandle destHandle = backend_->createNode(NodeKind::Destination, dp);
       if (destHandle == kInvalidNodeHandle) return;
       destinations_.push_back(destHandle);
+      rootDest_[ss] = destHandle;
 
       // Build the Panner params (positions, listener orientation).
       // listener_ may be null (e.g. tests not providing one) -> use defaults.
@@ -158,6 +162,21 @@ public:
       for (const auto &child : ss->getChildren())
         buildChild(child.get(), pannerHandle);
     }
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto it = rootDest_.find(node); it != rootDest_.end()) {
+      destinations_.erase(std::remove(destinations_.begin(), destinations_.end(), it->second),
+                          destinations_.end());
+      rootDest_.erase(it);
+    }
+    sounds_.erase(std::remove_if(sounds_.begin(), sounds_.end(),
+        [node](const SoundEntry &e) { return e.node == node; }), sounds_.end());
+    pendingClips_.erase(std::remove_if(pendingClips_.begin(), pendingClips_.end(),
+        [node](const PendingClip &e) { return e.clip == node; }), pendingClips_.end());
+    fallbackPitch_.erase(dynamic_cast<x3d::nodes::AudioClip *>(node));
+    if (listener_ == node) listener_ = nullptr;
+    map_.erase(node);
   }
 
   /**
@@ -616,6 +635,7 @@ private:
   // is). Graph CONSTRUCTION order (attach) is deterministic: it follows the
   // children recursion, not this map.
   std::unordered_map<X3DNode *, NodeHandle> map_;
+  std::unordered_map<X3DNode *, NodeHandle> rootDest_;
   std::vector<NodeHandle> destinations_;
   // Optional listener (null if scene has none). Resolved to forward/up vectors
   // in buildPannerParams (plumbing only — no spatial DSP here).

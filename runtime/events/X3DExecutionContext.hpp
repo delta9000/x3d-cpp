@@ -10,6 +10,7 @@
 #include "BoundsSystem.hpp"
 #include "CycleBreaker.hpp"
 #include "DirtyTracker.hpp"
+#include "DynamicField.hpp"
 #include "FieldRead.hpp"
 #include "HeadPose.hpp"
 #include "KeyState.hpp"
@@ -49,6 +50,7 @@ namespace x3d::runtime {
 enum class FieldWriteResult {
   Ok,           ///< Written, and the dirty-tracker was updated.
   NullNode,     ///< `node` was null.
+  DetachedNode, ///< Node was removed with an Inline subtree.
   /// No field of that x3dName in this node's STATIC table (a typo, or a field
   /// this node's profile does not carry). Also returned for a Script/PROTO
   /// author-declared field: those live in the DynamicFieldStore side-table and
@@ -71,6 +73,7 @@ inline const char *fieldWriteResultName(FieldWriteResult r) {
   switch (r) {
   case FieldWriteResult::Ok:           return "Ok";
   case FieldWriteResult::NullNode:     return "NullNode";
+  case FieldWriteResult::DetachedNode: return "DetachedNode";
   case FieldWriteResult::UnknownField: return "UnknownField";
   case FieldWriteResult::NotWritable:  return "NotWritable";
   case FieldWriteResult::TypeMismatch: return "TypeMismatch";
@@ -95,6 +98,7 @@ public:
   /** @brief Register a ROUTE from a source field endpoint to a sink endpoint.
    */
   void addRoute(const FieldAddress &from, const FieldAddress &to) {
+    if (detached_.count(from.node) || detached_.count(to.node)) return;
     graph_.addRoute(from, to);
   }
 
@@ -117,6 +121,7 @@ public:
   /// Build the M2a scene-graph layer for a parsed Scene: index the Transform
   /// hierarchy and route the cascade's field deliveries into the dirty tracker.
   void buildSceneGraph(Scene &scene) {
+    detached_.clear();
     // Sanitize first: sever any containment cycle (a node that is its own
     // ancestor, e.g. from a malformed <X DEF='a' USE='a'/>) so the recursive
     // walkers below (transform/bounds/binding/pick + later extract) traverse a
@@ -146,6 +151,7 @@ public:
     std::function<void(X3DNode *, std::size_t)> walk =
         [&](X3DNode *n, std::size_t depth) {
           if (!n || depth >= kMaxNestingDepth || !seen.insert(n).second) return;
+          detached_.erase(n);
           for (const auto &s : systems_) s->attach(n, *this);
           forEachChildNode(*n, [&](const FieldInfo &,
                                    const std::shared_ptr<X3DNode> &c) {
@@ -155,6 +161,23 @@ public:
     walk(root, 0);
     bindings_.enrollAdditional(root);
   }
+
+  void detachNodes(const std::unordered_set<const X3DNode *> &nodes) {
+    graph_.removeNodes(nodes);
+    cascade_.removeNodes(nodes);
+    dirty_.removeNodes(nodes);
+    for (const X3DNode *n : nodes) {
+      auto *node = const_cast<X3DNode *>(n);
+      for (const auto &s : systems_) s->detach(node, *this);
+      bindings_.removeNode(node);
+      dynamicFieldStore().erase(*node);
+      detached_.insert(node);
+    }
+    cascade_.removeNodes(nodes); // discard unbind events addressed to removed nodes
+  }
+
+  void markSceneTopologyChanged() { ++sceneTopologyRevision_; }
+  std::uint64_t sceneTopologyRevision() const { return sceneTopologyRevision_; }
 
   /** @brief Remove all registered ROUTEs from the execution context. */
   void clearRoutes() { graph_.clear(); }
@@ -226,6 +249,7 @@ public:
 
   /** @brief Seed an event; processed by the next process()/tick() drain. */
   void postEvent(X3DNode *node, const std::string &field, std::any value) {
+    if (detached_.count(node)) return;
     cascade_.postEvent(node, field, std::move(value));
   }
 
@@ -269,6 +293,7 @@ public:
                                             const std::string &field,
                                             std::any value) {
     if (!node) return FieldWriteResult::NullNode;
+    if (detached_.count(node)) return FieldWriteResult::DetachedNode;
     if (!cascade_.acceptsInput(FieldAddress{node, resolveFieldAlias(node, field)}, value))
       return FieldWriteResult::Ok;
     for (const auto &info : node->fields()) {
@@ -630,6 +655,8 @@ private:
   EventGraph graph_;
   EventCascade cascade_{graph_};
   std::vector<std::shared_ptr<System>> systems_;
+  std::unordered_set<const X3DNode *> detached_;
+  std::uint64_t sceneTopologyRevision_ = 0;
   std::vector<std::function<void(X3DExecutionContext &)>> postCascade_;
   DirtyTracker dirty_;
   TransformSystem transforms_;

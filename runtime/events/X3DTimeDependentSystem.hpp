@@ -46,13 +46,19 @@ class X3DTimeDependentSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     if (auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node)) {
-      if (state_.empty()) {
+      if (!filterInstalled_) {
         ctx.addInputFilter([this, &ctx](const FieldAddress &addr, const std::any &value) {
           return acceptTimingInput(addr, value, ctx.now());
         });
+        filterInstalled_ = true;
       }
       state_.emplace(tdn, State{});
     }
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node))
+      state_.erase(tdn);
   }
 
   void update(double now, X3DExecutionContext &ctx) override {
@@ -448,6 +454,7 @@ private:
   }
 
   std::unordered_map<x3d::nodes::X3DTimeDependentNode *, State> state_;
+  bool filterInstalled_ = false;
 };
 
 } // namespace x3d::runtime

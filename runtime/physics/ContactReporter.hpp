@@ -71,6 +71,11 @@ public:
       sensors_.push_back(sensor);
   }
 
+  void removeSensor(x3d::nodes::CollisionSensor *sensor) {
+    sensors_.erase(std::remove(sensors_.begin(), sensors_.end(), sensor), sensors_.end());
+    active_.erase(sensor);
+  }
+
   /** @brief Build + emit this frame's contact outputs for every sensor. */
   void report(const std::vector<ResolvedContact> &contacts,
               X3DExecutionContext &ctx) {

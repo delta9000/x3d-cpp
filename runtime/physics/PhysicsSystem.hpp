@@ -101,6 +101,7 @@ public:
 
     WorldHandle world = backend_->createWorld(collection->getGravity());
     if (world == kInvalidWorldHandle) return;
+    worlds_[collection] = world;
 
     // RigidBody* -> BodyHandle, for resolving joints' body1/body2 below. Scoped
     // to this collection (each world owns its own bodies + joints).
@@ -176,6 +177,25 @@ public:
       if (useBounce) contactRestitution = cc->getBounce();
     }
     backend_->setContactResponse(world, contactFriction, contactRestitution);
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *sensor = dynamic_cast<xn::CollisionSensor *>(node))
+      reporter_.removeSensor(sensor);
+    WorldHandle world = kInvalidWorldHandle;
+    if (auto it = worlds_.find(node); it != worlds_.end()) {
+      world = it->second;
+      worlds_.erase(it);
+    }
+    bodies_.erase(std::remove_if(bodies_.begin(), bodies_.end(), [&](const Mapped &m) {
+      return m.body == node || (world != kInvalidWorldHandle && m.world == world);
+    }), bodies_.end());
+    for (auto it = bodyRef_.begin(); it != bodyRef_.end();) {
+      if (it->second.bodyNode.get() == node ||
+          (world != kInvalidWorldHandle && it->first.first == world))
+        it = bodyRef_.erase(it);
+      else ++it;
+    }
   }
 
   /**
@@ -515,6 +535,7 @@ private:
 
   std::shared_ptr<PhysicsBackend> backend_;
   std::vector<Mapped> bodies_;
+  std::unordered_map<X3DNode *, WorldHandle> worlds_;
   std::size_t droppedBodies_ = 0;  // excluded for unsupported collidable geometry
   bool haveLast_ = false;
   double lastNow_ = 0.0;

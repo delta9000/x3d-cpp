@@ -78,7 +78,7 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 - **`InlineResolver` injection** — `parseDocument` accepts an `InlineResolver` parameter (default: `localFileInlineResolver`). An embedder supplying a network fetcher, virtual filesystem, or format-converting resolver (e.g. a glTF-to-Scene converter) passes it here; the core never changes.
 
-- **Runtime injection** — `attachStandardRuntime` and `RuntimeSession::SessionOptions` accept the same `InlineResolver` plus `baseUrl`. No resolver means deferred Inline nodes stay inert. The parsed `Scene` does not retain an IO callback; callers that want late loading pass their resolver again. `InlineRuntimeSystem` attempts a deferred URL once per value until `load` returns to FALSE or `url` changes.
+- **Runtime injection** — `attachStandardRuntime` and `RuntimeSession::SessionOptions` accept the same `InlineResolver` plus `baseUrl`. No resolver means deferred Inline nodes stay inert. The parsed `Scene` does not retain an IO callback; callers that want late loading pass their resolver again. `InlineRuntimeSystem` attempts a deferred URL once per value; `load=FALSE` unloads an expanded subtree and a changed `url` replaces it.
 
 - **`localFileInlineResolver`** (in `X3DParse.hpp`) — the default resolver. Resolves file-like URLs relative to `baseUrl`, calls `parseFile` on the target, and guards cycles via a `thread_local std::vector<std::string> activeFiles` stack. `http`/`https`/`urn:` schemes are skipped (embedder-override territory), matching `localFileProtoResolver`'s policy.
 
@@ -102,7 +102,7 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
    - Call `hoistChildRoutes`: resolve the child's `routes` against the child's own `defs`, append concrete endpoints to `scene.resolvedInlineRoutes`. Also hoist any already-resolved `resolvedProtoRoutes` and `resolvedInlineRoutes` from nested expansions.
    - Record `scene.expandedInlines[group.get()] = inl` for writer round-trip.
    - Replace the Inline node in its parent slot (`replaceInParent`), or in `scene.rootNodes` for root-level Inlines.
-3. `load=FALSE` Inlines stay in place. With an injected resolver, `InlineRuntimeSystem` runs this same expansion pass after a later `load=TRUE` event, enrolls the new subtree with live systems, connects child and IMPORT routes, and marks the splice for full snapshot and incremental extraction. It handles root and nested Inlines. Runtime unload and replacement of already loaded content remain open (AUD-NET-2).
+3. `load=FALSE` Inlines stay in place. With an injected resolver, `InlineRuntimeSystem` runs this same expansion pass after a later `load=TRUE` event, enrolls the new subtree with live systems, and connects child and IMPORT routes. On unload it removes routes, queued events, aliases and per-node system state before restoring the original Inline. The extractor diffs a fresh topology snapshot on load, unload and replacement, reporting removed and added RenderItems.
 4. Child DEFs are **never** merged into `scene.defs`, enforcing ISO §9.4.2 DEF isolation.
 
 ## How it is tested

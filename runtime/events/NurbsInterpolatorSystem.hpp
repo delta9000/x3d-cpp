@@ -61,6 +61,9 @@ public:
       SFVec3f p; if (nurbs::evalCurve(c,f,p)) ctx.postEvent(interp,"value_changed",std::any(p));
     });
   }
+  void detach(X3DNode* node, X3DExecutionContext&) override {
+    if (auto* n=dynamic_cast<xn::NurbsPositionInterpolator*>(node)) n->setOnSet_fractionHandler({});
+  }
 };
 
 class NurbsOrientationInterpolatorSystem : public System {
@@ -72,6 +75,9 @@ public:
       SFVec3f tangent; if (!nurbsTangent(c,f,tangent)) return;
       ctx.postEvent(interp,"value_changed",std::any(rotationFromPositiveZ(tangent)));
     });
+  }
+  void detach(X3DNode* node, X3DExecutionContext&) override {
+    if (auto* n=dynamic_cast<xn::NurbsOrientationInterpolator*>(node)) n->setOnSet_fractionHandler({});
   }
 };
 
@@ -102,6 +108,9 @@ public:
       ctx.postEvent(interp,"position_changed",std::any(sample.p));
       ctx.postEvent(interp,"normal_changed",std::any(sample.n));
     });
+  }
+  void detach(X3DNode* node, X3DExecutionContext&) override {
+    if (auto* n=dynamic_cast<xn::NurbsSurfaceInterpolator*>(node)) n->setOnSet_fractionHandler({});
   }
 };
 

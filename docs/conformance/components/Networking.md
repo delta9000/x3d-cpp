@@ -10,8 +10,6 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interchange, Interactive, Immersi
 
 ## Findings
 
-- **AUD-NET-2** [major/OPEN] — §9.4.2: An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing.
-  - Partial: with an injected InlineResolver and base URL, InlineRuntimeSystem now handles load=TRUE after parse through expandInlines, splices content, enrolls new nodes with live systems, wires child and newly resolved IMPORT routes, and marks root/nested content for full snapshot and incremental delta (inline_load_true_event_expands_content, inline_nested_late_load_appears_in_delta, inline_late_load_wires_import_route). Still open: load=FALSE must detach and remove the old subtree, its system registrations, routes, IMPORT aliases, binding/pick state, and render items; url changes on an already loaded Inline must perform that removal then resolve and splice replacement content. System has no detach interface yet.
 - **NSN-2** [critical/CLOSED `9bb71c2`] — §9.4.3: isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.
 - **NSN-3** [critical/CLOSED `9bb71c2`] — §9.4.3: isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.
 - **NSN-4** [critical/CLOSED `9bb71c2`] — §9.4.3: loadTime (now, on successful completion only) not emitted.
@@ -21,6 +19,8 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interchange, Interactive, Immersi
 - **NSN-7** [major/CLOSED `632d8a2`] — §9.4.3: watched child url/load change must reset LoadSensor state and re-evaluate.
 - **AUD-NET-1** [major/CLOSED] — §9.2.5: IMPORT resolves an Inline DEF that the Inline never EXPORTed.
   - wireInlineImports now requires an explicit child EXPORT whose public name matches importedDEF; a private DEF no longer becomes a parent alias. Regression: import_requires_explicit_export.
+- **AUD-NET-2** [major/CLOSED] — §9.4.2: An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing.
+  - InlineRuntimeSystem unloads on load=FALSE and unloads then reloads on url change. System::detach removes per-node runtime state before the old subtree is released; routes, pending deliveries, IMPORT aliases, binding/pick entries, and extracted RenderItems are removed. Regression tests: inline_load_unload_reload_detaches_content_and_reports_removal, inline_url_change_replaces_loaded_content, nested_inline_loaded_with_parent_can_unload, inline_repeated_replacement_drops_unowned_nodes. ADR-0051 records the detach order and extraction delta rule.
 - **NSN-1** [minor/CLOSED `9bb71c2`] — §9.4.3: LoadSensor not wired as an active System observing child URL-object load state per tick.
   - Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/subsystems/system-loadsensor.md. Drives NSN-2..9.
 - **NSN-11** [minor/CLOSED] — §9.4.3, 9.4.1: Spec-literal Anchor children cases (b) replacement-world / (c) separate-window are not the SDK default; the headless default policy treats "#Name" as loaded iff a Viewpoint DEF exists and other Anchor urls as resolver load-request-acknowledged.

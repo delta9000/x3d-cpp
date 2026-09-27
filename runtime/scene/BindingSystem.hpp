@@ -14,6 +14,7 @@
 #include "X3DScene.hpp"
 
 #include <any>
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <string>
@@ -72,11 +73,24 @@ public:
   // — pop it from its stack so the next entry becomes bound (isBound/bindTime).
   void removeNode(X3DNode *node) {
     if (!node || !poster_) return;
-    auto it = stacks_.find(category(node));
+    const std::string cat = category(node);
+    if (auto *b = dynamic_cast<X3DBindableNode *>(node))
+      b->setOnSet_bindHandler({});
+    auto enrolled = enrolled_.find(cat);
+    if (enrolled != enrolled_.end()) {
+      auto &v = enrolled->second;
+      v.erase(std::remove(v.begin(), v.end(), node), v.end());
+    }
+    auto it = stacks_.find(cat);
     if (it == stacks_.end()) return;
-    BindingStack::Emit emit = [this](X3DNode *t, bool bound) {
-      poster_(t, "isBound", std::any(SFBool(bound)));
-      poster_(t, "bindTime", std::any(SFTime(clock_())));
+    BindingStack::Emit emit = [this, node](X3DNode *t, bool bound) {
+      if (t == node) {
+        setIsBound(t, false);
+        setBindTime(t, clock_());
+      } else {
+        poster_(t, "isBound", std::any(SFBool(bound)));
+        poster_(t, "bindTime", std::any(SFTime(clock_())));
+      }
     };
     // BIND-09: signal Pop before unbinding (after, the top has changed).
     if (sink_ && it->first == "Viewpoint" && it->second.top() == node)

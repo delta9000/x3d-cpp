@@ -65,6 +65,11 @@ public:
     X3DTimeDependentSystem::update(now, ctx);
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &ctx) override {
+    rates_.erase(dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node));
+    X3DTimeDependentSystem::detach(node, ctx);
+  }
+
   double playbackRate(const x3d::nodes::X3DTimeDependentNode *node) const {
     auto it = rates_.find(node);
     return it == rates_.end() ? authoredRate(node) : it->second;

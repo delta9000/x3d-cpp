@@ -44,6 +44,7 @@
 
 #include "x3d/nodes/Script.hpp"
 
+#include <algorithm>
 #include <any>
 #include <memory>
 #include <optional>
@@ -125,6 +126,18 @@ public:
     if (script->getLoad()) {
       loadAndInitialize(*e, ctx);
     }
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    auto *script = dynamic_cast<x3d::nodes::Script *>(node);
+    if (!script) return;
+    scripts_.erase(std::remove_if(scripts_.begin(), scripts_.end(),
+        [&](const auto &entry) {
+          if (entry->script != script) return false;
+          if (engine_ && entry->handle != kInvalidScriptHandle)
+            engine_->shutdown(entry->handle);
+          return true;
+        }), scripts_.end());
   }
 
   /**
