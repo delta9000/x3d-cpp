@@ -30,9 +30,13 @@ public:
     X3DNode *cur = ctx.boundViewpoint();
     if (cur != lastVp_) {
       anim_.active = false; // a new bind supersedes any in-flight transition
+      // §23.3.1: a Viewpoint's NavigationInfo unbinds with its parent.
+      if (lastNavInfo_)
+        ctx.postEvent(lastNavInfo_.get(), "set_bind", std::any(SFBool{false}));
       const BindTransition kind = ctx.lastViewpointBindTransition();
       onBind(ctx, cur, kind);
       lastVp_ = cur;
+      lastNavInfo_ = cur ? geombounds::getField<SFNode>(*cur, "navigationInfo", nullptr) : nullptr;
       ctx.setLastViewpointBindTransition(BindTransition::None); // consume
     } else if (anim_.active && cur == anim_.vp) {
       advance(ctx);
@@ -109,6 +113,9 @@ private:
     if (haveCam_ && dur > 0.0 && !isTeleport(nav) && camsDiffer(lastCam_, targetCam)) {
       anim_ = Anim{true, vp, nav, lastCam_, targetCam, ctx.now(), dur};
       driveCameraTo(ctx, vp, lastCam_); // start the animation at the old camera
+    } else if (haveCam_ && nav && camsDiffer(lastCam_, targetCam)) {
+      // §23.4.4: instantaneous transitions also signal completion.
+      ctx.postEvent(nav, "transitionComplete", std::any(SFBool{true}));
     }
 
     // 3. BIND-02: bind this viewpoint's navigationInfo, if it names one.
@@ -138,6 +145,7 @@ private:
   }
 
   X3DNode *lastVp_ = nullptr;
+  SFNode lastNavInfo_;
   Mat4 lastCam_ = Mat4::identity();
   bool haveCam_ = false;
 };

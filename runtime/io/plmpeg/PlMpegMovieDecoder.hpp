@@ -11,6 +11,7 @@
 
 #include "AssetResolver.hpp" // x3d::runtime::extract::AssetResolver
 #include "MovieDecoder.hpp"  // x3d::runtime::extract::MovieDecoder
+#include "AudioDecoder.hpp" // x3d::runtime::AudioDecoder
 
 namespace x3d::runtime::io::plmpeg {
 
@@ -24,6 +25,10 @@ namespace x3d::runtime::io::plmpeg {
 /// and returns a BOTTOM-LEFT-origin RGBA8 frame per the seam contract.
 x3d::runtime::extract::MovieDecoder
 makePlMpegMovieDecoder(x3d::runtime::extract::AssetResolver resolver);
+
+/// Decode the first MPEG-1 program-stream MP2 audio track to mono PCM.
+/// Raw elementary video and files without audio return an unsuccessful result.
+x3d::runtime::AudioDecoder makePlMpegMovieAudioDecoder();
 
 } // namespace x3d::runtime::io::plmpeg
 

@@ -27,9 +27,15 @@
 // Spatial-audio purity extension: POSITIONS (source, listener orientation) may
 // cross the seam for Panner nodes — the backend computes pan/attenuation from
 // the geometry itself. What MUST NEVER cross the seam: gainL, gainR, any
-// precomputed pan coefficient, biquad DSP coefficients, or PCM buffer data.
-// Crossing a precomputed gain instead of a position would couple the runtime to
-// the backend's distance model and break backend-swappability.
+// precomputed pan coefficient or biquad DSP coefficient. Crossing a precomputed
+// gain instead of a position would couple the runtime to the backend's distance
+// model and break backend-swappability.
+//
+// Sample-buffer extension (ADR-0050): decoded PCM crosses ONCE, at createNode,
+// for a Buffer source (an AudioClip or MovieTexture decoded through the AudioDecoder
+// seam). Nothing else carries samples inbound; playback (cursor, rate, looping)
+// is the backend's own DSP, driven only by the PlaybackState / PlaybackRate
+// scalars.
 #ifndef X3D_RUNTIME_AUDIO_BACKEND_HPP
 #define X3D_RUNTIME_AUDIO_BACKEND_HPP
 
@@ -56,7 +62,7 @@ inline constexpr NodeHandle kInvalidNodeHandle = 0;
  *          AudioDestination); extensible (add a Kind + its NodeParams) without
  *          engine-type leakage.
  */
-enum class NodeKind { Oscillator, Biquad, Gain, Destination, Panner };
+enum class NodeKind { Oscillator, Biquad, Gain, Destination, Panner, Buffer };
 
 /**
  * @brief Distance attenuation model for Panner nodes.
@@ -66,8 +72,13 @@ enum class NodeKind { Oscillator, Biquad, Gain, Destination, Panner };
  *   - Linear:      gain = 1 - rolloffFactor * (d - refDist) / (maxDist - refDist)
  *   - Inverse:     gain = refDist / (refDist + rolloffFactor * (d - refDist))
  *   - Exponential: gain = (d / refDist)^(-rolloffFactor)
+ *   - Ellipsoid:   the §16.4.17 Sound node model. Two ellipsoids with one focus
+ *                  at the source, oriented along `direction`: full level inside
+ *                  the inner (minFront/minBack), falling linearly in dB to
+ *                  -20 dB at the outer (maxFront/maxBack), silent outside;
+ *                  scaled by `intensity`; panned only when `spatialize`.
  */
-enum class DistanceModel { Linear, Inverse, Exponential };
+enum class DistanceModel { Linear, Inverse, Exponential, Ellipsoid };
 
 /**
  * @brief Oscillator waveform, in the runtime's own terms (mirrors X3D's
@@ -93,6 +104,7 @@ enum class FilterType { Lowpass, Highpass, Bandpass, Lowshelf, Highshelf,
  *                           filterType.
  *            - Gain:        gain.
  *            - Destination: maxChannelCount.
+ *            - Buffer:      samples, sampleRate (PCM crosses once, ADR-0050).
  *            - Panner:      sourcePosition, listenerPosition, listenerForward,
  *                           listenerUp, distanceModel, referenceDistance,
  *                           maxDistance, rolloffFactor. POSITIONS cross the seam
@@ -111,6 +123,8 @@ struct NodeParams {
   float q = 1.0f;
   /** @brief Linear gain multiplier (Gain node, or a source/processing gain). */
   float gain = 1.0f;
+  /** @brief Whether this source or processing node is enabled. */
+  bool enabled = true;
   /** @brief Oscillator waveform (Oscillator nodes). */
   Waveform waveform = Waveform::Sine;
   /** @brief Filter algorithm (Biquad nodes). */
@@ -140,6 +154,22 @@ struct NodeParams {
   float maxDistance            = 10000.0f;
   /** @brief Rolloff rate multiplier (Panner nodes). */
   float rolloffFactor          = 1.0f;
+
+  // ── Ellipsoid Panner fields (DistanceModel::Ellipsoid, the §16.4.17 Sound
+  //    node). Geometry only: the backend computes the attenuation. ──────────
+  /** @brief Sound direction (unit-less; the ellipsoids' axis), world space. */
+  float direction[3] = {0.0f, 0.0f, 1.0f};
+  float minFront = 1.0f, minBack = 1.0f, maxFront = 10.0f, maxBack = 10.0f;
+  /** @brief Sound.intensity: a linear level scale in [0, 1]. */
+  float intensity = 1.0f;
+  /** @brief Sound.spatialize: pan by direction to the listener, else centred. */
+  bool spatialize = true;
+
+  // ── Buffer source fields (NodeKind::Buffer). The samples cross ONCE, here. ─
+  /** @brief Decoded mono PCM in [-1, 1]. */
+  std::vector<float> samples;
+  /** @brief The samples' own rate in hertz. */
+  float sampleRate = 44100.0f;
 };
 
 /**
@@ -151,7 +181,19 @@ struct NodeParams {
  *          pushed as three separate setParam calls so route-animated motion works
  *          without expanding the seam to SFVec3f.
  */
-enum class Param { Frequency, Detune, Q, Gain, PositionX, PositionY, PositionZ };
+enum class Param {
+  Frequency, Detune, Q, Gain, PositionX, PositionY, PositionZ,
+  // Ellipsoid Panner (per tick): the listener is the moving viewer, and the
+  // Sound's direction / intensity may be route-animated.
+  ListenerPositionX, ListenerPositionY, ListenerPositionZ,
+  ListenerForwardX, ListenerForwardY, ListenerForwardZ,
+  ListenerUpX, ListenerUpY, ListenerUpZ,
+  DirectionX, DirectionY, DirectionZ, Intensity,
+  // Buffer source: 0 = stopped (rewinds), 1 = playing, 2 = paused (holds the
+  // position); rate = playback speed (AudioClip.pitch). The source loops when
+  // it runs past its end — the time lifecycle stops a non-looping clip.
+  PlaybackState, PlaybackRate, Enabled
+};
 
 /**
  * @brief Abstract audio backend: owns an audio-processing graph, renders it.

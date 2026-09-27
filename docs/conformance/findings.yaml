@@ -60,9 +60,9 @@
   interfaces: [X3DSoundSourceNode]
   clause: "8.2.4.1, 16.4.2, 18.4.2"
   severity: major
-  status: deferred
+  status: closed
   summary: AudioClip/MovieTexture have no time-lifecycle System — startTime/loop/isActive inert.
-  note: Blocked on the media/duration_changed seam — audio sources beyond OscillatorSource are not built (SND-4); the time-dependent lifecycle for sound sources is also inert (SND-2).
+  note: "MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip and MovieTexture: enabled, loop, and a cycle of duration_changed / pitch (AudioClip) or / speed (MovieTexture); an unknown duration plays until stopTime (media_time_test). Decoding and playback remain separate (SND-4)."
 - id: TDN-6
   nodes: [TimeSensor]
   clause: "8.2.4.4"
@@ -136,9 +136,9 @@
   nodes: [Script]
   clause: "29.3.1"
   severity: minor
-  status: deferred
+  status: closed
   summary: autoRefresh/autoRefreshTimeLimit URL reload + re-initialize() absent.
-  note: "Unblocked by the asset-resolver/IO seam (shipped 2026-06-23; see ADR-0023). Implement together with CONF-CRITIC-2."
+  note: "Closed 2026-09-26: ScriptSystem::update() runs runAutoRefresh per tick — a loaded Script with autoRefresh>0 re-fetches and re-initializes on the interval (shutdown -> resolve+load -> initialize), stopping once autoRefreshTimeLimit (measured from the load that opened the refresh window; 0 = no limit) elapses. Tested in x3d_script_system (testAutoRefresh)."
 - id: SCR-006
   nodes: [Script]
   clause: "29.2.2, 19777-1"
@@ -264,8 +264,9 @@
   nodes: [ProximitySensor, GeoProximitySensor]
   clause: "22.4.1"
   severity: minor
-  status: open
+  status: closed
   summary: centerOfRotation_changed never emitted.
+  note: ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).
 - id: ENV-04
   nodes: [ProximitySensor]
   clause: "22.4.1"
@@ -277,15 +278,16 @@
   nodes: [VisibilitySensor]
   clause: "22.4.3"
   severity: minor
-  status: open
+  status: closed
   summary: Cone (not frustum) test → false isActive=FALSE in wide-aspect periphery.
+  note: Six view-frustum planes from Viewpoint.fieldOfView (smaller angle) + ViewVolume aspect; per-axis so wide aspect widens only the horizontal half-angle.
 - id: ENV-06
   nodes: [ProximitySensor, VisibilitySensor]
   clause: "22.4.1, 22.4.3"
   severity: major
-  status: open
+  status: closed
   summary: Dynamic removal of an active sensor doesn't fire isActive FALSE/exitTime (no detach).
-  note: Needs a System detach() hook (shared with BIND-06).
+  note: update() computes active-path reachability from scene roots (Switch/LOD aware, ADR-0034) and deactivates unreachable sensors via the existing deactivateIfActive path.
 - id: ENV-07
   nodes: [ProximitySensor, VisibilitySensor]
   clause: "22.4.1"
@@ -297,14 +299,16 @@
   nodes: [ProximitySensor]
   clause: "22.4.1"
   severity: minor
-  status: open
+  status: closed
   summary: enter/exitTime use tick now, not the interpolated boundary-crossing time.
+  note: ProximitySensor interpolates enter/exitTime along the viewer's straight-line motion between ticks (box crossing); VisibilitySensor keeps tick now (no geometric boundary).
 - id: ENV-09
   nodes: [VisibilitySensor]
   clause: "22.4.3"
   severity: minor
-  status: open
+  status: closed
   summary: Visibility radius uses local (unscaled) size, ignoring ancestor scale.
+  note: The sensor box is transformed to world by worldTransformAny (full ancestor matrix, scale included) before the frustum test.
 
 # ── Architecture-pivot follow-ons ───────────────────────────────────────────
 - id: PIV-1
@@ -337,34 +341,34 @@
   clause: "16.4.12, 16.4.15, 16.4.4"
   severity: major
   status: open
-  summary: enabled field ignored on every wired sound node — a disabled Oscillator/Gain/BiquadFilter still synthesizes/processes.
-  note: SoundSystem buildChild/pushParams never read getEnabled(); §16 defaults enabled TRUE but enabled=FALSE shall disable the node. Actionable now (no seam) — gate createNode/setParam (and bypass vs mute per §16 node semantics).
+  summary: BuiltinDspBackend honors enabled for all wired nodes; MiniaudioBackend still needs a live BiquadFilter bypass path.
+  note: SoundSystem pushes enabled; BuiltinDspBackend silences disabled sources and passes disabled processors through, covered by sound_system_test. MiniaudioBackend handles disabled OscillatorSource and Gain, but its current graph wiring cannot bypass BiquadFilter while preserving its input; swap-test F6 checks disabled/inactive oscillator, disabled Gain pass-through and AudioDestination gain on both backends.
 - id: SND-2
   nodes: [OscillatorSource, Gain, BiquadFilter]
   interfaces: [X3DTimeDependentNode]
   component: Sound
   clause: "8.2.4.1, 16.4.15"
   severity: major
-  status: open
-  summary: X3DTimeDependentNode lifecycle ignored — sound nodes emit unconditionally; startTime/stopTime/pauseTime/resumeTime/loop not honored and isActive/isPaused/elapsedTime never emitted.
-  note: SoundSystem has no activation clock — the oscillator plays from t=0. Gating a synthesized source on startTime/stopTime is doable now (no media seam); emitting isActive/isPaused as routed events needs an event-cascade hookup. Mirrors TimeSensor (TDN-*); relates to TDN-5 for media sources.
+  status: closed
+  summary: Sound sources and processing nodes now run the shared start/stop/pause/resume lifecycle and emit isActive/isPaused/elapsedTime.
+  note: SoundTimeSystem reuses X3DTimeDependentSystem and is registered by attachStandardRuntime; SoundSystem gates source and processor output from isActive/isPaused. MediaTimeSystem continues to handle AudioClip. Covered by sound_system_test and standard_runtime_test.
 - id: SND-3
-  nodes: [Sound, SpatialSound, ListenerPointSource]
+  nodes: [SpatialSound, ListenerPointSource]
   component: Sound
-  clause: "16.4.17, 16.4.16, 16.4.13"
+  clause: "16.4.16, 16.4.13"
   severity: major
   status: deferred
-  summary: "Spatialization PARTIAL — SpatialSound/ListenerPointSource equal-power pan + three DistanceModel modes proven via swap-test (ADR-0026); §16 Sound ellipsoid attenuation (minFront/maxFront/minBack/maxBack), HRTF, and Doppler still deferred."
-  note: "SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: the §16 Sound ellipsoid (seam carries no ellipsoid params — SpatialSound does not fully map to Panner), HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion — not a novel or low-priority ask — worth weighting accordingly when scheduling v2."
+  summary: "Spatialization PARTIAL — SpatialSound/ListenerPointSource equal-power pan + three DistanceModel modes proven via swap-test (ADR-0026); the §16.4.17 Sound ellipsoid now ships (ADR-0050); HRTF (SpatialSound.enableHRTF) and Doppler (dopplerEnabled) still deferred."
+  note: "The classic Sound node's ellipsoid (minFront/maxFront/minBack/maxBack, direction, intensity, spatialize) crosses the seam as geometry via DistanceModel::Ellipsoid and both backends evaluate it (swap-test F4, sound_immersive_test), so Sound is off this finding. SoundSystem wires SpatialSound+ListenerPointSource through a Panner node; equal-power pan (BuiltinDsp) and ma_spatializer (MiniaudioBackend) agree on structural spatial invariants (ear-sign, symmetry, monotonic distance falloff over Linear/Inverse/Exponential). NOT proven: HRTF (no second reference HRTF renderer), Doppler. Those remain deferred to v2. See ADR-0026 scope-honesty section. Replacing the ellipsoid attenuation model with a simpler spherical/OpenAL-aligned model, and adding HRTF, have been recurring, long-standing priorities in X3D audio discussion — not a novel or low-priority ask — worth weighting accordingly when scheduling v2."
 - id: SND-4
-  nodes: [AudioClip, BufferAudioSource, StreamAudioSource, MicrophoneSource]
+  nodes: [BufferAudioSource, StreamAudioSource, MicrophoneSource]
   interfaces: [X3DSoundSourceNode]
   component: Sound
-  clause: "16.4.2, 16.4.5, 16.4.20, 16.4.14"
+  clause: "16.4.5, 16.4.20, 16.4.14"
   severity: major
   status: deferred
-  summary: Audio source breadth — only OscillatorSource is built; AudioClip/BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early).
-  note: Blocked on an audio decode/capture + duration_changed seam (file/buffer/stream/device IO). Drives TDN-5 (AudioClip time-lifecycle). Backend extension = add NodeKinds + the IO seam.
+  summary: Audio source breadth — OscillatorSource and AudioClip are built; BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early).
+  note: "AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; isActive/isPaused (MediaTimeSystem, TDN-5), pitch and gain drive playback. Not read: AudioClip.description. BufferAudioSource can reuse the Buffer node (its buffer field is already PCM); StreamAudioSource and MicrophoneSource need a streaming/capture contract."
 - id: SND-5
   nodes: [Analyser, Convolver, Delay, DynamicsCompressor, WaveShaper]
   interfaces: [X3DSoundProcessingNode]
@@ -388,9 +392,9 @@
   component: Sound
   clause: "16.4.3, 16.4.19"
   severity: minor
-  status: open
-  summary: AudioDestination.gain ignored by render and maxChannelCount is read but unused (mono); StreamAudioDestination not built.
-  note: SoundSystem reads maxChannelCount into params but render() is mono and never applies the destination gain (§16.4.3). The gain pass-through is a small fix (no seam); multi-channel + stream output is deferred (SND-6).
+  status: closed
+  summary: AudioDestination.gain applied; maxChannelCount remains read but unused (mono); StreamAudioDestination not built.
+  note: SoundSystem pushes AudioDestination.gain to the backend destination. sound_system_test verifies output scaling. maxChannelCount remains read but unused by mono render, and StreamAudioDestination remains unbuilt.
 - id: SND-8
   nodes: [Gain, BiquadFilter]
   interfaces: [X3DSoundProcessingNode]
@@ -433,9 +437,9 @@
   component: Navigation
   clause: "23.2.4, 23.3.2"
   severity: major
-  status: deferred
+  status: closed
   summary: WALK mode + Collision/CollisionSensor (avatar-volume collision) not implemented.
-  note: Needs a volume-sweep collision subsystem (post-v1). FLY ships collision-free.
+  note: "Closed for navigation: NavigationSystem implements WALK (horizontal motion, gravity, terrain following at avatarSize[1], step height avatarSize[2]) and collision-checks FLY/WALK moves via PickSystem::castCollidable (collision_test). The rigid-body CollisionSensor (§37) is a physics concern tracked under CONF-RBP*, not avatar collision."
 # ── §37 RigidBodyPhysics — a simulation runtime SHIPS (seam + flag-gated Jolt:
 #    Box/Sphere, gravity, collision RESPONSE, Ball/SingleAxisHinge/Slider joints,
 #    pose route-out). It is PARTIAL: the findings below enumerate every §37 node /
@@ -597,10 +601,10 @@
   nodes: [IntegerTrigger]
   clause: "30.4.6"
   severity: major
-  status: open
+  status: closed
   wave: 3
   summary: IntegerTrigger integerKey inputOutput write does not emit integerKey_changed / triggerValue_changed.
-  note: Deferred from the wave-3 fix — integerKey_changed already fans out via the cascade inputOutput alias (AUD-CAS); the triggerValue_changed-on-write half needs §30.4.6 spec re-review before implementing.
+  note: "Writing integerKey (even to the same value) now also emits triggerValue with that value, per the §30.4.6 text; integerKey_changed already came from the inputOutput fan-out (events_misc_test)."
 - id: TRIG-5
   nodes: [TimeTrigger]
   clause: "30.4.7"
@@ -711,7 +715,7 @@
   status: fixed
   wave: 3
   summary: No follower System — chasers (FIR) / dampers (IIR) never advance value_changed per tick. Whole family inert.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-2
   interfaces: [X3DFollowerNode]
   clause: "39.3.3"
@@ -719,7 +723,7 @@
   status: fixed
   wave: 3
   summary: set_destination must drive isActive TRUE + begin per-tick value_changed emission toward the destination — unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-3
   interfaces: [X3DFollowerNode]
   clause: "39.3.3"
@@ -727,7 +731,7 @@
   status: fixed
   wave: 3
   summary: set_value must abort the in-progress transition and emit value_changed with the received value same-step — unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-4
   interfaces: [X3DFollowerNode]
   clause: "39.3.3"
@@ -735,15 +739,15 @@
   status: fixed
   wave: 3
   summary: Initialization (initialValue/initialDestination → one value_changed; isActive seed) unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-5
   interfaces: [X3DChaserNode]
   clause: "39.3.1"
   severity: minor
-  status: deferred
+  status: closed
   wave: 3
-  summary: Chaser FIR ring buffer (time-stamped set_destination events over the duration window) unimplemented.
-  note: "ChaserSystem ships as a re-basing single-transition lerp (reaches destination `duration` after the last set_destination); for non-overlapping use this is spec-equivalent. The literal FIR ring-buffer / overlapping-transition superposition (multiple set_destination events within one duration window accumulating via independent taps) is not implemented — deferred (tracked as FOL-OVL)."
+  summary: Chaser FIR superposition of overlapping set_destination transitions.
+  note: "Closed: ChaserSystem applies the §39.3.1 cosine response to timestamped destination-delta taps, summing scalar/vector/color values and composing rotation deltas with quaternion slerp. Covered by follower_conformance_test's scalar response, overlapping scalar, and OrientationChaser assertions."
 - id: FOL-6
   interfaces: [X3DDamperNode]
   clause: "39.3.2"
@@ -751,7 +755,7 @@
   status: fixed
   wave: 3
   summary: Damper IIR cascade (order chained filters, o_n = d_n + (o_{n-1}-d_n)·e^(-ΔT/τ)) unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-7
   interfaces: [X3DDamperNode]
   clause: "39.3.2"
@@ -759,7 +763,7 @@
   status: fixed
   wave: 3
   summary: Damper tolerance-based settle (isActive→FALSE when output within tolerance of destination) unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-9
   nodes: [CoordinateChaser, CoordinateDamper, TexCoordChaser2D, TexCoordDamper2D]
   clause: "39.4.3, 39.4.4"
@@ -767,7 +771,7 @@
   status: fixed
   wave: 3
   summary: MF (array) followers must transition element-wise and converge per-element — unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (re-basing ramp); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser uses a re-basing single-transition lerp (uniform incl. SFRotation slerp); literal FIR-superposition fidelity for overlapping transitions within duration is deferred."
+  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 
 # ── Wave-4 fanout (2026-06-19, run wf_be659767-7d1): sensors + grouping active-child ──
 # 26 audited → 25 confirmed (rejected NSN-8 1/3). Closes the behavioral-interface
@@ -811,10 +815,10 @@
   nodes: [Collision]
   clause: "23.4.2"
   severity: critical
-  status: deferred
+  status: closed
   wave: 4
   summary: Collision isActive/collideTime never fire — no avatar-volume collision detection.
-  note: Blocked on the collision subsystem (volume sweep). See CONF-NAV-COLLISION.
+  note: "NavigationSystem fires isActive TRUE + collideTime on the enclosing enabled Collision nodes when avatar contact begins (FLY/WALK moves blocked avatarSize[0] short of geometry), keeps it while resting against the geometry, and isActive FALSE when it ends (collision_test case 1)."
 - id: COL-2
   nodes: [Collision]
   clause: "23.4.2"
@@ -828,10 +832,10 @@
   nodes: [Collision]
   clause: "23.4.2"
   severity: major
-  status: deferred
+  status: closed
   wave: 4
   summary: Collision.enabled=FALSE must propagate through the descendant subtree to gate collision (overriding nested enabled=TRUE).
-  note: Only observable once the collision subsystem exists. See CONF-NAV-COLLISION.
+  note: "PickSystem::castCollidable skips the whole subtree of a disabled Collision, nested enabled Collision nodes included (collision_test case 2)."
 
 # X3DKeyDeviceSensorNode (§21) — KeySensor/StringSensor inert. OPEN: next fix cluster.
 - id: KDS-1
@@ -880,10 +884,10 @@
   nodes: [KeySensor, StringSensor]
   clause: "21.2"
   severity: minor
-  status: open
+  status: closed
   wave: 4
   summary: Key-device exclusive-focus arbitration — enabling one sensor must send enabled=FALSE to the others — unimplemented.
-  note: Left open in the wave-4 fix (KDS-1..5/7..10 closed in 85b90b0) — cross-sensor coordination on the enabled-transition; minor, no consumer yet. Closure - watch set_enabled in KeyDeviceSensorSystem and disable the others.
+  note: "Enabling a KeySensor/StringSensor sends enabled FALSE to every other enabled key device sensor (§21.2 'only one key device sensor may be active at a time'), via a field-write listener (events_misc_test)."
 - id: KDS-7
   nodes: [StringSensor]
   clause: "21.4.2"
@@ -996,17 +1000,17 @@
   nodes: [LoadSensor, Anchor]
   clause: "9.4.3, 9.4.1"
   severity: minor
-  status: deferred
+  status: closed
   wave: 4
   summary: Spec-literal Anchor children cases (b) replacement-world / (c) separate-window are not the SDK default; the headless default policy treats "#Name" as loaded iff a Viewpoint DEF exists and other Anchor urls as resolver load-request-acknowledged.
-  note: "By design — the runtime is headless. Headed embedders express cases (b)/(c) via LoadSensorSystem::setChildLoadPolicy + a Pending-returning resolver (ADR-0046). See docs/wiki/subsystems/system-loadsensor.md."
+  note: "AnchorSystem now activates Anchors on click: '#Name' binds that viewpoint, any other url goes to the embedder's AnchorHandler with url + parameter, which implements the replacement-world / separate-window cases (events_misc_test)."
 - id: NSN-12
   nodes: [LoadSensor, Inline]
   clause: "9.4.3"
   severity: minor
-  status: open
+  status: closed
   summary: "LoadSensor's per-child readiness check does not recurse into a watched Inline's own nested sub-Inlines."
-  note: "LoadSensorSystem::tick (runtime/events/LoadSensorSystem.hpp:191) marks a watched Inline Ready by a flat membership check (`scene_->expandedInlines.count(c) > 0`) against the direct child alone — it does not walk that child's own subtree to check whether Inline nodes nested inside it have themselves finished loading. At least one other conforming implementation defines Inline load-completion recursively: an Inline counts as loaded only once it and all of its nested sub-Inlines have completely loaded. §9.4.3 does not define nested-Inline completion semantics, so this is a spec-silent design choice, in the same spirit as the R3-R7 rulings in ADR-0046, rather than a conformance defect. Under the default null AssetResolver every Inline expands synchronously at parse time so the gap is inert today; it becomes reachable once a real (async-capable) resolver is injected and a nested Inline's own load can still be Pending while its parent is reported Ready. Separately, a non-blocking, notify-on-completion load-node design distinct from LoadSensor has been under active discussion for a future X3D spec node — directionally relevant if LoadSensor's async story is revisited."
+  note: "An Inline counts as loaded only when every nested sub-Inline it asks to load has loaded; an un-expanded Inline left in an expanded child's content makes that child Failed (LoadSensor ruling R8, events_misc_test)."
 
 # LOD edge (§23.4.3)
 - id: LOD-1
@@ -1150,9 +1154,9 @@
   component: Shape
   clause: "12.2.3, 12.4.2"
   severity: minor
-  status: open
+  status: closed
   summary: "Appearance.backMaterial constraint checks material-model type only — texture-set match between front and back materials is not validated."
-  note: "backMaterialConstraintMet (materialOf(), see MAT-006) validates only that backMaterial.model == front.model. A prior design discussion for this exact front/back constraint scoped it to cover both the material-model type AND a matching texture set between front and back; only the model-type half is implemented. The back MaterialDesc is currently constructed inline with its textures vector left unpopulated (Appearance-level textures are front-only in the current extraction path), so a texture-set comparison is not yet meaningful to add without first populating back-material textures — tracked as the deferred follow-on already named in ADR-0021."
+  note: "backMaterial textures are now populated from the BACK material node's own slots (matsys::materialSlotTextures, the same dispatch texturesOf uses for the front), and backMaterialConstraintMet compares both model type AND the (slot, channel) multisets (matsys::sameTextureSlotSet) per §12.2.3. Regression: material_system_test (front+back both diffuse → met; front textured/back not → not met). (2026-06-27)"
 - id: MAT-011
   nodes: [PhysicalMaterial]
   component: Shape
@@ -1168,9 +1172,9 @@
   component: Geometry3D
   clause: "13.3.4, 25.3.2"
   severity: major
-  status: open
+  status: closed
   summary: ElevationGrid/GeoElevationGrid drop authored color + normal nodes (colorPerVertex/normalPerVertex ignored) — only auto flat normals, no vertex colors.
-  note: The grid handlers never call buildAttrs(); wire color/normal/colorPerVertex/normalPerVertex (per-vertex i+j*xDim, per-quad i+j*(xDim-1)).
+  note: "emitHeightGrid (MeshBuilder.hpp, shared by both grids) now resolves authored Color/Normal via buildAttrs() and honors colorPerVertex/normalPerVertex per §13.3.4: per-vertex indexes the LATTICE vertex (row*xDim+col), per-quad indexes the CELL (row*(xDim-1)+col). An authored Normal also suppresses the generated-flat/crease path. Regression: mesh_builder_ext001_test.cpp (per-vertex and per-quad colour/normal, ElevationGrid + GeoElevationGrid). (2026-06-27)"
 - id: EXT-002
   nodes: [TriangleFanSet, TriangleStripSet, IndexedTriangleFanSet, IndexedTriangleStripSet]
   component: Rendering
@@ -1203,18 +1207,17 @@
   component: Texturing
   clause: "18.4.10"
   severity: minor
-  status: deferred
+  status: closed
   summary: TextureTransform matrix application order divergence (translate/center/rotate/scale/−center) — UVs transformed incorrectly for non-trivial transforms.
-  note: Spec-ambiguous (NOT changed) — §18.4.10 contradicts itself; the normative sentence "rotation ... after the scale has been applied" matches the current scale-then-rotate code, while the numbered list + matrix imply rotate-then-scale. Left as-is to avoid trading one reading for the other.
-  note: Verify TextureTransform2D against §18.4.10 right-to-left order T·C·R·S·(−C); fix + regression.
+  note: "Order fixed to the normative matrix Tc' = C·S·R·C⁻¹·T·Tc (right-to-left: translate → pivot → ROTATE → SCALE → un-pivot), matching §18.4.10's '(in order)' list — rotation BEFORE scaling. The contradicting prose sentence ('rotation ... after the scaling operation has been applied') is treated as an editorial error. applyTextureTransform + makeTextureTransform3x3 (TextureTransform2D.hpp) now agree; the centre pivot convention is unchanged. Regression: texture_extract_test (testTextureTransformOrder: π/2 about centre (0.5,0.5) + scale (2,3) + translation → (0.1,0.05), plus a make3x3 cross-check). (2026-06-27)"
 - id: TXF-2
   nodes: [TextureCoordinateGenerator, IndexedFaceSet, ElevationGrid]
   component: Texturing
   clause: "18.4.8"
   severity: major
-  status: deferred
+  status: closed
   summary: TextureCoordinateGenerator UVs (SPHERE/CAMERASPACE*) are view-dependent per-vertex and must be computed at render time — the descriptor is surfaced but no UVs are produced.
-  note: By-design render-time seam; ensure MeshData supplies the world/camera-frame normals the consumer needs. Documented.
+  note: "Render-time UVs implemented for the four view-dependent modes (SPHERE, CAMERASPACENORMAL, CAMERASPACEPOSITION, CAMERASPACEREFLECTIONVECTOR) per §18.4.8 Table: cpu_raster computes them per fragment in MaterialShader.hpp detail::texCoordGenUv (base-colour UV; the seam already carried the mode on TextureRef::hasTexCoordGen/texCoordGen). The PoC reuses lit.vert (shared by Phong + PBR) with a new uTexCoordGenMode uniform fed from texCoordGenModeUniform() in main.cpp. Regression: examples/cpu_raster/tests/texcoord_gen_test.cpp. PoC shaders unbuilt here (GLFW is FetchContent). (2026-06-27)"
 - id: TXF-3
   nodes: [TextureTransform]
   component: Texturing
@@ -1238,22 +1241,25 @@
   component: Text
   clause: "15.2.2.3"
   severity: major
-  status: open
+  status: closed
   summary: justify END (minor axis, horizontal, topToBottom=FALSE) mis-places the block (top edge of last line should be Y=0).
+  note: "Fixed with the whole minor-axis table (Table 15.4/15.5): END with topToBottom FALSE now puts the top edge of the last line at Y=0, and the horizontal BEGIN/topToBottom TRUE and vertical FIRST/BEGIN/END placements that shared the error were corrected too (text_layout_test minor-justify table)."
 - id: TXT-4
   nodes: [Text, FontStyle]
   component: Text
   clause: "15.2.2.3"
   severity: major
-  status: open
+  status: closed
   summary: justify END (minor axis, vertical, leftToRight=FALSE) mis-places columns (left edge of last column should be X=0).
+  note: "Fixed: END with leftToRight FALSE puts the left edge of the last column at X=0, a column spanning [baseline + descender, baseline + ascender] as its quads do (text_layout_test minor-justify table)."
 - id: TXT-5
   nodes: [Text, FontStyle]
   component: Text
   clause: "15.2.2.2"
   severity: minor
-  status: open
+  status: closed
   summary: family[] MFString fallback not iterated — should skip unsupported families and fall back to the next entry via the FontMetrics seam.
+  note: "Fixed: FontStyle.family is read as the MFString it is (the enum-token read returned nothing, so every Text used SERIF) and resolved with resolveFontFamily — the first family the FontMetrics backend supports, else SERIF (text_extract_test family fallback)."
 
 # ── Decision/critic residue migrated from the deprecated BACKLOG (2026-06-22) ─
 # These four were tracked only in docs/superpowers/BACKLOG.md (CONF-TDN1V +
@@ -1264,25 +1270,25 @@
   nodes: [TimeSensor]
   clause: "8.2.4.4"
   severity: low
-  status: open
+  status: closed
   summary: pauseTime_changed/resumeTime_changed emit the field-echo value, not strict simulation-now.
-  note: "Open decision (was BACKLOG CONF-TDN1V). X3DTimeDependentSystem.hpp emits the field value (~=transition instant); a strict reading would pass `now`. 1-line flip if a consumer needs it."
+  note: "pauseTime_changed / resumeTime_changed now carry the simulation time the pause/resume was recognised, per §8.2.4.4 (events_misc_test)."
 - id: CONF-CRITIC-1
   interfaces: [X3DTimeDependentNode]
   nodes: [TimeSensor]
   clause: "8.2.4.3"
   severity: low
-  status: open
+  status: closed
   summary: Same-tick stop->start restart of a TimeSensor is unverified (completed run does not auto-restart).
-  note: "Was BACKLOG CONF-CRITIC (critic unchecked_behaviors). Verify the same-timestamp stop-then-start case in X3DTimeDependentSystem."
+  note: "A set_stopTime / set_startTime pair at the same instant restarts an active node in place (stays active, no isActive FALSE/TRUE pair, new run from that instant); before, it restarted one tick later with an isActive toggle (events_misc_test)."
 - id: CONF-CRITIC-2
   nodes: [Script]
   clause: "29.3.1"
   severity: major
-  status: deferred
+  status: closed
   wave: 4
   summary: Script external-URL (@url in source) loading + auto-refresh interaction unimplemented.
-  note: "Was BACKLOG CONF-CRITIC. Unblocked by the asset-resolver/IO seam (shipped 2026-06-23; see ADR-0023). Implement together with SCR-005."
+  note: "Closed 2026-09-26: ScriptSystem::resolveSource() fetches external (non-ecmascript:/javascript:) url entries through the injectable extract::AssetResolver (Ready=source, Pending=retry next tick, Failed=advance to the next url), and update() retries Pending fetches once per tick. Default resolver is the IO-free null stub; the CLI injects io::file::makeFileResolver (sim_runtime.hpp). Tested in x3d_script_system (testExternalUrlFetch)."
 - id: CONF-CRITIC-3
   nodes: [TouchSensor]
   clause: "20.4.4"
@@ -1299,19 +1305,17 @@
   nodes: [Fog]
   clause: "24.4.2"
   severity: major
-  status: open
-  behaves: inert
+  status: closed
   summary: "Fog is inert — bound and round-tripped, but no fog effect reaches the shader."
-  note: "boundFog() declared at runtime/events/X3DExecutionContext.hpp:266 has zero production callers; ShaderUniformVocabulary.hpp:167-175 references a 'FogDesc' struct that does not exist; SceneExtractor has no fog readout. `behaves: inert` forces the matrix to ✗ (the closed binding-stack finding BIND-06 must not upgrade it to ◑). Fix = wire fog colour/type/range into the shader uniform path. (sweep 2026-06-25)"
+  note: "Closed: FogDesc (RenderItem.hpp) + SceneExtractor::fog() surface the bound Fog's color/fogType/visibilityRange (world-scaled per the node's local coordinate frame); the §17 Table 17.5 fogInterpolant applies as the final step in examples/cpu_raster/cpuraster/MaterialShader.hpp (all models incl. Unlit) and poc_renderer lit/pbr/unlit.frag + main.cpp uFogColor/uFogType/uFogVisibilityRange uniforms. visibilityRange 0 disables fog. Tests: scene_extractor_fog_test (extraction incl. transform scale) and cpuraster fog_shader_test (LINEAR/EXPONENTIAL at d=0, V/2, d>=V; range 0). (2026-06-25)"
 - id: ENV-11
   nodes: [TextureBackground]
   interfaces: [X3DBackgroundNode]
   clause: "24.4.5"
   severity: major
-  status: open
-  behaves: inert
+  status: closed
   summary: "TextureBackground texture faces never read — renders identically to a plain Background."
-  note: "Only binding-stack recognition exists (BindingSystem.hpp:80-85); the six face-texture fields (back/front/left/right/top/bottomTexture) are read nowhere in runtime/. `behaves: inert` forces the matrix to ✗ for the node's own feature; full skybox texturing tracking blocked on cube/sky texture render support. (sweep 2026-06-25)"
+  note: "Closed 2026-09-26: the six TextureBackground face textures reach BackgroundDesc via refOf (ImageTexture -> Url, PixelTexture -> Inline, MovieTexture -> Movie); cpu_raster renders them as the skybox (see SEAM-BACKGROUND)."
 - id: GEO-1
   nodes: [GeoViewpoint]
   component: Geospatial
@@ -1325,9 +1329,9 @@
   component: Geometry2D
   clause: "14.3"
   severity: major
-  status: open
+  status: closed
   summary: "All 8 Geometry2D nodes absent from recognizedGeometryType() — extract silently drops them."
-  note: "runtime/extract/MeshBuilder.hpp:1239-1252 lists no Geometry2D node; buildLocalMesh returns recognized=false → empty MeshData. No tessellation logic for any 2D primitive exists. Implementable now against the existing MeshBuilder. (sweep 2026-06-25)"
+  note: "Closed: all 8 names added to recognizedGeometryType() and tessellated by a new mesh_detail::buildGeometry2D (MeshBuilder.cpp), dispatched before the coord guard since they carry no `coord`. Arc2D/Circle2D/Polyline2D -> Lines, Polypoint2D -> Points, ArcClose2D (PIE/CHORD)/Disk2D/Rectangle2D/TriangleSet2D -> Triangles with +Z normals. Circular primitives use 64 chords/full circle (2π/64 rad per chord). Tested in mesh_builder_geom2d_test.cpp. (sweep 2026-06-25, closed 2D-geometry pass)"
 - id: LYT-1
   nodes: [ScreenFontStyle]
   component: Layout
@@ -1342,26 +1346,26 @@
   component: CubeMapTexturing
   clause: "34.4.1"
   severity: major
-  status: open
+  status: closed
   summary: "ComposedCubeMapTexture face textures silently dropped by MaterialSystem refOf()."
-  note: "runtime/extract/MaterialSystem.hpp:98-125 dispatches PixelTexture/MovieTexture then falls through to a 'url' branch; ComposedCubeMapTexture has no url field (faces are SFNode children), so it yields an empty TextureRef. No runtime code reads the six face-texture SFNodes. At minimum refOf() should recognise X3DEnvironmentTextureNode rather than silently mis-bucketing it. (sweep 2026-06-25)"
+  note: "Closed 2026-09-26: refOf maps ComposedCubeMapTexture to Source::Cube with cubeFaces in front/back/left/right/top/bottom order, and resolveTextureRefs resolves each face (background_desc_test). No bundled renderer samples cube maps yet; ImageCubeMapTexture stays a Url ref and GeneratedCubeMapTexture is not rendered."
 - id: LAY-1
   nodes: [LayerSet]
   component: Layering
   clause: "35.4.2"
   severity: major
-  status: open
+  status: closed
   summary: "LayerSet.order render-suppression is inert — unlisted layers render anyway."
-  note: "runtime/extract/SceneExtractor.hpp:598-610 recurses all SFNode/MFNode children unconditionally; LayerSet.order is never read. §35.4.2: layers not listed in 'order' shall not be rendered. (sweep 2026-06-25)"
+  note: "Closed 2026-09-26: SceneExtractor follows only LayerSet.layers ordinals listed in order (zero-based per §35.4.2; invalid ordinals are ignored). Covered by scene_extractor_layers_respect_layerset_order in scene_extractor_b2_test.cpp."
 - id: LAY-2
   nodes: [Layer]
   interfaces: [X3DLayerNode]
   component: Layering
   clause: "35.3.1"
   severity: major
-  status: open
+  status: closed
   summary: "Layer.pickable is never consulted by PickSystem."
-  note: "runtime/scene/PickSystem.hpp:60-63 builds roots_ from scene.rootNodes with no Layer awareness; no path reads Layer.pickable / X3DLayerNode::getPickable(). §35.3.1: a layer with pickable=FALSE does not participate in picking. (sweep 2026-06-25)"
+  note: "Closed 2026-09-26: PickSystem filters candidates through live Layer.pickable values on each query, so cached geometry indexes honor runtime changes. Covered by pick_system_skips_non_pickable_layer_and_hits_layer_behind in pick_system_test.cpp."
 - id: LAY-3
   nodes: [Viewport, Layer]
   component: Layering
@@ -1428,9 +1432,9 @@
   component: NURBS
   clause: "27.4.5"
   severity: major
-  status: deferred
+  status: closed
   summary: "NURBS interpolator set_fraction handlers are dead — value_changed never emitted."
-  note: "NurbsOrientationInterpolator.hpp:158-161 onSet_fraction() is a no-op unless a handler is set; InterpolatorRegistration.hpp:35-61 registers 13 systems but none of the three NURBS interpolators. Events to set_fraction are dropped. Blocked on the NURBS evaluation subsystem (NRB-1). (sweep 2026-06-25)"
+  note: "Registered event systems for all three NURBS interpolators reuse runtime/extract/NurbsEval.hpp for rational curve and surface evaluation; tangent orientation follows increasing knot direction. Covered by interpolator_conformance_test (linear curve, rational quarter circle/tangent, bilinear surface, degenerate input)."
 - id: NRB-4
   nodes: [NurbsCurve, NurbsPatchSurface]
   interfaces: [X3DNurbsControlCurveNode, X3DNurbsSurfaceGeometryNode]
@@ -1530,9 +1534,9 @@
   component: Shaders
   clause: "31.4.2"
   severity: minor
-  status: open
+  status: closed
   summary: "Custom vertex-attribute nodes silently dropped — 'attrib' children never read."
-  note: "runtime/extract/MeshBuilder.hpp:514-549 (buildAttrs) reads normal/color/texCoord but never the 'attrib' containerField, so all three X3DVertexAttributeNode types are unreachable from extraction. Not in shaders.md. (sweep 2026-06-25)"
+  note: "Fixed: MeshBuilder extracts FloatVertexAttribute (1-4 components), Matrix3VertexAttribute (9), and Matrix4VertexAttribute (16) into named MeshData vertex streams, expanded by coordIndex alongside positions. Covered by custom vertex attributes follow expanded coordinate vertices in mesh_builder_t3_test.cpp."
 - id: T3D-2
   nodes: [ComposedTexture3D, ImageTexture3D, PixelTexture3D]
   interfaces: [X3DTexture3DNode]
@@ -1554,9 +1558,9 @@
   nodes: [SquadOrientationInterpolator]
   clause: "19.4.13"
   severity: low
-  status: open
-  summary: "SquadOrientationInterpolator.normalizeVelocity is read by nothing."
-  note: "SplineInterpolatorSystem.hpp:49-56 calls squadOrientation(key,keyValue,fraction); squadOrientation (SplineInterpolation.hpp:199-201) has no normalizeVelocity parameter and the field (binding getNormalizeVelocity, SquadOrientationInterpolator.hpp:94) is never read. §19.4.13/§19.2.3 default FALSE. (sweep 2026-06-25)"
+  status: closed
+  summary: "SquadOrientationInterpolator.normalizeVelocity is ignored by quaternion spline interpolation."
+  note: "Closed: the system passes normalizeVelocity into Squad interpolation, which scales quaternion-space angular tangents to total key-path length when TRUE. The FALSE path preserves the previous computation. Covered by interpolator_conformance_test's normalized Squad tangent assertion."
 - id: CAD-1
   nodes: [CADFace]
   component: CADGeometry
@@ -1570,9 +1574,9 @@
   component: Geometry2D
   clause: "14.3"
   severity: minor
-  status: open
+  status: closed
   summary: "Geometry2D nodes absent from localGeometryBounds() — bboxes always empty."
-  note: "runtime/scene/GeometryBounds.hpp:52-140 handles Box/Sphere/Cone/Cylinder/grids/Extrusion/Text + generic coord nodes, but no Geometry2D node; the 2D nodes carry no 'coord' field so the generic fallback (line 74) also misses them → wrong culling/picking. Fix alongside G2D-1. (sweep 2026-06-25)"
+  note: "Closed: localGeometryBoundsImpl (GeometryBounds.hpp) gained an exact arm per 2D node — arc/circle bounds from the arc's cardinal extremes (0,±π/2,π) inside the swept range plus endpoints, PIE sectors expand the centre, Disk2D uses outerRadius, Rectangle2D size, Polyline2D/Polypoint2D/TriangleSet2D their point/vertex arrays. Tested (bounds assertions) in mesh_builder_geom2d_test.cpp. (sweep 2026-06-25, closed 2D-geometry pass)"
 
 # ── X3D-public mailing-list errata mining — Tier-1 (campaign LIST-ERRATA, 2026-06-25) ──
 # Each item cross-referenced against the X3D 4.1 UOM + 2024-2026 committee threads; the
@@ -1583,41 +1587,46 @@
   interfaces: [X3DScriptNode]
   clause: "29.2.6, 4.4.8.3"
   severity: major
-  status: open
+  status: closed
   summary: "directOutput cross-node write is injected as a routable cascade seed (19775-1 29.2.6) instead of a non-routable value mutation (SAI 19775-2 4.5.2)."
   note: >-
     19775-1 29.2.6 ("shall be part of the current event cascade") contradicts 19775-2 SAI 4.5.2
     ("generates no event ... not part of the event cascade"); SAI governs the seam and matches the
     x3dom/implementor consensus. Policy (ADR-0029) - SaiContext::setField on another node mutates the
-    field via the reflection setter (no postEvent, no ROUTE fan-out); self-writes to the Script's own
-    outputOnly field keep the routable path. Site runtime/script/SaiContext.hpp:101; extend
-    sai_context_test.cpp:107-127. 4.1 - unresolved upstream; engine adopts the SAI direction ahead of spec.
+    field via the reflection setter (ctx_.writeField, no postEvent, no ROUTE fan-out); self-writes to the
+    Script's own outputOnly field keep the routable postEvent path. Closed 2026-09-26: implemented in
+    runtime/script/SaiContext.hpp:96; tested in x3d_sai_context (testDirectOutputGate asserts the direct
+    write lands but fans out NO ROUTE, and that a self-write still fans out). 4.1 - unresolved upstream;
+    engine adopts the SAI direction ahead of spec.
 - id: FOV-TYPE
   nodes: [OrthoViewpoint, TextureProjectorParallel]
   clause: "23.4.5, 42.4.2"
   severity: minor
-  status: open
+  status: closed
   summary: "fieldOfView is the same 4-tuple but typed MFFloat (OrthoViewpoint) vs SFVec4f (TextureProjectorParallel); OrthoViewpoint arity/ordering unvalidated."
   note: >-
     Do NOT retype MFFloat->SFVec4f (breaks ClassicVRML brackets vs the sfvec4fValue grammar;
     Mantis 1398/1468). Policy (ADR-0030) - keep MFFloat storage; add size==4 normalization
     (FOV_TUPLE_ARITY warning) + min<max ordering check (FOV_EXTENT_ORDER) applied to BOTH nodes;
     add a non-breaking SFVec4f convenience accessor. Sites OrthoViewpoint.hpp:111/177,
-    TextureProjectorParallel.hpp:77. 4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView
+    TextureProjectorParallel.hpp:77. Closed 2026-09-26: runtime/X3DRangeValidate.hpp emits
+    FOV_TUPLE_ARITY and FOV_EXTENT_ORDER for both nodes and exposes orthoFieldOfView4;
+    runtime/parse/tests/range_warnings_test.cpp covers arities 3/5 and ordering.
+    4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView
     MFFloat (committee declined the retype for the same reason), so validate-don't-retype is correct.
 - id: EXTRUSION-SCP
   nodes: [Extrusion]
   clause: "13.3.5.4.5"
   severity: minor
-  status: open
+  status: closed
   summary: "2-distinct-point Extrusion spine fixes the SCP plane normal but leaves in-plane X/Z free; single distinct point has no SCP. Browsers diverge (X3DOM Harrier wings reversed)."
   note: >-
-    Policy (ADR-0031) - with Y = unit spine tangent, set SCP Z = normalize(modelZ - (modelZ.Y)Y)
-    (fallback modelX when Y is parallel to modelZ), X = normalize(YxZ), re-derive Z = XxY; cull when
-    < 2 DISTINCT (coincident-collapsed) spine points. Site runtime/extract/MeshBuilder.hpp
-    tessellateExtrusion() (ref-x-Y branch ~:1043-1049; count guard :951). 4.1 - partial; 4.1-CD added
-    coincident/distinct-spine-point sections but the 2-point in-plane axes remain open (a Frenet-frame
-    idea was floated, not adopted) — engine rule is a candidate ahead of spec.
+    Implemented per ADR-0031 in tessellateExtrusion() (MeshBuilder.cpp): with Y = unit spine tangent,
+    the underdetermined Z = normalize(modelZ - (modelZ·Y)Y) (fallback modelX when Y ∥ modelZ), X =
+    normalize(Y×Z), re-derive Z = X×Y (replacing the arbitrary ref×Y fallback); and a cull when fewer
+    than 2 DISTINCT (coincident-collapsed) spine points (§13.3.5.4.5 sentence 2). Regression:
+    mesh_builder_extrusion_scp_test.cpp (coincident 1-point cull; spine-along-+X in-plane axes; Y∥modelZ
+    fallback; well-defined bent spine untouched). (2026-06-27)
 - id: HANIM-DISP
   nodes: [HAnimDisplacer, HAnimSegment]
   component: HAnim
@@ -1673,23 +1682,21 @@
   nodes: [ProtoInstance]
   clause: "4.4.4"
   severity: major
-  status: open
+  status: closed
   summary: "PROTO reusing a built-in node name silently shadows the built-in (proto table resolved before factory; no collision check at registration) - a security hazard per Mantis 1492."
   note: >-
-    Policy (ADR-0033) - reject (quarantine + ProtoWarning BuiltinShadow) any ProtoDeclare/
-    ExternProtoDeclare whose name is in X3DNodeFactory::registry(); the built-in keeps the name.
-    Default lenient (warn, scene loads); strict/conformance mode treats it as fatal. Sites
-    ClassicVrmlReader.hpp:298/797, JsonReader.hpp:622/419. Consistent with the self-reference
-    precaution (concepts.md:956) and the ADR-0001 ext-firewall. 4.1 - ALIGNED; the Mantis 1492 4.1
-    direction is built-in-takes-precedence (Seelig/X_ITE) flagged as an error/security consideration
-    (Brutzman) — exactly this policy.
+    Closed by quarantining any ProtoDeclare/ExternProtoDeclare whose name is in X3DNodeFactory::registry()
+    at the parse front door (quarantineBuiltinShadowingProtos, ADR-0033): the declaration is dropped, the
+    built-in keeps the name, and a ProtoWarning{Kind::BuiltinShadow} is recorded for every encoding
+    (lenient; a strict embedder may treat it as fatal). Regression: x3d_parse_tests core_diagnostics_test
+    (proto_shadow_xml/classicvrml/json, all fail without the quarantine).
 - id: GEOSYSTEM
   nodes: [GeoCoordinate, GeoProximitySensor, GeoLocation, GeoViewpoint]
   interfaces: [X3DGeospatialObject]
   component: Geospatial
   clause: "25.2.3"
   severity: minor
-  status: open
+  status: closed
   summary: "geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning."
   note: >-
     Per ADR-0003 keep the value; add a geoSystem token validator (SRF GD|GDC|GC|GCC|UTM|WM + UTM
@@ -1698,7 +1705,10 @@
     northern alias + warning (Mantis 938). UOM cannot enforce (additionalEnumerationValuesAllowed
     = true). Also add the missing WM (Web Mercator) enumeration to geoSystemSpatialReferenceFrameValues.
     Site GeoCoordinate.hpp:111 setGeoSystemUnchecked. 4.1 - unresolved (4.1 UOM still lacks WM, enum
-    still open); engine validator + WM add are ahead of spec.
+    Closed 2026-09-26: runtime/X3DRangeValidate.hpp validates frame, zone and option
+    tokens without mutation; range_warnings_test covers GD, UTM Z10 S, N and garbage.
+    The validator accepts WM (Web Mercator). The vendored X3D UOM is left as published (it still
+    lacks WM), so the generated enumeration does not list it; the open enum stores it regardless.
 - id: SND-GAIN-TYPE
   nodes: [ListenerPointSource]
   component: Sound
@@ -1756,17 +1766,14 @@
   interfaces: [X3DEnvironmentalSensorNode]
   clause: "22.4, 22.4.3"
   severity: major
-  status: open
+  status: closed
   summary: "Environmental sensors in non-selected Switch children / inactive LOD levels are still ticked (active) instead of treated as removed from the transformation hierarchy."
   note: >-
-    Today branch-blind - sensors enrolled by the full-graph walk (X3DSceneBridge.hpp:338) and ticked
-    unconditionally (ViewDependentSystem.hpp:63-92) while rendering culls inactive branches
-    (SceneExtractor.hpp:570-593). Policy (ADR-0034) - a sensor is in the ACTIVE transformation
-    hierarchy iff some root->node path takes children[whichChoice] at every Switch and the selected
-    level at every LOD (union over DEF/USE); tick only while active (active->inactive forces
-    isActive=FALSE + exitTime once then suppress; inactive->active re-evaluates + enterTime). Script
-    and time-dependent nodes are NOT gated (per 10.4.3). 4.1 - unresolved (open since 2009); engine
-    adopts the Xj3D/Contact reading ahead of spec.
+    Implemented per ADR-0034. Each tick ViewDependentSystem::update computes active-path reachability
+    from ctx.sceneRoots() (Switch descends only children[whichChoice]; LOD only the level the
+    extractor would choose), and deactivates any attached sensor not reached (isActive=FALSE +
+    exitTime once, then suppressed). A reselected branch re-evaluates and re-fires enter. Script and
+    time-dependent nodes are not gated (per 10.4.3). No detach hook was needed; the gate lives in update().
 - id: VIEWPORT-CLIP
   nodes: [Viewport]
   interfaces: [X3DViewportNode]
@@ -1852,37 +1859,37 @@
   clause: "ISO 19776-2; 19775-1 4.4.4"
   severity: minor
   status: open
-  summary: ProtoDeclare/ExternProtoDeclare `appinfo` and `documentation` attributes are dropped through the ClassicVRML hop — the most common drift in the sweep (31 of 44 scenes).
+  summary: ProtoDeclare/ExternProtoDeclare and field `appinfo`/`documentation` survive XML and JSON, but are not representable in ClassicVRML and are lost on that hop.
   note: >-
-    XML->JSON direct keeps all appinfos (PajekVisualizationPrototypes.x3d); XML->VRML drops them to
-    zero. The whole Savage/KelpForest prototype-tooltip layer evaporates. Fix: carry
-    appinfo/documentation through the ClassicVRML path (X3D-Edit round-trips via comment/metadata
-    convention); at minimum keep them clean through JSON. (round-trip sweep.)
+    XML and JSON readers/writers preserve declaration and field metadata. Regression:
+    proto_appinfo_json_roundtrip_test. ISO/IEC 19776-2 ClassicVRML PROTO/EXTERNPROTO/interface
+    syntax has no appinfo or documentation production; comments are not a semantic metadata slot.
+    ClassicVRML conversion therefore remains lossy for these attributes.
 
 - id: ENC-PROTO-CONNECT
   nodes: [ProtoBody, connect]
   interfaces: [X3DPrototypeInstance]
   clause: "ISO 19776; 19775-1 4.4.4 (IS/connect)"
   severity: major
-  status: open
+  status: closed
   summary: ProtoBody `<connect>` IS-wiring is dropped on round-trip (5 scenes) — the proto declares fine but no longer drives anything inside its body.
   note: >-
-    CanopyPrototype.x3d, F18 wheel prototypes, PajekVisualizationPrototypes.x3d lose
-    `<connect nodeField=... protoField=.../>`. Distinct from PROTO-IS-001 (that was expansion-time
-    MFNode override propagation, now fixed) — this is SERIALIZATION dropping the connect element in a
-    writer. Fix: treat <connect>/IS as load-bearing in every encoder. (round-trip sweep.)
+    XML, JSON, and ClassicVRML writers emit the body's IS bindings, including nested nodes; matching
+    readers restore them. ClassicVRML now emits a type-default value for valueless initializeOnly and
+    inputOutput author/interface declarations, so the following IS statement cannot be consumed as a
+    value. Regression: proto_is_json_vrml_roundtrip_test and proto_author_field_is_roundtrip_test.
+    Corpus checks: CanopyPrototype.x3d 4 -> 4 connects; PajekVisualizationPrototypes.x3d 32 -> 32.
 
 - id: ENC-SFNODE-DEFAULT
   nodes: [ProtoDeclare, field]
   interfaces: [X3DPrototypeInstance]
   clause: "ISO 19776; 19775-1 4.4.4"
   severity: minor
-  status: open
+  status: closed
   summary: A proto `<field type='SFNode'>` default child node collapses to empty on round-trip — instances relying on the default get nothing.
   note: >-
-    SeaStarHighResolutionPrototype.x3d, runtime/.../NewShape.wrl: an SFNode field whose default value
-    is an `<Appearance><Material/></Appearance>` re-serializes as `<field ... type='SFNode'/>`.
-    Fix: serialize SFNode field default children in all encodings. (round-trip sweep.)
+    SFNode/MFNode default children are serialized in XML and JSON; ClassicVRML emits an SFNode default
+    as a bare node (and MFNode defaults as a list). Regression: proto_sfnode_default_roundtrip_test.
 
 - id: ENC-CDATA-SCRIPT
   nodes: [Script]
@@ -1974,38 +1981,40 @@
   interfaces: [X3DEnvironmentalSensorNode]
   clause: "22.4.5"
   severity: major
-  status: open
+  status: closed
   summary: TransformSensor extracts orientation_changed from a scale-bearing relative matrix — a uniform 3x scale collapses the reported angle to 0; non-uniform scale can emit a NaN SFRotation into the route graph.
   note: >-
-    ViewDependentSystem.hpp:278 `rotationFromMatrix(swInv * tw)`; rotationFromMatrix (Mat4.hpp:128) is
-    documented "assumes upper-left 3x3 is pure rotation (no scale)" but the relative matrix folds in both
-    hierarchies' scale. Probe: uniform-scale(3x)+90deg-about-X -> angle=0.000 (true 1.571). Fix: strip
-    scale (normalize the 3x3 columns / polar or TRS decompose) before rotationFromMatrix. (numeric probe.)
+    TransformSensor now orthonormalizes the relative matrix basis before extracting orientation;
+    degenerate zero-scale bases retain the last valid rotation (identity initially). Covered by
+    testTransformSensorScaleRotation in view_dependent_test.cpp (uniform and non-uniform scale,
+    plus zero scale).
 
 - id: IMPORT-EXPORT-WIRE
   nodes: [IMPORT, EXPORT, Inline]
   clause: "9.4.2; 4.4.6"
   severity: minor
-  status: open
+  status: closed
   summary: IMPORT/EXPORT statements parse and round-trip but are never wired to routing — a ROUTE to an imported name hits the unresolved-endpoint drop.
   note: >-
-    scene.imports/exports are consumed only by the codecs; no event/routing code references them. Inline
-    DEF isolation (InlineExpand.hpp:176) is correct, but the spec's sanctioned cross-Inline escape hatch
-    is inert. Fix: at scene-bridge build, resolve each Import{inlineDEF, importedDEF, AS} against the named
-    Inline's exported DEF and register the alias before resolveRoutes. X_ITE supports this. (event-model review.)
+    Closed by wireInlineImports (runtime/InlineExpand.hpp), called from parseDocument after expandInlines:
+    each Import{inlineDEF, importedDEF, AS} resolves the imported name against the named Inline's retained
+    child scene (its <EXPORT AS> alias first, else a child DEF) and registers the local alias in
+    scene.defs before re-running resolveRoutes, so a ROUTE to/from the AS name binds. Regression:
+    x3d_parse_tests core_diagnostics_test (import_export_wire_route_to_imported_as_name).
 
 - id: SCRIPT-OUTPUTONLY-REEMIT
   nodes: [Script]
   interfaces: [X3DScriptNode]
   clause: "29.2.4 (ECMAScript binding 19777-1)"
   severity: low
-  status: open
+  status: closed
   summary: An explicit same-value assignment to a Script outputOnly field is suppressed — strict X3D semantics say an explicit eventOut assignment generates an event regardless of value.
   note: >-
-    EcmaScriptBackend.cpp:906-912 readbackAuthorGlobals diffs against the stored value and skips if equal,
-    for BOTH inputOutput (correct) and outputOnly (a re-assert on two ticks fires once). Fix: track a
-    per-field "assigned this callback" flag for outputOnly, or document as an intentional X3DOM-aligned
-    optimization. (event-model review.)
+    EcmaScriptBackend.cpp readbackAuthorGlobals diffed the JS global against the stored value and skipped
+    if equal, for BOTH inputOutput (correct) and outputOnly (a re-assert on two ticks fired once). Closed
+    2026-09-26: the no-op diff suppression now applies to inputOutput only, in both backends
+    (runtime/script/EcmaScriptBackend.cpp, runtime/script/QuickJsBackend.cpp); an outputOnly re-assignment
+    always emits. Tested in x3d_ecmascript_backend (T18).
 
 - id: SCRIPT-SAI-ADDROUTE-VALIDATE
   nodes: [Script]
@@ -2079,37 +2088,38 @@
   component: Core
   clause: "ISO 19776-1; 19775-1 7"
   severity: minor
-  status: open
+  status: closed
   summary: 'An unknown/misspelled node element is silently discarded with no diagnostic — `x3d validate` reports "valid: yes / no diagnostics" while deleting geometry.'
   note: >-
-    XmlReader.hpp:157-158 (`unknown node type: skip`) and NodeBuilder.hpp:70 drop the element and collect
-    no warning. Violates the "the reported error message is precisely correct" standard by absence. Fix:
-    thread an unknown-element warning into doc (parallel to rangeWarnings/inlineWarnings) and surface it in
-    cmdValidate. (validation review.)
+    Closed by threading a ReaderWarning{Kind::UnknownNode} into X3DDocument.readerWarnings at each reader's
+    unknown-element recovery (XmlReader, ClassicVrmlReader, JsonReader) and surfacing it in cmdValidate (and
+    the cli-gate validate path) as a "node" diagnostic. Regression: x3d_parse_tests core_diagnostics_test
+    (unknown_node_xml/classicvrml/json).
 
 - id: DIAG-PROFILE-COERCE
   nodes: [WorldInfo]
   component: Core
   clause: "7.2.5.3 (profile)"
   severity: minor
-  status: open
+  status: closed
   summary: An unknown/misspelled `profile=` token is silently coerced to Interchange and re-emitted as `profile='Interchange'` — validates against the wrong component table and rewrites authored metadata.
   note: >-
-    X3DDocument.hpp:59 returns Profile::Interchange for any unrecognized string; cmdValidate then checks
-    exceedances against the wrong table and the writer rewrites the declared conformance class. Fix:
-    preserve the raw profile string for round-trip; emit a profile/error diagnostic when the token is not
-    one of the seven canonical names. (validation review.)
+    Closed by X3DDocument::setProfileToken (all readers): an unknown token is diagnosed as
+    ReaderWarning{Kind::ProfileCoerced} and the authored spelling is preserved in profileRaw so every writer
+    round-trips it unchanged (profileToken()). Resolved Profile is still Interchange for profile-fit.
+    Regression: x3d_parse_tests core_diagnostics_test (profile_coerce_*).
 
 - id: CONTAINERFIELD-FALSEPOS
   nodes: [Coordinate, NurbsCurve]
   clause: "ISO 19776-1 (containerField)"
   severity: minor
-  status: open
+  status: closed
   summary: CONTAINERFIELD_MISMATCH warns whenever containerField != the child's own default, false-positiving on legal non-default overrides (e.g. <NurbsCurve><Coordinate containerField='controlPoint'/></NurbsCurve>).
   note: >-
-    validate.py:76 compares only against the child default; the adjacent comment promises a parent-field
-    check that is unimplemented. Fix: resolve whether containerField names a valid SF/MFNode field on the
-    PARENT that accepts this node type before warning; add a NURBS controlPoint regression. (validation review.)
+    Closed by resolving whether the explicit containerField names an SF/MFNode field on the PARENT that
+    accepts the child's type (manifest acceptableNodeTypes) before warning; only a field that exists on
+    neither side is flagged. Regression: tests/conformance/test_validate.py
+    (test_legal_containerfield_override_not_flagged, test_containerfield_naming_no_parent_field_still_flagged).
 
 # ══ EXTRACTION-SEAM COVERAGE (extraction-semantic axis) ═════════════════════
 # The renderer-agnostic seam is narrower than the node model; these nodes reach
@@ -2120,53 +2130,53 @@
   component: EnvironmentalEffects
   clause: "24.4.2, 24.4.4"
   severity: major
-  status: open
+  status: closed
   summary: BackgroundDesc surfaces only sky/ground gradient — the six panorama *Url faces, TextureBackground textures, and Background.transparency never reach the seam; the gallery skybox only works because the example reads the *Url fields straight off the node.
-  note: >-
-    background() SceneExtractor.hpp:351-363 + BackgroundDesc RenderItem.hpp:520-527 carry no panorama;
-    examples/cpu_raster/main.cpp:204-209 bypasses the seam via node reflection, masking the gap. Fix: put
-    the six *Url slots, transparency, and TextureBackground texture nodes on BackgroundDesc so the skybox
-    is reproducible from the contract. (extraction-seam review.)
-
+  note: "Closed 2026-09-26: BackgroundDesc carries front/back/left/right/top/bottom TextureRefs (Background *Url lists as Source::Url, TextureBackground face nodes through refOf) plus transparency and hasPanorama(). cpu_raster builds its skybox from the descriptor and no longer reads the node (background_desc_test). poc_renderer still draws only the gradient."
 - id: SEAM-2D-NURBS
   nodes: [Disk2D, Arc2D, Circle2D, Rectangle2D]
   component: Geometry2D
   clause: "14 (Geometry2D)"
   severity: major
-  status: open
+  status: closed
   summary: The entire 2D-geometry component is unrecognized by the mesh builder and renders nothing — indistinguishable from a parser failure.
   note: >-
-    recognizedGeometryType (MeshBuilder.cpp:938-953) lists none of Disk2D/Arc2D/ArcClose2D/Circle2D/
-    Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D; each falls to ++skippedGeometry_ (SceneExtractor.hpp).
-    view3dscene/X_ITE tessellate these. Fix: tessellate the 2D primitives (cheap trig fans). (extraction-seam
-    review.) NURBS is no longer part of this finding: NurbsCurve/NurbsPatchSurface now tessellate (NRB-1,
-    fixed) and the remaining trimmed/swept/swung surfaces are tracked by NRB-3.
+    Closed: recognizedGeometryType now lists all eight 2D primitives and buildGeometry2D tessellates them, so
+    SceneExtractor no longer drops Disk2D/Arc2D/ArcClose2D/Circle2D/Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D
+    (no more ++skippedGeometry_ for them). Tessellation is cheap trig fans/lines in the XY plane. Tested in
+    mesh_builder_geom2d_test.cpp. NURBS was already split out of this finding (NRB-1 fixed; NRB-3 tracks the rest).
+    (extraction-seam review; closed 2D-geometry pass.)
 
 - id: SEAM-LINEPOINT
   nodes: [LineProperties, PointProperties, IndexedLineSet, PointSet]
   component: Shape
   clause: "12.4.6 (LineProperties), 12.4.8 (PointProperties)"
   severity: minor
-  status: open
+  status: closed
   summary: Line width and point size are unrepresentable on the seam — MeshData/MaterialDesc carry no lineWidth/pointSize, so every IndexedLineSet draws at 1px regardless of LineProperties.linewidthScaleFactor.
   note: >-
-    Line/point funnel MeshBuilder.hpp:1690-1766 sets topology Lines/Points and per-vertex color but the
-    descriptors have no width/size carrier. Fix: add lineWidth/pointSize (or a small LineProperties
-    descriptor) so the GL glLineWidth/gl_PointSize path is feedable. (extraction-seam review.)
+    Added LinePropertiesDesc/PointPropertiesDesc to MaterialDesc (RenderItem.hpp), populated from the
+    Appearance's LineProperties/PointProperties children in materialOf() (read before the material
+    dispatch so the no-material line/point case is covered), and honoured in the reference consumers:
+    cpu_raster Rasterizer drawLines/drawPoints (width square stamp; point size = (A+B·d+C·d²)·scale
+    clamped to [min,max]) driven from SceneRender.hpp; PoC glLineWidth (linewidthScaleFactor) and
+    unlit.vert gl_PointSize (uPointSizeScale/Attenuation/Min/Max, fed from main.cpp). Regression:
+    examples/cpu_raster/tests/linepoint_style_test.cpp (line width, point size + clamp, extraction).
+    (2026-06-27)
 
 - id: SEAM-TEXT-METRICS
   nodes: [Text, FontStyle]
   component: Text
   clause: "15.4.2, 15.4.1"
   severity: minor
-  status: open
+  status: closed
   summary: Text glyphs are stretched to the advance cell and ascender/descender are hard-coded — GlyphMetrics exposes only advanceEm + atlas UV, so the seam cannot place a proportional-font glyph at its true box even with a real atlas.
   note: >-
-    buildTextMesh TextExtract.hpp:294-326 maps the glyph UV across the full advance-width quad; GlyphMetrics
-    FontMetrics.hpp:59-64 lacks bearing/size/top; vertical metrics fixed at 0.8/-0.2*size. Monospace stub is
-    fine; a real font is not. Fix: extend GlyphMetrics with {bearingX,sizeX,sizeY,top} and place the quad at
-    the actual glyph box. (extraction-seam review.) Visual sweep 2026-06-27 CONFIRMED now that the poc wires a
-    real stb_truetype atlas: set_length_comp/set_length_exp render the length-compressed strings as bars.
+    Closed: GlyphMetrics now carries the normalized glyph box and font ascent/descent, populated by stb_truetype
+    and FreeType; buildTextMesh places the quad at that box within the advance cell. The text_extract_test
+    atlas-UV case checks the offset, narrower glyph box; vertical extraction tests verify legacy stub
+    coordinates, Y-axis length compression, and real glyph-box placement. font_metrics_tests extends the
+    backend swap proof across all added fields. Metrics without hasGlyphBox retain advance-cell geometry.
 
 # ── Visual conformance sweep (poc renderer vs Web3D/NIST front refs, 2026-06-27) ──
 # Surfaced by scripts/visual_conformance_sweep.py: poc `--front` screenshots compared
@@ -2229,3 +2239,295 @@
     x3d_movie_tests semantics-contract test and by rendering Appearance/Appearance/movietexture.x3d (the VTS card plays on
     box/sphere/cone/cylinder). Theora since shipped as MovieDecoder Backend B (TheoraMovieDecoder, seam-status.md — the
     seam is STABLE); WebM remains a follow-up. MovieTexture time-lifecycle nuance tracked by TDN-5.
+
+# Immersive-profile audit 2026-09-26: six independent spec-vs-code passes over every Immersive node.
+# Each PROVEN entry has a failing probe test named in its note. AUD-ENV-1 (sensors under an unchosen
+# Switch/LOD) was rejected: it conflicts with ADR-0034, an accepted decision on a spec ambiguity.
+- id: AUD-TIME-1
+  nodes: [TimeSensor]
+  component: Time
+  clause: "8.2.4.4"
+  severity: major
+  status: closed
+  summary: "A late resume shifts the clock by resumeTime-pauseTime instead of the actual paused span, so fraction_changed jumps on resume."
+  note: "X3DTimeDependentSystem now shifts the elapsed and cycle bases by the actual tick-to-tick paused span. Regression: timesensor_late_resume_keeps_fraction_frozen."
+- id: AUD-TIME-2
+  nodes: [TimeSensor]
+  component: Time
+  clause: "8.4.1"
+  severity: minor
+  status: closed
+  summary: "A stop detected after stopTime emits the final values evaluated at the tick instead of at stopTime."
+  note: "A scheduled stop evaluates final outputs at stopTime; a set_stopTime received after its requested time still evaluates at the receiving tick. Regression: timesensor_stop_uses_stop_time_for_final_output."
+- id: AUD-TIME-3
+  nodes: [TimeSensor, AudioClip, MovieTexture, Gain, BiquadFilter, OscillatorSource]
+  component: Time
+  clause: "8.2.4.3"
+  severity: major
+  status: closed
+  summary: "set_startTime (and set_stopTime <= startTime) to an active node still overwrite the field and emit *_changed."
+  note: "The shared X3DTimeDependentSystem registers a cascade/direct-write input filter for all attached time-dependent nodes; it rejects active startTime and stopTime <= active startTime before field writes or route fan-out, while allowing ordered stop-then-start restart. Regressions: timesensor_ignores_start_and_invalid_stop_while_active, time_dependent_nodes_ignore_active_timing_inputs."
+- id: AUD-TIME-4
+  nodes: [TimeSensor]
+  component: Time
+  clause: "8.2.2, 8.2.4.4"
+  severity: low
+  status: closed
+  summary: "A negative absolute pauseTime never pauses (the code also requires pauseTime > 0)."
+  note: "The shared pause/resume guards no longer require positive absolute times. Regression: timesensor_accepts_negative_absolute_pause_time."
+- id: AUD-TIME-5
+  nodes: [TimeSensor]
+  component: Time
+  clause: "8.4.1"
+  severity: major
+  status: closed
+  summary: "Changing cycleInterval during an active loop makes fraction_changed jump instead of continuing smoothly at the new rate."
+  note: "The cycle phase uses a separate base rebased from the last evaluated tick, leaving elapsedTime independent; a new interval below elapsed cycle duration completes that cycle. Regressions: timesensor_cycle_interval_change_keeps_fraction_continuous, timesensor_shorter_interval_completes_current_cycle."
+- id: AUD-SEQ-1
+  nodes: [IntegerSequencer, BooleanSequencer]
+  component: EventUtilities
+  clause: "30.2.4"
+  severity: minor
+  status: closed
+  summary: "With a duplicated final key, the sequencer returns the last keyValue instead of the first."
+  note: "The final-key clamp walks backward over equal final keys, including for fractions beyond the key range. Regression: integer_sequencer_duplicate_last_key_uses_first_value."
+- id: AUD-INTERP-1
+  nodes: [ScalarInterpolator, PositionInterpolator, OrientationInterpolator, ColorInterpolator, CoordinateInterpolator, NormalInterpolator]
+  component: Interpolation
+  clause: "19.3.1"
+  severity: minor
+  status: closed
+  summary: "value_changed read before any input returns the field default instead of keyValue[0]."
+  note: "The hand-written linear, spline, and Squad attach paths initialize value_changed from the first authored keyValue or row without posting an event. Regression: interpolator_initial_value_readback."
+- id: AUD-PDS-1
+  nodes: [TouchSensor, PlaneSensor, CylinderSensor, SphereSensor]
+  component: PointingDeviceSensor
+  clause: "20.2.1"
+  severity: major
+  status: closed
+  summary: "Pointing sensors tied for lowest do not activate together; only the first sibling sensor gets the event."
+  note: "PointingSensorSystem resolves all tied lowest siblings and retains independent active drag state for each. Covered by 'tied lowest pointing sensors all receive the event' and 'tied PlaneSensors retain independent drag offsets'."
+- id: AUD-PDS-2
+  nodes: [TouchSensor, PlaneSensor, CylinderSensor, SphereSensor]
+  component: PointingDeviceSensor
+  clause: "20.4.2"
+  severity: major
+  status: closed
+  summary: "Disabling an active sensor deactivates it only on the next pointer update."
+  note: "PointingSensorSystem checks enabled before its pointer-revision gate and deactivates disabled grabbed sensors on the next tick without pointer motion. Covered by 'disabling an active PlaneSensor deactivates without pointer motion'."
+- id: AUD-PDS-3
+  nodes: [TouchSensor, PlaneSensor, CylinderSensor, SphereSensor, Switch]
+  component: PointingDeviceSensor
+  clause: "10.4.3, 20.2.3"
+  severity: major
+  status: closed
+  summary: "Geometry in an unchosen Switch branch is still pickable and can occlude visible geometry."
+  note: "PickSystem checks each cached placement against live Switch and LOD selection on every pick, matching the extractor's active transformation path without stale index entries. Covered by 'pointing sensors ignore geometry in an unchosen Switch branch', 'pick index follows live Switch selection', and 'pick index follows live LOD level'."
+- id: AUD-KDS-1
+  nodes: [StringSensor]
+  component: KeyDeviceSensor
+  clause: "21.4.2"
+  severity: minor
+  status: closed
+  summary: "Deletion removes one UTF-8 byte instead of one character."
+  note: "StringSensor deletion removes all bytes of the final UTF-8 character. Covered by 'StringSensor deletion removes one UTF-8 character'."
+- id: AUD-KDS-2
+  nodes: [StringSensor]
+  component: KeyDeviceSensor
+  clause: "21.4.2"
+  severity: minor
+  status: closed
+  summary: "enteredText is not cleared after finalText is generated."
+  note: "StringSensor clears the stored enteredText output field after posting finalText without posting an enteredText event. Covered by 'StringSensor enteredText field resets silently at termination'."
+- id: AUD-ENV-2
+  nodes: [ProximitySensor, VisibilitySensor]
+  component: EnvironmentalSensor
+  clause: "22.4.1"
+  severity: minor
+  status: closed
+  summary: "Disabling an active sensor emits exitTime."
+  note: "Disabling an active ProximitySensor or VisibilitySensor now emits isActive FALSE for routed state (following §20.4.2 pointing-sensor precedent) but no exitTime. Covered by disabling_proximity_sensor_sends_no_exit_time and disabling_visibility_sensor_sends_no_exit_time."
+- id: AUD-ENV-3
+  nodes: [ProximitySensor, VisibilitySensor]
+  component: EnvironmentalSensor
+  clause: "22.4.1, 22.4.3"
+  severity: major
+  status: closed
+  summary: "DEF/USE sensor instances are evaluated through one transform path, not the union of all instances."
+  note: "ProximitySensor and VisibilitySensor now evaluate the union of per-path boxes, limited to active paths by ADR-0034. Covered by proximity_sensor_uses_union_of_active_instances and visibility_sensor_uses_union_of_active_instances."
+- id: AUD-ENV-4
+  nodes: [ProximitySensor]
+  component: EnvironmentalSensor
+  clause: "22.4.1"
+  severity: minor
+  status: closed
+  summary: "No position_changed/orientation_changed at exit time."
+  note: "ProximitySensor now emits changed position and orientation at the exit instant. Covered by proximity_sensor_reports_position_on_exit."
+- id: AUD-ENV-5
+  nodes: [ProximitySensor, NavigationInfo]
+  component: EnvironmentalSensor
+  clause: "22.4.1"
+  severity: minor
+  status: closed
+  summary: "centerOfRotation_changed fires without LOOKAT in the bound NavigationInfo."
+  note: "ProximitySensor now emits centerOfRotation_changed only while the bound NavigationInfo includes LOOKAT. Covered by proximity_center_of_rotation_requires_lookat and testProximityCenterOfRotationChanged."
+- id: AUD-NAV-1
+  nodes: [Viewpoint, NavigationInfo]
+  component: Navigation
+  clause: "23.3.1"
+  severity: major
+  status: closed
+  summary: "A Viewpoint's dedicated NavigationInfo is not unbound when the Viewpoint is unbound."
+  note: "ViewpointBindSystem now sends set_bind FALSE to a Viewpoint's dedicated NavigationInfo when its parent is unbound. Covered by viewpoint_unbinds_its_navigation_info."
+- id: AUD-NAV-2
+  nodes: [NavigationInfo, Viewpoint]
+  component: Navigation
+  clause: "23.4.4"
+  severity: minor
+  status: closed
+  summary: "TELEPORT (and zero-duration) transitions never emit transitionComplete."
+  note: "ViewpointBindSystem now emits transitionComplete for TELEPORT and zero-duration camera transitions. Covered by teleport_transition_signals_complete and zero_duration_transition_signals_complete."
+- id: AUD-PROTO-1
+  nodes: [ProtoInstance]
+  component: Core
+  clause: "4.4.4.3"
+  severity: major
+  status: closed
+  summary: "Peer nodes after the first in a PROTO body are never enrolled, so a peer TimeSensor/Script never runs."
+  note: "Expanded PROTO body peers are retained in Scene::protoPeerNodes and included in standard runtime system enrollment without adding them to render roots. Regression: proto_peer_timesensor_remains_active."
+- id: AUD-NET-1
+  nodes: [Inline, IMPORT, EXPORT]
+  component: Networking
+  clause: "9.2.5"
+  severity: major
+  status: closed
+  summary: "IMPORT resolves an Inline DEF that the Inline never EXPORTed."
+  note: "wireInlineImports now requires an explicit child EXPORT whose public name matches importedDEF; a private DEF no longer becomes a parent alias. Regression: import_requires_explicit_export."
+- id: AUD-NET-2
+  nodes: [Inline]
+  component: Networking
+  clause: "9.4.2"
+  severity: major
+  status: closed
+  summary: "An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing."
+  note: "InlineRuntimeSystem unloads on load=FALSE and unloads then reloads on url change. System::detach removes per-node runtime state before the old subtree is released; routes, pending deliveries, IMPORT aliases, binding/pick entries, and extracted RenderItems are removed. Regression tests: inline_load_unload_reload_detaches_content_and_reports_removal, inline_url_change_replaces_loaded_content, nested_inline_loaded_with_parent_can_unload, inline_repeated_replacement_drops_unowned_nodes. ADR-0051 records the detach order and extraction delta rule."
+- id: AUD-NET-3
+  nodes: [LoadSensor, Anchor, Viewpoint]
+  component: Networking
+  clause: "9.4.3"
+  severity: minor
+  status: closed
+  summary: "LoadSensor counts an Anchor's target Viewpoint as loaded before it is bound."
+  note: "LoadSensor now waits until the Anchor's #Viewpoint target is actually bound, and ignores Anchor.load as required by §9.4.1. Regression: events_misc_test checks unbound then bound target with load FALSE."
+- id: AUD-LGT-1
+  nodes: [PointLight, SpotLight]
+  component: Lighting
+  clause: "17.4.2, 17.4.3"
+  severity: major
+  status: closed
+  summary: "Light radius ignores ancestor scale."
+  note: "LightSystem scales radius through ancestor transforms. Covered by point_light_radius_scales_with_parent_transform and spot_light_radius_scales_with_parent_transform."
+- id: AUD-LGT-2
+  nodes: [DirectionalLight, PointLight, SpotLight, Switch]
+  component: Lighting
+  clause: "10.4.3"
+  severity: major
+  status: closed
+  summary: "Lights in an unchosen Switch branch (or inactive LOD level) still illuminate."
+  note: "LightSystem and SceneExtractor share Switch and LOD branch selection. Covered by light_under_inactive_switch_does_not_illuminate and light_under_unselected_lod_level_does_not_illuminate."
+- id: AUD-EXT-1
+  nodes: [Extrusion]
+  component: Geometry3D
+  clause: "13.3.5.6, 11.2.3"
+  severity: major
+  status: closed
+  summary: "Caps are fanned from vertex 0 even with convex FALSE, so a concave cap covers its notch."
+  note: "Extrusion caps with convex FALSE use the IndexedFaceSet ear clipper. Covered by extrusion_concave_cap_does_not_cover_notch."
+- id: AUD-RND-1
+  nodes: [LineSet, IndexedLineSet, PointSet]
+  component: Rendering
+  clause: "11.2.2.5"
+  severity: minor
+  status: closed
+  summary: "Authored normals on points/lines are dropped, so they can never be lit."
+  note: "Line and point meshes retain authored normals, and both example renderers light them. Covered by line_and_point_normals_enable_lighting and linepoint_style_test."
+- id: AUD-RND-2
+  nodes: [LineSet, IndexedLineSet, PointSet, Material]
+  component: Rendering
+  clause: "11.2.2.5"
+  severity: minor
+  status: closed
+  summary: "Unlit points/lines take the Material's diffuse colour instead of emissiveColor."
+  note: "MaterialDesc exposes unlitGeometryRGBA, which both example renderers use for normal-less lines and points. Covered by unlit_line_set_material_uses_emissive_color."
+- id: AUD-BG-1
+  nodes: [Background, TextureBackground]
+  component: EnvironmentalEffects
+  clause: "24.2.1"
+  severity: minor
+  status: closed
+  summary: "Decreasing skyAngle/groundAngle values are accepted silently."
+  note: "Range validation emits BACKGROUND_ANGLE_ORDER warnings for decreasing skyAngle and groundAngle, preserving lenient reads (ADR-0003). Test: Background reports decreasing sky and ground angles."
+- id: AUD-BG-2
+  nodes: [TextureBackground, MultiTexture]
+  component: EnvironmentalEffects
+  clause: "24.4.5"
+  severity: minor
+  status: closed
+  summary: "A MultiTexture panorama face is dropped from BackgroundDesc."
+  note: "TextureRef now carries MultiTexture panorama stages and BackgroundDesc counts populated stages. Test: TextureBackground preserves MultiTexture panorama face. Completes ENV-11."
+- id: AUD-TEX-1
+  nodes: [ImageTexture, MovieTexture, X3DUrlObject]
+  component: Texturing
+  clause: "9.3.2, 18.4.1"
+  severity: minor
+  status: closed
+  summary: "load FALSE on a texture still fetches its url."
+  note: "Texture refs omit URL candidates while load is FALSE, so the consumer resolver cannot fetch them. Test: ImageTexture load FALSE suppresses URL fetch."
+- id: AUD-TEX-2
+  nodes: [MultiTexture]
+  component: Texturing
+  clause: "18.4.3"
+  severity: major
+  status: closed
+  summary: "MultiTexture mode/source/function/color/alpha never reach the descriptor, so stages cannot be blended as authored."
+  note: "TextureRef now retains ordered MultiTexture stages with mode, source, function, color and alpha, including defaults; resolver enrichment traverses stages. Test: MultiTexture stages preserve blend controls."
+- id: AUD-TEX-3
+  nodes: [TextureProperties]
+  component: Texturing
+  clause: "18.4.9"
+  severity: low
+  status: closed
+  summary: "borderColor (deprecated in v4.0) is not extracted."
+  note: "TextureProperties.borderColor now reaches ExtendedSamplerParams and the CPU reference sampler. Test: texture_extract_test custom borderColor assertions."
+- id: AUD-MEDIA-1
+  nodes: [MovieTexture]
+  component: Texturing
+  clause: "18.4.2"
+  severity: major
+  status: closed
+  summary: "set_speed changes an active movie's cycle; it must be ignored while playing."
+  note: "Active MovieTexture speed deliveries are ignored and MediaTimeSystem holds the activation rate for cycle timing. Test: MovieTexture ignores speed changes while active. Completes TDN-5."
+- id: AUD-MEDIA-2
+  nodes: [AudioClip]
+  component: Sound
+  clause: "16.4.2"
+  severity: major
+  status: closed
+  summary: "set_pitch changes an active clip's timing and playback rate; it must be ignored."
+  note: "Active AudioClip pitch deliveries are ignored; MediaTimeSystem and SoundSystem use the activation pitch for timing and PlaybackRate. Tests: AudioClip ignores pitch changes while active; sound_immersive_test activation pitch case. Completes TDN-5/ADR-0050."
+- id: AUD-MEDIA-3
+  nodes: [MovieTexture]
+  component: Texturing
+  clause: "18.4.2"
+  severity: minor
+  status: closed
+  summary: "MovieTexture never sends duration_changed: the SDK opens no media (ADR-0041) and the MovieDecoder seam carries no duration."
+  note: "The additive reportMovieDuration(context, movie, seconds) helper posts duration_changed through the cascade after consumer loading, feeding routes and MediaTimeSystem. Test: consumer reported MovieTexture duration drives lifecycle."
+- id: AUD-MEDIA-4
+  nodes: [Sound, MovieTexture]
+  component: Sound
+  clause: "16.4.17"
+  severity: major
+  status: closed
+  summary: "Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources."
+  note: "SoundSystem resolves MovieTexture media through an injected movie-audio decoder and creates a PCM Buffer driven by isActive/isPaused and activation speed (ADR-0052). Tests: testMovieTextureSourceLifecycle and pl_mpeg decodes a movie MP2 track to mono PCM."

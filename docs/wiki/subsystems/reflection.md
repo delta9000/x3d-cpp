@@ -43,7 +43,7 @@ The layer is split across the Python generator (`src/x3d_cpp_gen/emit/`) and the
 | `generated_cpp_bindings/<NodeName>.cpp` | Per-node golden: the `fields()` static (lambda-initialized `FieldTable`) and `accept()` double-dispatch body |
 | `runtime/FieldRead.hpp` | Reads of reflected values. Zero-copy: `fieldPtr<T>` (borrow a generated field's member through `FieldInfo::view`), `FieldRef<T>` (borrow when possible, else box through `get`, e.g. for author fields) and `forEachChildNode` (walk a node's SFNode/MFNode children without copying a vector or bumping a refcount; ADR-0049). Exception-free: `fieldValueAs<T>` (pointer-form `any_cast`; empty → null, a present value of the wrong type asserts in debug) and `enumToken` (an SFEnum/MFEnum field's token via `getEnumString`). Use these instead of `any_cast` inside `try`/`catch (...)`, which also swallows unrelated errors. |
 | `runtime/events/DynamicField.hpp` | Runtime extension: `effectiveFields(node)` concatenates the generated `fields()` table with per-instance author `<field>` declarations; `DynamicFieldStore` holds the side-table |
-| `runtime/X3DRangeValidate.hpp` | Runtime helper: `collectRangeWarnings()` walks a scene calling `validateRanges()` on each node (the per-node `validateRanges` is generated) |
+| `runtime/X3DRangeValidate.hpp` | Runtime helper: `collectRangeWarnings()` walks a scene calling `validateRanges()` on each node (the per-node `validateRanges` is generated), then checks cross-element rules such as non-decreasing Background and TextureBackground sky/ground angles and emits `BACKGROUND_ANGLE_ORDER` warnings. |
 
 ## Interfaces and seams
 

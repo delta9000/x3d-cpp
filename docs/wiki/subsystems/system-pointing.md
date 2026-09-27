@@ -2,7 +2,7 @@
 title: Pointing-Device Sensor System
 summary: TouchSensor and drag sensors (PlaneSensor, SphereSensor, CylinderSensor) — pointer hit-test, grab lifecycle, and drag math, wired through the M2.5 input seam.
 tags: [subsystem, pointing, touchsensor, drag, plane-sensor, sphere-sensor, cylinder-sensor, events]
-updated: 2026-07-18
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/sensors.md
@@ -20,8 +20,8 @@ This subsystem drives the four X3D pointing-device sensors — `TouchSensor`, `P
 
 It owns three concerns:
 
-1. **Pick resolution.** Each tick it asks the scene's `PickSystem` for the closest geometry hit under the current pointer bearing, then walks the hit's root-to-geometry node path upward to find the lowest enabled pointing-device sensor sibling (ISO/IEC 19775-1 §20.2.1, §20.2.3).
-2. **Grab lifecycle.** A button-down edge while over a resolved sensor starts a grab; the grabbed sensor exclusively owns all pointer motion until button-up (§20.2.1). During a grab no other sensor receives events.
+1. **Pick resolution.** Each pointer update asks `PickSystem` for the closest hit on an active `Switch`/`LOD` path, then finds every enabled sensor tied at the lowest group on that path (§20.2.1, §20.2.3).
+2. **Grab lifecycle.** A button-down edge activates all tied lowest sensors, each with its own drag state; together they own pointer motion until button-up (§20.2.1). Other sensors receive no events during the grab.
 3. **Per-sensor behavior dispatch.** Within the grab the system dispatches to the appropriate pure drag-math function (`planeDrag`, `sphereDrag`, `cylinderDrag`) or emits `TouchSensor` hit outputs. On deactivation it applies `autoOffset` for drag sensors (§20.2.2).
 
 The pure drag geometry lives in three header-only functions under `runtime/events/drag/`; `PointingSensorSystem` itself holds no per-motion geometry — only the cross-tick activation state and the dispatch.
@@ -35,7 +35,7 @@ The pure drag geometry lives in three header-only functions under `runtime/event
 | `runtime/events/drag/PlaneDrag.hpp` | Pure PlaneSensor drag math: tracking-plane intersection + per-component clamp (§20.4.2) |
 | `runtime/events/drag/SphereDrag.hpp` | Pure SphereSensor drag math: virtual-sphere intersection + relative rotation composed with offset (§20.4.3) |
 | `runtime/events/drag/CylinderDrag.hpp` | Pure CylinderSensor drag math: disk/cylinder mode decision + Y-axis angle + clamp (§20.4.1) |
-| `runtime/scene/PickSystem.hpp` | Ray pick over the scene graph via a lazily-maintained index of geometry-bearing placements (per-path world AABBs, refit on transform/bounds revision); broad-phase `rayAabb` + narrow-phase analytic/mesh; produces `PickResult` with hit point, world normal, tex coord, and root-to-node `PathKey` |
+| `runtime/scene/PickSystem.hpp` | Ray pick over cached geometry placements; checks live `Switch`/`LOD` selection and `Layer.pickable` on each path, then broad/narrow phase; produces hit point, normal, tex coord, and `PathKey` |
 | `runtime/events/X3DExecutionContext.hpp` | Context that owns `PointerState` and exposes `setPointer` / `setPointerButton` / `setPointerPresent` + `pick()` / `worldOf()` to the system |
 
 ## Interfaces and seams
@@ -108,6 +108,7 @@ The `path` field is the root-to-geometry `PathKey` that the resolution walk uses
 - **re-enumerated only when `TransformSystem::revision()` changes** (a structural re-index or a transform re-accumulation) or the caller passes a different `maxVisits` budget;
 - **refit only when `BoundsSystem::revision()` changes** (a geometry/bounds edit with no transform change);
 - **Billboard-affected placements are view-dependent** and therefore never cached: they live in a separate list whose world frame is re-resolved from the stored path on every pick, so a new camera pose produces a new result.
+- **Switch and LOD selection is live:** each retained path is checked against `whichChoice` and the LOD level selected from the camera in that LOD's local frame. Selection changes take effect without rebuilding the placement index (ADR-0034).
 
 Passing the live `TransformSystem*` (as `X3DExecutionContext::pick` does) enables the cache; a call with `nullptr` rebuilds each time (the old walk's result, no cache), so the direct-call API stays correct with no lifetime coupling. The `WalkBudget`/`budgetExceeded` semantics and the `MEM-1` depth/cycle guards are preserved: the enumeration spends one visit per node and stops on the same doubling-DAG fan-out, returning the same partial best-so-far. Placement order follows the DFS order, so exact-distance ties break exactly as before.
 
@@ -159,11 +160,27 @@ On a degenerate intersection (bearing parallel to plane, missed sphere/cylinder)
 
 ### Sensor resolution algorithm
 
-Resolution follows §20.2.1: the `resolve()` helper walks the `PickResult::path` from the hit geometry node upward, and at each ancestor inspects its direct children for the first enabled pointing-device sensor sibling. The deepest such ancestor's sensor is "lowest" and wins. Child traversal reuses `X3DNode::fields()` reflection (same SFNode/MFNode iteration as `PickSystem::forEachChild`).
+Resolution follows §20.2.1: `resolve()` walks the hit path upward and returns all enabled sensor siblings at the deepest group that has any. These tied sensors receive independent hover, activation, drag, and release events.
 
-A sensor is considered enabled via `X3DSensorNode::getEnabled()`. A disabled sensor is skipped; the walk continues upward to find the next candidate. If a grabbed sensor is disabled mid-drag, the system deactivates it immediately (emits `isActive FALSE`, drops `isOver`) and releases the grab without further drag output (conformance finding DS-2).
+A sensor is considered enabled via `X3DSensorNode::getEnabled()`. A disabled sensor is skipped; the walk continues upward to find the next candidates. A grabbed sensor disabled mid-drag deactivates on the next tick even without pointer motion; other tied sensors continue their grab.
+
+## Anchor activation (§9.4.1)
+
+`runtime/events/AnchorSystem.hpp` makes an Anchor's children pointer-sensitive.
+`attachInteractive` registers it after `PointingSensorSystem` and before
+navigation. A click (press and release over the same Anchor's geometry, the
+innermost Anchor on the pick path) activates it, unless a pointing-device sensor
+grabbed the pointer that tick; while the press is held the Anchor owns the
+pointer, so navigation does not also drag or LOOKAT. The url list is tried in
+order: `"#Name"` binds the viewpoint DEF'd `Name` (`set_bind` TRUE); any other
+url is passed with the `parameter` list to the embedder's
+`AnchorSystem::setAnchorHandler` callback, which loads a replacement world or
+opens a window (cases b/c). With no handler, a non-fragment url does nothing: the
+runtime is headless.
 
 ## How it is tested
+
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `events_misc_test`) — Anchor: a click on a `#Far` Anchor binds that viewpoint; a non-fragment url reaches the handler with url + parameter; releasing off the Anchor does not activate it.
 
 Two dedicated ctest targets cover this subsystem:
 

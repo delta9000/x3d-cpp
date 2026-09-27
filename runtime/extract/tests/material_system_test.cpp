@@ -31,6 +31,56 @@ static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) 
     if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
 }
 
+TEST_CASE("ImageTexture load FALSE suppresses URL fetch") {
+  auto image = createX3DNode("ImageTexture");
+  setF(image, "url", std::any(MFString{"deferred.png"}));
+  setF(image, "load", std::any(SFBool{false}));
+  auto ref = matsys::refOf(image, TextureRef::Slot::BaseColor);
+  int requests = 0;
+  std::vector<TextureRef> refs{ref};
+  resolveTextureRefs(refs, [&](const std::string &) {
+    ++requests;
+    return TexturePixelResult::makeFailed();
+  });
+  CHECK(requests == 0);
+}
+
+TEST_CASE("MultiTexture stages preserve blend controls") {
+  auto multi = createX3DNode("MultiTexture");
+  std::vector<std::shared_ptr<X3DNode>> images;
+  for (int i = 0; i < 3; ++i) {
+    auto image = createX3DNode("ImageTexture");
+    setF(image, "url", std::any(MFString{"stage" + std::to_string(i) + ".png"}));
+    images.push_back(image);
+  }
+  setF(multi, "texture", std::any(images));
+  setF(multi, "mode", std::any(MFString{"ADD", "REPLACE"}));
+  setF(multi, "source", std::any(MFString{"DIFFUSE", "FACTOR"}));
+  setF(multi, "function", std::any(MFString{"COMPLEMENT"}));
+  setF(multi, "color", std::any(SFColor{0.2f, 0.4f, 0.6f}));
+  setF(multi, "alpha", std::any(0.25f));
+  const TextureRef ref = matsys::refOf(multi, TextureRef::Slot::BaseColor);
+  REQUIRE(ref.source == TextureRef::Source::Multi);
+  REQUIRE(ref.multiStages.size() == 3);
+  CHECK(ref.multiStages[0].multiMode == "ADD");
+  CHECK(ref.multiStages[1].multiMode == "REPLACE");
+  CHECK(ref.multiStages[2].multiMode == "MODULATE");
+  CHECK(ref.multiStages[0].multiSource == "DIFFUSE");
+  CHECK(ref.multiStages[1].multiSource == "FACTOR");
+  CHECK(ref.multiStages[2].multiSource.empty());
+  CHECK(ref.multiStages[0].multiFunction == "COMPLEMENT");
+  CHECK(ref.multiStages[1].multiFunction.empty());
+  CHECK(ref.multiStages[0].multiColor.r == doctest::Approx(0.2f));
+  CHECK(ref.multiStages[0].multiAlpha == doctest::Approx(0.25f));
+  std::vector<TextureRef> stages{ref};
+  int calls = 0;
+  resolveTextureRefs(stages, [&](const std::string &) {
+    ++calls;
+    return TexturePixelResult::makeFailed();
+  });
+  CHECK(calls == 3);
+}
+
 TEST_CASE("material_system_test") {
   // --- null Appearance entirely => Unlit white ---------------------------
   {
@@ -304,6 +354,44 @@ TEST_CASE("material_system_test") {
 
     MaterialDesc m = materialOf(app.get());
     CHECK((m.backMaterial != nullptr));
+    CHECK((m.backMaterialConstraintMet == false));
+  }
+
+  // --- MAT-010: backMaterialConstraintMet also compares the TEXTURE SET.
+  //     Front and back each bind a diffuseTexture => same model + same slot set
+  //     => met. Back textures are now populated from the back material node.
+  {
+    auto frontTex = createX3DNode("ImageTexture");
+    auto backTex = createX3DNode("ImageTexture");
+    auto frontMat = createX3DNode("Material");
+    setF(frontMat, "diffuseTexture", std::any(std::shared_ptr<X3DNode>(frontTex)));
+    auto backMat = createX3DNode("Material");
+    setF(backMat, "diffuseTexture", std::any(std::shared_ptr<X3DNode>(backTex)));
+    auto app = createX3DNode("Appearance");
+    setF(app, "material", std::any(std::shared_ptr<X3DNode>(frontMat)));
+    setF(app, "backMaterial", std::any(std::shared_ptr<X3DNode>(backMat)));
+
+    MaterialDesc m = materialOf(app.get());
+    CHECK((m.backMaterial != nullptr));
+    CHECK((m.backMaterial->textures.size() == 1));
+    CHECK((m.backMaterial->textures[0].slot == TextureRef::Slot::Diffuse));
+    CHECK((m.backMaterialConstraintMet == true));
+  }
+
+  // --- MAT-010: front has a texture, back has none => slot set differs => NOT
+  //     met even though the model type matches.
+  {
+    auto frontTex = createX3DNode("ImageTexture");
+    auto frontMat = createX3DNode("Material");
+    setF(frontMat, "diffuseTexture", std::any(std::shared_ptr<X3DNode>(frontTex)));
+    auto backMat = createX3DNode("Material"); // no texture.
+    auto app = createX3DNode("Appearance");
+    setF(app, "material", std::any(std::shared_ptr<X3DNode>(frontMat)));
+    setF(app, "backMaterial", std::any(std::shared_ptr<X3DNode>(backMat)));
+
+    MaterialDesc m = materialOf(app.get());
+    CHECK((m.backMaterial != nullptr));
+    CHECK((m.backMaterial->textures.empty()));
     CHECK((m.backMaterialConstraintMet == false));
   }
 

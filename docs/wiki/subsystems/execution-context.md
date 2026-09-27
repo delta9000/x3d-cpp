@@ -2,7 +2,7 @@
 title: Execution Context
 summary: Per-tick driver, field-write seam, and scene bridge that coordinate the runtime event loop.
 tags: [subsystem, execution-context, tick, runtime, events]
-updated: 2026-07-18
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -186,7 +186,7 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 
 - **`classifyDirty` (private)** — the cascade's field-delivery observer; maps any delivered `FieldAddress` to dirty flags (`DirtyField`, `DirtyLocalTransform`, `DirtyChildren`, `DirtyBounds`) on the owning node. `writeField` mirrors this classification for direct System writes (M2C-3). `DirtyChildren` (a `children`/`addChildren`/`removeChildren` write, or a `Switch.whichChoice` swap) is what drives `TransformSystem`'s structural re-walk each tick (M2C-2).
 
-- **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute`, validating with **three rejection categories** (unknown field, wrong direction, type mismatch). It also registers pre-resolved PROTO-body and Inline-internal routes directly (they bypass DEF-name resolution) and applies PROTO interface `IS` redirects via `scene.protoRedirects`. Returns `BridgeResult` (count of routes added + `RouteError` diagnostics for rejected routes; dangling DEFs are skipped silently — not counted as a rejection). The attach helpers (`attachViewDependent`, `attachInterpolators`, `attachEventUtilities`, `attachKeyDeviceSensors`) walk the scene once via `detail::forEachNode` and offer every node to each System's `attach`.
+- **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute`, validating with **three rejection categories** (unknown field, wrong direction, type mismatch). It also registers pre-resolved PROTO-body and Inline-internal routes directly (they bypass DEF-name resolution) and applies PROTO interface `IS` redirects via `scene.protoRedirects`. Returns `BridgeResult` (count of routes added + `RouteError` diagnostics for rejected routes; dangling DEFs are skipped silently — not counted as a rejection). The attach helpers walk rendered roots and non-rendered PROTO peers via `detail::forEachNode`. `InlineRuntimeSystem` enrolls a newly loaded subtree into the existing systems and refreshes transform, bounds, and pick indices before extraction.
 
 - **Consumer input seams** — the context owns `PointerState`, `KeyState`, and `HeadPose` structs that the consumer writes between ticks via the `setPointer*`, `setKey*`, `push*Key*`, and `setHeadPose` methods. Systems read these via `ctx.pointerState()`, `ctx.keyState()`, and `ctx.headPose()` inside `update`.
 
@@ -198,6 +198,10 @@ The `tick(now)` implementation enforces two spec requirements:
 
 2. **Reentrancy guard**: a `ticking_` flag is an implementation safety decision that causes a recursive `tick()` call (e.g. a System calling `tick` from `update`) to silently no-op, protecting timestamp and dirty state from clobbering. This guard is not an ISO 19775-1 requirement; it is a defensive implementation choice.
 
+
+### Field-write listeners
+
+`addFieldWriteListener(FieldWriteListener)` registers a callback run after every field write, whether a cascade delivery or `writeField`, after dirty classification. Systems use it for nodes that react to an inputOutput write themselves: IntegerTrigger re-emitting `triggerValue` (§30.4.6) and key-device focus arbitration (§21.2). A listener may post events; they join the current timestamp.
 ## How it is tested
 
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `m2b_tick_test`) — `runtime/events/tests/m2b_tick_test.cpp`: verifies that `buildSceneGraph` + `tick` correctly compute world and local bounds for a translated Shape, and that a cascade-delivered field change updates them.

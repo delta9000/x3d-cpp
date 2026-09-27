@@ -2,7 +2,7 @@
 title: Text Extraction
 summary: Text node extraction and layout via the font-metrics seam — converts X3D Text/FontStyle into renderable glyph-quad geometry.
 tags: [subsystem, extract, text, font-metrics, text-layout]
-updated: 2026-06-24
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/extract.md
@@ -21,11 +21,11 @@ This subsystem converts X3D `Text` and `FontStyle` nodes into renderable geometr
 
 | File | Role |
 |---|---|
-| `runtime/extract/FontMetrics.hpp` | Defines the `FontMetrics` seam type (`std::function<GlyphResult(const FontKey&)>`), the `FontKey` lookup triple (family / style / UTF-32 codepoint), `GlyphMetrics` (advanceEm + atlas UV rect), `GlyphResult` / `GlyphStatus` (Ready / Pending / Failed), and `makeMonospaceStub()` (default stub: advanceEm=0.6, no atlas UV). |
+| `runtime/extract/FontMetrics.hpp` | Defines the `FontMetrics` seam type (`std::function<GlyphResult(const FontKey&)>`), the `FontKey` lookup triple (family / style / UTF-32 codepoint), `GlyphMetrics` (advanceEm, atlas UV, glyph box and font ascent/descent in em units), `GlyphResult` / `GlyphStatus` (Ready / Pending / Failed), and `makeMonospaceStub()` (default stub: advanceEm=0.6, no atlas UV). |
 | `runtime/extract/TextLayout.hpp` | Pure §15 layout engine. No node or IO dependencies. Implements `computeTextLayout(FontStyleParams, TextParams, FontMetricsCallback) -> TextLayoutResult`: baseline-step, justify (BEGIN/END/FIRST/MIDDLE; **known gap:** END mis-aligns the minor axis for `topToBottom=FALSE`/`leftToRight=FALSE` — TXT-2/TXT-4), per-line `length[]` stretch/compress, `maxExtent` compress-to-fit, and `lineBounds`/`textBounds`/`origin` output computation per ISO/IEC 19775-1:2023 §15.2.2.3, §15.4.1, §15.4.2. |
 | `runtime/extract/TextExtract.hpp` | Integration layer. Reads `FontStyle` fields and `Text` fields off nodes via reflection (`geombounds::getNode`, `geombounds::getField`), calls `computeTextLayout`, walks each line glyph-by-glyph through the `FontMetrics` seam, and emits quads into `MeshData`. Also provides `setTextOutputs()` to write layout results back onto the `Text` node via the reflection `set` lambdas. |
-| `runtime/extract/tests/text_layout_test.cpp` | 19 unit tests for `computeTextLayout` using a monospaced stub. Covers the justify modes (except the END minor-axis gap, TXT-2/TXT-4), vertical text, spacing, `length[]`, and `maxExtent`. |
-| `runtime/extract/tests/text_extract_test.cpp` | 7 integration tests for `buildTextMesh` and `setTextOutputs`, including a full `SceneExtractor` walk and an atlas-UV seam thread-through. |
+| `runtime/extract/tests/text_layout_test.cpp` | 19 unit tests for `computeTextLayout` using a monospaced stub. Covers the justify modes (including a table test of every minor-axis case against Tables 15.4/15.5), vertical text, spacing, `length[]`, and `maxExtent`. |
+| `runtime/extract/tests/text_extract_test.cpp` | Integration tests for `buildTextMesh` and `setTextOutputs`, including a full `SceneExtractor` walk and atlas glyph-box placement. |
 | `runtime/io/stbtt/StbttFontMetrics.hpp` | Decoder-free header for the stb_truetype `FontMetrics` backend (ADR-0025 / T-TEXT genericity proof, Backend A). Declares `makeStbttFontMetrics(FontFaceMap)` only; does not include `stb_truetype.h`. Part of the `x3d_stbtt` target (flag-gated, default OFF). |
 | `runtime/io/stbtt/StbttFontMetrics.cpp` | Single TU where `stb_truetype.h` is included PRIVATE (`STB_TRUETYPE_IMPLEMENTATION` defined here). Reads unscaled advances via `stbtt_GetGlyphHMetrics`, derives `unitsPerEm` from the raw `head` table uint16 at offset 18 (big-endian). Returns `makeFailed()` for .notdef (glyph 0), unmapped family, or non-PLAIN style. |
 | `runtime/io/tests/font_metrics_tests.cpp` | Per-backend doctest binary (`x3d_text_tests`). Task 2: `fontmetrics_backend_a_stbtt` verifies Ready+sane advanceEm for 5 Liberation codepoints and Failed-parity for absent emoji, unmapped family, and BOLD style. Tasks 3–4 will add the FreeType case and the cross-backend swap-test. |
@@ -120,11 +120,13 @@ int setTextOutputs(X3DNode& textNode, const TextLayoutResult& layout);
 
 ### Seam points
 
+- **Minor-axis placement** — Tables 15.4/15.5 name an edge of the first or last line (column) to sit on the origin; a line spans `[baseline + descender, baseline + ascender]` across the minor axis, as its glyph quads do, and `computeTextLayout` places the first baseline so the named edge is at 0.
+
 - **FontMetrics callback** — the consumer supplies a `FontMetrics` (`std::function<GlyphResult(FontKey)>`) that maps a (family, style, UTF-32 codepoint) triple to an advance ratio and optional atlas UV rect. The SDK provides `makeMonospaceStub()` as the default (advanceEm=0.6, no atlas UV) so layout math is fully testable without any real font. A consumer wires a real callback via `MeshBuildOptions::fontMetrics` at `SceneExtractor` construction time.
 
 - **MeshBuildOptions::fontMetrics** — the field in `runtime/extract/MeshBuilder.hpp`'s `MeshBuildOptions` struct that carries the `FontMetrics` callback into the extraction pipeline. Defaults to `makeMonospaceStub()`. The `SceneExtractor` stores a copy and forwards it to `buildTextMesh` when it visits a `Text` geometry node.
 
-- **Reflection / generated-bindings seam** — `readFontStyleParams` and `readTextParams` read all `Text` and `FontStyle` node fields via `geombounds::getField` and `geombounds::getNode` rather than casting to concrete node types. Enum fields (`justify`, `family`, `style`) are read through the node-agnostic `getEnumString` reflection thunk, keeping `TextExtract.hpp` decoupled from the generated enum-class types. `setTextOutputs` writes the three `outputOnly` output fields through the reflection `set` lambdas.
+- **Reflection / generated-bindings seam** — `readFontStyleParams` and `readTextParams` read all `Text` and `FontStyle` node fields via `geombounds::getField` and `geombounds::getNode` rather than casting to concrete node types. `family` is an MFString fallback list read directly and resolved by `resolveFontFamily` (`FontMetrics.hpp`, §15.4.1): the first family the backend resolves a probe glyph in, else SERIF; with no backend injected, the first listed family. Enum fields (`justify`, `style`) are read through the node-agnostic `getEnumString` reflection thunk, keeping `TextExtract.hpp` decoupled from the generated enum-class types. `setTextOutputs` writes the three `outputOnly` output fields through the reflection `set` lambdas.
 
 - **Bounds consumption (T-TEXT-D2 / M2B-1)** — the geometry-bounds path (`runtime/scene/GeometryBounds.hpp`) reads the same `FontStyleParams`/`TextParams` and runs the same `computeTextLayout` through an injected `extract::FontMetrics`, then takes `textLayoutExtent` as the `Text` node's local AABB. `BoundsSystem::setFontMetrics` carries the seam; with it unset the bound is the conservative heuristic. The layout engine stays the single source of glyph placement for both rendering and bounds.
 

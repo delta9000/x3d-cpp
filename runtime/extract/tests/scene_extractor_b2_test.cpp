@@ -160,3 +160,23 @@ TEST_CASE("scene_extractor_b2_test") {
 
   return;
 }
+
+TEST_CASE("scene_extractor_layers_respect_layerset_order") {
+  auto first = createX3DNode("Layer");
+  auto second = createX3DNode("Layer");
+  addChild(first, makeTriShape());
+  addChild(second, makeTriShape());
+  auto layerSet = createX3DNode("LayerSet");
+  setF(layerSet, "layers", std::any(std::vector<std::shared_ptr<X3DNode>>{first, second}));
+  // §35.4.2 uses zero-based ordinals: order [1] renders the second layer only.
+  setF(layerSet, "order", std::any(std::vector<int>{1}));
+  Scene scene;
+  scene.addRootNode(layerSet);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  const auto snap = ex.fullSnapshot();
+  REQUIRE(snap.added.size() == 1);
+  CHECK(ex.item(snap.added.front()).path.front() == layerSet.get());
+  CHECK(ex.item(snap.added.front()).path[1] == second.get());
+}

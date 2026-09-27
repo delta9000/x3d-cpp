@@ -19,6 +19,15 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 uniform mat3 uNormalMatrix; // inverse-transpose of (view*model) 3x3, eye space.
+uniform float uPointSizeScale;
+uniform vec3 uPointAttenuation;
+uniform float uPointSizeMin;
+uniform float uPointSizeMax;
+// TXF-2: §18.4.8 TextureCoordinateGenerator mode. 0 = off (use the authored
+// aTexCoord); 1 = SPHERE, 2 = CAMERASPACENORMAL, 3 = CAMERASPACEPOSITION,
+// 4 = CAMERASPACEREFLECTIONVECTOR — the view-dependent modes, computed here from
+// eye-space state (matches cpu_raster MaterialShader.hpp detail::texCoordGenUv).
+uniform int  uTexCoordGenMode;
 
 out vec3 vNormalEye;        // shading normal in eye space (not yet normalized).
 out vec3 vPosEye;           // vertex position in eye space (for Blinn-Phong view dir).
@@ -27,9 +36,25 @@ out vec2 vTexCoord;         // B8: passed through un-flipped for the sampler.
 
 void main() {
     vec4 posEye = uView * uModel * vec4(aPos, 1.0);
+    float d = length(posEye.xyz);
+    gl_PointSize = clamp((uPointAttenuation.x + uPointAttenuation.y * d +
+                          uPointAttenuation.z * d * d) * uPointSizeScale,
+                         uPointSizeMin, uPointSizeMax);
     vNormalEye = uNormalMatrix * aNormal;
     vPosEye = posEye.xyz;
     vColor = aColor;
-    vTexCoord = aTexCoord;
+    vec3 Neye = normalize(vNormalEye);
+    if (uTexCoordGenMode > 0) {
+        if (uTexCoordGenMode == 1)       vTexCoord = Neye.xy * 0.5 + 0.5; // SPHERE
+        else if (uTexCoordGenMode == 2)  vTexCoord = Neye.xy;             // CAMERASPACENORMAL
+        else if (uTexCoordGenMode == 3)  vTexCoord = posEye.xy;           // CAMERASPACEPOSITION
+        else {                                                            // REFLECTIONVECTOR
+            vec3 V = normalize(posEye.xyz);   // eye -> vertex
+            vec3 R = reflect(-V, Neye);       // = 2*dot(V,N)*N - V
+            vTexCoord = R.xy;
+        }
+    } else {
+        vTexCoord = aTexCoord;
+    }
     gl_Position = uProjection * posEye;
 }

@@ -22,7 +22,7 @@ The Inline Expansion subsystem resolves `<Inline url='…'/>` nodes at parse tim
 The subsystem owns four responsibilities:
 
 - **URL resolution** — try each candidate URL in order; first resolvable wins.
-- **DEF isolation** — the child scene's name scope never leaks into the parent (ISO 19775-1 §9.4.2; only `IMPORT`, a Tier-2 follow-up, would expose child DEFs).
+- **DEF isolation** — the child scene's name scope never leaks into the parent (ISO 19775-1 §9.4.2). The sanctioned escape hatch — an explicit `<IMPORT inlineDEF='…' importedDEF='…' AS='…'/>` — is wired by `wireInlineImports` (see below), which is the only way a child DEF becomes visible in the parent.
 - **Route hoisting** — the child's internal ROUTEs are pre-resolved against the child's own DEF scope and registered as concrete `resolvedInlineRoutes` so self-animating assets tick correctly.
 - **Writer round-trip** — expanded Inlines are recorded in `Scene::expandedInlines` so all four writers re-emit the original `<Inline url='…'/>` rather than the synthetic `Group` subtree.
 
@@ -32,16 +32,17 @@ This mirrors the EXTERNPROTO expansion machinery in `runtime/X3DProtoExpand.hpp`
 
 | File / directory | Role |
 |---|---|
-| `runtime/InlineExpand.hpp` | Entry point `expandInlines()`, resolver typedef `InlineResolver`, helpers `readUrl`/`readLoad`/`makeGroup`/`hoistChildRoutes`/`replaceInParent` (all in `inline_detail` namespace) |
-| `runtime/X3DImportExport.hpp` | Data-only structs `Import` and `Export` — the Tier-2 `<IMPORT>`/`<EXPORT>` model; stored in `Scene` but not yet wired at Tier 1 |
-| `runtime/parse/X3DParse.hpp` | `parseDocument` — calls `expandInlines` immediately after the PROTO pass; provides `localFileInlineResolver` (the default, file-relative, cycle-guarded resolver) |
-| `runtime/X3DScene.hpp` | `Scene::expandedInlines` (`unordered_map<X3DNode*, shared_ptr<X3DNode>>`) and `Scene::resolvedInlineRoutes` (`vector<ResolvedProtoRoute>`) — the two side tables this subsystem populates |
+| `runtime/InlineExpand.hpp` | Entry point `expandInlines()`, resolver typedef `InlineResolver`, helpers `readUrl`/`readLoad`/`makeGroup`/`hoistChildRoutes`/`replaceInParent` (all in `inline_detail` namespace), and `wireInlineImports()` — the §9.2 cross-Inline escape hatch |
+| `runtime/X3DImportExport.hpp` | Data-only structs `Import` and `Export`; stored in `Scene` and consumed by `wireInlineImports` |
+| `runtime/parse/X3DParse.hpp` | `parseDocument` — calls `expandInlines` immediately after the PROTO pass, then `wireInlineImports`, then re-runs `resolveRoutes`; provides `localFileInlineResolver` (the default, file-relative, cycle-guarded resolver) |
+| `runtime/X3DScene.hpp` | `Scene::expandedInlines` (`unordered_map<X3DNode*, shared_ptr<X3DNode>>`), `Scene::expandedInlineScenes` (original Inline node -> child `Scene`, retained for IMPORT resolution), and `Scene::resolvedInlineRoutes` (`vector<ResolvedProtoRoute>`) — the side tables this subsystem populates |
 | `runtime/X3DDocument.hpp` | `X3DDocument::inlineWarnings` — the lenient-diagnostic channel for unresolvable or cyclic Inline URLs |
 | `runtime/events/X3DSceneBridge.hpp` | Registers `resolvedInlineRoutes` directly (bypasses parent name lookup), making child-internal ROUTEs live |
 | `runtime/codecs/{XmlWriter,CanonicalXmlWriter,VrmlWriter,JsonWriter}.hpp` | Each checks `scene_->expandedInlines` before writing a Group node and re-emits the stored Inline instead |
 | `runtime/parse/tests/inline_expand_test.cpp` | Unit: composition, DEF isolation, `parseDocument` injection seam, walk depth cap |
 | `runtime/parse/tests/inline_routes_test.cpp` | Unit: child-internal ROUTEs fire after tick |
 | `runtime/parse/tests/inline_carriers_test.cpp` | Unit: `<IMPORT>`/`<EXPORT>` carrier structs parsed and stored |
+| `runtime/parse/tests/core_diagnostics_test.cpp` | Unit: `IMPORT ... AS` alias wired to the Inline's exported DEF so a ROUTE to the imported name resolves (`import_export_wire_*`) |
 | `runtime/parse/tests/inline_cycle_test.cpp` | Unit: direct/indirect self-reference terminates with a diagnostic |
 | `runtime/parse/tests/inline_containment_cycle_test.cpp` | Unit: containment-cycle guard in the expansion walk (visited-set) |
 | `runtime/parse/tests/inline_roundtrip_test.cpp` | Integration: parse-then-write round-trip produces byte-identical output across all encodings |
@@ -77,6 +78,8 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 - **`InlineResolver` injection** — `parseDocument` accepts an `InlineResolver` parameter (default: `localFileInlineResolver`). An embedder supplying a network fetcher, virtual filesystem, or format-converting resolver (e.g. a glTF-to-Scene converter) passes it here; the core never changes.
 
+- **Runtime injection** — `attachStandardRuntime` and `RuntimeSession::SessionOptions` accept the same `InlineResolver` plus `baseUrl`. No resolver means deferred Inline nodes stay inert. The parsed `Scene` does not retain an IO callback; callers that want late loading pass their resolver again. `InlineRuntimeSystem` attempts a deferred URL once per value; `load=FALSE` unloads an expanded subtree and a changed `url` replaces it.
+
 - **`localFileInlineResolver`** (in `X3DParse.hpp`) — the default resolver. Resolves file-like URLs relative to `baseUrl`, calls `parseFile` on the target, and guards cycles via a `thread_local std::vector<std::string> activeFiles` stack. `http`/`https`/`urn:` schemes are skipped (embedder-override territory), matching `localFileProtoResolver`'s policy.
 
 - **`Scene::expandedInlines`** — a `Group*`-keyed map populated by `expandInlines`. Each writer checks this map when it would emit a `Group` node; on a hit it emits the stored `Inline` node instead. This is the writer round-trip contract: the map must remain valid for the lifetime of any writer pass over the scene.
@@ -85,7 +88,11 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 - **`X3DDocument::inlineWarnings`** — the diagnostic collection for the lenient error path. Callers inspect this after `parseDocument` to surface unresolvable or cyclic Inline diagnostics.
 
-- **`X3DImportExport.hpp` (`Import`/`Export` structs)** — parsed and stored in `Scene::imports`/`Scene::exports` by the readers, but not yet consumed by the Tier-1 expander. They are the data model for Tier-2 cross-boundary routing (IMPORT/EXPORT), deferred.
+- **`Scene::expandedInlineScenes`** — an `Inline*`-keyed map from the ORIGINAL Inline node to the child `Scene` it expanded to, retained so `wireInlineImports` can resolve an imported DEF/`<EXPORT AS>` alias. The child's full DEF table is still never merged into the parent.
+
+- **`wireInlineImports(Scene&)`** — called after expansion. It registers a parent alias only when the child explicitly EXPORTs the requested public name (`AS` or the DEF name). A private child DEF cannot be imported. Routes to the new alias then resolve against the exported node.
+
+- **`X3DImportExport.hpp` (`Import`/`Export` structs)** — parsed and stored in `Scene::imports`/`Scene::exports` by the readers and consumed by `wireInlineImports` for cross-Inline routing. `<EXPORT>` in a child scene is fully honoured; a parent `<EXPORT>` (exposing a local DEF upward) is still only carried as data.
 
 ### Expansion mechanics
 
@@ -95,7 +102,7 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
    - Call `hoistChildRoutes`: resolve the child's `routes` against the child's own `defs`, append concrete endpoints to `scene.resolvedInlineRoutes`. Also hoist any already-resolved `resolvedProtoRoutes` and `resolvedInlineRoutes` from nested expansions.
    - Record `scene.expandedInlines[group.get()] = inl` for writer round-trip.
    - Replace the Inline node in its parent slot (`replaceInParent`), or in `scene.rootNodes` for root-level Inlines.
-3. `load=FALSE` Inlines are left in place (Tier-3 dynamic load/unload is out of scope).
+3. `load=FALSE` Inlines stay in place. With an injected resolver, `InlineRuntimeSystem` runs this same expansion pass after a later `load=TRUE` event, enrolls the new subtree with live systems, and connects child and IMPORT routes. On unload it removes routes, queued events, aliases and per-node system state before restoring the original Inline. The extractor diffs a fresh topology snapshot on load, unload and replacement, reporting removed and added RenderItems.
 4. Child DEFs are **never** merged into `scene.defs`, enforcing ISO §9.4.2 DEF isolation.
 
 ## How it is tested

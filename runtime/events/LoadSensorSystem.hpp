@@ -15,6 +15,8 @@
 #define X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
 
 #include "X3DSystem.hpp"
+#include "FieldRead.hpp"
+#include "RecursionLimits.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DScene.hpp"
 #include "AssetResolver.hpp"
@@ -35,6 +37,24 @@ namespace x3d::runtime {
 using namespace x3d::core;
 
 namespace detail_loadsensor {
+// NSN-12: an Inline counts as loaded only once it and every nested sub-Inline
+// it asks to load have loaded. Parse-time expansion replaces each loaded Inline
+// with a Group, so an Inline node still present (load TRUE) in an expanded
+// child's content is a sub-Inline that failed to load.
+inline bool hasUnloadedInline(const X3DNode &n, std::size_t depth = 0) {
+  if (depth >= kMaxNestingDepth) return false;
+  bool found = false;
+  forEachChildNode(n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+    if (found) return;
+    if (c->nodeTypeName() == "Inline") {
+      auto *uo = dynamic_cast<const x3d::nodes::X3DUrlObject *>(c.get());
+      if (!uo || uo->getLoad()) found = true;
+      return;
+    }
+    found = hasUnloadedInline(*c, depth + 1);
+  });
+  return found;
+}
 // Embedded schemes carry their bytes in the URL string itself, so they resolve
 // Ready without any resolver call.
 inline bool isEmbeddedScheme(const std::string &u) {
@@ -94,6 +114,11 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *ls = dynamic_cast<x3d::nodes::LoadSensor *>(node))
       state_.emplace(ls, SensorState{});
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *ls = dynamic_cast<x3d::nodes::LoadSensor *>(node)) state_.erase(ls);
+    for (auto &[_, sensor] : state_) sensor.children.erase(node);
   }
 
   // `inline` at the declaration point keeps update() from becoming the class's
@@ -206,13 +231,16 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       auto [it, inserted] = st.children.try_emplace(c, ChildState{});
       ChildState &cs = it->second;
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
+      const bool anchor = c->nodeTypeName() == "Anchor";
       if (inserted) {
         cs.preseeded = pre;
-        if (pre || plan.vacuousReady)
+        if (pre && detail_loadsensor::hasUnloadedInline(*c))
+          setChildStatus(cs, c, ls, ChildStatus::Failed); // NSN-12: nested failed
+        else if (pre || plan.vacuousReady)
           setChildStatus(cs, c, ls, ChildStatus::Ready);
         if (!pre && uo) {
           cs.lastUrl = uo->getUrl();
-          cs.lastLoad = uo->getLoad();
+          cs.lastLoad = anchor ? true : uo->getLoad();
         }
         // A newly watched child that still needs loading reopens a terminal
         // sensor (membership growth is an NSN-7 reset) and restarts the window.
@@ -223,7 +251,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       } else if (!pre && uo) {
         // NSN-7 poll-and-diff on the inputOutput url/load fields.
         MFString curUrl = uo->getUrl();
-        const bool curLoad = uo->getLoad();
+        const bool curLoad = anchor ? true : uo->getLoad();
         if (curUrl != cs.lastUrl) {
           setChildStatus(cs, c, ls, ChildStatus::Loading);
           cs.candidate = 0;
@@ -263,7 +291,8 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
           cs.status == ChildStatus::Failed)
         continue;
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
-      const bool load = uo ? static_cast<bool>(uo->getLoad()) : true;
+      const bool anchor = c->nodeTypeName() == "Anchor";
+      const bool load = uo && !anchor ? static_cast<bool>(uo->getLoad()) : true;
       if (!load) {
         cs.status = ChildStatus::NotStarted; // load=FALSE holds the child idle
         continue;
@@ -278,13 +307,15 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       bool called = false;
       while (cs.candidate < urls.size()) {
         const std::string &u = urls[cs.candidate];
-        // Anchor default policy: "#Name" is loaded iff a Viewpoint DEF exists;
-        // otherwise it falls through to the resolver (which fails for a bare
-        // fragment), yielding a Failed child.
-        if (!u.empty() && u[0] == '#' && scene_ &&
-            detail_loadsensor::isViewpointDef(*scene_, u.substr(1))) {
-          setChildStatus(cs, c, ls, ChildStatus::Ready);
-          break;
+        if (anchor && !u.empty() && u[0] == '#') {
+          if (scene_ && detail_loadsensor::isViewpointDef(*scene_, u.substr(1))) {
+            // §9.4.3: a same-scene Anchor target loads when bound.
+            if (ctx.boundViewpoint() == scene_->resolve(u.substr(1)).get())
+              setChildStatus(cs, c, ls, ChildStatus::Ready);
+            else
+              cs.status = ChildStatus::NotStarted;
+            break;
+          }
         }
         if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(u)) {
           setChildStatus(cs, c, ls, ChildStatus::Ready);

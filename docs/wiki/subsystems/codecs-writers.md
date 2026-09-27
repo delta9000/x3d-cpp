@@ -17,6 +17,8 @@ The codec writers subsystem converts an in-memory `x3d::runtime::X3DDocument` (o
 
 The writers sit between the runtime document model and any consumer that needs a serialized representation — the `x3d convert` CLI command, the round-trip conformance auditor, golden-file regression fixtures, and the canonical-form differencer.
 
+PROTO serialization preserves `IS/connect` mappings and node-valued interface defaults across XML, JSON, and ClassicVRML. ClassicVRML output supplies type-default values when initializeOnly/inputOutput PROTO interface or node author-field declarations have no stored value, as required by the encoding grammar; EXTERNPROTO interface declarations carry no values. Declaration and field `appinfo`/`documentation` are preserved in XML and JSON. ISO/IEC 19776-2 ClassicVRML provides no semantic metadata slot in PROTO, EXTERNPROTO, or interface-field syntax, so conversion through ClassicVRML loses those attributes; comments cannot preserve them as machine-readable metadata.
+
 ## Key files
 
 | File | Role |
@@ -91,6 +93,8 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
 2. **DEF/USE deduplication.** Node identity (raw pointer) is tracked in an `unordered_set<const X3DNode *>`. The first emission of a shared node writes a `DEF`; all subsequent references emit a `USE` reference with no fields or children.
 3. **PROTO / Inline round-trip redirect.** Before emitting a node the writer checks `scene.expandedSources` (for expanded `ProtoInstance`s) and `scene.expandedInlines` (for expanded `Inline` nodes). If a match is found, the original captured source structure is re-emitted instead of the expansion, so the written output can be re-parsed to re-expand rather than serializing the expanded tree.
 
+All four writers emit the document's `profile` from `X3DDocument::profileToken()` (`runtime/X3DDocument.hpp`): the authored spelling when a reader preserved one, else the canonical name for the resolved `Profile`. An unknown/misspelled `profile=` token therefore round-trips unchanged instead of being silently rewritten to `Interchange` (DIAG-PROFILE-COERCE); the reader still resolves it to `Interchange` for profile-fit.
+
 ### Encoding-specific behaviors
 
 **XmlWriter:**
@@ -142,6 +146,7 @@ Tests live in `runtime/codecs/tests/`. Most are doctest cases compiled into the 
 | doctest case | What it covers |
 |---|---|
 | `roundtrip_test` | Full XML↔parse→write round-trip: reads an X3D-XML string, re-serializes, compares output |
+| `core_diagnostics_test` (parse suite) | An unknown `profile=` token is preserved on write (`profileToken()`), not rewritten to `Interchange` |
 | `x3d_codec_roundtrip_audit` (standalone target) | Differential round-trip audit over a sample corpus; flags structural deviations |
 | `vrml_mf_bracket_test` | Verifies MF values are always bracketed in ClassicVRML output (AUD-A regression) |
 | `enum_quote_test` | Verifies `stripEnumQuotes` strips MFString-style quotes from enum wire values (AUD-D regression) |

@@ -10,10 +10,13 @@
 #include "BoundsSystem.hpp"
 #include "CycleBreaker.hpp"
 #include "DirtyTracker.hpp"
+#include "DynamicField.hpp"
+#include "FieldRead.hpp"
 #include "HeadPose.hpp"
 #include "KeyState.hpp"
 #include "PickSystem.hpp"
 #include "PointerState.hpp"
+#include "RecursionLimits.hpp"
 #include "ViewpointOffset.hpp"
 #include "TransformSystem.hpp"
 #include "X3DActiveNode.hpp"
@@ -28,6 +31,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace x3d::runtime {
@@ -46,6 +50,7 @@ namespace x3d::runtime {
 enum class FieldWriteResult {
   Ok,           ///< Written, and the dirty-tracker was updated.
   NullNode,     ///< `node` was null.
+  DetachedNode, ///< Node was removed with an Inline subtree.
   /// No field of that x3dName in this node's STATIC table (a typo, or a field
   /// this node's profile does not carry). Also returned for a Script/PROTO
   /// author-declared field: those live in the DynamicFieldStore side-table and
@@ -68,6 +73,7 @@ inline const char *fieldWriteResultName(FieldWriteResult r) {
   switch (r) {
   case FieldWriteResult::Ok:           return "Ok";
   case FieldWriteResult::NullNode:     return "NullNode";
+  case FieldWriteResult::DetachedNode: return "DetachedNode";
   case FieldWriteResult::UnknownField: return "UnknownField";
   case FieldWriteResult::NotWritable:  return "NotWritable";
   case FieldWriteResult::TypeMismatch: return "TypeMismatch";
@@ -92,6 +98,7 @@ public:
   /** @brief Register a ROUTE from a source field endpoint to a sink endpoint.
    */
   void addRoute(const FieldAddress &from, const FieldAddress &to) {
+    if (detached_.count(from.node) || detached_.count(to.node)) return;
     graph_.addRoute(from, to);
   }
 
@@ -114,6 +121,7 @@ public:
   /// Build the M2a scene-graph layer for a parsed Scene: index the Transform
   /// hierarchy and route the cascade's field deliveries into the dirty tracker.
   void buildSceneGraph(Scene &scene) {
+    detached_.clear();
     // Sanitize first: sever any containment cycle (a node that is its own
     // ancestor, e.g. from a malformed <X DEF='a' USE='a'/>) so the recursive
     // walkers below (transform/bounds/binding/pick + later extract) traverse a
@@ -128,8 +136,48 @@ public:
     bindings_.bindDefaults();
     pick_.build(scene);
     cascade_.setFieldObserver(
-        [this](const FieldAddress &a) { classifyDirty(a); });
+        [this](const FieldAddress &a) { onFieldWritten(a); });
   }
+
+  // Called after an Inline subtree is spliced into the live Scene.
+  void refreshSceneTopology(Scene &scene) {
+    transforms_.buildIndex(scene);
+    bounds_.buildBounds(scene, transforms_);
+    pick_.build(scene);
+  }
+
+  void attachNewSubtree(X3DNode *root) {
+    std::unordered_set<const X3DNode *> seen;
+    std::function<void(X3DNode *, std::size_t)> walk =
+        [&](X3DNode *n, std::size_t depth) {
+          if (!n || depth >= kMaxNestingDepth || !seen.insert(n).second) return;
+          detached_.erase(n);
+          for (const auto &s : systems_) s->attach(n, *this);
+          forEachChildNode(*n, [&](const FieldInfo &,
+                                   const std::shared_ptr<X3DNode> &c) {
+            walk(c.get(), depth + 1);
+          });
+        };
+    walk(root, 0);
+    bindings_.enrollAdditional(root);
+  }
+
+  void detachNodes(const std::unordered_set<const X3DNode *> &nodes) {
+    graph_.removeNodes(nodes);
+    cascade_.removeNodes(nodes);
+    dirty_.removeNodes(nodes);
+    for (const X3DNode *n : nodes) {
+      auto *node = const_cast<X3DNode *>(n);
+      for (const auto &s : systems_) s->detach(node, *this);
+      bindings_.removeNode(node);
+      dynamicFieldStore().erase(*node);
+      detached_.insert(node);
+    }
+    cascade_.removeNodes(nodes); // discard unbind events addressed to removed nodes
+  }
+
+  void markSceneTopologyChanged() { ++sceneTopologyRevision_; }
+  std::uint64_t sceneTopologyRevision() const { return sceneTopologyRevision_; }
 
   /** @brief Remove all registered ROUTEs from the execution context. */
   void clearRoutes() { graph_.clear(); }
@@ -142,6 +190,12 @@ public:
    */
   void addSystem(std::shared_ptr<System> system) {
     systems_.push_back(std::move(system));
+  }
+
+  template <class T> T *findSystem() const {
+    for (const auto &system : systems_)
+      if (auto *match = dynamic_cast<T *>(system.get())) return match;
+    return nullptr;
   }
 
   /**
@@ -195,7 +249,12 @@ public:
 
   /** @brief Seed an event; processed by the next process()/tick() drain. */
   void postEvent(X3DNode *node, const std::string &field, std::any value) {
+    if (detached_.count(node)) return;
     cascade_.postEvent(node, field, std::move(value));
+  }
+
+  void addInputFilter(std::function<bool(const FieldAddress &, const std::any &)> filter) {
+    cascade_.addInputFilter(std::move(filter));
   }
 
   /**
@@ -234,6 +293,9 @@ public:
                                             const std::string &field,
                                             std::any value) {
     if (!node) return FieldWriteResult::NullNode;
+    if (detached_.count(node)) return FieldWriteResult::DetachedNode;
+    if (!cascade_.acceptsInput(FieldAddress{node, resolveFieldAlias(node, field)}, value))
+      return FieldWriteResult::Ok;
     for (const auto &info : node->fields()) {
       if (info.x3dName != field) continue;
       // Defensive: no node type currently reaches this. `outputOnly` does NOT
@@ -250,7 +312,7 @@ public:
         // before assignment), so skipping classifyDirty keeps the tracker honest.
         return FieldWriteResult::TypeMismatch;
       }
-      classifyDirty(FieldAddress{node, field});
+      onFieldWritten(FieldAddress{node, field});
       return FieldWriteResult::Ok;
     }
     return FieldWriteResult::UnknownField;
@@ -362,6 +424,11 @@ public:
   /// matrix or the transform index changes (a no-op tick leaves it unchanged).
   /// A cheap cache key for transform-derived consumer state (e.g. a pick index).
   std::uint64_t transformRevision() const { return transforms_.revision(); }
+  /// Pull surface: scene root nodes captured at buildSceneGraph — the walk roots
+  /// for view-dependent active-path reachability (SENSOR-SWITCH/ENV-06).
+  const std::vector<const X3DNode *> &sceneRoots() const {
+    return transforms_.sceneRoots();
+  }
   /// Pull surface: local-frame AABB of a node (empty if unknown).
   Aabb localBounds(const X3DNode *n) const { return bounds_.localBounds(n); }
   /// Pull surface: world-space AABB (= local bounds x composed ancestor
@@ -447,6 +514,18 @@ public:
   // sets it; NavigationSystem honors it (skips pointer-drag). See ADR / the
   // reference-consumer interaction spec.
   bool pointerConsumedBySensor() const { return pointerConsumedBySensor_; }
+
+  /// Called after every field write (a cascade delivery or writeField), for a
+  /// System whose node reacts to an inputOutput write itself — e.g. §30.4.6
+  /// IntegerTrigger re-emitting triggerValue, §21.2 key-device focus. The
+  /// listener may post events; they join the current timestamp.
+  using FieldWriteListener = std::function<void(const FieldAddress &)>;
+  void addFieldWriteListener(FieldWriteListener l) {
+    fieldWriteListeners_.push_back(std::move(l));
+    // Listeners must hear cascade deliveries even before (or without)
+    // buildSceneGraph, which otherwise installs this same observer.
+    cascade_.setFieldObserver([this](const FieldAddress &a) { onFieldWritten(a); });
+  }
   void setPointerConsumedBySensor(bool v) { pointerConsumedBySensor_ = v; }
 
   /// Accumulated world transform at `node` (product of ancestor Transform
@@ -470,6 +549,14 @@ public:
     ++pickCalls_;
     return pick_.pickClosest(worldRay, bounds_, cameraWorldPosition(),
                              cameraWorldUp(), x3d::kMaxGraphWalkVisits, &transforms_);
+  }
+
+  /// Avatar collision query (ISO 19775-1 §23.4.2): the closest collidable hit of
+  /// a world ray within maxDist; `groups` receives the enclosing enabled
+  /// Collision nodes. See PickSystem::castCollidable for the traversal rules.
+  PickResult collide(const Ray &worldRay, float maxDist,
+                     std::vector<X3DNode *> *groups = nullptr) const {
+    return pick_.castCollidable(worldRay, maxDist, groups);
   }
 
   /// World->camera (view) matrix from the bound Viewpoint (identity if none).
@@ -510,6 +597,13 @@ public:
 
 private:
   /// Map a delivered field to dirty flags on its node.
+  // A field was written (cascade delivery or writeField): feed dirty tracking,
+  // then the Systems that react to inputOutput writes.
+  void onFieldWritten(const FieldAddress &a) {
+    classifyDirty(a);
+    for (const auto &l : fieldWriteListeners_) l(a);
+  }
+
   void classifyDirty(const FieldAddress &a) {
     if (!a.node) return;
     static const char *kTRS[] = {"translation", "rotation", "scale", "center",
@@ -561,6 +655,8 @@ private:
   EventGraph graph_;
   EventCascade cascade_{graph_};
   std::vector<std::shared_ptr<System>> systems_;
+  std::unordered_set<const X3DNode *> detached_;
+  std::uint64_t sceneTopologyRevision_ = 0;
   std::vector<std::function<void(X3DExecutionContext &)>> postCascade_;
   DirtyTracker dirty_;
   TransformSystem transforms_;
@@ -576,6 +672,7 @@ private:
   std::uint64_t tickGeneration_ = 0; // monotonic advance count; see tickGeneration()
   bool ticking_ = false; // reentrancy guard for tick()
   bool pointerConsumedBySensor_ = false; // per-tick nav/sensor arbitration flag
+  std::vector<FieldWriteListener> fieldWriteListeners_;
 };
 
 } // namespace x3d::runtime

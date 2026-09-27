@@ -22,6 +22,7 @@
 #include "AudioBackend.hpp"
 #include "RecordingBackend.hpp"
 #include "SoundSystem.hpp"
+#include "SoundTimeSystem.hpp"
 #include "dsp/BuiltinDspBackend.hpp"
 #include "tests/dsp_metrics.hpp"
 
@@ -109,6 +110,7 @@ int main() {
       case NodeKind::Biquad: hBiq = cr.handle; biqP = cr.params; break;
       case NodeKind::Oscillator: hOsc = cr.handle; oscP = cr.params; break;
       case NodeKind::Panner: break;
+      case NodeKind::Buffer: break;
       }
     }
     CHECK(hDest && hGain && hBiq && hOsc, "all four kinds present");
@@ -213,12 +215,17 @@ int main() {
     Chain c = buildChain(440.0f, 8000.0f, BiquadTypeFilterChoices::LOWPASS, 0.0f);
     auto dsp = std::make_shared<BuiltinDspBackend>();
     auto sys = std::make_shared<SoundSystem>(dsp);
+    auto clock = std::make_shared<SoundTimeSystem>();
 
     Scene scene;
     scene.rootNodes.push_back(std::static_pointer_cast<X3DNode>(c.dest));
     X3DExecutionContext ctx;
     ctx.buildSceneGraph(scene);
     sys->attach(c.dest.get(), ctx);
+    clock->attach(c.osc.get(), ctx);
+    clock->attach(c.biquad.get(), ctx);
+    clock->attach(c.gain.get(), ctx);
+    ctx.addSystem(clock);
     ctx.addSystem(sys);
 
     const float gains[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
@@ -262,6 +269,45 @@ int main() {
     std::fprintf(stderr, "[determinism] %zu samples, byte-identical=%d\n",
                  a.size(), identical ? 1 : 0);
     CHECK(identical, "two identical renders produce byte-identical buffers");
+  }
+
+  // ── (g) enabled semantics and destination gain.
+  {
+    Chain c = buildChain(440.0f, 8000.0f, BiquadTypeFilterChoices::LOWPASS, 1.0f);
+    auto dsp = std::make_shared<BuiltinDspBackend>();
+    SoundSystem sys(dsp);
+    X3DExecutionContext ctx;
+    sys.attach(c.dest.get(), ctx);
+    auto clock = std::make_shared<SoundTimeSystem>();
+    clock->attach(c.osc.get(), ctx);
+    clock->attach(c.biquad.get(), ctx);
+    clock->attach(c.gain.get(), ctx);
+    ctx.addSystem(clock);
+    std::vector<float> full, changed;
+    sys.render(2048, kSR, full);
+    c.dest->setGain(0.25f);
+    ctx.tick(0.01);
+    sys.update(0.01, ctx);
+    sys.render(2048, kSR, changed);
+    CHECK(std::fabs(rms(changed) / rms(full) - 0.25) < 0.01,
+          "AudioDestination.gain scales rendered output");
+    c.biquad->setEnabled(false);
+    ctx.tick(0.1);
+    sys.update(0.1, ctx);
+    sys.render(2048, kSR, changed);
+    CHECK(std::fabs(rms(changed) / rms(full) - 0.25) < 0.01,
+          "disabled BiquadFilter passes input through");
+    c.gain->setEnabled(false);
+    ctx.tick(0.2);
+    sys.update(0.2, ctx);
+    sys.render(2048, kSR, changed);
+    CHECK(std::fabs(rms(changed) / rms(full) - 0.25) < 0.01,
+          "disabled Gain passes input through");
+    c.osc->setEnabled(false);
+    ctx.tick(0.3);
+    sys.update(0.3, ctx);
+    sys.render(2048, kSR, changed);
+    CHECK(rms(changed) < 1e-6, "disabled OscillatorSource emits silence");
   }
 
   // ── (e) PANNER SEAM: NodeKind::Panner + positional params cross the seam.

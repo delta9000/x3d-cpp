@@ -1,0 +1,4 @@
+<X3D profile="Immersive" version="4.0"><Scene>
+  <OrthoViewpoint fieldOfView="0 0 1"/>
+  <GeoCoordinate geoSystem="UTM Z10 N"/>
+</Scene></X3D>

@@ -25,7 +25,7 @@ std::string JsonWriter::writeDocument(const runtime::X3DDocument &doc) {
   std::ostringstream os;
   os << "{\n";
   os << "  \"X3D\": {\n";
-  os << "    \"@profile\": " << jstr(doc.profileName()) << ",\n";
+  os << "    \"@profile\": " << jstr(doc.profileToken()) << ",\n";
   os << "    \"@version\": " << jstr(headerVersion(doc.version)) << ",\n";
   os << "    \"head\": {\n";
   writeHead(os, doc.head, 3);
@@ -335,6 +335,10 @@ std::string JsonWriter::jsonProtoField(const runtime::ProtoField &f,
   os << "{ \"@name\": " << jstr(f.name)
      << ", \"@type\": " << jstr(fieldTypeName(f.type))
      << ", \"@accessType\": " << jstr(accessTypeName(f.access));
+  if (!f.appinfo.empty())
+    os << ", \"@appinfo\": " << jstr(f.appinfo);
+  if (!f.documentation.empty())
+    os << ", \"@documentation\": " << jstr(f.documentation);
   if (!f.nodeDefault.empty()) {
     // SFNode/MFNode default: emit as "-children".
     os << ", \"-children\": [";

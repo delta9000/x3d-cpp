@@ -18,14 +18,22 @@
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "TimeSensorSystem.hpp"
+#include "MediaTimeSystem.hpp"
+#include "SoundTimeSystem.hpp"
 #include "X3DExecutionContext.hpp"
 
 #include "x3d/nodes/TimeSensor.hpp"
+#include "x3d/nodes/AudioClip.hpp"
+#include "x3d/nodes/MovieTexture.hpp"
+#include "x3d/nodes/Gain.hpp"
+#include "x3d/nodes/BiquadFilter.hpp"
+#include "x3d/nodes/OscillatorSource.hpp"
 
 #include <cmath>
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 using namespace x3d;
 using namespace x3d::runtime;
@@ -173,4 +181,130 @@ TEST_CASE("timesensor_rtc_test") {
   }
   std::cout << "all TimeSensor RTC regression tests passed\n";
   return;
+}
+
+TEST_CASE("timesensor_late_resume_keeps_fraction_frozen") {
+  Rig r;
+  r.ts->setLoop(true);
+  r.ts->setCycleInterval(10.0);
+  r.ctx.tick(0.0);
+  r.ts->setPauseTime(2.0);
+  r.ctx.tick(3.0);
+  r.ts->setResumeTime(5.0);
+  r.ctx.tick(7.0);
+  INFO("fraction after late resume = " << r.ts->getFraction_changed());
+  CHECK(deq(r.ts->getFraction_changed(), 0.3));
+}
+
+TEST_CASE("timesensor_stop_uses_stop_time_for_final_output") {
+  Rig r;
+  r.ts->setLoop(true);
+  r.ts->setCycleInterval(10.0);
+  r.ctx.tick(0.0);
+  r.ts->setStopTime(4.0);
+  r.ctx.tick(6.0);
+  INFO("final time = " << r.ts->getTime() << ", fraction = " << r.ts->getFraction_changed());
+  CHECK(deq(r.ts->getTime(), 4.0));
+  CHECK(deq(r.ts->getFraction_changed(), 0.4));
+}
+
+TEST_CASE("timesensor_past_stop_event_uses_receiving_time") {
+  Rig r;
+  r.ts->setLoop(true);
+  r.ts->setCycleInterval(10.0);
+  r.ctx.tick(0.0);
+  r.ctx.tick(5.0);
+  r.ctx.postEvent(r.ts.get(), "set_stopTime", std::any(SFTime{2.0}));
+  r.ctx.process();
+  r.ctx.tick(7.0);
+  CHECK(deq(r.ts->getTime(), 5.0));
+  CHECK(deq(r.ts->getFraction_changed(), 0.5));
+}
+
+TEST_CASE("timesensor_ignores_start_and_invalid_stop_while_active") {
+  Rig r;
+  r.ts->setStartTime(1.0);
+  r.ts->setStopTime(-1.0);
+  r.ts->setLoop(true);
+  r.ctx.tick(1.0);
+  r.ctx.postEvent(r.ts.get(), "set_startTime", std::any(SFTime{8.0}));
+  r.ctx.postEvent(r.ts.get(), "set_stopTime", std::any(SFTime{0.0}));
+  r.ctx.process();
+  INFO("startTime = " << r.ts->getStartTime() << ", stopTime = " << r.ts->getStopTime());
+  CHECK(deq(r.ts->getStartTime(), 1.0));
+  CHECK(deq(r.ts->getStopTime(), -1.0));
+  CHECK(r.ctx.writeField(r.ts.get(), "startTime", std::any(SFTime{9.0})) ==
+        FieldWriteResult::Ok);
+  CHECK(r.ctx.writeField(r.ts.get(), "stopTime", std::any(SFTime{0.0})) ==
+        FieldWriteResult::Ok);
+  CHECK(deq(r.ts->getStartTime(), 1.0));
+  CHECK(deq(r.ts->getStopTime(), -1.0));
+}
+
+TEST_CASE("timesensor_accepts_negative_absolute_pause_time") {
+  Rig r;
+  r.ts->setStartTime(-5.0);
+  r.ts->setLoop(true);
+  r.ctx.tick(-5.0);
+  r.ts->setResumeTime(-4.0);
+  r.ts->setPauseTime(-3.0);
+  r.ctx.tick(-2.0);
+  INFO("isPaused = " << r.ts->X3DTimeDependentNode::getIsPaused());
+  CHECK(r.ts->X3DTimeDependentNode::getIsPaused());
+  r.ts->setResumeTime(-1.0);
+  r.ctx.tick(-0.5);
+  CHECK_FALSE(r.ts->X3DTimeDependentNode::getIsPaused());
+}
+
+TEST_CASE("timesensor_cycle_interval_change_keeps_fraction_continuous") {
+  Rig r;
+  r.ts->setLoop(true);
+  r.ts->setCycleInterval(10.0);
+  r.ctx.tick(0.0);
+  r.ctx.tick(3.0);
+  CHECK(deq(r.ts->getFraction_changed(), 0.3));
+  r.ts->setCycleInterval(20.0);
+  r.ctx.tick(4.0);
+  INFO("fraction after slowing cycle at t=3 = " << r.ts->getFraction_changed());
+  CHECK(deq(r.ts->getFraction_changed(), 0.35));
+}
+
+TEST_CASE("timesensor_shorter_interval_completes_current_cycle") {
+  Rig r;
+  r.ts->setLoop(true);
+  r.ts->setCycleInterval(10.0);
+  r.ctx.tick(0.0);
+  r.ctx.tick(7.0);
+  r.ts->setCycleInterval(5.0);
+  r.ctx.tick(8.0);
+  CHECK(deq(r.ts->getCycleTime(), 7.0));
+  CHECK(deq(r.ts->getFraction_changed(), 0.2));
+}
+
+TEST_CASE("time_dependent_nodes_ignore_active_timing_inputs") {
+  std::vector<std::shared_ptr<X3DTimeDependentNode>> nodes = {
+      std::make_shared<AudioClip>(), std::make_shared<MovieTexture>(),
+      std::make_shared<Gain>(), std::make_shared<BiquadFilter>(),
+      std::make_shared<OscillatorSource>()};
+  X3DExecutionContext ctx;
+  auto media = std::make_shared<MediaTimeSystem>();
+  auto sound = std::make_shared<SoundTimeSystem>();
+  ctx.addSystem(media);
+  ctx.addSystem(sound);
+  for (const auto &node : nodes) {
+    node->setStopTime(-1.0);
+    media->attach(node.get(), ctx);
+    sound->attach(node.get(), ctx);
+  }
+  ctx.tick(0.0);
+  for (const auto &node : nodes) {
+    REQUIRE(node->getIsActive());
+    ctx.postEvent(node.get(), "set_startTime", std::any(SFTime{8.0}));
+    ctx.postEvent(node.get(), "set_stopTime", std::any(SFTime{-2.0}));
+  }
+  ctx.process();
+  for (const auto &node : nodes) {
+    CHECK(deq(node->getStartTime(), 0.0));
+    CHECK(deq(node->getStopTime(), -1.0));
+  }
 }

@@ -85,6 +85,10 @@ struct SessionOptions {
   /// The SDK ships no concrete backend — an embedder injects one (e.g. a
   /// confined local-file resolver) to make watched children actually load.
   extract::AssetResolver assetResolver = nullptr;
+
+  /// Resolver and base URL used when an Inline receives load=TRUE after parse.
+  InlineResolver inlineResolver = {};
+  std::string baseUrl;
 };
 
 class RuntimeSession {
@@ -159,7 +163,9 @@ private:
     // buildSceneGraph pass just sanitized, and a System added after the first
     // tick() misses that tick's update.
     if (options.standardRuntime)
-      attachStandardRuntime(doc_.scene, ctx_, std::move(options.assetResolver));
+      attachStandardRuntime(doc_.scene, ctx_, std::move(options.assetResolver),
+                            std::move(options.inlineResolver),
+                            std::move(options.baseUrl));
     if (options.interactive) nav_ = attachInteractive(doc_.scene, ctx_);
   }
 

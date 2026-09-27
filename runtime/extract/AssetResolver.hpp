@@ -52,6 +52,7 @@ enum class AssetKind {
   Inline,        // Inline node url — contract (B), parse-time SYNC.
   ExternProto,   // EXTERNPROTO url — contract (B), parse-time SYNC.
   ExternalGeometry, // external mesh blob for an ExternalGeometry node — contract (A), lazy materialize.
+  Audio,         // AudioClip url — contract (A); decoded app-side via AudioDecoder.
 };
 
 // The lifecycle state of a resolve. Pending is ONLY legal on the render-time

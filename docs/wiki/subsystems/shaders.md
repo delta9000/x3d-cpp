@@ -18,6 +18,16 @@ This subsystem provides the **infrastructure** for `ComposedShader` author-shade
 
 When extraction is wired, the design intent is: the extraction layer surfaces a `ComposedShader` as a `ShaderProgramDesc` on the `RenderItem`; the consumer calls `buildBindingPlan()` to classify each uniform name into three buckets: **vocab match** (a known semantic from the vocabulary header), **author field** (a `<field>` declared on the `ComposedShader`), or **unrecognized** (a diagnostic with a nearest-vocab suggestion).  This gives the consumer a typed portability surface for binding SDK-managed state to author shaders without re-inventing the naming convention.
 
+Composed-geometry `attrib` children are extracted separately from the uniform
+binding plan. `MeshData::vertexAttributes` contains one stream per supported
+`FloatVertexAttribute`, `Matrix3VertexAttribute`, or `Matrix4VertexAttribute`,
+with its authored `name`, scalar `components` count (1–4, 9, or 16), and
+vertex-major float `values`. Values are expanded in lockstep with mesh
+positions using the coordinate vertex index (including `coordIndex` for
+`IndexedFaceSet`). A renderer binds these named streams as vertex attributes;
+`ShaderBindingPlan` remains a uniform classifier and does not bind vertex
+inputs.
+
 ## Key files
 
 | File | Role |

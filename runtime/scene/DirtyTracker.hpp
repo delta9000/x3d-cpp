@@ -5,7 +5,9 @@
 #ifndef X3D_RUNTIME_DIRTY_TRACKER_HPP
 #define X3D_RUNTIME_DIRTY_TRACKER_HPP
 
+#include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace x3d::nodes { class X3DNode; }
@@ -37,6 +39,12 @@ public:
   }
 
   const std::vector<const X3DNode *> &changedNodes() const { return changed_; }
+
+  void removeNodes(const std::unordered_set<const X3DNode *> &nodes) {
+    for (const X3DNode *node : nodes) flags_.erase(node);
+    changed_.erase(std::remove_if(changed_.begin(), changed_.end(),
+        [&](const X3DNode *node) { return nodes.count(node) != 0; }), changed_.end());
+  }
 
   void clear() {
     flags_.clear();

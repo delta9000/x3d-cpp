@@ -125,6 +125,27 @@ VideoFrame toBottomLeftRgba(plm_frame_t *frame) {
 
 } // namespace
 
+AudioDecoder makePlMpegMovieAudioDecoder() {
+  return [](const std::vector<std::uint8_t> &bytes) -> DecodedAudio {
+    if (bytes.empty()) return {};
+    auto *copy = static_cast<std::uint8_t *>(std::malloc(bytes.size()));
+    if (!copy) return {};
+    std::memcpy(copy, bytes.data(), bytes.size());
+    PlmPtr plm(plm_create_with_memory(copy, bytes.size(), /*free_when_done=*/1));
+    if (!plm) { std::free(copy); return {}; }
+    if (plm_get_num_audio_streams(plm.get()) == 0) return {};
+    plm_set_video_enabled(plm.get(), 0);
+    DecodedAudio out;
+    while (plm_samples_t *frame = plm_decode_audio(plm.get())) {
+      if (out.sampleRate <= 0.0f) out.sampleRate = static_cast<float>(plm_get_samplerate(plm.get()));
+      for (unsigned i = 0; i < frame->count; ++i)
+        out.samples.push_back(0.5f * (frame->interleaved[2 * i] + frame->interleaved[2 * i + 1]));
+    }
+    out.ok = out.sampleRate > 0.0f && !out.samples.empty();
+    return out;
+  };
+}
+
 MovieDecoder makePlMpegMovieDecoder(AssetResolver resolver) {
   // Shared so the returned std::function stays copyable while every copy talks to
   // the SAME per-URL context cache (sequential decode needs a persistent decoder).

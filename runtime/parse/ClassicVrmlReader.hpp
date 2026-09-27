@@ -91,6 +91,10 @@ protected:
 private:
   std::size_t depth_ = 0; // SEC-1: node nesting depth (DoS guard).
 
+  // Reader-recovery diagnostics accumulated during the current readDocument()
+  // call, moved into X3DDocument.readerWarnings on return.
+  std::vector<runtime::ReaderWarning> readerWarnings_;
+
   // -------------------------------------------------------------------------
   // Header line.
   // -------------------------------------------------------------------------

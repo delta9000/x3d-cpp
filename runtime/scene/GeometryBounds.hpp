@@ -127,6 +127,42 @@ inline Aabb pointsBounds(const std::shared_ptr<X3DNode> &coordNode) {
 }
 
 // ---------------------------------------------------------------------------
+// Geometry2D (§14) local-bounds helpers. The eight 2D nodes carry no `coord`,
+// so each needs an explicit arm. The circular primitives get EXACT bounds from
+// the arc's cardinal extremes (angles 0, ±π/2, π) whenever they fall inside the
+// swept range, plus both endpoints.
+// ---------------------------------------------------------------------------
+constexpr float kGeom2DPi = 3.14159265358979323846f;
+
+inline float geom2DArcSweep(float startAngle, float endAngle) {
+  const float twoPi = 2.0f * kGeom2DPi;
+  float sweep = endAngle - startAngle;
+  if (sweep < 0.0f) {
+    sweep += twoPi;
+    while (sweep < 0.0f) sweep += twoPi;
+  }
+  if (sweep > twoPi) sweep = twoPi;
+  return sweep;
+}
+
+inline void geom2DExpandArc(Aabb &out, float radius, float startAngle,
+                            float sweep) {
+  const float twoPi = 2.0f * kGeom2DPi;
+  auto add = [&](float a) {
+    out.expand(SFVec3f{radius * std::cos(a), radius * std::sin(a), 0.0f});
+  };
+  add(startAngle);
+  add(startAngle + sweep);
+  const float cardinals[4] = {0.0f, 0.5f * kGeom2DPi, kGeom2DPi,
+                              -0.5f * kGeom2DPi};
+  for (float c : cardinals) {
+    float rel = std::fmod(c - startAngle, twoPi);
+    if (rel < 0.0f) rel += twoPi;
+    if (rel <= sweep + 1e-6f) add(startAngle + rel);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Text-layout inputs read off a Text node by reflection. Mirrors the extraction
 // layer's readers (TextExtract.hpp) so the bounds path lays the glyphs out with
 // exactly the same FontStyleParams/TextParams the renderer uses.
@@ -181,7 +217,8 @@ inline std::vector<std::uint32_t> utf8ToCodepoints(const std::string &s) {
 // node's fontStyle child. Spec defaults (§15.4.1) when absent.
 inline extract::FontStyleParams readFontStyleParams(const X3DNode &textNode,
                                                     std::string &familyOut,
-                                                    std::string &styleOut) {
+                                                    std::string &styleOut,
+    std::vector<std::string> *familiesOut = nullptr) {
   extract::FontStyleParams fs; // spec defaults
   familyOut = "SERIF";
   styleOut = "PLAIN";
@@ -201,8 +238,13 @@ inline extract::FontStyleParams readFontStyleParams(const X3DNode &textNode,
   if (!jt.empty()) fs.justifyMajor = jt[0];
   if (jt.size() >= 2) fs.justifyMinor = jt[1];
 
-  const auto fam = splitTokens(::x3d::runtime::enumToken(*fsNode, "family"));
+  // family is an MFString fallback list (§15.4.1), read as the MFString it
+  // is: it has no enum-string accessor, so an enum-token read returns empty
+  // and every Text fell back to SERIF (TXT-5). The caller resolves it against
+  // the FontMetrics backend with resolveFontFamily.
+  const auto fam = getField<std::vector<std::string>>(*fsNode, "family", {});
   if (!fam.empty()) familyOut = fam[0];
+  if (familiesOut) *familiesOut = fam;
 
   const auto sty = splitTokens(::x3d::runtime::enumToken(*fsNode, "style"));
   if (!sty.empty()) styleOut = sty[0];
@@ -263,6 +305,61 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
     float h = getField<float>(*geom, "height", 2.0f);
     return Aabb::fromCenterSize({0,0,0}, {2*r, h, 2*r});
   }
+  // Geometry2D (§14): XY-plane primitives, z = 0.
+  if (t == "Arc2D") {
+    float r = getField<float>(*geom, "radius", 1.0f);
+    if (!(r > 0.0f)) return {};
+    float a0 = getField<float>(*geom, "startAngle", 0.0f);
+    float a1 = getField<float>(*geom, "endAngle", 1.570796f);
+    float sweep = geom2DArcSweep(a0, a1);
+    if (!(sweep > 0.0f)) return {};
+    Aabb r2; geom2DExpandArc(r2, r, a0, sweep); return r2;
+  }
+  if (t == "ArcClose2D") {
+    float r = getField<float>(*geom, "radius", 1.0f);
+    if (!(r > 0.0f)) return {};
+    float a0 = getField<float>(*geom, "startAngle", 0.0f);
+    float a1 = getField<float>(*geom, "endAngle", 1.570796f);
+    float sweep = geom2DArcSweep(a0, a1);
+    if (!(sweep > 0.0f)) return {};
+    Aabb r2; geom2DExpandArc(r2, r, a0, sweep);
+    // A PIE sector includes the centre; a CHORD segment does not.
+    if (::x3d::runtime::enumToken(*geom, "closureType", "PIE") != "CHORD")
+      r2.expand({0, 0, 0});
+    return r2;
+  }
+  if (t == "Circle2D") {
+    float r = getField<float>(*geom, "radius", 1.0f);
+    if (!(r > 0.0f)) return {};
+    return Aabb::fromCenterSize({0,0,0}, {2*r, 2*r, 0});
+  }
+  if (t == "Disk2D") {
+    float ro = getField<float>(*geom, "outerRadius", 1.0f);
+    if (!(ro > 0.0f)) return {};
+    return Aabb::fromCenterSize({0,0,0}, {2*ro, 2*ro, 0});
+  }
+  if (t == "Polyline2D") {
+    Aabb r2;
+    for (const auto &p : getField<std::vector<SFVec2f>>(*geom, "lineSegments", {}))
+      r2.expand({p.x, p.y, 0.0f});
+    return r2;
+  }
+  if (t == "Polypoint2D") {
+    Aabb r2;
+    for (const auto &p : getField<std::vector<SFVec2f>>(*geom, "point", {}))
+      r2.expand({p.x, p.y, 0.0f});
+    return r2;
+  }
+  if (t == "Rectangle2D") {
+    SFVec2f sz = getField<SFVec2f>(*geom, "size", SFVec2f{2.0f, 2.0f});
+    return Aabb::fromCenterSize({0,0,0}, {sz.x, sz.y, 0.0f});
+  }
+  if (t == "TriangleSet2D") {
+    Aabb r2;
+    for (const auto &p : getField<std::vector<SFVec2f>>(*geom, "vertices", {}))
+      r2.expand({p.x, p.y, 0.0f});
+    return r2;
+  }
   if (t == "NurbsCurve" || t == "NurbsPatchSurface")
     return pointsBounds(getNode(*geom, "controlPoint"));
   // Generic mesh: any geometry carrying a Coordinate via "coord" or "controlPoint".
@@ -315,8 +412,10 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
     // when no metrics are available (the SDK is IO-free; default is null).
     if (fm && *fm) {
       std::string family, style;
+      std::vector<std::string> families;
       const extract::FontStyleParams fsp =
-          readFontStyleParams(*geom, family, style);
+          readFontStyleParams(*geom, family, style, &families);
+      family = extract::resolveFontFamily(families, style, *fm); // §15.4.1
       const extract::TextParams tp = readTextParams(*geom);
       const extract::FontMetricsCallback lineMetrics =
           makeLayoutMetricsAdapter(*fm, family, style);

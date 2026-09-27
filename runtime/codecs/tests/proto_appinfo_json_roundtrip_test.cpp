@@ -9,6 +9,7 @@
 // The oracle is a full read(XML) -> write(JSON) -> re-read(JSON) cycle: both the
 // appinfo and documentation strings must reappear on the re-read declarations.
 #include "JsonWriter.hpp"
+#include "XmlWriter.hpp"
 #include "X3DParse.hpp"
 
 #include "doctest/doctest.h"
@@ -28,7 +29,8 @@ TEST_CASE("proto_appinfo_json_roundtrip_test") {
       "<ProtoDeclare name='Widget'"
       "   appinfo='a reusable widget' documentation='http://example.com/widget'>"
       "  <ProtoInterface>"
-      "    <field name='size' type='SFVec3f' accessType='inputOutput' value='1 1 1'/>"
+      "    <field name='size' type='SFVec3f' accessType='inputOutput' value='1 1 1'"
+      " appinfo='dimensions' documentation='size docs'/>"
       "  </ProtoInterface>"
       "  <ProtoBody>"
       "    <Transform><Shape><Box/></Shape></Transform>"
@@ -43,9 +45,21 @@ TEST_CASE("proto_appinfo_json_roundtrip_test") {
   CHECK((doc0.scene.protoDeclarations.front()->appinfo == "a reusable widget"));
   CHECK((doc0.scene.protoDeclarations.front()->documentation ==
          "http://example.com/widget"));
+  CHECK((doc0.scene.protoDeclarations.front()->interface.front().appinfo ==
+         "dimensions"));
+  CHECK((doc0.scene.protoDeclarations.front()->interface.front().documentation ==
+         "size docs"));
   CHECK((doc0.scene.externProtoDeclarations.front()->appinfo == "extern widget"));
   CHECK((doc0.scene.externProtoDeclarations.front()->documentation ==
          "http://example.com/ext"));
+
+  const std::string xmlOut = codec::XmlWriter().writeDocument(doc0);
+  CHECK((xmlOut.find("appinfo=\"dimensions\"") != std::string::npos));
+  auto docX = codec::parseDocument(xmlOut);
+  CHECK((docX.scene.protoDeclarations.front()->interface.front().appinfo ==
+         "dimensions"));
+  CHECK((docX.scene.protoDeclarations.front()->interface.front().documentation ==
+         "size docs"));
 
   // ---- JSON round-trip ----
   std::string js = codec::JsonWriter().writeDocument(doc0);
@@ -56,6 +70,7 @@ TEST_CASE("proto_appinfo_json_roundtrip_test") {
   CHECK((js.find("\"@appinfo\": \"extern widget\"") != std::string::npos));
   CHECK((js.find("\"@documentation\": \"http://example.com/ext\"") !=
          std::string::npos));
+  CHECK((js.find("\"@appinfo\": \"dimensions\"") != std::string::npos));
 
   auto docJ = codec::parseDocument(js, codec::Encoding::JSON);
   CHECK((!docJ.scene.protoDeclarations.empty()));
@@ -64,6 +79,10 @@ TEST_CASE("proto_appinfo_json_roundtrip_test") {
   CHECK((docJ.scene.protoDeclarations.front()->appinfo == "a reusable widget"));
   CHECK((docJ.scene.protoDeclarations.front()->documentation ==
          "http://example.com/widget"));
+  CHECK((docJ.scene.protoDeclarations.front()->interface.front().appinfo ==
+         "dimensions"));
+  CHECK((docJ.scene.protoDeclarations.front()->interface.front().documentation ==
+         "size docs"));
   CHECK((docJ.scene.externProtoDeclarations.front()->appinfo == "extern widget"));
   CHECK((docJ.scene.externProtoDeclarations.front()->documentation ==
          "http://example.com/ext"));

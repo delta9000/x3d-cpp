@@ -16,6 +16,7 @@ Encoding ClassicVrmlReader::encoding() const { return Encoding::ClassicVRML; }
 
 runtime::X3DDocument ClassicVrmlReader::readDocument(const std::string &text) {
   runtime::X3DDocument doc;
+  readerWarnings_.clear();
   // VP-2 §1 bare floor: readers own the 3.0 floor explicitly (the X3DDocument
   // member default is the 4.0 authoring default). The header parse below
   // overwrites this on every well-formed path; this covers malformed ones.
@@ -40,6 +41,8 @@ runtime::X3DDocument ClassicVrmlReader::readDocument(const std::string &text) {
   parseSceneBody(tok, doc.scene, /*inProto=*/false);
 
   doc.scene.resolveRoutes();
+  doc.readerWarnings.insert(doc.readerWarnings.end(), readerWarnings_.begin(),
+                            readerWarnings_.end());
   return doc;
 }
 
@@ -128,7 +131,7 @@ void ClassicVrmlReader::parseHeaderStatements(VrmlTokenizer &tok,
     if (t.isWord("PROFILE")) {
       tok.next();
       std::string name = expectWord(tok, "PROFILE name");
-      doc.profile = runtime::profileFromString(name);
+      doc.setProfileToken(name);
     } else if (t.isWord("COMPONENT")) {
       tok.next();
       // `COMPONENT name:level` — the lexer keeps "name:level" as one token.
@@ -273,6 +276,10 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
     // token follows, skip the value instead.
     warn("unknown node '" + rawTypeName + "' at line " +
          std::to_string(tok.peek().line) + " (skipped)");
+    readerWarnings_.push_back(
+        {runtime::ReaderWarning::Kind::UnknownNode,
+         "unknown node '" + rawTypeName + "' at line " +
+             std::to_string(tok.peek().line) + " discarded"});
     if (tok.peek().isPunct('{'))
       skipBalancedBraceBlock(tok);
     else if (tok.peek().isPunct('[') ||

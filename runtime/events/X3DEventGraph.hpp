@@ -6,8 +6,10 @@
 #include "X3DFieldAddress.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace x3d::runtime {
@@ -118,6 +120,18 @@ public:
    *          raw pointers in the internal route table.
    */
   void clear() { routes_.clear(); }
+
+  void removeNodes(const std::unordered_set<const X3DNode *> &nodes) {
+    for (auto it = routes_.begin(); it != routes_.end();) {
+      if (nodes.count(it->first.node)) { it = routes_.erase(it); continue; }
+      auto &sinks = it->second;
+      sinks.erase(std::remove_if(sinks.begin(), sinks.end(), [&](const FieldAddress &a) {
+        return nodes.count(a.node) != 0;
+      }), sinks.end());
+      if (sinks.empty()) it = routes_.erase(it);
+      else ++it;
+    }
+  }
 
 private:
   std::unordered_map<FieldAddress, std::vector<FieldAddress>> routes_;

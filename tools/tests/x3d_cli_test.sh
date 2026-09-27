@@ -177,6 +177,7 @@ check "no -o no -f exits 1" "$ec" "1"
 FIXTURE_CLEAN="$FIXTURES/validate-clean.x3d"
 FIXTURE_RANGE="$FIXTURES/validate-range-violation.x3d"
 FIXTURE_PROFILE="$FIXTURES/validate-profile-exceed.x3d"
+FIXTURE_SPECIAL_WARNINGS="$FIXTURES/validate-special-warnings.x3d"
 
 # ── 12. validate --help exits 0 ──────────────────────────────────────────────
 ec=$("$CLI" validate --help >/dev/null 2>&1; echo $?)
@@ -194,6 +195,15 @@ if [[ "$out" == *"diffuseColor"* ]]; then
     echo "ok:   validate range-violation output mentions diffuseColor"
 else
     echo "FAIL: validate range-violation output does not mention diffuseColor (got: $out)"
+    failures=$(( failures + 1 ))
+fi
+
+# New semantic range diagnostics must flow through the validate command.
+out=$("$CLI" validate "$FIXTURE_SPECIAL_WARNINGS" 2>&1 || true)
+if [[ "$out" == *"FOV_TUPLE_ARITY"* && "$out" == *"GEOSYSTEM_TOKEN"* ]]; then
+    echo "ok:   validate surfaces FOV and geoSystem diagnostics"
+else
+    echo "FAIL: validate omitted FOV or geoSystem diagnostic (got: $out)"
     failures=$(( failures + 1 ))
 fi
 
@@ -505,7 +515,9 @@ else
     echo "FAIL: sim proximity --move did not fire enter/exit (got: $prox)"
     failures=$(( failures + 1 ))
 fi
-# Enter at tick 4 (x=-1, t=0.4), exit at tick 7 (x=+1, t=0.7).
+# Enter reported at tick 4; exit reported at tick 7. The box [-1,1] is crossed at
+# x=-1 (t=0.4, exactly tick 4) and x=+1 (t=0.6, tick 6 is on the boundary), so
+# ENV-08 reports exitTime=0.6 while the isActive=FALSE edge fires at tick 7.
 if [[ "$prox" == *"tick 4"*"Region.enterTime"* ]]; then
     echo "ok:   sim proximity enterTime at tick 4"
 else

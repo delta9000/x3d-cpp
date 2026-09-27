@@ -13,7 +13,8 @@ related:
 
 ## Status
 
-Proposed — 2026-06-25. Conformance finding `SENSOR-SWITCH`.
+Accepted — 2026-06-25. Implemented for `SENSOR-SWITCH` / ENV-06 in `ViewDependentSystem::update`
+(active-path reachability from `ctx.sceneRoots()`).
 
 ## Context
 

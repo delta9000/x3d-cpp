@@ -128,7 +128,13 @@ inline RuntimeWiring attachFullRuntime(x3d::runtime::Scene &scene,
 #ifdef X3D_SIM_HAVE_SCRIPT
   {
     auto backend = std::make_shared<EcmaScriptBackend>();
-    auto scriptSys = std::make_shared<ScriptSystem>(backend, "x3d-sim", "4.0");
+    // The SDK is IO-free, so the app injects the concrete AssetResolver backend:
+    // the SEC-3-confined local-file resolver (the same one LoadSensor uses
+    // below), which resolves confined local `file:` URLs. It serves a Script's
+    // external `url` entries (CONF-CRITIC-2) and their autoRefresh re-fetch
+    // (SCR-005). A default-configured ScriptSystem would use the null stub.
+    auto scriptSys = std::make_shared<ScriptSystem>(
+        backend, "x3d-sim", "4.0", io::file::makeFileResolver());
     detail::forEachNode(scene, [&](X3DNode *n) {
       if (n && n->nodeTypeName() == "Script") {
         scriptSys->attach(n, ctx);

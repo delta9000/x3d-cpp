@@ -16,6 +16,9 @@
 #include "InterpolatorRegistration.hpp"
 #include "KeyDeviceSensorSystem.hpp"
 #include "LoadSensorSystem.hpp"
+#include "AnchorSystem.hpp"
+#include "MediaTimeSystem.hpp"
+#include "SoundTimeSystem.hpp"
 #include "NavigationSystem.hpp"
 #include "PointingSensorSystem.hpp"
 #include "TimeSensorSystem.hpp"
@@ -26,6 +29,7 @@
 #include "x3d/nodes/IntegerSequencer.hpp"
 
 #include "DynamicField.hpp"
+#include "InlineRuntimeSystem.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3DReflection.hpp"
 #include "X3DScene.hpp"
@@ -316,6 +320,7 @@ template <class F> inline void forEachNode(const Scene &scene, F &&f) {
     });
   };
   for (const auto &r : scene.rootNodes) rec(r.get());
+  for (const auto &p : scene.protoPeerNodes) rec(p.get());
 }
 
 } // namespace detail
@@ -450,16 +455,32 @@ attachLoadSensors(Scene &scene, X3DExecutionContext &ctx,
  *          top); converging it onto this helper is a deferred dedup follow-up.
  */
 inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
-                                  extract::AssetResolver assetResolver = nullptr) {
+                                  extract::AssetResolver assetResolver = nullptr,
+                                  InlineResolver inlineResolver = {},
+                                  std::string baseUrl = {}) {
   auto tss = std::make_shared<TimeSensorSystem>();        // §8 Time — the clock
   detail::forEachNode(scene, [&](X3DNode *n) { tss->attach(n, ctx); });
   ctx.addSystem(tss);
+  auto media = std::make_shared<MediaTimeSystem>(); // §8.2.4 AudioClip/MovieTexture timing
+  detail::forEachNode(scene, [&](X3DNode *n) { media->attach(n, ctx); });
+  ctx.addSystem(media);
+  auto soundTime = std::make_shared<SoundTimeSystem>(); // §16 source/processor timing
+  detail::forEachNode(scene, [&](X3DNode *n) { soundTime->attach(n, ctx); });
+  ctx.addSystem(soundTime);
   attachInterpolators(scene, ctx);    // §19 keyframe animation
   attachFollowers(scene, ctx);        // §39 damper/chaser smoothing
   attachEventUtilities(scene, ctx);   // §30 trigger/sequencer/filter logic
   attachViewDependent(scene, ctx);    // §22/§23 LOD/Billboard/Proximity/Visibility
   attachKeyDeviceSensors(scene, ctx); // §21 KeySensor/StringSensor
   attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
+  if (inlineResolver) {
+    auto inlines = std::make_shared<InlineRuntimeSystem>(
+        scene, std::move(inlineResolver), std::move(baseUrl));
+    detail::forEachNode(scene, [&](X3DNode *n) { inlines->attach(n, ctx); });
+    for (const auto &[_, original] : scene.expandedInlines)
+      inlines->attach(original.get(), ctx);
+    ctx.addSystem(inlines);
+  }
   attachViewpointBind(ctx);           // §23.3.1 post-cascade viewpoint bind hook
 }
 
@@ -481,6 +502,9 @@ attachInteractive(Scene &scene, X3DExecutionContext &ctx) {
   // case). Sensors still resolve live from the pick path; this only counts them.
   detail::forEachNode(scene, [&](X3DNode *n) { pss->attach(n, ctx); });
   ctx.addSystem(pss); // claims pointer first
+  auto anchors = std::make_shared<AnchorSystem>(); // §9.4.1 Anchor activation
+  detail::forEachNode(scene, [&](X3DNode *n) { anchors->attach(n, ctx); });
+  ctx.addSystem(anchors); // after the sensors, before navigation
   auto nav = std::make_shared<NavigationSystem>();
   ctx.addSystem(nav);                                      // reads pointer after
   return nav;

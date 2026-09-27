@@ -120,6 +120,11 @@ public:
   /// accessor for caches keyed on the transform state (e.g. a pick index).
   std::uint64_t revision() const { return revision_; }
 
+  /// Raw scene root pointers captured by buildIndex — used by view-dependent
+  /// reachability (a node is in the active hierarchy iff some active root->node
+  /// path reaches it). Borrowed; valid while the owning Scene lives.
+  const std::vector<const X3DNode *> &sceneRoots() const { return roots_; }
+
   /// Recompute world transforms for every dirtied subtree (marking each
   /// recomputed node DirtyWorldTransform), then structurally re-index any
   /// grouping node whose child set changed (DirtyChildren). Only subtrees under

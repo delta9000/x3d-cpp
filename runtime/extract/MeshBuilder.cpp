@@ -332,6 +332,32 @@ AttrResolvers buildAttrs(const X3DNode &geom) {
     a.hasTexCoord = !a.texcoords.empty();
   }
 
+  // §31.4.2 attrib values are per coordinate vertex; coordIndex therefore
+  // selects the same source value for every expanded corner.
+  for (const auto &node : getField<MFNode>(geom, "attrib", {})) {
+    if (!node) continue;
+    const std::string type = node->nodeTypeName();
+    MeshData::VertexAttribute attr;
+    attr.name = getField<SFString>(*node, "name", {});
+    std::vector<float> values;
+    if (type == "FloatVertexAttribute") {
+      const int components = getField<SFInt32>(*node, "numComponents", 4);
+      if (components < 1 || components > 4) continue;
+      attr.components = static_cast<std::uint32_t>(components);
+      values = getField<std::vector<float>>(*node, "value", {});
+    } else if (type == "Matrix3VertexAttribute") {
+      attr.components = 9;
+      for (const auto &m : getField<MFMatrix3f>(*node, "value", {}))
+        for (const auto &row : m.matrix) values.insert(values.end(), row, row + 3);
+    } else if (type == "Matrix4VertexAttribute") {
+      attr.components = 16;
+      for (const auto &m : getField<MFMatrix4f>(*node, "value", {}))
+        for (const auto &row : m.matrix) values.insert(values.end(), row, row + 4);
+    } else continue;
+    a.vertexAttributes.push_back(std::move(attr));
+    a.vertexAttributeValues.push_back(std::move(values));
+  }
+
   a.normalIndex = getField<std::vector<int>>(geom, "normalIndex", {});
   a.colorIndex = getField<std::vector<int>>(geom, "colorIndex", {});
   a.texCoordIndex = getField<std::vector<int>>(geom, "texCoordIndex", {});
@@ -622,7 +648,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
                          const std::vector<SFVec3f> &spine,
                          const std::vector<SFRotation> &orientation,
                          const std::vector<SFVec2f> &scale, bool beginCap,
-                         bool endCap, bool ccw, float creaseAngle,
+                         bool endCap, bool convex, bool ccw, float creaseAngle,
                          bool genTexCoords) {
   const int ns = static_cast<int>(spine.size());
   const int nc = static_cast<int>(crossSection.size());
@@ -639,6 +665,26 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   const bool csClosed =
       std::fabs(crossSection[0].x - crossSection[nc - 1].x) < eps &&
       std::fabs(crossSection[0].y - crossSection[nc - 1].y) < eps;
+
+  // EXTRUSION-SCP (ADR-0031, §13.3.5.4.5): fewer than 2 DISTINCT
+  // (coincident-collapsed) spine points => nothing is rendered. The element
+  // count guard above (ns<2) does not catch a spine of repeated coincident
+  // points, which has no defined SCP plane.
+  {
+    int distinct = 0;
+    for (int i = 0; i < ns; ++i) {
+      bool dup = false;
+      for (int k = 0; k < i; ++k)
+        if (coincident3(spine[i], spine[k])) {
+          dup = true;
+          break;
+        }
+      if (!dup)
+        ++distinct;
+    }
+    if (distinct < 2)
+      return;
+  }
 
   // SF-or-MF clamp-to-last picker.
   const auto pickScale = [&](int i) -> SFVec2f {
@@ -721,12 +767,20 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
       haveZ = true;
     }
   }
-  // If NO plane normal was ever valid (straight spine): pick a Z perpendicular
-  // to the (common) tangent and propagate it to every section.
+  // If NO plane normal was ever valid (straight / 2-point spine): the spine
+  // tangent fixes the SCP plane normal but leaves the in-plane X/Z free. Per
+  // ADR-0031, align them to the LOCAL model axes: Y = unit tangent,
+  // Z = normalize(modelZ - (modelZ·Y)Y) (fall back to modelX when Y ∥ modelZ),
+  // X = normalize(Y × Z), re-derive Z = X × Y. No arbitrary ref × Y sign flip.
   if (!haveZ) {
-    const SFVec3f y = axY[0];
-    SFVec3f ref = (std::fabs(y.y) < 0.9f) ? SFVec3f{0, 1, 0} : SFVec3f{1, 0, 0};
-    SFVec3f z = vcross(ref, y);
+    const SFVec3f y = axY[0]; // unit spine tangent.
+    const auto projPerp = [&](const SFVec3f &v) {
+      const float d = vdot(v, y);
+      return SFVec3f{v.x - d * y.x, v.y - d * y.y, v.z - d * y.z};
+    };
+    SFVec3f z = projPerp(SFVec3f{0, 0, 1});
+    if (vlen(z) < eps) // Y ∥ modelZ -> project modelX instead.
+      z = projPerp(SFVec3f{1, 0, 0});
     const float l = vlen(z);
     z = (l > eps) ? SFVec3f{z.x / l, z.y / l, z.z / l} : SFVec3f{0, 0, 1};
     for (int i = 0; i < ns; ++i)
@@ -913,15 +967,28 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   // endCap. Cap UVs use the cross-section's own 2D coords normalized to the
   // bbox.
   const int capCount = csClosed ? nc - 1 : nc; // skip duplicate closing vertex.
-  if (beginCap && capCount >= 3) {
+  std::vector<std::array<int, 3>> capTriangles;
+  if (!convex && capCount >= 3) {
+    std::vector<SFVec3f> capPoints;
+    capPoints.reserve(capCount);
+    for (int k = 0; k < capCount; ++k)
+      capPoints.push_back({crossSection[k].x, 0, crossSection[k].y});
+    // §13.3.5.6 / §11.2.3: a concave cap still covers only its polygon.
+    capTriangles = earClipPolygon(capPoints);
+  } else {
     for (int k = 1; k + 1 < capCount; ++k)
-      emit(0, 0, 0, k + 1, 0, k, capUv(0), capUv(k + 1),
-           capUv(k)); // reversed fan (faces away from endCap).
+      capTriangles.push_back({0, k, k + 1});
+  }
+  if (beginCap && capCount >= 3) {
+    for (const auto &tri : capTriangles)
+      emit(0, tri[0], 0, tri[2], 0, tri[1], capUv(tri[0]), capUv(tri[2]),
+           capUv(tri[1]));
   }
   if (endCap && capCount >= 3) {
     const int last = ns - 1;
-    for (int k = 1; k + 1 < capCount; ++k)
-      emit(last, 0, last, k, last, k + 1, capUv(0), capUv(k), capUv(k + 1));
+    for (const auto &tri : capTriangles)
+      emit(last, tri[0], last, tri[1], last, tri[2], capUv(tri[0]),
+           capUv(tri[1]), capUv(tri[2]));
   }
 
   // creaseAngle smoothing (B6) keyed on the SOURCE lattice id (section*nc +
@@ -929,6 +996,248 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   if (creaseAngle > 0.0f)
     creaseSmoothNormals(m, m.latticeIndex, creaseAngle);
   m.hasNormals = !m.normals.empty();
+}
+
+// ---------------------------------------------------------------------------
+// Geometry2D (§14): the eight 2D nodes live in the XY plane (z = 0) and carry
+// NO `coord` child, so they are dispatched BEFORE the generic coord guard.
+// Arc2D/Circle2D/Polyline2D emit Topology::Lines and Polypoint2D emits
+// Topology::Points (both unlit, solid=false — the B4 convention).
+// ArcClose2D/Disk2D/Rectangle2D/TriangleSet2D emit Topology::Triangles with +Z
+// normals and `solid` carried verbatim from the node field. Texture coordinates
+// follow the §14 2D convention: the geometry's XY bounding box mapped to [0,1]^2
+// (Rectangle2D and Disk2D map their bounding square, which is the same box);
+// TriangleSet2D's authored texCoord, when present, wins.
+//
+// TESSELLATION COUNT: the circular primitives use one chord per
+// kGeometry2DAngleStep radians. A full circle therefore gets 64 chords
+// (5.625° each); a partial sweep rounds UP to at least one chord. This is
+// finer than the analytic primitives' default radialSlices=24 because a 2D
+// circle is usually the whole silhouette, where a coarse chord count reads as
+// a polygon.
+constexpr float kGeometry2DAngleStep = 6.28318530717958647692f / 64.0f;
+constexpr float kGeometry2DTwoPi = 6.28318530717958647692f;
+
+// Number of chords spanning `sweep` radians at kGeometry2DAngleStep; 0 for a
+// non-positive sweep (a degenerate arc emits nothing).
+int sweepChordCount(float sweep) {
+  if (!(sweep > 0.0f))
+    return 0;
+  const int n = static_cast<int>(std::ceil(sweep / kGeometry2DAngleStep));
+  return std::max(1, n);
+}
+
+// §14.3.2/§14.3.3: the arc runs CCW from startAngle to endAngle; if endAngle
+// is less than startAngle it is increased by 2π. Returns the CCW sweep in
+// [0, 2π]; a sweep of 0 is a single point (degenerate).
+float arcSweep(float startAngle, float endAngle) {
+  float sweep = endAngle - startAngle;
+  if (sweep < 0.0f) {
+    sweep += kGeometry2DTwoPi;
+    while (sweep < 0.0f)
+      sweep += kGeometry2DTwoPi;
+  }
+  if (sweep > kGeometry2DTwoPi)
+    sweep = kGeometry2DTwoPi;
+  return sweep;
+}
+
+void push2DLineVertex(MeshData &m, float x, float y) {
+  m.positions.push_back(SFVec3f{x, y, 0.0f});
+  m.indices.push_back(static_cast<std::uint32_t>(m.indices.size()));
+}
+
+// Arc2D / Circle2D: a linear circular arc (a full circle when sweep == 2π) as
+// Topology::Lines — consecutive endpoint pairs so a GL_LINES draw covers it.
+void emitCircleArcLines(MeshData &m, float radius, float startAngle,
+                        float sweep) {
+  const int segs = sweepChordCount(sweep);
+  if (!(radius > 0.0f) || segs == 0)
+    return;
+  m.topology = Topology::Lines;
+  m.solid = false;
+  const float inv = 1.0f / static_cast<float>(segs);
+  for (int k = 0; k < segs; ++k) {
+    const float a0 = startAngle + sweep * static_cast<float>(k) * inv;
+    const float a1 = startAngle + sweep * static_cast<float>(k + 1) * inv;
+    push2DLineVertex(m, radius * std::cos(a0), radius * std::sin(a0));
+    push2DLineVertex(m, radius * std::cos(a1), radius * std::sin(a1));
+  }
+}
+
+// Push one CCW triangle in the z=0 plane with a +Z normal per corner.
+void push2DTriangle(MeshData &m, const SFVec3f &a, const SFVec3f &b,
+                    const SFVec3f &c) {
+  const std::uint32_t base = static_cast<std::uint32_t>(m.positions.size());
+  m.positions.push_back(a);
+  m.positions.push_back(b);
+  m.positions.push_back(c);
+  m.indices.push_back(base);
+  m.indices.push_back(base + 1);
+  m.indices.push_back(base + 2);
+  m.normals.push_back(SFVec3f{0, 0, 1});
+  m.normals.push_back(SFVec3f{0, 0, 1});
+  m.normals.push_back(SFVec3f{0, 0, 1});
+}
+
+// Map the mesh's XY bounding box to [0,1]^2 (the §14 2D texture convention).
+void map2DBoundsToUnitSquare(MeshData &m) {
+  if (m.positions.empty())
+    return;
+  SFVec3f lo = m.positions[0], hi = m.positions[0];
+  for (const SFVec3f &p : m.positions) {
+    lo.x = std::min(lo.x, p.x);
+    hi.x = std::max(hi.x, p.x);
+    lo.y = std::min(lo.y, p.y);
+    hi.y = std::max(hi.y, p.y);
+  }
+  const float invX = (hi.x - lo.x > 0.0f) ? 1.0f / (hi.x - lo.x) : 0.0f;
+  const float invY = (hi.y - lo.y > 0.0f) ? 1.0f / (hi.y - lo.y) : 0.0f;
+  m.texcoords.clear();
+  m.texcoords.reserve(m.positions.size());
+  for (const SFVec3f &p : m.positions)
+    m.texcoords.push_back(SFVec2f{(p.x - lo.x) * invX, (p.y - lo.y) * invY});
+}
+
+// Tessellate one Geometry2D node into `m`. Returns true iff `t` is a
+// Geometry2D type (whether or not it produced geometry — a recognized-but-
+// degenerate node yields an empty mesh). mesh.ccw/solid were already carried
+// from the node fields by buildLocalMesh.
+bool buildGeometry2D(MeshData &m, const X3DNode &geom, const std::string &t) {
+  using namespace ::x3d::runtime::geombounds;
+
+  if (t == "Arc2D") {
+    const float r = getField<float>(geom, "radius", 1.0f);
+    const float a0 = getField<float>(geom, "startAngle", 0.0f);
+    const float a1 = getField<float>(geom, "endAngle", 1.570796f);
+    emitCircleArcLines(m, r, a0, arcSweep(a0, a1));
+    return true;
+  }
+  if (t == "Circle2D") {
+    const float r = getField<float>(geom, "radius", 1.0f);
+    emitCircleArcLines(m, r, 0.0f, kGeometry2DTwoPi);
+    return true;
+  }
+  if (t == "Polyline2D") {
+    // lineSegments is one open polyline: consecutive points are connected.
+    const auto pts = getField<std::vector<SFVec2f>>(geom, "lineSegments", {});
+    m.topology = Topology::Lines;
+    m.solid = false;
+    for (std::size_t i = 0; i + 1 < pts.size(); ++i) {
+      push2DLineVertex(m, pts[i].x, pts[i].y);
+      push2DLineVertex(m, pts[i + 1].x, pts[i + 1].y);
+    }
+    return true;
+  }
+  if (t == "Polypoint2D") {
+    const auto pts = getField<std::vector<SFVec2f>>(geom, "point", {});
+    m.topology = Topology::Points;
+    m.solid = false;
+    for (const SFVec2f &p : pts)
+      push2DLineVertex(m, p.x, p.y);
+    return true;
+  }
+  if (t == "Rectangle2D") {
+    const SFVec2f sz = getField<SFVec2f>(geom, "size", SFVec2f{2.0f, 2.0f});
+    const float hx = sz.x * 0.5f, hy = sz.y * 0.5f;
+    const SFVec3f v0{-hx, -hy, 0}, v1{hx, -hy, 0}, v2{hx, hy, 0},
+        v3{-hx, hy, 0};
+    push2DTriangle(m, v0, v1, v2);
+    push2DTriangle(m, v0, v2, v3);
+    map2DBoundsToUnitSquare(m);
+    return true;
+  }
+  if (t == "TriangleSet2D") {
+    const auto v = getField<std::vector<SFVec2f>>(geom, "vertices", {});
+    for (std::size_t i = 0; i + 2 < v.size(); i += 3)
+      push2DTriangle(m, SFVec3f{v[i].x, v[i].y, 0.0f},
+                     SFVec3f{v[i + 1].x, v[i + 1].y, 0.0f},
+                     SFVec3f{v[i + 2].x, v[i + 2].y, 0.0f});
+    // Authored texCoord WINS; else the §14 bounding-box default. (The 4.0
+    // binding carries no texCoord field for TriangleSet2D, so in practice the
+    // default path runs; the authored branch keeps the seam honest if a future
+    // binding adds it.)
+    const auto uvs = [&] {
+      if (auto tc = getNode(geom, "texCoord"))
+        return getField<std::vector<SFVec2f>>(*tc, "point", {});
+      return std::vector<SFVec2f>{};
+    }();
+    if (uvs.size() >= v.size())
+      for (std::size_t i = 0; i + 2 < v.size(); i += 3) {
+        m.texcoords.push_back(uvs[i]);
+        m.texcoords.push_back(uvs[i + 1]);
+        m.texcoords.push_back(uvs[i + 2]);
+      }
+    else
+      map2DBoundsToUnitSquare(m);
+    return true;
+  }
+  if (t == "Disk2D") {
+    const float ro = getField<float>(geom, "outerRadius", 1.0f);
+    const float ri = getField<float>(geom, "innerRadius", 0.0f);
+    if (!(ro > 0.0f))
+      return true; // recognized, empty (degenerate radius)
+    // innerRadius == outerRadius (a zero-width annulus) -> a circle LINE.
+    if (ri > 0.0f && std::fabs(ri - ro) <= 1e-6f * std::max(1.0f, ro)) {
+      emitCircleArcLines(m, ro, 0.0f, kGeometry2DTwoPi);
+      return true;
+    }
+    const int segs = sweepChordCount(kGeometry2DTwoPi);
+    const float inv = 1.0f / static_cast<float>(segs);
+    if (ri <= 0.0f) {
+      const SFVec3f c{0, 0, 0};
+      for (int k = 0; k < segs; ++k) {
+        const float a0 = kGeometry2DTwoPi * static_cast<float>(k) * inv;
+        const float a1 = kGeometry2DTwoPi * static_cast<float>(k + 1) * inv;
+        push2DTriangle(m, c, SFVec3f{ro * std::cos(a0), ro * std::sin(a0), 0},
+                       SFVec3f{ro * std::cos(a1), ro * std::sin(a1), 0});
+      }
+    } else {
+      const float rin = std::min(ri, ro);
+      for (int k = 0; k < segs; ++k) {
+        const float a0 = kGeometry2DTwoPi * static_cast<float>(k) * inv;
+        const float a1 = kGeometry2DTwoPi * static_cast<float>(k + 1) * inv;
+        const SFVec3f i0{rin * std::cos(a0), rin * std::sin(a0), 0};
+        const SFVec3f o0{ro * std::cos(a0), ro * std::sin(a0), 0};
+        const SFVec3f o1{ro * std::cos(a1), ro * std::sin(a1), 0};
+        const SFVec3f i1{rin * std::cos(a1), rin * std::sin(a1), 0};
+        push2DTriangle(m, i0, o0, o1);
+        push2DTriangle(m, i0, o1, i1);
+      }
+    }
+    map2DBoundsToUnitSquare(m);
+    return true;
+  }
+  if (t == "ArcClose2D") {
+    const float r = getField<float>(geom, "radius", 1.0f);
+    const float a0 = getField<float>(geom, "startAngle", 0.0f);
+    const float a1 = getField<float>(geom, "endAngle", 1.570796f);
+    const float sweep = arcSweep(a0, a1);
+    const int segs = sweepChordCount(sweep);
+    if (!(r > 0.0f) || segs == 0)
+      return true; // recognized, empty
+    const bool pie = ::x3d::runtime::enumToken(geom, "closureType", "PIE") !=
+                     "CHORD";
+    const float inv = 1.0f / static_cast<float>(segs);
+    std::vector<SFVec3f> p(segs + 1);
+    for (int k = 0; k <= segs; ++k) {
+      const float a = a0 + sweep * static_cast<float>(k) * inv;
+      p[k] = SFVec3f{r * std::cos(a), r * std::sin(a), 0};
+    }
+    if (pie) {
+      const SFVec3f c{0, 0, 0};
+      for (int k = 0; k < segs; ++k)
+        push2DTriangle(m, c, p[k], p[k + 1]);
+    } else {
+      // CHORD: fan from the first arc endpoint; the closing edge p_segs -> p_0
+      // is the straight chord between the arc ends.
+      for (int k = 1; k < segs; ++k)
+        push2DTriangle(m, p[0], p[k], p[k + 1]);
+    }
+    map2DBoundsToUnitSquare(m);
+    return true;
+  }
+  return false;
 }
 
 } // namespace x3d::runtime::extract::mesh_detail
@@ -950,7 +1259,11 @@ bool recognizedGeometryType(const std::string &t) {
       // B4 line/point sets (Topology::Lines / Topology::Points; always unlit)
       t == "IndexedLineSet" || t == "LineSet" || t == "PointSet" ||
       // NURBS (T5): curve -> Lines, patch surface -> Triangles
-      t == "NurbsCurve" || t == "NurbsPatchSurface";
+      t == "NurbsCurve" || t == "NurbsPatchSurface" ||
+      // Geometry2D (§14): XY-plane primitives tessellated by buildGeometry2D
+      t == "Arc2D" || t == "ArcClose2D" || t == "Circle2D" || t == "Disk2D" ||
+      t == "Polyline2D" || t == "Polypoint2D" || t == "Rectangle2D" ||
+      t == "TriangleSet2D";
 }
 
 MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
@@ -1091,6 +1404,9 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
       // (row*xDim+col) source id per expanded corner (for B6 smoothing).
       const float crease =
           geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
+      // EXT-001: resolve authored color/normal + colorPerVertex/normalPerVertex
+      // (ElevationGrid is a grid node, not composed: no *Index fields).
+      const AttrResolvers attrs = buildAttrs(*geom);
       emitHeightGrid(
           mesh, xd, zd,
           [&](int i, int j) {
@@ -1098,7 +1414,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
                            h[static_cast<std::size_t>(j) * xd + i],
                            static_cast<float>(j) * zs};
           },
-          crease, mesh.ccw);
+          crease, mesh.ccw, &attrs);
       // DEFAULT (implicit) grid texcoords (TC2). An authored TextureCoordinate
       // ALWAYS WINS (resolved per lattice vertex, lid = j*xDim+i); only when
       // texCoord is NULL do we generate the NORMATIVE s=i/(xDim-1),
@@ -1146,6 +1462,9 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
       const float crease = static_cast<float>(
           geombounds::getField<double>(*geom, "creaseAngle", 0.0));
       const GeoProjection &proj = opt.geoProjection;
+      // EXT-001: same authored color/normal resolution as ElevationGrid (the
+      // shared emitHeightGrid now honors colorPerVertex/normalPerVertex).
+      const AttrResolvers attrs = buildAttrs(*geom);
       // Spec lattice order: height index = row*xDim + col, row j advances along
       // the FIRST geoSystem axis (north/latitude), col i along the SECOND
       // (east/longitude). geoGridOrigin.x = first axis, .y = second axis.
@@ -1169,7 +1488,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
                            static_cast<float>(sys.geoGridOrigin.x +
                                               static_cast<double>(j) * zs)};
           },
-          crease, mesh.ccw);
+          crease, mesh.ccw, &attrs);
       // DEFAULT (implicit) grid texcoords (TC2) — same parameterization as
       // ElevationGrid (s=i/(xDim-1), t=j/(zDim-1)); an authored
       // TextureCoordinate ALWAYS WINS, resolved per lattice vertex via
@@ -1245,6 +1564,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
         geombounds::getField<std::vector<SFVec2f>>(*geom, "scale", {});
     const bool beginCap = geombounds::getField<SFBool>(*geom, "beginCap", true);
     const bool endCap = geombounds::getField<SFBool>(*geom, "endCap", true);
+    const bool convex = geombounds::getField<SFBool>(*geom, "convex", true);
     const float crease =
         geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
     // DEFAULT (implicit) texcoords (TC3): Extrusion has NO authored
@@ -1255,8 +1575,17 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     // parameterization, emitted parallel to positions inside
     // tessellateExtrusion.
     tessellateExtrusion(mesh, crossSection, spine, orientation, scale, beginCap,
-                        endCap, mesh.ccw, crease, /*genTexCoords=*/true);
+                        endCap, convex, mesh.ccw, crease, /*genTexCoords=*/true);
     mesh.hasNormals = !mesh.normals.empty();
+    return mesh;
+  }
+
+  // Geometry2D (§14): no `coord` child, so dispatch before the coord guard.
+  if (buildGeometry2D(mesh, *geom, t)) {
+    if (mesh.texcoordSets.empty() && !mesh.texcoords.empty())
+      mesh.texcoordSets.push_back(mesh.texcoords);
+    mesh.hasNormals = !mesh.normals.empty();
+    mesh.hasColors = !mesh.colors.empty();
     return mesh;
   }
 
@@ -1299,6 +1628,25 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     sourceId.push_back(static_cast<std::uint32_t>(ca.coord));
     sourceId.push_back(static_cast<std::uint32_t>(cb.coord));
     sourceId.push_back(static_cast<std::uint32_t>(cc.coord));
+
+    if (mesh.vertexAttributes.empty() && !attrs.vertexAttributes.empty()) {
+      mesh.vertexAttributes = attrs.vertexAttributes;
+      for (auto &attribute : mesh.vertexAttributes)
+        attribute.values.clear();
+    }
+    const Corner corners[] = {ca, cb, cc};
+    for (std::size_t ai = 0; ai < attrs.vertexAttributes.size(); ++ai) {
+      auto &out = mesh.vertexAttributes[ai].values;
+      const auto &src = attrs.vertexAttributeValues[ai];
+      const auto components = attrs.vertexAttributes[ai].components;
+      for (const Corner &corner : corners) {
+        const std::size_t offset = static_cast<std::size_t>(corner.coord) * components;
+        if (offset + components <= src.size())
+          out.insert(out.end(), src.begin() + offset, src.begin() + offset + components);
+        else
+          out.insert(out.end(), components, 0.0f);
+      }
+    }
 
     // Normals: authored Normal node honored per corner; else FLAT per-face.
     if (attrs.hasNormal) {
@@ -1534,22 +1882,22 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     }
   } else if (t == "IndexedLineSet" || t == "LineSet" || t == "PointSet") {
     // ----------------------------------------------------------------------
-    // B4 — line/point topology. These produce NO triangles and NO normals;
-    // they are ALWAYS unlit (vertex Color when present, else baseColor). The
-    // producer marks the mesh non-solid so a consumer's cull-disable path and
-    // the topology!=Triangles unlit selector both cover it.
+    // B4 — line/point topology. Authored normals enable lighting (§11.2.2.5).
     //
     // Each emitted index is its own EXPANDED corner (one fresh position + a
     // 0..N-1 index entry), matching the triangle funnel's layout so the GPU
     // upload path is identical. Color is resolved per corner via the shared
-    // AttrResolvers (colorPerVertex / colorIndex honored); X3D line/point sets
-    // carry Color/ColorRGBA but never Normal/TexCoord, so those resolvers are
-    // simply absent.
+    // AttrResolvers (colorPerVertex / colorIndex honored); normals use the
+    // coordinate index.
     // ----------------------------------------------------------------------
-    mesh.solid = false; // line/point meshes are double-sided + unlit.
+    mesh.solid = false;
     const auto emitVertex = [&](const Corner &cr) {
       mesh.positions.push_back(pts[cr.coord]);
       mesh.indices.push_back(static_cast<std::uint32_t>(mesh.indices.size()));
+      if (attrs.hasNormal)
+        mesh.normals.push_back(cr.coord < static_cast<int>(attrs.normals.size())
+                                   ? attrs.normals[cr.coord]
+                                   : SFVec3f{0, 0, 0});
       if (attrs.hasColor) {
         int s = AttrResolvers::pickIndex(attrs.colors, attrs.colorIndex,
                                          attrs.colorPerVertex, cr);

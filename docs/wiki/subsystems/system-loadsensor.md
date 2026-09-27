@@ -2,7 +2,7 @@
 title: LoadSensor System
 summary: LoadSensor as a live X3DNetworkSensorNode — a time-driven System that observes each sensor's watched X3DUrlObject children through the AssetResolver seam and emits isActive/isLoaded/loadTime/progress per §9.4.3.
 tags: [subsystem, loadsensor, networking, asset-resolver, sensors]
-updated: 2026-07-17
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/system-asset-io.md
@@ -73,6 +73,13 @@ Each watched, non-pre-seeded child runs
 - **R6** — empty watch set → vacuous first-evaluation success burst.
 - **R7** — first-evaluation-all-Ready emits the NSN-9 burst with **no** `isActive`
   pulse.
+- **R8 (NSN-12)** — an Inline counts as loaded only when it and every nested
+  sub-Inline it asks to load (`load` TRUE) have loaded. Parse-time expansion
+  replaces each loaded Inline with a Group, so an `Inline` node still inside an
+  expanded child's content is a sub-Inline that failed: the child is `Failed`.
+
+For an Anchor with a same-scene `#Viewpoint` URL, readiness waits until that
+Viewpoint is bound (§9.4.3). Anchor's `load` field has no effect (§9.4.1).
 
 ### NSN-7 resets
 
@@ -170,10 +177,11 @@ attachLoadSensors(Scene&, X3DExecutionContext&,
   `TransmitterPdu`) remain inert, blocked on a DIS/networking transport seam
   (post-v1). Unrelated to LoadSensor beyond sharing the `X3DNetworkSensorNode`
   base.
-- **NSN-11** — spec-literal Anchor children cases (b) replacement-world / (c)
-  separate-window are not the SDK default (by design — the runtime is headless).
-  Headed embedders express them via `setChildLoadPolicy` + a `Pending`-returning
-  resolver. Deferred.
+- Anchor activation (§9.4.1) is handled by `AnchorSystem` (see
+  [Pointing](system-pointing.md)): a "#Name" url binds that viewpoint, and any
+  other url goes to the embedder's `AnchorHandler`, which implements cases (b)
+  replacement-world and (c) separate-window (NSN-11). For LoadSensor-watched
+  Anchors, headed embedders still express readiness via `setChildLoadPolicy`.
 
 ## Related specs and ADRs
 

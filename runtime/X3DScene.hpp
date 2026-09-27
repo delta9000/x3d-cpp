@@ -53,6 +53,9 @@ public:
   // endpoints (proto-local DEF scope; NOT registered in `defs`).
   std::vector<ResolvedProtoRoute> resolvedProtoRoutes;
 
+  // Non-rendered peers of expanded PROTO bodies stay live (§4.4.4.3).
+  std::vector<std::shared_ptr<X3DNode>> protoPeerNodes;
+
   // Inline expansion (Tier 1): synthetic Group (key) -> the original Inline node
   // it replaced. Writers consult this to re-emit <Inline url=.../> rather than
   // the spliced content (AUD-B redirect pattern; mirrors expandedSources).
@@ -62,6 +65,12 @@ public:
   // own DEF scope (never registered in this scene's `defs`). The bridge
   // registers these directly. Reuses ResolvedProtoRoute (same endpoint shape).
   std::vector<ResolvedProtoRoute> resolvedInlineRoutes;
+
+  // The child Scene each Inline expanded to, keyed by the ORIGINAL Inline node.
+  // Retained so an <IMPORT inlineDEF=... importedDEF=...> can resolve the
+  // imported name against the child's exported/DEF'd node (§9.2 cross-Inline
+  // escape hatch) without leaking the child's whole DEF table.
+  std::unordered_map<const X3DNode *, std::shared_ptr<Scene>> expandedInlineScenes;
 
   // Exposed interface event fields -> IS-mapped body endpoints, keyed by the
   // expanded primary node pointer then the interface field name. The bridge

@@ -2,7 +2,7 @@
 title: View-Dependent System
 summary: LOD level selection, ProximitySensor/VisibilitySensor/TransformSensor events, and Billboard view-facing rotation — the subsystem that couples the scene graph to the bound viewer each tick.
 tags: [subsystem, view-dependent, lod, visibility, transform-sensor, billboard, sensors]
-updated: 2026-06-22
+updated: 2026-06-25
 related:
   - ../architecture.md
   - ../subsystems/system-viewpointbind.md
@@ -17,7 +17,7 @@ related:
 The View-Dependent System is the runtime subsystem that re-evaluates every scene-graph node whose correct behavior depends on the current viewer pose. It runs once per tick from the bound `Viewpoint` and is responsible for three distinct behaviors:
 
 1. **LOD level selection** — computes eye-to-center distance in each LOD node's local frame, applies the §23.4.3 step function, clamps to the child count, and fires `level_changed` on transitions.
-2. **Environmental sensor edge detection** — evaluates `ProximitySensor` (viewer-in-box, §22.4.1), `VisibilitySensor` (box-in-cone, §22.4.3), and `TransformSensor` (targetObject-AABB-in-sensor-box, §22.4.2); fires `isActive`/`enterTime`/`exitTime` on enter and exit edges and `position_changed`/`orientation_changed` while inside (Proximity + Transform). Change-gated (ENV-04: emit only on actual change) and disable-deactivates (ENV-07: a disabled active sensor fires exit). **Gap:** sensors reachable only through a non-selected `Switch` child or inactive `LOD` level are still evaluated — per ADR-0034 they should be treated as removed from the hierarchy (`SENSOR-SWITCH`, open).
+2. **Environmental sensor edge detection** — evaluates `ProximitySensor` (viewer-in-box, §22.4.1), `VisibilitySensor` (box-vs-six-plane view frustum, §22.4.3), and `TransformSensor` (targetObject-AABB-in-sensor-box, §22.4.2). Proximity and Visibility sensors evaluate the union of their active DEF/USE paths. A cached visit-once pass identifies subtrees with sensors; the active per-path walk skips other subtrees and uses ADR-0037's `WalkBudget` with a 100,000-visit per-update cap, exposing truncation through `budgetExceeded()`. The cache refreshes after scene or child-structure changes. Pose outputs from ProximitySensor include the exit instant; `centerOfRotation_changed` requires LOOKAT in the bound NavigationInfo. Disabling an active Proximity or Visibility sensor emits `isActive=FALSE` without `exitTime`. Sensors reachable only through a non-selected `Switch` child or inactive `LOD` level are treated as removed from the hierarchy (ENV-06/`SENSOR-SWITCH`, per ADR-0034): `update` computes active-path reachability from the scene roots each tick and deactivates any attached sensor it does not reach. ProximitySensor `enterTime`/`exitTime` are the interpolated boundary-crossing times along the viewer's straight-line motion between ticks (ENV-08); VisibilitySensor uses the tick `now`.
 3. **Billboard rotation math** — a standalone, header-only helper that computes the local rotation matrix that faces a Billboard node toward the viewer; consumed directly by `SceneExtractor` and `PickSystem` during their per-path walks.
 
 The split between tick-time (LOD events, sensor edges) and render-time (Billboard rotation, LOD child selection for rendering) is intentional and documented: the `ViewDependentSystem` class owns the event side; the free function `billboardLocalMatrix` and the inline `lodSelectLevel` are used at extract/pick time. This avoids a dependency cycle between `SceneExtractor`, `PickSystem`, and the execution context.
@@ -29,7 +29,7 @@ The split between tick-time (LOD events, sensor edges) and render-time (Billboar
 | `runtime/scene/ViewDependentSystem.hpp` | `ViewDependentSystem` class (a `System`): `attach`, `update`, sensor/LOD tracking, observer seams |
 | `runtime/scene/Billboard.hpp` | `billboardLocalMatrix` free function (§23.4.1) + `viewdep::` math helpers (`sub`, `dot`, `cross`, `len`, `norm`); no `X3DExecutionContext` dependency |
 | `runtime/events/X3DSceneBridge.hpp` | `attachViewDependent(Scene&, X3DExecutionContext&)` — production wiring: scene walk + per-node `attach` call |
-| `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (24 test functions, one `main`); doctest case `view_dependent_test` in the `x3d_geometry_scene` target |
+| `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (31 test functions, one `main`); doctest case `view_dependent_test` in the `x3d_geometry_scene` target |
 
 ## Interfaces and seams
 
@@ -55,8 +55,10 @@ public:
   // Test/observer seam: fired on each sensor active/inactive edge.
   void setSensorHook(std::function<void(X3DNode *, bool, double)> h);
 
-  // Consumer-supplied view volume. When valid and aspect > 1, VisibilitySensor
-  // widens the effective cone half-angle by the supplied aspect factor.
+  // Consumer-supplied view volume. VisibilitySensor tests the sensor box
+  // against the six view-frustum planes of the bound viewpoint; `aspect` (the
+  // consumer camera's width/height ratio, default 1.0) sets how much the
+  // horizontal half-angle exceeds the vertical one.
   // Call each frame from the renderer's camera before ctx.tick().
   struct ViewVolume { bool valid = false; float aspect = 1.0f; };
   void setViewVolume(const ViewVolume &vv);
@@ -91,25 +93,33 @@ int lodSelectLevel(const X3DNode &lod, float distToCenter);
 - **`attachViewDependent` (production wiring)** — lives in `runtime/events/X3DSceneBridge.hpp` rather than in `X3DSceneBridge.hpp` itself to avoid an include cycle (`X3DExecutionContext.hpp` → `PickSystem.hpp` → `Billboard.hpp`; pulling `ViewDependentSystem.hpp` into that chain would close the loop). The caller invokes `attachViewDependent(scene, ctx)` after `ctx.buildSceneGraph(scene)`.
 - **`SceneExtractor` (Billboard + LOD render-time)** — `SceneExtractor` includes `Billboard.hpp` directly and calls `billboardLocalMatrix` during its per-path DFS walk (line ~497 of `runtime/extract/SceneExtractor.hpp`). It also calls `lodSelectLevel` during the LOD child-selection pass. These are render-time, per-path decisions; the `ViewDependentSystem` tick handles only the event side. See [Extract](extract.md).
 - **`PickSystem` (Billboard render-time)** — `PickSystem` also includes `Billboard.hpp` and applies `billboardLocalMatrix` so ray-pick resolves against the view-rotated geometry, not the unrotated local frame.
-- **`ViewVolume` frustum seam** — renderers call `vds->setViewVolume({true, aspect})` each frame to widen the `VisibilitySensor` cone test by the camera's aspect ratio. Full 6-plane frustum test is documented as deferred.
+- **`ViewVolume` frustum seam** — renderers call `vds->setViewVolume({true, aspect})` each frame to supply the camera aspect ratio; `VisibilitySensor` builds the six view-frustum planes from `boundViewpoint().fieldOfView` (the smaller of the horizontal/vertical angles, §23.4.6) and tests the sensor's world-space box against them.
+- **Active-path reachability** — `update` walks `ctx.sceneRoots()` honouring `Switch.whichChoice` and the selected `LOD` level (ADR-0034) and deactivates any attached sensor outside the active hierarchy (ENV-06/`SENSOR-SWITCH`).
 - **Observer hooks** (`setLevelChangedHook`, `setSensorHook`) — test/integration seam; not for production. Production consumers read sensor state by listening on the cascade or reading stored field values.
 
 ## How it is tested
 
-- **`view_dependent_test`** (`ctest --preset dev -R x3d_geometry_scene`) — 24 unit tests in `runtime/scene/tests/view_dependent_test.cpp` covering:
+- **`view_dependent_test`** (`ctest --preset dev -R x3d_geometry_scene`) — 31 unit tests in `runtime/scene/tests/view_dependent_test.cpp` covering:
   - `testBillboardAxis` / `testBillboardViewerAlign` — `billboardLocalMatrix` for axis-aligned and viewer-aligned modes; asserts the rotated local +Z points toward the viewer.
   - `testBillboardInExtractor` — Billboard rotation applied through `SceneExtractor::fullSnapshot`; the `RenderItem` world transform's +Z faces the viewer.
   - `testBillboardInPick` — Ray pick resolves against the view-rotated geometry (a ray that misses the un-rotated box hits the rotated one at the expected face).
   - `testLodSelect` — `lodSelectLevel` step function: level 0/1/2 at distances 3/7/20 with `range=[5,10]`; empty range → 0.
   - `testLodLevelChanged` — `ViewDependentSystem` fires `level_changed` on viewer move; hook captured.
   - `testLodLevelClamp` — LOD-1 §23.4.3: with 2 children and 3 range bins, far viewer (raw level 2) clamps to reported level 1.
-  - `testProximitySensor` — enter/exit edge + correct timestamps.
+  - `testProximitySensor` — enter/exit edge + interpolated boundary-crossing timestamps (ENV-08).
   - `testProximityLoadTime` — initial enter fires at tick 0 when the viewer starts inside the box.
   - `testProximityChangeGate` — ENV-04: `position_changed` fires only on viewer movement, not every tick; a no-move tick leaves a downstream sentinel unchanged.
   - `testProximityReEnable` — ENV-07: disabling then re-enabling fires a fresh enter when the viewer is still inside.
-  - `testProximityDisableFiresExit` — ENV-07: disabling an active sensor fires `isActive=FALSE`/`exitTime`, not silent deactivation.
+  - `testProximityDisableDeactivates` and `disabling_proximity_sensor_sends_no_exit_time` — disabling an active sensor emits `isActive=FALSE` without `exitTime`.
+  - `testProximityCenterOfRotationChanged` — ENV-03: with LOOKAT navigation, `centerOfRotation_changed` emits the bound Viewpoint's `centerOfRotation` transformed into the sensor's frame.
+  - `testProximityInterpolatedEdgeTime` — ENV-08: `enterTime`/`exitTime` are the interpolated box-crossing times between ticks, not the tick `now`.
   - `testVisibilitySensorCone` — box at origin visible from +Z looking down −Z; box moved behind the camera becomes invisible.
-  - `testVisibilitySensorFrustumSeam` — off-axis box invisible under the bare cone, visible once `setViewVolume({true, 2.0f})` widens the effective half-angle.
+  - `testVisibilitySensorFrustumSeam` — off-axis box invisible under the bare frustum, visible once `setViewVolume({true, 2.0f})` widens the horizontal half-angle.
+  - `testVisibilityFrustumPerAxis` — ENV-05: a wide aspect widens only the horizontal half-angle; an off-axis-in-X box becomes visible while an equally off-axis-in-Y box stays culled.
+  - `testVisibilityWorldExtentScale` — ENV-09: the sensor box is tested in world space, so ancestor scale (not the local radius) decides visibility.
+  - `testSensorSwitchBranchGating` — ENV-06/`SENSOR-SWITCH`: a sensor under a non-selected `Switch` child is deactivated (exit once, then suppressed) and re-fires enter when reselected.
+  - `testSensorLodLevelGating` — `SENSOR-SWITCH`: a sensor in an inactive `LOD` level is treated as removed.
+  - `testSensorRemovedFromChildren` — `SENSOR-SWITCH`: a sensor removed from its parent's `children` is deactivated.
   - `testVisibleFalseSkip` — Group with `visible=false` produces no `RenderItem` in the extractor.
   - `testVisibilityLimitTag` — shape beyond `NavigationInfo.visibilityLimit` is tagged `beyondVisibilityLimit` on its `RenderItem`.
   - `testCameraPose` — `ctx.cameraWorldPosition()` matches the bound Viewpoint's position.

@@ -54,7 +54,7 @@ struct ProtoRedirect {
 struct ProtoWarning {
   enum class Kind {
     UnresolvedExtern, MissingDeclaration, InterfaceMismatch,
-    RecursionLimit, UnknownField
+    RecursionLimit, UnknownField, BuiltinShadow
   };
   Kind kind;
   std::string instanceName;
@@ -69,6 +69,16 @@ struct InlineWarning {
   std::string detail;    // e.g. the url that failed to resolve
 };
 
+/// Non-fatal reader diagnostic, collected into X3DDocument.readerWarnings.
+/// Emitted when a reader recovers from authored input that is not legal X3D
+/// (an unknown node element is discarded, a profile token is coerced), so the
+/// recovery stays visible to `x3d validate` instead of being silent.
+struct ReaderWarning {
+  enum class Kind { UnknownNode, ProfileCoerced };
+  Kind kind;
+  std::string detail;
+};
+
 /**
  * @brief One <field> declaration in a ProtoInterface / ExternProtoDeclare.
  * @details Mirrors the X3D <field name type accessType value/> statement.
@@ -79,6 +89,8 @@ struct InlineWarning {
  */
 struct ProtoField {
   std::string name;
+  std::string appinfo;
+  std::string documentation;
   X3DFieldType type = X3DFieldType::SFString;
   AccessType access = AccessType::InputOutput;
 
@@ -180,6 +192,11 @@ public:
   // headless mode); such instances are not in the node graph, so the writers must
   // re-emit them directly from scene.protoInstances or they are lost (AUD-B).
   bool expanded = false;
+
+  // ADR-0033: this instance named a PROTO/EXTERNPROTO that was quarantined for
+  // shadowing a built-in node type. Expansion creates the built-in instead and
+  // applies the fieldValues to its fields by name.
+  bool builtinFallback = false;
 
   /**
    * @brief Expand this instance into a concrete node tree. STUB.

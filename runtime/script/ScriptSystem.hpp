@@ -37,14 +37,17 @@
 #include "SaiContext.hpp"
 #include "ScriptEngine.hpp"
 
+#include "AssetResolver.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/core/X3DReflection.hpp"
 #include "X3DSystem.hpp"
 
 #include "x3d/nodes/Script.hpp"
 
+#include <algorithm>
 #include <any>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -68,11 +71,20 @@ public:
    *        inspect the recorded calls and so the context can retain the system.
    * @param browserName Reported to scripts via SaiContext::getName().
    * @param browserVersion Reported via SaiContext::getVersion().
+   * @param resolver The AssetResolver seam used to fetch a Script's external
+   *        `url` entries (CONF-CRITIC-2) and to re-fetch them on the
+   *        `autoRefresh` interval (SCR-005). Defaults to the IO-free null stub
+   *        (always Failed), so a default-configured ScriptSystem stays
+   *        byte-identical and never does I/O. The SDK ships no concrete backend;
+   *        an app injects one (e.g. the CLI wires io::file::makeFileResolver).
    */
   ScriptSystem(std::shared_ptr<ScriptEngine> engine, std::string browserName,
-               std::string browserVersion)
+               std::string browserVersion,
+               extract::AssetResolver resolver = nullptr)
       : engine_(std::move(engine)), name_(std::move(browserName)),
-        version_(std::move(browserVersion)) {}
+        version_(std::move(browserVersion)),
+        resolver_(resolver ? std::move(resolver)
+                           : extract::makeNullAssetResolver()) {}
 
   /**
    * @brief Teardown: shut down every still-loaded script (§29.2.3, SCR-002).
@@ -116,13 +128,34 @@ public:
     }
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    auto *script = dynamic_cast<x3d::nodes::Script *>(node);
+    if (!script) return;
+    scripts_.erase(std::remove_if(scripts_.begin(), scripts_.end(),
+        [&](const auto &entry) {
+          if (entry->script != script) return false;
+          if (engine_ && entry->handle != kInvalidScriptHandle)
+            engine_->shutdown(entry->handle);
+          return true;
+        }), scripts_.end());
+  }
+
   /**
    * @brief STEP 1: prepareEvents for every loaded script (once per timestamp).
    * @details Runs BEFORE the cascade drain (§29.2.5). Implemented as update() so
    *          the context's per-tick System pass invokes it ahead of route
    *          processing — register the ScriptSystem FIRST among systems.
+   *          Before that, two URL-driven phases run once per tick: a retry of any
+   *          fetch that came back Pending (CONF-CRITIC-2), then the autoRefresh
+   *          interval check (SCR-005).
    */
   void update(double now, X3DExecutionContext &ctx) override {
+    const std::uint64_t gen = ctx.tickGeneration();
+    if (lastUpdateGen_ != gen) {
+      lastUpdateGen_ = gen;
+      retryPendingLoads(ctx);
+      runAutoRefresh(now, ctx);
+    }
     runPrepareEvents(now, ctx);
   }
 
@@ -232,9 +265,10 @@ public:
   /**
    * @brief Deliver a set_url event: shutdown old, swap url, load + initialize.
    * @details §29.2.2/§29.2.3: changing url shuts the running script down then
-   *          loads + initializes the new content. The inline url is decoded; an
-   *          external url (no recognized inline scheme) leaves the script with no
-   *          executable content (async fetch is deferred — SCR-ASYNC/SCR-REFRESH).
+   *          loads + initializes the new content. The url preference list is
+   *          re-run from the top: inline entries decode, external entries go
+   *          through the AssetResolver seam (CONF-CRITIC-2), and the autoRefresh
+   *          window (SCR-005) restarts from the new load.
    */
   void setUrl(x3d::nodes::Script *script, const MFString &newUrl,
               X3DExecutionContext &ctx) {
@@ -248,6 +282,14 @@ public:
       e->handle = kInvalidScriptHandle;
     }
     script->setUrl(newUrl);
+    if (e) {
+      // A url change re-runs the preference list from the top; the autoRefresh
+      // window restarts from the new load.
+      e->urlCandidate = 0;
+      e->pendingFetch = false;
+      e->refreshScheduled = false;
+      e->windowStarted = false;
+    }
     if (e && script->getLoad()) {
       loadAndInitialize(*e, ctx);
     }
@@ -266,35 +308,56 @@ public:
   }
 
   /**
-   * @brief Decode an inline ecmascript:/javascript: url to its source body.
-   * @details Returns the text after the first recognized inline scheme prefix,
-   *          or empty if no entry in the preference list is an inline script
-   *          (external urls are not fetched here — SCR-ASYNC deferred). The url
-   *          is a preference-ordered list (§29.2.8): the first inline entry wins.
+   * @brief Decode a single inline ecmascript:/javascript:/vrmlscript: url entry.
+   * @details Returns the text after the scheme prefix, or empty if `entry` is
+   *          not an inline script url.
    */
-  static std::string decodeInlineSource(const MFString &url) {
+  static std::string decodeInlineUrl(const std::string &entry) {
     static const char *kSchemes[] = {"ecmascript:", "javascript:",
                                      "vrmlscript:"};
-    for (const std::string &entry : url) {
-      for (const char *scheme : kSchemes) {
-        const std::size_t n = std::char_traits<char>::length(scheme);
-        if (entry.size() >= n && entry.compare(0, n, scheme) == 0) {
-          return entry.substr(n);
-        }
+    for (const char *scheme : kSchemes) {
+      const std::size_t n = std::char_traits<char>::length(scheme);
+      if (entry.size() >= n && entry.compare(0, n, scheme) == 0) {
+        return entry.substr(n);
       }
     }
     return {};
   }
 
+  /** @brief True if `entry` carries its script body inline (no fetch needed). */
+  static bool isInlineScheme(const std::string &entry) {
+    static const char *kSchemes[] = {"ecmascript:", "javascript:",
+                                     "vrmlscript:"};
+    for (const char *scheme : kSchemes) {
+      if (entry.rfind(scheme, 0) == 0) return true;
+    }
+    return false;
+  }
+
   /**
-   * @brief The script's executable body: sourceCode if non-empty, else url.
+   * @brief Decode an inline ecmascript:/javascript: url to its source body.
+   * @details Returns the text after the first recognized inline scheme prefix,
+   *          or empty if no entry in the preference list is an inline script.
+   *          The url is a preference-ordered list (§29.2.8): the first inline
+   *          entry wins. External (non-inline) entries are NOT fetched here —
+   *          that needs the AssetResolver seam and is done by resolveSource().
+   */
+  static std::string decodeInlineSource(const MFString &url) {
+    for (const std::string &entry : url) {
+      if (isInlineScheme(entry)) return decodeInlineUrl(entry);
+    }
+    return {};
+  }
+
+  /**
+   * @brief The script's IO-free body: sourceCode if non-empty, else inline url.
    * @details §3.3 of the design (file-authored x3d::nodes::Script un-tabling): readers write
    *          an inline `<![CDATA[...]]>` block / JSON source member / VRML body
    *          into x3d::nodes::Script.sourceCode, so prefer it. When sourceCode is empty (the
-   *          programmatic / inline-url path) fall back to the existing url inline
-   *          scheme decode (ecmascript:/javascript:/vrmlscript:). An external url
-   *          with no recognized inline scheme still yields empty (the script
-   *          stays inert until content arrives — async fetch deferred).
+   *          programmatic / inline-url path) fall back to the url inline scheme
+   *          decode (ecmascript:/javascript:/vrmlscript:). An external url yields
+   *          empty here — resolveSource() is the path that fetches those through
+   *          the AssetResolver seam.
    */
   static std::string scriptSource(const x3d::nodes::Script &script) {
     const SFString &src = script.getSourceCode();
@@ -322,6 +385,19 @@ private:
     bool receivedEventThisTick = false;
     double lastEventTimestamp = 0.0;
     std::vector<DeferredEvent> deferred;
+
+    // ── External-url fetch state (CONF-CRITIC-2) ──────────────────────────
+    std::size_t urlCandidate = 0;  ///< next url entry to try (preference order)
+    bool pendingFetch = false;     ///< last resolver call was Pending -> retry
+    std::size_t fetchAttempts = 0; ///< resolver calls made (diagnostic)
+    // ── autoRefresh state (SCR-005) ───────────────────────────────────────
+    /// Scene time the auto-refresh window opened (first load after attach or a
+    /// url change). `autoRefreshTimeLimit` is measured from here and it does NOT
+    /// move on a refresh — otherwise the window would never elapse.
+    double refreshWindowStart = 0.0;
+    bool windowStarted = false;    ///< refreshWindowStart is meaningful
+    double nextRefreshAt = 0.0;    ///< scene time of the next scheduled refresh
+    bool refreshScheduled = false; ///< a refresh interval is armed
   };
 
   Entry *entryFor(x3d::nodes::Script *script) {
@@ -331,30 +407,163 @@ private:
   }
 
   /**
-   * @brief Load (decode source + engine.load) then initialize a x3d::nodes::Script.
-   * @details No-op if already loaded. Sources from sourceCode (the reader-CDATA
-   *          path, §3.3) else the inline url; an external/empty source yields no
-   *          handle (the script is inert until content arrives — deferred async).
-   *          initialize() runs immediately after a successful load so it precedes
-   *          the script's first event (§29.2.3).
+   * @brief Resolve the script's body: sourceCode, else url preference order.
+   * @details The url is a preference-ordered list (§29.2.8). Inline-scheme
+   *          entries (ecmascript:/javascript:/vrmlscript:) decode directly.
+   *          External entries go through the AssetResolver seam, tried in order:
+   *            - Ready   -> the fetched bytes are the source; stop;
+   *            - Pending -> remember the position and retry the SAME entry on a
+   *                         later tick (return nullopt for now);
+   *            - Failed  -> advance to the next entry.
+   *          Returns nullopt when there is no content yet (a pending fetch, or
+   *          every entry exhausted) — the script stays inert. This is a
+   *          permitted delay; the spec's load is asynchronous (§29.2.3).
    */
-  void loadAndInitialize(Entry &e, X3DExecutionContext & /*ctx*/) {
-    if (e.handle != kInvalidScriptHandle) return;  // already loaded
-    std::string source = scriptSource(*e.script);
-    if (source.empty()) return;  // external/no inline content -> inert (deferred)
-    e.handle = engine_->load(*e.script, source, e.sai);
+  std::optional<std::string> resolveSource(Entry &e) {
+    const SFString &src = e.script->getSourceCode();
+    if (!src.empty()) return src;
+    const MFString &url = e.script->getUrl();
+    while (e.urlCandidate < url.size()) {
+      const std::string &u = url[e.urlCandidate];
+      if (isInlineScheme(u)) return decodeInlineUrl(u);
+      if (u.empty()) {
+        ++e.urlCandidate;
+        continue;
+      }
+      ++e.fetchAttempts;
+      const extract::AssetResult r = resolver_(u, extract::AssetKind::Inline);
+      if (r.ready()) {
+        e.pendingFetch = false;
+        return std::string(r.bytes.begin(), r.bytes.end());
+      }
+      if (r.pending()) {
+        e.pendingFetch = true;
+        return std::nullopt; // retry this same candidate on a later tick
+      }
+      ++e.urlCandidate; // Failed -> try the next url in preference order.
+    }
+    e.pendingFetch = false;
+    return std::nullopt;
+  }
+
+  /**
+   * @brief Load (resolve source + engine.load) then initialize a Script.
+   * @details No-op if already loaded. Resolves from sourceCode (the reader-CDATA
+   *          path, §3.3) or the url preference list (inline decode, else an
+   *          AssetResolver fetch). A Pending/absent source yields no handle (the
+   *          script stays inert until content arrives). initialize() runs
+   *          immediately after a successful load so it precedes the script's
+   *          first event (§29.2.3).
+   */
+  void loadAndInitialize(Entry &e, X3DExecutionContext &ctx) {
+    if (e.handle != kInvalidScriptHandle) return; // already loaded
+    std::optional<std::string> source = resolveSource(e);
+    if (!source) return; // pending fetch / no content -> inert
+    e.handle = engine_->load(*e.script, *source, e.sai);
     if (e.handle != kInvalidScriptHandle) {
       engine_->initialize(e.handle);
+      if (!e.windowStarted) {
+        e.refreshWindowStart = ctx.now();
+        e.windowStarted = true;
+      }
+      scheduleRefresh(e, ctx.now());
     }
+  }
+
+  /**
+   * @brief Arm (or clear) the `autoRefresh` interval for a loaded script.
+   * @details SCR-005 / §29.3.1: `autoRefresh` > 0 reloads the content every that
+   *          many seconds; `autoRefreshTimeLimit` bounds how long refreshing
+   *          continues (0 = no limit). Both are re-read live each tick, so an
+   *          author change takes effect without a reload.
+   */
+  void scheduleRefresh(Entry &e, double now) {
+    const double interval = e.script->getAutoRefresh();
+    if (interval <= 0.0) {
+      e.refreshScheduled = false;
+      return;
+    }
+    e.nextRefreshAt = now + interval;
+    e.refreshScheduled = true;
+  }
+
+  /**
+   * @brief Retry any fetch that last came back Pending (CONF-CRITIC-2).
+   * @details A Pending result is the resolver's "not ready yet — retry next
+   *          frame" contract; a Pending fetch never blocks a frame. Retried here
+   *          once per tick, at the same url candidate.
+   */
+  void retryPendingLoads(X3DExecutionContext &ctx) {
+    for (auto &up : scripts_) {
+      Entry &e = *up;
+      if (e.handle != kInvalidScriptHandle || !e.pendingFetch) continue;
+      if (!e.script->getLoad()) continue;
+      loadAndInitialize(e, ctx);
+      if (e.handle != kInvalidScriptHandle) e.pendingFetch = false;
+    }
+  }
+
+  /**
+   * @brief Run the autoRefresh interval for every script (SCR-005).
+   * @details When `now` reaches the armed interval, the content is re-fetched and
+   *          the script re-initialized: shutdown -> resolve+load -> initialize
+   *          (§29.2.3, the same sequence as a url change). Refreshing stops once
+   *          `autoRefreshTimeLimit` (measured from the load that opened the
+   *          refresh window) has elapsed;
+   *          a limit of 0 means no limit. A refresh whose fetch is Pending leaves
+   *          the script unloaded and arms a retry, exactly like the initial load.
+   */
+  void runAutoRefresh(double now, X3DExecutionContext &ctx) {
+    for (auto &up : scripts_) {
+      Entry &e = *up;
+      const double interval = e.script->getAutoRefresh();
+      if (interval <= 0.0) {
+        e.refreshScheduled = false;
+        continue;
+      }
+      if (!e.refreshScheduled) {
+        scheduleRefresh(e, now);
+        continue;
+      }
+      if (now < e.nextRefreshAt) continue;
+      const double limit = e.script->getAutoRefreshTimeLimit();
+      if (limit > 0.0 && now - e.refreshWindowStart > limit) {
+        e.refreshScheduled = false; // window elapsed: stop refreshing
+        continue;
+      }
+      if (!e.script->getLoad()) continue;
+      refresh(e, now, ctx);
+    }
+  }
+
+  /**
+   * @brief Shut down, re-resolve from url, and re-initialize a loaded script.
+   * @details The refresh window (refreshWindowStart/windowStarted) is left
+   *          intact — autoRefreshTimeLimit bounds the whole refresh period, not
+   *          an individual interval, so it must not restart here.
+   */
+  void refresh(Entry &e, double now, X3DExecutionContext &ctx) {
+    if (e.handle != kInvalidScriptHandle) {
+      engine_->shutdown(e.handle);
+      e.handle = kInvalidScriptHandle;
+    }
+    e.urlCandidate = 0; // re-run the url preference list from the top
+    e.pendingFetch = false;
+    e.nextRefreshAt = now + e.script->getAutoRefresh();
+    e.refreshScheduled = true;
+    loadAndInitialize(e, ctx);
   }
 
   std::shared_ptr<ScriptEngine> engine_;
   std::string name_;
   std::string version_;
+  extract::AssetResolver resolver_;
   std::vector<std::unique_ptr<Entry>> scripts_;
   // §29.2.5 once-per-timestamp guard for the prepareEvents phase (SCR-001).
   bool havePrepared_ = false;
   double preparedAt_ = 0.0;
+  // Once-per-tick guard for the URL phases (retry-pending + autoRefresh).
+  std::uint64_t lastUpdateGen_ = ~std::uint64_t{0};
 };
 
 } // namespace x3d::runtime

@@ -2,7 +2,7 @@
 title: EventUtility System
 summary: EventUtility nodes — BooleanFilter/Sequencer/Toggle/Trigger and IntegerSequencer for wiring logic without scripting.
 tags: [subsystem, event-utility, boolean-filter, sequencer, toggle, trigger]
-updated: 2026-06-20
+updated: 2026-09-26
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -29,7 +29,7 @@ bindings define but whose handlers were never wired to a `System`:
 | Node | Spec clause | Behavior |
 |---|---|---|
 | `BooleanTrigger` | §30.4.4 | Any `set_triggerTime` → emits `triggerTrue=TRUE` |
-| `IntegerTrigger` | §30.4.6 | `set_boolean=TRUE` → emits `triggerValue=integerKey`; FALSE ignored |
+| `IntegerTrigger` | §30.4.6 | `set_boolean=TRUE` → emits `triggerValue=integerKey`; FALSE ignored. Writing `integerKey` (even to the same value) also emits `triggerValue` with that value (TRIG-4), via a field-write listener |
 | `TimeTrigger` | §30.4.7 | Any `set_boolean` (value irrelevant) → emits `triggerTime=now` |
 | `BooleanFilter` | §30.4.1 | Routes `inputTrue`/`inputFalse` by value; always emits `inputNegate` |
 | `BooleanToggle` | §30.4.3 | `set_boolean=TRUE` flips `toggle`; FALSE is a no-op |
@@ -45,7 +45,8 @@ The sequencer stepwise-selection rule (`sequencerStepIndex`) deserves explicit
 notation: it is the largest index `i` such that `key[i] <= t`, boundary-clamped
 at both ends. On duplicate key values, the lowest index wins (SEQ-7: "first
 definition wins") — implemented by walking back while `key[i] == t && key[i-1]
-== key[i]`. This is NOT linear interpolation.
+== key[i]`. The final-key clamp also walks back over equal final keys for fractions
+at or beyond that key (AUD-SEQ-1). This is NOT linear interpolation.
 
 ## Key files
 
@@ -149,6 +150,8 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
     wrap-around.
   - SEQ-7: duplicate key values → lowest index wins (confirmed with a
     four-key fixture).
+  - AUD-SEQ-1: repeated final keys select their first value at and beyond the
+    final fraction.
   - Production wiring (`attachEventUtilities`) is smoke-tested end-to-end
     via a `BooleanToggle` and `IntegerSequencer` exercised through the cascade.
 

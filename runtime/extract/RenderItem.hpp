@@ -146,15 +146,10 @@ struct GeomIdHash {
 //
 // EXPLICIT CONSUMER CONTRACT (do NOT overload topology to mean unlit): the
 // SHADING-PATH selector a consumer must honor is
-//     topology != Triangles  OR  !hasNormals  =>  bind the UNLIT program,
-//                                                  skip the normal-matrix and
-//                                                  light uniforms, and disable
-//                                                  GL_CULL_FACE.
-// Lines and points are ALWAYS unlit, colored from a per-vertex Color (when
-// hasColors) else the material baseColor. The producer additionally sets
-// solid=false on every line/point mesh so a consumer's existing cull-disable
-// path (solid=false => double-sided, no GL_CULL_FACE) covers them with no extra
-// branch; the topology check above is the belt-and-braces guard.
+//     !hasNormals  =>  bind the UNLIT program and skip normal-matrix/light uniforms.
+// Lines and points with authored normals can be lit (§11.2.2.5). Without
+// normals, use per-vertex Color or MaterialDesc::unlitGeometryRGBA(). The
+// producer sets solid=false on every line/point mesh for cull-disabled drawing.
 // Topology enum is defined in Topology.hpp (included above).
 
 struct MeshData {
@@ -164,6 +159,16 @@ struct MeshData {
   std::vector<SFVec2f> texcoords;
   std::vector<std::vector<SFVec2f>> texcoordSets;
   std::vector<SFColorRGBA> colors;
+
+  // X3D §31.4.2 custom per-vertex streams. Values are vertex-major, with
+  // `components` floats per emitted position; `name` is the shader attribute
+  // name authored on the X3DVertexAttributeNode.
+  struct VertexAttribute {
+    std::string name;
+    std::uint32_t components = 0;
+    std::vector<float> values;
+  };
+  std::vector<VertexAttribute> vertexAttributes;
 
   // LATTICE-INDEX-RETAINING form (B5/B6). For lattice-derived geometry
   // (ElevationGrid, GeoElevationGrid, and B3 Extrusion) every EXPANDED corner in
@@ -282,6 +287,8 @@ struct TextureRef {
     Url,    // ImageTexture / url list — resolve outside the SDK.
     Inline, // PixelTexture — pixels carried inline below.
     Movie,  // MovieTexture — descriptor-only, not exercised by PoC.
+    Multi,  // MultiTexture — stages in multiStages.
+    Cube,   // ComposedCubeMapTexture (§34.4.1): six face refs in cubeFaces.
     Buffer  // Phase 1 binary extension: raw bytes provided by the embedder.
             // bufferBytes carries the raw encoded bytes; mimeHint is a MIME
             // type hint ("image/png", "image/jpeg", etc.). The SDK does NOT
@@ -298,7 +305,16 @@ struct TextureRef {
   SamplerParams sampler;
   SFImage inlinePixels;    // PixelTexture content when source == Inline.
   int channel = 0;         // MultiTexture stage; descriptor-only, not exercised by PoC.
+  SFString multiMode = "MODULATE";
+  SFString multiSource;
+  SFString multiFunction;
+  SFColor multiColor{1.0f, 1.0f, 1.0f};
+  float multiAlpha = 1.0f;
+  std::vector<TextureRef> multiStages;
   SFString texCoordMapping; // X3D v4 xxxTextureMapping label; empty = UV set 0.
+  // Source::Cube only: the six face refs in the order front, back, left,
+  // right, top, bottom (an unauthored face is a default Url ref, empty url).
+  std::vector<TextureRef> cubeFaces;
 
   // T-TEX (v1-closure): resolved decoded pixels, threaded by TextureExtract.hpp
   // after the embedder's TextureResolver callback returns. Starts as makeFailed()
@@ -396,6 +412,27 @@ struct MaterialExtensionDesc {
   std::vector<MaterialExtensionField> fields;
 };
 
+// ---------------------------------------------------------------------------
+// §12.4.6 LineProperties / §12.4.8 PointProperties (SEAM-LINEPOINT). These are
+// Appearance children that carry renderer styling the geometry seam previously
+// had nowhere to put — so every IndexedLineSet drew 1px and every PointSet a
+// single pixel. Surfaced here (per-Appearance, alongside the material) and
+// honoured by the reference consumers (cpu_raster line/point raster; PoC
+// glLineWidth/gl_PointSize). Additive: defaults are the identity (no scaling).
+// ---------------------------------------------------------------------------
+struct LinePropertiesDesc {
+  bool applied = true;              // LineProperties.applied
+  int linetype = 1;                 // LineProperties.linetype (unused: only solid)
+  float linewidthScaleFactor = 0.0f; // LineProperties.linewidthScaleFactor (0 = default width)
+};
+
+struct PointPropertiesDesc {
+  SFVec3f attenuation{1.0f, 0.0f, 0.0f}; // (A, B, C): size = A + B*d + C*d^2 after scale
+  float pointSizeScaleFactor = 1.0f;
+  float pointSizeMinValue = 1.0f;
+  float pointSizeMaxValue = 1.0f;
+};
+
 struct MaterialDesc {
   MaterialModel model = MaterialModel::Phong;
 
@@ -423,6 +460,11 @@ struct MaterialDesc {
   bool backMaterialConstraintMet = true;
   std::vector<MaterialExtensionDesc> extensions;
 
+  // §12.4.6 / §12.4.8 line + point styling (SEAM-LINEPOINT), read from the
+  // Appearance's LineProperties / PointProperties children.
+  LinePropertiesDesc line;
+  PointPropertiesDesc point;
+
   // Copy/move ops — unique_ptr<MaterialDesc> suppresses defaults; restore them.
   MaterialDesc() = default;
   MaterialDesc(const MaterialDesc &o)
@@ -434,7 +476,7 @@ struct MaterialDesc {
                          ? std::make_unique<MaterialDesc>(*o.backMaterial)
                          : nullptr),
         backMaterialConstraintMet(o.backMaterialConstraintMet),
-        extensions(o.extensions) {}
+        extensions(o.extensions), line(o.line), point(o.point) {}
   MaterialDesc &operator=(const MaterialDesc &o) {
     if (this != &o) {
       model = o.model; emissive = o.emissive; normalScale = o.normalScale;
@@ -446,6 +488,8 @@ struct MaterialDesc {
                          : nullptr;
       backMaterialConstraintMet = o.backMaterialConstraintMet;
       extensions = o.extensions;
+      line = o.line;
+      point = o.point;
     }
     return *this;
   }
@@ -454,6 +498,8 @@ struct MaterialDesc {
 
   // Composes the per-model RGB surface with alpha = 1 - transparency.
   SFColorRGBA toRGBA() const;
+  // §11.2.2.5: fallback color for unlit line/point geometry without Color.
+  SFColorRGBA unlitGeometryRGBA() const;
 };
 
 inline SFColorRGBA MaterialDesc::toRGBA() const {
@@ -467,6 +513,11 @@ inline SFColorRGBA MaterialDesc::toRGBA() const {
       return SFColorRGBA{emissive.r, emissive.g, emissive.b, a};
   }
   return SFColorRGBA{0.8f, 0.8f, 0.8f, a};
+}
+
+inline SFColorRGBA MaterialDesc::unlitGeometryRGBA() const {
+  const float a = 1.0f - transparency;
+  return SFColorRGBA{emissive.r, emissive.g, emissive.b, a};
 }
 
 // ---------------------------------------------------------------------------
@@ -566,7 +617,52 @@ struct BackgroundDesc {
   std::vector<SFColor> groundColor;
   std::vector<float> groundAngle;
 
+  // Panorama cube (§24.4.1/§24.4.4): one TextureRef per face, populated for both
+  // Background (from the six *Url MFString fields, Source::Url) and
+  // TextureBackground (from the six *Texture SFNodes). Order is
+  // front, back, left, right, top, bottom. A face is an empty (default) ref
+  // when unauthored; `hasPanorama` is true when ANY face carries content
+  // (a url entry, inline pixels, or a resolved cube ref). Faces are displayed
+  // as authored (no sRGB decode) per ADR-0027.
+  TextureRef front, back, left, right, top, bottom;
+  bool hasPanorama() const {
+    auto any = [](const TextureRef &r) {
+      if (r.source == TextureRef::Source::Multi) {
+        for (const auto &stage : r.multiStages)
+          if (!stage.url.empty() || stage.source == TextureRef::Source::Inline ||
+              !stage.cubeFaces.empty()) return true;
+      }
+      return !r.url.empty() || r.source == TextureRef::Source::Inline ||
+             !r.cubeFaces.empty();
+    };
+    return any(front) || any(back) || any(left) || any(right) || any(top) ||
+           any(bottom);
+  }
+
+  // §24.4.1 transparency: 0 = opaque background, 1 = fully transparent (the
+  // background does not draw). Default 0 (plain Background has no such field).
+  float transparency = 0.0f;
+
   bool backgroundChanged = false; // surfaced for a caching consumer.
+};
+
+// ---------------------------------------------------------------------------
+// FogDesc — the bound Fog's colour/type/range (§24.4.2), read reflection-
+// generic. `visibilityRange` is surfaced already scaled into WORLD units: the
+// spec defines it in the Fog node's LOCAL frame, so the extractor multiplies it
+// by the Fog's world scale (uniform scale exact; non-uniform uses the mean
+// upper-3x3 column norm). visibilityRange 0 disables fog.
+// ---------------------------------------------------------------------------
+struct FogDesc {
+  // §24.4.2 fogType: LINEAR=0, EXPONENTIAL=1 (matches ShaderUniformVocabulary
+  // "FogDesc.fogType enum (LINEAR=0, EXPONENTIAL=1)").
+  enum class Type { Linear = 0, Exponential = 1 };
+
+  SFColor color{1.0f, 1.0f, 1.0f};
+  Type fogType = Type::Linear;
+  float visibilityRange = 0.0f; // world units; 0 disables fog.
+
+  bool fogChanged = false; // surfaced for a caching consumer.
 };
 
 // ---------------------------------------------------------------------------
@@ -588,6 +684,7 @@ struct RenderDelta {
 
   bool cameraChanged = false;
   bool backgroundChanged = false;
+  bool fogChanged = false;
   bool lightsChanged = false;
 };
 

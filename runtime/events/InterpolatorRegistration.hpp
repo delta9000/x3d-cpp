@@ -9,6 +9,7 @@
 #define X3D_RUNTIME_INTERPOLATOR_REGISTRATION_HPP
 
 #include "InterpolatorSystem.hpp"
+#include "NurbsInterpolatorSystem.hpp"
 #include "SplineInterpolatorSystem.hpp"
 #include "X3DExecutionContext.hpp"
 
@@ -60,6 +61,9 @@ inline std::vector<std::shared_ptr<System>> makeInterpolatorSystems() {
   systems.push_back(std::make_shared<SplineInterpolatorSystem<xn::SplineScalarInterpolator, float>>());
   systems.push_back(std::make_shared<SquadOrientationInterpolatorSystem>());
   systems.push_back(std::make_shared<EaseInEaseOutSystem>());
+  systems.push_back(std::make_shared<NurbsPositionInterpolatorSystem>());
+  systems.push_back(std::make_shared<NurbsOrientationInterpolatorSystem>());
+  systems.push_back(std::make_shared<NurbsSurfaceInterpolatorSystem>());
   return systems;
 }
 

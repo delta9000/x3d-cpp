@@ -21,7 +21,7 @@ std::string XmlWriter::writeDocument(const runtime::X3DDocument &doc) {
   seen_.clear();
   auto root = std::make_unique<xml::Element>();
   root->name = "X3D";
-  root->setAttr("profile", doc.profileName());
+  root->setAttr("profile", doc.profileToken());
   root->setAttr("version", headerVersion(doc.version));
 
   // <head>
@@ -361,6 +361,10 @@ XmlWriter::writeProtoFieldElement(const runtime::ProtoField &f) {
   fe->setAttr("name", f.name);
   fe->setAttr("type", fieldTypeName(f.type));
   fe->setAttr("accessType", accessTypeName(f.access));
+  if (!f.appinfo.empty())
+    fe->setAttr("appinfo", f.appinfo);
+  if (!f.documentation.empty())
+    fe->setAttr("documentation", f.documentation);
   if (!f.nodeDefault.empty()) {
     for (const auto &n : f.nodeDefault) {
       auto ce = writeNodeElement(n, "");

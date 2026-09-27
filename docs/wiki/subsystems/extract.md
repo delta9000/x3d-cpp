@@ -36,7 +36,7 @@ to what actually changed, not to scene size.
 | `runtime/extract/SceneExtractor.hpp` | Top-level extractor: visibility-aware DFS, path interning, reverse-index maintenance, `fullSnapshot()` + `delta()` |
 | `runtime/extract/MeshBuilder.hpp` | Geometry-node → `MeshData` in the node's local frame; handles all composed, lattice, analytic, line, and point types |
 | `runtime/extract/PackedMesh.hpp` | Binary slab descriptor for embedder-supplied geometry (glTF-accessor-compatible layout) |
-| `runtime/extract/RenderItem.hpp` | Pure-POD descriptor layer: `PathKey`, `RenderItemId`, `GeomId`, `MeshData`, `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`, `RenderDelta` |
+| `runtime/extract/RenderItem.hpp` | Pure-POD descriptor layer: `PathKey`, `RenderItemId`, `GeomId`, `MeshData`, `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`, `FogDesc`, `RenderDelta` |
 | `runtime/extract/TextureExtract.hpp` | Texture/material extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/MaterialSystem.hpp` | Appearance → `MaterialDesc` mapping (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/LightSystem.hpp` | World-resolved `LightDesc` collection (see [Texture extraction](extract-textures.md)) |
@@ -68,7 +68,9 @@ std::size_t n        = ex.itemCount();
 
 // Scene-level read-outs (recomputed per call).
 CameraDesc    cam  = ex.camera();
-BackgroundDesc bg  = ex.background();
+BackgroundDesc bg  = ex.background(); // sky/ground gradient + six panorama face TextureRefs
+                                      // (Background *Url / TextureBackground *Texture) + transparency.
+FogDesc       fog  = ex.fog(); // bound Fog (§24.4.2); visibilityRange world-scaled, 0 = off.
 std::vector<LightDesc> lights = ex.lights(); // fresh collect; or:
 const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // from last fullSnapshot()
 
@@ -118,6 +120,7 @@ struct RenderDelta {
 - `material` (`MaterialDesc`) — full Phong/Physical/Unlit descriptor with textures.
 - `mesh` (`MeshRef` = `shared_ptr<const MeshData>`) — local-frame triangles, **shared** across every placement of one `GeomId` ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)), so host RAM is O(distinct content) rather than O(placements). Never null (a Packed item points at `emptyMeshRef()`), so `item.mesh->positions` needs no null check. Immutable by contract: a content change builds a **new** mesh and bumps `GeomId::contentVersion` rather than editing one a co-owner can see.
 - `lights` — indices into `snapshotLights()` for lights whose scope covers this placement.
+- `LightSystem` collects only lights reached through the same selected `Switch` child or distance-selected `LOD` level as geometry. It resolves locations and directions per path and scales PointLight/SpotLight radius through ancestor transforms (§17.4.2–3).
 - `beyondVisibilityLimit` — hint: item origin is past `Viewpoint.farDistance` / `NavigationInfo.visibilityLimit`.
 - `castShadow` — `X3DShapeNode.castShadow` (X3D default `true`); whether this shape occludes light. Carried, not interpreted — the shadow-visibility query (technique-defined per §17) is a consumer/seam concern (see [ADR-0028](../decisions/0028-shadow-visibility-seam.md)).
 
@@ -135,11 +138,13 @@ MeshData buildLocalMesh(const X3DNode *geom,
 Geometry types handled:
 
 - **Composed/indexed sets (T1/T2):** `IndexedFaceSet`, `IndexedTriangleSet`, `TriangleSet`, `IndexedTriangleFanSet`, `IndexedTriangleStripSet`, `IndexedQuadSet`, `TriangleFanSet`, `TriangleStripSet`, `QuadSet`
-- **Height-grid lattice (T2/B5):** `ElevationGrid`, `GeoElevationGrid` (geo-projection embedder seam)
+- **Height-grid lattice (T2/B5):** `ElevationGrid`, `GeoElevationGrid` (geo-projection embedder seam). The shared `emitHeightGrid` honours authored `Color`/`Normal` and `colorPerVertex`/`normalPerVertex` per §13.3.4 (per-vertex → lattice vertex `row*xDim+col`, per-quad → cell `row*(xDim-1)+col`); EXT-001
 - **Attribute resolution (T3):** authored `Normal`/`Color`/`ColorRGBA`/`TextureCoordinate` resolved per corner; flat normals generated when no `Normal` is authored; `creaseAngle` smooth-normal post-pass (B6)
 - **Analytic primitives (T4):** `Box`, `Sphere`, `Cone`, `Cylinder` — parametric tessellation driven by `MeshBuildOptions` density knobs
-- **Extrusion (B3):** SCP-frame sweep with `beginCap`/`endCap`, implicit TC3 texcoords
-- **Line/point topology (B4):** `IndexedLineSet`, `LineSet`, `PointSet` — `MeshData.topology = Lines/Points`, always unlit, `solid=false`
+- **Extrusion (B3):** SCP-frame sweep with `beginCap`/`endCap`, implicit TC3 texcoords. Caps use the IndexedFaceSet ear clipper when `convex=FALSE`. Underdetermined (2-distinct-point / straight) spines use the ADR-0031 local-axis rule (Z = normalize(modelZ − (modelZ·Y)Y), fallback modelX; X = Y×Z) and <2 distinct spine points render nothing (§13.3.5.4.5); EXTRUSION-SCP
+- **Line/point topology (B4):** `IndexedLineSet`, `LineSet`, `PointSet` — `MeshData.topology = Lines/Points`, `solid=false`. Authored `Normal` values follow expanded vertices and enable lighting (§11.2.2.5). Without normals, consumers use `MaterialDesc::unlitGeometryRGBA()` or vertex colors; the fallback uses emissiveColor.
+- **Custom vertex attributes (§31.4.2):** `MeshData::vertexAttributes` carries named, fixed-width `FloatVertexAttribute`, `Matrix3VertexAttribute`, and `Matrix4VertexAttribute` streams. Their vertex-major values follow emitted positions through composed-geometry expansion and indexed coordinate lookup.
+- **Geometry2D (§14):** the eight XY-plane primitives — `Arc2D`/`Circle2D`/`Polyline2D` → `Lines`, `Polypoint2D` → `Points` (unlit, `solid=false`), and `ArcClose2D` (PIE/CHORD)/`Disk2D` (fan + annulus; `innerRadius==outerRadius` → a circle line)/`Rectangle2D`/`TriangleSet2D` → `Triangles` with +Z normals and per-node `solid`. Circular primitives use one chord per `2π/64` rad (64 chords per full circle); texture coordinates map the geometry's XY bounding box to `[0,1]²`
 - **NURBS (NRB-1):** `NurbsCurve` → `Topology::Lines`, `NurbsPatchSurface` → `Topology::Triangles` with analytic normals + implicit `(u,v)` texcoords (see [NURBS](#nurbs))
 - **Text (T-TEXT):** delegated to `buildTextMesh` (see [Text extraction](extract-text.md)); sets `MeshData.isGlyphMesh = true`
 
@@ -210,7 +215,10 @@ MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are r
 | `x3d_mesh_builder_t2` | Strips/fans/quads + `ElevationGrid` with flat normals |
 | `x3d_mesh_builder_t3` | Normal/Color/ColorRGBA/TextureCoordinate attribute resolution, `normalPerVertex`/`colorPerVertex`, flat-normal generation |
 | `x3d_mesh_builder_t4` | Analytic primitive parametric tessellation (Box/Sphere/Cone/Cylinder) |
+| `x3d_mesh_builder_geom2d` | §14 Geometry2D nodes: Arc2D/ArcClose2D/Circle2D/Disk2D/Polyline2D/Polypoint2D/Rectangle2D/TriangleSet2D extraction (topology, tessellation count, +Z normals, XY bounds) |
 | `x3d_mesh_builder_b3` | Extrusion SCP-frame sweep + caps |
+| `x3d_mesh_builder_extrusion_scp` | Extrusion degenerate-spine SCP axes + distinct-point cull (ADR-0031) |
+| `x3d_mesh_builder_ext001` | ElevationGrid/GeoElevationGrid authored Color/Normal + colorPerVertex/normalPerVertex (§13.3.4) |
 | `x3d_mesh_builder_b4` | Line/point topology (`IndexedLineSet`, `LineSet`, `PointSet`) |
 | `x3d_mesh_builder_b5` | `GeoElevationGrid` lattice emission + `GeoProjection` seam |
 | `x3d_mesh_builder_b6` | `creaseAngle` smooth-normal post-pass |

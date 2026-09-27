@@ -29,6 +29,13 @@
 //           channel on the SAME side (sign agreement). Numbers are NOT compared
 //           (different panning laws: equal-power vs ma_spatializer amplitude law).
 //
+//   IMMERSIVE fixtures (ADR-0050; tests/immersive_fixtures.hpp), per backend:
+//     F4: Sound ellipsoid — inside / between (-20 dB*(d-rMin)/(rMax-rMin)) /
+//         beyond / behind zones as ratios to the inside level, intensity, and
+//         spatialize FALSE centred. Cross-backend: the between/inside ratio agrees.
+//     F5: Buffer (decoded PCM) — stopped/playing/paused, 1 kHz resampled to the
+//         output rate, PlaybackRate 2 doubles the pitch. Cross-backend: RMS agrees.
+//
 // Anti-tautology guardrail (verified in comments): each assertion fails if a
 // backend's DSP were stubbed to echo input (L==R would break ear-sign;
 // no synthesis would break Goertzel).
@@ -41,6 +48,7 @@
 #include "dsp/BuiltinDspBackend.hpp"
 #include "miniaudio/MiniaudioBackend.hpp"
 #include "tests/dsp_metrics.hpp"
+#include "tests/immersive_fixtures.hpp"
 
 #include "X3DExecutionContext.hpp"
 
@@ -471,6 +479,75 @@ static void testF3_Spatial(DistanceModel dm, const char *dmName) {
   }
 }
 
+// F4/F5: the shared immersive fixtures on each backend, then cross-backend
+// agreement on the numbers both must reproduce.
+static void testF4F5_Immersive() {
+  using namespace x3d::test;
+  runImmersiveFixtures([] { return std::make_shared<BuiltinDspBackend>(); },
+                       [](bool ok, const char *msg) { CHECK(ok, msg); });
+  runImmersiveFixtures([] { return std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>(); },
+                       [](bool ok, const char *msg) { CHECK(ok, msg); });
+
+  auto ratio = [](std::shared_ptr<AudioBackend> a, std::shared_ptr<AudioBackend> b) {
+    return ellipsoidRms(b, ellipsoidParams(5.0f)) / ellipsoidRms(a, ellipsoidParams(0.5f));
+  };
+  const double rb = ratio(std::make_shared<BuiltinDspBackend>(), std::make_shared<BuiltinDspBackend>());
+  const double rm = ratio(std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>(), std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>());
+  std::fprintf(stderr, "[F4] between/inside: builtin=%.4f miniaudio=%.4f\n", rb, rm);
+  CHECK(std::fabs(rb - rm) < 0.03 * rb, "F4: ellipsoid falloff agrees across backends");
+
+  auto playRms = [](std::shared_ptr<AudioBackend> be) {
+    BufferRig rig = bufferRig(be);
+    rig.be->setParam(rig.buf, Param::PlaybackState, 1);
+    return rms(rig.render());
+  };
+  const double bb = playRms(std::make_shared<BuiltinDspBackend>());
+  const double bm = playRms(std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>());
+  std::fprintf(stderr, "[F5] buffer rms: builtin=%.4f miniaudio=%.4f\n", bb, bm);
+  CHECK(std::fabs(bb - bm) < kRmsTol * bb, "F5: buffer playback RMS agrees across backends");
+}
+
+// F6: enabled / time-lifecycle / destination gain (SND-1/2/7), per backend.
+// Oscillator(440) -> [Gain(0.5)] -> Destination at the backend level, driving
+// the per-tick params SoundSystem pushes.
+static void testF6_EnableLifecycle(const char *name, std::shared_ptr<AudioBackend> (*make)()) {
+  auto level = [&](auto &&configure, bool withGain) {
+    auto be = make();
+    NodeParams op; op.frequency = 440; op.gain = 1;
+    const NodeHandle osc = be->createNode(NodeKind::Oscillator, op);
+    NodeParams gp; gp.gain = 0.5f;
+    const NodeHandle g = withGain ? be->createNode(NodeKind::Gain, gp) : kInvalidNodeHandle;
+    NodeParams dp; dp.maxChannelCount = 1;
+    const NodeHandle dst = be->createNode(NodeKind::Destination, dp);
+    if (withGain) { be->connect(g, osc); be->connect(dst, g); } else be->connect(dst, osc);
+    // Render once so a lazily-initialised backend builds its graph, then apply
+    // the per-tick params the way SoundSystem::update does.
+    std::vector<float> warm; be->render(dst, 64, kSR, warm);
+    configure(*be, osc, g, dst);
+    std::vector<float> buf; be->render(dst, kFrames, kSR, buf);
+    return rms(buf);
+  };
+  auto none = [](AudioBackend &, NodeHandle, NodeHandle, NodeHandle) {};
+  const double base = level(none, false);
+  const double stopped = level([](AudioBackend &b, NodeHandle o, NodeHandle, NodeHandle) {
+    b.setParam(o, Param::PlaybackState, 0); }, false);
+  const double disabled = level([](AudioBackend &b, NodeHandle o, NodeHandle, NodeHandle) {
+    b.setParam(o, Param::Enabled, 0); }, false);
+  const double halfDest = level([](AudioBackend &b, NodeHandle, NodeHandle, NodeHandle d) {
+    b.setParam(d, Param::Gain, 0.5f); }, false);
+  const double withGain = level(none, true);
+  const double gainOff = level([](AudioBackend &b, NodeHandle, NodeHandle g, NodeHandle) {
+    b.setParam(g, Param::Enabled, 0); }, true);
+  std::fprintf(stderr, "[F6/%s] base=%.4f stopped=%.5f disabled=%.5f dest0.5=%.4f gain0.5=%.4f gainOff=%.4f\n",
+               name, base, stopped, disabled, halfDest, withGain, gainOff);
+  CHECK(base > 0.3, "F6: oscillator audible by default");
+  CHECK(stopped < 1e-4, "F6: PlaybackState 0 (inactive) silences the oscillator");
+  CHECK(disabled < 1e-4, "F6: Enabled 0 silences the oscillator");
+  CHECK(std::fabs(halfDest / base - 0.5) < 0.02, "F6: AudioDestination gain scales output");
+  CHECK(std::fabs(withGain / base - 0.5) < 0.02, "F6: Gain 0.5 halves");
+  CHECK(std::fabs(gainOff / base - 1.0) < 0.02, "F6: a disabled Gain passes its input through");
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 
 int main() {
@@ -495,6 +572,13 @@ int main() {
 
   std::fprintf(stderr, "\n--- F3: Spatial (EXPONENTIAL) ---\n");
   testF3_Spatial(DistanceModel::Exponential, "EXPONENTIAL");
+
+  std::fprintf(stderr, "\n--- F4/F5: Immersive (ellipsoid + buffer) ---\n");
+  testF4F5_Immersive();
+
+  std::fprintf(stderr, "\n--- F6: enabled / lifecycle / destination gain ---\n");
+  testF6_EnableLifecycle("builtin", [] { return std::shared_ptr<AudioBackend>(std::make_shared<BuiltinDspBackend>()); });
+  testF6_EnableLifecycle("miniaudio", [] { return std::shared_ptr<AudioBackend>(std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>()); });
 
   std::fprintf(stderr, "\n");
   if (g_failures == 0)

@@ -352,6 +352,16 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
   const std::vector<ex::LightDesc> lights = extractor.lights();
   const std::vector<EyeLight> eyeLights = buildEyeLights(lights, viewRT, headlightOn);
 
+  // §24.4.2: the bound Fog reduced for the fragment shaders. visibilityRange is
+  // world-scaled by the extractor; 0 disables fog (applyFog no-ops).
+  FogParams fog;
+  {
+    const ex::FogDesc fd = extractor.fog();
+    fog.color = glsl::vec3(fd.color);
+    fog.type = (fd.fogType == ex::FogDesc::Type::Exponential) ? 1 : 0;
+    fog.visibilityRange = fd.visibilityRange;
+  }
+
   Rasterizer raster(fb);
 
   // ---- Partition opaque vs transparent (PoC B7 rule) ------------------------
@@ -402,15 +412,31 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
       return;
     }
 
-    // Topology paths (B4): lines/points are unlit constant-color.
+    // §11.2.2.5: authored normals light lines/points; otherwise use their
+    // unlit material color, which differs from a lit Material's diffuse color.
+    const glsl::vec4 linePointColor =
+        glsl::vec4(it.material.unlitGeometryRGBA());
+    const FragmentShader linePointShader = mesh.hasNormals
+        ? makeMaterialShader(it.material, eyeLights, mesh.hasColors, false, fog)
+        : FragmentShader{};
     if (mesh.topology == ex::Topology::Lines) {
-      raster.drawLines(verts, mesh.indices, modelG, viewG, projG, baseColor,
-                       mesh.hasColors);
+      // §12.4.6 LineProperties.linewidthScaleFactor (0/absent => default width).
+      const float w = it.material.line.applied && it.material.line.linewidthScaleFactor > 0.0f
+                          ? it.material.line.linewidthScaleFactor
+                          : 1.0f;
+      raster.drawLines(verts, mesh.indices, modelG, viewG, projG, linePointColor,
+                       mesh.hasColors, w, linePointShader);
       return;
     }
     if (mesh.topology == ex::Topology::Points) {
-      raster.drawPoints(verts, mesh.indices, modelG, viewG, projG, baseColor,
-                        mesh.hasColors);
+      // §12.4.8 PointProperties: scale + distance attenuation clamped to [min,max].
+      const ex::PointPropertiesDesc &pp = it.material.point;
+      raster.drawPoints(verts, mesh.indices, modelG, viewG, projG, linePointColor,
+                        mesh.hasColors, pp.pointSizeScaleFactor,
+                        glsl::vec3{pp.attenuation.x, pp.attenuation.y,
+                                   pp.attenuation.z},
+                        pp.pointSizeMinValue, pp.pointSizeMaxValue,
+                        linePointShader);
       return;
     }
 
@@ -418,7 +444,8 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
     FragmentShader fs;
     if (opt.authorShaderFor) fs = opt.authorShaderFor(it, eyeLights, mesh.hasColors);
     if (!fs)
-      fs = makeMaterialShader(it.material, eyeLights, mesh.hasColors, forceUnlit);
+      fs = makeMaterialShader(it.material, eyeLights, mesh.hasColors, forceUnlit,
+                              fog);
     raster.drawTriangles(verts, mesh.indices, modelG, viewG, projG, normalMat,
                          mesh.ccw, mesh.solid, blend, fs);
   };

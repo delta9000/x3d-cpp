@@ -16,13 +16,16 @@ related:
 ## Purpose
 
 The `FontMetrics` seam turns a **`FontKey{family, style, codepoint}`** lookup into
-`GlyphResult{status, GlyphMetrics{advanceEm, …}}`. It is the per-codepoint advance path:
+`GlyphResult{status, GlyphMetrics{advanceEm, glyph box, font vertical metrics, …}}`. It is the per-codepoint metrics path:
 the layout engine calls it once per character to compute text extent and pen advance; it
 never opens a font file, calls a rasterizer, or touches an atlas — all of that stays in the
 embedder. The SDK **never reads a font** — the seam is a consumer-supplied callback.
 
 The advance surface is `GlyphMetrics.advanceEm`: advance / em-size (dimensionless). The
 layout engine multiplies by `FontStyle.size` to get local-coordinate advance per §15.4.1.
+`bearingX`, `sizeX`, `sizeY`, and `top` describe the glyph box relative to its pen in em
+units; `ascent` and `descent` carry the font's vertical metrics. Text extraction positions
+the atlas quad from the glyph box rather than stretching it across the advance.
 The lifecycle (`Ready` / `Pending` / `Failed`) mirrors TextureResolver: `Pending` means the
 atlas is not uploaded yet (skip or substitute a space); `Failed` means the codepoint is
 absent from the font.
@@ -39,8 +42,8 @@ font file and gives correct proportional text layout for fixed-pitch output.
 
 !!! note "Seam proven generic — two independent backends (stb_truetype + FreeType)"
     The font-metrics seam is **GREEN** ([ADR-0025](../decisions/0025-fontmetrics-second-backend-swap-test.md)):
-    two fully independent backends implement the *unchanged* `FontMetrics` interface, and a
-    CI-gated swap-test asserts they return **exact bit-identical `advanceEm`** for every
+    two fully independent backends implement the `FontMetrics` interface, and a
+    CI-gated swap-test asserts they return **exact bit-identical advance and glyph/font box metrics** for every
     PLAIN-style glyph in the Liberation font fixtures. Because the interface carried two
     backends with **no signature change**, it was promoted `[EXPERIMENTAL]` → `[STABLE]` in
     `include/x3d/sdk.hpp`. See the [Seam-Status Matrix](../seam-status.md).

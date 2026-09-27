@@ -45,32 +45,33 @@ public:
     ScriptHandle handle = kInvalidScriptHandle;
     std::string eventName;  // for invoke
     double timestamp = 0.0; // for invoke / prepareEvents (now)
+    std::string source;     // for load: the resolved script body handed in
   };
 
   ScriptHandle load(X3DNode &, const std::string &source,
                     SaiContext &sai) override {
     ScriptHandle h = nextHandle_++;
     slots_[h] = Slot{&sai, source};
-    calls.push_back({"load", h, "", 0.0});
+    calls.push_back({"load", h, "", 0.0, source});
     return h;
   }
 
   void initialize(ScriptHandle handle) override {
-    calls.push_back({"initialize", handle, "", 0.0});
+    calls.push_back({"initialize", handle, "", 0.0, ""});
   }
 
   void shutdown(ScriptHandle handle) override {
-    calls.push_back({"shutdown", handle, "", 0.0});
+    calls.push_back({"shutdown", handle, "", 0.0, ""});
   }
 
   void prepareEvents(ScriptHandle handle, double now) override {
-    calls.push_back({"prepareEvents", handle, "", now});
+    calls.push_back({"prepareEvents", handle, "", now, ""});
   }
 
   void invoke(ScriptHandle handle, const std::string &eventName,
               const std::any &value, X3DFieldType /*type*/,
               double timestamp) override {
-    calls.push_back({"invoke", handle, eventName, timestamp});
+    calls.push_back({"invoke", handle, eventName, timestamp, ""});
     auto slot = slots_.find(handle);
     if (slot == slots_.end() || !slot->second.sai) return;
     auto r = reactions_.find(eventName);
@@ -80,7 +81,7 @@ public:
   }
 
   void eventsProcessed(ScriptHandle handle, double timestamp) override {
-    calls.push_back({"eventsProcessed", handle, "", timestamp});
+    calls.push_back({"eventsProcessed", handle, "", timestamp, ""});
   }
 
   // ---- test arming API ------------------------------------------------------

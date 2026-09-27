@@ -9,6 +9,7 @@
 #include "DynamicField.hpp"   // author-field (Script) delivery fallback
 #include "x3d/nodes/X3DNode.hpp"
 
+#include <algorithm>
 #include <any>
 #include <deque>
 #include <functional>
@@ -79,6 +80,17 @@ public:
     produced_.clear();
   }
 
+  void removeNodes(const std::unordered_set<const X3DNode *> &nodes) {
+    pending_.erase(std::remove_if(pending_.begin(), pending_.end(), [&](const Delivery &d) {
+      return nodes.count(d.target.node) != 0;
+    }), pending_.end());
+    for (auto it = produced_.begin(); it != produced_.end();)
+      if (nodes.count(it->node)) it = produced_.erase(it); else ++it;
+    for (auto it = fired_.begin(); it != fired_.end();)
+      if (nodes.count(it->from.node) || nodes.count(it->to.node)) it = fired_.erase(it);
+      else ++it;
+  }
+
   /**
    * @brief Run the cascade to quiescence within the current timestamp.
    * @details Breadth-first: deliver each queued event to its target field, then
@@ -115,6 +127,8 @@ public:
       // same per-field entry. §4.4.2.2 alias resolution.
       FieldAddress norm{d.target.node,
                         resolveFieldAlias(d.target.node, d.target.field)};
+
+      if (!acceptsInput(norm, d.value)) continue;
 
       const bool firstProduction = produced_.insert(norm).second;
 
@@ -156,6 +170,16 @@ public:
   /// Used by the runtime to feed the dirty-tracking layer; null by default.
   void setFieldObserver(std::function<void(const FieldAddress &)> obs) {
     observer_ = std::move(obs);
+  }
+
+  void addInputFilter(std::function<bool(const FieldAddress &, const std::any &)> filter) {
+    inputFilters_.push_back(std::move(filter));
+  }
+
+  bool acceptsInput(const FieldAddress &addr, const std::any &value) const {
+    for (const auto &filter : inputFilters_)
+      if (!filter(addr, value)) return false;
+    return true;
   }
 
   /// Called when an event is delivered to an author-declared inputOnly or
@@ -234,6 +258,7 @@ private:
   const EventGraph &graph_;
   std::deque<Delivery> pending_;
   std::function<void(const FieldAddress &)> observer_;
+  std::vector<std::function<bool(const FieldAddress &, const std::any &)>> inputFilters_;
   std::vector<AuthorInputListener> authorInputListeners_;
   // Per-timestamp guards (reset by beginTimestamp). They persist across the
   // several process() calls one tick may make (the §4.4.8.3 step-4 re-eval

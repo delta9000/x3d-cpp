@@ -69,6 +69,10 @@ public:
   runtime::X3DDocument readDocument(const std::string &text) override;
 
 private:
+  // Reader-recovery diagnostics accumulated during the current readDocument()
+  // call, moved into X3DDocument.readerWarnings on return.
+  std::vector<runtime::ReaderWarning> readerWarnings_;
+
   // -------------------------------------------------------------------------
   // Head.
   // -------------------------------------------------------------------------

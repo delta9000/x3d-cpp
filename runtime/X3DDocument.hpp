@@ -60,6 +60,14 @@ inline Profile profileFromString(const std::string &s) {
   return Profile::Interchange;
 }
 
+/// True when `s` is one of the seven canonical profile names (so it does not get
+/// coerced to Interchange by profileFromString).
+inline bool isKnownProfileToken(const std::string &s) {
+  return s == "Core" || s == "Interchange" || s == "CADInterchange" ||
+         s == "Interactive" || s == "Immersive" || s == "MedicalInterchange" ||
+         s == "Full";
+}
+
 /**
  * @brief A complete X3D document.
  * @details Corresponds to the `<X3D>` root statement. It carries the document
@@ -79,6 +87,12 @@ public:
   std::string version = "4.0";          // authoring default; readers overwrite
   Profile profile = Profile::Interchange;
 
+  // The authored `profile=` token, verbatim (empty when absent). Preserved so a
+  // round-trip writer re-emits what the author wrote — an unknown/misspelled
+  // token is NOT silently rewritten to the coerced "Interchange". Readers that
+  // see a non-canonical token also push a ReaderWarning{ProfileCoerced}.
+  std::string profileRaw;
+
   // Document sections.
   Head head;
   Scene scene;
@@ -96,6 +110,10 @@ public:
   // X3DParse front door via expandInlines(). Sibling of protoWarnings.
   std::vector<InlineWarning> inlineWarnings;
 
+  // Reader-recovery diagnostics (unknown node element discarded, profile token
+  // coerced), populated by the individual readers. Sibling of range/proto/inline.
+  std::vector<ReaderWarning> readerWarnings;
+
   X3DDocument() = default;
 
   /// Convenience accessors.
@@ -105,6 +123,24 @@ public:
   const Scene &getScene() const { return scene; }
 
   std::string profileName() const { return toString(profile); }
+
+  /// The profile token to serialize: the authored spelling when the reader kept
+  /// one, else the canonical name for the resolved Profile.
+  std::string profileToken() const {
+    return profileRaw.empty() ? toString(profile) : profileRaw;
+  }
+
+  /// Record the authored `profile=` token: preserve it verbatim, resolve it to a
+  /// Profile, and flag a non-canonical spelling (which otherwise coerces
+  /// silently to Interchange).
+  void setProfileToken(const std::string &token) {
+    profileRaw = token;
+    profile = profileFromString(token);
+    if (!isKnownProfileToken(token))
+      readerWarnings.push_back(
+          {ReaderWarning::Kind::ProfileCoerced,
+           "unknown profile '" + token + "' coerced to 'Interchange'"});
+  }
 };
 
 // ---------------------------------------------------------------------------

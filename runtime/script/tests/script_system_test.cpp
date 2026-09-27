@@ -21,6 +21,7 @@
 
 #include "ScriptSystem.hpp"
 
+#include "AssetResolver.hpp"
 #include "DynamicField.hpp"
 #include "SaiContext.hpp"
 #include "ScriptEngine.hpp"
@@ -32,6 +33,7 @@
 #include "x3d/nodes/Transform.hpp"
 
 #include <any>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -323,6 +325,163 @@ void testShutdownOnTeardown() {
         "scr002: ScriptSystem teardown shuts down the loaded script");
 }
 
+// --- CONF-CRITIC-2: external url fetched through the AssetResolver seam ------
+// A map-backed resolver: url -> status + bytes. Tracks call order.
+struct MappingResolver {
+  std::function<extract::AssetResult(const std::string &)> fn;
+  std::vector<std::string> calls;
+  extract::AssetResolver seam() {
+    return [this](const std::string &url, extract::AssetKind) {
+      calls.push_back(url);
+      return fn(url);
+    };
+  }
+};
+
+static extract::AssetResult readyWith(const std::string &s) {
+  return extract::AssetResult::makeReady(
+      std::vector<std::uint8_t>(s.begin(), s.end()));
+}
+
+void testExternalUrlFetch() {
+  // 1. A Ready external url is fetched and loaded.
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setUrl(MFString{"file:///scripts/body.js"});
+    script.setLoad(true);
+    MappingResolver r;
+    r.fn = [](const std::string &) { return readyWith("/*fetched*/"); };
+    auto engine = std::make_shared<MockScriptEngine>();
+    auto sys = std::make_shared<ScriptSystem>(engine, "b", "v", r.seam());
+    sys->attach(&script, ctx);
+    check(engine->count("load") == 1,
+          "CONF-CRITIC-2: a Ready external url is fetched and loaded");
+    int li = indexOf(*engine, "load");
+    check(li >= 0 && engine->calls[li].source == "/*fetched*/",
+          "CONF-CRITIC-2: the fetched bytes are the loaded source");
+    check(!r.calls.empty() && r.calls[0] == "file:///scripts/body.js",
+          "CONF-CRITIC-2: the resolver was called with the url");
+  }
+
+  // 2. Pending defers the load; a later tick retries the SAME url.
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setUrl(MFString{"http://x/body.js"});
+    script.setLoad(true);
+    int n = 0;
+    MappingResolver r;
+    r.fn = [&n](const std::string &) {
+      return (++n == 1) ? extract::AssetResult::makePending()
+                        : readyWith("ok");
+    };
+    auto engine = std::make_shared<MockScriptEngine>();
+    auto sys = std::make_shared<ScriptSystem>(engine, "b", "v", r.seam());
+    ctx.addScriptSystem(sys);
+    sys->attach(&script, ctx);
+    check(engine->count("load") == 0,
+          "CONF-CRITIC-2: a Pending fetch does not load yet");
+    ctx.tick(1.0); // retryPendingLoads
+    check(engine->count("load") == 1,
+          "CONF-CRITIC-2: a Pending fetch is retried on a later tick");
+  }
+
+  // 3. Failed advances to the next url in preference order.
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setUrl(MFString{"http://a/missing.js", "http://b/body.js"});
+    script.setLoad(true);
+    MappingResolver r;
+    r.fn = [](const std::string &u) {
+      if (u == "http://b/body.js") return readyWith("B");
+      return extract::AssetResult::makeFailed();
+    };
+    auto engine = std::make_shared<MockScriptEngine>();
+    auto sys = std::make_shared<ScriptSystem>(engine, "b", "v", r.seam());
+    sys->attach(&script, ctx);
+    check(engine->count("load") == 1,
+          "CONF-CRITIC-2: a Failed url advances to the next candidate");
+    int li = indexOf(*engine, "load");
+    check(li >= 0 && engine->calls[li].source == "B",
+          "CONF-CRITIC-2: the second (Ready) url is the one loaded");
+    check(r.calls.size() == 2 && r.calls[0] == "http://a/missing.js" &&
+              r.calls[1] == "http://b/body.js",
+          "CONF-CRITIC-2: urls are tried in preference order");
+  }
+
+  // 4. The default (no resolver) stays IO-free: an external url is inert.
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setUrl(MFString{"http://x/body.js"});
+    script.setLoad(true);
+    auto engine = std::make_shared<MockScriptEngine>();
+    auto sys = std::make_shared<ScriptSystem>(engine, "b", "v"); // null stub
+    sys->attach(&script, ctx);
+    check(engine->count("load") == 0,
+          "CONF-CRITIC-2: the null default resolver leaves an external url inert");
+  }
+}
+
+// --- SCR-005: autoRefresh / autoRefreshTimeLimit -----------------------------
+void testAutoRefresh() {
+  // 1. autoRefresh=0 (default) never reloads.
+  {
+    X3DExecutionContext ctx;
+    Script script = makeScript(); // inline url, autoRefresh default 0
+    auto engine = std::make_shared<MockScriptEngine>();
+    auto sys = std::make_shared<ScriptSystem>(engine, "b", "v");
+    ctx.addScriptSystem(sys);
+    sys->attach(&script, ctx);
+    ctx.tick(5.0);
+    check(engine->count("load") == 1 && engine->count("shutdown") == 0,
+          "SCR-005: autoRefresh=0 leaves the script loaded once (no refresh)");
+  }
+
+  // 2. autoRefresh=1.0 reloads + re-initializes every second (no limit).
+  {
+    X3DExecutionContext ctx;
+    Script script = makeScript();
+    script.setAutoRefresh(1.0);
+    script.setAutoRefreshTimeLimitUnchecked(0.0); // 0 = no limit
+    auto engine = std::make_shared<MockScriptEngine>();
+    auto sys = std::make_shared<ScriptSystem>(engine, "b", "v");
+    ctx.addScriptSystem(sys);
+    sys->attach(&script, ctx);
+    check(engine->count("load") == 1, "SCR-005: loaded at attach");
+
+    ctx.tick(0.5);
+    check(engine->count("load") == 1, "SCR-005: no refresh before the interval");
+    ctx.tick(1.0);
+    check(engine->count("shutdown") == 1 && engine->count("load") == 2 &&
+              engine->count("initialize") == 2,
+          "SCR-005: at the interval the script reloads + re-initializes");
+    ctx.tick(2.0);
+    check(engine->count("load") == 3,
+          "SCR-005: subsequent intervals keep refreshing");
+  }
+
+  // 3. autoRefreshTimeLimit stops refreshing once the window elapses.
+  {
+    X3DExecutionContext ctx;
+    Script script = makeScript();
+    script.setAutoRefresh(1.0);
+    script.setAutoRefreshTimeLimitUnchecked(1.5);
+    auto engine = std::make_shared<MockScriptEngine>();
+    auto sys = std::make_shared<ScriptSystem>(engine, "b", "v");
+    ctx.addScriptSystem(sys);
+    sys->attach(&script, ctx);
+    ctx.tick(1.0); // within the window: refresh (load #2)
+    check(engine->count("load") == 2, "SCR-005: refresh within the time limit");
+    ctx.tick(2.0); // window (1.5s from t=0) elapsed: stop
+    ctx.tick(3.0);
+    check(engine->count("load") == 2,
+          "SCR-005: refreshing stops after autoRefreshTimeLimit elapses");
+  }
+}
+
 } // namespace
 
 // --- a ROUTE into a Script eventIn runs its handler (SCRIPT-EVENTIN) ---------
@@ -383,6 +542,8 @@ int main() {
   testDirectOutputGate();
   testMustEvaluateEagerVsLazy();
   testRoutedEventInvokesHandler();
+  testExternalUrlFetch();
+  testAutoRefresh();
 
   if (failures == 0) {
     std::cout << "ALL SCRIPT SYSTEM TESTS PASSED\n";

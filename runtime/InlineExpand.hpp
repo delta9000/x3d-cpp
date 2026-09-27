@@ -124,7 +124,9 @@ inline bool replaceInParent(X3DNode &parent, const X3DNode *target,
 /// Expand every load=TRUE Inline in `scene`. Lenient: failures become warnings.
 inline void expandInlines(Scene &scene, const InlineResolver &resolver,
                           const std::string &baseUrl,
-                          std::vector<InlineWarning> &warnings) {
+                          std::vector<InlineWarning> &warnings,
+                          const std::function<void(X3DNode *,
+                              const std::shared_ptr<X3DNode> &)> &onExpanded = {}) {
   using namespace inline_detail;
 
   // Collect (parent, inlineNode) pairs first, so we don't mutate fields mid-walk.
@@ -168,17 +170,66 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     // copy child.defs into scene.defs).
     auto group = makeGroup(child->rootNodes);
     hoistChildRoutes(*child, scene.resolvedInlineRoutes);
+    for (const auto &[nestedGroup, nestedInline] : child->expandedInlines)
+      scene.expandedInlines[nestedGroup] = nestedInline;
+    for (const auto &[nestedInline, nestedScene] : child->expandedInlineScenes)
+      scene.expandedInlineScenes[nestedInline] = nestedScene;
+    for (const auto &peer : child->protoPeerNodes)
+      scene.protoPeerNodes.push_back(peer);
     scene.expandedInlines[group.get()] = inl; // preserve for writer round-trip
+    // Retain the child scene so a parent <IMPORT ...> can resolve an imported
+    // DEF/EXPORT against it (§9.2). Keyed by the ORIGINAL Inline node.
+    scene.expandedInlineScenes[inl.get()] = child;
     if (parent) {
       replaceInParent(*parent, inl.get(), group);
     } else {
       for (auto &r : scene.rootNodes)
         if (r.get() == inl.get()) { r = group; break; }
     }
+    if (onExpanded) onExpanded(parent, group);
   };
 
   for (auto &site : sites) expandOne(site.inl, site.parent);
   for (auto &r : rootInlines) expandOne(r, nullptr);
+}
+
+/// Wire <IMPORT inlineDEF=... importedDEF=... AS=...> statements to the named
+/// Inline's exported node (§9.2 / §4.4.6 — the sanctioned cross-Inline escape
+/// hatch). For each import, resolve the imported name inside the Inline's
+/// expanded child scene (an <EXPORT AS> alias first, else a child DEF) and
+/// register the local alias in `scene.defs` so a later resolveRoutes() binds a
+/// ROUTE that names it. Lenient: an Inline that was not expanded (load=FALSE,
+/// unresolved url) or an imported name with no matching child node leaves the
+/// alias unregistered, exactly as before. Call AFTER expandInlines and before
+/// (re)running resolveRoutes.
+inline void wireInlineImports(Scene &scene) {
+  for (const Import &imp : scene.imports) {
+    if (imp.inlineDEF.empty() || imp.importedDEF.empty())
+      continue;
+    auto inlineIt = scene.defs.find(imp.inlineDEF);
+    if (inlineIt == scene.defs.end() || !inlineIt->second)
+      continue;
+    auto childIt = scene.expandedInlineScenes.find(inlineIt->second.get());
+    if (childIt == scene.expandedInlineScenes.end() || !childIt->second)
+      continue;
+    Scene &child = *childIt->second;
+    // §9.2.5: only names explicitly exported by the child are importable.
+    std::string childName;
+    for (const Export &ex : child.exports) {
+      if ((ex.as.empty() ? ex.localDEF : ex.as) == imp.importedDEF &&
+          !ex.localDEF.empty()) {
+        childName = ex.localDEF;
+        break;
+      }
+    }
+    if (childName.empty())
+      continue;
+    auto node = child.resolve(childName);
+    if (!node)
+      continue;
+    const std::string alias = imp.as.empty() ? imp.importedDEF : imp.as;
+    scene.defs[alias] = node;
+  }
 }
 
 } // namespace x3d::runtime

@@ -69,6 +69,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_is_json_vrml_roundtrip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_writer_parity_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_appinfo_json_roundtrip_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_sfnode_default_roundtrip_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_author_field_is_roundtrip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_extern_url_json_roundtrip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_nested_instance_placement_roundtrip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/nested_protoinstance_roundtrip_test.cpp"
@@ -108,7 +110,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/version_floor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parser_depth_guard_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/asset_proto_resolver_test.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/asset_proto_resolver_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/core_diagnostics_test.cpp")
     target_link_libraries(x3d_parse_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
     target_include_directories(x3d_parse_tests PRIVATE
@@ -133,7 +136,9 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_t4_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b5_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_elevationgrid_winding_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_ext001_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b3_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_extrusion_scp_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b4_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b6_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_tc1_test.cpp"
@@ -146,6 +151,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/text_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/asset_resolver_b8_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t7_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_fog_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/background_desc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t8_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_b2_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_col2_test.cpp"
@@ -164,6 +171,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/castshadow_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/nurbs_eval_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_geom2d_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scheme_router_test.cpp")
     target_link_libraries(x3d_extract_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
@@ -198,6 +206,9 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/drag_math_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/key_state_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/navigation_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/collision_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/events_misc_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/media_time_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/nav_pointer_screen_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/viewpoint_offset_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/viewpoint_bind_test.cpp"

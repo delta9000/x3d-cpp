@@ -18,6 +18,7 @@
 #include "ScriptEngine.hpp"
 #include "tests/MockScriptEngine.hpp"
 
+#include "DynamicField.hpp"
 #include "X3DExecutionContext.hpp"
 
 #include "x3d/nodes/Script.hpp"
@@ -111,9 +112,15 @@ void testDirectOutputGate() {
     X3DExecutionContext ctx;
     Transform other;
     other.setTranslation(SFVec3f{0, 0, 0});
+    Transform sink;               // a ROUTE target off the written field
+    sink.setTranslation(SFVec3f{0, 0, 0});
     Script script;
     script.setDirectOutputUnchecked(true);
     SaiContext sai(ctx, script, "b", "v");
+
+    // A ROUTE leaving the WRITTEN field (other.translation, inputOutput).
+    ctx.addRoute(FieldAddress{&other, "translation"},
+                 FieldAddress{&sink, "translation"});
 
     bool threw = false;
     try {
@@ -122,10 +129,36 @@ void testDirectOutputGate() {
       threw = true;
     }
     check(!threw, "directOutput=TRUE: cross-node setField is allowed");
-    // setField posts into the current cascade; drain it.
     ctx.process();
     check(veq(transformTranslation(other), 4, 5, 6),
-          "directOutput=TRUE: permitted write delivered via the cascade");
+          "directOutput=TRUE: permitted write mutated the target field");
+    // DO-CASCADE (SAI §4.5.2 / ADR-0029): the direct write is a value mutation,
+    // NOT a cascade seed — no ROUTE fans out from the written field.
+    check(veq(transformTranslation(sink), 0, 0, 0),
+          "DO-CASCADE: no ROUTE fans out from a directOutput cross-node write");
+  }
+
+  // A SELF-write to the Script's own field keeps the routable path (§29.2.4):
+  // it must still fan out along a ROUTE leaving that field.
+  {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setDirectOutputUnchecked(true);
+    Transform sink;
+    sink.setTranslation(SFVec3f{0, 0, 0});
+    // An outputOnly author field on the Script, ROUTEd to the sink.
+    dynamicFieldStore().addAuthorField(
+        script, AuthorFieldDecl{"out", X3DFieldType::SFVec3f,
+                                AccessType::OutputOnly, {}});
+    ctx.addRoute(FieldAddress{&script, "out"},
+                 FieldAddress{&sink, "translation"});
+    SaiContext sai(ctx, script, "b", "v");
+
+    sai.setField(&script, "out", std::any(SFVec3f{7, 8, 9}));
+    ctx.process();
+    check(veq(transformTranslation(sink), 7, 8, 9),
+          "DO-CASCADE: a self-write keeps the routable path (fans out)");
+    dynamicFieldStore().erase(script);
   }
 }
 

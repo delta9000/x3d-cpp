@@ -129,3 +129,22 @@ def test_route_literal_event_fields_still_resolve():
       <ROUTE fromNode='T' fromField='fraction_changed' toNode='P' toField='set_fraction'/>
     </Scene></X3D>"""
     assert "ROUTE_ACCESS_ILLEGAL" not in _codes(doc)
+
+
+# --- containerField overrides (CONTAINERFIELD-FALSEPOS) -------------------------
+# An explicit containerField that names a legal SF/MFNode field on the PARENT is a
+# valid override of the child's own default and must NOT be flagged.
+
+LEGAL_CONTAINERFIELD_OVERRIDE = """<X3D profile='Immersive' version='4.0'><Scene>
+  <NurbsCurve><Coordinate containerField='controlPoint'/></NurbsCurve>
+</Scene></X3D>"""
+
+ILLEGAL_CONTAINERFIELD = """<X3D profile='Immersive' version='4.0'><Scene>
+  <Shape><Box containerField='notAField'/></Shape>
+</Scene></X3D>"""
+
+def test_legal_containerfield_override_not_flagged():
+    assert "CONTAINERFIELD_MISMATCH" not in _codes(LEGAL_CONTAINERFIELD_OVERRIDE)
+
+def test_containerfield_naming_no_parent_field_still_flagged():
+    assert "CONTAINERFIELD_MISMATCH" in _codes(ILLEGAL_CONTAINERFIELD)

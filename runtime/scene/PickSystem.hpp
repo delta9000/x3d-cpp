@@ -13,6 +13,7 @@
 #include "BoundsSystem.hpp"
 #include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField, localGeometryBounds
+#include "LODSelection.hpp"
 #include "Intersect.hpp"
 #include "Mat4.hpp"
 #include "MeshBuilder.hpp" // extract::buildLocalMesh — promoted exact-triangle extraction
@@ -129,13 +130,14 @@ public:
       if (takeStatic) {
         const Placement &p = statics_[i++];
         ++lastCandidateTests_;
-        evaluate(worldRay, p.node, p.worldM, p.aabb, p.path, best);
+        evaluate(worldRay, p.node, p.worldM, p.aabb, p.path,
+                 cameraPos, cameraUp, best);
       } else {
         const Placement &p = billboards_[j++];
         ++lastCandidateTests_;
         const Mat4 wm = liveWorldM(p.path, cameraPos, cameraUp);
         const Aabb wb = bounds.localBounds(p.node).transformed(wm);
-        evaluate(worldRay, p.node, wm, wb, p.path, best);
+        evaluate(worldRay, p.node, wm, wb, p.path, cameraPos, cameraUp, best);
       }
     }
     best.budgetExceeded = budgetTripped_;
@@ -154,6 +156,40 @@ public:
     for (X3DNode *r : roots_)
       if (worldOfRec(r, Mat4::identity(), target, out, visited, incomplete)) break;
     return out;
+  }
+
+  /// Avatar collision query (ISO 19775-1 §23.4.2): the closest hit of a world
+  /// ray within `maxDist` against the geometry the avatar collides with. Unlike
+  /// picking it follows the Collision rules: a Collision with enabled FALSE
+  /// removes its whole subtree (nested Collision nodes included); a Collision
+  /// with a proxy collides through the proxy only, never its children; a Switch
+  /// contributes only its chosen child; an LOD collides with its first (most
+  /// detailed) level. Billboards are treated as plain groups. When `groups` is
+  /// given it receives the enabled Collision nodes enclosing the hit, outermost
+  /// first, so the caller can fire their isActive/collideTime.
+  PickResult castCollidable(const Ray &worldRay, float maxDist,
+                            std::vector<X3DNode *> *groups = nullptr,
+                            std::size_t maxVisits = kMaxGraphWalkVisits) const {
+    PickResult best;
+    std::vector<X3DNode *> enclosing, bestGroups;
+    std::vector<const X3DNode *> path;
+    WalkBudget budget(maxVisits);
+    for (X3DNode *r : roots_)
+      collideWalk(r, Mat4::identity(), worldRay, maxDist, path, enclosing, budget,
+                  best, bestGroups);
+    best.budgetExceeded = budget.tripped;
+    if (groups) *groups = best.hit ? bestGroups : std::vector<X3DNode *>{};
+    return best;
+  }
+
+  /// Local-frame narrow phase for one geometry node, as picking uses it: the
+  /// entry parameter along `local` (which keeps the world ray's parameter when
+  /// the direction is transformed without renormalizing), or nullopt.
+  static std::optional<float> intersectGeometry(const X3DNode *geom, const Ray &local) {
+    bool gotHit = false;
+    NarrowHit h = narrowPhase(geom, local, gotHit);
+    if (!gotHit) return std::nullopt;
+    return h.t;
   }
 
 private:
@@ -428,11 +464,54 @@ private:
     return m;
   }
 
+  // §10.4.3/§23.4.3: picking follows the active transformation path (ADR-0034).
+  // Check live selection so Switch and camera-driven LOD changes do not require
+  // rebuilding the geometry-placement index.
+  static bool pathActive(const extract::PathKey &path, const SFVec3f &cameraPos,
+                         const SFVec3f &cameraUp) {
+    Mat4 world = Mat4::identity();
+    for (std::size_t i = 0; i + 1 < path.size(); ++i) {
+      const X3DNode *n = path[i];
+      if (TransformSystem::isTransform(n))
+        world = world * TransformSystem::localMatrix(n);
+      const std::string type = n->nodeTypeName();
+      if (type == "Switch" || type == "LOD") {
+        const auto kids = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+            *n, "children", {});
+        int selected = geombounds::getField<int>(*n, "whichChoice", -1);
+        if (type == "LOD") {
+          if (kids.empty()) return false;
+          const SFVec3f center = geombounds::getField<SFVec3f>(*n, "center", {0, 0, 0});
+          const SFVec3f eye = world.inverse().transformPoint(cameraPos);
+          const float dx = eye.x - center.x, dy = eye.y - center.y, dz = eye.z - center.z;
+          const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+          selected = lodSelectLevel(*n, distance);
+          selected = std::min(selected, static_cast<int>(kids.size()) - 1);
+        }
+        if (selected < 0 || selected >= static_cast<int>(kids.size()) ||
+            kids[selected].get() != path[i + 1]) return false;
+      }
+      if (type == "Billboard") {
+        const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
+        world = world * billboardLocalMatrix(world, cameraPos, cameraUp, axis);
+      }
+    }
+    return true;
+  }
+
   // Broad-phase (cached/live world AABB) + narrow-phase one placement; update
   // best-so-far with the same strict-< tie-break as the reflective walk.
   void evaluate(const Ray &worldRay, X3DNode *shape, const Mat4 &worldM,
                 const Aabb &worldAabb, const extract::PathKey &path,
+                const SFVec3f &cameraPos, const SFVec3f &cameraUp,
                 PickResult &best) const {
+    if (!pathActive(path, cameraPos, cameraUp)) return;
+    // Layer.pickable is inputOutput: inspect the retained path on every pick so
+    // toggling it takes effect without invalidating the geometry placement cache.
+    for (const X3DNode *n : path)
+      if (n->nodeTypeName() == "Layer" &&
+          !geombounds::getField<bool>(*n, "pickable", true))
+        return;
     if (!rayAabb(worldRay, worldAabb)) return;
     auto geom = geombounds::getNode(*shape, "geometry");
     if (!geom) return;
@@ -523,6 +602,80 @@ private:
     if (childIncomplete) incomplete = true; // truncated -> do NOT memoize n
     else visited.insert(n);                 // fully explored, target absent -> memoize
     return false;
+  }
+
+  static bool isLineOrPointGeometry(const std::string &t) {
+    return t == "IndexedLineSet" || t == "LineSet" || t == "PointSet" || t == "Polyline2D" ||
+           t == "Polypoint2D" || t == "Arc2D" || t == "Circle2D" || t == "NurbsCurve";
+  }
+
+  void collideWalk(const X3DNode *n, const Mat4 &worldM, const Ray &worldRay,
+                   float maxDist, std::vector<const X3DNode *> &path,
+                   std::vector<X3DNode *> &enclosing, WalkBudget &budget,
+                   PickResult &best, std::vector<X3DNode *> &bestGroups) const {
+    if (!budget.spend()) return;
+    if (path.size() >= kMaxNestingDepth) return;
+    for (const X3DNode *a : path)
+      if (a == n) return; // containment cycle
+    const std::string type = n->nodeTypeName();
+    const bool isCollision = type == "Collision";
+    if (isCollision && !geombounds::getField<bool>(*n, "enabled", true))
+      return; // §23.4.2: disables the whole subtree, nested Collision included.
+    path.push_back(n);
+    if (isCollision) enclosing.push_back(const_cast<X3DNode *>(n));
+    const Mat4 childM =
+        TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
+
+    if (geombounds::hasField(*n, "geometry")) {
+      auto geom = geombounds::getNode(*n, "geometry");
+      // §23.4.2: all geometry collides "except IndexedLineSet and PointSet";
+      // the other line/point geometries have no surface to enter either.
+      if (geom && !isLineOrPointGeometry(geom->nodeTypeName())) {
+        Mat4 inv = worldM.inverse();
+        Ray local{inv.transformPoint(worldRay.origin),
+                  inv.transformDirection(worldRay.direction)};
+        if (auto t = intersectGeometry(geom.get(), local); t && *t >= 0.0f) {
+          SFVec3f wp = worldM.transformPoint(local.pointAt(*t));
+          float dx = wp.x - worldRay.origin.x, dy = wp.y - worldRay.origin.y,
+                dz = wp.z - worldRay.origin.z;
+          float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+          if (d <= maxDist && (!best.hit || d < best.distance)) {
+            best.hit = true;
+            best.node = const_cast<X3DNode *>(n);
+            best.point = wp;
+            best.distance = d;
+            bestGroups = enclosing;
+          }
+        }
+      }
+    }
+
+    auto visit = [&](const X3DNode *c) {
+      collideWalk(c, childM, worldRay, maxDist, path, enclosing, budget, best, bestGroups);
+    };
+    if (isCollision) {
+      if (auto proxy = geombounds::getNode(*n, "proxy")) {
+        visit(proxy.get()); // the proxy stands in for the children entirely
+      } else {
+        for (const auto &c : geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+                 *n, "children", {}))
+          if (c) visit(c.get());
+      }
+    } else if (type == "Switch") {
+      const auto kids = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+          *n, "children", {});
+      const int which = geombounds::getField<int>(*n, "whichChoice", -1);
+      if (which >= 0 && which < static_cast<int>(kids.size()) && kids[which])
+        visit(kids[which].get());
+    } else if (type == "LOD") {
+      const auto kids = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+          *n, "children", {});
+      if (!kids.empty() && kids[0]) visit(kids[0].get());
+    } else {
+      forEachChild(n, visit);
+    }
+    if (isCollision) enclosing.pop_back();
+    path.pop_back();
   }
 
   template <class F>

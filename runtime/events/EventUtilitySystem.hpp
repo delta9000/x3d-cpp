@@ -41,9 +41,17 @@ public:
       ctx.postEvent(n, "triggerTrue", std::any(SFBool{true}));
     });
   }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::BooleanTrigger *>(node))
+      n->setOnSet_triggerTimeHandler({});
+  }
 };
 
-/// §30.4.6 IntegerTrigger: set_boolean=TRUE -> triggerValue=integerKey; FALSE ignored.
+/// §30.4.6 IntegerTrigger: set_boolean=TRUE -> triggerValue=integerKey; FALSE
+/// ignored. "Resetting the value of the integerKey field itself generates
+/// corresponding integerKey_changed and triggerValue_changed events" with that
+/// same value — integerKey_changed comes from the inputOutput fan-out, and a
+/// field-write listener adds triggerValue (TRIG-4), same value or not.
 class IntegerTriggerSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
@@ -53,6 +61,14 @@ public:
       if (!v) return; // honored only on TRUE
       ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
     });
+    ctx.addFieldWriteListener([&ctx, n](const FieldAddress &a) {
+      if (a.node == n && (a.field == "integerKey" || a.field == "set_integerKey"))
+        ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
+    });
+  }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::IntegerTrigger *>(node))
+      n->setOnSet_booleanHandler({});
   }
 };
 
@@ -65,6 +81,10 @@ public:
     n->setOnSet_booleanHandler([&ctx, n](const SFBool &) {
       ctx.postEvent(n, "triggerTime", std::any(SFTime{ctx.now()}));
     });
+  }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::TimeTrigger *>(node))
+      n->setOnSet_booleanHandler({});
   }
 };
 
@@ -81,6 +101,10 @@ public:
       ctx.postEvent(n, "inputNegate", std::any(SFBool{!v}));
     });
   }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::BooleanFilter *>(node))
+      n->setOnSet_booleanHandler({});
+  }
 };
 
 /// §30.4.3 BooleanToggle: set_boolean=TRUE flips toggle (emits toggle_changed via
@@ -95,6 +119,10 @@ public:
       ctx.postEvent(n, "toggle", std::any(SFBool{!n->getToggle()}));
     });
   }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node))
+      n->setOnSet_booleanHandler({});
+  }
 };
 
 /// §30.2.4 stepwise selection index: largest i with key[i] <= t (boundary-clamped),
@@ -104,7 +132,12 @@ inline std::size_t sequencerStepIndex(const MFFloat &key, float t) {
   const std::size_t n = key.size();
   if (n == 0) return 0;
   if (t <= key.front()) return 0;
-  if (t >= key.back()) return n - 1;
+  if (t >= key.back()) {
+    // §30.2.4: the first value at a repeated final key wins.
+    std::size_t i = n - 1;
+    while (i > 0 && key[i - 1] == key[i]) --i;
+    return i;
+  }
   std::size_t i = 0;
   for (std::size_t k = 0; k < n; ++k)
     if (key[k] <= t) i = k;
@@ -138,6 +171,15 @@ public:
     n->setOnPreviousHandler([&ctx, n, this](const SFBool &v) {
       if (v) step(ctx, n, -1);
     });
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    index_.erase(node);
+    if (auto *n = dynamic_cast<NodeT *>(node)) {
+      n->setOnSet_fractionHandler({});
+      n->setOnNextHandler({});
+      n->setOnPreviousHandler({});
+    }
   }
 
 private:

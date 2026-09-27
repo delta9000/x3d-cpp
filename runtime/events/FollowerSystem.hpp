@@ -6,6 +6,7 @@
 #include <any>
 #include <cmath>
 #include <memory>
+#include <numbers>
 #include <vector>
 namespace x3d::runtime {
 
@@ -69,6 +70,15 @@ public:
       }
       ep->active = false;
     });
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    auto *n = dynamic_cast<NodeT *>(node);
+    if (!n) return;
+    n->setOnSet_destinationHandler({});
+    n->setOnSet_valueHandler({});
+    entries_.erase(std::remove_if(entries_.begin(), entries_.end(),
+        [n](const auto &e) { return e->node == n; }), entries_.end());
   }
 
   void update(double now, X3DExecutionContext &ctx) override {
@@ -137,20 +147,21 @@ public:
   }
 };
 
-/// ChaserSystem<NodeT, ValueT> — §39.3.1 re-basing linear ramp (FIR chaser).
+/// ChaserSystem<NodeT, ValueT> — §39.3.1 finite impulse response chaser.
 ///
-/// On each set_destination event the chaser re-bases: the start is the current
-/// output at event time and the destination is the new value.  The output is
-/// O(t) = lerp(start, dest, clamp((now - startTime) / duration, 0, 1)).
+/// Each destination delta contributes an independent cosine-shaped duration-long tap.
 /// Exactly at t = startTime + duration the output equals destination and the
 /// transition ends (isActive → false).  duration≤0 → immediate snap.
 /// set_value jumps the output and stops any active transition.
 template <typename NodeT, typename ValueT>
 class ChaserSystem : public System {
+  using Arith = FollowerArith<ValueT>;
+  using Delta = typename Arith::Delta;
   struct Entry {
+    struct Tap { Delta delta; ValueT destination; double startTime; };
     NodeT *node;
-    ValueT start, destination;
-    double startTime = 0.0;
+    ValueT baseline, destination;
+    std::vector<Tap> taps;
     bool active = false, started = false;
     double lastTick = -1.0;
   };
@@ -162,10 +173,15 @@ public:
     if (!c) return;
     auto e = std::make_unique<Entry>();
     e->node = c;
-    e->start = c->getInitialValue();
+    e->baseline = c->getInitialValue();
     e->destination = c->getInitialDestination();
-    bool initiallyActive =
-        FollowerArith<ValueT>::dist(e->start, e->destination) > 0.0f;
+    bool initiallyActive = FollowerArith<ValueT>::dist(e->baseline, e->destination) > 0.0f;
+    if (initiallyActive) {
+      ValueT start = FollowerArith<ValueT>::reshapeLike(e->baseline, e->destination);
+      // Represent the initial change as a tap from initialValue to initialDestination.
+      Delta delta = Arith::delta(start, e->destination);
+      e->taps.push_back({delta, e->destination, 0.0});
+    }
     e->active = initiallyActive;
     // On the initial-active path mark started so a mid-transition set_destination
     // re-bases from the current output rather than from initialValue.
@@ -178,15 +194,13 @@ public:
       ctx.postEvent(c, "isActive", std::any(SFBool{true}));
     }
 
-    // set_destination: re-base start from current output, activate.
+    // Keep each event's delta; transitions inside duration add independently.
     c->setOnSet_destinationHandler([ep, c, &ctx](const ValueT &v) {
-      // Re-base from current output if we've already started producing values.
-      ValueT newStart = ep->started ? c->getValue_changed() : ep->start;
-      // Reconcile start shape to the new destination (MF broadcast fix).
-      ep->start = FollowerArith<ValueT>::reshapeLike(newStart, v);
+      ValueT previous = Arith::reshapeLike(ep->destination, v);
+      ValueT next = FollowerArith<ValueT>::reshapeLike(v, v);
+      Delta delta = Arith::delta(previous, next);
+      ep->taps.push_back({delta, next, (ep->lastTick < 0) ? 0.0 : ep->lastTick});
       ep->destination = v;
-      // Seed startTime from the last tick so f=0 on the NEXT update call.
-      ep->startTime = (ep->lastTick < 0) ? 0.0 : ep->lastTick;
       ep->started = true;
       if (!ep->active) {
         ep->active = true;
@@ -197,8 +211,9 @@ public:
 
     // set_value: jump output, clear transition.
     c->setOnSet_valueHandler([ep, c, &ctx](const ValueT &v) {
-      ep->start = v;
+      ep->baseline = v;
       ep->destination = v;
+      ep->taps.clear();
       c->emitValue_changed(v);
       ctx.postEvent(c, "value_changed", std::any(v));
       if (ep->active) {
@@ -210,20 +225,35 @@ public:
     });
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    auto *n = dynamic_cast<NodeT *>(node);
+    if (!n) return;
+    n->setOnSet_destinationHandler({});
+    n->setOnSet_valueHandler({});
+    entries_.erase(std::remove_if(entries_.begin(), entries_.end(),
+        [n](const auto &e) { return e->node == n; }), entries_.end());
+  }
+
   void update(double now, X3DExecutionContext &ctx) override {
     for (auto &e : entries_) {
       e->lastTick = now;
-      if (!e->active) continue;
       NodeT *c = e->node;
       double D = c->getDuration();
-      double f = (D <= 0.0) ? 1.0 : (now - e->startTime) / D;
-      if (f < 0.0) f = 0.0;
-      if (f > 1.0) f = 1.0;
-      ValueT out = FollowerArith<ValueT>::lerp(e->start, e->destination,
-                                               static_cast<float>(f));
+      ValueT out = e->baseline;
+      while (!e->taps.empty() && (D <= 0.0 || now >= e->taps.front().startTime + D)) {
+        e->baseline = e->taps.front().destination;
+        e->taps.erase(e->taps.begin());
+      }
+      if (e->taps.empty() && !e->active) continue;
+      out = e->baseline;
+      for (const auto &tap : e->taps) {
+        float x = D <= 0.0 ? 1.0f : static_cast<float>(std::clamp((now - tap.startTime) / D, 0.0, 1.0));
+        float response = (1.0f - std::cos(std::numbers::pi_v<float> * x)) * 0.5f;
+        out = Arith::applyTap(out, tap.delta, response);
+      }
       c->emitValue_changed(out);
       ctx.postEvent(c, "value_changed", std::any(out));
-      if (f >= 1.0) {
+      if (e->taps.empty() && e->active) {
         e->active = false;
         c->emitIsActive(SFBool{false});
         ctx.postEvent(c, "isActive", std::any(SFBool{false}));

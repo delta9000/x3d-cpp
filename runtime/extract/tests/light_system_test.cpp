@@ -169,3 +169,57 @@ TEST_CASE("light_system_test") {
 
   return;
 }
+
+TEST_CASE("point_light_radius_scales_with_parent_transform") {
+  auto light = createX3DNode("PointLight");
+  setF(light, "radius", std::any(3.0f));
+  auto transform = createX3DNode("Transform");
+  setF(transform, "scale", std::any(SFVec3f{2, 2, 2}));
+  addChild(transform, light);
+  Scene scene;
+  scene.addRootNode(transform);
+  extract::LightSystem system;
+  const auto lights = system.collect(scene);
+  REQUIRE(lights.size() == 1);
+  CHECK(lights[0].radius == doctest::Approx(6.0f));
+}
+
+TEST_CASE("spot_light_radius_scales_with_parent_transform") {
+  auto light = createX3DNode("SpotLight");
+  setF(light, "radius", std::any(3.0f));
+  auto transform = createX3DNode("Transform");
+  setF(transform, "scale", std::any(SFVec3f{2, 2, 2}));
+  addChild(transform, light);
+  Scene scene;
+  scene.addRootNode(transform);
+  extract::LightSystem system;
+  const auto lights = system.collect(scene);
+  REQUIRE(lights.size() == 1);
+  CHECK(lights[0].radius == doctest::Approx(6.0f));
+}
+
+TEST_CASE("light_under_inactive_switch_does_not_illuminate") {
+  auto light = createX3DNode("PointLight");
+  auto sw = createX3DNode("Switch"); // whichChoice defaults to -1
+  addChild(sw, light);
+  Scene scene;
+  scene.addRootNode(sw);
+  extract::LightSystem system;
+  CHECK(system.collect(scene).empty());
+}
+
+TEST_CASE("light_under_unselected_lod_level_does_not_illuminate") {
+  auto lod = createX3DNode("LOD");
+  addChild(lod, createX3DNode("PointLight"));
+  addChild(lod, createX3DNode("SpotLight"));
+  setF(lod, "range", std::any(std::vector<float>{10.0f}));
+  Scene scene;
+  scene.addRootNode(lod);
+  extract::LightSystem system;
+  const auto nearLights = system.collect(scene, SFVec3f{0, 0, 0});
+  const auto farLights = system.collect(scene, SFVec3f{0, 0, 20});
+  REQUIRE(nearLights.size() == 1);
+  REQUIRE(farLights.size() == 1);
+  CHECK(nearLights[0].type == extract::LightDesc::Type::Point);
+  CHECK(farLights[0].type == extract::LightDesc::Type::Spot);
+}

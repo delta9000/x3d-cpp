@@ -173,6 +173,11 @@ static void test_atlas_uv_seam() {
   FontMetrics atlas = [](const FontKey &) -> GlyphResult {
     GlyphMetrics gm;
     gm.advanceEm = 0.5f;
+    gm.bearingX = 0.1f;
+    gm.sizeX = 0.25f;
+    gm.sizeY = 0.4f;
+    gm.top = 0.6f;
+    gm.hasGlyphBox = true;
     gm.hasAtlasUv = true;
     gm.u0 = 0.1f; gm.v0 = 0.2f; gm.u1 = 0.3f; gm.v1 = 0.4f;
     return GlyphResult::makeReady(gm);
@@ -187,9 +192,66 @@ static void test_atlas_uv_seam() {
         "atlas: BL uv");
   check(feq(m.texcoords[2].x, 0.3f) && feq(m.texcoords[2].y, 0.4f),
         "atlas: TR uv");
-  // advance 0.5 => glyph spans X[0, 0.5].
-  check(feq(m.positions[0].x, 0.0f), "atlas: glyph left X");
-  check(feq(m.positions[1].x, 0.5f), "atlas: glyph right X");
+  // True box is offset inside the advance cell and shorter than its width.
+  check(feq(m.positions[0].x, 0.1f) && feq(m.positions[0].y, 0.2f),
+        "atlas: glyph box bottom-left");
+  check(feq(m.positions[2].x, 0.35f) && feq(m.positions[2].y, 0.6f),
+        "atlas: glyph box top-right");
+}
+
+static std::shared_ptr<X3DNode> makeVerticalText(
+    const std::vector<std::string>& strings, bool setLength = false,
+    float length = 0.0f) {
+  auto style = createX3DNode("FontStyle");
+  setF(style, "horizontal", std::any(false));
+  auto text = makeText(strings, style);
+  if (setLength) setF(text, "length", std::any(std::vector<float>{length}));
+  return text;
+}
+
+static void test_vertical_stub_legacy_cells() {
+  auto text = makeVerticalText({"ab"});
+  TextLayoutResult layout;
+  const MeshData m = buildTextMesh(*text, makeMonospaceStub(), &layout);
+  CHECK((m.positions.size() == 8));
+  const float x = layout.lineBaselineOrigins[0][0];
+  const float y = layout.lineBaselineOrigins[0][1];
+  // Original vertical formulas: X=baselineX-0.2..baselineX+0.8,
+  // Y=pen..pen-0.6 per glyph (topToBottom=true).
+  CHECK((feq(m.positions[0].x, x - 0.2f) && feq(m.positions[0].y, y - 0.6f)));
+  CHECK((feq(m.positions[2].x, x + 0.8f) && feq(m.positions[2].y, y)));
+  CHECK((feq(m.positions[4].x, x - 0.2f) && feq(m.positions[4].y, y - 1.2f)));
+  CHECK((feq(m.positions[6].x, x + 0.8f) && feq(m.positions[6].y, y - 0.6f)));
+}
+
+static void test_vertical_length_compresses_y() {
+  auto text = makeVerticalText({"ab"}, true, 0.6f);
+  TextLayoutResult layout;
+  const MeshData m = buildTextMesh(*text, makeMonospaceStub(), &layout);
+  CHECK((m.positions.size() == 8));
+  CHECK((feq(layout.lineBounds[0].height, 0.6f)));
+  CHECK((feq(m.positions[0].y, -0.3f) && feq(m.positions[2].y, 0.0f)));
+  CHECK((feq(m.positions[4].y, -0.6f) && feq(m.positions[6].y, -0.3f)));
+}
+
+static void test_vertical_real_glyph_box() {
+  auto text = makeVerticalText({"a"});
+  FontMetrics fm = [](const FontKey&) {
+    GlyphMetrics gm;
+    gm.advanceEm = 0.5f;
+    gm.bearingX = 0.1f;
+    gm.sizeX = 0.4f;
+    gm.sizeY = 0.3f;
+    gm.top = 0.6f;
+    gm.hasGlyphBox = true;
+    return GlyphResult::makeReady(gm);
+  };
+  TextLayoutResult layout;
+  const MeshData m = buildTextMesh(*text, fm, &layout);
+  const float x = layout.lineBaselineOrigins[0][0];
+  const float y = layout.lineBaselineOrigins[0][1];
+  CHECK((feq(m.positions[0].x, x + 0.1f) && feq(m.positions[0].y, y - 0.6f)));
+  CHECK((feq(m.positions[2].x, x + 0.5f) && feq(m.positions[2].y, y - 0.3f)));
 }
 
 // ===========================================================================
@@ -218,12 +280,51 @@ static void test_screenfontstyle_pointsize() {
   check(feq(fs.size, 12.0f), "ScreenFontStyle.pointSize honoured as size");
 }
 
+// ===========================================================================
+// TXT-5: FontStyle.family is a fallback list (§15.4.1): the first family the
+// backend supports wins, SERIF when none does; with no backend the first entry
+// is kept. buildTextMesh asks the backend for the resolved family.
+// ===========================================================================
+static void test_family_fallback() {
+  // A backend that only knows SANS and SERIF, recording the families asked for.
+  std::vector<std::string> asked;
+  FontMetrics fm = [&asked](const FontKey &k) {
+    asked.push_back(k.family);
+    GlyphResult g;
+    if (k.family == "SANS" || k.family == "SERIF") {
+      g.status = GlyphStatus::Ready;
+      g.metrics.advanceEm = 0.5f;
+    }
+    return g;
+  };
+  check(resolveFontFamily({"Nonexistent", "SANS", "SERIF"}, "PLAIN", fm) == "SANS",
+        "family: skips an unsupported family for the next supported one");
+  check(resolveFontFamily({"Nonexistent", "AlsoMissing"}, "PLAIN", fm) == "SERIF",
+        "family: falls back to SERIF when no listed family is supported");
+  check(resolveFontFamily({}, "PLAIN", fm) == "SERIF", "family: empty list -> SERIF");
+  check(resolveFontFamily({"Nonexistent", "SANS"}, "PLAIN", FontMetrics{}) == "Nonexistent",
+        "family: without a backend the first listed family is kept");
+
+  auto style = createX3DNode("FontStyle");
+  setF(style, "family", std::any(std::vector<std::string>{"Nonexistent", "SANS"}));
+  auto text = makeText({"ab"}, style);
+  asked.clear();
+  MeshData m = buildTextMesh(*text, fm);
+  check(!asked.empty() && asked.back() == "SANS",
+        "family: glyphs are requested in the resolved family");
+  check(m.positions.size() == 8, "family: both glyphs render (2 quads)");
+}
+
 TEST_CASE("text_extract_test") {
   test_single_line_quads();
   test_set_outputs();
   test_two_lines_spacing();
   test_scene_extractor_text();
   test_atlas_uv_seam();
+  test_vertical_stub_legacy_cells();
+  test_vertical_length_compresses_y();
+  test_vertical_real_glyph_box();
+  test_family_fallback();
   test_failed_glyph_skipped();
   test_screenfontstyle_pointsize();
   return;

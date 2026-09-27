@@ -42,7 +42,7 @@
 //         * entryMatrix_   : each interior path-prefix node -> its accumulated
 //                            entry worldM (the matrix in effect ABOVE that node).
 //
-//   (d) camera()/lights()/background() read-outs. camera() surfaces an
+//   (d) camera()/lights()/background()/fog() read-outs. camera() surfaces an
 //       OrthoViewpoint with ortho=true (its MFFloat fieldOfView l/b/r/t carried
 //       through, PoC-out-of-scope but contract-stable).
 //
@@ -78,6 +78,7 @@
 
 #include <any>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <map>
@@ -181,7 +182,7 @@ public:
     // M25-5: collect all active lights once per snapshot. emit() uses this to
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
-    lights_ = ls.collect(scene_, walkBudget_);
+    lights_ = ls.collect(scene_, walkBudget_, ctx_.cameraWorldPosition());
 
     RenderDelta delta;
     for (const auto &root : scene_.rootNodes) {
@@ -189,10 +190,14 @@ public:
       PathKey path;
       walk(root.get(), Mat4::identity(), path, delta);
     }
+    liveIds_.clear();
+    liveIds_.insert(delta.added.begin(), delta.added.end());
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
+    delta.fogChanged = true;
     delta.lightsChanged = true;
     snapped_ = true;
+    topologyRevision_ = ctx_.sceneTopologyRevision();
     lastDeltaGen_ = ctx_.tickGeneration(); // seed the one-delta-per-tick guard.
     return delta;
   }
@@ -247,6 +252,14 @@ public:
   RenderDelta delta() {
     // No baseline yet — a full snapshot IS the baseline (see contract above).
     if (!snapped_) return fullSnapshot();
+
+    if (topologyRevision_ != ctx_.sceneTopologyRevision()) {
+      const auto oldIds = liveIds_;
+      RenderDelta changed = fullSnapshot();
+      changed.removed.insert(changed.removed.end(), oldIds.begin(), oldIds.end());
+      std::sort(changed.removed.begin(), changed.removed.end());
+      return changed;
+    }
 
     const std::uint64_t gen = ctx_.tickGeneration();
     if (gen == lastDeltaGen_) return {}; // no advance since the last delta().
@@ -326,7 +339,10 @@ public:
     // recomputes them every frame regardless).
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
+    delta.fogChanged = true;
     delta.lightsChanged = true;
+    for (RenderItemId id : delta.removed) liveIds_.erase(id);
+    liveIds_.insert(delta.added.begin(), delta.added.end());
     return delta;
   }
 
@@ -402,7 +418,7 @@ public:
   // lightsOf() indices are positions in); this fresh collect is for standalone use.
   std::vector<LightDesc> lights() const {
     LightSystem ls;
-    return ls.collect(scene_);
+    return ls.collect(scene_, ctx_.cameraWorldPosition());
   }
 
   // background — the bound Background's sky/ground gradient, read reflection-
@@ -416,9 +432,57 @@ public:
           geombounds::getField<std::vector<SFColor>>(*b, "groundColor", {});
       bg.groundAngle =
           geombounds::getField<std::vector<float>>(*b, "groundAngle", {});
+      bg.transparency = geombounds::getField<float>(*b, "transparency", 0.0f);
+      // Panorama faces (§24.4.2 *Url lists, §24.4.5 *Texture nodes).
+      const bool textured = b->nodeTypeName() == "TextureBackground";
+      TextureRef *faces[] = {&bg.front, &bg.back, &bg.left, &bg.right, &bg.top, &bg.bottom};
+      const char *names[] = {"front", "back", "left", "right", "top", "bottom"};
+      for (int i = 0; i < 6; ++i) {
+        if (textured) {
+          *faces[i] = matsys::refOf(geombounds::getNode(*b, (std::string(names[i]) + "Texture").c_str()),
+                            TextureRef::Slot::BaseColor);
+        } else {
+          faces[i]->source = TextureRef::Source::Url;
+          faces[i]->url = geombounds::getField<MFString>(*b, (std::string(names[i]) + "Url").c_str(), {});
+        }
+      }
     }
     bg.backgroundChanged = true;
     return bg;
+  }
+
+  // fog — the bound Fog's colour/type/range (§24.4.2), read reflection-generic.
+  // visibilityRange is spec'd in the Fog node's LOCAL frame; it is surfaced here
+  // scaled by the Fog's world scale (uniform exact; non-uniform -> mean column
+  // norm, a documented approximation). fogChanged is surfaced for a caching
+  // consumer. visibilityRange 0 disables fog (consumer-side).
+  FogDesc fog() const {
+    FogDesc f;
+    if (const X3DNode *n = ctx_.boundFog()) {
+      f.color = geombounds::getField<SFColor>(*n, "color", SFColor{1.0f, 1.0f, 1.0f});
+      // fogType is an SFEnum; read its token to stay decoupled from the
+      // generated enum-class type (enumToken in FieldRead.hpp).
+      const std::string tok = enumToken(*n, "fogType", "LINEAR");
+      f.fogType = (tok == "EXPONENTIAL") ? FogDesc::Type::Exponential
+                                         : FogDesc::Type::Linear;
+      f.visibilityRange =
+          geombounds::getField<float>(*n, "visibilityRange", 0.0f);
+      f.visibilityRange *= fogWorldScale(ctx_.worldTransformAny(n));
+    }
+    f.fogChanged = true;
+    return f;
+  }
+
+  // Local->world scale factor of a transform matrix: the mean of the upper-3x3
+  // column norms. Equals the uniform scale exactly; for a non-uniform scale it
+  // is the documented isotropic approximation (which axis is "the" scale is not
+  // spec'd — §24.4.2 says only "in the coordinate space of the Fog node").
+  static float fogWorldScale(const Mat4 &m) {
+    auto norm = [&](int c) {
+      const float x = m.m[c * 4 + 0], y = m.m[c * 4 + 1], z = m.m[c * 4 + 2];
+      return std::sqrt(x * x + y * y + z * z);
+    };
+    return (norm(0) + norm(1) + norm(2)) / 3.0f;
   }
 
   // sceneWorldBounds — union over every emitted item of (its LOCAL mesh AABB
@@ -678,27 +742,24 @@ private:
 
     // VISIBILITY special-cases BY nodeTypeName, BEFORE the generic child loop.
     const std::string t = n->nodeTypeName();
-    if (t == "Switch") {
-      // whichChoice (default -1): <0 or out-of-range => draw nothing; else recurse
-      // ONLY the selected child. NEVER the blind child loop (would draw all/first).
-      const int which = geombounds::getField<int>(*n, "whichChoice", -1);
-      const auto &kids = childrenOf(*n);
-      if (which >= 0 && which < static_cast<int>(kids.size()) && kids[which])
-        walk(kids[which].get(), here, path, delta);
+    if (t == "Switch" || t == "LOD") {
+      if (auto child = traversedChild(*n, here, ctx_.cameraWorldPosition()))
+        walk(child.get(), here, path, delta);
       path.pop_back();
       return;
     }
-    if (t == "LOD") {
-      const auto &kids = childrenOf(*n);
-      if (!kids.empty()) {
-        const SFVec3f center = geombounds::getField<SFVec3f>(*n, "center", {0, 0, 0});
-        // §23.4.3: distance measured in the LOD's LOCAL frame (here includes scale).
-        const SFVec3f eyeLocal = here.inverse().transformPoint(ctx_.cameraWorldPosition());
-        const float d = viewdep::len(viewdep::sub(eyeLocal, center));
-        int lvl = lodSelectLevel(*n, d);
-        if (lvl >= static_cast<int>(kids.size())) lvl = static_cast<int>(kids.size()) - 1;
-        if (kids[lvl]) walk(kids[lvl].get(), here, path, delta);
-      }
+
+    if (t == "LayerSet") {
+      const auto layers = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+          *n, "layers", {});
+      const auto order = geombounds::getField<std::vector<int>>(*n, "order", {0});
+      // ISO/IEC 19775-1:2023 §35.4.2: layer ordinals start at 0 (the first
+      // entry in `layers`), and entries absent from `order` are not rendered.
+      // Out-of-range ordinals are ignored; repetitions intentionally render again.
+      for (int ordinal : order)
+        if (ordinal >= 0 && static_cast<std::size_t>(ordinal) < layers.size() &&
+            layers[static_cast<std::size_t>(ordinal)])
+          walk(layers[static_cast<std::size_t>(ordinal)].get(), here, path, delta);
       path.pop_back();
       return;
     }
@@ -718,17 +779,6 @@ private:
       walk(c.get(), here, path, delta);
     });
     path.pop_back();
-  }
-
-  // The `children` MFNode slot of a grouping node (empty if absent). Borrowed:
-  // valid while `n` lives and its children are not rewritten.
-  static const std::vector<std::shared_ptr<X3DNode>> &childrenOf(const X3DNode &n) {
-    static const std::vector<std::shared_ptr<X3DNode>> kNone;
-    for (const auto &f : n.fields())
-      if (f.x3dName == "children" && f.type == X3DFieldType::MFNode)
-        if (const auto *c = fieldPtr<std::vector<std::shared_ptr<X3DNode>>>(n, f))
-          return *c;
-    return kNone;
   }
 
   // Intern this PATH into a dense RenderItemId; store the per-path record and
@@ -1065,6 +1115,7 @@ private:
   TextureResolver textureResolver_;
 
   std::vector<RenderItem> items_; // dense, indexed by RenderItemId.
+  std::unordered_set<RenderItemId> liveIds_;
   std::unordered_map<PathKey, RenderItemId, PathKeyHash, PathKeyEqual> index_;
 
   // M25-5: world-resolved active lights for the current snapshot. Populated
@@ -1097,6 +1148,7 @@ private:
   // Generation, not clock: ctx_.now() may legitimately repeat (paused /
   // fixed-timestep / replay), tickGeneration() cannot.
   bool snapped_ = false;
+  std::uint64_t topologyRevision_ = 0;
   std::uint64_t lastDeltaGen_ = 0;
 };
 

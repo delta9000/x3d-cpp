@@ -59,7 +59,31 @@ struct EyeLight {
   float cutOffAngle = 0.7854f;
 };
 
+// The bound Fog reduced to what the fragment shaders consume (§24.4.2). The
+// viewer distance passed to applyFog is the eye-space length of the fragment
+// position; `visibilityRange` is already in world units (the extractor scaled
+// the node-local field by the Fog's world scale). visibilityRange <= 0 disables
+// fog (no blending).
+struct FogParams {
+  glsl::vec3 color{1, 1, 1};
+  int type = 0; // 0 = LINEAR, 1 = EXPONENTIAL.
+  float visibilityRange = 0.0f;
+};
+
 namespace detail {
+// §17 Table 17.5 fogInterpolant(d) then applyFog. d = eye-space distance to the
+// viewer, V = visibilityRange. LINEAR: f = (V-d)/V for d<V else 0. EXPONENTIAL:
+// f = exp(-d/(V-d)) for d<V else 0. result = f*color + (1-f)*fogColor. A
+// non-positive V disables fog entirely (returns `color` unchanged).
+inline glsl::vec3 applyFog(const glsl::vec3 &color, float d,
+                           const FogParams &fog) {
+  const float V = fog.visibilityRange;
+  if (V <= 0.0f) return color; // fog disabled.
+  float f = 0.0f;              // d >= V => fully fogged.
+  if (d < V)
+    f = (fog.type == 1) ? std::exp(-d / (V - d)) : (V - d) / V;
+  return color * f + fog.color * (1.0f - f);
+}
 // Resolve a light at a fragment: returns false when the light does not reach it
 // (beyond `radius`, or outside the spot `cutOffAngle`). On success sets `L` (unit
 // vector from the fragment toward the light) and `atten` (the scalar multiplier
@@ -101,19 +125,43 @@ struct MaterialTextures {
   Texture specular;  // Specular — sRGB.
   Texture mr;        // MetallicRoughness — G=roughness, B=metallic (linear).
   Texture occlusion; // Occlusion — R channel (linear); AO source (§12.4.6).
-  // §18.4.8 TextureCoordinateGenerator(Sphere): when set, UVs are generated from
-  // the camera-space normal rather than the authored texcoords (sphere/reflection
-  // map). Applies to the textured-surface coordinate set (base/emissive/specular).
-  bool sphereGen = false;
+  // §18.4.8 TextureCoordinateGenerator: when set, UVs are generated per fragment
+  // from eye-space state rather than the authored texcoords. Applies to the
+  // textured-surface coordinate set (base/emissive/specular). TXF-2 covers the
+  // view-dependent modes: SPHERE / CAMERASPACENORMAL / CAMERASPACEPOSITION /
+  // CAMERASPACEREFLECTIONVECTOR.
+  bool hasTexCoordGen = false;
+  ex::TexCoordGenMode texCoordGenMode = ex::TexCoordGenMode::Sphere;
 };
 
 namespace detail {
-// Sphere-map UV from the (front-facing-corrected, normalized) camera-space
-// normal: u = Nx/2 + 0.5, v = Ny/2 + 0.5 (§18.4.8 SPHERE).
-inline glsl::vec2 sphereGenUv(const glsl::vec3 &normalEye, bool frontFacing) {
+// §18.4.8 TextureCoordinateGenerator UVs from eye-space state. `normalEye` is the
+// front-facing-corrected, normalized camera-space normal; `posEye` the camera-
+// space position (eye at the origin, so normalize(posEye) = eye→fragment).
+//   SPHERE                      : u = Nx/2+0.5, v = Ny/2+0.5.
+//   CAMERASPACENORMAL           : (Nx, Ny).
+//   CAMERASPACEPOSITION         : (Px, Py).
+//   CAMERASPACEREFLECTIONVECTOR : R = reflect(−V, N) = 2·dot(V,N)·N − V → (Rx, Ry).
+inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode, const glsl::vec3 &posEye,
+                                const glsl::vec3 &normalEye, bool frontFacing) {
+  using Mode = ex::TexCoordGenMode;
   glsl::vec3 n = glsl::normalize(normalEye);
   if (!frontFacing) n = -n;
-  return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f};
+  switch (mode) {
+    case Mode::Sphere:
+      return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f};
+    case Mode::CameraSpaceNormal:
+      return glsl::vec2{n.x, n.y};
+    case Mode::CameraSpacePosition:
+      return glsl::vec2{posEye.x, posEye.y};
+    case Mode::CameraSpaceReflectionVector: {
+      const glsl::vec3 V = glsl::normalize(posEye);
+      const glsl::vec3 R = glsl::reflect(-V, n);
+      return glsl::vec2{R.x, R.y};
+    }
+    default:
+      return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f}; // SPHERE default.
+  }
 }
 } // namespace detail
 
@@ -136,8 +184,8 @@ inline MaterialTextures buildTextures(const ex::MaterialDesc &m, bool linearWork
   const bool colour = linearWorkflow;
   if (const auto *r = findSlot(m, {Slot::BaseColor, Slot::Diffuse})) {
     tx.base = Texture::fromRef(*r, /*srgb=*/colour);
-    tx.sphereGen =
-        r->hasTexCoordGen && r->texCoordGen.mode == ex::TexCoordGenMode::Sphere;
+    tx.hasTexCoordGen = r->hasTexCoordGen;
+    tx.texCoordGenMode = r->texCoordGen.mode;
   }
   if (const auto *r = findSlot(m, {Slot::Normal}))
     tx.normal = Texture::fromRef(*r, /*srgb=*/false);
@@ -198,11 +246,14 @@ inline glsl::vec3 F_Schlick(float VdotH, glsl::vec3 F0) {
 // alpha = 1 - transparency carried on baseColor.a. Used for UnlitMaterial AND
 // the lines/points/normal-less paths (caller forces it).
 // ---------------------------------------------------------------------------
-inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors) {
+inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors,
+                                      const FogParams &fog = {}) {
   const glsl::vec4 baseColor = glsl::vec4(m.toRGBA());
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
     glsl::vec3 rgb = hasColors ? f.color.xyz() : baseColor.xyz();
     float a = hasColors ? f.color.w : baseColor.w;
+    // §17: fog is the final step, applied to unlit output too.
+    rgb = detail::applyFog(rgb, glsl::length(f.posEye), fog);
     out = glsl::vec4(rgb, a);
     return true;
   };
@@ -214,7 +265,8 @@ inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors)
 // ---------------------------------------------------------------------------
 inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
                                       std::vector<EyeLight> lights,
-                                      bool hasColors) {
+                                      bool hasColors,
+                                      const FogParams &fog = {}) {
   const glsl::vec4 uDiffuse = glsl::vec4(m.toRGBA());
   const glsl::vec3 uEmissive = glsl::vec3(m.emissive);
   const float ai = m.phong.ambientIntensity;
@@ -230,7 +282,10 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
 
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
     const glsl::vec2 uv =
-        tx.sphereGen ? detail::sphereGenUv(f.normalEye, f.frontFacing) : f.texcoord;
+        tx.hasTexCoordGen
+            ? detail::texCoordGenUv(tx.texCoordGenMode, f.posEye, f.normalEye,
+                                    f.frontFacing)
+            : f.texcoord;
     glsl::vec3 base = hasColors ? f.color.xyz() : uDiffuse.xyz();
     float alpha = uDiffuse.w;
     if (tx.base.valid()) {
@@ -269,6 +324,8 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
         lit = lit + specCol * Lt.color * (std::pow(ndh, expo) * atten);
       }
     }
+    // §17: fog is the final step, in the shader's output (display) space.
+    lit = detail::applyFog(lit, glsl::length(f.posEye), fog);
     out = glsl::vec4(lit, alpha); // display space: no encode (ADR-0027).
     return true;
   };
@@ -280,7 +337,8 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
 // map, sRGB output.
 // ---------------------------------------------------------------------------
 inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
-                                    std::vector<EyeLight> lights, bool hasColors) {
+                                    std::vector<EyeLight> lights, bool hasColors,
+                                    const FogParams &fog = {}) {
   const glsl::vec4 uBaseColor =
       glsl::vec4(m.physical.baseColor.r, m.physical.baseColor.g,
                  m.physical.baseColor.b, 1.0f - m.transparency);
@@ -294,11 +352,14 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
   const MaterialTextures tx = buildTextures(m, /*linearWorkflow=*/true);
 
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
-    // Sphere-map UV (reflection-style) for the base colour when the geometry
-    // bound a TextureCoordinateGenerator(Sphere). ORM/occlusion stay on the
-    // authored coords (they are packed material maps, not a reflection set).
+    // §18.4.8 generated UV for the base colour when the geometry bound a
+    // TextureCoordinateGenerator. ORM/occlusion stay on the authored coords (they
+    // are packed material maps, not a reflection set).
     const glsl::vec2 uv =
-        tx.sphereGen ? detail::sphereGenUv(f.normalEye, f.frontFacing) : f.texcoord;
+        tx.hasTexCoordGen
+            ? detail::texCoordGenUv(tx.texCoordGenMode, f.posEye, f.normalEye,
+                                    f.frontFacing)
+            : f.texcoord;
     glsl::vec4 baseCol = uBaseColor;
     if (hasColors) { baseCol.x = f.color.x; baseCol.y = f.color.y; baseCol.z = f.color.z; }
     if (tx.base.valid()) baseCol = baseCol * tx.base.sample(uv);
@@ -358,6 +419,9 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
     }
     color = color + 0.03f * diffColor * ao; // small ambient term (pbr.frag).
     color = glsl::linearToSRGB(color);
+    // §17: fog is the final step, in the shader's output (display) space,
+    // matching lit.frag/unlit.frag.
+    color = detail::applyFog(color, glsl::length(f.posEye), fog);
     out = glsl::vec4(color, alpha);
     return true;
   };
@@ -366,12 +430,13 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
 // One material model -> its fragment shader (no two-sided wrapping).
 inline FragmentShader makeModelShader(const ex::MaterialDesc &m,
                                       const std::vector<EyeLight> &lights,
-                                      bool hasColors, bool forceUnlit) {
+                                      bool hasColors, bool forceUnlit,
+                                      const FogParams &fog = {}) {
   if (forceUnlit || m.model == ex::MaterialModel::Unlit)
-    return makeUnlitShader(m, hasColors);
+    return makeUnlitShader(m, hasColors, fog);
   if (m.model == ex::MaterialModel::Physical)
-    return makePbrShader(m, lights, hasColors);
-  return makePhongShader(m, lights, hasColors);
+    return makePbrShader(m, lights, hasColors, fog);
+  return makePhongShader(m, lights, hasColors, fog);
 }
 
 // ---------------------------------------------------------------------------
@@ -386,11 +451,12 @@ inline FragmentShader makeModelShader(const ex::MaterialDesc &m,
 // ---------------------------------------------------------------------------
 inline FragmentShader makeMaterialShader(const ex::MaterialDesc &m,
                                          const std::vector<EyeLight> &lights,
-                                         bool hasColors, bool forceUnlit) {
-  FragmentShader front = makeModelShader(m, lights, hasColors, forceUnlit);
+                                         bool hasColors, bool forceUnlit,
+                                         const FogParams &fog = {}) {
+  FragmentShader front = makeModelShader(m, lights, hasColors, forceUnlit, fog);
   if (m.backMaterial && m.backMaterialConstraintMet) {
     FragmentShader back =
-        makeModelShader(*m.backMaterial, lights, hasColors, forceUnlit);
+        makeModelShader(*m.backMaterial, lights, hasColors, forceUnlit, fog);
     return [front, back](const FragmentInput &f, glsl::vec4 &out) -> bool {
       return f.frontFacing ? front(f, out) : back(f, out);
     };

@@ -23,6 +23,7 @@
 #include "x3d/nodes/StringSensor.hpp"
 
 #include <any>
+#include <algorithm>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -34,9 +35,28 @@ using namespace x3d::core;
 class KeyDeviceSensorSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
-    (void)ctx;
     if (auto *k = dynamic_cast<x3d::nodes::KeySensor *>(node)) keySensors_.push_back(k);
     else if (auto *s = dynamic_cast<x3d::nodes::StringSensor *>(node)) stringSensors_.push_back(s);
+    else return;
+    // §21.2: "Only one key device sensor may be active at a time"; when one is
+    // enabled, "any other key device sensor which may be active will be sent
+    // an enabled event with value FALSE" (KDS-6).
+    if (!focusListener_) {
+      focusListener_ = true;
+      ctx.addFieldWriteListener([this, &ctx](const FieldAddress &a) {
+        if (a.field != "enabled" && a.field != "set_enabled") return;
+        if (!isKeyDevice(a.node) || !enabledOf(a.node)) return;
+        for (X3DNode *other : devices())
+          if (other != a.node && enabledOf(other))
+            ctx.postEvent(other, "enabled", std::any(SFBool{false}));
+      });
+    }
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    keySensors_.erase(std::remove(keySensors_.begin(), keySensors_.end(), node), keySensors_.end());
+    stringSensors_.erase(std::remove(stringSensors_.begin(), stringSensors_.end(), node), stringSensors_.end());
+    strings_.erase(dynamic_cast<x3d::nodes::StringSensor *>(node));
   }
 
   void update(double now, X3DExecutionContext &ctx) override {
@@ -51,6 +71,22 @@ public:
   }
 
 private:
+  bool focusListener_ = false;
+  std::vector<X3DNode *> devices() const {
+    std::vector<X3DNode *> all(keySensors_.begin(), keySensors_.end());
+    all.insert(all.end(), stringSensors_.begin(), stringSensors_.end());
+    return all;
+  }
+  bool isKeyDevice(const X3DNode *n) const {
+    for (X3DNode *d : devices()) if (d == n) return true;
+    return false;
+  }
+  static bool enabledOf(const X3DNode *n) {
+    if (auto *k = dynamic_cast<const x3d::nodes::KeySensor *>(n)) return k->getEnabled();
+    if (auto *s = dynamic_cast<const x3d::nodes::StringSensor *>(n)) return s->getEnabled();
+    return false;
+  }
+
   static void driveKeySensor(x3d::nodes::KeySensor *k,
                              const std::vector<KeyState::KeyEvent> &events,
                              X3DExecutionContext &ctx) {
@@ -101,7 +137,12 @@ private:
       }
       if (e.deletion) {
         if (s->getDeletionAllowed() && !st.text.empty()) {
-          st.text.pop_back();
+          // §21.4.2 deletes one UTF-8 character, not one byte.
+          while (!st.text.empty()) {
+            const auto byte = static_cast<unsigned char>(st.text.back());
+            st.text.pop_back();
+            if ((byte & 0xC0) != 0x80) break;
+          }
           textChanged = true;
         }
         continue; // deletionAllowed=FALSE -> ignored
@@ -114,7 +155,11 @@ private:
       st.text += e.character;
       textChanged = true;
     }
-    if (finalText) ctx.postEvent(s, "finalText", std::any(SFString{*finalText}));
+    if (finalText) {
+      ctx.postEvent(s, "finalText", std::any(SFString{*finalText}));
+      // §21.4.2 resets the stored output field without an enteredText event.
+      s->emitEnteredText(SFString{});
+    }
     if (isActive) ctx.postEvent(s, "isActive", std::any(SFBool{*isActive}));
     if (textChanged) ctx.postEvent(s, "enteredText", std::any(SFString{st.text}));
   }

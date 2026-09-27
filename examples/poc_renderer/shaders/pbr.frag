@@ -72,6 +72,12 @@ uniform vec3 uLightDirEye[kMaxLights]; // direction of TRAVEL, eye space.
 uniform vec3 uLightColor[kMaxLights];  // rgb * intensity.
 uniform float uLightAmbient[kMaxLights]; // §17.2.2.4 per-light ambientIntensity.
 
+// ---- Fog (§24.4.2 / §17 Table 17.5) -----------------------------------------
+// visibilityRange is already world-scaled by the extractor; 0 disables fog.
+uniform vec3  uFogColor;
+uniform int   uFogType;            // 0 = LINEAR, 1 = EXPONENTIAL.
+uniform float uFogVisibilityRange;
+
 // ---- GGX BRDF helpers -------------------------------------------------------
 
 // GGX normal distribution function (Trowbridge-Reitz).
@@ -100,6 +106,18 @@ vec3 linearToSRGB(vec3 lin) {
     vec3 lower   = lin * 12.92;
     vec3 upper   = pow(clamp(lin, 0.0, 1.0), vec3(1.0 / 2.4)) * 1.055 - 0.055;
     return mix(upper, lower, cutoff);
+}
+
+// §17 fog: fogInterpolant(d) then blend with the fog colour. d = eye-space
+// distance to the viewer, V = visibilityRange. LINEAR f = (V-d)/V (d<V else 0);
+// EXPONENTIAL f = exp(-d/(V-d)) (d<V else 0). result = f*color + (1-f)*fogColor.
+vec3 applyFog(vec3 color, float d) {
+    float V = uFogVisibilityRange;
+    if (V <= 0.0) return color;       // fog disabled.
+    float f = 0.0;                    // d >= V => fully fogged.
+    if (d < V)
+        f = (uFogType == 1) ? exp(-d / (V - d)) : (V - d) / V;
+    return color * f + uFogColor * (1.0 - f);
 }
 
 void main() {
@@ -215,6 +233,9 @@ void main() {
 
     // ---- sRGB output --------------------------------------------------------
     color = linearToSRGB(color);
+
+    // §17: fog is the final step, applied to the output (display) colour.
+    color = applyFog(color, length(vPosEye));
 
     FragColor = vec4(color, alpha);
 }

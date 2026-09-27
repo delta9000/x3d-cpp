@@ -1,13 +1,15 @@
 // TextureTransform2D.hpp — pure (s,t) TextureTransform math, §18.4.10.
 //
 // Normative reference: ISO/IEC 19775-1:2023 §18.4.10 TextureTransform
-//   Tc' = −C × S × R × C × T × Tc
-// Expanded scalar application order (per spec):
+//   Tc' = C × S × R × C⁻¹ × T × Tc
+// (C = translate-to-center, C⁻¹ its inverse.) Applied right-to-left, the scalar
+// order is the spec's "(in order)" list — translation, rotation, scaling — with
+// R and S both about the pivot:
 //   1. translate  (apply translation field)
-//   2. pivot to center
-//   3. scale (non-uniform)
-//   4. rotate CCW by rotation (radians)
-//   5. pivot back from center
+//   2. pivot to center            (C⁻¹, −center)
+//   3. rotate CCW by rotation (radians)   (R)
+//   4. scale (non-uniform)                (S)
+//   5. pivot back from center      (C, +center)
 //
 // This header is PURE:
 //   - no X3D node types, no generated bindings, no scene-graph includes.
@@ -48,13 +50,19 @@ struct TextureTransform2DParams {
 // ---------------------------------------------------------------------------
 // applyTextureTransform — apply one X3D TextureTransform to a single (s,t) pair.
 //
-// Implements §18.4.10 normative scalar expansion verbatim:
-//   Step 1: apply translation
-//   Step 2: shift to center pivot
-//   Step 3: non-uniform scale
-//   Step 4: 2D rotation CCW about the pivot (positive rotation → CCW in UV space
-//           → texture appears to rotate CW on geometry surface)
-//   Step 5: shift back from center pivot
+// Implements §18.4.10's normative matrix  Tc' = C · S · R · C⁻¹ · T · Tc, whose
+// right-to-left application order is exactly the spec's "(in order)" list —
+// translation, then rotation, then scaling — with rotation and scaling both
+// about `center` (C = translate-to-center, C⁻¹ = translate-from-center):
+//   Step 1: apply translation                      (T)
+//   Step 2: translate the pivot to the origin      (C⁻¹, −center)
+//   Step 3: 2D rotation CCW about the pivot        (R)
+//   Step 4: non-uniform scale about the pivot      (S)
+//   Step 5: translate the pivot back               (C, +center)
+//
+// §18.4.10's prose "rotation ... after the scaling operation has been applied"
+// contradicts this order; the numbered list + the normative matrix (rotate
+// BEFORE scale) are followed here — see finding TXF-1.
 //
 // Returns: transformed (s', t') as std::array<float,2>.
 //
@@ -72,26 +80,27 @@ inline std::array<float, 2> applyTextureTransform(
             (p.matrix[3] * s + p.matrix[4] * t + p.matrix[5]) * invW};
     }
 
-    // Step 1: apply translation
+    // Step 1: apply translation.
     float s1 = s + p.translationS;
     float t1 = t + p.translationT;
 
-    // Step 2: shift to center pivot
+    // Step 2: translate the pivot to the origin (subtract center).
     float ds = s1 - p.centerS;
     float dt = t1 - p.centerT;
 
-    // Step 3: non-uniform scale
-    float ds2 = ds * p.scaleS;
-    float dt2 = dt * p.scaleT;
+    // Step 3: 2D rotation CCW about the pivot (positive rotation → CCW in UV
+    // space → texture appears to rotate CW on the geometry surface).
+    const float cs = std::cos(p.rotation);
+    const float ss = std::sin(p.rotation);
+    const float ds2 = ds * cs - dt * ss;
+    const float dt2 = ds * ss + dt * cs;
 
-    // Step 4: 2D rotation (CCW for positive angle per §18.4.10)
-    float cs = std::cos(p.rotation);
-    float ss = std::sin(p.rotation);
-    float ds3 = ds2 * cs - dt2 * ss;
-    float dt3 = ds2 * ss + dt2 * cs;
+    // Step 4: non-uniform scale about the pivot.
+    const float ds3 = ds2 * p.scaleS;
+    const float dt3 = dt2 * p.scaleT;
 
-    // Step 5: shift back from center pivot
-    return { ds3 + p.centerS, dt3 + p.centerT };
+    // Step 5: translate the pivot back (add center).
+    return {ds3 + p.centerS, dt3 + p.centerT};
 }
 
 // ---------------------------------------------------------------------------
@@ -120,14 +129,16 @@ inline bool isIdentityTextureTransform(
 // where the 3×3 entries are stored row-major in the returned array:
 //   out[0..2] = row 0,  out[3..5] = row 1,  out[6..8] = row 2.
 //
-// Derivation: Tc' = Tc_back · R · Sc · Tc_to · Tl · Tc
-//   where Tl = translate(translation), Tc_to = translate(-center),
-//   Sc = scale(scale), R = rotate(rotation), Tc_back = translate(center).
+// Derivation: Tc' = C · S · R · C⁻¹ · T · Tc
+//   where C = translate(center), C⁻¹ = translate(-center),
+//   T = translate(translation), R = rotate(rotation), S = scale(scale).
+//   Applied right-to-left the order is T, C⁻¹, R, S, C (translate, pivot to the
+//   origin, rotate, scale, un-pivot) — §18.4.10's "(in order)" list.
 //
-// The combined column-vector form (using X3D ordering):
-//   [cs*sx    -ss*sy    cx - cs*(cx+tx) + ss*(cy+ty)]
-//   [ss*sx     cs*sy    cy - ss*(cx+tx) - cs*(cy+ty)]
-//   [0         0        1                            ]
+// With M = S · R the combined column-vector form is:
+//   [sx*cs    -sx*ss    M·(c-t) + c ]
+//   [sy*ss     sy*cs    M·(c-t) + c ]
+//   [0         0        1           ]
 //
 // (cx,cy) = center, (tx,ty) = translation, (sx,sy) = scale, angle = rotation.
 // ---------------------------------------------------------------------------
@@ -139,20 +150,17 @@ inline std::array<float, 9> makeTextureTransform3x3(
     float cs = std::cos(p.rotation);
     float ss = std::sin(p.rotation);
 
-    // Combined pivot+translate shift applied in step 1+2:
-    //   shifted_center = center + translation
-    float shifted_s = p.centerS + p.translationS;
-    float shifted_t = p.centerT + p.translationT;
+    // M = S(scale) * R(rot) — scale AFTER rotate (right-to-left of S·R).
+    float m00 = p.scaleS * cs;
+    float m01 = -p.scaleS * ss;
+    float m10 = p.scaleT * ss;
+    float m11 = p.scaleT * cs;
 
-    // M = R(rot) * Sc(scale), then the full affine offset.
-    float m00 = cs * p.scaleS;
-    float m01 = -ss * p.scaleT;
-    float m10 = ss * p.scaleS;
-    float m11 = cs * p.scaleT;
-
-    // Translation column: center - M * (center + translation)
-    float tx = p.centerS - (m00 * shifted_s + m01 * shifted_t);
-    float ty = p.centerT - (m10 * shifted_s + m11 * shifted_t);
+    // Offset = M * (translation - center) + center.
+    float shifted_s = p.translationS - p.centerS;
+    float shifted_t = p.translationT - p.centerT;
+    float tx = (m00 * shifted_s + m01 * shifted_t) + p.centerS;
+    float ty = (m10 * shifted_s + m11 * shifted_t) + p.centerT;
 
     // Row-major 3×3:
     return {
@@ -236,6 +244,7 @@ struct ExtendedSamplerParams {
     BoundaryMode    boundaryModeS        = BoundaryMode::Repeat;
     BoundaryMode    boundaryModeT        = BoundaryMode::Repeat;
     BoundaryMode    boundaryModeR        = BoundaryMode::Repeat;
+    SFColorRGBA     borderColor          {0, 0, 0, 0};
     MagFilter       magnificationFilter  = MagFilter::Default;
     MinFilter       minificationFilter   = MinFilter::Default;
     bool            generateMipmaps      = false;

@@ -145,6 +145,33 @@ inline Mat4 transformMatrix(const SFVec3f &translation, const SFRotation &rotati
   return T * C * R * SR * S * SRinv * Cinv;
 }
 
+// Remove scale and shear from an affine matrix's basis. Returns false when
+// the basis is degenerate or non-finite, leaving the caller to retain a valid pose.
+inline bool orthonormalizeRotation(Mat4 &mat) {
+  using V = std::array<double, 3>;
+  auto dot = [](const V &a, const V &b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; };
+  auto normalize = [&](V &v) {
+    const double n2 = dot(v, v);
+    if (!std::isfinite(n2) || n2 < 1e-20) return false;
+    const double inv = 1.0 / std::sqrt(n2);
+    for (double &x : v) x *= inv;
+    return true;
+  };
+  V x{mat.m[0], mat.m[1], mat.m[2]};
+  V y{mat.m[4], mat.m[5], mat.m[6]};
+  if (!normalize(x)) return false;
+  const double projection = dot(x, y);
+  for (int i = 0; i < 3; ++i) y[i] -= projection * x[i];
+  if (!normalize(y)) return false;
+  V z{x[1]*y[2] - x[2]*y[1], x[2]*y[0] - x[0]*y[2], x[0]*y[1] - x[1]*y[0]};
+  for (int i = 0; i < 3; ++i) {
+    mat.m[i] = static_cast<float>(x[i]);
+    mat.m[4 + i] = static_cast<float>(y[i]);
+    mat.m[8 + i] = static_cast<float>(z[i]);
+  }
+  return true;
+}
+
 // Extract the rotation of a rigid matrix as an axis-angle SFRotation (Shepperd's
 // quaternion-from-matrix; column-major element (row r,col c) = m[c*4+r]). Assumes
 // the upper-left 3x3 is a pure rotation (no scale).

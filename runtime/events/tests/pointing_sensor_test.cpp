@@ -29,6 +29,7 @@
 #include "x3d/nodes/IndexedFaceSet.hpp"
 #include "x3d/nodes/PlaneSensor.hpp"
 #include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/Switch.hpp"
 #include "x3d/nodes/TextureCoordinate.hpp"
 #include "x3d/nodes/TouchSensor.hpp"
 #include "x3d/nodes/Transform.hpp"
@@ -550,4 +551,92 @@ TEST_CASE("pointing_sensor_test") {
   }
   std::cout << "all PointingSensorSystem tests passed\n";
   return;
+}
+
+TEST_CASE("tied lowest pointing sensors all receive the event") {
+  auto group = std::make_shared<Group>();
+  auto touch = std::make_shared<TouchSensor>();
+  auto plane = std::make_shared<PlaneSensor>();
+  addChild(group, touch);
+  addChild(group, plane);
+  addChild(group, boxShape());
+  Scene scene; scene.addRootNode(group);
+  Rig r; r.build(scene);
+  r.ctx.setPointerPresent(true);
+  r.ctx.setPointer(downZ());
+  r.ctx.tick(1.0);
+  CHECK(touch->getIsOver());
+  CHECK(plane->getIsOver());
+  r.ctx.setPointerButton(true);
+  r.ctx.tick(2.0);
+  CHECK(touch->getIsActive());
+  CHECK(plane->getIsActive());
+  r.ctx.setPointer(Ray{{0.5f, 0, 10}, {0, 0, -1}});
+  r.ctx.tick(3.0);
+  CHECK(feq(touch->getHitPoint_changed().x, 0.5f));
+  CHECK(feq(plane->getTranslation_changed().x, 0.5f));
+  r.ctx.setPointerButton(false);
+  r.ctx.tick(4.0);
+  CHECK_FALSE(touch->getIsActive());
+  CHECK_FALSE(plane->getIsActive());
+  CHECK(feq(plane->getOffset().x, 0.5f));
+}
+
+TEST_CASE("tied PlaneSensors retain independent drag offsets") {
+  auto group = std::make_shared<Group>();
+  auto first = std::make_shared<PlaneSensor>();
+  auto second = std::make_shared<PlaneSensor>();
+  second->setOffset(SFVec3f{2, 0, 0});
+  addChild(group, first);
+  addChild(group, second);
+  addChild(group, boxShape());
+  Scene scene; scene.addRootNode(group);
+  Rig r; r.build(scene);
+  r.ctx.setPointerPresent(true);
+  r.ctx.setPointer(downZ());
+  r.ctx.setPointerButton(true);
+  r.ctx.tick(1.0);
+  REQUIRE(first->getIsActive());
+  REQUIRE(second->getIsActive());
+  r.ctx.setPointer(Ray{{0.5f, 0, 10}, {0, 0, -1}});
+  r.ctx.tick(2.0);
+  CHECK(feq(first->getTranslation_changed().x, 0.5f));
+  CHECK(feq(second->getTranslation_changed().x, 2.5f));
+  r.ctx.setPointerButton(false);
+  r.ctx.tick(3.0);
+  CHECK(feq(first->getOffset().x, 0.5f));
+  CHECK(feq(second->getOffset().x, 2.5f));
+}
+
+TEST_CASE("disabling an active PlaneSensor deactivates without pointer motion") {
+  auto group = std::make_shared<Group>();
+  auto sensor = std::make_shared<PlaneSensor>();
+  addChild(group, sensor);
+  addChild(group, boxShape());
+  Scene scene; scene.addRootNode(group);
+  Rig r; r.build(scene);
+  r.ctx.setPointerPresent(true);
+  r.ctx.setPointer(downZ());
+  r.ctx.setPointerButton(true);
+  r.ctx.tick(1.0);
+  REQUIRE(sensor->getIsActive());
+  r.ctx.postEvent(sensor.get(), "enabled", std::any(SFBool{false}));
+  r.ctx.tick(2.0);
+  REQUIRE_FALSE(sensor->getEnabled());
+  CHECK_FALSE(sensor->getIsActive());
+}
+
+TEST_CASE("pointing sensors ignore geometry in an unchosen Switch branch") {
+  auto group = std::make_shared<Group>();
+  auto sensor = std::make_shared<TouchSensor>();
+  auto choice = std::make_shared<Switch>(); // whichChoice defaults to -1
+  addChild(choice, boxShape());
+  addChild(group, sensor);
+  addChild(group, choice);
+  Scene scene; scene.addRootNode(group);
+  Rig r; r.build(scene);
+  r.ctx.setPointerPresent(true);
+  r.ctx.setPointer(downZ());
+  r.ctx.tick(1.0);
+  CHECK_FALSE(sensor->getIsOver());
 }
