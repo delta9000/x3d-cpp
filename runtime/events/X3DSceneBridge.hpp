@@ -29,6 +29,7 @@
 #include "x3d/nodes/IntegerSequencer.hpp"
 
 #include "DynamicField.hpp"
+#include "InlineRuntimeSystem.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3DReflection.hpp"
 #include "X3DScene.hpp"
@@ -319,6 +320,7 @@ template <class F> inline void forEachNode(const Scene &scene, F &&f) {
     });
   };
   for (const auto &r : scene.rootNodes) rec(r.get());
+  for (const auto &p : scene.protoPeerNodes) rec(p.get());
 }
 
 } // namespace detail
@@ -453,7 +455,9 @@ attachLoadSensors(Scene &scene, X3DExecutionContext &ctx,
  *          top); converging it onto this helper is a deferred dedup follow-up.
  */
 inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
-                                  extract::AssetResolver assetResolver = nullptr) {
+                                  extract::AssetResolver assetResolver = nullptr,
+                                  InlineResolver inlineResolver = {},
+                                  std::string baseUrl = {}) {
   auto tss = std::make_shared<TimeSensorSystem>();        // §8 Time — the clock
   detail::forEachNode(scene, [&](X3DNode *n) { tss->attach(n, ctx); });
   ctx.addSystem(tss);
@@ -469,6 +473,12 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   attachViewDependent(scene, ctx);    // §22/§23 LOD/Billboard/Proximity/Visibility
   attachKeyDeviceSensors(scene, ctx); // §21 KeySensor/StringSensor
   attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
+  if (inlineResolver) {
+    auto inlines = std::make_shared<InlineRuntimeSystem>(
+        scene, std::move(inlineResolver), std::move(baseUrl));
+    detail::forEachNode(scene, [&](X3DNode *n) { inlines->attach(n, ctx); });
+    ctx.addSystem(inlines);
+  }
   attachViewpointBind(ctx);           // §23.3.1 post-cascade viewpoint bind hook
 }
 

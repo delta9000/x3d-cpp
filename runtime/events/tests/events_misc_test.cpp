@@ -243,6 +243,37 @@ void test_anchor_activation() {
   check(gotUrl.empty(), "Anchor: releasing off the Anchor does not activate it");
 }
 
+void test_anchor_loadsensor_waits_for_viewpoint_bind() {
+  auto anchor = createX3DNode("Anchor");
+  setF(anchor, "url", std::any(MFString{"#Target"}));
+  setF(anchor, "load", std::any(SFBool{false})); // §9.4.1: no effect on Anchor
+  auto vp = createX3DNode("Viewpoint");
+  vp->setDEF("Target");
+  auto firstVp = createX3DNode("Viewpoint");
+  auto sensor = createX3DNode("LoadSensor");
+  setF(sensor, "children", std::any(std::vector<NodeP>{anchor}));
+  Scene scene;
+  scene.addRootNode(firstVp);
+  scene.addRootNode(anchor);
+  scene.addRootNode(vp);
+  scene.addRootNode(sensor);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  check(ctx.boundViewpoint() == firstVp.get(), "Anchor target starts unbound");
+  auto sys = std::make_shared<LoadSensorSystem>();
+  sys->setScene(&scene);
+  sys->attach(sensor.get(), ctx);
+  ctx.addSystem(sys);
+  ctx.tick(0.1);
+  check(!dynamic_cast<LoadSensor &>(*sensor).getIsLoaded(),
+        "Anchor target existing but unbound does not count as loaded");
+  ctx.postEvent(vp.get(), "set_bind", std::any(SFBool{true}));
+  ctx.tick(0.2);
+  ctx.tick(0.3);
+  check(dynamic_cast<LoadSensor &>(*sensor).getIsLoaded(),
+        "Anchor target counts as loaded after binding, even with load FALSE");
+}
+
 } // namespace
 
 TEST_CASE("events_misc_test") {
@@ -252,5 +283,6 @@ TEST_CASE("events_misc_test") {
   test_same_instant_restart();
   test_nested_inline_readiness();
   test_anchor_activation();
+  test_anchor_loadsensor_waits_for_viewpoint_bind();
   CHECK(failures == 0);
 }

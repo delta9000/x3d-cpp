@@ -123,7 +123,7 @@ Encoding sniffByExtension(std::string_view path);
 
 - **EXTERNPROTO resolver** — `ProtoDeclarationResolver` (`runtime/parse/X3DProtoResolver.hpp`): a `std::function` injected into `parseDocument`. The default `localFileProtoResolver` resolves relative file-system URLs and guards against cross-file cycles with a `thread_local` active-file stack. Embedders (network fetch, virtual FS) supply their own function.
 
-- **Inline resolver** — `runtime::InlineResolver` (`runtime/InlineExpand.hpp`): a `std::function<shared_ptr<Scene>(urls, baseUrl)>` injected into `parseDocument`. The default `localFileInlineResolver` follows the same lenient file-local pattern. Embedders override for custom asset resolution.
+- **Inline resolver** — `runtime::InlineResolver` (`runtime/InlineExpand.hpp`): a `std::function<shared_ptr<Scene>(urls, baseUrl)>` injected into `parseDocument`. The default `localFileInlineResolver` follows the same lenient file-local pattern. Embedders override for custom asset resolution and pass that resolver plus the base URL to the runtime when deferred `load=TRUE` events should load content.
 
 - **Dialect hooks on `ClassicVrmlReader`** — three protected virtual methods that `Vrml97Reader` overrides:
   - `mapNodeName(token)` — renames a node type token before the factory lookup (identity in Classic VRML; delegates to `vrml97::mapNodeName` in VRML97).

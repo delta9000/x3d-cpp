@@ -78,6 +78,9 @@ Each watched, non-pre-seeded child runs
   replaces each loaded Inline with a Group, so an `Inline` node still inside an
   expanded child's content is a sub-Inline that failed: the child is `Failed`.
 
+For an Anchor with a same-scene `#Viewpoint` URL, readiness waits until that
+Viewpoint is bound (§9.4.3). Anchor's `load` field has no effect (§9.4.1).
+
 ### NSN-7 resets
 
 Watched-child changes are detected by poll-and-diff (the codebase idiom for

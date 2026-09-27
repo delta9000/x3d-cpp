@@ -78,6 +78,8 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 - **`InlineResolver` injection** — `parseDocument` accepts an `InlineResolver` parameter (default: `localFileInlineResolver`). An embedder supplying a network fetcher, virtual filesystem, or format-converting resolver (e.g. a glTF-to-Scene converter) passes it here; the core never changes.
 
+- **Runtime injection** — `attachStandardRuntime` and `RuntimeSession::SessionOptions` accept the same `InlineResolver` plus `baseUrl`. No resolver means deferred Inline nodes stay inert. The parsed `Scene` does not retain an IO callback; callers that want late loading pass their resolver again. `InlineRuntimeSystem` attempts a deferred URL once per value until `load` returns to FALSE or `url` changes.
+
 - **`localFileInlineResolver`** (in `X3DParse.hpp`) — the default resolver. Resolves file-like URLs relative to `baseUrl`, calls `parseFile` on the target, and guards cycles via a `thread_local std::vector<std::string> activeFiles` stack. `http`/`https`/`urn:` schemes are skipped (embedder-override territory), matching `localFileProtoResolver`'s policy.
 
 - **`Scene::expandedInlines`** — a `Group*`-keyed map populated by `expandInlines`. Each writer checks this map when it would emit a `Group` node; on a hit it emits the stored `Inline` node instead. This is the writer round-trip contract: the map must remain valid for the lifetime of any writer pass over the scene.
@@ -88,7 +90,7 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 - **`Scene::expandedInlineScenes`** — an `Inline*`-keyed map from the ORIGINAL Inline node to the child `Scene` it expanded to, retained so `wireInlineImports` can resolve an imported DEF/`<EXPORT AS>` alias. The child's full DEF table is still never merged into the parent.
 
-- **`wireInlineImports(Scene&)`** — called by `parseDocument` after `expandInlines` and before the final `resolveRoutes()`. For each `Import{inlineDEF, importedDEF, AS}`, it resolves the Inline node by `inlineDEF`, looks up its expanded child scene, resolves the imported name against the child (its `<EXPORT AS>` alias first, else a child DEF), and registers the local alias (`AS`, or `importedDEF` when `AS` is absent) in `Scene::defs`. A subsequently resolved ROUTE to/from that alias binds to the child's node — the §9.2 cross-Inline escape hatch. Lenient: an un-expanded Inline or an unmatchable name leaves the alias unregistered.
+- **`wireInlineImports(Scene&)`** — called after expansion. It registers a parent alias only when the child explicitly EXPORTs the requested public name (`AS` or the DEF name). A private child DEF cannot be imported. Routes to the new alias then resolve against the exported node.
 
 - **`X3DImportExport.hpp` (`Import`/`Export` structs)** — parsed and stored in `Scene::imports`/`Scene::exports` by the readers and consumed by `wireInlineImports` for cross-Inline routing. `<EXPORT>` in a child scene is fully honoured; a parent `<EXPORT>` (exposing a local DEF upward) is still only carried as data.
 
@@ -100,7 +102,7 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
    - Call `hoistChildRoutes`: resolve the child's `routes` against the child's own `defs`, append concrete endpoints to `scene.resolvedInlineRoutes`. Also hoist any already-resolved `resolvedProtoRoutes` and `resolvedInlineRoutes` from nested expansions.
    - Record `scene.expandedInlines[group.get()] = inl` for writer round-trip.
    - Replace the Inline node in its parent slot (`replaceInParent`), or in `scene.rootNodes` for root-level Inlines.
-3. `load=FALSE` Inlines are left in place (Tier-3 dynamic load/unload is out of scope).
+3. `load=FALSE` Inlines stay in place. With an injected resolver, `InlineRuntimeSystem` runs this same expansion pass after a later `load=TRUE` event, enrolls the new subtree with live systems, connects child and IMPORT routes, and marks the splice for full snapshot and incremental extraction. It handles root and nested Inlines. Runtime unload and replacement of already loaded content remain open (AUD-NET-2).
 4. Child DEFs are **never** merged into `scene.defs`, enforcing ISO §9.4.2 DEF isolation.
 
 ## How it is tested

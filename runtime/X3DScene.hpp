@@ -53,6 +53,9 @@ public:
   // endpoints (proto-local DEF scope; NOT registered in `defs`).
   std::vector<ResolvedProtoRoute> resolvedProtoRoutes;
 
+  // Non-rendered peers of expanded PROTO bodies stay live (§4.4.4.3).
+  std::vector<std::shared_ptr<X3DNode>> protoPeerNodes;
+
   // Inline expansion (Tier 1): synthetic Group (key) -> the original Inline node
   // it replaced. Writers consult this to re-emit <Inline url=.../> rather than
   // the spliced content (AUD-B redirect pattern; mirrors expandedSources).

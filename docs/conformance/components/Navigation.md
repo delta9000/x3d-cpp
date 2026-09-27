@@ -9,7 +9,7 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 | LOD | 2 | ✓ | — | — | LOD-1, LOD-DELTA-1, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | NavigationInfo | 1 | ✓ | — | ✓ | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06 | X3DBindableNode, X3DChildNode |
 | OrthoViewpoint | 3 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
-| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, NAV-FLY-ROLL, NAV-LOOKAT-SCALE | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| Viewpoint | 1 | ✓ | — | ✓ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, NAV-FLY-ROLL, NAV-LOOKAT-SCALE | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 | ViewpointGroup | 3 | ✓ | — | — | — | X3DChildNode |
 
 ## Findings

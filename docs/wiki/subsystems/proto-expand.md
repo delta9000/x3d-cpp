@@ -95,6 +95,8 @@ Both `expandScene` and `expandInstance` are inline, header-only functions in `ru
   - `Scene::protoRedirects` — maps each expanded primary node's interface event field to the IS-connected body endpoints; the scene bridge (`X3DSceneBridge`) consults this map when resolving external ROUTEs that target a proto instance.
   - `Scene::expandedSources` — maps each expanded primary node back to its source `ProtoInstance`; codec writers consult this to re-emit `<ProtoInstance>` rather than the cloned body (AUD-B round-trip correctness, commit `8b888ee`).
 
+`Scene::protoPeerNodes` retains non-rendered body peers. Standard runtime systems and the CLI's ScriptSystem enroll them alongside reachable scene nodes; extraction still traverses only rendered roots (§4.4.4.3).
+
 - **`ProtoInstance::expanded` flag** — set to `true` by `expandScene` on a successfully spliced instance. Writers check this flag: if `false`, the instance failed to expand and must be re-emitted directly from `Scene::protoInstances` rather than be silently dropped.
 
 - **`ProtoBody::nestedInstances`** — `ProtoInstance` records that appear inside a prototype body are stored here (not in `Scene::protoInstances`) so `expandInstance` recurses per outer instantiation, attaching each nested primary to the per-instantiation body clone rather than to the un-cloned template.
