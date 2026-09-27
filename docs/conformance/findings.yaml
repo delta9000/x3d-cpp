@@ -341,17 +341,17 @@
   clause: "16.4.12, 16.4.15, 16.4.4"
   severity: major
   status: open
-  summary: enabled field ignored on every wired sound node — a disabled Oscillator/Gain/BiquadFilter still synthesizes/processes.
-  note: SoundSystem buildChild/pushParams never read getEnabled(); §16 defaults enabled TRUE but enabled=FALSE shall disable the node. Actionable now (no seam) — gate createNode/setParam (and bypass vs mute per §16 node semantics).
+  summary: BuiltinDspBackend honors enabled for all wired nodes; MiniaudioBackend still needs a live BiquadFilter bypass path.
+  note: SoundSystem pushes enabled; BuiltinDspBackend silences disabled sources and passes disabled processors through, covered by sound_system_test. MiniaudioBackend handles disabled OscillatorSource and Gain, but its current graph wiring cannot bypass BiquadFilter while preserving its input; swap-test F6 checks disabled/inactive oscillator, disabled Gain pass-through and AudioDestination gain on both backends.
 - id: SND-2
   nodes: [OscillatorSource, Gain, BiquadFilter]
   interfaces: [X3DTimeDependentNode]
   component: Sound
   clause: "8.2.4.1, 16.4.15"
   severity: major
-  status: open
-  summary: X3DTimeDependentNode lifecycle ignored — sound nodes emit unconditionally; startTime/stopTime/pauseTime/resumeTime/loop not honored and isActive/isPaused/elapsedTime never emitted.
-  note: SoundSystem has no activation clock — the oscillator plays from t=0. Gating a synthesized source on startTime/stopTime is doable now (no media seam); emitting isActive/isPaused as routed events needs an event-cascade hookup. Mirrors TimeSensor (TDN-*); relates to TDN-5 for media sources.
+  status: closed
+  summary: Sound sources and processing nodes now run the shared start/stop/pause/resume lifecycle and emit isActive/isPaused/elapsedTime.
+  note: SoundTimeSystem reuses X3DTimeDependentSystem and is registered by attachStandardRuntime; SoundSystem gates source and processor output from isActive/isPaused. MediaTimeSystem continues to handle AudioClip. Covered by sound_system_test and standard_runtime_test.
 - id: SND-3
   nodes: [SpatialSound, ListenerPointSource]
   component: Sound
@@ -392,9 +392,9 @@
   component: Sound
   clause: "16.4.3, 16.4.19"
   severity: minor
-  status: open
-  summary: AudioDestination.gain ignored by render and maxChannelCount is read but unused (mono); StreamAudioDestination not built.
-  note: SoundSystem reads maxChannelCount into params but render() is mono and never applies the destination gain (§16.4.3). The gain pass-through is a small fix (no seam); multi-channel + stream output is deferred (SND-6).
+  status: closed
+  summary: AudioDestination.gain applied; maxChannelCount remains read but unused (mono); StreamAudioDestination not built.
+  note: SoundSystem pushes AudioDestination.gain to the backend destination. sound_system_test verifies output scaling. maxChannelCount remains read but unused by mono render, and StreamAudioDestination remains unbuilt.
 - id: SND-8
   nodes: [Gain, BiquadFilter]
   interfaces: [X3DSoundProcessingNode]

@@ -507,6 +507,47 @@ static void testF4F5_Immersive() {
   CHECK(std::fabs(bb - bm) < kRmsTol * bb, "F5: buffer playback RMS agrees across backends");
 }
 
+// F6: enabled / time-lifecycle / destination gain (SND-1/2/7), per backend.
+// Oscillator(440) -> [Gain(0.5)] -> Destination at the backend level, driving
+// the per-tick params SoundSystem pushes.
+static void testF6_EnableLifecycle(const char *name, std::shared_ptr<AudioBackend> (*make)()) {
+  auto level = [&](auto &&configure, bool withGain) {
+    auto be = make();
+    NodeParams op; op.frequency = 440; op.gain = 1;
+    const NodeHandle osc = be->createNode(NodeKind::Oscillator, op);
+    NodeParams gp; gp.gain = 0.5f;
+    const NodeHandle g = withGain ? be->createNode(NodeKind::Gain, gp) : kInvalidNodeHandle;
+    NodeParams dp; dp.maxChannelCount = 1;
+    const NodeHandle dst = be->createNode(NodeKind::Destination, dp);
+    if (withGain) { be->connect(g, osc); be->connect(dst, g); } else be->connect(dst, osc);
+    // Render once so a lazily-initialised backend builds its graph, then apply
+    // the per-tick params the way SoundSystem::update does.
+    std::vector<float> warm; be->render(dst, 64, kSR, warm);
+    configure(*be, osc, g, dst);
+    std::vector<float> buf; be->render(dst, kFrames, kSR, buf);
+    return rms(buf);
+  };
+  auto none = [](AudioBackend &, NodeHandle, NodeHandle, NodeHandle) {};
+  const double base = level(none, false);
+  const double stopped = level([](AudioBackend &b, NodeHandle o, NodeHandle, NodeHandle) {
+    b.setParam(o, Param::PlaybackState, 0); }, false);
+  const double disabled = level([](AudioBackend &b, NodeHandle o, NodeHandle, NodeHandle) {
+    b.setParam(o, Param::Enabled, 0); }, false);
+  const double halfDest = level([](AudioBackend &b, NodeHandle, NodeHandle, NodeHandle d) {
+    b.setParam(d, Param::Gain, 0.5f); }, false);
+  const double withGain = level(none, true);
+  const double gainOff = level([](AudioBackend &b, NodeHandle, NodeHandle g, NodeHandle) {
+    b.setParam(g, Param::Enabled, 0); }, true);
+  std::fprintf(stderr, "[F6/%s] base=%.4f stopped=%.5f disabled=%.5f dest0.5=%.4f gain0.5=%.4f gainOff=%.4f\n",
+               name, base, stopped, disabled, halfDest, withGain, gainOff);
+  CHECK(base > 0.3, "F6: oscillator audible by default");
+  CHECK(stopped < 1e-4, "F6: PlaybackState 0 (inactive) silences the oscillator");
+  CHECK(disabled < 1e-4, "F6: Enabled 0 silences the oscillator");
+  CHECK(std::fabs(halfDest / base - 0.5) < 0.02, "F6: AudioDestination gain scales output");
+  CHECK(std::fabs(withGain / base - 0.5) < 0.02, "F6: Gain 0.5 halves");
+  CHECK(std::fabs(gainOff / base - 1.0) < 0.02, "F6: a disabled Gain passes its input through");
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 
 int main() {
@@ -534,6 +575,10 @@ int main() {
 
   std::fprintf(stderr, "\n--- F4/F5: Immersive (ellipsoid + buffer) ---\n");
   testF4F5_Immersive();
+
+  std::fprintf(stderr, "\n--- F6: enabled / lifecycle / destination gain ---\n");
+  testF6_EnableLifecycle("builtin", [] { return std::shared_ptr<AudioBackend>(std::make_shared<BuiltinDspBackend>()); });
+  testF6_EnableLifecycle("miniaudio", [] { return std::shared_ptr<AudioBackend>(std::make_shared<x3d::runtime::miniaudio::MiniaudioBackend>()); });
 
   std::fprintf(stderr, "\n");
   if (g_failures == 0)

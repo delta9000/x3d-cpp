@@ -18,6 +18,7 @@
 #include "LoadSensorSystem.hpp"
 #include "AnchorSystem.hpp"
 #include "MediaTimeSystem.hpp"
+#include "SoundTimeSystem.hpp"
 #include "NavigationSystem.hpp"
 #include "PointingSensorSystem.hpp"
 #include "TimeSensorSystem.hpp"
@@ -459,6 +460,9 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   auto media = std::make_shared<MediaTimeSystem>(); // §8.2.4 AudioClip/MovieTexture timing
   detail::forEachNode(scene, [&](X3DNode *n) { media->attach(n, ctx); });
   ctx.addSystem(media);
+  auto soundTime = std::make_shared<SoundTimeSystem>(); // §16 source/processor timing
+  detail::forEachNode(scene, [&](X3DNode *n) { soundTime->attach(n, ctx); });
+  ctx.addSystem(soundTime);
   attachInterpolators(scene, ctx);    // §19 keyframe animation
   attachFollowers(scene, ctx);        // §39 damper/chaser smoothing
   attachEventUtilities(scene, ctx);   // §30 trigger/sequencer/filter logic

@@ -123,6 +123,8 @@ struct NodeParams {
   float q = 1.0f;
   /** @brief Linear gain multiplier (Gain node, or a source/processing gain). */
   float gain = 1.0f;
+  /** @brief Whether this source or processing node is enabled. */
+  bool enabled = true;
   /** @brief Oscillator waveform (Oscillator nodes). */
   Waveform waveform = Waveform::Sine;
   /** @brief Filter algorithm (Biquad nodes). */
@@ -190,7 +192,7 @@ enum class Param {
   // Buffer source: 0 = stopped (rewinds), 1 = playing, 2 = paused (holds the
   // position); rate = playback speed (AudioClip.pitch). The source loops when
   // it runs past its end — the time lifecycle stops a non-looping clip.
-  PlaybackState, PlaybackRate
+  PlaybackState, PlaybackRate, Enabled
 };
 
 /**

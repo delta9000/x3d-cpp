@@ -164,6 +164,7 @@ struct MaNode {
   ma_node* node = nullptr;
 
   bool initialized = false;
+  bool timeActive = true;
 
   // Prevent accidental copy/move (the structs are non-trivially copyable
   // anyway, but be explicit).
@@ -546,6 +547,7 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
       case Param::Detune:     it->second.params.detune            = value; break;
       case Param::Q:          it->second.params.q                 = value; break;
       case Param::Gain:       it->second.params.gain              = value; break;
+      case Param::Enabled:    it->second.params.enabled           = value != 0.0f; break;
       case Param::PositionX:  it->second.params.sourcePosition[0] = value; break;
       case Param::PositionY:  it->second.params.sourcePosition[1] = value; break;
       case Param::PositionZ:  it->second.params.sourcePosition[2] = value; break;
@@ -588,12 +590,26 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
       if (value != 0.0f) f *= std::pow(2.0, value / 1200.0);
       ma_waveform_set_frequency(&mn.waveform, f);
     } else if (param == Param::Gain) {
-      ma_waveform_set_amplitude(&mn.waveform, static_cast<double>(value));
+      ma_waveform_set_amplitude(&mn.waveform,
+          mn.params.enabled && mn.timeActive ? static_cast<double>(value) : 0.0);
       mn.params.gain = value;
+    } else if (param == Param::Enabled) {
+      mn.params.enabled = value != 0.0f;
+      ma_waveform_set_amplitude(&mn.waveform,
+          mn.params.enabled && mn.timeActive ? static_cast<double>(mn.params.gain) : 0.0);
+    } else if (param == Param::PlaybackState) {
+      mn.timeActive = static_cast<int>(value) == 1;
+      ma_waveform_set_amplitude(&mn.waveform,
+          mn.timeActive && mn.params.enabled ? mn.params.gain : 0.0);
     }
     break;
 
   case MaNodeKind::Biquad: {
+    if (param == Param::Enabled) mn.params.enabled = value != 0.0f;
+    if (param == Param::PlaybackState) {
+      mn.timeActive = static_cast<int>(value) == 1;
+      ma_node_set_output_bus_volume(mn.node, 0, mn.timeActive ? 1.0f : 0.0f);
+    }
     if (param == Param::Frequency) {
       mn.params.frequency = value;
       double cutoff = static_cast<double>(value);
@@ -614,6 +630,21 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
   }
 
   case MaNodeKind::Gain:
+    if (param == Param::Gain) {
+      ma_node_set_output_bus_volume(mn.node, 0, mn.timeActive ? value : 0.0f);
+      mn.params.gain = value;
+    } else if (param == Param::Enabled) {
+      mn.params.enabled = value != 0.0f;
+      ma_node_set_output_bus_volume(mn.node, 0, mn.timeActive
+          ? (mn.params.enabled ? mn.params.gain : 1.0f) : 0.0f);
+    } else if (param == Param::PlaybackState) {
+      mn.timeActive = static_cast<int>(value) == 1;
+      ma_node_set_output_bus_volume(mn.node, 0,
+          mn.timeActive ? (mn.params.enabled ? mn.params.gain : 1.0f) : 0.0f);
+    }
+    break;
+
+  case MaNodeKind::Destination:
     if (param == Param::Gain) {
       ma_node_set_output_bus_volume(mn.node, 0, value);
       mn.params.gain = value;
@@ -669,9 +700,6 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
                                   mn.params.sourcePosition[1],
                                   mn.params.sourcePosition[2]);
     }
-    break;
-
-  case MaNodeKind::Destination:
     break;
 
   case MaNodeKind::Buffer:

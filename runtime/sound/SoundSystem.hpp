@@ -124,6 +124,7 @@ public:
     if (auto *dest = dynamic_cast<x3d::nodes::AudioDestination *>(node)) {
       NodeParams dp;
       dp.maxChannelCount = dest->getMaxChannelCount();
+      dp.gain = dest->getGain();
       NodeHandle destHandle = backend_->createNode(NodeKind::Destination, dp);
       if (destHandle == kInvalidNodeHandle) return;
       map_.emplace(dest, destHandle);
@@ -236,6 +237,7 @@ private:
       p.frequency = osc->getFrequency();
       p.detune = osc->getDetune();
       p.gain = osc->getGain();
+      p.enabled = osc->getEnabled();
       p.waveform = Waveform::Sine;  // §16 OscillatorSource has no authored type
       handle = backend_->createNode(NodeKind::Oscillator, p);
     } else if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) {
@@ -244,11 +246,13 @@ private:
       p.q = biq->getQualityFactor();
       p.detune = biq->getDetune();
       p.gain = biq->getGain();
+      p.enabled = biq->getEnabled();
       p.filterType = mapFilterType(biq->getType());
       handle = backend_->createNode(NodeKind::Biquad, p);
     } else if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) {
       NodeParams p;
       p.gain = gain->getGain();
+      p.enabled = gain->getEnabled();
       handle = backend_->createNode(NodeKind::Gain, p);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // AudioClip: a Buffer node once its bytes are fetched and decoded.
@@ -292,13 +296,19 @@ private:
       backend_->setParam(handle, Param::Frequency, osc->getFrequency());
       backend_->setParam(handle, Param::Detune, osc->getDetune());
       backend_->setParam(handle, Param::Gain, osc->getGain());
+      backend_->setParam(handle, Param::Enabled, osc->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(osc, handle);
     } else if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) {
       backend_->setParam(handle, Param::Frequency, biq->getFrequency());
       backend_->setParam(handle, Param::Q, biq->getQualityFactor());
       backend_->setParam(handle, Param::Detune, biq->getDetune());
       backend_->setParam(handle, Param::Gain, biq->getGain());
+      backend_->setParam(handle, Param::Enabled, biq->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(biq, handle);
     } else if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) {
       backend_->setParam(handle, Param::Gain, gain->getGain());
+      backend_->setParam(handle, Param::Enabled, gain->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(gain, handle);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // Playback follows the §8.2.4 lifecycle outputs (MediaTimeSystem).
       const bool active = clip->X3DTimeDependentNode::getIsActive();
@@ -306,8 +316,20 @@ private:
       backend_->setParam(handle, Param::PlaybackState, !active ? 0.0f : paused ? 2.0f : 1.0f);
       backend_->setParam(handle, Param::PlaybackRate, clip->getPitch());
       backend_->setParam(handle, Param::Gain, clip->getGain());
+    } else if (auto *dest = dynamic_cast<x3d::nodes::AudioDestination *>(node)) {
+      backend_->setParam(handle, Param::Gain, dest->getGain());
     }
-    // AudioDestination has no per-tick animatable scalar in v1.
+  }
+
+  void pushTimeState(X3DNode *node, NodeHandle handle) {
+    if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node); gain && !gain->getEnabled()) return;
+    if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node); biq && !biq->getEnabled()) return;
+    auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node);
+    if (!tdn) return;
+    const bool active = tdn->getIsActive();
+    const bool paused = tdn->getIsPaused();
+    backend_->setParam(handle, Param::PlaybackState,
+                       !active ? 0.0f : paused ? 2.0f : 1.0f);
   }
 
   /** @brief Map the §16 BiquadTypeFilterChoices enum to the seam's FilterType. */
