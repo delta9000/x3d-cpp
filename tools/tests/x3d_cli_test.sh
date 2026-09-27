@@ -177,6 +177,7 @@ check "no -o no -f exits 1" "$ec" "1"
 FIXTURE_CLEAN="$FIXTURES/validate-clean.x3d"
 FIXTURE_RANGE="$FIXTURES/validate-range-violation.x3d"
 FIXTURE_PROFILE="$FIXTURES/validate-profile-exceed.x3d"
+FIXTURE_SPECIAL_WARNINGS="$FIXTURES/validate-special-warnings.x3d"
 
 # ── 12. validate --help exits 0 ──────────────────────────────────────────────
 ec=$("$CLI" validate --help >/dev/null 2>&1; echo $?)
@@ -194,6 +195,15 @@ if [[ "$out" == *"diffuseColor"* ]]; then
     echo "ok:   validate range-violation output mentions diffuseColor"
 else
     echo "FAIL: validate range-violation output does not mention diffuseColor (got: $out)"
+    failures=$(( failures + 1 ))
+fi
+
+# New semantic range diagnostics must flow through the validate command.
+out=$("$CLI" validate "$FIXTURE_SPECIAL_WARNINGS" 2>&1 || true)
+if [[ "$out" == *"FOV_TUPLE_ARITY"* && "$out" == *"GEOSYSTEM_TOKEN"* ]]; then
+    echo "ok:   validate surfaces FOV and geoSystem diagnostics"
+else
+    echo "FAIL: validate omitted FOV or geoSystem diagnostic (got: $out)"
     failures=$(( failures + 1 ))
 fi
 
