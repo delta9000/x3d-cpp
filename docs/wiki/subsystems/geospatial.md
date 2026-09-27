@@ -35,6 +35,7 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 | `runtime/events/GeoPositionInterpolatorSystem.hpp` | Interpolates in the authored geoSystem, then projects the result to world coordinates. |
 | `runtime/scene/ViewDependentSystem.hpp` | GeoProximitySensor's tangent box, world-position geographic output, and GeoViewpoint center-of-rotation output; GeoLOD range selection and children events. |
 | `runtime/events/PointingSensorSystem.hpp` | GeoTouchSensor pick events and geographic hit coordinates. |
+| `runtime/io/tinygeoid/TinygeoidGeoid.hpp` | Optional WGS84 geoid for the built-in backend from a tinygeoid `.tng` grid (vendored tinygeoid, MIT): `makeGeoidFunction(grid)`, or `makeBuiltinWithGeoid(path)` to pass to `geo::setProjection`. Lives under `runtime/io/` because loading reads a file; the application supplies the grid (e.g. EGM2008 2.5′ converted with tinygeoid's `tng_pack`). |
 | `runtime/math/tests/geo_projection_test.cpp` | Reference values from PROJ 9.8 on WGS84, Clarke 1866, Airy and International ellipsoids; UTM north/south/zone edges; Web Mercator; parsing; the geoid hook; GeoOrigin frames; node glue. |
 
 ## Conventions
@@ -51,9 +52,9 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 - **No datum shifts:** each ellipsoid's geometry maps into the one earth-fixed
   frame; GC and WM are WGS84.
 - **Geoid:** the `"WGS84"` option adds the backend's geoid undulation. The
-  built-in backend has none unless the application supplies a function; by
-  default it treats geoid-relative heights as ellipsoidal. This deliberate
-  ADR-0053 limitation is tracked as GEO-GEOID-DEFAULT in the conformance register.
+  built-in backend has none by itself; `runtime/io/tinygeoid` supplies one from
+  a tinygeoid `.tng` grid, and the PROJ backend from a PROJ grid. Without
+  either, heights stay ellipsoidal.
 
 ## Status
 

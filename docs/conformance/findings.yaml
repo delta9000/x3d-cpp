@@ -1779,9 +1779,9 @@
   component: Geospatial
   clause: "25.2.3"
   severity: minor
-  status: open
+  status: closed
   summary: Default backend has no geoid model, so WGS84 heights are converted as ellipsoidal.
-  note: "ADR-0053 deliberately keeps this fallback. A future fix needs a default geoid source (an injected grid or a first-party coarse model), plus an optional diagnostic when WGS84 is used without one."
+  note: "Closed 2026-09-27: runtime/io/tinygeoid/TinygeoidGeoid.hpp (vendored tinygeoid, MIT, header-only, no dependencies) gives the built-in backend a WGS84 geoid from a .tng grid (e.g. EGM2008 2.5′ via tng_pack); the optional PROJ backend takes a PROJ grid. The grid data (~150 MB for EGM2008) is supplied by the application, so a build without one still converts WGS84 heights as ellipsoidal, as documented in geospatial.md. Tests: geoid: tinygeoid supplies the WGS84 geoid...; geoid: a .tng file loads..."
 - id: SND-GAIN-TYPE
   nodes: [ListenerPointSource]
   component: Sound
