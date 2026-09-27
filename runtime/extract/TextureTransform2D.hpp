@@ -244,6 +244,7 @@ struct ExtendedSamplerParams {
     BoundaryMode    boundaryModeS        = BoundaryMode::Repeat;
     BoundaryMode    boundaryModeT        = BoundaryMode::Repeat;
     BoundaryMode    boundaryModeR        = BoundaryMode::Repeat;
+    SFColorRGBA     borderColor          {0, 0, 0, 0};
     MagFilter       magnificationFilter  = MagFilter::Default;
     MinFilter       minificationFilter   = MinFilter::Default;
     bool            generateMipmaps      = false;

@@ -287,6 +287,7 @@ struct TextureRef {
     Url,    // ImageTexture / url list — resolve outside the SDK.
     Inline, // PixelTexture — pixels carried inline below.
     Movie,  // MovieTexture — descriptor-only, not exercised by PoC.
+    Multi,  // MultiTexture — stages in multiStages.
     Cube,   // ComposedCubeMapTexture (§34.4.1): six face refs in cubeFaces.
     Buffer  // Phase 1 binary extension: raw bytes provided by the embedder.
             // bufferBytes carries the raw encoded bytes; mimeHint is a MIME
@@ -304,6 +305,12 @@ struct TextureRef {
   SamplerParams sampler;
   SFImage inlinePixels;    // PixelTexture content when source == Inline.
   int channel = 0;         // MultiTexture stage; descriptor-only, not exercised by PoC.
+  SFString multiMode = "MODULATE";
+  SFString multiSource;
+  SFString multiFunction;
+  SFColor multiColor{1.0f, 1.0f, 1.0f};
+  float multiAlpha = 1.0f;
+  std::vector<TextureRef> multiStages;
   SFString texCoordMapping; // X3D v4 xxxTextureMapping label; empty = UV set 0.
   // Source::Cube only: the six face refs in the order front, back, left,
   // right, top, bottom (an unauthored face is a default Url ref, empty url).
@@ -620,6 +627,11 @@ struct BackgroundDesc {
   TextureRef front, back, left, right, top, bottom;
   bool hasPanorama() const {
     auto any = [](const TextureRef &r) {
+      if (r.source == TextureRef::Source::Multi) {
+        for (const auto &stage : r.multiStages)
+          if (!stage.url.empty() || stage.source == TextureRef::Source::Inline ||
+              !stage.cubeFaces.empty()) return true;
+      }
       return !r.url.empty() || r.source == TextureRef::Source::Inline ||
              !r.cubeFaces.empty();
     };

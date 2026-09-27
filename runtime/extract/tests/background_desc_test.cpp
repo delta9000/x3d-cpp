@@ -8,8 +8,10 @@
 
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
+#include "X3DRangeValidate.hpp"
 #include "X3DScene.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/nodes/X3DBackgroundNode.hpp"
 
 #include "doctest/doctest.h"
 
@@ -107,4 +109,31 @@ TEST_CASE("refOf: ComposedCubeMapTexture surfaces six face refs (CMT-1)") {
     return extract::TexturePixelResult::makeFailed();
   });
   CHECK(asked == std::vector<std::string>{"f.png", "t.png"});
+}
+
+TEST_CASE("TextureBackground preserves MultiTexture panorama face") {
+  auto tb = createX3DNode("TextureBackground");
+  auto multi = createX3DNode("MultiTexture");
+  setF(multi, "texture", std::any(std::vector<std::shared_ptr<X3DNode>>{
+      image("first.png"), image("second.png")}));
+  setF(tb, "frontTexture", std::any(std::shared_ptr<X3DNode>(multi)));
+  const extract::BackgroundDesc d = extractBound(tb);
+  CHECK(d.hasPanorama());
+  CHECK(d.front.source == TextureRef::Source::Multi);
+  REQUIRE(d.front.multiStages.size() == 2);
+  CHECK(d.front.multiStages[0].url == MFString{"first.png"});
+  CHECK(d.front.multiStages[1].url == MFString{"second.png"});
+}
+
+TEST_CASE("Background reports decreasing sky and ground angles") {
+  auto bg = std::dynamic_pointer_cast<X3DBackgroundNode>(createX3DNode("Background"));
+  REQUIRE(bg != nullptr);
+  bg->setSkyAngle(MFFloat{2.0f, 1.0f});
+  bg->setGroundAngle(MFFloat{1.0f, 0.5f});
+  const auto warnings = collectRangeWarnings(*bg);
+  CHECK(warnings.size() == 2);
+  CHECK(warnings[0].fieldName == "skyAngle");
+  CHECK(warnings[0].detail.find("BACKGROUND_ANGLE_ORDER") != std::string::npos);
+  CHECK(warnings[1].fieldName == "groundAngle");
+  CHECK(warnings[1].detail.find("BACKGROUND_ANGLE_ORDER") != std::string::npos);
 }

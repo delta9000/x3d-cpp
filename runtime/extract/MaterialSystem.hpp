@@ -84,9 +84,8 @@ inline SFString mappingOf(const X3DNode &materialNode, const char *textureFieldN
   return geombounds::getField<SFString>(materialNode, mappingName.c_str(), SFString{});
 }
 
-// Resolve ONE concrete texture node into a TextureRef for the given slot.
-// PixelTexture -> Inline (pixels verbatim), MovieTexture -> Movie, everything
-// else (ImageTexture and the long tail) -> Url with the url list verbatim.
+// Resolve one texture node into a TextureRef for the given slot, recursively
+// retaining cube faces and MultiTexture stages.
 inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
                         TextureRef::Slot slot) {
   TextureRef ref;
@@ -105,17 +104,40 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
     ref.inlinePixels = geombounds::getField<SFImage>(*texNode, "image", {});
   } else if (t == "MovieTexture") {
     ref.source = TextureRef::Source::Movie;
-    ref.url = geombounds::getField<MFString>(*texNode, "url", {});
+    // §9.3.2: load FALSE defers reading and displaying URL content.
+    if (geombounds::getField<bool>(*texNode, "load", true))
+      ref.url = geombounds::getField<MFString>(*texNode, "url", {});
   } else if (t == "ComposedCubeMapTexture") {
     // §34.4.1: six SFNode face textures, no url (CMT-1).
     ref.source = TextureRef::Source::Cube;
     for (const char *face : {"frontTexture", "backTexture", "leftTexture", "rightTexture",
                              "topTexture", "bottomTexture"})
       ref.cubeFaces.push_back(refOf(geombounds::getNode(*texNode, face), slot));
+  } else if (t == "MultiTexture") {
+    ref.source = TextureRef::Source::Multi;
+    const auto kids = geombounds::getField<MFNode>(*texNode, "texture", {});
+    const auto modes = geombounds::getField<MFString>(*texNode, "mode", {});
+    const auto sources = geombounds::getField<MFString>(*texNode, "source", {});
+    const auto functions = geombounds::getField<MFString>(*texNode, "function", {});
+    const auto color = geombounds::getField<SFColor>(*texNode, "color", {1, 1, 1});
+    const auto alpha = geombounds::getField<float>(*texNode, "alpha", 1.0f);
+    for (std::size_t i = 0; i < kids.size(); ++i) {
+      if (!kids[i]) continue;
+      TextureRef stage = refOf(kids[i], slot);
+      stage.channel = static_cast<int>(i);
+      // §18.4.3: missing stage entries use the specified defaults.
+      stage.multiMode = i < modes.size() ? modes[i] : "MODULATE";
+      stage.multiSource = i < sources.size() ? sources[i] : "";
+      stage.multiFunction = i < functions.size() ? functions[i] : "";
+      stage.multiColor = color;
+      stage.multiAlpha = alpha;
+      ref.multiStages.push_back(std::move(stage));
+    }
   } else {
     // ImageTexture and the long tail: a URL list, surfaced verbatim.
     ref.source = TextureRef::Source::Url;
-    ref.url = geombounds::getField<MFString>(*texNode, "url", {});
+    if (geombounds::getField<bool>(*texNode, "load", true))
+      ref.url = geombounds::getField<MFString>(*texNode, "url", {});
   }
   return ref;
 }
@@ -132,14 +154,9 @@ inline bool appendSlot(const X3DNode &materialNode, const char *fieldName,
   if (!node) return false;
   SFString mapping = mappingOf(materialNode, fieldName);
   if (node->nodeTypeName() == "MultiTexture") {
-    // Expand a MultiTexture into one TextureRef per channel, carrying the stage.
-    auto kids = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
-        *node, "texture", {});
-    int channel = 0;
-    for (const auto &k : kids) {
-      if (!k) continue;
-      TextureRef r = refOf(k, slot);
-      r.channel = channel++;
+    // Keep the existing per-channel material shape while carrying §18.4.3 controls.
+    TextureRef multi = refOf(node, slot);
+    for (auto &r : multi.multiStages) {
       r.texCoordMapping = mapping;
       out.push_back(std::move(r));
     }

@@ -18,16 +18,6 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
 
 ## Findings
 
-- **AUD-TEX-2** [major/OPEN] — §18.4.3: MultiTexture mode/source/function/color/alpha never reach the descriptor, so stages cannot be blended as authored.
-  - Only a channel ordinal is extracted per stage.
-- **AUD-MEDIA-1** [major/OPEN] — §18.4.2: set_speed changes an active movie's cycle; it must be ignored while playing.
-  - Spec: 'set_speed events are ignored while the movie is playing.' Incomplete fix of TDN-5. Probe: 'audit MovieTexture ignores speed changes while active'.
-- **AUD-TEX-1** [minor/OPEN] — §9.3.2, 18.4.1: load FALSE on a texture still fetches its url.
-  - Probe: 'audit ImageTexture load FALSE suppresses URL fetch'.
-- **AUD-MEDIA-3** [minor/OPEN] — §18.4.2: MovieTexture never sends duration_changed: the SDK opens no media (ADR-0041) and the MovieDecoder seam carries no duration.
-  - The consumer needs a documented way to report a loaded movie's duration so the time lifecycle and routes see it.
-- **AUD-TEX-3** [low/OPEN] — §18.4.9: borderColor (deprecated in v4.0) is not extracted.
-  - Already noted in TXF-4.
 - **TDN-5** [major/CLOSED] — §8.2.4.1, 16.4.2, 18.4.2: AudioClip/MovieTexture have no time-lifecycle System — startTime/loop/isActive inert.
   - MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip and MovieTexture: enabled, loop, and a cycle of duration_changed / pitch (AudioClip) or / speed (MovieTexture); an unknown duration plays until stopTime (media_time_test). Decoding and playback remain separate (SND-4).
 - **TXF-2** [major/CLOSED] — §18.4.8: TextureCoordinateGenerator UVs (SPHERE/CAMERASPACE*) are view-dependent per-vertex and must be computed at render time — the descriptor is surfaced but no UVs are produced.
@@ -38,6 +28,10 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
   - Mischaracterized originally: the sphere DOES carry texcoords (tessellateSphere emits them). The real cause is the no-Material case — an Appearance with an ImageTexture but no Material is unlit per spec (§12.2.5), so the extractor correctly surfaces MaterialModel::Unlit with the image on the EMISSIVE slot (MaterialSystem.hpp). The PoC's UNLIT shader had no texcoord/sampler at all, so the texture was never sampled (Box/texture.x3d has a <Material/> -> Phong path, which is why it worked). Fixed PoC-side: added aTexCoord + sampler2D to unlit.vert/unlit.frag and bound the {Emissive,BaseColor,Diffuse} slot in the unlit draw path. SDK extraction was already spec-correct.
 - **VIS-MOVIE-DECODE** [major/FIXED] — §23.4.1: MovieTexture frames were never decoded — TextureRef::Source::Movie was surfaced but no consumer decode path existed, so movie-textured scenes rendered the white/last fallback (blank). FIXED for MPEG-1: the MovieDecoder seam + pl_mpeg Backend A play the video onto geometry (the whole NIST corpus is MPEG-1).
   - Implemented per ADR-0041: the MovieDecoder seam (runtime/extract/MovieDecoder.hpp) + Backend A pl_mpeg (runtime/io/plmpeg/, flag-gated x3d_plmpeg) wired into the PoC, which decodes the current media-time frame and uploads it as the texture each tick. The NIST .mpg files are RAW elementary video streams (no MPEG-PS system layer), so the backend drives pl_mpeg's low-level plm_video_t directly for those (plm_t + seek for program streams). Verified by the x3d_movie_tests semantics-contract test and by rendering Appearance/Appearance/movietexture.x3d (the VTS card plays on box/sphere/cone/cylinder). Theora since shipped as MovieDecoder Backend B (TheoraMovieDecoder, seam-status.md — the seam is STABLE); WebM remains a follow-up. MovieTexture time-lifecycle nuance tracked by TDN-5.
+- **AUD-TEX-2** [major/CLOSED] — §18.4.3: MultiTexture mode/source/function/color/alpha never reach the descriptor, so stages cannot be blended as authored.
+  - TextureRef now retains ordered MultiTexture stages with mode, source, function, color and alpha, including defaults; resolver enrichment traverses stages. Test: MultiTexture stages preserve blend controls.
+- **AUD-MEDIA-1** [major/CLOSED] — §18.4.2: set_speed changes an active movie's cycle; it must be ignored while playing.
+  - Active MovieTexture speed deliveries are ignored and MediaTimeSystem holds the activation rate for cycle timing. Test: MovieTexture ignores speed changes while active. Completes TDN-5.
 - **TXF-4** [minor/FIXED] — §18.4.9: CPU reference sampler honored only repeat/clamp — MIRRORED_REPEAT and CLAMP_TO_BOUNDARY were ignored and the magnification filter was not applied.
   - The extractor already surfaces the full §18.4.9 sampler (extendedSamplerOf); the CPU sampler (examples/cpu_raster/cpuraster/Texture.hpp) now honors REPEAT/CLAMP/CLAMP_TO_EDGE/CLAMP_TO_BOUNDARY (border color = the TextureProperties default 0,0,0,0 — borderColor is not extracted) and MIRRORED_REPEAT, and applies the magnification filter (NEAREST_PIXEL/FASTEST nearest; AVG_PIXEL/NICEST/DEFAULT bilinear). Mipmapping (the minification filters) remains unimplemented — the sampler has a single mip level. Regression: x3d_cpuraster_texture_render_test.
 - **TXF-1** [minor/CLOSED] — §18.4.10: TextureTransform matrix application order divergence (translate/center/rotate/scale/−center) — UVs transformed incorrectly for non-trivial transforms.
@@ -46,6 +40,12 @@ _Generated. Levels 1,2,3 · 11 nodes · profiles: Interchange, Interactive, Imme
   - Fixed for the generated model's available nodes: MultiTextureTransform now yields one TextureTransform2DParams per child and SceneExtractor applies transforms to matching MeshData.texcoordSets; TextureTransformMatrix3D projects its 4x4 transform over (s,t,0,1) onto the current 2D seam. TextureMatrixTransform appears in profile prose, but the generated concrete node is TextureTransformMatrix3D. Covered by texture_extract_test.
 - **MULTI-INHERIT** [minor/CLOSED] — §16.4.2, 18.4.2: MovieTexture declared under two abstract node types; engine handles it via ADR-0004 virtual mixins. AudioClip is the clean single-node pattern (named by association).
   - UOM nominates one primary Inheritance + AdditionalInheritance; bindings emit every base public virtual (MovieTexture.hpp:40-42), the shared X3DNode collapses, and reflection accessors are qualified by declaring ancestor (MovieTexture.cpp:19,89,106). containerField defaults deterministic - MovieTexture=texture, AudioClip=source. No engine impact (see ADR-0004). 4.1 - confirmed; 4.1 did NOT do the X3DSoundSourceObject interface recast (still multiple inheritance), so the virtual-mixin approach remains the durable answer.
+- **AUD-TEX-1** [minor/CLOSED] — §9.3.2, 18.4.1: load FALSE on a texture still fetches its url.
+  - Texture refs omit URL candidates while load is FALSE, so the consumer resolver cannot fetch them. Test: ImageTexture load FALSE suppresses URL fetch.
+- **AUD-MEDIA-3** [minor/CLOSED] — §18.4.2: MovieTexture never sends duration_changed: the SDK opens no media (ADR-0041) and the MovieDecoder seam carries no duration.
+  - The additive reportMovieDuration(context, movie, seconds) helper posts duration_changed through the cascade after consumer loading, feeding routes and MediaTimeSystem. Test: consumer reported MovieTexture duration drives lifecycle.
 - **TXT-6** [low/FIXED] — §18.4.4: MultiTextureCoordinate silently falls back to default UVs (no 'point' field).
   - Fixed: MeshBuilder now unwraps MultiTextureCoordinate.texCoord children, preserves all channels in MeshData.texcoordSets, mirrors the first usable channel to legacy MeshData.texcoords, and emits fixed-width fallback (0,0) corners for empty channels. Covered by texture_extract_test.
+- **AUD-TEX-3** [low/CLOSED] — §18.4.9: borderColor (deprecated in v4.0) is not extracted.
+  - TextureProperties.borderColor now reaches ExtendedSamplerParams and the CPU reference sampler. Test: texture_extract_test custom borderColor assertions.
 

@@ -2464,65 +2464,65 @@
   component: EnvironmentalEffects
   clause: "24.2.1"
   severity: minor
-  status: open
+  status: closed
   summary: "Decreasing skyAngle/groundAngle values are accepted silently."
-  note: "Spec: angles are 'restricted to non-decreasing values'. Per the lenient-read policy (ADR-0003) the fix is a validation warning, not a rejection."
+  note: "Range validation emits BACKGROUND_ANGLE_ORDER warnings for decreasing skyAngle and groundAngle, preserving lenient reads (ADR-0003). Test: Background reports decreasing sky and ground angles."
 - id: AUD-BG-2
   nodes: [TextureBackground, MultiTexture]
   component: EnvironmentalEffects
   clause: "24.4.5"
   severity: minor
-  status: open
+  status: closed
   summary: "A MultiTexture panorama face is dropped from BackgroundDesc."
-  note: "refOf treats MultiTexture as a url texture with no url. Incomplete fix of ENV-11. Probe: 'audit TextureBackground preserves MultiTexture face'."
+  note: "TextureRef now carries MultiTexture panorama stages and BackgroundDesc counts populated stages. Test: TextureBackground preserves MultiTexture panorama face. Completes ENV-11."
 - id: AUD-TEX-1
   nodes: [ImageTexture, MovieTexture, X3DUrlObject]
   component: Texturing
   clause: "9.3.2, 18.4.1"
   severity: minor
-  status: open
+  status: closed
   summary: "load FALSE on a texture still fetches its url."
-  note: "Probe: 'audit ImageTexture load FALSE suppresses URL fetch'."
+  note: "Texture refs omit URL candidates while load is FALSE, so the consumer resolver cannot fetch them. Test: ImageTexture load FALSE suppresses URL fetch."
 - id: AUD-TEX-2
   nodes: [MultiTexture]
   component: Texturing
   clause: "18.4.3"
   severity: major
-  status: open
+  status: closed
   summary: "MultiTexture mode/source/function/color/alpha never reach the descriptor, so stages cannot be blended as authored."
-  note: "Only a channel ordinal is extracted per stage."
+  note: "TextureRef now retains ordered MultiTexture stages with mode, source, function, color and alpha, including defaults; resolver enrichment traverses stages. Test: MultiTexture stages preserve blend controls."
 - id: AUD-TEX-3
   nodes: [TextureProperties]
   component: Texturing
   clause: "18.4.9"
   severity: low
-  status: open
+  status: closed
   summary: "borderColor (deprecated in v4.0) is not extracted."
-  note: "Already noted in TXF-4."
+  note: "TextureProperties.borderColor now reaches ExtendedSamplerParams and the CPU reference sampler. Test: texture_extract_test custom borderColor assertions."
 - id: AUD-MEDIA-1
   nodes: [MovieTexture]
   component: Texturing
   clause: "18.4.2"
   severity: major
-  status: open
+  status: closed
   summary: "set_speed changes an active movie's cycle; it must be ignored while playing."
-  note: "Spec: 'set_speed events are ignored while the movie is playing.' Incomplete fix of TDN-5. Probe: 'audit MovieTexture ignores speed changes while active'."
+  note: "Active MovieTexture speed deliveries are ignored and MediaTimeSystem holds the activation rate for cycle timing. Test: MovieTexture ignores speed changes while active. Completes TDN-5."
 - id: AUD-MEDIA-2
   nodes: [AudioClip]
   component: Sound
   clause: "16.4.2"
   severity: major
-  status: open
+  status: closed
   summary: "set_pitch changes an active clip's timing and playback rate; it must be ignored."
-  note: "Spec: 'A set_pitch event to an active AudioClip is ignored and no pitch_changed field is generated.' Incomplete fix of TDN-5/ADR-0050. Probe: 'audit AudioClip ignores pitch changes while active'."
+  note: "Active AudioClip pitch deliveries are ignored; MediaTimeSystem and SoundSystem use the activation pitch for timing and PlaybackRate. Tests: AudioClip ignores pitch changes while active; sound_immersive_test activation pitch case. Completes TDN-5/ADR-0050."
 - id: AUD-MEDIA-3
   nodes: [MovieTexture]
   component: Texturing
   clause: "18.4.2"
   severity: minor
-  status: open
+  status: closed
   summary: "MovieTexture never sends duration_changed: the SDK opens no media (ADR-0041) and the MovieDecoder seam carries no duration."
-  note: "The consumer needs a documented way to report a loaded movie's duration so the time lifecycle and routes see it."
+  note: "The additive reportMovieDuration(context, movie, seconds) helper posts duration_changed through the cascade after consumer loading, feeding routes and MediaTimeSystem. Test: consumer reported MovieTexture duration drives lifecycle."
 - id: AUD-MEDIA-4
   nodes: [Sound, MovieTexture]
   component: Sound
@@ -2530,4 +2530,4 @@
   severity: major
   status: open
   summary: "Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources."
-  note: "Needs movie audio (the MovieDecoder seam is frame-only)."
+  note: "Still open: MovieDecoder returns video frames only; SoundSystem needs decoded audio samples, format and timing to build a Buffer source. Adding those to FrameResult alone would not supply a timed audio stream, so this needs a movie-audio decoder/source contract before Sound.source MovieTexture can play."

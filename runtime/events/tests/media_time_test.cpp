@@ -8,6 +8,7 @@
 #include "x3d/nodes/AudioClip.hpp"
 #include "x3d/nodes/MovieTexture.hpp"
 
+#include <any>
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -91,4 +92,48 @@ TEST_CASE("media_time_test") {
     check(!off.active(), "movie: enabled FALSE never activates");
   }
   CHECK(failures == 0);
+}
+
+TEST_CASE("MovieTexture ignores speed changes while active") {
+  Rig<MovieTexture> r;
+  r.node->emitDuration_changed(6.0);
+  r.node->setSpeed(1.0f);
+  r.ctx.tick(0.0);
+  REQUIRE(r.active());
+  r.ctx.tick(1.0);
+  r.ctx.postEvent(r.node.get(), "set_speed", std::any(SFFloat{3.0f}));
+  r.ctx.process();
+  CHECK(r.node->getSpeed() == 1.0f);
+  r.ctx.tick(2.1);
+  CHECK(r.active()); // Original six-second cycle must still be playing.
+}
+
+TEST_CASE("AudioClip ignores pitch changes while active") {
+  Rig<AudioClip> r;
+  r.node->emitDuration_changed(6.0);
+  r.node->setPitch(1.0f);
+  r.ctx.tick(0.0);
+  REQUIRE(r.active());
+  r.ctx.tick(1.0);
+  r.ctx.postEvent(r.node.get(), "set_pitch", std::any(SFFloat{3.0f}));
+  r.ctx.process();
+  CHECK(r.node->getPitch() == 1.0f);
+  r.ctx.tick(2.1);
+  CHECK(r.active()); // Original six-second cycle must still be playing.
+}
+
+TEST_CASE("consumer reported MovieTexture duration drives lifecycle") {
+  Rig<MovieTexture> r;
+  r.node->setStartTime(1.0);
+  r.node->setSpeed(2.0f);
+  r.ctx.tick(0.0);
+  reportMovieDuration(r.ctx, *r.node, 6.0);
+  r.ctx.process();
+  CHECK(r.node->getDuration_changed() == 6.0);
+  r.ctx.tick(1.0);
+  CHECK(r.active());
+  r.ctx.tick(3.9);
+  CHECK(r.active());
+  r.ctx.tick(4.1);
+  CHECK_FALSE(r.active());
 }
