@@ -648,7 +648,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
                          const std::vector<SFVec3f> &spine,
                          const std::vector<SFRotation> &orientation,
                          const std::vector<SFVec2f> &scale, bool beginCap,
-                         bool endCap, bool ccw, float creaseAngle,
+                         bool endCap, bool convex, bool ccw, float creaseAngle,
                          bool genTexCoords) {
   const int ns = static_cast<int>(spine.size());
   const int nc = static_cast<int>(crossSection.size());
@@ -967,15 +967,28 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   // endCap. Cap UVs use the cross-section's own 2D coords normalized to the
   // bbox.
   const int capCount = csClosed ? nc - 1 : nc; // skip duplicate closing vertex.
-  if (beginCap && capCount >= 3) {
+  std::vector<std::array<int, 3>> capTriangles;
+  if (!convex && capCount >= 3) {
+    std::vector<SFVec3f> capPoints;
+    capPoints.reserve(capCount);
+    for (int k = 0; k < capCount; ++k)
+      capPoints.push_back({crossSection[k].x, 0, crossSection[k].y});
+    // §13.3.5.6 / §11.2.3: a concave cap still covers only its polygon.
+    capTriangles = earClipPolygon(capPoints);
+  } else {
     for (int k = 1; k + 1 < capCount; ++k)
-      emit(0, 0, 0, k + 1, 0, k, capUv(0), capUv(k + 1),
-           capUv(k)); // reversed fan (faces away from endCap).
+      capTriangles.push_back({0, k, k + 1});
+  }
+  if (beginCap && capCount >= 3) {
+    for (const auto &tri : capTriangles)
+      emit(0, tri[0], 0, tri[2], 0, tri[1], capUv(tri[0]), capUv(tri[2]),
+           capUv(tri[1]));
   }
   if (endCap && capCount >= 3) {
     const int last = ns - 1;
-    for (int k = 1; k + 1 < capCount; ++k)
-      emit(last, 0, last, k, last, k + 1, capUv(0), capUv(k), capUv(k + 1));
+    for (const auto &tri : capTriangles)
+      emit(last, tri[0], last, tri[1], last, tri[2], capUv(tri[0]),
+           capUv(tri[1]), capUv(tri[2]));
   }
 
   // creaseAngle smoothing (B6) keyed on the SOURCE lattice id (section*nc +
@@ -1551,6 +1564,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
         geombounds::getField<std::vector<SFVec2f>>(*geom, "scale", {});
     const bool beginCap = geombounds::getField<SFBool>(*geom, "beginCap", true);
     const bool endCap = geombounds::getField<SFBool>(*geom, "endCap", true);
+    const bool convex = geombounds::getField<SFBool>(*geom, "convex", true);
     const float crease =
         geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
     // DEFAULT (implicit) texcoords (TC3): Extrusion has NO authored
@@ -1561,7 +1575,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     // parameterization, emitted parallel to positions inside
     // tessellateExtrusion.
     tessellateExtrusion(mesh, crossSection, spine, orientation, scale, beginCap,
-                        endCap, mesh.ccw, crease, /*genTexCoords=*/true);
+                        endCap, convex, mesh.ccw, crease, /*genTexCoords=*/true);
     mesh.hasNormals = !mesh.normals.empty();
     return mesh;
   }
@@ -1868,22 +1882,22 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     }
   } else if (t == "IndexedLineSet" || t == "LineSet" || t == "PointSet") {
     // ----------------------------------------------------------------------
-    // B4 — line/point topology. These produce NO triangles and NO normals;
-    // they are ALWAYS unlit (vertex Color when present, else baseColor). The
-    // producer marks the mesh non-solid so a consumer's cull-disable path and
-    // the topology!=Triangles unlit selector both cover it.
+    // B4 — line/point topology. Authored normals enable lighting (§11.2.2.5).
     //
     // Each emitted index is its own EXPANDED corner (one fresh position + a
     // 0..N-1 index entry), matching the triangle funnel's layout so the GPU
     // upload path is identical. Color is resolved per corner via the shared
-    // AttrResolvers (colorPerVertex / colorIndex honored); X3D line/point sets
-    // carry Color/ColorRGBA but never Normal/TexCoord, so those resolvers are
-    // simply absent.
+    // AttrResolvers (colorPerVertex / colorIndex honored); normals use the
+    // coordinate index.
     // ----------------------------------------------------------------------
-    mesh.solid = false; // line/point meshes are double-sided + unlit.
+    mesh.solid = false;
     const auto emitVertex = [&](const Corner &cr) {
       mesh.positions.push_back(pts[cr.coord]);
       mesh.indices.push_back(static_cast<std::uint32_t>(mesh.indices.size()));
+      if (attrs.hasNormal)
+        mesh.normals.push_back(cr.coord < static_cast<int>(attrs.normals.size())
+                                   ? attrs.normals[cr.coord]
+                                   : SFVec3f{0, 0, 0});
       if (attrs.hasColor) {
         int s = AttrResolvers::pickIndex(attrs.colors, attrs.colorIndex,
                                          attrs.colorPerVertex, cr);

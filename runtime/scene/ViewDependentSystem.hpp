@@ -14,6 +14,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <string>

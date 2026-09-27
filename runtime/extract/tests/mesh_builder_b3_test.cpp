@@ -166,3 +166,22 @@ TEST_CASE("mesh_builder_b3_test") {
 
   return;
 }
+
+TEST_CASE("extrusion_concave_cap_does_not_cover_notch") {
+  auto g = createX3DNode("Extrusion");
+  // A 3x3 U with a 1x2 notch: cap area is 7 square units.
+  const MFVec2f u = {{0,0}, {3,0}, {3,3}, {2,3}, {2,1},
+                     {1,1}, {1,3}, {0,3}, {0,0}};
+  setF(g, "crossSection", std::any(u));
+  setF(g, "convex", std::any(SFBool(false)));
+  const MeshData m = buildLocalMesh(g.get());
+  float area = 0.0f;
+  for (std::size_t i = 0; i + 2 < m.indices.size(); i += 3) {
+    const auto &a = m.positions[m.indices[i]];
+    const auto &b = m.positions[m.indices[i + 1]];
+    const auto &c = m.positions[m.indices[i + 2]];
+    if (feq(a.y, 1.0f) && feq(b.y, 1.0f) && feq(c.y, 1.0f))
+      area += std::fabs((b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x))*0.5f;
+  }
+  CHECK(area == doctest::Approx(7.0f));
+}

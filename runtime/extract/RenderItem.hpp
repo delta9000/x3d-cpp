@@ -146,15 +146,10 @@ struct GeomIdHash {
 //
 // EXPLICIT CONSUMER CONTRACT (do NOT overload topology to mean unlit): the
 // SHADING-PATH selector a consumer must honor is
-//     topology != Triangles  OR  !hasNormals  =>  bind the UNLIT program,
-//                                                  skip the normal-matrix and
-//                                                  light uniforms, and disable
-//                                                  GL_CULL_FACE.
-// Lines and points are ALWAYS unlit, colored from a per-vertex Color (when
-// hasColors) else the material baseColor. The producer additionally sets
-// solid=false on every line/point mesh so a consumer's existing cull-disable
-// path (solid=false => double-sided, no GL_CULL_FACE) covers them with no extra
-// branch; the topology check above is the belt-and-braces guard.
+//     !hasNormals  =>  bind the UNLIT program and skip normal-matrix/light uniforms.
+// Lines and points with authored normals can be lit (§11.2.2.5). Without
+// normals, use per-vertex Color or MaterialDesc::unlitGeometryRGBA(). The
+// producer sets solid=false on every line/point mesh for cull-disabled drawing.
 // Topology enum is defined in Topology.hpp (included above).
 
 struct MeshData {
@@ -496,6 +491,8 @@ struct MaterialDesc {
 
   // Composes the per-model RGB surface with alpha = 1 - transparency.
   SFColorRGBA toRGBA() const;
+  // §11.2.2.5: fallback color for unlit line/point geometry without Color.
+  SFColorRGBA unlitGeometryRGBA() const;
 };
 
 inline SFColorRGBA MaterialDesc::toRGBA() const {
@@ -509,6 +506,11 @@ inline SFColorRGBA MaterialDesc::toRGBA() const {
       return SFColorRGBA{emissive.r, emissive.g, emissive.b, a};
   }
   return SFColorRGBA{0.8f, 0.8f, 0.8f, a};
+}
+
+inline SFColorRGBA MaterialDesc::unlitGeometryRGBA() const {
+  const float a = 1.0f - transparency;
+  return SFColorRGBA{emissive.r, emissive.g, emissive.b, a};
 }
 
 // ---------------------------------------------------------------------------

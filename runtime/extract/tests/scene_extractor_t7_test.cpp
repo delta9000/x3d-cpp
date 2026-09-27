@@ -208,3 +208,29 @@ TEST_CASE("scene_extractor_t7_test") {
 
   return;
 }
+
+TEST_CASE("unlit_line_set_material_uses_emissive_color") {
+  auto coord = createX3DNode("Coordinate");
+  setF(coord, "point", std::any(std::vector<SFVec3f>{{0,0,0}, {1,0,0}}));
+  auto lines = createX3DNode("LineSet");
+  setF(lines, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
+  setF(lines, "vertexCount", std::any(std::vector<int>{2}));
+  auto mat = createX3DNode("Material");
+  setF(mat, "diffuseColor", std::any(SFColor{1,0,0}));
+  setF(mat, "emissiveColor", std::any(SFColor{0,1,0}));
+  auto app = createX3DNode("Appearance");
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(lines)));
+  setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
+  Scene scene;
+  scene.addRootNode(shape);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  const auto snap = ex.fullSnapshot();
+  REQUIRE(snap.added.size() == 1);
+  const auto color = ex.item(snap.added[0]).material.unlitGeometryRGBA();
+  CHECK(color.g == doctest::Approx(1.0f));
+  CHECK(color.r == doctest::Approx(0.0f));
+}

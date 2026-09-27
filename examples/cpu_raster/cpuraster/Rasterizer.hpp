@@ -91,15 +91,18 @@ public:
     }
   }
 
-  // Unlit constant-color LINES (GL_LINES: index pairs) — the B4 topology path.
+  // LINES (GL_LINES: index pairs); an optional shader lights authored normals.
   // `lineWidth` (§12.4.6 LineProperties.linewidthScaleFactor) stamps a
   // width×width square at each pixel (>=1, default 1 = the historic 1px line).
   void drawLines(const std::vector<Vertex> &verts,
                  const std::vector<std::uint32_t> &indices,
                  const glsl::mat4 &model, const glsl::mat4 &view,
                  const glsl::mat4 &proj, glsl::vec4 baseColor, bool hasColors,
-                 float lineWidth = 1.0f) {
+                 float lineWidth = 1.0f, const FragmentShader &fs = {}) {
     const glsl::mat4 mvp = proj * view * model;
+    const glsl::mat4 mv = view * model;
+    const glsl::mat3 normalMat = fs ? glsl::normalMatrix(runtime::Mat4{mv.m})
+                                    : glsl::mat3::identity();
     const int side = std::max(1, (int)std::lround(lineWidth));
     for (std::size_t i = 0; i + 1 < indices.size(); i += 2) {
       const Vertex &a = verts[indices[i]];
@@ -107,12 +110,19 @@ public:
       glsl::vec4 ca = mvp * glsl::vec4(a.pos, 1.0f);
       glsl::vec4 cb = mvp * glsl::vec4(b.pos, 1.0f);
       if (ca.w <= 1e-6f || cb.w <= 1e-6f) continue; // skip behind-near segments.
+      FragmentInput fa, fb;
+      fa.posEye = (mv * glsl::vec4(a.pos, 1.0f)).xyz();
+      fb.posEye = (mv * glsl::vec4(b.pos, 1.0f)).xyz();
+      fa.normalEye = normalMat * a.normal;
+      fb.normalEye = normalMat * b.normal;
+      fa.color = a.color;
+      fb.color = b.color;
       drawLineNDC(ca, cb, hasColors ? a.color : baseColor,
-                  hasColors ? b.color : baseColor, side);
+                  hasColors ? b.color : baseColor, side, fs, fa, fb);
     }
   }
 
-  // Unlit POINTS (GL_POINTS: one vertex each) — a depth-tested square splat.
+  // POINTS (GL_POINTS: one vertex each) — a depth-tested square splat.
   // §12.4.8 PointProperties: size = (A + B·d + C·d²)·scale clamped to
   // [min,max], d = eye distance. Defaults (scale 1, atten (1,0,0), min=max=1)
   // give the historic single pixel.
@@ -121,9 +131,12 @@ public:
                   const glsl::mat4 &model, const glsl::mat4 &view,
                   const glsl::mat4 &proj, glsl::vec4 baseColor, bool hasColors,
                   float pointSizeScale = 1.0f, glsl::vec3 attenuation = {1, 0, 0},
-                  float pointSizeMin = 1.0f, float pointSizeMax = 1.0f) {
+                  float pointSizeMin = 1.0f, float pointSizeMax = 1.0f,
+                  const FragmentShader &fs = {}) {
     const glsl::mat4 mv = view * model;
     const glsl::mat4 mvp = proj * mv;
+    const glsl::mat3 normalMat = fs ? glsl::normalMatrix(runtime::Mat4{mv.m})
+                                    : glsl::mat3::identity();
     for (std::uint32_t idx : indices) {
       const Vertex &v = verts[idx];
       glsl::vec4 c = mvp * glsl::vec4(v.pos, 1.0f);
@@ -137,6 +150,14 @@ public:
       const int side = std::max(1, (int)std::lround(size));
       const int half = side / 2;
       const int px0 = (int)std::lround(sx), py0 = (int)std::lround(sy);
+      glsl::vec4 shaded = hasColors ? v.color : baseColor;
+      if (fs) {
+        FragmentInput f;
+        f.posEye = (mv * glsl::vec4(v.pos, 1.0f)).xyz();
+        f.normalEye = normalMat * v.normal;
+        f.color = v.color;
+        if (!fs(f, shaded)) continue;
+      }
       for (int dy = -half; dy <= side - 1 - half; ++dy)
         for (int dx = -half; dx <= side - 1 - half; ++dx) {
           const int px = px0 + dx, py = py0 + dy;
@@ -144,7 +165,7 @@ public:
             continue;
           if (sz < fb_.depth(px, py)) {
             fb_.setDepth(px, py, sz);
-            fb_.setColor(px, py, hasColors ? v.color : baseColor);
+            fb_.setColor(px, py, shaded);
           }
         }
     }
@@ -316,7 +337,9 @@ private:
   // Depth-tested constant-color line in NDC->screen (Bresenham-ish DDA). `side`
   // is the square stamp width in pixels (1 = a thin line).
   void drawLineNDC(const glsl::vec4 &ca, const glsl::vec4 &cb, glsl::vec4 cola,
-                   glsl::vec4 colb, int side = 1) {
+                   glsl::vec4 colb, int side = 1,
+                   const FragmentShader &fs = {},
+                   const FragmentInput &fa = {}, const FragmentInput &fb = {}) {
     float ax, ay, az, bx, by, bz;
     toScreen(ca, ax, ay, az);
     toScreen(cb, bx, by, bz);
@@ -328,7 +351,14 @@ private:
       const int cx = (int)std::lround(ax + (bx - ax) * t);
       const int cy = (int)std::lround(ay + (by - ay) * t);
       const float pz = az + (bz - az) * t;
-      const glsl::vec4 col = cola + (colb - cola) * t;
+      glsl::vec4 col = cola + (colb - cola) * t;
+      if (fs) {
+        FragmentInput f;
+        f.posEye = fa.posEye + (fb.posEye - fa.posEye) * t;
+        f.normalEye = fa.normalEye + (fb.normalEye - fa.normalEye) * t;
+        f.color = fa.color + (fb.color - fa.color) * t;
+        if (!fs(f, col)) continue;
+      }
       for (int dy = -half; dy <= side - 1 - half; ++dy)
         for (int dx = -half; dx <= side - 1 - half; ++dx) {
           const int px = cx + dx, py = cy + dy;

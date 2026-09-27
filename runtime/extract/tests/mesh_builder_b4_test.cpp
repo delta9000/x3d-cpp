@@ -28,6 +28,7 @@
 #include "doctest/doctest.h"
 #include <cmath>
 #include <memory>
+#include <string>
 #include <vector>
 
 using namespace x3d::core;
@@ -201,4 +202,22 @@ TEST_CASE("mesh_builder_b4_test") {
   }
 
   return;
+}
+
+TEST_CASE("line_and_point_normals_enable_lighting") {
+  for (const char *type : {"LineSet", "IndexedLineSet", "PointSet"}) {
+    auto g = createX3DNode(type);
+    attachCoord(g, {{0,0,0}, {1,0,0}});
+    auto normal = createX3DNode("Normal");
+    setF(normal, "vector", std::any(std::vector<SFVec3f>{{0,0,1}, {0,0,1}}));
+    setF(g, "normal", std::any(std::shared_ptr<X3DNode>(normal)));
+    if (std::string(type) == "LineSet")
+      setF(g, "vertexCount", std::any(std::vector<int>{2}));
+    if (std::string(type) == "IndexedLineSet")
+      setF(g, "coordIndex", std::any(std::vector<int>{0,1,-1}));
+    const auto m = buildLocalMesh(g.get());
+    REQUIRE(m.positions.size() == 2);
+    CHECK(m.hasNormals);
+    CHECK(m.normals.size() == m.positions.size());
+  }
 }

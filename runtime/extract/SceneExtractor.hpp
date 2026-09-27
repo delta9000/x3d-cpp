@@ -182,7 +182,7 @@ public:
     // M25-5: collect all active lights once per snapshot. emit() uses this to
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
-    lights_ = ls.collect(scene_, walkBudget_);
+    lights_ = ls.collect(scene_, walkBudget_, ctx_.cameraWorldPosition());
 
     RenderDelta delta;
     for (const auto &root : scene_.rootNodes) {
@@ -405,7 +405,7 @@ public:
   // lightsOf() indices are positions in); this fresh collect is for standalone use.
   std::vector<LightDesc> lights() const {
     LightSystem ls;
-    return ls.collect(scene_);
+    return ls.collect(scene_, ctx_.cameraWorldPosition());
   }
 
   // background — the bound Background's sky/ground gradient, read reflection-
@@ -729,27 +729,9 @@ private:
 
     // VISIBILITY special-cases BY nodeTypeName, BEFORE the generic child loop.
     const std::string t = n->nodeTypeName();
-    if (t == "Switch") {
-      // whichChoice (default -1): <0 or out-of-range => draw nothing; else recurse
-      // ONLY the selected child. NEVER the blind child loop (would draw all/first).
-      const int which = geombounds::getField<int>(*n, "whichChoice", -1);
-      const auto &kids = childrenOf(*n);
-      if (which >= 0 && which < static_cast<int>(kids.size()) && kids[which])
-        walk(kids[which].get(), here, path, delta);
-      path.pop_back();
-      return;
-    }
-    if (t == "LOD") {
-      const auto &kids = childrenOf(*n);
-      if (!kids.empty()) {
-        const SFVec3f center = geombounds::getField<SFVec3f>(*n, "center", {0, 0, 0});
-        // §23.4.3: distance measured in the LOD's LOCAL frame (here includes scale).
-        const SFVec3f eyeLocal = here.inverse().transformPoint(ctx_.cameraWorldPosition());
-        const float d = viewdep::len(viewdep::sub(eyeLocal, center));
-        int lvl = lodSelectLevel(*n, d);
-        if (lvl >= static_cast<int>(kids.size())) lvl = static_cast<int>(kids.size()) - 1;
-        if (kids[lvl]) walk(kids[lvl].get(), here, path, delta);
-      }
+    if (t == "Switch" || t == "LOD") {
+      if (auto child = traversedChild(*n, here, ctx_.cameraWorldPosition()))
+        walk(child.get(), here, path, delta);
       path.pop_back();
       return;
     }
@@ -784,17 +766,6 @@ private:
       walk(c.get(), here, path, delta);
     });
     path.pop_back();
-  }
-
-  // The `children` MFNode slot of a grouping node (empty if absent). Borrowed:
-  // valid while `n` lives and its children are not rewritten.
-  static const std::vector<std::shared_ptr<X3DNode>> &childrenOf(const X3DNode &n) {
-    static const std::vector<std::shared_ptr<X3DNode>> kNone;
-    for (const auto &f : n.fields())
-      if (f.x3dName == "children" && f.type == X3DFieldType::MFNode)
-        if (const auto *c = fieldPtr<std::vector<std::shared_ptr<X3DNode>>>(n, f))
-          return *c;
-    return kNone;
   }
 
   // Intern this PATH into a dense RenderItemId; store the per-path record and
