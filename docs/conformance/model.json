@@ -10445,7 +10445,7 @@
     ]
   },
   "summary": {
-    "closed_count": 225,
+    "closed_count": 226,
     "component_count": 36,
     "deferred_count": 28,
     "finding_count": 257,
@@ -10471,7 +10471,7 @@
     "open_by_severity": {
       "critical": 2,
       "low": 2,
-      "major": 15,
+      "major": 14,
       "minor": 13
     }
   },
