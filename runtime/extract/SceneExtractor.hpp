@@ -754,6 +754,21 @@ private:
       return;
     }
 
+    if (t == "LayerSet") {
+      const auto layers = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
+          *n, "layers", {});
+      const auto order = geombounds::getField<std::vector<int>>(*n, "order", {0});
+      // ISO/IEC 19775-1:2023 §35.4.2: layer ordinals start at 0 (the first
+      // entry in `layers`), and entries absent from `order` are not rendered.
+      // Out-of-range ordinals are ignored; repetitions intentionally render again.
+      for (int ordinal : order)
+        if (ordinal >= 0 && static_cast<std::size_t>(ordinal) < layers.size() &&
+            layers[static_cast<std::size_t>(ordinal)])
+          walk(layers[static_cast<std::size_t>(ordinal)].get(), here, path, delta);
+      path.pop_back();
+      return;
+    }
+
     // Generic pass-through grouping recursion (Group/Transform/Anchor/Billboard/
     // Collision/StaticGroup/...): every SFNode + MFNode field slot. Gated to node
     // slots only (never metadata scalars); inputOnly slots have no getter.

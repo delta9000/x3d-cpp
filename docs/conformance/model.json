@@ -8722,9 +8722,9 @@
       "nodes": [
         "LayerSet"
       ],
-      "note": "runtime/extract/SceneExtractor.hpp:598-610 recurses all SFNode/MFNode children unconditionally; LayerSet.order is never read. \u00a735.4.2: layers not listed in 'order' shall not be rendered. (sweep 2026-06-25)",
+      "note": "Closed 2026-09-26: SceneExtractor follows only LayerSet.layers ordinals listed in order (zero-based per \u00a735.4.2; invalid ordinals are ignored). Covered by scene_extractor_layers_respect_layerset_order in scene_extractor_b2_test.cpp.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "LayerSet.order render-suppression is inert \u2014 unlisted layers render anyway."
     },
     {
@@ -8737,9 +8737,9 @@
       "nodes": [
         "Layer"
       ],
-      "note": "runtime/scene/PickSystem.hpp:60-63 builds roots_ from scene.rootNodes with no Layer awareness; no path reads Layer.pickable / X3DLayerNode::getPickable(). \u00a735.3.1: a layer with pickable=FALSE does not participate in picking. (sweep 2026-06-25)",
+      "note": "Closed 2026-09-26: PickSystem filters candidates through live Layer.pickable values on each query, so cached geometry indexes honor runtime changes. Covered by pick_system_skips_non_pickable_layer_and_hits_layer_behind in pick_system_test.cpp.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "Layer.pickable is never consulted by PickSystem."
     },
     {
@@ -9781,6 +9781,7 @@
       "IntegerTrigger",
       "KeySensor",
       "LOD",
+      "Layer",
       "LineSet",
       "LoadSensor",
       "MovieTexture",
@@ -9847,7 +9848,7 @@
     ]
   },
   "summary": {
-    "closed_count": 177,
+    "closed_count": 179,
     "component_count": 36,
     "deferred_count": 30,
     "finding_count": 221,
@@ -9873,7 +9874,7 @@
     "open_by_severity": {
       "critical": 2,
       "low": 3,
-      "major": 19,
+      "major": 17,
       "minor": 20
     }
   },

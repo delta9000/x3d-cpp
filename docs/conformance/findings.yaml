@@ -1354,18 +1354,18 @@
   component: Layering
   clause: "35.4.2"
   severity: major
-  status: open
+  status: closed
   summary: "LayerSet.order render-suppression is inert — unlisted layers render anyway."
-  note: "runtime/extract/SceneExtractor.hpp:598-610 recurses all SFNode/MFNode children unconditionally; LayerSet.order is never read. §35.4.2: layers not listed in 'order' shall not be rendered. (sweep 2026-06-25)"
+  note: "Closed 2026-09-26: SceneExtractor follows only LayerSet.layers ordinals listed in order (zero-based per §35.4.2; invalid ordinals are ignored). Covered by scene_extractor_layers_respect_layerset_order in scene_extractor_b2_test.cpp."
 - id: LAY-2
   nodes: [Layer]
   interfaces: [X3DLayerNode]
   component: Layering
   clause: "35.3.1"
   severity: major
-  status: open
+  status: closed
   summary: "Layer.pickable is never consulted by PickSystem."
-  note: "runtime/scene/PickSystem.hpp:60-63 builds roots_ from scene.rootNodes with no Layer awareness; no path reads Layer.pickable / X3DLayerNode::getPickable(). §35.3.1: a layer with pickable=FALSE does not participate in picking. (sweep 2026-06-25)"
+  note: "Closed 2026-09-26: PickSystem filters candidates through live Layer.pickable values on each query, so cached geometry indexes honor runtime changes. Covered by pick_system_skips_non_pickable_layer_and_hits_layer_behind in pick_system_test.cpp."
 - id: LAY-3
   nodes: [Viewport, Layer]
   component: Layering

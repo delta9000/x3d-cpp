@@ -35,7 +35,7 @@ The pure drag geometry lives in three header-only functions under `runtime/event
 | `runtime/events/drag/PlaneDrag.hpp` | Pure PlaneSensor drag math: tracking-plane intersection + per-component clamp (§20.4.2) |
 | `runtime/events/drag/SphereDrag.hpp` | Pure SphereSensor drag math: virtual-sphere intersection + relative rotation composed with offset (§20.4.3) |
 | `runtime/events/drag/CylinderDrag.hpp` | Pure CylinderSensor drag math: disk/cylinder mode decision + Y-axis angle + clamp (§20.4.1) |
-| `runtime/scene/PickSystem.hpp` | Ray pick over the scene graph via a lazily-maintained index of geometry-bearing placements (per-path world AABBs, refit on transform/bounds revision); broad-phase `rayAabb` + narrow-phase analytic/mesh; produces `PickResult` with hit point, world normal, tex coord, and root-to-node `PathKey` |
+| `runtime/scene/PickSystem.hpp` | Ray pick over the scene graph via a lazily-maintained index of geometry-bearing placements (per-path world AABBs, refit on transform/bounds revision); broad-phase `rayAabb` + narrow-phase analytic/mesh; checks live `Layer.pickable` values on each candidate path; produces `PickResult` with hit point, world normal, tex coord, and root-to-node `PathKey` |
 | `runtime/events/X3DExecutionContext.hpp` | Context that owns `PointerState` and exposes `setPointer` / `setPointerButton` / `setPointerPresent` + `pick()` / `worldOf()` to the system |
 
 ## Interfaces and seams
