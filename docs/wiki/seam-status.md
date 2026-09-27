@@ -43,7 +43,7 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | **Audio (AudioBackend)** | **STABLE** | BuiltinDsp | miniaudio (MiniaudioBackend) | `x3d_sound_swaptest` ✓ | thesis-completion (SND-3 partial) |
 | **FontMetrics** | **STABLE** | stb_truetype (StbttFontMetrics) | FreeType (FreetypeFontMetrics) | `x3d_text_tests` ✓ | thesis-completion (no findings) |
 | **TextureResolver** | **STABLE** | stb_image (StbTextureResolver) | wuffs v0.3.4 (WuffsTextureResolver) | `x3d_texture_tests` ✓ | thesis-completion (no findings) |
-| GeoProjection | EXPERIMENTAL | flat-fallback | — pending | — | — |
+| GeoProjection | FROZEN (ADR-0053) | BuiltinGeoProjection | PROJ pending | — pending | Geospatial |
 | **MovieDecoder** | **STABLE** | pl_mpeg / MPEG-1 (PlMpegMovieDecoder, [ADR-0041](decisions/0041-moviedecoder-seam-royalty-free-defaults.md)) | libtheora / Ogg-Theora (TheoraMovieDecoder) | `x3d_movie_tests` ✓ (shared per-backend contract, not bit-swap — see ADR-0041) | MovieTexture conformance blanks (MPEG-1 fixed) |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer / CAVE (1) | — pending | — | — |
 

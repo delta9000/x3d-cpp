@@ -259,7 +259,7 @@
   severity: major
   status: deferred
   summary: GeoProximitySensor has no System and no geoCoord_changed.
-  note: Blocked on geo-projection (Geospatial deferred). See CONF-GEO.
+  note: "GeoProjection and GeoViewpoint camera wiring now exist; GeoProximitySensor activation and geographic coordinate outputs still need implementation."
 - id: ENV-03
   nodes: [ProximitySensor, GeoProximitySensor]
   clause: "22.4.1"
@@ -430,8 +430,8 @@
   clause: "25"
   severity: minor
   status: deferred
-  summary: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
-  note: Blocked on the GeoProjection seam (geoSystem/geoOrigin → local Cartesian). Drives ENV-02; GeoTouchSensor = TSN-1/2.
+  summary: Geospatial behavioral nodes have no System despite an available coordinate conversion core.
+  note: The GeoProjection core and geometry/transform/camera wiring now exist. GeoProximitySensor and GeoPositionInterpolator behavior still has no System; ENV-02 and TSN-1/2 track related sensor behavior.
 - id: CONF-NAV-COLLISION
   nodes: [Collision, CollisionSensor]
   component: Navigation
@@ -791,7 +791,7 @@
   status: deferred
   wave: 4
   summary: GeoTouchSensor is never resolved in the pointing-device cycle (PointingSensorSystem hard-checks nodeTypeName()=="TouchSensor") — receives no pointer events.
-  note: Resolution is a small add, but the node is only useful with TSN-2; deferred with the Geospatial seam (CONF-GEO).
+  note: "GeoProjection and geometry/camera wiring now exist; GeoTouchSensor still needs its enabled field behavior and TSN-2 geographic hit output."
 - id: TSN-2
   nodes: [GeoTouchSensor]
   clause: "25.3.9"
@@ -799,7 +799,7 @@
   status: deferred
   wave: 4
   summary: hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.
-  note: Blocked on the GeoProjection seam (ECEF→geodetic). See CONF-GEO.
+  note: "GeoProjection and inverse conversion helpers now exist; GeoTouchSensor still needs hitGeoCoord_changed from the picked world hit point."
 
 # X3DGroupingNode active-child (§10/§23) — Switch full-snapshot clean, incremental
 # delta() fixed (SW-DELTA-1); LOD partial; Collision inert
@@ -1321,9 +1321,17 @@
   component: Geospatial
   clause: "25.3.11"
   severity: major
-  status: fixed
+  status: closed
   summary: "GeoViewpoint.position silently reads as zero (SFVec3d/SFVec3f type mismatch)."
-  note: "Was: position read via getField<SFVec3f> on an SFVec3d field → camera pinned to origin. Fixed by geombounds::getVec3fLenient at ALL bound-viewpoint read sites — X3DExecutionContext::viewMatrix AND NavigationSystem::poseOf (position) + cor (centerOfRotation), the latter found by the systematic getField-type audit. getField now asserts on such mismatches in debug. Tested in getfield_typecheck_test.cpp + navigation_geoviewpoint_examine. Residue tracked as GitHub issues: #34 (OrthoViewpoint.fieldOfView MFFloat), #35 (write-side centerOfRotation persist). (sweep 2026-06-25, fixed same day)"
+  note: "Closed 2026-09-27: GeoViewpoint.position converts through geo::tangentFrameOf in X3DExecutionContext and NavigationSystem; orientation is relative to local east/up/south. centerOfRotation converts with geo::toWorld, and navigation speed tracks elevation/10 times speedFactor. Regressions: geospatial transforms and viewpoint, GeoViewpoint navigation speed. Earlier SFVec3d type mismatch coverage remains."
+- id: GEO-3
+  nodes: [GeoViewpoint]
+  component: Geospatial
+  clause: "25.3.11"
+  severity: minor
+  status: open
+  summary: "GeoViewpoint does not scale navigation avatarSize or visibilityLimit with elevation."
+  note: "The elevation-based movement speed and speedFactor are wired. Section 25.3.11 also recommends adapting avatarSize and visibilityLimit as elevation changes; NavigationSystem still reads NavigationInfo's ordinary values."
 - id: G2D-1
   nodes: [Arc2D, ArcClose2D, Circle2D, Disk2D, Polyline2D, Polypoint2D, Rectangle2D, TriangleSet2D]
   component: Geometry2D
@@ -1474,9 +1482,9 @@
   component: Geospatial
   clause: "25.3.1"
   severity: minor
-  status: fixed
+  status: closed
   summary: "Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float)."
-  note: "Was: coord points read via getField<vector<SFVec3f>> on GeoCoordinate/CoordinateDouble MFVec3d 'point' → empty mesh; GeoElevationGrid SFDouble spacing + MFDouble height read as float in the bounds path. Fixed across MeshBuilder extract AND GeometryBounds (pointsBounds + GeoElevationGrid handler) via geombounds::getPointsLenient + new getFloatLenient/getFloatsLenient. Sibling bounds/grid sites found by the systematic getField-type audit. Tested in getfield_typecheck_test.cpp + geometry_bounds_test (GeoCoordinate IFS + GeoElevationGrid). (sweep 2026-06-25, fixed same day)"
+  note: "Closed 2026-09-27: GeoCoordinate MFVec3d points now convert in one list through geo::toWorld for mesh and bounds; CoordinateDouble remains Cartesian. GeoElevationGrid lattice, elevation, authored tangent normals, and bounds convert through GeoNodes. Earlier type mismatch coverage remains. Regressions: mesh_builder_b5_test.cpp and geometry_bounds_test.cpp."
 - id: TXT-6
   nodes: [MultiTextureCoordinate]
   component: Texturing

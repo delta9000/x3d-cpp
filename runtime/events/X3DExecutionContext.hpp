@@ -566,9 +566,18 @@ public:
   Mat4 viewMatrix() const {
     X3DNode *vp = boundViewpoint();
     if (!vp) return Mat4::identity();
-    SFVec3f pos = geombounds::getVec3fLenient(*vp, "position", {0,0,0});
     SFRotation ori = geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0});
-    Mat4 cam = pick_.worldOf(vp) * Mat4::translation(pos) * Mat4::rotation(ori) *
+    Mat4 pose;
+    if (vp->nodeTypeName() == "GeoViewpoint") {
+      // §25.3.11: position is geographic; orientation is relative to local east/up/south.
+      if (!geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), pose))
+        pose = Mat4::identity();
+      pose = pose * Mat4::rotation(ori);
+    } else {
+      pose = Mat4::translation(geombounds::getVec3fLenient(*vp, "position", {0,0,0})) *
+             Mat4::rotation(ori);
+    }
+    Mat4 cam = pick_.worldOf(vp) * pose *
                viewpointOffset(vp).local *
                (Mat4::translation(head_.position) * Mat4::rotation(head_.orientation));
     return cam.inverse();
@@ -625,6 +634,9 @@ private:
     if (isTransformNode)
       for (const char *f : kTRS)
         if (a.field == f) flags = DirtyLocalTransform;
+    if (isTransformNode && (a.field == "geoCoords" || a.field == "geoCenter"))
+      flags = DirtyLocalTransform; // §25.3.3 / §25.3.10 dynamic tangent anchors
+
     static const char *kBounds[] = {"size", "radius", "height", "bottomRadius",
         "point", "coord", "controlPoint", "crossSection", "spine", "scale",
         "geometry", "bboxSize", "string", "maxExtent"};

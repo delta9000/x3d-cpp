@@ -60,8 +60,11 @@ TEST_CASE("getVec3fLenient reads both SFVec3f and SFVec3d position fields") {
 }
 
 TEST_CASE("getPointsLenient reads MFVec3f and MFVec3d coord points") {
-  // GeoCoordinate.point is MFVec3d — must narrow to MFVec3f (GEO-2).
+  // GC points use geocentric Cartesian values; GD conversion is covered by mesh_builder_b5.
   auto gc = createX3DNode("GeoCoordinate");
+  for (auto &f : gc->fields())
+    if (f.x3dName == std::string("geoSystem") && f.set)
+      f.set(*gc, std::any(std::vector<std::string>{"GC"}));
   for (auto &f : gc->fields())
     if (f.x3dName == std::string("point") && f.set)
       f.set(*gc, std::any(std::vector<SFVec3d>{{1, 2, 3}, {-4, -5, -6}}));

@@ -151,8 +151,8 @@ using x3d::runtime::extract::FogDesc;        ///< bound Fog { color, fogType, vi
 // is [STABLE] too — it has its own section below.) The live per-seam tracker is
 // docs/wiki/seam-status.md.
 
-// Tessellation density + geodesy + font-metrics build knobs.
-using x3d::runtime::extract::MeshBuildOptions; ///< { sphereRings, sphereSegments, radialSlices, geoProjection, fontMetrics }
+// Tessellation density and font-metrics build knobs.
+using x3d::runtime::extract::MeshBuildOptions; ///< { sphereRings, sphereSegments, radialSlices, fontMetrics }
 
 // Asset resolution seam (B8). One type, two invocation contracts:
 //   render-time may return Pending (retry next frame); parse-time (Inline/
@@ -184,10 +184,8 @@ using x3d::runtime::extract::GlyphResult;     ///< { status, metrics }
 using x3d::runtime::extract::GlyphStatus;     ///< enum class { Ready, Pending, Failed }
 using x3d::runtime::extract::makeMonospaceStub; ///< default monospaced FontMetrics (advanceEm=0.6)
 
-// Geo-projection seam (B5). Supply via MeshBuildOptions::geoProjection; empty =>
-// flat-fallback (geographically unanchored grid).
-using x3d::runtime::extract::GeoProjection;   ///< function<SFVec3f(SFVec3d geoCoord, double elev, GeoSystemDesc)>
-using x3d::runtime::extract::GeoSystemDesc;   ///< { geoSystem, geoGridOrigin }
+// Geospatial conversion is provided by runtime::geo::projection() and
+// runtime::geo::setProjection() (ADR-0053).
 
 // ── Script / SAI seam (T-SCRIPT) ─────────────────────────────────────── [STABLE]
 // Frozen pre-v2: the ScriptEngine abstract interface carried two independent

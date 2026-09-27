@@ -14,18 +14,20 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 | GeoProximitySensor | 2 | ✓ | — | ◑ | CONF-GEO, ENV-02, ENV-03, GEOSYSTEM | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 | GeoTouchSensor | 1 | ✓ | — | ✗ | TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
 | GeoTransform | 2 | ✓ | — | — | — | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| GeoViewpoint | 1 | ✓ | — | ✓ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEOSYSTEM, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| GeoViewpoint | 1 | ✓ | — | ◑ | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEO-3, GEOSYSTEM, NAV-FLY-ROLL | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 
 ## Findings
 
 - **TSN-1** [critical/DEFERRED] — §25.3.9: GeoTouchSensor is never resolved in the pointing-device cycle (PointingSensorSystem hard-checks nodeTypeName()=="TouchSensor") — receives no pointer events.
-  - Resolution is a small add, but the node is only useful with TSN-2; deferred with the Geospatial seam (CONF-GEO).
+  - GeoProjection and geometry/camera wiring now exist; GeoTouchSensor still needs its enabled field behavior and TSN-2 geographic hit output.
 - **TSN-2** [critical/DEFERRED] — §25.3.9: hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.
-  - Blocked on the GeoProjection seam (ECEF→geodetic). See CONF-GEO.
+  - GeoProjection and inverse conversion helpers now exist; GeoTouchSensor still needs hitGeoCoord_changed from the picked world hit point.
 - **ENV-02** [major/DEFERRED] — §25.3.8: GeoProximitySensor has no System and no geoCoord_changed.
-  - Blocked on geo-projection (Geospatial deferred). See CONF-GEO.
-- **CONF-GEO** [minor/DEFERRED] — §25: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
-  - Blocked on the GeoProjection seam (geoSystem/geoOrigin → local Cartesian). Drives ENV-02; GeoTouchSensor = TSN-1/2.
+  - GeoProjection and GeoViewpoint camera wiring now exist; GeoProximitySensor activation and geographic coordinate outputs still need implementation.
+- **CONF-GEO** [minor/DEFERRED] — §25: Geospatial behavioral nodes have no System despite an available coordinate conversion core.
+  - The GeoProjection core and geometry/transform/camera wiring now exist. GeoProximitySensor and GeoPositionInterpolator behavior still has no System; ENV-02 and TSN-1/2 track related sensor behavior.
+- **GEO-3** [minor/OPEN] — §25.3.11: GeoViewpoint does not scale navigation avatarSize or visibilityLimit with elevation.
+  - The elevation-based movement speed and speedFactor are wired. Section 25.3.11 also recommends adapting avatarSize and visibilityLimit as elevation changes; NavigationSystem still reads NavigationInfo's ordinary values.
 - **BIND-01** [critical/CLOSED `e3235ee`] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
   - CONF-VIEWNAV — needs a user-offset-state design (authored pose vs accumulated offset) before fixing BIND-01..08 as one cluster.
 - **BIND-02** [critical/CLOSED `95d1107`] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.
@@ -43,15 +45,15 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - CONF-VIEWNAV cluster.
 - **BIND-08** [major/CLOSED `2af9570`] — §23.3.1: Per-viewpoint stored relative transform on push-down not captured/restored.
   - CONF-VIEWNAV cluster.
-- **GEO-1** [major/FIXED] — §25.3.11: GeoViewpoint.position silently reads as zero (SFVec3d/SFVec3f type mismatch).
-  - Was: position read via getField<SFVec3f> on an SFVec3d field → camera pinned to origin. Fixed by geombounds::getVec3fLenient at ALL bound-viewpoint read sites — X3DExecutionContext::viewMatrix AND NavigationSystem::poseOf (position) + cor (centerOfRotation), the latter found by the systematic getField-type audit. getField now asserts on such mismatches in debug. Tested in getfield_typecheck_test.cpp + navigation_geoviewpoint_examine. Residue tracked as GitHub issues: #34 (OrthoViewpoint.fieldOfView MFFloat), #35 (write-side centerOfRotation persist). (sweep 2026-06-25, fixed same day)
+- **GEO-1** [major/CLOSED] — §25.3.11: GeoViewpoint.position silently reads as zero (SFVec3d/SFVec3f type mismatch).
+  - Closed 2026-09-27: GeoViewpoint.position converts through geo::tangentFrameOf in X3DExecutionContext and NavigationSystem; orientation is relative to local east/up/south. centerOfRotation converts with geo::toWorld, and navigation speed tracks elevation/10 times speedFactor. Regressions: geospatial transforms and viewpoint, GeoViewpoint navigation speed. Earlier SFVec3d type mismatch coverage remains.
 - **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
   - ProximitySensor now emits centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame), change-gated; GeoProximitySensor remains deferred (CONF-GEO).
 - **PIV-1** [minor/CLOSED `07c31ca`] — §—: registerInterpolatorSystems had no production caller; added attachInterpolators scene-walk wiring + makeInterpolatorSystems factory.
 - **BIND-09** [minor/CLOSED] — §23.3.1: Pop (unbind/delete) does not apply the §23.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind.
   - Needs push-vs-pop signaling from BindingSystem to distinguish rule 5.1 (reset) from 6.3 (restore stored offset). Per-node offset persists; only the reset-on-rebind path differs. CAVE doesn't exercise viewpoint stacks.
-- **GEO-2** [minor/FIXED] — §25.3.1: Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float).
-  - Was: coord points read via getField<vector<SFVec3f>> on GeoCoordinate/CoordinateDouble MFVec3d 'point' → empty mesh; GeoElevationGrid SFDouble spacing + MFDouble height read as float in the bounds path. Fixed across MeshBuilder extract AND GeometryBounds (pointsBounds + GeoElevationGrid handler) via geombounds::getPointsLenient + new getFloatLenient/getFloatsLenient. Sibling bounds/grid sites found by the systematic getField-type audit. Tested in getfield_typecheck_test.cpp + geometry_bounds_test (GeoCoordinate IFS + GeoElevationGrid). (sweep 2026-06-25, fixed same day)
+- **GEO-2** [minor/CLOSED] — §25.3.1: Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float).
+  - Closed 2026-09-27: GeoCoordinate MFVec3d points now convert in one list through geo::toWorld for mesh and bounds; CoordinateDouble remains Cartesian. GeoElevationGrid lattice, elevation, authored tangent normals, and bounds convert through GeoNodes. Earlier type mismatch coverage remains. Regressions: mesh_builder_b5_test.cpp and geometry_bounds_test.cpp.
 - **GEOSYSTEM** [minor/CLOSED] — §25.2.3: geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning.
   - Per ADR-0003 keep the value; add a geoSystem token validator (SRF GD|GDC|GC|GCC|UTM|WM + UTM Z<n>/optional S/ellipsoid/ordering grammar) emitting RangeDiagnostic-style warnings, never rejecting. N is undefined (only S exists; northern is the UTM default) — tolerate as a no-op northern alias + warning (Mantis 938). UOM cannot enforce (additionalEnumerationValuesAllowed = true). Also add the missing WM (Web Mercator) enumeration to geoSystemSpatialReferenceFrameValues. Site GeoCoordinate.hpp:111 setGeoSystemUnchecked. 4.1 - unresolved (4.1 UOM still lacks WM, enum Closed 2026-09-26: runtime/X3DRangeValidate.hpp validates frame, zone and option tokens without mutation; range_warnings_test covers GD, UTM Z10 S, N and garbage. The validator accepts WM (Web Mercator). The vendored X3D UOM is left as published (it still lacks WM), so the generated enumeration does not list it; the open enum stores it regardless.
 - **NAV-FLY-ROLL** [low/CLOSED] — §23.4.4: FLY accumulates orientation incrementally (yaw-about-world-up + pitch-about-local-right), so a long mixed drag can introduce gradual horizon roll.

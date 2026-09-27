@@ -13,8 +13,9 @@
 #define X3D_RUNTIME_SCENE_GEO_NODES_HPP
 
 #include "GeoFrame.hpp"
-#include "GeometryBounds.hpp"
-
+#include "x3d/nodes/X3DNode.hpp"
+#include <any>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -22,10 +23,20 @@ namespace x3d::runtime::geo {
 
 using x3d::nodes::X3DNode;
 
+template <class T> T fieldOf(const X3DNode &n, const char *name, T fallback) {
+  for (const auto &f : n.fields())
+    if (f.x3dName == name && f.get) {
+      const std::any value = f.get(n);
+      if (auto typed = std::any_cast<T>(&value)) return *typed;
+      break;
+    }
+  return fallback;
+}
+
 /// The node's parsed `geoSystem` (default [ "GD", "WE" ]).
 inline GeoSystem systemOf(const X3DNode &n) {
   return parseGeoSystem(
-      geombounds::getField<std::vector<std::string>>(n, "geoSystem", {}));
+      fieldOf<std::vector<std::string>>(n, "geoSystem", {}));
 }
 
 /// The frame of the node's `geoOrigin` (§25.3.6). Without one — or if its
@@ -33,10 +44,10 @@ inline GeoSystem systemOf(const X3DNode &n) {
 /// rotation).
 inline OriginFrame originOf(const X3DNode &n, const GeoProjection &p = projection()) {
   OriginFrame frame;
-  auto o = geombounds::getNode(n, "geoOrigin");
+  auto o = fieldOf<std::shared_ptr<X3DNode>>(n, "geoOrigin", nullptr);
   if (!o) return frame;
-  const SFVec3d coords = geombounds::getField<SFVec3d>(*o, "geoCoords", SFVec3d{0, 0, 0});
-  const bool rotateYUp = geombounds::getField<bool>(*o, "rotateYUp", false);
+  const SFVec3d coords = fieldOf<SFVec3d>(*o, "geoCoords", SFVec3d{0, 0, 0});
+  const bool rotateYUp = fieldOf<bool>(*o, "rotateYUp", false);
   OriginFrame made;
   if (makeOriginFrame(systemOf(*o), coords, rotateYUp, made, p)) frame = made;
   return frame;
@@ -70,6 +81,21 @@ inline std::vector<SFVec3f> toWorld(const X3DNode &n, const std::vector<SFVec3d>
   }
   if (failures) *failures = bad;
   return out;
+}
+
+/// §25.3.2: grid columns advance east/longitude, rows north/latitude.
+inline SFVec3d gridCoordinate(const X3DNode &n, int i, int j, double elevation) {
+  const SFVec3d o = fieldOf<SFVec3d>(n, "geoGridOrigin", {0,0,0});
+  const double x = static_cast<double>(i) * fieldOf<double>(n, "xSpacing", 1.0);
+  const double z = static_cast<double>(j) * fieldOf<double>(n, "zSpacing", 1.0);
+  const GeoSystem sys = systemOf(n);
+  if (sys.frame == GeoSystem::Frame::GD)
+    return sys.longitudeFirst ? SFVec3d{o.x + x, o.y + z, o.z + elevation}
+                              : SFVec3d{o.x + z, o.y + x, o.z + elevation};
+  if (sys.frame == GeoSystem::Frame::UTM)
+    return sys.eastingFirst ? SFVec3d{o.x + x, o.y + z, o.z + elevation}
+                            : SFVec3d{o.x + z, o.y + x, o.z + elevation};
+  return SFVec3d{o.x + x, o.y + z, o.z + elevation};
 }
 
 /// The world matrix of the local tangent frame at a coordinate authored on

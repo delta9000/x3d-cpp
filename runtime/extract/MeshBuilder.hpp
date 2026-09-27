@@ -82,6 +82,7 @@
 #include "RenderItem.hpp"      // MeshData
 #include "x3d/core/X3Dtypes.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -93,50 +94,12 @@ using namespace x3d::core;
 using x3d::nodes::X3DNode;
 
 // ---------------------------------------------------------------------------
-// GEO-PROJECTION SEAM (B5). The SDK does NO geodesy itself —
-// coordinate-reference transforms (GDC/GD/UTM -> a local Cartesian frame) are
-// an embedder concern. A consumer that wants geographically ANCHORED terrain
-// supplies a GeoProjection through MeshBuildOptions; the builder invokes it per
-// lattice vertex. With NO projection wired the builder ships a FLAT-FALLBACK
-// (see geoFlatFallback below): the grid renders its SHAPE immediately but is
-// geographically UNANCHORED — wrong absolute position/orientation vs a
-// GeoViewpoint and mis-placed across tiles if spacing units differ. This is a
-// documented shape-visible stopgap; correct placement REQUIRES the embedder
-// seam.
-// ---------------------------------------------------------------------------
-
-// What the builder knows about the grid's spatial reference, handed verbatim to
-// the embedder's GeoProjection so it can pick the right datum/zone transform.
-struct GeoSystemDesc {
-  std::vector<std::string>
-      geoSystem; // raw geoSystem MFString, e.g. {"GD"} / {"UTM","Z17"}.
-  SFVec3d geoGridOrigin{0.0, 0.0, 0.0}; // grid origin in geoSystem coordinates.
-};
-
-// A geo coordinate (in the grid's geoSystem) + an elevation -> a LOCAL SFVec3f.
-// `geoCoord`: the per-vertex geographic coordinate the builder computed by
-//   stepping geoGridOrigin by (col*xSpacing, row*zSpacing) in the geoSystem's
-//   native axes (lat/long degrees for GD/GDC, easting/northing metres for UTM).
-// `elevation`: the height sample (already yScale-applied) for that vertex.
-// `sys`: the grid's GeoSystemDesc.
-// Returns the vertex position in the geometry's LOCAL Cartesian frame.
-using GeoProjection = std::function<SFVec3f(
-    const SFVec3d &geoCoord, double elevation, const GeoSystemDesc &sys)>;
-
-// Build options. Carries the parametric-tessellation density knobs for the
-// analytic primitives (Box/Sphere/Cone/Cylinder, T4) AND the optional
-// GeoProjection seam (B5). Stays a COPYABLE VALUE TYPE (std::function is
-// copyable) so SceneExtractor can hold one by value and forward it. Defaults
-// match the design: sphere 16 rings x 16 segments, cone/cylinder 24 radial
-// slices, NO geo projection (flat-fallback).
+// GeoElevationGrid uses the shared geospatial backend in GeoNodes.hpp.
+// Mesh build options remain for tessellation and authored resource data.
 struct MeshBuildOptions {
   int sphereRings = 16;    // latitude bands (pole-to-pole), >= 2.
   int sphereSegments = 16; // longitude segments around Y, >= 3.
   int radialSlices = 24;   // cone/cylinder radial subdivisions, >= 3.
-
-  // Embedder geodesy seam (B5). Empty => flat-fallback (geoGridOrigin as planar
-  // origin, spacing as planar units, geographically UNANCHORED).
-  GeoProjection geoProjection{};
 
   // Embedder font-metrics seam (T-TEXT). The Text branch resolves glyph
   // advances
@@ -430,13 +393,14 @@ void tessellateCylinder(MeshData &m, float radius, float height, int slices,
 // space without re-indexing.
 //
 // `pos(i,j)` supplies the LOCAL-frame position of lattice vertex (col=i,
-// row=j); it is the ONLY thing that differs between a planar ElevationGrid and
-// a geo-projected GeoElevationGrid. Caller pre-validates xDim>=2 && zDim>=2.
+// row=j); GeoElevationGrid also reverses the triangle winding because its
+// rows advance north (local −Z). Caller pre-validates xDim>=2 && zDim>=2.
 // ---------------------------------------------------------------------------
 template <class PosFn>
 inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
                            float creaseAngle = 0.0f, bool ccw = true,
-                           const AttrResolvers *attrs = nullptr) {
+                           const AttrResolvers *attrs = nullptr,
+                           bool reverseWinding = false) {
   const std::size_t startCorner = m.positions.size();
   auto lid = [&](int i, int j) {
     return static_cast<std::uint32_t>(j * xDim + i);
@@ -456,6 +420,7 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
   const auto pickCell = [&](int ci, int cj) { return cj * cellCols + ci; };
   const auto addTriangle = [&](int ci, int cj, int ia, int ja, int ib, int jb,
                                int ic, int jc) {
+    if (reverseWinding) { std::swap(ib, ic); std::swap(jb, jc); }
     const SFVec3f a = pos(ia, ja), b = pos(ib, jb), c = pos(ic, jc);
     auto base = static_cast<std::uint32_t>(m.positions.size());
     m.positions.push_back(a);

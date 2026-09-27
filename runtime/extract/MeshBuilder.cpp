@@ -1429,66 +1429,51 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     return mesh;
   }
 
-  // GeoElevationGrid (B5) — the single biggest corpus unlock (~72% of files;
-  // all Savage/Locations + Geospatial terrain tiles). Synthesizes the same
-  // height lattice as ElevationGrid but the per-vertex geographic coordinate is
-  // mapped to a LOCAL position by the embedder's GeoProjection seam. With NO
-  // projection wired we FLAT-FALLBACK: geoGridOrigin as a planar origin,
-  // spacing as planar units, so terrain renders its SHAPE immediately but
-  // geographically UNANCHORED (wrong absolute placement/orientation vs a
-  // GeoViewpoint; tiles in different units mis-register). This is a documented
-  // shape-visible stopgap.
+  // §25.3.2 GeoElevationGrid: convert the geographic lattice through GeoOrigin.
   if (t == "GeoElevationGrid") {
     // EXACT reflected field types (GeoElevationGrid stores SFInt32/SFDouble/
     // MFDouble/SFVec3d/SFFloat); getField returns the default on a type
     // mismatch, so requesting the wrong T would silently zero the grid.
     const int xd = geombounds::getField<int>(*geom, "xDimension", 0);
     const int zd = geombounds::getField<int>(*geom, "zDimension", 0);
-    const double xs = geombounds::getField<double>(*geom, "xSpacing", 1.0);
-    const double zs = geombounds::getField<double>(*geom, "zSpacing", 1.0);
     const float yScale = geombounds::getField<float>(*geom, "yScale", 1.0f);
     const auto h =
         geombounds::getField<std::vector<double>>(*geom, "height", {});
     if (xd >= 2 && zd >= 2 &&
         static_cast<std::size_t>(xd) * static_cast<std::size_t>(zd) <=
             h.size()) {
-      GeoSystemDesc sys;
-      sys.geoSystem = geombounds::getField<std::vector<std::string>>(
-          *geom, "geoSystem", {});
-      sys.geoGridOrigin = geombounds::getField<SFVec3d>(*geom, "geoGridOrigin",
-                                                        SFVec3d{0, 0, 0});
-
       // GeoElevationGrid stores creaseAngle as SFDouble (NOT SFFloat).
       const float crease = static_cast<float>(
           geombounds::getField<double>(*geom, "creaseAngle", 0.0));
-      const GeoProjection &proj = opt.geoProjection;
+
       // EXT-001: same authored color/normal resolution as ElevationGrid (the
       // shared emitHeightGrid now honors colorPerVertex/normalPerVertex).
       const AttrResolvers attrs = buildAttrs(*geom);
-      // Spec lattice order: height index = row*xDim + col, row j advances along
-      // the FIRST geoSystem axis (north/latitude), col i along the SECOND
-      // (east/longitude). geoGridOrigin.x = first axis, .y = second axis.
       emitHeightGrid(
           mesh, xd, zd,
           [&](int i, int j) -> SFVec3f {
-            const double elev = h[static_cast<std::size_t>(j) * xd + i] *
-                                static_cast<double>(yScale);
-            if (proj) {
-              const SFVec3d geoCoord{
-                  sys.geoGridOrigin.x + static_cast<double>(j) * zs,
-                  sys.geoGridOrigin.y + static_cast<double>(i) * xs, elev};
-              return proj(geoCoord, elev, sys);
-            }
-            // FLAT-FALLBACK: planar (X=east/col, Z=north/row), Y=elevation. The
-            // geoGridOrigin x/y are folded in as a planar offset so multi-tile
-            // shapes keep relative layout (still geographically unanchored).
-            return SFVec3f{static_cast<float>(sys.geoGridOrigin.y +
-                                              static_cast<double>(i) * xs),
-                           static_cast<float>(elev),
-                           static_cast<float>(sys.geoGridOrigin.x +
-                                              static_cast<double>(j) * zs)};
+            const double elev = h[static_cast<std::size_t>(j) * xd + i] * yScale;
+            SFVec3f world{};
+            geo::toWorld(*geom, geo::gridCoordinate(*geom, i, j, elev), world);
+            return world;
           },
-          crease, mesh.ccw, &attrs);
+          crease, mesh.ccw, &attrs, true); // §25.3.2: rows advance north (local −Z).
+      // §25.3.2 refers Normal to ElevationGrid: supplied vectors use the
+      // geographic lattice's local tangent axes, rotated at their vertex/cell.
+      if (attrs.hasNormal) {
+        for (std::size_t corner = 0; corner < mesh.normals.size(); ++corner) {
+          const int lattice = static_cast<int>(mesh.latticeIndex[corner]);
+          const int i = lattice % xd, j = lattice / xd;
+          const int cell = static_cast<int>(corner / 6);
+          const int ni = attrs.normalPerVertex ? i : cell % (xd - 1);
+          const int nj = attrs.normalPerVertex ? j : cell / (xd - 1);
+          const double elev = h[static_cast<std::size_t>(nj) * xd + ni] * yScale;
+          Mat4 frame;
+          if (geo::tangentFrameOf(*geom, geo::gridCoordinate(*geom, ni, nj, elev), frame))
+            mesh.normals[corner] = frame.transformDirection(mesh.normals[corner]);
+        }
+      }
+
       // DEFAULT (implicit) grid texcoords (TC2) — same parameterization as
       // ElevationGrid (s=i/(xDim-1), t=j/(zDim-1)); an authored
       // TextureCoordinate ALWAYS WINS, resolved per lattice vertex via

@@ -432,6 +432,7 @@ TEST_CASE("navigation_geoviewpoint_examine") {
   auto shape = createX3DNode("Shape");
   setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(box)));
   auto gvp = createX3DNode("GeoViewpoint");
+  setF(gvp, "geoSystem", std::any(std::vector<std::string>{"GC"}));
   setF(gvp, "position", std::any(SFVec3d{0,0,10}));          // double-precision
   setF(gvp, "centerOfRotation", std::any(SFVec3d{0,0,0}));
   auto nav = createX3DNode("NavigationInfo");
@@ -459,4 +460,96 @@ TEST_CASE("navigation_geoviewpoint_examine") {
   ctx.setPointerScreen(0.3f, 0); // mirror nav drag onto the screen pointer
   ctx.tick(0.016);
   CHECK(dist(p0, camPos(ctx)) > 1e-3f); // orbited about the pivot
+}
+
+TEST_CASE("geospatial transforms and viewpoint use local tangent frames") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoCoords", std::any(SFVec3d{0,0,0}));
+  setF(origin, "rotateYUp", std::any(true));
+  auto location = createX3DNode("GeoLocation");
+  setF(location, "geoOrigin", std::any(origin));
+  setF(location, "geoCoords", std::any(SFVec3d{0,0,10}));
+  REQUIRE(TransformSystem::isTransform(location.get()));
+  Mat4 place = TransformSystem::localMatrix(location.get());
+  CHECK(feq(place.transformPoint({0,0,0}).y, 10.0f, 0.01f));
+  SFVec3f up = place.transformDirection({0,1,0});
+  CHECK(feq(up.y, 1.0f, 0.001f));
+  auto child = createX3DNode("Shape");
+  addChild(location, child);
+  Scene placedScene;
+  placedScene.addRootNode(location);
+  TransformSystem placed;
+  placed.buildIndex(placedScene);
+  CHECK(feq(placed.worldTransformAny(child.get()).transformPoint({0,0,0}).y,
+            10.0f, 0.01f));
+
+  auto transform = createX3DNode("GeoTransform");
+  setF(transform, "geoOrigin", std::any(origin));
+  setF(transform, "geoCenter", std::any(SFVec3d{0,0,0}));
+  setF(transform, "rotation", std::any(SFRotation{0,1,0,1.57079632679f}));
+  REQUIRE(TransformSystem::isTransform(transform.get()));
+  SFVec3f rotated = TransformSystem::localMatrix(transform.get()).transformPoint({1,0,0});
+  CHECK(feq(rotated.z, -1.0f, 0.001f));
+  setF(transform, "translation", std::any(SFVec3f{0,5,0}));
+  SFVec3f translated = TransformSystem::localMatrix(transform.get()).transformPoint({0,0,0});
+  CHECK(feq(translated.y, 5.0f, 0.001f));
+
+  auto vp = createX3DNode("GeoViewpoint");
+  setF(vp, "geoOrigin", std::any(origin));
+  setF(vp, "position", std::any(SFVec3d{0,0,100}));
+  setF(vp, "orientation", std::any(SFRotation{1,0,0,-1.57079632679f}));
+  Scene scene;
+  scene.addRootNode(vp);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  REQUIRE(ctx.boundViewpoint() != nullptr);
+  CHECK(feq(ctx.cameraWorldPosition().y, 100.0f, 0.01f));
+  SFVec3f forward = ctx.viewMatrix().inverse().transformDirection({0,0,-1});
+  CHECK(feq(forward.y, -1.0f, 0.001f));
+}
+
+TEST_CASE("GeoViewpoint navigation speed follows elevation and speedFactor") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoCoords", std::any(SFVec3d{0,0,0}));
+  setF(origin, "rotateYUp", std::any(true));
+  auto vp = createX3DNode("GeoViewpoint");
+  setF(vp, "geoOrigin", std::any(origin));
+  setF(vp, "position", std::any(SFVec3d{0,0,100}));
+  setF(vp, "speedFactor", std::any(2.0f));
+  auto nav = createX3DNode("NavigationInfo");
+  dynamic_cast<NavigationInfo &>(*nav).setType({"FLY"});
+  Scene scene;
+  scene.addRootNode(vp);
+  scene.addRootNode(nav);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.addSystem(std::make_shared<NavigationSystem>());
+  ctx.tick(0.0);
+  SFVec3f before = ctx.cameraWorldPosition();
+  ctx.setKey(NavigationSystem::kKeyForward, true);
+  ctx.tick(1.0);
+  SFVec3f after = ctx.cameraWorldPosition();
+  CHECK(dist(before, after) == doctest::Approx(20.0f).epsilon(0.02));
+}
+
+TEST_CASE("GeoLocation geoCoords updates its child camera") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoCoords", std::any(SFVec3d{0,0,0}));
+  setF(origin, "rotateYUp", std::any(true));
+  auto location = createX3DNode("GeoLocation");
+  setF(location, "geoOrigin", std::any(origin));
+  setF(location, "geoCoords", std::any(SFVec3d{0,0,0}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0,0,0}));
+  addChild(location, vp);
+  Scene scene;
+  scene.addRootNode(location);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  REQUIRE(ctx.boundViewpoint() != nullptr);
+  CHECK(feq(ctx.cameraWorldPosition().y, 0.0f, 0.01f));
+  CHECK(ctx.writeField(location.get(), "geoCoords", std::any(SFVec3d{0,0,50})) ==
+        FieldWriteResult::Ok);
+  ctx.tick(1.0);
+  CHECK(feq(ctx.cameraWorldPosition().y, 50.0f, 0.01f));
 }

@@ -220,6 +220,11 @@ private:
   static Mat4 poseOf(X3DNode *vp) {
     // GeoViewpoint.position is SFVec3d; read leniently so a bound GeoViewpoint
     // isn't pinned to the origin (GEO-1 sibling).
+    if (vp->nodeTypeName() == "GeoViewpoint") {
+      Mat4 frame;
+      if (geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), frame))
+        return frame * Mat4::rotation(geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0}));
+    }
     return Mat4::translation(geombounds::getVec3fLenient(*vp, "position", {0,0,0})) *
            Mat4::rotation(geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0}));
   }
@@ -231,6 +236,11 @@ private:
   }
   static SFVec3f cor(X3DNode *vp) {
     // GeoViewpoint.centerOfRotation is SFVec3d; read leniently (GEO-1 sibling).
+    if (vp->nodeTypeName() == "GeoViewpoint") {
+      SFVec3f world;
+      if (geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0,0,0}), world))
+        return world;
+    }
     return geombounds::getVec3fLenient(*vp, "centerOfRotation", {0,0,0});
   }
   // Set the offset so the effective local eye becomes T(pos)·R(ori).
@@ -378,6 +388,15 @@ private:
 
     // Keys -> translate along view dir / strafe, scaled by speed*dt (§23.4.4).
     float speed = nav ? nav->getSpeed() : 1.0f;
+    if (vp->nodeTypeName() == "GeoViewpoint") {
+      // §25.3.11: refresh elevation-based velocity as the eye moves.
+      SFVec3d authored;
+      double lat, lon, elevation;
+      if (geo::fromWorld(*vp, P, authored) &&
+          geo::toGeodetic(geo::systemOf(*vp), authored, lat, lon, elevation))
+        speed = static_cast<float>(std::max(0.0, elevation / 10.0)) *
+                geo::fieldOf<float>(*vp, "speedFactor", 1.0f);
+    }
     const KeyState &ks = ctx.keyState();
     float fwdIn = (ks.isHeld(kKeyForward) ? 1.0f : 0.0f) - (ks.isHeld(kKeyBack) ? 1.0f : 0.0f);
     float strIn = (ks.isHeld(kKeyRight) ? 1.0f : 0.0f) - (ks.isHeld(kKeyLeft) ? 1.0f : 0.0f);

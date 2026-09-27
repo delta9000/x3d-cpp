@@ -11,7 +11,7 @@
 //      (i=1,j=1) carries (0.5,0.5). texcoords is parallel to positions.
 //   2) An AUTHORED TextureCoordinate ALWAYS WINS (resolved per lattice vertex);
 //      the generated grid UVs are NOT applied.
-//   3) GeoElevationGrid (flat-fallback) gets the SAME grid parameterization when
+//   3) GeoElevationGrid gets the SAME grid parameterization when
 //      texCoord is NULL.
 //   4) A degenerate 1-wide axis guards the s/t along that axis to 0 (no div0).
 #include "MeshBuilder.hpp"
@@ -122,8 +122,8 @@ TEST_CASE("mesh_builder_tc2_test") {
     CHECK((!hasUvAt(m, SFVec3f{0, 0, 0}, 0.0f, 0.0f)));
   }
 
-  // ---- 3. GeoElevationGrid (flat-fallback) gets the same grid UVs ------------
-  // Flat-fallback: X=col*xSpacing, Y=elev, Z=row*zSpacing. 3x3 unit grid.
+  // ---- 3. GeoElevationGrid gets the same grid UV parameterization ----------
+  // Geographic vertex positions differ from the planar ElevationGrid.
   {
     auto g = createX3DNode("GeoElevationGrid");
     setF(g, "xDimension", std::any(3));
@@ -132,12 +132,13 @@ TEST_CASE("mesh_builder_tc2_test") {
     setF(g, "zSpacing", std::any(1.0));
     setF(g, "height", std::any(std::vector<double>(9, 0.0)));
 
-    MeshData m = buildLocalMesh(g.get()); // NO projection.
+    MeshData m = buildLocalMesh(g.get());
     CHECK((m.texcoords.size() == m.positions.size()));
-    CHECK((hasUvAt(m, SFVec3f{0, 0, 0}, 0.0f, 0.0f)));
-    CHECK((hasUvAt(m, SFVec3f{2, 0, 0}, 1.0f, 0.0f)));
-    CHECK((hasUvAt(m, SFVec3f{0, 0, 2}, 0.0f, 1.0f)));
-    CHECK((hasUvAt(m, SFVec3f{2, 0, 2}, 1.0f, 1.0f)));
+    for (std::size_t c = 0; c < m.texcoords.size(); ++c) {
+      const auto lid = m.latticeIndex[c];
+      CHECK((std::fabs(m.texcoords[c].x - static_cast<float>(lid % 3) / 2.0f) < 1e-5f));
+      CHECK((std::fabs(m.texcoords[c].y - static_cast<float>(lid / 3) / 2.0f) < 1e-5f));
+    }
   }
 
   // ---- 4. Degenerate 1-wide axis: s guards to 0 (no div-by-zero) -------------

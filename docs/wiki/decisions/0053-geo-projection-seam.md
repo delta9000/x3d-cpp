@@ -26,7 +26,9 @@ elevations relative to the WGS84 geoid rather than the ellipsoid. §25.2.3:
 earth-fixed geocentric coordinates." A GeoOrigin then gives the world origin,
 optionally rotated so the local up is +Y (§25.3.6).
 
-Until now nothing converted anything. GeoCoordinate points and GeoViewpoint
+Until now the only hook was `MeshBuildOptions::geoProjection` (B5), a
+per-extraction callback for GeoElevationGrid that was empty by default, so the
+grid fell back to a flat planar lattice. Nothing else converted: GeoCoordinate points and GeoViewpoint
 positions were read as plain Cartesian vectors (so a latitude became metres),
 GeoElevationGrid fell back to a flat planar grid, and the behavioural nodes
 (GeoProximitySensor, GeoTouchSensor, GeoPositionInterpolator) were deferred on
@@ -100,6 +102,11 @@ both. It also provides the geoid when the application points it at a grid.
   resolution.
 
 ## Consequences
+
+- The B5 `MeshBuildOptions::geoProjection` / `GeoSystemDesc` callback is
+  removed from the SDK façade. It covered only GeoElevationGrid, only inside
+  mesh extraction, and had no default; the process-wide backend replaces it
+  for every Geospatial consumer.
 
 - The Geospatial nodes can now be wired: GeoCoordinate and GeoElevationGrid
   geometry and bounds, GeoLocation and GeoTransform as transforms, the

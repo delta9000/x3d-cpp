@@ -1859,6 +1859,7 @@
         "ENV-03",
         "GEO-1",
         "GEO-2",
+        "GEO-3",
         "GEOSYSTEM",
         "INTERP-02",
         "NAV-FLY-ROLL",
@@ -2087,7 +2088,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
           "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3",
           "exists": true,
@@ -2103,6 +2104,7 @@
             "BIND-08",
             "BIND-09",
             "GEO-1",
+            "GEO-3",
             "GEOSYSTEM",
             "NAV-FLY-ROLL"
           ],
@@ -7231,7 +7233,7 @@
       "nodes": [
         "GeoProximitySensor"
       ],
-      "note": "Blocked on geo-projection (Geospatial deferred). See CONF-GEO.",
+      "note": "GeoProjection and GeoViewpoint camera wiring now exist; GeoProximitySensor activation and geographic coordinate outputs still need implementation.",
       "severity": "major",
       "status": "deferred",
       "summary": "GeoProximitySensor has no System and no geoCoord_changed."
@@ -7491,10 +7493,10 @@
         "GeoProximitySensor",
         "GeoPositionInterpolator"
       ],
-      "note": "Blocked on the GeoProjection seam (geoSystem/geoOrigin \u2192 local Cartesian). Drives ENV-02; GeoTouchSensor = TSN-1/2.",
+      "note": "The GeoProjection core and geometry/transform/camera wiring now exist. GeoProximitySensor and GeoPositionInterpolator behavior still has no System; ENV-02 and TSN-1/2 track related sensor behavior.",
       "severity": "minor",
       "status": "deferred",
-      "summary": "Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing)."
+      "summary": "Geospatial behavioral nodes have no System despite an available coordinate conversion core."
     },
     {
       "clause": "23.2.4, 23.3.2",
@@ -7991,7 +7993,7 @@
       "nodes": [
         "GeoTouchSensor"
       ],
-      "note": "Resolution is a small add, but the node is only useful with TSN-2; deferred with the Geospatial seam (CONF-GEO).",
+      "note": "GeoProjection and geometry/camera wiring now exist; GeoTouchSensor still needs its enabled field behavior and TSN-2 geographic hit output.",
       "severity": "critical",
       "status": "deferred",
       "summary": "GeoTouchSensor is never resolved in the pointing-device cycle (PointingSensorSystem hard-checks nodeTypeName()==\"TouchSensor\") \u2014 receives no pointer events.",
@@ -8003,7 +8005,7 @@
       "nodes": [
         "GeoTouchSensor"
       ],
-      "note": "Blocked on the GeoProjection seam (ECEF\u2192geodetic). See CONF-GEO.",
+      "note": "GeoProjection and inverse conversion helpers now exist; GeoTouchSensor still needs hitGeoCoord_changed from the picked world hit point.",
       "severity": "critical",
       "status": "deferred",
       "summary": "hitGeoCoord_changed (geodetic intersection via geoSystem/geoOrigin) has no implementation.",
@@ -8780,10 +8782,22 @@
       "nodes": [
         "GeoViewpoint"
       ],
-      "note": "Was: position read via getField<SFVec3f> on an SFVec3d field \u2192 camera pinned to origin. Fixed by geombounds::getVec3fLenient at ALL bound-viewpoint read sites \u2014 X3DExecutionContext::viewMatrix AND NavigationSystem::poseOf (position) + cor (centerOfRotation), the latter found by the systematic getField-type audit. getField now asserts on such mismatches in debug. Tested in getfield_typecheck_test.cpp + navigation_geoviewpoint_examine. Residue tracked as GitHub issues: #34 (OrthoViewpoint.fieldOfView MFFloat), #35 (write-side centerOfRotation persist). (sweep 2026-06-25, fixed same day)",
+      "note": "Closed 2026-09-27: GeoViewpoint.position converts through geo::tangentFrameOf in X3DExecutionContext and NavigationSystem; orientation is relative to local east/up/south. centerOfRotation converts with geo::toWorld, and navigation speed tracks elevation/10 times speedFactor. Regressions: geospatial transforms and viewpoint, GeoViewpoint navigation speed. Earlier SFVec3d type mismatch coverage remains.",
       "severity": "major",
-      "status": "fixed",
+      "status": "closed",
       "summary": "GeoViewpoint.position silently reads as zero (SFVec3d/SFVec3f type mismatch)."
+    },
+    {
+      "clause": "25.3.11",
+      "component": "Geospatial",
+      "id": "GEO-3",
+      "nodes": [
+        "GeoViewpoint"
+      ],
+      "note": "The elevation-based movement speed and speedFactor are wired. Section 25.3.11 also recommends adapting avatarSize and visibilityLimit as elevation changes; NavigationSystem still reads NavigationInfo's ordinary values.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "GeoViewpoint does not scale navigation avatarSize or visibilityLimit with elevation."
     },
     {
       "clause": "14.3",
@@ -9033,9 +9047,9 @@
         "CoordinateDouble",
         "GeoElevationGrid"
       ],
-      "note": "Was: coord points read via getField<vector<SFVec3f>> on GeoCoordinate/CoordinateDouble MFVec3d 'point' \u2192 empty mesh; GeoElevationGrid SFDouble spacing + MFDouble height read as float in the bounds path. Fixed across MeshBuilder extract AND GeometryBounds (pointsBounds + GeoElevationGrid handler) via geombounds::getPointsLenient + new getFloatLenient/getFloatsLenient. Sibling bounds/grid sites found by the systematic getField-type audit. Tested in getfield_typecheck_test.cpp + geometry_bounds_test (GeoCoordinate IFS + GeoElevationGrid). (sweep 2026-06-25, fixed same day)",
+      "note": "Closed 2026-09-27: GeoCoordinate MFVec3d points now convert in one list through geo::toWorld for mesh and bounds; CoordinateDouble remains Cartesian. GeoElevationGrid lattice, elevation, authored tangent normals, and bounds convert through GeoNodes. Earlier type mismatch coverage remains. Regressions: mesh_builder_b5_test.cpp and geometry_bounds_test.cpp.",
       "severity": "minor",
-      "status": "fixed",
+      "status": "closed",
       "summary": "Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float)."
     },
     {
@@ -10362,6 +10376,8 @@
       "EaseInEaseOut",
       "Fog",
       "Gain",
+      "GeoLocation",
+      "GeoTransform",
       "GeoViewpoint",
       "HAnimHumanoid",
       "HAnimJoint",
@@ -10448,7 +10464,7 @@
     "closed_count": 226,
     "component_count": 36,
     "deferred_count": 28,
-    "finding_count": 257,
+    "finding_count": 258,
     "inert_behavioral_nodes": [
       "Analyser",
       "BufferAudioSource",
@@ -10472,7 +10488,7 @@
       "critical": 2,
       "low": 2,
       "major": 14,
-      "minor": 13
+      "minor": 14
     }
   },
   "unresolved_findings": []

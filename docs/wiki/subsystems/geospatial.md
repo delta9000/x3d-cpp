@@ -27,6 +27,9 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 | `runtime/math/GeoBuiltinProjection.hpp` | The default backend: closed-form geodetic → geocentric, iterative inverse, Krüger 6th-order UTM (Karney 2011). No dependencies, no IO; accepts an optional geoid function. |
 | `runtime/math/GeoFrame.hpp` | SDK-side conversions shared by every backend: authored coordinate ↔ geodetic ↔ geocentric (axis order, degrees, geoid heights, Web Mercator), the local east/up/south basis, `OriginFrame` (GeoOrigin, `rotateYUp`), `tangentFrame`; and the process-wide backend (`projection()` / `setProjection()`). |
 | `runtime/scene/GeoNodes.hpp` | Node glue: `systemOf`, `originOf`, `toWorld` (one point or a list), `fromWorld`, `tangentFrameOf` — reads `geoSystem`, `geoOrigin`, `geoCoords`, `rotateYUp` by reflection. |
+| `runtime/scene/GeometryBounds.hpp` and `runtime/extract/MeshBuilder.cpp` | Convert GeoCoordinate lists and GeoElevationGrid lattices through the node helpers for bounds and meshes. |
+| `runtime/scene/TransformSystem.hpp` | GeoLocation tangent placement and GeoTransform tangent-frame TRS, shared by scene walks. |
+| `runtime/events/X3DExecutionContext.hpp` and `runtime/events/NavigationSystem.hpp` | Geographic GeoViewpoint camera pose, center of rotation, and elevation-based speed. |
 | `runtime/math/tests/geo_projection_test.cpp` | Reference values from PROJ 9.8 on WGS84, Clarke 1866, Airy and International ellipsoids; UTM north/south/zone edges; Web Mercator; parsing; the geoid hook; GeoOrigin frames; node glue. |
 
 ## Conventions
@@ -48,7 +51,12 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 
 ## Status
 
-The conversion core ships and is tested against PROJ. Wiring into the node
-types (geometry, transforms, the camera, interpolator and sensors) and the
-optional PROJ backend with its swap-test are listed per node in
-`docs/conformance/findings.yaml` (CONF-GEO, ENV-02, TSN-1, TSN-2).
+The conversion core ships and is tested against PROJ. GeoCoordinate and
+GeoElevationGrid meshes and bounds, GeoLocation and GeoTransform matrices, and
+GeoViewpoint camera and navigation are wired through the node helpers. The
+GeoElevationGrid grid follows east/longitude columns and north/latitude rows;
+authored normals rotate from the local tangent frame. GeoViewpoint movement
+uses elevation / 10 times speedFactor. Behavioral nodes (GeoProximitySensor,
+GeoPositionInterpolator, GeoTouchSensor) and the optional PROJ swap-test remain
+tracked in `docs/conformance/findings.yaml` (CONF-GEO, ENV-02, TSN-1, TSN-2).
+GeoViewpoint avatar size and visibility range scaling remains open as GEO-3.
