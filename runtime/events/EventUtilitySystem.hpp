@@ -41,6 +41,10 @@ public:
       ctx.postEvent(n, "triggerTrue", std::any(SFBool{true}));
     });
   }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::BooleanTrigger *>(node))
+      n->setOnSet_triggerTimeHandler({});
+  }
 };
 
 /// §30.4.6 IntegerTrigger: set_boolean=TRUE -> triggerValue=integerKey; FALSE
@@ -62,6 +66,10 @@ public:
         ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
     });
   }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::IntegerTrigger *>(node))
+      n->setOnSet_booleanHandler({});
+  }
 };
 
 /// §30.4.7 TimeTrigger: set_boolean (any value, value ignored) -> triggerTime=now.
@@ -73,6 +81,10 @@ public:
     n->setOnSet_booleanHandler([&ctx, n](const SFBool &) {
       ctx.postEvent(n, "triggerTime", std::any(SFTime{ctx.now()}));
     });
+  }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::TimeTrigger *>(node))
+      n->setOnSet_booleanHandler({});
   }
 };
 
@@ -89,6 +101,10 @@ public:
       ctx.postEvent(n, "inputNegate", std::any(SFBool{!v}));
     });
   }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::BooleanFilter *>(node))
+      n->setOnSet_booleanHandler({});
+  }
 };
 
 /// §30.4.3 BooleanToggle: set_boolean=TRUE flips toggle (emits toggle_changed via
@@ -102,6 +118,10 @@ public:
       if (!v) return; // FALSE has no effect (§30.4.3)
       ctx.postEvent(n, "toggle", std::any(SFBool{!n->getToggle()}));
     });
+  }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node))
+      n->setOnSet_booleanHandler({});
   }
 };
 
@@ -151,6 +171,15 @@ public:
     n->setOnPreviousHandler([&ctx, n, this](const SFBool &v) {
       if (v) step(ctx, n, -1);
     });
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    index_.erase(node);
+    if (auto *n = dynamic_cast<NodeT *>(node)) {
+      n->setOnSet_fractionHandler({});
+      n->setOnNextHandler({});
+      n->setOnPreviousHandler({});
+    }
   }
 
 private:

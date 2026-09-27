@@ -45,6 +45,13 @@ public:
       viewpointsByDef_.emplace(node->getDEF(), node);
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (dynamic_cast<x3d::nodes::Anchor *>(node) && anchors_) --anchors_;
+    if (pressed_ == node) pressed_ = nullptr;
+    for (auto it = viewpointsByDef_.begin(); it != viewpointsByDef_.end();)
+      if (it->second == node) it = viewpointsByDef_.erase(it); else ++it;
+  }
+
   void update(double /*now*/, X3DExecutionContext &ctx) override {
     const PointerState &ps = ctx.pointerState();
     const bool down = ps.present && ps.buttonDown;

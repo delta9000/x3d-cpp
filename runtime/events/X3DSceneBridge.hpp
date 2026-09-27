@@ -477,6 +477,8 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
     auto inlines = std::make_shared<InlineRuntimeSystem>(
         scene, std::move(inlineResolver), std::move(baseUrl));
     detail::forEachNode(scene, [&](X3DNode *n) { inlines->attach(n, ctx); });
+    for (const auto &[_, original] : scene.expandedInlines)
+      inlines->attach(original.get(), ctx);
     ctx.addSystem(inlines);
   }
   attachViewpointBind(ctx);           // §23.3.1 post-cascade viewpoint bind hook

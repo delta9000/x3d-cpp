@@ -45,6 +45,10 @@ public:
         });
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<NodeT *>(node)) n->setOnSet_fractionHandler({});
+  }
+
 private:
   LerpFn lerp_;
 };
@@ -77,6 +81,10 @@ public:
                                                   interp->getKeyValue(),
                                                   fraction, lerp)));
         });
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *n = dynamic_cast<NodeT *>(node)) n->setOnSet_fractionHandler({});
   }
 
 private:

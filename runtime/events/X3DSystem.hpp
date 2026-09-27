@@ -44,6 +44,9 @@ public:
    */
   virtual void attach(X3DNode *node, X3DExecutionContext &ctx) = 0;
 
+  /// Release per-node state before a live Inline removes this node (§9.4.2).
+  virtual void detach(X3DNode *, X3DExecutionContext &) {}
+
   /**
    * @brief Advance time-driven nodes to `now`, emitting events into `ctx`.
    * @details Default no-op: event-driven systems do all their work from the

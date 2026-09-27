@@ -13,7 +13,7 @@ GitHub issues.
 |---|---|
 | Load 4 encodings (XML, ClassicVRML, VRML97, JSON) | + gzip input, lenient read, BOM strip. Parses versions 3.0–4.1; the generated node model targets 4.0, so the six 4.1-only nodes are absent (row below) |
 | PROTO / EXTERNPROTO | local PROTO always expands; file-local EXTERNPROTO via `localFileProtoResolver` (http/urn skipped by default) |
-| Inline / IMPORT | Parse-time Inline expansion; explicit child EXPORT required for IMPORT. With an injected `InlineResolver` and base URL, a later `load=TRUE` event also splices content into the live scene, enrolls its systems/routes, and updates full and incremental extraction. Runtime unload and replacement after `url` changes remain open (AUD-NET-2). |
+| Inline / IMPORT | Parse-time Inline expansion; explicit child EXPORT required for IMPORT. With an injected `InlineResolver` and base URL, runtime `load` and `url` events load, unload, and replace content, including routes and IMPORT aliases; extraction deltas report added and removed items (ADR-0051). |
 | Conformance diagnostics | `rangeWarnings` (out-of-range values) + `protoWarnings` (expansion issues); per-version validation moat |
 | Serialization | `XmlWriter` / `JsonWriter` / `VrmlWriter`, reflection-driven |
 | Scene graph | DEF/USE, Transform hierarchy (+ HAnimHumanoid/HAnimJoint/CADPart), bounds, binding stacks |

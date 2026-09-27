@@ -170,6 +170,10 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     // copy child.defs into scene.defs).
     auto group = makeGroup(child->rootNodes);
     hoistChildRoutes(*child, scene.resolvedInlineRoutes);
+    for (const auto &[nestedGroup, nestedInline] : child->expandedInlines)
+      scene.expandedInlines[nestedGroup] = nestedInline;
+    for (const auto &[nestedInline, nestedScene] : child->expandedInlineScenes)
+      scene.expandedInlineScenes[nestedInline] = nestedScene;
     for (const auto &peer : child->protoPeerNodes)
       scene.protoPeerNodes.push_back(peer);
     scene.expandedInlines[group.get()] = inl; // preserve for writer round-trip

@@ -116,6 +116,11 @@ public:
       state_.emplace(ls, SensorState{});
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (auto *ls = dynamic_cast<x3d::nodes::LoadSensor *>(node)) state_.erase(ls);
+    for (auto &[_, sensor] : state_) sensor.children.erase(node);
+  }
+
   // `inline` at the declaration point keeps update() from becoming the class's
   // Itanium-ABI key function — otherwise the vtable (and its node-lib typeinfo /
   // nodeImplements references) would be emitted in every TU that merely includes

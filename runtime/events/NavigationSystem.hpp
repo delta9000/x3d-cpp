@@ -80,6 +80,11 @@ public:
   static constexpr int kKeyRight   = 4; // RIGHT arrow / D
 
   void attach(X3DNode * /*node*/, X3DExecutionContext & /*ctx*/) override {}
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    touched_.erase(std::remove(touched_.begin(), touched_.end(), node), touched_.end());
+    colliding_.erase(std::remove(colliding_.begin(), colliding_.end(), node), colliding_.end());
+    if (lastFlyVp_ == node) { lastFlyVp_ = nullptr; flyOrientValid_ = false; }
+  }
 
   // Override the scene's NavigationInfo.type (dev affordance: the consumer's
   // mode-cycle key). std::nullopt = scene-driven (default).

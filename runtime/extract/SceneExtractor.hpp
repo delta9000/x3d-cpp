@@ -190,11 +190,14 @@ public:
       PathKey path;
       walk(root.get(), Mat4::identity(), path, delta);
     }
+    liveIds_.clear();
+    liveIds_.insert(delta.added.begin(), delta.added.end());
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
     delta.fogChanged = true;
     delta.lightsChanged = true;
     snapped_ = true;
+    topologyRevision_ = ctx_.sceneTopologyRevision();
     lastDeltaGen_ = ctx_.tickGeneration(); // seed the one-delta-per-tick guard.
     return delta;
   }
@@ -249,6 +252,14 @@ public:
   RenderDelta delta() {
     // No baseline yet — a full snapshot IS the baseline (see contract above).
     if (!snapped_) return fullSnapshot();
+
+    if (topologyRevision_ != ctx_.sceneTopologyRevision()) {
+      const auto oldIds = liveIds_;
+      RenderDelta changed = fullSnapshot();
+      changed.removed.insert(changed.removed.end(), oldIds.begin(), oldIds.end());
+      std::sort(changed.removed.begin(), changed.removed.end());
+      return changed;
+    }
 
     const std::uint64_t gen = ctx_.tickGeneration();
     if (gen == lastDeltaGen_) return {}; // no advance since the last delta().
@@ -330,6 +341,8 @@ public:
     delta.backgroundChanged = true;
     delta.fogChanged = true;
     delta.lightsChanged = true;
+    for (RenderItemId id : delta.removed) liveIds_.erase(id);
+    liveIds_.insert(delta.added.begin(), delta.added.end());
     return delta;
   }
 
@@ -1102,6 +1115,7 @@ private:
   TextureResolver textureResolver_;
 
   std::vector<RenderItem> items_; // dense, indexed by RenderItemId.
+  std::unordered_set<RenderItemId> liveIds_;
   std::unordered_map<PathKey, RenderItemId, PathKeyHash, PathKeyEqual> index_;
 
   // M25-5: world-resolved active lights for the current snapshot. Populated
@@ -1134,6 +1148,7 @@ private:
   // Generation, not clock: ctx_.now() may legitimately repeat (paused /
   // fixed-timestep / replay), tickGeneration() cannot.
   bool snapped_ = false;
+  std::uint64_t topologyRevision_ = 0;
   std::uint64_t lastDeltaGen_ = 0;
 };
 

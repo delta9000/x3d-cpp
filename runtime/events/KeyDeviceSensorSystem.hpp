@@ -23,6 +23,7 @@
 #include "x3d/nodes/StringSensor.hpp"
 
 #include <any>
+#include <algorithm>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -50,6 +51,12 @@ public:
             ctx.postEvent(other, "enabled", std::any(SFBool{false}));
       });
     }
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    keySensors_.erase(std::remove(keySensors_.begin(), keySensors_.end(), node), keySensors_.end());
+    stringSensors_.erase(std::remove(stringSensors_.begin(), stringSensors_.end(), node), stringSensors_.end());
+    strings_.erase(dynamic_cast<x3d::nodes::StringSensor *>(node));
   }
 
   void update(double now, X3DExecutionContext &ctx) override {

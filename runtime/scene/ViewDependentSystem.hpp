@@ -49,6 +49,17 @@ public:
     }
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    lodLevel_.erase(node);
+    sensorActive_.erase(node);
+    proxState_.erase(node);
+    trSensorState_.erase(node);
+    motion_.erase(node);
+    sensorPaths_.erase(node);
+    sensorBelow_.erase(node);
+    sensorBelowValid_ = false;
+  }
+
   // A capped path walk may leave some sensor instances unevaluated this tick.
   bool budgetExceeded() const { return budgetExceeded_; }
 

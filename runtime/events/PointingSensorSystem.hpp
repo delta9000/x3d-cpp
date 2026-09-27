@@ -78,6 +78,13 @@ public:
       ++sensorCount_;
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    if (isPointingSensor(node) && sensorCount_) --sensorCount_;
+    erase(over_, node);
+    active_.erase(std::remove_if(active_.begin(), active_.end(),
+        [node](const ActiveSensor &a) { return a.node == node; }), active_.end());
+  }
+
   void update(double now, X3DExecutionContext &ctx) override {
     const PointerState &ps = ctx.pointerState();
 

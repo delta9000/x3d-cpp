@@ -10088,9 +10088,9 @@
       "nodes": [
         "Inline"
       ],
-      "note": "Partial: with an injected InlineResolver and base URL, InlineRuntimeSystem now handles load=TRUE after parse through expandInlines, splices content, enrolls new nodes with live systems, wires child and newly resolved IMPORT routes, and marks root/nested content for full snapshot and incremental delta (inline_load_true_event_expands_content, inline_nested_late_load_appears_in_delta, inline_late_load_wires_import_route). Still open: load=FALSE must detach and remove the old subtree, its system registrations, routes, IMPORT aliases, binding/pick state, and render items; url changes on an already loaded Inline must perform that removal then resolve and splice replacement content. System has no detach interface yet.",
+      "note": "InlineRuntimeSystem unloads on load=FALSE and unloads then reloads on url change. System::detach removes per-node runtime state before the old subtree is released; routes, pending deliveries, IMPORT aliases, binding/pick entries, and extracted RenderItems are removed. Regression tests: inline_load_unload_reload_detaches_content_and_reports_removal, inline_url_change_replaces_loaded_content, nested_inline_loaded_with_parent_can_unload, inline_repeated_replacement_drops_unowned_nodes. ADR-0051 records the detach order and extraction delta rule.",
       "severity": "major",
-      "status": "open",
+      "status": "closed",
       "summary": "An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing."
     },
     {
@@ -10445,7 +10445,7 @@
     ]
   },
   "summary": {
-    "closed_count": 224,
+    "closed_count": 225,
     "component_count": 36,
     "deferred_count": 28,
     "finding_count": 257,
@@ -10471,7 +10471,7 @@
     "open_by_severity": {
       "critical": 2,
       "low": 2,
-      "major": 16,
+      "major": 15,
       "minor": 13
     }
   },

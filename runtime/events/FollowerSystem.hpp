@@ -72,6 +72,15 @@ public:
     });
   }
 
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    auto *n = dynamic_cast<NodeT *>(node);
+    if (!n) return;
+    n->setOnSet_destinationHandler({});
+    n->setOnSet_valueHandler({});
+    entries_.erase(std::remove_if(entries_.begin(), entries_.end(),
+        [n](const auto &e) { return e->node == n; }), entries_.end());
+  }
+
   void update(double now, X3DExecutionContext &ctx) override {
     for (auto &e : entries_) {
       if (!e->active) {
@@ -214,6 +223,15 @@ public:
       }
       ep->active = false;
     });
+  }
+
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    auto *n = dynamic_cast<NodeT *>(node);
+    if (!n) return;
+    n->setOnSet_destinationHandler({});
+    n->setOnSet_valueHandler({});
+    entries_.erase(std::remove_if(entries_.begin(), entries_.end(),
+        [n](const auto &e) { return e->node == n; }), entries_.end());
   }
 
   void update(double now, X3DExecutionContext &ctx) override {
