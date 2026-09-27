@@ -24,6 +24,7 @@
 #include "TimeSensorSystem.hpp"
 #include "ViewDependentSystem.hpp"
 #include "ViewpointBindSystem.hpp"
+#include "../hanim/HAnimMotionSystem.hpp"
 
 #include "x3d/nodes/BooleanSequencer.hpp"
 #include "x3d/nodes/IntegerSequencer.hpp"
@@ -467,6 +468,9 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   auto soundTime = std::make_shared<SoundTimeSystem>(); // §16 source/processor timing
   detail::forEachNode(scene, [&](X3DNode *n) { soundTime->attach(n, ctx); });
   ctx.addSystem(soundTime);
+  auto motions = std::make_shared<hanim::HAnimMotionSystem>(); // §26 H-Anim motion
+  detail::forEachNode(scene, [&](X3DNode *n) { motions->attach(n, ctx); });
+  ctx.addSystem(motions);
   attachInterpolators(scene, ctx);    // §19 keyframe animation
   attachFollowers(scene, ctx);        // §39 damper/chaser smoothing
   attachEventUtilities(scene, ctx);   // §30 trigger/sequencer/filter logic

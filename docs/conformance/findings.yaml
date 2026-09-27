@@ -1413,9 +1413,9 @@
   component: HAnim
   clause: "26.3.4"
   severity: major
-  status: deferred
-  summary: "HAnimMotion animation driver entirely missing — no frame advancement."
-  note: "generated_cpp_bindings/HAnimMotion.hpp has channels/values/frameIndex/frameDuration/loop/enabled/startFrame/endFrame; no runtime system drives frames or emits cycleTime/elapsedTime/frameCount per §26.3.4. Blocked on the HAnim animation subsystem. (sweep 2026-06-25)"
+  status: fixed
+  summary: "HAnimMotion plays frame-major channels through the event context."
+  note: "HAnimMotionSystem drives referenced motions, honours enable gates, frame controls and channel masks, and emits frameCount/cycleTime/elapsedTime. Synthetic regression tests cover two joints, Euler order, stepping, looping, gating and ignored groups. (2026-09-27)"
 - id: T3D-1
   nodes: [ComposedTexture3D, ImageTexture3D]
   interfaces: [X3DTexture3DNode]

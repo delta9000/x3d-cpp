@@ -41,6 +41,7 @@ Every top-level functional area gets one page. The canonical list follows the ar
 | covered | `subsystems/scene-graph.md` | Runtime core: scene graph, DEF/USE sharing, document/scene model | `runtime/X3DScene.hpp`, `X3DDocument.hpp`, `X3DRuntime.hpp`, `runtime/scene/` |
 | covered | `subsystems/reflection.md` | Reflection layer: field descriptors, reflection thunks, factory/registry | `src/x3d_cpp_gen/emit/reflection.py`, `descriptors.py`, `registry.py`, `factory.py` |
 | covered | `subsystems/execution-context.md` | Execution context: per-tick driver, field-write seam, scene bridge | `runtime/events/X3DExecutionContext.hpp`, `X3DSceneBridge.hpp`, `X3DActiveNode.hpp` |
+| covered | `subsystems/hanim.md` | H-Anim discrete motion playback and joint event writes | `runtime/hanim/HAnimMotionSystem.hpp`, `runtime/events/tests/hanim_motion_test.cpp` |
 | covered | `subsystems/dirty-bounds-transform.md` | Dirty-tracking + world-transform propagation + bounding volumes | `runtime/scene/DirtyTracker.hpp`, `TransformSystem.hpp`, `BoundsSystem.hpp`, `GeometryBounds.hpp`, `CycleBreaker.hpp` |
 | covered | `subsystems/codecs-writers.md` | Codec writers: XML/VRML/JSON serialization + field-value IO | `runtime/codecs/` (`XmlWriter.hpp`, `VrmlWriter.hpp`, `JsonWriter.hpp`, `FieldValueIO.hpp`, `X3DCodecs.hpp`) |
 | covered | `subsystems/canonical-xml.md` | Canonical XML writer (X3DC14N) | `runtime/codecs/CanonicalXmlWriter.hpp` |
