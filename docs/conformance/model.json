@@ -7225,10 +7225,10 @@
         "Gain",
         "BiquadFilter"
       ],
-      "note": "SoundSystem buildChild/pushParams never read getEnabled(); \u00a716 defaults enabled TRUE but enabled=FALSE shall disable the node. Actionable now (no seam) \u2014 gate createNode/setParam (and bypass vs mute per \u00a716 node semantics).",
+      "note": "SoundSystem pushes enabled; BuiltinDspBackend silences disabled sources and passes disabled processors through, covered by sound_system_test. MiniaudioBackend handles disabled OscillatorSource and Gain, but its current graph wiring cannot bypass BiquadFilter while preserving its input; swap-test F6 checks disabled/inactive oscillator, disabled Gain pass-through and AudioDestination gain on both backends.",
       "severity": "major",
       "status": "open",
-      "summary": "enabled field ignored on every wired sound node \u2014 a disabled Oscillator/Gain/BiquadFilter still synthesizes/processes."
+      "summary": "BuiltinDspBackend honors enabled for all wired nodes; MiniaudioBackend still needs a live BiquadFilter bypass path."
     },
     {
       "clause": "8.2.4.1, 16.4.15",
@@ -7242,10 +7242,10 @@
         "Gain",
         "BiquadFilter"
       ],
-      "note": "SoundSystem has no activation clock \u2014 the oscillator plays from t=0. Gating a synthesized source on startTime/stopTime is doable now (no media seam); emitting isActive/isPaused as routed events needs an event-cascade hookup. Mirrors TimeSensor (TDN-*); relates to TDN-5 for media sources.",
+      "note": "SoundTimeSystem reuses X3DTimeDependentSystem and is registered by attachStandardRuntime; SoundSystem gates source and processor output from isActive/isPaused. MediaTimeSystem continues to handle AudioClip. Covered by sound_system_test and standard_runtime_test.",
       "severity": "major",
-      "status": "open",
-      "summary": "X3DTimeDependentNode lifecycle ignored \u2014 sound nodes emit unconditionally; startTime/stopTime/pauseTime/resumeTime/loop not honored and isActive/isPaused/elapsedTime never emitted."
+      "status": "closed",
+      "summary": "Sound sources and processing nodes now run the shared start/stop/pause/resume lifecycle and emit isActive/isPaused/elapsedTime."
     },
     {
       "clause": "16.4.16, 16.4.13",
@@ -7321,10 +7321,10 @@
         "AudioDestination",
         "StreamAudioDestination"
       ],
-      "note": "SoundSystem reads maxChannelCount into params but render() is mono and never applies the destination gain (\u00a716.4.3). The gain pass-through is a small fix (no seam); multi-channel + stream output is deferred (SND-6).",
+      "note": "SoundSystem pushes AudioDestination.gain to the backend destination. sound_system_test verifies output scaling. maxChannelCount remains read but unused by mono render, and StreamAudioDestination remains unbuilt.",
       "severity": "minor",
-      "status": "open",
-      "summary": "AudioDestination.gain ignored by render and maxChannelCount is read but unused (mono); StreamAudioDestination not built."
+      "status": "closed",
+      "summary": "AudioDestination.gain applied; maxChannelCount remains read but unused (mono); StreamAudioDestination not built."
     },
     {
       "clause": "16.4.12, 16.4.4",
@@ -9847,7 +9847,7 @@
     ]
   },
   "summary": {
-    "closed_count": 176,
+    "closed_count": 178,
     "component_count": 36,
     "deferred_count": 30,
     "finding_count": 221,
@@ -9873,8 +9873,8 @@
     "open_by_severity": {
       "critical": 2,
       "low": 3,
-      "major": 20,
-      "minor": 20
+      "major": 19,
+      "minor": 19
     }
   },
   "unresolved_findings": []

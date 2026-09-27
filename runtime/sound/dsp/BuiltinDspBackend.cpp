@@ -49,6 +49,7 @@ struct Node {
   // 1 playing / 2 paused, and playback rate (pitch).
   double cursor = 0.0;
   int playState = 0;
+  int timeState = 1;
   double rate = 1.0;
 
   // Per-render scratch.
@@ -204,6 +205,7 @@ struct BuiltinDspBackend::Impl {
 
     switch (n.kind) {
     case NodeKind::Oscillator: {
+      if (!n.params.enabled || n.timeState != 1) break;
       double f = detuned(n.params.frequency, n.params.detune);
       double inc = kTwoPi * f / sampleRate;
       double g = n.params.gain;
@@ -219,6 +221,8 @@ struct BuiltinDspBackend::Impl {
       // Sum inputs, then filter the summed signal.
       std::vector<float> in(static_cast<std::size_t>(frames), 0.0f);
       sumInputs(n, in, frames, sampleRate);
+      if (n.timeState != 1) break;
+      if (!n.params.enabled) { n.block = std::move(in); break; }
       BiquadCoeffs c =
           computeBiquad(n.params.filterType, n.params.frequency, n.params.q,
                         n.params.detune, sampleRate);
@@ -238,6 +242,8 @@ struct BuiltinDspBackend::Impl {
     case NodeKind::Gain: {
       std::vector<float> in(static_cast<std::size_t>(frames), 0.0f);
       sumInputs(n, in, frames, sampleRate);
+      if (n.timeState != 1) break;
+      if (!n.params.enabled) { n.block = std::move(in); break; }
       double g = n.params.gain;
       for (int i = 0; i < frames; ++i)
         n.block[static_cast<std::size_t>(i)] =
@@ -246,6 +252,7 @@ struct BuiltinDspBackend::Impl {
     }
     case NodeKind::Destination: {
       sumInputs(n, n.block, frames, sampleRate);
+      for (float &sample : n.block) sample *= n.params.gain;
       break;
     }
     case NodeKind::Buffer: {
@@ -428,6 +435,7 @@ void BuiltinDspBackend::setParam(NodeHandle node, Param param, float value) {
   case Param::Detune:     it->second.params.detune             = value; break;
   case Param::Q:          it->second.params.q                  = value; break;
   case Param::Gain:       it->second.params.gain               = value; break;
+  case Param::Enabled:    it->second.params.enabled            = value != 0.0f; break;
   case Param::PositionX:  it->second.params.sourcePosition[0]  = value; break;
   case Param::PositionY:  it->second.params.sourcePosition[1]  = value; break;
   case Param::PositionZ:  it->second.params.sourcePosition[2]  = value; break;
@@ -448,6 +456,7 @@ void BuiltinDspBackend::setParam(NodeHandle node, Param param, float value) {
     const int st = static_cast<int>(value);
     if (st == 0) it->second.cursor = 0.0; // stop rewinds; pause holds
     it->second.playState = st;
+    it->second.timeState = st;
     break;
   }
   case Param::PlaybackRate: it->second.rate = value; break;
