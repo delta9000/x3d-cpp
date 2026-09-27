@@ -13,6 +13,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <string>
@@ -40,6 +41,24 @@ inline int lodSelectLevel(const X3DNode &lod, float distToCenter) {
   int level = 0;
   for (float r : range) { if (distToCenter >= r) ++level; else break; }
   return level;
+}
+
+// §10.4.3 / §23.4.3: rendering traverses only the selected Switch/LOD child.
+inline std::shared_ptr<X3DNode> traversedChild(const X3DNode &node,
+                                               const Mat4 &world,
+                                               const SFVec3f &eyeWorld) {
+  const auto kids = geombounds::getField<MFNode>(node, "children", {});
+  if (kids.empty()) return {};
+  int choice = -1;
+  if (node.nodeTypeName() == "Switch")
+    choice = geombounds::getField<int>(node, "whichChoice", -1);
+  else if (node.nodeTypeName() == "LOD") {
+    const SFVec3f center = geombounds::getField<SFVec3f>(node, "center", {0, 0, 0});
+    const SFVec3f eye = world.inverse().transformPoint(eyeWorld);
+    const float distance = viewdep::len(viewdep::sub(eye, center));
+    choice = std::min(lodSelectLevel(node, distance), static_cast<int>(kids.size()) - 1);
+  }
+  return choice >= 0 && choice < static_cast<int>(kids.size()) ? kids[choice] : nullptr;
 }
 
 class ViewDependentSystem : public System {

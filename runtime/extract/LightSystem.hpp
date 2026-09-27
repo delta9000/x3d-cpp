@@ -31,9 +31,11 @@
 #include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "RenderItem.hpp"      // LightDesc
 #include "TransformSystem.hpp" // localMatrix (static; per-path re-accumulation)
+#include "ViewDependentSystem.hpp" // traversedChild (§10.4.3 / §23.4.3)
 #include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
+#include <algorithm>
 #include <any>
 #include <cmath>
 #include <memory>
@@ -49,18 +51,29 @@ public:
   // self-budgeted overload caps the fan-out with a fresh default budget.
   std::vector<LightDesc> collect(const Scene &scene) {
     WalkBudget budget(kMaxGraphWalkVisits);
-    return collect(scene, budget);
+    return collect(scene, budget, SFVec3f{0, 0, 0});
+  }
+
+  std::vector<LightDesc> collect(const Scene &scene, const SFVec3f &eyeWorld) {
+    WalkBudget budget(kMaxGraphWalkVisits);
+    return collect(scene, budget, eyeWorld);
   }
 
   // #21: collect against a shared node-visit budget — the extractor threads the
   // SAME budget through light collection and its geometry walk, so one snapshot
   // ceiling covers both. `budget.tripped` reports an early stop.
   std::vector<LightDesc> collect(const Scene &scene, WalkBudget &budget) {
+    return collect(scene, budget, SFVec3f{0, 0, 0});
+  }
+
+  std::vector<LightDesc> collect(const Scene &scene, WalkBudget &budget,
+                                 const SFVec3f &eyeWorld) {
     std::vector<LightDesc> out;
     for (const auto &root : scene.rootNodes) {
       if (!root) continue;
       // A root light has no enclosing grouping node => scopeRoot null.
-      walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, out, budget);
+      walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, out, budget,
+           eyeWorld);
     }
     return out;
   }
@@ -96,6 +109,7 @@ private:
 
   void walk(const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
             std::vector<LightDesc> &out, WalkBudget &budget,
+            const SFVec3f &eyeWorld,
             std::size_t depth = 0) {
     if (!n) return;
     // #21: bound total node-visits so a wide acyclic ("doubling DAG") light
@@ -122,8 +136,14 @@ private:
     // grouping node, else the inherited one (a non-grouping passthrough keeps
     // the enclosing group as the scope anchor).
     const X3DNode *childScope = isGroupingNode(n) ? n : scopeRoot;
+    const std::string typeName = n->nodeTypeName();
+    if (typeName == "Switch" || typeName == "LOD") {
+      if (auto child = traversedChild(*n, here, eyeWorld))
+        walk(child.get(), here, childScope, out, budget, eyeWorld, depth + 1);
+      return;
+    }
     forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      walk(c.get(), here, childScope, out, budget, depth + 1);
+      walk(c.get(), here, childScope, out, budget, eyeWorld, depth + 1);
     });
   }
 
@@ -163,7 +183,15 @@ private:
       L.worldLocation = worldM.transformPoint(loc);
       L.attenuation =
           geombounds::getField<SFVec3f>(n, "attenuation", SFVec3f{1, 0, 0});
-      L.radius = geombounds::getField<float>(n, "radius", 100.0f);
+      const float radius = geombounds::getField<float>(n, "radius", 100.0f);
+      // §17.4.2–3: ancestor scale affects a positional light's radius.
+      const SFVec3f sx = worldM.transformDirection({1, 0, 0});
+      const SFVec3f sy = worldM.transformDirection({0, 1, 0});
+      const SFVec3f sz = worldM.transformDirection({0, 0, 1});
+      const auto length = [](const SFVec3f &v) {
+        return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+      };
+      L.radius = radius * std::max({length(sx), length(sy), length(sz)});
     }
     // Spot-only beam parameters.
     if (type == LightDesc::Type::Spot) {

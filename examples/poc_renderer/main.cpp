@@ -1663,12 +1663,13 @@ int main(int argc, char **argv) {
         const GpuMesh &g = mit->second;
         const ex::MaterialDesc &mat = it.material;
         SFColorRGBA c = mat.toRGBA();
+        if (g.topology != ex::Topology::Triangles && !g.hasNormals)
+          c = mat.unlitGeometryRGBA();
 
         // ----------------------------------------------------------------
         // Determine which shader path to take.
         // ----------------------------------------------------------------
-        const bool forceUnlit = (g.topology != ex::Topology::Triangles)
-                                 || !g.hasNormals
+        const bool forceUnlit = !g.hasNormals
                                  || (mat.model == ex::MaterialModel::Unlit);
         const bool hasAuthor = it.shaderProgram.has_value()
                                 && it.shaderProgram->isValid;
@@ -1676,9 +1677,23 @@ int main(int argc, char **argv) {
                                 && (mat.model == ex::MaterialModel::Physical)
                                 && pbrProg;
         const bool wantPhong = !forceUnlit && !hasAuthor && !wantPbr && phongProg;
+        const auto uploadLitPointSize = [&](GLuint program) {
+          if (g.topology != ex::Topology::Points) return;
+          const auto set1 = [&](const char *name, float value) {
+            const GLint loc = glGetUniformLocation(program, name);
+            if (loc >= 0) glUniform1f(loc, value);
+          };
+          set1("uPointSizeScale", mat.point.pointSizeScaleFactor);
+          set1("uPointSizeMin", mat.point.pointSizeMinValue);
+          set1("uPointSizeMax", mat.point.pointSizeMaxValue);
+          const GLint loc = glGetUniformLocation(program, "uPointAttenuation");
+          if (loc >= 0)
+            glUniform3f(loc, mat.point.attenuation.x, mat.point.attenuation.y,
+                        mat.point.attenuation.z);
+        };
 
         // ----------------------------------------------------------------
-        // PATH 1: UNLIT — lines / points / normal-less / UnlitMaterial.
+        // PATH 1: UNLIT — normal-less geometry / UnlitMaterial.
         // ----------------------------------------------------------------
         if ((forceUnlit || (!wantPbr && !wantPhong && !hasAuthor)) && unlitProg) {
           if (boundProg != unlitProg) {
@@ -1698,15 +1713,6 @@ int main(int argc, char **argv) {
                         mat.point.attenuation.y, mat.point.attenuation.z);
           if (uUnlitPointMin >= 0) glUniform1f(uUnlitPointMin, mat.point.pointSizeMinValue);
           if (uUnlitPointMax >= 0) glUniform1f(uUnlitPointMax, mat.point.pointSizeMaxValue);
-          // SEAM-LINEPOINT: §12.4.6 LineProperties.linewidthScaleFactor → glLineWidth.
-          if (g.topology == ex::Topology::Lines) {
-            const float w = (mat.line.applied && mat.line.linewidthScaleFactor > 0.0f)
-                                ? mat.line.linewidthScaleFactor
-                                : 1.0f;
-            glLineWidth(w);
-          } else {
-            glLineWidth(1.0f);
-          }
           // A textured Appearance with NO Material is Unlit with the image on the
           // Emissive slot (§12.2.5); also covers UnlitMaterial.emissiveTexture and
           // any Diffuse/BaseColor texture that lands on the unlit path. srgb=false:
@@ -1739,6 +1745,7 @@ int main(int argc, char **argv) {
           glUniformMatrix4fv(uModel, 1, GL_FALSE, it.worldTransform.m.data());
           std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
           glUniformMatrix3fv(uNormalMat, 1, GL_FALSE, nrm.data());
+          uploadLitPointSize(phongProg);
 
           // Material: diffuse(rgb)+alpha, emissive, ambient.
           glUniform4f(uDiffuse, c.r, c.g, c.b, c.a);
@@ -1816,6 +1823,7 @@ int main(int argc, char **argv) {
           glUniformMatrix4fv(uPbrModel, 1, GL_FALSE, it.worldTransform.m.data());
           std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
           glUniformMatrix3fv(uPbrNormalMat, 1, GL_FALSE, nrm.data());
+          uploadLitPointSize(pbrProg);
 
           // PBR material params.
           const auto &ph = mat.physical;
@@ -2023,6 +2031,12 @@ int main(int argc, char **argv) {
           applyCull(g);
         }
 
+        // §12.4.6: line width applies on both lit and unlit paths.
+        const float lineWidth = g.topology == ex::Topology::Lines &&
+                                        mat.line.applied &&
+                                        mat.line.linewidthScaleFactor > 0.0f
+                                    ? mat.line.linewidthScaleFactor : 1.0f;
+        glLineWidth(lineWidth);
         // B4: branch the draw-call primitive on topology.
         GLenum mode = (g.topology == ex::Topology::Lines)    ? GL_LINES
                       : (g.topology == ex::Topology::Points) ? GL_POINTS

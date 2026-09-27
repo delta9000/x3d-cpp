@@ -2424,41 +2424,41 @@
   component: Lighting
   clause: "17.4.2, 17.4.3"
   severity: major
-  status: open
+  status: closed
   summary: "Light radius ignores ancestor scale."
-  note: "Spec: 'scales affect radius'. LightSystem transforms location but copies radius. Probes: audit_point_light_radius_scales_with_parent_transform, audit_spot_light_radius_scales_with_parent_transform."
+  note: "LightSystem scales radius through ancestor transforms. Covered by point_light_radius_scales_with_parent_transform and spot_light_radius_scales_with_parent_transform."
 - id: AUD-LGT-2
   nodes: [DirectionalLight, PointLight, SpotLight, Switch]
   component: Lighting
   clause: "10.4.3"
   severity: major
-  status: open
+  status: closed
   summary: "Lights in an unchosen Switch branch (or inactive LOD level) still illuminate."
-  note: "LightSystem visits every child; geometry extraction follows only the traversed branch. Probe: audit_light_under_inactive_switch_does_not_illuminate."
+  note: "LightSystem and SceneExtractor share Switch and LOD branch selection. Covered by light_under_inactive_switch_does_not_illuminate and light_under_unselected_lod_level_does_not_illuminate."
 - id: AUD-EXT-1
   nodes: [Extrusion]
   component: Geometry3D
   clause: "13.3.5.6, 11.2.3"
   severity: major
-  status: open
+  status: closed
   summary: "Caps are fanned from vertex 0 even with convex FALSE, so a concave cap covers its notch."
-  note: "Probe: audit_extrusion_concave_cap_does_not_cover_notch."
+  note: "Extrusion caps with convex FALSE use the IndexedFaceSet ear clipper. Covered by extrusion_concave_cap_does_not_cover_notch."
 - id: AUD-RND-1
   nodes: [LineSet, IndexedLineSet, PointSet]
   component: Rendering
   clause: "11.2.2.5"
   severity: minor
-  status: open
+  status: closed
   summary: "Authored normals on points/lines are dropped, so they can never be lit."
-  note: "Spec: with a Normal node, 'points and lines shall be rendered using the same lighting equations'. Probe: audit_line_and_point_normals_enable_lighting."
+  note: "Line and point meshes retain authored normals, and both example renderers light them. Covered by line_and_point_normals_enable_lighting and linepoint_style_test."
 - id: AUD-RND-2
   nodes: [LineSet, IndexedLineSet, PointSet, Material]
   component: Rendering
   clause: "11.2.2.5"
   severity: minor
-  status: open
+  status: closed
   summary: "Unlit points/lines take the Material's diffuse colour instead of emissiveColor."
-  note: "Spec: 'geometry shall be rendered as unlit and only the emissiveColor is used.' Probe: audit_line_set_material_uses_emissive_color."
+  note: "MaterialDesc exposes unlitGeometryRGBA, which both example renderers use for normal-less lines and points. Covered by unlit_line_set_material_uses_emissive_color."
 - id: AUD-BG-1
   nodes: [Background, TextureBackground]
   component: EnvironmentalEffects

@@ -19,6 +19,10 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 uniform mat3 uNormalMatrix; // inverse-transpose of (view*model) 3x3, eye space.
+uniform float uPointSizeScale;
+uniform vec3 uPointAttenuation;
+uniform float uPointSizeMin;
+uniform float uPointSizeMax;
 // TXF-2: §18.4.8 TextureCoordinateGenerator mode. 0 = off (use the authored
 // aTexCoord); 1 = SPHERE, 2 = CAMERASPACENORMAL, 3 = CAMERASPACEPOSITION,
 // 4 = CAMERASPACEREFLECTIONVECTOR — the view-dependent modes, computed here from
@@ -32,6 +36,10 @@ out vec2 vTexCoord;         // B8: passed through un-flipped for the sampler.
 
 void main() {
     vec4 posEye = uView * uModel * vec4(aPos, 1.0);
+    float d = length(posEye.xyz);
+    gl_PointSize = clamp((uPointAttenuation.x + uPointAttenuation.y * d +
+                          uPointAttenuation.z * d * d) * uPointSizeScale,
+                         uPointSizeMin, uPointSizeMax);
     vNormalEye = uNormalMatrix * aNormal;
     vPosEye = posEye.xyz;
     vColor = aColor;

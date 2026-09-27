@@ -143,6 +143,31 @@ int main() {
     CHECK(m.point.pointSizeMinValue == 1.0f && m.point.pointSizeMaxValue == 1.0f);
   }
 
+  // Authored line/point normals reach the fragment shader rather than the
+  // constant-color path (§11.2.2.5).
+  {
+    FragmentShader lit = [](const FragmentInput &f, g::vec4 &out) {
+      out = f.normalEye.z > 0.5f ? g::vec4{0, 1, 0, 1}
+                                 : g::vec4{1, 0, 0, 1};
+      return true;
+    };
+    Framebuffer lineFb(32, 32);
+    lineFb.clear({0, 0, 0});
+    Rasterizer lineRaster(lineFb);
+    lineRaster.drawLines(hline(), {0, 1}, I, I, I, {1, 0, 0, 1}, false,
+                         1.0f, lit);
+    CHECK(lineFb.colorAt(16, 8).y > 0.9f);
+
+    Framebuffer pointFb(32, 32);
+    pointFb.clear({0, 0, 0});
+    Rasterizer pointRaster(pointFb);
+    const std::vector<Vertex> point = {{{0, 0, 0}, {0, 0, 1},
+                                        {1, 1, 1, 1}, {0, 0}}};
+    pointRaster.drawPoints(point, {0}, I, I, I, {1, 0, 0, 1}, false,
+                           1.0f, {1, 0, 0}, 1.0f, 1.0f, lit);
+    CHECK(pointFb.colorAt(16, 16).y > 0.9f);
+  }
+
   if (failures) {
     std::fprintf(stderr, "linepoint_style_test: %d failure(s)\n", failures);
     return 1;
