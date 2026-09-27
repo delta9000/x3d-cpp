@@ -51,9 +51,10 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
   float.
 - **No datum shifts:** each ellipsoid's geometry maps into the one earth-fixed
   frame; GC and WM are WGS84.
-- **Geoid:** the `"WGS84"` option adds the backend's geoid undulation; the
-  built-in backend has none unless the application supplies a function, in
-  which case geoid-relative heights are converted to ellipsoidal heights.
+- **Geoid:** the `"WGS84"` option adds the backend's geoid undulation. The
+  built-in backend has none by itself; `runtime/io/tinygeoid` supplies one from
+  a tinygeoid `.tng` grid, and the PROJ backend from a PROJ grid. Without
+  either, heights stay ellipsoidal.
 
 ## Status
 
