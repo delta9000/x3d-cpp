@@ -1407,8 +1407,10 @@
     per-corner source coordinate/normal indices), reports pose-only changes in
     RenderDelta::updatedSkinPose, and recompiles the binding only on binding-field edits.
     deformedMesh() runs the reference CPU skinner; the cpu_raster example draws with it.
-    Verified on archive BoxMan2, JoeKick, Leif and Gramps. Not wired: poc_renderer does not consume
-    the descriptor (draws the bind pose); llimit/ulimit/limitOrientation/stiffness,
+    Verified on archive BoxMan2, JoeKick, Leif and Gramps in cpu_raster. poc_renderer now consumes
+    the descriptor with an uncapped influence buffer and a pose-only palette upload; it uses the
+    reference CPU mesh for Joint displacers and generated normals. Its GL image comparison test
+    requires an Xvfb and llvmpipe environment. llimit/ulimit/limitOrientation/stiffness,
     skeletalConfiguration, loa and the mass properties are informational and ignored; skinNormal is
     assumed to be indexed like skinCoord. (2026-09-27)
 - id: HAN-2

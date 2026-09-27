@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Immersive" version="4.0"><Scene>
+  <Viewpoint position="0 0 8"/>
+  <HAnimHumanoid DEF="Humanoid" name="Humanoid">
+    <Coordinate DEF="skinPoints" containerField="skinCoord" point="0 0 0 2 0 0 0 1 0"/>
+    <Normal DEF="skinNormals" containerField="skinNormal" vector="0 0 1 0 0 1 0 0 1"/>
+    <HAnimJoint DEF="joint0" containerField="joints" name="joint0" skinCoordIndex="0 1 2" skinCoordWeight="0.2 0.2 0.2"/>
+    <HAnimJoint DEF="joint1" containerField="joints" name="joint1" skinCoordIndex="0 1 2" skinCoordWeight="0.2 0.2 0.2"/>
+    <HAnimJoint DEF="joint2" containerField="joints" name="joint2" skinCoordIndex="0 1 2" skinCoordWeight="0.2 0.2 0.2"/>
+    <HAnimJoint DEF="joint3" containerField="joints" name="joint3" skinCoordIndex="0 1 2" skinCoordWeight="0.2 0.2 0.2"/>
+    <HAnimJoint DEF="joint4" containerField="joints" name="joint4" translation="0 1 0" skinCoordIndex="0 1 2" skinCoordWeight="0.2 0.2 0.2"/>
+    <HAnimJoint USE="joint0" containerField="skeleton"/>
+    <HAnimJoint USE="joint1" containerField="skeleton"/>
+    <HAnimJoint USE="joint2" containerField="skeleton"/>
+    <HAnimJoint USE="joint3" containerField="skeleton"/>
+    <HAnimJoint USE="joint4" containerField="skeleton"/>
+    <Shape containerField="skin"><Appearance><Material diffuseColor="0.8 0.3 0.1"/></Appearance>
+      <IndexedFaceSet coordIndex="0 1 2 -1" solid="false"><Coordinate USE="skinPoints"/><Normal USE="skinNormals"/></IndexedFaceSet>
+    </Shape>
+  </HAnimHumanoid>
+</Scene></X3D>

@@ -177,3 +177,9 @@ add_executable(x3d_poc_draw_math
 target_link_libraries(x3d_poc_draw_math PRIVATE x3d_cpp::x3d_cpp)
 target_compile_features(x3d_poc_draw_math PRIVATE cxx_std_20)
 add_test(NAME x3d_poc_draw_math COMMAND x3d_poc_draw_math)
+
+# Real GL regression: the posed skin must match equivalent ordinary geometry,
+# and differ from the bind pose. This fails if the skin shader is disabled.
+add_test(NAME x3d_poc_skin_gl
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/skin_gl_test.py"
+            $<TARGET_FILE:x3d_poc_renderer> "${CMAKE_CURRENT_SOURCE_DIR}/tests")

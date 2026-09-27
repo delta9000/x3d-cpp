@@ -115,8 +115,16 @@ CPU consumers call `SceneExtractor::deformedMesh(id)`. It evaluates the pose,
 deforms the source coordinates and maps them to the expanded corners. Authored
 normals are mapped through their normal indices. Otherwise normals are
 regenerated with the geometry's winding and `creaseAngle`. The `cpu_raster`
-example draws skins this way. `poc_renderer` does not consume the descriptor
-yet and draws the bind pose.
+example draws skins this way.
+
+`poc_renderer` uploads a skin item's expanded-corner CSR ranges and uncapped
+influences once to OpenGL buffer textures. On `updatedSkinPose`, it evaluates
+the pose and replaces only the matrix palette buffer. Its vertex shaders blend
+positions and inverse-transpose normals. Items with Joint displacers use
+`deformedMesh()` and refresh their GPU mesh on pose updates: the reference
+applies the sparse offsets after skinning along each owning joint's axes.
+Items without authored skin normals use the same exact CPU path, because the
+reference regenerates and crease-smooths normals from posed triangles.
 
 ## Motion
 
@@ -180,6 +188,8 @@ because the published 2.0 motion-node page could not be retrieved. Units follow
 - `runtime/extract/tests/scene_extractor_hanim_test.cpp`: skin placement,
   corner remap, pose-only deltas, displacer weights and binding recompiles.
 - `runtime/events/tests/hanim_motion_test.cpp`: motion playback.
+- `examples/poc_renderer/tests/skin_gl_test.py`: llvmpipe image comparisons
+  for a rotated skin and a five-influence skin against ordinary geometry.
 
 Setting `X3D_ARCHIVE_DIR` to the Web3D archive's `examples` directory enables
 the archive smoke cases. These cover BoxMan2, Leif and Gramps skinning (with

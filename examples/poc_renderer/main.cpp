@@ -254,6 +254,96 @@ struct GpuMesh {
   SFVec3f localCentroid{0.0f, 0.0f, 0.0f};
 };
 
+GpuMesh uploadMesh(const ex::MeshData &m);
+
+// A skin is placement-specific: its source-index remap need not match another
+// placement of the same geometry. The influence TBO is immutable; only the
+// palette TBO is replaced on pose deltas.
+struct GpuSkin {
+  GpuMesh mesh;
+  GLuint ranges = 0, influences = 0, palette = 0;
+  GLuint influenceBuffer = 0, paletteBuffer = 0;
+  bool cpuFallback = false;
+};
+
+void destroySkin(GpuSkin &s) {
+  glDeleteTextures(1, &s.influences);
+  glDeleteTextures(1, &s.palette);
+  glDeleteBuffers(1, &s.ranges);
+  glDeleteBuffers(1, &s.influenceBuffer);
+  glDeleteBuffers(1, &s.paletteBuffer);
+  glDeleteVertexArrays(1, &s.mesh.vao);
+  glDeleteBuffers(1, &s.mesh.vbo);
+  glDeleteBuffers(1, &s.mesh.ebo);
+}
+
+GpuSkin uploadSkin(const ex::RenderItem &item, const ex::MeshData &mesh,
+                   bool cpuFallback) {
+  GpuSkin s;
+  s.mesh = uploadMesh(mesh);
+  s.cpuFallback = cpuFallback;
+  if (cpuFallback) return s;
+  const auto &b = *item.skin->binding;
+  std::vector<std::uint32_t> ranges(item.skin->sourceCoordIndex.size() * 4);
+  for (std::size_t i = 0; i < item.skin->sourceCoordIndex.size(); ++i) {
+    auto source = item.skin->sourceCoordIndex[i];
+    if (source < b.bindPositions.size() && source + 1 < b.influenceOffset.size()) {
+      ranges[i * 4] = b.influenceOffset[source];
+      ranges[i * 4 + 1] = b.influenceOffset[source + 1] - ranges[i * 4];
+    }
+    auto normal = item.skin->sourceNormalIndex[i];
+    if (normal < b.bindNormals.size() && normal + 1 < b.influenceOffset.size()) {
+      ranges[i * 4 + 2] = b.influenceOffset[normal];
+      ranges[i * 4 + 3] = b.influenceOffset[normal + 1] - ranges[i * 4 + 2];
+    }
+  }
+  glGenBuffers(1, &s.ranges);
+  glBindVertexArray(s.mesh.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, s.ranges);
+  glBufferData(GL_ARRAY_BUFFER, ranges.size() * sizeof(std::uint32_t), ranges.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(4);
+  glVertexAttribIPointer(4, 2, GL_UNSIGNED_INT, 4 * sizeof(std::uint32_t), nullptr);
+  glEnableVertexAttribArray(5);
+  glVertexAttribIPointer(5, 2, GL_UNSIGNED_INT, 4 * sizeof(std::uint32_t),
+                        reinterpret_cast<void *>(2 * sizeof(std::uint32_t)));
+  glBindVertexArray(0);
+  std::vector<float> pairs;
+  pairs.reserve(b.influences.size() * 2);
+  for (const auto &in : b.influences) {
+    pairs.push_back(static_cast<float>(in.joint));
+    pairs.push_back(in.weight);
+  }
+  glGenBuffers(1, &s.influenceBuffer);
+  glBindBuffer(GL_TEXTURE_BUFFER, s.influenceBuffer);
+  glBufferData(GL_TEXTURE_BUFFER, pairs.size() * sizeof(float), pairs.data(), GL_STATIC_DRAW);
+  glGenTextures(1, &s.influences);
+  glBindTexture(GL_TEXTURE_BUFFER, s.influences);
+  glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, s.influenceBuffer);
+  glGenBuffers(1, &s.paletteBuffer);
+  glGenTextures(1, &s.palette);
+  return s;
+}
+
+void updateSkinPose(GpuSkin &s, const ex::RenderItem &item) {
+  if (s.cpuFallback) return;
+  auto pose = x3d::runtime::hanim::evaluatePose(*item.skin->binding);
+  // Seven RGBA texels per joint: four matrix columns, then three columns of
+  // inverse-transpose 3x3. The reference skinner uses the same inverse.
+  std::vector<float> data;
+  data.reserve(pose.palette.size() * 28);
+  for (const auto &m : pose.palette) {
+    data.insert(data.end(), m.m.begin(), m.m.end());
+    auto normal = poc::normalMatrix3(x3d::runtime::Mat4::identity(), m);
+    for (int c = 0; c < 3; ++c)
+      for (int r = 0; r < 4; ++r)
+        data.push_back(r < 3 ? normal[c * 3 + r] : 0.0f);
+  }
+  glBindBuffer(GL_TEXTURE_BUFFER, s.paletteBuffer);
+  glBufferData(GL_TEXTURE_BUFFER, data.size() * sizeof(float), data.data(), GL_DYNAMIC_DRAW);
+  glBindTexture(GL_TEXTURE_BUFFER, s.palette);
+  glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, s.paletteBuffer);
+}
+
 GpuMesh uploadMesh(const ex::MeshData &m) {
   GpuMesh g;
   g.topology = m.topology;
@@ -873,6 +963,14 @@ int main(int argc, char **argv) {
     std::fprintf(stderr,
                  "[poc] headless: %zu render item(s); item[0] has %zu vertices\n",
                  items, firstVerts);
+    for (ex::RenderItemId id : snap.added) {
+      const auto &it = extractor.item(id);
+      if (it.skin)
+        std::fprintf(stderr, "[poc] headless skin %u: corners=%zu normal indices=%zu influences=%zu displacers=%zu\n",
+                     static_cast<unsigned>(id), it.skin->sourceCoordIndex.size(),
+                     it.skin->sourceNormalIndex.size(), it.skin->binding->influences.size(),
+                     it.skin->binding->displacers.size());
+    }
 
     // T11 acceptance probe: count items that SHARE a GeomId node with another
     // item but carry a DISTINCT worldTransform. A DEF'd Shape USE'd under two
@@ -1290,6 +1388,7 @@ int main(int argc, char **argv) {
   // ----------------------------------------------------------------------
   std::unordered_map<ex::GeomId, GpuMesh, ex::GeomIdHash> gpuMeshes;
   std::unordered_map<ex::GeomId, int, ex::GeomIdHash> meshRefs;
+  std::unordered_map<ex::RenderItemId, GpuSkin> gpuSkins;
 
   // Ensure a GpuMesh exists for an item's GeomId, uploading on first reference
   // and bumping its refcount. Returns nothing; gpuMeshes/meshRefs are mutated.
@@ -1297,6 +1396,34 @@ int main(int argc, char **argv) {
     if (gpuMeshes.find(it.geometry) == gpuMeshes.end())
       gpuMeshes.emplace(it.geometry, uploadMesh(*it.mesh));
     ++meshRefs[it.geometry];
+  };
+  auto acquireSkin = [&](ex::RenderItemId id) {
+    const auto &it = extractor.item(id);
+    if (!it.skin) return;
+    // The CPU reference regenerates normals for geometry without authored
+    // skin normals. Joint displacers also affect positions after skinning.
+    // Both require the exact reference mesh, including its normal smoothing.
+    bool fallback = !it.skin->binding->displacers.empty() ||
+                    it.skin->sourceCoordIndex.size() != it.mesh->positions.size() ||
+                    it.skin->sourceNormalIndex.size() != it.mesh->positions.size();
+    ex::MeshData bindMesh = *it.mesh;
+    if (!fallback) {
+      const auto &binding = *it.skin->binding;
+      for (std::size_t i = 0; i < bindMesh.positions.size(); ++i) {
+        auto source = it.skin->sourceCoordIndex[i];
+        if (source < binding.bindPositions.size())
+          bindMesh.positions[i] = binding.bindPositions[source];
+        auto normal = it.skin->sourceNormalIndex[i];
+        if (normal < binding.bindNormals.size())
+          bindMesh.normals[i] = binding.bindNormals[normal];
+      }
+    }
+    GpuSkin skin = uploadSkin(it, fallback ? extractor.deformedMesh(id) : bindMesh, fallback);
+    if (!fallback) updateSkinPose(skin, it);
+    gpuSkins.emplace(id, std::move(skin));
+    std::fprintf(stderr, "[poc] skin item %u: %s, %zu influences\n",
+                 static_cast<unsigned>(id), fallback ? "CPU reference" : "GPU palette",
+                 it.skin->binding->influences.size());
   };
   // Drop one reference to a GeomId; delete the GpuMesh when it hits zero.
   auto releaseMesh = [&](const ex::GeomId &gid) {
@@ -1323,6 +1450,7 @@ int main(int argc, char **argv) {
   for (ex::RenderItemId id : snapshot.added) {
     const ex::RenderItem &it = extractor.item(id);
     acquireMesh(it);
+    acquireSkin(id);
     itemGeom[id] = it.geometry;
   }
   std::fprintf(stderr, "[poc] extracted %zu render item(s), %zu unique mesh(es)\n",
@@ -1469,12 +1597,15 @@ int main(int argc, char **argv) {
     ex::RenderDelta d = extractor.delta();
 
     for (ex::RenderItemId id : d.removed) {
+      auto skin = gpuSkins.find(id);
+      if (skin != gpuSkins.end()) { destroySkin(skin->second); gpuSkins.erase(skin); }
       auto sit = itemGeom.find(id);
       if (sit != itemGeom.end()) { releaseMesh(sit->second); itemGeom.erase(sit); }
     }
     for (ex::RenderItemId id : d.added) {
       const ex::RenderItem &it = extractor.item(id);
       acquireMesh(it);
+      acquireSkin(id);
       itemGeom[id] = it.geometry;
     }
     for (ex::RenderItemId id : d.updatedGeometry) {
@@ -1483,7 +1614,21 @@ int main(int argc, char **argv) {
       if (sit != itemGeom.end() && sit->second != it.geometry)
         releaseMesh(sit->second);  // drop the stale-contentVersion GeomId.
       acquireMesh(it);             // re-extract + re-upload under the new GeomId.
+      auto skin = gpuSkins.find(id);
+      if (skin != gpuSkins.end()) { destroySkin(skin->second); gpuSkins.erase(skin); }
+      acquireSkin(id);
       itemGeom[id] = it.geometry;
+    }
+    for (ex::RenderItemId id : d.updatedSkinPose) {
+      auto skin = gpuSkins.find(id);
+      if (skin == gpuSkins.end()) continue;
+      if (skin->second.cpuFallback) {
+        GpuSkin next = uploadSkin(extractor.item(id), extractor.deformedMesh(id), true);
+        destroySkin(skin->second);
+        skin->second = std::move(next);
+      } else {
+        updateSkinPose(skin->second, extractor.item(id));
+      }
     }
     // updatedTransform needs no GPU work: the model uniform is sourced from
     // extractor.item(id).worldTransform in the draw loop every frame.
@@ -1660,7 +1805,8 @@ int main(int argc, char **argv) {
         const ex::RenderItem &it = extractor.item(id);
         auto mit = gpuMeshes.find(it.geometry);
         if (mit == gpuMeshes.end()) return;
-        const GpuMesh &g = mit->second;
+        auto skinIt = gpuSkins.find(id);
+        const GpuMesh &g = skinIt == gpuSkins.end() ? mit->second : skinIt->second.mesh;
         const ex::MaterialDesc &mat = it.material;
         SFColorRGBA c = mat.toRGBA();
         if (g.topology != ex::Topology::Triangles && !g.hasNormals)
@@ -2041,6 +2187,21 @@ int main(int argc, char **argv) {
         GLenum mode = (g.topology == ex::Topology::Lines)    ? GL_LINES
                       : (g.topology == ex::Topology::Points) ? GL_POINTS
                                                              : GL_TRIANGLES;
+        GLint activeProgram = 0;
+        glGetIntegerv(GL_CURRENT_PROGRAM, &activeProgram);
+        GLint skinLoc = glGetUniformLocation(static_cast<GLuint>(activeProgram), "uSkinEnabled");
+        if (skinLoc >= 0) {
+          bool enabled = skinIt != gpuSkins.end() && !skinIt->second.cpuFallback;
+          glUniform1i(skinLoc, enabled ? 1 : 0);
+          if (enabled) {
+            glActiveTexture(GL_TEXTURE6);
+            glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.influences);
+            glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uInfluences"), 6);
+            glActiveTexture(GL_TEXTURE7);
+            glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.palette);
+            glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uPalette"), 7);
+          }
+        }
         glBindVertexArray(g.vao);
         glDrawElements(mode, g.indexCount, GL_UNSIGNED_INT, nullptr);
       };
@@ -2202,6 +2363,7 @@ int main(int argc, char **argv) {
     glDeleteBuffers(1, &kv.second.vbo);
     glDeleteBuffers(1, &kv.second.ebo);
   }
+  for (auto &kv : gpuSkins) destroySkin(kv.second);
   if (phongProg) glDeleteProgram(phongProg);
   if (unlitProg) glDeleteProgram(unlitProg);
   if (pbrProg)   glDeleteProgram(pbrProg);
