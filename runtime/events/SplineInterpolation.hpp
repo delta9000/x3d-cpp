@@ -200,7 +200,7 @@ inline Quat squadIntermediate(const Quat &qprev, const Quat &qi, const Quat &qne
  */
 inline SFRotation squadOrientation(const MFFloat &key,
                                    const std::vector<SFRotation> &keyValue,
-                                   float fraction) {
+                                   float fraction, bool normalizeVelocity = false) {
   const std::size_t N = key.size();
   if (N == 0 || keyValue.size() < N) return SFRotation{0.0f, 0.0f, 1.0f, 0.0f};
   if (N == 1) return keyValue[0];
@@ -220,9 +220,34 @@ inline SFRotation squadOrientation(const MFFloat &key,
   std::vector<Quat> q(N);
   for (std::size_t k = 0; k < N; ++k) q[k] = quatFromRotation(keyValue[k]);
 
+  // §19.2.3 makes TRUE discard authored velocity magnitudes and normalize
+  // tangents to the total key path length; in Squad's quaternion space that
+  // path length and tangent are measured by the angular quaternion logarithms.
+  double totalAngle = 0.0;
+  if (normalizeVelocity) {
+    for (std::size_t k = 0; k + 1 < N; ++k) {
+      Quat delta = quatLog(quatMul(quatConj(q[k]), q[k + 1]));
+      totalAngle += 2.0 * std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+    }
+  }
+
   auto inter = [&](std::size_t j) -> Quat {
     if (j == 0 || j == N - 1) return q[j]; // clamp at the ends
-    return squadIntermediate(q[j - 1], q[j], q[j + 1]);
+    if (!normalizeVelocity) return squadIntermediate(q[j - 1], q[j], q[j + 1]);
+    Quat backward = quatLog(quatMul(quatConj(q[j]), q[j - 1]));
+    Quat forward = quatLog(quatMul(quatConj(q[j]), q[j + 1]));
+    // Shoemake's control is qi * exp(-1/4 (log(qi^-1 qprev)+log(qi^-1 qnext))).
+    // Scale this angular tangent to the full path length, retaining the same
+    // control construction. FALSE above deliberately keeps the legacy bytes.
+    const double magnitude = 0.5 * std::sqrt(
+        (backward.x + forward.x) * (backward.x + forward.x) +
+        (backward.y + forward.y) * (backward.y + forward.y) +
+        (backward.z + forward.z) * (backward.z + forward.z));
+    const double scale = magnitude > 1e-12 ? totalAngle / magnitude : 1.0;
+    Quat e{-(backward.x + forward.x) * scale / 4.0,
+           -(backward.y + forward.y) * scale / 4.0,
+           -(backward.z + forward.z) * scale / 4.0, 0.0};
+    return quatMul(q[j], quatExp(e));
   };
   const Quat a0 = inter(i), a1 = inter(i + 1);
   const Quat r = slerp(slerp(q[i], q[i + 1], s), slerp(a0, a1, s),

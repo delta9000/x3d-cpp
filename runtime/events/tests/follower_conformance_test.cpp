@@ -1,11 +1,12 @@
 #include "doctest/doctest.h"
 // follower_conformance_test.cpp
 // Behavioral-conformance tests for the Followers component runtime (§39):
-// FollowerArith ops, DamperSystem (IIR), ChaserSystem (re-basing ramp), wiring.
+// FollowerArith ops, DamperSystem (IIR), ChaserSystem (FIR), wiring.
 #include "FollowerArith.hpp"
 #include "FollowerRegistration.hpp"
 #include "FollowerSystem.hpp"
 #include "x3d/nodes/PositionChaser.hpp"
+#include "x3d/nodes/OrientationChaser.hpp"
 #include "x3d/nodes/PositionDamper.hpp"
 #include "x3d/nodes/ScalarChaser.hpp"
 #include "x3d/nodes/ScalarDamper.hpp"
@@ -13,6 +14,7 @@
 #include <cmath>
 #include <cstdio>
 #include <memory>
+#include <numbers>
 #include <vector>
 using namespace x3d::runtime;
 using namespace x3d;
@@ -126,19 +128,57 @@ static void test_chaser() {
   cs.update(0.0, ctx);
   cs.update(0.5, ctx);
   XCHECK(feq(sc->getValue_changed(), 0.5f, 1e-2f), "chaser ~0.5 mid-transition");
+  cs.update(0.25, ctx);
+  const float quarter = (1.0f - std::cos(std::numbers::pi_v<float> * 0.25f)) * 0.5f;
+  XCHECK(feq(sc->getValue_changed(), quarter), "chaser cosine response at 25 percent");
+  cs.update(0.5, ctx);
   cs.update(1.0, ctx);
   XCHECK(feq(sc->getValue_changed(), 1.0f, 1e-3f), "chaser reaches destination exactly at duration");
   XCHECK(sc->getIsActive()==false, "chaser inactive after duration");
 
-  // re-base on a new event at t=0.5 (output 0.5) -> 2.0 over D=1: reaches 2.0 at t=1.5.
+  // A second event adds its own cosine-shaped transition while the first settles.
   auto rc = std::make_shared<ScalarChaser>(); rc->setDurationUnchecked(1.0);
   ChaserSystem<ScalarChaser, float> rs; rs.attach(rc.get(), ctx);
   rc->onSet_destination(1.0f); rs.update(0.0, ctx); rs.update(0.5, ctx); // output ~0.5
-  rc->onSet_destination(2.0f);                                            // re-base
+  rc->onSet_destination(2.0f);
   rs.update(1.0, ctx);
-  XCHECK(rc->getValue_changed() > 1.1f && rc->getValue_changed() < 1.4f, "chaser re-bases toward new dest");
+  XCHECK(feq(rc->getValue_changed(), 1.5f, 1e-2f), "chaser superposes completed first tap and active second tap");
   rs.update(1.5, ctx);
   XCHECK(feq(rc->getValue_changed(), 2.0f, 1e-2f), "chaser reaches new dest duration after last event");
+
+  // Two destination changes within D add independent R-weighted FIR taps.
+  {
+    auto overlap = std::make_shared<ScalarChaser>(); overlap->setDurationUnchecked(1.0);
+    ChaserSystem<ScalarChaser,float> os; os.attach(overlap.get(), ctx);
+    overlap->onSet_destination(1.0f); os.update(0.0, ctx);
+    os.update(0.25, ctx); overlap->onSet_destination(2.0f);
+    os.update(0.5, ctx);
+    const float secondTap = (1.0f - std::cos(std::numbers::pi_v<float> * 0.25f)) * 0.5f;
+    XCHECK(feq(overlap->getValue_changed(), 0.5f + secondTap), "chaser overlapping taps use the spec response");
+  }
+
+  // Orientation taps compose quaternion deltas and slerp by the cosine response.
+  {
+    X3DExecutionContext octx;
+    auto orientation = std::make_shared<OrientationChaser>();
+    orientation->setDurationUnchecked(1.0);
+    ChaserSystem<OrientationChaser, SFRotation> os;
+    os.attach(orientation.get(), octx);
+    const SFRotation start{0,0,1,0.0f}, destination{0,0,1,1.5707963f};
+    orientation->onSet_destination(destination);
+    os.update(0.0, octx); os.update(0.5, octx);
+    auto middle = orientation->getValue_changed();
+    auto expected = FollowerArith<SFRotation>::lerp(start, destination, 0.5f);
+    XCHECK(feq(middle.angle, expected.angle, 1e-3f) && feq(std::fabs(middle.z), 1.0f),
+           "OrientationChaser midpoint uses cosine-weighted slerp and unit axis");
+
+    orientation->onSet_destination(SFRotation{0,0,1,3.1415926f});
+    os.update(0.75, octx);
+    auto overlapped = orientation->getValue_changed();
+    float axisLength = std::sqrt(overlapped.x*overlapped.x + overlapped.y*overlapped.y + overlapped.z*overlapped.z);
+    XCHECK(std::isfinite(overlapped.angle) && feq(axisLength, 1.0f, 1e-3f),
+           "OrientationChaser overlapping quaternion taps keep a valid unit axis");
+  }
 
   // set_value jumps.
   auto vc = std::make_shared<ScalarChaser>(); vc->setDurationUnchecked(1.0);

@@ -200,6 +200,16 @@ void test_squad() {
   check(feq(std::fabs(r.z), 1.0f) && (feq(eff, 0.7853982f) || feq(r.angle, 0.7853982f)),
         "squad N=2 f=0.5 reduces to SLERP -> pi/4 about Z");
 
+  // normalizeVelocity scales the quaternion-space tangent to total path length.
+  auto norm = std::make_shared<SquadOrientationInterpolator>();
+  norm->setKey(MFFloat{0.0f, 1.0f, 2.0f});
+  norm->setKeyValue(MFRotation{SFRotation{0,0,1,0}, SFRotation{0,0,1,0.3f}, SFRotation{0,0,1,2.0f}});
+  norm->setNormalizeVelocity(true);
+  SquadOrientationInterpolatorSystem ns; ns.attach(norm.get(), ctx);
+  post(ctx, norm.get(), 0.5f);
+  check(!feq(norm->getValue_changed().angle, squadOrientation(norm->getKey(), norm->getKeyValue(), 0.5f).angle),
+        "Squad normalizeVelocity changes quaternion tangent scale");
+
   // N=3 sanity: 0 -> 90 -> 0 about Z. f=1 lands on the middle key exactly.
   auto sq3 = std::make_shared<SquadOrientationInterpolator>();
   sq3->setKey(MFFloat{0.0f, 1.0f, 2.0f});
