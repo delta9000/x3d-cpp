@@ -22,12 +22,17 @@
 #include "SplineInterpolatorSystem.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
+#include "NurbsInterpolatorSystem.hpp"
 
 #include "x3d/nodes/EaseInEaseOut.hpp"
 #include "x3d/nodes/ScalarInterpolator.hpp"
 #include "x3d/nodes/SplinePositionInterpolator.hpp"
 #include "x3d/nodes/SplineScalarInterpolator.hpp"
 #include "x3d/nodes/SquadOrientationInterpolator.hpp"
+#include "x3d/nodes/Coordinate.hpp"
+#include "x3d/nodes/NurbsPositionInterpolator.hpp"
+#include "x3d/nodes/NurbsOrientationInterpolator.hpp"
+#include "x3d/nodes/NurbsSurfaceInterpolator.hpp"
 
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode definition
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -300,6 +305,36 @@ void test_attach_interpolators_production() {
   check(feq(splOut.x, 8.0f), "PIV-1 attachInterpolators wires SplinePositionInterpolator (->x=8)");
 }
 
+void test_nurbs_interpolators() {
+  auto cp=std::make_shared<Coordinate>(); cp->setPoint({{1,0,0},{0.7071068f,0.7071068f,0},{0,1,0}});
+  auto pos=std::make_shared<NurbsPositionInterpolator>(); pos->setControlPoint(cp); pos->setOrder(3); pos->setWeight({1.0,0.7071067811865476,1.0});
+  auto ori=std::make_shared<NurbsOrientationInterpolator>(); ori->setControlPoint(cp); ori->setOrder(3); ori->setWeight({1.0,0.7071067811865476,1.0});
+  X3DExecutionContext ctx; NurbsPositionInterpolatorSystem ps; NurbsOrientationInterpolatorSystem os; ps.attach(pos.get(),ctx); os.attach(ori.get(),ctx);
+  post(ctx,pos.get(),0.5f); post(ctx,ori.get(),0.5f);
+  auto p=pos->getValue_changed(); auto r=ori->getValue_changed();
+  check(feq(p.x,0.7071068f)&&feq(p.y,0.7071068f),"NURBS rational quarter circle midpoint on unit circle");
+  check(feq(r.x,-0.7071f)&&feq(r.y,-0.7071f)&&feq(r.z,0)&&feq(r.angle,1.5708f),"NURBS tangent orientation follows quarter-circle tangent");
+  { // The same quarter circle 2000 units out: the tangent must not dissolve into float noise.
+    auto far=std::make_shared<Coordinate>(); far->setPoint({{3000,2000,0},{2000+0.7071068f*1000,2000+0.7071068f*1000,0},{2000,3000,0}});
+    auto ofar=std::make_shared<NurbsOrientationInterpolator>(); ofar->setControlPoint(far); ofar->setOrder(3); ofar->setWeight({1.0,0.7071067811865476,1.0});
+    X3DExecutionContext fc; NurbsOrientationInterpolatorSystem fs; fs.attach(ofar.get(),fc); post(fc,ofar.get(),0.5f);
+    auto rf=ofar->getValue_changed();
+    check(std::fabs(rf.x+0.7071f)<1e-3f&&std::fabs(rf.y+0.7071f)<1e-3f&&std::fabs(rf.angle-1.5708f)<1e-3f,"NURBS tangent stays accurate at large coordinates");
+  }
+  auto line=std::make_shared<Coordinate>(); line->setPoint({{0,0,0},{2,4,6}});
+  auto linear=std::make_shared<NurbsPositionInterpolator>(); linear->setControlPoint(line); linear->setOrder(2);
+  X3DExecutionContext lc; ps.attach(linear.get(),lc); post(lc,linear.get(),0.25f);
+  check(feq(linear->getValue_changed().x,.5f)&&feq(linear->getValue_changed().y,1)&&feq(linear->getValue_changed().z,1.5f),"degree-1 NURBS position is linear");
+  auto patchcp=std::make_shared<Coordinate>(); patchcp->setPoint({{0,0,0},{1,0,0},{0,1,0},{1,1,0}});
+  auto surface=std::make_shared<NurbsSurfaceInterpolator>(); surface->setControlPoint(patchcp); surface->setUDimensionUnchecked(2); surface->setVDimensionUnchecked(2); surface->setUOrderUnchecked(2); surface->setVOrderUnchecked(2);
+  X3DExecutionContext sc; NurbsSurfaceInterpolatorSystem ss; ss.attach(surface.get(),sc); sc.postEvent(surface.get(),"set_fraction",std::any(SFVec2f{.25f,.75f})); sc.process();
+  auto sp=surface->getPosition_changed(); auto sn=surface->getNormal_changed();
+  check(feq(sp.x,.25f)&&feq(sp.y,.75f)&&feq(sp.z,0)&&feq(sn.z,1),"bilinear NURBS surface point and normal");
+  auto bad=std::make_shared<NurbsPositionInterpolator>(); bad->setControlPoint(std::make_shared<Coordinate>()); bad->setOrder(3); bad->emitValue_changed({9,9,9});
+  X3DExecutionContext bc; ps.attach(bad.get(),bc); post(bc,bad.get(),.5f);
+  check(feq(bad->getValue_changed().x,9),"degenerate NURBS emits no NaN or value event");
+}
+
 } // namespace
 
 TEST_CASE("interpolator_conformance_test") {
@@ -312,6 +347,7 @@ TEST_CASE("interpolator_conformance_test") {
   test_ease_in_ease_out();
   test_ease_in_ease_out_scaled();
   test_attach_interpolators_production();
+  test_nurbs_interpolators();
 
   if (failures) {
     std::cerr << failures << " check(s) failed\n";

@@ -8852,9 +8852,9 @@
         "NurbsPositionInterpolator",
         "NurbsSurfaceInterpolator"
       ],
-      "note": "NurbsOrientationInterpolator.hpp:158-161 onSet_fraction() is a no-op unless a handler is set; InterpolatorRegistration.hpp:35-61 registers 13 systems but none of the three NURBS interpolators. Events to set_fraction are dropped. Blocked on the NURBS evaluation subsystem (NRB-1). (sweep 2026-06-25)",
+      "note": "Registered event systems for all three NURBS interpolators reuse runtime/extract/NurbsEval.hpp for rational curve and surface evaluation; tangent orientation follows increasing knot direction. Covered by interpolator_conformance_test (linear curve, rational quarter circle/tangent, bilinear surface, degenerate input).",
       "severity": "major",
-      "status": "deferred",
+      "status": "closed",
       "summary": "NURBS interpolator set_fraction handlers are dead \u2014 value_changed never emitted."
     },
     {
@@ -9759,8 +9759,10 @@
       "ColorDamper",
       "ColorInterpolator",
       "Cone",
+      "Coordinate",
       "CoordinateChaser",
       "CoordinateDamper",
+      "CoordinateDouble",
       "CoordinateInterpolator",
       "CoordinateInterpolator2D",
       "Cylinder",
@@ -9787,6 +9789,9 @@
       "NavigationInfo",
       "NormalInterpolator",
       "NurbsCurve",
+      "NurbsOrientationInterpolator",
+      "NurbsPositionInterpolator",
+      "NurbsSurfaceInterpolator",
       "OrientationChaser",
       "OrientationDamper",
       "OrientationInterpolator",
@@ -9847,9 +9852,9 @@
     ]
   },
   "summary": {
-    "closed_count": 176,
+    "closed_count": 177,
     "component_count": 36,
-    "deferred_count": 30,
+    "deferred_count": 29,
     "finding_count": 221,
     "inert_behavioral_nodes": [
       "Analyser",
@@ -9873,7 +9878,7 @@
     "open_by_severity": {
       "critical": 2,
       "low": 3,
-      "major": 20,
+      "major": 19,
       "minor": 20
     }
   },
