@@ -149,6 +149,7 @@ nav:
       - "ADR-0052: Movie Audio Uses the Existing PCM Buffer Source": decisions/0052-movie-audio-buffer-source.md
       - "ADR-0053: Geospatial Coordinates Through a GeoProjection Seam With a First-Party Default": decisions/0053-geo-projection-seam.md
       - "ADR-0054: GeoLOD Tiles and GeoViewpoint Navigation Scale": decisions/0054-geolod-tiles-navigation-scale.md
+      - "ADR-0055: H-Anim Skinning Through a Descriptor With a Reference CPU Skinner": decisions/0055-hanim-skinning-descriptor.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

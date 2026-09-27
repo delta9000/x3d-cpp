@@ -33,7 +33,7 @@ target_link_libraries(x3d_cpp INTERFACE x3d_cpp_headers)
 # part of the v1 façade, and pull vendored third-party deps — so they are neither
 # on the public include path nor installed. The façade (include/x3d/sdk.hpp) is
 # the one, well-trod entry point; see docs/sdk/README.md.
-set(X3D_CPP_RUNTIME_PUBLIC_SUBDIRS codecs events math scene parse extract script sound)
+set(X3D_CPP_RUNTIME_PUBLIC_SUBDIRS codecs events math scene parse extract script sound hanim)
 
 set(_x3d_cpp_interface_includes
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings>"

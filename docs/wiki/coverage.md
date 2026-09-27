@@ -140,6 +140,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0052-movie-audio-buffer-source.md` | SoundSystem resolves MovieTexture audio through an injected decoder, creates one PCM Buffer, and drives it from the movie lifecycle and activation speed; pl_mpeg supplies an MP2 adapter | `runtime/sound/SoundSystem.hpp`, `runtime/io/plmpeg/PlMpegMovieDecoder.cpp`, `runtime/sound/tests/sound_immersive_test.cpp` |
 | covered | `decisions/0053-geo-projection-seam.md` | Geospatial coordinates (GD/UTM/GC/WM, 23 ellipsoids, WGS84 geoid option, GeoOrigin) convert through a GeoProjection seam: first-party default backend, optional PROJ backend with a swap-test; ordering, units, Web Mercator and local frames are SDK-side | `runtime/math/GeoProjection.hpp`, `runtime/math/GeoBuiltinProjection.hpp`, `runtime/math/GeoFrame.hpp`, `runtime/scene/GeoNodes.hpp` |
 | covered | `decisions/0054-geolod-tiles-navigation-scale.md` | GeoLOD waits for its requested child tiles before display; GeoViewpoint scales navigation size and visibility from elevation | `runtime/events/InlineRuntimeSystem.hpp`, `runtime/events/NavigationSystem.hpp` |
+| covered | `decisions/0055-hanim-skinning-descriptor.md` | H-Anim skinning: immutable SkinBinding (CSR influences, inverse bind, displacers) + per-tick SkinPose palette; descriptor + palette delta for GPU renderers, reference CPU skinner for everyone else; v2 binding fields or v1 rest pose; no write-back into skinCoord | `runtime/hanim/HAnimSkin.hpp` |
 
 ## 3. Guides
 
