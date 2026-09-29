@@ -31,7 +31,8 @@ The subsystem does **not** own the event cascade, route propagation, or per-tick
 
 | File / directory | Role |
 |---|---|
-| `runtime/X3DScene.hpp` | `x3d::runtime::Scene` — root nodes, DEF table (`defs`), routes, proto/extern-proto declarations, unexpanded `ProtoInstance` list, `resolvedProtoRoutes`, `expandedInlines`, `resolvedInlineRoutes`, `protoRedirects`, `expandedSources`, IMPORT/EXPORT. Methods: `define()`, `resolve()`, `addRootNode()`, `findProto()`, `resolveRoutes()`. |
+| `runtime/X3DScene.hpp` | `x3d::runtime::Scene` — root nodes, DEF table (`defs`), routes, proto/extern-proto declarations, unexpanded `ProtoInstance` list, `resolvedProtoRoutes`, `expandedInlines`, `resolvedInlineRoutes`, `protoRedirects`, `expandedSources`, IMPORT/EXPORT, a `sourceUnits` snapshot of the parsed document's UNIT declarations, and `authoredScalarFields` parse-time field presence. Methods: `define()`, `resolve()`, `addRootNode()`, `findProto()`, `declareProto()`, `declareExternProto()`, `resolveRoutes()`, `instanceAtPlacement()`. |
+| `runtime/X3DAuthoredScalarFields.hpp` | Weak node-identity keys retain which scalar fields were explicitly assigned during parsing, without keeping nodes alive. The record distinguishes omission from an explicit value equal to a generated default; it is not a log of later runtime writes. |
 | `runtime/X3DDocument.hpp` | `x3d::runtime::X3DDocument` — top-level `<X3D>` object: `version`, `profile` (`Profile` enum), `head` (`Head`), `scene` (`Scene`), `rangeWarnings`, `protoWarnings`, `inlineWarnings`. Also defines `Scene::addRootNode()` (needs complete `X3DNode`). |
 | `runtime/X3DRuntime.hpp` | Umbrella include: pulls in `X3DDocument`, `X3DHeader`, `X3DImportExport`, `X3DProto`, `X3DRangeValidate`, `X3DRoute`, `X3DScene` in one include. |
 | `runtime/scene/DirtyTracker.hpp` | `DirtyTracker` — per-node dirty-category bitset + changed-node list. Categories: `DirtyLocalTransform`, `DirtyWorldTransform`, `DirtyChildren`, `DirtyField`, `DirtyBounds`. Side table; nothing stored on the node. |
@@ -67,6 +68,14 @@ auto node = sc.resolve("MyDEFName");   // nullptr if unknown
 // Iterate root nodes:
 for (auto &root : sc.rootNodes) { /* ... */ }
 ```
+
+Parsed prototype instances occupy authored template positions in `rootNodes`
+and ordinary node fields until expansion replaces them in place. The structural
+`protoInstances` records own their pre-expansion source values; weak
+`placementTemplate` links identify their slots. Root and child vectors remain
+the authority for position, including repeated USE occurrences and caller
+reordering/removal. An unresolved instance retains an inert template in its
+position so serialization preserves its order.
 
 The structural systems are instantiated as side-tables by the owner (`X3DExecutionContext`) and queried by consumers:
 

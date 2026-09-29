@@ -11,13 +11,121 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <algorithm>
+#include <charconv>
+#include <cmath>
+#include <cctype>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_set>
 
 namespace x3d::codec {
 
 namespace {
+
+// UNIT is a header declaration, so validate it once before any scene expansion.
+// In particular, a malformed factor must never reach a runtime as a scale.
+void validateUnits(const runtime::X3DDocument &doc) {
+  if (doc.head.units.empty()) return;
+  unsigned major = 0, minor = 0;
+  const char *begin = doc.version.data();
+  const char *end = begin + doc.version.size();
+  const char *dot = std::find(begin, end, '.');
+  const auto majorResult = std::from_chars(begin, dot, major);
+  const auto minorResult = dot == end
+      ? std::from_chars(end, end, minor)
+      : std::from_chars(dot + 1, end, minor);
+  if (dot == begin || dot == end || majorResult.ec != std::errc{} ||
+      majorResult.ptr != dot || minorResult.ec != std::errc{} ||
+      minorResult.ptr != end ||
+      major < 3 || (major == 3 && minor < 3))
+    throw std::runtime_error("UNIT requires X3D version 3.3 or later");
+
+  std::unordered_set<std::string> categories;
+  for (const auto &unit : doc.head.units) {
+    if (unit.category != "angle" && unit.category != "force" &&
+        unit.category != "length" && unit.category != "mass")
+      throw std::runtime_error("UNIT has unknown category '" + unit.category + "'");
+    if (!categories.insert(unit.category).second)
+      throw std::runtime_error("duplicate UNIT category '" + unit.category + "'");
+    if (unit.name.empty() ||
+        std::any_of(unit.name.begin(), unit.name.end(), [](unsigned char c) {
+          return std::isspace(c) != 0;
+        }))
+      throw std::runtime_error("UNIT name must be nonempty and contain no whitespace");
+    if (!std::isfinite(unit.conversionFactor) || unit.conversionFactor <= 0.0)
+      throw std::runtime_error("UNIT conversionFactor must be finite and positive");
+  }
+}
+
+// Reader-created declarations can also be reached through instances inside a
+// ProtoBody's local scope. Walk those handles before expansion, while every
+// declaration still belongs to this parsed document. External declarations
+// are resolved later and retain the snapshot from their own parseDocument call.
+void snapshotSourceUnits(runtime::X3DDocument &doc) {
+  doc.scene.sourceUnits = doc.head.units;
+  std::unordered_set<runtime::ProtoDeclaration *> visited;
+  std::unordered_set<const x3d::nodes::X3DNode *> visitedNodes;
+  auto visitNode = [&](auto &&self,
+                       const std::shared_ptr<x3d::nodes::X3DNode> &node,
+                       auto &&visitDecl) -> void {
+    if (!node || !visitedNodes.insert(node.get()).second) return;
+    if (auto wrapper =
+            std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(node)) {
+      visitDecl(wrapper->instance.declaration);
+      for (const auto &value : wrapper->instance.fieldValues)
+        for (const auto &child : value.nodeValue)
+          self(self, child, visitDecl);
+    }
+    for (const auto &field : node->fields()) {
+      if (!field.isReadable() || !field.isNode() || !field.get) continue;
+      auto value = field.get(*node);
+      if (field.type == core::X3DFieldType::SFNode) {
+        if (auto child =
+                std::any_cast<std::shared_ptr<x3d::nodes::X3DNode>>(value))
+          self(self, child, visitDecl);
+      } else if (field.type == core::X3DFieldType::MFNode) {
+        for (const auto &child : std::any_cast<
+                 std::vector<std::shared_ptr<x3d::nodes::X3DNode>>>(value))
+          self(self, child, visitDecl);
+      }
+    }
+  };
+  auto visit = [&](auto &&self,
+                   const std::shared_ptr<runtime::ProtoDeclaration> &decl) -> void {
+    if (!decl || !visited.insert(decl.get()).second) return;
+    decl->sourceUnits = doc.head.units;
+    auto visitDecl = [&](const auto &nested) { self(self, nested); };
+    for (const auto &field : decl->interface)
+      for (const auto &node : field.nodeDefault)
+        visitNode(visitNode, node, visitDecl);
+    for (const auto &node : decl->body.nodes)
+      visitNode(visitNode, node, visitDecl);
+    for (const auto &statement : decl->body.statements)
+      if (statement.kind == runtime::ProtoBodyStatement::Kind::Proto)
+        self(self, statement.proto);
+    for (const auto &[parent, statements] : decl->body.nodeStatements)
+      if (!parent.expired())
+        for (const auto &statement : statements)
+          if (statement.kind == runtime::ProtoBodyStatement::Kind::Proto)
+            self(self, statement.proto);
+    for (const auto &nested : decl->body.nestedInstances) {
+      self(self, nested.declaration);
+      for (const auto &value : nested.fieldValues)
+        for (const auto &node : value.nodeValue)
+          visitNode(visitNode, node, visitDecl);
+    }
+  };
+  for (const auto &decl : doc.scene.protoDeclarations)
+    visit(visit, decl);
+  for (const auto &inst : doc.scene.protoInstances) {
+    visit(visit, inst.declaration);
+    auto visitDecl = [&](const auto &nested) { visit(visit, nested); };
+    for (const auto &value : inst.fieldValues)
+      for (const auto &node : value.nodeValue)
+        visitNode(visitNode, node, visitDecl);
+  }
+}
 
 /// Quarantine PROTO/EXTERNPROTO declarations that reuse a built-in node type
 /// name (ADR-0033, §4.4.4: node type names shall be unique; shadowing a built-in
@@ -140,6 +248,8 @@ parseDocument(const std::string &text, Encoding hint,
     throw std::runtime_error(
         "parseDocument: could not determine X3D encoding from content");
   runtime::X3DDocument doc = reader->readDocument(body);
+  validateUnits(doc);
+  snapshotSourceUnits(doc);
   // ADR-0033: drop any PROTO/EXTERNPROTO that reuses a built-in node name (the
   // built-in keeps precedence) before instances are expanded against it.
   quarantineBuiltinShadowingProtos(doc);

@@ -35,6 +35,7 @@ namespace x3d::runtime {
 struct ExternProtoDeclaration;
 struct IsConnection;
 struct ProtoDeclaration;
+struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
@@ -94,6 +95,7 @@ private:
   // XmlWriter pushing them onto the parent element's children — rather than
   // appending them after the parent node. Null outside a body.
   const std::vector<runtime::ProtoInstance> *bodyNested_ = nullptr;
+  const runtime::ProtoBody *bodyOrder_ = nullptr;
 
   static void pad(std::ostringstream &os, int depth);
 

@@ -90,6 +90,81 @@ bool hasBuiltinShadow(const runtime::X3DDocument &doc,
 
 } // namespace
 
+TEST_CASE("unit_header_validation_all_encodings") {
+  auto xml = [](const std::string &version, const std::string &category,
+                const std::string &name, const std::string &factor) {
+    return "<X3D version='" + version + "'><head><unit category='" +
+           category + "' name='" + name + "' conversionFactor='" +
+           factor + "'/></head><Scene/></X3D>";
+  };
+  auto vrml = [](const std::string &version, const std::string &category,
+                 const std::string &name, const std::string &factor) {
+    return "#X3D V" + version + " utf8\nUNIT " + category + " " + name +
+           " " + factor + "\n";
+  };
+  auto json = [](const std::string &version, const std::string &category,
+                 const std::string &name, const std::string &factor) {
+    return "{\"X3D\":{\"@version\":\"" + version +
+           "\",\"head\":{\"unit\":[{\"@category\":\"" + category +
+           "\",\"@name\":\"" + name + "\",\"@conversionFactor\":" +
+           factor + "}]},\"Scene\":{}}}";
+  };
+  for (const auto enc : {codec::Encoding::XML, codec::Encoding::ClassicVRML,
+                         codec::Encoding::JSON}) {
+    auto source = [&](const std::string &version, const std::string &category,
+                      const std::string &name, const std::string &factor) {
+      if (enc == codec::Encoding::XML) return xml(version, category, name, factor);
+      if (enc == codec::Encoding::ClassicVRML)
+        return vrml(version, category, name, factor);
+      return json(version, category, name, factor);
+    };
+    auto valid = codec::parseDocument(source("3.3", "length", "centimetre", "0.01"), enc);
+    REQUIRE(valid.head.units.size() == 1);
+    CHECK(valid.head.units[0].conversionFactor == doctest::Approx(0.01));
+    CHECK_THROWS(codec::parseDocument(source("3.2", "length", "cm", "0.01"), enc));
+    CHECK_THROWS(codec::parseDocument(source("4.0", "speed", "kph", "1"), enc));
+    CHECK_THROWS(codec::parseDocument(source("4.0", "length", "cm", "0"), enc));
+    CHECK_THROWS(codec::parseDocument(source("4.0", "length", "cm", "-1"), enc));
+  }
+  CHECK_NOTHROW(codec::parseDocument(xml("4.0", "force", "newton", " +1e0 ")));
+  CHECK_THROWS(codec::parseDocument(xml("3.x", "length", "m", "1")));
+  CHECK_THROWS(codec::parseDocument(xml("+4.0", "length", "m", "1")));
+  CHECK_THROWS(codec::parseDocument(xml("4.0", "length", "m", "1junk")));
+  CHECK_THROWS(codec::parseDocument(
+      vrml("4.0", "length", "m", "1junk"), codec::Encoding::ClassicVRML));
+  CHECK_THROWS(codec::parseDocument(xml("4.0", "length", "two words", "1")));
+  CHECK_THROWS(codec::parseDocument(xml("4.0", "length", "", "1")));
+  CHECK_THROWS(codec::parseDocument(xml("4.0", "length", "m", "nan")));
+  CHECK_THROWS(codec::parseDocument(xml("4.0", "length", "m", "inf")));
+  CHECK_THROWS(codec::parseDocument(
+      "<X3D version='4.0'><head><unit category='length' name='m'/>"
+      "</head><Scene/></X3D>"));
+  CHECK_THROWS(codec::parseDocument(
+      "{\"X3D\":{\"@version\":\"4.0\",\"head\":{\"unit\":[{"
+      "\"@category\":\"length\",\"@name\":\"m\"}]},\"Scene\":{}}}",
+      codec::Encoding::JSON));
+  CHECK_THROWS(codec::parseDocument(
+      "<X3D version='4.0'><head><unit category='length' name='m' "
+      "conversionFactor='1'/><unit category='length' name='cm' "
+      "conversionFactor='0.01'/></head><Scene/></X3D>"));
+  CHECK_THROWS(codec::parseDocument(
+      "#X3D V4.0 utf8\nUNIT length m 1\nUNIT length cm 0.01\n",
+      codec::Encoding::ClassicVRML));
+  CHECK_THROWS(codec::parseDocument(
+      "{\"X3D\":{\"@version\":\"4.0\",\"head\":{\"unit\":[{"
+      "\"@category\":\"length\",\"@name\":\"m\",\"@conversionFactor\":1},{"
+      "\"@category\":\"length\",\"@name\":\"cm\",\"@conversionFactor\":0.01}]},"
+      "\"Scene\":{}}}", codec::Encoding::JSON));
+  const auto all = codec::parseDocument(
+      "<X3D version='4.0'><head>"
+      "<unit category='angle' name='degrees' conversionFactor='0.017453292519943295'/>"
+      "<unit category='force' name='pound-force' conversionFactor='4.4482216152605'/>"
+      "<unit category='length' name='centimetre' conversionFactor='0.01'/>"
+      "<unit category='mass' name='gram' conversionFactor='0.001'/>"
+      "</head><Scene/></X3D>");
+  CHECK(all.head.units.size() == 4);
+}
+
 // ── PROTO-SHADOW: a PROTO reusing a built-in name is rejected + diagnosed ────
 TEST_CASE("proto_shadow_xml") {
   const char *xml =

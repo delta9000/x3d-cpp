@@ -1,0 +1,11 @@
+<X3D version='4.0' profile='Immersive'>
+  <Scene>
+    <ProtoDeclare name='Leaf'>
+      <ProtoBody><Group/></ProtoBody>
+    </ProtoDeclare>
+    <ProtoDeclare name='Wrap'>
+      <ProtoBody><ProtoInstance name='Leaf'/></ProtoBody>
+    </ProtoDeclare>
+    <ProtoInstance name='Wrap'/>
+  </Scene>
+</X3D>

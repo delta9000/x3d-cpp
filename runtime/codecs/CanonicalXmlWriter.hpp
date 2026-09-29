@@ -41,6 +41,7 @@ namespace x3d::runtime {
 struct ExternProtoDeclaration;
 struct IsConnection;
 struct ProtoDeclaration;
+struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
@@ -126,6 +127,7 @@ private:
   std::unordered_map<std::string, std::shared_ptr<X3DNode>> defaults_;
   const runtime::Scene *scene_ = nullptr;
   const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;
+  const runtime::ProtoBody *bodyOrder_ = nullptr;
 
   void writeSceneInto(xml::Element *scene, const runtime::Scene &s);
 

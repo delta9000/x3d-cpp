@@ -49,12 +49,14 @@ using namespace x3d::core;
 
 /**
  * @brief One rejected ROUTE plus a human-readable reason.
- * @details `index` is the position of the offending route in `Scene.routes`
- *          so a caller can correlate the diagnostic back to the source.
+ * @details `index` is the position within the route collection identified by
+ *          `scope`, so a caller can correlate it with its source.
  */
 struct RouteError {
-  std::size_t index = 0; // position in Scene.routes
+  enum class Scope { Scene, ProtoBody, Inline };
+  std::size_t index = 0;
   std::string reason;    // human-readable explanation
+  Scope scope = Scope::Scene;
 };
 
 /**
@@ -135,194 +137,162 @@ inline bool isRoutableSink(AccessType a) {
  *          4. Type: from.type must equal to.type (X3D performs no implicit
  *             field-type coercion across a ROUTE) -> else rejected.
  *
+ *          Declared PROTO interface fields take precedence over fields on an
+ *          expanded primary and may fan out through multiple IS targets.
+ *          Pre-resolved PROTO and Inline routes undergo the same physical
+ *          endpoint checks; their diagnostic indices use their own scope.
+ *
  *          Valid routes are added via `ctx.addRoute()` using the resolved raw
  *          node pointers; the context observes the nodes (the Scene owns their
  *          lifetime). Never throws on a bad route — diagnostics are returned.
  */
 inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
   BridgeResult result;
-  ctx.clearRoutes();          // avoid dangling pointers from previous scenes
+  ctx.clearRoutes();
   scene.resolveRoutes();
+  using Scope = RouteError::Scope;
+  auto reject = [&](std::size_t index, Scope scope, std::string reason) {
+    result.rejected.push_back({index, std::move(reason), scope});
+  };
 
-  // (0) Pre-resolved body-internal ROUTEs of expanded PROTO instances: their
-  // endpoints are concrete cloned nodes (proto-local DEF scope, never in
-  // scene.defs), so register them directly rather than via DEF-name lookup.
-  for (const ResolvedProtoRoute &pr : scene.resolvedProtoRoutes) {
-    if (!pr.from || !pr.to) {
-      continue;
-    }
-    ctx.addRoute({pr.from.get(), pr.fromField}, {pr.to.get(), pr.toField});
-    ++result.routesAdded;
-  }
-
-  // (0b) Pre-resolved internal ROUTEs of expanded Inlines: endpoints are
-  // concrete nodes in the inlined child's DEF scope (never in scene.defs),
-  // so register them directly rather than via DEF-name lookup (mirrors
-  // resolvedProtoRoutes above).
-  for (const ResolvedProtoRoute &ir : scene.resolvedInlineRoutes) {
-    if (!ir.from || !ir.to) {
-      continue;
-    }
-    ctx.addRoute({ir.from.get(), ir.fromField}, {ir.to.get(), ir.toField});
-    ++result.routesAdded;
-  }
-
-  // Redirect one endpoint of an external route through the PROTO interface map:
-  // if (node, field) is an exposed interface event field of an expanded
-  // instance, add a route per IS-mapped body target (against the already-known
-  // opposite endpoint `other`) and report success so the caller skips the
-  // normal unknown-field handling. `asSource` selects which side the redirected
-  // endpoint feeds: as the route source (true) or the sink (false).
-  //
-  // The redirected edge MUST be validated with the same direction + type rules
-  // the normal route path enforces (X3DRoute.hpp::validateRoute parity — see
-  // AUD-PROTO-EXP / BACKLOG.md "Note" after the CDC rows): an interface field
-  // that maps to an inputOnly body target cannot be used as a ROUTE source
-  // (the body has no `get` thunk, so the cascade would never deliver); an
-  // outputOnly body target cannot be used as a sink; types must match.
-  auto redirectEndpoint = [&](X3DNode *node, const std::string &field,
-                              bool asSource, const FieldAddress &other,
-                              std::size_t routeIndex) -> bool {
-    auto nIt = scene.protoRedirects.find(node);
-    if (nIt == scene.protoRedirects.end()) {
-      return false;
-    }
-    auto fIt = nIt->second.find(field);
-    if (fIt == nIt->second.end()) {
-      return false;
-    }
-    // Look up the OPPOSITE endpoint's FieldInfo so we can validate type
-    // parity (X3D performs no implicit field-type coercion across a ROUTE,
-    // §4.4.8.2). The opposite endpoint is a regular Scene DEF-resolved node
-    // here, not a redirect target, so its field must exist on the node.
-    std::optional<FieldInfo> otherInfo =
-        detail::findEndpoint(*other.node, other.field, /*asSource=*/!asSource);
-    if (!otherInfo) {
-      // The opposite endpoint is unknown — the normal route path would reject
-      // this anyway; do the same on the redirect path so diagnostics stay
-      // consistent. (Defensive: redirectEndpoint is only called when the
-      // opposite endpoint has already been resolved by Scene::resolveRoutes,
-      // which leaves dangling DEFs as expired weak_ptrs — callers skip those
-      // before getting here.)
-      result.rejected.push_back(
-          {routeIndex, "redirect: opposite endpoint '" + other.field +
-                          "' has no reflected field"});
-      return true;
-    }
-    for (const ProtoRedirect &t : fIt->second) {
-      std::optional<FieldInfo> bodyInfo =
-          detail::findField(*t.targetNode, t.targetField);
-      if (!bodyInfo) {
-        result.rejected.push_back(
-            {routeIndex, "redirect: body target has no field '" +
-                            t.targetField + "'"});
-        continue;
-      }
-      // Direction parity with the normal route path.
-      if (asSource && !detail::isRoutableSource(bodyInfo->access)) {
-        result.rejected.push_back(
-            {routeIndex,
-             "redirect: interface field '" + field + "' resolves to body '" +
-                 t.targetField + "' which is not routable as an event source "
-                 "(must be outputOnly or inputOutput)"});
-        continue;
-      }
-      if (!asSource && !detail::isRoutableSink(bodyInfo->access)) {
-        result.rejected.push_back(
-            {routeIndex,
-             "redirect: interface field '" + field + "' resolves to body '" +
-                 t.targetField + "' which is not routable as an event sink "
-                 "(must be inputOnly or inputOutput)"});
-        continue;
-      }
-      // Type parity — exact tag match, no implicit coercion.
-      if (bodyInfo->type != otherInfo->type) {
-        result.rejected.push_back(
-            {routeIndex,
-             "redirect: type mismatch routing body '" + t.targetField +
-                 "' to '" + other.field + "'"});
-        continue;
-      }
-      const FieldAddress otherCanonical{other.node, otherInfo->x3dName};
-      if (asSource) {
-        ctx.addRoute({t.targetNode.get(), t.targetField}, otherCanonical);
-      } else {
-        ctx.addRoute(otherCanonical, {t.targetNode.get(), t.targetField});
-      }
+  // These endpoints are already physical nodes. Never reinterpret them through
+  // the PROTO redirect map: nested interfaces can share a primary pointer.
+  auto addPhysical = [&](const std::shared_ptr<X3DNode> &from,
+                         const std::string &fromName,
+                         const std::shared_ptr<X3DNode> &to,
+                         const std::string &toName, std::size_t index,
+                         Scope scope,
+                         std::optional<X3DFieldType> nominalSource,
+                         std::optional<X3DFieldType> nominalSink) {
+    if (!from || !to) return;
+    auto source = detail::findEndpoint(*from, fromName, true);
+    auto sink = detail::findEndpoint(*to, toName, false);
+    if (!source) {
+      reject(index, scope, "unknown source field '" + fromName + "'");
+    } else if (!sink) {
+      reject(index, scope, "unknown sink field '" + toName + "'");
+    } else if (!detail::isRoutableSource(source->access)) {
+      reject(index, scope, "source field '" + fromName +
+                               "' is not routable as an event source "
+                               "(must be outputOnly or inputOutput)");
+    } else if (!detail::isRoutableSink(sink->access)) {
+      reject(index, scope, "sink field '" + toName +
+                               "' is not routable as an event sink "
+                               "(must be inputOnly or inputOutput)");
+    } else if ((nominalSource && source->type != *nominalSource) ||
+               (nominalSink && sink->type != *nominalSink)) {
+      reject(index, scope, "interface type mismatch with physical ROUTE target");
+    } else if (source->type != sink->type) {
+      reject(index, scope, "type mismatch routing '" + fromName +
+                               "' to '" + toName + "'");
+    } else {
+      ctx.addRoute({from.get(), source->x3dName},
+                   {to.get(), sink->x3dName});
       ++result.routesAdded;
     }
-    return true;
+  };
+
+  for (std::size_t i = 0; i < scene.resolvedProtoRoutes.size(); ++i) {
+    const auto &r = scene.resolvedProtoRoutes[i];
+    addPhysical(r.from, r.fromField, r.to, r.toField, i, Scope::ProtoBody,
+                std::nullopt, std::nullopt);
+  }
+  for (std::size_t i = 0; i < scene.resolvedInlineRoutes.size(); ++i) {
+    const auto &r = scene.resolvedInlineRoutes[i];
+    addPhysical(r.from, r.fromField, r.to, r.toField, i, Scope::Inline,
+                std::nullopt, std::nullopt);
+  }
+
+  struct Endpoint {
+    X3DFieldType type;
+    AccessType access;
+    std::vector<ProtoRedirect> targets;
+  };
+  auto resolveSceneEndpoint = [&](const std::shared_ptr<X3DNode> &node,
+                                  const std::string &field,
+                                  const std::string &def, bool asSource,
+                                  std::size_t index)
+      -> std::optional<Endpoint> {
+    const std::string side = asSource ? "source" : "sink";
+    auto source = scene.expandedSources.find(node.get());
+    if (source != scene.expandedSources.end() &&
+        (source->second.declaration || source->second.externDeclaration)) {
+      // Every PROTO instance inherits metadata even though authors cannot
+      // redeclare it. Its current storage is the expanded primary node.
+      if (field == "metadata" || (!asSource && field == "set_metadata") ||
+          (asSource && field == "metadata_changed")) {
+        auto metadata = detail::findEndpoint(*node, field, asSource);
+        if (metadata && metadata->x3dName == "metadata")
+          return Endpoint{metadata->type, metadata->access,
+                          {{node, metadata->x3dName}}};
+      }
+      const auto &instance = source->second;
+      const auto &fields = instance.externDeclaration
+                               ? instance.externDeclaration->interface
+                               : instance.declaration->interface;
+      const ProtoField *interface =
+          findProtoRouteField(fields, field, asSource);
+      if (!interface) {
+        reject(index, Scope::Scene, "unknown " + side + " interface field '" +
+                                        field + "' on node '" + def + "'");
+        return std::nullopt;
+      }
+      auto nIt = scene.protoRedirects.find(node.get());
+      if (nIt == scene.protoRedirects.end() ||
+          !nIt->second.contains(interface->name) ||
+          nIt->second.at(interface->name).empty()) {
+        reject(index, Scope::Scene, "interface field '" + def + "." + field +
+                                        "' has no IS route target");
+        return std::nullopt;
+      }
+      return Endpoint{interface->type, interface->access,
+                      nIt->second.at(interface->name)};
+    }
+    auto reflected = detail::findEndpoint(*node, field, asSource);
+    if (!reflected) {
+      reject(index, Scope::Scene, "unknown " + side + " field '" + field +
+                                      "' on node '" + def + "'");
+      return std::nullopt;
+    }
+    return Endpoint{reflected->type, reflected->access,
+                    {{node, reflected->x3dName}}};
   };
 
   for (std::size_t i = 0; i < scene.routes.size(); ++i) {
     const Route &route = scene.routes[i];
-
-    // (1) Unresolved endpoints: skip silently (forward-ref / IMPORT / unknown).
-    std::shared_ptr<X3DNode> fromNode = route.from.lock();
-    std::shared_ptr<X3DNode> toNode = route.to.lock();
-    if (!fromNode || !toNode) {
+    auto from = route.from.lock();
+    auto to = route.to.lock();
+    if (!from || !to) continue;
+    auto source = resolveSceneEndpoint(from, route.fromField, route.fromNode,
+                                       true, i);
+    if (!source) continue;
+    auto sink = resolveSceneEndpoint(to, route.toField, route.toNode, false, i);
+    if (!sink) continue;
+    if (!detail::isRoutableSource(source->access)) {
+      reject(i, Scope::Scene, "source field '" + route.fromNode + "." +
+                                  route.fromField +
+                                  "' is not routable as an event source "
+                                  "(must be outputOnly or inputOutput)");
       continue;
     }
-
-    // (2) Unknown field on either endpoint. An unknown field that names an
-    // exposed PROTO interface event field is redirected onto its IS-mapped body
-    // endpoint(s) instead of being rejected (the opposite endpoint is taken as
-    // the route's other side, resolved below by normal lookup).
-    std::optional<FieldInfo> fromField =
-        detail::findEndpoint(*fromNode, route.fromField, /*asSource=*/true);
-    if (!fromField) {
-      if (redirectEndpoint(fromNode.get(), route.fromField, /*asSource=*/true,
-                           {toNode.get(), route.toField}, i)) {
-        continue;
-      }
-      result.rejected.push_back(
-          {i, "unknown source field '" + route.fromField + "' on node '" +
-                  route.fromNode + "'"});
+    if (!detail::isRoutableSink(sink->access)) {
+      reject(i, Scope::Scene, "sink field '" + route.toNode + "." +
+                                  route.toField +
+                                  "' is not routable as an event sink "
+                                  "(must be inputOnly or inputOutput)");
       continue;
     }
-    std::optional<FieldInfo> toField =
-        detail::findEndpoint(*toNode, route.toField, /*asSource=*/false);
-    if (!toField) {
-      if (redirectEndpoint(toNode.get(), route.toField, /*asSource=*/false,
-                           {fromNode.get(), route.fromField}, i)) {
-        continue;
-      }
-      result.rejected.push_back(
-          {i, "unknown sink field '" + route.toField + "' on node '" +
-                  route.toNode + "'"});
+    if (source->type != sink->type) {
+      reject(i, Scope::Scene, "type mismatch routing '" + route.fromNode +
+                                  "." + route.fromField + "' to '" +
+                                  route.toNode + "." + route.toField + "'");
       continue;
     }
-
-    // (3) Direction.
-    if (!detail::isRoutableSource(fromField->access)) {
-      result.rejected.push_back(
-          {i, "source field '" + route.fromNode + "." + route.fromField +
-                  "' is not routable as an event source (must be outputOnly "
-                  "or inputOutput)"});
-      continue;
-    }
-    if (!detail::isRoutableSink(toField->access)) {
-      result.rejected.push_back(
-          {i, "sink field '" + route.toNode + "." + route.toField +
-                  "' is not routable as an event sink (must be inputOnly or "
-                  "inputOutput)"});
-      continue;
-    }
-
-    // (4) Type compatibility: exact tag match (no implicit coercion).
-    if (fromField->type != toField->type) {
-      result.rejected.push_back(
-          {i, "type mismatch routing '" + route.fromNode + "." +
-                  route.fromField + "' to '" + route.toNode + "." +
-                  route.toField + "'"});
-      continue;
-    }
-
-    // Valid: register the edge. The context only observes the nodes.
-    // Register under the canonical names (aliases resolved above).
-    ctx.addRoute({fromNode.get(), fromField->x3dName},
-                 {toNode.get(), toField->x3dName});
-    ++result.routesAdded;
+    for (const auto &physicalSource : source->targets)
+      for (const auto &physicalSink : sink->targets)
+        addPhysical(physicalSource.targetNode, physicalSource.targetField,
+                    physicalSink.targetNode, physicalSink.targetField, i,
+                    Scope::Scene, source->type, sink->type);
   }
 
   return result;

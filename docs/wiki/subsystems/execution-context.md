@@ -2,7 +2,7 @@
 title: Execution Context
 summary: Per-tick driver, field-write seam, and scene bridge that coordinate the runtime event loop.
 tags: [subsystem, execution-context, tick, runtime, events]
-updated: 2026-09-26
+updated: 2026-09-29
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -186,7 +186,7 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 
 - **`classifyDirty` (private)** — the cascade's field-delivery observer; maps any delivered `FieldAddress` to dirty flags (`DirtyField`, `DirtyLocalTransform`, `DirtyChildren`, `DirtyBounds`) on the owning node. `writeField` mirrors this classification for direct System writes (M2C-3). `DirtyChildren` (a `children`/`addChildren`/`removeChildren` write, or a `Switch.whichChoice` swap) is what drives `TransformSystem`'s structural re-walk each tick (M2C-2).
 
-- **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute`, validating with **three rejection categories** (unknown field, wrong direction, type mismatch). It also registers pre-resolved PROTO-body and Inline-internal routes directly (they bypass DEF-name resolution) and applies PROTO interface `IS` redirects via `scene.protoRedirects`. Returns `BridgeResult` (count of routes added + `RouteError` diagnostics for rejected routes; dangling DEFs are skipped silently — not counted as a rejection). The attach helpers walk rendered roots and non-rendered PROTO peers via `detail::forEachNode`. `InlineRuntimeSystem` enrolls a newly loaded subtree into the existing systems and refreshes transform, bounds, and pick indices before extraction.
+- **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute` after field, direction, and type checks. For expanded PROTOs it consults the declared interface before the primary node's fields, follows `IS` targets on either endpoint, and retains inherited `metadata` through the primary's current storage. Pre-resolved PROTO-body and Inline-internal routes bypass DEF-name lookup but receive the same physical endpoint checks through `effectiveFields()`, without another PROTO redirect lookup. `BridgeResult` counts added edges; `RouteError::scope` identifies the Scene, PROTO-body, or Inline route collection for its relative `index`. Dangling Scene DEFs are skipped silently. The attach helpers walk rendered roots and non-rendered PROTO peers via `detail::forEachNode`. `InlineRuntimeSystem` enrolls a newly loaded subtree and installs its dynamic routes through a separate path; it also refreshes transform, bounds, and pick indices before extraction. Independent PROTO interface event state without an `IS` target remains unsupported.
 
 - **Consumer input seams** — the context owns `PointerState`, `KeyState`, and `HeadPose` structs that the consumer writes between ticks via the `setPointer*`, `setKey*`, `push*Key*`, and `setHeadPose` methods. Systems read these via `ctx.pointerState()`, `ctx.keyState()`, and `ctx.headPose()` inside `update`.
 

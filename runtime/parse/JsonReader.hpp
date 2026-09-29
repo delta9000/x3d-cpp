@@ -72,6 +72,7 @@ private:
   // Reader-recovery diagnostics accumulated during the current readDocument()
   // call, moved into X3DDocument.readerWarnings on return.
   std::vector<runtime::ReaderWarning> readerWarnings_;
+  bool capturingProtoFieldValue_ = false;
 
   // -------------------------------------------------------------------------
   // Head.
@@ -129,11 +130,13 @@ private:
   /// and ExternProtoDeclare). `field` may be a single object or an array.
   void readJsonInterfaceFields(const json::Value &iface,
                                std::vector<runtime::ProtoField> &out,
-                               runtime::Scene &scene);
+                               runtime::Scene &scene, runtime::ProtoBody *body = nullptr);
 
-  void readJsonProtoDeclare(const json::Value &obj, runtime::Scene &scene);
+  std::shared_ptr<runtime::ProtoDeclaration>
+  readJsonProtoDeclare(const json::Value &obj, runtime::Scene &scene);
 
-  void readJsonExternProtoDeclare(const json::Value &obj,
+  std::shared_ptr<runtime::ExternProtoDeclaration>
+  readJsonExternProtoDeclare(const json::Value &obj,
                                   runtime::Scene &scene);
 
   /// Read a ProtoBody object: iterate "-children" (PROTO statements go into
@@ -172,6 +175,9 @@ private:
                              const std::shared_ptr<X3DNode> &parent,
                              const std::string &slot, runtime::ProtoBody *body);
 
+  std::shared_ptr<X3DNode> readJsonInstanceTemplate(
+      const json::Value &obj, runtime::Scene &scene);
+
   /// Map an X3D field-type string (e.g. "SFVec3f") to X3DFieldType.
   static X3DFieldType mapProtoFieldType(const std::string &w);
 
@@ -184,7 +190,7 @@ private:
   /// Apply one "@field" member: find the FieldInfo, convert the JSON value to
   /// the X3D wire string, and set it via build::applyField. Unknown fields are
   /// skipped. DEF (a normal SFString field on every node) flows through here.
-  void applyJsonField(X3DNode &node, const std::string &x3dName,
+  bool applyJsonField(X3DNode &node, const std::string &x3dName,
                       const json::Value &val);
 
   /// Convert a parsed JSON value to the space-/quote-delimited X3D wire string

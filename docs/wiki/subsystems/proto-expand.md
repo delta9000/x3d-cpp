@@ -2,7 +2,7 @@
 title: "PROTO/EXTERNPROTO Expansion"
 summary: Clones and splices PROTO/EXTERNPROTO instances into the live scene graph after parsing, forwarding field values and wiring IS-connections.
 tags: [subsystem, proto, externproto, expansion, is-connection]
-updated: 2026-09-26
+updated: 2026-09-29
 related:
   - ../architecture.md
   - ../subsystems/parse-readers.md
@@ -34,6 +34,26 @@ The boundary owned by this subsystem is: from collected `Scene::protoInstances` 
 ## Interfaces and seams
 
 ### Exposed interface
+
+Successful EXTERN resolution retains the selected `ProtoDeclaration` on the
+instance and its `Scene::expandedSources` record. Its `sourceUnits` snapshot
+preserves the defining document's UNIT declarations. Each explicit expansion
+attempt still calls the supplied resolver; a failed resolution clears the
+instance's retained declaration. This preserves provenance without applying
+unit conversion.
+
+`ProtoDeclaration::authoredScalarFields` retains parse-time field presence.
+Expansion copies those marks onto cloned body nodes, interface node defaults,
+and literal node values on body-nested instances. All declaration-owned node
+graphs, including interface defaults and body nodes in one declaration DEF
+scope, use one clone map per instance, preserving DEF/USE aliases within that
+instance while keeping separate instances and the declaration independent.
+Caller-supplied node overrides retain their shared identity. A present empty
+node override forwards `NULL`/`[]` rather than falling back to the interface
+default. Expansion also records successful scalar IS assignments, including
+explicit values equal to generated defaults.
+The marks describe parsed initialization; later application writes do not
+update them. Numeric unit conversion remains separate work.
 
 ```cpp
 namespace x3d::runtime {
@@ -97,13 +117,89 @@ Both `expandScene` and `expandInstance` are inline, header-only functions in `ru
 
 `Scene::protoPeerNodes` retains non-rendered body peers. Standard runtime systems and the CLI's ScriptSystem enroll them alongside reachable scene nodes; extraction still traverses only rendered roots (§4.4.4.3).
 
-- **`ProtoInstance::expanded` flag** — set to `true` by `expandScene` on a successfully spliced instance. Writers check this flag: if `false`, the instance failed to expand and must be re-emitted directly from `Scene::protoInstances` rather than be silently dropped.
+- **`ProtoInstance::expanded` flag** — set to `true` by `expandScene` on a successfully spliced instance. Writers check this flag: if `false`, a parsed instance retains its inert template at its authored node position. Writers use the linked structural record there. Only programmatic instances without a placement template need fallback emission from `Scene::protoInstances`.
 
-- **`ProtoBody::nestedInstances`** — `ProtoInstance` records that appear inside a prototype body are stored here (not in `Scene::protoInstances`) so `expandInstance` recurses per outer instantiation, attaching each nested primary to the per-instantiation body clone rather than to the un-cloned template.
+- **`ProtoBody::nestedInstances`** — `ProtoInstance` records that appear inside a prototype body are stored here (not in `Scene::protoInstances`) so `expandInstance` recurses per outer instantiation, attaching parent-contained instances to the per-instantiation body clone. Direct body instances participate in primary/peer selection instead of becoming children of the primary.
+
+### Authored body order
+
+`ProtoBody::statements` owns direct nested declarations and records the order of
+ordinary nodes and direct instances. `orderedStatements()` reconciles node
+occurrences against `nodes`, skips removed nodes and invalid instance indices,
+and appends unrecorded programmatic nodes and direct instances. Instance records
+use indices into `nestedInstances`; callers that reorder or erase that vector
+must update those indices. Repeated node handles preserve USE occurrences.
+
+Expansion selects the first authored node or instance as primary. Later direct
+nodes remain active in `Scene::protoPeerNodes`, outside the rendered hierarchy.
+A body containing only an instance can expand. If its first instance fails,
+expansion does not promote a later peer to change the prototype's type.
+Interface event redirects are registered after the primary is known.
+
+XML, canonical XML, Classic and JSON writers preserve direct declaration and
+instance ordering, including unused nested declarations and shadowed names.
+Each declaration writer shares one DEF/USE context across interface defaults
+and body nodes; nested declarations get a fresh context. `ProtoBody::nodeStatements`
+records declarations and child occurrences against weak parent identities.
+`orderedNodeStatements()` reconciles these with live reflected node fields and
+`nestedInstances`: removed occurrences are skipped and new children appended.
+Child values follow each current reflected field vector, including reorders and insertions;
+declaration and instance entries retain their ledger positions. Its instance indices
+have the same caller maintenance requirement as direct records.
+Expansion rebuilds affected MFNode slots in this order, preserving USE aliases.
+
+XML and canonical XML replay the merged order. Classic declarations must fall
+between complete field assignments; its writer rejects repeated field groups.
+JSON likewise rejects repeated slot groups rather than emitting duplicate keys.
+These are current implementation limits. JSON round trips demonstrate repository
+compatibility, not ISO encoding conformance. Ordinary interface-default graphs use the same capture and writer context, so
+contained declarations and instances survive serialization and expand against
+each outer instance's cloned default graph. Direct ProtoInstance defaults use authored `ProtoInstanceTemplate`
+nodes in the existing `nodeDefault` vector. Expansion materializes required
+templates into the shared clone map before IS forwarding; DEF/USE references
+across default fields and body graphs share the resulting primary. Explicit
+overrides suppress unused defaults, including their external resolution.
+Instances in SFNode/MFNode `fieldValue` graphs use the same template type.
+An ephemeral expansion context shares each caller template's primary across
+field values and scene-root USE aliases. Ordinary caller nodes retain their
+identity. Every parsed scene structural instance occupies a template slot in
+`rootNodes` or its ordinary parent's node field. A weak `placementTemplate`
+link associates that slot with the authoritative structural record. Expansion
+replaces slots in place, preserving authored root and child order, including
+repeated USE positions. Removing or reordering slots changes placement without
+resurrecting records from the structural list. `hasPlacementTemplate()` detects
+an authored identity even after its weak pointer expires; programmatic records
+that never had a slot retain append/attach behavior. Unresolved caller templates remain inert and
+serializable, and resolution may be retried in a fresh transaction. All four
+writers emit DEF/USE for shared expanded primaries. See
+[ADR-0056](../decisions/0056-prototype-instance-default-templates.md).
+Cross-encoding ordering limits remain open under PROTO-NESTED-WRITE. Source UNIT snapshots
+include retained unused nested declarations.
+
+### Nested interface routes
+
+Body-local DEF lookup runs after nested instances expand. Expansion captures each
+nested interface's IS targets locally, resolves either or both ROUTE endpoints
+through the declared interface, and stores concrete endpoints in
+`Scene::resolvedProtoRoutes`. These snapshots keep inner and outer interfaces
+separate even when they share a primary node. The outer redirect map replaces
+the inner map at that pointer. Nested IS event connections forward their physical
+targets into the outer interface map.
+
+`inputOutput` fields accept the source alias `name_changed` and sink alias
+`set_name`. Access and field types are checked before adding routes; the scene
+bridge checks the physical endpoints too. EXTERNPROTO endpoints use the authored
+external interface. Other native primary fields are hidden from external routes,
+except inherited `metadata`, which currently uses the primary's storage.
+
+Declared interface fields without IS targets still lack independent runtime
+storage and endpoints (PROTO-INTERFACE-STATE). Dynamic Script fields are available
+to physical ROUTE validation, but expansion's IS lookup still uses static
+reflection. These limits prevent a complete prototype field-semantics claim.
 
 ### IS-connection and access-type rules
 
-IS-connection forwarding follows ISO/IEC 19775-1 Table 4.4. An `inputOutput` body field may map to any interface access type; all other body fields must map to an interface field of the same access type. Violations produce an `InterfaceMismatch` `ProtoWarning` and are skipped. Only `initializeOnly` and `inputOutput` connections forward values at expansion time; event-only connections (`inputOnly`/`outputOnly`) are registered as redirect entries in `Scene::protoRedirects` for runtime dispatch.
+IS-connection forwarding follows ISO/IEC 19775-1 Table 4.4. An `inputOutput` body field may map to any interface access type; all other body fields must map to an interface field of the same access type. Violations produce an `InterfaceMismatch` `ProtoWarning` and are skipped. Field types must match; generated enum storage retains its SFString setter compatibility. Body inputOutput aliases `set_name` and `name_changed` can connect to inputOnly and outputOnly interface fields respectively, including across nested prototypes. Only `initializeOnly` and `inputOutput` connections forward values at expansion time; event-only connections (`inputOnly`/`outputOnly`) are registered as redirect entries in `Scene::protoRedirects` for runtime dispatch.
 
 ## How it is tested
 
@@ -113,6 +209,7 @@ The test suite is split between unit tests that exercise `expandInstance`/`expan
 |---|---|
 | `x3d_parse_tests` (`proto_clone_test`) | `deepClone` — field-by-field copy, DEF/USE shared-identity preservation, SFNode/MFNode recursion (`runtime/parse/tests/proto_clone_test.cpp`) |
 | `x3d_parse_tests` (`proto_expand_test`) | `expandInstance`/`expandScene` — field forwarding, IS-connection wiring, scene-root splice, EXTERN no-op with noop resolver, two independent instances (`runtime/parse/tests/proto_expand_test.cpp`) |
+| `x3d_event_scene_bridge` | Parsed XML/Classic nested ROUTEs, both interface endpoints, aliases, IS event forwarding, shared-primary interface isolation, per-instance delivery, metadata and invalid endpoint rejection (`runtime/events/tests/scene_bridge_test.cpp`) |
 | `x3d_proto_expand_audit` | Audit suite: recursion-limit guard, Table 4.4 access-type validation, bad-any-cast leniency, empty-body warning, EXTERN unresolved warning, MFNode forwarding, nested body instance expansion (`runtime/parse/tests/proto_expand_audit_test.cpp`) |
 | `x3d_proto_front_door` | End-to-end XML parse → `parseDocument` → expansion → scene check (`runtime/parse/tests/proto_front_door_test.cpp`) |
 | `x3d_parse_tests` (`proto_nested_body_test`) | Nested `ProtoInstance` inside a body: correct per-instance expansion and attachment (`runtime/parse/tests/proto_nested_body_test.cpp`) |

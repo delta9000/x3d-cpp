@@ -13,12 +13,18 @@
 #define X3D_RUNTIME_PROTO_HPP
 
 #include "x3d/core/X3DReflection.hpp" // AccessType, X3DFieldType
+#include "X3DAuthoredScalarFields.hpp"
+#include "X3DHeader.hpp"
 #include "X3DRoute.hpp"
+#include "x3d/nodes/X3DNode.hpp"
 
 #include <any>
 #include <memory>
+#include <map>
 #include <optional>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace x3d::nodes { class X3DNode; }
@@ -27,6 +33,22 @@ namespace x3d::runtime {
 using namespace x3d::core;
 
 class ProtoInstance; // defined below; ProtoBody holds a vector of these
+struct ProtoDeclaration;
+struct ExternProtoDeclaration;
+
+// Direct children of a ProtoBody in authored order. Existing body vectors
+// remain the authority for nodes and instances; declarations are owned here.
+struct ProtoBodyStatement {
+  enum class Kind { Node, Instance, Proto, ExternProto };
+  Kind kind;
+  std::shared_ptr<X3DNode> node;
+  std::size_t instanceIndex = 0;
+  std::shared_ptr<ProtoDeclaration> proto;
+  std::shared_ptr<ExternProtoDeclaration> externProto;
+  // Field containing a child node/instance when this statement belongs to a
+  // body node. Empty for declarations and direct ProtoBody statements.
+  std::string field{};
+};
 
 /// One `field IS protoField` / <connect> mapping captured from a PROTO body.
 struct IsConnection {
@@ -102,6 +124,26 @@ struct ProtoField {
   bool hasValue() const { return value.has_value() || !nodeDefault.empty(); }
 };
 
+// Match an authored PROTO interface ROUTE endpoint. Exact names win;
+// inputOutput aliases are valid only on their corresponding event side.
+inline const ProtoField *findProtoRouteField(
+    const std::vector<ProtoField> &fields, const std::string &name,
+    bool asSource) {
+  for (const auto &field : fields)
+    if (field.name == name) return &field;
+  std::string base;
+  if (!asSource && name.rfind("set_", 0) == 0)
+    base = name.substr(4);
+  else if (asSource && name.size() > 8 &&
+           name.compare(name.size() - 8, 8, "_changed") == 0)
+    base = name.substr(0, name.size() - 8);
+  if (base.empty()) return nullptr;
+  for (const auto &field : fields)
+    if (field.name == base && field.access == AccessType::InputOutput)
+      return &field;
+  return nullptr;
+}
+
 /**
  * @brief The body of a PROTO: the nodes (and nested ROUTEs) it instantiates.
  * @details The first child node of a ProtoBody is the prototype's primary
@@ -120,6 +162,51 @@ struct ProtoBody {
   // so a body-nested instance is expanded once per outer instantiation rather
   // than once globally / mis-attached to the un-cloned template.
   std::vector<ProtoInstance> nestedInstances;
+  // Entries referring to nestedInstances use indices. Editing that vector's
+  // order requires updating these entries too. Unrecorded programmatic nodes
+  // and direct instances are appended by orderedStatements().
+  std::vector<ProtoBodyStatement> statements;
+  // Authored children of each body node, including declarations that have no
+  // reflected field value. Weak keys avoid retaining removed template nodes.
+  std::map<std::weak_ptr<X3DNode>, std::vector<ProtoBodyStatement>,
+           std::owner_less<std::weak_ptr<X3DNode>>> nodeStatements;
+
+  void recordChildNode(const std::shared_ptr<X3DNode> &parent,
+                       const std::string &field,
+                       const std::shared_ptr<X3DNode> &child) {
+    nodeStatements[parent].push_back(
+        {ProtoBodyStatement::Kind::Node, child, 0, {}, {}, field});
+  }
+  void recordChildInstance(const std::shared_ptr<X3DNode> &parent,
+                           const std::string &field, std::size_t index) {
+    nodeStatements[parent].push_back(
+        {ProtoBodyStatement::Kind::Instance, {}, index, {}, {}, field});
+  }
+  void recordChildProto(const std::shared_ptr<X3DNode> &parent,
+                        const std::shared_ptr<ProtoDeclaration> &decl) {
+    nodeStatements[parent].push_back(
+        {ProtoBodyStatement::Kind::Proto, {}, 0, decl, {}});
+  }
+  void recordChildExternProto(
+      const std::shared_ptr<X3DNode> &parent,
+      const std::shared_ptr<ExternProtoDeclaration> &decl) {
+    nodeStatements[parent].push_back(
+        {ProtoBodyStatement::Kind::ExternProto, {}, 0, {}, decl});
+  }
+
+  void recordNode(const std::shared_ptr<X3DNode> &node) {
+    statements.push_back({ProtoBodyStatement::Kind::Node, node, 0, {}, {}});
+  }
+  void recordInstance(std::size_t index) {
+    statements.push_back({ProtoBodyStatement::Kind::Instance, {}, index, {}, {}});
+  }
+  void recordProto(const std::shared_ptr<ProtoDeclaration> &decl) {
+    statements.push_back({ProtoBodyStatement::Kind::Proto, {}, 0, decl, {}});
+  }
+  void recordExternProto(const std::shared_ptr<ExternProtoDeclaration> &decl) {
+    statements.push_back({ProtoBodyStatement::Kind::ExternProto, {}, 0, {}, decl});
+  }
+  std::vector<ProtoBodyStatement> orderedStatements() const;
 };
 
 /**
@@ -131,6 +218,13 @@ struct ProtoDeclaration {
   ProtoBody body;                    // <ProtoBody>
   std::string appinfo;               // optional documentation metadata
   std::string documentation;         // optional documentation URL
+  // Snapshot of UNIT declarations in the document that authored this PROTO.
+  // Empty means that source declared no UNIT; Head remains the serializable
+  // authority for its document.
+  std::vector<Unit> sourceUnits;
+  // Body nodes may outlive their reader's temporary Scene (including an
+  // EXTERN resolver's document). Carry their field-presence marks here.
+  AuthoredScalarFields authoredScalarFields;
 };
 
 /**
@@ -176,6 +270,20 @@ public:
   std::string USE;                        // optional USE
   std::string containerField = "children";
 
+  // Exact authored node slot for a scene instance, either a Scene root or a
+  // child of an ordinary node. A weak pointer keeps deletion from that slot
+  // authoritative; DEF names separately keep the template reachable.
+  std::weak_ptr<X3DNode> placementTemplate;
+
+  // A weak pointer retains its owner identity after its target expires. This
+  // distinguishes a deleted authored node slot from a programmatic instance
+  // that never had a node slot, without another persistent state flag.
+  bool hasPlacementTemplate() const {
+    const std::weak_ptr<X3DNode> empty;
+    return placementTemplate.owner_before(empty) ||
+           empty.owner_before(placementTemplate);
+  }
+
   // Placement: where this instance sits in the graph so expansion can splice
   // the primary node back in. Empty `parent` => the instance is a Scene root.
   std::weak_ptr<X3DNode> parent;
@@ -186,11 +294,10 @@ public:
   std::shared_ptr<ProtoDeclaration> declaration;
   std::shared_ptr<ExternProtoDeclaration> externDeclaration;
 
-  // Set by expandScene when this instance was successfully expanded + spliced
-  // into the graph (its primary node is then re-emitted via Scene::expandedSources).
-  // FALSE means expansion failed/was skipped (e.g. unresolvable EXTERNPROTO in
-  // headless mode); such instances are not in the node graph, so the writers must
-  // re-emit them directly from scene.protoInstances or they are lost (AUD-B).
+  // Set by expandScene when this instance was successfully expanded into the
+  // graph (its primary node is then re-emitted via Scene::expandedSources).
+  // A failed reader-authored instance keeps its template in the graph; an
+  // unlinked programmatic instance is emitted from scene.protoInstances.
   bool expanded = false;
 
   // ADR-0033: this instance named a PROTO/EXTERNPROTO that was quarantined for
@@ -208,6 +315,64 @@ public:
    */
   std::shared_ptr<X3DNode> expand() const { return nullptr; }
 };
+
+// An authored ProtoInstance occupies a node slot among concrete nodes in a
+// PROTO interface default, instance fieldValue, or scene graph. This preserves
+// order and DEF/USE pointer identity until expansion materializes its graph.
+class ProtoInstanceTemplate final : public X3DNode {
+public:
+  ProtoInstance instance;
+
+  explicit ProtoInstanceTemplate(ProtoInstance source)
+      : instance(std::move(source)) {
+    setDEF(instance.DEF);
+  }
+
+  std::string nodeTypeName() const override { return "ProtoInstance"; }
+  std::string defaultContainerField() const override {
+    return instance.containerField;
+  }
+};
+
+inline std::vector<ProtoBodyStatement> ProtoBody::orderedStatements() const {
+  std::vector<ProtoBodyStatement> result;
+  std::unordered_map<const X3DNode *, std::size_t> availableNodes;
+  std::unordered_map<const X3DNode *, std::size_t> consumedNodes;
+  std::unordered_set<std::size_t> seenInstances;
+  for (const auto &node : nodes)
+    if (node) ++availableNodes[node.get()];
+  for (const auto &entry : statements) {
+    if (entry.kind == ProtoBodyStatement::Kind::Node) {
+      if (!entry.node) continue;
+      if (consumedNodes[entry.node.get()] >= availableNodes[entry.node.get()])
+        continue;
+      ++consumedNodes[entry.node.get()];
+    }
+    if (entry.kind == ProtoBodyStatement::Kind::Instance) {
+      if (entry.instanceIndex >= nestedInstances.size() ||
+          nestedInstances[entry.instanceIndex].parent.lock())
+        continue;
+      seenInstances.insert(entry.instanceIndex);
+    }
+    if (entry.kind == ProtoBodyStatement::Kind::Proto && !entry.proto)
+      continue;
+    if (entry.kind == ProtoBodyStatement::Kind::ExternProto && !entry.externProto)
+      continue;
+    result.push_back(entry);
+  }
+  for (const auto &node : nodes) {
+    if (!node) continue;
+    if (consumedNodes[node.get()] > 0) {
+      --consumedNodes[node.get()];
+      continue;
+    }
+    result.push_back({ProtoBodyStatement::Kind::Node, node, 0, {}, {}});
+  }
+  for (std::size_t i = 0; i < nestedInstances.size(); ++i)
+    if (!nestedInstances[i].parent.lock() && !seenInstances.contains(i))
+      result.push_back({ProtoBodyStatement::Kind::Instance, {}, i, {}, {}});
+  return result;
+}
 
 } // namespace x3d::runtime
 

@@ -34,6 +34,7 @@
 //   goldens_dir  — tools/x3d-cli/goldens
 // ─────────────────────────────────────────────────────────────────────────────
 #include "scene_equiv.hpp"
+#include "proto_use.hpp"
 #include "x3d/sdk.hpp"
 #include "Encoding.hpp"
 
@@ -127,16 +128,12 @@ static bool hasDuplicateMeta(const sdk::X3DDocument &doc) {
 
 static bool hasUnusedProtoDeclare(const sdk::X3DDocument &doc) {
     const auto &scene = doc.scene;
-    std::unordered_set<std::string> usedProtos;
-    for (const auto &pi : scene.protoInstances)
-        usedProtos.insert(pi.name);
-    for (const auto &[node, pi] : scene.expandedSources)
-        usedProtos.insert(pi.name);
+    const auto used = x3d::cli_detail::collectProtoUse(doc);
     for (const auto &pd : scene.protoDeclarations)
-        if (pd && usedProtos.find(pd->name) == usedProtos.end())
+        if (pd && !used.local.contains(pd.get()))
             return true;
     for (const auto &epd : scene.externProtoDeclarations)
-        if (epd && usedProtos.find(epd->name) == usedProtos.end())
+        if (epd && !used.external.contains(epd.get()))
             return true;
     return false;
 }

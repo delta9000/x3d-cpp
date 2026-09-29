@@ -28,6 +28,11 @@ The subsystem owns four responsibilities:
 
 This mirrors the EXTERNPROTO expansion machinery in `runtime/X3DProtoExpand.hpp` and reuses the AUD-B `expandedSources` writer-redirect pattern.
 
+Child Scenes returned by the parsing front door retain their source UNIT
+declarations in `Scene::sourceUnits`, including when reached through
+`expandedInlineScenes`. An empty snapshot means that the child declared no
+units. Retention does not yet convert child values to the parent's units.
+
 ## Key files
 
 | File / directory | Role |

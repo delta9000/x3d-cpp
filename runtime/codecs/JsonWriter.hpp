@@ -34,6 +34,7 @@ struct ExternProtoDeclaration;
 struct Head;
 struct IsConnection;
 struct ProtoDeclaration;
+struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
@@ -69,6 +70,7 @@ private:
   // instance onto the parent element's children — rather than appending it as a
   // sibling. Null outside a body.
   const std::vector<runtime::ProtoInstance> *bodyNested_ = nullptr;
+  const runtime::ProtoBody *bodyOrder_ = nullptr;
 
   X3DNode *defaultFor(const std::string &typeName);
 

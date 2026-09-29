@@ -48,6 +48,14 @@ needing remote/non-filesystem access supply their own resolver.
 
 The subsystem boundary is everything under `runtime/parse/`. The entry point for consumers is `parseFile()` / `parseDocument()` in `runtime/parse/X3DParse.hpp`. The concrete reader implementations are all header-only in `namespace x3d::codec`.
 
+Readers record successfully assigned scalar field names in
+`Scene::authoredScalarFields`, keyed by weak node identity. This keeps an
+explicit value distinct from an absent field even when the value equals the
+generated default; DEF/USE shares one identity. PROTO readers transfer the
+declaration-local scene's interface and body marks to `ProtoDeclaration::authoredScalarFields`, so
+an externally resolved declaration keeps its marks after its source document
+is destroyed. Unknown and read-only fields are not recorded.
+
 ## Key files
 
 | File / directory | Role |
@@ -61,6 +69,7 @@ The subsystem boundary is everything under `runtime/parse/`. The entry point for
 | `runtime/parse/Vrml97Dialect.hpp` | VRML97 → X3D name-remap table (`vrml97::mapNodeName`, `vrml97::mapFieldName`); header-only |
 | `runtime/parse/JsonReader.hpp` | X3D-JSON reader — walks the Web3D X3D-JSON shape, converts JSON values to X3D wire strings, applies fields via `build::applyField` |
 | `runtime/parse/NodeBuilder.hpp` | Encoding-independent build helpers shared by all text/JSON readers: `beginNode`, `applyField`, `attachChild`, `defineDef`, `resolveUse`, `collectFieldValue`; `namespace x3d::codec::build` |
+| `runtime/X3DAuthoredScalarFields.hpp` | Weak node-identity field presence shared by scenes and PROTO declarations |
 | `runtime/parse/VrmlTokenizer.hpp` | Streaming VRML lexer with one-token (and two-token) lookahead; shared by `ClassicVrmlReader` and `Vrml97Reader` |
 | `runtime/parse/JsonLite.hpp` | Bundled minimal JSON parser used by `JsonReader` (`x3d::json::parse`) |
 | `runtime/parse/Inflate.hpp` | In-memory gzip decompression (`inflateGzip`) using `tinfl.h` (bundled); called by `parseFile` when gzip magic is detected |
@@ -125,6 +134,8 @@ Encoding sniffByExtension(std::string_view path);
 
 - **Inline resolver** — `runtime::InlineResolver` (`runtime/InlineExpand.hpp`): a `std::function<shared_ptr<Scene>(urls, baseUrl)>` injected into `parseDocument`. The default `localFileInlineResolver` follows the same lenient file-local pattern. Embedders override for custom asset resolution and pass that resolver plus the base URL to the runtime when deferred `load=TRUE` events should load content.
 
+The front door snapshots each document's authored `head.units` onto its `Scene::sourceUnits` and locally authored `ProtoDeclaration::sourceUnits` before expansion. Child Scenes returned by Inline and declarations selected by file or asset EXTERNPROTO resolution therefore carry their own source UNIT declarations; an empty snapshot means that source declared none. These runtime snapshots do not change `Head` serialization or numeric field values.
+
 - **Dialect hooks on `ClassicVrmlReader`** — three protected virtual methods that `Vrml97Reader` overrides:
   - `mapNodeName(token)` — renames a node type token before the factory lookup (identity in Classic VRML; delegates to `vrml97::mapNodeName` in VRML97).
   - `mapFieldName(nodeType, token)` — renames a field token (identity in Classic VRML; applies the LOD/Switch field renames in VRML97).
@@ -137,13 +148,17 @@ Encoding sniffByExtension(std::string_view path);
 
 - **Profile token preservation** — `X3DDocument::setProfileToken` records the authored `profile=` spelling verbatim in `profileRaw` (exposed via `profileToken()`), resolves it to a `Profile` for profile-fit, and diagnoses a non-canonical token. The XML/JSON/VRML writers emit `profileToken()`, so a round-trip never rewrites the declared conformance class (DIAG-PROFILE-COERCE).
 
+- **UNIT header validation** — `parseDocument` checks UNIT declarations before scene expansion for all supported X3D encodings. Declarations require X3D 3.3 or later, one of `angle`/`force`/`length`/`mass`, no duplicate category, a nonempty name without whitespace, and a finite positive conversion factor. An invalid declaration throws; valid authored factors and field values remain unchanged for round-tripping. Runtime conversion is tracked separately as REQ-UNIT.
+
 - **PROTO built-in-shadow quarantine** — after `readDocument`, `parseDocument` runs `quarantineBuiltinShadowingProtos` (`runtime/parse/X3DParse.cpp`): any `ProtoDeclare`/`ExternProtoDeclare` whose name is a built-in (`X3DNodeFactory::registry()`) is dropped and recorded as `ProtoWarning{Kind::BuiltinShadow}`, so the built-in keeps precedence (ADR-0033, `PROTO-SHADOW`). Applies uniformly across all four encodings from the single front door; lenient by default.
 
 - **Reflection / field population** — all readers set fields through the `FieldInfo` thunks exposed by `node.fields()` (the reflection `FieldTable`). `build::applyField` routes enum fields through `setEnumString` and everything else through `FieldValueIO::parseValue + set`. The `outputOnly`/`inputOnly` access guards in `applyField` skip read-only fields during parse.
 
 - **DynamicFieldStore (S1 seam)** — `ClassicVrmlReader`, `JsonReader`, and `XmlReader` capture author `<field>` declarations into `runtime::dynamicFieldStore()` as `AuthorFieldDecl` entries (see `runtime/events/DynamicField.hpp`). This covers every `X3DProgrammableShaderObject`: `Script` and — since the Phase-3 ComposedShader plumbing — `ComposedShader` (its `<field>` uniforms). This seam is the parse-reader touchpoint for the Script/SAI and author-shader runtimes; all other nodes are fully handled by the reflection layer. Inline `<![CDATA[...]]>` source is mirrored into the node's `sourceCode` slot — `Script.sourceCode` for scripts, and `ShaderPart.sourceCode` for a ComposedShader's GLSL stages — so the runtime has a uniform source path.
 
-- **ProtoBody DEF scoping** — `ClassicVrmlReader::parseProto` and `JsonReader::readJsonProtoBody` parse the proto body into a local `Scene` so body-DEFs do not leak into the enclosing document DEF table (AUD-C fix). IS-connection links are threaded through as `runtime::IsConnection` entries on `runtime::ProtoBody`.
+- **PROTO body order** — direct body declarations, nodes and instances are recorded in `ProtoBody::statements`. The statement records retain unused local/extern declarations and the point at which a nested declaration shadows an inherited name. Node and instance values remain in the existing body collections. Ordinary body-node children and declarations are also recorded in `ProtoBody::nodeStatements`, keyed by weak parent identity. Reflected fields and `nestedInstances` remain the value authority. Ordinary interface-default node graphs share this context. Direct ProtoInstance defaults occupy `nodeDefault` as authored `ProtoInstanceTemplate` nodes. The local DEF table resolves USE references to the same template across fields and body graphs; these defaults do not become direct body instances. XML, Classic and JSON also capture direct and contained ProtoInstances in SFNode/MFNode fieldValues as bound templates in the owning value graph. All scene structural instances, named or unnamed, occupy an authored template slot in `rootNodes` or their ordinary parent's node field. The structural record's weak `placementTemplate` link preserves the exact identity; expansion replaces the slot without appending it after ordinary nodes. USE references reuse the same expanded primary. Raw writers read source values from the linked structural record while retaining slot order.
+
+- **PROTO DEF scoping** — XML, JSON, and Classic readers parse each declaration's interface defaults and body through one local `Scene`. DEF/USE aliases therefore resolve across fields and into the body, while outer scene DEFs and nested PROTO DEFs remain separate (§4.4.4.4). Previously declared PROTO/EXTERNPROTO declarations remain available for nested instances; a same-name nested declaration shadows the inherited name across both declaration kinds without changing the enclosing scene. The declaration carries authored scalar-field marks from both interface and body after the local scene is consumed. IS-connection links are threaded through as `runtime::IsConnection` entries on `runtime::ProtoBody`.
 
 ## How it is tested
 
@@ -152,7 +167,7 @@ Encoding sniffByExtension(std::string_view path);
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `reader_audit_test`) — differential reader audit over the full conformance corpus (`reader_audit_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `version_floor_test`) — version-inference ladder: VRML97 header floored to 3.0, sub-3.0 legacy headers, `#X3D V4` round-trips (`version_floor_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `lenient_read_test`) — unknown node/field skip; outputOnly/inputOnly field guards; graceful recovery from malformed brace/bracket structure (`lenient_read_test.cpp`).
-- `ctest --preset dev -R x3d_parse_tests` (doctest cases: `proto_shadow_*`, `unknown_node_*`, `profile_*`, `import_export_wire_*`) — Core diagnostics: PROTO built-in-shadow quarantine (XML/ClassicVRML/JSON), unknown-node `ReaderWarning` per reader, profile-token coercion diagnosis + round-trip preservation, and IMPORT→Inline-exported-DEF route wiring (`core_diagnostics_test.cpp`).
+- `ctest --preset dev -R x3d_parse_tests` (doctest cases: `unit_header_validation_all_encodings`, `proto_shadow_*`, `unknown_node_*`, `profile_*`, `import_export_wire_*`) — UNIT header rejection, PROTO built-in-shadow quarantine, unknown-node warnings, profile-token preservation, and IMPORT→Inline-exported-DEF route wiring (`core_diagnostics_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `range_warnings_test`) — out-of-range field values collected into `doc.rangeWarnings` without throwing (`range_warnings_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `proto_expand_test`) — PROTO expansion integration via `parseDocument` (`proto_expand_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `proto_clone_test`) — ProtoDeclaration deep-clone correctness (`proto_clone_test.cpp`).

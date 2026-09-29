@@ -286,6 +286,41 @@ else
     failures=$(( failures + 1 ))
 fi
 
+# A use in a PROTO body counts for its bound declaration even when expansion
+# replaces the same primary node more than once.
+ec=$("$CLI" validate "$FIXTURES/validate-nested-proto-use.x3d" >/dev/null 2>&1; echo $?)
+check "validate nested proto use exits 0" "$ec" "0"
+
+ec=$("$CLI" validate "$FIXTURES/validate-bound-nested-proto-use.x3d" >/dev/null 2>&1; echo $?)
+check "validate use through node-contained declaration exits 0" "$ec" "0"
+
+out=$("$CLI" validate "$FIXTURES/validate-extern-proto-use.x3d" --json 2>&1 || true)
+ec=$("$CLI" validate "$FIXTURES/validate-extern-proto-use.x3d" >/dev/null 2>&1; echo $?)
+check "validate unresolved bound extern proto exits 3" "$ec" "3"
+if [[ "$out" == *'"category": "proto"'* && "$out" == *"missing.x3d#External"* ]]; then
+    echo "ok:   validate bound extern proto reports missing external source"
+else
+    echo "FAIL: validate bound extern proto missing resolver diagnostic (got: $out)"
+    failures=$(( failures + 1 ))
+fi
+if [[ "$out" != *"unused-proto"* ]]; then
+    echo "ok:   validate bound extern proto has no unused warning"
+else
+    echo "FAIL: validate bound extern proto has unused warning (got: $out)"
+    failures=$(( failures + 1 ))
+fi
+
+# A nested declaration shadows the scene declaration with the same name.
+out=$("$CLI" validate "$FIXTURES/validate-shadowed-proto-use.x3d" --json 2>&1 || true)
+ec=$("$CLI" validate "$FIXTURES/validate-shadowed-proto-use.x3d" >/dev/null 2>&1; echo $?)
+check "validate shadowed outer proto exits 3" "$ec" "3"
+if [[ "$out" == *"ProtoDeclare 'Leaf' has no corresponding ProtoInstance"* ]]; then
+    echo "ok:   validate shadowed outer proto warns for outer Leaf"
+else
+    echo "FAIL: validate shadowed outer proto missing outer Leaf warning (got: $out)"
+    failures=$(( failures + 1 ))
+fi
+
 # ── 21. validate IFS coord without coordIndex → exit 3, mentions 'ifs-coord' ──
 out=$("$CLI" validate "$FIXTURE_IFS_NO_CI" 2>&1 || true)
 ec=$("$CLI" validate "$FIXTURE_IFS_NO_CI" >/dev/null 2>&1; echo $?)

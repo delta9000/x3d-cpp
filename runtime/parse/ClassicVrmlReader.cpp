@@ -151,7 +151,7 @@ void ClassicVrmlReader::parseHeaderStatements(VrmlTokenizer &tok,
       runtime::Unit u;
       u.category = expectWord(tok, "UNIT category");
       u.name = expectWord(tok, "UNIT name");
-      u.conversionFactor = parseDouble(expectWord(tok, "UNIT factor"));
+      u.conversionFactor = parseUnitConversionFactor(expectWord(tok, "UNIT factor"));
       doc.head.units.push_back(std::move(u));
     } else if (t.isWord("META")) {
       tok.next();
@@ -178,9 +178,11 @@ void ClassicVrmlReader::parseSceneBody(VrmlTokenizer &tok,
     if (t.isWord("ROUTE")) {
       parseRoute(tok, scene);
     } else if (t.isWord("PROTO")) {
-      parseProto(tok, scene);
+      auto decl = parseProto(tok, scene);
+      if (currentProtoBody) currentProtoBody->recordProto(decl);
     } else if (t.isWord("EXTERNPROTO")) {
-      parseExternProto(tok, scene);
+      auto decl = parseExternProto(tok, scene);
+      if (currentProtoBody) currentProtoBody->recordExternProto(decl);
     } else if (t.isWord("IMPORT")) {
       parseImport(tok, scene);
     } else if (t.isWord("EXPORT")) {
@@ -189,10 +191,17 @@ void ClassicVrmlReader::parseSceneBody(VrmlTokenizer &tok,
       // A node statement (DEF/USE/<TypeName>). A proto-instance is detected
       // inside parseNode by checking the scene proto table first. At scene
       // root the parent is null (Scene root) and the parent field is empty.
+      const auto instanceCount = currentProtoBody
+          ? currentProtoBody->nestedInstances.size() : 0;
       auto node = parseNode(tok, scene, currentProtoBody,
                             /*parentNode=*/nullptr, /*parentField=*/"");
-      if (node)
+      if (node) {
         scene.addRootNode(node);
+        if (currentProtoBody) currentProtoBody->recordNode(node);
+      } else if (currentProtoBody &&
+                 currentProtoBody->nestedInstances.size() > instanceCount) {
+        currentProtoBody->recordInstance(instanceCount);
+      }
     }
   }
 }
@@ -221,21 +230,38 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   // not a factory node. Check the proto table BEFORE the factory (under the
   // raw name; proto names are user-defined and never go through the dialect).
   if (scene.findProto(rawTypeName) || findExternProto(scene, rawTypeName)) {
-    // Proto instances are carried as data on the scene, not inserted into the
-    // node graph (the model has no node wrapper for them yet). Parse and skip
-    // the slot for the parent; the instance is recorded for round-tripping.
-    // Record the just-appended instance's placement (parent node + the
-    // containerField slot it filled) so PROTO expansion can splice it back.
+    // Retain the structural instance for expansion and round-tripping, and
+    // return a template node for its exact authored graph slot outside a
+    // PROTO body. Record its parent and containerField for expansion.
     parseProtoInstance(tok, scene, def, rawTypeName);
     if (!scene.protoInstances.empty()) {
+      if (capturingProtoFieldValue_) {
+        auto inst = std::move(scene.protoInstances.back());
+        scene.protoInstances.pop_back();
+        auto node = std::make_shared<runtime::ProtoInstanceTemplate>(
+            std::move(inst));
+        build::defineDef(scene, node->getDEF(), node);
+        return node;
+      }
       scene.protoInstances.back().parent = parentNode;
       scene.protoInstances.back().parentField = parentField;
+      if (!currentProtoBody) {
+        auto node = std::make_shared<runtime::ProtoInstanceTemplate>(
+            scene.protoInstances.back());
+        scene.protoInstances.back().placementTemplate = node;
+        build::defineDef(scene, def, node);
+        return node;
+      }
       if (currentProtoBody) {
         // Inside a PROTO body: this instance belongs to the body template, not
         // the flat scene list — move it so it expands per outer instantiation.
         currentProtoBody->nestedInstances.push_back(
             std::move(scene.protoInstances.back()));
         scene.protoInstances.pop_back();
+        if (parentNode)
+          currentProtoBody->recordChildInstance(
+              parentNode, parentField,
+              currentProtoBody->nestedInstances.size() - 1);
       }
     }
     return nullptr;
@@ -391,11 +417,15 @@ void ClassicVrmlReader::parseNodeBody(
       continue;
     }
     if (t.isWord("PROTO")) {
-      parseProto(tok, scene);
+      auto decl = parseProto(tok, scene);
+      if (currentProtoBody && nodeShared)
+        currentProtoBody->recordChildProto(nodeShared, decl);
       continue;
     }
     if (t.isWord("EXTERNPROTO")) {
-      parseExternProto(tok, scene);
+      auto decl = parseExternProto(tok, scene);
+      if (currentProtoBody && nodeShared)
+        currentProtoBody->recordChildExternProto(nodeShared, decl);
       continue;
     }
 
@@ -450,13 +480,15 @@ void ClassicVrmlReader::parseNodeBody(
       // Enum: exactly one token, routed through setEnumString (never
       // parseValue). MFEnum bracketed lists are rare; collect a single token
       // unless a '[' run is present.
-      applyEnumField(tok, node, *f);
+      if (applyEnumField(tok, node, *f) && nodeShared)
+        scene.authoredScalarFields.record(nodeShared, f->x3dName);
       continue;
     }
     // Value field: gather the value tokens, hand the wire string to
     // parseValue + set (read-only fields skipped by applyField).
     std::string wire = build::collectFieldValue(tok, f->type);
-    build::applyField(node, canonicalName, wire);
+    if (build::applyField(node, canonicalName, wire) && nodeShared)
+      scene.authoredScalarFields.record(nodeShared, f->x3dName);
   }
 }
 
@@ -484,11 +516,14 @@ void ClassicVrmlReader::applyNodeField(
     // An inline EXTERNPROTO/PROTO declaration (or ROUTE) may precede the node
     // value in this field slot (corpus: `geometry EXTERNPROTO X[...][url] X
     // {...}`). Parse those declarations in place, then capture the node.
-    if (!drainLeadingDeclarations(tok, scene))
+    if (!drainLeadingDeclarations(tok, scene, currentProtoBody, parentShared))
       return;
     auto child = parseNode(tok, scene, currentProtoBody, parentShared, slot);
-    if (child)
+    if (child) {
       build::attachChild(parent, slot, child, &scene);
+      if (currentProtoBody && parentShared)
+        currentProtoBody->recordChildNode(parentShared, slot, child);
+    }
     return;
   }
   // MFNode: `[ node* ]` (or, for resilience, a single bare node).
@@ -502,25 +537,31 @@ void ClassicVrmlReader::applyNodeField(
       // Tolerate embedded statements (ROUTE/PROTO/...), a stray `}`, or a raw
       // scalar where a node type name is expected — skip-and-recover instead
       // of throwing at expectWord("node type name").
-      if (skipNonNodeListItem(tok, scene))
+      if (skipNonNodeListItem(tok, scene, currentProtoBody, parentShared))
         continue;
       auto child = parseNode(tok, scene, currentProtoBody, parentShared, slot);
-      if (child)
+      if (child) {
         build::attachChild(parent, slot, child, &scene);
+        if (currentProtoBody && parentShared)
+          currentProtoBody->recordChildNode(parentShared, slot, child);
+      }
     }
     expectPunct(tok, ']', "MFNode list close");
   } else if (!tok.peek().isPunct('}') && !tok.peek().isPunct(']')) {
     // A single bare node value. Guard against a raw scalar / stray token and
     // drain any inline declarations preceding the node.
-    if (!drainLeadingDeclarations(tok, scene))
+    if (!drainLeadingDeclarations(tok, scene, currentProtoBody, parentShared))
       return;
     auto child = parseNode(tok, scene, currentProtoBody, parentShared, slot);
-    if (child)
+    if (child) {
       build::attachChild(parent, slot, child, &scene);
+      if (currentProtoBody && parentShared)
+        currentProtoBody->recordChildNode(parentShared, slot, child);
+    }
   }
 }
 
-void ClassicVrmlReader::applyEnumField(VrmlTokenizer &tok, X3DNode &node,
+bool ClassicVrmlReader::applyEnumField(VrmlTokenizer &tok, X3DNode &node,
                                        const FieldInfo &f) {
   std::string wire;
   if (tok.peek().isPunct('[')) {
@@ -535,8 +576,7 @@ void ClassicVrmlReader::applyEnumField(VrmlTokenizer &tok, X3DNode &node,
   } else {
     wire = tok.next().text;
   }
-  if (f.setEnumString)
-    f.setEnumString(node, x3d::codec::stripEnumQuotes(wire)); // AUD-D
+  return build::applyField(node, f.x3dName, wire);
 }
 
 void ClassicVrmlReader::parseRoute(VrmlTokenizer &tok, runtime::Scene &scene) {
@@ -633,31 +673,39 @@ void ClassicVrmlReader::parseExport(VrmlTokenizer &tok, runtime::Scene &scene) {
   scene.exports.push_back(std::move(exp));
 }
 
-void ClassicVrmlReader::parseProto(VrmlTokenizer &tok, runtime::Scene &scene) {
+std::shared_ptr<runtime::ProtoDeclaration>
+ClassicVrmlReader::parseProto(VrmlTokenizer &tok, runtime::Scene &scene) {
+  struct CaptureScope {
+    bool &flag;
+    bool previous;
+    explicit CaptureScope(bool &f) : flag(f), previous(f) { flag = false; }
+    ~CaptureScope() { flag = previous; }
+  } capture(capturingProtoFieldValue_);
   tok.next(); // PROTO
   auto decl = std::make_shared<runtime::ProtoDeclaration>();
   decl->name = expectWord(tok, "PROTO name");
-  expectPunct(tok, '[', "PROTO interface open");
-  decl->interface = parseInterface(tok, /*allowDefaults=*/true);
-  expectPunct(tok, ']', "PROTO interface close");
-  expectPunct(tok, '{', "PROTO body open");
-  // The proto body is a nested scene-body in a fresh DEF scope. Parse into a
-  // local scene, then attach its nodes/routes to the declaration. Pass
-  // `&decl->body` as the currentProtoBody so `field IS protoField` statements
-  // deep in the body record IsConnections directly on it (Task 8).
   runtime::Scene local;
-  // Inherit outer-scope proto declarations so a nested ProtoInstance can
-  // look up a previously-declared proto (e.g. `Leaf` inside `Wrap`'s body).
   local.protoDeclarations = scene.protoDeclarations;
   local.externProtoDeclarations = scene.externProtoDeclarations;
+  expectPunct(tok, '[', "PROTO interface open");
+  decl->interface = parseInterface(tok, /*allowDefaults=*/true,
+                                    &local, &decl->body);
+  expectPunct(tok, ']', "PROTO interface close");
+  expectPunct(tok, '{', "PROTO body open");
+  // Continue in the interface's DEF scope. Pass
+  // `&decl->body` as the currentProtoBody so `field IS protoField` statements
+  // deep in the body record IsConnections directly on it (Task 8).
   parseSceneBody(tok, local, /*inProto=*/true, &decl->body);
   expectPunct(tok, '}', "PROTO body close");
   decl->body.nodes = std::move(local.rootNodes);
   decl->body.routes = std::move(local.routes);
-  scene.protoDeclarations.push_back(decl);
+  decl->authoredScalarFields = std::move(local.authoredScalarFields);
+  scene.declareProto(decl);
+  return decl;
 }
 
-void ClassicVrmlReader::parseExternProto(VrmlTokenizer &tok,
+std::shared_ptr<runtime::ExternProtoDeclaration>
+ClassicVrmlReader::parseExternProto(VrmlTokenizer &tok,
                                          runtime::Scene &scene) {
   tok.next(); // EXTERNPROTO
   auto decl = std::make_shared<runtime::ExternProtoDeclaration>();
@@ -674,11 +722,14 @@ void ClassicVrmlReader::parseExternProto(VrmlTokenizer &tok,
   } else {
     decl->url.push_back(expectString(tok, "EXTERNPROTO url"));
   }
-  scene.externProtoDeclarations.push_back(decl);
+  scene.declareExternProto(decl);
+  return decl;
 }
 
 std::vector<runtime::ProtoField>
-ClassicVrmlReader::parseInterface(VrmlTokenizer &tok, bool allowDefaults) {
+ClassicVrmlReader::parseInterface(
+    VrmlTokenizer &tok, bool allowDefaults,
+    runtime::Scene *scope, runtime::ProtoBody *body) {
   std::vector<runtime::ProtoField> out;
   while (!tok.atEnd() && !tok.peek().isPunct(']')) {
     std::string accessTok = expectWord(tok, "interface accessType");
@@ -695,9 +746,7 @@ ClassicVrmlReader::parseInterface(VrmlTokenizer &tok, bool allowDefaults) {
     if (allowDefaults && !isEvent && hasDefaultValueAhead(tok)) {
       if (field.type == X3DFieldType::SFNode ||
           field.type == X3DFieldType::MFNode) {
-        // SFNode default node / MFNode list. Parsed against a throwaway scope
-        // (proto interface defaults do not share the document DEF table).
-        captureNodeDefault(tok, field);
+        captureNodeDefault(tok, field, scope, body);
       } else if (field.type == X3DFieldType::SFEnum ||
                  field.type == X3DFieldType::MFEnum) {
         // Enum default is a bare token (no concrete enum type at this level).
@@ -858,20 +907,23 @@ bool ClassicVrmlReader::nextIsNodeValue(VrmlTokenizer &tok) {
   return t.kind == VrmlToken::Kind::Identifier && tok.peek2().isPunct('{');
 }
 
-bool ClassicVrmlReader::skipNonNodeListItem(VrmlTokenizer &tok,
-                                            runtime::Scene &scene) {
+bool ClassicVrmlReader::skipNonNodeListItem(
+    VrmlTokenizer &tok, runtime::Scene &scene, runtime::ProtoBody *body,
+    const std::shared_ptr<X3DNode> &parent) {
   const VrmlToken &t = tok.peek();
-  // Embedded statements are valid inside node bodies/lists; handle in place.
+  // Handle node-body statements here; also accept them during lenient list recovery.
   if (t.isWord("ROUTE")) {
     parseRoute(tok, scene);
     return true;
   }
   if (t.isWord("PROTO")) {
-    parseProto(tok, scene);
+    auto decl = parseProto(tok, scene);
+    if (body && parent) body->recordChildProto(parent, decl);
     return true;
   }
   if (t.isWord("EXTERNPROTO")) {
-    parseExternProto(tok, scene);
+    auto decl = parseExternProto(tok, scene);
+    if (body && parent) body->recordChildExternProto(parent, decl);
     return true;
   }
   if (t.isWord("IMPORT")) {
@@ -903,9 +955,10 @@ bool ClassicVrmlReader::skipNonNodeListItem(VrmlTokenizer &tok,
   return false; // peek() begins a real node
 }
 
-bool ClassicVrmlReader::drainLeadingDeclarations(VrmlTokenizer &tok,
-                                                 runtime::Scene &scene) {
-  while (skipNonNodeListItem(tok, scene)) {
+bool ClassicVrmlReader::drainLeadingDeclarations(
+    VrmlTokenizer &tok, runtime::Scene &scene, runtime::ProtoBody *body,
+    const std::shared_ptr<X3DNode> &parent) {
+  while (skipNonNodeListItem(tok, scene, body, parent)) {
     if (tok.atEnd() || tok.peek().isPunct('}') || tok.peek().isPunct(']'))
       return false;
   }
@@ -998,8 +1051,33 @@ void ClassicVrmlReader::skipRestOfBraceBlock(VrmlTokenizer &tok) {
 }
 
 void ClassicVrmlReader::captureNodeDefault(VrmlTokenizer &tok,
-                                           runtime::ProtoField &field) {
+                                           runtime::ProtoField &field,
+                                           runtime::Scene *scope, runtime::ProtoBody *body) {
   runtime::Scene throwaway;
+  runtime::Scene &local = scope ? *scope : throwaway;
+  auto parseDefaultNode = [&]() {
+    const auto count = body ? body->nestedInstances.size() : 0;
+    const auto sceneCount = local.protoInstances.size();
+    auto node = parseNode(tok, local, body);
+    if (!node && body && body->nestedInstances.size() == count + 1 &&
+        body->nestedInstances.back().parent.expired()) {
+      auto inst = std::move(body->nestedInstances.back());
+      body->nestedInstances.pop_back();
+      auto wrapper = std::make_shared<runtime::ProtoInstanceTemplate>(
+          std::move(inst));
+      build::defineDef(local, wrapper->getDEF(), wrapper);
+      return std::shared_ptr<X3DNode>(std::move(wrapper));
+    }
+    if (!node && local.protoInstances.size() == sceneCount + 1) {
+      auto inst = std::move(local.protoInstances.back());
+      local.protoInstances.pop_back();
+      auto wrapper = std::make_shared<runtime::ProtoInstanceTemplate>(
+          std::move(inst));
+      build::defineDef(local, wrapper->getDEF(), wrapper);
+      return std::shared_ptr<X3DNode>(std::move(wrapper));
+    }
+    return node;
+  };
   if (field.type == X3DFieldType::SFNode) {
     if (tok.peek().isWord("NULL")) {
       tok.next();
@@ -1012,9 +1090,9 @@ void ClassicVrmlReader::captureNodeDefault(VrmlTokenizer &tok,
       skipFieldValue(tok);
       return;
     }
-    if (!drainLeadingDeclarations(tok, throwaway))
+    if (!drainLeadingDeclarations(tok, local, body))
       return;
-    auto n = parseNode(tok, throwaway);
+    auto n = parseDefaultNode();
     if (n)
       field.nodeDefault.push_back(n);
     return;
@@ -1027,17 +1105,17 @@ void ClassicVrmlReader::captureNodeDefault(VrmlTokenizer &tok,
         tok.next();
         continue;
       }
-      if (skipNonNodeListItem(tok, throwaway))
+      if (skipNonNodeListItem(tok, local, body))
         continue;
-      auto n = parseNode(tok, throwaway);
+      auto n = parseDefaultNode();
       if (n)
         field.nodeDefault.push_back(n);
     }
     expectPunct(tok, ']', "MFNode default close");
   } else if (!tok.peek().isPunct('}') && !tok.peek().isPunct(']')) {
-    if (!drainLeadingDeclarations(tok, throwaway))
+    if (!drainLeadingDeclarations(tok, local, body))
       return;
-    auto n = parseNode(tok, throwaway);
+    auto n = parseDefaultNode();
     if (n)
       field.nodeDefault.push_back(n);
   }
@@ -1047,6 +1125,12 @@ void ClassicVrmlReader::captureInstanceNodeValue(VrmlTokenizer &tok,
                                                  runtime::Scene &scene,
                                                  runtime::ProtoFieldValue &fv,
                                                  X3DFieldType ty) {
+  struct CaptureScope {
+    bool &flag;
+    bool previous;
+    explicit CaptureScope(bool &f) : flag(f), previous(f) { flag = true; }
+    ~CaptureScope() { flag = previous; }
+  } capture(capturingProtoFieldValue_);
   if (ty == X3DFieldType::SFNode) {
     if (tok.peek().isWord("NULL")) {
       tok.next();
