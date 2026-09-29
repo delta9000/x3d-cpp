@@ -232,6 +232,9 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/slerp_normal_test.cpp")
     target_link_libraries(x3d_events_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
+    if(MSVC)
+        target_compile_options(x3d_events_tests PRIVATE /bigobj)
+    endif()
     target_include_directories(x3d_events_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
     add_test(NAME x3d_events_tests COMMAND x3d_events_tests)
