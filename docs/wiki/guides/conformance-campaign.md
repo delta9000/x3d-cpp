@@ -69,16 +69,19 @@ The view generator (`scripts/conformance_view.py`) joins two categories:
 - **Judgments** (does it behave per ISO prose? severity? status?) live exclusively in
   `docs/conformance/findings.yaml`. Human knowledge; requires human editing.
 
-A behavioral node with no System wired reads `✗ inert`. Wired with an open finding reads
-`◑ partial`. Wired and clean reads `✓`. A finding that references a node or interface the
-code no longer has is flagged as stale and fails the gate — catches renaming accidents.
+A behavioral node with detected System wiring and an open finding reads `◑ partial`.
+An explicit open finding can mark it `✗ inert`; otherwise it remains `? unverified`.
+A finding that references a node or interface the code no longer has is flagged as
+stale and fails the gate.
 
 ### The three columns in the component matrix
 
 The `INDEX.md` matrix shows three conformance dimensions per component:
 
 - **Extract** — `extractable/total geometry nodes` (e.g. `7/7`, `0/8`, `—` for non-geometry)
-- **Behaves** — rollup of behavioral nodes: `3✓ 1◑ 2✗` (conformant/partial/inert)
+- **Behaves** — rollup of behavioral nodes: `3? 1◑ 2✗` (unverified/partial/inert).
+  Static wiring and closed findings do not establish full conformance. Inertness
+  requires an explicit open finding; missing wiring detection remains unverified.
 - **Open gaps** — severity summary: `1 crit, 2 maj` for that component's open findings
 
 ---

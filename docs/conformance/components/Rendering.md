@@ -4,7 +4,7 @@ _Generated. Levels 1,2,3,5 · 15 nodes · profiles: Interchange, Interactive, Im
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ClipPlane | 5 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode |
+| ClipPlane | 5 | ✓ | — | — | REQ-CLIP, ROUTE-IO-ALIAS | X3DChildNode |
 | Color | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DColorNode, X3DGeometricPropertyNode |
 | ColorRGBA | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DColorNode, X3DGeometricPropertyNode |
 | Coordinate | 1 | ✓ | — | — | CONTAINERFIELD-FALSEPOS, ROUTE-IO-ALIAS | X3DCoordinateNode, X3DGeometricPropertyNode |
@@ -22,6 +22,8 @@ _Generated. Levels 1,2,3,5 · 15 nodes · profiles: Interchange, Interactive, Im
 
 ## Findings
 
+- **REQ-CLIP** [major/OPEN] — §11.4.1; F.5: ClipPlane equations and enabled state never reach extraction or either reference renderer.
+  - The only production runtime references beyond bindings are reserved ShaderUniformVocabulary names. RenderItem has no clip-plane state and SceneExtractor does not collect planes. Acceptance: a plane clips the specified half-space, responds to enabled/plane events and transforms, and a host supports the Annex F minimum of six planes. Camera near/far clipping is a different operation.
 - **EXT-002** [major/CLOSED `fe4d730`] — §11.3.2, 11.4.13, 11.4.15: With colorPerVertex/normalPerVertex=FALSE, fan/strip sets index color/normal per TRIANGLE (faceNo++ per triangle) instead of per fan/strip — wrong colors/normals when a fan/strip has >1 triangle.
   - Increment faceNo per fan/strip primitive (per fanCount/stripCount entry, per -1 run for indexed), not per emitted triangle.
 - **CONTAINERFIELD-FALSEPOS** [minor/CLOSED] — §ISO 19776-1 (containerField): CONTAINERFIELD_MISMATCH warns whenever containerField != the child's own default, false-positiving on legal non-default overrides (e.g. <NurbsCurve><Coordinate containerField='controlPoint'/></NurbsCurve>).

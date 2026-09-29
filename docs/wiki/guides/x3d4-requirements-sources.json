@@ -1,0 +1,288 @@
+{
+  "retrieved": "2026-09-28",
+  "baseline": "a8aefc5",
+  "standard": "ISO/IEC 19775-1:2023 (X3D 4.0)",
+  "uom": {
+    "path": "src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml",
+    "sha256": "0f1d9ede593b159469936470c7404629b27b4eb8ccbfef3d07dbb1f27df6443f",
+    "concrete_nodes": 260,
+    "field_entries_including_inherited": 4191
+  },
+  "note": "HTML bodies are not committed. The failed lowercase TextureProjection link is retained as provenance; the correctly capitalized chapter was retrieved. A download is not a claim of complete clause-level behavioral verification.",
+  "sources": [
+    {
+      "path": "Architecture.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/Architecture.html",
+      "sha256": "bd3be91b57c33f4a44810e3a76962d754dfeb5aca5c0fe637f7777f328d21420",
+      "bytes": 23421
+    },
+    {
+      "path": "components/CADGeometry.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html",
+      "sha256": "8e66418ef54a2a785fcd84c16c398b9dafa80aaefe3107775f50415978117c26",
+      "bytes": 23408
+    },
+    {
+      "path": "components/core.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html",
+      "sha256": "af3797776b77e43fe6c1336e91e4bec2162b524c47439f91346da92d09d0e226",
+      "bytes": 46288
+    },
+    {
+      "path": "components/dis.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html",
+      "sha256": "e2df0c272073aa1474eea83eea7665aefd6edf38be4b1f6d5c257fb670ed9642",
+      "bytes": 65141
+    },
+    {
+      "path": "components/environmentalEffects.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html",
+      "sha256": "700db9e8742290fbb8f02edd180bbf69024a74222fec945b6a805a8811a852be",
+      "bytes": 30815
+    },
+    {
+      "path": "components/environmentalSensor.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalSensor.html",
+      "sha256": "4424f2c94a67aeae1d3bd22d59da9876e656b0945b78bc84928ae5aee4381237",
+      "bytes": 24599
+    },
+    {
+      "path": "components/environmentalTexturing.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html",
+      "sha256": "746502033aa7f31f4229be74ca723c6d9283f052ffce328edccdda19aa13dd03",
+      "bytes": 14712
+    },
+    {
+      "path": "components/eventUtilities.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html",
+      "sha256": "86dab48f0999884bafa657a36639bbc0b3ac351f1888be9adc5dc6ae163cbf62",
+      "bytes": 21238
+    },
+    {
+      "path": "components/followers.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/followers.html",
+      "sha256": "707d84710abccb4cbf83d85f15aed5a3e227423a95f33b404cab38d4038a2938",
+      "bytes": 52993
+    },
+    {
+      "path": "components/geometry2D.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html",
+      "sha256": "2725cbc8e545c00be169325fea2789fd5dbf5ff824aeee94171e10c4c8837327",
+      "bytes": 22409
+    },
+    {
+      "path": "components/geometry3D.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html",
+      "sha256": "072cca99b16b1bffea67788bd13a3a2cac404d994eca7d9baceba845a4f9591c",
+      "bytes": 55488
+    },
+    {
+      "path": "components/geospatial.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html",
+      "sha256": "05a6d56851ef9396cb2ca6eb23cd3d6e804255571984b379160e9e35083370c1",
+      "bytes": 69807
+    },
+    {
+      "path": "components/grouping.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html",
+      "sha256": "3efdd797f80635ff51a9d1dfd639ef7adf464a858b3c9ba851def889111d3dab",
+      "bytes": 24308
+    },
+    {
+      "path": "components/hanim.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html",
+      "sha256": "d442477b96d7f13090d29f2e8adfd1808a7f429965937db7035af9b4932d189d",
+      "bytes": 21170
+    },
+    {
+      "path": "components/interpolators.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html",
+      "sha256": "bb79c0b0ce213d1e1debdad7bacc21f441d9bcb76ec8f8c0b159e9236cc6776c",
+      "bytes": 46300
+    },
+    {
+      "path": "components/keyDeviceSensor.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/keyDeviceSensor.html",
+      "sha256": "6da412ce718a3c28ae909b7f8f16e8762661cafe55ba993318c004d09e5d9c8c",
+      "bytes": 13033
+    },
+    {
+      "path": "components/layering.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layering.html",
+      "sha256": "01d9619a47c4f0fc42000194fb2eba7e2f5d63b262385e0f5abc7467854bc4b8",
+      "bytes": 13568
+    },
+    {
+      "path": "components/layout.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layout.html",
+      "sha256": "7a343fcf5c519532177fad2aaa01d76ca6c7188988277748e09c632e789e794c",
+      "bytes": 22490
+    },
+    {
+      "path": "components/lighting.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/lighting.html",
+      "sha256": "e7975eb8a722fc61df809b86b81b6259989d15006d1efd13b3224375151c6b12",
+      "bytes": 53543
+    },
+    {
+      "path": "components/navigation.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html",
+      "sha256": "d6e46f36dc52a14299357c91c3d2695fc2aefee1b74c64a8afa4314345bb15c8",
+      "bytes": 78522
+    },
+    {
+      "path": "components/networking.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/networking.html",
+      "sha256": "0e8ea2036b1b1f2fa9aec307d4059a7884bdb56d96e4e60f4d193a1e99523d80",
+      "bytes": 42847
+    },
+    {
+      "path": "components/nurbs.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html",
+      "sha256": "255f86b6a475d549de1d6f495d41fa9166f9bc88f797415163bb83d55d5a6933",
+      "bytes": 44353
+    },
+    {
+      "path": "components/particleSystems.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html",
+      "sha256": "f9a527c7cfc01abb57c4dd0c2c17e88a7856470a699939606bb6fefb5d27a164",
+      "bytes": 38298
+    },
+    {
+      "path": "components/picking.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html",
+      "sha256": "a1c763874c1e3ea9706a2129af4f42bbbdcd8e1288891f643d76ced4c7ec0a28",
+      "bytes": 26682
+    },
+    {
+      "path": "components/pointingDeviceSensor.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html",
+      "sha256": "ed151b8232edde7043fb70391a222fff77fd5ce2622baedce772b0469e1a43f7",
+      "bytes": 38243
+    },
+    {
+      "path": "components/rendering.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html",
+      "sha256": "38312379f6b60eb02e663ee146985be958c54a4f1002d6544927524e99728a1a",
+      "bytes": 61819
+    },
+    {
+      "path": "components/rigidBodyPhysics.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html",
+      "sha256": "55d7b73e58a9185b8e2ee91543f9f16580661b5ee462a58302b03d8876929417",
+      "bytes": 73732
+    },
+    {
+      "path": "components/scripting.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/scripting.html",
+      "sha256": "828cd04682ac695a8138a679c6cb96c0234ae29d1fdae25c95da950e55b5dc55",
+      "bytes": 22233
+    },
+    {
+      "path": "components/shaders.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html",
+      "sha256": "c660d61554056c5ce8d52714a6fc95cf3a47dc85849788f567857bbe3ca59903",
+      "bytes": 37164
+    },
+    {
+      "path": "components/shape.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html",
+      "sha256": "600474c5424652262e88581ca39e70239ef7f5325949ce692945753b3dec0324",
+      "bytes": 88224
+    },
+    {
+      "path": "components/sound.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html",
+      "sha256": "a6c35ce84233abbfc0612001ccc83a84397f1bb175f2b017f2b15bd2d66e3b54",
+      "bytes": 96272
+    },
+    {
+      "path": "components/text.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/text.html",
+      "sha256": "6e57a4a2cf8410d64afe286d3676135a387829f6f6808d65b3065ebd58331f3a",
+      "bytes": 30346
+    },
+    {
+      "path": "components/texture3D.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html",
+      "sha256": "2c3fa89f96666483d56f30260b808d2c57265b6ff3fc1f72d5afbf697c92ed4b",
+      "bytes": 20673
+    },
+    {
+      "path": "components/textureprojection.html",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "path": "components/texturing.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html",
+      "sha256": "b7bc084380259b22c5b8d6ec1b8060463bcaf43e7e8dd51dd29b1faed806c4f4",
+      "bytes": 69940
+    },
+    {
+      "path": "components/time.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/time.html",
+      "sha256": "5b5759c029c6968530dd96b5b386ea016189bce690caaf121b2cfbc8aa7d3c69",
+      "bytes": 26864
+    },
+    {
+      "path": "components/volume.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html",
+      "sha256": "1b2f1c6106817d0cb36d0d7ec5d0d72ddb0faad81fc94a070e9658e91e19ec29",
+      "bytes": 80737
+    },
+    {
+      "path": "concepts.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/concepts.html",
+      "sha256": "e1332d459801fa526186838d2738bdd421d43f24c70dff5280d4426942436ac7",
+      "bytes": 112551
+    },
+    {
+      "path": "conformance.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/conformance.html",
+      "sha256": "59c848a918e276d710b1ed9c5b634ecbd275c5f90785c534093d2697ac43483b",
+      "bytes": 9433
+    },
+    {
+      "path": "fullProfile.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fullProfile.html",
+      "sha256": "b0d84826b260a99f3cbd86603b44704a041e85ef5a4a5eb851e1d8fbf1e6794f",
+      "bytes": 44843
+    },
+    {
+      "path": "immersive.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/immersive.html",
+      "sha256": "51ef48249577e47099105b29a8424e1506842f1e1d35aec3c1cda4ec8c5f016a",
+      "bytes": 23322
+    },
+    {
+      "path": "interactive.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/interactive.html",
+      "sha256": "dbc3b438332c94df389ed7d9f1e1ae376eee86c18ec1cb9063b1923578ffdb98",
+      "bytes": 23402
+    },
+    {
+      "path": "interchange.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/interchange.html",
+      "sha256": "b794d6e0901ad53268f1742c4dead1deb8fc2c90edc36fcfb38b0a39a411aa31",
+      "bytes": 20263
+    },
+    {
+      "path": "components/textureProjection.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/textureProjection.html",
+      "sha256": "a6e4ca490278a5c310926a2d91ac88f5d4e5817bf15ef43536c32f4ce93bb380",
+      "bytes": 19057
+    },
+    {
+      "path": "shaders_glsl.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/shaders_glsl.html",
+      "sha256": "23bed38373e81ad30af818f458a9b6b0de35774f11b33c2db98383a67fea2e38",
+      "bytes": 12387
+    },
+    {
+      "path": "fieldTypes.html",
+      "url": "https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fieldTypes.html",
+      "sha256": "9d0a67e184c2e5181cfe87c5f1846660fdbe5383f1b58ad6e71d3a5ea8bdd2be",
+      "bytes": 24243
+    }
+  ]
+}

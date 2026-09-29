@@ -8,7 +8,7 @@ _Generated. Levels 1,2 · 14 nodes · profiles: Full._
 | CollidableOffset | 1 | ✓ | — | — | CONF-RBP-GEOM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
 | CollidableShape | 1 | ✓ | — | — | CONF-RBP-GEOM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
 | CollisionCollection | 1 | ✓ | — | — | CONF-RBP, CONF-RBP-FRICTION-BOUNCE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| CollisionSensor | 1 | ✓ | — | ✓ | CONF-NAV-COLLISION, CONF-RBP, ROUTE-IO-ALIAS | X3DChildNode, X3DSensorNode |
+| CollisionSensor | 1 | ✓ | — | ? | CONF-NAV-COLLISION, CONF-RBP, ROUTE-IO-ALIAS | X3DChildNode, X3DSensorNode |
 | CollisionSpace | 1 | ✓ | — | — | CONF-RBP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DNBodyCollisionSpaceNode |
 | Contact | 2 | ✓ | — | — | CONF-RBP, ROUTE-IO-ALIAS |  |
 | DoubleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |

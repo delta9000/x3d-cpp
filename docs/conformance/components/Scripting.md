@@ -4,10 +4,12 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Script | 1 | ✓ | — | ✓ | CONF-CRITIC-2, DO-CASCADE, ENC-CDATA-SCRIPT, ROUTE-IO-ALIAS, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCRIPT-EVENTIN, SCRIPT-HOSTILE-VALUE-ABORT, SCRIPT-OUTPUTONLY-REEMIT, SCRIPT-RUNAWAY-HANG, SCRIPT-SAI-ADDROUTE-VALIDATE, SCRIPT-SFNODE-REFERENCE, SCRIPT-UNBOUNDED-MEMORY | X3DChildNode, X3DScriptNode, X3DUrlObject |
+| Script | 1 | ✓ | — | ◑ | CONF-CRITIC-2, DO-CASCADE, ENC-CDATA-SCRIPT, REQ-FTP, REQ-JAVA, ROUTE-IO-ALIAS, SCR-001, SCR-002, SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCRIPT-EVENTIN, SCRIPT-HOSTILE-VALUE-ABORT, SCRIPT-OUTPUTONLY-REEMIT, SCRIPT-RUNAWAY-HANG, SCRIPT-SAI-ADDROUTE-VALIDATE, SCRIPT-SFNODE-REFERENCE, SCRIPT-UNBOUNDED-MEMORY | X3DChildNode, X3DScriptNode, X3DUrlObject |
 
 ## Findings
 
+- **REQ-JAVA** [major/DEFERRED] — §F.5 Table F.3 (Script); 29.2.8; 29.4.1: The published Full profile requires Java scripting in addition to ECMAScript; the shipped engines implement ECMAScript only.
+  - EcmaScriptBackend and QuickJsBackend are the two concrete ScriptEngine implementations. An external engine could fill this seam, but no Java adapter or language-selection configuration is supplied or tested. The component's general allowance to choose languages must be read with the Full-profile requirement. Acceptance: a declared Full host runs Java Script fixtures with the applicable SAI binding and ordered URL fallback; this does not require adding a JVM dependency to the default SDK.
 - **SCR-001** [major/FIXED `f2fd324`] — §29.2.5: prepareEvents() called exactly once per timestamp before ROUTE processing.
   - SCR-* are behavioral claims about the ScriptEngine seam, not Duktape-specific; the x3d_quickjs_swap test re-verifies they hold identically under the second (QuickJS) backend — SCR conformance is backend-independent. See ADR-0022 / docs/wiki/seam-status.md.
 - **SCR-002** [major/FIXED `ff23503`] — §29.2.3: shutdown() invoked on world unload (~ScriptSystem teardown).

@@ -29,7 +29,7 @@ description = "Install/refresh the project env (incl dev group)."
 run = "uv sync"
 
 [tasks.gen]
-description = "Regenerate the committed C++ bindings (generated_cpp_bindings/) + the UOM-derived profile-fit tables (tools/x3d-cli/*.gen.inc)."
+description = "Regenerate the committed C++ bindings (generated_cpp_bindings/) + the UOM and normative-table profile-fit tables (tools/x3d-cli/*.gen.inc)."
 run = """
 uv run x3d-cpp-gen --out generated_cpp_bindings
 uv run python scripts/gen_profile_tables.py

@@ -46,7 +46,7 @@ Every top-level functional area gets one page. The canonical list follows the ar
 | covered | `subsystems/dirty-bounds-transform.md` | Dirty-tracking + world-transform propagation + bounding volumes | `runtime/scene/DirtyTracker.hpp`, `TransformSystem.hpp`, `BoundsSystem.hpp`, `GeometryBounds.hpp`, `CycleBreaker.hpp` |
 | covered | `subsystems/codecs-writers.md` | Codec writers: XML/VRML/JSON serialization + field-value IO | `runtime/codecs/` (`XmlWriter.hpp`, `VrmlWriter.hpp`, `JsonWriter.hpp`, `FieldValueIO.hpp`, `X3DCodecs.hpp`) |
 | covered | `subsystems/canonical-xml.md` | Canonical XML writer (X3DC14N) | `runtime/codecs/CanonicalXmlWriter.hpp` |
-| covered | `subsystems/parse-readers.md` | Parse frontend: XML/VRML/JSON readers + node builder + version inference | `runtime/parse/` (`XmlReader.hpp`, `Vrml97Reader.hpp`, `ClassicVrmlReader.hpp`, `JsonReader.hpp`, `X3DReader.hpp`, `NodeBuilder.hpp`) |
+| covered | `subsystems/parse-readers.md` | Parse frontend: XML/VRML/JSON readers + node builder + version inference + authored scalar presence | `runtime/parse/` (`XmlReader.hpp`, `Vrml97Reader.hpp`, `ClassicVrmlReader.hpp`, `JsonReader.hpp`, `X3DReader.hpp`, `NodeBuilder.hpp`), `runtime/X3DAuthoredScalarFields.hpp` |
 | covered | `subsystems/proto-expand.md` | PROTO/EXTERNPROTO expansion + IS-connection plumbing | `runtime/X3DProtoExpand.hpp`, `X3DProtoClone.hpp`, `X3DProto.hpp`, `parse/X3DProtoResolver.hpp` |
 | covered | `subsystems/inline-expand.md` | Parse-time Inline expansion (OBJ/glTF→X3D ingestion seam) | `runtime/InlineExpand.hpp`, `X3DImportExport.hpp` |
 | covered | `subsystems/event-cascade.md` | Event cascade: per-tick event propagation, route-loop dedup, timestamp quantum | `runtime/events/X3DEventCascade.hpp`, `X3DEventGraph.hpp`, `X3DFieldAddress.hpp` |
@@ -144,6 +144,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0053-geo-projection-seam.md` | Geospatial coordinates (GD/UTM/GC/WM, 23 ellipsoids, WGS84 geoid option, GeoOrigin) convert through a GeoProjection seam: first-party default backend, optional PROJ backend with a swap-test; ordering, units, Web Mercator and local frames are SDK-side | `runtime/math/GeoProjection.hpp`, `runtime/math/GeoBuiltinProjection.hpp`, `runtime/math/GeoFrame.hpp`, `runtime/scene/GeoNodes.hpp` |
 | covered | `decisions/0054-geolod-tiles-navigation-scale.md` | GeoLOD waits for its requested child tiles before display; GeoViewpoint scales navigation size and visibility from elevation | `runtime/events/InlineRuntimeSystem.hpp`, `runtime/events/NavigationSystem.hpp` |
 | covered | `decisions/0055-hanim-skinning-descriptor.md` | H-Anim skinning: immutable SkinBinding (CSR influences, inverse bind, displacers) + per-tick SkinPose palette; descriptor + palette delta for GPU renderers, reference CPU skinner for everyone else; v2 binding fields or v1 rest pose; no write-back into skinCoord | `runtime/hanim/HAnimSkin.hpp` |
+| covered | `decisions/0056-prototype-instance-default-templates.md` | Declaration-only node templates preserve direct PROTO default identity; expansion materializes selected defaults before IS forwarding | `runtime/X3DProto.hpp`; `runtime/X3DProtoExpand.hpp` |
 
 ## 3. Guides
 

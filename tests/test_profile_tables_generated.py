@@ -1,10 +1,9 @@
-"""Drift guard for the UOM-derived profile-fit tables.
+"""Drift guard for the generated profile-fit tables.
 
-`x3d validate`'s profile tables (tools/x3d-cli/*.gen.inc) are generated from the
-UOM by scripts/gen_profile_tables.py and committed (golden). This test regenerates
-them to a temp dir and asserts the committed copies match — so the tables can never
-silently drift from the UOM (the regression that let the Interchange profile omit
-the Interpolation component, falsely rejecting interpolator scenes).
+`x3d validate`'s profile tables (tools/x3d-cli/*.gen.inc) combine UOM node metadata
+with normative profile levels in docs/conformance/profiles.yaml. This test
+regenerates them to a temp dir and asserts the committed copies match, while pinning
+key profile facts that previously drifted from the published tables.
 """
 
 import subprocess
@@ -46,3 +45,20 @@ def test_interchange_includes_interpolation_and_environmental_effects(tmp_path):
     assert '"Interpolation"' in interchange, "Interchange must include Interpolation"
     assert '"EnvironmentalEffects"' in interchange, \
         "Interchange must include EnvironmentalEffects (Background)"
+
+
+def test_primary_profile_tables_use_published_component_levels(tmp_path):
+    _regenerate(tmp_path)
+    defs = (tmp_path / "profile_defs.gen.inc").read_text()
+    rows = {
+        name: next(line for line in defs.splitlines()
+                   if line.startswith(f"{{sdk::Profile::{name},"))
+        for name in ("Interchange", "Interactive", "Immersive")
+    }
+    assert '"Networking", 1' in rows["Interchange"]
+    assert '"EnvironmentalSensor", 1' in rows["Interactive"]
+    assert '"Navigation", 1' in rows["Interactive"]
+    assert '"EnvironmentalEffects", 1' in rows["Interactive"]
+    assert '"Lighting", 2' in rows["Immersive"]
+    assert '"EnvironmentalEffects", 2' in rows["Immersive"]
+    assert '"CubeMapTexturing"' not in rows["Immersive"]

@@ -7,7 +7,7 @@ _Generated. Levels 1,2,3 · 4 nodes · profiles: Interchange, Interactive, Immer
 | Group | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | StaticGroup | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
 | Switch | 2 | ✓ | — | — | AUD-LGT-2, AUD-PDS-3, ROUTE-IO-ALIAS, SENSOR-SWITCH, SW-DELTA-1 | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| Transform | 1 | ✓ | — | — | ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| Transform | 1 | ✓ | — | — | REQ-UNIT, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 
 ## Findings
 

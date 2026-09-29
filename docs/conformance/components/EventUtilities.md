@@ -4,13 +4,13 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| BooleanFilter | 1 | ✓ | — | ✓ | EUF-1, EUF-4, EUF-5, ROUTE-IO-ALIAS | X3DChildNode |
-| BooleanSequencer | 1 | ✓ | — | ✓ | AUD-SEQ-1, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
-| BooleanToggle | 1 | ✓ | — | ✓ | EUF-2, EUF-5, ROUTE-IO-ALIAS | X3DChildNode |
-| BooleanTrigger | 1 | ✓ | — | ✓ | ROUTE-IO-ALIAS, TRIG-1, TRIG-6 | X3DChildNode, X3DTriggerNode |
-| IntegerSequencer | 1 | ✓ | — | ✓ | AUD-SEQ-1, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
-| IntegerTrigger | 1 | ✓ | — | ✓ | ROUTE-IO-ALIAS, TRIG-2, TRIG-4, TRIG-6 | X3DChildNode, X3DTriggerNode |
-| TimeTrigger | 1 | ✓ | — | ✓ | ROUTE-IO-ALIAS, TRIG-3, TRIG-5, TRIG-6 | X3DChildNode, X3DTriggerNode |
+| BooleanFilter | 1 | ✓ | — | ? | EUF-1, EUF-4, EUF-5, ROUTE-IO-ALIAS | X3DChildNode |
+| BooleanSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
+| BooleanToggle | 1 | ✓ | — | ? | EUF-2, EUF-5, ROUTE-IO-ALIAS | X3DChildNode |
+| BooleanTrigger | 1 | ✓ | — | ? | ROUTE-IO-ALIAS, TRIG-1, TRIG-6 | X3DChildNode, X3DTriggerNode |
+| IntegerSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
+| IntegerTrigger | 1 | ✓ | — | ? | ROUTE-IO-ALIAS, TRIG-2, TRIG-4, TRIG-6 | X3DChildNode, X3DTriggerNode |
+| TimeTrigger | 1 | ✓ | — | ? | ROUTE-IO-ALIAS, TRIG-3, TRIG-5, TRIG-6 | X3DChildNode, X3DTriggerNode |
 
 ## Findings
 

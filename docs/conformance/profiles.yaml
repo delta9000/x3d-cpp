@@ -13,7 +13,7 @@ profiles:
   Interchange:
     Core: 1
     Time: 1
-    Networking: 2
+    Networking: 1
     Grouping: 1
     Rendering: 3
     Shape: 1
@@ -35,9 +35,9 @@ profiles:
     Lighting: 2
     Texturing: 2
     Interpolation: 2
-    Navigation: 2
-    EnvironmentalEffects: 2
-    EnvironmentalSensor: 2
+    Navigation: 1
+    EnvironmentalEffects: 1
+    EnvironmentalSensor: 1
     KeyDeviceSensor: 1
     PointingDeviceSensor: 1
     EventUtilities: 1
@@ -51,12 +51,11 @@ profiles:
     Shape: 2
     Geometry3D: 4
     Geometry2D: 1
-    Lighting: 3
+    Lighting: 2
     Texturing: 3
-    CubeMapTexturing: 1
     Interpolation: 2
     Navigation: 2
-    EnvironmentalEffects: 3
+    EnvironmentalEffects: 2
     EnvironmentalSensor: 2
     KeyDeviceSensor: 2
     PointingDeviceSensor: 1

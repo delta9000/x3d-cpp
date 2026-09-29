@@ -4,8 +4,8 @@ _Generated. Levels 1,2 · 2 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| KeySensor | 1 | ✓ | — | ✓ | KDS-1, KDS-10, KDS-2, KDS-3, KDS-4, KDS-5, KDS-6, ROUTE-IO-ALIAS | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
-| StringSensor | 2 | ✓ | — | ✓ | AUD-KDS-1, AUD-KDS-2, KDS-1, KDS-10, KDS-6, KDS-7, KDS-8, KDS-9, ROUTE-IO-ALIAS | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
+| KeySensor | 1 | ✓ | — | ? | KDS-1, KDS-10, KDS-2, KDS-3, KDS-4, KDS-5, KDS-6, ROUTE-IO-ALIAS | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
+| StringSensor | 2 | ✓ | — | ? | AUD-KDS-1, AUD-KDS-2, KDS-1, KDS-10, KDS-6, KDS-7, KDS-8, KDS-9, ROUTE-IO-ALIAS | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
 
 ## Findings
 
