@@ -112,11 +112,33 @@ only when a binding field changes: the humanoid's skin or binding fields, a
 joint's `skinCoordIndex` / `skinCoordWeight`, or the skeleton structure.
 
 CPU consumers call `SceneExtractor::deformedMesh(id)`. It evaluates the pose,
-deforms the source coordinates and maps them to the expanded corners. Authored
-normals are mapped through their normal indices. Otherwise normals are
-regenerated with the geometry's winding and `creaseAngle`. The `cpu_raster`
-example draws skins this way. `poc_renderer` does not consume the descriptor
-yet and draws the bind pose.
+deforms the source coordinates and maps them to the expanded corners. Each
+corner's normal is its bind normal (the authored `skinNormal` /
+`skinBindingNormals` entry through the corner's normal index, else the normal
+the mesh builder generated for the bind pose) skinned through the palette's
+inverse transpose with the influences of the corner's source *coordinate*, so
+`normalIndex` may differ from `coordIndex`. The `cpu_raster` example draws
+skins this way.
+
+`poc_renderer` skins on the GPU with the same math. It uploads each skin item's
+per-corner (offset, count) ranges and its uncapped (joint, weight) influences
+once, as a vertex attribute and a buffer texture. On `updatedSkinPose` it
+evaluates the pose and replaces only the palette buffer; the vertex shaders
+blend positions and inverse-transpose normals. Only skins with Joint displacers
+use `deformedMesh()` instead, refreshing their mesh on pose updates.
+
+Both renderers flip the front face under a negative-determinant world
+transform (`ccw` XOR reflection). Leif and Lily use `ccw=false` under the
+humanoid scale `1 1 -1`.
+
+### Visual verification
+
+Posed archive humanoids (ROUTEs stripped, fixed joint rotations, one fixed
+camera) were rendered in `cpu_raster`, `poc_renderer` and an independent X3D
+browser. Poses agree for JoeKick, Leif, Lily and BoxMan2. The archive files are
+not committed, so this is a manual check; the committed GL regressions are
+`x3d_poc_skin_gl` (GPU skin against precomputed deformed geometry, including a
+five-influence vertex) and `x3d_poc_positional_light_gl`.
 
 ## Motion
 
@@ -170,7 +192,6 @@ because the published 2.0 motion-node page could not be retrieved. Units follow
 - `skeletalConfiguration`, `loa`.
 - The mass properties.
 
-`skinNormal` is assumed to be indexed like `skinCoord`.
 
 ## Tests
 
@@ -180,6 +201,8 @@ because the published 2.0 motion-node page could not be retrieved. Units follow
 - `runtime/extract/tests/scene_extractor_hanim_test.cpp`: skin placement,
   corner remap, pose-only deltas, displacer weights and binding recompiles.
 - `runtime/events/tests/hanim_motion_test.cpp`: motion playback.
+- `examples/poc_renderer/tests/skin_gl_test.py`: llvmpipe image comparisons
+  for a rotated skin and a five-influence skin against ordinary geometry.
 
 Setting `X3D_ARCHIVE_DIR` to the Web3D archive's `examples` directory enables
 the archive smoke cases. These cover BoxMan2, Leif and Gramps skinning (with

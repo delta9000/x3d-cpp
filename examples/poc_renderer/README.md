@@ -23,7 +23,8 @@ configures, compiles, or links any of it.
   (`projection * view * model`, `view = ctx.viewMatrix()`, a PoC perspective
   built from `CameraDesc.fieldOfView`, near/far fit from
   `extractor.sceneWorldBounds()`). Lights are the extractor's world-resolved
-  `LightDesc` directionals plus, per §23.4.4, the bound
+  `LightDesc` directional, point, and spot lights (with per-fragment
+  radius, attenuation, and spot-cone evaluation) plus, per §23.4.4, the bound
   `NavigationInfo` headlight (default true) as an additional camera-space light
   whenever it is on, independent of the scene's own lights.
 - an interactive Dear ImGui diagnostics overlay for frame timing, render-item

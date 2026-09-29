@@ -10,6 +10,24 @@ layout(location = 1) in vec3 aNormal; // present in the shared layout; unused he
 layout(location = 2) in vec4 aColor;
 layout(location = 3) in vec2 aTexCoord; // X3D LOCAL (bottom-left = GL); no flip.
 
+layout(location = 4) in uvec2 aSkinRange;
+uniform bool uSkinEnabled;
+uniform samplerBuffer uInfluences;
+uniform samplerBuffer uPalette;
+
+vec3 skinPosition(vec3 bindPos) {
+    if (!uSkinEnabled || aSkinRange.y == 0u) return bindPos;
+    vec3 result = vec3(0.0);
+    for (uint k = 0u; k < aSkinRange.y; ++k) {
+        vec2 influence = texelFetch(uInfluences, int(aSkinRange.x + k)).rg;
+        int base = int(influence.x) * 7;
+        mat4 matrix = mat4(texelFetch(uPalette, base), texelFetch(uPalette, base + 1),
+                           texelFetch(uPalette, base + 2), texelFetch(uPalette, base + 3));
+        result += influence.y * (matrix * vec4(bindPos, 1.0)).xyz;
+    }
+    return result;
+}
+
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
@@ -28,7 +46,7 @@ out vec3 vPosEye;          // eye-space position (for the §17 fog distance).
 void main() {
     vColor = aColor;
     vTexCoord = aTexCoord;
-    vec4 posEye = uView * uModel * vec4(aPos, 1.0);
+    vec4 posEye = uView * uModel * vec4(skinPosition(aPos), 1.0);
     vPosEye = posEye.xyz;
     float d = length(posEye.xyz);
     float size = (uPointAttenuation.x + uPointAttenuation.y * d +
