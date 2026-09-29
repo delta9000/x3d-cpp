@@ -100,6 +100,7 @@ inline void setInstanceFieldValue(ProtoInstance &inst, ProtoFieldValue &&fv) {
 /// Returns false when a scalar/event field has no supplied value.
 inline bool resolveForwardedValue(const ProtoFieldValue *override_,
                                   const ProtoField &pf, ProtoFieldValue &out) {
+  if (override_) out.sourceUnits = override_->sourceUnits;
   if (pf.type == X3DFieldType::SFNode || pf.type == X3DFieldType::MFNode) {
     if (override_ && override_->value.has_value())
       out.value = override_->value; // mistyped input: let the setter diagnose it
@@ -435,6 +436,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
       if (!proto_detail::resolveForwardedValue(
               outerOverride, *outerPf, forwarded))
         continue;
+      if (!outerOverride) forwarded.sourceUnits = decl->sourceUnits;
       if (!outerOverride && (outerPf->type == X3DFieldType::SFNode ||
                              outerPf->type == X3DFieldType::MFNode))
         forwarded.nodeValue = cloneNodes(forwarded.nodeValue);
@@ -469,6 +471,12 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     }
   } while (foundNewParent);
   decl->authoredScalarFields.copyClonesTo(cloneMap, scene.authoredScalarFields);
+  for (const auto &[source, clone] : cloneMap) {
+    if (!clone) continue;
+    for (const FieldInfo &field : clone->fields())
+      if (scene.authoredScalarFields.contains(clone, field.x3dName))
+        scene.unitFieldSources[clone].try_emplace(field.x3dName, decl->sourceUnits);
+  }
 
   // Set a scalar (non-node) body field from a forwarded interface value. X3D
   // has no enum field type, so a bounded SimpleType the bindings emit as a C++
@@ -529,8 +537,11 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     // keep the read lenient by recording an InterfaceMismatch and moving on.
     try {
       if (eff.value.has_value()) {
-        if (setScalar(fi, cloned, eff.value))
+        if (setScalar(fi, cloned, eff.value)) {
           scene.authoredScalarFields.record(cit->second, is.nodeField);
+          scene.unitFieldSources[cit->second][is.nodeField] =
+              eff.sourceUnits.value_or(override_ ? scene.sourceUnits : decl->sourceUnits);
+        }
       } else if (fi->type == X3DFieldType::SFNode ||
                  fi->type == X3DFieldType::MFNode) {
         if (fi->type == X3DFieldType::SFNode)

@@ -124,6 +124,16 @@ public:
   // raw address or retain a source scene.
   AuthoredScalarFields authoredScalarFields;
 
+  // Runtime normalization is per field and follows shared node identity. Marks
+  // survive repeated builds and separate execution contexts without owning nodes.
+  AuthoredScalarFields normalizedUnitFields;
+
+  // PROTO body clones retain the declaration's units. IS scalar targets carry
+  // the supplied value's source units; dimensions belong to the concrete target.
+  std::map<std::weak_ptr<X3DNode>,
+           std::unordered_map<std::string, std::vector<Unit>>,
+           std::owner_less<std::weak_ptr<X3DNode>>> unitFieldSources;
+
   /**
    * @brief Register a node under a DEF name (overwrites any prior binding).
    * @return The same shared_ptr, for convenience.

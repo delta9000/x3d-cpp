@@ -73,9 +73,11 @@ void snapshotSourceUnits(runtime::X3DDocument &doc) {
     if (auto wrapper =
             std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(node)) {
       visitDecl(wrapper->instance.declaration);
-      for (const auto &value : wrapper->instance.fieldValues)
+      for (auto &value : wrapper->instance.fieldValues) {
+        value.sourceUnits = doc.head.units;
         for (const auto &child : value.nodeValue)
           self(self, child, visitDecl);
+      }
     }
     for (const auto &field : node->fields()) {
       if (!field.isReadable() || !field.isNode() || !field.get) continue;
@@ -109,22 +111,29 @@ void snapshotSourceUnits(runtime::X3DDocument &doc) {
         for (const auto &statement : statements)
           if (statement.kind == runtime::ProtoBodyStatement::Kind::Proto)
             self(self, statement.proto);
-    for (const auto &nested : decl->body.nestedInstances) {
+    for (auto &nested : decl->body.nestedInstances) {
       self(self, nested.declaration);
-      for (const auto &value : nested.fieldValues)
+      for (auto &value : nested.fieldValues) {
+        value.sourceUnits = doc.head.units;
         for (const auto &node : value.nodeValue)
           visitNode(visitNode, node, visitDecl);
+      }
     }
   };
   for (const auto &decl : doc.scene.protoDeclarations)
     visit(visit, decl);
-  for (const auto &inst : doc.scene.protoInstances) {
+  for (auto &inst : doc.scene.protoInstances) {
     visit(visit, inst.declaration);
     auto visitDecl = [&](const auto &nested) { visit(visit, nested); };
-    for (const auto &value : inst.fieldValues)
+    for (auto &value : inst.fieldValues) {
+      value.sourceUnits = doc.head.units;
       for (const auto &node : value.nodeValue)
         visitNode(visitNode, node, visitDecl);
+    }
   }
+  auto visitDecl = [&](const auto &nested) { visit(visit, nested); };
+  for (const auto &root : doc.scene.rootNodes)
+    visitNode(visitNode, root, visitDecl);
 }
 
 /// Quarantine PROTO/EXTERNPROTO declarations that reuse a built-in node type

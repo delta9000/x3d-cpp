@@ -2,7 +2,7 @@
 title: Scene Graph
 summary: Runtime core scene graph — DEF/USE sharing, document/scene model, and the structural systems that traverse it (transform, bounds, binding, pick, dirty-tracking, cycle safety, view-dependent).
 tags: [subsystem, scene-graph, runtime, def-use]
-updated: 2026-06-27
+updated: 2026-09-29
 related:
   - ../architecture.md
   - ../subsystems/dirty-bounds-transform.md
@@ -31,8 +31,9 @@ The subsystem does **not** own the event cascade, route propagation, or per-tick
 
 | File / directory | Role |
 |---|---|
-| `runtime/X3DScene.hpp` | `x3d::runtime::Scene` — root nodes, DEF table (`defs`), routes, proto/extern-proto declarations, unexpanded `ProtoInstance` list, `resolvedProtoRoutes`, `expandedInlines`, `resolvedInlineRoutes`, `protoRedirects`, `expandedSources`, IMPORT/EXPORT, a `sourceUnits` snapshot of the parsed document's UNIT declarations, and `authoredScalarFields` parse-time field presence. Methods: `define()`, `resolve()`, `addRootNode()`, `findProto()`, `declareProto()`, `declareExternProto()`, `resolveRoutes()`, `instanceAtPlacement()`. |
-| `runtime/X3DAuthoredScalarFields.hpp` | Weak node-identity keys retain which scalar fields were explicitly assigned during parsing, without keeping nodes alive. The record distinguishes omission from an explicit value equal to a generated default; it is not a log of later runtime writes. |
+| `runtime/X3DScene.hpp` | `x3d::runtime::Scene` — root nodes, DEF table (`defs`), routes, proto/extern-proto declarations, unexpanded `ProtoInstance` list, `resolvedProtoRoutes`, `expandedInlines`, `resolvedInlineRoutes`, `protoRedirects`, `expandedSources`, IMPORT/EXPORT, source UNIT declarations, parse-time `authoredScalarFields`, per-field `normalizedUnitFields`, and weak-node-keyed `unitFieldSources` for PROTO and IS provenance. Methods: `define()`, `resolve()`, `addRootNode()`, `findProto()`, `declareProto()`, `declareExternProto()`, `resolveRoutes()`, `instanceAtPlacement()`. |
+| `runtime/X3DAuthoredScalarFields.hpp` | Weak node-identity keys retain which scalar fields were explicitly assigned during parsing and which have been normalized, without keeping nodes alive. Authored marks distinguish omission from an explicit value equal to a generated default; normalized marks prevent repeated conversion across context setup and topology refresh. Neither is a log of later runtime writes. |
+| `runtime/UnitConversion.hpp` | Explicit node/field dimension map and `normalizeRuntimeUnits(Scene&)`: applies source UNIT factors to authored known dimensional fields at runtime entry, uses per-field source provenance for expanded PROTO/IS targets, and leaves built-in defaults unchanged. |
 | `runtime/X3DDocument.hpp` | `x3d::runtime::X3DDocument` — top-level `<X3D>` object: `version`, `profile` (`Profile` enum), `head` (`Head`), `scene` (`Scene`), `rangeWarnings`, `protoWarnings`, `inlineWarnings`. Also defines `Scene::addRootNode()` (needs complete `X3DNode`). |
 | `runtime/X3DRuntime.hpp` | Umbrella include: pulls in `X3DDocument`, `X3DHeader`, `X3DImportExport`, `X3DProto`, `X3DRangeValidate`, `X3DRoute`, `X3DScene` in one include. |
 | `runtime/scene/DirtyTracker.hpp` | `DirtyTracker` — per-node dirty-category bitset + changed-node list. Categories: `DirtyLocalTransform`, `DirtyWorldTransform`, `DirtyChildren`, `DirtyField`, `DirtyBounds`. Side table; nothing stored on the node. |

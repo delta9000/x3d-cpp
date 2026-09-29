@@ -19,6 +19,7 @@
 #include "RecursionLimits.hpp"
 #include "ViewpointOffset.hpp"
 #include "TransformSystem.hpp"
+#include "UnitConversion.hpp"
 #include "X3DActiveNode.hpp"
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
@@ -121,6 +122,7 @@ public:
   /// Build the M2a scene-graph layer for a parsed Scene: index the Transform
   /// hierarchy and route the cascade's field deliveries into the dirty tracker.
   void buildSceneGraph(Scene &scene) {
+    normalizeRuntimeUnits(scene);
     detached_.clear();
     // Sanitize first: sever any containment cycle (a node that is its own
     // ancestor, e.g. from a malformed <X DEF='a' USE='a'/>) so the recursive
@@ -141,6 +143,7 @@ public:
 
   // Called after an Inline subtree is spliced into the live Scene.
   void refreshSceneTopology(Scene &scene) {
+    normalizeRuntimeUnits(scene);
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
     pick_.build(scene);

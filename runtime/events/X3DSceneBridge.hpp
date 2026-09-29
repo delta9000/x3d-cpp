@@ -513,6 +513,7 @@ attachInteractive(Scene &scene, X3DExecutionContext &ctx) {
  *          and defined here, where both types are complete.
  */
 inline BridgeResult X3DExecutionContext::buildFrom(Scene &scene) {
+  normalizeRuntimeUnits(scene);
   return buildRoutes(scene, *this);
 }
 
