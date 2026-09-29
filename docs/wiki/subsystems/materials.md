@@ -42,6 +42,7 @@ MaterialDesc {
   bool backMaterialConstraintMet;               // MAT-010: model AND texture set
   LinePropertiesDesc  line;     // §12.4.6 SEAM-LINEPOINT (applied/linetype/width)
   PointPropertiesDesc point;    // §12.4.8 SEAM-LINEPOINT (scale/attenuation/min/max)
+  FillPropertiesDesc fill;      // §12.4.3 (filled/hatched/hatchColor/hatchStyle)
   SFColorRGBA toRGBA() const;   // composes RGB + alpha = 1 - transparency
 }
 ```
@@ -70,6 +71,27 @@ Fields covered per model:
 
 `alphaMode` and `alphaCutoff` are always read from `Appearance` regardless of material type.
 
+## Polygon fill and hatching
+
+`materialOf` reads all four `Appearance.fillProperties` fields into
+`MaterialDesc::fill`. An absent node means ordinary filling without hatching;
+a present node defaults to both filling and hatching. Field edits and replacing
+the node refresh the descriptor through `RenderDelta::updatedMaterial`.
+
+The CPU and OpenGL reference consumers apply fill properties only to polygons.
+They implement the six required patterns (horizontal, vertical, positive and
+negative diagonals, and the two crosshatches); unsupported styles use horizontal
+lines. Hatching overlays `hatchColor` on the shaded material. Disabling filling
+leaves holes between hatch lines, with no color or depth writes in those holes.
+Disabling both flags removes polygon fragments while leaving lines and points
+unaffected.
+
+The reference consumers use an eight-pixel window-space grid with one-pixel
+lines. Hatch fragments retain material alpha and alpha-test coverage, and fog
+is applied to the hatch color. Grid spacing and this opacity treatment are
+consumer choices; §12.4.3 specifies the patterns, color and fill-before-hatch
+ordering without defining a separate hatch opacity.
+
 ## backMaterial — two-sided surfaces (MAT-006)
 
 When `Appearance.backMaterial` is present:
@@ -78,6 +100,11 @@ When `Appearance.backMaterial` is present:
 2. A constraint check validates: `backMaterial.model == front.model` (same material model type) AND that the front and back texture-slot sets match (`sameTextureSlotSet`, §12.2.3). The result is written to `backMaterialConstraintMet`; the check is diagnostic, not enforced by the SDK. The back descriptor's `textures` are populated from the back material node's own slots (MAT-010 closed).
 3. `MaterialDesc::doubleSided` is set `true`.
 4. The back descriptor is stored as `unique_ptr<MaterialDesc> backMaterial` (avoids the self-referential incomplete-type problem of `optional<MaterialDesc>`).
+
+The CPU consumer selects this descriptor for back-facing fragments. The OpenGL
+PoC still uses the front material on both faces; its two-sided normal handling
+does not implement a distinct back material. Appearance fill properties apply
+to both faces in either consumer.
 
 ## Texture extraction and multi-UV (MAT-007)
 

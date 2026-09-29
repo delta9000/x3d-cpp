@@ -393,6 +393,7 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
     const glsl::mat4 modelG(it.worldTransform);
     const glsl::mat3 normalMat = glsl::normalMatrix(viewRT * it.worldTransform);
     const glsl::vec4 baseColor = glsl::vec4(it.material.toRGBA());
+    const ex::FillPropertiesDesc &fill = it.material.fill;
 
     // Text glyph quads: sample the glyph atlas (alpha-tested) so letters render
     // as shapes, not solid cells. Unlit, double-sided (text reads from both
@@ -409,7 +410,8 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
         return true;
       };
       raster.drawTriangles(verts, mesh.indices, modelG, viewG, projG, normalMat,
-                           mesh.ccw, /*solid=*/false, blend, glyphFs);
+                           mesh.ccw, /*solid=*/false, blend,
+                           withFillProperties(glyphFs, fill, fog), fill);
       return;
     }
 
@@ -448,7 +450,8 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
       fs = makeMaterialShader(it.material, eyeLights, mesh.hasColors, forceUnlit,
                               fog);
     raster.drawTriangles(verts, mesh.indices, modelG, viewG, projG, normalMat,
-                         mesh.ccw, mesh.solid, blend, fs);
+                         mesh.ccw, mesh.solid, blend,
+                         withFillProperties(fs, fill, fog), fill);
   };
 
   for (ex::RenderItemId id : opaque) drawOne(id, BlendMode::Opaque);

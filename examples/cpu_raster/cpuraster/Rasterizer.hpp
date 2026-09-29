@@ -21,6 +21,7 @@
 #define X3D_CPURASTER_RASTERIZER_HPP
 
 #include "Framebuffer.hpp"
+#include "RenderItem.hpp"
 #include "glsl.hpp"
 
 #include <array>
@@ -41,6 +42,7 @@ struct FragmentInput {
   glsl::vec3 dPosEyeDx{0, 0, 0}, dPosEyeDy{0, 0, 0}; // dFdx/dFdy(vPosEye)
   glsl::vec2 dTexDx{0, 0}, dTexDy{0, 0};             // dFdx/dFdy(vTexCoord)
   bool frontFacing = true;       // gl_FrontFacing
+  bool hatch = false;            // FillProperties overlay at this window pixel
 };
 
 // Returns false to DISCARD the fragment; otherwise writes `out` (final color,
@@ -69,7 +71,8 @@ public:
                      const glsl::mat4 &model, const glsl::mat4 &view,
                      const glsl::mat4 &proj, const glsl::mat3 &normalMat,
                      bool ccw, bool solid, BlendMode blend,
-                     const FragmentShader &fs) {
+                     const FragmentShader &fs,
+                     const runtime::extract::FillPropertiesDesc &fill = {}) {
     const glsl::mat4 mv = view * model;
     const glsl::mat4 mvp = proj * mv;
     for (std::size_t i = 0; i + 2 < indices.size(); i += 3) {
@@ -87,7 +90,7 @@ public:
       // Near-plane clip -> 0,1, or 2 triangles (fan).
       std::vector<ClipVertex> poly = clipNear({tri[0], tri[1], tri[2]});
       for (std::size_t t = 0; t + 2 < poly.size(); ++t)
-        rasterTriangle(poly[0], poly[t + 1], poly[t + 2], ccw, solid, blend, fs);
+        rasterTriangle(poly[0], poly[t + 1], poly[t + 2], ccw, solid, blend, fs, fill);
     }
   }
 
@@ -223,7 +226,8 @@ private:
 
   void rasterTriangle(const ClipVertex &a, const ClipVertex &b,
                       const ClipVertex &c, bool ccw, bool solid, BlendMode blend,
-                      const FragmentShader &fs) {
+                      const FragmentShader &fs,
+                      const runtime::extract::FillPropertiesDesc &fill) {
     // Screen positions + per-vertex 1/w for perspective-correct interpolation.
     float x[3], y[3], z[3], invw[3];
     const ClipVertex *V[3] = {&a, &b, &c};
@@ -312,8 +316,11 @@ private:
           if (!p.inView || !p.inTri) continue;
           const int px = qx + (sub & 1);
           const int py = qy + (sub >> 1);
+          const bool hatch = fill.hatched && hatchAt(px, py, fill.hatchStyle);
+          if (!fill.filled && !hatch) continue; // hole: no color or depth write.
           // Depth test (smaller == nearer).
           if (!(p.depth < fb_.depth(px, py))) continue;
+          p.frag.hatch = hatch;
           p.frag.dPosEyeDx = dPosX; p.frag.dPosEyeDy = dPosY;
           p.frag.dTexDx = dTexX;   p.frag.dTexDy = dTexY;
           glsl::vec4 out;
@@ -332,6 +339,18 @@ private:
 
   static float edge(float ax, float ay, float bx, float by, float px, float py) {
     return (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+  }
+
+  static bool hatchAt(int x, int y, int style) {
+    const auto line = [](int n) { return n % 8 == 0; };
+    switch (style) {
+    case 2: return line(x);
+    case 3: return line(x - y);
+    case 4: return line(x + y);
+    case 5: return line(x) || line(y);
+    case 6: return line(x - y) || line(x + y);
+    default: return line(y); // 1, and every unsupported registered style.
+    }
   }
 
   // Depth-tested constant-color line in NDC->screen (Bresenham-ish DDA). `side`

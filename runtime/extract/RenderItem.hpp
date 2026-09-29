@@ -436,6 +436,13 @@ struct PointPropertiesDesc {
   float pointSizeMaxValue = 1.0f;
 };
 
+struct FillPropertiesDesc {
+  bool filled = true;
+  bool hatched = false; // No FillProperties node leaves the appearance unchanged.
+  SFColor hatchColor{1.0f, 1.0f, 1.0f};
+  int hatchStyle = 1;
+};
+
 struct MaterialDesc {
   MaterialModel model = MaterialModel::Phong;
 
@@ -467,6 +474,7 @@ struct MaterialDesc {
   // Appearance's LineProperties / PointProperties children.
   LinePropertiesDesc line;
   PointPropertiesDesc point;
+  FillPropertiesDesc fill;
 
   // Copy/move ops — unique_ptr<MaterialDesc> suppresses defaults; restore them.
   MaterialDesc() = default;
@@ -479,7 +487,7 @@ struct MaterialDesc {
                          ? std::make_unique<MaterialDesc>(*o.backMaterial)
                          : nullptr),
         backMaterialConstraintMet(o.backMaterialConstraintMet),
-        extensions(o.extensions), line(o.line), point(o.point) {}
+        extensions(o.extensions), line(o.line), point(o.point), fill(o.fill) {}
   MaterialDesc &operator=(const MaterialDesc &o) {
     if (this != &o) {
       model = o.model; emissive = o.emissive; normalScale = o.normalScale;
@@ -493,6 +501,7 @@ struct MaterialDesc {
       extensions = o.extensions;
       line = o.line;
       point = o.point;
+      fill = o.fill;
     }
     return *this;
   }

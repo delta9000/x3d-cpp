@@ -50,6 +50,25 @@ uniform float uAlphaCutoff;
 // ---- Vertex color override --------------------------------------------------
 uniform int uHasColors;
 
+uniform int uFillMode;       // bit 1: fill; bit 2: hatch (polygons only).
+uniform int uHatchStyle;
+uniform vec3 uHatchColor;
+
+bool hatchPixel() {
+    vec2 p = floor(gl_FragCoord.xy);
+    int style = (uHatchStyle >= 1 && uHatchStyle <= 6) ? uHatchStyle : 1;
+    bool horizontal = mod(p.y, 8.0) < 1.0;
+    bool vertical = mod(p.x, 8.0) < 1.0;
+    bool positive = mod(p.x - p.y, 8.0) < 1.0;
+    bool negative = mod(p.x + p.y, 8.0) < 1.0;
+    if (style == 1) return horizontal;
+    if (style == 2) return vertical;
+    if (style == 3) return positive;
+    if (style == 4) return negative;
+    if (style == 5) return horizontal || vertical;
+    return positive || negative;
+}
+
 // ---- Texture slots ----------------------------------------------------------
 uniform int       uHasBaseColorTex;
 uniform sampler2D uBaseColorTex;    // unit 0.
@@ -121,6 +140,8 @@ vec3 applyFog(vec3 color, float d) {
 }
 
 void main() {
+    bool hatch = (uFillMode & 2) != 0 && hatchPixel();
+    if ((uFillMode & 1) == 0 && !hatch) discard;
     // ---- Base color ---------------------------------------------------------
     vec4 baseCol = uBaseColor;
     if (uHasColors != 0) baseCol.rgb = vColor.rgb;
@@ -235,7 +256,7 @@ void main() {
     color = linearToSRGB(color);
 
     // §17: fog is the final step, applied to the output (display) colour.
-    color = applyFog(color, length(vPosEye));
+    color = applyFog(hatch ? uHatchColor : color, length(vPosEye));
 
     FragColor = vec4(color, alpha);
 }

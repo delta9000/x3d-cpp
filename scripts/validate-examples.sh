@@ -128,6 +128,15 @@ python3 scripts/check_screenshot_bg.py "$MASK_DIR/mask.ppm" \
   --bg 0,0,153 --tol 30 --min 0.99 --label rnd1-mask
 echo "OK: MASK cutout fully discarded; opaque control rendered (RND-1 guard)"
 
+# ---- SHAPE FillProperties GL pixel regression ------------------------------
+# Exercise the actual PoC shaders through --screenshot/glReadPixels under the
+# same isolated Xvfb + Mesa setup as the other GL acceptance fixtures.
+echo "== poc FillProperties pixel gate under Xvfb (software GL requested) =="
+xvfb-run -a env \
+  -u WAYLAND_DISPLAY -u XDG_SESSION_TYPE \
+  LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIBRARY_NAME=mesa \
+  python3 scripts/check_poc_fill_properties.py "$POC"
+
 echo "== build asset_import (cgltf default, no assimp) =="
 cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
 cmake --build build-asset-import --target x3d_asset_import x3d_assetimport_cgltf
@@ -180,4 +189,3 @@ else
 fi
 
 echo "== examples validated: cpu_raster + x3d2svg + poc_renderer + asset_import compile and run headless =="
-

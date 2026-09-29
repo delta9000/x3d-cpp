@@ -20,6 +20,10 @@ build/golden/ctest path never compiles any of it.
 
 ## What it covers
 
+- `FillProperties`: independent filling and hatching, hatch color, required
+  styles 1–6 and fallback to style 1. Polygon holes leave depth untouched;
+  lines and points are unaffected. Hatches use an eight-pixel window-space grid,
+  preserve material alpha/coverage and receive fog.
 - **All three `MaterialModel`s** the extraction seam emits, as CPU ports of the
   PoC GLSL shaders:
   - **Phong** (`Material`) — Blinn-Phong + textures + screen-space-derivative

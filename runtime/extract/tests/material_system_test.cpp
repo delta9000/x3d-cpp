@@ -31,6 +31,35 @@ static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) 
     if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
 }
 
+TEST_CASE("FillProperties descriptor defaults, authored fields, and copies") {
+  auto app = createX3DNode("Appearance");
+  MaterialDesc absent = materialOf(app.get());
+  CHECK(absent.fill.filled);
+  CHECK_FALSE(absent.fill.hatched);
+  auto fp = createX3DNode("FillProperties");
+  setF(app, "fillProperties", std::any(std::shared_ptr<X3DNode>(fp)));
+  MaterialDesc present = materialOf(app.get());
+  CHECK(present.fill.filled);
+  CHECK(present.fill.hatched);
+  CHECK(present.fill.hatchStyle == 1);
+  setF(fp, "filled", std::any(SFBool{false}));
+  setF(fp, "hatched", std::any(SFBool{false}));
+  setF(fp, "hatchColor", std::any(SFColor{0.2f, 0.4f, 0.6f}));
+  setF(fp, "hatchStyle", std::any(SFInt32{6}));
+  MaterialDesc authored = materialOf(app.get());
+  CHECK_FALSE(authored.fill.filled);
+  CHECK_FALSE(authored.fill.hatched);
+  CHECK(authored.fill.hatchColor.g == doctest::Approx(0.4f));
+  CHECK(authored.fill.hatchStyle == 6);
+  MaterialDesc copied(authored);
+  MaterialDesc assigned;
+  assigned = authored;
+  CHECK_FALSE(copied.fill.filled);
+  CHECK(copied.fill.hatchStyle == 6);
+  CHECK_FALSE(assigned.fill.hatched);
+  CHECK(assigned.fill.hatchColor.b == doctest::Approx(0.6f));
+}
+
 TEST_CASE("ImageTexture load FALSE suppresses URL fetch") {
   auto image = createX3DNode("ImageTexture");
   setF(image, "url", std::any(MFString{"deferred.png"}));
