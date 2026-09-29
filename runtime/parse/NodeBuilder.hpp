@@ -77,10 +77,11 @@ std::shared_ptr<x3d::nodes::X3DNode> beginNode(std::string_view typeName);
 
 /// Set one value field on a node from its wire string, via the FieldInfo
 /// thunks. Enum fields route through setEnumString; everything else through
-/// parseValue + set. Read-only (outputOnly/initializeOnly) fields and unknown
-/// names are silently skipped. DEF is handled here too (it is a normal SFString
-/// field on every node) so callers need no special case for it.
-void applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
+/// parseValue + set. Fields without a setter and unknown names are silently
+/// skipped; initializeOnly storage fields may have a setter. Returns true
+/// only when a value was applied, so readers can record authored presence.
+/// DEF is handled here too (it is a normal SFString field on every node).
+bool applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
                 const std::string &wire);
 
 // ---------------------------------------------------------------------------

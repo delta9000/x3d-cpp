@@ -2,6 +2,7 @@
 #include "X3DDocument.hpp"
 #include "X3DProto.hpp"
 #include "X3DProtoExpand.hpp"
+#include "X3DParse.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "x3d/core/X3DReflection.hpp"
 #include <any>
@@ -50,6 +51,7 @@ static void localValueForwardTest() {
   CHECK((primary && primary->nodeTypeName() == "Box"));
   auto sz = std::any_cast<SFVec3f>(fieldByName(*primary, "size")->get(*primary));
   CHECK((sz.x == 5.f && sz.y == 5.f && sz.z == 5.f));
+  CHECK(scene.authoredScalarFields.contains(primary, "size"));
   CHECK((warnings.empty()));
 }
 
@@ -88,6 +90,7 @@ static void mistypedValueLenientTest() {
   // The mistyped set was skipped, so the field keeps its constructed default.
   auto sz = std::any_cast<SFVec3f>(fieldByName(*primary, "size")->get(*primary));
   CHECK((sz.x == 2.f && sz.y == 2.f && sz.z == 2.f));
+  CHECK(!scene.authoredScalarFields.contains(primary, "size"));
 }
 
 // An SFString interface field IS-mapped to an enum-typed body field (X3D has no
@@ -124,6 +127,7 @@ static void enumValueForwardTest() {
   const FieldInfo *f = fieldByName(*primary, "networkMode");
   CHECK((f && f->isEnum()));
   CHECK((f->getEnumString(*primary) == "networkReader")); // value applied
+  CHECK(scene.authoredScalarFields.contains(primary, "networkMode"));
 }
 
 // Verify that the default value is used when the instance provides no override.
@@ -153,6 +157,7 @@ static void localDefaultForwardTest() {
   CHECK((primary && primary->nodeTypeName() == "Material"));
   auto col = std::any_cast<SFColor>(fieldByName(*primary, "diffuseColor")->get(*primary));
   CHECK((col.r == 0.5f && col.g == 0.5f && col.b == 0.5f));  // proto default used
+  CHECK(scene.authoredScalarFields.contains(primary, "diffuseColor"));
   CHECK((warnings.empty()));
 }
 
@@ -232,12 +237,14 @@ static void externResolveTest() {
   auto primary = expandInstance(*inst, scene, resolver, "", guard, warnings);
   CHECK((primary && primary->nodeTypeName() == "Box"));
   CHECK((warnings.empty()));
+  CHECK((inst->declaration && inst->declaration->name == "ExtBox"));
 
   // (2) Unresolved (resolver returns null) -> UnresolvedExtern warning, null.
   Scene s2; ExpandGuard g2; std::vector<ProtoWarning> w2;
   auto none = expandInstance(*inst, s2, x3d::codec::noopProtoResolver, "", g2, w2);
   CHECK((!none && w2.size() == 1 &&
          w2[0].kind == ProtoWarning::Kind::UnresolvedExtern));
+  CHECK((!inst->declaration));
 
   // (3) Depth cap -> RecursionLimit warning, null.
   Scene s3; ExpandGuard g3; g3.depth = g3.maxDepth; std::vector<ProtoWarning> w3;
@@ -382,7 +389,8 @@ static void nestedInstanceIsConnectForwardTest() {
   inst.declaration = one;
   ProtoFieldValue fv;
   fv.name = "myShape";
-  fv.nodeValue.push_back(createX3DNode("Box"));
+  auto overrideBox = createX3DNode("Box");
+  fv.nodeValue.push_back(overrideBox);
   inst.fieldValues.push_back(fv);
 
   ExpandGuard guard;
@@ -398,6 +406,7 @@ static void nestedInstanceIsConnectForwardTest() {
       fieldByName(*outerKids[0], "children")->get(*outerKids[0]));
   CHECK((innerKids.size() == 1 && innerKids[0] &&
          innerKids[0]->nodeTypeName() == "Box"));
+  CHECK(innerKids[0] == overrideBox);
   CHECK((warnings.empty()));
 
   // No outer override => forwarding falls back to outer proto default (Cylinder),
@@ -419,7 +428,35 @@ static void nestedInstanceIsConnectForwardTest() {
       fieldByName(*outerKidsDefault[0], "children")->get(*outerKidsDefault[0]));
   CHECK((innerKidsDefault.size() == 1 && innerKidsDefault[0] &&
          innerKidsDefault[0]->nodeTypeName() == "Cylinder"));
+  x3d::runtime::ProtoInstance instDefaultAgain = instDefault;
+  auto primaryDefaultAgain =
+      expandInstance(instDefaultAgain, scene, noopProtoResolver, "",
+                     guardDefault, warningsDefault);
+  REQUIRE(primaryDefaultAgain);
+  auto outerKidsDefaultAgain = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*primaryDefaultAgain, "children")->get(*primaryDefaultAgain));
+  REQUIRE(outerKidsDefaultAgain.size() == 1);
+  auto innerKidsDefaultAgain = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*outerKidsDefaultAgain[0], "children")->get(*outerKidsDefaultAgain[0]));
+  REQUIRE(innerKidsDefaultAgain.size() == 1);
+  CHECK(innerKidsDefault[0] != innerKidsDefaultAgain[0]);
+  CHECK(innerKidsDefault[0] != onePf.nodeDefault[0]);
+  CHECK(innerKidsDefaultAgain[0] != onePf.nodeDefault[0]);
   CHECK((warningsDefault.empty()));
+
+  // A present empty override crosses the nested IS connection as [] and
+  // suppresses both the outer Cylinder and inner Sphere defaults.
+  inst.fieldValues.front().nodeValue.clear();
+  auto primaryEmpty =
+      expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(primaryEmpty);
+  auto outerKidsEmpty = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*primaryEmpty, "children")->get(*primaryEmpty));
+  REQUIRE(outerKidsEmpty.size() == 1);
+  auto innerKidsEmpty = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*outerKidsEmpty[0], "children")->get(*outerKidsEmpty[0]));
+  CHECK(innerKidsEmpty.empty());
+  CHECK(warnings.empty());
 }
 
 TEST_CASE("proto_expand_test") {
@@ -434,4 +471,565 @@ TEST_CASE("proto_expand_test") {
   nestedInBodyExpandTest();
   nestedInstanceIsConnectForwardTest();
   return;
+}
+
+TEST_CASE("PROTO node defaults belong to each instance") {
+  auto decl = std::make_shared<ProtoDeclaration>();
+  decl->name = "WithDefault";
+  ProtoField field;
+  field.name = "parts";
+  field.type = X3DFieldType::MFNode;
+  field.access = AccessType::InputOutput;
+  auto defaultBox = createX3DNode("Box");
+  field.nodeDefault = {defaultBox, defaultBox};
+  decl->interface.push_back(field);
+  auto body = createX3DNode("Transform");
+  decl->body.nodes.push_back(body);
+  decl->body.isConnections.push_back({body, "children", "parts"});
+  decl->authoredScalarFields.record(defaultBox, "size");
+
+  Scene scene;
+  ExpandGuard guard;
+  std::vector<ProtoWarning> warnings;
+  ProtoInstance first;
+  first.name = decl->name;
+  first.declaration = decl;
+  ProtoInstance second = first;
+  auto a = expandInstance(first, scene, noopProtoResolver, "", guard, warnings);
+  auto b = expandInstance(second, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(a);
+  REQUIRE(b);
+  auto children = [](const std::shared_ptr<X3DNode> &node) {
+    return std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+        fieldByName(*node, "children")->get(*node));
+  };
+  const auto aa = children(a);
+  const auto bb = children(b);
+  REQUIRE(aa.size() == 2);
+  REQUIRE(bb.size() == 2);
+  CHECK(aa[0] == aa[1]);
+  CHECK(bb[0] == bb[1]);
+  CHECK(aa[0] != bb[0]);
+  CHECK(aa[0] != defaultBox);
+  CHECK(bb[0] != defaultBox);
+  CHECK(scene.authoredScalarFields.contains(aa[0], "size"));
+  CHECK(scene.authoredScalarFields.contains(bb[0], "size"));
+  fieldByName(*aa[0], "size")->set(*aa[0], std::any(SFVec3f{7, 8, 9}));
+  const auto otherSize =
+      std::any_cast<SFVec3f>(fieldByName(*bb[0], "size")->get(*bb[0]));
+  const auto templateSize =
+      std::any_cast<SFVec3f>(fieldByName(*defaultBox, "size")->get(*defaultBox));
+  CHECK(otherSize.x == 2.f);
+  CHECK(templateSize.x == 2.f);
+  CHECK(warnings.empty());
+}
+
+TEST_CASE("PROTO explicit node overrides retain caller identity and empty values") {
+  auto decl = std::make_shared<ProtoDeclaration>();
+  decl->name = "Override";
+  ProtoField field;
+  field.name = "parts";
+  field.type = X3DFieldType::MFNode;
+  field.access = AccessType::InputOutput;
+  field.nodeDefault.push_back(createX3DNode("Box"));
+  decl->interface.push_back(field);
+  auto body = createX3DNode("Transform");
+  decl->body.nodes.push_back(body);
+  decl->body.isConnections.push_back({body, "children", "parts"});
+
+  Scene scene;
+  ExpandGuard guard;
+  std::vector<ProtoWarning> warnings;
+  ProtoInstance inst;
+  inst.name = decl->name;
+  inst.declaration = decl;
+  ProtoFieldValue value;
+  value.name = "parts";
+  auto callerBox = createX3DNode("Box");
+  value.nodeValue.push_back(callerBox);
+  inst.fieldValues.push_back(value);
+  auto first = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  auto second = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(first);
+  REQUIRE(second);
+  auto children = [](const std::shared_ptr<X3DNode> &node) {
+    return std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+        fieldByName(*node, "children")->get(*node));
+  };
+  CHECK(children(first).at(0) == callerBox);
+  CHECK(children(second).at(0) == callerBox);
+
+  inst.fieldValues.front().nodeValue.clear(); // explicit []
+  auto empty = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(empty);
+  CHECK(children(empty).empty());
+
+  auto single = std::make_shared<ProtoDeclaration>();
+  single->name = "Single";
+  ProtoField geometry;
+  geometry.name = "geometry";
+  geometry.type = X3DFieldType::SFNode;
+  geometry.access = AccessType::InputOutput;
+  geometry.nodeDefault.push_back(createX3DNode("Box"));
+  single->interface.push_back(geometry);
+  auto shape = createX3DNode("Shape");
+  single->body.nodes.push_back(shape);
+  single->body.isConnections.push_back({shape, "geometry", "geometry"});
+  ProtoInstance nullInstance;
+  nullInstance.name = single->name;
+  nullInstance.declaration = single;
+  ProtoFieldValue nullValue;
+  nullValue.name = "geometry"; // explicit NULL
+  nullInstance.fieldValues.push_back(nullValue);
+  auto nullShape = expandInstance(nullInstance, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(nullShape);
+  auto actual = std::any_cast<std::shared_ptr<X3DNode>>(
+      fieldByName(*nullShape, "geometry")->get(*nullShape));
+  CHECK_FALSE(actual);
+  CHECK(warnings.empty());
+}
+
+TEST_CASE("PROTO nested literal node overrides clone with outer instance") {
+  auto leaf = std::make_shared<ProtoDeclaration>();
+  leaf->name = "Leaf";
+  ProtoField field;
+  field.name = "parts";
+  field.type = X3DFieldType::MFNode;
+  field.access = AccessType::InputOutput;
+  leaf->interface.push_back(field);
+  auto leafBody = createX3DNode("Transform");
+  leaf->body.nodes.push_back(leafBody);
+  leaf->body.isConnections.push_back({leafBody, "children", "parts"});
+
+  auto outer = std::make_shared<ProtoDeclaration>();
+  outer->name = "Outer";
+  auto outerBody = createX3DNode("Transform");
+  outer->body.nodes.push_back(outerBody);
+  ProtoInstance literal;
+  literal.name = leaf->name;
+  literal.declaration = leaf;
+  literal.parent = outerBody;
+  literal.parentField = "children";
+  auto literalBox = createX3DNode("Box");
+  ProtoFieldValue nestedValue;
+  nestedValue.name = "parts";
+  nestedValue.nodeValue = {literalBox, literalBox};
+  literal.fieldValues.push_back(nestedValue);
+  outer->body.nestedInstances.push_back(literal);
+  outer->authoredScalarFields.record(literalBox, "size");
+
+  Scene scene;
+  ExpandGuard guard;
+  std::vector<ProtoWarning> warnings;
+  ProtoInstance inst;
+  inst.name = outer->name;
+  inst.declaration = outer;
+  auto a = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  auto b = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(a);
+  REQUIRE(b);
+  auto children = [](const std::shared_ptr<X3DNode> &node) {
+    return std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+        fieldByName(*node, "children")->get(*node));
+  };
+  auto first = children(children(a).at(0));
+  auto second = children(children(b).at(0));
+  REQUIRE(first.size() == 2);
+  REQUIRE(second.size() == 2);
+  CHECK(first[0] == first[1]);
+  CHECK(second[0] == second[1]);
+  CHECK(first[0] != second[0]);
+  CHECK(first[0] != literalBox);
+  CHECK(scene.authoredScalarFields.contains(first[0], "size"));
+  CHECK(scene.authoredScalarFields.contains(second[0], "size"));
+  CHECK(warnings.empty());
+}
+
+TEST_CASE("empty node overrides do not resolve unused external defaults") {
+  auto remote = std::make_shared<ExternProtoDeclaration>();
+  remote->name = "Remote";
+  remote->url = {"missing.x3d#Remote"};
+  ProtoInstance direct;
+  direct.name = "Remote";
+  direct.externDeclaration = remote;
+  auto wrapper = std::make_shared<ProtoInstanceTemplate>(direct);
+
+  auto outer = std::make_shared<ProtoDeclaration>();
+  outer->name = "Outer";
+  ProtoField single;
+  single.name = "single";
+  single.type = X3DFieldType::SFNode;
+  single.access = AccessType::InputOutput;
+  single.nodeDefault = {wrapper};
+  outer->interface.push_back(single);
+  ProtoField many;
+  many.name = "many";
+  many.type = X3DFieldType::MFNode;
+  many.access = AccessType::InputOutput;
+  auto defaultGroup = createX3DNode("Group");
+  many.nodeDefault = {defaultGroup};
+  outer->interface.push_back(many);
+  ProtoInstance contained = direct;
+  contained.parent = defaultGroup;
+  contained.parentField = "children";
+  outer->body.nestedInstances.push_back(contained);
+
+  auto shape = createX3DNode("Shape");
+  auto group = createX3DNode("Group");
+  outer->body.nodes = {shape, group};
+  outer->body.isConnections.push_back({shape, "geometry", "single"});
+  outer->body.isConnections.push_back({group, "children", "many"});
+
+  ProtoInstance inst;
+  inst.name = "Outer";
+  inst.declaration = outer;
+  ProtoFieldValue singleNull;
+  singleNull.name = "single";
+  ProtoFieldValue manyEmpty;
+  manyEmpty.name = "many";
+  inst.fieldValues = {singleNull, manyEmpty};
+  int resolves = 0;
+  auto resolver = [&resolves](const std::vector<std::string> &,
+                             const std::string &) -> std::shared_ptr<ProtoDeclaration> {
+    ++resolves;
+    return nullptr;
+  };
+  Scene scene;
+  ExpandGuard guard;
+  std::vector<ProtoWarning> warnings;
+  auto primary = expandInstance(inst, scene, resolver, "", guard, warnings);
+  REQUIRE(primary);
+  CHECK(primary->nodeTypeName() == "Shape");
+  auto geometry = std::any_cast<std::shared_ptr<X3DNode>>(
+      fieldByName(*primary, "geometry")->get(*primary));
+  CHECK_FALSE(geometry);
+  REQUIRE(scene.protoPeerNodes.size() == 1);
+  auto children = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*scene.protoPeerNodes.front(), "children")
+          ->get(*scene.protoPeerNodes.front()));
+  CHECK(children.empty());
+  CHECK(resolves == 0);
+  CHECK(warnings.empty());
+
+  // A body USE keeps the default graph live even when the interface value is
+  // overridden, so its contained instance is still attempted once.
+  outer->body.nodes.push_back(defaultGroup);
+  Scene aliasedScene;
+  warnings.clear();
+  auto aliasedPrimary = expandInstance(inst, aliasedScene, resolver, "", guard, warnings);
+  REQUIRE(aliasedPrimary);
+  CHECK(resolves == 1);
+  REQUIRE(warnings.size() == 1);
+  CHECK(warnings[0].kind == ProtoWarning::Kind::UnresolvedExtern);
+}
+
+TEST_CASE("unresolved external node default leaves a null slot and one warning") {
+  auto remote = std::make_shared<ExternProtoDeclaration>();
+  remote->name = "Remote";
+  remote->url = {"missing.x3d#Remote"};
+  ProtoInstance source;
+  source.name = "Remote";
+  source.externDeclaration = remote;
+  auto wrapper = std::make_shared<ProtoInstanceTemplate>(source);
+  auto outer = std::make_shared<ProtoDeclaration>();
+  outer->name = "Outer";
+  ProtoField many;
+  many.name = "many";
+  many.type = X3DFieldType::MFNode;
+  many.access = AccessType::InputOutput;
+  many.nodeDefault = {createX3DNode("Shape"), wrapper, wrapper};
+  outer->interface.push_back(many);
+  auto body = createX3DNode("Group");
+  outer->body.nodes.push_back(body);
+  outer->body.isConnections.push_back({body, "children", "many"});
+  ProtoInstance inst;
+  inst.name = "Outer";
+  inst.declaration = outer;
+  int resolves = 0;
+  auto resolver = [&resolves](const std::vector<std::string> &,
+                             const std::string &) -> std::shared_ptr<ProtoDeclaration> {
+    ++resolves;
+    return nullptr;
+  };
+  Scene scene;
+  ExpandGuard guard;
+  std::vector<ProtoWarning> warnings;
+  auto primary = expandInstance(inst, scene, resolver, "", guard, warnings);
+  REQUIRE(primary);
+  auto children = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*primary, "children")->get(*primary));
+  REQUIRE(children.size() == 3);
+  REQUIRE(children[0]);
+  CHECK(children[0]->nodeTypeName() == "Shape");
+  CHECK_FALSE(children[1]);
+  CHECK_FALSE(children[2]);
+  CHECK(resolves == 1);
+  REQUIRE(warnings.size() == 1);
+  CHECK(warnings[0].kind == ProtoWarning::Kind::UnresolvedExtern);
+  CHECK(wrapper->instance.externDeclaration == remote);
+}
+
+TEST_CASE("throwing caller resolver does not poison shared wrapper or later instances") {
+  auto remote = std::make_shared<ExternProtoDeclaration>();
+  remote->name = "Remote";
+  remote->url = {"bad.x3d#Remote"};
+  ProtoInstance remoteInstance;
+  remoteInstance.name = "Remote";
+  remoteInstance.externDeclaration = remote;
+  auto shared = std::make_shared<ProtoInstanceTemplate>(remoteInstance);
+
+  auto outer = std::make_shared<ProtoDeclaration>();
+  outer->name = "Outer";
+  ProtoField items;
+  items.name = "items";
+  items.type = X3DFieldType::MFNode;
+  items.access = AccessType::InitializeOnly;
+  outer->interface.push_back(items);
+  auto body = createX3DNode("Group");
+  outer->body.nodes.push_back(body);
+  outer->body.isConnections.push_back({body, "children", "items"});
+  ProtoInstance first;
+  first.name = "Outer";
+  first.declaration = outer;
+  ProtoFieldValue fieldValue;
+  fieldValue.name = "items";
+  fieldValue.nodeValue = {shared};
+  first.fieldValues.push_back(fieldValue);
+  ProtoInstance second = first;
+
+  auto valid = std::make_shared<ProtoDeclaration>();
+  valid->name = "Valid";
+  valid->body.nodes.push_back(createX3DNode("Shape"));
+  ProtoInstance third;
+  third.name = "Valid";
+  third.declaration = valid;
+  Scene scene;
+  scene.protoInstances = {first, second, third};
+  int resolves = 0;
+  auto throwing = [&resolves](const std::vector<std::string> &,
+                              const std::string &) -> std::shared_ptr<ProtoDeclaration> {
+    ++resolves;
+    throw std::runtime_error("resolver failed");
+  };
+  std::vector<ProtoWarning> warnings;
+  expandScene(scene, throwing, "", warnings);
+  CHECK(resolves == 1);
+  CHECK(scene.protoInstances[2].expanded);
+  CHECK_FALSE(scene.rootNodes.empty());
+  CHECK(scene.rootNodes.back()->nodeTypeName() == "Shape");
+  CHECK(std::none_of(warnings.begin(), warnings.end(), [](const ProtoWarning &warning) {
+    return warning.kind == ProtoWarning::Kind::RecursionLimit;
+  }));
+}
+
+TEST_CASE("PROTO direct nested instance is the ordered primary with an active ordinary peer") {
+  auto leaf = std::make_shared<ProtoDeclaration>();
+  leaf->name = "Leaf";
+  leaf->body.nodes.push_back(createX3DNode("Group"));
+
+  auto outer = std::make_shared<ProtoDeclaration>();
+  outer->name = "Outer";
+  auto peer = createX3DNode("Transform");
+  outer->body.nodes.push_back(peer);
+  outer->body.nestedInstances.push_back(ProtoInstance{});
+  auto &nested = outer->body.nestedInstances.back();
+  nested.name = "Leaf";
+  nested.declaration = leaf;
+  outer->body.recordInstance(0);
+  outer->body.recordNode(peer);
+
+  ProtoField iface;
+  iface.name = "shift";
+  iface.type = X3DFieldType::SFVec3f;
+  iface.access = AccessType::InputOutput;
+  outer->interface.push_back(iface);
+  outer->body.isConnections.push_back({peer, "translation", "shift"});
+
+  Scene scene;
+  ExpandGuard guard;
+  std::vector<ProtoWarning> warnings;
+  ProtoInstance inst;
+  inst.name = "Outer";
+  inst.DEF = "OUTER";
+  inst.declaration = outer;
+  auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(primary);
+  CHECK(primary->nodeTypeName() == "Group");
+  CHECK(primary->getDEF() == "OUTER");
+  REQUIRE(scene.protoPeerNodes.size() == 1);
+  CHECK(scene.protoPeerNodes.front()->nodeTypeName() == "Transform");
+  CHECK(scene.protoRedirects.contains(primary.get()));
+  REQUIRE(scene.protoRedirects[primary.get()]["shift"].size() == 1);
+  CHECK(scene.protoRedirects[primary.get()]["shift"].front().targetNode ==
+        scene.protoPeerNodes.front());
+  CHECK(warnings.empty());
+}
+
+TEST_CASE("PROTO ordinary primary and direct nested peer are separate") {
+  auto leaf = std::make_shared<ProtoDeclaration>();
+  leaf->name = "Leaf";
+  leaf->body.nodes.push_back(createX3DNode("Group"));
+  auto outer = std::make_shared<ProtoDeclaration>();
+  outer->name = "Outer";
+  auto primaryBody = createX3DNode("Transform");
+  outer->body.nodes.push_back(primaryBody);
+  outer->body.recordNode(primaryBody);
+  ProtoInstance nested;
+  nested.name = "Leaf";
+  nested.declaration = leaf;
+  outer->body.nestedInstances.push_back(nested);
+  outer->body.recordInstance(0);
+
+  Scene scene;
+  ExpandGuard guard;
+  std::vector<ProtoWarning> warnings;
+  ProtoInstance inst;
+  inst.name = "Outer";
+  inst.declaration = outer;
+  auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(primary);
+  CHECK(primary->nodeTypeName() == "Transform");
+  auto children = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*primary, "children")->get(*primary));
+  CHECK(children.empty());
+  REQUIRE(scene.protoPeerNodes.size() == 1);
+  CHECK(scene.protoPeerNodes.front()->nodeTypeName() == "Group");
+  CHECK(warnings.empty());
+}
+
+TEST_CASE("PROTO nested-only body expands and unresolved first instance is not skipped") {
+  auto leaf = std::make_shared<ProtoDeclaration>();
+  leaf->name = "Leaf";
+  leaf->body.nodes.push_back(createX3DNode("Group"));
+  auto outer = std::make_shared<ProtoDeclaration>();
+  outer->name = "Outer";
+  ProtoInstance nested;
+  nested.name = "Leaf";
+  nested.declaration = leaf;
+  outer->body.nestedInstances.push_back(nested);
+  outer->body.recordInstance(0);
+
+  Scene scene;
+  ExpandGuard guard;
+  std::vector<ProtoWarning> warnings;
+  ProtoInstance inst;
+  inst.name = "Outer";
+  inst.declaration = outer;
+  auto only = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
+  REQUIRE(only);
+  CHECK(only->nodeTypeName() == "Group");
+  CHECK(warnings.empty());
+
+  outer->body.nestedInstances[0].declaration.reset();
+  outer->body.nestedInstances[0].name = "Missing";
+  auto peer = createX3DNode("Transform");
+  outer->body.nodes.push_back(peer);
+  outer->body.recordNode(peer);
+  Scene failedScene;
+  warnings.clear();
+  auto failed = expandInstance(inst, failedScene, noopProtoResolver, "", guard, warnings);
+  CHECK_FALSE(failed);
+  REQUIRE(warnings.size() == 1);
+  CHECK(warnings.front().kind == ProtoWarning::Kind::MissingDeclaration);
+}
+
+TEST_CASE("parsed PROTO body selects the first direct node or instance") {
+  const char *prefix =
+      "<X3D version='4.0'><Scene>"
+      "<ProtoDeclare name='Leaf'><ProtoBody><Group/></ProtoBody></ProtoDeclare>";
+  const char *suffix = "<ProtoInstance name='Outer'/></Scene></X3D>";
+  const std::string bodyStart =
+      "<ProtoDeclare name='Outer'><ProtoBody>";
+  const std::string bodyEnd = "</ProtoBody></ProtoDeclare>";
+  auto parse = [&](const std::string &body) {
+    return x3d::codec::parseDocument(std::string(prefix) + bodyStart + body +
+                                     bodyEnd + suffix);
+  };
+
+  auto only = parse("<ProtoInstance name='Leaf'/>");
+  REQUIRE(only.scene.rootNodes.size() == 1);
+  CHECK(only.scene.rootNodes.front()->nodeTypeName() == "Group");
+  CHECK(only.protoWarnings.empty());
+
+  auto nestedFirst = parse("<ProtoInstance name='Leaf'/><Transform/>");
+  REQUIRE(nestedFirst.scene.rootNodes.size() == 1);
+  CHECK(nestedFirst.scene.rootNodes.front()->nodeTypeName() == "Group");
+  REQUIRE(nestedFirst.scene.protoPeerNodes.size() == 1);
+  CHECK(nestedFirst.scene.protoPeerNodes.front()->nodeTypeName() == "Transform");
+  CHECK(nestedFirst.protoWarnings.empty());
+
+  auto ordinaryFirst = parse("<Transform/><ProtoInstance name='Leaf'/>");
+  REQUIRE(ordinaryFirst.scene.rootNodes.size() == 1);
+  CHECK(ordinaryFirst.scene.rootNodes.front()->nodeTypeName() == "Transform");
+  auto children = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*ordinaryFirst.scene.rootNodes.front(), "children")
+          ->get(*ordinaryFirst.scene.rootNodes.front()));
+  CHECK(children.empty());
+  REQUIRE(ordinaryFirst.scene.protoPeerNodes.size() == 1);
+  CHECK(ordinaryFirst.scene.protoPeerNodes.front()->nodeTypeName() == "Group");
+  CHECK(ordinaryFirst.protoWarnings.empty());
+}
+
+TEST_CASE("nested PROTO children keep authored order and USE aliases in every instance") {
+  const struct {
+    x3d::codec::Encoding encoding;
+    const char *text;
+  } cases[] = {
+      {x3d::codec::Encoding::XML,
+       "<X3D version='4.0'><Scene>"
+       "<ProtoDeclare name='A'><ProtoBody><Transform/></ProtoBody></ProtoDeclare>"
+       "<ProtoDeclare name='B'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>"
+       "<ProtoDeclare name='Outer'><ProtoBody><Group>"
+       "<ProtoInstance name='A'/><Group DEF='Shared'/>"
+       "<ProtoInstance name='B'/><Group USE='Shared'/>"
+       "</Group></ProtoBody></ProtoDeclare>"
+       "<ProtoInstance name='Outer'/><ProtoInstance name='Outer'/>"
+       "</Scene></X3D>"},
+      {x3d::codec::Encoding::JSON,
+       R"({"X3D":{"@version":"4.0","Scene":{"-children":[{"ProtoDeclare":{"@name":"A","ProtoBody":{"-children":[{"Transform":{}}]}}},{"ProtoDeclare":{"@name":"B","ProtoBody":{"-children":[{"Shape":{}}]}}},{"ProtoDeclare":{"@name":"Outer","ProtoBody":{"-children":[{"Group":{"-children":[{"ProtoInstance":{"@name":"A"}},{"Group":{"@DEF":"Shared"}},{"ProtoInstance":{"@name":"B"}},{"Group":{"@USE":"Shared"}}]}}]}}},{"ProtoInstance":{"@name":"Outer"}},{"ProtoInstance":{"@name":"Outer"}}]}}})"},
+      {x3d::codec::Encoding::ClassicVRML,
+       "#X3D V4.0 utf8\nPROTO A [ ] { Transform { } }\n"
+       "PROTO B [ ] { Shape { } }\n"
+       "PROTO Outer [ ] { Group { children [ A { } DEF Shared Group { } "
+       "B { } USE Shared ] } }\nOuter { }\nOuter { }\n"},
+  };
+  for (const auto &c : cases) {
+    auto doc = x3d::codec::parseDocument(c.text, c.encoding);
+    REQUIRE(doc.scene.rootNodes.size() == 2);
+    REQUIRE(doc.protoWarnings.empty());
+    auto children = [](const std::shared_ptr<X3DNode> &root) {
+      return std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+          fieldByName(*root, "children")->get(*root));
+    };
+    const auto first = children(doc.scene.rootNodes[0]);
+    const auto second = children(doc.scene.rootNodes[1]);
+    for (const auto &nodes : {first, second}) {
+      REQUIRE(nodes.size() == 4);
+      CHECK(nodes[0]->nodeTypeName() == "Transform");
+      CHECK(nodes[1]->nodeTypeName() == "Group");
+      CHECK(nodes[2]->nodeTypeName() == "Shape");
+      CHECK(nodes[3] == nodes[1]);
+    }
+    CHECK(first[0] != second[0]);
+    CHECK(first[1] != second[1]);
+    CHECK(first[2] != second[2]);
+  }
+}
+
+TEST_CASE("failed nested instance leaves surrounding MFNode children in order") {
+  auto doc = x3d::codec::parseDocument(
+      "<X3D version='4.0'><Scene>"
+      "<ProtoDeclare name='Outer'><ProtoBody><Group>"
+      "<Transform/><ProtoInstance name='Missing'/><Shape/>"
+      "</Group></ProtoBody></ProtoDeclare>"
+      "<ProtoInstance name='Outer'/></Scene></X3D>");
+  REQUIRE(doc.scene.rootNodes.size() == 1);
+  const auto children = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      fieldByName(*doc.scene.rootNodes.front(), "children")
+          ->get(*doc.scene.rootNodes.front()));
+  REQUIRE(children.size() == 2);
+  CHECK(children[0]->nodeTypeName() == "Transform");
+  CHECK(children[1]->nodeTypeName() == "Shape");
+  REQUIRE(doc.protoWarnings.size() == 1);
+  CHECK(doc.protoWarnings.front().kind == ProtoWarning::Kind::MissingDeclaration);
 }

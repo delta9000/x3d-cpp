@@ -2,7 +2,7 @@
 title: ROUTEs
 summary: Route model, field addressing, and route resolution over effective fields including dynamic Script fields.
 tags: [subsystem, routes, field-addressing, dynamic-fields]
-updated: 2026-06-20
+updated: 2026-09-29
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -76,7 +76,12 @@ std::string resolveFieldAlias(const X3DNode *node, const std::string &name);
 
 // runtime/events/X3DSceneBridge.hpp — bridge entry point
 namespace x3d::runtime {
-struct RouteError { std::size_t index; std::string reason; };
+struct RouteError {
+  enum class Scope { Scene, ProtoBody, Inline };
+  std::size_t index;  // position within the route collection named by scope
+  std::string reason;
+  Scope scope = Scope::Scene;
+};
 struct BridgeResult { std::size_t routesAdded; std::vector<RouteError> rejected; bool ok() const; };
 
 BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx);
@@ -95,24 +100,26 @@ DynamicFieldStore &dynamicFieldStore();            // process-global store
 
 - **Codec readers → Scene::routes** — all four codec readers (XML, ClassicVRML, VRML97, JSON) parse `<ROUTE>` / `ROUTE` statements and push `Route` structs (DEF names only, no resolved pointers) into `Scene::routes`. Resolved pointers are populated later by `Scene::resolveRoutes()` inside `buildRoutes`.
 
-- **PROTO expander → Scene::resolvedProtoRoutes** — when `X3DProtoExpand` clones a PROTO body it resolves body-internal ROUTEs against the cloned node set and stores them in `Scene::resolvedProtoRoutes`. `buildRoutes` registers these directly, bypassing the DEF-table lookup (clone nodes are never in `scene.defs`).
+- **PROTO expander → Scene::resolvedProtoRoutes** — when `X3DProtoExpand` clones a PROTO body it resolves body-internal ROUTEs against cloned nodes. A route to a nested PROTO interface follows its `IS` targets; both endpoints may fan out. The resulting physical endpoints are stored in `Scene::resolvedProtoRoutes`. `buildRoutes` validates their effective fields, aliases, direction, and type before registration. Clone nodes stay outside `scene.defs`.
 
-- **Inline expander → Scene::resolvedInlineRoutes** — `InlineExpand` similarly stores inlined-scene-internal ROUTEs in `Scene::resolvedInlineRoutes` (same `ResolvedProtoRoute` shape, same direct-registration path in `buildRoutes`).
+- **Inline expander → Scene::resolvedInlineRoutes** — `InlineExpand` stores inlined-scene-internal ROUTEs in `Scene::resolvedInlineRoutes`. The bridge validates these physical endpoints with the same field checks. Routes installed later by `InlineRuntimeSystem` follow a separate path.
 
 - **DynamicFieldStore → effectiveFields** — `detail::findField` in `X3DSceneBridge.hpp` calls `effectiveFields(node)` which concatenates the node's generated `fields()` table with the author fields from the process-global `DynamicFieldStore`. This makes Script author `<field>` declarations first-class ROUTE endpoints (S1 dynamic-field seam).
 
 - **EventGraph → X3DEventCascade** — after `buildRoutes` populates the `EventGraph` inside `X3DExecutionContext`, the event cascade consults `EventGraph::sinks()` on each tick to propagate field changes across edges. The cascade holds the graph by reference; nodes are never owned.
 
-- **SaiContext → EventGraph (dynamic ROUTE operations)** — `SaiContext::addRoute` and `SaiContext::deleteRoute` call `ctx_.addRoute` / `ctx_.removeRoute` directly on the live graph (ISO/IEC 19775-1 §4.3.7, guarded by `directOutput==TRUE`). `addRoute` first validates the endpoints with the same rules as the document-ROUTE bridge (nodes non-null, fields present with `set_`/`_changed` aliases resolved, source readable, sink writable, identical types), so a script cannot insert a route the bridge would reject. `X3DEventGraph::addRoute` itself stays unvalidated.
+- **SaiContext → EventGraph (dynamic ROUTE operations)** — `SaiContext::addRoute` and `SaiContext::deleteRoute` call `ctx_.addRoute` / `ctx_.removeRoute` directly on the live graph (ISO/IEC 19775-1 §4.3.7, guarded by `directOutput==TRUE`). `addRoute` checks physical node fields, `set_`/`_changed` aliases, event direction, and matching types. It does not resolve nominal PROTO interfaces or their `IS` targets as the document-ROUTE bridge does. `X3DEventGraph::addRoute` itself stays unvalidated.
 
 ### Validation rules enforced by buildRoutes
 
 `buildRoutes` applies four checks in order and returns diagnostics rather than throwing:
 
 1. **Unresolved endpoint** — `Route::from` or `Route::to` weak_ptr is expired (forward ref, IMPORT, unknown DEF): skipped silently; not counted as added or rejected.
-2. **Unknown field** — field name absent from the node's effective table: rejected with reason. If the unknown name names an exposed PROTO interface field, `redirectEndpoint` rewires onto IS-mapped body endpoints instead.
+2. **Unknown field** — for an expanded PROTO, the declared interface is the public field table, even when its primary node has a field with the same name. An EXTERNPROTO instance uses its authored external interface. A recognized interface endpoint follows its `IS` targets; a route between two such endpoints uses every source/sink target pair. Other nodes use their effective field table. Every PROTO instance also exposes inherited `metadata` and its inputOutput aliases through the primary node's current metadata storage. An undeclared primary field is rejected.
 3. **Direction** — source must be `outputOnly` or `inputOutput`; sink must be `inputOnly` or `inputOutput`: else rejected.
 4. **Type** — `fromField.type` must equal `toField.type`; X3D performs no implicit field-type coercion across a ROUTE (ISO/IEC 19775-1 §4.4.8.2): else rejected.
+
+The bridge checks declared PROTO interface direction and type, then checks each physical target pair through `effectiveFields()`. Pre-resolved PROTO-body and Inline routes receive the physical checks without another PROTO redirect lookup. `RouteError::scope` identifies `Scene`, `ProtoBody`, or `Inline`; `index` is relative to that route collection. Independent PROTO interface event state without an `IS` target is not implemented, so such an endpoint cannot carry an event through this bridge.
 
 ## How it is tested
 

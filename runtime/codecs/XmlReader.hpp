@@ -101,6 +101,7 @@ private:
   // Reader-recovery diagnostics accumulated during the current readDocument()
   // call, moved into X3DDocument.readerWarnings on return.
   std::vector<runtime::ReaderWarning> readerWarnings_;
+  bool capturingProtoFieldValue_ = false;
 
   void readHead(const xml::Element &head, runtime::Head &out) {
     for (const auto &c : head.children) {
@@ -113,7 +114,8 @@ private:
         runtime::Unit u;
         u.category = c->attrOr("category", "");
         u.name = c->attrOr("name", "");
-        u.conversionFactor = parseDouble(c->attrOr("conversionFactor", "1"));
+        u.conversionFactor = parseUnitConversionFactor(
+            c->attrOr("conversionFactor", ""));
         out.units.push_back(std::move(u));
       } else if (c->name == "meta") {
         runtime::Meta m;
@@ -150,8 +152,21 @@ private:
       } else if (c->name == "ExternProtoDeclare") {
         readExternProtoDeclare(*c, out);
       } else if (c->name == "ProtoInstance") {
-        // A ProtoInstance directly under <Scene> is a root with no parent node.
-        readProtoInstance(*c, out, /*parent=*/nullptr, /*parentSlot=*/"");
+        // A USE of a fieldValue template retains the same node identity as
+        // that value; a fresh scene-root instance also gets a positioned
+        // template node linked to its structural record.
+        auto use = c->attr("USE");
+        auto alias = use ? std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(
+                               out.resolve(*use)) : nullptr;
+        if (alias)
+          out.addRootNode(alias);
+        else {
+          readProtoInstance(*c, out, /*parent=*/nullptr, /*parentSlot=*/"");
+          auto &inst = out.protoInstances.back();
+          auto node = std::make_shared<runtime::ProtoInstanceTemplate>(inst);
+          inst.placementTemplate = node;
+          out.addRootNode(node);
+        }
       } else {
         auto node = readNode(*c, out);
         if (node)
@@ -195,7 +210,8 @@ private:
       const FieldInfo *f = findField(table, fieldName);
       if (!f)
         continue; // unknown attribute: ignore
-      applyAttribute(*node, *f, val);
+      if (applyAttribute(*node, *f, val))
+        scene.authoredScalarFields.record(node, f->x3dName);
     }
 
     // Register DEF before recursing so a USE inside the subtree can resolve to
@@ -256,18 +272,39 @@ private:
       // model rather than the parent's node fields. A <ProtoInstance> records
       // its placement (this node + the slot it would occupy) so a later
       // expansion pass can splice the expanded primary node back in.
-      if (childEl->name == "ProtoInstance") {
+      if (childEl->name == "ProtoInstance" &&
+          !(childEl->attr("USE") &&
+            scene.resolve(*childEl->attr("USE")))) {
         const std::string slot =
             childEl->attrOr("containerField", "children");
+        if (capturingProtoFieldValue_) {
+          auto child = readInstanceTemplate(*childEl, scene);
+          attachChild(*node, table, slot, childEl->name, child, &scene);
+          continue;
+        }
         readProtoInstance(*childEl, scene, node, slot, currentProtoBody);
+        if (currentProtoBody)
+          currentProtoBody->recordChildInstance(
+              node, slot, currentProtoBody->nestedInstances.size() - 1);
+        else {
+          auto &inst = scene.protoInstances.back();
+          auto child = std::make_shared<runtime::ProtoInstanceTemplate>(inst);
+          inst.placementTemplate = child;
+          if (!inst.DEF.empty()) scene.define(inst.DEF, child);
+          attachChild(*node, table, slot, childEl->name, child, &scene);
+        }
         continue;
       }
       if (childEl->name == "ProtoDeclare") {
-        readProtoDeclare(*childEl, scene);
+        auto decl = readProtoDeclare(*childEl, scene);
+        if (currentProtoBody)
+          currentProtoBody->recordChildProto(node, decl);
         continue;
       }
       if (childEl->name == "ExternProtoDeclare") {
-        readExternProtoDeclare(*childEl, scene);
+        auto decl = readExternProtoDeclare(*childEl, scene);
+        if (currentProtoBody)
+          currentProtoBody->recordChildExternProto(node, decl);
         continue;
       }
       // ProtoInstance/Script/etc. that are not factory-known are skipped.
@@ -281,6 +318,8 @@ private:
       const std::string slot =
           childEl->attrOr("containerField", child->defaultContainerField());
       attachChild(*node, table, slot, childEl->name, child, &scene);
+      if (currentProtoBody)
+        currentProtoBody->recordChildNode(node, slot, child);
     }
 
     return node;
@@ -363,22 +402,37 @@ private:
   // -------------------------------------------------------------------------
 
   /// <ProtoDeclare name>: interface (<ProtoInterface>) + body (<ProtoBody>).
-  void readProtoDeclare(const xml::Element &el, runtime::Scene &scene) {
+  std::shared_ptr<runtime::ProtoDeclaration>
+  readProtoDeclare(const xml::Element &el, runtime::Scene &scene) {
+    struct CaptureScope {
+      bool &flag;
+      bool previous;
+      explicit CaptureScope(bool &f) : flag(f), previous(f) { flag = false; }
+      ~CaptureScope() { flag = previous; }
+    } capture(capturingProtoFieldValue_);
     auto decl = std::make_shared<runtime::ProtoDeclaration>();
     decl->name = el.attrOr("name", "");
     decl->appinfo = el.attrOr("appinfo", "");
     decl->documentation = el.attrOr("documentation", "");
+    // Interface defaults and body nodes share this declaration's DEF scope.
+    // Only prototype declarations, never outer DEFs, are visible inside it.
+    runtime::Scene local;
+    local.protoDeclarations = scene.protoDeclarations;
+    local.externProtoDeclarations = scene.externProtoDeclarations;
     for (const auto &c : el.children) {
       if (c->name == "ProtoInterface")
-        readProtoInterface(*c, scene, decl->interface);
+        readProtoInterface(*c, local, decl->interface, &decl->body);
       else if (c->name == "ProtoBody")
-        readProtoBody(*c, scene, decl->body);
+        readProtoBody(*c, local, decl->body);
     }
-    scene.protoDeclarations.push_back(std::move(decl));
+    decl->authoredScalarFields = std::move(local.authoredScalarFields);
+    scene.declareProto(decl);
+    return decl;
   }
 
   /// <ExternProtoDeclare name url>: interface <field>s + split MFString url.
-  void readExternProtoDeclare(const xml::Element &el, runtime::Scene &scene) {
+  std::shared_ptr<runtime::ExternProtoDeclaration>
+  readExternProtoDeclare(const xml::Element &el, runtime::Scene &scene) {
     auto decl = std::make_shared<runtime::ExternProtoDeclaration>();
     decl->name = el.attrOr("name", "");
     decl->appinfo = el.attrOr("appinfo", "");
@@ -388,13 +442,15 @@ private:
     // Extern interface <field>s carry no defaults, but reading them through the
     // shared path is harmless (no value attr / node child => no default).
     readInterfaceFields(el, scene, decl->interface);
-    scene.externProtoDeclarations.push_back(std::move(decl));
+    scene.declareExternProto(decl);
+    return decl;
   }
 
   /// <ProtoInterface>: a sequence of <field name type accessType value/>.
   void readProtoInterface(const xml::Element &el, runtime::Scene &scene,
-                          std::vector<runtime::ProtoField> &out) {
-    readInterfaceFields(el, scene, out);
+                          std::vector<runtime::ProtoField> &out,
+                          runtime::ProtoBody *body = nullptr) {
+    readInterfaceFields(el, scene, out, body);
   }
 
   /// Read every direct <field> child of `el` into `out` (shared by Proto and
@@ -402,7 +458,8 @@ private:
   /// parseValue(type, value); for SF/MFNode fields any child node elements are
   /// read into nodeDefault.
   void readInterfaceFields(const xml::Element &el, runtime::Scene &scene,
-                           std::vector<runtime::ProtoField> &out) {
+                           std::vector<runtime::ProtoField> &out,
+                           runtime::ProtoBody *body = nullptr) {
     for (const auto &c : el.children) {
       if (c->name != "field")
         continue;
@@ -415,7 +472,15 @@ private:
       if (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode) {
         // Node-typed default: child element(s) are the default node(s).
         for (const auto &nc : c->children) {
-          if (auto n = readNode(*nc, scene))
+          if (nc->name == "ProtoInstance") {
+            if (const std::string *use = nc->attr("USE")) {
+              if (auto n = scene.resolve(*use)) f.nodeDefault.push_back(n);
+            } else {
+              f.nodeDefault.push_back(readInstanceTemplate(*nc, scene));
+            }
+            continue;
+          }
+          if (auto n = readNode(*nc, scene, body))
             f.nodeDefault.push_back(n);
         }
       } else if (const std::string *v = c->attr("value")) {
@@ -427,17 +492,8 @@ private:
 
   /// <ProtoBody>: child nodes into body.nodes, <ROUTE> into body.routes, and
   /// each body node's <IS><connect/></IS> into body.isConnections.
-  void readProtoBody(const xml::Element &el, runtime::Scene &scene,
+  void readProtoBody(const xml::Element &el, runtime::Scene &local,
                      runtime::ProtoBody &out) {
-    // AUD-C: a PROTO body is its OWN DEF scope. Parse body nodes into a LOCAL
-    // scene so body DEFs (and the USE that resolve to them) stay body-scoped and
-    // do NOT leak into the enclosing scene's DEF table (which inflated defCount on
-    // round-trip and diverged from the VRML reader, which already does this).
-    // Previously-declared protos are visible to nested body content, so copy the
-    // declaration tables in (mirrors ClassicVrmlReader::parseProto).
-    runtime::Scene local;
-    local.protoDeclarations = scene.protoDeclarations;
-    local.externProtoDeclarations = scene.externProtoDeclarations;
     for (const auto &c : el.children) {
       if (c->name == "ROUTE") {
         out.routes.emplace_back(
@@ -450,16 +506,27 @@ private:
         // to; ignore leniently.
         continue;
       }
+      if (c->name == "ProtoDeclare") {
+        out.recordProto(readProtoDeclare(*c, local));
+        continue;
+      }
+      if (c->name == "ExternProtoDeclare") {
+        out.recordExternProto(readExternProtoDeclare(*c, local));
+        continue;
+      }
       // A body node may itself be a ProtoInstance; record it on the body (out)
       // with no parent so it is retained (Case B/C in the engine).
-      if (c->name == "ProtoInstance") {
+      if (c->name == "ProtoInstance" &&
+          !(c->attr("USE") && local.resolve(*c->attr("USE")))) {
         readProtoInstance(*c, local, nullptr, "", &out);
+        out.recordInstance(out.nestedInstances.size() - 1);
         continue;
       }
       auto node = readNode(*c, local, &out);
       if (!node)
         continue;
       out.nodes.push_back(node);
+      out.recordNode(node);
       // IS collection is handled inside readNode (threaded via currentProtoBody)
       // so it applies at every depth, not just to this top body node. See PRF-2.
     }
@@ -507,6 +574,12 @@ private:
     else
       inst.externDeclaration = findExternProtoDecl(scene, inst.name);
 
+    struct CaptureScope {
+      bool &flag;
+      bool previous;
+      explicit CaptureScope(bool &f) : flag(f), previous(f) { flag = true; }
+      ~CaptureScope() { flag = previous; }
+    } capture(capturingProtoFieldValue_);
     for (const auto &c : el.children) {
       if (c->name == "IS") {
         for (const auto &conn : c->children) {
@@ -530,7 +603,12 @@ private:
                                 decl->type == X3DFieldType::MFNode);
       if (nodeTyped || (!c->attr("value") && !c->children.empty())) {
         for (const auto &nc : c->children) {
-          if (auto n = readNode(*nc, scene)) {
+          std::shared_ptr<X3DNode> n;
+          if (nc->name == "ProtoInstance" && !nc->attr("USE"))
+            n = readInstanceTemplate(*nc, scene);
+          else
+            n = readNode(*nc, scene);
+          if (n) {
             fv.nodeValue.push_back(n);
             hasNodeChild = true;
           }
@@ -554,6 +632,16 @@ private:
       body->nestedInstances.push_back(std::move(inst));
     else
       scene.protoInstances.push_back(std::move(inst));
+  }
+
+  std::shared_ptr<X3DNode> readInstanceTemplate(const xml::Element &el,
+                                                 runtime::Scene &scene) {
+    readProtoInstance(el, scene, nullptr, "");
+    auto inst = std::move(scene.protoInstances.back());
+    scene.protoInstances.pop_back();
+    auto node = std::make_shared<runtime::ProtoInstanceTemplate>(std::move(inst));
+    if (!node->getDEF().empty()) scene.define(node->getDEF(), node);
+    return node;
   }
 
   static std::shared_ptr<runtime::ExternProtoDeclaration>
@@ -598,18 +686,20 @@ private:
   }
 
   /// Set one value attribute on a node via its FieldInfo thunks.
-  static void applyAttribute(X3DNode &node, const FieldInfo &f,
+  static bool applyAttribute(X3DNode &node, const FieldInfo &f,
                              const std::string &val) {
     if (f.isEnum()) {
-      if (f.setEnumString)
-        f.setEnumString(node, stripEnumQuotes(val)); // AUD-D
-      return;
+      if (!f.isWritable() || !f.setEnumString) return false;
+      const std::string token = stripEnumQuotes(val);
+      f.setEnumString(node, token); // AUD-D
+      return f.getEnumString && f.getEnumString(node) == token;
     }
     if (!f.isWritable())
-      return; // read-only (outputOnly): skip; initializeOnly is now data-layer writable
+      return false; // read-only (outputOnly): skip
     std::any v = parseValue(f.type, val);
-    if (v.has_value())
-      f.set(node, v);
+    if (!v.has_value()) return false;
+    f.set(node, v);
+    return true;
   }
 
   /// Attach a child node into the correct SF/MFNode field of `parent`.

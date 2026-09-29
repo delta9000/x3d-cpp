@@ -464,6 +464,23 @@ inline FragmentShader makeMaterialShader(const ex::MaterialDesc &m,
   return front;
 }
 
+// §12.4.3 overlay: the base shader retains alpha and discard coverage. Hatch
+// color replaces only RGB, then receives fog in display space.
+inline FragmentShader withFillProperties(FragmentShader shader,
+                                         ex::FillPropertiesDesc fill,
+                                         FogParams fog) {
+  if (!fill.hatched) return shader;
+  return [shader, fill, fog](const FragmentInput &f, glsl::vec4 &out) -> bool {
+    if (!shader(f, out)) return false;
+    if (f.hatch) {
+      glsl::vec3 color{fill.hatchColor.r, fill.hatchColor.g, fill.hatchColor.b};
+      color = detail::applyFog(color, glsl::length(f.posEye), fog);
+      out.x = color.x; out.y = color.y; out.z = color.z;
+    }
+    return true;
+  };
+}
+
 } // namespace x3d::cpuraster
 
 #endif // X3D_CPURASTER_MATERIAL_SHADER_HPP

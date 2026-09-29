@@ -8,6 +8,8 @@
 #include "NodeBuilder.hpp"
 #include "x3d/nodes/Script.hpp"
 
+#include <limits>
+
 namespace x3d::codec {
 
 Encoding JsonReader::encoding() const { return Encoding::JSON; }
@@ -66,7 +68,8 @@ void JsonReader::readHead(const json::Value &head, runtime::Head &out) {
       runtime::Unit unit;
       unit.category = strMember(*u, "@category");
       unit.name = strMember(*u, "@name");
-      unit.conversionFactor = doubleMember(*u, "@conversionFactor", 1.0);
+      unit.conversionFactor = doubleMember(*u, "@conversionFactor",
+                                           std::numeric_limits<double>::quiet_NaN());
       out.units.push_back(std::move(unit));
     }
   }
@@ -188,6 +191,9 @@ JsonReader::readNode(const json::Value &wrapper, runtime::Scene &scene,
     return build::resolveUse(scene, use->str);
   }
 
+  if (capturingProtoFieldValue_ && typeName == "ProtoInstance")
+    return readJsonInstanceTemplate(*body, scene);
+
   auto node = build::beginNode(typeName);
   if (!node) {
     readerWarnings_.push_back(
@@ -207,7 +213,9 @@ JsonReader::readNode(const json::Value &wrapper, runtime::Scene &scene,
     if (key == "@USE")
       continue;                          // handled above
     std::string x3dName = key.substr(1); // strip '@'
-    applyJsonField(*node, x3dName, *val);
+    if (applyJsonField(*node, x3dName, *val))
+      scene.authoredScalarFields.record(
+          node, std::string(canonicalInputFieldName(typeName, x3dName)));
   }
 
   // Register DEF before recursing so a nested USE resolves to this node.
@@ -258,8 +266,11 @@ void JsonReader::attachChildren(X3DNode &node, const std::string &slot,
                               currentProtoBody))
       return;
     auto child = readNode(childWrapper, scene, currentProtoBody);
-    if (child)
+    if (child) {
       build::attachChild(node, slot, child, &scene);
+      if (currentProtoBody)
+        currentProtoBody->recordChildNode(parentNode, slot, child);
+    }
   };
   if (val.isArray()) {
     for (const auto &c : val.array)
@@ -284,15 +295,41 @@ bool JsonReader::tryReadProtoStatement(const json::Value &wrapper,
   if (!obj || !obj->isObject())
     return false;
   if (key == "ProtoDeclare") {
-    readJsonProtoDeclare(*obj, scene);
+    auto decl = readJsonProtoDeclare(*obj, scene);
+    if (body && !parent) body->recordProto(decl);
+    if (body && parent) body->recordChildProto(parent, decl);
     return true;
   }
   if (key == "ExternProtoDeclare") {
-    readJsonExternProtoDeclare(*obj, scene);
+    auto decl = readJsonExternProtoDeclare(*obj, scene);
+    if (body && !parent) body->recordExternProto(decl);
+    if (body && parent) body->recordChildExternProto(parent, decl);
     return true;
   }
   if (key == "ProtoInstance") {
+    if (const json::Value *use = obj->member("@USE");
+        use && use->isString() &&
+        std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(
+            build::resolveUse(scene, use->str)))
+      return false;
+    if (capturingProtoFieldValue_)
+      return false;
     readJsonProtoInstance(*obj, scene, parent, slot, body);
+    if (!body && !parent) {
+      auto &inst = scene.protoInstances.back();
+      auto node = std::make_shared<runtime::ProtoInstanceTemplate>(inst);
+      inst.placementTemplate = node;
+      scene.addRootNode(node);
+    } else if (!body && parent) {
+      auto &inst = scene.protoInstances.back();
+      auto node = std::make_shared<runtime::ProtoInstanceTemplate>(inst);
+      inst.placementTemplate = node;
+      build::defineDef(scene, inst.DEF, node);
+      build::attachChild(*parent, slot, node, &scene);
+    }
+    if (body && !parent) body->recordInstance(body->nestedInstances.size() - 1);
+    if (body && parent)
+      body->recordChildInstance(parent, slot, body->nestedInstances.size() - 1);
     return true;
   }
   return false;
@@ -300,7 +337,7 @@ bool JsonReader::tryReadProtoStatement(const json::Value &wrapper,
 
 void JsonReader::readJsonInterfaceFields(const json::Value &iface,
                                          std::vector<runtime::ProtoField> &out,
-                                         runtime::Scene &scene) {
+                                         runtime::Scene &scene, runtime::ProtoBody *body) {
   const json::Value *fields = iface.member("field");
   if (!fields)
     return;
@@ -317,10 +354,20 @@ void JsonReader::readJsonInterfaceFields(const json::Value &iface,
     if (pf.type == X3DFieldType::SFNode || pf.type == X3DFieldType::MFNode) {
       if (const json::Value *kids = f.member("-children");
           kids && kids->isArray()) {
-        for (const auto &c : kids->array)
-          if (c && c->isObject())
-            if (auto n = readNode(*c, scene))
-              pf.nodeDefault.push_back(n);
+        for (const auto &c : kids->array) {
+          if (!c || !c->isObject()) continue;
+          if (const json::Value *pi = c->member("ProtoInstance");
+              pi && pi->isObject()) {
+            if (const json::Value *use = pi->member("@USE");
+                use && use->isString()) {
+              if (auto n = build::resolveUse(scene, use->str))
+                pf.nodeDefault.push_back(n);
+            } else
+              pf.nodeDefault.push_back(readJsonInstanceTemplate(*pi, scene));
+          } else if (auto n = readNode(*c, scene, body)) {
+            pf.nodeDefault.push_back(n);
+          }
+        }
       }
     } else {
       if (const json::Value *v = f.member("@value"); v && v->isString())
@@ -337,22 +384,35 @@ void JsonReader::readJsonInterfaceFields(const json::Value &iface,
   }
 }
 
-void JsonReader::readJsonProtoDeclare(const json::Value &obj,
+std::shared_ptr<runtime::ProtoDeclaration>
+JsonReader::readJsonProtoDeclare(const json::Value &obj,
                                       runtime::Scene &scene) {
+  struct CaptureScope {
+    bool &flag;
+    bool previous;
+    explicit CaptureScope(bool &f) : flag(f), previous(f) { flag = false; }
+    ~CaptureScope() { flag = previous; }
+  } capture(capturingProtoFieldValue_);
   auto decl = std::make_shared<runtime::ProtoDeclaration>();
   decl->name = strMember(obj, "@name");
   decl->appinfo = strMember(obj, "@appinfo");
   decl->documentation = strMember(obj, "@documentation");
+  runtime::Scene local;
+  local.protoDeclarations = scene.protoDeclarations;
+  local.externProtoDeclarations = scene.externProtoDeclarations;
   if (const json::Value *iface = obj.member("ProtoInterface");
       iface && iface->isObject())
-    readJsonInterfaceFields(*iface, decl->interface, scene);
+    readJsonInterfaceFields(*iface, decl->interface, local, &decl->body);
   if (const json::Value *bodyObj = obj.member("ProtoBody");
       bodyObj && bodyObj->isObject())
-    readJsonProtoBody(*bodyObj, scene, decl->body);
-  scene.protoDeclarations.push_back(std::move(decl));
+    readJsonProtoBody(*bodyObj, local, decl->body);
+  decl->authoredScalarFields = std::move(local.authoredScalarFields);
+  scene.declareProto(decl);
+  return decl;
 }
 
-void JsonReader::readJsonExternProtoDeclare(const json::Value &obj,
+std::shared_ptr<runtime::ExternProtoDeclaration>
+JsonReader::readJsonExternProtoDeclare(const json::Value &obj,
                                             runtime::Scene &scene) {
   auto decl = std::make_shared<runtime::ExternProtoDeclaration>();
   decl->name = strMember(obj, "@name");
@@ -372,30 +432,26 @@ void JsonReader::readJsonExternProtoDeclare(const json::Value &obj,
     }
   }
   readJsonInterfaceFields(obj, decl->interface, scene);
-  scene.externProtoDeclarations.push_back(std::move(decl));
+  scene.declareExternProto(decl);
+  return decl;
 }
 
 void JsonReader::readJsonProtoBody(const json::Value &obj,
                                    runtime::Scene &scene,
                                    runtime::ProtoBody &out) {
-  // AUD-C: a PROTO body is its own DEF scope. Parse into a LOCAL scene so body
-  // DEFs/USE stay body-scoped and do not leak into the enclosing scene's DEF
-  // table (mirrors XmlReader::readProtoBody + ClassicVrmlReader::parseProto).
-  runtime::Scene local;
-  local.protoDeclarations = scene.protoDeclarations;
-  local.externProtoDeclarations = scene.externProtoDeclarations;
   if (const json::Value *kids = obj.member("-children");
       kids && kids->isArray()) {
     for (const auto &c : kids->array) {
       if (!c || !c->isObject())
         continue;
       // A body child may itself be a PROTO statement (nested instance).
-      if (tryReadProtoStatement(*c, local, nullptr, "", &out))
+      if (tryReadProtoStatement(*c, scene, nullptr, "", &out))
         continue;
-      auto node = readNode(*c, local, &out);
+      auto node = readNode(*c, scene, &out);
       if (!node)
         continue;
       out.nodes.push_back(node);
+      out.recordNode(node);
       // IS collection for this body node (and any nested body node) is handled
       // inside readNode now (threaded via currentProtoBody), so deep IS blocks
       // are captured too — no separate top-level scan needed here.
@@ -543,6 +599,12 @@ void JsonReader::readJsonProtoInstance(const json::Value &obj,
         break;
       }
 
+  struct CaptureScope {
+    bool &flag;
+    bool previous;
+    explicit CaptureScope(bool &f) : flag(f), previous(f) { flag = true; }
+    ~CaptureScope() { flag = previous; }
+  } capture(capturingProtoFieldValue_);
   if (const json::Value *fvs = obj.member("fieldValue")) {
     auto one = [&](const json::Value &fv) {
       if (!fv.isObject())
@@ -614,6 +676,16 @@ void JsonReader::readJsonProtoInstance(const json::Value &obj,
     scene.protoInstances.push_back(std::move(inst));
 }
 
+std::shared_ptr<X3DNode> JsonReader::readJsonInstanceTemplate(
+    const json::Value &obj, runtime::Scene &scene) {
+  readJsonProtoInstance(obj, scene, nullptr, "", nullptr);
+  auto inst = std::move(scene.protoInstances.back());
+  scene.protoInstances.pop_back();
+  auto node = std::make_shared<runtime::ProtoInstanceTemplate>(std::move(inst));
+  build::defineDef(scene, node->getDEF(), node);
+  return node;
+}
+
 X3DFieldType JsonReader::mapProtoFieldType(const std::string &w) {
   return codec::fieldTypeFromName(w); // unknown: harmless SFString fallback
 }
@@ -628,15 +700,15 @@ AccessType JsonReader::mapProtoAccessType(const std::string &w) {
   return AccessType::InputOutput; // inputOutput / exposedField / default
 }
 
-void JsonReader::applyJsonField(X3DNode &node, const std::string &x3dName,
+bool JsonReader::applyJsonField(X3DNode &node, const std::string &x3dName,
                                 const json::Value &val) {
   std::string_view canonicalName =
       canonicalInputFieldName(node.nodeTypeName(), x3dName);
   const FieldInfo *f = build::findField(node.fields(), canonicalName);
   if (!f)
-    return; // unknown field: ignore
+    return false; // unknown field: ignore
   std::string wire = jsonToWire(val, f->type);
-  build::applyField(node, canonicalName, wire);
+  return build::applyField(node, canonicalName, wire);
 }
 
 std::string JsonReader::jsonToWire(const json::Value &val, X3DFieldType type) {

@@ -1,4 +1,5 @@
 #include "CanonicalXmlWriter.hpp"
+#include "X3DProtoFieldOrder.hpp"
 
 #include "DynamicField.hpp"
 #include "FieldValueIO.hpp"
@@ -73,20 +74,20 @@ std::string CanonicalXmlWriter::writeDocument(const runtime::X3DDocument &doc) {
 void CanonicalXmlWriter::writeSceneInto(xml::Element *scene,
                                         const runtime::Scene &s) {
   scene_ = &s;
-  for (const auto &d : s.protoDeclarations)
-    if (d)
-      scene->children.push_back(writeProtoDeclareElement(*d));
   for (const auto &e : s.externProtoDeclarations)
     if (e)
       scene->children.push_back(writeExternProtoDeclareElement(*e));
+  for (const auto &d : s.protoDeclarations)
+    if (d)
+      scene->children.push_back(writeProtoDeclareElement(*d));
   for (const auto &n : s.rootNodes) {
     auto child = writeNodeElement(n, "");
     if (child)
       scene->children.push_back(std::move(child));
   }
-  // Un-expanded ProtoInstances at scene root.
+  // Programmatic root instances without an authored graph slot.
   for (const auto &inst : s.protoInstances)
-    if (!inst.expanded && inst.parent.expired())
+    if (!inst.expanded && !inst.hasPlacementTemplate() && inst.parent.expired())
       scene->children.push_back(writeProtoInstanceElement(inst, ""));
   for (const auto &r : s.routes) {
     xml::Element *e = scene->addChild("ROUTE");
@@ -132,11 +133,31 @@ CanonicalXmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
     if (il != scene_->expandedInlines.end())
       return writeNodeElement(il->second, containerOverride);
   }
-  // PROTO round-trip.
+  // Re-emit captured instances with DEF/USE identity after materialization.
+  const runtime::ProtoInstance *source = nullptr;
   if (scene_) {
     auto it = scene_->expandedSources.find(node.get());
     if (it != scene_->expandedSources.end())
-      return writeProtoInstanceElement(it->second, containerOverride);
+      source = &it->second;
+  }
+  auto wrapper = std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(node);
+  const auto *placed = scene_ && !source && wrapper
+                           ? scene_->instanceAtPlacement(node.get()) : nullptr;
+  if (!source) source = placed;
+  if (!source && wrapper) source = &wrapper->instance;
+  if (source) {
+    const std::string def = placed ? placed->DEF : node->getDEF();
+    if (seen_.count(node.get())) {
+      auto el = std::make_unique<xml::Element>();
+      el->name = "ProtoInstance";
+      el->setAttr("USE", def);
+      if (!containerOverride.empty()) el->setAttr("containerField", containerOverride);
+      return el;
+    }
+    if (!def.empty()) seen_.insert(node.get());
+    auto inst = *source;
+    inst.DEF = def;
+    return writeProtoInstanceElement(inst, containerOverride);
   }
 
   const std::string typeName = node->nodeTypeName();
@@ -172,6 +193,7 @@ CanonicalXmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
       continue;
 
     if (f.isNode()) {
+      if (bodyOrder_) continue;
       writeNodeField(*el, node, f);
       continue;
     }
@@ -201,10 +223,31 @@ CanonicalXmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
     el->setAttr(f.x3dName, text);
   }
 
+  if (bodyOrder_) {
+    for (const auto &entry : runtime::orderedNodeStatements(*bodyOrder_, node)) {
+      switch (entry.kind) {
+      case runtime::ProtoBodyStatement::Kind::Node:
+        if (auto child = writeNodeElement(entry.node, entry.field))
+          el->children.push_back(std::move(child));
+        break;
+      case runtime::ProtoBodyStatement::Kind::Instance:
+        el->children.push_back(writeProtoInstanceElement(
+            bodyOrder_->nestedInstances[entry.instanceIndex], entry.field));
+        break;
+      case runtime::ProtoBodyStatement::Kind::Proto:
+        el->children.push_back(writeProtoDeclareElement(*entry.proto));
+        break;
+      case runtime::ProtoBodyStatement::Kind::ExternProto:
+        el->children.push_back(writeExternProtoDeclareElement(*entry.externProto));
+        break;
+      }
+    }
+  }
+
   // Nested un-expanded ProtoInstances for this node.
   if (scene_) {
     for (const auto &inst : scene_->protoInstances) {
-      if (inst.expanded)
+      if (inst.expanded || inst.hasPlacementTemplate())
         continue;
       auto p = inst.parent.lock();
       if (!p || p.get() != node.get())
@@ -334,28 +377,39 @@ std::unique_ptr<xml::Element> CanonicalXmlWriter::writeProtoDeclareElement(
 
   auto iface = std::make_unique<xml::Element>();
   iface->name = "ProtoInterface";
+  CanonicalXmlWriter bodyWriter;
+  bodyWriter.bodyIsc_ = &d.body.isConnections;
+  bodyWriter.bodyOrder_ = &d.body;
   for (const auto &f : d.interface)
-    iface->children.push_back(writeProtoFieldElement(f));
+    iface->children.push_back(bodyWriter.writeProtoFieldElement(f));
   if (!iface->children.empty())
     el->children.push_back(std::move(iface));
 
   auto body = std::make_unique<xml::Element>();
   body->name = "ProtoBody";
-  CanonicalXmlWriter bodyWriter;
-  bodyWriter.bodyIsc_ = &d.body.isConnections;
-  for (const auto &n : d.body.nodes) {
-    auto ne = bodyWriter.writeNodeElement(n, "");
-    if (!ne)
-      continue;
-    for (const auto &ni : d.body.nestedInstances) {
-      if (ni.parent.lock().get() == n.get()) {
-        auto ie = writeProtoInstanceElement(
-            ni, ni.parentField.empty() ? std::string() : ni.parentField);
-        if (ie)
-          ne->children.push_back(std::move(ie));
-      }
+  for (const auto &entry : d.body.orderedStatements()) {
+    switch (entry.kind) {
+    case runtime::ProtoBodyStatement::Kind::Node: {
+      auto ne = bodyWriter.writeNodeElement(entry.node, "");
+      if (!ne) break;
+      body->children.push_back(std::move(ne));
+      break;
     }
-    body->children.push_back(std::move(ne));
+    case runtime::ProtoBodyStatement::Kind::Instance: {
+      auto ie = bodyWriter.writeProtoInstanceElement(
+          d.body.nestedInstances[entry.instanceIndex], std::string());
+      if (ie) body->children.push_back(std::move(ie));
+      break;
+    }
+    case runtime::ProtoBodyStatement::Kind::Proto:
+      if (entry.proto)
+        body->children.push_back(bodyWriter.writeProtoDeclareElement(*entry.proto));
+      break;
+    case runtime::ProtoBodyStatement::Kind::ExternProto:
+      if (entry.externProto)
+        body->children.push_back(bodyWriter.writeExternProtoDeclareElement(*entry.externProto));
+      break;
+    }
   }
   for (const auto &r : d.body.routes) {
     xml::Element *re = body->addChild("ROUTE");
@@ -363,13 +417,6 @@ std::unique_ptr<xml::Element> CanonicalXmlWriter::writeProtoDeclareElement(
     re->setAttr("fromNode", r.fromNode);
     re->setAttr("toField", r.toField);
     re->setAttr("toNode", r.toNode);
-  }
-  for (const auto &ni : d.body.nestedInstances) {
-    if (!ni.parent.lock()) {
-      auto ie = writeProtoInstanceElement(ni, std::string());
-      if (ie)
-        body->children.push_back(std::move(ie));
-    }
   }
   el->children.push_back(std::move(body));
   return el;

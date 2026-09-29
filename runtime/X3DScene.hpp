@@ -4,9 +4,11 @@
 #define X3D_RUNTIME_SCENE_HPP
 
 #include "X3DImportExport.hpp"
+#include "X3DAuthoredScalarFields.hpp"
 #include "X3DProto.hpp"
 #include "X3DRoute.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -43,11 +45,20 @@ public:
   std::vector<std::shared_ptr<ProtoDeclaration>> protoDeclarations;
   std::vector<std::shared_ptr<ExternProtoDeclaration>> externProtoDeclarations;
 
-  // ProtoInstances encountered at scene scope, carried as structural data (no
-  // expansion; see ProtoInstance::expand()). A reader records each instance it
-  // parses here so the document round-trips even though the node graph has no
-  // wrapper for an unexpanded instance.
+  // ProtoInstances encountered at scene scope, retained as structural data
+  // for expansion and round-tripping. Reader-authored instances also have
+  // template nodes in their exact scene graph slots.
   std::vector<ProtoInstance> protoInstances;
+
+  // An authored placement template is a node slot; the matching structural
+  // record remains the source for name, DEF, and fieldValues before expansion.
+  const ProtoInstance *instanceAtPlacement(const X3DNode *node) const {
+    for (const auto &instance : protoInstances)
+      if (auto placed = instance.placementTemplate.lock();
+          placed && placed.get() == node)
+        return &instance;
+    return nullptr;
+  }
 
   // Body-internal ROUTEs of expanded instances, pre-resolved to concrete
   // endpoints (proto-local DEF scope; NOT registered in `defs`).
@@ -104,6 +115,15 @@ public:
   std::vector<Import> imports;
   std::vector<Export> exports;
 
+  // Snapshot of UNIT declarations in this Scene's source document. Empty means
+  // no UNIT was authored there. Writers continue to serialize X3DDocument::head.
+  std::vector<Unit> sourceUnits;
+
+  // Scalar fields explicitly accepted by a reader, including values equal to
+  // generated defaults. Node identity is weak so marks cannot follow a reused
+  // raw address or retain a source scene.
+  AuthoredScalarFields authoredScalarFields;
+
   /**
    * @brief Register a node under a DEF name (overwrites any prior binding).
    * @return The same shared_ptr, for convenience.
@@ -139,6 +159,34 @@ public:
       }
     }
     return nullptr;
+  }
+
+  // Register a reader-authored declaration. A nested declaration replaces an
+  // inherited name in this Scene's copied tables, including across PROTO and
+  // EXTERNPROTO kinds. The enclosing Scene and instances already bound to a
+  // declaration keep their shared_ptrs.
+  void declareProto(std::shared_ptr<ProtoDeclaration> decl) {
+    if (!decl) return;
+    const std::string name = decl->name;
+    std::erase_if(protoDeclarations, [&](const auto &p) {
+      return p && p->name == name;
+    });
+    std::erase_if(externProtoDeclarations, [&](const auto &p) {
+      return p && p->name == name;
+    });
+    protoDeclarations.push_back(std::move(decl));
+  }
+
+  void declareExternProto(std::shared_ptr<ExternProtoDeclaration> decl) {
+    if (!decl) return;
+    const std::string name = decl->name;
+    std::erase_if(protoDeclarations, [&](const auto &p) {
+      return p && p->name == name;
+    });
+    std::erase_if(externProtoDeclarations, [&](const auto &p) {
+      return p && p->name == name;
+    });
+    externProtoDeclarations.push_back(std::move(decl));
   }
 
   /**

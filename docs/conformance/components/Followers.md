@@ -4,20 +4,20 @@ _Generated. Levels 1 · 14 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ColorChaser | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
-| ColorDamper | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
-| CoordinateChaser | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, FOL-9, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
-| CoordinateDamper | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, FOL-9, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
-| OrientationChaser | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
-| OrientationDamper | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
-| PositionChaser | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
-| PositionChaser2D | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
-| PositionDamper | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
-| PositionDamper2D | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
-| ScalarChaser | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
-| ScalarDamper | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
-| TexCoordChaser2D | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, FOL-9, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
-| TexCoordDamper2D | 1 | ✓ | — | ✓ | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, FOL-9, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
+| ColorChaser | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
+| ColorDamper | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
+| CoordinateChaser | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, FOL-9, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
+| CoordinateDamper | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, FOL-9, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
+| OrientationChaser | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
+| OrientationDamper | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
+| PositionChaser | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
+| PositionChaser2D | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
+| PositionDamper | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
+| PositionDamper2D | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
+| ScalarChaser | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
+| ScalarDamper | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
+| TexCoordChaser2D | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-5, FOL-9, ROUTE-IO-ALIAS | X3DChaserNode, X3DChildNode, X3DFollowerNode |
+| TexCoordDamper2D | 1 | ✓ | — | ? | FOL-1, FOL-2, FOL-3, FOL-4, FOL-6, FOL-7, FOL-9, ROUTE-IO-ALIAS | X3DChildNode, X3DDamperNode, X3DFollowerNode |
 
 ## Findings
 

@@ -4,7 +4,7 @@ _Generated. Levels 1,2,3,4 · 7 nodes · profiles: Interchange, Interactive, Imm
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Box | 1 | ✓ | ✓ | — | ROUTE-IO-ALIAS, TXF-1 | X3DGeometryNode |
+| Box | 1 | ✓ | ✓ | — | REQ-UNIT, ROUTE-IO-ALIAS, TXF-1 | X3DGeometryNode |
 | Cone | 1 | ✓ | ✓ | — | ROUTE-IO-ALIAS, TXF-1 | X3DGeometryNode |
 | Cylinder | 1 | ✓ | ✓ | — | ROUTE-IO-ALIAS, TXF-1 | X3DGeometryNode |
 | ElevationGrid | 3 | ✓ | ✓ | — | EXT-001, EXT-003, ROUTE-IO-ALIAS, TXF-2, VIS-ELEV-SPACING-EMPTY | X3DGeometryNode |

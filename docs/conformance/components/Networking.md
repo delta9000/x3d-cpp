@@ -1,15 +1,17 @@
 # Networking — conformance
 
-_Generated. Levels 2,3 · 3 nodes · profiles: Interchange, Interactive, Immersive, Full._
+_Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, NSN-11, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
-| Inline | 2 | ✓ | — | — | AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, NSN-12, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DUrlObject |
-| LoadSensor | 3 | ✓ | — | ✓ | AUD-NET-3, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9, ROUTE-IO-ALIAS | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
+| Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, NSN-11, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
+| Inline | 2 | ✓ | — | — | AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, NSN-12, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DUrlObject |
+| LoadSensor | 3 | ✓ | — | ? | AUD-NET-3, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9, ROUTE-IO-ALIAS | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 
 ## Findings
 
+- **REQ-FTP** [major/DEFERRED] — §F.6 Table F.4 (URL fields); 9.2.1: No supplied asset backend implements the Full-profile FTP protocol requirement.
+  - HttpResolver accepts only http/https and restricts libcurl protocols accordingly; SchemeRouter dispatches registered callbacks but ships no FTP backend. Acceptance: an explicitly configured Full host resolves file/http/ftp with relative references and ordered fallback. Preserve the HTTP adapter's protocol restrictions; supply a separate appropriate adapter instead. Offline SDK use does not itself claim the complete host configuration.
 - **NSN-2** [critical/CLOSED `9bb71c2`] — §9.4.3: isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.
 - **NSN-3** [critical/CLOSED `9bb71c2`] — §9.4.3: isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.
 - **NSN-4** [critical/CLOSED `9bb71c2`] — §9.4.3: loadTime (now, on successful completion only) not emitted.

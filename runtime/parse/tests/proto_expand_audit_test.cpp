@@ -525,38 +525,37 @@ static void bodyUseIsLocalTest() {
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Body";
 
-  // Body node 1: a Shape with DEF "S".
-  auto shape = createX3DNode("Shape");
-  shape->setDEF("S");
-  decl->body.nodes.push_back(shape);
+  // Body node 1: a Group with DEF "S".
+  auto source = createX3DNode("Group");
+  source->setDEF("S");
+  decl->body.nodes.push_back(source);
 
-  // Body node 2: a Group whose children reference the Shape via the SAME
+  // Body node 2: a Group whose children reference the source Group via the SAME
   // shared_ptr (USE semantics at the body level — deepClone preserves
   // pointer identity via the cloneMap).
   auto group = createX3DNode("Group");
   group->setDEF("G");
   const FieldInfo *kids = fieldByName(*group, "children");
-  kids->set(*group, std::any(std::vector<std::shared_ptr<X3DNode>>{shape}));
+  kids->set(*group, std::any(std::vector<std::shared_ptr<X3DNode>>{source}));
   decl->body.nodes.push_back(group);
 
   // Body-internal ROUTE naming the DEFs — proves the localDefs map resolves
-  // the cloned Shape/Group names AND that the Group.clone's addChildren field
-  // (the route sink) is fed from the cloned Shape pointer.
+  // the cloned Group names. Both endpoints have compatible MFNode events.
   decl->body.routes.push_back(
-      Route{"S", "geometry", "G", "addChildren"});
+      Route{"S", "children_changed", "G", "addChildren"});
 
   x3d::runtime::ProtoInstance inst;
   inst.name = "Body"; inst.declaration = decl; inst.DEF = "OUTER";
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  // Primary is the FIRST body node per X3D spec — a clone of Shape. The
+  // Primary is the FIRST body node per X3D spec — a clone of Group. The
   // expansion overwrites its DEF with the instance DEF (so the body-DEF
   // 'S' is no longer the primary's DEF); what matters here is that the
-  // body-level USE identity (Group.children[0] == cloned Shape) is preserved
+  // body-level USE identity (Group.children[0] == cloned source) is preserved
   // and that the body DEF name does not leak into scene.defs.
-  check(primary && primary->nodeTypeName() == "Shape",
-        "body-USE: primary is Shape (first body node)");
+  check(primary && primary->nodeTypeName() == "Group",
+        "body-USE: primary is Group (first body node)");
 
   // The proto-local DEF "S" must NOT be promoted to scene.defs.
   check(scene.defs.count("S") == 0,
@@ -567,11 +566,18 @@ static void bodyUseIsLocalTest() {
   // The body route must be pre-resolved via localDefs.
   check(scene.resolvedProtoRoutes.size() == 1,
         "body-USE: body route pre-resolved via localDefs");
+  if (scene.resolvedProtoRoutes.empty()) return;
   const auto &r = scene.resolvedProtoRoutes[0];
   check(r.from && r.from.get() == primary.get(),
-        "body-USE: route source resolves to the cloned Shape (USE identity)");
+        "body-USE: route source resolves to the cloned Group (USE identity)");
   check(r.to && r.to->nodeTypeName() == "Group",
         "body-USE: route sink resolves to the cloned Group");
+  if (!r.to) return;
+  const FieldInfo *clonedKids = fieldByName(*r.to, "children");
+  auto children = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      clonedKids->get(*r.to));
+  check(children.size() == 1 && children[0] == primary,
+        "body-USE: cloned Group child shares the primary pointer");
 }
 
 // =============================================================================
@@ -674,10 +680,10 @@ static void redirectRejectsOutputOnlyAsSinkTest() {
   expandScene(scene, noopProtoResolver, "", w);
 
   // Bad route: try to write INTO the outputOnly interface 'out'
-  // (Src.out <- SRC.set_something). Body target is triggerTrue (outputOnly).
+  // (Src.out <- SRC.toggle). Body target is triggerTrue (outputOnly).
   auto src = createX3DNode("BooleanToggle"); src->setDEF("SRC");
   scene.addRootNode(src);
-  scene.routes.push_back(Route{"SRC", "set_boolean", "S", "out"});
+  scene.routes.push_back(Route{"SRC", "toggle", "S", "out"});
 
   X3DExecutionContext ctx;
   BridgeResult r = buildRoutes(scene, ctx);
@@ -691,11 +697,11 @@ static void redirectRejectsOutputOnlyAsSinkTest() {
         "outputOnly-as-sink: rejected with diagnostic naming 'out'");
 
   // The defect signature (before fix): ctx.graph() has an edge
-  // {SRC.set_boolean} -> {body.triggerTrue}. Verify it is NOT present.
+  // {SRC.toggle} -> {body.triggerTrue}. Verify it is NOT present.
   X3DNode *bodyNode = scene.protoRedirects[primaryOf(scene, "S")]["out"]
                           [0].targetNode.get();
   X3DNode *srcRaw = src.get();
-  auto wired = ctx.graph().sinks({srcRaw, "set_boolean"});
+  auto wired = ctx.graph().sinks({srcRaw, "toggle"});
   bool wiredToTriggerTrue = false;
   for (const auto &sink : wired) {
     if (sink.node == bodyNode && sink.field == "triggerTrue") {

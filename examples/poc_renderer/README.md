@@ -9,6 +9,10 @@ configures, compiles, or links any of it.
 
 ## What it does
 
+- `FillProperties` in the built-in Phong, Physical and Unlit shaders: independent
+  filling/hatching, hatch color, styles 1–6 and fallback to style 1. Polygon
+  holes discard fragments before depth writes; lines and points are unaffected.
+  The eight-pixel hatch grid preserves material alpha/coverage and receives fog.
 - `parseFile(argv[1])` → `X3DDocument` → `Scene`
 - `X3DExecutionContext::buildSceneGraph` + `buildFrom` (the `BridgeResult` is
   checked and logged; rejected ROUTEs are non-fatal — geometry still renders)

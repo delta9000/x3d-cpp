@@ -61,6 +61,49 @@ TEST_CASE("asset_proto_resolver_test") {
     CHECK(calls == std::vector<std::string>{"http://mem/protos.x3d"});
   }
 
+  SUBCASE("selected declaration retains fetched source units") {
+    const std::map<std::string, std::string> unitDocs = {
+        {"http://mem/units.x3d",
+         "<X3D version='4.0'><head><unit category='length' name='centimetre' "
+         "conversionFactor='0.01'/></head><Scene>"
+         "<ProtoDeclare name='First'><ProtoBody><Box/></ProtoBody></ProtoDeclare>"
+         "<ProtoDeclare name='Second'><ProtoBody><Sphere/></ProtoBody></ProtoDeclare>"
+         "</Scene></X3D>"},
+        {"http://mem/plain.x3d", kDoc}};
+    ProtoDeclarationResolver r = protoResolverFrom(inMemory(unitDocs, {}, nullptr));
+    auto selected = r({"http://mem/units.x3d#Second"}, "");
+    REQUIRE(selected != nullptr);
+    REQUIRE(selected->sourceUnits.size() == 1);
+    CHECK(selected->sourceUnits[0].name == "centimetre");
+    CHECK(selected->sourceUnits[0].category == "length");
+    CHECK(selected->sourceUnits[0].conversionFactor == doctest::Approx(0.01));
+    auto plain = r({"http://mem/plain.x3d#Beta"}, "");
+    REQUIRE(plain != nullptr);
+    CHECK(plain->sourceUnits.empty());
+  }
+
+  SUBCASE("selected declaration retains field marks after fetched document dies") {
+    const std::map<std::string, std::string> markedDocs = {
+        {"http://mem/marked.x3d",
+         "<X3D version='4.0'><Scene><ProtoDeclare name='Marked'>"
+         "<ProtoInterface><field name='geo' type='SFNode' "
+         "accessType='initializeOnly'><Box size='2 2 2'/></field>"
+         "</ProtoInterface><ProtoBody><Transform translation='0 0 0'>"
+         "<Shape><IS>"
+         "<connect nodeField='geometry' protoField='geo'/>"
+         "</IS></Shape></Transform></ProtoBody></ProtoDeclare></Scene></X3D>"}};
+    auto r = protoResolverFrom(inMemory(markedDocs, {}, nullptr));
+    auto selected = r({"http://mem/marked.x3d#Marked"}, "");
+    REQUIRE(selected != nullptr);
+    REQUIRE(selected->interface.size() == 1);
+    REQUIRE(selected->interface[0].nodeDefault.size() == 1);
+    CHECK(selected->authoredScalarFields.contains(
+        selected->interface[0].nodeDefault[0], "size"));
+    REQUIRE(selected->body.nodes.size() == 1);
+    CHECK(selected->authoredScalarFields.contains(selected->body.nodes[0],
+                                                 "translation"));
+  }
+
   SUBCASE("no fragment -> first ProtoDeclare in the document") {
     ProtoDeclarationResolver r = protoResolverFrom(inMemory(docs, {}, nullptr));
     auto d = r({"http://mem/protos.x3d"}, "");

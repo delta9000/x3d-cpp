@@ -4,11 +4,13 @@ _Generated. Levels 2 · 2 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| TextureProjector | 2 | ✓ | — | — | ROUTE-IO-ALIAS, TPJ-1 | X3DChildNode, X3DLightNode, X3DTextureProjectorNode |
-| TextureProjectorParallel | 2 | ✓ | — | — | FOV-TYPE, ROUTE-IO-ALIAS, TPJ-1, TPJ-2 | X3DChildNode, X3DLightNode, X3DTextureProjectorNode |
+| TextureProjector | 2 | ✓ | — | — | REQ-PROJECTION, ROUTE-IO-ALIAS, TPJ-1 | X3DChildNode, X3DLightNode, X3DTextureProjectorNode |
+| TextureProjectorParallel | 2 | ✓ | — | — | FOV-TYPE, REQ-PROJECTION, ROUTE-IO-ALIAS, TPJ-1, TPJ-2 | X3DChildNode, X3DLightNode, X3DTextureProjectorNode |
 
 ## Findings
 
+- **REQ-PROJECTION** [major/OPEN] — §42.2; 42.3.1; 42.4.1; 42.4.2: Texture projectors have bindings and validation aliases but no projection or light extraction path.
+  - LightSystem::lightType accepts only DirectionalLight, PointLight and SpotLight; RenderItem/LightDesc carry no projected texture or projector matrix. Acceptance: perspective and parallel projected textures, clipping/range, on/global scope, transforms, and aspectRatio updates. Published chapter URL is components/textureProjection.html; the Full-profile link and UOM spelling currently return 404.
 - **TPJ-1** [minor/CLOSED] — §42.4.2: Not a bug: 'shadowsIntensity' is an X3D 4.1 prose typo; code/UOM correctly use 'shadowIntensity'.
   - RESOLVED as erratum — field name in code is correct. CONFIRMED against the published ISO/IEC 19775-1:2023 normative text (web3d IS HTML; ISO PDF is paywalled, the IS HTML is the authoritative free form): TextureProjectorParallel §42.4.2 genuinely declares 'SFFloat [in,out] shadowsIntensity 1 [0,1]' (trailing s) in both the node grammar and the field summary — so it is in the actual standard, not a mirror artifact. It is nonetheless a spec erratum: shadowIntensity is the inherited X3DLightNode field, spelled singular on X3DLightNode, DirectionalLight, SpotLight, and the sibling TextureProjector; an inherited field cannot be renamed on one subclass, and DirectionalLight (the canonical parallel-ray light) uses the singular, so 'parallel => plural' has no basis. Web3d's own UOM normalizes to shadowIntensity; the generator emits the correct name. NO rename. Tolerant-alias follow-up split out as TPJ-2. (sweep 2026-06-25; PDF/published-spec verified 2026-06-25)
 - **FOV-TYPE** [minor/CLOSED] — §23.4.5, 42.4.2: fieldOfView is the same 4-tuple but typed MFFloat (OrthoViewpoint) vs SFVec4f (TextureProjectorParallel); OrthoViewpoint arity/ordering unvalidated.

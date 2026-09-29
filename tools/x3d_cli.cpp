@@ -37,6 +37,7 @@
 // Profile-fit machinery (used by `validate --profile-fit`); promoted to a
 // reusable header so other tools/consumers can compute the narrowest profile.
 #include "x3d-cli/profile_fit.hpp"
+#include "x3d-cli/proto_use.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -364,18 +365,10 @@ void checkDuplicateMeta(const sdk::X3DDocument &doc,
 void checkUnusedProtoDeclare(const sdk::X3DDocument &doc,
                              std::vector<json_out::Diag> &diags) {
     const auto &scene = doc.scene;
-    // Build a set of all ProtoInstance type names used in the scene.
-    std::unordered_set<std::string> usedProtos;
-    for (const auto &pi : scene.protoInstances) {
-        usedProtos.insert(pi.name);  // ProtoInstance::name = proto being instantiated
-    }
-    // Also scan expanded sources (ProtoInstances that were expanded into the graph).
-    for (const auto &[node, pi] : scene.expandedSources) {
-        usedProtos.insert(pi.name);
-    }
+    const auto used = x3d::cli_detail::collectProtoUse(doc);
     // Check ProtoDeclare (local prototypes).
     for (const auto &pd : scene.protoDeclarations) {
-        if (pd && usedProtos.find(pd->name) == usedProtos.end()) {
+        if (pd && !used.local.contains(pd.get())) {
             std::string msg = "ProtoDeclare '" + pd->name
                             + "' has no corresponding ProtoInstance in the scene";
             diags.push_back({"unused-proto", "warning", msg});
@@ -383,7 +376,7 @@ void checkUnusedProtoDeclare(const sdk::X3DDocument &doc,
     }
     // Check ExternProtoDeclare (externally-defined prototypes).
     for (const auto &epd : scene.externProtoDeclarations) {
-        if (epd && usedProtos.find(epd->name) == usedProtos.end()) {
+        if (epd && !used.external.contains(epd.get())) {
             std::string msg = "ExternProtoDeclare '" + epd->name
                             + "' has no corresponding ProtoInstance in the scene";
             diags.push_back({"unused-proto", "warning", msg});

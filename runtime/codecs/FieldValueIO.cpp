@@ -3,10 +3,12 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <locale>
 #include <sstream>
+#include <stdexcept>
 
 namespace x3d::codec {
 
@@ -104,6 +106,20 @@ double parseDouble(const std::string &s) {
   if (ec != std::errc{})
     return 0.0;
   return v;
+}
+
+double parseUnitConversionFactor(const std::string &s) {
+  const char *begin = s.data();
+  const char *end = begin + s.size();
+  while (begin < end && std::isspace(static_cast<unsigned char>(*begin))) ++begin;
+  while (end > begin && std::isspace(static_cast<unsigned char>(end[-1]))) --end;
+  if (begin < end && *begin == '+') ++begin;
+  double value = 0.0;
+  const auto [parsed, error] = std::from_chars(begin, end, value);
+  if (begin == end || error != std::errc{} || parsed != end ||
+      !std::isfinite(value) || value <= 0.0)
+    throw std::runtime_error("UNIT conversionFactor must be finite and positive");
+  return value;
 }
 
 int parseInt(const std::string &s) {

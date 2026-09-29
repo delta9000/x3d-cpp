@@ -41,6 +41,25 @@ uniform vec3 uEmissive;      // added unlit (augmented by emissive texture).
 uniform vec3 uAmbientColor;  // material ambientIntensity (broadcast); §17 multiplies it by base.
 uniform int  uHasColors;     // 1 => per-vertex vColor overrides uDiffuse.rgb.
 
+uniform int uFillMode;       // bit 1: fill; bit 2: hatch (polygons only).
+uniform int uHatchStyle;
+uniform vec3 uHatchColor;
+
+bool hatchPixel() {
+    vec2 p = floor(gl_FragCoord.xy);
+    int style = (uHatchStyle >= 1 && uHatchStyle <= 6) ? uHatchStyle : 1;
+    bool horizontal = mod(p.y, 8.0) < 1.0;
+    bool vertical = mod(p.x, 8.0) < 1.0;
+    bool positive = mod(p.x - p.y, 8.0) < 1.0;
+    bool negative = mod(p.x + p.y, 8.0) < 1.0;
+    if (style == 1) return horizontal;
+    if (style == 2) return vertical;
+    if (style == 3) return positive;
+    if (style == 4) return negative;
+    if (style == 5) return horizontal || vertical;
+    return positive || negative;
+}
+
 // ---- Texture slots (all optional — shader guards on Has* flags) -------------
 uniform int       uHasTexture;   // 0: diffuse slot absent.
 uniform sampler2D uTexture;      // unit 0: diffuse / base-color (or glyph atlas).
@@ -125,6 +144,8 @@ vec3 applyFog(vec3 color, float d) {
 }
 
 void main() {
+    bool hatch = (uFillMode & 2) != 0 && hatchPixel();
+    if ((uFillMode & 1) == 0 && !hatch) discard;
     // ---- Base color from diffuse slot ± per-vertex Color -------------------
     vec3 base  = (uHasColors != 0) ? vColor.rgb : uDiffuse.rgb;
     float alpha = uDiffuse.a;
@@ -209,7 +230,7 @@ void main() {
         lit = linearToSRGB(lit);
 
     // §17: fog is the final step, applied to the output (display) colour.
-    lit = applyFog(lit, length(vPosEye));
+    lit = applyFog(hatch ? uHatchColor : lit, length(vPosEye));
 
     FragColor = vec4(lit, alpha);
 }

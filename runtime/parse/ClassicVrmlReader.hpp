@@ -90,6 +90,7 @@ protected:
 
 private:
   std::size_t depth_ = 0; // SEC-1: node nesting depth (DoS guard).
+  bool capturingProtoFieldValue_ = false;
 
   // Reader-recovery diagnostics accumulated during the current readDocument()
   // call, moved into X3DDocument.readerWarnings on return.
@@ -165,7 +166,7 @@ private:
                       const std::shared_ptr<X3DNode> &parentShared = nullptr);
 
   // Enum field: one token via setEnumString. A bracketed MFEnum run is joined.
-  static void applyEnumField(VrmlTokenizer &tok, X3DNode &node,
+  static bool applyEnumField(VrmlTokenizer &tok, X3DNode &node,
                              const FieldInfo &f);
 
   // -------------------------------------------------------------------------
@@ -221,13 +222,17 @@ private:
   //   PROTO Name "[" interface "]" "{" body "}"
   //   EXTERNPROTO Name "[" interface "]" urlList
   // -------------------------------------------------------------------------
-  void parseProto(VrmlTokenizer &tok, runtime::Scene &scene);
+  std::shared_ptr<runtime::ProtoDeclaration>
+  parseProto(VrmlTokenizer &tok, runtime::Scene &scene);
 
-  void parseExternProto(VrmlTokenizer &tok, runtime::Scene &scene);
+  std::shared_ptr<runtime::ExternProtoDeclaration>
+  parseExternProto(VrmlTokenizer &tok, runtime::Scene &scene);
 
   // interface := ( accessType FieldType fieldName [defaultValue] )*
   std::vector<runtime::ProtoField> parseInterface(VrmlTokenizer &tok,
-                                                  bool allowDefaults);
+                                                  bool allowDefaults,
+                                                  runtime::Scene *scope = nullptr,
+                                                  runtime::ProtoBody *body = nullptr);
 
   // Proto instance: `TypeName { (fieldName fieldValue)* }` recorded as data.
   void parseProtoInstance(VrmlTokenizer &tok, runtime::Scene &scene,
@@ -278,13 +283,19 @@ private:
   // true if it recognized and consumed such a non-node item (so the caller's
   // loop should `continue`); false if `peek()` genuinely begins a node and
   // `parseNode` should run. Never throws.
-  bool skipNonNodeListItem(VrmlTokenizer &tok, runtime::Scene &scene);
+  bool skipNonNodeListItem(
+      VrmlTokenizer &tok, runtime::Scene &scene,
+      runtime::ProtoBody *body = nullptr,
+      const std::shared_ptr<X3DNode> &parent = nullptr);
 
   // Drain any inline EXTERNPROTO/PROTO/ROUTE declarations (and stray tokens)
   // that precede a node value in an SFNode field slot — the corpus writes
   // `field EXTERNPROTO X[...][url] X { ... }`. Returns false if the value
   // position is exhausted (`}` / `]` / EOF) so the caller should not parseNode.
-  bool drainLeadingDeclarations(VrmlTokenizer &tok, runtime::Scene &scene);
+  bool drainLeadingDeclarations(
+      VrmlTokenizer &tok, runtime::Scene &scene,
+      runtime::ProtoBody *body = nullptr,
+      const std::shared_ptr<X3DNode> &parent = nullptr);
 
   // -------------------------------------------------------------------------
   // Skipping helpers.
@@ -303,10 +314,12 @@ private:
   void skipRestOfBraceBlock(VrmlTokenizer &tok);
 
   // -------------------------------------------------------------------------
-  // Proto default / instance node-value capture (parsed into a throwaway scope;
-  // proto-interface node defaults do not share the document DEF table).
+  // Proto defaults use the declaration scope; Script defaults use a temporary
+  // scope. Neither shares the enclosing document's DEF table.
   // -------------------------------------------------------------------------
-  void captureNodeDefault(VrmlTokenizer &tok, runtime::ProtoField &field);
+  void captureNodeDefault(VrmlTokenizer &tok, runtime::ProtoField &field,
+                          runtime::Scene *scope = nullptr,
+                          runtime::ProtoBody *body = nullptr);
 
   void captureInstanceNodeValue(VrmlTokenizer &tok, runtime::Scene &scene,
                                 runtime::ProtoFieldValue &fv, X3DFieldType ty);

@@ -27,6 +27,7 @@
 #include "X3DRuntime.hpp"
 
 #include "x3d/nodes/PositionInterpolator.hpp"
+#include "x3d/nodes/Group.hpp"
 #include "x3d/nodes/TimeSensor.hpp"
 #include "x3d/nodes/Transform.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -37,6 +38,8 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <tuple>
+#include <vector>
 
 using namespace x3d::core;
 using namespace x3d::nodes;
@@ -297,6 +300,277 @@ void testProtoRouteRedirect() {
         "proto redirect: 3 routes added (body route + sink + source redirect)");
 }
 
+// Body ROUTEs name the nested instance's declared interface, even when its
+// physical primary has a different field name. Each Outer gets private clones.
+void testNestedProtoBodyRoutes() {
+  const std::string xml = R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Inner'><ProtoInterface>
+<field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
+</ProtoInterface><ProtoBody><Transform><IS>
+<connect nodeField='translation' protoField='shift'/>
+</IS></Transform></ProtoBody></ProtoDeclare>
+<ProtoDeclare name='Outer'><ProtoBody><Group>
+<ProtoInstance name='Inner' DEF='A'/><Transform DEF='Ord'/>
+<ProtoInstance name='Inner' DEF='B'/>
+</Group><ROUTE fromNode='A' fromField='shift_changed' toNode='Ord' toField='set_translation'/>
+<ROUTE fromNode='Ord' fromField='translation_changed' toNode='B' toField='set_shift'/>
+<ROUTE fromNode='A' fromField='shift_changed' toNode='B' toField='set_shift'/>
+</ProtoBody></ProtoDeclare><ProtoInstance name='Outer' DEF='O1'/>
+<ProtoInstance name='Outer' DEF='O2'/></Scene></X3D>)";
+  const std::string classic = R"(#X3D V4.0 utf8
+PROTO Inner [ inputOutput SFVec3f shift 0 0 0 ] {
+  Transform { translation IS shift }
+}
+PROTO Outer [ ] {
+  Group { children [ DEF A Inner { } DEF Ord Transform { } DEF B Inner { } ] }
+  ROUTE A.shift_changed TO Ord.set_translation
+  ROUTE Ord.translation_changed TO B.set_shift
+  ROUTE A.shift_changed TO B.set_shift
+}
+DEF O1 Outer { }
+DEF O2 Outer { }
+)";
+  for (const auto &[name, source, encoding] :
+       std::vector<std::tuple<std::string, std::string, x3d::codec::Encoding>>{
+           {"XML", xml, x3d::codec::Encoding::XML},
+           {"Classic", classic, x3d::codec::Encoding::ClassicVRML}}) {
+    auto doc = x3d::codec::parseDocument(source, encoding);
+    auto o1 = std::dynamic_pointer_cast<Group>(doc.scene.resolve("O1"));
+    auto o2 = std::dynamic_pointer_cast<Group>(doc.scene.resolve("O2"));
+    check(o1 && o2 && o1 != o2, name + ": two Outer primaries expanded");
+    if (!(o1 && o2) || o1->getChildren().size() != 3 ||
+        o2->getChildren().size() != 3) {
+      check(false, name + ": ordered nested/ordinary children retained");
+      continue;
+    }
+    auto a1 = std::dynamic_pointer_cast<Transform>(o1->getChildren()[0]);
+    auto mid1 = std::dynamic_pointer_cast<Transform>(o1->getChildren()[1]);
+    auto b1 = std::dynamic_pointer_cast<Transform>(o1->getChildren()[2]);
+    auto a2 = std::dynamic_pointer_cast<Transform>(o2->getChildren()[0]);
+    auto mid2 = std::dynamic_pointer_cast<Transform>(o2->getChildren()[1]);
+    auto b2 = std::dynamic_pointer_cast<Transform>(o2->getChildren()[2]);
+    check(a1 && mid1 && b1 && a2 && mid2 && b2,
+          name + ": nested interface endpoints have concrete Transform primaries");
+    if (!(a1 && mid1 && b1 && a2 && mid2 && b2)) continue;
+    X3DExecutionContext ctx;
+    auto bridge = buildRoutes(doc.scene, ctx);
+    check(bridge.rejected.empty(), name + ": valid nested body ROUTEs accepted");
+    check(bridge.routesAdded == 6,
+          name + ": all ordinary and two-nested-endpoint routes bridged per instance");
+    ctx.postEvent(a1.get(), "translation_changed", std::any(SFVec3f{3, 4, 5}));
+    ctx.tick(0.0);
+    check(veq(tr(mid1), 3, 4, 5) && veq(tr(b1), 3, 4, 5),
+          name + ": nested source reaches ordinary sink and nested sink");
+    check(veq(tr(mid2), 0, 0, 0) && veq(tr(b2), 0, 0, 0),
+          name + ": first Outer cannot deliver into second Outer's private nodes");
+    ctx.postEvent(mid2.get(), "translation_changed", std::any(SFVec3f{6, 7, 8}));
+    ctx.tick(1.0);
+    check(veq(tr(b2), 6, 7, 8) && veq(tr(b1), 3, 4, 5),
+          name + ": ordinary source reaches only its own nested sink");
+  }
+}
+
+// A direct first nested instance is also the Outer primary. Body-local A must
+// retain its own interface route mapping while scene routes see only Outer's
+// exposed names; the underlying Transform.translation is private.
+void testNestedFirstPrimaryAndEventIsAliases() {
+  const char *xml = R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Inner'><ProtoInterface>
+<field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
+<field name='inShift' type='SFVec3f' accessType='inputOnly'/>
+<field name='outShift' type='SFVec3f' accessType='outputOnly'/>
+</ProtoInterface><ProtoBody><Transform><IS>
+<connect nodeField='translation' protoField='shift'/>
+</IS></Transform>
+<Transform DEF='PhysicalSink'><IS>
+<connect nodeField='set_translation' protoField='inShift'/>
+</IS></Transform>
+<Transform DEF='PhysicalSource'><IS>
+<connect nodeField='translation_changed' protoField='outShift'/>
+</IS></Transform></ProtoBody></ProtoDeclare>
+<ProtoDeclare name='Outer'><ProtoInterface>
+<field name='topIn' type='SFVec3f' accessType='inputOnly'/>
+<field name='topOut' type='SFVec3f' accessType='outputOnly'/>
+</ProtoInterface><ProtoBody>
+<ProtoInstance name='Inner' DEF='A'><IS>
+<connect nodeField='set_shift' protoField='topIn'/>
+<connect nodeField='shift_changed' protoField='topOut'/>
+</IS></ProtoInstance>
+<Transform DEF='Ord'/>
+<ROUTE fromNode='A' fromField='shift_changed' toNode='Ord' toField='set_translation'/>
+<ROUTE fromNode='Ord' fromField='translation_changed' toNode='A' toField='inShift'/>
+<ROUTE fromNode='A' fromField='outShift' toNode='Ord' toField='set_translation'/>
+</ProtoBody></ProtoDeclare>
+<Transform DEF='Driver'/><ProtoInstance name='Outer' DEF='O'/>
+<Transform DEF='External'/><Transform DEF='Hidden'/>
+<ROUTE fromNode='Driver' fromField='translation_changed' toNode='O' toField='topIn'/>
+<ROUTE fromNode='O' fromField='topOut' toNode='External' toField='set_translation'/>
+<ROUTE fromNode='O' fromField='translation_changed' toNode='Hidden' toField='set_translation'/>
+</Scene></X3D>)";
+  auto doc = x3d::codec::parseDocument(xml);
+  auto driver = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("Driver"));
+  auto primary = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("O"));
+  auto ext = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("External"));
+  auto hidden = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("Hidden"));
+  std::shared_ptr<Transform> ordinary, physicalSink, physicalSource;
+  for (auto &peer : doc.scene.protoPeerNodes) {
+    if (peer && peer->getDEF() == "Ord")
+      ordinary = std::dynamic_pointer_cast<Transform>(peer);
+    if (peer && peer->getDEF() == "PhysicalSink")
+      physicalSink = std::dynamic_pointer_cast<Transform>(peer);
+    if (peer && peer->getDEF() == "PhysicalSource")
+      physicalSource = std::dynamic_pointer_cast<Transform>(peer);
+  }
+  check(driver && primary && ordinary && physicalSink && physicalSource &&
+            ext && hidden,
+        "nested-first: first inner primary and ordinary peer are expanded");
+  if (!(driver && primary && ordinary && physicalSink && physicalSource &&
+        ext && hidden)) return;
+  X3DExecutionContext ctx;
+  auto bridge = buildRoutes(doc.scene, ctx);
+  check(bridge.routesAdded == 5,
+        "nested-first: body routes and two exposed outer interface routes bridged");
+  check(!bridge.rejected.empty(),
+        "nested-first: underlying primary-native field is hidden by Outer interface");
+  ctx.postEvent(driver.get(), "translation_changed", std::any(SFVec3f{4, 5, 6}));
+  ctx.tick(0.0);
+  check(veq(tr(primary), 4, 5, 6),
+        "nested-first: inputOnly IS alias delivers through Outer and Inner");
+  check(veq(tr(ordinary), 4, 5, 6) && veq(tr(ext), 4, 5, 6),
+        "nested-first: body ROUTE and outputOnly IS alias deliver events");
+  check(veq(tr(physicalSink), 4, 5, 6),
+        "nested-first: separate physical set_translation IS target receives event");
+  ctx.postEvent(physicalSource.get(), "translation_changed",
+                std::any(SFVec3f{7, 8, 9}));
+  ctx.tick(1.0);
+  check(veq(tr(ordinary), 7, 8, 9) && veq(tr(physicalSink), 7, 8, 9),
+        "nested-first: separate physical translation_changed IS source delivers");
+  check(veq(tr(hidden), 0, 0, 0),
+        "nested-first: native field route cannot bypass nominal Outer interface");
+}
+
+void testNestedProtoRouteValidation() {
+  const char *xml = R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Inner'><ProtoInterface>
+<field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
+<field name='inShift' type='SFVec3f' accessType='inputOnly'/>
+<field name='outShift' type='SFVec3f' accessType='outputOnly'/>
+</ProtoInterface><ProtoBody><Transform><IS>
+<connect nodeField='translation' protoField='shift'/>
+</IS></Transform>
+<Transform><IS><connect nodeField='set_translation' protoField='inShift'/>
+</IS></Transform>
+<Transform><IS><connect nodeField='translation_changed' protoField='outShift'/>
+</IS></Transform></ProtoBody></ProtoDeclare>
+<ProtoDeclare name='Outer'><ProtoBody><Group>
+<ProtoInstance name='Inner' DEF='A'/><ProtoInstance name='Inner' DEF='B'/>
+<TimeSensor DEF='Clock'/></Group>
+<ROUTE fromNode='A' fromField='set_shift' toNode='B' toField='inShift'/>
+<ROUTE fromNode='A' fromField='outShift' toNode='B' toField='shift_changed'/>
+<ROUTE fromNode='A' fromField='outShift' toNode='Clock' toField='set_startTime'/>
+</ProtoBody></ProtoDeclare><ProtoInstance name='Outer' DEF='O'/>
+</Scene></X3D>)";
+  auto doc = x3d::codec::parseDocument(xml);
+  auto outer = std::dynamic_pointer_cast<Group>(doc.scene.resolve("O"));
+  check(outer && outer->getChildren().size() == 3,
+        "invalid nested routes: endpoints survive expansion");
+  if (!outer || outer->getChildren().size() != 3) return;
+  auto a = std::dynamic_pointer_cast<Transform>(outer->getChildren()[0]);
+  auto b = std::dynamic_pointer_cast<Transform>(outer->getChildren()[1]);
+  check(a && b, "invalid nested routes: concrete primaries exist");
+  if (!(a && b)) return;
+  X3DExecutionContext ctx;
+  auto bridge = buildRoutes(doc.scene, ctx);
+  check(bridge.routesAdded == 0,
+        "invalid nested routes: wrong direction and type add no edges");
+  auto warnedFor = [&](const std::string &route) {
+    for (const auto &warning : doc.protoWarnings)
+      if (warning.detail.find(route) != std::string::npos) return true;
+    for (const auto &error : bridge.rejected)
+      if (error.reason.find(route) != std::string::npos) return true;
+    return false;
+  };
+  check(warnedFor("A.set_shift TO B.inShift"),
+        "invalid nested routes: input-only set_shift source diagnosed");
+  check(warnedFor("A.outShift TO B.shift_changed"),
+        "invalid nested routes: output-only shift_changed sink diagnosed");
+  check(warnedFor("A.outShift TO Clock.set_startTime"),
+        "invalid nested routes: SFVec3f to SFTime mismatch diagnosed");
+  ctx.postEvent(a.get(), "translation_changed", std::any(SFVec3f{9, 8, 7}));
+  ctx.tick(0.0);
+  check(veq(tr(b), 0, 0, 0),
+        "invalid nested routes: no value reaches outputOnly sink");
+}
+
+void testInheritedProtoMetadataRoutes() {
+  const char *xml = R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Inner'><ProtoBody><Transform/></ProtoBody></ProtoDeclare>
+<ProtoDeclare name='Outer'><ProtoBody>
+<ProtoInstance name='Inner' DEF='A'/><Transform DEF='Ord'/>
+<ProtoInstance name='Inner' DEF='B'/>
+<ROUTE fromNode='A' fromField='metadata_changed' toNode='Ord' toField='set_metadata'/>
+<ROUTE fromNode='Ord' fromField='metadata_changed' toNode='B' toField='set_metadata'/>
+</ProtoBody></ProtoDeclare>
+<Transform DEF='Driver'/><ProtoInstance name='Outer' DEF='O'/>
+<Transform DEF='External'/>
+<ROUTE fromNode='Driver' fromField='metadata_changed' toNode='O' toField='set_metadata'/>
+<ROUTE fromNode='O' fromField='metadata_changed' toNode='External' toField='set_metadata'/>
+</Scene></X3D>)";
+  auto doc = x3d::codec::parseDocument(xml);
+  auto driver = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("Driver"));
+  auto primary = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("O"));
+  auto external = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("External"));
+  std::shared_ptr<Transform> ordinary, nestedSink;
+  for (auto &peer : doc.scene.protoPeerNodes) {
+    if (peer && peer->getDEF() == "Ord")
+      ordinary = std::dynamic_pointer_cast<Transform>(peer);
+    if (peer && peer->getDEF() == "B")
+      nestedSink = std::dynamic_pointer_cast<Transform>(peer);
+  }
+  check(driver && primary && ordinary && nestedSink && external,
+        "metadata: scene and nested PROTO endpoints expanded");
+  if (!(driver && primary && ordinary && nestedSink && external)) return;
+  X3DExecutionContext ctx;
+  auto bridge = buildRoutes(doc.scene, ctx);
+  check(bridge.routesAdded == 4 && bridge.rejected.empty(),
+        "metadata: inherited PROTO source/sink aliases bridge at both scopes");
+  auto metadata = createX3DNode("MetadataString");
+  check(!!metadata, "metadata: MetadataString value constructed");
+  if (!metadata) return;
+  ctx.postEvent(driver.get(), "metadata_changed", std::any(SFNode{metadata}));
+  ctx.tick(0.0);
+  check(primary->getMetadata() == metadata && ordinary->getMetadata() == metadata &&
+            nestedSink->getMetadata() == metadata &&
+            external->getMetadata() == metadata,
+        "metadata: event reaches outer primary, body ROUTEs, and scene sink");
+}
+
+void testSceneProtoToProtoRoute() {
+  const char *xml = R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Mover'><ProtoInterface>
+<field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
+</ProtoInterface><ProtoBody><Transform><IS>
+<connect nodeField='translation' protoField='shift'/>
+</IS></Transform></ProtoBody></ProtoDeclare>
+<ProtoInstance name='Mover' DEF='P1'/><ProtoInstance name='Mover' DEF='P2'/>
+<ROUTE fromNode='P1' fromField='shift_changed' toNode='P2' toField='set_shift'/>
+</Scene></X3D>)";
+  auto doc = x3d::codec::parseDocument(xml);
+  auto first = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("P1"));
+  auto second = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("P2"));
+  check(first && second && first != second,
+        "scene PROTO-to-PROTO: two private primaries expanded");
+  if (!(first && second)) return;
+  X3DExecutionContext ctx;
+  auto bridge = buildRoutes(doc.scene, ctx);
+  check(bridge.routesAdded == 1 && bridge.rejected.empty(),
+        "scene PROTO-to-PROTO: both nominal interface aliases accepted");
+  ctx.postEvent(first.get(), "translation_changed", std::any(SFVec3f{2, 3, 4}));
+  ctx.tick(0.0);
+  check(veq(tr(second), 2, 3, 4),
+        "scene PROTO-to-PROTO: event reaches second declared interface");
+}
+
 } // namespace
 
 // §4.4.2.2: an inputOutput field zzz is addressable as set_zzz (sink) and
@@ -342,6 +616,11 @@ int main(int argc, char **argv) {
   test_load_and_tick();
   testInitializeOnlyNotRoutableSink();
   testProtoRouteRedirect();
+  testNestedProtoBodyRoutes();
+  testNestedFirstPrimaryAndEventIsAliases();
+  testNestedProtoRouteValidation();
+  testInheritedProtoMetadataRoutes();
+  testSceneProtoToProtoRoute();
   testInputOutputAliases();
 
   if (failures) {

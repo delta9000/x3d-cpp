@@ -36,6 +36,7 @@ coverage over the CLI as a whole.
 | `tools/x3d-cli/sim_runtime.hpp` | `x3d::sim::attachFullRuntime()` — wires every behavior system for headless tick |
 | `tools/x3d-cli/sim_tracer.hpp` | `x3d::sim::FieldTracer` — snapshot-diff field-change tracer |
 | `tools/x3d-cli/scene_equiv.hpp` | `x3d_cli::sceneEquivalent()` — reflection-based scene comparison for the convert round-trip gate |
+| `tools/x3d-cli/proto_use.hpp` | Shared declaration-identity use analysis for CLI validation and the differential gate |
 | `tools/x3d-cli/cli_gate.cpp` | Differential validation gate: validate-diff vs X3DJSAIL + convert round-trip |
 | `tools/x3d-cli/canon_gate.cpp` | X3DC14N tiered gate: idempotence (T1) + tolerant diff vs X3DJSAIL (T2) + byte-exact (T3) |
 | `tools/x3d-cli/goldens/` | Committed gate artifacts: `subset.txt`, `validate-verdicts.tsv`, `cli-gate-baseline.tsv`, `canon-gate-baseline.tsv`, golden sim traces. (`canonical-goldens/` is generated on demand by `mise run canon-golden-gen` — needs JDK 25 — and is not committed.) |
@@ -74,7 +75,7 @@ Validates an X3D scene and reports diagnostics. Seven checks run in sequence:
    minimal X3D 4.0 profile that contains all components used and flags nodes that
    exceed a declared profile. Profile table sources: ISO/IEC 19775-1:2023 Annexes B–F.
 5. **Duplicate `<meta>`** — same `(name, content)` pair appearing more than once in `<head>`.
-6. **Unused ProtoDeclare / ExternProtoDeclare** — a prototype declared with no corresponding `ProtoInstance` in the scene.
+6. **Unused ProtoDeclare / ExternProtoDeclare** — a top-level declaration with no bound instance in the scene or locally authored prototype bodies. The shared analysis follows local declaration bindings and retained nested declarations with a visited set. It compares declaration identity, so a used inner declaration does not mask an unused outer declaration with the same name. An EXTERNPROTO instance counts its external declaration, not the resolved implementation from another source. This remains an authoring warning, not a new restriction on valid prototype declarations.
 7. **IFS/ILS coord-without-index** — `IndexedFaceSet` or `IndexedLineSet` has a `Coordinate` node with point data but an empty `coordIndex` (4.0+-only to avoid false positives on older files).
 
 Output: human-readable grouped-by-category report by default; `--json` for

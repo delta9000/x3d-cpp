@@ -1,0 +1,4 @@
+<X3D profile='Interchange' version='4.0'>
+<head><unit category='length' name='centimetre' conversionFactor='0.01'/></head>
+<Scene><ProtoDeclare name='ChildBox'><ProtoBody><Box/></ProtoBody></ProtoDeclare>
+<Group DEF='ChildRoot'/></Scene></X3D>

@@ -154,6 +154,7 @@
     {
       "findings": [
         "AUD-PROTO-1",
+        "DIAG-NESTED-PROTO-USE",
         "DIAG-PROFILE-COERCE",
         "DIAG-UNKNOWN-NODE",
         "ENC-C14N-ATTR",
@@ -161,8 +162,20 @@
         "ENC-JSON-UNIT",
         "ENC-MFSTRING-READ",
         "ENC-VRML-STRING",
+        "PROTO-CHILD-ORDER",
+        "PROTO-DIRECT-DEFAULT",
+        "PROTO-INTERFACE-STATE",
         "PROTO-IS-001",
+        "PROTO-NESTED-ROUTE",
+        "PROTO-NESTED-WRITE",
+        "PROTO-NODE-INIT",
+        "PROTO-NODE-VALUE-INSTANCE",
+        "PROTO-PARSE-SCOPE",
+        "PROTO-PRIMARY-ORDER",
+        "PROTO-SCENE-ORDER",
         "PROTO-SHADOW",
+        "PROTO-WRITE-DEF-SCOPE",
+        "REQ-UNIT",
         "ROUTE-IO-ALIAS"
       ],
       "levels": [
@@ -316,13 +329,25 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.4; 4.4.2.2, 4.4.8.2; 4.4.4.3",
+          "clause": "4.4.4; 4.4.2.2, 4.4.8.2; 4.4.4.3; 4.4.3; 4.4.4.2; 4.4.4.3; 4.4.3; 4.4.4.4; 4.4.4.4; 4.4.3; 4.4.4.3; 4.4.4.2; 4.4.4.3; 4.4.4.4; 4.4.4.2; 4.4.4.3; 4.3.2; 4.4.4.3; 7.2.2; 4.4.4.3; 4.4.4.4; 4.4.8.2; 4.4.2.2; 4.4.4.2; 4.4.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-PROTO-1",
+            "DIAG-NESTED-PROTO-USE",
+            "PROTO-CHILD-ORDER",
+            "PROTO-DIRECT-DEFAULT",
+            "PROTO-INTERFACE-STATE",
             "PROTO-IS-001",
+            "PROTO-NESTED-ROUTE",
+            "PROTO-NESTED-WRITE",
+            "PROTO-NODE-INIT",
+            "PROTO-NODE-VALUE-INSTANCE",
+            "PROTO-PARSE-SCOPE",
+            "PROTO-PRIMARY-ORDER",
+            "PROTO-SCENE-ORDER",
             "PROTO-SHADOW",
+            "PROTO-WRITE-DEF-SCOPE",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -364,24 +389,6 @@
             "Immersive",
             "Full"
           ]
-        },
-        {
-          "behaves": "n/a",
-          "behavioral": false,
-          "clause": "",
-          "exists": true,
-          "extracts": "n/a",
-          "findings": [],
-          "geometry": false,
-          "interfaces": [],
-          "level": 1,
-          "name": "X3DStatement",
-          "profiles": [
-            "Interchange",
-            "Interactive",
-            "Immersive",
-            "Full"
-          ]
         }
       ],
       "profiles": [
@@ -393,7 +400,8 @@
     },
     {
       "findings": [
-        "CMT-1"
+        "CMT-1",
+        "REQ-CUBE"
       ],
       "levels": [
         1,
@@ -405,11 +413,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "34.4.1; 4.4.2.2, 4.4.8.2",
+          "clause": "34.4.1; 4.4.2.2, 4.4.8.2; 34.2; 34.4.1-34.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CMT-1",
+            "REQ-CUBE",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -422,17 +431,17 @@
           "level": 1,
           "name": "ComposedCubeMapTexture",
           "profiles": [
-            "Immersive",
             "Full"
           ]
         },
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 34.2; 34.4.1-34.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-CUBE",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -451,10 +460,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 34.2; 34.4.1-34.4.3; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-CUBE",
+            "REQ-FTP",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -473,7 +484,6 @@
         }
       ],
       "profiles": [
-        "Immersive",
         "Full"
       ]
     },
@@ -510,10 +520,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-FTP",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -530,7 +541,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "28.2.3, 28.3; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -556,7 +567,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "28.2.3, 28.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -580,7 +591,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "28.2.3, 28.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -604,7 +615,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "28.2.3, 28.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -639,6 +650,7 @@
         "BIND-06",
         "ENV-10",
         "ENV-11",
+        "REQ-LOCALFOG",
         "SEAM-BACKGROUND"
       ],
       "levels": [
@@ -650,7 +662,7 @@
       "name": "EnvironmentalEffects",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "7.2.2; 4.4.2.2, 4.4.8.2; 24.4.2, 24.4.4; 24.2.1",
           "exists": true,
@@ -678,7 +690,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "7.2.2; 24.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -698,7 +710,6 @@
           "level": 2,
           "name": "Fog",
           "profiles": [
-            "Interactive",
             "Immersive",
             "Full"
           ]
@@ -706,10 +717,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 24.2.2; 24.4.3; 24.4.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-LOCALFOG",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -726,10 +738,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 24.2.2; 24.4.3; 24.4.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-LOCALFOG",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -745,7 +758,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "7.2.2; 24.4.5; 4.4.2.2, 4.4.8.2; 24.4.2, 24.4.4; 24.2.1",
           "exists": true,
@@ -768,7 +781,6 @@
           "level": 3,
           "name": "TextureBackground",
           "profiles": [
-            "Immersive",
             "Full"
           ]
         }
@@ -805,7 +817,7 @@
       "name": "EnvironmentalSensor",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "22.4.1; 22.4.1, 22.4.3; 22.4, 22.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -839,7 +851,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "22.4.2; 22.4, 22.4.3; 22.4.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -864,7 +876,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "22.4.3; 22.4.1, 22.4.3; 22.4.1; 22.4, 22.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -889,7 +901,6 @@
           "level": 2,
           "name": "VisibilitySensor",
           "profiles": [
-            "Interactive",
             "Immersive",
             "Full"
           ]
@@ -928,7 +939,7 @@
       "name": "EventUtilities",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "30.4.1; 30.4.1, 30.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -953,7 +964,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "30.2.4, 30.3.1; 30.2.4; 30.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -984,7 +995,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "30.4.3; 30.4.1, 30.4.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1008,7 +1019,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "30.4.4; 30.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1033,7 +1044,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "30.2.4, 30.3.1; 30.2.4; 30.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1064,7 +1075,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "30.4.6; 30.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1090,7 +1101,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "30.4.7; 30.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1139,7 +1150,7 @@
       "name": "Followers",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1166,7 +1177,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1194,7 +1205,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 39.4.3, 39.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1222,7 +1233,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 39.4.3, 39.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1251,7 +1262,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1278,7 +1289,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1306,7 +1317,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1333,7 +1344,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1360,7 +1371,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1388,7 +1399,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1416,7 +1427,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1443,7 +1454,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1471,7 +1482,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.1; 39.4.3, 39.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1499,7 +1510,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "39.3.1, 39.3.2, 39.3.3; 39.3.3; 39.3.2; 39.4.3, 39.4.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -1754,10 +1765,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.10; 4.4.2.2, 4.4.8.2",
+          "clause": "18.4.10; 4.4.2.2, 4.4.8.2; 4.3.6; 7.2.5.5",
           "exists": true,
           "extracts": "yes",
           "findings": [
+            "REQ-UNIT",
             "ROUTE-IO-ALIAS",
             "TXF-1"
           ],
@@ -2073,11 +2085,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.3.5; 4.4.2.2, 4.4.8.2",
+          "clause": "25.3.5; 4.4.2.2, 4.4.8.2; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-AUDIT-2",
+            "REQ-FTP",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2115,7 +2128,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 25; 25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2141,7 +2154,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "25.3.8; 22.4.1; 25; 25.2.3; 25.2.3, 25.2.4; 22.4.1, 25.3.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2171,7 +2184,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "25.3.9; 25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2223,7 +2236,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3; 25.2.3, 25.2.4; 23.4.4, 25.3.11; 22.4.1, 25.3.8; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2358,11 +2371,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2; 4.3.6; 7.2.5.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GRP-ADDCHILDREN",
+            "REQ-UNIT",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2570,7 +2584,7 @@
       "name": "Interpolation",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2597,7 +2611,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2624,7 +2638,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2647,7 +2661,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.2.4, 19.4.10-13; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2668,7 +2682,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2695,7 +2709,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2722,7 +2736,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2749,7 +2763,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2772,7 +2786,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2799,7 +2813,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2823,7 +2837,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2847,7 +2861,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2871,7 +2885,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "19.2.4, 19.4.10-13; 19.3.1; \u2014; 19.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2925,7 +2939,7 @@
       "name": "KeyDeviceSensor",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "21.4.1, 21.4.2; 21.4.1; 21.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2956,7 +2970,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "21.4.1, 21.4.2; 21.2; 21.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -2998,6 +3012,7 @@
         "LAY-1",
         "LAY-2",
         "LAY-3",
+        "REQ-LAYER",
         "VIEWPORT-CLIP"
       ],
       "levels": [
@@ -3008,12 +3023,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "35.3.1; 35.4.3; 4.4.2.2, 4.4.8.2",
+          "clause": "35.3.1; 35.4.3; 4.4.2.2, 4.4.8.2; 35.2.3; 35.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "LAY-2",
             "LAY-3",
+            "REQ-LAYER",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3031,11 +3047,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "35.4.2; 4.4.2.2, 4.4.8.2",
+          "clause": "35.4.2; 4.4.2.2, 4.4.8.2; 35.2.3; 35.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "LAY-1",
+            "REQ-LAYER",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3081,7 +3098,8 @@
     },
     {
       "findings": [
-        "LYT-1"
+        "LYT-1",
+        "REQ-LAYOUT"
       ],
       "levels": [
         1,
@@ -3092,10 +3110,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 36.2; 36.4.1-36.4.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-LAYOUT",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3113,11 +3132,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2; 36.2; 36.4.1-36.4.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GRP-ADDCHILDREN",
+            "REQ-LAYOUT",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3136,10 +3156,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 36.2; 36.4.1-36.4.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-LAYOUT",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3157,11 +3178,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "36.4.4; 4.4.2.2, 4.4.8.2",
+          "clause": "36.4.4; 4.4.2.2, 4.4.8.2; 36.2; 36.4.1-36.4.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "LYT-1",
+            "REQ-LAYOUT",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3178,11 +3200,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2; 36.2; 36.4.1-36.4.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GRP-ADDCHILDREN",
+            "REQ-LAYOUT",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3210,7 +3233,8 @@
         "ENVLIGHT-ORPHAN",
         "LGT-1",
         "LGT-2",
-        "LGT-3"
+        "LGT-3",
+        "REQ-SHADOW"
       ],
       "levels": [
         1,
@@ -3221,7 +3245,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 10.4.3",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 10.4.3; 17.2.2.8; 17.3.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3229,6 +3253,7 @@
             "LGT-1",
             "LGT-2",
             "LGT-3",
+            "REQ-SHADOW",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3249,7 +3274,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 17.4.2, 17.4.3; 10.4.3",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 17.4.2, 17.4.3; 10.4.3; 17.2.2.8; 17.3.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3258,6 +3283,7 @@
             "LGT-1",
             "LGT-2",
             "LGT-3",
+            "REQ-SHADOW",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3277,7 +3303,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 17.4.2, 17.4.3; 10.4.3",
+          "clause": "17.3.1; 17.2.2.4; 23.4.4; 4.4.2.2, 4.4.8.2; 17.4.2, 17.4.3; 10.4.3; 17.2.2.8; 17.3.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3286,6 +3312,7 @@
             "LGT-1",
             "LGT-2",
             "LGT-3",
+            "REQ-SHADOW",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3659,13 +3686,12 @@
           "level": 2,
           "name": "Billboard",
           "profiles": [
-            "Interactive",
             "Immersive",
             "Full"
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "23.2.4, 23.3.2; 23.4.2; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -3689,7 +3715,6 @@
           "level": 2,
           "name": "Collision",
           "profiles": [
-            "Interactive",
             "Immersive",
             "Full"
           ]
@@ -3717,13 +3742,12 @@
           "level": 2,
           "name": "LOD",
           "profiles": [
-            "Interactive",
             "Immersive",
             "Full"
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "23.4.4; 7.2.2; 4.4.2.2, 4.4.8.2; 22.4.1; 23.3.1",
           "exists": true,
@@ -3752,7 +3776,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 23.4.5, 42.4.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -3785,9 +3809,9 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 4.4.2.2, 4.4.8.2; 9.4.3",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 4.4.2.2, 4.4.8.2; 9.4.3; 4.3.6; 7.2.5.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3804,6 +3828,7 @@
             "BIND-09",
             "NAV-FLY-ROLL",
             "NAV-LOOKAT-SCALE",
+            "REQ-UNIT",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3865,7 +3890,8 @@
         "NSN-5",
         "NSN-6",
         "NSN-7",
-        "NSN-9"
+        "NSN-9",
+        "REQ-FTP"
       ],
       "levels": [
         2,
@@ -3876,13 +3902,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "9.4.3, 9.4.1; 10.2.1; 4.4.2.2, 4.4.8.2; 9.4.3",
+          "clause": "9.4.3, 9.4.1; 10.2.1; 4.4.2.2, 4.4.8.2; 9.4.3; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-NET-3",
             "GRP-ADDCHILDREN",
             "NSN-11",
+            "REQ-FTP",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3896,7 +3923,6 @@
           "level": 2,
           "name": "Anchor",
           "profiles": [
-            "Interchange",
             "Interactive",
             "Immersive",
             "Full"
@@ -3905,7 +3931,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "9.4.3; 9.4.2; 4.4.6; 4.4.2.2, 4.4.8.2; 9.2.5; 9.4.2",
+          "clause": "9.4.3; 9.4.2; 4.4.6; 4.4.2.2, 4.4.8.2; 9.2.5; 9.4.2; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3913,6 +3939,7 @@
             "AUD-NET-2",
             "IMPORT-EXPORT-WIRE",
             "NSN-12",
+            "REQ-FTP",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3925,14 +3952,13 @@
           "level": 2,
           "name": "Inline",
           "profiles": [
-            "Interchange",
             "Interactive",
             "Immersive",
             "Full"
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "9.4.3; 9.4.3, 9.4.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -3967,7 +3993,6 @@
         }
       ],
       "profiles": [
-        "Interchange",
         "Interactive",
         "Immersive",
         "Full"
@@ -4203,7 +4228,7 @@
       "name": "Picking",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -4250,7 +4275,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -4273,7 +4298,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -4296,7 +4321,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -4338,7 +4363,7 @@
       "name": "PointingDeviceSensor",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "20.4.1; 20.4.x; 4.4.2.2, 4.4.8.2; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
@@ -4368,7 +4393,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "20.4.x; 4.4.2.2, 4.4.8.2; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
@@ -4397,7 +4422,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "20.4.x; 4.4.2.2, 4.4.8.2; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
@@ -4426,7 +4451,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "20.4.4; 4.4.2.2, 4.4.8.2; 20.2.1; 20.4.2; 10.4.3, 20.2.3",
           "exists": true,
@@ -4466,7 +4491,8 @@
         "AUD-RND-1",
         "AUD-RND-2",
         "CONTAINERFIELD-FALSEPOS",
-        "EXT-002"
+        "EXT-002",
+        "REQ-CLIP"
       ],
       "levels": [
         1,
@@ -4479,10 +4505,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 11.4.1; F.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-CLIP",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -4964,7 +4991,7 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "23.2.4, 23.3.2; 37; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -5193,6 +5220,7 @@
         "CONF-CRITIC-2",
         "DO-CASCADE",
         "ENC-CDATA-SCRIPT",
+        "REQ-JAVA",
         "SCR-001",
         "SCR-002",
         "SCR-003",
@@ -5214,15 +5242,17 @@
       "name": "Scripting",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference)",
+          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); F.5 Table F.3 (Script); 29.2.8; 29.4.1; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "CONF-CRITIC-2",
             "DO-CASCADE",
             "ENC-CDATA-SCRIPT",
+            "REQ-FTP",
+            "REQ-JAVA",
             "ROUTE-IO-ALIAS",
             "SCR-001",
             "SCR-002",
@@ -5261,6 +5291,7 @@
     },
     {
       "findings": [
+        "REQ-SHADER",
         "SHDR-1"
       ],
       "levels": [
@@ -5271,10 +5302,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-SHADER",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -5359,10 +5391,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-FTP",
+            "REQ-SHADER",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -5382,10 +5416,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-SHADER",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -5403,10 +5438,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-FTP",
+            "REQ-SHADER",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -5423,10 +5460,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-FTP",
+            "REQ-SHADER",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -5459,6 +5498,7 @@
         "MAT-009",
         "MAT-010",
         "MAT-011",
+        "REQ-FILL",
         "SEAM-LINEPOINT",
         "UNLIT-EMISSIVE"
       ],
@@ -5521,10 +5561,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 12.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-FILL",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -5753,7 +5794,7 @@
       "name": "Sound",
       "nodes": [
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -5777,15 +5818,16 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 4.4.2.2, 4.4.8.2; 8.2.4.3; 16.4.2",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 4.4.2.2, 4.4.8.2; 8.2.4.3; 16.4.2; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-MEDIA-2",
             "AUD-TIME-3",
             "MULTI-INHERIT",
+            "REQ-FTP",
             "ROUTE-IO-ALIAS",
             "TDN-5"
           ],
@@ -5856,12 +5898,13 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
-          "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2",
+          "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-FTP",
             "ROUTE-IO-ALIAS",
             "SND-4"
           ],
@@ -5950,7 +5993,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -5974,7 +6017,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -5998,7 +6041,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -6049,7 +6092,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.16, 16.4.13; 16.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -6074,7 +6117,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -6215,7 +6258,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -6239,7 +6282,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -6342,6 +6385,7 @@
     {
       "findings": [
         "FOV-TYPE",
+        "REQ-PROJECTION",
         "TPJ-1",
         "TPJ-2"
       ],
@@ -6353,10 +6397,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "42.4.2; 4.4.2.2, 4.4.8.2",
+          "clause": "42.4.2; 4.4.2.2, 4.4.8.2; 42.2; 42.3.1; 42.4.1; 42.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-PROJECTION",
             "ROUTE-IO-ALIAS",
             "TPJ-1"
           ],
@@ -6376,11 +6421,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "42.4.2; 23.4.5, 42.4.2; 4.4.2.2, 4.4.8.2",
+          "clause": "42.4.2; 23.4.5, 42.4.2; 4.4.2.2, 4.4.8.2; 42.2; 42.3.1; 42.4.1; 42.4.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "FOV-TYPE",
+            "REQ-PROJECTION",
             "ROUTE-IO-ALIAS",
             "TPJ-1",
             "TPJ-2"
@@ -6412,6 +6458,7 @@
         "AUD-TEX-3",
         "ENC-VRML-SFIMAGE",
         "MULTI-INHERIT",
+        "REQ-MULTITEXTURE",
         "TDN-5",
         "TXF-1",
         "TXF-2",
@@ -6431,11 +6478,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.9; 4.4.2.2, 4.4.8.2; 9.3.2, 18.4.1",
+          "clause": "18.4.9; 4.4.2.2, 4.4.8.2; 9.3.2, 18.4.1; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-TEX-1",
+            "REQ-FTP",
             "ROUTE-IO-ALIAS",
             "TXF-4"
           ],
@@ -6458,9 +6506,9 @@
           ]
         },
         {
-          "behaves": "conformant",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 4.4.2.2, 4.4.8.2; 23.4.1; 8.2.4.3; 9.3.2, 18.4.1; 18.4.2; 16.4.17",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 4.4.2.2, 4.4.8.2; 23.4.1; 8.2.4.3; 9.3.2, 18.4.1; 18.4.2; 16.4.17; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6470,6 +6518,7 @@
             "AUD-TEX-1",
             "AUD-TIME-3",
             "MULTI-INHERIT",
+            "REQ-FTP",
             "ROUTE-IO-ALIAS",
             "TDN-5",
             "VIS-MOVIE-DECODE"
@@ -6497,12 +6546,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; 24.4.5; 18.4.3",
+          "clause": "4.4.2.2, 4.4.8.2; 24.4.5; 18.4.3; 18.2.4; 18.4.3-18.4.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-BG-2",
             "AUD-TEX-2",
+            "REQ-MULTITEXTURE",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -6523,10 +6573,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.4; 4.4.2.2, 4.4.8.2",
+          "clause": "18.4.4; 4.4.2.2, 4.4.8.2; 18.2.4; 18.4.3-18.4.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-MULTITEXTURE",
             "ROUTE-IO-ALIAS",
             "TXT-6"
           ],
@@ -6548,10 +6599,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "4.4.2.2, 4.4.8.2; 18.2.4; 18.4.3-18.4.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-MULTITEXTURE",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -6697,30 +6749,6 @@
             "Immersive",
             "Full"
           ]
-        },
-        {
-          "behaves": "n/a",
-          "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
-          "exists": true,
-          "extracts": "n/a",
-          "findings": [
-            "ROUTE-IO-ALIAS"
-          ],
-          "geometry": false,
-          "interfaces": [
-            "X3DAppearanceChildNode",
-            "X3DNode",
-            "X3DTextureTransformNode"
-          ],
-          "level": 1,
-          "name": "X3DSingleTextureTransformNode",
-          "profiles": [
-            "Interchange",
-            "Interactive",
-            "Immersive",
-            "Full"
-          ]
         }
       ],
       "profiles": [
@@ -6769,10 +6797,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1, 33.4.2; 33.4.1; 4.4.2.2, 4.4.8.2",
+          "clause": "33.4.1, 33.4.2; 33.4.1; 4.4.2.2, 4.4.8.2; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "REQ-FTP",
             "ROUTE-IO-ALIAS",
             "T3D-1",
             "T3D-2"
@@ -6931,7 +6960,7 @@
       "name": "Time",
       "nodes": [
         {
-          "behaves": "conformant",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1; 4.4.2.2, 4.4.8.2; 8.2.2, 8.2.4.4",
           "exists": true,
@@ -10894,6 +10923,361 @@
       "severity": "major",
       "status": "closed",
       "summary": "Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources."
+    },
+    {
+      "clause": "4.3.6; 7.2.5.5",
+      "component": "Core",
+      "id": "REQ-UNIT",
+      "nodes": [
+        "Transform",
+        "Viewpoint",
+        "Box"
+      ],
+      "note": "XmlReader and ClassicVrmlReader store head.units; writers serialize them. RuntimeSession builds its context from doc.scene without passing head.units, and runtime calculations consume authored numbers directly. Reproduced with rebuilt build-ci/x3d extract: Box size 2 4 6 rotated 90 degrees with angle UNIT has positive STL extents (3.1300633,2,2.2382174), while equivalent radians give (2.9999998,2,1.0000001); both have 12 triangles. Fixture in the requirements audit. Acceptance: equivalent radian/degree scenes produce equal transforms and routed rotations; cover length, mass, force and referenced-document unit handling. The published Core prose has conflicting wording about external UNIT declarations; resolve that separately from the proven missing root conversion. Follow-up: parseDocument now rejects invalid UNIT versions, categories, duplicate categories, names and factors; unit_header_validation_all_encodings covers XML, ClassicVRML and JSON. Source UNIT snapshots now survive Inline and EXTERNPROTO resolution, and authored scalar-field presence survives reader assignment and PROTO expansion. These preserve conversion inputs but do not apply factors or resolve runtime conversion.",
+      "severity": "major",
+      "status": "open",
+      "summary": "UNIT conversion factors are preserved in document headers but never applied by the runtime."
+    },
+    {
+      "clause": "11.4.1; F.5",
+      "component": "Rendering",
+      "id": "REQ-CLIP",
+      "nodes": [
+        "ClipPlane"
+      ],
+      "note": "The only production runtime references beyond bindings are reserved ShaderUniformVocabulary names. RenderItem has no clip-plane state and SceneExtractor does not collect planes. Acceptance: a plane clips the specified half-space, responds to enabled/plane events and transforms, and a host supports the Annex F minimum of six planes. Camera near/far clipping is a different operation.",
+      "severity": "major",
+      "status": "open",
+      "summary": "ClipPlane equations and enabled state never reach extraction or either reference renderer."
+    },
+    {
+      "clause": "12.4.3",
+      "component": "Shape",
+      "id": "REQ-FILL",
+      "nodes": [
+        "FillProperties"
+      ],
+      "note": "MaterialDesc::fill now extracts all four fields, and appearance dependency tracking refreshes live field changes and replacement nodes. CPU and built-in OpenGL Phong/Physical/Unlit paths implement independent filled/hatched flags, hatchColor, required styles 1-6 and fallback to style 1; holes discard both color and depth writes. material_system_test and scene_extractor_t7_test cover extraction/copy/update behavior; CPU rasterizer/render-smoke tests and check_poc_fill_properties.py cover pixels, patterns, depth holes and polygon-only application. The reference grid is eight window pixels; hatch fragments retain material alpha/coverage and receive fog. This closes FillProperties presentation in the tested reference paths, not the separate author-shader or full Shape-component obligations.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Appearance.fillProperties is not extracted; filled, hatched, hatchColor and hatchStyle have no rendering effect."
+    },
+    {
+      "clause": "24.2.2; 24.4.3; 24.4.4",
+      "component": "EnvironmentalEffects",
+      "id": "REQ-LOCALFOG",
+      "nodes": [
+        "LocalFog",
+        "FogCoordinate"
+      ],
+      "note": "SceneExtractor::fog reads only ctx.boundFog(); MeshBuilder does not read fogCoord and MeshData carries no fog-depth array. Acceptance: nearest enabled local fog overrides global fog for the affected subtree; authored vertex depths replace implicit distance and repeat their final entry when short. Existing scene_extractor_fog_test proves only bound global Fog.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Global Fog works, but LocalFog scope and authored FogCoordinate depths are ignored."
+    },
+    {
+      "clause": "35.2.3; 35.4.2",
+      "component": "Layering",
+      "id": "REQ-LAYER",
+      "nodes": [
+        "Layer",
+        "LayerSet"
+      ],
+      "note": "BindingSystem::stacks_ is keyed only by category, X3DExecutionContext owns one BindingSystem, and SceneExtractor exposes one camera/background/fog. activeLayer has no production runtime read. LayerSet.order traversal and Layer.pickable do not establish independent layers. Acceptance: two layers bind different viewpoints/backgrounds without affecting one another, activeLayer selects input/navigation, and later ordered layers appear above earlier ones, including repeated ordinals.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Layers share one binding stack per category and one camera; LayerSet.activeLayer does not select navigation."
+    },
+    {
+      "clause": "36.2; 36.4.1-36.4.5",
+      "component": "Layout",
+      "id": "REQ-LAYOUT",
+      "nodes": [
+        "Layout",
+        "LayoutGroup",
+        "LayoutLayer",
+        "ScreenGroup",
+        "ScreenFontStyle"
+      ],
+      "note": "No production layout-node dispatch exists in TransformSystem or SceneExtractor. TextExtract::readFontStyleParams copies pointSize into FontStyleParams::size without viewport/DPI conversion. Acceptance: nested align/offset/size/scaleMode in WORLD/FRACTION/PIXEL units; ScreenGroup retains pixel scale while the camera moves; screen text and LayoutLayer work with viewport changes.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Layout rectangles and screen-relative transforms are absent; ScreenFontStyle.pointSize is treated as a world-space size."
+    },
+    {
+      "clause": "31.2.2.3; 31.2.4; 31.3.2; 31.4",
+      "component": "Shaders",
+      "id": "REQ-SHADER",
+      "nodes": [
+        "ComposedShader",
+        "PackagedShader",
+        "ProgramShader",
+        "ShaderPart",
+        "ShaderProgram"
+      ],
+      "note": "SceneExtractor declares shaderProgram but never assigns it. The PoC's author branch requires that optional value, so authored programs cannot reach its compiler through the SDK feed. Acceptance: one supported language (e.g. GLSL), ordered shader selection, compilation validity/isSelected feedback, activate handling, live uniforms and URL/source changes. Unsupported shader languages may remain inert as the specification permits; implementing every language is not required.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Shader parsing and descriptors exist, but scene-authored programs never populate RenderItem.shaderProgram or drive shader selection outputs."
+    },
+    {
+      "clause": "34.2; 34.4.1-34.4.3",
+      "component": "CubeMapTexturing",
+      "id": "REQ-CUBE",
+      "nodes": [
+        "ComposedCubeMapTexture",
+        "ImageCubeMapTexture",
+        "GeneratedCubeMapTexture"
+      ],
+      "note": "MaterialSystem::refOf special-cases ComposedCubeMapTexture only; ImageCubeMapTexture falls through to a 2D URL ref and GeneratedCubeMapTexture to an empty URL ref. Neither reference consumer samples cube refs. background_desc_test verifies six refs, not environment mapping. Acceptance: face orientation and reflection sampling, image cube loading, and generated update modes with the specified view and size.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Cube-map support ends at six-face descriptors; image and generated cube-map behavior and reference-consumer sampling are absent."
+    },
+    {
+      "clause": "18.2.4; 18.4.3-18.4.5",
+      "component": "Texturing",
+      "id": "REQ-MULTITEXTURE",
+      "nodes": [
+        "MultiTexture",
+        "MultiTextureCoordinate",
+        "MultiTextureTransform"
+      ],
+      "note": "MaterialSystem retains mode/source/function/color/alpha and channel; cpu_raster findSlot and PoC findTexSlot return the first match, with no stage combiner. Acceptance: two-stage rendering across required modes, source/function modifiers, color/alpha, per-stage coordinates/transforms and live updates. This is a host rendering obligation; the existing descriptor tests remain valid for their narrower scope.",
+      "severity": "major",
+      "status": "open",
+      "summary": "MultiTexture stage controls are extracted but reference renderers use only the first matching material texture slot."
+    },
+    {
+      "clause": "42.2; 42.3.1; 42.4.1; 42.4.2",
+      "component": "TextureProjection",
+      "id": "REQ-PROJECTION",
+      "nodes": [
+        "TextureProjector",
+        "TextureProjectorParallel"
+      ],
+      "note": "LightSystem::lightType accepts only DirectionalLight, PointLight and SpotLight; RenderItem/LightDesc carry no projected texture or projector matrix. Acceptance: perspective and parallel projected textures, clipping/range, on/global scope, transforms, and aspectRatio updates. Published chapter URL is components/textureProjection.html; the Full-profile link and UOM spelling currently return 404.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Texture projectors have bindings and validation aliases but no projection or light extraction path."
+    },
+    {
+      "clause": "17.2.2.8; 17.3.1",
+      "component": "Lighting",
+      "id": "REQ-SHADOW",
+      "nodes": [
+        "DirectionalLight",
+        "PointLight",
+        "SpotLight"
+      ],
+      "note": "LightSystem::makeLight copies the fields and SceneExtractor copies castShadow; the CPU and GLSL shading paths have no occluder query/shadow map or visibility factor. Acceptance: two lights with independent occlusion, castShadow FALSE, shadows FALSE, and intermediate shadowIntensity. Soft-shadow fidelity is optional; the ordinary occlusion effect is the missing behavior.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Light shadows/shadowIntensity and Shape.castShadow reach descriptors but have no occlusion effect in either reference renderer."
+    },
+    {
+      "clause": "F.5 Table F.3 (Script); 29.2.8; 29.4.1",
+      "component": "Scripting",
+      "id": "REQ-JAVA",
+      "nodes": [
+        "Script"
+      ],
+      "note": "EcmaScriptBackend and QuickJsBackend are the two concrete ScriptEngine implementations. An external engine could fill this seam, but no Java adapter or language-selection configuration is supplied or tested. The component's general allowance to choose languages must be read with the Full-profile requirement. Acceptance: a declared Full host runs Java Script fixtures with the applicable SAI binding and ordered URL fallback; this does not require adding a JVM dependency to the default SDK.",
+      "severity": "major",
+      "status": "deferred",
+      "summary": "The published Full profile requires Java scripting in addition to ECMAScript; the shipped engines implement ECMAScript only."
+    },
+    {
+      "clause": "F.6 Table F.4 (URL fields); 9.2.1",
+      "component": "Networking",
+      "id": "REQ-FTP",
+      "interfaces": [
+        "X3DUrlObject"
+      ],
+      "note": "HttpResolver accepts only http/https and restricts libcurl protocols accordingly; SchemeRouter dispatches registered callbacks but ships no FTP backend. Acceptance: an explicitly configured Full host resolves file/http/ftp with relative references and ordered fallback. Preserve the HTTP adapter's protocol restrictions; supply a separate appropriate adapter instead. Offline SDK use does not itself claim the complete host configuration.",
+      "severity": "major",
+      "status": "deferred",
+      "summary": "No supplied asset backend implements the Full-profile FTP protocol requirement."
+    },
+    {
+      "clause": "4.4.3; 4.4.4.2; 4.4.4.3",
+      "component": "Core",
+      "id": "PROTO-NODE-INIT",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "Reproduced identical pointers for two instances and their declaration default, with mutation of one changing both others. Expansion now clones declaration-owned graphs through the per-instance body clone map, preserving aliases and authored scalar provenance. Caller-supplied override graphs retain their original identity. A present node fieldValue now overrides even with an empty node list, including nested IS forwarding. Regressions in proto_expand_test.cpp: PROTO node defaults belong to each instance; PROTO explicit node overrides retain caller identity and empty values; PROTO nested literal node overrides clone with outer instance; nestedInstanceIsConnectForwardTest. This does not establish complete PROTO or UNIT conformance.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Declaration-owned node defaults and nested literal overrides were shared across PROTO instances; explicit NULL/empty overrides fell back to defaults."
+    },
+    {
+      "clause": "4.4.3; 4.4.4.4",
+      "component": "Core",
+      "id": "PROTO-PARSE-SCOPE",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "XML/JSON defaults previously used the enclosing scene DEF table; Classic used a fresh table for each default. All three readers now use one private Scene for a declaration's interface and body, inheriting prototype declarations but not outer DEFs. Reader registration replaces same-name inherited lookup entries across PROTO/EXTERNPROTO kinds while preserving parent Scene records and already-bound instances. XML now recognizes direct nested declarations in ProtoBody. declarationDefScopeTest and nestedDeclarationShadowingTest in proto_front_door_test.cpp cover three encodings, aliases, boundaries and cross-kind shadowing. Nested declaration serialization is tracked separately by PROTO-NESTED-WRITE.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "PROTO interface defaults used incorrect DEF scopes, and nested prototype lookup could select inherited declarations before local declarations."
+    },
+    {
+      "clause": "4.4.4.4",
+      "component": "Core",
+      "id": "PROTO-NESTED-WRITE",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "Direct ProtoBody statements now retain local/extern declarations and lexical node/instance order, including unused declarations and names shadowing inherited declarations. All four writers replay that order; directNestedDeclarationWriteTest verifies three readers by four writers, unused nested declarations, source UNIT snapshots and programmatic node removal/addition. A weak-parent nodeStatements ledger now retains declarations among ordinary body-node children. XML/canonical XML replay the order; Classic writes declarations between complete field assignments and rejects repeated field groups, while JSON rejects repeated slot groups. These are current writer limits, not claims that semantic rewriting is impossible. Ordinary interface-default graphs now share the same capture and writer context, including their contained declarations and instances. interfaceDefaultContainedProtoTest covers these graphs and per-outer-instance expansion. Direct ProtoInstance defaults now use declaration-only templates (PROTO-DIRECT-DEFAULT). nodeContainedDeclarationPlacementTest, nodeContainedInterleavedFieldTest, nodeContainedMutationTest and repeatedNodeFieldJsonGuardTest cover the new paths; JSON checks establish repository compatibility, not ISO encoding conformance.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Some cross-encoding declaration orders remain unsupported."
+    },
+    {
+      "clause": "4.4.3; 4.4.4.4",
+      "component": "Core",
+      "id": "PROTO-WRITE-DEF-SCOPE",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "Reproduced a second DEF Shared in ProtoBody when a body USE referenced an interface default. Each XML, canonical XML, Classic and JSON declaration writer now uses one fresh DEF/USE context across interface defaults and body, with another fresh context for nested declarations. declarationAliasWriteTest verifies identity across two default fields and body nodes, and isolation of a nested declaration using the same DEF name.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "PROTO serialization reset DEF/USE bookkeeping between interface defaults and body nodes, splitting shared identity."
+    },
+    {
+      "clause": "4.4.4.3",
+      "component": "Core",
+      "id": "PROTO-PRIMARY-ORDER",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "The original CLI reported Wrap: empty proto body for a valid body containing only ProtoInstance Leaf. Expansion now uses orderedStatements to select the first authored node/instance, keeps subsequent direct nodes as active non-rendered peers, and registers interface redirects against the selected primary. An unresolved first instance is not replaced by a later peer. Four new proto_expand_test.cpp cases cover nested-only bodies, both primary/peer orders, unresolved primary, redirect ownership and parsed XML. Body-local ROUTEs targeting IS-mapped nested instance interfaces are covered by PROTO-NESTED-ROUTE; independent interface state remains PROTO-INTERFACE-STATE.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Expansion rejects a body containing only a prototype instance and does not preserve primary-versus-peer order for direct nested instances."
+    },
+    {
+      "clause": "4.4.4.3",
+      "component": "Core",
+      "id": "DIAG-NESTED-PROTO-USE",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "The CLI and differential gate now share declaration-identity use analysis. It scans locally authored declaration bodies, retained nested declarations, and locally bound instance declarations with a visited worklist; external instances count only their external declaration. CLI regressions cover nested use, a node-contained declaration retained only by its instance, unused outer declaration with a used shadowing inner declaration, and an unresolved but used external declaration. The existing unused-declaration warning remains unchanged.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "CLI reported a declaration used only by another prototype as unused."
+    },
+    {
+      "clause": "4.4.3; 4.4.4.3",
+      "component": "Core",
+      "id": "PROTO-CHILD-ORDER",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "Expansion now reconstructs affected MFNode slots from the reconciled body-node ledger after nested instances expand. Ordinary children retain clone-map identity and USE aliases; failed instances are omitted without reordering surviving children. proto_expand_test.cpp verifies XML, JSON and Classic ordering, aliasing, independent outer instances, and failed nested instances.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Nested prototype expansion appended instances after ordinary MFNode children, changing authored order."
+    },
+    {
+      "clause": "4.4.4.2; 4.4.4.3; 4.4.4.4",
+      "component": "Core",
+      "id": "PROTO-DIRECT-DEFAULT",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "ProtoInstanceTemplate occupies the existing nodeDefault vector and local DEF table. Readers and four writers retain order and DEF/USE aliases across fields and body graphs; expansion materializes required templates per outer instance before IS forwarding. Overrides suppress unused defaults and external resolution, while caller node identity is preserved. Scene writers emit external declarations before dependent local declarations. directDefaultInstanceTest, directDefaultInstanceIsForwardTest, unresolvedDirectDefaultRoundTripTest and proto_expand_test.cpp resolver-count cases exercise these paths. This is an authored template representation, not full native SAI prototype support.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Direct ProtoInstance SFNode/MFNode interface defaults were not retained as expandable prototype instances."
+    },
+    {
+      "clause": "4.4.4.2; 4.4.4.3",
+      "component": "Core",
+      "id": "PROTO-NODE-VALUE-INSTANCE",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "XML, Classic and JSON readers now retain direct and contained SFNode/MFNode instance values as bound templates. Expansion shares each caller template's primary across USE aliases while preserving ordinary caller node identity; declaration-owned values still clone per outer instance. Scene-root DEF templates link to their authoritative structural records. Unresolved caller templates remain inert and serializable. Four writers preserve expanded primary DEF/USE identity. instanceNodeValueRootTest, instanceNodeValueMixedTest, instanceNodeValueSharedCallerTest, unresolvedInstanceNodeValueTest and the throwing-resolver regression cover expansion, placement, sharing, failure and round trips. CLI use analysis and source UNIT traversal include these graphs. Scene root order remains open under PROTO-SCENE-ORDER.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Prototype instances inside node-valued fieldValues were not bound and expanded reliably."
+    },
+    {
+      "clause": "4.3.2; 4.4.4.3; 7.2.2",
+      "component": "Core",
+      "id": "PROTO-SCENE-ORDER",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "Root and Group.children reproductions converted First, Ordinary, Last to Ordinary, First, Last. A runtime binding probe selected the later ordinary Viewpoint over an earlier local prototype primary. Readers now place instance templates directly in authored root/child slots; structural records link weakly to those exact identities. Expansion replaces slots in place, and four writers preserve order and repeated USE occurrences. Unresolved instances retain inert slots. Removed unnamed slots remain distinguishable from unlinked programmatic records, avoiding fallback resurrection. Raw writers use structural source edits, and expansion synchronizes renamed DEF bindings. Classic root USE statements now have a separator before the next root. sceneRootProtoOrderTest, unresolvedRootProtoOrderTest, rootProtoMutationTest, sceneChildProtoOrderTest and firstProtoViewpointBindsTest cover raw and expanded paths, three encodings, four writers, removal, alias identity and actual initial binding. PROTO-NESTED-WRITE and other prototype requirements remain separate.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Scene prototype expansion appended primaries after ordinary roots or children, changing authored node order and initial binding."
+    },
+    {
+      "clause": "4.4.4.3; 4.4.4.4; 4.4.8.2",
+      "component": "Core",
+      "id": "PROTO-NESTED-ROUTE",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "The baseline retained one authored route but produced zero resolved routes and no warning. Expansion now resolves local DEFs after nested expansion and snapshots child interfaces before an enclosing instance reuses their primary pointer. Both ROUTE endpoints follow declared interface aliases and IS targets to concrete edges; nested IS event mappings are flattened into the outer interface. The scene bridge validates nominal interfaces and physical direction/types, hides undeclared primary fields, and preserves inherited metadata via existing primary storage. Parsed XML/Classic tests exercise actual event delivery, private instance isolation, nested-first shared primaries, physical and nested IS aliases, inherited metadata, scene PROTO-to-PROTO routes and invalid endpoints. Independent interface state without IS remains open under PROTO-INTERFACE-STATE; this does not claim complete prototype semantics.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Body-local ROUTEs targeting IS-mapped nested prototype interfaces were silently omitted."
+    },
+    {
+      "clause": "4.4.2.2; 4.4.4.2; 4.4.4.3",
+      "component": "Core",
+      "id": "PROTO-INTERFACE-STATE",
+      "interfaces": [
+        "X3DPrototypeInstance"
+      ],
+      "nodes": [
+        "ProtoInstance"
+      ],
+      "note": "A valid Relay prototype declares inputOutput SFVec3f value with a Group body and no IS connection. Routes Source.translation_changed -> RelayNode.set_value and RelayNode.value_changed -> Dest.set_translation should relay (1,2,3). The executable probe reports routes: 0 rejected: 2 destination: 0,0,0. Expansion substitutes a concrete primary and records IS redirects, but does not instantiate independent storage/event endpoints for every declared prototype field. This remains separate from mapped nested-route resolution and blocks full prototype/native SAI field semantics. Reproduction and output are recorded in the requirements audit.",
+      "severity": "major",
+      "status": "open",
+      "summary": "Prototype interface fields without IS targets have no independent runtime field state or event endpoint."
     }
   ],
   "meta": {
@@ -10931,7 +11315,7 @@
     ],
     "finding_schema_errors": {},
     "generator": "scripts/conformance_view.py",
-    "node_count": 262,
+    "node_count": 260,
     "wired_detected": [
       "Anchor",
       "Arc2D",
@@ -11059,14 +11443,14 @@
     ]
   },
   "summary": {
-    "closed_count": 249,
+    "closed_count": 260,
     "component_count": 36,
-    "deferred_count": 20,
-    "finding_count": 272,
+    "deferred_count": 22,
+    "finding_count": 297,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 10,
+      "major": 24,
       "minor": 11
     }
   },

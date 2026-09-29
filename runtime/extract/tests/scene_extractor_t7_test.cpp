@@ -69,6 +69,55 @@ TEST_CASE("GeoMetadata data references do not create render items") {
   CHECK(ex.fullSnapshot().added.empty());
 }
 
+TEST_CASE("FillProperties field edits and replacement update render material") {
+  auto shape = makeTriShape();
+  auto app = createX3DNode("Appearance");
+  auto first = createX3DNode("FillProperties");
+  setF(app, "fillProperties", std::any(std::shared_ptr<X3DNode>(first)));
+  setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
+  Scene scene; scene.addRootNode(shape);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  REQUIRE(snap.added.size() == 1);
+  const auto id = snap.added[0];
+  CHECK(ex.item(id).material.fill.hatched);
+  ctx.tick(1.0);
+  REQUIRE(ctx.writeField(first.get(), "hatchStyle", std::any(SFInt32{5})) ==
+          FieldWriteResult::Ok);
+  auto delta = ex.delta();
+  CHECK(delta.updatedMaterial == std::vector<extract::RenderItemId>{id});
+  CHECK(ex.item(id).material.fill.hatchStyle == 5);
+
+  auto second = createX3DNode("FillProperties");
+  ctx.tick(2.0);
+  REQUIRE(ctx.writeField(app.get(), "fillProperties",
+                         std::any(std::shared_ptr<X3DNode>(second))) ==
+          FieldWriteResult::Ok);
+  delta = ex.delta();
+  CHECK(delta.updatedMaterial == std::vector<extract::RenderItemId>{id});
+  CHECK(ex.item(id).material.fill.hatchStyle == 1);
+  ctx.tick(3.0);
+  REQUIRE(ctx.writeField(second.get(), "hatched", std::any(SFBool{false})) ==
+          FieldWriteResult::Ok);
+  delta = ex.delta();
+  CHECK(delta.updatedMaterial == std::vector<extract::RenderItemId>{id});
+  CHECK_FALSE(ex.item(id).material.fill.hatched);
+  ctx.tick(4.0);
+  REQUIRE(ctx.writeField(second.get(), "filled", std::any(SFBool{false})) ==
+          FieldWriteResult::Ok);
+  REQUIRE(ctx.writeField(second.get(), "hatchColor",
+                         std::any(SFColor{0.1f, 0.3f, 0.7f})) ==
+          FieldWriteResult::Ok);
+  REQUIRE(ctx.writeField(second.get(), "hatchStyle", std::any(SFInt32{6})) ==
+          FieldWriteResult::Ok);
+  delta = ex.delta();
+  CHECK(delta.updatedMaterial == std::vector<extract::RenderItemId>{id});
+  CHECK_FALSE(ex.item(id).material.fill.filled);
+  CHECK(ex.item(id).material.fill.hatchColor.b == doctest::Approx(0.7f));
+  CHECK(ex.item(id).material.fill.hatchStyle == 6);
+}
+
 TEST_CASE("scene_extractor_t7_test") {
   // === 1) Switch whichChoice = -1 (default) draws NOTHING ===================
   {

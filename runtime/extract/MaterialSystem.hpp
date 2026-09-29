@@ -249,6 +249,16 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
   m.alphaMode = alphaModeFromToken(getEnumToken(*appearance, "alphaMode", "AUTO"));
   m.alphaCutoff = geombounds::getField<float>(*appearance, "alphaCutoff", 0.5f);
 
+  // §12.4.3: an absent node does not enable hatching; a present node's
+  // filled/hatched fields both default to TRUE.
+  if (auto fp = geombounds::getNode(*appearance, "fillProperties")) {
+    m.fill.filled = geombounds::getField<bool>(*fp, "filled", true);
+    m.fill.hatched = geombounds::getField<bool>(*fp, "hatched", true);
+    m.fill.hatchColor = geombounds::getField<SFColor>(
+        *fp, "hatchColor", SFColor{1.0f, 1.0f, 1.0f});
+    m.fill.hatchStyle = geombounds::getField<int>(*fp, "hatchStyle", 1);
+  }
+
   // §12.4.6 / §12.4.8: LineProperties / PointProperties children of the
   // Appearance (SEAM-LINEPOINT) — read BEFORE the material dispatch so they are
   // surfaced even when the Appearance has NO material (the usual lines/points

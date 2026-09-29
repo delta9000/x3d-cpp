@@ -53,6 +53,9 @@ std::vector<std::string> tokenize(const std::string &s);
 // the global C++ locale's numpunct facet.
 float parseFloat(const std::string &s);
 double parseDouble(const std::string &s);
+// UNIT factors must be complete positive numbers; ordinary node field parsing
+// remains lenient for compatibility with existing reader recovery behavior.
+double parseUnitConversionFactor(const std::string &s);
 int parseInt(const std::string &s);
 
 // MFString parsing: X3D wraps each string in double quotes, e.g.

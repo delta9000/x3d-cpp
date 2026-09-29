@@ -2,6 +2,12 @@
 
 The single zoom-out for X3D SDK conformance. **Start at [`INDEX.md`](INDEX.md).**
 
+For the published X3D 4.0 Full-profile requirements and the limits of the
+generated status labels, see the
+[requirements audit](../wiki/guides/x3d4-requirements-audit.md). The generated
+view does not certify normative conformance: a detected System and no recorded
+open finding leave behavioral conformance unverified.
+
 ## What's here
 
 | File | Role | Edit? |
@@ -21,15 +27,19 @@ validates the schema and that every cited test name exists in the C++ sources;
 
 ## The split: facts vs judgments
 
-- **Facts** (does a node exist? extract? have a System wired? component/level/profile?)
-  are **auto-derived** from the generated bindings, `X3DInterfaceRegistry`, and the
-  `runtime/` Systems. They cannot rot — regenerating re-reads the code.
+- **Facts** (does a concrete node exist? extract? have a possible System target?
+  component/level/profile?) are **auto-derived** from the vendored UOM, generated
+  bindings, `X3DInterfaceRegistry`, and `runtime/` Systems. System detection is
+  heuristic; regenerating re-reads the code.
 - **Judgments** (does it *behave per ISO prose*? severity? status?) are human
   knowledge and live in **`findings.yaml`** — the one file you edit.
 
-The view joins them: a behavioral node with no System reads `✗ inert`; wired with an
-open finding reads `◑ partial`; wired and clean reads `✓`. A finding referencing a
-node/interface that doesn't exist is reported loudly (catches stale findings).
+The view joins them for the UOM's 260 concrete nodes: a behavioral node reads
+`? unverified` when the wiring heuristic or findings cannot establish behavior;
+a detected System with an open finding reads `◑ partial`. An explicit open
+`behaves: inert` finding reads `✗ inert`. Closed findings do not prove wiring or
+conformance. Existence and extraction remain separate facts. A finding referencing
+a node/interface that doesn't exist is reported loudly (catches stale findings).
 
 ## Workflow
 

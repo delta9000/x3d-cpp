@@ -38,6 +38,7 @@ namespace x3d::runtime {
 struct ExternProtoDeclaration;
 struct IsConnection;
 struct ProtoDeclaration;
+struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
@@ -82,6 +83,7 @@ private:
   // writeNodeElement can attach an <IS> block to EVERY emitted body node at any
   // depth (not just the top body node). Null outside ProtoBody re-emit.
   const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;
+  const runtime::ProtoBody *bodyOrder_ = nullptr;
 
   void writeSceneInto(xml::Element *scene, const runtime::Scene &s);
 

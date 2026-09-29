@@ -24,6 +24,7 @@ import pathlib
 import re
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Optional
 
@@ -62,10 +63,8 @@ SEVERITIES = {"critical", "major", "minor", "low"}
 STATUSES = {"open", "deferred", "fixed", "closed"}
 OPEN_STATUSES = {"open", "deferred"}
 DONE_STATUSES = {"fixed", "closed"}
-# Optional per-finding override of the derived "behaves" axis. The derivation
-# infers inertness only from "no System wired it"; a node can also be inert for a
-# reason the wiring heuristic can't see (declared-but-uncalled, no shader path).
-# An OPEN finding may assert `behaves: inert` to force ✗ — see classify_behaves.
+# Optional per-finding override of the derived "behaves" axis. Missing System
+# detection is inconclusive; an open finding may assert inertness explicitly.
 BEHAVES_OVERRIDES = {"inert"}
 SEVERITY_ORDER = {"critical": 0, "major": 1, "minor": 2, "low": 3}
 
@@ -74,7 +73,7 @@ GLYPH = {
     "partial": "◑",
     "no": "✗",
     "inert": "✗",
-    "conformant": "✓",
+    "unverified": "?",
     "n/a": "—",
 }
 
@@ -183,16 +182,11 @@ def classify_behaves(behavioral: bool, wired: bool, findings: list[dict]) -> str
     if not behavioral:
         return "n/a"
     open_f = [f for f in findings if f.get("status") in OPEN_STATUSES]
-    done_f = [f for f in findings if f.get("status") in DONE_STATUSES]
     # An OPEN finding may explicitly assert the node renders nothing. That is
-    # authoritative: a closed finding on an UNRELATED concern (e.g. BIND-06 on
-    # binding-stack detach) must not flip an inert node up to "partial".
+    # authoritative even if the System heuristic detects a possible target.
     if any(f.get("behaves") == "inert" for f in open_f):
         return "inert"
-    effective_wired = wired or bool(done_f)  # a closed finding asserts it's done
-    if not effective_wired:
-        return "inert"
-    return "partial" if open_f else "conformant"
+    return "partial" if wired and open_f else "unverified"
 
 
 def node_profiles(component: Optional[str], level: Optional[int], profiles: dict) -> list[str]:
@@ -238,6 +232,11 @@ def _read(p: pathlib.Path) -> str:
 def build_model(repo: pathlib.Path) -> dict:
     bindings = repo / "generated_cpp_bindings"
     conf_dir = repo / "docs" / "conformance"
+    uom = repo / "src" / "x3d_cpp_gen" / "data" / "X3dUnifiedObjectModel-4.0.xml"
+    concrete_names = {
+        element.attrib["name"]
+        for element in ET.parse(uom).findall(".//ConcreteNodes/ConcreteNode")
+    }
 
     # 1. nodes (exists) + concrete/abstract
     # Generated headers moved under x3d/{core,nodes}/ (ADR-0039 namespace split);
@@ -293,12 +292,10 @@ def build_model(repo: pathlib.Path) -> dict:
     profiles_doc = yaml.safe_load(_read(conf_dir / "profiles.yaml")) if (conf_dir / "profiles.yaml").exists() else {}
     profiles = profiles_doc.get("profiles", {}) if isinstance(profiles_doc, dict) else {}
 
-    # 7. per-node join (concrete nodes only)
+    # 7. per-node join (the UOM's concrete nodes only)
     components: dict[str, dict] = {}
     for name, nf in nodes.items():
-        # Concrete, instantiable nodes only: abstract X3D* base types carry no
-        # componentName() OR appear as interface names in the registry.
-        if nf.abstract or not nf.component or name in all_ifaces:
+        if name not in concrete_names:
             continue
         ifaces = registry.get(name, set())
         behavioral = is_behavioral(ifaces) or name in BEHAVIORAL_NODES
@@ -416,7 +413,7 @@ def render_index(model: dict) -> str:
     else:
         L.append(f"- **Open gaps:** none · **closed:** {s['closed_count']}")
     if s["inert_behavioral_nodes"]:
-        L.append(f"- **Inert behavioral nodes** (no System wired): "
+        L.append(f"- **Inert behavioral nodes** (explicit open findings): "
                  f"{', '.join(s['inert_behavioral_nodes'])}")
     # worst offenders
     worst = sorted(
@@ -451,7 +448,7 @@ def render_index(model: dict) -> str:
                  f"| {extract} | {behaves} | {gaps} | {profs} |")
     L += ["",
           "Legend: Extract = extractable/total geometry nodes · "
-          "Behaves = ✓ conformant · ◑ partial · ✗ inert (of behavioral nodes) · "
+          "Behaves = ◑ partial · ? unverified · ✗ inert (explicit finding) · "
           "— n/a.", ""]
     return "\n".join(L) + "\n"
 
@@ -493,14 +490,14 @@ def _open_findings(comp: dict, model: dict) -> list[dict]:
 
 
 def _behaves_rollup(beh: list[dict]) -> str:
-    c = sum(1 for n in beh if n["behaves"] == "conformant")
     p = sum(1 for n in beh if n["behaves"] == "partial")
     i = sum(1 for n in beh if n["behaves"] == "inert")
+    u = sum(1 for n in beh if n["behaves"] == "unverified")
     bits = []
-    if c:
-        bits.append(f"{c}✓")
     if p:
         bits.append(f"{p}◑")
+    if u:
+        bits.append(f"{u}?")
     if i:
         bits.append(f"{i}✗")
     return " ".join(bits) or "—"

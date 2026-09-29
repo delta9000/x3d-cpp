@@ -18,6 +18,7 @@
 
 #include "ClassicVrmlReader.hpp"
 #include "X3DParse.hpp" // parseDocument front door (content-sniffs ClassicVRML)
+#include "X3DProto.hpp"
 #include "X3DRuntime.hpp"
 
 // Concrete node types asserted on.
@@ -797,9 +798,24 @@ void testRecoverableMalformation() {
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
     check(doc.scene.protoInstances.size() == 1,
           "recover: Surf instance carried despite raw [..] SFNode value");
-    check(doc.scene.rootNodes.size() == 1 &&
-              static_cast<bool>(as<Shape>(doc.scene.rootNodes[0])),
-          "recover: Shape after raw-value proto instance still parsed");
+    check(doc.scene.rootNodes.size() == 2,
+          "recover: Surf placeholder and following Shape keep authored root order");
+    if (doc.scene.rootNodes.size() == 2) {
+      auto placeholder =
+          std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(doc.scene.rootNodes[0]);
+      check(placeholder && placeholder->instance.name == "Surf",
+            "recover: raw Surf keeps a structural placeholder in its root slot");
+      if (doc.scene.protoInstances.size() == 1)
+        check(doc.scene.protoInstances[0].hasPlacementTemplate() &&
+                  doc.scene.protoInstances[0].placementTemplate.lock() == placeholder,
+              "recover: Surf record links to its exact root placeholder");
+      auto shape = as<Shape>(doc.scene.rootNodes[1]);
+      check(static_cast<bool>(shape),
+            "recover: Shape after raw-value proto instance still parsed");
+      if (shape)
+        check(static_cast<bool>(as<Box>(shape->getGeometry())),
+              "recover: following Shape retains Box geometry");
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 #include "VrmlWriter.hpp"
+#include "X3DProtoFieldOrder.hpp"
 
 #include "DynamicField.hpp"
 #include "FieldValueIO.hpp"
@@ -64,21 +65,22 @@ std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
   os << "\n";
 
   // Emit PROTO/ExternProto declarations before root nodes.
-  for (const auto &d : doc.scene.protoDeclarations)
-    if (d)
-      writeVrmlProtoDeclare(os, *d);
   for (const auto &e : doc.scene.externProtoDeclarations)
     if (e)
       writeVrmlExternProtoDeclare(os, *e);
+  for (const auto &d : doc.scene.protoDeclarations)
+    if (d)
+      writeVrmlProtoDeclare(os, *d);
 
   for (const auto &n : doc.scene.rootNodes) {
-    if (n)
+    if (n) {
       writeNode(os, n, 0);
+      os << "\n";
+    }
   }
-  // AUD-B: re-emit scene-root ProtoInstances that did NOT expand (no graph
-  // node, so not covered by the expandedSources re-emit in writeNode).
+  // Emit programmatic root instances without an authored graph slot.
   for (const auto &inst : doc.scene.protoInstances)
-    if (!inst.expanded && inst.parent.expired())
+    if (!inst.expanded && !inst.hasPlacementTemplate() && inst.parent.expired())
       writeVrmlProtoInstance(os, inst, 0);
   for (const auto &r : doc.scene.routes) {
     os << "ROUTE " << r.fromNode << "." << r.fromField << " TO " << r.toNode
@@ -264,11 +266,15 @@ void VrmlWriter::writeVrmlNestedFor(std::ostringstream &os,
 void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
                                        const runtime::ProtoDeclaration &d) {
   os << "PROTO " << d.name << " [\n";
+  // One local DEF scope spans interface defaults and body nodes.
+  VrmlWriter bodyWriter;
+  bodyWriter.bodyIsc_ = &d.body.isConnections;
+  bodyWriter.bodyOrder_ = &d.body;
+  bodyWriter.bodyNested_ = &d.body.nestedInstances;
   for (const auto &f : d.interface) {
     os << "  " << accessTypeName(f.access) << " " << fieldTypeName(f.type)
        << " " << f.name;
     if (!f.nodeDefault.empty()) {
-      VrmlWriter bodyWriter;
       if (f.type == X3DFieldType::MFNode) {
         os << " [\n";
       } else {
@@ -291,33 +297,35 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
   }
   os << "] {\n";
 
-  // Body — fresh writer so DEF/USE is isolated; scene_=null means no proto
-  // redirect.
-  VrmlWriter bodyWriter;
+  // Body uses the interface's local scope; scene_=null prevents redirect.
   // PRF-1: hand the body's IS list to the body writer so writeNode emits
   // `field IS protoField` lines inside the node braces at every depth.
-  bodyWriter.bodyIsc_ = &d.body.isConnections;
   // PRF-3: thread the nested-instance list so writeNode injects each Case-A
   // instance INSIDE its parent body node's body (in its slot), not after it.
-  bodyWriter.bodyNested_ = &d.body.nestedInstances;
-  for (const auto &n : d.body.nodes) {
-    if (!n)
-      continue;
-    std::ostringstream nos;
-    bodyWriter.writeNode(nos, n, 1);
-    os << "  " << nos.str() << "\n";
+  for (const auto &entry : d.body.orderedStatements()) {
+    switch (entry.kind) {
+    case runtime::ProtoBodyStatement::Kind::Node: {
+      std::ostringstream nos;
+      bodyWriter.writeNode(nos, entry.node, 1);
+      os << "  " << nos.str() << "\n";
+      break;
+    }
+    case runtime::ProtoBodyStatement::Kind::Instance:
+      bodyWriter.writeVrmlProtoInstance(
+          os, d.body.nestedInstances[entry.instanceIndex], 1);
+      os << "\n";
+      break;
+    case runtime::ProtoBodyStatement::Kind::Proto:
+      if (entry.proto) bodyWriter.writeVrmlProtoDeclare(os, *entry.proto);
+      break;
+    case runtime::ProtoBodyStatement::Kind::ExternProto:
+      if (entry.externProto) bodyWriter.writeVrmlExternProtoDeclare(os, *entry.externProto);
+      break;
+    }
   }
-  // Body ROUTEs.
   for (const auto &r : d.body.routes) {
     os << "  ROUTE " << r.fromNode << "." << r.fromField << " TO " << r.toNode
        << "." << r.toField << "\n";
-  }
-  // Case B: direct ProtoBody children.
-  for (const auto &ni : d.body.nestedInstances) {
-    if (!ni.parent.lock()) {
-      writeVrmlProtoInstance(os, ni, 1);
-      os << "\n";
-    }
   }
   os << "}\n\n";
 }
@@ -351,14 +359,28 @@ void VrmlWriter::writeNode(std::ostringstream &os,
     }
   }
 
-  // PROTO round-trip: if this node is the expanded primary of a captured
-  // <ProtoInstance>, re-emit the original instance and do NOT descend.
+  // Re-emit a captured instance with DEF/USE identity after materialization.
+  const runtime::ProtoInstance *source = nullptr;
   if (scene_) {
     auto it = scene_->expandedSources.find(node.get());
-    if (it != scene_->expandedSources.end()) {
-      writeVrmlProtoInstance(os, it->second, depth);
+    if (it != scene_->expandedSources.end()) source = &it->second;
+  }
+  auto wrapper = std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(node);
+  const auto *placed = scene_ && !source && wrapper
+                           ? scene_->instanceAtPlacement(node.get()) : nullptr;
+  if (!source) source = placed;
+  if (!source && wrapper) source = &wrapper->instance;
+  if (source) {
+    const std::string def = placed ? placed->DEF : node->getDEF();
+    if (seen_.count(node.get())) {
+      os << "USE " << def;
       return;
     }
+    if (!def.empty()) seen_.insert(node.get());
+    auto inst = *source;
+    inst.DEF = def;
+    writeVrmlProtoInstance(os, inst, depth);
+    return;
   }
 
   const std::string def = node->getDEF();
@@ -413,10 +435,67 @@ void VrmlWriter::writeNode(std::ostringstream &os,
       os << f.x3dName << " " << vrmlBoolCase(f.type, text) << "\n";
   }
 
-  // Node-child fields, in authored order (round-trip fidelity); declaration
-  // order when nothing was recorded for this node.
-  for (const FieldInfo *cf : build::orderedChildFields(*node, scene_))
-    writeNodeField(os, node, *cf, depth + 1);
+  // A PROTO body can declare a prototype between complete field assignments.
+  // Classic's MFNode grammar does not admit declarations inside its brackets.
+  const bool hasOrder = bodyOrder_ &&
+      bodyOrder_->nodeStatements.contains(std::weak_ptr<X3DNode>(node));
+  if (hasOrder) {
+    const auto entries = runtime::orderedNodeStatements(*bodyOrder_, node);
+    std::unordered_set<std::string> emittedFields;
+    for (std::size_t i = 0; i < entries.size();) {
+      const auto &entry = entries[i];
+      if (entry.kind == runtime::ProtoBodyStatement::Kind::Proto) {
+        writeVrmlProtoDeclare(os, *entry.proto);
+        ++i;
+        continue;
+      }
+      if (entry.kind == runtime::ProtoBodyStatement::Kind::ExternProto) {
+        writeVrmlExternProtoDeclare(os, *entry.externProto);
+        ++i;
+        continue;
+      }
+      const std::string &slot = entry.field;
+      if (!emittedFields.insert(slot).second)
+        throw std::runtime_error(
+            "cannot currently preserve PROTO body child order in Classic "
+            "within one node field: " + slot);
+      const FieldInfo *field = nullptr;
+      for (const auto &f : node->fields())
+        if (f.isNode() && f.x3dName == slot) { field = &f; break; }
+      if (!field)
+        throw std::runtime_error("unknown PROTO body child field: " + slot);
+      std::size_t end = i + 1;
+      while (end < entries.size() &&
+             (entries[end].kind == runtime::ProtoBodyStatement::Kind::Node ||
+              entries[end].kind == runtime::ProtoBodyStatement::Kind::Instance) &&
+             entries[end].field == slot)
+        ++end;
+      pad(os, depth + 1);
+      os << slot << " ";
+      if (field->type == X3DFieldType::MFNode) os << "[\n";
+      for (std::size_t j = i; j < end; ++j) {
+        if (field->type == X3DFieldType::MFNode) pad(os, depth + 2);
+        if (entries[j].kind == runtime::ProtoBodyStatement::Kind::Node)
+          writeNode(os, entries[j].node, depth + 2);
+        else {
+          std::ostringstream instanceText;
+          writeVrmlProtoInstance(instanceText,
+              bodyOrder_->nestedInstances[entries[j].instanceIndex], depth + 2);
+          const std::string indented = instanceText.str();
+          os << indented.substr(static_cast<std::size_t>((depth + 2) * 2));
+        }
+        os << "\n";
+      }
+      if (field->type == X3DFieldType::MFNode) {
+        pad(os, depth + 1);
+        os << "]\n";
+      }
+      i = end;
+    }
+  } else {
+    for (const FieldInfo *cf : build::orderedChildFields(*node, scene_))
+      writeNodeField(os, node, *cf, depth + 1);
+  }
 
   // Task B: re-emit author (Script) field declarations captured by the reader
   // into the S1 store as `accessType FieldType name [default]` interface lines
@@ -440,7 +519,7 @@ void VrmlWriter::writeNode(std::ostringstream &os,
   // node body — mirroring XmlWriter pushing them onto the parent element's
   // children so the ClassicVrmlReader recovers parent == this node (the
   // reader's applyNodeField threads parentShared+slot into parseNode).
-  writeVrmlNestedFor(os, node, depth + 1);
+  if (!hasOrder) writeVrmlNestedFor(os, node, depth + 1);
 
   // Scene-level nested ProtoInstances: any un-expanded ProtoInstance in
   // scene.protoInstances whose parent is THIS node. These are NOT in the node
@@ -453,7 +532,7 @@ void VrmlWriter::writeNode(std::ostringstream &os,
     // Collect unique slots for instances parented to this node.
     std::vector<std::string> slots;
     for (const auto &inst : scene_->protoInstances) {
-      if (inst.expanded)
+      if (inst.expanded || inst.hasPlacementTemplate())
         continue;
       auto p = inst.parent.lock();
       if (!p || p.get() != node.get())
@@ -478,7 +557,7 @@ void VrmlWriter::writeNode(std::ostringstream &os,
         // writeVrmlProtoInstance emits its own leading pad, so capture to a
         // temp stream and strip the leading whitespace before appending.
         for (const auto &inst : scene_->protoInstances) {
-          if (inst.expanded)
+          if (inst.expanded || inst.hasPlacementTemplate())
             continue;
           auto p = inst.parent.lock();
           if (!p || p.get() != node.get())
@@ -502,7 +581,7 @@ void VrmlWriter::writeNode(std::ostringstream &os,
         pad(os, depth + 1);
         os << slot << " [\n";
         for (const auto &inst : scene_->protoInstances) {
-          if (inst.expanded)
+          if (inst.expanded || inst.hasPlacementTemplate())
             continue;
           auto p = inst.parent.lock();
           if (!p || p.get() != node.get())

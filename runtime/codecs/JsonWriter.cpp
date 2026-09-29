@@ -1,4 +1,5 @@
 #include "JsonWriter.hpp"
+#include "X3DProtoFieldOrder.hpp"
 
 #include "DynamicField.hpp"
 #include "FieldValueIO.hpp"
@@ -156,15 +157,6 @@ void JsonWriter::writeSceneChildren(std::ostringstream &os,
                                     const runtime::Scene &s, int depth) {
   bool firstWritten = true;
 
-  // PROTO declarations.
-  for (const auto &d : s.protoDeclarations) {
-    if (!d)
-      continue;
-    if (!firstWritten)
-      os << ",\n";
-    firstWritten = false;
-    writeJsonProtoDeclare(os, *d, depth);
-  }
   // ExternProto declarations.
   for (const auto &e : s.externProtoDeclarations) {
     if (!e)
@@ -173,6 +165,15 @@ void JsonWriter::writeSceneChildren(std::ostringstream &os,
       os << ",\n";
     firstWritten = false;
     writeJsonExternProtoDeclare(os, *e, depth);
+  }
+  // PROTO declarations may use EXTERNPROTO defaults, so emit externs first.
+  for (const auto &d : s.protoDeclarations) {
+    if (!d)
+      continue;
+    if (!firstWritten)
+      os << ",\n";
+    firstWritten = false;
+    writeJsonProtoDeclare(os, *d, depth);
   }
   // Root nodes.
   for (const auto &n : s.rootNodes) {
@@ -183,10 +184,9 @@ void JsonWriter::writeSceneChildren(std::ostringstream &os,
     firstWritten = false;
     writeNode(os, n, depth);
   }
-  // AUD-B: re-emit scene-root ProtoInstances that did NOT expand (no graph
-  // node, so not covered by the expandedSources re-emit in writeNode).
+  // Emit programmatic root instances without an authored graph slot.
   for (const auto &inst : s.protoInstances) {
-    if (inst.expanded || !inst.parent.expired())
+    if (inst.expanded || inst.hasPlacementTemplate() || !inst.parent.expired())
       continue;
     if (!firstWritten)
       os << ",\n";
@@ -349,10 +349,8 @@ std::string JsonWriter::jsonProtoField(const runtime::ProtoField &f,
       if (!first)
         os << ",";
       first = false;
-      // Use a fresh writer (no scene context) for body nodes.
-      JsonWriter bodyWriter;
       std::ostringstream nos;
-      bodyWriter.writeNode(nos, n, 0);
+      writeNode(nos, n, 0);
       os << nos.str();
     }
     os << "]";
@@ -367,6 +365,11 @@ std::string JsonWriter::jsonProtoField(const runtime::ProtoField &f,
 void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
                                        const runtime::ProtoDeclaration &d,
                                        int depth) {
+  // Interface defaults and body nodes use one declaration-local DEF scope.
+  JsonWriter bodyWriter;
+  bodyWriter.bodyNested_ = &d.body.nestedInstances;
+  bodyWriter.bodyIsc_ = &d.body.isConnections;
+  bodyWriter.bodyOrder_ = &d.body;
   pad(os, depth);
   os << "{ \"ProtoDeclare\": {\n";
 
@@ -393,7 +396,7 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
     os << "\"field\": [\n";
     for (std::size_t i = 0; i < d.interface.size(); ++i) {
       pad(os, depth + 3);
-      os << jsonProtoField(d.interface[i], depth + 3);
+      os << bodyWriter.jsonProtoField(d.interface[i], depth + 3);
       if (i + 1 < d.interface.size())
         os << ",";
       os << "\n";
@@ -412,33 +415,28 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
   os << "\"-children\": [\n";
 
   bool firstBody = true;
-  JsonWriter bodyWriter;
   // PRF-1: hand the body's IS list to the body writer so writeNode attaches an
   // "IS" member at every depth during the recursive descent.
-  bodyWriter.bodyIsc_ = &d.body.isConnections;
   // PRF-3: thread the nested-instance list so writeNode injects each Case-A
   // instance INSIDE its parent body node's child slot (not as a sibling).
-  bodyWriter.bodyNested_ = &d.body.nestedInstances;
-  for (const auto &n : d.body.nodes) {
-    if (!n)
-      continue;
+  for (const auto &entry : d.body.orderedStatements()) {
     if (!firstBody)
       os << ",\n";
     firstBody = false;
-    // Emit the body node via the fresh bodyWriter; IS members AND any Case-A
-    // nested instances rooted at this node (or deeper) are injected by
-    // writeNode during the recursive descent.
-    std::ostringstream nos;
-    bodyWriter.writeNode(nos, n, depth + 3);
-    os << nos.str();
-  }
-  // Case B: direct ProtoBody children (no parent node).
-  for (const auto &ni : d.body.nestedInstances) {
-    if (!ni.parent.lock()) {
-      if (!firstBody)
-        os << ",\n";
-      firstBody = false;
-      writeJsonProtoInstance(os, ni, depth + 3);
+    switch (entry.kind) {
+    case runtime::ProtoBodyStatement::Kind::Node:
+      bodyWriter.writeNode(os, entry.node, depth + 3);
+      break;
+    case runtime::ProtoBodyStatement::Kind::Instance:
+      bodyWriter.writeJsonProtoInstance(
+          os, d.body.nestedInstances[entry.instanceIndex], depth + 3);
+      break;
+    case runtime::ProtoBodyStatement::Kind::Proto:
+      bodyWriter.writeJsonProtoDeclare(os, *entry.proto, depth + 3);
+      break;
+    case runtime::ProtoBodyStatement::Kind::ExternProto:
+      bodyWriter.writeJsonExternProtoDeclare(os, *entry.externProto, depth + 3);
+      break;
     }
   }
   os << "\n";
@@ -537,14 +535,29 @@ void JsonWriter::writeNode(std::ostringstream &os,
     }
   }
 
-  // PROTO round-trip: if this node is the expanded primary of a captured
-  // <ProtoInstance>, re-emit the original instance and do NOT descend.
+  // Re-emit a captured instance with DEF/USE identity after materialization.
+  const runtime::ProtoInstance *source = nullptr;
   if (scene_) {
     auto it = scene_->expandedSources.find(node.get());
-    if (it != scene_->expandedSources.end()) {
-      writeJsonProtoInstance(os, it->second, depth);
+    if (it != scene_->expandedSources.end()) source = &it->second;
+  }
+  auto wrapper = std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(node);
+  const auto *placed = scene_ && !source && wrapper
+                           ? scene_->instanceAtPlacement(node.get()) : nullptr;
+  if (!source) source = placed;
+  if (!source && wrapper) source = &wrapper->instance;
+  if (source) {
+    const std::string def = placed ? placed->DEF : node->getDEF();
+    if (seen_.count(node.get())) {
+      pad(os, depth);
+      os << "{ \"ProtoInstance\": { \"@USE\": " << jstr(def) << " } }";
       return;
     }
+    if (!def.empty()) seen_.insert(node.get());
+    auto inst = *source;
+    inst.DEF = def;
+    writeJsonProtoInstance(os, inst, depth);
+    return;
   }
 
   pad(os, depth);
@@ -580,14 +593,73 @@ void JsonWriter::writeNode(std::ostringstream &os,
         continue; // equals the type default -> omit
       members.push_back("\"@" + f.x3dName + "\": " + val);
     }
-    // Node child fields, grouped per containerField, in authored order
-    // (round-trip fidelity); declaration order when nothing was recorded.
-    for (const FieldInfo *cf : build::orderedChildFields(*node, scene_)) {
-      if (!cf->isReadable())
-        continue;
-      std::string child = jsonNodeField(node, *cf, depth + 1);
-      if (!child.empty())
-        members.push_back(child);
+    const bool hasOrder = bodyOrder_ &&
+        bodyOrder_->nodeStatements.contains(std::weak_ptr<X3DNode>(node));
+    if (hasOrder) {
+      const auto entries = runtime::orderedNodeStatements(*bodyOrder_, node);
+      struct Group {
+        std::string slot;
+        std::vector<const runtime::ProtoBodyStatement *> entries;
+      };
+      std::vector<Group> groups;
+      std::unordered_set<std::string> seenSlots;
+      for (std::size_t i = 0; i < entries.size(); ++i) {
+        const auto &entry = entries[i];
+        std::string slot = entry.field;
+        if (slot.empty()) {
+          if (!groups.empty()) slot = groups.back().slot;
+          else {
+            for (std::size_t j = i + 1; j < entries.size(); ++j)
+              if (!entries[j].field.empty()) {
+                slot = entries[j].field;
+                break;
+              }
+            if (slot.empty()) slot = "children";
+          }
+        }
+        if (groups.empty() || groups.back().slot != slot) {
+          if (!seenSlots.insert(slot).second)
+            throw std::runtime_error(
+                "cannot currently preserve PROTO body child order in JSON "
+                "across repeated node field: " + slot);
+          groups.push_back({slot, {}});
+        }
+        groups.back().entries.push_back(&entry);
+      }
+      for (const auto &group : groups) {
+        std::ostringstream child;
+        child << "\"-" << group.slot << "\": [\n";
+        bool first = true;
+        for (const auto *entry : group.entries) {
+          if (!first) child << ",\n";
+          first = false;
+          switch (entry->kind) {
+          case runtime::ProtoBodyStatement::Kind::Node:
+            writeNode(child, entry->node, depth + 2);
+            break;
+          case runtime::ProtoBodyStatement::Kind::Instance:
+            writeJsonProtoInstance(child,
+                bodyOrder_->nestedInstances[entry->instanceIndex], depth + 2);
+            break;
+          case runtime::ProtoBodyStatement::Kind::Proto:
+            writeJsonProtoDeclare(child, *entry->proto, depth + 2);
+            break;
+          case runtime::ProtoBodyStatement::Kind::ExternProto:
+            writeJsonExternProtoDeclare(child, *entry->externProto, depth + 2);
+            break;
+          }
+        }
+        child << "\n";
+        pad(child, depth + 1);
+        child << "]";
+        members.push_back(child.str());
+      }
+    } else {
+      for (const FieldInfo *cf : build::orderedChildFields(*node, scene_)) {
+        if (!cf->isReadable()) continue;
+        std::string child = jsonNodeField(node, *cf, depth + 1);
+        if (!child.empty()) members.push_back(child);
+      }
     }
     // SCR-SAI-DYN (S1): re-emit a Script's author <field> declarations (from
     // the dynamic-field side-table) as a "field" array member, and its inline
@@ -612,8 +684,9 @@ void JsonWriter::writeNode(std::ostringstream &os,
     // XmlWriter pushing them onto the parent element's children so the reader
     // recovers parent == this node (not Case B). depth+1 keeps the instance
     // text indented one level inside the slot array.
-    for (std::string &m : jsonNestedFor(node, depth + 1))
-      members.push_back(std::move(m));
+    if (!hasOrder)
+      for (std::string &m : jsonNestedFor(node, depth + 1))
+        members.push_back(std::move(m));
 
     // Scene-level nested ProtoInstances: any un-expanded ProtoInstance in
     // scene.protoInstances whose parent is THIS node. These are NOT in the
@@ -703,7 +776,7 @@ JsonWriter::jsonSceneNestedFor(const std::shared_ptr<X3DNode> &node,
     return out;
   std::vector<std::string> slots;
   for (const auto &inst : scene_->protoInstances) {
-    if (inst.expanded)
+    if (inst.expanded || inst.hasPlacementTemplate())
       continue;
     auto p = inst.parent.lock();
     if (!p || p.get() != node.get())
@@ -718,7 +791,7 @@ JsonWriter::jsonSceneNestedFor(const std::shared_ptr<X3DNode> &node,
     os << "\"-" << slot << "\": [\n";
     bool first = true;
     for (const auto &inst : scene_->protoInstances) {
-      if (inst.expanded)
+      if (inst.expanded || inst.hasPlacementTemplate())
         continue;
       auto p = inst.parent.lock();
       if (!p || p.get() != node.get())

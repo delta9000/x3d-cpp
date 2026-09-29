@@ -1837,6 +1837,11 @@ int main(int argc, char **argv) {
         auto skinIt = gpuSkins.find(id);
         const GpuMesh &g = skinIt == gpuSkins.end() ? mit->second : skinIt->second.mesh;
         const ex::MaterialDesc &mat = it.material;
+        // FillProperties covers polygonal areas. With neither component enabled,
+        // issue no draw so neither color nor depth is written, including on the
+        // author-shader path.
+        if (g.topology == ex::Topology::Triangles &&
+            !mat.fill.filled && !mat.fill.hatched) return;
         SFColorRGBA c = mat.toRGBA();
         if (g.topology != ex::Topology::Triangles && !g.hasNormals)
           c = mat.unlitGeometryRGBA();
@@ -2204,6 +2209,21 @@ int main(int argc, char **argv) {
             }
           }
           applyCull(g, it.worldTransform);
+        }
+
+        // The built-in fragment programs share the same FillProperties uniform
+        // contract. Always upload per draw: adjacent items can use different
+        // appearances while sharing a program. Lines and points stay filled.
+        if (boundProg != 0 &&
+            (boundProg == unlitProg || boundProg == phongProg || boundProg == pbrProg)) {
+          const int mode = g.topology == ex::Topology::Triangles
+              ? (mat.fill.filled ? 1 : 0) | (mat.fill.hatched ? 2 : 0)
+              : 1;
+          glUniform1i(glGetUniformLocation(boundProg, "uFillMode"), mode);
+          glUniform1i(glGetUniformLocation(boundProg, "uHatchStyle"), mat.fill.hatchStyle);
+          glUniform3f(glGetUniformLocation(boundProg, "uHatchColor"),
+                      mat.fill.hatchColor.r, mat.fill.hatchColor.g,
+                      mat.fill.hatchColor.b);
         }
 
         // §12.4.6: line width applies on both lit and unlit paths.

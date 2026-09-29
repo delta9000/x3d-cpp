@@ -7,12 +7,14 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DParse.hpp"
 #include "X3DSceneBridge.hpp"
+#include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include "cpuraster/Framebuffer.hpp"
 #include "cpuraster/GlslInterpreter.hpp"
 #include "cpuraster/SceneRender.hpp"
 
 #include <cmath>
+#include <any>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -42,6 +44,46 @@ static int drawnPixels(const cr::Framebuffer &fb, g::vec3 clear) {
         ++n;
     }
   return n;
+}
+
+static void setF(const std::shared_ptr<x3d::nodes::X3DNode> &n,
+                 const char *name, std::any value) {
+  for (auto &f : n->fields())
+    if (f.x3dName == name && f.set) { f.set(*n, std::move(value)); return; }
+}
+
+static cr::Framebuffer renderFillShape(const char *geometryType, int mode) {
+  using namespace x3d::core;
+  using namespace x3d::nodes;
+  auto geometry = createX3DNode(geometryType);
+  if (std::string(geometryType) != "Box") {
+    auto coord = createX3DNode("Coordinate");
+    setF(coord, "point", std::any(MFVec3f{{-1, 0, 0}, {1, 0, 0}, {0, 1, 0}}));
+    setF(geometry, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
+    if (std::string(geometryType) == "IndexedLineSet")
+      setF(geometry, "coordIndex", std::any(MFInt32{0, 1, -1}));
+  }
+  auto app = createX3DNode("Appearance");
+  auto material = createX3DNode("UnlitMaterial");
+  setF(material, "emissiveColor", std::any(SFColor{0, 1, 0}));
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(material)));
+  if (mode != 0) {
+    auto fill = createX3DNode("FillProperties");
+    setF(fill, "filled", std::any(SFBool{false}));
+    setF(fill, "hatched", std::any(SFBool{mode == 2}));
+    setF(fill, "hatchColor", std::any(SFColor{1, 0, 0}));
+    setF(app, "fillProperties", std::any(std::shared_ptr<X3DNode>(fill)));
+  }
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(geometry)));
+  setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
+  x3d::runtime::Scene scene; scene.addRootNode(shape);
+  x3d::runtime::X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene); ctx.buildFrom(scene); ctx.tick(0.0);
+  ex::SceneExtractor extractor(ctx, scene); extractor.fullSnapshot();
+  cr::RenderOptions opt; opt.width = 96; opt.height = 96;
+  opt.clearColor = {0, 0, 0};
+  return cr::renderScene(ctx, extractor, opt);
 }
 
 int main() {
@@ -93,6 +135,24 @@ int main() {
   int drawn2 = drawnPixels(fb2, clear);
   std::fprintf(stderr, "author-shader render: %d drawn pixels\n", drawn2);
   CHECK(drawn2 > 200);
+
+  // Composed scene path: extraction -> material shader -> polygon hatch mask.
+  {
+    auto normal = renderFillShape("Box", 0);
+    auto empty = renderFillShape("Box", 1);
+    auto hatch = renderFillShape("Box", 2);
+    const g::vec3 black{0, 0, 0};
+    CHECK(drawnPixels(normal, black) > 100);
+    CHECK(drawnPixels(empty, black) == 0);
+    CHECK(drawnPixels(hatch, black) > 0);
+    CHECK(drawnPixels(hatch, black) < drawnPixels(normal, black));
+    for (const char *type : {"IndexedLineSet", "PointSet"}) {
+      auto absent = renderFillShape(type, 0);
+      auto noFill = renderFillShape(type, 1);
+      CHECK(drawnPixels(absent, black) > 0);
+      CHECK(absent.pixels() == noFill.pixels());
+    }
+  }
 
   if (failures) { std::fprintf(stderr, "render_smoke_test: %d failure(s)\n", failures); return 1; }
   std::printf("render_smoke_test: OK\n");

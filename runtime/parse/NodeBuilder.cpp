@@ -27,21 +27,25 @@ std::shared_ptr<x3d::nodes::X3DNode> beginNode(std::string_view typeName) {
   return x3d::nodes::X3DNodeFactory::create(std::string(typeName));
 }
 
-void applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
+bool applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
                 const std::string &wire) {
   const FieldInfo *f = findField(node.fields(), x3dName);
   if (!f)
-    return; // unknown field: ignore
+    return false; // unknown field: ignore
   if (f->isEnum()) {
-    if (f->setEnumString)
-      f->setEnumString(node, stripEnumQuotes(wire)); // AUD-D
-    return;
+    if (!f->isWritable() || !f->setEnumString) return false;
+    const std::string token = stripEnumQuotes(wire);
+    f->setEnumString(node, token); // AUD-D
+    // Generated enum setters silently reject unknown tokens. A read-back
+    // checks that an equal-to-default authored token was actually accepted.
+    return f->getEnumString && f->getEnumString(node) == token;
   }
   if (!f->isWritable())
-    return; // outputOnly/inputOnly: skip (initializeOnly now writable)
+    return false; // outputOnly/inputOnly: skip (initializeOnly now writable)
   std::any v = parseValue(f->type, wire);
-  if (v.has_value())
-    f->set(node, v);
+  if (!v.has_value()) return false;
+  f->set(node, v);
+  return true;
 }
 
 void attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,

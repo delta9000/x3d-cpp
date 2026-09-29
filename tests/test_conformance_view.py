@@ -156,8 +156,8 @@ def test_classify_behaves_non_behavioral_is_na():
     assert cv.classify_behaves(behavioral=False, wired=False, findings=[]) == "n/a"
 
 
-def test_classify_behaves_inert_when_behavioral_unwired():
-    assert cv.classify_behaves(behavioral=True, wired=False, findings=[]) == "inert"
+def test_classify_behaves_unverified_when_behavioral_unwired():
+    assert cv.classify_behaves(behavioral=True, wired=False, findings=[]) == "unverified"
 
 
 def test_classify_behaves_partial_when_open_finding():
@@ -165,17 +165,30 @@ def test_classify_behaves_partial_when_open_finding():
     assert cv.classify_behaves(behavioral=True, wired=True, findings=f) == "partial"
 
 
-def test_classify_behaves_conformant_when_wired_no_open():
+def test_classify_behaves_no_open_finding_is_not_proof():
+    assert cv.classify_behaves(behavioral=True, wired=True, findings=[]) == "unverified"
     f = [{"status": "closed"}]
-    assert cv.classify_behaves(behavioral=True, wired=True, findings=f) == "conformant"
+    assert cv.classify_behaves(behavioral=True, wired=True, findings=f) == "unverified"
 
 
-def test_classify_behaves_closed_finding_implies_effective_wired():
-    # Heuristic missed the System, but a closed finding asserts it's done.
+def test_classify_behaves_closed_finding_does_not_imply_wiring():
     assert (
         cv.classify_behaves(behavioral=True, wired=False, findings=[{"status": "closed"}])
-        == "conformant"
+        == "unverified"
     )
+
+
+def test_classify_behaves_inert_requires_explicit_open_override():
+    finding = {"status": "open", "behaves": "inert"}
+    assert cv.classify_behaves(True, False, [finding]) == "inert"
+    assert cv.classify_behaves(True, True, [finding]) == "inert"
+    assert cv.classify_behaves(True, False, [{"status": "open"}]) == "unverified"
+    assert cv.classify_behaves(True, True, [{"status": "closed", "behaves": "inert"}]) == "unverified"
+
+
+def test_unverified_has_question_mark_in_rendered_status():
+    assert cv.GLYPH["unverified"] == "?"
+    assert cv._behaves_rollup([{"behaves": "unverified"}]) == "1?"
 
 
 # --- profile membership ----------------------------------------------------
@@ -210,6 +223,11 @@ def test_unresolved_findings_flagged():
 # --- real-repo smoke -------------------------------------------------------
 def test_real_repo_generates_clean():
     model = cv.build_model(REPO)
+    assert model["meta"]["node_count"] == 260
+    node_names = {n["name"] for c in model["components"] for n in c["nodes"]}
+    assert "X3DSingleTextureTransformNode" not in node_names
+    assert "X3DStatement" not in node_names
+    assert "Box" in node_names
     assert model["summary"]["component_count"] > 20
     # Extraction facts live with MeshBuilder's implementation, whether that is
     # inline in the header or compiled in the adjacent source file.

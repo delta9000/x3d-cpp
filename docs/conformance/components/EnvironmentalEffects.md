@@ -4,14 +4,16 @@ _Generated. Levels 1,2,3,4 · 5 nodes · profiles: Interchange, Interactive, Imm
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Background | 1 | ✓ | — | ✓ | AUD-BG-1, BIND-06, ROUTE-IO-ALIAS, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
-| Fog | 2 | ✓ | — | ✓ | BIND-06, ENV-10, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DFogObject |
-| FogCoordinate | 4 | ✓ | — | — | ROUTE-IO-ALIAS | X3DGeometricPropertyNode |
-| LocalFog | 4 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode, X3DFogObject |
-| TextureBackground | 3 | ✓ | — | ✓ | AUD-BG-1, AUD-BG-2, BIND-06, ENV-11, ROUTE-IO-ALIAS, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
+| Background | 1 | ✓ | — | ? | AUD-BG-1, BIND-06, ROUTE-IO-ALIAS, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
+| Fog | 2 | ✓ | — | ? | BIND-06, ENV-10, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DFogObject |
+| FogCoordinate | 4 | ✓ | — | — | REQ-LOCALFOG, ROUTE-IO-ALIAS | X3DGeometricPropertyNode |
+| LocalFog | 4 | ✓ | — | — | REQ-LOCALFOG, ROUTE-IO-ALIAS | X3DChildNode, X3DFogObject |
+| TextureBackground | 3 | ✓ | — | ? | AUD-BG-1, AUD-BG-2, BIND-06, ENV-11, ROUTE-IO-ALIAS, SEAM-BACKGROUND | X3DBackgroundNode, X3DBindableNode, X3DChildNode |
 
 ## Findings
 
+- **REQ-LOCALFOG** [major/OPEN] — §24.2.2; 24.4.3; 24.4.4: Global Fog works, but LocalFog scope and authored FogCoordinate depths are ignored.
+  - SceneExtractor::fog reads only ctx.boundFog(); MeshBuilder does not read fogCoord and MeshData carries no fog-depth array. Acceptance: nearest enabled local fog overrides global fog for the affected subtree; authored vertex depths replace implicit distance and repeat their final entry when short. Existing scene_extractor_fog_test proves only bound global Fog.
 - **BIND-06** [major/CLOSED `95d1107`] — §7.2.2: Deleted bound node doesn't behave as set_bind FALSE (raw ptrs, no removeNode/detach).
   - Shared with a System detach() hook; CONF-VIEWNAV cluster.
 - **ENV-10** [major/CLOSED] — §24.4.2: Fog is inert — bound and round-tripped, but no fog effect reaches the shader.

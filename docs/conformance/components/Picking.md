@@ -4,11 +4,11 @@ _Generated. Levels 1,2,3 · 5 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| LinePickSensor | 1 | ✓ | — | ◑ | CONF-PICKSENSOR, ROUTE-IO-ALIAS | X3DChildNode, X3DPickSensorNode, X3DSensorNode |
+| LinePickSensor | 1 | ✓ | — | ? | CONF-PICKSENSOR, ROUTE-IO-ALIAS | X3DChildNode, X3DPickSensorNode, X3DSensorNode |
 | PickableGroup | 1 | ✓ | — | — | GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DPickableObject |
-| PointPickSensor | 1 | ✓ | — | ◑ | CONF-PICKSENSOR, ROUTE-IO-ALIAS | X3DChildNode, X3DPickSensorNode, X3DSensorNode |
-| PrimitivePickSensor | 2 | ✓ | — | ◑ | CONF-PICKSENSOR, ROUTE-IO-ALIAS | X3DChildNode, X3DPickSensorNode, X3DSensorNode |
-| VolumePickSensor | 3 | ✓ | — | ◑ | CONF-PICKSENSOR, ROUTE-IO-ALIAS | X3DChildNode, X3DPickSensorNode, X3DSensorNode |
+| PointPickSensor | 1 | ✓ | — | ? | CONF-PICKSENSOR, ROUTE-IO-ALIAS | X3DChildNode, X3DPickSensorNode, X3DSensorNode |
+| PrimitivePickSensor | 2 | ✓ | — | ? | CONF-PICKSENSOR, ROUTE-IO-ALIAS | X3DChildNode, X3DPickSensorNode, X3DSensorNode |
+| VolumePickSensor | 3 | ✓ | — | ? | CONF-PICKSENSOR, ROUTE-IO-ALIAS | X3DChildNode, X3DPickSensorNode, X3DSensorNode |
 
 ## Findings
 

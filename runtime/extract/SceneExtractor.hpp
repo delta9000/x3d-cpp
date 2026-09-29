@@ -336,7 +336,8 @@ public:
 
       // --- appearance-subtree change => re-read MaterialDesc ------------------
       if (f & DirtyField) {
-        for (RenderItemId id : depsOf(materialDeps_, n)) {
+        const auto dependentItems = depsOf(materialDeps_, n);
+        for (RenderItemId id : dependentItems) {
           refreshMaterial(id);
           if (materialSeen.insert(id).second) delta.updatedMaterial.push_back(id);
         }
@@ -706,6 +707,17 @@ private:
     const X3DNode *shape = rec.path.back();
     auto appearance = geombounds::getNode(*shape, "appearance");
     rec.material = materialOf(appearance ? appearance.get() : nullptr);
+    // A child node can be replaced through Appearance.fillProperties (or any
+    // other SFNode field). Rebuild this item's subtree dependencies so later
+    // field writes to the replacement also produce updatedMaterial.
+    for (auto it = materialDeps_.begin(); it != materialDeps_.end();) {
+      auto &ids = it->second;
+      ids.erase(std::remove(ids.begin(), ids.end(), id), ids.end());
+      if (ids.empty()) it = materialDeps_.erase(it);
+      else ++it;
+    }
+    std::unordered_set<const X3DNode *> seen;
+    collectMaterialSubtree(appearance.get(), id, seen);
     // T-TEX: re-enrich + re-resolve the textures of the refreshed material so an
     // appearance-subtree change (a new ImageTexture url, a TextureProperties edit)
     // re-runs the resolver and re-derives the §18.4.8/9 descriptor surface. The

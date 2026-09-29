@@ -1,0 +1,6 @@
+<X3D version='4.0' profile='Immersive'>
+  <Scene>
+    <ExternProtoDeclare name='External' url='"missing.x3d#External"'/>
+    <ProtoInstance name='External'/>
+  </Scene>
+</X3D>

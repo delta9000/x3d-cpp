@@ -4,7 +4,7 @@ _Generated. Levels 1 · 1 nodes · profiles: Interchange, Interactive, Immersive
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| TimeSensor | 1 | ✓ | — | ✓ | AUD-TIME-1, AUD-TIME-2, AUD-TIME-3, AUD-TIME-4, AUD-TIME-5, CONF-CRITIC-1, CONF-TDN1V, ROUTE-IO-ALIAS, TDN-1, TDN-2, TDN-3, TDN-4, TDN-6, TDN-7, TDN-8, TIME-ORIGIN-1 | X3DChildNode, X3DSensorNode, X3DTimeDependentNode |
+| TimeSensor | 1 | ✓ | — | ? | AUD-TIME-1, AUD-TIME-2, AUD-TIME-3, AUD-TIME-4, AUD-TIME-5, CONF-CRITIC-1, CONF-TDN1V, ROUTE-IO-ALIAS, TDN-1, TDN-2, TDN-3, TDN-4, TDN-6, TDN-7, TDN-8, TIME-ORIGIN-1 | X3DChildNode, X3DSensorNode, X3DTimeDependentNode |
 
 ## Findings
 
