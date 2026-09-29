@@ -4,7 +4,7 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Anchor | 2 | ✓ | — | — | AUD-NET-3, NSN-11, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
+| Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, NSN-11, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
 | Inline | 2 | ✓ | — | — | AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, NSN-12, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DUrlObject |
 | LoadSensor | 3 | ✓ | — | ? | AUD-NET-3, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9, ROUTE-IO-ALIAS | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 

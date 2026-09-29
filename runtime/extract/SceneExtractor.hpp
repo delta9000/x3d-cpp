@@ -180,7 +180,7 @@ public:
     // state, so no mesh survives from a previous snapshot. Within THIS walk the
     // caches then collapse N placements onto one build/one allocation.
     rawMeshCache_.clear();
-    segmentOf_.clear();
+    segmentMeshCache_.clear();
     bakedMeshCache_.clear();
     textureMemo_.clear();
 
@@ -318,9 +318,11 @@ public:
           // N dependent placements re-share a single new allocation instead of
           // taking N full copies of it (ADR-0045).
           evictMeshCache(geomNode);
-          MeshRef mesh = cachedRawMesh(geomNode, nullptr, segmentOfGeom(geomNode));
           for (RenderItemId id : gids) {
             RenderItem &rec = items_[id];
+            // Each placement is displaced by its own enclosing Segment.
+            MeshRef mesh = cachedRawMesh(geomNode, nullptr,
+                                         displacingSegment(geomNode, rec.path));
             rec.geometry.contentVersion++;
             // Re-bake per dependent: two placements of this geometry may sit
             // under different TextureTransforms. bakedMesh() is cache-backed, so
@@ -384,34 +386,31 @@ public:
     if (!rec.skin) return out;
     const auto &skin = *rec.skin;
     auto pose = hanim::evaluatePose(*skin.binding);
-    std::vector<SFVec3f> positions, normals;
-    hanim::deform(*skin.binding, pose, positions, &normals);
+    std::vector<SFVec3f> positions;
+    hanim::deform(*skin.binding, pose, positions, nullptr);
     if (positions.empty()) return out; // temporary core stub has no bind data.
     for (std::size_t i = 0; i < out.positions.size() && i < skin.sourceCoordIndex.size(); ++i)
       if (skin.sourceCoordIndex[i] < positions.size())
         out.positions[i] = positions[skin.sourceCoordIndex[i]];
-    if (!normals.empty() && skin.sourceNormalIndex.size() == out.positions.size()) {
-      for (std::size_t i = 0; i < out.normals.size(); ++i)
-        if (skin.sourceNormalIndex[i] < normals.size())
-          out.normals[i] = normals[skin.sourceNormalIndex[i]];
-    } else if (out.topology == Topology::Triangles) {
-      for (std::size_t i = 0; i + 2 < out.positions.size(); i += 3) {
-        SFVec3f n = mesh_detail::faceNormal(out.positions[i], out.positions[i+1], out.positions[i+2]);
-        if (!out.ccw) n = {-n.x, -n.y, -n.z};
-        out.normals[i] = out.normals[i+1] = out.normals[i+2] = n;
-      }
-      const X3DNode *geom = rec.geometry.node;
-      if (geom && geombounds::getField<bool>(*geom, "normalPerVertex", true)) {
-        const std::string type = geom->nodeTypeName();
-        float crease = 0.0f;
-        if (type == "IndexedFaceSet")
-          crease = geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
-        else if (type == "IndexedTriangleSet" || type == "TriangleSet" ||
-                 type == "IndexedTriangleStripSet" || type == "IndexedTriangleFanSet" ||
-                 type == "QuadSet" || type == "IndexedQuadSet")
-          crease = 3.14159265358979323846f;
-        if (crease > 0.0f)
-          mesh_detail::creaseSmoothNormals(out, skin.sourceCoordIndex, crease);
+    // Normals: each corner's bind normal (authored skinNormal /
+    // skinBindingNormals via its normal index, else the normal the mesh
+    // builder generated for the bind pose) skinned with the influences of the
+    // corner's source coordinate, as the GPU path does (ADR-0055).
+    const bool authored = !skin.binding->bindNormals.empty() &&
+                          skin.sourceNormalIndex.size() == out.positions.size();
+    if (skin.sourceCoordIndex.size() == out.positions.size() &&
+        out.normals.size() == out.positions.size() && (authored || rec.mesh->hasNormals)) {
+      std::vector<Mat4> inversePalette;
+      inversePalette.reserve(pose.palette.size());
+      for (const auto &matrix : pose.palette) inversePalette.push_back(matrix.inverse());
+      for (std::size_t i = 0; i < out.normals.size(); ++i) {
+        if (authored && skin.sourceNormalIndex[i] < skin.binding->bindNormals.size())
+          out.normals[i] = hanim::detail::deformCornerNormal(
+              *skin.binding, inversePalette, skin.sourceCoordIndex[i],
+              skin.sourceNormalIndex[i]);
+        else
+          out.normals[i] = hanim::detail::deformNormalWithCoordinate(
+              *skin.binding, inversePalette, skin.sourceCoordIndex[i], rec.mesh->normals[i]);
       }
     }
     return out;
@@ -839,11 +838,8 @@ private:
         // ADR-0045: build-once per DISTINCT geometry node, not per placement.
         // ISO/IEC 19774-1 §6.6: the nearest enclosing Segment's displacers
         // deform this geometry's points (when it uses that Segment's coord).
-        const X3DNode *segment = nullptr;
-        for (auto it = path.rbegin(); it != path.rend() && !segment; ++it)
-          if ((*it)->nodeTypeName() == "HAnimSegment") segment = *it;
-        if (segment) segmentOf_[geom.get()] = segment;
-        MeshRef mesh = cachedRawMesh(geom.get(), &recognized, segment);
+        MeshRef mesh = cachedRawMesh(geom.get(), &recognized,
+                                     displacingSegment(geom.get(), path));
         // T-TEXT: a Text node also EMITS its outputOnly fields (textBounds/
         // lineBounds/origin). buildLocalMesh produces the glyph geometry only;
         // here, owning the non-const node, we recompute the layout once and set
@@ -1214,12 +1210,17 @@ private:
 
   // Raw (pre-TextureTransform) build, keyed by geometry node.
   std::unordered_map<const X3DNode *, RawMeshEntry> rawMeshCache_;
-  // Geometry -> nearest enclosing HAnimSegment, recorded by the walk so a
-  // delta() rebuild displaces with the same Segment.
-  std::unordered_map<const X3DNode *, const X3DNode *> segmentOf_;
-  const X3DNode *segmentOfGeom(const X3DNode *geom) const {
-    auto it = segmentOf_.find(geom);
-    return it == segmentOf_.end() ? nullptr : it->second;
+  // Displaced Segment meshes, keyed by (geometry, Segment).
+  std::map<std::pair<const X3DNode *, const X3DNode *>, RawMeshEntry> segmentMeshCache_;
+  // The nearest HAnimSegment on `path` when `geom`'s coord is that Segment's
+  // coord (the only case its displacers apply, 19775-1 §26.3.4), else null.
+  static const X3DNode *displacingSegment(const X3DNode *geom, const PathKey &path) {
+    for (auto it = path.rbegin(); it != path.rend(); ++it) {
+      if ((*it)->nodeTypeName() != "HAnimSegment") continue;
+      auto coord = geombounds::getNode(**it, "coord");
+      return coord && coord == geombounds::getNode(*geom, "coord") ? *it : nullptr;
+    }
+    return nullptr;
   }
   // TextureTransform-baked variants, keyed by (geometry node, params bytes). Only
   // populated when a TextureTransform is actually authored — the common
@@ -1249,22 +1250,32 @@ private:
   }
 
   // The one place buildLocalMesh() is called. `recognized` may be null.
-  // `segment` is the enclosing HAnimSegment, if any. The cache stays keyed by
-  // geometry: a geometry placed under two Segments that share one Coordinate
-  // is displaced by whichever Segment built it first.
+  // `segment` is the HAnimSegment whose displacers deform this geometry (see
+  // displacingSegment), or null. Displaced builds are cached per (geometry,
+  // Segment), so one geometry under two Segments gets each Segment's result;
+  // every other build stays shared per geometry (ADR-0045).
   MeshRef cachedRawMesh(const X3DNode *geom, bool *recognized,
                         const X3DNode *segment = nullptr) {
+    if (segment) {
+      auto key = std::make_pair(geom, segment);
+      auto sit = segmentMeshCache_.find(key);
+      if (sit == segmentMeshCache_.end()) {
+        bool rec = false;
+        MeshBuildOptions options = meshOptions_;
+        options.hanimSegment = segment;
+        MeshData built = buildLocalMesh(geom, options, &rec);
+        sit = segmentMeshCache_
+                  .emplace(key, RawMeshEntry{std::make_shared<const MeshData>(std::move(built)),
+                                             rec})
+                  .first;
+      }
+      if (recognized) *recognized = sit->second.recognized;
+      return sit->second.mesh;
+    }
     auto it = rawMeshCache_.find(geom);
     if (it == rawMeshCache_.end()) {
       bool rec = false;
-      MeshData built;
-      if (segment) {
-        MeshBuildOptions options = meshOptions_;
-        options.hanimSegment = segment;
-        built = buildLocalMesh(geom, options, &rec);
-      } else {
-        built = buildLocalMesh(geom, meshOptions_, &rec);
-      }
+      MeshData built = buildLocalMesh(geom, meshOptions_, &rec);
       it = rawMeshCache_
                .emplace(geom,
                         RawMeshEntry{std::make_shared<const MeshData>(
@@ -1300,6 +1311,12 @@ private:
   // variants) so the next lookup rebuilds from current field state.
   void evictMeshCache(const X3DNode *geom) {
     rawMeshCache_.erase(geom);
+    {
+      auto lo = segmentMeshCache_.lower_bound({geom, nullptr});
+      auto hi = lo;
+      while (hi != segmentMeshCache_.end() && hi->first.first == geom) ++hi;
+      segmentMeshCache_.erase(lo, hi);
+    }
     // Baked keys are (geom, paramsBytes); the map is ordered by that pair, so all
     // of one geometry's variants form a contiguous range starting at (geom, "").
     auto lo = bakedMeshCache_.lower_bound({geom, std::string{}});

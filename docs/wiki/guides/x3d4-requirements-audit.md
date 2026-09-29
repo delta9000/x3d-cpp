@@ -1417,3 +1417,7 @@ gap. The strict docs build before this evidence append completed in 3.18 seconds
 Advisory docs-drift could not connect to its localhost:8080 embedding service and
 supplied no assessment. The 37 unfinished findings comprise 15 open and 22 deferred
 items; this register is not a measured percentage of specification compliance.
+
+After integrating H-Anim PRs #126 and #127, the regenerated combined register
+contains 297 findings: 37 open or deferred and 260 closed. The earlier count
+above records the audit branch before those five H-Anim findings were added.

@@ -19,7 +19,7 @@
 //     back-face CULLING honoring MeshData.ccw/solid. The bound NavigationInfo
 //     headlight (§23.4.4) is an additional camera-space directional light
 //     whenever headlight is TRUE (default), independent of the scene's lights;
-//     the extractor's world-resolved LightDesc Directionals (global=false lights
+//     the extractor's world-resolved LightDescs (global=false lights
 //     are NOT promoted to scene-wide) light the scene too.
 //
 // PHASE 5 (material-shader PoC program):
@@ -254,6 +254,90 @@ struct GpuMesh {
   SFVec3f localCentroid{0.0f, 0.0f, 0.0f};
 };
 
+GpuMesh uploadMesh(const ex::MeshData &m);
+
+// A skin is placement-specific: its source-index remap need not match another
+// placement of the same geometry. The influence TBO is immutable; only the
+// palette TBO is replaced on pose deltas.
+struct GpuSkin {
+  GpuMesh mesh;
+  GLuint ranges = 0, influences = 0, palette = 0;
+  GLuint influenceBuffer = 0, paletteBuffer = 0;
+  bool cpuFallback = false;
+};
+
+void destroySkin(GpuSkin &s) {
+  glDeleteTextures(1, &s.influences);
+  glDeleteTextures(1, &s.palette);
+  glDeleteBuffers(1, &s.ranges);
+  glDeleteBuffers(1, &s.influenceBuffer);
+  glDeleteBuffers(1, &s.paletteBuffer);
+  glDeleteVertexArrays(1, &s.mesh.vao);
+  glDeleteBuffers(1, &s.mesh.vbo);
+  glDeleteBuffers(1, &s.mesh.ebo);
+}
+
+GpuSkin uploadSkin(const ex::RenderItem &item, const ex::MeshData &mesh,
+                   bool cpuFallback) {
+  GpuSkin s;
+  s.mesh = uploadMesh(mesh);
+  s.cpuFallback = cpuFallback;
+  if (cpuFallback) return s;
+  const auto &b = *item.skin->binding;
+  // Per corner: (offset, count) into the influence buffer for the corner's
+  // source COORDINATE. Its normal is skinned with the same influences.
+  std::vector<std::uint32_t> ranges(item.skin->sourceCoordIndex.size() * 2);
+  for (std::size_t i = 0; i < item.skin->sourceCoordIndex.size(); ++i) {
+    auto source = item.skin->sourceCoordIndex[i];
+    if (source < b.bindPositions.size() && source + 1 < b.influenceOffset.size()) {
+      ranges[i * 2] = b.influenceOffset[source];
+      ranges[i * 2 + 1] = b.influenceOffset[source + 1] - ranges[i * 2];
+    }
+  }
+  glGenBuffers(1, &s.ranges);
+  glBindVertexArray(s.mesh.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, s.ranges);
+  glBufferData(GL_ARRAY_BUFFER, ranges.size() * sizeof(std::uint32_t), ranges.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(4);
+  glVertexAttribIPointer(4, 2, GL_UNSIGNED_INT, 2 * sizeof(std::uint32_t), nullptr);
+  glBindVertexArray(0);
+  std::vector<float> pairs;
+  pairs.reserve(b.influences.size() * 2);
+  for (const auto &in : b.influences) {
+    pairs.push_back(static_cast<float>(in.joint));
+    pairs.push_back(in.weight);
+  }
+  glGenBuffers(1, &s.influenceBuffer);
+  glBindBuffer(GL_TEXTURE_BUFFER, s.influenceBuffer);
+  glBufferData(GL_TEXTURE_BUFFER, pairs.size() * sizeof(float), pairs.data(), GL_STATIC_DRAW);
+  glGenTextures(1, &s.influences);
+  glBindTexture(GL_TEXTURE_BUFFER, s.influences);
+  glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, s.influenceBuffer);
+  glGenBuffers(1, &s.paletteBuffer);
+  glGenTextures(1, &s.palette);
+  return s;
+}
+
+void updateSkinPose(GpuSkin &s, const ex::RenderItem &item) {
+  if (s.cpuFallback) return;
+  auto pose = x3d::runtime::hanim::evaluatePose(*item.skin->binding);
+  // Seven RGBA texels per joint: four matrix columns, then three columns of
+  // inverse-transpose 3x3. The reference skinner uses the same inverse.
+  std::vector<float> data;
+  data.reserve(pose.palette.size() * 28);
+  for (const auto &m : pose.palette) {
+    data.insert(data.end(), m.m.begin(), m.m.end());
+    auto normal = poc::normalMatrix3(x3d::runtime::Mat4::identity(), m);
+    for (int c = 0; c < 3; ++c)
+      for (int r = 0; r < 4; ++r)
+        data.push_back(r < 3 ? normal[c * 3 + r] : 0.0f);
+  }
+  glBindBuffer(GL_TEXTURE_BUFFER, s.paletteBuffer);
+  glBufferData(GL_TEXTURE_BUFFER, data.size() * sizeof(float), data.data(), GL_DYNAMIC_DRAW);
+  glBindTexture(GL_TEXTURE_BUFFER, s.palette);
+  glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, s.paletteBuffer);
+}
+
 GpuMesh uploadMesh(const ex::MeshData &m) {
   GpuMesh g;
   g.topology = m.topology;
@@ -327,12 +411,18 @@ SFVec3f toEyeDir(const Mat4 &view, const SFVec3f &worldDir) {
   return view.transformDirection(worldDir);
 }
 
-// A directional light reduced to what the lit shader consumes: a direction of
-// TRAVEL in eye space + an RGB color premultiplied by intensity.
+// An extracted light in eye space, with RGB color premultiplied by intensity.
 struct EyeLight {
   SFVec3f dirEye{0.0f, 0.0f, -1.0f};
   SFColor color{1.0f, 1.0f, 1.0f}; // already * intensity.
   float ambientIntensity = 0.0f;   // §17.2.2.4 per-light ambientIntensity.
+  bool positional = false;
+  SFVec3f posEye{0.0f, 0.0f, 0.0f};
+  SFVec3f attenuation{1.0f, 0.0f, 0.0f};
+  float radius = 100.0f;
+  bool spot = false;
+  float beamWidth = 1.5708f;
+  float cutOffAngle = 0.7854f;
 };
 
 inline constexpr int kMaxLights = 8;
@@ -343,7 +433,7 @@ inline constexpr int kMaxLights = 8;
 // existing kMaxLights convention above).
 inline constexpr int kMaxBgBands = 8;
 
-// Build the active eye-space directional-light set for this frame from the
+// Build the active eye-space light set for this frame from the
 // extractor's world-resolved LightDesc list and the bound NavigationInfo
 // headlight flag.
 //
@@ -363,10 +453,18 @@ std::vector<EyeLight> buildEyeLights(const std::vector<ex::LightDesc> &lights,
   const std::size_t cap = headlightOn ? static_cast<std::size_t>(kMaxLights - 1)
                                       : static_cast<std::size_t>(kMaxLights);
   for (const ex::LightDesc &L : lights) {
-    if (L.type != ex::LightDesc::Type::Directional) continue; // PoC: directional only.
     if (out.size() >= cap) break;
     EyeLight e;
     e.dirEye = toEyeDir(view, L.worldDirection);
+    if (L.type != ex::LightDesc::Type::Directional) {
+      e.positional = true;
+      e.posEye = view.transformPoint(L.worldLocation);
+      e.attenuation = L.attenuation;
+      e.radius = L.radius;
+      e.spot = L.type == ex::LightDesc::Type::Spot;
+      e.beamWidth = L.beamWidth;
+      e.cutOffAngle = L.cutOffAngle;
+    }
     e.color = SFColor{L.color.r * L.intensity, L.color.g * L.intensity,
                       L.color.b * L.intensity};
     e.ambientIntensity = L.ambientIntensity;
@@ -873,6 +971,14 @@ int main(int argc, char **argv) {
     std::fprintf(stderr,
                  "[poc] headless: %zu render item(s); item[0] has %zu vertices\n",
                  items, firstVerts);
+    for (ex::RenderItemId id : snap.added) {
+      const auto &it = extractor.item(id);
+      if (it.skin)
+        std::fprintf(stderr, "[poc] headless skin %u: corners=%zu normal indices=%zu influences=%zu displacers=%zu\n",
+                     static_cast<unsigned>(id), it.skin->sourceCoordIndex.size(),
+                     it.skin->sourceNormalIndex.size(), it.skin->binding->influences.size(),
+                     it.skin->binding->displacers.size());
+    }
 
     // T11 acceptance probe: count items that SHARE a GeomId node with another
     // item but carry a DISTINCT worldTransform. A DEF'd Shape USE'd under two
@@ -942,9 +1048,8 @@ int main(int argc, char **argv) {
     // are present at the seam — the bound NavigationInfo headlight flag, the
     // active world-resolved light count, and the first item's material color +
     // whether its mesh carries normals (a lit draw needs a shading normal). Per
-    // §23.4.4 the headlight is added on top of any authored directional lights
-    // when headlight is TRUE, so the effective lit-light count is
-    // min(directional, cap) + (headlight?1:0), where the headlight reserves one
+    // §23.4.4 the headlight is added on top of authored lights when TRUE.
+    // The effective count caps all authored light types and reserves one
     // of the kMaxLights slots.
     bool headlightOn = true;
     if (const X3DNode *nav = ctx.boundNavigationInfo())
@@ -954,11 +1059,11 @@ int main(int argc, char **argv) {
     std::size_t directional = 0;
     for (const auto &L : lights)
       if (L.type == ex::LightDesc::Type::Directional) ++directional;
-    const std::size_t dirCap =
+    const std::size_t lightCap =
         headlightOn ? static_cast<std::size_t>(kMaxLights - 1)
                     : static_cast<std::size_t>(kMaxLights);
     const std::size_t litLights =
-        std::min(directional, dirCap) + (headlightOn ? 1u : 0u);
+        std::min(lights.size(), lightCap) + (headlightOn ? 1u : 0u);
     bool firstHasNormals =
         items ? extractor.item(snap.added.front()).mesh->hasNormals : false;
     SFColorRGBA c0 =
@@ -976,10 +1081,10 @@ int main(int argc, char **argv) {
         ++transparentItems;
     }
     std::fprintf(stderr,
-                 "[poc] headless lit: headlight=%s directional_lights=%zu "
+                 "[poc] headless lit: headlight=%s directional_lights=%zu authored_lights=%zu "
                  "effective_lit_lights=%zu item[0] hasNormals=%s "
                  "diffuse=rgba(%.2f,%.2f,%.2f,%.2f) transparent_items=%zu\n",
-                 headlightOn ? "true" : "false", directional, litLights,
+                 headlightOn ? "true" : "false", directional, lights.size(), litLights,
                  firstHasNormals ? "true" : "false", c0.r, c0.g, c0.b, c0.a,
                  transparentItems);
 
@@ -1290,6 +1395,7 @@ int main(int argc, char **argv) {
   // ----------------------------------------------------------------------
   std::unordered_map<ex::GeomId, GpuMesh, ex::GeomIdHash> gpuMeshes;
   std::unordered_map<ex::GeomId, int, ex::GeomIdHash> meshRefs;
+  std::unordered_map<ex::RenderItemId, GpuSkin> gpuSkins;
 
   // Ensure a GpuMesh exists for an item's GeomId, uploading on first reference
   // and bumping its refcount. Returns nothing; gpuMeshes/meshRefs are mutated.
@@ -1297,6 +1403,36 @@ int main(int argc, char **argv) {
     if (gpuMeshes.find(it.geometry) == gpuMeshes.end())
       gpuMeshes.emplace(it.geometry, uploadMesh(*it.mesh));
     ++meshRefs[it.geometry];
+  };
+  auto acquireSkin = [&](ex::RenderItemId id) {
+    const auto &it = extractor.item(id);
+    if (!it.skin) return;
+    // Joint displacers add offsets after skinning; those skins use the
+    // reference CPU mesh. Everything else skins on the GPU.
+    bool fallback = !it.skin->binding->displacers.empty() ||
+                    it.skin->sourceCoordIndex.size() != it.mesh->positions.size();
+    ex::MeshData bindMesh = *it.mesh;
+    if (!fallback) {
+      const auto &binding = *it.skin->binding;
+      for (std::size_t i = 0; i < bindMesh.positions.size(); ++i) {
+        auto source = it.skin->sourceCoordIndex[i];
+        if (source < binding.bindPositions.size())
+          bindMesh.positions[i] = binding.bindPositions[source];
+        // Authored bind normal when present; otherwise keep the normal the
+        // mesh builder generated for the bind pose.
+        if (i < it.skin->sourceNormalIndex.size() && i < bindMesh.normals.size()) {
+          auto normal = it.skin->sourceNormalIndex[i];
+          if (normal < binding.bindNormals.size())
+            bindMesh.normals[i] = binding.bindNormals[normal];
+        }
+      }
+    }
+    GpuSkin skin = uploadSkin(it, fallback ? extractor.deformedMesh(id) : bindMesh, fallback);
+    if (!fallback) updateSkinPose(skin, it);
+    gpuSkins.emplace(id, std::move(skin));
+    std::fprintf(stderr, "[poc] skin item %u: %s, %zu influences\n",
+                 static_cast<unsigned>(id), fallback ? "CPU reference" : "GPU palette",
+                 it.skin->binding->influences.size());
   };
   // Drop one reference to a GeomId; delete the GpuMesh when it hits zero.
   auto releaseMesh = [&](const ex::GeomId &gid) {
@@ -1323,6 +1459,7 @@ int main(int argc, char **argv) {
   for (ex::RenderItemId id : snapshot.added) {
     const ex::RenderItem &it = extractor.item(id);
     acquireMesh(it);
+    acquireSkin(id);
     itemGeom[id] = it.geometry;
   }
   std::fprintf(stderr, "[poc] extracted %zu render item(s), %zu unique mesh(es)\n",
@@ -1469,12 +1606,15 @@ int main(int argc, char **argv) {
     ex::RenderDelta d = extractor.delta();
 
     for (ex::RenderItemId id : d.removed) {
+      auto skin = gpuSkins.find(id);
+      if (skin != gpuSkins.end()) { destroySkin(skin->second); gpuSkins.erase(skin); }
       auto sit = itemGeom.find(id);
       if (sit != itemGeom.end()) { releaseMesh(sit->second); itemGeom.erase(sit); }
     }
     for (ex::RenderItemId id : d.added) {
       const ex::RenderItem &it = extractor.item(id);
       acquireMesh(it);
+      acquireSkin(id);
       itemGeom[id] = it.geometry;
     }
     for (ex::RenderItemId id : d.updatedGeometry) {
@@ -1483,7 +1623,21 @@ int main(int argc, char **argv) {
       if (sit != itemGeom.end() && sit->second != it.geometry)
         releaseMesh(sit->second);  // drop the stale-contentVersion GeomId.
       acquireMesh(it);             // re-extract + re-upload under the new GeomId.
+      auto skin = gpuSkins.find(id);
+      if (skin != gpuSkins.end()) { destroySkin(skin->second); gpuSkins.erase(skin); }
+      acquireSkin(id);
       itemGeom[id] = it.geometry;
+    }
+    for (ex::RenderItemId id : d.updatedSkinPose) {
+      auto skin = gpuSkins.find(id);
+      if (skin == gpuSkins.end()) continue;
+      if (skin->second.cpuFallback) {
+        GpuSkin next = uploadSkin(extractor.item(id), extractor.deformedMesh(id), true);
+        destroySkin(skin->second);
+        skin->second = std::move(next);
+      } else {
+        updateSkinPose(skin->second, extractor.item(id));
+      }
     }
     // updatedTransform needs no GPU work: the model uniform is sourced from
     // extractor.item(id).worldTransform in the draw loop every frame.
@@ -1588,6 +1742,11 @@ int main(int argc, char **argv) {
       float lightDir[kMaxLights * 3] = {0};
       float lightCol[kMaxLights * 3] = {0};
       float lightAmb[kMaxLights] = {0};
+      int lightType[kMaxLights] = {0}; // 0 directional, 1 point, 2 spot.
+      float lightPos[kMaxLights * 3] = {0};
+      float lightAtt[kMaxLights * 3] = {0};
+      float lightRadius[kMaxLights] = {0};
+      float lightCone[kMaxLights * 2] = {0};
       for (int i = 0; i < numLights && i < kMaxLights; ++i) {
         lightDir[i * 3 + 0] = eyeLights[i].dirEye.x;
         lightDir[i * 3 + 1] = eyeLights[i].dirEye.y;
@@ -1596,6 +1755,16 @@ int main(int argc, char **argv) {
         lightCol[i * 3 + 1] = eyeLights[i].color.g;
         lightCol[i * 3 + 2] = eyeLights[i].color.b;
         lightAmb[i] = eyeLights[i].ambientIntensity;
+        lightType[i] = eyeLights[i].positional ? (eyeLights[i].spot ? 2 : 1) : 0;
+        lightPos[i * 3 + 0] = eyeLights[i].posEye.x;
+        lightPos[i * 3 + 1] = eyeLights[i].posEye.y;
+        lightPos[i * 3 + 2] = eyeLights[i].posEye.z;
+        lightAtt[i * 3 + 0] = eyeLights[i].attenuation.x;
+        lightAtt[i * 3 + 1] = eyeLights[i].attenuation.y;
+        lightAtt[i * 3 + 2] = eyeLights[i].attenuation.z;
+        lightRadius[i] = eyeLights[i].radius;
+        lightCone[i * 2 + 0] = eyeLights[i].beamWidth;
+        lightCone[i * 2 + 1] = eyeLights[i].cutOffAngle;
       }
 
       // Helper: bind a texture on the given unit; fall back to whiteTex if tex==0.
@@ -1608,13 +1777,18 @@ int main(int argc, char **argv) {
       };
 
       // Helper: upload standard eye-space lights to a program (already bound).
-      auto uploadLights = [&](GLint locNum, GLint locDir, GLint locCol,
+      auto uploadLights = [&](GLuint program, GLint locNum, GLint locDir, GLint locCol,
                               GLint locAmb) {
         if (locNum >= 0) glUniform1i(locNum, numLights);
         if (numLights > 0) {
           if (locDir >= 0) glUniform3fv(locDir, numLights, lightDir);
           if (locCol >= 0) glUniform3fv(locCol, numLights, lightCol);
           if (locAmb >= 0) glUniform1fv(locAmb, numLights, lightAmb);
+          glUniform1iv(glGetUniformLocation(program, "uLightType"), numLights, lightType);
+          glUniform3fv(glGetUniformLocation(program, "uLightPosEye"), numLights, lightPos);
+          glUniform3fv(glGetUniformLocation(program, "uLightAttenuation"), numLights, lightAtt);
+          glUniform1fv(glGetUniformLocation(program, "uLightRadius"), numLights, lightRadius);
+          glUniform2fv(glGetUniformLocation(program, "uLightCone"), numLights, lightCone);
         }
       };
 
@@ -1630,11 +1804,11 @@ int main(int argc, char **argv) {
       };
 
       // Helper: per-draw culling from mesh winding/solidity.
-      auto applyCull = [&](const GpuMesh &g) {
+      auto applyCull = [&](const GpuMesh &g, const x3d::runtime::Mat4 &model) {
         if (g.solid) {
           glEnable(GL_CULL_FACE);
           glCullFace(GL_BACK);
-          glFrontFace(g.ccw ? GL_CCW : GL_CW);
+          glFrontFace(poc::frontFaceCCW(g.ccw, model) ? GL_CCW : GL_CW);
         } else {
           glDisable(GL_CULL_FACE);
         }
@@ -1660,7 +1834,8 @@ int main(int argc, char **argv) {
         const ex::RenderItem &it = extractor.item(id);
         auto mit = gpuMeshes.find(it.geometry);
         if (mit == gpuMeshes.end()) return;
-        const GpuMesh &g = mit->second;
+        auto skinIt = gpuSkins.find(id);
+        const GpuMesh &g = skinIt == gpuSkins.end() ? mit->second : skinIt->second.mesh;
         const ex::MaterialDesc &mat = it.material;
         // FillProperties covers polygonal areas. With neither component enabled,
         // issue no draw so neither color nor depth is written, including on the
@@ -1742,7 +1917,7 @@ int main(int argc, char **argv) {
             glUseProgram(phongProg);
             glUniformMatrix4fv(uView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uProj, 1, GL_FALSE, proj.m.data());
-            uploadLights(uNumLights, uLightDirEye, uLightColor, uLightAmbient);
+            uploadLights(phongProg, uNumLights, uLightDirEye, uLightColor, uLightAmbient);
             uploadFog(uFogColor, uFogType, uFogRange);
             boundProg = phongProg;
           }
@@ -1811,7 +1986,7 @@ int main(int argc, char **argv) {
             bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);
             bindTex(3, uSpecularTex, uHasSpecularTex, 0);
           }
-          applyCull(g);
+          applyCull(g, it.worldTransform);
 
         // ----------------------------------------------------------------
         // PATH 3: PBR — metallic-roughness analytic BRDF (no IBL: Phase 4 deferred).
@@ -1821,7 +1996,7 @@ int main(int argc, char **argv) {
             glUseProgram(pbrProg);
             glUniformMatrix4fv(uPbrView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uPbrProj, 1, GL_FALSE, proj.m.data());
-            uploadLights(uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
+            uploadLights(pbrProg, uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
             uploadFog(uPbrFogColor, uPbrFogType, uPbrFogRange);
             boundProg = pbrProg;
           }
@@ -1893,7 +2068,7 @@ int main(int argc, char **argv) {
             bindTex(3, uPbrMRTex,          uPbrHasMRTex,          0);
             bindTex(4, uPbrOcclusionTex,   uPbrHasOcclusionTex,   0);
           }
-          applyCull(g);
+          applyCull(g, it.worldTransform);
 
         // ----------------------------------------------------------------
         // PATH 4: AUTHOR-SHADER (ComposedShader via ShaderBindingPlan).
@@ -2033,7 +2208,7 @@ int main(int argc, char **argv) {
               }
             }
           }
-          applyCull(g);
+          applyCull(g, it.worldTransform);
         }
 
         // The built-in fragment programs share the same FillProperties uniform
@@ -2061,6 +2236,23 @@ int main(int argc, char **argv) {
         GLenum mode = (g.topology == ex::Topology::Lines)    ? GL_LINES
                       : (g.topology == ex::Topology::Points) ? GL_POINTS
                                                              : GL_TRIANGLES;
+        GLint activeProgram = 0;
+        glGetIntegerv(GL_CURRENT_PROGRAM, &activeProgram);
+        GLint skinLoc = glGetUniformLocation(static_cast<GLuint>(activeProgram), "uSkinEnabled");
+        if (skinLoc >= 0) {
+          bool enabled = skinIt != gpuSkins.end() && !skinIt->second.cpuFallback;
+          glUniform1i(skinLoc, enabled ? 1 : 0);
+          // Active sampler types must not alias the same texture unit, even
+          // when this draw takes the unskinned shader branch.
+          glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uInfluences"), 6);
+          glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uPalette"), 7);
+          if (enabled) {
+            glActiveTexture(GL_TEXTURE6);
+            glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.influences);
+            glActiveTexture(GL_TEXTURE7);
+            glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.palette);
+          }
+        }
         glBindVertexArray(g.vao);
         glDrawElements(mode, g.indexCount, GL_UNSIGNED_INT, nullptr);
       };
@@ -2222,6 +2414,7 @@ int main(int argc, char **argv) {
     glDeleteBuffers(1, &kv.second.vbo);
     glDeleteBuffers(1, &kv.second.ebo);
   }
+  for (auto &kv : gpuSkins) destroySkin(kv.second);
   if (phongProg) glDeleteProgram(phongProg);
   if (unlitProg) glDeleteProgram(unlitProg);
   if (pbrProg)   glDeleteProgram(pbrProg);

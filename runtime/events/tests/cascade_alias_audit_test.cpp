@@ -182,3 +182,24 @@ TEST_CASE("cascade_alias_audit_test") {
   std::cout << "all cascade alias audit tests passed\n";
   return;
 }
+
+// X3D §10.2.1: addChildren appends (ignoring nodes already present),
+// removeChildren removes, and the new children value fans out to ROUTEs from
+// children_changed within the same cascade.
+TEST_CASE("addChildren and removeChildren edit children and emit children_changed") {
+  EventGraph graph;
+  EventCascade cascade(graph);
+  auto source = std::make_shared<Transform>();
+  auto mirror = std::make_shared<Transform>();
+  auto a = std::make_shared<Transform>();
+  auto b = std::make_shared<Transform>();
+  source->setChildren({a});
+  graph.addRoute({source.get(), "children_changed"}, {mirror.get(), "set_children"});
+  cascade.postEvent(source.get(), "addChildren", std::any(MFNode{a, b}));
+  cascade.postEvent(source.get(), "removeChildren", std::any(MFNode{a}));
+  cascade.process();
+  REQUIRE(source->getChildren().size() == 1);
+  CHECK(source->getChildren()[0] == b);
+  REQUIRE(mirror->getChildren().size() == 1);
+  CHECK(mirror->getChildren()[0] == b);
+}

@@ -4,6 +4,8 @@
 #include "x3d/nodes/HAnimHumanoid.hpp"
 #include "x3d/nodes/HAnimJoint.hpp"
 #include "x3d/nodes/HAnimMotion.hpp"
+#include "x3d/nodes/HAnimSegment.hpp"
+#include "x3d/nodes/HAnimSite.hpp"
 #include "x3d/nodes/Transform.hpp"
 
 #include <cmath>
@@ -182,4 +184,52 @@ TEST_CASE("HAnimMotion Korean archive smoke when X3D_ARCHIVE_DIR is set") {
   for (int i = 1; i <= 10; ++i) ctx.tick(i * motion->getFrameDuration());
   CHECK(hip->getRotation() != hip0);
   CHECK(knee->getRotation() != knee0);
+}
+
+TEST_CASE("HAnimHumanoid motions accepts a newly assigned Motion") {
+  Scene scene;
+  auto human = std::make_shared<HAnimHumanoid>();
+  auto joint = std::make_shared<HAnimJoint>();
+  human->setName("figure");
+  joint->setName("root");
+  human->setSkeleton(MFNode{joint});
+  human->setJoints(MFNode{joint});
+  scene.addRootNode(human);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  attachStandardRuntime(scene, ctx);
+  auto motion = std::make_shared<HAnimMotion>();
+  motion->setJoints("root");
+  motion->setChannels("1 Xposition");
+  motion->setValues(MFFloat{5});
+  REQUIRE(ctx.writeField(human.get(), "motions", std::any(MFNode{motion})) == FieldWriteResult::Ok);
+  ctx.tick(0);
+  CHECK(joint->getTranslation().x == doctest::Approx(5));
+  CHECK(motion->getFrameCount() == 1);
+}
+
+TEST_CASE("HAnim grouping nodes apply addChildren and removeChildren") {
+  auto joint = std::make_shared<HAnimJoint>();
+  auto segment = std::make_shared<HAnimSegment>();
+  auto site = std::make_shared<HAnimSite>();
+  joint->setName("root");
+  segment->setName("sacrum");
+  site->setName("marker_pt");
+  auto oldChild = std::make_shared<Transform>();
+  site->setChildren(MFNode{oldChild});
+  Scene scene;
+  scene.addRootNode(joint);
+  scene.addRootNode(segment);
+  scene.addRootNode(site);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.postEvent(joint.get(), "addChildren", std::any(MFNode{std::make_shared<HAnimJoint>()}));
+  ctx.postEvent(segment.get(), "addChildren", std::any(MFNode{std::make_shared<HAnimSite>()}));
+  ctx.postEvent(site.get(), "addChildren", std::any(MFNode{std::make_shared<Transform>()}));
+  ctx.postEvent(site.get(), "removeChildren", std::any(MFNode{oldChild}));
+  ctx.process();
+  CHECK(joint->getChildren().size() == 1);
+  CHECK(segment->getChildren().size() == 1);
+  REQUIRE(site->getChildren().size() == 1);
+  CHECK(site->getChildren()[0].get() != oldChild.get());
 }

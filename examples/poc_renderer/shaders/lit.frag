@@ -86,6 +86,33 @@ uniform int  uNumLights;
 uniform vec3 uLightDirEye[kMaxLights]; // direction of TRAVEL, eye space.
 uniform vec3 uLightColor[kMaxLights];  // rgb * intensity, premultiplied.
 uniform float uLightAmbient[kMaxLights]; // §17.2.2.4 per-light ambientIntensity.
+uniform int uLightType[kMaxLights]; // 0 directional, 1 point, 2 spot.
+uniform vec3 uLightPosEye[kMaxLights];
+uniform vec3 uLightAttenuation[kMaxLights];
+uniform float uLightRadius[kMaxLights];
+uniform vec2 uLightCone[kMaxLights]; // beamWidth, cutOffAngle in radians.
+
+bool resolveLight(int i, vec3 posEye, out vec3 L, out float atten) {
+    if (uLightType[i] == 0) {
+        L = normalize(-uLightDirEye[i]);
+        atten = 1.0;
+        return true;
+    }
+    vec3 toLight = uLightPosEye[i] - posEye;
+    float dist = length(toLight);
+    if (dist > uLightRadius[i]) return false;
+    L = dist > 1e-6 ? toLight / dist : vec3(0.0, 0.0, 1.0);
+    vec3 a = uLightAttenuation[i];
+    atten = 1.0 / max(a.x + a.y * dist + a.z * dist * dist, 1.0);
+    if (uLightType[i] == 2) {
+        float ang = acos(clamp(dot(normalize(uLightDirEye[i]), -L), -1.0, 1.0));
+        if (ang >= uLightCone[i].y) return false;
+        if (ang > uLightCone[i].x && uLightCone[i].y > uLightCone[i].x)
+            atten *= (uLightCone[i].y - ang) / (uLightCone[i].y - uLightCone[i].x);
+    }
+    return true;
+}
+
 
 // ---- Output -----------------------------------------------------------------
 uniform int uGammaOutput; // 1 => apply LINEARtoSRGB before writing FragColor.
@@ -184,14 +211,17 @@ void main() {
         // ambientParameter = material ambientIntensity × diffuseParameter (the
         // textured/vertex-coloured base) — linear in diffuse (ADR-0027).
         // Normal-independent, applied before ndl.
-        lit += (uAmbientColor * base) * uLightColor[i] * uLightAmbient[i];
-        vec3 L    = normalize(-uLightDirEye[i]);
+        vec3 L;
+        float atten;
+        if (!resolveLight(i, vPosEye, L, atten)) continue;
+        vec3 lightColor = uLightColor[i] * atten;
+        lit += (uAmbientColor * base) * lightColor * uLightAmbient[i];
         float ndl = max(dot(N, L), 0.0);
-        lit      += base * uLightColor[i] * ndl;
+        lit      += base * lightColor * ndl;
         if (ndl > 0.0) {
             vec3  H    = normalize(L + V);
             float ndh  = max(dot(N, H), 0.0);
-            lit       += specCol * uLightColor[i] * pow(ndh, expo);
+            lit       += specCol * lightColor * pow(ndh, expo);
         }
     }
 

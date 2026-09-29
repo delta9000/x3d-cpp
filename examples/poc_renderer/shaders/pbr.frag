@@ -2,7 +2,7 @@
 // pbr.frag — PoC PhysicalMaterial (metallic-roughness) fragment shader.
 //
 // Implements the glTF 2.0 §3.9 metallic-roughness BRDF using analytic
-// directional lights only. Phase 4 (IBL / environment lighting) is deferred;
+// directional and positional lights. Phase 4 (IBL / environment lighting) is deferred;
 // there is NO envDiffuse / envSpecular / brdfLUT term here.
 //
 // BRDF summary:
@@ -90,6 +90,33 @@ uniform int  uNumLights;
 uniform vec3 uLightDirEye[kMaxLights]; // direction of TRAVEL, eye space.
 uniform vec3 uLightColor[kMaxLights];  // rgb * intensity.
 uniform float uLightAmbient[kMaxLights]; // §17.2.2.4 per-light ambientIntensity.
+uniform int uLightType[kMaxLights]; // 0 directional, 1 point, 2 spot.
+uniform vec3 uLightPosEye[kMaxLights];
+uniform vec3 uLightAttenuation[kMaxLights];
+uniform float uLightRadius[kMaxLights];
+uniform vec2 uLightCone[kMaxLights]; // beamWidth, cutOffAngle in radians.
+
+bool resolveLight(int i, vec3 posEye, out vec3 L, out float atten) {
+    if (uLightType[i] == 0) {
+        L = normalize(-uLightDirEye[i]);
+        atten = 1.0;
+        return true;
+    }
+    vec3 toLight = uLightPosEye[i] - posEye;
+    float dist = length(toLight);
+    if (dist > uLightRadius[i]) return false;
+    L = dist > 1e-6 ? toLight / dist : vec3(0.0, 0.0, 1.0);
+    vec3 a = uLightAttenuation[i];
+    atten = 1.0 / max(a.x + a.y * dist + a.z * dist * dist, 1.0);
+    if (uLightType[i] == 2) {
+        float ang = acos(clamp(dot(normalize(uLightDirEye[i]), -L), -1.0, 1.0));
+        if (ang >= uLightCone[i].y) return false;
+        if (ang > uLightCone[i].x && uLightCone[i].y > uLightCone[i].x)
+            atten *= (uLightCone[i].y - ang) / (uLightCone[i].y - uLightCone[i].x);
+    }
+    return true;
+}
+
 
 // ---- Fog (§24.4.2 / §17 Table 17.5) -----------------------------------------
 // visibilityRange is already world-scaled by the extractor; 0 disables fog.
@@ -217,7 +244,7 @@ void main() {
         emissive *= et;
     }
 
-    // ---- Light accumulation (analytic GGX BRDF, directional lights only) ----
+    // ---- Light accumulation (analytic GGX BRDF, directional and positional lights) ----
     // NOTE: Phase 4 IBL (envDiffuse SH + prefiltered specular + brdfLUT) is
     // DEFERRED; there is no environment term here.
     vec3 color = emissive;
@@ -226,8 +253,11 @@ void main() {
         // §17.2.2.4 per-light ambient (normal-independent, so applied before the
         // NdL gate below). PhysicalMaterial has no ambientIntensity field, so the
         // ambient surface is diffColor.
-        color += diffColor * uLightColor[i] * uLightAmbient[i];
-        vec3 L    = normalize(-uLightDirEye[i]); // toward light
+        vec3 L;
+        float atten;
+        if (!resolveLight(i, vPosEye, L, atten)) continue;
+        vec3 lightColor = uLightColor[i] * atten;
+        color += diffColor * lightColor * uLightAmbient[i];
         float NdL = max(dot(N, L), 0.0);
         if (NdL <= 0.0) continue;
 
@@ -244,7 +274,7 @@ void main() {
         // Diffuse: Lambertian.
         vec3 kD = (1.0 - F) * (1.0 - metallic);
 
-        color += (kD * diffColor / PI + spec) * uLightColor[i] * NdL;
+        color += (kD * diffColor / PI + spec) * lightColor * NdL;
     }
 
     // ---- Apply AO on the diffuse component (ambient occlusion) -------------

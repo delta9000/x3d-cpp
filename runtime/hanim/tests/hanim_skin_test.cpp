@@ -98,6 +98,24 @@ TEST_CASE("v2 bind fields use joint-list positions and single-value rule") {
   b=compileBinding(*h); deform(b,evaluatePose(b),p,nullptr);
   xy(p[0],2,0);
 }
+TEST_CASE("child joint binding matrix composes with its parent binding") {
+  auto c=std::make_shared<Coordinate>(); c->setPoint({{3,0,0}});
+  auto parent=std::make_shared<HAnimJoint>(), child=std::make_shared<HAnimJoint>();
+  parent->setName("humanoid_root"); child->setName("child");
+  parent->setChildren({child});
+  parent->setTranslation({2,0,0});
+  child->setTranslation({1,0,0});
+  child->setSkinCoordIndex({0}); child->setSkinCoordWeight({1});
+  auto h=humanoid(c,{parent,child});
+  h->setName("audit_humanoid");
+  h->setSkeletalConfiguration("CUSTOM");
+  h->setJointBindingPositions({{2,0,0},{1,0,0}});
+  auto binding=compileBinding(*h);
+  std::vector<SFVec3f> p;
+  deform(binding,evaluatePose(binding),p,nullptr);
+  REQUIRE(p.size()==1);
+  CHECK(p[0].x==doctest::Approx(3)); // current skeleton equals binding pose
+}
 TEST_CASE("CoordinateDouble is accepted as a legacy skinCoord source") {
   auto h=std::make_shared<HAnimHumanoid>();
   auto c=std::make_shared<CoordinateDouble>(); c->setPoint({{1.25,2.5,3.75}});

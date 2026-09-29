@@ -44,5 +44,12 @@ int main() {
   const auto identity = poc::normalMatrix3(Mat4::identity(), Mat4::identity());
   check(singular == identity, "singular normal matrix falls back to identity");
 
+  check(poc::frontFaceCCW(false, Mat4::scale({1, 1, -1})),
+        "reflection reverses ccw=false front face");
+  check(!poc::frontFaceCCW(true, Mat4::scale({1, 1, -1})),
+        "reflection reverses ccw=true front face");
+  check(poc::frontFaceCCW(true, Mat4::scale({-1, 1, -1})),
+        "two reflections preserve front face");
+
   return failures ? 1 : 0;
 }

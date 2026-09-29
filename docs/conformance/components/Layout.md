@@ -5,10 +5,10 @@ _Generated. Levels 1,2 · 5 nodes · profiles: Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | Layout | 1 | ✓ | — | — | REQ-LAYOUT, ROUTE-IO-ALIAS | X3DChildNode, X3DLayoutNode |
-| LayoutGroup | 1 | ✓ | — | — | REQ-LAYOUT, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| LayoutGroup | 1 | ✓ | — | — | GRP-ADDCHILDREN, REQ-LAYOUT, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | LayoutLayer | 1 | ✓ | — | — | REQ-LAYOUT, ROUTE-IO-ALIAS | X3DLayerNode, X3DPickableObject |
 | ScreenFontStyle | 2 | ✓ | — | — | LYT-1, REQ-LAYOUT, ROUTE-IO-ALIAS | X3DFontStyleNode |
-| ScreenGroup | 2 | ✓ | — | — | REQ-LAYOUT, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| ScreenGroup | 2 | ✓ | — | — | GRP-ADDCHILDREN, REQ-LAYOUT, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 
 ## Findings
 
