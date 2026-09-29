@@ -2222,13 +2222,15 @@ int main(int argc, char **argv) {
         if (skinLoc >= 0) {
           bool enabled = skinIt != gpuSkins.end() && !skinIt->second.cpuFallback;
           glUniform1i(skinLoc, enabled ? 1 : 0);
+          // Active sampler types must not alias the same texture unit, even
+          // when this draw takes the unskinned shader branch.
+          glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uInfluences"), 6);
+          glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uPalette"), 7);
           if (enabled) {
             glActiveTexture(GL_TEXTURE6);
             glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.influences);
-            glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uInfluences"), 6);
             glActiveTexture(GL_TEXTURE7);
             glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.palette);
-            glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uPalette"), 7);
           }
         }
         glBindVertexArray(g.vao);
