@@ -6,7 +6,7 @@ _Generated. Levels 1,2 · 6 nodes · profiles: Full._
 |------|-----|--------|---------|---------|----------|------------|
 | DISEntityManager | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode |
 | DISEntityTypeMapping | 2 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode, X3DInfoNode, X3DUrlObject |
-| EspduTransform | 1 | ✓ | — | ◑ | NSN-10, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DNetworkSensorNode, X3DSensorNode |
+| EspduTransform | 1 | ✓ | — | ◑ | GRP-ADDCHILDREN, NSN-10, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DNetworkSensorNode, X3DSensorNode |
 | ReceiverPdu | 1 | ✓ | — | ◑ | NSN-10, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 | SignalPdu | 1 | ✓ | — | ◑ | NSN-10, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 | TransmitterPdu | 1 | ✓ | — | ◑ | NSN-10, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |

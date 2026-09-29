@@ -6,7 +6,7 @@ _Generated. Levels 1 · 3 nodes · profiles: Full._
 |------|-----|--------|---------|---------|----------|------------|
 | Layer | 1 | ✓ | — | — | LAY-2, LAY-3, ROUTE-IO-ALIAS | X3DLayerNode, X3DPickableObject |
 | LayerSet | 1 | ✓ | — | — | LAY-1, ROUTE-IO-ALIAS |  |
-| Viewport | 1 | ✓ | — | — | LAY-3, ROUTE-IO-ALIAS, VIEWPORT-CLIP | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DViewportNode |
+| Viewport | 1 | ✓ | — | — | GRP-ADDCHILDREN, LAY-3, ROUTE-IO-ALIAS, VIEWPORT-CLIP | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DViewportNode |
 
 ## Findings
 

@@ -13,10 +13,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -59,10 +60,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -81,10 +83,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -529,10 +532,11 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "28.2.3, 28.3; 4.4.2.2, 4.4.8.2",
+          "clause": "28.2.3, 28.3; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "NSN-10",
             "ROUTE-IO-ALIAS"
           ],
@@ -2043,13 +2047,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.2.3; 25.2.3, 25.2.4; 4.4.2.2, 4.4.8.2",
+          "clause": "25.2.3; 25.2.3, 25.2.4; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-AUDIT-3",
             "GEO-GEOID-DEFAULT",
             "GEOSYSTEM",
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2195,12 +2200,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "25.2.3, 25.2.4; 25.2.3; 4.4.2.2, 4.4.8.2",
+          "clause": "25.2.3, 25.2.4; 25.2.3; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "GEO-AUDIT-3",
             "GEO-GEOID-DEFAULT",
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2262,6 +2268,7 @@
     },
     {
       "findings": [
+        "GRP-ADDCHILDREN",
         "SENSOR-SWITCH",
         "SW-DELTA-1"
       ],
@@ -2275,10 +2282,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2321,12 +2329,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "10.3.10; 22.4, 22.4.3; 4.4.2.2, 4.4.8.2; 10.4.3, 20.2.3; 10.4.3",
+          "clause": "10.3.10; 22.4, 22.4.3; 10.2.1; 4.4.2.2, 4.4.8.2; 10.4.3, 20.2.3; 10.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-LGT-2",
             "AUD-PDS-3",
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS",
             "SENSOR-SWITCH",
             "SW-DELTA-1"
@@ -2349,10 +2358,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2384,6 +2394,10 @@
         "HAN-1",
         "HAN-2",
         "HAN-3",
+        "HAN-AUDIT-1",
+        "HAN-AUDIT-2",
+        "HAN-AUDIT-3",
+        "HAN-AUDIT-4",
         "HANIM-DISP"
       ],
       "levels": [
@@ -2395,11 +2409,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.1; 26.3.1, 26.3.5; 4.4.2.2, 4.4.8.2",
+          "clause": "26.3.1; 26.3.1, 26.3.5; ISO/IEC 19774-1 6.6; 26.3.1, 26.3.5; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "HAN-2",
+            "HAN-AUDIT-2",
             "HANIM-DISP",
             "ROUTE-IO-ALIAS"
           ],
@@ -2417,11 +2432,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.2, 26.3.3; 4.4.2.2, 4.4.8.2",
+          "clause": "26.3.2, 26.3.3; 26.3.2; ISO/IEC 19774-1 6.2; 26.3.2; ISO/IEC 19774-2 6.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "HAN-1",
+            "HAN-AUDIT-1",
+            "HAN-AUDIT-4",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2439,11 +2456,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.2, 26.3.3; 4.4.2.2, 4.4.8.2",
+          "clause": "26.3.2, 26.3.3; 26.3.2; ISO/IEC 19774-1 6.2; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "HAN-1",
+            "HAN-AUDIT-1",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2461,11 +2479,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.4; 4.4.2.2, 4.4.8.2",
+          "clause": "26.3.4; 26.3.2; ISO/IEC 19774-2 6.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "HAN-3",
+            "HAN-AUDIT-4",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2482,10 +2501,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.1, 26.3.5; 4.4.2.2, 4.4.8.2",
+          "clause": "26.3.1, 26.3.5; ISO/IEC 19774-1 6.6; 26.3.1, 26.3.5; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
+            "HAN-AUDIT-2",
             "HANIM-DISP",
             "ROUTE-IO-ALIAS"
           ],
@@ -2505,10 +2526,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "26.3.6; ISO/IEC 19774-1 6.5; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
+            "HAN-AUDIT-3",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3028,10 +3051,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "35.4.3; 4.4.2.2, 4.4.8.2",
+          "clause": "35.4.3; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "LAY-3",
             "ROUTE-IO-ALIAS",
             "VIEWPORT-CLIP"
@@ -3089,10 +3113,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3153,10 +3178,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3616,10 +3642,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3640,7 +3667,7 @@
         {
           "behaves": "conformant",
           "behavioral": true,
-          "clause": "23.2.4, 23.3.2; 23.4.2; 4.4.2.2, 4.4.8.2",
+          "clause": "23.2.4, 23.3.2; 23.4.2; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3648,6 +3675,7 @@
             "COL-2",
             "COL-3",
             "CONF-NAV-COLLISION",
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3669,10 +3697,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "23.4.3; 22.4, 22.4.3; 4.4.2.2, 4.4.8.2",
+          "clause": "23.4.3; 22.4, 22.4.3; 10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "LOD-1",
             "LOD-DELTA-1",
             "ROUTE-IO-ALIAS",
@@ -3847,11 +3876,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "9.4.3, 9.4.1; 4.4.2.2, 4.4.8.2; 9.4.3",
+          "clause": "9.4.3, 9.4.1; 10.2.1; 4.4.2.2, 4.4.8.2; 9.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-NET-3",
+            "GRP-ADDCHILDREN",
             "NSN-11",
             "ROUTE-IO-ALIAS"
           ],
@@ -4198,10 +4228,11 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -9309,6 +9340,57 @@
       "summary": "HAnimMotion plays frame-major channels through the event context."
     },
     {
+      "clause": "26.3.2; ISO/IEC 19774-1 6.2",
+      "component": "HAnim",
+      "id": "HAN-AUDIT-1",
+      "nodes": [
+        "HAnimHumanoid",
+        "HAnimJoint"
+      ],
+      "note": "19774-1 \u00a76.2: applying the binding translation/rotation/scale \"to the corresponding Joint objects maps a skeleton to the binding pose\", so the values replace each Joint's own TRS and compose down the skeleton. compileBinding now walks the skeleton with each Joint's binding TRS (keeping its center and scaleOrientation) and inverts the accumulated matrix. Test: hanim_skin_test \"child joint binding matrix composes with its parent binding\". (2026-09-27)",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "jointBinding* values were treated as absolute; a child Joint's bind matrix omitted its parents'."
+    },
+    {
+      "clause": "26.3.1, 26.3.5; ISO/IEC 19774-1 6.6",
+      "component": "HAnim",
+      "id": "HAN-AUDIT-2",
+      "nodes": [
+        "HAnimSegment",
+        "HAnimDisplacer"
+      ],
+      "note": "The raw mesh cache was keyed by geometry alone and the Segment was recorded per geometry (last walk wins). Displaced builds are now cached per (geometry, Segment), and each placement's Segment is derived from its own path on both the full walk and the delta() rebuild. Undisplaced geometry stays shared per geometry (ADR-0045). Test: scene_extractor_hanim_test \"Segment-shared geometry keeps per-Segment displacement in snapshot and delta\". (2026-09-27)",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "One geometry under two Segments sharing a Coordinate got one Segment's displacement, and delta() disagreed with fullSnapshot()."
+    },
+    {
+      "clause": "26.3.6; ISO/IEC 19774-1 6.5",
+      "component": "HAnim",
+      "id": "HAN-AUDIT-3",
+      "nodes": [
+        "HAnimSite"
+      ],
+      "note": "TransformSystem::isTransform omitted HAnimSite, so Site children (attachments, and cameras under Sites) were placed in the parent's frame. HAnimSite is now a transform-bearing node for propagation, dirty classification and extraction. Test: scene_extractor_hanim_test \"HAnimSite transforms its child geometry\". (2026-09-27)",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "HAnimSite's center/rotation/scale/scaleOrientation/translation were ignored."
+    },
+    {
+      "clause": "26.3.2; ISO/IEC 19774-2 6.4",
+      "component": "HAnim",
+      "id": "HAN-AUDIT-4",
+      "nodes": [
+        "HAnimHumanoid",
+        "HAnimMotion"
+      ],
+      "note": "HAnimMotionSystem captured the motions list only at attach. It now re-syncs each tick when the [in,out] motions list changes, keeping the playback state of motions still referenced. Test: hanim_motion_test \"HAnimHumanoid motions accepts a newly assigned Motion\". (2026-09-27)",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "A Motion assigned to HAnimHumanoid.motions after load never played."
+    },
+    {
       "clause": "33.4.1, 33.4.2",
       "component": "Texturing3D",
       "id": "T3D-1",
@@ -10104,6 +10186,18 @@
       "summary": "An explicit same-value assignment to a Script outputOnly field is suppressed \u2014 strict X3D semantics say an explicit eventOut assignment generates an event regardless of value."
     },
     {
+      "clause": "10.2.1",
+      "component": "Grouping",
+      "id": "GRP-ADDCHILDREN",
+      "interfaces": [
+        "X3DGroupingNode"
+      ],
+      "note": "The generated inputOnly handlers only call an embedder callback, which the runtime never installed, so the events were inert on every grouping node. The event cascade now applies them to any node with an MFNode children field: addChildren appends nodes not already present, removeChildren removes the listed nodes, edits apply in delivery order, and a children event with the final value follows in the same cascade (dirty tracking, children_changed ROUTEs). Tests: cascade_alias_audit_test \"addChildren and removeChildren edit children and emit children_changed\", hanim_motion_test \"HAnim grouping nodes apply addChildren and removeChildren\". (2026-09-27)",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "addChildren / removeChildren events were accepted but never changed children."
+    },
+    {
       "clause": "4.4.2.2, 4.4.8.2",
       "component": "Core",
       "id": "ROUTE-IO-ALIAS",
@@ -10884,6 +10978,7 @@
       "HAnimHumanoid",
       "HAnimJoint",
       "HAnimMotion",
+      "HAnimSite",
       "IndexedFaceSet",
       "IndexedLineSet",
       "IndexedTriangleFanSet",
@@ -10964,10 +11059,10 @@
     ]
   },
   "summary": {
-    "closed_count": 244,
+    "closed_count": 249,
     "component_count": 36,
     "deferred_count": 20,
-    "finding_count": 267,
+    "finding_count": 272,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

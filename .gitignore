@@ -61,3 +61,6 @@ site/
 # RAG endpoints / prose-mirror dir differ per machine; never committed.
 mise.local.toml
 .claude/
+
+# Scratch audit reports written by auditing agents; findings go in docs/conformance/findings.yaml.
+/AUDIT.md

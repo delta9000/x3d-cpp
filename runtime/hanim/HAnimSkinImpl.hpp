@@ -89,18 +89,38 @@ inline SkinBinding compileBinding(const X3DNode &humanoid) {
   const auto &bp=h->getJointBindingPositions();
   const auto &br=h->getJointBindingRotations();
   const auto &bs=h->getJointBindingScales();
-  for (const auto *joint : b.joints) {
+  const bool authoredBinding=!bp.empty() || !br.empty() || !bs.empty();
+  // 19774-1 §6.2: the binding values are applied "to the corresponding Joint
+  // objects", i.e. they replace each Joint's own translation/rotation/scale, so
+  // a Joint's bind matrix composes with its skeleton parents' bind matrices. A
+  // single value applies to all; otherwise by position in the joints list.
+  auto localBind=[&](const X3DNode *n) {
+    auto *joint=dynamic_cast<const HAnimJoint *>(n);
+    if (!joint) return TransformSystem::isTransform(n) ? TransformSystem::localMatrix(n) : Mat4::identity();
     auto it=std::find_if(h->getJoints().begin(),h->getJoints().end(),
-                         [&](const auto &p){return p.get()==joint;});
+                         [&](const auto &p){return p.get()==n;});
     size_t slot=it==h->getJoints().end() ? h->getJoints().size() : size_t(it-h->getJoints().begin());
     auto value=[slot](const auto &a, const auto &fallback) {
       return a.empty() ? fallback : a.size()==1 ? a.front() : slot<a.size() ? a[slot] : fallback;
     };
-    // 19774-1 §6.2: a single value applies to all; otherwise by joints position.
-    SFVec3f p=value(bp,SFVec3f{0,0,0}), s=value(bs,SFVec3f{1,1,1});
-    SFRotation r=value(br,SFRotation{0,0,1,0});
-    b.inverseBind.push_back(bp.empty() && br.empty() && bs.empty() ? Mat4::identity()
-      : (Mat4::translation(p)*Mat4::rotation(r)*Mat4::scale(s)).inverse());
+    return transformMatrix(value(bp,SFVec3f{0,0,0}),value(br,SFRotation{0,0,1,0}),
+                           value(bs,SFVec3f{1,1,1}),joint->getCenter(),joint->getScaleOrientation());
+  };
+  std::unordered_map<const X3DNode *,Mat4> bindWorld;
+  if (authoredBinding) {
+    std::unordered_set<const X3DNode *> bound;
+    auto bindWalk=[&](auto &&self,const Ptr &n,const Mat4 &parent)->void {
+      if (!n || !bound.insert(n.get()).second) return;
+      Mat4 m=parent*localBind(n.get());
+      bindWorld.emplace(n.get(),m);
+      for (const auto &c : nodes(*n,"children")) self(self,c,m);
+    };
+    for (const auto &n : h->getSkeleton()) bindWalk(bindWalk,n,Mat4::identity());
+  }
+  for (const auto *joint : b.joints) {
+    if (!authoredBinding) { b.inverseBind.push_back(Mat4::identity()); continue; }
+    auto it=bindWorld.find(joint);
+    b.inverseBind.push_back((it==bindWorld.end() ? localBind(joint) : it->second).inverse());
   }
   for (const auto &[name,count] : {std::pair{"jointBindingPositions",bp.size()},
                                    {"jointBindingRotations",br.size()},
