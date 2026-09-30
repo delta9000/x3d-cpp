@@ -4194,34 +4194,39 @@ result<void> browser::complete_load(const load_ticket &ticket,
     error.message = "load ticket belongs to another browser";
     return failure(std::move(error));
   }
-  {
-    std::lock_guard lock(control_->mutex);
-    const auto found = control_->requests.find(ticket.request_id_);
-    if (found == control_->requests.end()) {
-      sai_error error;
-      error.code = error_code::stale_completion;
-      error.operation = "browser.complete_load";
-      error.message = "load ticket is unknown or already completed";
-      return failure(std::move(error));
-    }
-    if (found->second.cancelled) {
-      sai_error error;
-      error.code = error_code::cancelled;
-      error.operation = "browser.complete_load";
-      error.message = "load request was cancelled";
-      return failure(std::move(error));
-    }
-    if (found->second.world_epoch != control_->world_epoch ||
-        ticket.world_epoch_ != control_->world_epoch) {
-      sai_error error;
-      error.code = error_code::stale_completion;
-      error.operation = "browser.complete_load";
-      error.message = "browser world changed after the load began";
-      return failure(std::move(error));
-    }
-    control_->requests.erase(found);
+  // Retirement outlives the lock: capture destructors may call browser APIs.
+  retired_world retired;
+  std::lock_guard lock(control_->mutex);
+  const auto found = control_->requests.find(ticket.request_id_);
+  if (found == control_->requests.end()) {
+    sai_error error;
+    error.code = error_code::stale_completion;
+    error.operation = "browser.complete_load";
+    error.message = "load ticket is unknown or already completed";
+    return failure(std::move(error));
   }
-  return replace_world(replacement);
+  if (found->second.cancelled) {
+    sai_error error;
+    error.code = error_code::cancelled;
+    error.operation = "browser.complete_load";
+    error.message = "load request was cancelled";
+    return failure(std::move(error));
+  }
+  if (found->second.world_epoch != control_->world_epoch ||
+      ticket.world_epoch_ != control_->world_epoch) {
+    sai_error error;
+    error.code = error_code::stale_completion;
+    error.operation = "browser.complete_load";
+    error.message = "browser world changed after the load began";
+    return failure(std::move(error));
+  }
+  // Validate the epoch and install under one lock. A rejected replacement
+  // leaves the request available for correction or explicit cancellation.
+  auto installed =
+      install_world_locked(*control_, replacement.control_, retired);
+  if (installed)
+    control_->requests.erase(found);
+  return installed;
 }
 
 } // namespace x3d::sai::experimental

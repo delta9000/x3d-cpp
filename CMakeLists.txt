@@ -260,3 +260,9 @@ target_link_libraries(x3d_sai_callback_lifecycle_tests PRIVATE
 add_test(NAME sai_callback_lifecycle COMMAND x3d_sai_callback_lifecycle_tests)
 # A capture destructor that reenters an internal lock must fail, not hang CI.
 set_tests_properties(sai_callback_lifecycle PROPERTIES TIMEOUT 15)
+
+add_executable(x3d_sai_async_world_tests tests/async_world_installation_test.cpp)
+target_link_libraries(x3d_sai_async_world_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_async_world_installation COMMAND x3d_sai_async_world_tests)
+set_tests_properties(sai_async_world_installation PROPERTIES TIMEOUT 60)

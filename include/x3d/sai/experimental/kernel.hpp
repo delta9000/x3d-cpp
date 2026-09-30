@@ -885,6 +885,9 @@ public:
   result<void> replace_world(const execution_context &replacement);
   load_ticket begin_load();
   result<void> cancel(const load_ticket &ticket);
+  // Ticket validation and installation are atomic with other world changes.
+  // Success consumes the ticket, including installation of the current scene.
+  // Rejected replacements leave it retryable/cancellable at its original epoch.
   result<void> complete_load(const load_ticket &ticket,
                              const execution_context &replacement);
 

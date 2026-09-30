@@ -136,6 +136,10 @@ inspection,
 not multi-context live publication. The event kernel is a synchronous reference
 model, not a claim that the complete live SAI capability is available.
 The load API models only cancellation and stale-completion publication rules.
+Completion validates its ticket and installs the world atomically with respect
+to replacement and other completions. Success consumes the ticket, even for the
+current scene; rejected replacements leave it retryable or cancellable while
+its original epoch remains current.
 
 Handwritten type registries remain explicit test fixtures for fast iteration.
 Production-facing experiments can instead select descriptors from the

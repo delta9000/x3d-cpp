@@ -115,7 +115,14 @@ The browser exposes capabilities, creates detached contexts, installs a context
 as the current world, and begins explicit load requests. A load ticket records
 request identity and browser epoch. Completion after cancellation or any world
 replacement returns a stale/cancelled result and cannot replace the current
-world or invoke a callback.
+world or invoke a callback. Epoch validation, installation, and successful
+ticket consumption share one browser lock. If replacement validation fails,
+the request remains retryable or cancellable at its original epoch. A success
+consumes the request even when the replacement is already the current world;
+that no-op does not advance the epoch. Cancelled requests continue to report
+`cancelled`, and outdated requests continue to report `stale_completion`. Callback
+captures retired by a successful completion are destroyed after releasing both
+browser and context locks.
 
 ## Acceptance stories
 
