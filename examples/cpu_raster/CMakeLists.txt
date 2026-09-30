@@ -56,6 +56,7 @@ message(STATUS "x3d_cpp: CPU rasterizer target x3d_cpu_raster configured "
 set(CPURASTER_TESTS
     glsl_test
     rasterizer_test
+    clip_plane_test
     material_shader_test
     fog_shader_test
     glsl_interp_test

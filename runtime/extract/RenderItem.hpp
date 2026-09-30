@@ -45,6 +45,7 @@
 #include "Topology.hpp"        // Topology enum (moved out of RenderItem.hpp, Phase 1)
 #include "x3d/core/X3Dtypes.hpp"        // SFVec2f, SFVec3f, SFColor, SFColorRGBA, SFImage, MF*
 #include "X3DFieldValue.hpp"   // X3DFieldValue discriminated union (Phase 3)
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -693,6 +694,40 @@ struct LocalFogDesc {
   FogDesc::Type fogType = FogDesc::Type::Linear;
   float visibilityRange = 0.0f; // world units; 0 disables fog.
   const X3DNode *scopeRoot = nullptr; // enclosing grouping node for scoping.
+};
+
+// ---------------------------------------------------------------------------
+// ClipPlaneDesc / ClipPlaneList — the enabled ClipPlanes in scope for a
+// placement (§11.4.1). Like LightDesc, each plane is resolved to WORLD space at
+// collection time: the authored plane is in the ClipPlane's LOCAL frame (its
+// parent grouping node's frame), so extraction maps it through that frame's
+// world matrix as a plane (n' = M^-T n). A point x is VISIBLE when
+// a*x.x + b*x.y + c*x.z + d >= 0; the opposite half-space is clipped. The
+// descriptor is WORLD-space (view-independent, so RenderItem identity/caching is
+// unaffected); a GL-style consumer expecting the eye-space
+// ShaderUniformVocabulary `clipPlane` uniform maps it with the view matrix.
+//
+// Annex F.5 requires a host to support at least six simultaneously enabled
+// clip planes, so the carried list is FIXED CAPACITY kMaxClipPlanes (= 6);
+// extraction ignores planes beyond the sixth.
+// ---------------------------------------------------------------------------
+struct ClipPlaneDesc {
+  SFVec4f planeWorld{0.0f, 1.0f, 0.0f, 0.0f}; // (a,b,c,d), world frame.
+  const X3DNode *node = nullptr;              // the source ClipPlane (identity).
+};
+
+struct ClipPlaneList {
+  static constexpr std::size_t kMaxClipPlanes = 6; // Annex F.5 minimum.
+
+  std::array<ClipPlaneDesc, kMaxClipPlanes> items{};
+  std::size_t size = 0;
+
+  void push(const ClipPlaneDesc &c) {
+    if (size < kMaxClipPlanes) items[size++] = c;
+  }
+  bool empty() const { return size == 0; }
+  const ClipPlaneDesc *begin() const { return items.data(); }
+  const ClipPlaneDesc *end() const { return items.data() + size; }
 };
 
 // ---------------------------------------------------------------------------

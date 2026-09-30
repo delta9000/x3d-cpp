@@ -405,6 +405,15 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
     const glsl::vec4 baseColor = glsl::vec4(it.material.toRGBA());
     const ex::FillPropertiesDesc &fill = it.material.fill;
 
+    // REQ-CLIP (§11.4.1): the descriptor carries WORLD-space clip planes;
+    // the rasterizer tests them in eye space, so map each through the view
+    // matrix as a plane (p_eye = view^-T p_world).
+    std::vector<glsl::vec4> clipEye;
+    for (const ex::ClipPlaneDesc &cp : it.clipPlanes) {
+      const SFVec4f q = rt::transformPlane(viewRT, cp.planeWorld);
+      clipEye.push_back(glsl::vec4{q.x, q.y, q.z, q.w});
+    }
+
     // Text glyph quads: sample the glyph atlas (alpha-tested) so letters render
     // as shapes, not solid cells. Unlit, double-sided (text reads from both
     // sides), in the material's color. Falls through to the normal path when no
@@ -421,7 +430,8 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
       };
       raster.drawTriangles(verts, mesh.indices, modelG, viewG, projG, normalMat,
                            mesh.ccw, /*solid=*/false, blend,
-                           withFillProperties(glyphFs, fill, fog), fill);
+                           withFillProperties(glyphFs, fill, fog), fill,
+                           clipEye);
       return;
     }
 
@@ -461,7 +471,7 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
                               fog);
     raster.drawTriangles(verts, mesh.indices, modelG, viewG, projG, normalMat,
                          mesh.ccw, mesh.solid, blend,
-                         withFillProperties(fs, fill, fog), fill);
+                         withFillProperties(fs, fill, fog), fill, clipEye);
   };
 
   for (ex::RenderItemId id : opaque) drawOne(id, BlendMode::Opaque);

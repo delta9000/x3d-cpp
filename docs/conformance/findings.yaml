@@ -2727,8 +2727,8 @@
   clause: "11.4.1; F.5"
   severity: major
   status: open
-  summary: ClipPlane equations and enabled state never reach extraction or either reference renderer.
-  note: "The only production runtime references beyond bindings are reserved ShaderUniformVocabulary names. RenderItem has no clip-plane state and SceneExtractor does not collect planes. Acceptance: a plane clips the specified half-space, responds to enabled/plane events and transforms, and a host supports the Annex F minimum of six planes. Camera near/far clipping is a different operation."
+  summary: ClipPlane equations and enabled state reach extraction and the CPU reference rasterizer, but the GL poc_renderer still ignores planes.
+  note: "Wired: SceneExtractor collects enabled ClipPlane nodes as scoped state (a plane affects the following siblings and their subtrees within its parent grouping node) and carries the plane on RenderItem::clipPlanes (ClipPlaneList, fixed capacity kMaxClipPlanes=6 per Annex F.5) resolved to WORLD space (n' = M^-T n through the ClipPlane's world frame; x3d::runtime::transformPlane in runtime/math/Mat4.hpp). The CPU reference rasterizer (examples/cpu_raster) discards fragments where a*x+b*y+c*z+d < 0 in eye space (SceneRender.hpp maps each world plane through the view matrix, Rasterizer.hpp tests it). Tests: scene_extractor_clip_test (scope/enabled/world-transform/re-snapshot) and cpuraster clip_plane_test (half-space discard, multi-plane, all-clip). Ignored: the GL poc_renderer (examples/poc_renderer) has no clip-plane path yet — a follow-up needing shader/uniform plumbing; ShaderUniformVocabulary retains the reserved numClipPlanes/clipPlane uniform names but nothing binds them. Camera near/far clipping is a different operation."
 - id: REQ-FILL
   nodes: [FillProperties]
   component: Shape

@@ -137,6 +137,12 @@ struct RenderItem {
   // -1 when no LocalFog applies (global Fog governs). A LocalFog is
   // bound-independent and applies only within its enclosing grouping node.
   int localFog = -1;
+  // REQ-CLIP (§11.4.1): the enabled ClipPlanes in scope for this placement,
+  // resolved to WORLD space (fixed capacity — see ClipPlaneList). A ClipPlane
+  // affects the following siblings (and their subtrees) within its parent
+  // grouping node; this carries those accumulated down the walk. Empty when no
+  // enabled plane applies.
+  ClipPlaneList clipPlanes;
 
   // M2e (§23.4.4): set when this item's origin is beyond the effective far
   // distance (Viewpoint.farDistance, else NavigationInfo.visibilityLimit). A
@@ -206,8 +212,13 @@ public:
     localFogs_ = lfs.collect(scene_, walkBudget_, ctx_.cameraWorldPosition());
 
     RenderDelta delta;
+    // REQ-CLIP: root-level ClipPlanes are walked in document order too, so a
+    // root plane affects the following root nodes. activeClips_ is reset here and
+    // scoped per grouping node inside walk().
+    activeClips_.clear();
     for (const auto &root : scene_.rootNodes) {
       if (!root) continue;
+      if (maybeClipPlane(root.get(), Mat4::identity())) continue;
       PathKey path;
       walk(root.get(), Mat4::identity(), path, delta);
     }
@@ -797,6 +808,25 @@ private:
       if (!live.count(id)) delta.removed.push_back(id);
   }
 
+  // REQ-CLIP: map an authored LOCAL plane through a world frame as a plane
+  // (x3d::runtime::transformPlane). Uses the parent grouping node's world frame
+  // (the ClipPlane's local frame).
+  // If `n` is a ClipPlane, push its (enabled) world-space plane onto activeClips_
+  // and return true so the caller skips walking it as geometry. `worldM` is the
+  // parent grouping node's world frame (the ClipPlane's local frame). A disabled
+  // plane (enabled=false) is ignored; a plane beyond the kMaxClipPlanes cap is
+  // dropped (ClipPlaneList::push).
+  bool maybeClipPlane(const X3DNode *n, const Mat4 &worldM) {
+    if (!n || n->nodeTypeName() != "ClipPlane") return false;
+    if (geombounds::getField<bool>(*n, "enabled", true)) {
+      const SFVec4f local =
+          geombounds::getField<SFVec4f>(*n, "plane", {0, 1, 0, 0});
+      activeClips_.push_back(
+          ClipPlaneDesc{transformPlane(worldM, local), n});
+    }
+    return true;
+  }
+
   // ---------------------------------------------------------------------------
   // VISIBILITY-aware recursion. worldM is the matrix accumulated ABOVE `n`;
   // `here` folds in n's own local matrix when n is a Transform. The entry matrix
@@ -955,6 +985,11 @@ private:
     // Generic pass-through grouping recursion (Group/Transform/Anchor/Billboard/
     // Collision/StaticGroup/...): every SFNode + MFNode field slot. Gated to node
     // slots only (never metadata scalars); inputOnly slots have no getter.
+    // REQ-CLIP: a ClipPlane child affects the FOLLOWING siblings (and their
+    // subtrees) within this grouping node only, so mark the clip stack here and
+    // restore it after the loop — a plane pushed for this group never leaks to a
+    // following sibling of the group.
+    const std::size_t clipMark = activeClips_.size();
     forEachChildNode(*n, [&](const FieldInfo &f, const std::shared_ptr<X3DNode> &c) {
       // Metadata references describe scene content; they are not placements.
       if (f.x3dName == "metadata" ||
@@ -968,8 +1003,10 @@ private:
         const std::string ct = c->nodeTypeName();
         if (ct != "Shape" && ct != "LOD" && ct != "Transform") return;
       }
+      if (maybeClipPlane(c.get(), here)) return; // scoped state, not geometry.
       walk(c.get(), here, path, delta);
     });
+    activeClips_.resize(clipMark);
     path.pop_back();
   }
 
@@ -1047,6 +1084,10 @@ private:
       rec.castShadow = castShadow;
     }
 
+    // REQ-CLIP: attach the enabled ClipPlanes in scope at this placement.
+    items_[id].clipPlanes = ClipPlaneList{};
+    for (const ClipPlaneDesc &cp : activeClips_) items_[id].clipPlanes.push(cp);
+
     // M25-5: tag this item with every light whose scope covers its PathKey.
     // Global lights always apply; scoped lights apply when their scopeRoot is
     // an ancestor (appears anywhere) on the item's path.
@@ -1109,6 +1150,9 @@ private:
       rec.geometry_ext.packed = std::move(packed);
       rec.castShadow = castShadow;
     }
+    // REQ-CLIP: attach the enabled ClipPlanes in scope at this placement.
+    items_[id].clipPlanes = ClipPlaneList{};
+    for (const ClipPlaneDesc &cp : activeClips_) items_[id].clipPlanes.push(cp);
     tagLights(items_[id], path);
     tagLocalFog(items_[id], path);
     buildReverseIndices(id, path, geom, appearance.get());
@@ -1397,6 +1441,12 @@ private:
   // once per fullSnapshot() (before the DFS walk) so emit() can tag each item.
   std::vector<LightDesc> lights_;
   std::vector<LocalFogDesc> localFogs_;
+
+  // REQ-CLIP: enabled ClipPlanes currently in scope during the DFS walk — an
+  // ordered stack, pushed as the walk passes a ClipPlane sibling and restored at
+  // the end of its parent grouping node. Cleared before a fullSnapshot(). This is
+  // the scoped-state twin of lights_ (but per-walk-scoped, not snapshot-global).
+  std::vector<ClipPlaneDesc> activeClips_;
 
   // The three reverse indices + the interior-node entry-matrix cache (T8 inputs).
   DepMap transformDeps_;
