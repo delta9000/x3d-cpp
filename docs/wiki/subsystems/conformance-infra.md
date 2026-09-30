@@ -89,6 +89,8 @@ def apply_errata(version: str, nodes: Dict[str, Any]) -> List[Dict[str, Any]]
 
 Errata are applied on `load_manifest`; the committed JSON files remain byte-faithful to the UOM. The only current erratum corrects `Viewpoint.orientation.accessType` (`initializeOnly` → `inputOutput`) in the X3D 3.0 manifest (an upstream UOM bug, corrected in 3.1).
 
+`ERRATA` can only rewrite an attribute of a field that exists. Fields the published standard defines but the vendored UOM omits go in `FIELD_ADDITIONS` (same file): each record cites the standard's section and URL and carries the standard's own description text. The overlay is applied in two places and nowhere else — `load_manifest` (`apply_field_additions_manifest`, so the corpus audit stops flagging the field) and `x3d-cpp-gen` after `parse_x3d_model` (`apply_field_additions_model`, so the generated bindings gain the accessors). `parse_x3d_model` itself and `conformance/manifest.py` stay pure, so the vendored XML, the committed manifests and their `uomManifestHash` remain byte-faithful. An addition is a no-op once the UOM carries the field. The only current addition is `WaveShaper.curve` (X3D 4.0, ISO/IEC 19775-1 §16.4.21); other Sound differences are tracked in `UOM-SND-1`. Never edit `src/x3d_cpp_gen/data/` to fix a UOM gap.
+
 ### Fidelity check (generator moat)
 
 ```python

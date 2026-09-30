@@ -128,6 +128,24 @@ public:
   void setChildren(MFNode &&value) { _children = std::move(value); }
 
   /**
+   * @brief Gets the value of curve. AccessType: inputOutput
+   * @details The curve field is an array of floating-point numbers describing
+   * the distortion to apply.
+   * @return const MFFloat& The current value of curve.
+   */
+  const MFFloat &getCurve() const { return _curve; }
+
+  /**
+   * @brief Sets the value of curve. AccessType: inputOutput
+   * @details The curve field is an array of floating-point numbers describing
+   * the distortion to apply.
+   * @param value The new value for curve.
+   */
+  void setCurve(const MFFloat &value) { _curve = value; }
+
+  void setCurve(MFFloat &&value) { _curve = std::move(value); }
+
+  /**
    * @brief Gets the value of oversample. AccessType: inputOutput
    * @details The oversample field is specifies what type of oversampling (if
    * any) should be used when applying the shaping curve.
@@ -183,6 +201,12 @@ private:
    */
 
   MFNode _children{};
+
+  /**
+   * @brief Member variable for curve.
+   */
+
+  MFFloat _curve{};
 
   /**
    * @brief Member variable for oversample.

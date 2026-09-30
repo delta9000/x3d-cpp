@@ -9,7 +9,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from x3d_cpp_gen.conformance.errata import apply_errata
+from x3d_cpp_gen.conformance.errata import apply_errata, apply_field_additions_manifest
 from x3d_cpp_gen.conformance.manifest import Manifest
 
 _MANIFEST_DIR = Path(__file__).parent / "manifests"
@@ -117,6 +117,7 @@ def load_manifest(version: str) -> Manifest:
     # Overlay cited UOM-errata corrections in memory (the committed JSON stays
     # byte-faithful to the UOM; only the loaded oracle is corrected).
     apply_errata(version, obj["nodes"])
+    apply_field_additions_manifest(version, obj["nodes"])
     return Manifest(
         uom_version=obj["provenance"]["uomVersion"],
         nodes=obj["nodes"],

@@ -11,20 +11,20 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 | BufferAudioSource | 2 | ✓ | — | ? | REQ-FTP, ROUTE-IO-ALIAS, SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
 | ChannelMerger | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
 | ChannelSelector | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
-| ChannelSplitter | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
+| ChannelSplitter | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-6, UOM-SND-1 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
 | Convolver | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| Delay | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| Delay | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | DynamicsCompressor | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | Gain | 2 | ✓ | — | ◑ | AUD-TIME-3, ROUTE-IO-ALIAS, SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| ListenerPointSource | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-3, SND-GAIN-TYPE | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
+| ListenerPointSource | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-3, SND-GAIN-TYPE, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | MicrophoneSource | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | OscillatorSource | 2 | ✓ | — | ◑ | AUD-TIME-3, ROUTE-IO-ALIAS, SND-1, SND-2, SND-9 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
 | PeriodicWave | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-9 | X3DChildNode, X3DSoundNode |
-| Sound | 1 | ✓ | — | — | AUD-MEDIA-4, ROUTE-IO-ALIAS | X3DChildNode, X3DSoundNode |
+| Sound | 1 | ✓ | — | — | AUD-MEDIA-4, ROUTE-IO-ALIAS, UOM-SND-1 | X3DChildNode, X3DSoundNode |
 | SpatialSound | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-3 | X3DChildNode, X3DSoundNode |
-| StreamAudioDestination | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-7 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
-| StreamAudioSource | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
-| WaveShaper | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| StreamAudioDestination | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-7, UOM-SND-1 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
+| StreamAudioSource | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-4, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
+| WaveShaper | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 
 ## Findings
 
@@ -42,6 +42,8 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
   - Tied to the missing activation lifecycle (SND-2); the backend renders steady-state with no stop edge to tail from. Resolve alongside SND-2.
 - **SND-9** [minor/DEFERRED] — §16.4.15, 16.4.18: periodicWave ignored — OscillatorSource is always Sine; a referenced PeriodicWave (custom waveform via real/imag DFT terms) is not realized.
   - Spec-correct default (periodicWave NULL = sine), so not a bug — but custom waveforms are unsupported. The seam already carries a Waveform enum (Sine/Square/Sawtooth/Triangle); arbitrary PeriodicWave needs a DFT-coefficient param. Deferred.
+- **UOM-SND-1** [minor/OPEN] — §16.4: The vendored X3D 4.0 UOM disagrees with the published ISO/IEC 19775-1 Sound field tables on several nodes; only WaveShaper.curve is corrected so far.
+  - Compared field-by-field against the ISO/IEC 19775-1 v4.0 sound.html field tables (2026-09-29; a quick parser that could not read Analyser, AudioClip, BufferAudioSource, OscillatorSource or SpatialSound, so those five are UNCHECKED). WaveShaper.curve (MFFloat inputOutput) is defined by the standard (16.4.21) but absent from the UOM; it is added by the cited FIELD_ADDITIONS overlay in src/x3d_cpp_gen/conformance/errata.py (in-memory, guarded, self-disabling; the vendored XML and committed manifests are untouched) and is what gives the generated WaveShaper getCurve/setCurve. Still open and not yet judged (direction unknown: the ISO text or the UOM may be the erroneous side): Sound has `children` in the standard and `spatialize` in the UOM only; StreamAudioSource lacks `channelCount`; Delay and StreamAudioDestination carry UOM-only `tailTime` / `isActive`; streamIdentifier is MFString in the standard but SFString in the UOM (StreamAudioSource, StreamAudioDestination); ChannelSplitter.children is SFNode in the standard but MFNode in the UOM; ListenerPointSource.gain is SFInt32 in the standard (almost certainly an editorial typo) but SFFloat in the UOM. Next: finish the comparison for the five unchecked nodes and the other components, then add each proven omission to FIELD_ADDITIONS with a citation and report it to Web3D.
 - **TDN-5** [major/CLOSED] — §8.2.4.1, 16.4.2, 18.4.2: AudioClip/MovieTexture have no time-lifecycle System — startTime/loop/isActive inert.
   - MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip and MovieTexture: enabled, loop, and a cycle of duration_changed / pitch (AudioClip) or / speed (MovieTexture); an unknown duration plays until stopTime (media_time_test). Decoding and playback remain separate (SND-4).
 - **SND-2** [major/CLOSED] — §8.2.4.1, 16.4.15: Sound sources and processing nodes now run the shared start/stop/pause/resume lifecycle and emit isActive/isPaused/elapsedTime.

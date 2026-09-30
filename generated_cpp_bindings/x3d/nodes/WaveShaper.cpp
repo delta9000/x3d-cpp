@@ -335,6 +335,28 @@ const FieldTable &WaveShaper::fields() const {
     });
 
     t.push_back(FieldInfo{
+        "curve", X3DFieldType::MFFloat, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const WaveShaper &>(n).getCurve());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<WaveShaper &>(n).setCurve(std::any_cast<MFFloat>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const WaveShaper &>(n).getCurve(),
+                  &typeid(MFFloat)};
+        }
+
+    });
+
+    t.push_back(FieldInfo{
         "oversample", X3DFieldType::SFEnum, AccessType::InputOutput, "",
 
         [](const X3DNode &n) -> std::any {

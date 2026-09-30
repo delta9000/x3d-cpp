@@ -5785,7 +5785,8 @@
         "SND-8",
         "SND-9",
         "SND-GAIN-TYPE",
-        "TDN-5"
+        "TDN-5",
+        "UOM-SND-1"
       ],
       "levels": [
         1,
@@ -5972,12 +5973,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.10, 16.4.11, 16.4.8; 4.4.2.2, 4.4.8.2",
+          "clause": "16.4.10, 16.4.11, 16.4.8; 16.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
-            "SND-6"
+            "SND-6",
+            "UOM-SND-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6019,12 +6021,13 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
+          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 16.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
-            "SND-5"
+            "SND-5",
+            "UOM-SND-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6094,13 +6097,14 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "16.4.16, 16.4.13; 16.4.13; 4.4.2.2, 4.4.8.2",
+          "clause": "16.4.16, 16.4.13; 16.4; 16.4.13; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
             "SND-3",
-            "SND-GAIN-TYPE"
+            "SND-GAIN-TYPE",
+            "UOM-SND-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6192,12 +6196,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; 16.4.17",
+          "clause": "16.4; 4.4.2.2, 4.4.8.2; 16.4.17",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "AUD-MEDIA-4",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "UOM-SND-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6237,12 +6242,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "16.4.3, 16.4.19; 4.4.2.2, 4.4.8.2",
+          "clause": "16.4.3, 16.4.19; 16.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
-            "SND-7"
+            "SND-7",
+            "UOM-SND-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6260,12 +6266,13 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2",
+          "clause": "16.4.5, 16.4.20, 16.4.14; 16.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
-            "SND-4"
+            "SND-4",
+            "UOM-SND-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6284,12 +6291,13 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
+          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 16.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
-            "SND-5"
+            "SND-5",
+            "UOM-SND-1"
           ],
           "geometry": false,
           "interfaces": [
@@ -7903,6 +7911,24 @@
       "severity": "minor",
       "status": "deferred",
       "summary": "periodicWave ignored \u2014 OscillatorSource is always Sine; a referenced PeriodicWave (custom waveform via real/imag DFT terms) is not realized."
+    },
+    {
+      "clause": "16.4",
+      "component": "Sound",
+      "id": "UOM-SND-1",
+      "nodes": [
+        "WaveShaper",
+        "Sound",
+        "StreamAudioSource",
+        "Delay",
+        "StreamAudioDestination",
+        "ChannelSplitter",
+        "ListenerPointSource"
+      ],
+      "note": "Compared field-by-field against the ISO/IEC 19775-1 v4.0 sound.html field tables (2026-09-29; a quick parser that could not read Analyser, AudioClip, BufferAudioSource, OscillatorSource or SpatialSound, so those five are UNCHECKED). WaveShaper.curve (MFFloat inputOutput) is defined by the standard (16.4.21) but absent from the UOM; it is added by the cited FIELD_ADDITIONS overlay in src/x3d_cpp_gen/conformance/errata.py (in-memory, guarded, self-disabling; the vendored XML and committed manifests are untouched) and is what gives the generated WaveShaper getCurve/setCurve. Still open and not yet judged (direction unknown: the ISO text or the UOM may be the erroneous side): Sound has `children` in the standard and `spatialize` in the UOM only; StreamAudioSource lacks `channelCount`; Delay and StreamAudioDestination carry UOM-only `tailTime` / `isActive`; streamIdentifier is MFString in the standard but SFString in the UOM (StreamAudioSource, StreamAudioDestination); ChannelSplitter.children is SFNode in the standard but MFNode in the UOM; ListenerPointSource.gain is SFInt32 in the standard (almost certainly an editorial typo) but SFFloat in the UOM. Next: finish the comparison for the five unchecked nodes and the other components, then add each proven omission to FIELD_ADDITIONS with a citation and report it to Web3D.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "The vendored X3D 4.0 UOM disagrees with the published ISO/IEC 19775-1 Sound field tables on several nodes; only WaveShaper.curve is corrected so far."
     },
     {
       "clause": "38",
@@ -11446,12 +11472,12 @@
     "closed_count": 260,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 297,
+    "finding_count": 298,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
       "major": 24,
-      "minor": 11
+      "minor": 12
     }
   },
   "unresolved_findings": []
