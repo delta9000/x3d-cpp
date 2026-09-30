@@ -176,6 +176,12 @@ TEST_CASE("Segment-shared geometry keeps per-Segment displacement in snapshot an
   auto coord = createX3DNode("Coordinate");
   set(coord, "point", std::vector<SFVec3f>{{0,0,0}, {1,0,0}, {0,1,0}, {1,1,0}});
   auto sharedShape = shapeWith(coord);
+  SUBCASE("raw Segment meshes") {}
+  SUBCASE("identical texture bake preserves each Segment deformation") {
+    auto appearance = createX3DNode("Appearance");
+    set(appearance, "textureTransform", createX3DNode("TextureTransform"));
+    set(sharedShape, "appearance", appearance);
+  }
   auto makeSegment = [&](float displacement, const char *name) {
     auto segment = createX3DNode("HAnimSegment");
     auto displacer = createX3DNode("HAnimDisplacer");
@@ -204,12 +210,17 @@ TEST_CASE("Segment-shared geometry keeps per-Segment displacement in snapshot an
   REQUIRE(initial.added.size()==2);
   CHECK(extractor.item(initial.added[0]).mesh->positions[0].z==doctest::Approx(1));
   CHECK(extractor.item(initial.added[1]).mesh->positions[0].z==doctest::Approx(2));
+  CHECK(extractor.item(initial.added[0]).geometry != extractor.item(initial.added[1]).geometry);
+  const auto firstIdentity = extractor.item(initial.added[0]).geometry;
+  const auto secondIdentity = extractor.item(initial.added[1]).geometry;
   auto unchangedMesh = extractor.item(initial.added[0]).mesh;
   ctx.tick(1);
   REQUIRE(ctx.writeField(secondDisplacer.get(), "weight", std::any(3.0f))==FieldWriteResult::Ok);
   auto changed=extractor.delta();
   REQUIRE(changed.updatedGeometry.size()==1);
   CHECK(extractor.item(initial.added[0]).mesh == unchangedMesh);
+  CHECK(extractor.item(initial.added[0]).geometry == firstIdentity);
+  CHECK(extractor.item(initial.added[1]).geometry != secondIdentity);
   auto deltaFirst=extractor.item(initial.added[0]).mesh->positions[0].z;
   auto deltaSecond=extractor.item(initial.added[1]).mesh->positions[0].z;
   extractor.fullSnapshot();

@@ -84,8 +84,10 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -188,6 +190,7 @@ public:
     materialDeps_.clear();
     geomOwners_.clear();
     geomVersions_.clear();
+    meshContentVersions_.clear();
     unplacedGeometry_.clear();
     unplacedPaths_.clear();
     entryMatrix_.clear();
@@ -752,7 +755,7 @@ private:
   void refreshGeometry(const X3DNode *geom, const GeometryChange &change,
                        RenderDelta &delta, LocalXfCache &localXf) {
     evictMeshCache(geom);
-    const auto version = ++geomVersions_[geom];
+    const auto version = advanceGeometryVersion(geom);
     // Keep the source's placement scope. A Coordinate affects every use, but
     // an HAnimSegment displacer only affects uses inside that Segment.
     for (RenderItemId id : change.items) {
@@ -766,6 +769,7 @@ private:
         continue;
       }
       rec.mesh = bakedMesh(geom, mesh, ttParamsOfItem(id));
+      rec.geometry.contentVersion = meshContentVersion(geom, rec.mesh);
       if (rec.skin) {
         const auto *humanoid = rec.skin->binding->humanoid;
         rec.skin->binding = skinBinding(humanoid);
@@ -1148,7 +1152,7 @@ private:
       RenderItem rec;
       rec.path = path;
       rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, geomVersions_[geom]};
+      rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
       rec.material = std::move(material);
       rec.mesh = std::move(mesh);
       rec.beyondVisibilityLimit = beyond;
@@ -1160,7 +1164,7 @@ private:
       id = it->second;
       RenderItem &rec = items_[id];
       rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, geomVersions_[geom]};
+      rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
       rec.material = std::move(material);
       rec.mesh = std::move(mesh);
       rec.beyondVisibilityLimit = beyond;
@@ -1417,10 +1421,11 @@ private:
     }
     return nullptr;
   }
-  // TextureTransform-baked variants, keyed by (geometry node, params bytes). Only
-  // populated when a TextureTransform is actually authored — the common
-  // untransformed case shares the raw entry directly and allocates nothing here.
-  std::map<std::pair<const X3DNode *, std::string>, MeshRef> bakedMeshCache_;
+  // TextureTransform baking depends on the raw payload as well as parameters:
+  // one geometry can have different HAnimSegment displacement variants. Keep
+  // each raw variant's bake namespace distinct and evict them together by owner.
+  using BakedVariants = std::unordered_map<const MeshData *, std::map<std::string, MeshRef>>;
+  std::unordered_map<const X3DNode *, BakedVariants> bakedMeshCache_;
 
   // Serialize a params list into a cache key. Field-by-field (NOT a memcpy of the
   // struct) — TextureTransform2DParams has padding after `hasMatrix`, and hashing
@@ -1483,21 +1488,20 @@ private:
   }
 
   // Bake `params` into `raw`, sharing the result across every caller that agrees
-  // on (geom, params). An empty params list means no TextureTransform is authored
+  // on (geom, raw payload, params). An empty params list means no TextureTransform is authored
   // and applyTextureTransformsToMesh() is a documented no-op — return the raw
   // mesh untouched so the common case costs nothing.
   MeshRef bakedMesh(const X3DNode *geom, MeshRef raw,
                     const std::vector<TextureTransform2DParams> &params) {
     if (params.empty()) return raw;
-    auto key = std::make_pair(geom, ttParamsKey(params));
-    auto it = bakedMeshCache_.find(key);
-    if (it == bakedMeshCache_.end()) {
+    auto &variants = bakedMeshCache_[geom][raw.get()];
+    auto key = ttParamsKey(params);
+    auto it = variants.find(key);
+    if (it == variants.end()) {
       MeshData baked = *raw; // the one deliberate copy: one per distinct bake.
       applyTextureTransformsToMesh(baked, params);
-      it = bakedMeshCache_
-               .emplace(std::move(key),
-                        std::make_shared<const MeshData>(std::move(baked)))
-               .first;
+      it = variants.emplace(std::move(key),
+                            std::make_shared<const MeshData>(std::move(baked))).first;
     }
     return it->second;
   }
@@ -1512,12 +1516,29 @@ private:
       while (hi != segmentMeshCache_.end() && hi->first.first == geom) ++hi;
       segmentMeshCache_.erase(lo, hi);
     }
-    // Baked keys are (geom, paramsBytes); the map is ordered by that pair, so all
-    // of one geometry's variants form a contiguous range starting at (geom, "").
-    auto lo = bakedMeshCache_.lower_bound({geom, std::string{}});
-    auto hi = lo;
-    while (hi != bakedMeshCache_.end() && hi->first.first == geom) ++hi;
-    bakedMeshCache_.erase(lo, hi);
+    bakedMeshCache_.erase(geom);
+    meshContentVersions_.erase(geom);
+  }
+
+  // contentVersion is an opaque content identity, not a count of field writes.
+  // Same-node baked/deformed variants must not alias in a GeomId-keyed host
+  // cache. Caches retain the payloads for these pointer keys; owner eviction
+  // drops the pointer index but never reuses a version within this baseline.
+  std::uint32_t advanceGeometryVersion(const X3DNode *geom) {
+    auto &version = geomVersions_[geom];
+    if (version == std::numeric_limits<std::uint32_t>::max())
+      throw std::overflow_error("geometry content identity exhausted; take a full snapshot");
+    return ++version;
+  }
+
+  std::uint32_t meshContentVersion(const X3DNode *geom, const MeshRef &mesh) {
+    auto &versions = meshContentVersions_[geom];
+    auto found = versions.find(mesh.get());
+    if (found != versions.end()) return found->second;
+    const auto version = versions.empty() ? geomVersions_[geom]
+                                          : advanceGeometryVersion(geom);
+    versions.emplace(mesh.get(), version);
+    return version;
   }
 
   // The TextureTransform params governing an already-emitted item, read back from
@@ -1569,6 +1590,8 @@ private:
   // Content source -> ALL geometry owners (not a last-writer-wins owner).
   std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> geomOwners_;
   std::unordered_map<const X3DNode *, std::uint32_t> geomVersions_;
+  std::unordered_map<const X3DNode *,
+                     std::unordered_map<const MeshData *, std::uint32_t>> meshContentVersions_;
   struct UnplacedGeometry {
     PathKey path;
     std::vector<ClipPlaneDesc> clips;

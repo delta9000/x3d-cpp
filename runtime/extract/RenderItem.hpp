@@ -106,7 +106,9 @@ inline constexpr RenderItemId kInvalidRenderItemId = 0xFFFFFFFFu;
 // ---------------------------------------------------------------------------
 // GeomId — content identity of a mesh. Two placements with an equal GeomId
 // reference identical geometry content (upload-once / instance-N). contentVersion
-// is bumped by the extractor when a geometry node's CONTENT field changes.
+// is opaque: it distinguishes TextureTransform-baked / HAnimSegment-deformed
+// variants of one node as well as later content revisions. Do not interpret it
+// as a field-write count or require +1 arithmetic. A full baseline resets it.
 // ---------------------------------------------------------------------------
 struct GeomId {
   const X3DNode *node = nullptr;
