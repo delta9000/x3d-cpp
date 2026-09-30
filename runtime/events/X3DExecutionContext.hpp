@@ -626,6 +626,15 @@ private:
     bool isTransformNode = TransformSystem::isTransform(a.node);
     for (const char *f : kChildren)
       if (a.field == f) flags = DirtyChildren;
+    // Every node-valued field participates in the scene indexes, not just
+    // grouping children. Shape.geometry and geometry.coord replacements can
+    // release their old node immediately and must refresh both indexes.
+    for (const auto &f : a.node->fields())
+      if (f.x3dName == a.field &&
+          (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode)) {
+        flags |= DirtyChildren;
+        break;
+      }
     // Switch.whichChoice selects the active child: changing it is an active-CHILD
     // change for extraction, so it must trigger a subtree re-walk (DirtyChildren)
     // — not a plain DirtyField, which delta() ignores for a grouping node (it is

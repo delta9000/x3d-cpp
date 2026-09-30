@@ -64,3 +64,149 @@ TEST_CASE("bounds_system_test") {
   CHECK((dirty.flags(T.get()) & DirtyBounds));     // ancestor re-marked
   return;
 }
+
+TEST_CASE("bounds_geometry_replacement_and_removal") {
+  auto root = createX3DNode("Transform");
+  auto shape = createX3DNode("Shape");
+  auto box = createX3DNode("Box");
+  std::weak_ptr<X3DNode> old = box;
+  setF(shape, "geometry", box);
+  addChild(root, shape);
+  Scene scene; scene.addRootNode(root);
+  TransformSystem ts; ts.buildIndex(scene);
+  BoundsSystem bs; bs.buildBounds(scene, ts);
+  box.reset(); // the scene is the only owner; indexes must not prolong lifetime
+
+  auto replacement = createX3DNode("Box");
+  setF(replacement, "size", SFVec3f{6, 4, 2});
+  setF(shape, "geometry", replacement);
+  CHECK(old.expired());
+  old.reset();
+  DirtyTracker dirty;
+  dirty.markDirty(shape.get(), DirtyChildren | DirtyBounds);
+  ts.propagate(dirty);
+  bs.propagate(dirty, ts);
+  CHECK(feq(bs.localBounds(root.get()).size().x, 6));
+
+  // Newly attached leaves must participate in later incremental updates.
+  dirty.clear();
+  setF(replacement, "size", SFVec3f{8, 4, 2});
+  dirty.markDirty(replacement.get(), DirtyBounds);
+  bs.propagate(dirty, ts);
+  CHECK(feq(bs.localBounds(root.get()).size().x, 8));
+
+  std::weak_ptr<X3DNode> removed = replacement;
+  replacement.reset();
+  setF(shape, "geometry", std::shared_ptr<X3DNode>{});
+  CHECK(removed.expired());
+  removed.reset();
+  dirty.clear();
+  dirty.markDirty(shape.get(), DirtyChildren | DirtyBounds);
+  ts.propagate(dirty);
+  bs.propagate(dirty, ts);
+  CHECK(bs.localBounds(shape.get()).empty);
+  CHECK(bs.localBounds(root.get()).empty);
+  const auto revision = bs.revision();
+  dirty.clear();
+  bs.propagate(dirty, ts);
+  CHECK(bs.revision() == revision);
+}
+
+TEST_CASE("bounds_shared_geometry_updates_every_parent") {
+  auto root = createX3DNode("Group");
+  auto left = createX3DNode("Transform");
+  auto right = createX3DNode("Transform");
+  setF(left, "translation", SFVec3f{-10, 0, 0});
+  setF(right, "translation", SFVec3f{10, 0, 0});
+  auto a = createX3DNode("Shape");
+  auto b = createX3DNode("Shape");
+  auto box = createX3DNode("Box");
+  setF(a, "geometry", box); setF(b, "geometry", box);
+  addChild(left, a); addChild(right, b);
+  addChild(root, left); addChild(root, right);
+  Scene scene; scene.addRootNode(root);
+  TransformSystem ts; ts.buildIndex(scene);
+  BoundsSystem bs; bs.buildBounds(scene, ts);
+  DirtyTracker dirty;
+
+  setF(box, "size", SFVec3f{4, 4, 4});
+  dirty.markDirty(box.get(), DirtyBounds);
+  bs.propagate(dirty, ts);
+  CHECK(feq(bs.localBounds(a.get()).size().x, 4));
+  CHECK(feq(bs.localBounds(b.get()).size().x, 4));
+  CHECK(feq(bs.localBounds(root.get()).min.x, -12));
+  CHECK(feq(bs.localBounds(root.get()).max.x, 12));
+  CHECK((dirty.flags(left.get()) & DirtyBounds));
+  CHECK((dirty.flags(right.get()) & DirtyBounds));
+
+  // A Transform's local bound does not move with its own TRS, but its parent's
+  // union does. This must update even when the geometry itself is unchanged.
+  dirty.clear();
+  setF(left, "translation", SFVec3f{-20, 0, 0});
+  dirty.markDirty(left.get(), DirtyLocalTransform);
+  ts.propagate(dirty); bs.propagate(dirty, ts);
+  CHECK(feq(bs.localBounds(left.get()).min.x, -2));
+  CHECK(feq(bs.localBounds(root.get()).min.x, -22));
+
+  // Removing one shared edge must remove its union, not the surviving instance.
+  dirty.clear();
+  setF(a, "geometry", std::shared_ptr<X3DNode>{});
+  dirty.markDirty(a.get(), DirtyChildren);
+  ts.propagate(dirty); bs.propagate(dirty, ts);
+  CHECK(bs.localBounds(left.get()).empty);
+  CHECK(feq(bs.localBounds(root.get()).min.x, 8));
+  dirty.clear();
+  setF(box, "size", SFVec3f{6, 6, 6});
+  dirty.markDirty(box.get(), DirtyBounds);
+  bs.propagate(dirty, ts);
+  CHECK(feq(bs.localBounds(root.get()).min.x, 7));
+  CHECK(feq(bs.localBounds(b.get()).size().x, 6));
+}
+
+TEST_CASE("bounds_dense_dag_incremental_and_noop") {
+  auto shape = createX3DNode("Shape");
+  auto box = createX3DNode("Box");
+  setF(shape, "geometry", box);
+  auto root = shape;
+  // Repeated diamonds yield millions of paths but only 50 distinct nodes.
+  for (int i = 0; i != 16; ++i) {
+    auto a = createX3DNode("Group"), b = createX3DNode("Group");
+    auto next = createX3DNode("Group");
+    addChild(a, root); addChild(b, root);
+    addChild(next, a); addChild(next, b);
+    root = next;
+  }
+  Scene scene; scene.addRootNode(root);
+  TransformSystem ts; ts.buildIndex(scene);
+  BoundsSystem bs; bs.buildBounds(scene, ts);
+  setF(box, "size", SFVec3f{4, 4, 4});
+  DirtyTracker dirty; dirty.markDirty(box.get(), DirtyBounds);
+  bs.propagate(dirty, ts);
+  CHECK(feq(bs.localBounds(root.get()).size().x, 4));
+  const auto revision = bs.revision();
+  dirty.clear(); dirty.markDirty(box.get(), DirtyBounds);
+  bs.propagate(dirty, ts);
+  CHECK(bs.revision() == revision);
+}
+
+TEST_CASE("bounds_removed_dirty_subtree_is_not_dereferenced") {
+  auto root = createX3DNode("Transform");
+  auto child = createX3DNode("Transform");
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("Box"));
+  addChild(child, shape); addChild(root, child);
+  Scene scene; scene.addRootNode(root);
+  TransformSystem ts; ts.buildIndex(scene);
+  BoundsSystem bs; bs.buildBounds(scene, ts);
+  DirtyTracker dirty;
+  // Dirty descendants may die before their parent change is processed.
+  dirty.markDirty(child.get(), DirtyLocalTransform | DirtyChildren);
+  dirty.markDirty(shape.get(), DirtyBounds);
+  dirty.markDirty(root.get(), DirtyLocalTransform | DirtyChildren);
+  std::weak_ptr<X3DNode> dead = child;
+  child.reset(); shape.reset();
+  setF(root, "children", std::vector<std::shared_ptr<X3DNode>>{});
+  CHECK(dead.expired());
+  ts.propagate(dirty); bs.propagate(dirty, ts);
+  CHECK(bs.localBounds(root.get()).empty);
+}

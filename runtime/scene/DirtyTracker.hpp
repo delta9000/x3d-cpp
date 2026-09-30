@@ -19,7 +19,7 @@ enum DirtyFlags : unsigned {
   DirtyNone           = 0,
   DirtyLocalTransform = 1u << 0, // a Transform's TRS field changed
   DirtyWorldTransform = 1u << 1, // world matrix recomputed this tick
-  DirtyChildren       = 1u << 2, // children/addChildren/removeChildren changed
+  DirtyChildren       = 1u << 2, // node-reference field or active child selection changed
   DirtyField          = 1u << 3, // any other field changed
   DirtyBounds         = 1u << 4, // a node's local/world AABB needs recompute (M2b)
 };
