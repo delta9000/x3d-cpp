@@ -2,7 +2,7 @@
 title: "Sound (§16 audio graph)"
 summary: "X3D §16 Sound component via a proven-generic [STABLE] AudioBackend seam; BuiltinDspBackend (always-built) and MiniaudioBackend (-DX3D_CPP_BUILD_MINIAUDIO=ON) as two independent backends proven by the headless x3d_sound_swaptest CI gate (synthesis + spatial structural invariants)."
 tags: [subsystem, sound, seam, audio, genericity, swap-test]
-updated: 2026-09-26
+updated: 2026-09-29
 related:
   - ../architecture.md
   - ../decisions/0020-sound-seam.md
@@ -32,9 +32,9 @@ The classic `Sound` node and its `AudioClip` source ride two seam additions ([AD
 | File / directory | Role |
 |---|---|
 | `runtime/sound/AudioBackend.hpp` | **CORE** abstract seam. Pure-virtual; opaque `NodeHandle` (`uint64_t`); `NodeKind` enum (`Oscillator`/`Biquad`/`Gain`/`Destination`/`Panner`/`Buffer`/`Delay`/`Compressor`); `NodeParams` (small tagged struct of `SF*` scalars + `Waveform`/`FilterType` enums + Panner position/orientation/distance fields + `delayTime`/`maxDelayTime` + compressor `threshold`/`knee`/`ratio`/`attack`/`release`); `Param` enum (`Frequency`/`Detune`/`Q`/`Gain`/`PositionX`/`PositionY`/`PositionZ`/`DelayTime`/`MaxDelayTime`/`Threshold`/`Knee`/`Ratio`/`Attack`/`Release`); `DistanceModel` enum (`Linear`/`Inverse`/`Exponential`); `createNode`/`connect`/`setParam`/`render`/`renderStereo`. Contains **zero DSP-engine types** — every value is the runtime's own SF* scalar or a bounded enum. Seam carries POSITIONS only for Panner nodes — precomputed gains must not cross it. |
-| `runtime/sound/SoundSystem.hpp` | **CORE** `System`. Reads the §16 `children` graph bottom-up into backend nodes and connections. Constructed with a `shared_ptr<AudioBackend>` — inert if none (exactly like `PhysicsSystem` without a backend). `attach()` accepts `AudioDestination` and `SpatialSound`; `setListener()` registers the `ListenerPointSource`; `buildPannerParams()` resolves SFRotation→forward/up (SDK plumbing — no spatial DSP). `renderStereo()` delegates to the backend's stereo path. |
+| `runtime/sound/SoundSystem.hpp` | **CORE** `System`. Reads the §16 `children` graph bottom-up into backend nodes and connections. Constructed with a `shared_ptr<AudioBackend>` — inert if none (exactly like `PhysicsSystem` without a backend). `attach()` accepts `AudioDestination` and `SpatialSound`; `setListener()` registers the `ListenerPointSource`; `setPeriodicWave()` registers a §16.4.18 `PeriodicWave` for one `OscillatorSource` (the 4.0 bindings cannot read the authored field — SND-9); `buildPannerParams()` resolves SFRotation→forward/up (SDK plumbing — no spatial DSP). `renderStereo()` delegates to the backend's stereo path. |
 | `runtime/sound/dsp/BuiltinDspBackend.hpp` | **CORE** (no flag needed). Backend A — default `AudioBackend` implementation — header is DSP-free (pImpl); all DSP math lives in `BuiltinDspBackend.cpp`. |
-| `runtime/sound/dsp/BuiltinDspBackend.cpp` | All audio math: phase-accumulator oscillators (all four waveforms), RBJ "Audio EQ Cookbook" biquad coefficients (Lowpass/Highpass/Bandpass/Notch/Allpass full, Lowshelf/Highshelf/Peaking pass-through pending a dB-gain param), per-sample Direct Form I difference equation, gain multiply, the §16.4.9 feed-forward compressor (dB-domain soft-knee gain computer, one-pole attack/release smoothing), destination summing, ring-buffer delay (Delay nodes: `delayTime` clamped to `[0, maxDelayTime]`, `enabled=false` passes through). Topological pull render. **Spatial path:** Panner nodes compute distance `d = |src−listener|`, distance gain via the three `DistanceModel` closed forms, azimuth from `dot(normalize(src−listener), normalize(cross(forward,up)))`, equal-power pan `θ=(az_norm·0.5+0.5)·(π/2)`, `gL=cos θ`, `gR=sin θ`. `renderStereo` does a stereo-aware sum at the destination (Panner blocks are interleaved L/R; other inputs are mono-duplicated). |
+| `runtime/sound/dsp/BuiltinDspBackend.cpp` | All audio math: phase-accumulator oscillators (all four built-in waveforms + §16.4.18 `PeriodicWave` harmonic sums — real/imag terms, DC ignored, peak-normalized to 1), RBJ "Audio EQ Cookbook" biquad coefficients (Lowpass/Highpass/Bandpass/Notch/Allpass full, Lowshelf/Highshelf/Peaking pass-through pending a dB-gain param), per-sample Direct Form I difference equation, gain multiply, the §16.4.9 feed-forward compressor (dB-domain soft-knee gain computer, one-pole attack/release smoothing), destination summing, ring-buffer delay (Delay nodes: `delayTime` clamped to `[0, maxDelayTime]`, `enabled=false` passes through). Topological pull render. **Spatial path:** Panner nodes compute distance `d = |src−listener|`, distance gain via the three `DistanceModel` closed forms, azimuth from `dot(normalize(src−listener), normalize(cross(forward,up)))`, equal-power pan `θ=(az_norm·0.5+0.5)·(π/2)`, `gL=cos θ`, `gR=sin θ`. `renderStereo` does a stereo-aware sum at the destination (Panner blocks are interleaved L/R; other inputs are mono-duplicated). |
 | `runtime/sound/miniaudio/MiniaudioBackend.hpp` | Backend B — `AudioBackend` backed by miniaudio v0.11.x (`-DX3D_CPP_BUILD_MINIAUDIO=ON`). Header is seam-pure; all miniaudio types are PRIVATE to the TU. |
 | `runtime/sound/miniaudio/MiniaudioBackend.cpp` | miniaudio synthesis (`ma_waveform_node`) + biquad (`ma_biquad_node`) + spatial (`ma_spatializer`) path. Uses `ma_node_graph_read_pcm_frames` for headless render — no audio device required. `MINIAUDIO_IMPLEMENTATION` defined only in this TU. |
 | miniaudio v0.11.25 (fetched via CMake FetchContent from [github.com/mackron/miniaudio](https://github.com/mackron/miniaudio)) | Single-file amalgamation. Unlicense OR MIT-0. Included only in `MiniaudioBackend.cpp`; fetched only when `-DX3D_CPP_BUILD_MINIAUDIO=ON`. |
@@ -59,8 +59,8 @@ using NodeHandle = std::uint64_t;
 inline constexpr NodeHandle kInvalidNodeHandle = 0;
 
 enum class NodeKind  { Oscillator, Biquad, Gain, Destination, Panner, Buffer,
-                       Compressor };
-enum class Waveform  { Sine, Square, Sawtooth, Triangle };
+                       Delay, Compressor };
+enum class Waveform  { Sine, Square, Sawtooth, Triangle, Custom };
 enum class FilterType { Lowpass, Highpass, Bandpass, Lowshelf, Highshelf,
                         Peaking, Notch, Allpass };
 enum class DistanceModel { Linear, Inverse, Exponential, Ellipsoid };
@@ -77,6 +77,11 @@ struct NodeParams {
   float q         = 1.0f;     // Biquad quality factor
   float gain      = 1.0f;     // linear multiplier
   Waveform   waveform    = Waveform::Sine;
+  // Custom waveform (Waveform::Custom, the §16.4.18 PeriodicWave) — terms
+  // cross once, like Buffer PCM; k=0 is DC (ignored), harmonic k sums
+  // real[k]cos(k·phase) + imag[k]sin(k·phase), peak-normalized to 1:
+  std::vector<float> optionsReal;  // real (cosine) terms
+  std::vector<float> optionsImag;  // imaginary (sine) terms
   FilterType filterType  = FilterType::Lowpass;
   int  maxChannelCount   = 2; // Destination
 
@@ -123,7 +128,7 @@ public:
 
 **Sound + MovieTexture.** `SoundSystem::setMovieAudioDecoder` accepts an `AudioDecoder` callback for the movie's encoded bytes. It resolves `MovieTexture.url` with `AssetKind::Movie`, creates one Buffer from the decoded mono PCM, and retries Pending assets. `load=FALSE` defers reading. The Buffer follows MovieTexture `isActive`/`isPaused` and the speed captured at activation; the consumer separately calls `reportMovieDuration` for the movie's duration. `io::plmpeg::makePlMpegMovieAudioDecoder()` handles MP2 tracks in MPEG program streams. Raw `.m1v` video has no audio track. See ADR-0052.
 
-The §16 `OscillatorSource` binding has **no authored waveform field** — `SoundSystem` unconditionally passes `Waveform::Sine`. The seam carries all four waveforms so a future authored field or production backend can use them without a seam change.
+The §16 `OscillatorSource` binding has **no authored waveform field** — `periodicWave` was added to the node in X3D 4.1 and the generated bindings model 4.0, so a parsed scene's authored link cannot be read back (a `<PeriodicWave containerField="periodicWave"/>` child parks in the parser's `IS` fallback slot; `findField(osc, "periodicWave")` is null — pinned by `x3d_sound_periodicwave`). What ships instead: `SoundSystem::setPeriodicWave(osc, wave)` registers a `PeriodicWave` node for one oscillator before `attach()` — the four standard types map onto the seam's `Waveform` enum, and `CUSTOM` carries the `optionsReal`/`optionsImag` harmonic terms in the node's params (a `CUSTOM` wave with no terms falls back to sine). `BuiltinDspBackend` synthesizes the wave: harmonic k sums `real[k]·cos(kφ) + imag[k]·sin(kφ)` (index 0 is DC, ignored), normalized so the peak absolute value is 1 (Web Audio's default; X3D 4.0 exposes no `disableNormalization` toggle). MiniaudioBackend's `ma_waveform` has no custom-table type, so a registered wave falls back to sine there (SND-9).
 
 **Seam-purity rule for Panner:** `buildPannerParams()` in `SoundSystem` resolves the `ListenerPointSource`'s `SFRotation` orientation via Rodrigues' formula into `listenerForward` and `listenerUp` unit vectors, then writes source and listener **positions** into `NodeParams`. It computes **no gain and no pan angle** — that computation happens exclusively in the backend.
 

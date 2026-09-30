@@ -550,6 +550,13 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_dynamics_compressor_test.cpp")
     target_link_libraries(x3d_sound_dynamics PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_sound_dynamics COMMAND x3d_sound_dynamics)
+    # SND-9: PeriodicWave custom oscillator waveform (§16.4.18) — backend
+    # synthesis, SoundSystem registration, and the 4.0 parse-path evidence.
+    add_executable(x3d_sound_periodicwave
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_periodicwave_test.cpp")
+    target_link_libraries(x3d_sound_periodicwave PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_sound_periodicwave COMMAND x3d_sound_periodicwave)
 
     # Author-shader binding plan (vocabulary + introspection).
 endif()

@@ -330,6 +330,11 @@ struct MiniaudioBackend::Impl {
         case Waveform::Square:   wtype = ma_waveform_type_square;   break;
         case Waveform::Sawtooth: wtype = ma_waveform_type_sawtooth; break;
         case Waveform::Triangle: wtype = ma_waveform_type_triangle; break;
+        case Waveform::Custom:
+          // ma_waveform has no custom-table type; SND-9: a PeriodicWave falls
+          // back to sine here (BuiltinDspBackend synthesizes the real wave).
+          wtype = ma_waveform_type_sine;
+          break;
         }
         double freq = static_cast<double>(pn.params.frequency);
         if (pn.params.detune != 0.0f)

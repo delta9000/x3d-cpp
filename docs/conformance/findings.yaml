@@ -410,8 +410,8 @@
   clause: "16.4.15, 16.4.18"
   severity: minor
   status: deferred
-  summary: periodicWave ignored — OscillatorSource is always Sine; a referenced PeriodicWave (custom waveform via real/imag DFT terms) is not realized.
-  note: Spec-correct default (periodicWave NULL = sine), so not a bug — but custom waveforms are unsupported. The seam already carries a Waveform enum (Sine/Square/Sawtooth/Triangle); arbitrary PeriodicWave needs a DFT-coefficient param. Deferred.
+  summary: periodicWave stays unread from parsed scenes (the 4.0 bindings predate the 4.1 field) — a registered PeriodicWave is realized on BuiltinDspBackend; MiniaudioBackend falls back to sine.
+  note: "Wired: the seam carries Waveform::Custom + optionsReal/optionsImag harmonic terms (cross once at createNode, like Buffer PCM, ADR-0050 precedent); BuiltinDspBackend sums harmonics k=1..N-1 (index 0 = DC, ignored) normalized to peak absolute value 1 (Web Audio default; X3D 4.0's PeriodicWave has no disableNormalization toggle); SoundSystem::setPeriodicWave(osc, wave) registers a PeriodicWave node before attach — standard types map onto the Waveform enum, CUSTOM with no terms falls back to sine. Ignored: the authored OscillatorSource.periodicWave field. The generated bindings model X3D 4.0, where OscillatorSource has no periodicWave field (added in 4.1); PeriodicWave itself exists in 4.0 (type/optionsReal/optionsImag). A parsed <PeriodicWave containerField='periodicWave'/> child parks in the parser's IS fallback slot and findField(osc, 'periodicWave') is null — pinned by x3d_sound_periodicwave (parse tier). Becomes readable when the bindings move to 4.1; until then the embedder registers the wave. MiniaudioBackend's ma_waveform has no custom-table type, so registered waves play as sine there."
 - id: UOM-SND-1
   nodes: [WaveShaper, Sound, StreamAudioSource, Delay, StreamAudioDestination, ChannelSplitter, ListenerPointSource]
   component: Sound

@@ -14,6 +14,7 @@
 
 #include "BuiltinDspBackend.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <unordered_map>
@@ -42,6 +43,9 @@ struct Node {
 
   // Oscillator state.
   double phase = 0.0;  // radians, accumulated across render() calls
+  // Custom waveform (§16.4.18 PeriodicWave): normalization gain computed once
+  // at createNode (peak absolute value scaled to 1); 0 = an all-zero wave.
+  double customGain = 0.0;
 
   // Biquad state (Direct Form I): input/output history.
   double x1 = 0.0, x2 = 0.0, y1 = 0.0, y2 = 0.0;
@@ -80,8 +84,48 @@ inline double oscSample(Waveform w, double phase) {
     double t = phase / kTwoPi;  // 0..1
     return 4.0 * std::fabs(t - 0.5) - 1.0;  // /\ shape, -1..+1
   }
+  case Waveform::Custom:
+    return 0.0;  // never routed here: the caller sums customSample() instead
   }
   return 0.0;
+}
+
+// §16.4.18 PeriodicWave (Web Audio semantics): harmonic k contributes
+// real[k]*cos(k*phase) + imag[k]*sin(k*phase) for k = 1..N-1 (index 0 is the
+// DC term, ignored), normalized so the wave's peak absolute value is 1 —
+// Web Audio's default; X3D 4.0's PeriodicWave exposes no disableNormalization
+// toggle. Extra elements of the longer array are ignored. The normalization
+// gain is computed ONCE at createNode by scanning one period.
+constexpr int kPeakScanPoints = 4096;
+
+double periodicWaveGain(const NodeParams &np) {
+  const std::size_t nTerms =
+      std::min(np.optionsReal.size(), np.optionsImag.size());
+  if (nTerms <= 1) return 0.0;  // no harmonics (DC only) -> silence
+  double peak = 0.0;
+  for (int i = 0; i < kPeakScanPoints; ++i) {
+    const double t = kTwoPi * double(i) / double(kPeakScanPoints);
+    double x = 0.0;
+    for (std::size_t k = 1; k < nTerms; ++k) {
+      const double kw = double(k) * t;
+      x += double(np.optionsReal[k]) * std::cos(kw) +
+           double(np.optionsImag[k]) * std::sin(kw);
+    }
+    peak = std::max(peak, std::fabs(x));
+  }
+  return peak > 1e-12 ? 1.0 / peak : 0.0;  // an all-zero wave is silent
+}
+
+inline double customSample(const NodeParams &np, double gain, double phase) {
+  double x = 0.0;
+  const std::size_t nTerms =
+      std::min(np.optionsReal.size(), np.optionsImag.size());
+  for (std::size_t k = 1; k < nTerms; ++k) {
+    const double kw = double(k) * phase;
+    x += double(np.optionsReal[k]) * std::cos(kw) +
+         double(np.optionsImag[k]) * std::sin(kw);
+  }
+  return x * gain;
 }
 
 // RBJ "Audio EQ Cookbook" biquad coefficients (normalized by a0). Implemented
@@ -216,9 +260,12 @@ struct BuiltinDspBackend::Impl {
       double f = detuned(n.params.frequency, n.params.detune);
       double inc = kTwoPi * f / sampleRate;
       double g = n.params.gain;
+      const bool custom = n.params.waveform == Waveform::Custom;
       for (int i = 0; i < frames; ++i) {
-        n.block[static_cast<std::size_t>(i)] =
-            static_cast<float>(oscSample(n.params.waveform, n.phase) * g);
+        const double s = custom
+                             ? customSample(n.params, n.customGain, n.phase)
+                             : oscSample(n.params.waveform, n.phase);
+        n.block[static_cast<std::size_t>(i)] = static_cast<float>(s * g);
         n.phase += inc;
         if (n.phase >= kTwoPi) n.phase -= kTwoPi;
       }
@@ -501,6 +548,8 @@ NodeHandle BuiltinDspBackend::createNode(NodeKind kind,
   Node n;
   n.kind = kind;
   n.params = params;
+  if (kind == NodeKind::Oscillator && params.waveform == Waveform::Custom)
+    n.customGain = periodicWaveGain(params);
   impl_->nodes.emplace(h, std::move(n));
   return h;
 }

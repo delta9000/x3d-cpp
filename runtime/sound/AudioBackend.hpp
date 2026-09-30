@@ -84,9 +84,11 @@ enum class DistanceModel { Linear, Inverse, Exponential, Ellipsoid };
 
 /**
  * @brief Oscillator waveform, in the runtime's own terms (mirrors X3D's
- *        PeriodicWaveTypeChoices). The seam never names a DSP-engine waveform.
+ *        PeriodicWaveTypeChoices). Custom = the harmonic terms carried in
+ *        NodeParams::optionsReal/optionsImag (a §16.4.18 PeriodicWave whose
+ *        type is CUSTOM). The seam never names a DSP-engine waveform.
  */
-enum class Waveform { Sine, Square, Sawtooth, Triangle };
+enum class Waveform { Sine, Square, Sawtooth, Triangle, Custom };
 
 /**
  * @brief Biquad filter algorithm, in the runtime's own terms (mirrors X3D's
@@ -101,7 +103,9 @@ enum class FilterType { Lowpass, Highpass, Bandpass, Lowshelf, Highshelf,
  * @details A small tagged struct so the seam never names an engine param type.
  *          SoundSystem fills the fields relevant to the NodeKind from the §16
  *          node's accessors:
- *            - Oscillator:  frequency, detune (cents), gain, waveform.
+ *            - Oscillator:  frequency, detune (cents), gain, waveform
+ *                           (optionsReal/optionsImag harmonic terms for
+ *                           Waveform::Custom).
  *            - Biquad:      frequency (cutoff), q (qualityFactor), detune, gain,
  *                           filterType.
  *            - Gain:        gain.
@@ -132,6 +136,19 @@ struct NodeParams {
   bool enabled = true;
   /** @brief Oscillator waveform (Oscillator nodes). */
   Waveform waveform = Waveform::Sine;
+
+  // ── Custom-waveform fields (Waveform::Custom, the §16.4.18 PeriodicWave) ──
+  //
+  // The real/imag harmonic terms cross ONCE, here, like a Buffer's samples —
+  // they are waveform data, not DSP state. Index 0 is the DC term (ignored);
+  // harmonic k sums real[k]*cos(k*phase) + imag[k]*sin(k*phase), normalized so
+  // the peak absolute value is 1 (Web Audio's default; X3D 4.0's PeriodicWave
+  // exposes no disableNormalization toggle). Extra elements of the longer
+  // array are ignored; arrays with no harmonics at all are the sine default.
+  /** @brief Real (cosine) harmonic terms (Oscillator nodes). */
+  std::vector<float> optionsReal;
+  /** @brief Imaginary (sine) harmonic terms (Oscillator nodes). */
+  std::vector<float> optionsImag;
   /** @brief Filter algorithm (Biquad nodes). */
   FilterType filterType = FilterType::Lowpass;
   /** @brief Max channel count (Destination nodes). v1 is mono. */
