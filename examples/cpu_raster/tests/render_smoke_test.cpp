@@ -86,6 +86,58 @@ static cr::Framebuffer renderFillShape(const char *geometryType, int mode) {
   return cr::renderScene(ctx, extractor, opt);
 }
 
+// REQ-LOCALFOG consumer check: a green Box under a disabled global Fog (range 0)
+// and, when withLocalFog, inside a Group whose LocalFog is red with a tiny
+// visibilityRange so the surface saturates to the LocalFog colour. Without the
+// LocalFog the Box stays its unfogged green.
+static void addChild(const std::shared_ptr<x3d::nodes::X3DNode> &p,
+                     const std::shared_ptr<x3d::nodes::X3DNode> &c) {
+  for (auto &f : p->fields())
+    if (f.x3dName == "children" && f.set) {
+      auto k = std::any_cast<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>>(f.get(*p));
+      k.push_back(c);
+      f.set(*p, std::any(std::move(k)));
+      return;
+    }
+}
+
+static cr::Framebuffer renderLocalFogShape(bool withLocalFog) {
+  using namespace x3d::core;
+  using namespace x3d::nodes;
+  auto geometry = createX3DNode("Box");
+  auto app = createX3DNode("Appearance");
+  auto material = createX3DNode("UnlitMaterial");
+  setF(material, "emissiveColor", std::any(SFColor{0, 1, 0}));
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(material)));
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(geometry)));
+  setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
+
+  auto fog = createX3DNode("Fog"); // disabled global: range 0 => no fog.
+  setF(fog, "color", std::any(SFColor{0, 0, 1}));
+  setF(fog, "visibilityRange", std::any(0.0f));
+
+  x3d::runtime::Scene scene;
+  scene.addRootNode(fog);
+  if (withLocalFog) {
+    auto group = createX3DNode("Group");
+    auto lf = createX3DNode("LocalFog");
+    setF(lf, "color", std::any(SFColor{1, 0, 0}));
+    setF(lf, "visibilityRange", std::any(0.001f));
+    addChild(group, lf);
+    addChild(group, shape);
+    scene.addRootNode(group);
+  } else {
+    scene.addRootNode(shape);
+  }
+  x3d::runtime::X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene); ctx.buildFrom(scene); ctx.tick(0.0);
+  ex::SceneExtractor extractor(ctx, scene); extractor.fullSnapshot();
+  cr::RenderOptions opt; opt.width = 96; opt.height = 96;
+  opt.clearColor = {0, 0, 0};
+  return cr::renderScene(ctx, extractor, opt);
+}
+
 int main() {
   const std::string scene =
       std::string(X3D_CPURASTER_ASSET_DIR) + "/raster_smoke.x3d";
@@ -152,6 +204,16 @@ int main() {
       CHECK(drawnPixels(absent, black) > 0);
       CHECK(absent.pixels() == noFill.pixels());
     }
+  }
+
+  // §24.4.3 local fog vs global fog at the fragment.
+  {
+    auto noFog = renderLocalFogShape(false);
+    auto localFog = renderLocalFogShape(true);
+    const g::vec4 a = noFog.colorAt(48, 48);    // centre of the unfogged Box.
+    const g::vec4 b = localFog.colorAt(48, 48); // centre of the LocalFog Box.
+    CHECK(a.y > 0.5f && a.x < 0.2f);       // green material, no fog.
+    CHECK(b.x > 0.5f && b.y < 0.2f);       // saturated to the red LocalFog.
   }
 
   if (failures) { std::fprintf(stderr, "render_smoke_test: %d failure(s)\n", failures); return 1; }

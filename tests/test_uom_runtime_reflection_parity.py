@@ -39,6 +39,7 @@ import pytest
 
 from x3d_cpp_gen.parser import parse_x3d_model, get_own_fields, parse_enum_definitions
 from x3d_cpp_gen.generator import FIELD_TYPE_MAPPING, XS_TYPES
+from x3d_cpp_gen.conformance.errata import apply_field_additions_model
 
 SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -66,6 +67,10 @@ _FIELD_INFO_RE = re.compile(
 def uom_nodes():
     nodes, _skipped = parse_x3d_model(str(SPEC), FIELD_TYPE_MAPPING, XS_TYPES)
     assert nodes, "UOM parse produced no nodes"
+    # The generated bindings are built from the UOM PLUS the cited field-addition
+    # errata (x3d-cpp-gen applies them after parsing), so that is the oracle here:
+    # fields the standard defines but the vendored UOM omits (e.g. WaveShaper.curve).
+    apply_field_additions_model("4.0", nodes)
     return nodes
 
 

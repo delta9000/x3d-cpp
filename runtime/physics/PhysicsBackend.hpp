@@ -166,6 +166,39 @@ struct MassProperties {
 };
 
 /**
+ * @brief World-level solver tuning, read from a RigidBodyCollection (§37).
+ * @details A small plain struct carrying only the §37 collector's
+ *          solver-tuning fields the runtime can map onto a backend. Every field
+ *          is a SENTINEL-optional value: the runtime fills only the fields the
+ *          author moved off the §37 default, so at the spec defaults every field
+ *          is left at its sentinel and the backend keeps its own default (the
+ *          seam's "spec-default behavior is preserved" contract). The sentinel
+ *          for every field is documented per-field; none is a valid setting.
+ *          No engine type appears here.
+ *
+ *          Field provenance (§37 RigidBodyCollection, clause 37):
+ *            - iterations:             getIterations()
+ *            - errorCorrection:        getErrorCorrection()
+ *            - contactSurfaceThickness:getContactSurfaceThickness()
+ *            - maxCorrectionSpeed:     getMaxCorrectionSpeed()
+ *          constantForceMix has NO field here (no honest backend equivalent);
+ *          preferAccuracy likewise (a hint, not a numeric solver setting).
+ */
+struct SolverSettings {
+  /** @brief §37 iterations (solver velocity iterations). 0 sentinel → default. */
+  int velocityIterations = 0;
+  /** @brief §37 errorCorrection [0,1] (position-error correction fraction).
+   *         < 0 sentinel → default. */
+  float errorCorrection = -1.0f;
+  /** @brief §37 contactSurfaceThickness (m, allowed interpenetration).
+   *         < 0 sentinel → default. */
+  float contactSurfaceThickness = -1.0f;
+  /** @brief §37 maxCorrectionSpeed (m/s, < 0 = no limit; -1 is the §37 default).
+   *         < 0 sentinel → default. */
+  float maxCorrectionSpeed = -1.0f;
+};
+
+/**
  * @brief Abstract rigid-body physics backend: owns worlds + bodies, integrates.
  * @details One PhysicsBackend instance may own many worlds, each addressed by a
  *          WorldHandle; each world owns many bodies, addressed by BodyHandle.
@@ -250,6 +283,51 @@ public:
                                 float factor) = 0;
 
   /**
+   * @brief Set whether a single body may sleep (auto-disable on/off).
+   * @details Maps §37 RigidBody.autoDisable: FALSE (the default) → the body is
+   *          never put to sleep (it keeps integrating, even at rest); TRUE → the
+   *          backend's sleep rules may stop integrating it. Per-body (Jolt
+   *          supports it); the world-wide thresholds are set by
+   *          setSleepSettings(). Default: no-op (a backend without sleeping
+   *          ignores it).
+   */
+  virtual void setBodyAllowSleeping(WorldHandle world, BodyHandle body,
+                                    bool allow) {
+    (void)world;
+    (void)body;
+    (void)allow;
+  }
+
+  /**
+   * @brief Set a world's sleep rules (collection auto-disable + thresholds).
+   * @details Maps §37 RigidBodyCollection.autoDisable / disableTime /
+   *          disableLinearSpeed. Jolt's sleep tuning is WORLD-wide
+   *          (PhysicsSettings), not per-body, so a collection's values apply to
+   *          the whole world it owns. A NEGATIVE threshold means "leave the
+   *          backend default", so the §37 defaults (0/0) keep Jolt's own values
+   *          (0.5 s / 0.03 m/s). Default: no-op.
+   */
+  virtual void setSleepSettings(WorldHandle world, bool allowSleeping,
+                                float timeBeforeSleep,
+                                float pointVelocityThreshold) {
+    (void)world;
+    (void)allowSleeping;
+    (void)timeBeforeSleep;
+    (void)pointVelocityThreshold;
+  }
+
+  /**
+   * @brief Whether a body is currently awake (still integrated each step).
+   * @details The observable sleeping state behind §37 autoDisable. Default: true
+   *          (a backend without sleeping reports every body awake).
+   */
+  virtual bool isBodyActive(WorldHandle world, BodyHandle body) const {
+    (void)world;
+    (void)body;
+    return true;
+  }
+
+  /**
    * @brief Set a world's per-contact combined friction + restitution.
    * @details Maps §37 CollisionCollection.frictionCoefficients / bounce, applied
    *          to every contact in the world (one CollisionCollection governs one
@@ -299,6 +377,20 @@ public:
   virtual void drainContacts(WorldHandle world, std::vector<ContactPoint> &out) {
     (void)world;
     out.clear();
+  }
+
+  /**
+   * @brief Apply §37 solver tuning to a world.
+   * @details Maps the RigidBodyCollection's solver-tuning fields onto the
+   *          backend's own solver. Each field is optional (its sentinel value
+   *          means "leave the backend default"), so a world created at the §37
+   *          defaults is byte-for-byte the backend's default configuration.
+   *          Default: no-op (a backend without a tunable solver ignores it).
+   */
+  virtual void setSolverSettings(WorldHandle world,
+                                 const SolverSettings &settings) {
+    (void)world;
+    (void)settings;
   }
 };
 

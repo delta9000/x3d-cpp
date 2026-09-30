@@ -2,6 +2,7 @@
 #ifndef X3D_RUNTIME_PROTO_EXPAND_HPP
 #define X3D_RUNTIME_PROTO_EXPAND_HPP
 
+#include "DynamicField.hpp"
 #include "X3DProtoClone.hpp"
 #include "X3DProtoFieldOrder.hpp"
 #include "X3DScene.hpp"
@@ -826,6 +827,44 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     if (auto wrapper = dynamic_cast<const ProtoInstanceTemplate *>(source))
       forwardNestedEvents(snapshot, wrapper->instance.isConnections);
   }
+  // Every declared interface field exists on the instance as a real field with
+  // its initial value, whether or not the body IS-connects it (§4.4.2.2,
+  // §4.4.4.2). A field with an IS mapping is backed by its body clone; the rest
+  // keep independent storage and event endpoints on the primary (the
+  // dynamic-field store, the same abstraction Script author fields use), so a
+  // ROUTE may set an inputOnly/inputOutput field and fan out its value_changed
+  // even with no inner node to map onto. Scalar fields only: node-valued
+  // interface defaults stay body-owned.
+  {
+    std::unordered_set<std::string> isMapped;
+    for (const IsConnection &is : decl->body.isConnections)
+      isMapped.insert(is.protoField);
+    for (const ProtoInstance &nested : nestedInstances)
+      for (const auto &is : nested.isConnections)
+        isMapped.insert(is.protoField);
+    for (const auto &[name, targets] : outerTargets)
+      if (!targets.empty()) isMapped.insert(name);
+    std::vector<AuthorFieldDecl> decls;
+    for (const ProtoField &field : decl->interface) {
+      if (isMapped.count(field.name)) continue;
+      if (field.type == X3DFieldType::SFNode ||
+          field.type == X3DFieldType::MFNode)
+        continue;
+      AuthorFieldDecl d;
+      d.x3dName = field.name;
+      d.type = field.type;
+      d.access = field.access;
+      ProtoFieldValue eff;
+      if (proto_detail::resolveForwardedValue(
+              proto_detail::instanceValue(inst, field.name), field, eff))
+        d.initialValue = eff.value;
+      decls.push_back(std::move(d));
+    }
+    if (!decls.empty())
+      dynamicFieldStore().addAuthorFields(
+          std::static_pointer_cast<const X3DNode>(primary), decls);
+  }
+
   // The outer instance may use the nested instance's concrete primary. Its
   // visible interface replaces the nested interface at that same node pointer.
   scene.protoRedirects[primary.get()] = std::move(outerTargets);

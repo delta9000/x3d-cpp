@@ -43,6 +43,8 @@
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 
+#include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -226,6 +228,37 @@ inline void applyTextureTransformsToMesh(
   }
   if (!mesh.texcoordSets.empty())
     mesh.texcoords = mesh.texcoordSets[0];
+}
+
+// ---------------------------------------------------------------------------
+// pixelTexture3DDesc — decode a PixelTexture3D.image MFInt32 (§33.4.3) into a
+// Texture3DDesc. Wire form: numComponents, width, height, depth, then
+// width*height*depth pixel values; each pixel packs numComponents bytes as one
+// integer, unpacked MSB-first into component bytes (identical to SFImage /
+// parseImageFrom). numComponents is clamped to [0,4]; the pixel loop is bounded
+// by both the claimed count and the token stream, so a hostile image cannot
+// over-allocate. A short/empty image yields a zero-size descriptor.
+// ---------------------------------------------------------------------------
+inline Texture3DDesc pixelTexture3DDesc(const std::vector<int> &image) {
+  Texture3DDesc d;
+  if (image.size() < 4) return d;
+  const int nc = std::clamp(image[0], 0, 4);
+  const long long w = image[1] > 0 ? image[1] : 0;
+  const long long h = image[2] > 0 ? image[2] : 0;
+  const long long dep = image[3] > 0 ? image[3] : 0;
+  d.numComponents = static_cast<uint32_t>(nc);
+  d.width = static_cast<uint32_t>(w);
+  d.height = static_cast<uint32_t>(h);
+  d.depth = static_cast<uint32_t>(dep);
+  const std::size_t pixels = static_cast<std::size_t>(w * h * dep);
+  d.texels.reserve(pixels * static_cast<std::size_t>(nc));
+  std::size_t i = 4;
+  for (std::size_t p = 0; p < pixels && i < image.size(); ++p) {
+    const unsigned long packed = static_cast<unsigned long>(image[i++]) & 0xFFFFFFFFul;
+    for (int b = nc - 1; b >= 0; --b)
+      d.texels.push_back(static_cast<uint8_t>((packed >> (8u * static_cast<unsigned>(b))) & 0xFFu));
+  }
+  return d;
 }
 
 // ---------------------------------------------------------------------------

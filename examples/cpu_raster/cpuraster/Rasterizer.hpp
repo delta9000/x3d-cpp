@@ -72,7 +72,8 @@ public:
                      const glsl::mat4 &proj, const glsl::mat3 &normalMat,
                      bool ccw, bool solid, BlendMode blend,
                      const FragmentShader &fs,
-                     const runtime::extract::FillPropertiesDesc &fill = {}) {
+                     const runtime::extract::FillPropertiesDesc &fill = {},
+                     const std::vector<glsl::vec4> &clipPlanesEye = {}) {
     const glsl::mat4 mv = view * model;
     const glsl::mat4 mvp = proj * mv;
     const auto &m = model.m;
@@ -96,7 +97,7 @@ public:
       std::vector<ClipVertex> poly = clipNear({tri[0], tri[1], tri[2]});
       for (std::size_t t = 0; t + 2 < poly.size(); ++t)
         rasterTriangle(poly[0], poly[t + 1], poly[t + 2], frontCCW, solid,
-                       blend, fs, fill);
+                       blend, fs, fill, clipPlanesEye);
     }
   }
 
@@ -233,7 +234,8 @@ private:
   void rasterTriangle(const ClipVertex &a, const ClipVertex &b,
                       const ClipVertex &c, bool ccw, bool solid, BlendMode blend,
                       const FragmentShader &fs,
-                      const runtime::extract::FillPropertiesDesc &fill) {
+                      const runtime::extract::FillPropertiesDesc &fill,
+                      const std::vector<glsl::vec4> &clipPlanesEye) {
     // Screen positions + per-vertex 1/w for perspective-correct interpolation.
     float x[3], y[3], z[3], invw[3];
     const ClipVertex *V[3] = {&a, &b, &c};
@@ -320,6 +322,14 @@ private:
         for (int sub = 0; sub < 4; ++sub) {
           QuadPix &p = q[sub];
           if (!p.inView || !p.inTri) continue;
+          // REQ-CLIP (§11.4.1): a clip plane is satisfied where
+          // a*x+b*y+c*z+d >= 0; discard the fragment in the clipped half-space.
+          // Planes are EYE-space (the space the interpolated vPosEye lives in).
+          bool clipped = false;
+          for (const glsl::vec4 &pl : clipPlanesEye)
+            if (pl.x * p.frag.posEye.x + pl.y * p.frag.posEye.y +
+                pl.z * p.frag.posEye.z + pl.w < 0.0f) { clipped = true; break; }
+          if (clipped) continue;
           const int px = qx + (sub & 1);
           const int py = qy + (sub >> 1);
           const bool hatch = fill.hatched && hatchAt(px, py, fill.hatchStyle);

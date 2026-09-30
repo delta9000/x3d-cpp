@@ -23,6 +23,7 @@ from x3d_cpp_gen.generator import (
     write_interface_registry,
 )
 from x3d_cpp_gen.model.version import SpecVersion
+from x3d_cpp_gen.conformance.errata import apply_field_additions_model
 
 # Packaged default spec, resolved relative to the installed package (never CWD).
 DEFAULT_SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
@@ -191,6 +192,12 @@ def main(argv=None) -> int:
     if not nodes:
         print(f"ERROR: no nodes parsed from {spec}", file=sys.stderr)
         return 1
+    # Cited fields the standard defines but this UOM revision omits (errata.py).
+    # Applied to the parsed model only: the vendored XML and the committed
+    # conformance manifests stay byte-faithful to the UOM.
+    for applied in apply_field_additions_model(spec_version.version, nodes):
+        print(f"UOM errata: added {applied['node']}.{applied['field']} "
+              f"({applied['type']}) per {applied['source']}")
     dependency_graph = build_dependency_graph(nodes)
     enum_defs = parse_enum_definitions(str(spec))
 

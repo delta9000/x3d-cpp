@@ -421,6 +421,70 @@ static void testResolverRoundTrip() {
   CHECK((refs2[0].resolvedPixels.failed()));
 }
 
+// --- 3D textures (T3D-1): PixelTexture3D inline voxels; ComposedTexture3D stack
+static void test3DTextures() {
+  // PixelTexture3D.image MFInt32: [numComponents, width, height, depth, packed
+  // pixels]. 3 comps, 2x1x2 = 4 pixels.
+  {
+    auto tex = createX3DNode("PixelTexture3D");
+    setF(tex, "image", std::any(std::vector<int>{
+                            3, 2, 1, 2, 0xFF0000, 0x00FF00, 0x0000FF, 0xFFFFFF}));
+    setF(tex, "repeatR", std::any(true));
+    auto app = createX3DNode("Appearance");
+    setF(app, "texture", std::any(std::shared_ptr<X3DNode>(tex)));
+
+    auto texs = texturesOf(app.get());
+    REQUIRE(texs.size() == 1);
+    CHECK((texs[0].source == TextureRef::Source::Tex3D));
+    CHECK((texs[0].tex3d.width == 2));
+    CHECK((texs[0].tex3d.height == 1));
+    CHECK((texs[0].tex3d.depth == 2));
+    CHECK((texs[0].tex3d.numComponents == 3));
+    CHECK((texs[0].tex3d.texels.size() == 12)); // 4 pixels * 3 comps.
+    CHECK((texs[0].tex3d.texels[0] == 0xFF && texs[0].tex3d.texels[1] == 0x00 &&
+           texs[0].tex3d.texels[2] == 0x00));            // pixel 0 red.
+    CHECK((texs[0].tex3d.texels[3] == 0x00 && texs[0].tex3d.texels[4] == 0xFF &&
+           texs[0].tex3d.texels[5] == 0x00));            // pixel 1 green.
+    CHECK((texs[0].repeatR == true));                    // repeatR surfaced.
+    CHECK((texs[0].extSampler.repeatR == true));         // and on the sampler.
+  }
+
+  // Default PixelTexture3D.image = {0,0,0,0}: zero-size descriptor, no bytes.
+  {
+    auto tex = createX3DNode("PixelTexture3D");
+    auto app = createX3DNode("Appearance");
+    setF(app, "texture", std::any(std::shared_ptr<X3DNode>(tex)));
+    auto texs = texturesOf(app.get());
+    REQUIRE(texs.size() == 1);
+    CHECK((texs[0].source == TextureRef::Source::Tex3D));
+    CHECK((texs[0].tex3d.width == 0 && texs[0].tex3d.texels.empty()));
+  }
+
+  // ComposedTexture3D: depth = number of 2D slice nodes; reuses the 2D path.
+  {
+    auto px = createX3DNode("PixelTexture");
+    setF(px, "image", std::any(SFImage{1, 1, 3, {10, 20, 30}}));
+    auto img = createX3DNode("ImageTexture");
+    setF(img, "url", std::any(MFString{"slice1.png"}));
+    auto composed = createX3DNode("ComposedTexture3D");
+    setF(composed, "texture", std::any(MFNode{
+                              std::shared_ptr<X3DNode>(px),
+                              std::shared_ptr<X3DNode>(img)}));
+    auto app = createX3DNode("Appearance");
+    setF(app, "texture", std::any(std::shared_ptr<X3DNode>(composed)));
+
+    auto texs = texturesOf(app.get());
+    REQUIRE(texs.size() == 1);
+    CHECK((texs[0].source == TextureRef::Source::Tex3D));
+    CHECK((texs[0].tex3d.depth == 2));
+    REQUIRE(texs[0].tex3dSlices.size() == 2);
+    CHECK((texs[0].tex3dSlices[0].source == TextureRef::Source::Inline));
+    CHECK((texs[0].tex3dSlices[1].source == TextureRef::Source::Url));
+    CHECK((texs[0].tex3dSlices[1].url.size() == 1 &&
+           texs[0].tex3dSlices[1].url[0] == "slice1.png"));
+  }
+}
+
 TEST_CASE("texture_extract_test") {
   testAuthoredTexCoord();
   testMultiTextureCoordinateFirstUsableChannel();
@@ -431,5 +495,6 @@ TEST_CASE("texture_extract_test") {
   testExtendedSampler();
   testTexCoordGen();
   testResolverRoundTrip();
+  test3DTextures();
   return;
 }

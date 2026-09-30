@@ -29,6 +29,10 @@
 //   OscillatorSource   -> createNode(Oscillator,  {frequency, detune, gain})
 //   BiquadFilter       -> createNode(Biquad, {frequency, q, detune, gain, type})
 //   Gain               -> createNode(Gain, {gain})
+//   Delay              -> createNode(Delay, {delayTime, maxDelayTime, enabled})
+//   DynamicsCompressor -> createNode(Compressor, {threshold, knee, ratio,
+//                          attack, release, gain, enabled})
+//   WaveShaper         -> createNode(WaveShaper, {curve, gain, enabled})
 //   for each child c of node n: connect(handle[n], handle[c])  (c feeds INTO n)
 //   update(now): for each mapped node read its animatable fields -> setParam.
 //
@@ -41,6 +45,9 @@
 // their PCM crosses once (ADR-0050); a Pending fetch is retried each tick.
 // Their playback state follows the AudioClip time lifecycle (isActive /
 // isPaused, MediaTimeSystem) and pitch.
+// A BufferAudioSource (§16.4.5) feeds its authored PCM `buffer` into the same
+// Buffer node (SND-4): mono after averaging any extra channels, loop honored by
+// the time lifecycle, playbackRate x detune captured at activation.
 // A MovieTexture source uses a separately injected movie-audio decoder and
 // the same Buffer path; MediaTimeSystem supplies its lifecycle and speed.
 #ifndef X3D_RUNTIME_SOUND_SYSTEM_HPP
@@ -56,13 +63,18 @@
 
 #include "x3d/nodes/AudioClip.hpp"
 #include "x3d/nodes/AudioDestination.hpp"
+#include "x3d/nodes/BufferAudioSource.hpp"
 #include "x3d/nodes/BiquadFilter.hpp"
+#include "x3d/nodes/Delay.hpp"
+#include "x3d/nodes/DynamicsCompressor.hpp"
 #include "x3d/nodes/Gain.hpp"
 #include "x3d/nodes/ListenerPointSource.hpp"
 #include "x3d/nodes/MovieTexture.hpp"
 #include "x3d/nodes/OscillatorSource.hpp"
+#include "x3d/nodes/PeriodicWave.hpp"
 #include "x3d/nodes/Sound.hpp"
 #include "x3d/nodes/SpatialSound.hpp"
+#include "x3d/nodes/WaveShaper.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -178,6 +190,9 @@ public:
         [node](const PendingMovie &e) { return e.movie == node; }), pendingMovies_.end());
     fallbackPitch_.erase(dynamic_cast<x3d::nodes::AudioClip *>(node));
     fallbackSpeed_.erase(dynamic_cast<x3d::nodes::MovieTexture *>(node));
+    if (auto *osc = dynamic_cast<x3d::nodes::OscillatorSource *>(node))
+      waves_.erase(osc);
+    fallbackRate_.erase(dynamic_cast<x3d::nodes::BufferAudioSource *>(node));
     if (listener_ == node) listener_ = nullptr;
     map_.erase(node);
   }
@@ -190,6 +205,26 @@ public:
    *          exceed the SoundSystem's.
    */
   void setListener(x3d::nodes::ListenerPointSource *listener) { listener_ = listener; }
+
+  /**
+   * @brief Register the PeriodicWave (§16.4.18) that shapes one
+   *        OscillatorSource; call again with null to unregister.
+   * @details The X3D 4.0 object model gives OscillatorSource NO periodicWave
+   *          field (added in 4.1), so a parsed scene's authored link cannot be
+   *          read back at runtime — an embedder bridges that gap by passing
+   *          the wave node here before attach(). The four standard types map
+   *          onto the seam's Waveform enum; CUSTOM carries the
+   *          optionsReal/optionsImag harmonic terms in the node's params.
+   *          SoundSystem does no waveform math (seam purity — the backend
+   *          synthesizes).
+   */
+  void setPeriodicWave(const x3d::nodes::OscillatorSource *osc,
+                       const x3d::nodes::PeriodicWave *wave) {
+    if (wave)
+      waves_[osc] = wave;
+    else
+      waves_.erase(osc);
+  }
 
   /** @brief Byte oracle for AudioClip urls (null -> no clip loads). */
   void setAssetResolver(extract::AssetResolver r) { resolver_ = std::move(r); }
@@ -267,7 +302,11 @@ private:
       p.detune = osc->getDetune();
       p.gain = osc->getGain();
       p.enabled = osc->getEnabled();
-      p.waveform = Waveform::Sine;  // §16 OscillatorSource has no authored type
+      p.waveform = Waveform::Sine;  // §16 default: no periodicWave -> sine
+      // §16.4.18: a registered PeriodicWave shapes the oscillator. The X3D 4.0
+      // bindings have no periodicWave field to read (added in 4.1 — see
+      // SND-9), so the wave arrives via setPeriodicWave().
+      if (const auto *w = periodicWaveFor(osc)) applyPeriodicWave(p, *w);
       handle = backend_->createNode(NodeKind::Oscillator, p);
     } else if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) {
       NodeParams p;
@@ -283,6 +322,30 @@ private:
       p.gain = gain->getGain();
       p.enabled = gain->getEnabled();
       handle = backend_->createNode(NodeKind::Gain, p);
+    } else if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node)) {
+      NodeParams p;
+      p.delayTime = static_cast<float>(delay->getDelayTime());
+      p.maxDelayTime = static_cast<float>(delay->getMaxDelayTime());
+      p.enabled = delay->getEnabled();
+      handle = backend_->createNode(NodeKind::Delay, p);
+    } else if (auto *cmp = dynamic_cast<x3d::nodes::DynamicsCompressor *>(node)) {
+      NodeParams p;
+      p.threshold = cmp->getThreshold();
+      p.knee = cmp->getKnee();
+      p.ratio = cmp->getRatio();
+      p.attack = static_cast<float>(cmp->getAttack());
+      p.release = static_cast<float>(cmp->getRelease());
+      p.gain = cmp->getGain();
+      p.enabled = cmp->getEnabled();
+      handle = backend_->createNode(NodeKind::Compressor, p);
+    } else if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node)) {
+      // The transfer curve crosses ONCE, like a Buffer's samples. oversample
+      // is not carried — backends render NONE semantics (2x/4x deferred).
+      NodeParams p;
+      p.curve = ws->getCurve();
+      p.gain = ws->getGain();
+      p.enabled = ws->getEnabled();
+      handle = backend_->createNode(NodeKind::WaveShaper, p);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // AudioClip: a Buffer node once its bytes are fetched and decoded.
       fallbackPitch_[clip] = clip->getPitch();
@@ -294,6 +357,15 @@ private:
       const ClipLoad load = loadMovieAudio(movie, handle);
       if (load == ClipLoad::Pending) pendingMovies_.push_back({movie, parent});
       if (load != ClipLoad::Ready) return kInvalidNodeHandle;
+    } else if (auto *bas = dynamic_cast<x3d::nodes::BufferAudioSource *>(node)) {
+      // BufferAudioSource (§16.4.5, SND-4): the authored `buffer` MFFloat IS
+      // PCM — feed the same Buffer node an AudioClip decodes into.
+      fallbackRate_[bas] = bufferAudioRate(bas);
+      NodeParams bp;
+      bp.samples = bufferAudioSamples(bas);
+      bp.sampleRate = bas->getSampleRate() > 0.0f ? bas->getSampleRate() : 44100.0f;
+      bp.gain = bas->getGain();
+      handle = backend_->createNode(NodeKind::Buffer, bp);
     } else if (auto *ss = dynamic_cast<SpatialSound *>(node)) {
       // SpatialSound as an audio-graph child (§16 allows nesting): insert a
       // Panner carrying the resolved positions. The SpatialSound's own
@@ -302,8 +374,8 @@ private:
       NodeParams pp = buildPannerParams(ss, listener_);
       handle = backend_->createNode(NodeKind::Panner, pp);
     } else {
-      // Not a v1 §16 node (e.g. Convolver/Delay/AudioClip — deferred). Skip its
-      // subtree; a real backend would extend the kind set here.
+      // Not a v1 §16 node (e.g. Convolver/Analyser/StreamAudioSource — deferred).
+      // Skip its subtree; a real backend would extend the kind set here.
       return kInvalidNodeHandle;
     }
     if (handle == kInvalidNodeHandle) return kInvalidNodeHandle;
@@ -317,10 +389,39 @@ private:
     return handle;
   }
 
+  /** @brief The registered PeriodicWave for `osc`, or null. */
+  const x3d::nodes::PeriodicWave *periodicWaveFor(
+      const x3d::nodes::OscillatorSource *osc) const {
+    const auto it = waves_.find(osc);
+    return it == waves_.end() ? nullptr : it->second;
+  }
+
+  /** @brief Map a §16.4.18 PeriodicWave onto oscillator NodeParams. */
+  static void applyPeriodicWave(NodeParams &p, const x3d::nodes::PeriodicWave &w) {
+    switch (w.getType()) {
+    case PeriodicWaveTypeChoices::SINE:     p.waveform = Waveform::Sine;     break;
+    case PeriodicWaveTypeChoices::SQUARE:   p.waveform = Waveform::Square;   break;
+    case PeriodicWaveTypeChoices::SAWTOOTH: p.waveform = Waveform::Sawtooth; break;
+    case PeriodicWaveTypeChoices::TRIANGLE: p.waveform = Waveform::Triangle; break;
+    case PeriodicWaveTypeChoices::CUSTOM:
+      p.optionsReal = w.getOptionsReal();
+      p.optionsImag = w.getOptionsImag();
+      // No authored harmonics -> the sine default (§16: periodicWave NULL).
+      p.waveform = p.optionsReal.empty() && p.optionsImag.empty()
+                       ? Waveform::Sine
+                       : Waveform::Custom;
+      break;
+    }
+  }
+
   /** @brief A §16 node's `children` (its INPUTS), empty for an OscillatorSource. */
   static MFNode childrenOf(X3DNode *node) {
     if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) return biq->getChildren();
     if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) return gain->getChildren();
+    if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node)) return delay->getChildren();
+    if (auto *cmp = dynamic_cast<x3d::nodes::DynamicsCompressor *>(node))
+      return cmp->getChildren();
+    if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node)) return ws->getChildren();
     if (auto *ss = dynamic_cast<x3d::nodes::SpatialSound *>(node)) return ss->getChildren();
     return MFNode{};  // OscillatorSource is a leaf source (no inputs)
   }
@@ -344,6 +445,26 @@ private:
       backend_->setParam(handle, Param::Gain, gain->getGain());
       backend_->setParam(handle, Param::Enabled, gain->getEnabled() ? 1.0f : 0.0f);
       pushTimeState(gain, handle);
+    } else if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node)) {
+      backend_->setParam(handle, Param::DelayTime,
+                         static_cast<float>(delay->getDelayTime()));
+      backend_->setParam(handle, Param::MaxDelayTime,
+                         static_cast<float>(delay->getMaxDelayTime()));
+      backend_->setParam(handle, Param::Enabled, delay->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(delay, handle);
+    } else if (auto *cmp = dynamic_cast<x3d::nodes::DynamicsCompressor *>(node)) {
+      backend_->setParam(handle, Param::Threshold, cmp->getThreshold());
+      backend_->setParam(handle, Param::Knee, cmp->getKnee());
+      backend_->setParam(handle, Param::Ratio, cmp->getRatio());
+      backend_->setParam(handle, Param::Attack, static_cast<float>(cmp->getAttack()));
+      backend_->setParam(handle, Param::Release, static_cast<float>(cmp->getRelease()));
+      backend_->setParam(handle, Param::Gain, cmp->getGain());
+      backend_->setParam(handle, Param::Enabled, cmp->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(cmp, handle);
+    } else if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node)) {
+      backend_->setParam(handle, Param::Gain, ws->getGain());
+      backend_->setParam(handle, Param::Enabled, ws->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(ws, handle);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // Playback follows the §8.2.4 lifecycle outputs (MediaTimeSystem).
       const bool active = clip->X3DTimeDependentNode::getIsActive();
@@ -364,6 +485,17 @@ private:
       if (!active) fallbackSpeed_[movie] = movie->getSpeed();
       backend_->setParam(handle, Param::PlaybackRate,
                          media ? static_cast<float>(media->playbackRate(movie)) : fallbackSpeed_[movie]);
+    } else if (auto *bas = dynamic_cast<x3d::nodes::BufferAudioSource *>(node)) {
+      // §16.4.5: playback follows the §8.2.4 lifecycle outputs (MediaTimeSystem);
+      // playbackRate x detune is captured at activation, like AudioClip.pitch.
+      const bool active = bas->X3DTimeDependentNode::getIsActive();
+      const bool paused = bas->X3DTimeDependentNode::getIsPaused();
+      backend_->setParam(handle, Param::PlaybackState, !active ? 0.0f : paused ? 2.0f : 1.0f);
+      const auto *media = ctx_ ? ctx_->findSystem<MediaTimeSystem>() : nullptr;
+      if (!active) fallbackRate_[bas] = bufferAudioRate(bas);
+      backend_->setParam(handle, Param::PlaybackRate,
+                         media ? static_cast<float>(media->playbackRate(bas)) : fallbackRate_[bas]);
+      backend_->setParam(handle, Param::Gain, bas->getGain());
     } else if (auto *dest = dynamic_cast<x3d::nodes::AudioDestination *>(node)) {
       backend_->setParam(handle, Param::Gain, dest->getGain());
     }
@@ -372,6 +504,8 @@ private:
   void pushTimeState(X3DNode *node, NodeHandle handle) {
     if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node); gain && !gain->getEnabled()) return;
     if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node); biq && !biq->getEnabled()) return;
+    if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node); delay && !delay->getEnabled()) return;
+    if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node); ws && !ws->getEnabled()) return;
     auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node);
     if (!tdn) return;
     const bool active = tdn->getIsActive();
@@ -502,6 +636,40 @@ private:
   };
   enum class ClipLoad { Ready, Pending, Failed };
 
+  // §16.4.5: computedPlaybackRate = playbackRate * 2^(detune/1200) (detune in
+  // cents). Reversed (negative) playback is not modeled by the Buffer node.
+  static float bufferAudioRate(x3d::nodes::BufferAudioSource *bas) {
+    return bas->getPlaybackRate() * std::pow(2.0f, bas->getDetune() / 1200.0f);
+  }
+
+  // The Buffer node's contract is mono PCM (ADR-0050): a buffer authored with
+  // numberOfChannels > 1 holds interleaved frames, so the channels are averaged
+  // down (the WAV decoder's downmix policy); channelCountMode/channelInterpretation
+  // are not modeled. bufferDuration limits the used portion in seconds (0 = all).
+  static std::vector<float> bufferAudioSamples(x3d::nodes::BufferAudioSource *bas) {
+    const MFFloat &buf = bas->getBuffer();
+    std::vector<float> mono;
+    const int channels = bas->getNumberOfChannels();
+    if (channels > 1) {
+      mono.reserve(buf.size() / static_cast<std::size_t>(channels));
+      for (std::size_t frame = 0; frame + static_cast<std::size_t>(channels) <= buf.size();
+           frame += static_cast<std::size_t>(channels)) {
+        float sum = 0.0f;
+        for (int c = 0; c < channels; ++c) sum += buf[frame + static_cast<std::size_t>(c)];
+        mono.push_back(sum / static_cast<float>(channels));
+      }
+    } else {
+      mono = buf;
+    }
+    if (bas->getBufferDuration() > 0.0 && bas->getSampleRate() > 0.0f) {
+      const std::size_t keep = std::min(
+          mono.size(), static_cast<std::size_t>(std::floor(bas->getBufferDuration() *
+                                                          bas->getSampleRate())));
+      mono.resize(keep);
+    }
+    return mono;
+  }
+
   // Fetch the clip's urls in order and decode the first that loads. Ready
   // creates the Buffer node (its PCM crosses the seam here, once) and posts
   // duration_changed; Pending means retry next tick.
@@ -627,6 +795,12 @@ private:
   std::vector<PendingMovie> pendingMovies_;
   std::unordered_map<x3d::nodes::AudioClip *, float> fallbackPitch_;
   std::unordered_map<x3d::nodes::MovieTexture *, float> fallbackSpeed_;
+  // OscillatorSource -> its registered §16.4.18 PeriodicWave (borrowed; the
+  // wave node must outlive the System). Read at attach() time only.
+  std::unordered_map<const x3d::nodes::OscillatorSource *,
+                     const x3d::nodes::PeriodicWave *>
+      waves_;
+  std::unordered_map<x3d::nodes::BufferAudioSource *, float> fallbackRate_;
   extract::AssetResolver resolver_;
   AudioDecoder decoder_ = makeNullAudioDecoder();
   AudioDecoder movieAudioDecoder_;

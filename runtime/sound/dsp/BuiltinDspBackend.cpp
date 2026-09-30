@@ -14,6 +14,7 @@
 
 #include "BuiltinDspBackend.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <unordered_map>
@@ -42,15 +43,25 @@ struct Node {
 
   // Oscillator state.
   double phase = 0.0;  // radians, accumulated across render() calls
+  // Custom waveform (§16.4.18 PeriodicWave): normalization gain computed once
+  // at createNode (peak absolute value scaled to 1); 0 = an all-zero wave.
+  double customGain = 0.0;
 
   // Biquad state (Direct Form I): input/output history.
   double x1 = 0.0, x2 = 0.0, y1 = 0.0, y2 = 0.0;
+  // Delay state: a ring buffer of past input and its write cursor.
+  std::vector<float> delayBuf;
+  std::size_t delayWrite = 0;
   // Buffer source state: read position (in source samples), 0 stopped /
   // 1 playing / 2 paused, and playback rate (pitch).
   double cursor = 0.0;
   int playState = 0;
   int timeState = 1;
   double rate = 1.0;
+
+  // Compressor state: smoothed applied gain in dB (<= 0), carried across
+  // render() calls like the oscillator phase.
+  double gainDb = 0.0;
 
   // Per-render scratch.
   std::vector<float> block;
@@ -73,8 +84,48 @@ inline double oscSample(Waveform w, double phase) {
     double t = phase / kTwoPi;  // 0..1
     return 4.0 * std::fabs(t - 0.5) - 1.0;  // /\ shape, -1..+1
   }
+  case Waveform::Custom:
+    return 0.0;  // never routed here: the caller sums customSample() instead
   }
   return 0.0;
+}
+
+// §16.4.18 PeriodicWave (Web Audio semantics): harmonic k contributes
+// real[k]*cos(k*phase) + imag[k]*sin(k*phase) for k = 1..N-1 (index 0 is the
+// DC term, ignored), normalized so the wave's peak absolute value is 1 —
+// Web Audio's default; X3D 4.0's PeriodicWave exposes no disableNormalization
+// toggle. Extra elements of the longer array are ignored. The normalization
+// gain is computed ONCE at createNode by scanning one period.
+constexpr int kPeakScanPoints = 4096;
+
+double periodicWaveGain(const NodeParams &np) {
+  const std::size_t nTerms =
+      std::min(np.optionsReal.size(), np.optionsImag.size());
+  if (nTerms <= 1) return 0.0;  // no harmonics (DC only) -> silence
+  double peak = 0.0;
+  for (int i = 0; i < kPeakScanPoints; ++i) {
+    const double t = kTwoPi * double(i) / double(kPeakScanPoints);
+    double x = 0.0;
+    for (std::size_t k = 1; k < nTerms; ++k) {
+      const double kw = double(k) * t;
+      x += double(np.optionsReal[k]) * std::cos(kw) +
+           double(np.optionsImag[k]) * std::sin(kw);
+    }
+    peak = std::max(peak, std::fabs(x));
+  }
+  return peak > 1e-12 ? 1.0 / peak : 0.0;  // an all-zero wave is silent
+}
+
+inline double customSample(const NodeParams &np, double gain, double phase) {
+  double x = 0.0;
+  const std::size_t nTerms =
+      std::min(np.optionsReal.size(), np.optionsImag.size());
+  for (std::size_t k = 1; k < nTerms; ++k) {
+    const double kw = double(k) * phase;
+    x += double(np.optionsReal[k]) * std::cos(kw) +
+         double(np.optionsImag[k]) * std::sin(kw);
+  }
+  return x * gain;
 }
 
 // RBJ "Audio EQ Cookbook" biquad coefficients (normalized by a0). Implemented
@@ -209,9 +260,12 @@ struct BuiltinDspBackend::Impl {
       double f = detuned(n.params.frequency, n.params.detune);
       double inc = kTwoPi * f / sampleRate;
       double g = n.params.gain;
+      const bool custom = n.params.waveform == Waveform::Custom;
       for (int i = 0; i < frames; ++i) {
-        n.block[static_cast<std::size_t>(i)] =
-            static_cast<float>(oscSample(n.params.waveform, n.phase) * g);
+        const double s = custom
+                             ? customSample(n.params, n.customGain, n.phase)
+                             : oscSample(n.params.waveform, n.phase);
+        n.block[static_cast<std::size_t>(i)] = static_cast<float>(s * g);
         n.phase += inc;
         if (n.phase >= kTwoPi) n.phase -= kTwoPi;
       }
@@ -255,6 +309,71 @@ struct BuiltinDspBackend::Impl {
       for (float &sample : n.block) sample *= n.params.gain;
       break;
     }
+    case NodeKind::Delay: {
+      // Pure delay: output = input delayed by delayTime (clamped to
+      // [0, maxDelayTime]), linearly interpolated for a fractional delay.
+      std::vector<float> in(static_cast<std::size_t>(frames), 0.0f);
+      sumInputs(n, in, frames, sampleRate);
+      if (n.timeState != 1) break;
+      if (!n.params.enabled) { n.block = std::move(in); break; }
+      double maxD = n.params.maxDelayTime;
+      if (maxD < 0.0) maxD = 0.0;
+      std::size_t cap =
+          static_cast<std::size_t>(std::ceil(maxD * sampleRate)) + 1;
+      if (n.delayBuf.size() != cap) {
+        n.delayBuf.assign(cap, 0.0f);
+        n.delayWrite = 0;
+      }
+      double d = n.params.delayTime;
+      if (d < 0.0) d = 0.0;
+      if (d > maxD) d = maxD;
+      const double delaySamples = d * sampleRate;
+      const double capD = static_cast<double>(cap);
+      for (int i = 0; i < frames; ++i) {
+        n.delayBuf[n.delayWrite] = in[static_cast<std::size_t>(i)];
+        double readPos = std::fmod(
+            static_cast<double>(n.delayWrite) - delaySamples, capD);
+        if (readPos < 0.0) readPos += capD;
+        const std::size_t i0 = static_cast<std::size_t>(readPos);
+        const double frac = readPos - static_cast<double>(i0);
+        const std::size_t i1 = (i0 + 1) % cap;
+        n.block[static_cast<std::size_t>(i)] = static_cast<float>(
+            n.delayBuf[i0] + (n.delayBuf[i1] - n.delayBuf[i0]) * frac);
+        n.delayWrite = (n.delayWrite + 1) % cap;
+      }
+      break;
+    }
+    case NodeKind::WaveShaper: {
+      // §16.4.21: map each input sample x in [-1,1] through the transfer
+      // curve, Web Audio semantics — index = (N-1)/2*(x+1), linearly
+      // interpolated; x outside [-1,1] clamps to the first/last curve value;
+      // an empty curve (and enabled=false) passes the input through. The
+      // processing-node gain multiplies the shaped signal. oversample is not
+      // carried across the seam — NONE semantics only (2x/4x deferred).
+      std::vector<float> in(static_cast<std::size_t>(frames), 0.0f);
+      sumInputs(n, in, frames, sampleRate);
+      if (n.timeState != 1) break;
+      if (!n.params.enabled || n.params.curve.empty()) {
+        n.block = std::move(in);
+        break;
+      }
+      const std::vector<float> &curve = n.params.curve;
+      const double last = static_cast<double>(curve.size() - 1);
+      double g = n.params.gain;
+      for (int i = 0; i < frames; ++i) {
+        double x = in[static_cast<std::size_t>(i)];
+        if (x < -1.0) x = -1.0;
+        if (x > 1.0) x = 1.0;
+        const double pos = 0.5 * last * (x + 1.0);
+        const std::size_t i0 = static_cast<std::size_t>(pos);
+        const std::size_t i1 =
+            i0 + 1 < curve.size() ? i0 + 1 : i0;  // pos == last exactly
+        const double frac = pos - static_cast<double>(i0);
+        n.block[static_cast<std::size_t>(i)] =
+            static_cast<float>(g * (curve[i0] + (curve[i1] - curve[i0]) * frac));
+      }
+      break;
+    }
     case NodeKind::Buffer: {
       // Decoded PCM played from a cursor at rate * srcRate/outRate, linearly
       // interpolated; it wraps at the end (the time lifecycle stops a
@@ -272,6 +391,49 @@ struct BuiltinDspBackend::Impl {
         n.cursor += step;
         if (n.cursor >= double(len)) n.cursor = std::fmod(n.cursor, double(len));
         if (n.cursor < 0.0) n.cursor = 0.0;
+      }
+      break;
+    }
+    case NodeKind::Compressor: {
+      // §16.4.9 DynamicsCompressor: a feed-forward compressor. Per sample the
+      // dB-domain gain computer (soft knee) derives a target gain; a one-pole
+      // smoother tracks it (attack while the gain drops, release while it
+      // recovers); the smoothed gain is applied to the input.
+      std::vector<float> in(static_cast<std::size_t>(frames), 0.0f);
+      sumInputs(n, in, frames, sampleRate);
+      if (n.timeState != 1) break;
+      if (!n.params.enabled) { n.block = std::move(in); break; }
+      double atk = n.params.attack;
+      if (atk < 0.0) atk = 0.0;
+      double rel = n.params.release;
+      if (rel < 0.0) rel = 0.0;
+      const double threshold = n.params.threshold;
+      const double knee = n.params.knee < 0.0 ? 0.0 : n.params.knee;
+      const double ratio = n.params.ratio > 1.0 ? n.params.ratio : 1.0;
+      const double slope = 1.0 / ratio - 1.0;  // dB of gain per dB of input
+      const double aAtk = std::exp(-1.0 / (atk * sampleRate));
+      const double aRel = std::exp(-1.0 / (rel * sampleRate));
+      for (int i = 0; i < frames; ++i) {
+        const double level =
+            std::fabs(static_cast<double>(in[static_cast<std::size_t>(i)]));
+        double targetDb = 0.0;  // below the knee: unity gain
+        if (level > 1e-12) {
+          const double over = 20.0 * std::log10(level) - threshold;
+          if (2.0 * over >= knee) {
+            // Above the knee: the output rides at threshold + over/ratio.
+            targetDb = slope * over;
+          } else if (2.0 * over > -knee) {
+            // Inside the soft knee: quadratic interpolation, continuous with
+            // unity at the knee's lower edge and the ratio law at its upper.
+            const double shifted = over + 0.5 * knee;
+            targetDb = slope * shifted * shifted / (2.0 * knee);
+          }
+        }
+        const double a = targetDb < n.gainDb ? aAtk : aRel;
+        n.gainDb += (1.0 - a) * (targetDb - n.gainDb);
+        n.block[static_cast<std::size_t>(i)] = static_cast<float>(
+            in[static_cast<std::size_t>(i)] * n.params.gain *
+            std::pow(10.0, n.gainDb / 20.0));
       }
       break;
     }
@@ -417,6 +579,8 @@ NodeHandle BuiltinDspBackend::createNode(NodeKind kind,
   Node n;
   n.kind = kind;
   n.params = params;
+  if (kind == NodeKind::Oscillator && params.waveform == Waveform::Custom)
+    n.customGain = periodicWaveGain(params);
   impl_->nodes.emplace(h, std::move(n));
   return h;
 }
@@ -460,6 +624,13 @@ void BuiltinDspBackend::setParam(NodeHandle node, Param param, float value) {
     break;
   }
   case Param::PlaybackRate: it->second.rate = value; break;
+  case Param::DelayTime:    it->second.params.delayTime = value; break;
+  case Param::MaxDelayTime: it->second.params.maxDelayTime = value; break;
+  case Param::Threshold:    it->second.params.threshold = value; break;
+  case Param::Knee:         it->second.params.knee      = value; break;
+  case Param::Ratio:        it->second.params.ratio     = value; break;
+  case Param::Attack:       it->second.params.attack    = value; break;
+  case Param::Release:      it->second.params.release   = value; break;
   }
 }
 

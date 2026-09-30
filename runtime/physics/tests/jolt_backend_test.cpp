@@ -247,6 +247,38 @@ int main() {
     CHECK(bouncy > dead + 0.4f, "authored restitution clearly increases rebound");
   }
 
+  // (7) Sleeping / auto-disable (§37 autoDisable). A ball resting on the ground:
+  //     with allow-sleeping ON (world + body) and a short disableTime it goes to
+  //     sleep (isBodyActive false); with allow-sleeping OFF it keeps integrating
+  //     (isBodyActive stays true) after the very same number of steps.
+  {
+    auto restIsActiveAfter = [](bool allowSleeping) {
+      JoltBackend backend;
+      WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
+      // disableTime 0.1 s -> Jolt mTimeBeforeSleep; -1 leaves the velocity default.
+      backend.setSleepSettings(world, allowSleeping, 0.1f, -1.0f);
+      backend.addBody(world, ShapeDesc::box(SFVec3f{10, 0.1f, 10}),
+                      MassProperties{0.0f}, true, SFVec3f{0, 0, 0}, kNoRot, kZero,
+                      kZero);
+      BodyHandle ball = backend.addBody(world, ShapeDesc::sphere(0.5f),
+                                        MassProperties{1.0f}, false,
+                                        SFVec3f{0, 0.65f, 0}, kNoRot, kZero, kZero);
+      backend.setBodyAllowSleeping(world, ball, allowSleeping);
+      for (int i = 0; i < 180; ++i)  // 3 s — settle well past disableTime
+        backend.step(world, 1.0 / 60.0);
+      return backend.isBodyActive(world, ball);
+    };
+    bool neverSleepsActive = restIsActiveAfter(false);
+    bool maySleepActive = restIsActiveAfter(true);
+    std::fprintf(stderr,
+                 "rest body: autoDisable=false active=%d, autoDisable=true active=%d\n",
+                 neverSleepsActive ? 1 : 0, maySleepActive ? 1 : 0);
+    CHECK(neverSleepsActive,
+          "autoDisable=false body at rest never sleeps (still active)");
+    CHECK(!maySleepActive,
+          "autoDisable=true + disableTime=0.1 body at rest sleeps");
+  }
+
   if (g_failures == 0)
     std::fprintf(stderr, "jolt_backend_test: ALL PASS\n");
   return g_failures == 0 ? 0 : 1;

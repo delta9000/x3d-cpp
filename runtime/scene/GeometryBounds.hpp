@@ -129,6 +129,15 @@ inline Aabb pointsBounds(const std::shared_ptr<X3DNode> &coordNode) {
   return r;
 }
 
+// X3DNurbsControlCurveNode "controlPoint" (MFVec2d) as 2D points.
+inline std::vector<SFVec2f> getControlCurvePoints(const std::shared_ptr<X3DNode> &n) {
+  std::vector<SFVec2f> out;
+  if (!n) return out;
+  for (const auto &p : getField<std::vector<SFVec2d>>(*n, "controlPoint", {}))
+    out.push_back(SFVec2f{(float)p.x, (float)p.y});
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Geometry2D (§14) local-bounds helpers. The eight 2D nodes carry no `coord`,
 // so each needs an explicit arm. The circular primitives get EXACT bounds from
@@ -365,6 +374,42 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
   }
   if (t == "NurbsCurve" || t == "NurbsPatchSurface")
     return pointsBounds(getNode(*geom, "controlPoint"));
+  if (t == "NurbsSweptSurface") {
+    // Conservative: inflate the trajectory control hull by the cross-section's
+    // max radius (the swept surface lies in trajectory-hull ⊕ ball(rmax)).
+    auto trajNode = getNode(*geom, "trajectoryCurve");
+    const Aabb traj = pointsBounds(trajNode ? getNode(*trajNode, "controlPoint")
+                                            : nullptr);
+    if (traj.empty) return {};
+    float rmax = 0.0f;
+    for (const auto &p : getControlCurvePoints(getNode(*geom, "crossSectionCurve")))
+      rmax = std::max(rmax, std::sqrt(p.x * p.x + p.y * p.y));
+    Aabb r;
+    r.expand({traj.min.x - rmax, traj.min.y - rmax, traj.min.z - rmax});
+    r.expand({traj.max.x + rmax, traj.max.y + rmax, traj.max.z + rmax});
+    return r;
+  }
+  if (t == "NurbsSwungSurface") {
+    // S = (px*tx, px*ty, py): z spans the profile height; x/y are bounded by
+    // |px|*|t| over both control hulls.
+    const auto pf = getControlCurvePoints(getNode(*geom, "profileCurve"));
+    const auto tj = getControlCurvePoints(getNode(*geom, "trajectoryCurve"));
+    if (pf.empty() || tj.empty()) return {};
+    float pmax = 0.0f, zmin = pf[0].y, zmax = pf[0].y;
+    for (const auto &p : pf) {
+      pmax = std::max(pmax, std::fabs(p.x));
+      zmin = std::min(zmin, p.y);
+      zmax = std::max(zmax, p.y);
+    }
+    float tmax = 0.0f;
+    for (const auto &p : tj)
+      tmax = std::max(tmax, std::max(std::fabs(p.x), std::fabs(p.y)));
+    const float ext = pmax * tmax;
+    Aabb r;
+    r.expand({-ext, -ext, zmin});
+    r.expand({ext, ext, zmax});
+    return r;
+  }
   // Generic mesh: any geometry carrying a Coordinate via "coord" or "controlPoint".
   if (hasField(*geom, "coord"))
     return pointsBounds(getNode(*geom, "coord"));

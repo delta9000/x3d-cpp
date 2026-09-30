@@ -1,7 +1,9 @@
-// sound_immersive_test.cpp — Immersive Sound (§16.4.2 AudioClip, §16.4.17 Sound)
-// on the built-in backend: the ellipsoid and Buffer fixtures shared with the
-// swap-test, the WAV decoder, and a Sound{AudioClip} scene through SoundSystem
-// (url -> resolver -> decoder -> Buffer; isActive/isPaused/pitch -> playback).
+// sound_immersive_test.cpp — Immersive Sound (§16.4.2 AudioClip, §16.4.5
+// BufferAudioSource, §16.4.17 Sound) on the built-in backend: the ellipsoid and
+// Buffer fixtures shared with the swap-test, the WAV decoder, a Sound{AudioClip}
+// scene through SoundSystem (url -> resolver -> decoder -> Buffer;
+// isActive/isPaused/pitch -> playback), and BufferAudioSource scenes (authored
+// PCM -> the same Buffer node; MediaTimeSystem lifecycle, loop, gain, channels).
 
 #include "AudioBackend.hpp"
 #include "SoundSystem.hpp"
@@ -15,6 +17,8 @@
 #include "X3DExecutionContext.hpp"
 
 #include "x3d/nodes/AudioClip.hpp"
+#include "x3d/nodes/AudioDestination.hpp"
+#include "x3d/nodes/BufferAudioSource.hpp"
 #include "x3d/nodes/MovieTexture.hpp"
 #include "x3d/nodes/Sound.hpp"
 
@@ -28,6 +32,7 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
 using x3d::test::goertzel;
+using x3d::test::rms;
 using x3d::test::rmsStereo;
 
 static int g_failures = 0;
@@ -200,6 +205,179 @@ static void testMovieTextureSourceLifecycle() {
   CHECK(levelAt(4.0) < 1e-6, "movie audio stops with MovieTexture");
 }
 
+// An n-sample ascending ramp: the Buffer node plays it back sample-exactly at
+// the output rate when the authored sampleRate matches.
+static MFFloat makeRamp(std::size_t n) {
+  MFFloat ramp(n);
+  for (std::size_t i = 0; i < n; ++i)
+    ramp[i] = static_cast<float>(i + 1) / static_cast<float>(n);
+  return ramp;
+}
+
+// SND-4: a BufferAudioSource (§16.4.5) feeds its authored PCM `buffer` into the
+// same Buffer node an AudioClip decodes into; playback follows the
+// MediaTimeSystem lifecycle, loop repeats, gain scales.
+static void testBufferAudioSourceScene() {
+  const MFFloat ramp = makeRamp(8);
+
+  // Non-loop: the ramp renders once — the lifecycle stops the node after one
+  // pass (buffer seconds = 8 / 48000).
+  {
+    auto src = std::make_shared<BufferAudioSource>();
+    src->setBuffer(ramp);
+    src->setSampleRate(48000.0f);
+    src->setStartTime(1.0);
+    auto dest = std::make_shared<AudioDestination>();
+    dest->setChildren(MFNode{std::static_pointer_cast<X3DNode>(src)});
+    SoundSystem sound(std::make_shared<BuiltinDspBackend>());
+    X3DExecutionContext ctx;
+    auto media = std::make_shared<MediaTimeSystem>();
+    media->attach(src.get(), ctx);
+    ctx.addSystem(media);
+    sound.attach(dest.get(), ctx);
+    std::vector<float> out;
+    auto renderAt = [&](double t) {
+      ctx.tick(t);
+      sound.update(t, ctx);
+      sound.render(x3d::test::kImmFrames, x3d::test::kImmSR, out);
+    };
+    renderAt(0.0);
+    CHECK(rms(out) < 1e-6, "buffer source: silent before startTime");
+    renderAt(1.0);
+    bool exact = true;
+    for (int i = 0; i < x3d::test::kImmFrames && exact; ++i)
+      exact = std::fabs(out[static_cast<std::size_t>(i)] - ramp[static_cast<std::size_t>(i) % 8]) < 1e-6f;
+    CHECK(exact, "buffer source: the authored ramp renders at its level");
+    renderAt(1.01);
+    CHECK(rms(out) < 1e-6 && !src->getIsActive(),
+          "buffer source: non-loop renders once, then the lifecycle stops it");
+  }
+
+  // Loop: the buffer repeats and the node stays active; gain scales the output.
+  {
+    auto src = std::make_shared<BufferAudioSource>();
+    src->setBuffer(ramp);
+    src->setSampleRate(48000.0f);
+    src->setLoop(true);
+    src->setStartTime(1.0);
+    auto dest = std::make_shared<AudioDestination>();
+    dest->setChildren(MFNode{std::static_pointer_cast<X3DNode>(src)});
+    SoundSystem sound(std::make_shared<BuiltinDspBackend>());
+    X3DExecutionContext ctx;
+    auto media = std::make_shared<MediaTimeSystem>();
+    media->attach(src.get(), ctx);
+    ctx.addSystem(media);
+    sound.attach(dest.get(), ctx);
+    std::vector<float> out;
+    auto renderAt = [&](double t) {
+      ctx.tick(t);
+      sound.update(t, ctx);
+      sound.render(x3d::test::kImmFrames, x3d::test::kImmSR, out);
+    };
+    renderAt(1.0);
+    bool exact = true;
+    for (int i = 0; i < x3d::test::kImmFrames && exact; ++i)
+      exact = std::fabs(out[static_cast<std::size_t>(i)] - ramp[static_cast<std::size_t>(i) % 8]) < 1e-6f;
+    CHECK(exact, "buffer source: loop repeats the buffer");
+    renderAt(2.0);
+    CHECK(src->getIsActive(), "buffer source: loop keeps the node active");
+    src->setGain(0.5f);
+    renderAt(2.1);
+    exact = true;
+    for (int i = 0; i < x3d::test::kImmFrames && exact; ++i) {
+      const std::size_t k = static_cast<std::size_t>(i) % 8;
+      exact = std::fabs(out[static_cast<std::size_t>(i)] - 0.5f * ramp[k]) < 1e-6f;
+    }
+    CHECK(exact, "buffer source: gain scales the output");
+  }
+}
+
+// SND-4 as modeled: numberOfChannels > 1 is interleaved and averaged down to
+// the Buffer node's mono contract; bufferDuration limits the seconds used.
+static void testBufferAudioSourceChannelsAndDuration() {
+  {
+    auto src = std::make_shared<BufferAudioSource>();
+    src->setBuffer(MFFloat{0.5f, 1.0f, 0.25f, 0.5f});
+    src->setNumberOfChannels(2);
+    src->setSampleRate(48000.0f);
+    src->setStartTime(1.0);
+    auto dest = std::make_shared<AudioDestination>();
+    dest->setChildren(MFNode{std::static_pointer_cast<X3DNode>(src)});
+    SoundSystem sound(std::make_shared<BuiltinDspBackend>());
+    X3DExecutionContext ctx;
+    auto media = std::make_shared<MediaTimeSystem>();
+    media->attach(src.get(), ctx);
+    ctx.addSystem(media);
+    sound.attach(dest.get(), ctx);
+    std::vector<float> out;
+    ctx.tick(1.0);
+    sound.update(1.0, ctx);
+    sound.render(x3d::test::kImmFrames, x3d::test::kImmSR, out);
+    CHECK(std::fabs(out[0] - 0.75f) < 1e-6f && std::fabs(out[1] - 0.375f) < 1e-6f &&
+              std::fabs(out[2] - 0.75f) < 1e-6f,
+          "buffer source: a stereo buffer is averaged to the mono Buffer node");
+  }
+  {
+    auto src = std::make_shared<BufferAudioSource>();
+    const MFFloat ramp = makeRamp(8);
+    src->setBuffer(ramp);
+    src->setSampleRate(48000.0f);
+    src->setBufferDuration(4.0 / 48000.0);  // seconds to use: the first 4 samples
+    src->setStartTime(1.0);
+    auto dest = std::make_shared<AudioDestination>();
+    dest->setChildren(MFNode{std::static_pointer_cast<X3DNode>(src)});
+    SoundSystem sound(std::make_shared<BuiltinDspBackend>());
+    X3DExecutionContext ctx;
+    auto media = std::make_shared<MediaTimeSystem>();
+    media->attach(src.get(), ctx);
+    ctx.addSystem(media);
+    sound.attach(dest.get(), ctx);
+    std::vector<float> out;
+    ctx.tick(1.0);
+    sound.update(1.0, ctx);
+    sound.render(x3d::test::kImmFrames, x3d::test::kImmSR, out);
+    const bool truncated = std::fabs(out[0] - ramp[0]) < 1e-6f &&
+                           std::fabs(out[3] - ramp[3]) < 1e-6f &&
+                           std::fabs(out[4] - ramp[0]) < 1e-6f;
+    CHECK(truncated, "buffer source: bufferDuration truncates the used portion");
+  }
+}
+
+// SND-4: the computed playback rate (playbackRate x detune in cents) is
+// captured at activation, exactly like AudioClip.pitch. No authored sampleRate
+// means the buffer's seconds are unknowable, so the node plays until stopTime
+// (the AudioClip unknown-duration precedent) and stays active across the test.
+static void testBufferAudioSourceRateCapture() {
+  auto src = std::make_shared<BufferAudioSource>();
+  src->setBuffer(makeRamp(8));
+  src->setPlaybackRate(2.0f);
+  src->setDetune(1200.0f);  // +1 octave over playbackRate 2 -> 4x
+  src->setStartTime(1.0);
+  auto dest = std::make_shared<AudioDestination>();
+  dest->setChildren(MFNode{std::static_pointer_cast<X3DNode>(src)});
+  auto backend = std::make_shared<RecordingBackend>();
+  SoundSystem sound(backend);
+  X3DExecutionContext ctx;
+  auto media = std::make_shared<MediaTimeSystem>();
+  media->attach(src.get(), ctx);
+  ctx.addSystem(media);
+  sound.attach(dest.get(), ctx);
+  ctx.tick(0.0);
+  sound.update(0.0, ctx);
+  ctx.tick(1.0);
+  sound.update(1.0, ctx);
+  src->setPlaybackRate(8.0f);
+  src->setDetune(0.0f);
+  ctx.tick(2.0);
+  sound.update(2.0, ctx);
+  CHECK(src->getIsActive(), "buffer source: unknown duration keeps the node active");
+  float rate = -1.0f;
+  for (const auto &p : backend->setParams)
+    if (p.param == Param::PlaybackRate) rate = p.value;
+  CHECK(rate == 4.0f, "buffer source: playbackRate x detune is captured at activation");
+}
+
+
 // ADR-0051 detach: a MovieTexture whose audio is still pending (load FALSE)
 // is removed with its Inline and freed; later ticks must not touch it (the
 // sanitizer build turns a stale pending entry into a use-after-free report).
@@ -232,6 +410,9 @@ int main() {
                                   [](bool ok, const char *msg) { CHECK(ok, msg); });
   testWav();
   testSoundClipScene();
+  testBufferAudioSourceScene();
+  testBufferAudioSourceChannelsAndDuration();
+  testBufferAudioSourceRateCapture();
   testActivePitchStaysAtActivationRate();
   testMovieTextureSourceLifecycle();
   testDetachDropsPendingMovie();

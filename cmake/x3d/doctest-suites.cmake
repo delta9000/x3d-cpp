@@ -155,6 +155,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/asset_resolver_b8_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t7_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_fog_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_clip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/background_desc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t8_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_b2_test.cpp"
@@ -175,6 +176,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/castshadow_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/nurbs_eval_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_swept_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_geom2d_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scheme_router_test.cpp")
     target_link_libraries(x3d_extract_tests PRIVATE
@@ -223,11 +225,13 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/interpolator_conformance_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/event_utility_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/key_device_sensor_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pick_sensor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/node_lifecycle_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/timesensor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/timesensor_rtc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_dynamic_route_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_author_field_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/proto_interface_state_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/loadsensor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/slerp_normal_test.cpp")
     target_link_libraries(x3d_events_tests PRIVATE

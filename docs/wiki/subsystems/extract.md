@@ -36,10 +36,11 @@ to what actually changed, not to scene size.
 | `runtime/extract/SceneExtractor.hpp` | Top-level extractor: visibility-aware DFS, path interning, reverse-index maintenance, `fullSnapshot()` + `delta()` |
 | `runtime/extract/MeshBuilder.hpp` | Geometry-node → `MeshData` in the node's local frame; handles all composed, lattice, analytic, line, and point types |
 | `runtime/extract/PackedMesh.hpp` | Binary slab descriptor for embedder-supplied geometry (glTF-accessor-compatible layout) |
-| `runtime/extract/RenderItem.hpp` | Pure-POD descriptor layer: `PathKey`, `RenderItemId`, `GeomId`, `MeshData`, `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`, `FogDesc`, `RenderDelta` |
+| `runtime/extract/RenderItem.hpp` | Pure-POD descriptor layer: `PathKey`, `RenderItemId`, `GeomId`, `MeshData`, `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`, `FogDesc`, `LocalFogDesc`, `RenderDelta` |
 | `runtime/extract/TextureExtract.hpp` | Texture/material extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/MaterialSystem.hpp` | Appearance → `MaterialDesc` mapping (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/LightSystem.hpp` | World-resolved `LightDesc` collection (see [Texture extraction](extract-textures.md)) |
+| `runtime/extract/LocalFogSystem.hpp` | Enabled `LocalFogDesc` collection, each scoped to its enclosing grouping node (§24.4.3) |
 | `runtime/extract/Topology.hpp` | `Topology` enum: `Triangles`, `Lines`, `Points` (see [Topology](extract-topology.md)) |
 | `runtime/extract/NurbsEval.hpp` | Node-free NURBS math unit (`x3d::runtime::extract::nurbs`): Cox–de Boor basis, rational (weighted) curve/surface eval, periodic/closed handling, analytic surface normals — plain arrays, no X3D-node dependency (see [NURBS](#nurbs)) |
 
@@ -71,6 +72,8 @@ CameraDesc    cam  = ex.camera();
 BackgroundDesc bg  = ex.background(); // sky/ground gradient + six panorama face TextureRefs
                                       // (Background *Url / TextureBackground *Texture) + transparency.
 FogDesc       fog  = ex.fog(); // bound Fog (§24.4.2); visibilityRange world-scaled, 0 = off.
+int           lf   = it.localFog; // §24.4.3: nearest in-scope LocalFog index, or -1.
+const std::vector<LocalFogDesc>& localFogs = ex.snapshotLocalFogs(); // resolve lf here.
 std::vector<LightDesc> lights = ex.lights(); // fresh collect; or:
 const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // from last fullSnapshot()
 
@@ -121,6 +124,8 @@ struct RenderDelta {
 - `mesh` (`MeshRef` = `shared_ptr<const MeshData>`) — local-frame triangles, **shared** across every placement of one `GeomId` ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)), so host RAM is O(distinct content) rather than O(placements). Never null (a Packed item points at `emptyMeshRef()`), so `item.mesh->positions` needs no null check. Immutable by contract: a content change builds a **new** mesh and bumps `GeomId::contentVersion` rather than editing one a co-owner can see.
 - `lights` — indices into `snapshotLights()` for lights whose scope covers this placement.
 - `LightSystem` collects only lights reached through the same selected `Switch` child or distance-selected `LOD` level as geometry. It resolves locations and directions per path and scales PointLight/SpotLight radius through ancestor transforms (§17.4.2–3).
+- `LocalFogSystem` follows the same walk: a `LocalFog` is bound-independent and applies only within its enclosing grouping node, so each `LocalFogDesc` carries that `scopeRoot`; `enabled`=false `LocalFog`s are skipped so global `Fog` applies unchanged. `SceneExtractor` tags each `RenderItem::localFog` with the nearest in-scope index (global `Fog` governs when `-1`), and `visibilityRange` is world-scaled like global `Fog`.
+- `clipPlanes` (`ClipPlaneList`) — the enabled `ClipPlane` nodes (§11.4.1) in scope for this placement, resolved to **world space** (a plane's half-space is invariant, so a consumer maps it into its own frame — e.g. eye space — as needed). A `ClipPlane` affects the *following siblings and their subtrees* within its parent grouping node, threaded down the walk as scoped state. Fixed capacity — `ClipPlaneList::kMaxClipPlanes = 6` (the Annex F.5 minimum); planes beyond the sixth are dropped. `enabled=false` planes are ignored.
 - `beyondVisibilityLimit` — hint: item origin is past `Viewpoint.farDistance` / `NavigationInfo.visibilityLimit`.
 - `castShadow` — `X3DShapeNode.castShadow` (X3D default `true`); whether this shape occludes light. Carried, not interpreted — the shadow-visibility query (technique-defined per §17) is a consumer/seam concern (see [ADR-0028](../decisions/0028-shadow-visibility-seam.md)).
 
@@ -145,7 +150,7 @@ Geometry types handled:
 - **Line/point topology (B4):** `IndexedLineSet`, `LineSet`, `PointSet` — `MeshData.topology = Lines/Points`, `solid=false`. Authored `Normal` values follow expanded vertices and enable lighting (§11.2.2.5). Without normals, consumers use `MaterialDesc::unlitGeometryRGBA()` or vertex colors; the fallback uses emissiveColor.
 - **Custom vertex attributes (§31.4.2):** `MeshData::vertexAttributes` carries named, fixed-width `FloatVertexAttribute`, `Matrix3VertexAttribute`, and `Matrix4VertexAttribute` streams. Their vertex-major values follow emitted positions through composed-geometry expansion and indexed coordinate lookup.
 - **Geometry2D (§14):** the eight XY-plane primitives — `Arc2D`/`Circle2D`/`Polyline2D` → `Lines`, `Polypoint2D` → `Points` (unlit, `solid=false`), and `ArcClose2D` (PIE/CHORD)/`Disk2D` (fan + annulus; `innerRadius==outerRadius` → a circle line)/`Rectangle2D`/`TriangleSet2D` → `Triangles` with +Z normals and per-node `solid`. Circular primitives use one chord per `2π/64` rad (64 chords per full circle); texture coordinates map the geometry's XY bounding box to `[0,1]²`
-- **NURBS (NRB-1):** `NurbsCurve` → `Topology::Lines`, `NurbsPatchSurface` → `Topology::Triangles` with analytic normals + implicit `(u,v)` texcoords (see [NURBS](#nurbs))
+- **NURBS (NRB-1, NRB-3):** `NurbsCurve` → `Topology::Lines`; `NurbsPatchSurface`, `NurbsSweptSurface` and `NurbsSwungSurface` → `Topology::Triangles` with analytic normals + implicit texcoords (see [NURBS](#nurbs))
 - **Text (T-TEXT):** delegated to `buildTextMesh` (see [Text extraction](extract-text.md)); sets `MeshData.isGlyphMesh = true`
 
 ### NURBS
@@ -165,13 +170,25 @@ Two thin `MeshBuilder` arms read the X3D fields and call it:
 - **`NurbsPatchSurface`** → resolves the control net + `u*/v*` fields, calls
   `tessellateSurface`, and emits two triangles per grid cell as `Topology::Triangles`
   with populated analytic normals and implicit normalized `(u,v)` texcoords.
+- **`NurbsSweptSurface` / `NurbsSwungSurface`** (NRB-3) → read a 2D control curve
+  (`crossSectionCurve`/`profileCurve` and the swung `trajectoryCurve`) via
+  `tessellateCurve2D` — the shared evaluator lifted to z=0, with `ContourPolyline2D`
+  forced to its piecewise-linear order 2 — plus a 3D `trajectoryCurve` for the swept
+  case. `sweptSurfaceGrid` carries the cross-section in the frame perpendicular to the
+  trajectory tangent (a circle swept along a straight line is a cylinder);
+  `swungSurfaceGrid` builds the classic swung surface `S(u,v) = (px·tx, px·ty, py)`
+  (a line profile swung around a circle is a surface of revolution). Both emit the same
+  `Topology::Triangles` form as the patch surface (central-difference per-vertex normals,
+  unit-square texcoords) and honor `solid`/`ccw`/`tessellation`.
 
-Both flip to `true` in `recognizedGeometryType()` (kept in lockstep with the dispatch).
-`GeometryBounds.hpp` gives them control-point convex-hull AABB bounds (a NURBS
-curve/surface lies within the AABB of its control net). The still-deferred NURBS nodes
-(`NurbsTrimmedSurface`/`NurbsSweptSurface`/`NurbsSwungSurface`, NRB-3) stay unrecognized
-and continue to route through the `externalGeometryResolver` fallback. The "first-party,
-not a seam" rationale and the deferral set are in [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md).
+All five flip to `true` in `recognizedGeometryType()` (kept in lockstep with the
+dispatch). `GeometryBounds.hpp` gives them conservative AABB bounds (control-point
+convex hull for curve/patch; for swept the trajectory hull ⊕ the cross-section radius;
+for swung `|px|·|t|` in x/y with the profile height as z). `NurbsTrimmedSurface` (NRB-3)
+remains unrecognized — it needs 2D contour-loop point-in-region clipping plus polygon
+triangulation in the `(u,v)` domain, and no such helper exists — and continues to route
+through the `externalGeometryResolver` fallback. The "first-party, not a seam" rationale
+is in [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md).
 
 ### Seam points
 
@@ -239,6 +256,7 @@ MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are r
 | `x3d_packed_mesh` | `PackedMesh` descriptor: `set_attrib`, `has()`, `empty()`, `is_indexed()` |
 | `x3d_render_item_geometry` | `Geometry` union: AoS vs Packed kind switching |
 | `x3d_light_system` | `LightSystem::collect()` world-resolution + global/scoped flag |
+| `x3d_scene_extractor_fog` | Bound global `Fog` `FogDesc` + `LocalFog` scoping/enabled/world-scale (§24.4.3) |
 | `x3d_material_system` | `MaterialSystem::materialOf()` Phong/Physical/Unlit dispatch |
 | `x3d_texture_extract` | Texture extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 

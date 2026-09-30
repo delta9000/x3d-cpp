@@ -145,6 +145,8 @@ public:
       // §37 useGlobalGravity: FALSE -> the body ignores the collection's gravity.
       backend_->setGravityFactor(world, handle,
                                  body->getUseGlobalGravity() ? 1.0f : 0.0f);
+      // §37 autoDisable: FALSE (the default) -> the body never sleeps.
+      backend_->setBodyAllowSleeping(world, handle, body->getAutoDisable());
       bodies_.push_back(Mapped{body, world, handle});
       handleFor.emplace(body, handle);
       // Record the resolution so drained contacts (world,handle) map back to the
@@ -152,6 +154,18 @@ public:
       bodyRef_[{world, handle}] =
           BodyRef{bodyNode, collidableShape, nextOrdinal_++};
     }
+
+    // §37 RigidBodyCollection auto-disable: autoDisable gates whether anything in
+    // this world may sleep; disableTime / disableLinearSpeed tune Jolt's
+    // WORLD-wide sleep thresholds (Jolt has no per-body equivalent, so the
+    // collection's values apply to the whole world). disableAngularSpeed has no
+    // world-wide Jolt counterpart and stays deferred (see CONF-RBP-DAMP).
+    const double disableTime = collection->getDisableTime();
+    const float disableLinSpeed = collection->getDisableLinearSpeed();
+    backend_->setSleepSettings(
+        world, collection->getAutoDisable(),
+        disableTime > 0.0 ? static_cast<float>(disableTime) : -1.0f,
+        disableLinSpeed > 0.0f ? disableLinSpeed : -1.0f);
 
     // Joints: every body of this collection now exists (constraints require it),
     // so resolve each §37 RigidJoint into a ConstraintDesc and add it.
@@ -177,6 +191,27 @@ public:
       if (useBounce) contactRestitution = cc->getBounce();
     }
     backend_->setContactResponse(world, contactFriction, contactRestitution);
+
+    // §37 solver tuning: map the collection's solver fields onto the backend.
+    // Each field is sent ONLY when it differs from the §37 default — at the spec
+    // defaults every field stays at its sentinel and the backend's own solver
+    // settings are left untouched (spec-default behavior is preserved). Fields
+    // with no honest backend equivalent (constantForceMix, preferAccuracy) are
+    // deliberately not carried across the seam (CONF-RBP-SOLVER).
+    SolverSettings solver;
+    if (collection->getIterations() !=
+        xn::RigidBodyCollection::getDefaultIterations())
+      solver.velocityIterations = collection->getIterations();
+    if (collection->getErrorCorrection() !=
+        xn::RigidBodyCollection::getDefaultErrorCorrection())
+      solver.errorCorrection = collection->getErrorCorrection();
+    if (collection->getContactSurfaceThickness() !=
+        xn::RigidBodyCollection::getDefaultContactSurfaceThickness())
+      solver.contactSurfaceThickness = collection->getContactSurfaceThickness();
+    if (collection->getMaxCorrectionSpeed() !=
+        xn::RigidBodyCollection::getDefaultMaxCorrectionSpeed())
+      solver.maxCorrectionSpeed = collection->getMaxCorrectionSpeed();
+    backend_->setSolverSettings(world, solver);
   }
 
   void detach(X3DNode *node, X3DExecutionContext &) override {
@@ -311,6 +346,18 @@ public:
 
   /** @brief Number of bodies enrolled in simulation (for tests). */
   std::size_t bodyCount() const { return bodies_.size(); }
+
+  /**
+   * @brief Whether the enrolled body at `index` is awake (observable sleeping).
+   * @details Exposes the backend's §37 autoDisable sleeping state so a consumer
+   *          (or test) can tell a resting body that is asleep from one that keeps
+   *          integrating. Out-of-range -> true.
+   */
+  bool isBodyActive(std::size_t index) const {
+    if (!backend_ || index >= bodies_.size()) return true;
+    const Mapped &m = bodies_[index];
+    return backend_->isBodyActive(m.world, m.handle);
+  }
 
   /**
    * @brief Number of RigidBodies EXCLUDED from the simulation because their

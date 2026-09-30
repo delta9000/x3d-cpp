@@ -64,6 +64,10 @@ _x3d_classify_present_targets(behavior
     x3d_authoring_link_contract
     x3d_sound_system
     x3d_sound_immersive
+    x3d_sound_delay
+    x3d_sound_dynamics
+    x3d_sound_periodicwave
+    x3d_sound_waveshaper
     x3d_corpus_sweep
     x3d_corpus_audit
     x3d_corpus_audit_selftest
@@ -166,6 +170,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_json_script_field
         x3d_contact_reporter
         x3d_physics_contact_wiring
+        x3d_physics_solver_settings
         x3d_inertia_massprops
         x3d_contact_response
         x3d_event_scene_bridge
@@ -191,6 +196,10 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_authoring_link_contract
         x3d_sound_system
         x3d_sound_immersive
+        x3d_sound_delay
+        x3d_sound_dynamics
+        x3d_sound_periodicwave
+        x3d_sound_waveshaper
         x3d_corpus_smoke
         x3d_corpus_audit_smoke
         x3d_corpus_audit_selftest

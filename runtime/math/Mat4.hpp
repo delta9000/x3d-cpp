@@ -128,7 +128,21 @@ struct Mat4 {
   }
 };
 
-// X3D Transform local matrix: M = T * C * R * SR * S * SR^-1 * C^-1
+// Transform a plane (a,b,c,d), with a point X VISIBLE when a*X.x+b*X.y+c*X.z+d
+// >= 0, from the frame of plane p into the frame of matrix M: n' = M^-T n, so
+// (M^-T n)·(M X) = n·X (the visible half-space is preserved). Used to carry a
+// ClipPlane equation from its local frame to world (extraction) or eye (render).
+// Column-major inverse `inv`: inv^T component i is the inverse's column i, i.e.
+// (inv^T p)_i = sum_j a[i*4 + j] * p_j.
+inline SFVec4f transformPlane(const Mat4 &m, const SFVec4f &p) {
+  const Mat4 inv = m.inverse();
+  const float *a = inv.m.data();
+  return SFVec4f{
+      a[0] * p.x + a[1] * p.y + a[2] * p.z + a[3] * p.w,
+      a[4] * p.x + a[5] * p.y + a[6] * p.z + a[7] * p.w,
+      a[8] * p.x + a[9] * p.y + a[10] * p.z + a[11] * p.w,
+      a[12] * p.x + a[13] * p.y + a[14] * p.z + a[15] * p.w};
+}
 // (ISO/IEC 19775-1 Transform). Applied to a column vector right-to-left.
 inline Mat4 transformMatrix(const SFVec3f &translation, const SFRotation &rotation,
                             const SFVec3f &scale, const SFVec3f &center,

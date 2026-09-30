@@ -846,6 +846,66 @@ int main() {
     }
   }
 
+  // ── (f) §37 autoDisable wiring end-to-end: a ball resting on a fixed ground in
+  //     a RigidBodyCollection. With the collection's autoDisable=TRUE and a short
+  //     disableTime, a body whose own autoDisable=TRUE sleeps (isBodyActive
+  //     false); one whose autoDisable=FALSE keeps integrating (isBodyActive true)
+  //     after the same number of ticks.
+  {
+    auto restActive = [](bool bodyAutoDisable) {
+      auto up = [](auto p) { return std::static_pointer_cast<X3DNode>(p); };
+      auto makeCollidable = [&](auto geom) {
+        auto s = std::make_shared<Shape>();
+        s->setGeometry(up(geom));
+        auto c = std::make_shared<CollidableShape>();
+        c->setShapeUnchecked(up(s));
+        return up(c);
+      };
+      auto groundBox = std::make_shared<Box>();
+      groundBox->setSizeUnchecked(SFVec3f{20, 0.2f, 20});  // top surface at y=0.1
+      auto ground = std::make_shared<RigidBody>();
+      ground->setFixed(true);
+      ground->setPosition(SFVec3f{0, 0, 0});
+      ground->setGeometry(MFNode{makeCollidable(groundBox)});
+
+      auto ball = std::make_shared<Sphere>();
+      ball->setRadiusUnchecked(0.5f);
+      auto rb = std::make_shared<RigidBody>();
+      rb->setMass(1.0f);
+      rb->setPosition(SFVec3f{0, 0.65f, 0});  // rests at y ~ 0.6
+      rb->setAutoDisable(bodyAutoDisable);
+      rb->setGeometry(MFNode{makeCollidable(ball)});
+
+      auto world = std::make_shared<RigidBodyCollection>();
+      world->setGravity(SFVec3f{0, -9.8f, 0});
+      world->setAutoDisable(true);
+      world->setDisableTime(0.1);  // short -> the ball sleeps soon after settling
+      world->setBodies(MFNode{up(ground), up(rb)});
+
+      X3DExecutionContext ctx;
+      auto phys = std::make_shared<PhysicsSystem>(std::make_shared<JoltBackend>());
+      phys->attach(world.get(), ctx);
+      ctx.addSystem(phys);
+      double t = 0.0;
+      ctx.tick(t);
+      for (int i = 0; i < 180; ++i) {  // 3 s — settle well past disableTime
+        t += 1.0 / 60.0;
+        ctx.tick(t);
+      }
+      return phys->isBodyActive(1);  // index 0 = ground, 1 = ball
+    };
+    bool neverSleeps = restActive(false);
+    bool maySleep = restActive(true);
+    std::fprintf(stderr,
+                 "§37 autoDisable wiring: body.autoDisable=false active=%d, "
+                 "body.autoDisable=true active=%d\n",
+                 neverSleeps ? 1 : 0, maySleep ? 1 : 0);
+    CHECK(neverSleeps,
+          "RigidBody.autoDisable=FALSE never sleeps through PhysicsSystem");
+    CHECK(!maySleep,
+          "autoDisable=TRUE + collection disableTime=0.1 body sleeps");
+  }
+
   if (g_failures == 0)
     std::fprintf(stderr, "physics_system_test: ALL PASS\n");
   return g_failures == 0 ? 0 : 1;

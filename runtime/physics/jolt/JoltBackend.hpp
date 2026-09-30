@@ -56,8 +56,16 @@ public:
                   const SFVec3f &torque) override;
   void setGravityFactor(WorldHandle world, BodyHandle body,
                         float factor) override;
+  void setBodyAllowSleeping(WorldHandle world, BodyHandle body,
+                            bool allow) override;
+  void setSleepSettings(WorldHandle world, bool allowSleeping,
+                        float timeBeforeSleep,
+                        float pointVelocityThreshold) override;
+  bool isBodyActive(WorldHandle world, BodyHandle body) const override;
   void setContactResponse(WorldHandle world, float friction,
                           float restitution) override;
+  void setSolverSettings(WorldHandle world,
+                         const SolverSettings &settings) override;
   void getBodyVelocity(WorldHandle world, BodyHandle body, SFVec3f &lin,
                        SFVec3f &ang) const override;
   void step(WorldHandle world, double dt) override;

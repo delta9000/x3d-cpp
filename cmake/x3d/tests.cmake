@@ -11,6 +11,18 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_hanim_skin_tests PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_hanim_skin_tests COMMAND x3d_hanim_skin_tests)
 
+    # PhysicsSystem solver-tuning seam (CONF-RBP-SOLVER). Engine-agnostic: the
+    # core PhysicsSystem.hpp is Jolt-free, so this runs with X3D_CPP_BUILD_PHYSICS
+    # OFF (a recording fake backend observes what crosses the seam).
+    add_executable(x3d_physics_solver_settings_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/physics_solver_settings_test.cpp")
+    x3d_set_target_purpose(x3d_physics_solver_settings_test behavior)
+    target_link_libraries(x3d_physics_solver_settings_test PRIVATE x3d_cpp::x3d_cpp)
+    target_include_directories(x3d_physics_solver_settings_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
+    add_test(NAME x3d_physics_solver_settings
+             COMMAND x3d_physics_solver_settings_test)
+
     set(X3D_CPP_HEADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings")
 
     # Collect all generated headers. CONFIGURE_DEPENDS re-globs on rebuild if
@@ -526,6 +538,20 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_sound_system PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_sound_system COMMAND x3d_sound_system)
 
+    # Delay (§16.4.6): the ring-buffer delay node on the built-in backend.
+    add_executable(x3d_sound_delay
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_delay_test.cpp")
+    target_link_libraries(x3d_sound_delay PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_sound_delay COMMAND x3d_sound_delay)
+
+    # WaveShaper (§16.4.21): the transfer-curve node on the built-in backend.
+    add_executable(x3d_sound_waveshaper
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_waveshaper_test.cpp")
+    target_link_libraries(x3d_sound_waveshaper PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_sound_waveshaper COMMAND x3d_sound_waveshaper)
+
     # Immersive Sound (ADR-0050): Sound ellipsoid + AudioClip Buffer on the
     # built-in backend, the WAV decoder, and a Sound{AudioClip} scene.
     add_executable(x3d_sound_immersive
@@ -535,6 +561,21 @@ if(X3D_CPP_BUILD_TESTS)
     target_include_directories(x3d_sound_immersive PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/wav")
     add_test(NAME x3d_sound_immersive COMMAND x3d_sound_immersive)
+
+    # §16.4.9 DynamicsCompressor (SND-5): SoundSystem graph wiring (recording
+    # tier) + feed-forward compressor DSP on the built-in backend (DSP tier).
+    add_executable(x3d_sound_dynamics
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_dynamics_compressor_test.cpp")
+    target_link_libraries(x3d_sound_dynamics PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_sound_dynamics COMMAND x3d_sound_dynamics)
+    # SND-9: PeriodicWave custom oscillator waveform (§16.4.18) — backend
+    # synthesis, SoundSystem registration, and the 4.0 parse-path evidence.
+    add_executable(x3d_sound_periodicwave
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_periodicwave_test.cpp")
+    target_link_libraries(x3d_sound_periodicwave PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_sound_periodicwave COMMAND x3d_sound_periodicwave)
 
     # Author-shader binding plan (vocabulary + introspection).
 endif()
