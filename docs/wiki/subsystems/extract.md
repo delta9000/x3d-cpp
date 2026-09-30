@@ -181,8 +181,43 @@ unrelated TRS, coalesced edits, and camera-only/shared-empty Billboard clip
 scopes with independent expected world-plane values. Shared enclosing LocalFog
 groups also have explicit expected per-placement ranges before and after ancestor
 scale changes. This establishes delta/snapshot consistency and those snapshot
-semantics; it does not add clip/local-fog rendering to the OpenGL example or
-refresh the optional `beyondVisibilityLimit` hint on camera/TRS/far-distance changes.
+semantics; it does not add clip/local-fog rendering to the OpenGL example.
+
+### Optional visibility-limit hints
+
+`RenderItem::beyondVisibilityLimit` is an **origin-distance hint**, for both AoS
+and packed placements: distance from the current world origin to the tracked eye
+is strictly greater than positive `Viewpoint.farDistance`, or, if that is not
+positive, positive `NavigationInfo.visibilityLimit`. Nonpositive effective limits
+leave the hint false; equality is false. This is neither a bounds test nor a
+frustum/occlusion guarantee. Geometry is still emitted and hosts may ignore it.
+
+The hint has no narrow `RenderDelta` channel. Before consuming a tick, the extractor
+compares relevant live hints with their current values. An actual boolean change
+uses the existing bounded **remove-all-before-add-all replacement**. A host must
+apply removals before additions and read the complete newly added records; plain
+transform/material/camera notifications do not grant unrelated descriptor updates.
+This catches far/fallback changes (including binding switches and finite-to-unlimited
+clearing), eye motion and ancestor TRS. Added/revived geometry gets its current hint
+even when the inputs changed while that placement was empty. Packed emission now
+uses this same rule instead of always initializing the hint to false.
+
+Unlimited-to-unlimited ticks do no per-item hint checking. With a finite limit,
+changed eye/up/limit inputs require O(live items) distance comparisons; static
+placements reuse their stored world origins. Dirty-frame and Billboard placements
+instead recompose current paths, sharing a local-matrix cache (O(affected path
+lengths)). Stable inputs inspect only dirty-frame dependencies; Billboard scalar
+edits also check the recorded Billboard placements. No hint change means no extra
+replacement or mesh allocation, including ordinary tracking ticks. A crossing does
+cost a bounded full scene walk and re-extraction of unchanged meshes, just like
+other unsupported per-item descriptor updates; this is an explicit correctness
+fallback, not a fine-grained state channel or a replacement on every head update.
+
+`scene_extractor_visibility_delta_test.cpp` checks explicit expected hint values
+and a channel-respecting mirror against independent snapshots, including shared
+placements, disabled/fallback limits, view motion, bindings, TRS, empty activation
+and packed geometry. Billboard transform/LOD refresh remains the separate
+view-dependent extraction contract; hint checks use current Billboard frames.
 
 ### Incremental geometry ownership and liveness
 

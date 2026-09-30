@@ -122,6 +122,7 @@ int lodSelectLevel(const X3DNode &lod, float distToCenter);
   - `testSensorRemovedFromChildren` — `SENSOR-SWITCH`: a sensor removed from its parent's `children` is deactivated.
   - `testVisibleFalseSkip` — Group with `visible=false` produces no `RenderItem` in the extractor.
   - `testVisibilityLimitTag` — shape beyond `NavigationInfo.visibilityLimit` is tagged `beyondVisibilityLimit` on its `RenderItem`.
+  - `scene_extractor_visibility_delta_test.cpp` — optional AoS/packed origin-distance hints stay current after posted far/fallback, binding, eye and ancestor-TRS changes, including disabled limits and empty/revived placements. Actual live hint crossings use remove-before-add replacement; unchanged hints retain meshes. See [extraction](extract.md#optional-visibility-limit-hints) for the cost and channel contract.
   - `testCameraPose` — `ctx.cameraWorldPosition()` matches the bound Viewpoint's position.
   - `testProductionWiring` — `attachViewDependent` discovers and attaches to all `LOD` and `ProximitySensor` nodes recursively; both fire correct events after the first tick.
   - `testTransformSensorEnter` / `testTransformSensorExit` — §22.4.2: target AABB intersect sensor box fires `isActive` + `enterTime` on entry, `isActive=FALSE` + `exitTime` on exit (verified by translating the wrapping Transform between ticks; requires the new `worldTransformAny` so the target reachable via `targetObject` resolves through its Transform ancestor).
