@@ -321,14 +321,17 @@ public:
     // A source (Coordinate/Normal/Color/...) may feed several geometry nodes,
     // and several sources of one geometry may change in the same tick. Resolve
     // the complete owner set first: each owner's cache is evicted exactly once.
-    std::unordered_set<const X3DNode *> dirtyGeometry;
+    std::unordered_map<const X3DNode *, GeometryChange> dirtyGeometry;
     for (const X3DNode *n : dirty.changedNodes()) {
       if (!(dirty.flags(n) & DirtyField)) continue;
       auto owners = geomOwners_.find(n);
       if (owners != geomOwners_.end())
-        dirtyGeometry.insert(owners->second.begin(), owners->second.end());
+        for (const auto *geom : owners->second) dirtyGeometry[geom].sources.insert(n);
+      for (RenderItemId id : depsOf(geomDeps_, n))
+        dirtyGeometry[items_[id].geometry.node].items.insert(id);
     }
-    for (const X3DNode *geom : dirtyGeometry) refreshGeometry(geom, delta, localXf);
+    for (const auto &[geom, change] : dirtyGeometry)
+      refreshGeometry(geom, change, delta, localXf);
 
     for (const X3DNode *n : dirty.changedNodes()) {
       const unsigned f = dirty.flags(n);
@@ -623,6 +626,10 @@ private:
   }
 
   using DepMap = std::unordered_map<const X3DNode *, std::vector<RenderItemId>>;
+  struct GeometryChange {
+    std::unordered_set<RenderItemId> items;
+    std::unordered_set<const X3DNode *> sources;
+  };
 
   std::shared_ptr<const hanim::SkinBinding> skinBinding(const X3DNode *humanoid) {
     auto &binding = skinBindings_[humanoid];
@@ -742,16 +749,14 @@ private:
     return w;
   }
 
-  void refreshGeometry(const X3DNode *geom, RenderDelta &delta, LocalXfCache &localXf) {
+  void refreshGeometry(const X3DNode *geom, const GeometryChange &change,
+                       RenderDelta &delta, LocalXfCache &localXf) {
     evictMeshCache(geom);
     const auto version = ++geomVersions_[geom];
-    // Copy: activating a previously empty placement below can add dependencies.
-    const auto ids = depsOf(geomDeps_, geom);
-    std::unordered_set<RenderItemId> seen;
-    for (RenderItemId id : ids) {
-      if (!seen.insert(id).second) continue;
+    // Keep the source's placement scope. A Coordinate affects every use, but
+    // an HAnimSegment displacer only affects uses inside that Segment.
+    for (RenderItemId id : change.items) {
       RenderItem &rec = items_[id];
-      if (rec.geometry.node != geom) continue;
       MeshRef mesh = cachedRawMesh(geom, nullptr, displacingSegment(geom, rec.path));
       rec.geometry.contentVersion = version;
       // Packed geometry has a separate payload/resolver path. Do not infer its
@@ -780,6 +785,11 @@ private:
     if (pending == unplacedGeometry_.end()) return;
     auto &placements = pending->second;
     auto retained = std::remove_if(placements.begin(), placements.end(), [&](const auto &placement) {
+      bool affected = false;
+      forEachGeometrySource(geom, placement.path, [&](const X3DNode *source) {
+        affected = affected || change.sources.count(source) != 0;
+      });
+      if (!affected) return false;
       MeshRef mesh = cachedRawMesh(geom, nullptr, displacingSegment(geom, placement.path));
       if (mesh->indices.empty()) return false;
       auto savedClips = std::move(activeClips_);
@@ -1285,22 +1295,24 @@ private:
     }
   }
 
-  void registerGeometryOwners(const X3DNode *geom, const PathKey &path) {
-    auto add = [&](const X3DNode *source) {
-      auto &owners = geomOwners_[source];
-      if (std::find(owners.begin(), owners.end(), geom) == owners.end())
-        owners.push_back(geom);
-    };
-    add(geom);
+  template <typename Visit>
+  void forEachGeometrySource(const X3DNode *geom, const PathKey &path, Visit visit) {
+    visit(geom);
     forEachChildNode(*geom, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      add(c.get());
+      visit(c.get());
     });
     for (const X3DNode *ancestor : path) {
       if (ancestor->nodeTypeName() != "HAnimSegment") continue;
       forEachChildNode(*ancestor, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &c) {
-        if (field.x3dName == "displacers") add(c.get());
+        if (field.x3dName == "displacers") visit(c.get());
       });
     }
+  }
+
+  void registerGeometryOwners(const X3DNode *geom, const PathKey &path) {
+    forEachGeometrySource(geom, path, [&](const X3DNode *source) {
+      geomOwners_[source].insert(geom);
+    });
   }
 
   void rememberUnplacedGeometry(const X3DNode *geom, const PathKey &path) {
@@ -1555,7 +1567,7 @@ private:
   std::uint64_t skinSyncGen_ = UINT64_MAX;
   const X3DNode *activeSkinHumanoid_ = nullptr;
   // Content source -> ALL geometry owners (not a last-writer-wins owner).
-  std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> geomOwners_;
+  std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> geomOwners_;
   std::unordered_map<const X3DNode *, std::uint32_t> geomVersions_;
   struct UnplacedGeometry {
     PathKey path;

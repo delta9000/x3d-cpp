@@ -146,7 +146,9 @@ geometry owners. Each dirty source resolves to **all** of those owners, and
 multiple dirty sources coalesce into one cache invalidation and content-version
 advance per owner per tick. Each owner's placements rebuild from that owner's
 primitive type; placements with identical geometry and bake parameters continue
-to share immutable mesh storage. Unrelated meshes are retained.
+to share immutable mesh storage. Unrelated meshes are retained. Scoped
+HAnimSegment displacers still affect only placements within their Segment, even
+when the geometry owner is shared.
 
 Recognized-empty AoS geometry keeps its source dependencies and placement paths.
 Becoming nonempty emits `added`; becoming empty emits `removed`, and replaces the
