@@ -5899,7 +5899,7 @@
           ]
         },
         {
-          "behaves": "unverified",
+          "behaves": "partial",
           "behavioral": true,
           "clause": "16.4.5, 16.4.20, 16.4.14; 4.4.2.2, 4.4.8.2; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
@@ -6019,14 +6019,13 @@
           ]
         },
         {
-          "behaves": "unverified",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 16.4; 4.4.2.2, 4.4.8.2",
+          "clause": "16.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
-            "SND-5",
             "UOM-SND-1"
           ],
           "geometry": false,
@@ -6044,7 +6043,7 @@
           ]
         },
         {
-          "behaves": "unverified",
+          "behaves": "partial",
           "behavioral": true,
           "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -6289,7 +6288,7 @@
           ]
         },
         {
-          "behaves": "unverified",
+          "behaves": "partial",
           "behavioral": true,
           "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21; 16.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -7372,7 +7371,7 @@
         "AudioClip",
         "MovieTexture"
       ],
-      "note": "MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip and MovieTexture: enabled, loop, and a cycle of duration_changed / pitch (AudioClip) or / speed (MovieTexture); an unknown duration plays until stopTime (media_time_test). Decoding and playback remain separate (SND-4).",
+      "note": "MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip, MovieTexture and BufferAudioSource: enabled, loop, and a cycle of duration_changed / pitch (AudioClip), / speed (MovieTexture), or buffer seconds over playbackRate x detune (BufferAudioSource); an unknown duration plays until stopTime (media_time_test, sound_immersive_test). Decoding and playback remain separate (SND-4).",
       "severity": "major",
       "status": "closed",
       "summary": "AudioClip/MovieTexture have no time-lifecycle System \u2014 startTime/loop/isActive inert."
@@ -7782,10 +7781,10 @@
         "Gain",
         "BiquadFilter"
       ],
-      "note": "SoundSystem pushes enabled; BuiltinDspBackend silences disabled sources and passes disabled processors through, covered by sound_system_test. MiniaudioBackend handles disabled OscillatorSource and Gain, but its current graph wiring cannot bypass BiquadFilter while preserving its input; swap-test F6 checks disabled/inactive oscillator, disabled Gain pass-through and AudioDestination gain on both backends.",
+      "note": "SoundSystem pushes `enabled` (and the time lifecycle's PlaybackState) per tick. BuiltinDspBackend silences a disabled/inactive source and passes a disabled or inactive-off BiquadFilter/Gain through unchanged. MiniaudioBackend silences a disabled OscillatorSource (waveform amplitude 0) and mixes a disabled Gain to unity via its splitter bus volume; a BiquadFilter is now wrapped in a ma_splitter_node whose bus 0 feeds the filter (wet) and bus 1 bypasses it (dry), so Enabled/PlaybackState toggle the two output-bus volumes live and a disabled BiquadFilter passes its input through unchanged. Covered by sound_system_test and swap-test F6 (disabled oscillator, disabled Gain, and now a disabled BiquadFilter on both backends).",
       "severity": "major",
-      "status": "open",
-      "summary": "BuiltinDspBackend honors enabled for all wired nodes; MiniaudioBackend still needs a live BiquadFilter bypass path."
+      "status": "fixed",
+      "summary": "Both backends honor enabled and the time lifecycle for all wired nodes; a disabled BiquadFilter passes its input through on each backend."
     },
     {
       "clause": "8.2.4.1, 16.4.15",
@@ -7799,7 +7798,7 @@
         "Gain",
         "BiquadFilter"
       ],
-      "note": "SoundTimeSystem reuses X3DTimeDependentSystem and is registered by attachStandardRuntime; SoundSystem gates source and processor output from isActive/isPaused. MediaTimeSystem continues to handle AudioClip. Covered by sound_system_test and standard_runtime_test.",
+      "note": "SoundTimeSystem reuses X3DTimeDependentSystem and is registered by attachStandardRuntime; SoundSystem gates source and processor output from isActive/isPaused. MediaTimeSystem continues to handle AudioClip and BufferAudioSource. Covered by sound_system_test and standard_runtime_test.",
       "severity": "major",
       "status": "closed",
       "summary": "Sound sources and processing nodes now run the shared start/stop/pause/resume lifecycle and emit isActive/isPaused/elapsedTime."
@@ -7829,10 +7828,10 @@
         "StreamAudioSource",
         "MicrophoneSource"
       ],
-      "note": "AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; isActive/isPaused (MediaTimeSystem, TDN-5), pitch and gain drive playback. Not read: AudioClip.description. BufferAudioSource can reuse the Buffer node (its buffer field is already PCM); StreamAudioSource and MicrophoneSource need a streaming/capture contract.",
+      "note": "AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; not read: AudioClip.description. BufferAudioSource ships (\u00a716.4.5) through the same Buffer node: the authored buffer MFFloat IS PCM and crosses the seam as mono \u2014 a numberOfChannels > 1 buffer is read as interleaved frames and averaged down (the WAV decoder's downmix policy); bufferDuration limits the seconds used (0 = the whole buffer); sampleRate resamples, 0 (spec: the context rate) falling back to 44100 Hz like MiniaudioBackend's clamp; gain scales output; playbackRate x detune (computedPlaybackRate) is captured at activation like AudioClip.pitch \u2014 reversed (negative) playback is not modeled; loop rides the MediaTimeSystem lifecycle (TDN-5: startTime/stopTime/pauseTime/resumeTime -> isActive/isPaused/elapsedTime), an unknowable duration (no authored sampleRate) playing until stopTime. NOT read on BufferAudioSource: loopStart/loopEnd (the Buffer node wraps the whole buffer; a loop region needs a seam extension), the X3DUrlObject url/description (audio comes from the buffer field), the length output. StreamAudioSource and MicrophoneSource remain deferred to v2. Covered by sound_immersive_test.",
       "severity": "major",
       "status": "deferred",
-      "summary": "Audio source breadth \u2014 OscillatorSource and AudioClip are built; BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early)."
+      "summary": "Audio source breadth PARTIAL \u2014 OscillatorSource, AudioClip and BufferAudioSource are built; StreamAudioSource and MicrophoneSource subtrees are still skipped (buildChild returns early; they need a streaming/capture contract)."
     },
     {
       "clause": "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21",
@@ -7844,14 +7843,13 @@
       "nodes": [
         "Analyser",
         "Convolver",
-        "Delay",
         "DynamicsCompressor",
         "WaveShaper"
       ],
-      "note": "Each is a clean AudioBackend extension point (add a NodeKind + DSP in the backend .cpp). No new seam needed \u2014 deferred on demand (no consumer yet).",
+      "note": "Delay (\u00a716.4.6) ships on the built-in backend: SoundSystem builds a NodeKind::Delay node and pushes delayTime/maxDelayTime/enabled; BuiltinDspBackend applies a ring-buffer delay, delayTime clamped to [0, maxDelayTime], and enabled=false passes input through (sound_delay_test). DynamicsCompressor ships (\u00a716.4.9): SoundSystem builds it as NodeKind::Compressor (threshold/knee/ratio/attack/release/gain/enabled pushed at build and re-read each tick) and BuiltinDspBackend implements a feed-forward compressor \u2014 a dB-domain gain computer with a soft knee and one-pole attack/release smoothing; enabled=false passes the input through (x3d_sound_dynamics). Both are BuiltinDspBackend-only: MiniaudioBackend has no comparable node types (Delay has no NodeKind there; its ma_node graph has no compressor), so they degrade to dropped connections there (the swap test does not use them). reduction is outputOnly and the AudioBackend seam has no per-node metering path (createNode/connect/setParam/render only), so it is not posted. WaveShaper (\u00a716.4.21) also ships: SoundSystem builds a NodeKind::WaveShaper node reading curve/gain/enabled (the transfer curve crosses the seam once, like a Buffer's samples); BuiltinDspBackend maps input x in [-1,1] through the curve with linear interpolation (Web Audio semantics, index = (N-1)/2*(x+1); out-of-range input clamps to the first/last curve value; an empty curve and enabled=false pass the input through; the processing-node gain multiplies the shaped signal) \u2014 sound_waveshaper_test. oversample is NONE-semantics only: the field is not carried across the seam, so 2x/4x is ignored (deferred). WaveShaper.curve is defined by ISO/IEC 19775-1 \u00a716.4.21 but absent from the vendored X3D 4.0 UOM; it is supplied by the cited FIELD_ADDITIONS overlay (src/x3d_cpp_gen/conformance/errata.py, tracked in UOM-SND-1), not by editing the vendored data. WaveShaper is BuiltinDspBackend-only (MiniaudioBackend has no WaveShaper kind). Analyser/Convolver remain deferred; each is a clean AudioBackend extension point (add a NodeKind + DSP in the backend .cpp). No new seam needed.",
       "severity": "minor",
       "status": "deferred",
-      "summary": "Sound-processing breadth \u2014 only Gain + BiquadFilter are built; Analyser/Convolver/Delay/DynamicsCompressor/WaveShaper subtrees are skipped."
+      "summary": "Sound-processing breadth \u2014 Gain, BiquadFilter, Delay, DynamicsCompressor and WaveShaper are built; Analyser/Convolver subtrees are skipped."
     },
     {
       "clause": "16.4.10, 16.4.11, 16.4.8",
@@ -7907,10 +7905,10 @@
         "OscillatorSource",
         "PeriodicWave"
       ],
-      "note": "Spec-correct default (periodicWave NULL = sine), so not a bug \u2014 but custom waveforms are unsupported. The seam already carries a Waveform enum (Sine/Square/Sawtooth/Triangle); arbitrary PeriodicWave needs a DFT-coefficient param. Deferred.",
+      "note": "Wired: the seam carries Waveform::Custom + optionsReal/optionsImag harmonic terms (cross once at createNode, like Buffer PCM, ADR-0050 precedent); BuiltinDspBackend sums harmonics k=1..N-1 (index 0 = DC, ignored) normalized to peak absolute value 1 (Web Audio default; X3D 4.0's PeriodicWave has no disableNormalization toggle); SoundSystem::setPeriodicWave(osc, wave) registers a PeriodicWave node before attach \u2014 standard types map onto the Waveform enum, CUSTOM with no terms falls back to sine. Ignored: the authored OscillatorSource.periodicWave field. The generated bindings model X3D 4.0, where OscillatorSource has no periodicWave field (added in 4.1); PeriodicWave itself exists in 4.0 (type/optionsReal/optionsImag). A parsed <PeriodicWave containerField='periodicWave'/> child parks in the parser's IS fallback slot and findField(osc, 'periodicWave') is null \u2014 pinned by x3d_sound_periodicwave (parse tier). Becomes readable when the bindings move to 4.1; until then the embedder registers the wave. MiniaudioBackend's ma_waveform has no custom-table type, so registered waves play as sine there.",
       "severity": "minor",
       "status": "deferred",
-      "summary": "periodicWave ignored \u2014 OscillatorSource is always Sine; a referenced PeriodicWave (custom waveform via real/imag DFT terms) is not realized."
+      "summary": "periodicWave stays unread from parsed scenes (the 4.0 bindings predate the 4.1 field) \u2014 a registered PeriodicWave is realized on BuiltinDspBackend; MiniaudioBackend falls back to sine."
     },
     {
       "clause": "16.4",
@@ -11356,6 +11354,7 @@
       "BooleanToggle",
       "BooleanTrigger",
       "Box",
+      "BufferAudioSource",
       "CADPart",
       "Circle2D",
       "CollidableShape",
@@ -11375,6 +11374,8 @@
       "CoordinateInterpolator2D",
       "Cylinder",
       "CylinderSensor",
+      "Delay",
+      "DynamicsCompressor",
       "EaseInEaseOut",
       "Fog",
       "Gain",
@@ -11458,6 +11459,7 @@
       "TriangleStripSet",
       "Viewpoint",
       "VisibilitySensor",
+      "WaveShaper",
       "X3DBackgroundNode",
       "X3DBindableNode",
       "X3DProgrammableShaderObject",
@@ -11469,14 +11471,14 @@
     ]
   },
   "summary": {
-    "closed_count": 260,
+    "closed_count": 261,
     "component_count": 36,
     "deferred_count": 22,
     "finding_count": 298,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 24,
+      "major": 23,
       "minor": 12
     }
   },
