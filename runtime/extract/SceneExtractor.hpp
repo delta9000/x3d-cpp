@@ -79,6 +79,7 @@
 #include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
+#include <algorithm>
 #include <any>
 #include <cassert>
 #include <cmath>
@@ -133,7 +134,7 @@ struct RenderItem {
   std::vector<std::size_t> lights;
 
   // §24.4.3: index into SceneExtractor::snapshotLocalFogs() for the NEAREST
-  // enabled LocalFog whose scopeRoot is an ancestor of this item's PathKey, or
+  // enabled LocalFog whose scopePath is a prefix of this item's PathKey, or
   // -1 when no LocalFog applies (global Fog governs). A LocalFog is
   // bound-independent and applies only within its enclosing grouping node.
   int localFog = -1;
@@ -213,7 +214,7 @@ public:
     lights_ = ls.collect(scene_, walkBudget_, ctx_.cameraWorldPosition());
 
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
-    // RenderItem with the nearest one whose scopeRoot covers its PathKey.
+    // RenderItem with the nearest one whose scopePath prefixes its PathKey.
     LocalFogSystem lfs;
     localFogs_ = lfs.collect(scene_, walkBudget_, ctx_.cameraWorldPosition(),
                              &scopedStateDeps_);
@@ -1310,22 +1311,22 @@ private:
     }
   }
 
-  // §24.4.3: the NEAREST enabled LocalFog whose scopeRoot is an ancestor of the
+  // §24.4.3: the NEAREST enabled LocalFog whose scopePath is a prefix of the
   // item's path wins (nested LocalFogs: the innermost grouping node's fog). A
-  // root-level LocalFog (scopeRoot == nullptr, collected as scene-wide) applies
+  // root-level LocalFog (empty scopePath, collected as scene-wide) applies
   // to every item but any deeper scoped LocalFog overrides it.
   void tagLocalFog(RenderItem &rec, const PathKey &path) {
     rec.localFog = -1;
-    std::size_t bestDepth = 0; // depth of the winning scopeRoot on the path.
+    std::size_t bestDepth = 0; // length of the winning scopePath.
     for (std::size_t i = 0; i < localFogs_.size(); ++i) {
       const LocalFogDesc &F = localFogs_[i];
-      if (F.scopeRoot) {
-        for (std::size_t d = 0; d < path.size(); ++d)
-          if (path[d] == F.scopeRoot && d + 1 >= bestDepth) {
-            bestDepth = d + 1;
-            rec.localFog = static_cast<int>(i);
-            break;
-          }
+      if (!F.scopePath.empty()) {
+        const std::size_t depth = F.scopePath.size();
+        if (depth <= path.size() && depth >= bestDepth &&
+            std::equal(F.scopePath.begin(), F.scopePath.end(), path.begin())) {
+          bestDepth = depth;
+          rec.localFog = static_cast<int>(i);
+        }
       } else if (rec.localFog < 0) {
         // Scene-wide root LocalFog: applies unless a scoped one overrides.
         bestDepth = 0;
