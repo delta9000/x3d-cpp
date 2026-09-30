@@ -96,9 +96,16 @@ only an edit based on the current revision can commit.
 
 `subscription` is move-only RAII. Commit enqueues change sets but invokes no
 user callback. `execution_context::drain()` is the explicit single-consumer
-dispatch point. Cancellation is immediate; destruction is callback-free and
-`noexcept`. A callback may commit a new edit, whose notification is appended
-after the current batch. The kernel creates no threads.
+dispatch point. Recursive or concurrent drains return an empty report with
+`already_draining = true`; only the active consumer removes notifications.
+Cancellation immediately prevents acquisition of another callback, but an
+already acquired callback may finish without cancellation waiting for it.
+Subscription destruction is callback-free and `noexcept`; callback capture
+destructors run outside both context and browser locks. A callback may commit a
+new edit, whose notification is appended after the current batch. The consumer
+guard resets even when dispatch exits by an exception. The kernel creates no
+threads. As with other owning containers, allocation failure may propagate;
+a drain does not promise rollback of notifications already removed.
 
 ## Browser and asynchronous generation
 

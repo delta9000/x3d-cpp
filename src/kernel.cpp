@@ -303,6 +303,7 @@ struct context_control {
   std::weak_ptr<browser_control> owner;
   generation_id generation = 0;
   std::atomic_bool active{true};
+  std::atomic_bool draining{false};
   type_registry registry;
   std::shared_ptr<const scene_state> state = std::make_shared<scene_state>();
   std::atomic<revision_id> published_revision{0};
@@ -848,10 +849,15 @@ bool subscription::active() const noexcept {
 
 void subscription::cancel() noexcept {
   const auto context = context_.lock();
+  // Extracting map nodes never allocates. Keep their callbacks alive until
+  // after unlocking and resetting the subscription: capture destructors may
+  // reenter the context or even cancel this subscription again.
+  decltype(detail::context_control::observers)::node_type retired_observer;
+  decltype(detail::context_control::event_observers)::node_type retired_event;
   if (context && observer_id_ != 0) {
     std::lock_guard lock(context->mutex);
-    context->observers.erase(observer_id_);
-    context->event_observers.erase(observer_id_);
+    retired_observer = context->observers.extract(observer_id_);
+    retired_event = context->event_observers.extract(observer_id_);
   }
   observer_id_ = 0;
   context_.reset();
@@ -3915,12 +3921,14 @@ event_batch execution_context::events(event_time time) const {
 subscription execution_context::observe(observer callback) const {
   if (!callback)
     return {};
+  // Retain an owner outside the lock even if registration allocation fails.
+  const auto owned_callback =
+      std::make_shared<const observer>(std::move(callback));
   std::lock_guard lock(control_->mutex);
   if (!control_->active)
     return {};
   const std::uint64_t observer_id = control_->next_observer_id++;
-  control_->observers.emplace(
-      observer_id, std::make_shared<const observer>(std::move(callback)));
+  control_->observers.emplace(observer_id, owned_callback);
   return subscription{control_, observer_id};
 }
 
@@ -3932,6 +3940,8 @@ result<subscription> execution_context::observe(const dynamic_field &source,
         *control_, control_->published_revision.load(std::memory_order_acquire),
         "event observer is empty", source.node_, source.name_);
   }
+  const auto owned_callback =
+      std::make_shared<const event_observer>(std::move(callback));
   std::lock_guard lock(control_->mutex);
   if (!control_->active) {
     return edit_error(
@@ -3974,13 +3984,20 @@ result<subscription> execution_context::observe(const dynamic_field &source,
       observer_id, detail::context_control::field_observer_record{
                        .target = source.node_,
                        .field = source.name_,
-                       .callback = std::make_shared<const event_observer>(
-                           std::move(callback))});
+                       .callback = owned_callback});
   return subscription{control_, observer_id};
 }
 
 dispatch_report execution_context::drain() const {
   dispatch_report report;
+  if (control_->draining.exchange(true, std::memory_order_acquire)) {
+    report.already_draining = true;
+    return report;
+  }
+  struct drain_guard {
+    std::atomic_bool &draining;
+    ~drain_guard() { draining.store(false, std::memory_order_release); }
+  } guard{control_->draining};
   for (;;) {
     detail::context_control::pending_notification pending;
     {
@@ -4073,43 +4090,65 @@ execution_context browser::create_scene() {
   return execution_context{std::move(context)};
 }
 
-result<void> browser::replace_world(const execution_context &replacement) {
-  std::lock_guard browser_lock(control_->mutex);
-  if (!replacement.control_) {
+namespace {
+
+// Declaration order matters: this holder outlives the browser lock. Retaining
+// the old context also keeps its final destruction outside all internal locks.
+struct retired_world {
+  std::shared_ptr<detail::context_control> context;
+  decltype(detail::context_control::observers) observers;
+  decltype(detail::context_control::event_observers) event_observers;
+  decltype(detail::context_control::pending) pending;
+};
+
+// The caller holds the browser mutex and owns retirement storage outside it.
+result<void> install_world_locked(
+    detail::browser_control &browser,
+    const std::shared_ptr<detail::context_control> &replacement,
+    retired_world &retired) {
+  if (!replacement) {
     sai_error error;
     error.code = error_code::stale_handle;
     error.operation = "browser.replace_world";
     error.message = "replacement context is empty";
     return failure(std::move(error));
   }
-  if (replacement.control_->owner.lock() != control_) {
+  if (replacement->owner.lock().get() != &browser) {
     sai_error error;
     error.code = error_code::invalid_context;
     error.operation = "browser.replace_world";
     error.message = "replacement context belongs to another browser";
     return failure(std::move(error));
   }
-  if (replacement.control_ == control_->current)
+  if (replacement == browser.current)
     return {};
   {
-    std::lock_guard replacement_lock(replacement.control_->mutex);
-    if (!replacement.control_->active) {
+    std::lock_guard replacement_lock(replacement->mutex);
+    if (!replacement->active) {
       return edit_error(error_code::stale_handle, "browser.replace_world",
-                        *replacement.control_,
-                        replacement.control_->state->revision,
+                        *replacement, replacement->state->revision,
                         "replacement context is stale");
     }
   }
+  retired.context = browser.current;
   {
-    std::lock_guard old_lock(control_->current->mutex);
-    control_->current->active = false;
-    control_->current->observers.clear();
-    control_->current->event_observers.clear();
-    control_->current->pending.clear();
+    std::lock_guard old_lock(retired.context->mutex);
+    retired.context->active = false;
+    retired.context->observers.swap(retired.observers);
+    retired.context->event_observers.swap(retired.event_observers);
+    retired.context->pending.swap(retired.pending);
   }
-  control_->current = replacement.control_;
-  ++control_->world_epoch;
+  browser.current = replacement;
+  ++browser.world_epoch;
   return {};
+}
+
+} // namespace
+
+result<void> browser::replace_world(const execution_context &replacement) {
+  retired_world retired;
+  std::lock_guard browser_lock(control_->mutex);
+  return install_world_locked(*control_, replacement.control_, retired);
 }
 
 load_ticket browser::begin_load() {

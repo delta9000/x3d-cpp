@@ -252,3 +252,11 @@ target_compile_features(x3d_sai_experimental_generated_example PRIVATE
     cxx_std_20)
 add_test(NAME sai_generated_author_inspect
     COMMAND x3d_sai_experimental_generated_example)
+
+find_package(Threads REQUIRED)
+add_executable(x3d_sai_callback_lifecycle_tests tests/callback_lifecycle_test.cpp)
+target_link_libraries(x3d_sai_callback_lifecycle_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_callback_lifecycle COMMAND x3d_sai_callback_lifecycle_tests)
+# A capture destructor that reenters an internal lock must fail, not hang CI.
+set_tests_properties(sai_callback_lifecycle PROPERTIES TIMEOUT 15)
