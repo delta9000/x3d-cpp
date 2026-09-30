@@ -111,6 +111,7 @@ int main() {
       case NodeKind::Oscillator: hOsc = cr.handle; oscP = cr.params; break;
       case NodeKind::Panner: break;
       case NodeKind::Buffer: break;
+      case NodeKind::Delay: break;
       }
     }
     CHECK(hDest && hGain && hBiq && hOsc, "all four kinds present");

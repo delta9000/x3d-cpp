@@ -45,6 +45,9 @@ struct Node {
 
   // Biquad state (Direct Form I): input/output history.
   double x1 = 0.0, x2 = 0.0, y1 = 0.0, y2 = 0.0;
+  // Delay state: a ring buffer of past input and its write cursor.
+  std::vector<float> delayBuf;
+  std::size_t delayWrite = 0;
   // Buffer source state: read position (in source samples), 0 stopped /
   // 1 playing / 2 paused, and playback rate (pitch).
   double cursor = 0.0;
@@ -255,6 +258,40 @@ struct BuiltinDspBackend::Impl {
       for (float &sample : n.block) sample *= n.params.gain;
       break;
     }
+    case NodeKind::Delay: {
+      // Pure delay: output = input delayed by delayTime (clamped to
+      // [0, maxDelayTime]), linearly interpolated for a fractional delay.
+      std::vector<float> in(static_cast<std::size_t>(frames), 0.0f);
+      sumInputs(n, in, frames, sampleRate);
+      if (n.timeState != 1) break;
+      if (!n.params.enabled) { n.block = std::move(in); break; }
+      double maxD = n.params.maxDelayTime;
+      if (maxD < 0.0) maxD = 0.0;
+      std::size_t cap =
+          static_cast<std::size_t>(std::ceil(maxD * sampleRate)) + 1;
+      if (n.delayBuf.size() != cap) {
+        n.delayBuf.assign(cap, 0.0f);
+        n.delayWrite = 0;
+      }
+      double d = n.params.delayTime;
+      if (d < 0.0) d = 0.0;
+      if (d > maxD) d = maxD;
+      const double delaySamples = d * sampleRate;
+      const double capD = static_cast<double>(cap);
+      for (int i = 0; i < frames; ++i) {
+        n.delayBuf[n.delayWrite] = in[static_cast<std::size_t>(i)];
+        double readPos = std::fmod(
+            static_cast<double>(n.delayWrite) - delaySamples, capD);
+        if (readPos < 0.0) readPos += capD;
+        const std::size_t i0 = static_cast<std::size_t>(readPos);
+        const double frac = readPos - static_cast<double>(i0);
+        const std::size_t i1 = (i0 + 1) % cap;
+        n.block[static_cast<std::size_t>(i)] = static_cast<float>(
+            n.delayBuf[i0] + (n.delayBuf[i1] - n.delayBuf[i0]) * frac);
+        n.delayWrite = (n.delayWrite + 1) % cap;
+      }
+      break;
+    }
     case NodeKind::Buffer: {
       // Decoded PCM played from a cursor at rate * srcRate/outRate, linearly
       // interpolated; it wraps at the end (the time lifecycle stops a
@@ -460,6 +497,8 @@ void BuiltinDspBackend::setParam(NodeHandle node, Param param, float value) {
     break;
   }
   case Param::PlaybackRate: it->second.rate = value; break;
+  case Param::DelayTime:    it->second.params.delayTime = value; break;
+  case Param::MaxDelayTime: it->second.params.maxDelayTime = value; break;
   }
 }
 

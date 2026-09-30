@@ -62,7 +62,8 @@ inline constexpr NodeHandle kInvalidNodeHandle = 0;
  *          AudioDestination); extensible (add a Kind + its NodeParams) without
  *          engine-type leakage.
  */
-enum class NodeKind { Oscillator, Biquad, Gain, Destination, Panner, Buffer };
+enum class NodeKind { Oscillator, Biquad, Gain, Destination, Panner, Buffer,
+                      Delay };
 
 /**
  * @brief Distance attenuation model for Panner nodes.
@@ -105,6 +106,7 @@ enum class FilterType { Lowpass, Highpass, Bandpass, Lowshelf, Highshelf,
  *            - Gain:        gain.
  *            - Destination: maxChannelCount.
  *            - Buffer:      samples, sampleRate (PCM crosses once, ADR-0050).
+ *            - Delay:       delayTime, maxDelayTime, enabled (a pure delay).
  *            - Panner:      sourcePosition, listenerPosition, listenerForward,
  *                           listenerUp, distanceModel, referenceDistance,
  *                           maxDistance, rolloffFactor. POSITIONS cross the seam
@@ -131,6 +133,10 @@ struct NodeParams {
   FilterType filterType = FilterType::Lowpass;
   /** @brief Max channel count (Destination nodes). v1 is mono. */
   int maxChannelCount = 2;
+  /** @brief Delay duration in seconds (Delay nodes). Clamped to [0, maxDelayTime]. */
+  float delayTime = 0.0f;
+  /** @brief Maximum delay in seconds (Delay nodes) — bounds the ring buffer. */
+  float maxDelayTime = 1.0f;
 
   // ── Panner-only fields (unused / defaulted for all other node kinds) ──────
   //
@@ -192,7 +198,9 @@ enum class Param {
   // Buffer source: 0 = stopped (rewinds), 1 = playing, 2 = paused (holds the
   // position); rate = playback speed (AudioClip.pitch). The source loops when
   // it runs past its end — the time lifecycle stops a non-looping clip.
-  PlaybackState, PlaybackRate, Enabled
+  PlaybackState, PlaybackRate, Enabled,
+  // Delay node: the delay duration and its maximum (the ring-buffer bound).
+  DelayTime, MaxDelayTime
 };
 
 /**

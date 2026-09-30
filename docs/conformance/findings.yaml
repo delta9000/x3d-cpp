@@ -370,14 +370,14 @@
   summary: Audio source breadth — OscillatorSource and AudioClip are built; BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early).
   note: "AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; isActive/isPaused (MediaTimeSystem, TDN-5), pitch and gain drive playback. Not read: AudioClip.description. BufferAudioSource can reuse the Buffer node (its buffer field is already PCM); StreamAudioSource and MicrophoneSource need a streaming/capture contract."
 - id: SND-5
-  nodes: [Analyser, Convolver, Delay, DynamicsCompressor, WaveShaper]
+  nodes: [Analyser, Convolver, DynamicsCompressor, WaveShaper]
   interfaces: [X3DSoundProcessingNode]
   component: Sound
   clause: "16.4.1, 16.4.6, 16.4.7, 16.4.9, 16.4.21"
   severity: minor
   status: deferred
-  summary: Sound-processing breadth — only Gain + BiquadFilter are built; Analyser/Convolver/Delay/DynamicsCompressor/WaveShaper subtrees are skipped.
-  note: Each is a clean AudioBackend extension point (add a NodeKind + DSP in the backend .cpp). No new seam needed — deferred on demand (no consumer yet).
+  summary: Sound-processing breadth — Gain, BiquadFilter and Delay are built; Analyser/Convolver/DynamicsCompressor/WaveShaper subtrees are skipped.
+  note: "Delay (§16.4.6) ships on the built-in backend: SoundSystem builds a NodeKind::Delay node and pushes delayTime/maxDelayTime/enabled; BuiltinDspBackend applies a ring-buffer delay, delayTime clamped to [0, maxDelayTime], and enabled=false passes input through (sound_delay_test). MiniaudioBackend has no Delay kind, so Delay is BuiltinDspBackend-only for now. The remaining nodes (Analyser/Convolver/DynamicsCompressor/WaveShaper) are each a clean AudioBackend extension point (add a NodeKind + DSP in the backend .cpp). No new seam needed — deferred on demand (no consumer yet)."
 - id: SND-6
   nodes: [ChannelMerger, ChannelSelector, ChannelSplitter]
   interfaces: [X3DSoundChannelNode]

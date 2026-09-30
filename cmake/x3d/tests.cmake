@@ -526,6 +526,13 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_sound_system PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_sound_system COMMAND x3d_sound_system)
 
+    # Delay (§16.4.6): the ring-buffer delay node on the built-in backend.
+    add_executable(x3d_sound_delay
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_delay_test.cpp")
+    target_link_libraries(x3d_sound_delay PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_sound_delay COMMAND x3d_sound_delay)
+
     # Immersive Sound (ADR-0050): Sound ellipsoid + AudioClip Buffer on the
     # built-in backend, the WAV decoder, and a Sound{AudioClip} scene.
     add_executable(x3d_sound_immersive

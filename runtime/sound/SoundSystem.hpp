@@ -29,6 +29,7 @@
 //   OscillatorSource   -> createNode(Oscillator,  {frequency, detune, gain})
 //   BiquadFilter       -> createNode(Biquad, {frequency, q, detune, gain, type})
 //   Gain               -> createNode(Gain, {gain})
+//   Delay              -> createNode(Delay, {delayTime, maxDelayTime, enabled})
 //   for each child c of node n: connect(handle[n], handle[c])  (c feeds INTO n)
 //   update(now): for each mapped node read its animatable fields -> setParam.
 //
@@ -57,6 +58,7 @@
 #include "x3d/nodes/AudioClip.hpp"
 #include "x3d/nodes/AudioDestination.hpp"
 #include "x3d/nodes/BiquadFilter.hpp"
+#include "x3d/nodes/Delay.hpp"
 #include "x3d/nodes/Gain.hpp"
 #include "x3d/nodes/ListenerPointSource.hpp"
 #include "x3d/nodes/MovieTexture.hpp"
@@ -283,6 +285,12 @@ private:
       p.gain = gain->getGain();
       p.enabled = gain->getEnabled();
       handle = backend_->createNode(NodeKind::Gain, p);
+    } else if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node)) {
+      NodeParams p;
+      p.delayTime = static_cast<float>(delay->getDelayTime());
+      p.maxDelayTime = static_cast<float>(delay->getMaxDelayTime());
+      p.enabled = delay->getEnabled();
+      handle = backend_->createNode(NodeKind::Delay, p);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // AudioClip: a Buffer node once its bytes are fetched and decoded.
       fallbackPitch_[clip] = clip->getPitch();
@@ -302,7 +310,7 @@ private:
       NodeParams pp = buildPannerParams(ss, listener_);
       handle = backend_->createNode(NodeKind::Panner, pp);
     } else {
-      // Not a v1 §16 node (e.g. Convolver/Delay/AudioClip — deferred). Skip its
+      // Not a v1 §16 node (e.g. Convolver/Analyser — deferred). Skip its
       // subtree; a real backend would extend the kind set here.
       return kInvalidNodeHandle;
     }
@@ -321,6 +329,7 @@ private:
   static MFNode childrenOf(X3DNode *node) {
     if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) return biq->getChildren();
     if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) return gain->getChildren();
+    if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node)) return delay->getChildren();
     if (auto *ss = dynamic_cast<x3d::nodes::SpatialSound *>(node)) return ss->getChildren();
     return MFNode{};  // OscillatorSource is a leaf source (no inputs)
   }
@@ -344,6 +353,13 @@ private:
       backend_->setParam(handle, Param::Gain, gain->getGain());
       backend_->setParam(handle, Param::Enabled, gain->getEnabled() ? 1.0f : 0.0f);
       pushTimeState(gain, handle);
+    } else if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node)) {
+      backend_->setParam(handle, Param::DelayTime,
+                         static_cast<float>(delay->getDelayTime()));
+      backend_->setParam(handle, Param::MaxDelayTime,
+                         static_cast<float>(delay->getMaxDelayTime()));
+      backend_->setParam(handle, Param::Enabled, delay->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(delay, handle);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // Playback follows the §8.2.4 lifecycle outputs (MediaTimeSystem).
       const bool active = clip->X3DTimeDependentNode::getIsActive();
@@ -372,6 +388,7 @@ private:
   void pushTimeState(X3DNode *node, NodeHandle handle) {
     if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node); gain && !gain->getEnabled()) return;
     if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node); biq && !biq->getEnabled()) return;
+    if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node); delay && !delay->getEnabled()) return;
     auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node);
     if (!tdn) return;
     const bool active = tdn->getIsActive();

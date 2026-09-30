@@ -609,6 +609,8 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
       case Param::Intensity:         it->second.params.intensity           = value; break;
       case Param::PlaybackState:     it->second.playState = static_cast<int>(value); break;
       case Param::PlaybackRate:      it->second.rate = value; break;
+      case Param::DelayTime:         it->second.params.delayTime = value; break;
+      case Param::MaxDelayTime:      it->second.params.maxDelayTime = value; break;
       }
     }
     return;
