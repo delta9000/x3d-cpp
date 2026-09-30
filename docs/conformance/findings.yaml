@@ -1232,9 +1232,17 @@
   component: Texturing
   clause: "18.4.8"
   severity: major
-  status: closed
-  summary: TextureCoordinateGenerator UVs (SPHERE/CAMERASPACE*) are view-dependent per-vertex and must be computed at render time — the descriptor is surfaced but no UVs are produced.
-  note: "Render-time UVs implemented for the four view-dependent modes (SPHERE, CAMERASPACENORMAL, CAMERASPACEPOSITION, CAMERASPACEREFLECTIONVECTOR) per §18.4.8 Table: cpu_raster computes them per fragment in MaterialShader.hpp detail::texCoordGenUv (base-colour UV; the seam already carried the mode on TextureRef::hasTexCoordGen/texCoordGen). The PoC reuses lit.vert (shared by Phong + PBR) with a new uTexCoordGenMode uniform fed from texCoordGenModeUniform() in main.cpp. Regression: examples/cpu_raster/tests/texcoord_gen_test.cpp. PoC shaders unbuilt here (GLFW is FetchContent). (2026-06-27)"
+  status: open
+  summary: Reference consumers implement only a subset of TextureCoordinateGenerator modes and paths.
+  note: "Reopened after checking all Table 18.6 modes. CPU Phong/PBR supports SPHERE, CAMERASPACENORMAL, CAMERASPACEPOSITION, CAMERASPACEREFLECTIONVECTOR and COORD-EYE (TXF-4 corrects the last two). SPHERE-LOCAL, COORD, NOISE, NOISE-EYE, SPHERE-REFLECT and SPHERE-REFLECT-LOCAL still use the CPU SPHERE fallback and ignore parameters; CPU unlit bypasses generation. The PoC lit.vert handles the original four camera-space modes per vertex, but reflection still uses the reversed eye vector; main.cpp maps COORD-EYE and the other unsupported modes to authored UVs. This is partial render-time support, not full node conformance. CPU regression: examples/cpu_raster/tests/texcoord_gen_test.cpp. (2026-09-30)"
+- id: TXF-4
+  nodes: [TextureCoordinateGenerator]
+  component: Texturing
+  clause: "18.4.8"
+  severity: minor
+  status: fixed
+  summary: CPU COORD-EYE fell back to SPHERE and CAMERASPACEREFLECTIONVECTOR used the reversed eye vector.
+  note: "COORD-EYE now shares the raw camera-space position path; reflection uses E=normalize(-posEye), the position-to-eye direction required by Table 18.6. Direct signed/unbounded UV assertions and Phong/PBR ramp sampling cover both changes, with existing mode controls retained in x3d_cpuraster_texcoord_gen_test. Scope is CPU Phong/PBR only; remaining modes and the PoC are tracked by TXF-2. Issue #140. (2026-09-30)"
 - id: TXF-3
   nodes: [TextureTransform]
   component: Texturing

@@ -1,8 +1,8 @@
-// texcoord_gen_test.cpp — TXF-2: §18.4.8 TextureCoordinateGenerator.
+// texcoord_gen_test.cpp — TXF-2/TXF-4: §18.4.8 TextureCoordinateGenerator.
 //
 // The view-dependent modes (SPHERE / CAMERASPACENORMAL / CAMERASPACEPOSITION /
-// CAMERASPACEREFLECTIONVECTOR) are computed at render time from eye-space state —
-// the seam only carries the MODE. This test pins:
+// CAMERASPACEREFLECTIONVECTOR / COORD-EYE) are computed at render time from
+// eye-space state — the seam only carries the MODE. This test pins:
 //   (1) the exact per-mode UV formulas (hand-computed, non-circular), including
 //       the front-facing normal flip, via the shader's detail::texCoordGenUv; and
 //   (2) that makeMaterialShader actually SAMPLES with those UVs — a ramp texture
@@ -82,11 +82,30 @@ int main() {
         texCoordGenUv(Mode::CameraSpacePosition, {0.8f, 0.5f, -3}, {0, 0, 1}, true);
     CHECK(feq(cp.x, 0.8f) && feq(cp.y, 0.5f));
 
-    // CAMERASPACEREFLECTIONVECTOR: R = 2·dot(V,N)·N − V with V=normalize(P).
-    // P=(0,0,-3) -> V=(0,0,-1). N=(0.8,0.3317,-0.5): R=(0.8,0.3317,0.5).
+    // COORD-EYE aliases CAMERASPACEPOSITION, including signed/unbounded UVs.
+    // The position must not be normalized, biased, or changed by face/normal.
+    for (bool front : {true, false}) {
+      g::vec2 ce = texCoordGenUv(Mode::CoordEye, {0.8f, 0.2f, -3},
+                                {0, 0, 1}, front);
+      CHECK(feq(ce.x, 0.8f) && feq(ce.y, 0.2f));
+      g::vec2 raw = texCoordGenUv(Mode::CoordEye, {-2.0f, 3.0f, -4},
+                                 {0.6f, 0, 0.8f}, front);
+      CHECK(feq(raw.x, -2.0f) && feq(raw.y, 3.0f));
+    }
+
+    // CAMERASPACEREFLECTIONVECTOR: R = 2·dot(E,N)·N − E, E=normalize(-P).
+    // P=(0,0,-3) -> E=(0,0,1). N=(0.8,0.3317,-0.5): R=(-0.8,-0.3317,-0.5).
     g::vec2 cr = texCoordGenUv(Mode::CameraSpaceReflectionVector, {0, 0, -3},
                                {0.8f, 0.3317f, -0.5f}, true);
-    CHECK(feq(cr.x, 0.8f, 1e-2f) && feq(cr.y, 0.3317f, 1e-2f));
+    CHECK(feq(cr.x, -0.8f, 1e-2f) && feq(cr.y, -0.3317f, 1e-2f));
+
+    // Off-axis eye vector E=(-0.6,0,0.8), N=(0,0,1): R=(0.6,0,0.8).
+    // Flipping N leaves the reflection unchanged.
+    for (bool front : {true, false}) {
+      g::vec2 offAxis = texCoordGenUv(Mode::CameraSpaceReflectionVector,
+                                     {3, 0, -4}, {0, 0, 1}, front);
+      CHECK(feq(offAxis.x, 0.6f) && feq(offAxis.y, 0.0f));
+    }
   }
 
   // ===== (2) The shader samples WITH the generated UVs ===================
@@ -105,8 +124,15 @@ int main() {
        "CAMERASPACENORMAL"},
       {Mode::CameraSpacePosition, {0.8f, 0.5f, -3}, {0, 0, 1}, true, 0.8f,
        "CAMERASPACEPOSITION"},
+      {Mode::CoordEye, {0.8f, 0.2f, -3}, {0, 0, 1}, true, 0.8f,
+       "COORD-EYE front"},
+      {Mode::CoordEye, {0.2f, 0.8f, -3}, {0, 0, 1}, false, 0.2f,
+       "COORD-EYE back"},
+      // Signed -0.8 wraps to +0.2 with the ramp's REPEAT sampler.
       {Mode::CameraSpaceReflectionVector, {0, 0, -3}, {0.8f, 0.3317f, -0.5f}, true,
-       0.8f, "CAMERASPACEREFLECTIONVECTOR"},
+       0.2f, "CAMERASPACEREFLECTIONVECTOR"},
+      {Mode::CameraSpaceReflectionVector, {3, 0, -4}, {0, 0, 1}, true,
+       0.6f, "CAMERASPACEREFLECTIONVECTOR off-axis"},
   };
 
   for (const Case &c : cases) {
@@ -133,6 +159,20 @@ int main() {
     if (!feq(o.x, c.expU, 2e-2f))
       std::fprintf(stderr, "  %s: sampled R=%.3f (expected ~%.3f)\n", c.name, o.x,
                    c.expU);
+    CHECK(feq(o.x, c.expU, 2e-2f));
+
+    // PBR uses the same generated base UV. Its 0.03 ambient term plus 0.97
+    // from the light gives unit diffuse illumination; sRGB decode/encode cancel.
+    m.model = ex::MaterialModel::Physical;
+    m.physical.baseColor = {1, 1, 1};
+    m.physical.metallic = 0;
+    auto lights = ambientOnlyLight();
+    lights.front().ambientIntensity = 0.97f;
+    FragmentShader pbr = makeMaterialShader(m, lights, false, false);
+    CHECK(pbr(f, o));
+    if (!feq(o.x, c.expU, 2e-2f))
+      std::fprintf(stderr, "  PBR %s: sampled R=%.3f (expected ~%.3f)\n",
+                   c.name, o.x, c.expU);
     CHECK(feq(o.x, c.expU, 2e-2f));
   }
 
