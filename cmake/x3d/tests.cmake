@@ -543,5 +543,13 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/wav")
     add_test(NAME x3d_sound_immersive COMMAND x3d_sound_immersive)
 
+    # §16.4.9 DynamicsCompressor (SND-5): SoundSystem graph wiring (recording
+    # tier) + feed-forward compressor DSP on the built-in backend (DSP tier).
+    add_executable(x3d_sound_dynamics
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_dynamics_compressor_test.cpp")
+    target_link_libraries(x3d_sound_dynamics PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_sound_dynamics COMMAND x3d_sound_dynamics)
+
     # Author-shader binding plan (vocabulary + introspection).
 endif()

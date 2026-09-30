@@ -30,6 +30,8 @@
 //   BiquadFilter       -> createNode(Biquad, {frequency, q, detune, gain, type})
 //   Gain               -> createNode(Gain, {gain})
 //   Delay              -> createNode(Delay, {delayTime, maxDelayTime, enabled})
+//   DynamicsCompressor -> createNode(Compressor, {threshold, knee, ratio,
+//                          attack, release, gain, enabled})
 //   for each child c of node n: connect(handle[n], handle[c])  (c feeds INTO n)
 //   update(now): for each mapped node read its animatable fields -> setParam.
 //
@@ -59,6 +61,7 @@
 #include "x3d/nodes/AudioDestination.hpp"
 #include "x3d/nodes/BiquadFilter.hpp"
 #include "x3d/nodes/Delay.hpp"
+#include "x3d/nodes/DynamicsCompressor.hpp"
 #include "x3d/nodes/Gain.hpp"
 #include "x3d/nodes/ListenerPointSource.hpp"
 #include "x3d/nodes/MovieTexture.hpp"
@@ -291,6 +294,16 @@ private:
       p.maxDelayTime = static_cast<float>(delay->getMaxDelayTime());
       p.enabled = delay->getEnabled();
       handle = backend_->createNode(NodeKind::Delay, p);
+    } else if (auto *cmp = dynamic_cast<x3d::nodes::DynamicsCompressor *>(node)) {
+      NodeParams p;
+      p.threshold = cmp->getThreshold();
+      p.knee = cmp->getKnee();
+      p.ratio = cmp->getRatio();
+      p.attack = static_cast<float>(cmp->getAttack());
+      p.release = static_cast<float>(cmp->getRelease());
+      p.gain = cmp->getGain();
+      p.enabled = cmp->getEnabled();
+      handle = backend_->createNode(NodeKind::Compressor, p);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // AudioClip: a Buffer node once its bytes are fetched and decoded.
       fallbackPitch_[clip] = clip->getPitch();
@@ -330,6 +343,8 @@ private:
     if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) return biq->getChildren();
     if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) return gain->getChildren();
     if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node)) return delay->getChildren();
+    if (auto *cmp = dynamic_cast<x3d::nodes::DynamicsCompressor *>(node))
+      return cmp->getChildren();
     if (auto *ss = dynamic_cast<x3d::nodes::SpatialSound *>(node)) return ss->getChildren();
     return MFNode{};  // OscillatorSource is a leaf source (no inputs)
   }
@@ -360,6 +375,15 @@ private:
                          static_cast<float>(delay->getMaxDelayTime()));
       backend_->setParam(handle, Param::Enabled, delay->getEnabled() ? 1.0f : 0.0f);
       pushTimeState(delay, handle);
+    } else if (auto *cmp = dynamic_cast<x3d::nodes::DynamicsCompressor *>(node)) {
+      backend_->setParam(handle, Param::Threshold, cmp->getThreshold());
+      backend_->setParam(handle, Param::Knee, cmp->getKnee());
+      backend_->setParam(handle, Param::Ratio, cmp->getRatio());
+      backend_->setParam(handle, Param::Attack, static_cast<float>(cmp->getAttack()));
+      backend_->setParam(handle, Param::Release, static_cast<float>(cmp->getRelease()));
+      backend_->setParam(handle, Param::Gain, cmp->getGain());
+      backend_->setParam(handle, Param::Enabled, cmp->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(cmp, handle);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // Playback follows the §8.2.4 lifecycle outputs (MediaTimeSystem).
       const bool active = clip->X3DTimeDependentNode::getIsActive();

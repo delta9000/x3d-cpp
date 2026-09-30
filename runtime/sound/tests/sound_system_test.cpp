@@ -112,6 +112,7 @@ int main() {
       case NodeKind::Panner: break;
       case NodeKind::Buffer: break;
       case NodeKind::Delay: break;
+      case NodeKind::Compressor: break;
       }
     }
     CHECK(hDest && hGain && hBiq && hOsc, "all four kinds present");

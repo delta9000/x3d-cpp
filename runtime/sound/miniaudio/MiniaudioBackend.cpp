@@ -607,6 +607,11 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
       case Param::DirectionY:        it->second.params.direction[1]        = value; break;
       case Param::DirectionZ:        it->second.params.direction[2]        = value; break;
       case Param::Intensity:         it->second.params.intensity           = value; break;
+      case Param::Threshold:         it->second.params.threshold           = value; break;
+      case Param::Knee:              it->second.params.knee                = value; break;
+      case Param::Ratio:             it->second.params.ratio               = value; break;
+      case Param::Attack:            it->second.params.attack              = value; break;
+      case Param::Release:           it->second.params.release             = value; break;
       case Param::PlaybackState:     it->second.playState = static_cast<int>(value); break;
       case Param::PlaybackRate:      it->second.rate = value; break;
       case Param::DelayTime:         it->second.params.delayTime = value; break;

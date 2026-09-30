@@ -63,7 +63,8 @@ inline constexpr NodeHandle kInvalidNodeHandle = 0;
  *          engine-type leakage.
  */
 enum class NodeKind { Oscillator, Biquad, Gain, Destination, Panner, Buffer,
-                      Delay };
+                      Delay,
+                      Compressor };
 
 /**
  * @brief Distance attenuation model for Panner nodes.
@@ -107,6 +108,8 @@ enum class FilterType { Lowpass, Highpass, Bandpass, Lowshelf, Highshelf,
  *            - Destination: maxChannelCount.
  *            - Buffer:      samples, sampleRate (PCM crosses once, ADR-0050).
  *            - Delay:       delayTime, maxDelayTime, enabled (a pure delay).
+ *            - Compressor:  threshold, knee (dB), ratio, attack, release
+ *                           (seconds), gain, enabled.
  *            - Panner:      sourcePosition, listenerPosition, listenerForward,
  *                           listenerUp, distanceModel, referenceDistance,
  *                           maxDistance, rolloffFactor. POSITIONS cross the seam
@@ -176,6 +179,18 @@ struct NodeParams {
   std::vector<float> samples;
   /** @brief The samples' own rate in hertz. */
   float sampleRate = 44100.0f;
+
+  // ── DynamicsCompressor fields (NodeKind::Compressor, §16.4.9) ─────────────
+  /** @brief Compression threshold in dB (DynamicsCompressor). */
+  float threshold = -24.0f;
+  /** @brief Soft-knee width in dB (DynamicsCompressor). */
+  float knee = 30.0f;
+  /** @brief Compression ratio applied above the threshold. */
+  float ratio = 12.0f;
+  /** @brief Attack time in seconds (DynamicsCompressor). */
+  float attack = 0.003f;
+  /** @brief Release time in seconds (DynamicsCompressor). */
+  float release = 0.25f;
 };
 
 /**
@@ -200,7 +215,10 @@ enum class Param {
   // it runs past its end — the time lifecycle stops a non-looping clip.
   PlaybackState, PlaybackRate, Enabled,
   // Delay node: the delay duration and its maximum (the ring-buffer bound).
-  DelayTime, MaxDelayTime
+  DelayTime, MaxDelayTime,
+  // DynamicsCompressor (§16.4.9): threshold/knee in dB, ratio, attack/release
+  // in seconds.
+  Threshold, Knee, Ratio, Attack, Release
 };
 
 /**

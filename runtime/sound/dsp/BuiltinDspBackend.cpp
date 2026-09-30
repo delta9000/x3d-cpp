@@ -55,6 +55,10 @@ struct Node {
   int timeState = 1;
   double rate = 1.0;
 
+  // Compressor state: smoothed applied gain in dB (<= 0), carried across
+  // render() calls like the oscillator phase.
+  double gainDb = 0.0;
+
   // Per-render scratch.
   std::vector<float> block;
   bool rendered = false;
@@ -312,6 +316,49 @@ struct BuiltinDspBackend::Impl {
       }
       break;
     }
+    case NodeKind::Compressor: {
+      // §16.4.9 DynamicsCompressor: a feed-forward compressor. Per sample the
+      // dB-domain gain computer (soft knee) derives a target gain; a one-pole
+      // smoother tracks it (attack while the gain drops, release while it
+      // recovers); the smoothed gain is applied to the input.
+      std::vector<float> in(static_cast<std::size_t>(frames), 0.0f);
+      sumInputs(n, in, frames, sampleRate);
+      if (n.timeState != 1) break;
+      if (!n.params.enabled) { n.block = std::move(in); break; }
+      double atk = n.params.attack;
+      if (atk < 0.0) atk = 0.0;
+      double rel = n.params.release;
+      if (rel < 0.0) rel = 0.0;
+      const double threshold = n.params.threshold;
+      const double knee = n.params.knee < 0.0 ? 0.0 : n.params.knee;
+      const double ratio = n.params.ratio > 1.0 ? n.params.ratio : 1.0;
+      const double slope = 1.0 / ratio - 1.0;  // dB of gain per dB of input
+      const double aAtk = std::exp(-1.0 / (atk * sampleRate));
+      const double aRel = std::exp(-1.0 / (rel * sampleRate));
+      for (int i = 0; i < frames; ++i) {
+        const double level =
+            std::fabs(static_cast<double>(in[static_cast<std::size_t>(i)]));
+        double targetDb = 0.0;  // below the knee: unity gain
+        if (level > 1e-12) {
+          const double over = 20.0 * std::log10(level) - threshold;
+          if (2.0 * over >= knee) {
+            // Above the knee: the output rides at threshold + over/ratio.
+            targetDb = slope * over;
+          } else if (2.0 * over > -knee) {
+            // Inside the soft knee: quadratic interpolation, continuous with
+            // unity at the knee's lower edge and the ratio law at its upper.
+            const double shifted = over + 0.5 * knee;
+            targetDb = slope * shifted * shifted / (2.0 * knee);
+          }
+        }
+        const double a = targetDb < n.gainDb ? aAtk : aRel;
+        n.gainDb += (1.0 - a) * (targetDb - n.gainDb);
+        n.block[static_cast<std::size_t>(i)] = static_cast<float>(
+            in[static_cast<std::size_t>(i)] * n.params.gain *
+            std::pow(10.0, n.gainDb / 20.0));
+      }
+      break;
+    }
     case NodeKind::Panner: {
       // Task 3: equal-power spatial DSP. All computation is BACKEND-SIDE.
       // POSITIONS cross the seam (NodeParams); no precomputed gain/coefficient
@@ -499,6 +546,11 @@ void BuiltinDspBackend::setParam(NodeHandle node, Param param, float value) {
   case Param::PlaybackRate: it->second.rate = value; break;
   case Param::DelayTime:    it->second.params.delayTime = value; break;
   case Param::MaxDelayTime: it->second.params.maxDelayTime = value; break;
+  case Param::Threshold:    it->second.params.threshold = value; break;
+  case Param::Knee:         it->second.params.knee      = value; break;
+  case Param::Ratio:        it->second.params.ratio     = value; break;
+  case Param::Attack:       it->second.params.attack    = value; break;
+  case Param::Release:      it->second.params.release   = value; break;
   }
 }
 
