@@ -129,7 +129,7 @@ services:
     preserves: [INV-CXX-5]
   - <<: *browser_query
     id: SVC-BROWSER-DESCRIPTION-READ
-    clause: ISO/IEC 19777-4:2015, Browser description binding utility
+    clause: ISO/IEC 19777-4, Browser description binding utility (binding audit incomplete)
     public_symbol: planned:x3d::sai::browser::description
     support: planned
     tests: [planned:sai_browser_description_read]
