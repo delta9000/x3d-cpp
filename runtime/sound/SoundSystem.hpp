@@ -44,6 +44,9 @@
 // their PCM crosses once (ADR-0050); a Pending fetch is retried each tick.
 // Their playback state follows the AudioClip time lifecycle (isActive /
 // isPaused, MediaTimeSystem) and pitch.
+// A BufferAudioSource (§16.4.5) feeds its authored PCM `buffer` into the same
+// Buffer node (SND-4): mono after averaging any extra channels, loop honored by
+// the time lifecycle, playbackRate x detune captured at activation.
 // A MovieTexture source uses a separately injected movie-audio decoder and
 // the same Buffer path; MediaTimeSystem supplies its lifecycle and speed.
 #ifndef X3D_RUNTIME_SOUND_SYSTEM_HPP
@@ -59,6 +62,7 @@
 
 #include "x3d/nodes/AudioClip.hpp"
 #include "x3d/nodes/AudioDestination.hpp"
+#include "x3d/nodes/BufferAudioSource.hpp"
 #include "x3d/nodes/BiquadFilter.hpp"
 #include "x3d/nodes/Delay.hpp"
 #include "x3d/nodes/DynamicsCompressor.hpp"
@@ -186,6 +190,7 @@ public:
     fallbackSpeed_.erase(dynamic_cast<x3d::nodes::MovieTexture *>(node));
     if (auto *osc = dynamic_cast<x3d::nodes::OscillatorSource *>(node))
       waves_.erase(osc);
+    fallbackRate_.erase(dynamic_cast<x3d::nodes::BufferAudioSource *>(node));
     if (listener_ == node) listener_ = nullptr;
     map_.erase(node);
   }
@@ -342,6 +347,15 @@ private:
       const ClipLoad load = loadMovieAudio(movie, handle);
       if (load == ClipLoad::Pending) pendingMovies_.push_back({movie, parent});
       if (load != ClipLoad::Ready) return kInvalidNodeHandle;
+    } else if (auto *bas = dynamic_cast<x3d::nodes::BufferAudioSource *>(node)) {
+      // BufferAudioSource (§16.4.5, SND-4): the authored `buffer` MFFloat IS
+      // PCM — feed the same Buffer node an AudioClip decodes into.
+      fallbackRate_[bas] = bufferAudioRate(bas);
+      NodeParams bp;
+      bp.samples = bufferAudioSamples(bas);
+      bp.sampleRate = bas->getSampleRate() > 0.0f ? bas->getSampleRate() : 44100.0f;
+      bp.gain = bas->getGain();
+      handle = backend_->createNode(NodeKind::Buffer, bp);
     } else if (auto *ss = dynamic_cast<SpatialSound *>(node)) {
       // SpatialSound as an audio-graph child (§16 allows nesting): insert a
       // Panner carrying the resolved positions. The SpatialSound's own
@@ -350,8 +364,8 @@ private:
       NodeParams pp = buildPannerParams(ss, listener_);
       handle = backend_->createNode(NodeKind::Panner, pp);
     } else {
-      // Not a v1 §16 node (e.g. Convolver/Analyser — deferred). Skip its
-      // subtree; a real backend would extend the kind set here.
+      // Not a v1 §16 node (e.g. Convolver/Analyser/StreamAudioSource — deferred).
+      // Skip its subtree; a real backend would extend the kind set here.
       return kInvalidNodeHandle;
     }
     if (handle == kInvalidNodeHandle) return kInvalidNodeHandle;
@@ -456,6 +470,17 @@ private:
       if (!active) fallbackSpeed_[movie] = movie->getSpeed();
       backend_->setParam(handle, Param::PlaybackRate,
                          media ? static_cast<float>(media->playbackRate(movie)) : fallbackSpeed_[movie]);
+    } else if (auto *bas = dynamic_cast<x3d::nodes::BufferAudioSource *>(node)) {
+      // §16.4.5: playback follows the §8.2.4 lifecycle outputs (MediaTimeSystem);
+      // playbackRate x detune is captured at activation, like AudioClip.pitch.
+      const bool active = bas->X3DTimeDependentNode::getIsActive();
+      const bool paused = bas->X3DTimeDependentNode::getIsPaused();
+      backend_->setParam(handle, Param::PlaybackState, !active ? 0.0f : paused ? 2.0f : 1.0f);
+      const auto *media = ctx_ ? ctx_->findSystem<MediaTimeSystem>() : nullptr;
+      if (!active) fallbackRate_[bas] = bufferAudioRate(bas);
+      backend_->setParam(handle, Param::PlaybackRate,
+                         media ? static_cast<float>(media->playbackRate(bas)) : fallbackRate_[bas]);
+      backend_->setParam(handle, Param::Gain, bas->getGain());
     } else if (auto *dest = dynamic_cast<x3d::nodes::AudioDestination *>(node)) {
       backend_->setParam(handle, Param::Gain, dest->getGain());
     }
@@ -595,6 +620,40 @@ private:
   };
   enum class ClipLoad { Ready, Pending, Failed };
 
+  // §16.4.5: computedPlaybackRate = playbackRate * 2^(detune/1200) (detune in
+  // cents). Reversed (negative) playback is not modeled by the Buffer node.
+  static float bufferAudioRate(x3d::nodes::BufferAudioSource *bas) {
+    return bas->getPlaybackRate() * std::pow(2.0f, bas->getDetune() / 1200.0f);
+  }
+
+  // The Buffer node's contract is mono PCM (ADR-0050): a buffer authored with
+  // numberOfChannels > 1 holds interleaved frames, so the channels are averaged
+  // down (the WAV decoder's downmix policy); channelCountMode/channelInterpretation
+  // are not modeled. bufferDuration limits the used portion in seconds (0 = all).
+  static std::vector<float> bufferAudioSamples(x3d::nodes::BufferAudioSource *bas) {
+    const MFFloat &buf = bas->getBuffer();
+    std::vector<float> mono;
+    const int channels = bas->getNumberOfChannels();
+    if (channels > 1) {
+      mono.reserve(buf.size() / static_cast<std::size_t>(channels));
+      for (std::size_t frame = 0; frame + static_cast<std::size_t>(channels) <= buf.size();
+           frame += static_cast<std::size_t>(channels)) {
+        float sum = 0.0f;
+        for (int c = 0; c < channels; ++c) sum += buf[frame + static_cast<std::size_t>(c)];
+        mono.push_back(sum / static_cast<float>(channels));
+      }
+    } else {
+      mono = buf;
+    }
+    if (bas->getBufferDuration() > 0.0 && bas->getSampleRate() > 0.0f) {
+      const std::size_t keep = std::min(
+          mono.size(), static_cast<std::size_t>(std::floor(bas->getBufferDuration() *
+                                                          bas->getSampleRate())));
+      mono.resize(keep);
+    }
+    return mono;
+  }
+
   // Fetch the clip's urls in order and decode the first that loads. Ready
   // creates the Buffer node (its PCM crosses the seam here, once) and posts
   // duration_changed; Pending means retry next tick.
@@ -725,6 +784,7 @@ private:
   std::unordered_map<const x3d::nodes::OscillatorSource *,
                      const x3d::nodes::PeriodicWave *>
       waves_;
+  std::unordered_map<x3d::nodes::BufferAudioSource *, float> fallbackRate_;
   extract::AssetResolver resolver_;
   AudioDecoder decoder_ = makeNullAudioDecoder();
   AudioDecoder movieAudioDecoder_;

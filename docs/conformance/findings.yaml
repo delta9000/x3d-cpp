@@ -62,7 +62,7 @@
   severity: major
   status: closed
   summary: AudioClip/MovieTexture have no time-lifecycle System — startTime/loop/isActive inert.
-  note: "MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip and MovieTexture: enabled, loop, and a cycle of duration_changed / pitch (AudioClip) or / speed (MovieTexture); an unknown duration plays until stopTime (media_time_test). Decoding and playback remain separate (SND-4)."
+  note: "MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip, MovieTexture and BufferAudioSource: enabled, loop, and a cycle of duration_changed / pitch (AudioClip), / speed (MovieTexture), or buffer seconds over playbackRate x detune (BufferAudioSource); an unknown duration plays until stopTime (media_time_test, sound_immersive_test). Decoding and playback remain separate (SND-4)."
 - id: TDN-6
   nodes: [TimeSensor]
   clause: "8.2.4.4"
@@ -351,7 +351,7 @@
   severity: major
   status: closed
   summary: Sound sources and processing nodes now run the shared start/stop/pause/resume lifecycle and emit isActive/isPaused/elapsedTime.
-  note: SoundTimeSystem reuses X3DTimeDependentSystem and is registered by attachStandardRuntime; SoundSystem gates source and processor output from isActive/isPaused. MediaTimeSystem continues to handle AudioClip. Covered by sound_system_test and standard_runtime_test.
+  note: SoundTimeSystem reuses X3DTimeDependentSystem and is registered by attachStandardRuntime; SoundSystem gates source and processor output from isActive/isPaused. MediaTimeSystem continues to handle AudioClip and BufferAudioSource. Covered by sound_system_test and standard_runtime_test.
 - id: SND-3
   nodes: [SpatialSound, ListenerPointSource]
   component: Sound
@@ -367,8 +367,8 @@
   clause: "16.4.5, 16.4.20, 16.4.14"
   severity: major
   status: deferred
-  summary: Audio source breadth — OscillatorSource and AudioClip are built; BufferAudioSource/StreamAudioSource/MicrophoneSource subtrees are skipped (buildChild returns early).
-  note: "AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; isActive/isPaused (MediaTimeSystem, TDN-5), pitch and gain drive playback. Not read: AudioClip.description. BufferAudioSource can reuse the Buffer node (its buffer field is already PCM); StreamAudioSource and MicrophoneSource need a streaming/capture contract."
+  summary: "Audio source breadth PARTIAL — OscillatorSource, AudioClip and BufferAudioSource are built; StreamAudioSource and MicrophoneSource subtrees are still skipped (buildChild returns early; they need a streaming/capture contract)."
+  note: "AudioClip ships (ADR-0050): url fetched through the AssetResolver oracle (AssetKind::Audio, Pending retried), decoded by an injected AudioDecoder (reference WAV decoder in runtime/io/wav/), played as a Buffer node holding decoded mono PCM; duration_changed posted; not read: AudioClip.description. BufferAudioSource ships (§16.4.5) through the same Buffer node: the authored buffer MFFloat IS PCM and crosses the seam as mono — a numberOfChannels > 1 buffer is read as interleaved frames and averaged down (the WAV decoder's downmix policy); bufferDuration limits the seconds used (0 = the whole buffer); sampleRate resamples, 0 (spec: the context rate) falling back to 44100 Hz like MiniaudioBackend's clamp; gain scales output; playbackRate x detune (computedPlaybackRate) is captured at activation like AudioClip.pitch — reversed (negative) playback is not modeled; loop rides the MediaTimeSystem lifecycle (TDN-5: startTime/stopTime/pauseTime/resumeTime -> isActive/isPaused/elapsedTime), an unknowable duration (no authored sampleRate) playing until stopTime. NOT read on BufferAudioSource: loopStart/loopEnd (the Buffer node wraps the whole buffer; a loop region needs a seam extension), the X3DUrlObject url/description (audio comes from the buffer field), the length output. StreamAudioSource and MicrophoneSource remain deferred to v2. Covered by sound_immersive_test."
 - id: SND-5
   nodes: [Analyser, Convolver, DynamicsCompressor, WaveShaper]
   interfaces: [X3DSoundProcessingNode]

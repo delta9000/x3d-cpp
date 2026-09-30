@@ -1,16 +1,19 @@
 // MediaTimeSystem.hpp — the X3DTimeDependentNode lifecycle for media nodes
-// (ISO/IEC 19775-1 §8.2.4, §16.4.2 AudioClip, §18.4.6 MovieTexture).
+// (ISO/IEC 19775-1 §8.2.4, §16.4.2 AudioClip, §16.4.5 BufferAudioSource,
+// §18.4.6 MovieTexture).
 //
-// AudioClip and MovieTexture are time-dependent: startTime / stopTime /
-// pauseTime / resumeTime / loop drive isActive, isPaused and elapsedTime exactly
-// as for a TimeSensor. This System reuses the shared clock machine
-// (X3DTimeDependentSystem) with the media nodes' own reads:
+// AudioClip, BufferAudioSource and MovieTexture are time-dependent:
+// startTime / stopTime / pauseTime / resumeTime / loop drive isActive, isPaused
+// and elapsedTime exactly as for a TimeSensor. This System reuses the shared
+// clock machine (X3DTimeDependentSystem) with the media nodes' own reads:
 //   * enabled   — X3DSoundSourceNode.enabled;
 //   * loop      — the node's loop field;
-//   * cycle     — one pass of the media: duration_changed divided by the
-//                 playback rate (AudioClip.pitch, MovieTexture.speed). Until the
-//                 duration is known (duration_changed is -1 before the media is
-//                 loaded) the node plays until its stopTime.
+//   * cycle     — one pass of the media: duration divided by the playback rate
+//                 (AudioClip.pitch, BufferAudioSource.playbackRate x detune,
+//                 MovieTexture.speed). Until the duration is known
+//                 (duration_changed is -1 before the media is loaded; a
+//                 BufferAudioSource without an authored sampleRate has no
+//                 knowable seconds) the node plays until its stopTime.
 // Decoding and playback are separate (the AudioBackend / MovieDecoder seams);
 // this System only owns the timing outputs (TDN-5).
 #ifndef X3D_RUNTIME_MEDIA_TIME_SYSTEM_HPP
@@ -20,6 +23,7 @@
 #include "X3DTimeDependentSystem.hpp"
 
 #include "x3d/nodes/AudioClip.hpp"
+#include "x3d/nodes/BufferAudioSource.hpp"
 #include "x3d/nodes/MovieTexture.hpp"
 
 #include <cmath>
@@ -41,9 +45,12 @@ public:
   void attach(x3d::nodes::X3DNode *node, X3DExecutionContext &ctx) override {
     auto *media = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node);
     if (!media || (!dynamic_cast<x3d::nodes::AudioClip *>(node) &&
-                   !dynamic_cast<x3d::nodes::MovieTexture *>(node))) return;
+                   !dynamic_cast<x3d::nodes::MovieTexture *>(node) &&
+                   !dynamic_cast<x3d::nodes::BufferAudioSource *>(node))) return;
     if (filterContext_ != &ctx) {
-      // §16.4.2 / §18.4.2: active pitch and speed inputs are ignored, including ROUTEs.
+      // §16.4.2 / §18.4.2: active pitch and speed inputs are ignored, including
+      // ROUTEs; §16.4.5 models BufferAudioSource the same way (playbackRate +
+      // detune are captured at activation).
       ctx.addInputFilter([](const FieldAddress &a, const std::any &) {
         if (a.field == "pitch")
           if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(a.node))
@@ -51,6 +58,9 @@ public:
         if (a.field == "speed")
           if (auto *movie = dynamic_cast<x3d::nodes::MovieTexture *>(a.node))
             return !movie->X3DTimeDependentNode::getIsActive();
+        if (a.field == "playbackRate" || a.field == "detune")
+          if (auto *b = dynamic_cast<x3d::nodes::BufferAudioSource *>(a.node))
+            return !b->X3DTimeDependentNode::getIsActive();
         return true;
       });
       filterContext_ = &ctx;
@@ -79,11 +89,13 @@ protected:
   bool readEnabled(x3d::nodes::X3DTimeDependentNode *node) const override {
     if (auto *a = dynamic_cast<x3d::nodes::AudioClip *>(node)) return a->getEnabled();
     if (auto *m = dynamic_cast<x3d::nodes::MovieTexture *>(node)) return m->getEnabled();
+    if (auto *b = dynamic_cast<x3d::nodes::BufferAudioSource *>(node)) return b->getEnabled();
     return true;
   }
   bool readLoop(x3d::nodes::X3DTimeDependentNode *node) const override {
     if (auto *a = dynamic_cast<x3d::nodes::AudioClip *>(node)) return a->getLoop();
     if (auto *m = dynamic_cast<x3d::nodes::MovieTexture *>(node)) return m->getLoop();
+    if (auto *b = dynamic_cast<x3d::nodes::BufferAudioSource *>(node)) return b->getLoop();
     return false;
   }
   double readCycleInterval(x3d::nodes::X3DTimeDependentNode *node) const override {
@@ -92,6 +104,13 @@ protected:
       duration = a->getDuration_changed();
     } else if (auto *m = dynamic_cast<x3d::nodes::MovieTexture *>(node)) {
       duration = m->getDuration_changed();
+    } else if (auto *b = dynamic_cast<x3d::nodes::BufferAudioSource *>(node)) {
+      // §16.4.5: bufferDuration is the seconds to use (0 = the whole buffer);
+      // the whole buffer's seconds are knowable only with an authored
+      // sampleRate — a 0 sampleRate means the context rate, unknown here.
+      if (b->getBufferDuration() > 0.0) duration = b->getBufferDuration();
+      else if (b->getSampleRate() > 0.0f && !b->getBuffer().empty())
+        duration = double(b->getBuffer().size()) / b->getSampleRate();
     }
     const double rate = playbackRate(node);
     // Unknown duration (or a stopped / reversed rate): play until stopTime.
@@ -104,6 +123,9 @@ private:
   static double authoredRate(const x3d::nodes::X3DTimeDependentNode *node) {
     if (auto *a = dynamic_cast<const x3d::nodes::AudioClip *>(node)) return a->getPitch();
     if (auto *m = dynamic_cast<const x3d::nodes::MovieTexture *>(node)) return m->getSpeed();
+    // §16.4.5: computedPlaybackRate = playbackRate * 2^(detune/1200).
+    if (auto *b = dynamic_cast<const x3d::nodes::BufferAudioSource *>(node))
+      return b->getPlaybackRate() * std::pow(2.0, b->getDetune() / 1200.0);
     return 1.0;
   }
 
