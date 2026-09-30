@@ -69,7 +69,7 @@
   {"tick": 67, "t": 1.116667, "changes": []},
   {"tick": 68, "t": 1.133333, "changes": []},
   {"tick": 69, "t": 1.150000, "changes": []},
-  {"tick": 70, "t": 1.166667, "changes": [{"node": "Sensor", "field": "isActive", "value": "false"}]},
+  {"tick": 70, "t": 1.166667, "changes": []},
   {"tick": 71, "t": 1.183333, "changes": []},
   {"tick": 72, "t": 1.200000, "changes": []},
   {"tick": 73, "t": 1.216667, "changes": []},
