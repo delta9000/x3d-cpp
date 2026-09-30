@@ -104,7 +104,9 @@ Subscription destruction is callback-free and `noexcept`; callback capture
 destructors run outside both context and browser locks. A callback may commit a
 new edit, whose notification is appended after the current batch. The consumer
 guard resets even when dispatch exits by an exception. The kernel creates no
-threads. As with other owning containers, allocation failure may propagate;
+threads. A producer publishing after the consumer's empty-queue check needs a
+later drain; an in-progress drain is not a flush barrier for concurrent writers.
+As with other owning containers, allocation failure may propagate;
 a drain does not promise rollback of notifications already removed.
 
 ## Browser and asynchronous generation

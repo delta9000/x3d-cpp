@@ -865,6 +865,7 @@ public:
   // Exactly one consumer dispatches a context at a time. Recursive/concurrent
   // calls return immediately with already_draining, leaving the queue alone.
   // The active consumer also drains notifications enqueued by its callbacks.
+  // A concurrent producer publishing after the empty check needs a later drain.
   dispatch_report drain() const;
 
 private:

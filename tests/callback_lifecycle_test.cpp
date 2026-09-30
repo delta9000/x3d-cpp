@@ -293,3 +293,67 @@ TEST_CASE(
   CHECK(report.delivered == 1);
   CHECK(calls == 1);
 }
+
+TEST_CASE(
+    "an observer can cancel itself while its acquired callback finishes") {
+  sai::browser host{callback_registry()};
+  auto context = host.current_scene();
+  sai::subscription observer;
+  int calls = 0;
+  int destroyed = 0;
+  auto capture = std::make_shared<on_destroy>([&] {
+    (void)context.snapshot();
+    (void)host.current_scene();
+    CHECK_FALSE(observer.active());
+    ++destroyed;
+  });
+  observer = context.observe([&, capture](const sai::change_set &) {
+    ++calls;
+    observer.cancel();
+    CHECK_FALSE(observer.active());
+    CHECK(destroyed == 0);
+  });
+  capture.reset();
+  enqueue_creation(context);
+  enqueue_creation(context);
+  const auto report = context.drain();
+  CHECK(report.delivered == 1);
+  CHECK(calls == 1);
+  CHECK(destroyed == 1);
+}
+
+TEST_CASE(
+    "observing a stale context destroys rejected captures outside locks") {
+  sai::browser host{callback_registry()};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  auto node = edit.create_node("TestNode");
+  REQUIRE(node);
+  REQUIRE(edit.commit());
+  const auto field = context.snapshot().field(*node, "value");
+  REQUIRE(field);
+  const auto replacement = host.create_scene();
+  REQUIRE(host.replace_world(replacement));
+  int destroyed = 0;
+  auto capture = std::make_shared<on_destroy>([&] {
+    (void)context.snapshot();
+    CHECK(host.current_scene().generation() == replacement.generation());
+    ++destroyed;
+  });
+  SUBCASE("change observer") {
+    sai::execution_context::observer callback =
+        [capture](const sai::change_set &) {};
+    capture.reset();
+    auto observer = context.observe(std::move(callback));
+    CHECK_FALSE(observer.active());
+  }
+  SUBCASE("field observer") {
+    sai::execution_context::event_observer callback =
+        [capture](const sai::event_delivery &) {};
+    capture.reset();
+    const auto observer = context.observe(*field, std::move(callback));
+    REQUIRE_FALSE(observer);
+    CHECK(observer.error().code == sai::error_code::stale_handle);
+  }
+  CHECK(destroyed == 1);
+}
