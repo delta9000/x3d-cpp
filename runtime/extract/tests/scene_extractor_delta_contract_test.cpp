@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <memory>
 #include <map>
+#include <set>
 #include <vector>
 
 using namespace x3d::runtime;
@@ -272,4 +273,178 @@ TEST_CASE("delta contract: structural replacement precedes stale dirty path trav
   d = ex.delta();
   CHECK(d.removed.empty());
   CHECK(d.updatedTransform.empty());
+}
+
+namespace {
+struct GeometryMirror {
+  std::map<RenderItemId, RenderItem> items;
+  void apply(const RenderDelta &delta, const SceneExtractor &ex,
+             const X3DExecutionContext &ctx, const Scene &scene) {
+    for (auto id : delta.removed) REQUIRE(items.erase(id) == 1);
+    for (auto id : delta.added) REQUIRE(items.emplace(id, ex.item(id)).second);
+    for (const auto *updates : {&delta.updatedGeometry, &delta.updatedTransform,
+                               &delta.updatedMaterial, &delta.updatedSkinPose}) {
+      std::set<RenderItemId> seen;
+      for (auto id : *updates) {
+        REQUIRE(seen.insert(id).second);
+        REQUIRE(items.count(id) == 1);
+        items.at(id) = ex.item(id);
+      }
+    }
+    SceneExtractor oracle(ctx, scene);
+    auto snapshot = oracle.fullSnapshot();
+    REQUIRE(items.size() == snapshot.added.size());
+    for (auto id : snapshot.added) {
+      const auto &expected = oracle.item(id);
+      auto found = std::find_if(items.begin(), items.end(), [&](const auto &entry) {
+        return entry.second.path == expected.path;
+      });
+      REQUIRE(found != items.end());
+      const auto &actual = found->second;
+      CHECK(actual.geometry.node == expected.geometry.node);
+      CHECK(actual.mesh->topology == expected.mesh->topology);
+      CHECK(actual.mesh->positions == expected.mesh->positions);
+      CHECK(actual.mesh->indices == expected.mesh->indices);
+      CHECK(actual.mesh->normals == expected.mesh->normals);
+      CHECK(actual.mesh->texcoords == expected.mesh->texcoords);
+      CHECK(actual.mesh->colors == expected.mesh->colors);
+      for (int j = 0; j < 16; ++j)
+        CHECK(actual.worldTransform.m[j] == doctest::Approx(expected.worldTransform.m[j]));
+      CHECK(actual.material.phong.diffuse == expected.material.phong.diffuse);
+    }
+  }
+};
+
+struct SharedGeometryFixture {
+  std::shared_ptr<X3DNode> coord = createX3DNode("Coordinate");
+  std::shared_ptr<X3DNode> color = createX3DNode("Color");
+  std::shared_ptr<X3DNode> triangles = createX3DNode("TriangleSet");
+  std::shared_ptr<X3DNode> lines = createX3DNode("IndexedLineSet");
+  std::shared_ptr<X3DNode> left = createX3DNode("Transform");
+  std::shared_ptr<X3DNode> right = createX3DNode("Transform");
+  std::shared_ptr<X3DNode> material = createX3DNode("Material");
+  Scene scene;
+  MFVec3f points{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {2, 0, 0}};
+  SharedGeometryFixture(bool initiallyEmpty = false) {
+    if (!initiallyEmpty) setF(coord, "point", points);
+    setF(color, "color", MFColor{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 1}});
+    setF(triangles, "coord", coord);
+    setF(triangles, "color", color);
+    setF(lines, "coord", coord);
+    setF(lines, "color", color);
+    setF(lines, "coordIndex", MFInt32{0, 3, -1});
+    auto triShape = createX3DNode("Shape");
+    auto lineShape = createX3DNode("Shape");
+    auto appearance = createX3DNode("Appearance");
+    setF(appearance, "material", material);
+    setF(triShape, "appearance", appearance);
+    setF(triShape, "geometry", triangles);
+    setF(lineShape, "geometry", lines);
+    setF(left, "translation", SFVec3f{-3, 0, 0});
+    setF(right, "translation", SFVec3f{3, 0, 0});
+    addChild(left, triShape);
+    addChild(right, triShape); // one Shape, two placement paths
+    auto unchanged = createX3DNode("Shape");
+    setF(unchanged, "geometry", createX3DNode("Box"));
+    scene.rootNodes = {left, right, lineShape, unchanged};
+  }
+};
+} // namespace
+
+TEST_CASE("geometry delta: shared sources preserve every owner's topology and coalesce builds") {
+  SharedGeometryFixture f;
+  X3DExecutionContext ctx; ctx.buildSceneGraph(f.scene);
+  SceneExtractor ex(ctx, f.scene);
+  GeometryMirror mirror;
+  auto snapshot = ex.fullSnapshot();
+  mirror.apply(snapshot, ex, ctx, f.scene);
+  REQUIRE(snapshot.added.size() == 4);
+  const auto tri0 = snapshot.added[0], tri1 = snapshot.added[1];
+  auto oldMesh = ex.item(tri0).mesh;
+  auto unchangedMesh = ex.item(snapshot.added[3]).mesh;
+  CHECK(oldMesh == ex.item(tri1).mesh);
+  f.points[1].x = 5;
+  ctx.postEvent(f.coord.get(), "point", f.points);
+  ctx.postEvent(f.color.get(), "color", MFColor{{0, 1, 1}, {1, 1, 0}, {1, 0, 1}, {0, 0, 0}});
+  ctx.tick(1);
+  const auto builds = buildLocalMeshCallCount();
+  const auto delta = ex.delta();
+  CHECK(buildLocalMeshCallCount() - builds == 2);
+  CHECK(delta.added.empty());
+  CHECK(delta.removed.empty());
+  REQUIRE(delta.updatedGeometry.size() == 3);
+  CHECK(ex.item(tri0).geometry.contentVersion == 1);
+  CHECK(ex.item(tri1).geometry == ex.item(tri0).geometry);
+  CHECK(ex.item(tri0).mesh == ex.item(tri1).mesh);
+  CHECK(ex.item(tri0).mesh != oldMesh);
+  CHECK(ex.item(snapshot.added[3]).mesh == unchangedMesh);
+  CHECK(oldMesh->positions[1].x == 1);
+  mirror.apply(delta, ex, ctx, f.scene);
+  CHECK(ex.delta().updatedGeometry.empty());
+}
+
+TEST_CASE("geometry delta: empty transitions remove and restore all shared placements") {
+  for (bool initiallyEmpty : {false, true}) {
+    CAPTURE(initiallyEmpty);
+    SharedGeometryFixture f(initiallyEmpty);
+    X3DExecutionContext ctx; ctx.buildSceneGraph(f.scene);
+    SceneExtractor ex(ctx, f.scene);
+    GeometryMirror mirror;
+    const auto snapshot = ex.fullSnapshot();
+    mirror.apply(snapshot, ex, ctx, f.scene);
+    REQUIRE(snapshot.added.size() == (initiallyEmpty ? 1 : 4));
+    auto unchangedMesh = ex.item(snapshot.added.back()).mesh;
+    for (bool empty : {true, true, false, false, true, false}) {
+      CAPTURE(empty);
+      const auto previousSize = mirror.items.size();
+      ctx.postEvent(f.coord.get(), "point", empty ? MFVec3f{} : f.points);
+      ctx.postEvent(f.left.get(), "translation", SFVec3f{empty ? -7.f : -9.f, 0, 0});
+      ctx.postEvent(f.material.get(), "diffuseColor", SFColor{0.2f, 0.4f, 0.8f});
+      ctx.tick(1); // paused timestamps still advance independent deltas
+      const auto builds = buildLocalMeshCallCount();
+      const auto delta = ex.delta();
+      CHECK(buildLocalMeshCallCount() - builds == 2);
+      CHECK(delta.removed.size() == (empty && previousSize == 4 ? 3 : 0));
+      CHECK(delta.added.size() == (!empty && previousSize == 1 ? 3 : 0));
+      CHECK(delta.updatedGeometry.size() == (!empty && previousSize == 4 ? 3 : 0));
+      mirror.apply(delta, ex, ctx, f.scene);
+      CHECK(mirror.items.size() == (empty ? 1 : 4));
+      CHECK(ex.item(snapshot.added.back()).mesh == unchangedMesh);
+      if (!empty) {
+        std::vector<const RenderItem *> triangles;
+        for (const auto &[id, item] : mirror.items) {
+          (void)id;
+          if (item.geometry.node == f.triangles.get()) triangles.push_back(&item);
+        }
+        REQUIRE(triangles.size() == 2);
+        CHECK(triangles[0]->mesh == triangles[1]->mesh);
+        CHECK(triangles[0]->geometry == triangles[1]->geometry);
+      }
+      CHECK(ex.delta().added.empty());
+      CHECK(ex.delta().removed.empty());
+    }
+  }
+}
+
+TEST_CASE("geometry delta: geometry-owned index emptiness is incremental") {
+  SharedGeometryFixture f;
+  X3DExecutionContext ctx; ctx.buildSceneGraph(f.scene);
+  SceneExtractor ex(ctx, f.scene);
+  GeometryMirror mirror;
+  const auto snapshot = ex.fullSnapshot();
+  mirror.apply(snapshot, ex, ctx, f.scene);
+  const auto lineId = snapshot.added[2];
+  const auto triangleMesh = ex.item(snapshot.added[0]).mesh;
+  for (bool empty : {true, false, true, false}) {
+    ctx.postEvent(f.lines.get(), "coordIndex", empty ? MFInt32{} : MFInt32{0, 3, -1});
+    ctx.tick(1);
+    const auto builds = buildLocalMeshCallCount();
+    const auto delta = ex.delta();
+    CHECK(buildLocalMeshCallCount() - builds == 1);
+    CHECK(delta.updatedGeometry.empty());
+    if (empty) CHECK(delta.removed == std::vector<RenderItemId>{lineId});
+    else CHECK(delta.added == std::vector<RenderItemId>{lineId});
+    CHECK(ex.item(snapshot.added[0]).mesh == triangleMesh);
+    mirror.apply(delta, ex, ctx, f.scene);
+  }
 }

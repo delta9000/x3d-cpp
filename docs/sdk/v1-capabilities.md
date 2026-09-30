@@ -22,6 +22,7 @@ CAVEOS validation.
 | Conformance diagnostics | `rangeWarnings` (out-of-range values) + `protoWarnings` (expansion issues); per-version validation moat |
 | UNIT declarations | Parse-time validation requires X3D 3.3+, unique standard categories, names without whitespace, and finite positive factors. Valid declarations round-trip. Parsed Scenes and PROTO declarations retain source UNIT snapshots through Inline and EXTERNPROTO resolution, plus authored scalar-field presence through parsing and PROTO expansion. Applying factors to runtime calculations remains open (REQ-UNIT). |
 | Serialization | `XmlWriter` / `JsonWriter` / `VrmlWriter`, reflection-driven |
+| Incremental geometry deltas | Shared direct content sources reach every geometry owner; dirty sources coalesce per owner per tick. Native AoS empty/nonempty transitions remove/add affected placements without rebuilding unrelated meshes. Consume deltas for live membership; `itemCount()` counts allocated slots. |
 | Scene graph | DEF/USE, Transform hierarchy (+ HAnimHumanoid/HAnimJoint/CADPart), bounds, binding stacks |
 | View-dependent nodes | LOD, Billboard, ProximitySensor, VisibilitySensor |
 | Animation | TimeSensor, full interpolator family, Followers (§39 Damper + Chaser, all 14 node types), ROUTE cascade (§4.4.2.2 `set_`/`_changed` aliases accepted) |
