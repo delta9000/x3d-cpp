@@ -27,8 +27,8 @@ flat, POD-only descriptors (`RenderItem`, `MeshData`, `MaterialDesc`, `LightDesc
 `CameraDesc`, `BackgroundDesc`) that a renderer can consume without parsing X3D
 nodes directly. The split between a full snapshot (frame 0 and scene-reload) and
 an incremental `delta()` keeps scalar/TRS updates proportional to affected items.
-Structural/active-child changes take one bounded full-scene replacement walk per
-affected tick; correctness comes before preserving the old subtree optimization.
+Structural/active-child and scoped-descriptor changes take one bounded full-scene
+replacement walk per affected tick; correctness comes before preserving the old subtree optimization.
 
 ## Key files
 
@@ -117,8 +117,8 @@ struct RenderDelta {
 
 ### Structural delta replacement contract
 
-Any `DirtyChildren` (including SFNode/MFNode writes and Switch/LOD active-child
-changes), or a scene topology revision, replaces the extraction baseline once:
+Any `DirtyChildren` (including SFNode/MFNode writes, `visible` changes and
+Switch/LOD active-child changes), or a scene topology revision, replaces the extraction baseline once:
 `removed` contains every previously live ID and `added` contains the complete
 current snapshot. **Apply removals before additions**; dense IDs can occur in
 both. Release their live content-cache entries before accepting new records;
@@ -129,7 +129,8 @@ this boundary. The snapshot resets caches and content versions.
 The full walk uses the existing traversal budget and may report a partial view
 through `budgetExceeded()`. It intentionally costs O(visited scene paths) plus
 mesh/material extraction, including unchanged placements, on structural ticks.
-Scalar geometry/material/TRS ticks retain the incremental and shared-mesh paths.
+Scalar geometry/material/TRS ticks retain the incremental and shared-mesh paths
+except for the descriptor dependencies described below.
 This avoids stale dependencies after geometry replacement, forgotten reattachment
 of a removed path, last-writer-only USE-group placement rebuilding, and walking
 raw path pointers after a removed subtree has already been destroyed.
@@ -138,6 +139,50 @@ raw path pointers after a removed subtree has already been destroyed.
 only `added`; the caller clears its previous state. `delta()` twice without a
 new tick is empty. Consumers must consume each tick or explicitly rebaseline;
 there is no retained history of missed ticks.
+
+### Scoped render-state replacement contract
+
+`Shape.castShadow`, `ClipPlane` fields and `LocalFog` fields do not have a dedicated
+per-item update bucket in `RenderDelta`. Changes to their cached dependencies take
+the same **remove-all-before-add-all replacement** path. `visible` is active
+traversal state and is classified as `DirtyChildren`, including an initially hidden
+branch that has no emitted item or reverse item dependency yet.
+
+The dependency sets include Shape records (also recognized-empty geometry), every
+encountered ClipPlane and LocalFog **before** testing `enabled`, and all static
+Transform ancestors of each scoped descriptor placement. Ancestor TRS changes
+therefore refresh world-space planes and world-scaled fog ranges, including every
+USE placement. Dependencies are rebuilt on each replacement. They are collected
+by the existing clip/fog walks, not by an additional per-tick scene traversal.
+For ClipPlanes below a Billboard, the extractor also retains the per-placement
+scope frame (including disabled planes and scopes without items). Each tick
+compares only those stored paths against the current tracked eye/up; a changed
+frame replaces the baseline. Billboard scalar edits participate in the scoped
+node dependencies too. This adds O(recorded view-dependent clip-scope paths ×
+path depth) checking; stable views and scenes without those scopes do not gain
+replacement walks. Unrelated transforms, including a Shape's frame below an
+already established clip/fog scope, remain incremental and retain their mesh
+allocations.
+
+Dirty tracking is node-granular: any `DirtyField` on an indexed Shape or scoped
+source/frame conservatively replaces the snapshot. A scoped frame's local/world
+transform dirtiness does too, even for disabled descriptors or empty scopes.
+This deliberately costs a bounded full walk and re-extraction of unchanged
+content on those ticks; it is a correctness fallback, not an O(changed-items)
+claim. Replacement refreshes `snapshotLocalFogs()` and item indices together and
+sets `fogChanged`. Consumers must not interpret a plain `updatedTransform` or
+`updatedMaterial` as permission to refresh unrelated clip or shadow descriptors.
+
+`scene_extractor_state_delta_test.cpp` exercises posted events through `tick()`
+and compares a channel-respecting consumer mirror against a separate fresh
+extractor: visibility, shadow flags, clip edits and frame changes, local fog
+color/type/range/enabled and scale, disabled/empty/hidden scopes, shared placements,
+unrelated TRS, coalesced edits, and camera-only/shared-empty Billboard clip
+scopes with independent expected world-plane values. This establishes delta/snapshot consistency;
+it does not add clip/local-fog rendering to the OpenGL example or change the
+existing node-keyed LocalFog scope identity for USE-shared enclosing groups
+([#150](https://github.com/delta9000/x3d-cpp/issues/150)). It also does not refresh
+the optional `beyondVisibilityLimit` hint on camera/TRS/far-distance changes.
 
 ### Incremental geometry ownership and liveness
 
