@@ -7,7 +7,7 @@
 //   sdk::X3DExecutionContext ctx;
 //   ctx.buildSceneGraph(doc.scene);         // transforms/bounds/bindings/pick
 //   ctx.buildFrom(doc.scene);               // resolve DEF-named ROUTEs
-//   sdk::attachStandardRuntime(doc.scene, ctx);  // §8/§19/§39/§30/§22/§23/§21/§9
+//   x3d::runtime::attachStandardRuntime(doc.scene, ctx);  // §8/§19/§39/§30/§22/§23/§21/§9
 //   sdk::SceneExtractor ex(ctx, doc.scene); // scene passed a SECOND time
 //   // ...and doc + ctx must both outlive ex, which holds references to them.
 //

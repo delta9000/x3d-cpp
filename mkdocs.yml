@@ -40,6 +40,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Architecture: architecture.md
+  - Native Host Integration: guides/native-host.md
   - Knowledge Map: knowledge-map.md
   - Coverage Manifest: coverage.md
   - Seam-Status Matrix: seam-status.md

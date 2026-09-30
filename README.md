@@ -185,6 +185,10 @@ x3d canonicalize scene.x3d                     # X3D Canonical Form (X3DC14N)
 
 ### 2. Embed the SDK (one header)
 
+For a host-owned Vulkan/direct-display loop, start with the
+[native host integration contract](docs/wiki/guides/native-host.md) and the
+renderer-free `examples/embed_minimal/native_host.cpp` executable.
+
 Link `x3d_cpp::sdk` and `#include "x3d/sdk.hpp"` — everything an embedder needs
 is in namespace `x3d::sdk`. Hello world: build a scene in C++ and write it to
 a file (a complete program — it compiles and runs as-is):

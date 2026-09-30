@@ -8,3 +8,6 @@ target_link_libraries(x3d_embed_minimal PRIVATE x3d_cpp::sdk)
 
 add_executable(x3d_embed_authoring authoring.cpp)
 target_link_libraries(x3d_embed_authoring PRIVATE x3d_cpp::authoring)
+
+add_executable(x3d_embed_native_host native_host.cpp)
+target_link_libraries(x3d_embed_native_host PRIVATE x3d_cpp::sdk)

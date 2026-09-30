@@ -2,7 +2,7 @@
 title: Seam-Status Matrix
 summary: The live tracker for the product's core thesis — every renderer/engine seam is proven generic only when a second independent backend runs identical fixtures to identical observable behavior, gated in CI. One row per seam; GREEN = interface frozen + ≥2 backends + a CI-gated swap-test.
 tags: [seam, tracker, genericity, swap-test, thesis, meta]
-updated: 2026-09-27
+updated: 2026-09-30
 related:
   - index.md
   - coverage.md
@@ -46,7 +46,7 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | **TextureResolver** | **STABLE** | stb_image (StbTextureResolver) | wuffs v0.3.4 (WuffsTextureResolver) | `x3d_texture_tests` ✓ | thesis-completion (no findings) |
 | GeoProjection | FROZEN (ADR-0053) | BuiltinGeoProjection | PROJ (`X3D_CPP_BUILD_PROJ`) | `x3d_proj_geo_swap` (toleranced) | Geospatial |
 | **MovieDecoder** | **STABLE** | pl_mpeg / MPEG-1 (PlMpegMovieDecoder, [ADR-0041](decisions/0041-moviedecoder-seam-royalty-free-defaults.md)) | libtheora / Ogg-Theora (TheoraMovieDecoder) | `x3d_movie_tests` ✓ (shared per-backend contract, not bit-swap — see ADR-0041) | MovieTexture conformance blanks (MPEG-1 fixed) |
-| Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer / CAVE (1) | — pending | — | — |
+| Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer; CPU/SVG consumers | Native host CPU-mirror contract (not a renderer swap proof) | `x3d_native_host_contract` + installed/relocated package smoke | [Native host boundary](guides/native-host.md); Vulkan/CAVEOS unverified |
 
 Legend: **GREEN** = interface frozen + ≥2 independent backends + a CI-gated swap-test.
 **NOT-YET-PROVEN** = one backend (or pending second) and no swap-test gate. `—` = not yet

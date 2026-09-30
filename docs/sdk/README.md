@@ -2,8 +2,8 @@
 
 A headless, renderer-agnostic X3D domain runtime. You load an X3D document, tick
 a runtime, and pull renderer-ready descriptors out the other side. The SDK does
-no windowing, no GPU work, and no file/network/font IO — those are the embedder's
-job, wired through small callback **seams** (ports; defined under
+no windowing or GPU work. Resource IO is the embedder's job, wired through
+small callback **seams** (ports; defined under
 [The seams](#the-seams-embedder-supplied-io) below).
 
 One include, one namespace:
@@ -30,8 +30,11 @@ cmake --build build
 
 The smallest complete downstream project lives in
 [`examples/embed_minimal/`](../../examples/embed_minimal/). It includes only
-`x3d/sdk.hpp`, links only `x3d_cpp::sdk`, parses a built-in X3D scene, builds
-the runtime context, and extracts one render snapshot.
+`x3d/sdk.hpp`, links `x3d_cpp::sdk`, and loads the scene written by its separate
+authoring example. Its renderer-free `x3d_embed_native_host` companion exercises
+actual delta consumption, shared placements, host timing/input, and reload. See
+the [native host contract](../wiki/guides/native-host.md) before integrating a
+Vulkan or direct-display host.
 
 ## The three layers
 
@@ -60,7 +63,8 @@ You can serialize back out with `XmlWriter`/`JsonWriter`/`VrmlWriter`
 ```cpp
 sdk::X3DExecutionContext ctx;
 ctx.buildSceneGraph(doc.scene);   // index transforms, binding stacks, pick tree
-ctx.buildFrom(doc.scene);         // resolve DEF-named ROUTEs + IS redirects
+const auto routes = ctx.buildFrom(doc.scene); // check routes.rejected
+x3d::runtime::attachStandardRuntime(doc.scene, ctx); // drive built-in behaviors
 
 const auto t0 = std::chrono::steady_clock::now();   // monotonic clock start
 
@@ -79,7 +83,9 @@ accessors (`boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`,
 `boundFog()`).
 
 The animation set (TimeSensor, the full interpolator family, the ROUTE cascade)
-and the view-dependent sensors (Proximity/Visibility/LOD/Billboard) are built in.
+and the view-dependent sensors (Proximity/Visibility/LOD/Billboard) are attached
+by `attachStandardRuntime`, or by `RuntimeSession` with its default options.
+The lower-level build calls alone do not attach them.
 You add your own behavior by subclassing `sdk::System` (`attach` + `update`) and
 registering it with `ctx.addSystem(sys)`. From inside `update`, write fields with
 `ctx.writeField(node, "field", value)` — it is dirty-aware so the extractor sees
@@ -109,8 +115,8 @@ descriptors: `camera()`, `lights()` / `snapshotLights()` + `lightsOf(id)`,
 `background()`, `sceneWorldBounds()`. `skippedGeometryCounts()` reports geometry
 types the extractor does not yet emit.
 
-`MeshData` shading contract for the consumer: if `topology != Triangles` **or**
-`!hasNormals`, bind an unlit program and skip back-face culling.
+`MeshData` shading contract: `!hasNormals` selects the unlit path; lines and
+points with authored normals can be lit. Honor `solid` for culling.
 
 ## The tick model (threading)
 
@@ -121,25 +127,32 @@ The SDK is single-threaded and synchronous. One `X3DExecutionContext` and one
 2. `ctx.tick(now)` once,
 3. `ex.delta()` **once** per tick.
 
-Step 3 is total — no call sequence is undefined, and none of it keys on the
-clock, so a paused, fixed-timestep or replayed `now` is fine. `delta()` before any
+Consume every tick's delta, including simulation substeps without presentation.
+A missed tick requires a new full snapshot: deltas do not accumulate history.
+Repeated `now` values are allowed because the guard does not key on the clock.
+`delta()` before any
 `fullSnapshot()` returns the snapshot (that *is* the baseline); a second
 `delta()` with no intervening `tick()` returns an empty delta, because nothing can
 have changed. The guard keys on `ctx.tickGeneration()`, a monotonic advance count.
 
-There is no internal threading and no hidden IO on the tick path. If your asset
-or font seams are async, return `Pending` and retry on a later frame.
+Callbacks run synchronously on the caller's thread; their IO can block that
+thread. `Pending` is available only on seams whose result supports it, and does
+not itself schedule a retry or background work. In particular, unchanged
+materials are not automatically re-extracted for pending textures. See the
+[native host resource contract](../wiki/guides/native-host.md#resources-and-errors-are-explicit).
 
 ## The seams (embedder-supplied IO)
 
 A **seam is a port** — in the ports-and-adapters (hexagonal) sense, a.k.a. a
-Service Provider Interface (SPI): the IO-free core defines a frozen interface, and
+Service Provider Interface (SPI): the core defines an interface, and
 the embedder supplies the *adapter* (here called a *backend*) that does the actual
-IO. Every seam is proven backend-agnostic by a second independent implementation
-plus a swap-test, so the contract — not any one backend — is what's frozen.
+IO. A seam is proven backend-agnostic when a second independent implementation
+and a swap-test establish it; some seams remain experimental.
 
-The core is IO-free apart from the parse path's own local-file reads
-(`parseFile`). Decoding and rasterization live in the embedder, supplied as
+The simulation/extraction core delegates resource IO. The parse path can read
+local files through `parseFile` **and** the default Inline/EXTERNPROTO resolvers
+of `parseDocument`; pass explicit host callbacks for both when parsing memory.
+Decoding and rasterization live in the embedder, supplied as
 `std::function` callbacks. Each seam carries its own stability marker:
 **[STABLE]** seams are frozen pre-v2 (a breaking change is a major bump),
 **[EXPERIMENTAL]** seams are usable but may gain fields. See the

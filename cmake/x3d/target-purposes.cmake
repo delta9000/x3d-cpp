@@ -62,6 +62,7 @@ _x3d_classify_present_targets(behavior
     x3d_json_reader
     x3d_sdk_facade
     x3d_authoring_link_contract
+    x3d_native_host_contract
     x3d_sound_system
     x3d_sound_immersive
     x3d_sound_delay
@@ -194,6 +195,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_json_reader
         x3d_sdk_facade
         x3d_authoring_link_contract
+        x3d_native_host_contract
         x3d_sound_system
         x3d_sound_immersive
         x3d_sound_delay
