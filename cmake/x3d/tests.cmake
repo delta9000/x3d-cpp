@@ -533,6 +533,13 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_sound_delay PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_sound_delay COMMAND x3d_sound_delay)
 
+    # WaveShaper (§16.4.21): the transfer-curve node on the built-in backend.
+    add_executable(x3d_sound_waveshaper
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_waveshaper_test.cpp")
+    target_link_libraries(x3d_sound_waveshaper PRIVATE x3d_cpp::x3d_cpp)
+    add_test(NAME x3d_sound_waveshaper COMMAND x3d_sound_waveshaper)
+
     # Immersive Sound (ADR-0050): Sound ellipsoid + AudioClip Buffer on the
     # built-in backend, the WAV decoder, and a Sound{AudioClip} scene.
     add_executable(x3d_sound_immersive

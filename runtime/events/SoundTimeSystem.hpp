@@ -11,6 +11,7 @@
 #include "x3d/nodes/DynamicsCompressor.hpp"
 #include "x3d/nodes/Gain.hpp"
 #include "x3d/nodes/OscillatorSource.hpp"
+#include "x3d/nodes/WaveShaper.hpp"
 
 #include <limits>
 
@@ -23,7 +24,8 @@ public:
         dynamic_cast<x3d::nodes::Gain *>(node) ||
         dynamic_cast<x3d::nodes::BiquadFilter *>(node) ||
         dynamic_cast<x3d::nodes::Delay *>(node) ||
-        dynamic_cast<x3d::nodes::DynamicsCompressor *>(node))
+        dynamic_cast<x3d::nodes::DynamicsCompressor *>(node) ||
+        dynamic_cast<x3d::nodes::WaveShaper *>(node))
       X3DTimeDependentSystem::attach(node, ctx);
   }
 
@@ -34,6 +36,7 @@ protected:
     if (auto *n = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) return n->getEnabled();
     if (auto *n = dynamic_cast<x3d::nodes::Delay *>(node)) return n->getEnabled();
     if (auto *n = dynamic_cast<x3d::nodes::DynamicsCompressor *>(node)) return n->getEnabled();
+    if (auto *n = dynamic_cast<x3d::nodes::WaveShaper *>(node)) return n->getEnabled();
     return true;
   }
   double readCycleInterval(x3d::nodes::X3DTimeDependentNode *) const override {

@@ -32,6 +32,7 @@
 //   Delay              -> createNode(Delay, {delayTime, maxDelayTime, enabled})
 //   DynamicsCompressor -> createNode(Compressor, {threshold, knee, ratio,
 //                          attack, release, gain, enabled})
+//   WaveShaper         -> createNode(WaveShaper, {curve, gain, enabled})
 //   for each child c of node n: connect(handle[n], handle[c])  (c feeds INTO n)
 //   update(now): for each mapped node read its animatable fields -> setParam.
 //
@@ -73,6 +74,7 @@
 #include "x3d/nodes/PeriodicWave.hpp"
 #include "x3d/nodes/Sound.hpp"
 #include "x3d/nodes/SpatialSound.hpp"
+#include "x3d/nodes/WaveShaper.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -336,6 +338,14 @@ private:
       p.gain = cmp->getGain();
       p.enabled = cmp->getEnabled();
       handle = backend_->createNode(NodeKind::Compressor, p);
+    } else if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node)) {
+      // The transfer curve crosses ONCE, like a Buffer's samples. oversample
+      // is not carried — backends render NONE semantics (2x/4x deferred).
+      NodeParams p;
+      p.curve = ws->getCurve();
+      p.gain = ws->getGain();
+      p.enabled = ws->getEnabled();
+      handle = backend_->createNode(NodeKind::WaveShaper, p);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // AudioClip: a Buffer node once its bytes are fetched and decoded.
       fallbackPitch_[clip] = clip->getPitch();
@@ -411,6 +421,7 @@ private:
     if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node)) return delay->getChildren();
     if (auto *cmp = dynamic_cast<x3d::nodes::DynamicsCompressor *>(node))
       return cmp->getChildren();
+    if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node)) return ws->getChildren();
     if (auto *ss = dynamic_cast<x3d::nodes::SpatialSound *>(node)) return ss->getChildren();
     return MFNode{};  // OscillatorSource is a leaf source (no inputs)
   }
@@ -450,6 +461,10 @@ private:
       backend_->setParam(handle, Param::Gain, cmp->getGain());
       backend_->setParam(handle, Param::Enabled, cmp->getEnabled() ? 1.0f : 0.0f);
       pushTimeState(cmp, handle);
+    } else if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node)) {
+      backend_->setParam(handle, Param::Gain, ws->getGain());
+      backend_->setParam(handle, Param::Enabled, ws->getEnabled() ? 1.0f : 0.0f);
+      pushTimeState(ws, handle);
     } else if (auto *clip = dynamic_cast<x3d::nodes::AudioClip *>(node)) {
       // Playback follows the §8.2.4 lifecycle outputs (MediaTimeSystem).
       const bool active = clip->X3DTimeDependentNode::getIsActive();
@@ -490,6 +505,7 @@ private:
     if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node); gain && !gain->getEnabled()) return;
     if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node); biq && !biq->getEnabled()) return;
     if (auto *delay = dynamic_cast<x3d::nodes::Delay *>(node); delay && !delay->getEnabled()) return;
+    if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node); ws && !ws->getEnabled()) return;
     auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node);
     if (!tdn) return;
     const bool active = tdn->getIsActive();

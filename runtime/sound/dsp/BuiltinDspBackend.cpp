@@ -343,6 +343,37 @@ struct BuiltinDspBackend::Impl {
       }
       break;
     }
+    case NodeKind::WaveShaper: {
+      // §16.4.21: map each input sample x in [-1,1] through the transfer
+      // curve, Web Audio semantics — index = (N-1)/2*(x+1), linearly
+      // interpolated; x outside [-1,1] clamps to the first/last curve value;
+      // an empty curve (and enabled=false) passes the input through. The
+      // processing-node gain multiplies the shaped signal. oversample is not
+      // carried across the seam — NONE semantics only (2x/4x deferred).
+      std::vector<float> in(static_cast<std::size_t>(frames), 0.0f);
+      sumInputs(n, in, frames, sampleRate);
+      if (n.timeState != 1) break;
+      if (!n.params.enabled || n.params.curve.empty()) {
+        n.block = std::move(in);
+        break;
+      }
+      const std::vector<float> &curve = n.params.curve;
+      const double last = static_cast<double>(curve.size() - 1);
+      double g = n.params.gain;
+      for (int i = 0; i < frames; ++i) {
+        double x = in[static_cast<std::size_t>(i)];
+        if (x < -1.0) x = -1.0;
+        if (x > 1.0) x = 1.0;
+        const double pos = 0.5 * last * (x + 1.0);
+        const std::size_t i0 = static_cast<std::size_t>(pos);
+        const std::size_t i1 =
+            i0 + 1 < curve.size() ? i0 + 1 : i0;  // pos == last exactly
+        const double frac = pos - static_cast<double>(i0);
+        n.block[static_cast<std::size_t>(i)] =
+            static_cast<float>(g * (curve[i0] + (curve[i1] - curve[i0]) * frac));
+      }
+      break;
+    }
     case NodeKind::Buffer: {
       // Decoded PCM played from a cursor at rate * srcRate/outRate, linearly
       // interpolated; it wraps at the end (the time lifecycle stops a

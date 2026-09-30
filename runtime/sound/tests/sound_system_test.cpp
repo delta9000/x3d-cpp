@@ -113,6 +113,7 @@ int main() {
       case NodeKind::Buffer: break;
       case NodeKind::Delay: break;
       case NodeKind::Compressor: break;
+      case NodeKind::WaveShaper: break;
       }
     }
     CHECK(hDest && hGain && hBiq && hOsc, "all four kinds present");

@@ -64,7 +64,8 @@ inline constexpr NodeHandle kInvalidNodeHandle = 0;
  */
 enum class NodeKind { Oscillator, Biquad, Gain, Destination, Panner, Buffer,
                       Delay,
-                      Compressor };
+                      Compressor,
+                      WaveShaper };
 
 /**
  * @brief Distance attenuation model for Panner nodes.
@@ -114,6 +115,8 @@ enum class FilterType { Lowpass, Highpass, Bandpass, Lowshelf, Highshelf,
  *            - Delay:       delayTime, maxDelayTime, enabled (a pure delay).
  *            - Compressor:  threshold, knee (dB), ratio, attack, release
  *                           (seconds), gain, enabled.
+ *            - WaveShaper:  curve (the transfer curve — like Buffer's samples,
+ *                           it crosses once, at createNode), gain, enabled.
  *            - Panner:      sourcePosition, listenerPosition, listenerForward,
  *                           listenerUp, distanceModel, referenceDistance,
  *                           maxDistance, rolloffFactor. POSITIONS cross the seam
@@ -157,6 +160,12 @@ struct NodeParams {
   float delayTime = 0.0f;
   /** @brief Maximum delay in seconds (Delay nodes) — bounds the ring buffer. */
   float maxDelayTime = 1.0f;
+
+  // ── WaveShaper field (like Buffer's samples, the curve crosses ONCE, here) ─
+  /** @brief Transfer curve (WaveShaper nodes): input x in [-1,1] maps to index
+   *         (N-1)/2*(x+1) with linear interpolation; out-of-range x clamps to
+   *         the first/last value; empty = pass-through. */
+  std::vector<float> curve;
 
   // ── Panner-only fields (unused / defaulted for all other node kinds) ──────
   //
