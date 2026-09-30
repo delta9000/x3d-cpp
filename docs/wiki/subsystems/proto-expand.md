@@ -199,9 +199,9 @@ bridge checks the physical endpoints too. EXTERNPROTO endpoints use the authored
 external interface. Other native primary fields are hidden from external routes,
 except inherited `metadata`, which currently uses the primary's storage.
 
-Every declared scalar interface field exists on the instance as a real field with
+Every declared interface field exists on the instance as a real field with
 its initial value, whether or not the body IS-connects it (ISO/IEC 19775-1
-§4.4.2.2, §4.4.4.2). Expansion registers each unconnected scalar interface field
+§4.4.2.2, §4.4.4.2). Expansion registers each unconnected interface field
 (all four access types) on the primary as independent storage in the dynamic-field
 store — the same side-table Script author fields use (`runtime/events/DynamicField.hpp`).
 The store seeds `initializeOnly`/`inputOutput` fields from the `fieldValue`
@@ -211,9 +211,12 @@ get (route source), and `initializeOnly` fields value-only storage. The scene
 bridge resolves an external ROUTE naming such a field to this independent endpoint
 when no IS redirect exists, instead of rejecting it; an enclosing PROTO's
 body-local ROUTEs resolve a nested instance's unconnected interface field the same
-way. `SFNode`/`MFNode`-valued interface fields without IS still keep no independent
-per-instance node state (their defaults stay declaration-owned), so PROTO-INTERFACE-STATE
-is closed only for scalar fields. Dynamic Script fields are available to physical
+way. Unconnected `SFNode`/`MFNode` fields also retain independent state: defaults
+reuse the instance clone map (preserving aliases), caller overrides retain identity,
+and explicit NULL/empty overrides suppress defaults. ROUTEs retain those node
+identities, including subsequent NULL/empty events. This is a state-and-endpoint
+contract, not a claim that arbitrary dynamic node graphs participate in every
+runtime traversal. Dynamic Script fields are available to physical
 ROUTE validation, but expansion's IS lookup still uses static reflection.
 
 ### IS-connection and access-type rules
@@ -229,7 +232,7 @@ The test suite is split between unit tests that exercise `expandInstance`/`expan
 | `x3d_parse_tests` (`proto_clone_test`) | `deepClone` — field-by-field copy, DEF/USE shared-identity preservation, SFNode/MFNode recursion (`runtime/parse/tests/proto_clone_test.cpp`) |
 | `x3d_parse_tests` (`proto_expand_test`) | `expandInstance`/`expandScene` — field forwarding, IS-connection wiring, scene-root splice, EXTERN no-op with noop resolver, two independent instances (`runtime/parse/tests/proto_expand_test.cpp`) |
 | `x3d_event_scene_bridge` | Parsed XML/Classic nested ROUTEs, both interface endpoints, aliases, IS event forwarding, shared-primary interface isolation, per-instance delivery, metadata and invalid endpoint rejection (`runtime/events/tests/scene_bridge_test.cpp`) |
-| `x3d_events_tests` (`proto_interface_state_test`) | Unconnected scalar interface fields: independent state + routable endpoints (inputOutput echoes `_changed`), default/`fieldValue` seeding, IS-connected path unchanged, sibling nested instances / shared nested-outer primary / EXTERNPROTO keep independent entries (`runtime/events/tests/proto_interface_state_test.cpp`) |
+| `x3d_events_tests` (`proto_interface_state_test`) | Unconnected scalar and node-valued interface fields: independent state + routable endpoints (inputOutput echoes `_changed`), default/`fieldValue` seeding, IS-connected path unchanged, sibling nested instances / shared nested-outer primary / EXTERNPROTO keep independent entries (`runtime/events/tests/proto_interface_state_test.cpp`) |
 | `x3d_proto_expand_audit` | Audit suite: recursion-limit guard, Table 4.4 access-type validation, bad-any-cast leniency, empty-body warning, EXTERN unresolved warning, MFNode forwarding, nested body instance expansion (`runtime/parse/tests/proto_expand_audit_test.cpp`) |
 | `x3d_proto_front_door` | End-to-end XML parse → `parseDocument` → expansion → scene check (`runtime/parse/tests/proto_front_door_test.cpp`) |
 | `x3d_parse_tests` (`proto_nested_body_test`) | Nested `ProtoInstance` inside a body: correct per-instance expansion and attachment (`runtime/parse/tests/proto_nested_body_test.cpp`) |
