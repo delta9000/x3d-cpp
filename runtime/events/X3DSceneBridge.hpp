@@ -20,6 +20,7 @@
 #include "MediaTimeSystem.hpp"
 #include "SoundTimeSystem.hpp"
 #include "NavigationSystem.hpp"
+#include "PickSensorSystem.hpp"
 #include "PointingSensorSystem.hpp"
 #include "TimeSensorSystem.hpp"
 #include "ViewDependentSystem.hpp"
@@ -469,6 +470,9 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   attachEventUtilities(scene, ctx);   // §30 trigger/sequencer/filter logic
   attachViewDependent(scene, ctx);    // §22/§23 LOD/Billboard/Proximity/Visibility
   attachKeyDeviceSensors(scene, ctx); // §21 KeySensor/StringSensor
+  auto picks = std::make_shared<PickSensorSystem>(); // §38 pick sensors
+  detail::forEachNode(scene, [&](X3DNode *n) { picks->attach(n, ctx); });
+  ctx.addSystem(picks);
   attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
   if (inlineResolver) {
     auto inlines = std::make_shared<InlineRuntimeSystem>(
