@@ -118,6 +118,10 @@ public:
     const Sampler s = samplerOf(ref);
     if (ref.source == Src::Inline)
       return fromSFImage(ref.inlinePixels, s, srgb);
+    // Source::Tex3D (§33): the descriptor carries voxel bytes / slice refs, but
+    // a 3D texture cannot be sampled as a sampler2D — fall back to the flat
+    // material color (T3D-1; no 3D samplers in this renderer).
+    if (ref.source == Src::Tex3D) return {};
     if (ref.source == Src::Url && ref.resolvedPixels.ready() &&
         !ref.resolvedPixels.pixels->rgba.empty()) {
       const auto &p = *ref.resolvedPixels.pixels;

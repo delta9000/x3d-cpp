@@ -23,8 +23,9 @@
 //     (e.g. Material.diffuseTexture / PhysicalMaterial.baseTexture) wins; only if
 //     NO material slot is present is the legacy Appearance.texture surfaced.
 //     PixelTexture -> Inline (pixels carried verbatim), MovieTexture -> Movie,
-//     MultiTexture -> one TextureRef per channel. URLs are surfaced VERBATIM;
-//     bytes are NOT loaded here (asset resolution is OUTSIDE the SDK).
+//     MultiTexture -> one TextureRef per channel, PixelTexture3D -> Tex3D (inline
+//     voxels), ComposedTexture3D -> Tex3D (2D slice refs). URLs are surfaced
+//     VERBATIM; bytes are NOT loaded here (asset resolution is OUTSIDE the SDK).
 #ifndef X3D_RUNTIME_EXTRACT_MATERIAL_SYSTEM_HPP
 #define X3D_RUNTIME_EXTRACT_MATERIAL_SYSTEM_HPP
 
@@ -113,6 +114,20 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
     for (const char *face : {"frontTexture", "backTexture", "leftTexture", "rightTexture",
                              "topTexture", "bottomTexture"})
       ref.cubeFaces.push_back(refOf(geombounds::getNode(*texNode, face), slot));
+  } else if (t == "PixelTexture3D") {
+    // §33.4.3: inline voxel data — no IO, materialised verbatim (T3D-1).
+    ref.source = TextureRef::Source::Tex3D;
+    ref.repeatR = geombounds::getField<bool>(*texNode, "repeatR", true);
+    ref.tex3d = pixelTexture3DDesc(
+        geombounds::getField<MFInt32>(*texNode, "image", {}));
+  } else if (t == "ComposedTexture3D") {
+    // §33.4.2: a stack of 2D texture nodes, one per depth slice (T3D-1). Reuses
+    // the 2D refOf path per slice; width/height resolve when the slices decode.
+    ref.source = TextureRef::Source::Tex3D;
+    ref.repeatR = geombounds::getField<bool>(*texNode, "repeatR", true);
+    for (const auto &slice : geombounds::getField<MFNode>(*texNode, "texture", {}))
+      ref.tex3dSlices.push_back(refOf(slice, slot));
+    ref.tex3d.depth = static_cast<uint32_t>(ref.tex3dSlices.size());
   } else if (t == "MultiTexture") {
     ref.source = TextureRef::Source::Multi;
     const auto kids = geombounds::getField<MFNode>(*texNode, "texture", {});

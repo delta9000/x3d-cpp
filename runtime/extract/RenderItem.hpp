@@ -254,6 +254,21 @@ struct SamplerParams {
   // descriptor-only, not exercised by PoC.
 };
 
+// §33 3D-texture descriptor (T3D-1). Carried by a TextureRef with
+// source == Source::Tex3D. PixelTexture3D materialises the voxel bytes inline
+// (same ownership/immutability rules as SFImage for the 2D PixelTexture):
+// texels is width*height*depth*numComponents row-major component bytes.
+// ComposedTexture3D leaves texels empty and carries one 2D ref per depth slice
+// in TextureRef::tex3dSlices instead. ImageTexture3D (file-backed NRRD/DDS) is
+// NOT materialised here — the SDK has no 3D image decoder.
+struct Texture3DDesc {
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint32_t depth = 0;
+  uint32_t numComponents = 0;
+  std::vector<uint8_t> texels; // populated for Source::Tex3D inline (PixelTexture3D)
+};
+
 struct TextureRef {
   // Slot identifies the semantic role of a texture within a material.
   //
@@ -293,12 +308,15 @@ struct TextureRef {
     Movie,  // MovieTexture — descriptor-only, not exercised by PoC.
     Multi,  // MultiTexture — stages in multiStages.
     Cube,   // ComposedCubeMapTexture (§34.4.1): six face refs in cubeFaces.
-    Buffer  // Phase 1 binary extension: raw bytes provided by the embedder.
+    Buffer, // Phase 1 binary extension: raw bytes provided by the embedder.
             // bufferBytes carries the raw encoded bytes; mimeHint is a MIME
             // type hint ("image/png", "image/jpeg", etc.). The SDK does NOT
             // decode them; the consumer decodes and uploads. resolved_desc
             // carries the decoded/structured TextureDesc once the embedder
             // materialises it (optional: empty = not yet decoded).
+    Tex3D   // §33 X3DTexture3DNode family: PixelTexture3D -> tex3d (inline
+            //  voxel bytes); ComposedTexture3D -> tex3dSlices (2D refs per slice).
+            //  Appended last so no existing enumerator value shifts.
   };
 
   Slot slot = Slot::BaseColor;
@@ -319,6 +337,14 @@ struct TextureRef {
   // Source::Cube only: the six face refs in the order front, back, left,
   // right, top, bottom (an unauthored face is a default Url ref, empty url).
   std::vector<TextureRef> cubeFaces;
+
+  // §33 3D textures (T3D-1). repeatR is the third wrap axis (repeatS/T already
+  // above; absent on 2D nodes, default true). Source::Tex3D carries either the
+  // inline PixelTexture3D voxel descriptor (tex3d) or the ComposedTexture3D
+  // depth-slice refs (tex3dSlices, one 2D TextureRef per slice in texture order).
+  bool repeatR = true;
+  Texture3DDesc tex3d;
+  std::vector<TextureRef> tex3dSlices;
 
   // T-TEX (v1-closure): resolved decoded pixels, threaded by TextureExtract.hpp
   // after the embedder's TextureResolver callback returns. Starts as makeFailed()

@@ -754,6 +754,11 @@ GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &caches,
   if (!pick) return 0;
   TextureCacheFormat &cache = caches.format(srgb);
 
+  // §33 3D texture (T3D-1): the descriptor carries voxel bytes / slice refs, but
+  // this renderer has no sampler3D path — return 0 so the caller uses the flat
+  // material color (same as the white fallback). 3D sampling is NOT wired here.
+  if (pick->source == ex::TextureRef::Source::Tex3D) return 0;
+
   // MovieTexture (ADR-0041): decode this frame's image via the MovieDecoder seam
   // and (re)upload it. Pending holds the previously uploaded frame; Failed falls
   // through the url fallback list (and ultimately to the white fallback).
