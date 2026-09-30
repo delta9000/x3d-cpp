@@ -248,6 +248,9 @@ struct ProtoFieldValue {
   std::string name;
   std::any value;                                     // scalar override
   std::vector<std::shared_ptr<X3DNode>> nodeValue;    // SFNode/MFNode override
+  // Source of an authored/forwarded scalar, independent of its eventual IS
+  // target. nullopt supports programmatically assembled values in caller units.
+  std::optional<std::vector<Unit>> sourceUnits = std::nullopt;
 };
 
 /// One `nodeField IS protoField` mapping attached to a ProtoInstance.

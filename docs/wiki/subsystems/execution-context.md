@@ -18,6 +18,14 @@ related:
 
 The Execution Context is the object a browser or SDK consumer drives each frame. It aggregates the route graph, the event cascade, the active-node/System registry, and all scene-level subsystems (transform hierarchy, bounds, binding stacks, pick, pointer, keyboard, head pose) into a single tick-addressable unit. Calling `tick(now)` is the sole entry point into the live event loop: it advances the clock, lets every registered System emit time-driven events, runs the event cascade to quiescence, fires post-cascade hooks (Script `eventsProcessed`), and then propagates dirty state through the transform and bounds subsystems. The Execution Context is the boundary between parse-time (a `Scene`) and runtime (live animated state).
 
+Runtime entry normalizes explicitly authored fields with known dimensions once,
+before scene systems consume them. `buildSceneGraph`, `buildFrom`, and
+`refreshSceneTopology` share per-scene normalized-field marks, so repeated
+setup and topology refreshes do not multiply conversion factors. Built-in
+defaults stay canonical. After entry, `writeField`, event payloads and routed
+updates use initial units directly. The implementation and field map live in
+`runtime/UnitConversion.hpp`.
+
 ## Key files
 
 | File | Role |
@@ -34,11 +42,13 @@ The Execution Context is the object a browser or SDK consumer drives each frame.
 **Lifecycle — parse to runtime:**
 
 ```cpp
-// Build the scene-graph indices (transforms, bounds, bindings, pick).
-// Must be called once after parsing, before tick().
+// Normalize authored known dimensional fields once, then build the
+// scene-graph indices (transforms, bounds, bindings, pick).
+// Must be called after parsing, before tick().
 void buildSceneGraph(Scene &scene);
 
-// Resolve and register a parsed Scene's DEF-named ROUTEs.
+// Normalize any not-yet-normalized fields, then resolve and register the
+// parsed Scene's DEF-named ROUTEs. Already normalized fields are skipped.
 // Thin wrapper over buildRoutes() from X3DSceneBridge.hpp.
 BridgeResult buildFrom(Scene &scene);
 ```

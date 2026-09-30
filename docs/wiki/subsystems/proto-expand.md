@@ -39,8 +39,13 @@ Successful EXTERN resolution retains the selected `ProtoDeclaration` on the
 instance and its `Scene::expandedSources` record. Its `sourceUnits` snapshot
 preserves the defining document's UNIT declarations. Each explicit expansion
 attempt still calls the supplied resolver; a failed resolution clears the
-instance's retained declaration. This preserves provenance without applying
-unit conversion.
+instance's retained declaration. The retained source factors and
+authored-field marks are consumed when the expanded graph enters runtime.
+Conversion applies only to authored concrete fields with a known dimension;
+a custom PROTO interface value uses its source-unit provenance and the
+dimension of each concrete IS target, so one interface value can be converted
+differently at separate targets. See `runtime/UnitConversion.hpp` and
+[Execution Context](execution-context.md).
 
 `ProtoDeclaration::authoredScalarFields` retains parse-time field presence.
 Expansion copies those marks onto cloned body nodes, interface node defaults,
@@ -53,7 +58,9 @@ node override forwards `NULL`/`[]` rather than falling back to the interface
 default. Expansion also records successful scalar IS assignments, including
 explicit values equal to generated defaults.
 The marks describe parsed initialization; later application writes do not
-update them. Numeric unit conversion remains separate work.
+update them. Runtime normalization uses these marks to distinguish explicit
+values from built-in defaults, and records normalized fields to prevent a
+second application of the conversion factor.
 
 ```cpp
 namespace x3d::runtime {

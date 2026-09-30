@@ -725,6 +725,34 @@ One interface field can feed multiple compatible field types with different
 physical meanings. The runtime's conversion policy must resolve this case
 explicitly, with tests, before REQ-UNIT can close.
 
+### Runtime UNIT conversion progress
+
+Runtime entry now normalizes explicitly authored, recognized dimensional
+fields to initial/SI units. Generated built-in defaults stay in canonical
+units, and runtime writes and routed updates use those initial units. The
+implementation carries each source scene's UNIT declarations into Inline and
+EXTERNPROTO expansion and converts PROTO values at dimensional IS targets.
+This includes angle and length geometry, plus mass, force and torque values
+consumed by `PhysicsSystem`.
+
+Focused evidence is in `runtime_session_test.cpp`:
+`UNIT runtime: equivalent authored length and angle geometry` compares mesh
+and transform output for degree/centimeter and radian/meter scenes;
+`UNIT runtime: routed motion, defaults, and subsequent writes use initial units`
+covers routed values, canonical defaults and later writes;
+`UNIT runtime: Inline and EXTERNPROTO use their source units` covers source
+factors and confirms a codec round-trip before runtime preserves authored
+values and UNIT declarations;
+`UNIT runtime: PhysicsSystem receives kilograms and newtons` checks mass,
+force and torque inputs; and
+`UNIT runtime: custom PROTO values convert independently at dimensional IS targets`
+checks that a single PROTO value is converted according to each target field.
+
+REQ-UNIT remains open. The known field-dimension mapping is incomplete and its
+coverage range is unresolved; conversion-aware writing after runtime has not
+been established. The conflicting published Core wording for external UNIT
+declarations also remains a separate specification question.
+
 
 ### PROTO node initialization isolation
 
