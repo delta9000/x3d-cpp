@@ -340,9 +340,9 @@
   component: Sound
   clause: "16.4.12, 16.4.15, 16.4.4"
   severity: major
-  status: open
-  summary: BuiltinDspBackend honors enabled for all wired nodes; MiniaudioBackend still needs a live BiquadFilter bypass path.
-  note: SoundSystem pushes enabled; BuiltinDspBackend silences disabled sources and passes disabled processors through, covered by sound_system_test. MiniaudioBackend handles disabled OscillatorSource and Gain, but its current graph wiring cannot bypass BiquadFilter while preserving its input; swap-test F6 checks disabled/inactive oscillator, disabled Gain pass-through and AudioDestination gain on both backends.
+  status: fixed
+  summary: Both backends honor enabled and the time lifecycle for all wired nodes; a disabled BiquadFilter passes its input through on each backend.
+  note: SoundSystem pushes `enabled` (and the time lifecycle's PlaybackState) per tick. BuiltinDspBackend silences a disabled/inactive source and passes a disabled or inactive-off BiquadFilter/Gain through unchanged. MiniaudioBackend silences a disabled OscillatorSource (waveform amplitude 0) and mixes a disabled Gain to unity via its splitter bus volume; a BiquadFilter is now wrapped in a ma_splitter_node whose bus 0 feeds the filter (wet) and bus 1 bypasses it (dry), so Enabled/PlaybackState toggle the two output-bus volumes live and a disabled BiquadFilter passes its input through unchanged. Covered by sound_system_test and swap-test F6 (disabled oscillator, disabled Gain, and now a disabled BiquadFilter on both backends).
 - id: SND-2
   nodes: [OscillatorSource, Gain, BiquadFilter]
   interfaces: [X3DTimeDependentNode]

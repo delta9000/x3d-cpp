@@ -19,6 +19,10 @@
 // Node mapping (synthesis chain, v1):
 //   NodeKind::Oscillator  → ma_waveform + ma_data_source_node
 //   NodeKind::Biquad      → ma_lpf_node / ma_hpf_node / ma_bpf_node
+//                           wrapped by a ma_splitter_node: bus 0 feeds the
+//                           filter (wet), bus 1 bypasses it (dry); the enabled
+//                           flag mixes the two so a disabled filter passes its
+//                           input through unchanged.
 //   NodeKind::Gain        → ma_splitter_node (1-in 2-out, only bus 0 used)
 //                           + ma_node_set_output_bus_volume
 //   NodeKind::Panner      → ma_splitter_node (unity pass-through in mono graph)
@@ -160,8 +164,10 @@ struct MaNode {
   bool                   spatializerInited   = false;
   bool                   listenerInited      = false;
 
-  // Pointer to the ma_node* interface (set during flush).
+  // Pointer to the ma_node* interface (set during flush). For a Biquad this is
+  // the bypass splitter; `filterNode` is the actual filter it feeds.
   ma_node* node = nullptr;
+  ma_node* filterNode = nullptr;
 
   bool initialized = false;
   bool timeActive = true;
@@ -174,6 +180,18 @@ struct MaNode {
   MaNode& operator=(MaNode&&) = delete;
   MaNode() = default;
 };
+
+// Biquad bypass mix. The bypass splitter (`mn.node`) duplicates its input onto
+// bus 0 (the wet path, into the filter) and bus 1 (the dry path, straight to the
+// downstream node). Enabled opens the wet path and closes the dry; disabled does
+// the reverse; inactive (PlaybackState 0) closes both. This is the live
+// equivalent of BuiltinDspBackend's pass-through when !enabled.
+static void applyBiquadMix(MaNode &mn) {
+  const bool wet = mn.timeActive && mn.params.enabled;
+  const bool dry = mn.timeActive && !mn.params.enabled;
+  if (mn.filterNode) ma_node_set_output_bus_volume(mn.filterNode, 0, wet ? 1.0f : 0.0f);
+  ma_node_set_output_bus_volume(mn.node, 1, dry ? 1.0f : 0.0f);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Impl
@@ -214,6 +232,7 @@ struct MiniaudioBackend::Impl {
           ma_waveform_uninit(&pn->waveform);
           break;
         case MaNodeKind::Biquad:
+          ma_splitter_node_uninit(&pn->splitterNode, nullptr);
           if (pn->params.filterType == FilterType::Lowpass)
             ma_lpf_node_uninit(&pn->lpfNode, nullptr);
           else if (pn->params.filterType == FilterType::Highpass)
@@ -252,6 +271,26 @@ struct MiniaudioBackend::Impl {
     case DistanceModel::Exponential: return ma_attenuation_model_exponential;
     case DistanceModel::Inverse:     // fall through (default)
     default:                         return ma_attenuation_model_inverse;
+    }
+  }
+
+  // ── Wire src's output into dstNode's first input bus ────────────────────────
+  // A Biquad fans out through its bypass splitter: the filtered (wet) output and
+  // the dry splitter output both feed dstNode, which sums them per the seam's
+  // "many inputs sum" contract, so `enabled` can mix them live.
+  void attachOutput(MaNode &src, ma_node *dstNode) {
+    auto attach = [&](ma_node *node, ma_uint32 bus) {
+      ma_result r = ma_node_attach_output_bus(node, bus, dstNode, 0);
+      if (r != MA_SUCCESS)
+        std::fprintf(stderr,
+                     "[MiniaudioBackend] ma_node_attach_output_bus failed (%d)\n",
+                     r);
+    };
+    if (src.kind == MaNodeKind::Biquad) {
+      if (src.filterNode) attach(src.filterNode, 0);
+      attach(src.node, 1);
+    } else {
+      attach(src.node, 0);
     }
   }
 
@@ -357,7 +396,7 @@ struct MiniaudioBackend::Impl {
             std::fprintf(stderr, "[MiniaudioBackend] ma_lpf_node_init failed\n");
             continue;
           }
-          mn->node = &mn->lpfNode;
+          mn->filterNode = &mn->lpfNode;
         } else if (pn.params.filterType == FilterType::Highpass) {
           ma_hpf_node_config hcfg =
               ma_hpf_node_config_init(1, sr, cutoff, order);
@@ -366,7 +405,7 @@ struct MiniaudioBackend::Impl {
             std::fprintf(stderr, "[MiniaudioBackend] ma_hpf_node_init failed\n");
             continue;
           }
-          mn->node = &mn->hpfNode;
+          mn->filterNode = &mn->hpfNode;
         } else {
           ma_bpf_node_config bcfg =
               ma_bpf_node_config_init(1, sr, cutoff, order);
@@ -375,8 +414,18 @@ struct MiniaudioBackend::Impl {
             std::fprintf(stderr, "[MiniaudioBackend] ma_bpf_node_init failed\n");
             continue;
           }
-          mn->node = &mn->bpfNode;
+          mn->filterNode = &mn->bpfNode;
         }
+        // Bypass splitter: bus 0 feeds the filter (wet), bus 1 is the dry path.
+        ma_splitter_node_config scfg = ma_splitter_node_config_init(1);
+        if (ma_splitter_node_init(&graph, &scfg, nullptr, &mn->splitterNode) !=
+            MA_SUCCESS) {
+          std::fprintf(stderr, "[MiniaudioBackend] Biquad splitter init failed\n");
+          continue;
+        }
+        mn->node = &mn->splitterNode;
+        ma_node_attach_output_bus(mn->node, 0, mn->filterNode, 0);
+        applyBiquadMix(*mn);
         mn->initialized = true;
         nodes[handle] = std::move(mn);
         continue;
@@ -487,13 +536,8 @@ struct MiniaudioBackend::Impl {
       if (dit == nodes.end() || sit == nodes.end()) continue;
       if (!dit->second || !sit->second) continue;
       ma_node* dstNode = dit->second->node;
-      ma_node* srcNode = sit->second->node;
-      if (!dstNode || !srcNode) continue;
-      ma_result r = ma_node_attach_output_bus(srcNode, 0, dstNode, 0);
-      if (r != MA_SUCCESS)
-        std::fprintf(stderr,
-                     "[MiniaudioBackend] ma_node_attach_output_bus failed (%d)\n",
-                     r);
+      if (!dstNode) continue;
+      attachOutput(*sit->second, dstNode);
     }
     deferredConnects.clear();
     return true;
@@ -533,9 +577,8 @@ void MiniaudioBackend::connect(NodeHandle dst, NodeHandle src) {
   if (dit == impl_->nodes.end() || sit == impl_->nodes.end()) return;
   if (!dit->second || !sit->second) return;
   ma_node* dstNode = dit->second->node;
-  ma_node* srcNode = sit->second->node;
-  if (!dstNode || !srcNode) return;
-  ma_node_attach_output_bus(srcNode, 0, dstNode, 0);
+  if (!dstNode) return;
+  impl_->attachOutput(*sit->second, dstNode);
 }
 
 void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
@@ -605,12 +648,13 @@ void MiniaudioBackend::setParam(NodeHandle node, Param param, float value) {
     break;
 
   case MaNodeKind::Biquad: {
-    if (param == Param::Enabled) mn.params.enabled = value != 0.0f;
-    if (param == Param::PlaybackState) {
+    if (param == Param::Enabled) {
+      mn.params.enabled = value != 0.0f;
+      applyBiquadMix(mn);
+    } else if (param == Param::PlaybackState) {
       mn.timeActive = static_cast<int>(value) == 1;
-      ma_node_set_output_bus_volume(mn.node, 0, mn.timeActive ? 1.0f : 0.0f);
-    }
-    if (param == Param::Frequency) {
+      applyBiquadMix(mn);
+    } else if (param == Param::Frequency) {
       mn.params.frequency = value;
       double cutoff = static_cast<double>(value);
       auto sr = static_cast<ma_uint32>(impl_->initSampleRate);

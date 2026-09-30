@@ -508,8 +508,9 @@ static void testF4F5_Immersive() {
 }
 
 // F6: enabled / time-lifecycle / destination gain (SND-1/2/7), per backend.
-// Oscillator(440) -> [Gain(0.5)] -> Destination at the backend level, driving
-// the per-tick params SoundSystem pushes.
+// Oscillator(440) -> [Gain(0.5)] -> Destination and Oscillator -> Biquad ->
+// Destination at the backend level, driving the per-tick params SoundSystem
+// pushes.
 static void testF6_EnableLifecycle(const char *name, std::shared_ptr<AudioBackend> (*make)()) {
   auto level = [&](auto &&configure, bool withGain) {
     auto be = make();
@@ -538,14 +539,38 @@ static void testF6_EnableLifecycle(const char *name, std::shared_ptr<AudioBacken
   const double withGain = level(none, true);
   const double gainOff = level([](AudioBackend &b, NodeHandle, NodeHandle g, NodeHandle) {
     b.setParam(g, Param::Enabled, 0); }, true);
-  std::fprintf(stderr, "[F6/%s] base=%.4f stopped=%.5f disabled=%.5f dest0.5=%.4f gain0.5=%.4f gainOff=%.4f\n",
-               name, base, stopped, disabled, halfDest, withGain, gainOff);
+
+  // Oscillator(440) -> Biquad(Lowpass, 100Hz) -> Destination. A 440 Hz tone is
+  // well into the stopband, so an enabled filter strongly attenuates it while a
+  // disabled one (SND-1) must pass the input through unchanged, live.
+  auto biquad = [&](bool disabledFilter) {
+    auto be = make();
+    NodeParams op; op.frequency = 440; op.gain = 1;
+    const NodeHandle osc = be->createNode(NodeKind::Oscillator, op);
+    NodeParams bp; bp.frequency = 100.0f; bp.filterType = FilterType::Lowpass;
+    const NodeHandle bq = be->createNode(NodeKind::Biquad, bp);
+    NodeParams dp; dp.maxChannelCount = 1;
+    const NodeHandle dst = be->createNode(NodeKind::Destination, dp);
+    be->connect(bq, osc); be->connect(dst, bq);
+    std::vector<float> warm; be->render(dst, 64, kSR, warm);
+    if (disabledFilter) be->setParam(bq, Param::Enabled, 0);
+    std::vector<float> buf; be->render(dst, kFrames, kSR, buf);
+    return rms(buf);
+  };
+  const double biquadOn = biquad(false);
+  const double biquadOff = biquad(true);
+
+  std::fprintf(stderr, "[F6/%s] base=%.4f stopped=%.5f disabled=%.5f dest0.5=%.4f gain0.5=%.4f gainOff=%.4f biquadOn=%.4f biquadOff=%.4f\n",
+               name, base, stopped, disabled, halfDest, withGain, gainOff, biquadOn, biquadOff);
   CHECK(base > 0.3, "F6: oscillator audible by default");
   CHECK(stopped < 1e-4, "F6: PlaybackState 0 (inactive) silences the oscillator");
   CHECK(disabled < 1e-4, "F6: Enabled 0 silences the oscillator");
   CHECK(std::fabs(halfDest / base - 0.5) < 0.02, "F6: AudioDestination gain scales output");
   CHECK(std::fabs(withGain / base - 0.5) < 0.02, "F6: Gain 0.5 halves");
   CHECK(std::fabs(gainOff / base - 1.0) < 0.02, "F6: a disabled Gain passes its input through");
+  CHECK(biquadOn < 0.5 * base, "F6: an enabled lowpass Biquad attenuates the 440 Hz tone");
+  CHECK(std::fabs(biquadOff / base - 1.0) < kRmsTol,
+        "F6: a disabled Biquad passes its input through unchanged");
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
