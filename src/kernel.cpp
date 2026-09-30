@@ -261,8 +261,6 @@ struct scene_state {
   };
 
   revision_id revision = 0;
-  std::uint64_t next_node_id = 1;
-  std::uint64_t next_declaration_id = 1;
   std::unordered_map<std::uint64_t, node_record> nodes;
   std::vector<declaration_id> declaration_order;
   std::unordered_map<std::uint64_t, declaration_descriptor> declarations;
@@ -306,6 +304,10 @@ struct context_control {
   type_registry registry;
   std::shared_ptr<const scene_state> state = std::make_shared<scene_state>();
   std::atomic<revision_id> published_revision{0};
+  // Identities belong to the context, not a revision. Aborted and conflicting
+  // edits may leak handles, so even unpublished identities must never be reused.
+  std::atomic<std::uint64_t> next_node_id{1};
+  std::atomic<std::uint64_t> next_declaration_id{1};
   std::uint64_t next_observer_id = 1;
   std::map<std::uint64_t, std::shared_ptr<const execution_context::observer>>
       observers;
@@ -334,6 +336,17 @@ struct browser_control {
 } // namespace detail
 
 namespace {
+
+// Reserve zero for NULL and stop before wraparound can reuse an identity.
+std::uint64_t reserve_identity(std::atomic<std::uint64_t> &next) noexcept {
+  auto candidate = next.load(std::memory_order_relaxed);
+  while (candidate != std::numeric_limits<std::uint64_t>::max()) {
+    if (next.compare_exchange_weak(candidate, candidate + 1,
+                                   std::memory_order_relaxed))
+      return candidate;
+  }
+  return 0;
+}
 
 unexpected edit_error(error_code code, const char *operation,
                       const detail::context_control &context,
@@ -888,7 +901,13 @@ result<node> scene_edit::create_node(const std::string &type_name) {
                    "abstract node type cannot be instantiated: " + type_name);
     return *impl_->poison;
   }
-  const node_id id{impl_->staged.next_node_id++};
+  const node_id id{reserve_identity(impl_->context->next_node_id)};
+  if (id.value == 0) {
+    impl_->poison = edit_error(error_code::invalid_value, "scene_edit.create_node",
+                               *impl_->context, impl_->base->revision,
+                               "node identity space is exhausted");
+    return *impl_->poison;
+  }
   detail::scene_state::node_record record;
   record.type_name = type_name;
   for (const auto &field : type->fields) {
@@ -2528,7 +2547,14 @@ scene_edit::add_local_declaration(local_declaration_descriptor descriptor,
     }
   }
 
-  const declaration_id id{impl_->staged.next_declaration_id++};
+  const declaration_id id{reserve_identity(impl_->context->next_declaration_id)};
+  if (id.value == 0) {
+    impl_->poison = edit_error(error_code::invalid_value,
+                               "scene_edit.add_local_declaration", *impl_->context,
+                               impl_->base->revision,
+                               "declaration identity space is exhausted");
+    return *impl_->poison;
+  }
   descriptor.body_roots = std::move(authored_roots);
   for (const std::uint64_t node : closure)
     impl_->staged.nodes.at(node).scope_owner = id;
@@ -2584,7 +2610,14 @@ result<declaration> scene_edit::add_external_declaration(
         "declaration name is already defined: " + descriptor.name);
     return *impl_->poison;
   }
-  const declaration_id id{impl_->staged.next_declaration_id++};
+  const declaration_id id{reserve_identity(impl_->context->next_declaration_id)};
+  if (id.value == 0) {
+    impl_->poison = edit_error(error_code::invalid_value,
+                               "scene_edit.add_external_declaration", *impl_->context,
+                               impl_->base->revision,
+                               "declaration identity space is exhausted");
+    return *impl_->poison;
+  }
   declaration_descriptor authored{.id = id, .payload = std::move(descriptor)};
   impl_->staged.declaration_order.push_back(id);
   impl_->staged.declarations.emplace(id.value, authored);
