@@ -4,7 +4,7 @@
 #include <atomic>
 #include <bit>
 #include <cmath>
-#include <deque>
+#include <list>
 #include <functional>
 #include <limits>
 #include <map>
@@ -310,7 +310,7 @@ struct context_control {
   std::map<std::uint64_t, std::shared_ptr<const execution_context::observer>>
       observers;
   std::map<std::uint64_t, field_observer_record> event_observers;
-  std::deque<pending_notification> pending;
+  std::list<pending_notification> pending;
   std::optional<event_time> last_event_time;
   std::vector<import_dependent_record> import_dependents;
 };
@@ -408,23 +408,80 @@ bool same_node_scope(const detail::scene_state::node_record &owner,
   return owner.scope_owner == candidate.scope_owner;
 }
 
-bool accepts_node_payload(const detail::context_control &context,
-                          const detail::scene_state &state,
-                          const field_descriptor &field, const value &payload) {
-  if (field.kind == value_kind::sf_node) {
-    const auto candidate = state.nodes.find(std::get<node_id>(payload).value);
-    return candidate != state.nodes.end() &&
-           accepts_node_type(context, field, candidate->second);
-  }
+std::optional<error_code> node_payload_issue(
+    const detail::context_control &context, const detail::scene_state &state,
+    const detail::scene_state::node_record &owner,
+    const field_descriptor &field, const value &payload) {
+  const auto check = [&](node_id id) -> std::optional<error_code> {
+    if (id.value == 0)
+      return std::nullopt;
+    const auto candidate = state.nodes.find(id.value);
+    if (candidate == state.nodes.end() ||
+        !accepts_node_type(context, field, candidate->second))
+      return error_code::type_mismatch;
+    if (!same_node_scope(owner, candidate->second))
+      return error_code::invalid_context;
+    return std::nullopt;
+  };
+  if (field.kind == value_kind::sf_node)
+    return check(std::get<node_id>(payload));
   if (field.kind == value_kind::mf_node) {
-    return std::ranges::all_of(
-        std::get<node_list>(payload), [&](const node_id id) {
-          const auto candidate = state.nodes.find(id.value);
-          return candidate != state.nodes.end() &&
-                 accepts_node_type(context, field, candidate->second);
-        });
+    for (const node_id id : std::get<node_list>(payload)) {
+      if (const auto issue = check(id))
+        return issue;
+    }
   }
-  return true;
+  return std::nullopt;
+}
+
+result<void> validate_candidate_graph(const detail::context_control &context,
+                                      const detail::scene_state &state,
+                                      const char *operation,
+                                      revision_id base_revision) {
+  for (const auto &[id, record] : state.nodes) {
+    const auto *type = context.registry.find(record.type_name);
+    for (const auto &field : type->fields) {
+      if (const auto issue = node_payload_issue(
+              context, state, record, field, record.fields.at(field.name))) {
+        return edit_error(*issue, operation, context, base_revision,
+                          "node reference violates type or declaration scope",
+                          node_id{id}, field.name);
+      }
+    }
+  }
+  std::unordered_map<std::uint64_t, int> colors;
+  std::function<bool(std::uint64_t)> visit = [&](std::uint64_t id) {
+    if (id == 0 || colors[id] == 2)
+      return true;
+    if (colors[id] == 1)
+      return false;
+    colors[id] = 1;
+    const auto &record = state.nodes.at(id);
+    const auto *type = context.registry.find(record.type_name);
+    for (const auto &field : type->fields) {
+      if (!field.containment)
+        continue;
+      const auto &payload = record.fields.at(field.name);
+      if (field.kind == value_kind::sf_node) {
+        if (!visit(std::get<node_id>(payload).value))
+          return false;
+      } else if (field.kind == value_kind::mf_node) {
+        for (node_id child : std::get<node_list>(payload)) {
+          if (!visit(child.value))
+            return false;
+        }
+      }
+    }
+    colors[id] = 2;
+    return true;
+  };
+  for (const auto &[id, record] : state.nodes) {
+    (void)record;
+    if (!visit(id))
+      return edit_error(error_code::containment_cycle, operation, context,
+                        base_revision, "containment graph contains a cycle");
+  }
+  return {};
 }
 
 struct node_reference_blocker {
@@ -2807,6 +2864,7 @@ result<void> scene_edit::remove_declaration(const declaration &target) {
 }
 
 result<change_set> scene_edit::commit() {
+  static_assert(std::is_nothrow_move_constructible_v<change_set>);
   if (impl_->poison)
     return *impl_->poison;
   if (impl_->committed) {
@@ -2828,42 +2886,10 @@ result<change_set> scene_edit::commit() {
     }
   }
 
-  std::unordered_map<std::uint64_t, int> colors;
-  std::function<bool(std::uint64_t)> visit = [&](std::uint64_t id) {
-    if (colors[id] == 1)
-      return false;
-    if (colors[id] == 2)
-      return true;
-    colors[id] = 1;
-    const auto &record = impl_->staged.nodes.at(id);
-    const auto *type = impl_->context->registry.find(record.type_name);
-    for (const auto &descriptor : type->fields) {
-      if (!descriptor.containment)
-        continue;
-      const auto &field_value = record.fields.at(descriptor.name);
-      if (descriptor.kind == value_kind::sf_node) {
-        const node_id child = std::get<node_id>(field_value);
-        if (child.value != 0 &&
-            (!impl_->staged.nodes.contains(child.value) || !visit(child.value)))
-          return false;
-      } else if (descriptor.kind == value_kind::mf_node) {
-        for (node_id child : std::get<node_list>(field_value)) {
-          if (!impl_->staged.nodes.contains(child.value) || !visit(child.value))
-            return false;
-        }
-      }
-    }
-    colors[id] = 2;
-    return true;
-  };
-  for (const auto &[id, record] : impl_->staged.nodes) {
-    (void)record;
-    if (!visit(id)) {
-      return edit_error(error_code::containment_cycle, "scene_edit.commit",
-                        *impl_->context, impl_->base->revision,
-                        "containment graph contains a cycle or dangling node");
-    }
-  }
+  if (auto valid = validate_candidate_graph(*impl_->context, impl_->staged,
+                                             "scene_edit.commit",
+                                             impl_->base->revision); !valid)
+    return failure(valid.error());
 
   std::vector<std::shared_ptr<detail::context_control>> import_sources;
   import_sources.reserve(impl_->staged.import_sources.size());
@@ -2954,32 +2980,34 @@ result<change_set> scene_edit::commit() {
                       .after_revision = impl_->base->revision,
                       .changes = {}};
   }
-  for (const auto &source : dependency_sources) {
-    std::erase_if(source->import_dependents, [&](const auto &dependent) {
-      const auto importer = dependent.importer.lock();
-      return importer == impl_->context &&
+  using dependents = decltype(detail::context_control::import_dependents);
+  std::vector<std::pair<std::shared_ptr<detail::context_control>, dependents>>
+      dependency_updates;
+  for (const auto &source : lock_order) {
+    if (std::ranges::find(dependency_sources, source) == dependency_sources.end())
+      continue;
+    auto updated = source->import_dependents;
+    std::erase_if(updated, [&](const auto &dependent) {
+      return dependent.importer.lock() == impl_->context &&
              dependent.importer_generation == impl_->context->generation;
     });
-  }
-  for (std::size_t index = 0; index < impl_->staged.imports.size(); ++index) {
-    const auto &binding = impl_->staged.imports[index];
-    import_sources[index]->import_dependents.push_back(
-        detail::context_control::import_dependent_record{
-            .importer = impl_->context,
-            .importer_generation = impl_->context->generation,
-            .local_name = binding.local_name,
-            .target = binding.target.local});
+    for (std::size_t index = 0; index < impl_->staged.imports.size(); ++index) {
+      if (import_sources[index] != source)
+        continue;
+      const auto &binding = impl_->staged.imports[index];
+      updated.push_back(detail::context_control::import_dependent_record{
+          .importer = impl_->context,
+          .importer_generation = impl_->context->generation,
+          .local_name = binding.local_name,
+          .target = binding.target.local});
+    }
+    dependency_updates.emplace_back(source, std::move(updated));
   }
   const revision_id before = impl_->base->revision;
-  impl_->staged.revision = before + 1;
-  auto published =
-      std::make_shared<detail::scene_state>(std::move(impl_->staged));
-  impl_->context->state = published;
-  impl_->context->published_revision.store(published->revision,
-                                           std::memory_order_release);
   change_set committed{.before_revision = before,
-                       .after_revision = published->revision,
-                       .changes = std::move(impl_->changes)};
+                       .after_revision = before + 1,
+                       .changes = impl_->changes};
+  decltype(impl_->context->pending) notifications;
   if (!impl_->context->observers.empty()) {
     std::vector<std::uint64_t> recipients;
     recipients.reserve(impl_->context->observers.size());
@@ -2987,9 +3015,21 @@ result<change_set> scene_edit::commit() {
       (void)callback;
       recipients.push_back(observer_id);
     }
-    impl_->context->pending.push_back(detail::context_control::pending_change{
+    notifications.push_back(detail::context_control::pending_change{
         .changes = committed, .recipients = std::move(recipients)});
   }
+  static_assert(std::is_nothrow_move_constructible_v<detail::scene_state>);
+  auto published =
+      std::make_shared<detail::scene_state>(std::move(impl_->staged));
+  published->revision = before + 1;
+  // Everything below is non-allocating. Exceptions above leave visible state,
+  // import retention, the notification queue and revision entirely unchanged.
+  for (auto &[source, updated] : dependency_updates)
+    source->import_dependents.swap(updated);
+  impl_->context->state = published;
+  impl_->context->published_revision.store(published->revision,
+                                           std::memory_order_release);
+  impl_->context->pending.splice(impl_->context->pending.end(), notifications);
   impl_->committed = true;
   return committed;
 }
@@ -3173,33 +3213,14 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                target.node_, target.name_);
     return *impl_->poison;
   }
-  if (node_authority_checked && descriptor->kind == value_kind::sf_node) {
-    const auto id = std::get<node_id>(payload);
-    const auto candidate = impl_->base->nodes.find(id.value);
-    if (candidate == impl_->base->nodes.end() ||
-        !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
-      impl_->poison =
-          edit_error(error_code::type_mismatch, "event_batch.send",
-                     *impl_->context, impl_->base->revision,
-                     "node event type is not accepted by the field descriptor",
-                     target.node_, target.name_);
-      return *impl_->poison;
-    }
-  }
-  if (node_authority_checked && descriptor->kind == value_kind::mf_node) {
-    for (const auto id : std::get<node_list>(payload)) {
-      const auto candidate = impl_->base->nodes.find(id.value);
-      if (candidate == impl_->base->nodes.end() ||
-          !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
-        impl_->poison = edit_error(
-            error_code::type_mismatch, "event_batch.send", *impl_->context,
-            impl_->base->revision,
-            "node event range contains a type not accepted by the field "
-            "descriptor",
-            target.node_, target.name_);
-        return *impl_->poison;
-      }
-    }
+  if (const auto issue = node_payload_issue(*impl_->context, *impl_->base,
+                                             found->second, *descriptor,
+                                             payload)) {
+    impl_->poison = edit_error(*issue, "event_batch.send", *impl_->context,
+                               impl_->base->revision,
+                               "node event violates type or declaration scope",
+                               target.node_, target.name_);
+    return *impl_->poison;
   }
   const auto duplicate = std::find_if(impl_->seeds.begin(), impl_->seeds.end(),
                                       [&](const event_delivery &seed) {
@@ -3224,6 +3245,7 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
 }
 
 result<event_result> event_batch::commit() {
+  static_assert(std::is_nothrow_move_constructible_v<event_result>);
   if (impl_->poison)
     return *impl_->poison;
   if (impl_->committed) {
@@ -3271,15 +3293,15 @@ result<event_result> event_batch::commit() {
               ? nullptr
               : find_descriptor(*impl_->context, sink->second,
                                 candidate.sink_field);
-      if (!sink_descriptor ||
-          !accepts_node_payload(*impl_->context, staged, *sink_descriptor,
-                                source_payload)) {
-        return edit_error(
-            error_code::type_mismatch, "event_batch.commit", *impl_->context,
-            impl_->base->revision,
-            "routed node event type is not accepted by the destination field "
-            "descriptor",
-            candidate.sink, candidate.sink_field);
+      const auto issue = sink_descriptor
+          ? node_payload_issue(*impl_->context, staged, sink->second,
+                               *sink_descriptor, source_payload)
+          : std::optional{error_code::type_mismatch};
+      if (issue) {
+        return edit_error(*issue, "event_batch.commit", *impl_->context,
+                          impl_->base->revision,
+                          "routed node event violates type or declaration scope",
+                          candidate.sink, candidate.sink_field);
       }
       route_fired[route_index] = true;
       deliveries.push_back(event_delivery{.time = impl_->time,
@@ -3332,52 +3354,56 @@ result<event_result> event_batch::commit() {
                                    .index = 0});
   }
 
+  if (auto valid = validate_candidate_graph(*impl_->context, staged,
+                                             "event_batch.commit",
+                                             impl_->base->revision); !valid)
+    return failure(valid.error());
+
   event_result result{.time = impl_->time,
                       .before_revision = impl_->base->revision,
                       .after_revision = impl_->base->revision,
                       .deliveries = std::move(deliveries),
                       .state_changes = std::nullopt,
                       .portability_issues = std::move(portability_issues)};
-  if (!result.deliveries.empty()) {
-    impl_->context->last_event_time = impl_->time;
-    for (const event_delivery &delivery : result.deliveries) {
-      std::vector<std::uint64_t> recipients;
-      for (const auto &[observer_id, observer] :
-           impl_->context->event_observers) {
-        if (observer.target == delivery.target &&
-            observer.field == delivery.field)
-          recipients.push_back(observer_id);
-      }
-      if (!recipients.empty()) {
-        impl_->context->pending.push_back(
-            detail::context_control::pending_event{
-                .delivery = delivery, .recipients = std::move(recipients)});
-      }
-    }
-  }
-  if (changes.empty())
-    return result;
-
-  staged.revision = impl_->base->revision + 1;
-  auto published = std::make_shared<detail::scene_state>(std::move(staged));
-  impl_->context->state = published;
-  impl_->context->published_revision.store(published->revision,
-                                           std::memory_order_release);
-  change_set committed{.before_revision = impl_->base->revision,
-                       .after_revision = published->revision,
-                       .changes = std::move(changes)};
-  result.after_revision = published->revision;
-  result.state_changes = committed;
-  if (!impl_->context->observers.empty()) {
+  decltype(impl_->context->pending) notifications;
+  for (const event_delivery &delivery : result.deliveries) {
     std::vector<std::uint64_t> recipients;
-    recipients.reserve(impl_->context->observers.size());
-    for (const auto &[observer_id, callback] : impl_->context->observers) {
-      (void)callback;
-      recipients.push_back(observer_id);
+    for (const auto &[observer_id, observer] : impl_->context->event_observers) {
+      if (observer.target == delivery.target && observer.field == delivery.field)
+        recipients.push_back(observer_id);
     }
-    impl_->context->pending.push_back(detail::context_control::pending_change{
-        .changes = committed, .recipients = std::move(recipients)});
+    if (!recipients.empty())
+      notifications.push_back(detail::context_control::pending_event{
+          .delivery = delivery, .recipients = std::move(recipients)});
   }
+  std::shared_ptr<const detail::scene_state> published;
+  if (!changes.empty()) {
+    result.after_revision = impl_->base->revision + 1;
+    result.state_changes = change_set{.before_revision = impl_->base->revision,
+                                      .after_revision = result.after_revision,
+                                      .changes = std::move(changes)};
+    if (!impl_->context->observers.empty()) {
+      std::vector<std::uint64_t> recipients;
+      recipients.reserve(impl_->context->observers.size());
+      for (const auto &[observer_id, callback] : impl_->context->observers) {
+        (void)callback;
+        recipients.push_back(observer_id);
+      }
+      notifications.push_back(detail::context_control::pending_change{
+          .changes = *result.state_changes, .recipients = std::move(recipients)});
+    }
+    staged.revision = result.after_revision;
+    published = std::make_shared<detail::scene_state>(std::move(staged));
+  }
+  // No fallible allocation may follow the first externally visible mutation.
+  if (published) {
+    impl_->context->state = published;
+    impl_->context->published_revision.store(published->revision,
+                                             std::memory_order_release);
+  }
+  if (!result.deliveries.empty())
+    impl_->context->last_event_time = impl_->time;
+  impl_->context->pending.splice(impl_->context->pending.end(), notifications);
   return result;
 }
 

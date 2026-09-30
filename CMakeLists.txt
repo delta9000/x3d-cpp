@@ -252,3 +252,9 @@ target_compile_features(x3d_sai_experimental_generated_example PRIVATE
     cxx_std_20)
 add_test(NAME sai_generated_author_inspect
     COMMAND x3d_sai_experimental_generated_example)
+
+add_executable(x3d_sai_publication_integrity_tests tests/publication_integrity_test.cpp)
+target_link_libraries(x3d_sai_publication_integrity_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_publication_integrity COMMAND x3d_sai_publication_integrity_tests)
+set_tests_properties(sai_publication_integrity PROPERTIES TIMEOUT 30)

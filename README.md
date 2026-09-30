@@ -148,3 +148,17 @@ No API in this directory should be promoted merely because it compiles. The
 invariant tests and composed examples are the review surface: revise the
 experimental vocabulary until those user stories remain clear and the
 remaining planned invariants can be expressed without privileged access.
+
+### Publication integrity
+
+Retained edits and retained event cascades validate the complete candidate graph
+before publication. Node-valued events, including transient deliveries, obey the
+same declaration-scope and accepted-node-type rules as authoring writes.
+Containment cycles cannot enter published snapshots through events.
+
+Commit prepares the result, notifications, candidate state and import-retention
+updates before changing any published state. An allocation exception leaves the
+visible revision, queued notifications, event timestamp and import retention
+unchanged. Allocation errors still propagate as `std::bad_alloc`; callers should
+discard the failed transaction/batch and begin a fresh one. This guarantee covers
+publication, not arbitrary mutations of a thread-confined staged edit.
