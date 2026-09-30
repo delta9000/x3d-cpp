@@ -239,15 +239,20 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
         return std::nullopt;
       }
       auto nIt = scene.protoRedirects.find(node.get());
-      if (nIt == scene.protoRedirects.end() ||
-          !nIt->second.contains(interface->name) ||
-          nIt->second.at(interface->name).empty()) {
-        reject(index, Scope::Scene, "interface field '" + def + "." + field +
-                                        "' has no IS route target");
-        return std::nullopt;
-      }
-      return Endpoint{interface->type, interface->access,
-                      nIt->second.at(interface->name)};
+      if (nIt != scene.protoRedirects.end() &&
+          nIt->second.contains(interface->name) &&
+          !nIt->second.at(interface->name).empty())
+        return Endpoint{interface->type, interface->access,
+                        nIt->second.at(interface->name)};
+      // No IS target: the interface field is still a real endpoint on the
+      // instance (independent storage registered at expansion), so resolve it
+      // physically — an inputOutput field echoes a set value as its _changed
+      // event through the ordinary route graph. PROTO-INTERFACE-STATE.
+      if (auto own = detail::findEndpoint(*node, field, asSource))
+        return Endpoint{interface->type, own->access, {{node, own->x3dName}}};
+      reject(index, Scope::Scene, "interface field '" + def + "." + field +
+                                      "' has no IS route target");
+      return std::nullopt;
     }
     auto reflected = detail::findEndpoint(*node, field, asSource);
     if (!reflected) {
