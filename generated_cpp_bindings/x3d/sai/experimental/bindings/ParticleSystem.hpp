@@ -40,9 +40,6 @@ struct ParticleSystem {
       geometry{"geometry", access_type::input_output};
   inline static constexpr field_key<ParticleSystem, std::string> geometryType{
       "geometryType", access_type::initialize_only};
-  inline static constexpr field_key<ParticleSystem,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<ParticleSystem, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<ParticleSystem, float> lifetimeVariation{
@@ -68,17 +65,7 @@ struct ParticleSystem {
       texCoordKey{"texCoordKey", access_type::initialize_only};
   inline static constexpr field_key<ParticleSystem, bool> visible{
       "visible", access_type::input_output};
-  inline static constexpr field_key<ParticleSystem, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<ParticleSystem, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<ParticleSystem, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<ParticleSystem, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<ParticleSystem, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 28> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 22> field_keys{{
       {appearance.name(), appearance.kind, appearance.access()},
       {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
       {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
@@ -91,7 +78,6 @@ struct ParticleSystem {
       {enabled.name(), enabled.kind, enabled.access()},
       {geometry.name(), geometry.kind, geometry.access()},
       {geometryType.name(), geometryType.kind, geometryType.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {lifetimeVariation.name(), lifetimeVariation.kind,
        lifetimeVariation.access()},
@@ -104,11 +90,6 @@ struct ParticleSystem {
       {texCoord.name(), texCoord.kind, texCoord.access()},
       {texCoordKey.name(), texCoordKey.kind, texCoordKey.access()},
       {visible.name(), visible.kind, visible.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

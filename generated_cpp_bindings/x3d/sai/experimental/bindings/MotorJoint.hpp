@@ -36,9 +36,6 @@ struct MotorJoint {
       forceOutput{"forceOutput", access_type::input_output};
   inline static constexpr field_key<MotorJoint,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<MotorJoint,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<MotorJoint, float> motor1Angle{
       "motor1Angle", access_type::output_only};
@@ -70,17 +67,7 @@ struct MotorJoint {
       "stop3Bounce", access_type::input_output};
   inline static constexpr field_key<MotorJoint, float> stop3ErrorCorrection{
       "stop3ErrorCorrection", access_type::input_output};
-  inline static constexpr field_key<MotorJoint, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<MotorJoint, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<MotorJoint, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<MotorJoint, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<MotorJoint, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 33> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 27> field_keys{{
       {autoCalc.name(), autoCalc.kind, autoCalc.access()},
       {axis1Angle.name(), axis1Angle.kind, axis1Angle.access()},
       {axis1Torque.name(), axis1Torque.kind, axis1Torque.access()},
@@ -92,7 +79,6 @@ struct MotorJoint {
       {body2.name(), body2.kind, body2.access()},
       {enabledAxes.name(), enabledAxes.kind, enabledAxes.access()},
       {forceOutput.name(), forceOutput.kind, forceOutput.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {motor1Angle.name(), motor1Angle.kind, motor1Angle.access()},
       {motor1AngleRate.name(), motor1AngleRate.kind, motor1AngleRate.access()},
@@ -112,11 +98,6 @@ struct MotorJoint {
       {stop3Bounce.name(), stop3Bounce.kind, stop3Bounce.access()},
       {stop3ErrorCorrection.name(), stop3ErrorCorrection.kind,
        stop3ErrorCorrection.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

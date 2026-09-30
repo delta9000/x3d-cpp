@@ -27,9 +27,6 @@ struct Background {
   inline static constexpr field_key<Background,
                                     ::x3d::sai::experimental::color3f_list>
       groundColor{"groundColor", access_type::input_output};
-  inline static constexpr field_key<Background,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<Background, bool> isBound{
       "isBound", access_type::output_only};
   inline static constexpr field_key<Background,
@@ -54,24 +51,13 @@ struct Background {
       topUrl{"topUrl", access_type::input_output};
   inline static constexpr field_key<Background, float> transparency{
       "transparency", access_type::input_output};
-  inline static constexpr field_key<Background, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<Background, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<Background, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<Background, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<Background, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 21> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
       {backUrl.name(), backUrl.kind, backUrl.access()},
       {bindTime.name(), bindTime.kind, bindTime.access()},
       {bottomUrl.name(), bottomUrl.kind, bottomUrl.access()},
       {frontUrl.name(), frontUrl.kind, frontUrl.access()},
       {groundAngle.name(), groundAngle.kind, groundAngle.access()},
       {groundColor.name(), groundColor.kind, groundColor.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isBound.name(), isBound.kind, isBound.access()},
       {leftUrl.name(), leftUrl.kind, leftUrl.access()},
       {metadata.name(), metadata.kind, metadata.access()},
@@ -81,11 +67,6 @@ struct Background {
       {skyColor.name(), skyColor.kind, skyColor.access()},
       {topUrl.name(), topUrl.kind, topUrl.access()},
       {transparency.name(), transparency.kind, transparency.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

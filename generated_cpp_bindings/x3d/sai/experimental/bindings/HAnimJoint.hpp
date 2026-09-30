@@ -29,9 +29,6 @@ struct HAnimJoint {
                                     ::x3d::sai::experimental::node_list>
       displacers{"displacers", access_type::input_output};
   inline static constexpr field_key<HAnimJoint,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<HAnimJoint,
                                     ::x3d::sai::experimental::rotation>
       limitOrientation{"limitOrientation", access_type::input_output};
   inline static constexpr field_key<HAnimJoint,
@@ -69,17 +66,7 @@ struct HAnimJoint {
       ulimit{"ulimit", access_type::input_output};
   inline static constexpr field_key<HAnimJoint, bool> visible{
       "visible", access_type::input_output};
-  inline static constexpr field_key<HAnimJoint, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<HAnimJoint, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<HAnimJoint, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<HAnimJoint, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<HAnimJoint, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 28> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 22> field_keys{{
       {addChildren.name(), addChildren.kind, addChildren.access()},
       {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
       {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
@@ -88,7 +75,6 @@ struct HAnimJoint {
       {children.name(), children.kind, children.access()},
       {description.name(), description.kind, description.access()},
       {displacers.name(), displacers.kind, displacers.access()},
-      {IS.name(), IS.kind, IS.access()},
       {limitOrientation.name(), limitOrientation.kind,
        limitOrientation.access()},
       {llimit.name(), llimit.kind, llimit.access()},
@@ -105,11 +91,6 @@ struct HAnimJoint {
       {translation.name(), translation.kind, translation.access()},
       {ulimit.name(), ulimit.kind, ulimit.access()},
       {visible.name(), visible.kind, visible.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

@@ -17,9 +17,6 @@ struct LayoutLayer {
       children{"children", access_type::input_output};
   inline static constexpr field_key<LayoutLayer,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<LayoutLayer,
-                                    ::x3d::sai::experimental::node_id>
       layout{"layout", access_type::input_output};
   inline static constexpr field_key<LayoutLayer,
                                     ::x3d::sai::experimental::node_id>
@@ -37,20 +34,9 @@ struct LayoutLayer {
       viewport{"viewport", access_type::input_output};
   inline static constexpr field_key<LayoutLayer, bool> visible{
       "visible", access_type::input_output};
-  inline static constexpr field_key<LayoutLayer, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<LayoutLayer, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<LayoutLayer, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<LayoutLayer, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<LayoutLayer, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 9> field_keys{{
       {addChildren.name(), addChildren.kind, addChildren.access()},
       {children.name(), children.kind, children.access()},
-      {IS.name(), IS.kind, IS.access()},
       {layout.name(), layout.kind, layout.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {objectType.name(), objectType.kind, objectType.access()},
@@ -58,11 +44,6 @@ struct LayoutLayer {
       {removeChildren.name(), removeChildren.kind, removeChildren.access()},
       {viewport.name(), viewport.kind, viewport.access()},
       {visible.name(), visible.kind, visible.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

@@ -9,9 +9,6 @@ namespace x3d::sai::experimental::bindings {
 struct X3DDamperNode {
   static constexpr std::string_view x3d_name = "X3DDamperNode";
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
-  inline static constexpr field_key<X3DDamperNode,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<X3DDamperNode, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<X3DDamperNode,
@@ -24,28 +21,12 @@ struct X3DDamperNode {
       tau{"tau", access_type::input_output};
   inline static constexpr field_key<X3DDamperNode, float> tolerance{
       "tolerance", access_type::input_output};
-  inline static constexpr field_key<X3DDamperNode, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<X3DDamperNode, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<X3DDamperNode, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<X3DDamperNode, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<X3DDamperNode, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 11> field_keys{{
-      {IS.name(), IS.kind, IS.access()},
+  inline static constexpr std::array<field_key_descriptor, 5> field_keys{{
       {isActive.name(), isActive.kind, isActive.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {order.name(), order.kind, order.access()},
       {tau.name(), tau.kind, tau.access()},
       {tolerance.name(), tolerance.kind, tolerance.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

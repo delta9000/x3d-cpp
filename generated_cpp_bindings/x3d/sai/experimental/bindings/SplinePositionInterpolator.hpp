@@ -12,9 +12,6 @@ struct SplinePositionInterpolator {
   inline static constexpr field_key<SplinePositionInterpolator, bool> closed{
       "closed", access_type::input_output};
   inline static constexpr field_key<SplinePositionInterpolator,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<SplinePositionInterpolator,
                                     ::x3d::sai::experimental::float_list>
       key{"key", access_type::input_output};
   inline static constexpr field_key<SplinePositionInterpolator,
@@ -33,19 +30,8 @@ struct SplinePositionInterpolator {
   inline static constexpr field_key<SplinePositionInterpolator,
                                     ::x3d::sai::experimental::vec3f>
       value_changed{"value_changed", access_type::output_only};
-  inline static constexpr field_key<SplinePositionInterpolator, std::string>
-      DEF{"DEF", access_type::input_output};
-  inline static constexpr field_key<SplinePositionInterpolator, std::string>
-      USE{"USE", access_type::input_output};
-  inline static constexpr field_key<SplinePositionInterpolator, std::string>
-      class_{"class", access_type::input_output};
-  inline static constexpr field_key<SplinePositionInterpolator, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<SplinePositionInterpolator, std::string>
-      style{"style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 14> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 8> field_keys{{
       {closed.name(), closed.kind, closed.access()},
-      {IS.name(), IS.kind, IS.access()},
       {key.name(), key.kind, key.access()},
       {keyValue.name(), keyValue.kind, keyValue.access()},
       {keyVelocity.name(), keyVelocity.kind, keyVelocity.access()},
@@ -54,11 +40,6 @@ struct SplinePositionInterpolator {
        normalizeVelocity.access()},
       {set_fraction.name(), set_fraction.kind, set_fraction.access()},
       {value_changed.name(), value_changed.kind, value_changed.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

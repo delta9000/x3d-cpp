@@ -41,9 +41,6 @@ struct UniversalJoint {
       forceOutput{"forceOutput", access_type::input_output};
   inline static constexpr field_key<UniversalJoint,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<UniversalJoint,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<UniversalJoint, float> stop1Bounce{
       "stop1Bounce", access_type::input_output};
@@ -53,17 +50,7 @@ struct UniversalJoint {
       "stop2Bounce", access_type::input_output};
   inline static constexpr field_key<UniversalJoint, float> stop2ErrorCorrection{
       "stop2ErrorCorrection", access_type::input_output};
-  inline static constexpr field_key<UniversalJoint, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<UniversalJoint, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<UniversalJoint, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<UniversalJoint, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<UniversalJoint, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 21> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
       {anchorPoint.name(), anchorPoint.kind, anchorPoint.access()},
       {axis1.name(), axis1.kind, axis1.access()},
       {axis2.name(), axis2.kind, axis2.access()},
@@ -76,7 +63,6 @@ struct UniversalJoint {
        body2AnchorPoint.access()},
       {body2Axis.name(), body2Axis.kind, body2Axis.access()},
       {forceOutput.name(), forceOutput.kind, forceOutput.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {stop1Bounce.name(), stop1Bounce.kind, stop1Bounce.access()},
       {stop1ErrorCorrection.name(), stop1ErrorCorrection.kind,
@@ -84,11 +70,6 @@ struct UniversalJoint {
       {stop2Bounce.name(), stop2Bounce.kind, stop2Bounce.access()},
       {stop2ErrorCorrection.name(), stop2ErrorCorrection.kind,
        stop2ErrorCorrection.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

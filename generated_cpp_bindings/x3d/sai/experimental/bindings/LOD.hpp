@@ -23,8 +23,6 @@ struct LOD {
       children{"children", access_type::input_output};
   inline static constexpr field_key<LOD, bool> forceTransitions{
       "forceTransitions", access_type::initialize_only};
-  inline static constexpr field_key<LOD, ::x3d::sai::experimental::node_id> IS{
-      "IS", access_type::input_output};
   inline static constexpr field_key<LOD, std::int32_t> level_changed{
       "level_changed", access_type::output_only};
   inline static constexpr field_key<LOD, ::x3d::sai::experimental::node_id>
@@ -35,17 +33,7 @@ struct LOD {
       removeChildren{"removeChildren", access_type::input_only};
   inline static constexpr field_key<LOD, bool> visible{
       "visible", access_type::input_output};
-  inline static constexpr field_key<LOD, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<LOD, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<LOD, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<LOD, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<LOD, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 12> field_keys{{
       {addChildren.name(), addChildren.kind, addChildren.access()},
       {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
       {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
@@ -54,17 +42,11 @@ struct LOD {
       {children.name(), children.kind, children.access()},
       {forceTransitions.name(), forceTransitions.kind,
        forceTransitions.access()},
-      {IS.name(), IS.kind, IS.access()},
       {level_changed.name(), level_changed.kind, level_changed.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {range.name(), range.kind, range.access()},
       {removeChildren.name(), removeChildren.kind, removeChildren.access()},
       {visible.name(), visible.kind, visible.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

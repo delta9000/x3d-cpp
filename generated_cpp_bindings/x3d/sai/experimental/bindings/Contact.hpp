@@ -31,8 +31,6 @@ struct Contact {
   inline static constexpr field_key<Contact, ::x3d::sai::experimental::node_id>
       geometry2{"geometry2", access_type::input_output};
   inline static constexpr field_key<Contact, ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<Contact, ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<Contact, float> minBounceSpeed{
       "minBounceSpeed", access_type::input_output};
@@ -46,17 +44,7 @@ struct Contact {
       "softnessErrorCorrection", access_type::input_output};
   inline static constexpr field_key<Contact, ::x3d::sai::experimental::vec2f>
       surfaceSpeed{"surfaceSpeed", access_type::input_output};
-  inline static constexpr field_key<Contact, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<Contact, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<Contact, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<Contact, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<Contact, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 23> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 17> field_keys{{
       {appliedParameters.name(), appliedParameters.kind,
        appliedParameters.access()},
       {body1.name(), body1.kind, body1.access()},
@@ -70,7 +58,6 @@ struct Contact {
        frictionDirection.access()},
       {geometry1.name(), geometry1.kind, geometry1.access()},
       {geometry2.name(), geometry2.kind, geometry2.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {minBounceSpeed.name(), minBounceSpeed.kind, minBounceSpeed.access()},
       {position.name(), position.kind, position.access()},
@@ -81,11 +68,6 @@ struct Contact {
       {softnessErrorCorrection.name(), softnessErrorCorrection.kind,
        softnessErrorCorrection.access()},
       {surfaceSpeed.name(), surfaceSpeed.kind, surfaceSpeed.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

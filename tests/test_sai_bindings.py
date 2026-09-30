@@ -62,7 +62,7 @@ def test_binding_index_covers_every_generated_tag_in_order(model):
     assert "Transform::schema_fingerprint" in generated
 
 
-def test_node_image_and_reserved_field_mappings_are_exact(model):
+def test_node_and_image_field_mappings_are_exact(model):
     group = emit("Group", model)
     texture = emit("PixelTexture", model)
     assert "field_key<Group, ::x3d::sai::experimental::node_list>" in group
@@ -70,7 +70,7 @@ def test_node_image_and_reserved_field_mappings_are_exact(model):
     assert "field_key<PixelTexture, ::x3d::sai::experimental::image>" in texture
     assert "image{" in texture
     assert "field_key<PixelTexture, std::string>" in texture
-    assert 'class_{"class",' in texture
+    assert 'class_{"class",' not in texture
 
 
 def test_bounded_enums_use_experimental_owning_values(model):

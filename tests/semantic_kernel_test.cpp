@@ -534,21 +534,20 @@ TEST_CASE("generated metadata authors without runtime node identity") {
   CHECK(described.value().name == "Box");
   CHECK(described.value().component == "Geometry3D");
   CHECK(described.value().component_level == 1);
-  REQUIRE(described.value().fields.size() == 9);
-  CHECK(described.value().fields[0].name == "IS");
+  REQUIRE(described.value().fields.size() == 3);
+  CHECK(described.value().fields[0].name == "metadata");
   CHECK(described.value().fields[0].accepted_node_types ==
-        std::vector<std::string>{"IS"});
+        std::vector<std::string>{"X3DMetadataObject"});
   CHECK_FALSE(described.value().fields[0].unit_category.has_value());
   CHECK(described.value().fields[0].default_origin ==
         sai::default_source::schema);
-  CHECK(described.value().fields[2].name == "size");
-  CHECK(described.value().fields[2].default_origin ==
+  CHECK(described.value().fields[1].name == "size");
+  CHECK(described.value().fields[1].default_origin ==
         sai::default_source::schema);
-  CHECK(described.value().fields[2].default_value ==
+  CHECK(described.value().fields[1].default_value ==
         sai::value{sai::vec3f{2, 2, 2}});
-  CHECK(described.value().fields[4].name == "DEF");
-  CHECK(described.value().fields[4].default_origin ==
-        sai::default_source::field_type);
+  CHECK(described.value().fields[2].name == "solid");
+  CHECK(described.value().fields[2].default_value == sai::value{true});
 }
 
 TEST_CASE(

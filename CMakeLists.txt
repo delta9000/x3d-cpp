@@ -37,6 +37,14 @@ target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
 
+add_executable(x3d_sai_generated_projection_tests
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/generated_projection_test.cpp")
+target_link_libraries(x3d_sai_generated_projection_tests PRIVATE
+    x3d_sai_experimental_metadata x3d_sai_doctest_main)
+target_compile_features(x3d_sai_generated_projection_tests PRIVATE cxx_std_20)
+add_test(NAME sai_generated_semantic_projection
+    COMMAND x3d_sai_generated_projection_tests)
+
 # CTest names below are load-bearing: scripts/sai_conformance.py parses literal
 # add_test(NAME ...) entries out of this file to cross-link registered services
 # against their falsification tests. Do not rename them.

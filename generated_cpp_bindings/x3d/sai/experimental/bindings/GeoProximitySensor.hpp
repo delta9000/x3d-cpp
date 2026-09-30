@@ -38,9 +38,6 @@ struct GeoProximitySensor {
   inline static constexpr field_key<GeoProximitySensor,
                                     ::x3d::sai::experimental::string_list>
       geoSystem{"geoSystem", access_type::initialize_only};
-  inline static constexpr field_key<GeoProximitySensor,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<GeoProximitySensor, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<GeoProximitySensor,
@@ -55,17 +52,7 @@ struct GeoProximitySensor {
   inline static constexpr field_key<GeoProximitySensor,
                                     ::x3d::sai::experimental::vec3f>
       size{"size", access_type::input_output};
-  inline static constexpr field_key<GeoProximitySensor, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<GeoProximitySensor, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<GeoProximitySensor, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<GeoProximitySensor, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<GeoProximitySensor, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 21> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
       {center.name(), center.kind, center.access()},
       {centerOfRotation_changed.name(), centerOfRotation_changed.kind,
        centerOfRotation_changed.access()},
@@ -78,7 +65,6 @@ struct GeoProximitySensor {
        geoCoord_changed.access()},
       {geoOrigin.name(), geoOrigin.kind, geoOrigin.access()},
       {geoSystem.name(), geoSystem.kind, geoSystem.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {orientation_changed.name(), orientation_changed.kind,
@@ -86,11 +72,6 @@ struct GeoProximitySensor {
       {position_changed.name(), position_changed.kind,
        position_changed.access()},
       {size.name(), size.kind, size.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

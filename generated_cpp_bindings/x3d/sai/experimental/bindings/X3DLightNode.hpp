@@ -18,9 +18,6 @@ struct X3DLightNode {
       "intensity", access_type::input_output};
   inline static constexpr field_key<X3DLightNode,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<X3DLightNode,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<X3DLightNode, bool> on{
       "on", access_type::input_output};
@@ -28,31 +25,15 @@ struct X3DLightNode {
       "shadowIntensity", access_type::input_output};
   inline static constexpr field_key<X3DLightNode, bool> shadows{
       "shadows", access_type::input_output};
-  inline static constexpr field_key<X3DLightNode, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<X3DLightNode, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<X3DLightNode, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<X3DLightNode, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<X3DLightNode, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 13> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 7> field_keys{{
       {ambientIntensity.name(), ambientIntensity.kind,
        ambientIntensity.access()},
       {color.name(), color.kind, color.access()},
       {intensity.name(), intensity.kind, intensity.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {on.name(), on.kind, on.access()},
       {shadowIntensity.name(), shadowIntensity.kind, shadowIntensity.access()},
       {shadows.name(), shadows.kind, shadows.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

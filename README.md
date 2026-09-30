@@ -111,7 +111,12 @@ carry the same model fingerprint; typed creation fails before producing a
 handle when provenance differs. A successful public mutation of a generated
 registry revokes that provenance, so mixed handwritten/generated descriptors
 cannot acquire generated typed handles. The exhaustive generated-key catalog is checked
-against metadata for every node and ordered field.
+against metadata for every node and ordered field. Independent semantic tests
+also keep DEF/USE/IS and HTML/DOM attributes out of ordinary runtime fields.
+FontStyle.style and ScreenFontStyle.style remain real text-style fields. See the
+[generated-field projection policy and incomplete constraint audit](docs/generated-field-projection.md)
+for the host/document boundary and remaining numeric, enum, reference and unit
+limitations; projection parity is not a conformance claim.
 `examples/author_inspect.cpp` remains the deliberately handwritten dynamic
 fixture for event, ROUTE, shared-node, and import behavior.
 The focused doctest suite is also registered as stable `sai_*` CTests so each
