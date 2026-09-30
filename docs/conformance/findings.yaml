@@ -497,12 +497,12 @@
   note: Constraints drive motion but report nothing back to the scene. Needs a per-tick joint-state readback mirroring the body pose readback.
 - id: CONF-RBP-DAMP
   component: RigidBodyPhysics
-  nodes: [RigidBody]
+  nodes: [RigidBody, RigidBodyCollection]
   clause: "37"
   severity: low
   status: deferred
-  summary: "Sleeping/auto-disable thresholds are ignored: autoDisable/disableTime/disableLinearSpeed/disableAngularSpeed have no effect. (autoDamp damping IS now applied — 2e9d8f3.)"
-  note: autoDamp + linear/angularDampingFactor ship (force = -factor·velocity, §37.4.10). The per-body sleep thresholds remain — Jolt's sleep thresholds are global PhysicsSettings, not per-body, so a faithful mapping needs more than a flag.
+  summary: "Sleeping/auto-disable fields are now honored as far as Jolt allows. RigidBody.autoDisable -> per-body Jolt allow-sleeping; RigidBodyCollection.autoDisable -> world PhysicsSettings.mAllowSleeping; collection disableTime -> mTimeBeforeSleep; collection disableLinearSpeed -> mPointVelocitySleepThreshold. Still ignored: disableAngularSpeed (Jolt has no separate angular sleep threshold) and the per-body RigidBody.disableTime/disableLinearSpeed (Jolt's thresholds are world-wide)."
+  note: "Mapping rule: one RigidBodyCollection owns one Jolt PhysicsSystem, so the collection's world-wide sleep thresholds apply to the whole world, and its autoDisable gates it; the per-body toggle is RigidBody.autoDisable (Jolt has no per-body threshold setter). The §37 default autoDisable=FALSE therefore leaves every enrolled body permanently awake (Jolt mAllowSleeping=false AND per-body allow-sleeping=false) — the §37-correct reading of 'autoDisable toggles operation of disable*' (Jolt previously slept bodies with its own defaults). Default-numeric preservation: a zero disableTime/disableLinearSpeed leaves Jolt's own 0.5 s / 0.03 m/s untouched. The sleeping state is now observable to the runtime via PhysicsBackend::isBodyActive (exposed as PhysicsSystem::isBodyActive); NO new output events were added (the seam has no enabled/isEnabled output hook). autoDamp + linear/angularDampingFactor remain honored (force = -factor·velocity, §37.4.10)."
 - id: CONF-RBP-HINGE-LIMITS
   component: RigidBodyPhysics
   nodes: [SingleAxisHingeJoint]
@@ -525,8 +525,8 @@
   clause: "37"
   severity: minor
   status: deferred
-  summary: "RigidBodyCollection solver-tuning fields are ignored: iterations, errorCorrection, constantForceMix, contactSurfaceThickness, maxCorrectionSpeed, preferAccuracy, autoDisable."
-  note: All solver behavior is the Jolt default (single collision step per update). gravity and enabled ARE read.
+  summary: "RigidBodyCollection solver-tuning fields are ignored: iterations, errorCorrection, constantForceMix, contactSurfaceThickness, maxCorrectionSpeed, preferAccuracy."
+  note: All solver behavior is the Jolt default (single collision step per update). gravity and enabled ARE read. (autoDisable moved to CONF-RBP-DAMP — it is now wired as Jolt sleeping.)
 - id: CONF-RBP-CAP
   component: RigidBodyPhysics
   nodes: [RigidBodyCollection]

@@ -558,6 +558,44 @@ void JoltBackend::setGravityFactor(WorldHandle world, BodyHandle body,
   w.physics->GetBodyInterface().SetGravityFactor(id, factor);
 }
 
+void JoltBackend::setBodyAllowSleeping(WorldHandle world, BodyHandle body,
+                                       bool allow) {
+  auto it = impl_->worlds.find(world);
+  if (it == impl_->worlds.end()) return;
+  JoltWorld &w = it->second;
+  // BodyInterface has no per-body allow-sleeping setter; the flag lives on the
+  // Body (Body::SetAllowSleeping). We kept each Body* in bodyPtrs for exactly
+  // this kind of per-body access. Only dynamic bodies carry motion properties —
+  // Body::SetAllowSleeping dereferences them, so a static body must be skipped.
+  Body *b = bodyPtrForHandle(w, body);
+  if (b != nullptr && b->IsDynamic()) b->SetAllowSleeping(allow);
+}
+
+void JoltBackend::setSleepSettings(WorldHandle world, bool allowSleeping,
+                                   float timeBeforeSleep,
+                                   float pointVelocityThreshold) {
+  auto it = impl_->worlds.find(world);
+  if (it == impl_->worlds.end()) return;
+  PhysicsSettings ps = it->second.physics->GetPhysicsSettings();
+  ps.mAllowSleeping = allowSleeping;
+  // A negative value means "leave the backend default" (§37's own defaults are
+  // 0, which must not clobber Jolt's 0.5 s / 0.03 m/s).
+  if (timeBeforeSleep >= 0.0f) ps.mTimeBeforeSleep = timeBeforeSleep;
+  if (pointVelocityThreshold >= 0.0f)
+    ps.mPointVelocitySleepThreshold = pointVelocityThreshold;
+  it->second.physics->SetPhysicsSettings(ps);
+}
+
+bool JoltBackend::isBodyActive(WorldHandle world, BodyHandle body) const {
+  auto it = impl_->worlds.find(world);
+  if (it == impl_->worlds.end()) return true;
+  const JoltWorld &w = it->second;
+  if (body == kInvalidBodyHandle || body > w.bodies.size()) return true;
+  BodyID id = w.bodies[static_cast<std::size_t>(body) - 1];
+  if (id.IsInvalid()) return true;
+  return w.physics->GetBodyInterface().IsActive(id);
+}
+
 void JoltBackend::setContactResponse(WorldHandle world, float friction,
                                      float restitution) {
   auto it = impl_->worlds.find(world);
