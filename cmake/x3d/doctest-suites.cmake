@@ -175,6 +175,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/castshadow_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/nurbs_eval_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_swept_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_geom2d_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scheme_router_test.cpp")
     target_link_libraries(x3d_extract_tests PRIVATE

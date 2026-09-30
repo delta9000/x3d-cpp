@@ -103,10 +103,11 @@ parseFile → X3DExecutionContext::buildSceneGraph + buildFrom
 ```
 
 `SceneExtractor` is used exactly as a renderer would — the dogfooding payoff.
-`MeshBuilder` supports `NurbsCurve` and `NurbsPatchSurface` (see
+`MeshBuilder` supports `NurbsCurve`, `NurbsPatchSurface` and the swept/swung
+surfaces (see
 [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md)); geometry types
 it does not support (2D primitives such as `Rectangle2D`/`Circle2D`/`Disk2D`,
-and the deferred trimmed/swept/swung NURBS surfaces — NRB-3) are counted and
+and the deferred trimmed NURBS surface — NRB-3) are counted and
 reported to stderr, never fatal. A zero-geometry scene writes a valid empty
 STL (0 triangles) with a stderr note.
 

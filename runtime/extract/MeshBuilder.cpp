@@ -1245,6 +1245,79 @@ bool buildGeometry2D(MeshData &m, const X3DNode &geom, const std::string &t) {
 
 namespace x3d::runtime::extract {
 
+namespace {
+
+// X3DNurbsControlCurveNode (NurbsCurve2D / ContourPolyline2D) -> 2D curve def.
+// ContourPolyline2D is piecewise-linear, so its control points are the curve's
+// degree-1 (order 2) form regardless of any default.
+nurbs::Curve2DDef readControlCurve2D(const X3DNode &n) {
+  nurbs::Curve2DDef c;
+  for (const auto &p : geombounds::getField<std::vector<SFVec2d>>(n, "controlPoint", {}))
+    c.cp.push_back(SFVec2f{(float)p.x, (float)p.y});
+  c.w = geombounds::getField<std::vector<double>>(n, "weight", {});
+  c.knot = geombounds::getField<std::vector<double>>(n, "knot", {});
+  c.order = (n.nodeTypeName() == "ContourPolyline2D")
+                ? 2
+                : geombounds::getField<SFInt32>(n, "order", 3);
+  c.closed = geombounds::getField<SFBool>(n, "closed", false);
+  return c;
+}
+
+// NurbsCurve (3D) -> curve def, control points off its Coordinate child.
+nurbs::CurveDef readTrajectoryCurve3D(const X3DNode &n) {
+  nurbs::CurveDef c;
+  if (auto cp = geombounds::getNode(n, "controlPoint"))
+    c.cp = geombounds::getPointsLenient(*cp, "point");
+  c.w = geombounds::getField<std::vector<double>>(n, "weight", {});
+  c.knot = geombounds::getField<std::vector<double>>(n, "knot", {});
+  c.order = geombounds::getField<SFInt32>(n, "order", 3);
+  c.closed = geombounds::getField<SFBool>(n, "closed", false);
+  return c;
+}
+
+// Emit a row-major (rows x cols) position grid as a triangle mesh with
+// per-vertex normals from central differences and unit-square texcoords. The
+// cell winding/normal is (du x dv), matching the emitted vertex order.
+void emitSurfaceGrid(MeshData &m, const std::vector<SFVec3f> &grid, int rows,
+                     int cols) {
+  if (rows < 2 || cols < 2 || (int)grid.size() < rows * cols) return;
+  auto at = [&](int r, int c) -> const SFVec3f & {
+    return grid[(std::size_t)r * cols + c];
+  };
+  std::vector<SFVec3f> normals(grid.size());
+  for (int r = 0; r < rows; ++r)
+    for (int c = 0; c < cols; ++c) {
+      const SFVec3f &pl = at(r, c > 0 ? c - 1 : c);
+      const SFVec3f &pr = at(r, c + 1 < cols ? c + 1 : c);
+      const SFVec3f &pd = at(r > 0 ? r - 1 : r, c);
+      const SFVec3f &pu = at(r + 1 < rows ? r + 1 : r, c);
+      const SFVec3f du{pr.x - pl.x, pr.y - pl.y, pr.z - pl.z};
+      const SFVec3f dv{pu.x - pd.x, pu.y - pd.y, pu.z - pd.z};
+      SFVec3f nrm{du.y * dv.z - du.z * dv.y, du.z * dv.x - du.x * dv.z,
+                  du.x * dv.y - du.y * dv.x};
+      const float l = std::sqrt(nrm.x * nrm.x + nrm.y * nrm.y + nrm.z * nrm.z);
+      if (l > 1e-20f) { nrm.x /= l; nrm.y /= l; nrm.z /= l; }
+      normals[(std::size_t)r * cols + c] = nrm;
+    }
+  auto push = [&](int r, int c) {
+    m.positions.push_back(at(r, c));
+    m.normals.push_back(normals[(std::size_t)r * cols + c]);
+    m.texcoords.push_back(
+        SFVec2f{(float)c / (float)(cols - 1), (float)r / (float)(rows - 1)});
+  };
+  for (int r = 0; r + 1 < rows; ++r)
+    for (int c = 0; c + 1 < cols; ++c) {
+      push(r, c); push(r, c + 1); push(r + 1, c + 1);
+      push(r, c); push(r + 1, c + 1); push(r + 1, c);
+    }
+  m.indices.resize(m.positions.size());
+  for (std::uint32_t k = 0; k < m.indices.size(); ++k) m.indices[k] = k;
+  m.topology = Topology::Triangles;
+  m.hasNormals = true;
+}
+
+} // namespace
+
 bool recognizedGeometryType(const std::string &t) {
   return
       // analytic primitives (no coord node)
@@ -1261,6 +1334,8 @@ bool recognizedGeometryType(const std::string &t) {
       t == "IndexedLineSet" || t == "LineSet" || t == "PointSet" ||
       // NURBS (T5): curve -> Lines, patch surface -> Triangles
       t == "NurbsCurve" || t == "NurbsPatchSurface" ||
+      // NURBS swept/swung surfaces -> Triangles (trimmed stays unrecognized)
+      t == "NurbsSweptSurface" || t == "NurbsSwungSurface" ||
       // Geometry2D (§14): XY-plane primitives tessellated by buildGeometry2D
       t == "Arc2D" || t == "ArcClose2D" || t == "Circle2D" || t == "Disk2D" ||
       t == "Polyline2D" || t == "Polypoint2D" || t == "Rectangle2D" ||
@@ -1365,6 +1440,58 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     mesh.topology = Topology::Triangles;
     mesh.hasNormals = true;
     return mesh; // mesh.solid was carried from getField at the top
+  }
+
+  if (t == "NurbsSweptSurface") {
+    auto crossNode = geombounds::getNode(*geom, "crossSectionCurve");
+    auto trajNode = geombounds::getNode(*geom, "trajectoryCurve");
+    if (!crossNode || !trajNode)
+      return mesh; // recognized, empty
+    nurbs::Curve2DDef cs = readControlCurve2D(*crossNode);
+    cs.weightMode = opt.nurbsWeightMode; // NRB-4
+    nurbs::CurveDef tj = readTrajectoryCurve3D(*trajNode);
+    tj.weightMode = opt.nurbsWeightMode;
+    if ((int)cs.cp.size() < cs.order || (int)tj.cp.size() < tj.order)
+      return mesh; // recognized, empty
+    int cSeg = nurbs::tessellationToSegments(
+        geombounds::getField<SFInt32>(*crossNode, "tessellation", 0),
+        (int)cs.cp.size());
+    int tSeg = nurbs::tessellationToSegments(
+        geombounds::getField<SFInt32>(*trajNode, "tessellation", 0),
+        (int)tj.cp.size());
+    auto cross = nurbs::tessellateCurve2D(cs, cSeg);
+    auto traj = nurbs::tessellateCurve(tj, tSeg);
+    if (cross.size() < 2 || traj.size() < 2)
+      return mesh;
+    emitSurfaceGrid(mesh, nurbs::sweptSurfaceGrid(cross, traj),
+                    (int)traj.size(), (int)cross.size());
+    return mesh;
+  }
+
+  if (t == "NurbsSwungSurface") {
+    auto profNode = geombounds::getNode(*geom, "profileCurve");
+    auto trajNode = geombounds::getNode(*geom, "trajectoryCurve");
+    if (!profNode || !trajNode)
+      return mesh; // recognized, empty
+    nurbs::Curve2DDef pf = readControlCurve2D(*profNode);
+    pf.weightMode = opt.nurbsWeightMode; // NRB-4
+    nurbs::Curve2DDef tj = readControlCurve2D(*trajNode);
+    tj.weightMode = opt.nurbsWeightMode;
+    if ((int)pf.cp.size() < pf.order || (int)tj.cp.size() < tj.order)
+      return mesh; // recognized, empty
+    int pSeg = nurbs::tessellationToSegments(
+        geombounds::getField<SFInt32>(*profNode, "tessellation", 0),
+        (int)pf.cp.size());
+    int tSeg = nurbs::tessellationToSegments(
+        geombounds::getField<SFInt32>(*trajNode, "tessellation", 0),
+        (int)tj.cp.size());
+    auto prof = nurbs::tessellateCurve2D(pf, pSeg);
+    auto traj = nurbs::tessellateCurve2D(tj, tSeg);
+    if (prof.size() < 2 || traj.size() < 2)
+      return mesh;
+    emitSurfaceGrid(mesh, nurbs::swungSurfaceGrid(prof, traj),
+                    (int)prof.size(), (int)traj.size());
+    return mesh;
   }
 
   // T-TEXT: Text carries NO coord node — its glyph-quad mesh is synthesized

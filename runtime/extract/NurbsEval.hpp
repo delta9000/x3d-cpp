@@ -340,6 +340,88 @@ inline std::vector<SurfaceSample> tessellateSurface(const SurfaceDef& in,
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Swept / swung surfaces (§27.4.4/.5). Both drive a 2D cross-section/profile
+// control curve (X3DNurbsControlCurveNode) with a trajectory curve:
+//   swept — place the 2D cross-section in the frame perpendicular to the local
+//     trajectory tangent, at every trajectory sample (a circle swept along a
+//     straight line is a cylinder).
+//   swung — the classic swung surface S(u,v) = (px(u)*tx(v), px(u)*ty(v), py(u)):
+//     the profile (px,py) is revolved about the Z axis, the trajectory's 2D
+//     point supplying the radial direction (a line profile swung around a
+//     circle is a surface of revolution).
+// ---------------------------------------------------------------------------
+struct Curve2DDef {
+  std::vector<SFVec2f> cp;
+  std::vector<double>  w;
+  std::vector<double>  knot;
+  int  order = 3;
+  bool closed = false;
+  NurbsWeightMode weightMode = NurbsWeightMode::Premultiplied;
+};
+
+// 2D control curve -> sample points, via the 3D evaluator lifted to z=0.
+inline std::vector<SFVec2f> tessellateCurve2D(const Curve2DDef &in, int segments) {
+  CurveDef c;
+  c.cp.reserve(in.cp.size());
+  for (const auto &p : in.cp) c.cp.push_back(SFVec3f{p.x, p.y, 0.0f});
+  c.w = in.w; c.knot = in.knot; c.order = in.order; c.closed = in.closed;
+  c.weightMode = in.weightMode;
+  std::vector<SFVec2f> out;
+  for (const auto &p : tessellateCurve(c, segments))
+    out.push_back(SFVec2f{p.x, p.y});
+  return out;
+}
+
+// Row-major (trajN rows x crossN cols) position grid of a swept surface.
+inline std::vector<SFVec3f> sweptSurfaceGrid(const std::vector<SFVec2f> &cross,
+                                             const std::vector<SFVec3f> &traj) {
+  std::vector<SFVec3f> grid;
+  const int cN = (int)cross.size(), tN = (int)traj.size();
+  if (cN < 1 || tN < 2) return grid;
+  grid.reserve((std::size_t)tN * cN);
+  for (int j = 0; j < tN; ++j) {
+    const SFVec3f &p0 = traj[j > 0 ? j - 1 : j];
+    const SFVec3f &p1 = traj[j + 1 < tN ? j + 1 : j];
+    float tx = p1.x - p0.x, ty = p1.y - p0.y, tz = p1.z - p0.z;
+    float tl = std::sqrt(tx*tx + ty*ty + tz*tz);
+    if (tl <= 1e-20f) { tx = 0; ty = 1; tz = 0; tl = 1; }
+    tx /= tl; ty /= tl; tz /= tl;
+    // Frame N = normalize(up x T), B = T x N. `up` switches away from Y when
+    // the tangent is near-parallel to it so the cross product never degenerates.
+    float ux = 0, uy = 1, uz = 0;
+    if (std::fabs(ty) > 0.9f) { ux = 1; uy = 0; uz = 0; }
+    float nx = uy*tz - uz*ty, ny = uz*tx - ux*tz, nz = ux*ty - uy*tx;
+    float nl = std::sqrt(nx*nx + ny*ny + nz*nz);
+    if (nl <= 1e-20f) { nx = 1; ny = 0; nz = 0; nl = 1; }
+    nx /= nl; ny /= nl; nz /= nl;
+    const float bx = ty*nz - tz*ny, by = tz*nx - tx*nz, bz = tx*ny - ty*nx;
+    const SFVec3f &P = traj[j];
+    for (int i = 0; i < cN; ++i) {
+      const SFVec2f &c = cross[i];
+      grid.push_back(SFVec3f{P.x + c.x*nx + c.y*bx,
+                             P.y + c.x*ny + c.y*by,
+                             P.z + c.x*nz + c.y*bz});
+    }
+  }
+  return grid;
+}
+
+// Row-major (profN rows x trajN cols) position grid of a swung surface.
+inline std::vector<SFVec3f> swungSurfaceGrid(const std::vector<SFVec2f> &profile,
+                                             const std::vector<SFVec2f> &traj) {
+  std::vector<SFVec3f> grid;
+  const int pN = (int)profile.size(), tN = (int)traj.size();
+  if (pN < 1 || tN < 1) return grid;
+  grid.reserve((std::size_t)pN * tN);
+  for (int u = 0; u < pN; ++u)
+    for (int v = 0; v < tN; ++v)
+      grid.push_back(SFVec3f{profile[u].x * traj[v].x,
+                             profile[u].x * traj[v].y,
+                             profile[u].y});
+  return grid;
+}
+
 // X3D tessellation field -> segment count. >0: that many; <0: |t|*numCP; 0: 2*numCP.
 inline int tessellationToSegments(int tess, int numCP) {
   int segs = tess > 0 ? tess : (tess < 0 ? (-tess) * numCP : 2 * numCP);

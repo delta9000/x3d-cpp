@@ -145,7 +145,7 @@ Geometry types handled:
 - **Line/point topology (B4):** `IndexedLineSet`, `LineSet`, `PointSet` — `MeshData.topology = Lines/Points`, `solid=false`. Authored `Normal` values follow expanded vertices and enable lighting (§11.2.2.5). Without normals, consumers use `MaterialDesc::unlitGeometryRGBA()` or vertex colors; the fallback uses emissiveColor.
 - **Custom vertex attributes (§31.4.2):** `MeshData::vertexAttributes` carries named, fixed-width `FloatVertexAttribute`, `Matrix3VertexAttribute`, and `Matrix4VertexAttribute` streams. Their vertex-major values follow emitted positions through composed-geometry expansion and indexed coordinate lookup.
 - **Geometry2D (§14):** the eight XY-plane primitives — `Arc2D`/`Circle2D`/`Polyline2D` → `Lines`, `Polypoint2D` → `Points` (unlit, `solid=false`), and `ArcClose2D` (PIE/CHORD)/`Disk2D` (fan + annulus; `innerRadius==outerRadius` → a circle line)/`Rectangle2D`/`TriangleSet2D` → `Triangles` with +Z normals and per-node `solid`. Circular primitives use one chord per `2π/64` rad (64 chords per full circle); texture coordinates map the geometry's XY bounding box to `[0,1]²`
-- **NURBS (NRB-1):** `NurbsCurve` → `Topology::Lines`, `NurbsPatchSurface` → `Topology::Triangles` with analytic normals + implicit `(u,v)` texcoords (see [NURBS](#nurbs))
+- **NURBS (NRB-1, NRB-3):** `NurbsCurve` → `Topology::Lines`; `NurbsPatchSurface`, `NurbsSweptSurface` and `NurbsSwungSurface` → `Topology::Triangles` with analytic normals + implicit texcoords (see [NURBS](#nurbs))
 - **Text (T-TEXT):** delegated to `buildTextMesh` (see [Text extraction](extract-text.md)); sets `MeshData.isGlyphMesh = true`
 
 ### NURBS
@@ -165,13 +165,25 @@ Two thin `MeshBuilder` arms read the X3D fields and call it:
 - **`NurbsPatchSurface`** → resolves the control net + `u*/v*` fields, calls
   `tessellateSurface`, and emits two triangles per grid cell as `Topology::Triangles`
   with populated analytic normals and implicit normalized `(u,v)` texcoords.
+- **`NurbsSweptSurface` / `NurbsSwungSurface`** (NRB-3) → read a 2D control curve
+  (`crossSectionCurve`/`profileCurve` and the swung `trajectoryCurve`) via
+  `tessellateCurve2D` — the shared evaluator lifted to z=0, with `ContourPolyline2D`
+  forced to its piecewise-linear order 2 — plus a 3D `trajectoryCurve` for the swept
+  case. `sweptSurfaceGrid` carries the cross-section in the frame perpendicular to the
+  trajectory tangent (a circle swept along a straight line is a cylinder);
+  `swungSurfaceGrid` builds the classic swung surface `S(u,v) = (px·tx, px·ty, py)`
+  (a line profile swung around a circle is a surface of revolution). Both emit the same
+  `Topology::Triangles` form as the patch surface (central-difference per-vertex normals,
+  unit-square texcoords) and honor `solid`/`ccw`/`tessellation`.
 
-Both flip to `true` in `recognizedGeometryType()` (kept in lockstep with the dispatch).
-`GeometryBounds.hpp` gives them control-point convex-hull AABB bounds (a NURBS
-curve/surface lies within the AABB of its control net). The still-deferred NURBS nodes
-(`NurbsTrimmedSurface`/`NurbsSweptSurface`/`NurbsSwungSurface`, NRB-3) stay unrecognized
-and continue to route through the `externalGeometryResolver` fallback. The "first-party,
-not a seam" rationale and the deferral set are in [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md).
+All five flip to `true` in `recognizedGeometryType()` (kept in lockstep with the
+dispatch). `GeometryBounds.hpp` gives them conservative AABB bounds (control-point
+convex hull for curve/patch; for swept the trajectory hull ⊕ the cross-section radius;
+for swung `|px|·|t|` in x/y with the profile height as z). `NurbsTrimmedSurface` (NRB-3)
+remains unrecognized — it needs 2D contour-loop point-in-region clipping plus polygon
+triangulation in the `(u,v)` domain, and no such helper exists — and continues to route
+through the `externalGeometryResolver` fallback. The "first-party, not a seam" rationale
+is in [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md).
 
 ### Seam points
 
