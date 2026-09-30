@@ -4013,3 +4013,87 @@ TEST_CASE("cancelled and stale load completions are inert") {
   REQUIRE(host.complete_load(valid_ticket, valid_candidate));
   CHECK(host.current_scene().generation() == valid_candidate.generation());
 }
+
+TEST_CASE("explicit NULL clears SFNode values through dynamic and typed writes") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto owner = author.create_node("Link").value();
+  auto target = author.create_node("Transform").value();
+  auto field = author.field(owner, "target").value();
+  REQUIRE(author.set(field, target));
+  REQUIRE(author.commit());
+  auto historical = context.snapshot();
+  auto edit = context.edit();
+  SUBCASE("dynamic") { REQUIRE(edit.set(field, std::nullopt)); }
+  SUBCASE("typed") {
+    REQUIRE(edit.set(field.as<sai::node_id>().value(), std::nullopt));
+  }
+  REQUIRE(edit.commit());
+  CHECK(context.snapshot().read(field).value() == sai::value{sai::node_id{}});
+  CHECK(historical.read(field).value() == sai::value{target.id()});
+  auto removal = context.edit();
+  REQUIRE(removal.remove_node(target));
+  REQUIRE(removal.commit());
+}
+
+TEST_CASE("explicit NULL SFNode events propagate through routes") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto source = author.create_node("Link").value();
+  auto sink = author.create_node("Link").value();
+  auto target = author.create_node("Transform").value();
+  auto source_field = author.field(source, "target").value();
+  auto sink_field = author.field(sink, "target").value();
+  REQUIRE(author.set(source_field, target));
+  REQUIRE(author.set(sink_field, target));
+  REQUIRE(author.add_route(source_field, sink_field));
+  REQUIRE(author.commit());
+  auto events = context.events({1});
+  SUBCASE("dynamic") { REQUIRE(events.send(source_field, std::nullopt)); }
+  SUBCASE("typed") {
+    REQUIRE(events.send(source_field.as<sai::node_id>().value(), std::nullopt));
+  }
+  const auto delivered = events.commit();
+  REQUIRE(delivered);
+  CHECK(delivered->deliveries.size() == 2);
+  CHECK(context.snapshot().read(source_field).value() == sai::value{sai::node_id{}});
+  CHECK(context.snapshot().read(sink_field).value() == sai::value{sai::node_id{}});
+}
+
+TEST_CASE("NULL does not weaken node authority or change MFNode semantics") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto owner = author.create_node("Link").value();
+  auto field = author.field(owner, "target").value();
+  auto many = author.field(owner, "targets").value();
+  REQUIRE(author.commit());
+  SUBCASE("bare NULL identity is still not a capability") {
+    auto edit = context.edit();
+    REQUIRE_FALSE(edit.set(field, sai::value{sai::node_id{}}));
+  }
+  SUBCASE("NULL is not an empty MFNode sequence") {
+    auto edit = context.edit();
+    const auto rejected = edit.set(many, std::nullopt);
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::type_mismatch);
+  }
+  SUBCASE("empty MFNode still uses an empty handle range") {
+    auto edit = context.edit();
+    REQUIRE(edit.set(many, std::span<const sai::node>{}));
+    REQUIRE(edit.commit());
+  }
+  SUBCASE("foreign non-NULL handles still fail") {
+    auto other = host.create_scene();
+    auto creation = other.edit();
+    auto foreign = creation.create_node("Transform").value();
+    REQUIRE(creation.commit());
+    auto edit = context.edit();
+    REQUIRE_FALSE(edit.set(field, foreign));
+  }
+}
+
+static_assert(!noexcept(std::declval<const sai::typed_node<BoundTransform> &>()
+                           .field(BoundTransform::translation)));

@@ -148,3 +148,17 @@ No API in this directory should be promoted merely because it compiles. The
 invariant tests and composed examples are the review surface: revise the
 experimental vocabulary until those user stories remain clear and the
 remaining planned invariants can be expressed without privileged access.
+
+### NULL node values and allocation failures
+
+Use `edit.set(sfnode_field, std::nullopt)` or
+`events.send(sfnode_field, std::nullopt)` to assign X3D NULL, with either a
+dynamic field or a typed `field<node_id>`. NULL has no context authority;
+non-NULL writes still require a valid same-context node handle. Bare IDs,
+including zero, remain rejected by the value overloads. An empty MFNode is an
+empty handle span, not NULL. Positional NULL MFNode elements are not exposed by
+this API yet.
+
+Allocation failure may throw `std::bad_alloc`; ordinary semantic failures use
+`result<T>`. In particular, `typed_node::field` constructs an owning field name
+and is not `noexcept`.

@@ -252,3 +252,6 @@ target_compile_features(x3d_sai_experimental_generated_example PRIVATE
     cxx_std_20)
 add_test(NAME sai_generated_author_inspect
     COMMAND x3d_sai_experimental_generated_example)
+
+add_test(NAME sai_field_null_assignment COMMAND x3d_sai_experimental_tests
+    "--test-case=explicit NULL*,NULL does not weaken*")
