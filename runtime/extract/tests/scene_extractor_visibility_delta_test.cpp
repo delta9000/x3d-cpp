@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <any>
+#include <cmath>
 #include <map>
 #include <memory>
 #include <vector>
@@ -300,4 +301,27 @@ TEST_CASE("visibility hint delta: packed geometry uses the same origin rule with
   replacement(f.event(vp, "farDistance", 20.0f), 1);
   CHECK_FALSE(f.under(packed).beyondVisibilityLimit);
   for (int i = 0; i < 3; ++i) retained(f.tick());
+}
+
+TEST_CASE("visibility hint delta: Billboard crossings use current child origins") {
+  auto box = shape();
+  auto child = frame({box}, {10, 0, 0});
+  auto billboard = createX3DNode("Billboard");
+  set(billboard, "children", std::vector<Node>{child});
+  Fixture f({viewpoint(25), billboard});
+  CHECK_FALSE(f.under(box).beyondVisibilityLimit); // sqrt(200) < 25
+  f.ctx.setHeadPose({30, 0, 0}, {0, 1, 0, 0});
+  replacement(f.tick(), 1);
+  // A stale (10,0,0) origin would be only sqrt(500) away and incorrectly false.
+  // The facing frame moves it to (sqrt(10),0,-3*sqrt(10)); distance sqrt(1100).
+  CHECK(f.under(box).beyondVisibilityLimit);
+  CHECK(f.under(box).worldTransform.m[12] == doctest::Approx(std::sqrt(10.0f)));
+  CHECK(f.under(box).worldTransform.m[14] == doctest::Approx(-3 * std::sqrt(10.0f)));
+  replacement(f.event(billboard, "axisOfRotation", SFVec3f{1, 0, 0}), 1);
+  CHECK_FALSE(f.under(box).beyondVisibilityLimit); // X-only rotation leaves origin (10,0,0)
+  replacement(f.event(billboard, "axisOfRotation", SFVec3f{0, 1, 0}), 1);
+  CHECK(f.under(box).beyondVisibilityLimit);
+  f.ctx.setHeadPose({0, 0, 0}, {0, 1, 0, 0});
+  replacement(f.tick(), 1);
+  CHECK_FALSE(f.under(box).beyondVisibilityLimit);
 }
