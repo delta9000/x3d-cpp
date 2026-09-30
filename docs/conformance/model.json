@@ -3549,7 +3549,7 @@
           "behavioral": false,
           "clause": "27.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "NRB-3",
             "ROUTE-IO-ALIAS"
@@ -3571,7 +3571,7 @@
           "behavioral": false,
           "clause": "27.4; 4.4.2.2, 4.4.8.2",
           "exists": true,
-          "extracts": "no",
+          "extracts": "yes",
           "findings": [
             "NRB-3",
             "ROUTE-IO-ALIAS"
@@ -4228,7 +4228,7 @@
       "name": "Picking",
       "nodes": [
         {
-          "behaves": "unverified",
+          "behaves": "partial",
           "behavioral": true,
           "clause": "38; 4.4.2.2, 4.4.8.2",
           "exists": true,
@@ -5130,6 +5130,7 @@
           "extracts": "n/a",
           "findings": [
             "CONF-RBP-CAP",
+            "CONF-RBP-DAMP",
             "CONF-RBP-DETERMINISM",
             "CONF-RBP-SOLVER",
             "ROUTE-IO-ALIAS"
@@ -6780,7 +6781,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1, 33.4.2; 33.4.1; 4.4.2.2, 4.4.8.2",
+          "clause": "33.4.1, 33.4.2, 33.4.3; 33.4.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6804,7 +6805,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1, 33.4.2; 33.4.1; 4.4.2.2, 4.4.8.2; F.6 Table F.4 (URL fields); 9.2.1",
+          "clause": "33.4.1, 33.4.2, 33.4.3; 33.4.1; 4.4.2.2, 4.4.8.2; F.6 Table F.4 (URL fields); 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6830,11 +6831,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1; 4.4.2.2, 4.4.8.2",
+          "clause": "33.4.1, 33.4.2, 33.4.3; 33.4.1; 4.4.2.2, 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
+            "T3D-1",
             "T3D-2"
           ],
           "geometry": false,
@@ -8041,12 +8043,13 @@
       "component": "RigidBodyPhysics",
       "id": "CONF-RBP-DAMP",
       "nodes": [
-        "RigidBody"
+        "RigidBody",
+        "RigidBodyCollection"
       ],
-      "note": "autoDamp + linear/angularDampingFactor ship (force = -factor\u00b7velocity, \u00a737.4.10). The per-body sleep thresholds remain \u2014 Jolt's sleep thresholds are global PhysicsSettings, not per-body, so a faithful mapping needs more than a flag.",
+      "note": "Mapping rule: one RigidBodyCollection owns one Jolt PhysicsSystem, so the collection's world-wide sleep thresholds apply to the whole world, and its autoDisable gates it; the per-body toggle is RigidBody.autoDisable (Jolt has no per-body threshold setter). The \u00a737 default autoDisable=FALSE therefore leaves every enrolled body permanently awake (Jolt mAllowSleeping=false AND per-body allow-sleeping=false) \u2014 the \u00a737-correct reading of 'autoDisable toggles operation of disable*' (Jolt previously slept bodies with its own defaults). Default-numeric preservation: a zero disableTime/disableLinearSpeed leaves Jolt's own 0.5 s / 0.03 m/s untouched. The sleeping state is now observable to the runtime via PhysicsBackend::isBodyActive (exposed as PhysicsSystem::isBodyActive); NO new output events were added (the seam has no enabled/isEnabled output hook). autoDamp + linear/angularDampingFactor remain honored (force = -factor\u00b7velocity, \u00a737.4.10).",
       "severity": "low",
       "status": "deferred",
-      "summary": "Sleeping/auto-disable thresholds are ignored: autoDisable/disableTime/disableLinearSpeed/disableAngularSpeed have no effect. (autoDamp damping IS now applied \u2014 2e9d8f3.)"
+      "summary": "Sleeping/auto-disable fields are now honored as far as Jolt allows. RigidBody.autoDisable -> per-body Jolt allow-sleeping; RigidBodyCollection.autoDisable -> world PhysicsSettings.mAllowSleeping; collection disableTime -> mTimeBeforeSleep; collection disableLinearSpeed -> mPointVelocitySleepThreshold. Still ignored: disableAngularSpeed (Jolt has no separate angular sleep threshold) and the per-body RigidBody.disableTime/disableLinearSpeed (Jolt's thresholds are world-wide)."
     },
     {
       "clause": "37",
@@ -8079,10 +8082,10 @@
       "nodes": [
         "RigidBodyCollection"
       ],
-      "note": "All solver behavior is the Jolt default (single collision step per update). gravity and enabled ARE read.",
+      "note": "Seam: PhysicsBackend::setSolverSettings(SolverSettings) (appended after the existing methods) + JoltBackend override reading GetPhysicsSettings/SetPhysicsSettings. PhysicsSystem::attach sends a field ONLY when it differs from RigidBodyCollection::getDefault*(  ), so at the \u00a737 defaults every field is a sentinel and Jolt's own settings are left untouched. Honest mappings only: iterations->mNumVelocitySteps (Jolt default 10 == \u00a737 default 10); errorCorrection->mBaumgarte (both are the [0,1] fraction of position error corrected per update); contactSurfaceThickness->mPenetrationSlop (both are the allowed post-contact interpenetration, m); maxCorrectionSpeed->mMaxPenetrationDistance (closest real cap on position-error correction \u2014 caveat: Jolt's value is a per-iteration DISTANCE (m), \u00a737's is a SPEED (m/s)). NOT mapped (no honest equivalent): constantForceMix (Jolt has no constant-force-mix/softness knob); preferAccuracy (a performance hint, no boolean accuracy dial); Jolt's mSpeculativeContactDistance is a pre-contact speculative-detection radius, NOT post-contact interpenetration, so contactSurfaceThickness does not set it; mNumPositionSteps is left at Jolt's default (the \u00a737 iterations field maps to the velocity solver only, so mapping it to the position solver too would change spec-default behavior). The Jolt mapping compiles and the Jolt/physics-system suites pass against real Jolt v5.5.0 with the solver settings applied (host build, -DX3D_CPP_BUILD_PHYSICS=ON), but no test reads Jolt's PhysicsSettings back to assert the applied values: the seam hand-off is asserted by runtime/physics/tests/physics_solver_settings_test.cpp (engine-agnostic recording fake).",
       "severity": "minor",
       "status": "deferred",
-      "summary": "RigidBodyCollection solver-tuning fields are ignored: iterations, errorCorrection, constantForceMix, contactSurfaceThickness, maxCorrectionSpeed, preferAccuracy, autoDisable."
+      "summary": "RigidBodyCollection solver tuning is now WIRED for iterations -> Jolt velocity-solver steps, errorCorrection -> Baumgarte, contactSurfaceThickness -> penetration slop, maxCorrectionSpeed -> max penetration distance (each applied only when authored off the \u00a737 default, so spec-default behavior is unchanged). constantForceMix and preferAccuracy remain IGNORED (no honest Jolt equivalent); autoDisable and the sleep thresholds are wired separately (CONF-RBP-DAMP)."
     },
     {
       "clause": "37",
@@ -9444,20 +9447,21 @@
       "summary": "A Motion assigned to HAnimHumanoid.motions after load never played."
     },
     {
-      "clause": "33.4.1, 33.4.2",
+      "clause": "33.4.1, 33.4.2, 33.4.3",
       "component": "Texturing3D",
       "id": "T3D-1",
       "interfaces": [
         "X3DTexture3DNode"
       ],
       "nodes": [
+        "PixelTexture3D",
         "ComposedTexture3D",
         "ImageTexture3D"
       ],
-      "note": "runtime/ references X3DTexture3DNode subtypes only in generated bindings; MaterialSystem/SceneExtractor texture dispatch does not recognise them, so Appearance.texture with a 3D texture renders white with no error. Blocked on 3D-texture sampling support in the render seam. (sweep 2026-06-25)",
+      "note": "WIRED: MaterialSystem::refOf now dispatches the X3DTexture3DNode family into TextureRef::Source::Tex3D (appended last in the Source enum, no value shift). PixelTexture3D materialises its inline image MFInt32 into Texture3DDesc{width,height,depth,numComponents,texels} via texextract::pixelTexture3DDesc (MSB-first unpack, numComponents clamped [0,4], bounded by the token stream \u2014 same ownership rules as the 2D SFImage); ComposedTexture3D reuses the 2D refOf path per slice, carrying tex3dSlices (one ref per texture node, tex3d.depth = slice count). repeatR is surfaced on TextureRef::repeatR and ExtendedSamplerParams::repeatR/boundaryModeR. IGNORED: ImageTexture3D stays unhandled \u2014 the SDK ships no 3D image decoder (NRRD/DDS/PNG-stack), so it neither yields a descriptor nor a Url; and neither bundled renderer samples 3D textures \u2014 cpu_raster Texture::fromRef and poc_renderer resolveTexRef return the flat material color for Source::Tex3D (a sampler3D path remains future work). Width/height of a ComposedTexture3D resolve only once its consumer decodes the 2D slices. Tests: texture_extract_test \"test3DTextures\". (T3D-1 slice 2026-09-28)",
       "severity": "major",
       "status": "deferred",
-      "summary": "3D textures have zero extraction \u2014 yield no TextureRef (white fallback)."
+      "summary": "3D textures: PixelTexture3D + ComposedTexture3D now extract a Source::Tex3D descriptor; ImageTexture3D and 3D sampling still ignored (white fallback)."
     },
     {
       "clause": "27.4",
@@ -9474,7 +9478,6 @@
       "summary": "NurbsCurve \u2192 Lines and NurbsPatchSurface \u2192 Triangles now tessellate in extract."
     },
     {
-      "behaves": "inert",
       "clause": "27.4",
       "component": "NURBS",
       "id": "NRB-3",
@@ -9486,10 +9489,10 @@
         "NurbsSwungSurface",
         "NurbsTrimmedSurface"
       ],
-      "note": "The curve + patch slice shipped first-party (NRB-1, ADR-0040). NurbsTrimmedSurface/NurbsSweptSurface/NurbsSwungSurface remain unrecognized: trimmed surfaces need 2D contour-loop clipping and swept/swung need profile-sweep eval \u2014 both follow-up cards. They continue to route through MeshBuildOptions::externalGeometryResolver (the unrecognized-geometry fallback) and are the canonical unrecognized specimen in external_geom_seam_test.cpp + scene_extractor_audit_test.cpp. Whichever profile-curve/cross-section evaluator these three nodes end up sharing with NurbsCurve/NurbsPatchSurface will also need to settle the controlPoint weight-convention question tracked in NRB-4 (unweighted-input vs. premultiplied-input) \u2014 worth resolving once, not per-node. (NURBS curve+patch wave 2026-06-27)",
+      "note": "Swept + swung DONE (2026-07): both are recognized and tessellate into the shared patch-surface mesh form (Triangles, per-vertex normals, unit-square texcoords) via NurbsEval.hpp helpers \u2014 tessellateCurve2D (an X3DNurbsControlCurveNode lifted to the shared evaluator), sweptSurfaceGrid (cross-section carried in the Frenet-ish frame of the trajectory tangent: a circle swept along a straight line is a cylinder) and swungSurfaceGrid (the classic swung S(u,v)=(px\u00b7tx, px\u00b7ty, py): a line profile swung around a circle is a surface of revolution). They honor solid/ccw/tessellation like the patch surface, read the profile/cross-section via the control-curve fields (order/knot/weight/closed; ContourPolyline2D forced piecewise-linear order 2), reuse s.weightMode (NRB-4), and gain conservative GeometryBounds arms (trajectory control hull inflated by the cross-section radius; swung by |px|\u00b7|t|, z from the profile height). Covered by nurbs_swept_circle_along_line_is_cylinder + nurbs_swung_line_profile_around_circle_revolves + nurbs_swept_swung_recognized_oracle (mesh_builder_nurbs_swept_test.cpp). NurbsTrimmedSurface NOT DONE: it needs 2D contour-loop point-in-region clipping + polygon triangulation in the (u,v) domain, and the codebase has no such helper (MeshBuilder's only triangulators are lattice/strip/fan grid emitters). It remains unrecognized, routes through MeshBuildOptions::externalGeometryResolver, and is the canonical unrecognized specimen in external_geom_seam_test.cpp + scene_extractor_audit_test.cpp. Implementing it is a separate card (add a 2D-constrained-triangulation subsystem first). (NURBS curve+patch wave 2026-06-27; swept/swung 2026-07)",
       "severity": "major",
       "status": "deferred",
-      "summary": "Trimmed/swept/swung NURBS surfaces still absent from recognizedGeometryType() \u2014 extract inert."
+      "summary": "NurbsSweptSurface/NurbsSwungSurface now tessellate in extract; NurbsTrimmedSurface stays absent from recognizedGeometryType()."
     },
     {
       "clause": "27.4.5",
@@ -10969,10 +10972,10 @@
       "nodes": [
         "ClipPlane"
       ],
-      "note": "The only production runtime references beyond bindings are reserved ShaderUniformVocabulary names. RenderItem has no clip-plane state and SceneExtractor does not collect planes. Acceptance: a plane clips the specified half-space, responds to enabled/plane events and transforms, and a host supports the Annex F minimum of six planes. Camera near/far clipping is a different operation.",
+      "note": "Wired: SceneExtractor collects enabled ClipPlane nodes as scoped state (a plane affects the following siblings and their subtrees within its parent grouping node) and carries the plane on RenderItem::clipPlanes (ClipPlaneList, fixed capacity kMaxClipPlanes=6 per Annex F.5) resolved to WORLD space (n' = M^-T n through the ClipPlane's world frame; x3d::runtime::transformPlane in runtime/math/Mat4.hpp). The CPU reference rasterizer (examples/cpu_raster) discards fragments where a*x+b*y+c*z+d < 0 in eye space (SceneRender.hpp maps each world plane through the view matrix, Rasterizer.hpp tests it). Tests: scene_extractor_clip_test (scope/enabled/world-transform/re-snapshot) and cpuraster clip_plane_test (half-space discard, multi-plane, all-clip). Ignored: the GL poc_renderer (examples/poc_renderer) has no clip-plane path yet \u2014 a follow-up needing shader/uniform plumbing; ShaderUniformVocabulary retains the reserved numClipPlanes/clipPlane uniform names but nothing binds them. Camera near/far clipping is a different operation.",
       "severity": "major",
       "status": "open",
-      "summary": "ClipPlane equations and enabled state never reach extraction or either reference renderer."
+      "summary": "ClipPlane equations and enabled state reach extraction and the CPU reference rasterizer, but the GL poc_renderer still ignores planes."
     },
     {
       "clause": "12.4.3",
@@ -10994,10 +10997,10 @@
         "LocalFog",
         "FogCoordinate"
       ],
-      "note": "SceneExtractor::fog reads only ctx.boundFog(); MeshBuilder does not read fogCoord and MeshData carries no fog-depth array. Acceptance: nearest enabled local fog overrides global fog for the affected subtree; authored vertex depths replace implicit distance and repeat their final entry when short. Existing scene_extractor_fog_test proves only bound global Fog.",
+      "note": "WIRED (LocalFog): LocalFogSystem (\u00a724.4.3, the LightSystem walk pattern) collects every enabled LocalFog, world-scales visibilityRange, and records its enclosing grouping node as scopeRoot; SceneExtractor tags each RenderItem with the nearest in-scope LocalFog index (RenderItem.localFog, resolved via snapshotLocalFogs()), enabled==false being skipped so global Fog applies unchanged. The CPU rasterizer (examples/cpu_raster/cpuraster/SceneRender.hpp) selects the tagged LocalFog per item over the bound global Fog; tests: scene_extractor_local_fog_test (scope, enabled, world scale, nesting) and render_smoke_test's local-fog fragment check. IGNORED (FogCoordinate): MeshBuilder never reads a geometry's fogCoord field and MeshData carries no fog-depth array, so a per-vertex depth channel would have to thread a new vertex stream through MeshData, the PackedMesh slab and every material/GLSL model \u2014 not a small slice. Authored vertex depths therefore do not yet replace the computed eye-space distance, and a short depth list does not repeat its final entry. The GL poc_renderer (examples/poc_renderer) consumes the global FogDesc only and is a follow-up. Existing scene_extractor_fog_test proves bound global Fog is unchanged.",
       "severity": "major",
       "status": "open",
-      "summary": "Global Fog works, but LocalFog scope and authored FogCoordinate depths are ignored."
+      "summary": "Global Fog works and LocalFog scope is now wired end-to-end, but authored FogCoordinate depths remain ignored by the geometry pipeline."
     },
     {
       "clause": "35.2.3; 35.4.2",
@@ -11067,10 +11070,10 @@
         "MultiTextureCoordinate",
         "MultiTextureTransform"
       ],
-      "note": "MaterialSystem retains mode/source/function/color/alpha and channel; cpu_raster findSlot and PoC findTexSlot return the first match, with no stage combiner. Acceptance: two-stage rendering across required modes, source/function modifiers, color/alpha, per-stage coordinates/transforms and live updates. This is a host rendering obligation; the existing descriptor tests remain valid for their narrower scope.",
+      "note": "MaterialSystem retains mode/source/function/color/alpha and channel (MaterialSystem.hpp refOf). cpu_raster now runs a per-stage combiner over MaterialTextures::baseStages (MaterialShader.hpp detail::combineBaseStages): textures sampled with texcoords, folded stage by stage. DONE (CPU rasterizer, base-colour slot): OFF, REPLACE, MODULATE, MODULATE2X, MODULATE4X, ADD, ADDSIGNED, ADDSIGNED2X, SUBTRACT, SELECTARG1, SELECTARG2; source DEFAULT/DIFFUSE/SPECULAR/FACTOR (FACTOR = MultiTexture color.rgb + alpha); function COMPLEMENT/ALPHAREPLICATE. IGNORED: BLENDCURRENTALPHA/BLENDDIFFUSEALPHA/BLENDFACTORALPHA/BLENDTEXTUREALPHA, DOTPRODUCT3, MODULATEALPHA_ADDCOLOR, MODULATEINVALPHA_ADDCOLOR, MODULATEINVCOLOR_ADDALPHA (treated as MODULATE), and per-stage texcoords/transforms (the seam normalizes MultiTextureCoordinate/MultiTextureTransform to the first usable channel \u2014 see texture_extract_test). The OpenGL poc_renderer still binds only findTexSlot's first match and has NO stage combiner. CHECKED against ISO/IEC 19775-1 v4.0 Tables 18.3-18.5 (2026-09-29): Arg1 is this stage's texture and Arg2 the previous stage, so MODULATE, ADD, ADDSIGNED and SUBTRACT (Arg1 - Arg2 = texture - previous) match the standard. The standard's own table is inconsistent for REPLACE (listed as Arg2 although it replaces the current colour) and SELECTARG2 (described as colour argument 1); the combiner takes REPLACE = the stage texture and SELECTARG2 = the previous stage. DIVERGENCE not yet reconciled: for source DIFFUSE/SPECULAR/FACTOR the standard says the argument IS that colour, whereas multiArg1 multiplies the stage texel by it (fixed-function convention), and the standard's prose says source selects the SECOND argument. Acceptance: two-stage rendering across the modes above with source/function/color/alpha is covered on the CPU rasterizer (test multi_texture_test: two-stage MODULATE product, REPLACE second, single-texture unchanged); the GL PoC follow-up and per-stage coordinates/transforms remain open. This is a host rendering obligation; the existing descriptor tests remain valid for their narrower scope.",
       "severity": "major",
       "status": "open",
-      "summary": "MultiTexture stage controls are extracted but reference renderers use only the first matching material texture slot."
+      "summary": "MultiTexture stage controls are extracted; the CPU rasterizer now combines ordered stages, but the OpenGL PoC renderer still uses only the first matching material texture slot."
     },
     {
       "clause": "42.2; 42.3.1; 42.4.1; 42.4.2",
@@ -11298,7 +11301,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "A valid Relay prototype declares inputOutput SFVec3f value with a Group body and no IS connection. Routes Source.translation_changed -> RelayNode.set_value and RelayNode.value_changed -> Dest.set_translation should relay (1,2,3). The executable probe reports routes: 0 rejected: 2 destination: 0,0,0. Expansion substitutes a concrete primary and records IS redirects, but does not instantiate independent storage/event endpoints for every declared prototype field. This remains separate from mapped nested-route resolution and blocks full prototype/native SAI field semantics. Reproduction and output are recorded in the requirements audit.",
+      "note": "FIXED for scalar interface fields. Expansion now registers every declared scalar interface field (SF*/MF* except node types) that no IS connection maps, on the primary, as independent storage in the per-node dynamic-field store \u2014 the same abstraction Script author fields use. The store seeds initializeOnly/inputOutput fields from the fieldValue override or the interface default and gives inputOutput fields a set (echoed as _changed) plus a get; inputOnly fields get a set (route sink); outputOnly fields get a get (route source); initializeOnly stays value-only. The scene bridge resolves a route endpoint on an expanded instance to the declared interface field and, when no IS redirect exists, to this independent endpoint instead of rejecting ('has no IS route target'); body-local ROUTEs of an enclosing PROTO resolve a nested instance's unconnected interface field the same way. proto_interface_state_test.cpp proves the recorded Relay reproduction (inputOutput SFVec3f value, Group body, no IS): Source.translation_changed -> RelayNode.set_value sets the field and RelayNode.value_changed -> Dest.set_translation relays (1,2,3), routes: 2 rejected: 0; an unconnected field keeps its 0 0 0 default and honours a fieldValue override; an IS-connected field still relays through its body clone; sibling nested instances of one prototype, a shared nested/outer primary, and an EXTERNPROTO instance keep independent per-instance entries without clobber. WIRED vs IGNORED: scalar interface fields with no IS are fully wired (state + endpoints, all four access types); SFNode/MFNode-valued interface fields with no IS still keep no independent per-instance node state (their node defaults remain declaration-owned/body-owned) and are not registered. This closes the recorded scalar field/endpoint gap but not complete prototype field semantics.",
       "severity": "major",
       "status": "open",
       "summary": "Prototype interface fields without IS targets have no independent runtime field state or event endpoint."
@@ -11325,6 +11328,8 @@
       "LineSet",
       "NurbsCurve",
       "NurbsPatchSurface",
+      "NurbsSweptSurface",
+      "NurbsSwungSurface",
       "PointSet",
       "Polyline2D",
       "Polypoint2D",
@@ -11401,6 +11406,7 @@
       "KeySensor",
       "LOD",
       "Layer",
+      "LinePickSensor",
       "LineSet",
       "LoadSensor",
       "MovieTexture",
