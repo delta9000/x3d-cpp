@@ -762,8 +762,10 @@ private:
     // numeric scalar/vector elementwise with broadcast.
     const bool aVec = A.isVec(), bVec = B.isVec();
     auto applyf = [&](float x, float y) {
-      if (op == "+") return x + y; if (op == "-") return x - y;
-      if (op == "*") return x * y; if (op == "/") return x / y;
+      if (op == "+") return x + y;
+      if (op == "-") return x - y;
+      if (op == "*") return x * y;
+      if (op == "/") return x / y;
       throw GlslError("bad numeric op " + op);
     };
     if (aVec && bVec) {
