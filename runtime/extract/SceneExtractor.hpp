@@ -810,6 +810,10 @@ private:
       } else if (liveIds_.count(id)) {
         delta.updatedGeometry.push_back(id);
       } else {
+        // No transform uploads are produced while this placement is dormant.
+        // Its tracked Billboard frame may have changed without a dirty scene
+        // node, so activation must publish a current per-path transform.
+        rec.worldTransform = worldAlongPath(rec.path, localXf);
         delta.added.push_back(id);
       }
     }

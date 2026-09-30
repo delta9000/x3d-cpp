@@ -125,7 +125,9 @@ event alone cannot represent all USE placements.
 Billboard descendants recompute their per-path transforms from the current
 tracked eye/up and authored ancestor transforms. A camera-only change emits
 `updatedTransform` only when the resulting matrix changes and retains immutable
-mesh payloads. No-motion ticks do not add Billboard transform updates. Regression:
+mesh payloads. No-motion ticks do not add Billboard transform updates. Geometry
+that becomes nonempty again also recomputes its current path frame before its
+addition is published, including tracked motion while it was absent. Regression:
 `runtime/extract/tests/scene_extractor_view_delta_test.cpp` (#136).
 
 ### Structural delta replacement contract

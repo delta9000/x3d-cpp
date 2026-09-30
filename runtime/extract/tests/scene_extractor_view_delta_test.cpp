@@ -152,3 +152,36 @@ TEST_CASE("view delta: LOD records inactive empty placements") {
   CHECK(delta.added.size() == 1);
   mirror.apply(delta, extractor); mirror.check(context, scene);
 }
+
+TEST_CASE("view delta: rematerialized Billboard uses the current tracked frame") {
+  auto viewpoint = createX3DNode("Viewpoint");
+  setInitial(viewpoint, "position", SFVec3f{0, 0, 10});
+  auto coord = createX3DNode("Coordinate");
+  const MFVec3f points{{0,0,0}, {1,0,0}, {0,1,0}};
+  setInitial(coord, "point", points);
+  auto geometry = createX3DNode("TriangleSet");
+  setInitial(geometry, "coord", coord);
+  auto shape = createX3DNode("Shape");
+  setInitial(shape, "geometry", geometry);
+  auto billboard = createX3DNode("Billboard");
+  setInitial(billboard, "children", MFNode{shape});
+  Scene scene; scene.rootNodes = {viewpoint, billboard};
+  X3DExecutionContext context; context.buildSceneGraph(scene);
+  SceneExtractor extractor(context, scene);
+  Mirror mirror; mirror.apply(extractor.fullSnapshot(), extractor);
+  REQUIRE(mirror.items.size() == 1);
+  context.postEvent(coord.get(), "point", MFVec3f{});
+  context.tick(1);
+  mirror.apply(extractor.delta(), extractor);
+  REQUIRE(mirror.items.empty());
+  context.setHeadPose({10,0,-10}, {0,1,0,0});
+  context.tick(2);
+  mirror.apply(extractor.delta(), extractor);
+  CHECK(mirror.items.empty());
+  context.postEvent(coord.get(), "point", points);
+  context.tick(3);
+  auto delta = extractor.delta();
+  REQUIRE(delta.added.size() == 1);
+  mirror.apply(delta, extractor); mirror.check(context, scene);
+  CHECK(extractor.item(delta.added.front()).worldTransform.m[0] == doctest::Approx(0));
+}
