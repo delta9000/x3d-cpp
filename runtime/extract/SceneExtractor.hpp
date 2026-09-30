@@ -365,10 +365,11 @@ public:
 
       // --- appearance-subtree change => re-read MaterialDesc ------------------
       if (f & DirtyField) {
-        const auto dependentItems = depsOf(materialDeps_, n);
+        const auto &dependentItems = depsOf(materialDeps_, n);
         for (RenderItemId id : dependentItems) {
+          if (!materialSeen.insert(id).second) continue;
           refreshMaterial(id);
-          if (materialSeen.insert(id).second) delta.updatedMaterial.push_back(id);
+          delta.updatedMaterial.push_back(id);
         }
       }
 
@@ -751,17 +752,11 @@ private:
     const X3DNode *shape = rec.path.back();
     auto appearance = geombounds::getNode(*shape, "appearance");
     rec.material = materialOf(appearance ? appearance.get() : nullptr);
-    // A child node can be replaced through Appearance.fillProperties (or any
-    // other SFNode field). Rebuild this item's subtree dependencies so later
-    // field writes to the replacement also produce updatedMaterial.
-    for (auto it = materialDeps_.begin(); it != materialDeps_.end();) {
-      auto &ids = it->second;
-      ids.erase(std::remove(ids.begin(), ids.end(), id), ids.end());
-      if (ids.empty()) it = materialDeps_.erase(it);
-      else ++it;
-    }
-    std::unordered_set<const X3DNode *> seen;
-    collectMaterialSubtree(appearance.get(), id, seen);
+    // SFNode/MFNode edits take the replacementSnapshot path before this scalar
+    // refresh. The appearance-subtree edges cannot change here, so preserve the
+    // reverse index instead of erasing/re-adding this id across every dependency.
+    // For one material shared by N placements that old teardown scanned an
+    // N-element vector N times, even when only diffuseColor changed.
     // T-TEX: re-enrich + re-resolve the textures of the refreshed material so an
     // appearance-subtree change (a new ImageTexture url, a TextureProperties edit)
     // re-runs the resolver and re-derives the §18.4.8/9 descriptor surface. The
