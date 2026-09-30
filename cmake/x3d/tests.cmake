@@ -11,6 +11,18 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_hanim_skin_tests PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_hanim_skin_tests COMMAND x3d_hanim_skin_tests)
 
+    # PhysicsSystem solver-tuning seam (CONF-RBP-SOLVER). Engine-agnostic: the
+    # core PhysicsSystem.hpp is Jolt-free, so this runs with X3D_CPP_BUILD_PHYSICS
+    # OFF (a recording fake backend observes what crosses the seam).
+    add_executable(x3d_physics_solver_settings_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/physics_solver_settings_test.cpp")
+    x3d_set_target_purpose(x3d_physics_solver_settings_test behavior)
+    target_link_libraries(x3d_physics_solver_settings_test PRIVATE x3d_cpp::x3d_cpp)
+    target_include_directories(x3d_physics_solver_settings_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
+    add_test(NAME x3d_physics_solver_settings
+             COMMAND x3d_physics_solver_settings_test)
+
     set(X3D_CPP_HEADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings")
 
     # Collect all generated headers. CONFIGURE_DEPENDS re-globs on rebuild if

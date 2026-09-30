@@ -166,6 +166,39 @@ struct MassProperties {
 };
 
 /**
+ * @brief World-level solver tuning, read from a RigidBodyCollection (§37).
+ * @details A small plain struct carrying only the §37 collector's
+ *          solver-tuning fields the runtime can map onto a backend. Every field
+ *          is a SENTINEL-optional value: the runtime fills only the fields the
+ *          author moved off the §37 default, so at the spec defaults every field
+ *          is left at its sentinel and the backend keeps its own default (the
+ *          seam's "spec-default behavior is preserved" contract). The sentinel
+ *          for every field is documented per-field; none is a valid setting.
+ *          No engine type appears here.
+ *
+ *          Field provenance (§37 RigidBodyCollection, clause 37):
+ *            - iterations:             getIterations()
+ *            - errorCorrection:        getErrorCorrection()
+ *            - contactSurfaceThickness:getContactSurfaceThickness()
+ *            - maxCorrectionSpeed:     getMaxCorrectionSpeed()
+ *          constantForceMix has NO field here (no honest backend equivalent);
+ *          preferAccuracy likewise (a hint, not a numeric solver setting).
+ */
+struct SolverSettings {
+  /** @brief §37 iterations (solver velocity iterations). 0 sentinel → default. */
+  int velocityIterations = 0;
+  /** @brief §37 errorCorrection [0,1] (position-error correction fraction).
+   *         < 0 sentinel → default. */
+  float errorCorrection = -1.0f;
+  /** @brief §37 contactSurfaceThickness (m, allowed interpenetration).
+   *         < 0 sentinel → default. */
+  float contactSurfaceThickness = -1.0f;
+  /** @brief §37 maxCorrectionSpeed (m/s, < 0 = no limit; -1 is the §37 default).
+   *         < 0 sentinel → default. */
+  float maxCorrectionSpeed = -1.0f;
+};
+
+/**
  * @brief Abstract rigid-body physics backend: owns worlds + bodies, integrates.
  * @details One PhysicsBackend instance may own many worlds, each addressed by a
  *          WorldHandle; each world owns many bodies, addressed by BodyHandle.
@@ -344,6 +377,20 @@ public:
   virtual void drainContacts(WorldHandle world, std::vector<ContactPoint> &out) {
     (void)world;
     out.clear();
+  }
+
+  /**
+   * @brief Apply §37 solver tuning to a world.
+   * @details Maps the RigidBodyCollection's solver-tuning fields onto the
+   *          backend's own solver. Each field is optional (its sentinel value
+   *          means "leave the backend default"), so a world created at the §37
+   *          defaults is byte-for-byte the backend's default configuration.
+   *          Default: no-op (a backend without a tunable solver ignores it).
+   */
+  virtual void setSolverSettings(WorldHandle world,
+                                 const SolverSettings &settings) {
+    (void)world;
+    (void)settings;
   }
 };
 

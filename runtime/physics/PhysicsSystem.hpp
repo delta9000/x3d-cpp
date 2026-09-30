@@ -191,6 +191,27 @@ public:
       if (useBounce) contactRestitution = cc->getBounce();
     }
     backend_->setContactResponse(world, contactFriction, contactRestitution);
+
+    // §37 solver tuning: map the collection's solver fields onto the backend.
+    // Each field is sent ONLY when it differs from the §37 default — at the spec
+    // defaults every field stays at its sentinel and the backend's own solver
+    // settings are left untouched (spec-default behavior is preserved). Fields
+    // with no honest backend equivalent (constantForceMix, preferAccuracy) are
+    // deliberately not carried across the seam (CONF-RBP-SOLVER).
+    SolverSettings solver;
+    if (collection->getIterations() !=
+        xn::RigidBodyCollection::getDefaultIterations())
+      solver.velocityIterations = collection->getIterations();
+    if (collection->getErrorCorrection() !=
+        xn::RigidBodyCollection::getDefaultErrorCorrection())
+      solver.errorCorrection = collection->getErrorCorrection();
+    if (collection->getContactSurfaceThickness() !=
+        xn::RigidBodyCollection::getDefaultContactSurfaceThickness())
+      solver.contactSurfaceThickness = collection->getContactSurfaceThickness();
+    if (collection->getMaxCorrectionSpeed() !=
+        xn::RigidBodyCollection::getDefaultMaxCorrectionSpeed())
+      solver.maxCorrectionSpeed = collection->getMaxCorrectionSpeed();
+    backend_->setSolverSettings(world, solver);
   }
 
   void detach(X3DNode *node, X3DExecutionContext &) override {

@@ -604,6 +604,48 @@ void JoltBackend::setContactResponse(WorldHandle world, float friction,
   it->second.contacts->combinedRestitution = restitution;
 }
 
+void JoltBackend::setSolverSettings(WorldHandle world,
+                                    const SolverSettings &settings) {
+  auto it = impl_->worlds.find(world);
+  if (it == impl_->worlds.end() || !it->second.physics) return;
+  PhysicsSystem *ps = it->second.physics.get();
+
+  // Read the current settings, change only the fields the runtime supplied
+  // (each sentinel means "leave Jolt's default"), then write them back —
+  // GetPhysicsSettings() -> SetPhysicsSettings() copies the whole struct, so an
+  // omitted field keeps its prior (default) value.
+  PhysicsSettings js = ps->GetPhysicsSettings();
+  bool changed = false;
+  if (settings.velocityIterations > 0) {
+    // §37 iterations -> Jolt's velocity-solver iteration count. Jolt's default
+    // (10) equals the §37 default, so the spec default is a no-op.
+    js.mNumVelocitySteps = static_cast<uint>(settings.velocityIterations);
+    changed = true;
+  }
+  if (settings.errorCorrection >= 0.0f) {
+    // §37 errorCorrection [0,1] -> Jolt's Baumgarte stabilization factor, the
+    // fraction of the position error corrected per update (same [0,1] meaning).
+    js.mBaumgarte = std::clamp(settings.errorCorrection, 0.0f, 1.0f);
+    changed = true;
+  }
+  if (settings.contactSurfaceThickness >= 0.0f) {
+    // §37 contactSurfaceThickness (allowed interpenetration, m) -> Jolt's
+    // penetration slop (how far bodies may sink into each other, m). The
+    // closest honest equivalent: both are the post-contact allowed overlap.
+    js.mPenetrationSlop = settings.contactSurfaceThickness;
+    changed = true;
+  }
+  if (settings.maxCorrectionSpeed >= 0.0f) {
+    // §37 maxCorrectionSpeed (>=0) -> Jolt's max penetration distance corrected
+    // per position iteration (the closest real setting capping how aggressively
+    // position error is resolved). NOTE: Jolt's value is a per-iteration
+    // DISTANCE (m); §37's is a SPEED (m/s) — Jolt has no speed-based cap.
+    js.mMaxPenetrationDistance = settings.maxCorrectionSpeed;
+    changed = true;
+  }
+  if (changed) ps->SetPhysicsSettings(js);
+}
+
 void JoltBackend::getBodyVelocity(WorldHandle world, BodyHandle body,
                                   SFVec3f &lin, SFVec3f &ang) const {
   lin = SFVec3f{0, 0, 0};

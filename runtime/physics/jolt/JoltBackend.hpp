@@ -64,6 +64,8 @@ public:
   bool isBodyActive(WorldHandle world, BodyHandle body) const override;
   void setContactResponse(WorldHandle world, float friction,
                           float restitution) override;
+  void setSolverSettings(WorldHandle world,
+                         const SolverSettings &settings) override;
   void getBodyVelocity(WorldHandle world, BodyHandle body, SFVec3f &lin,
                        SFVec3f &ang) const override;
   void step(WorldHandle world, double dt) override;
