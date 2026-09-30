@@ -170,6 +170,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_json_script_field
         x3d_contact_reporter
         x3d_physics_contact_wiring
+        x3d_physics_solver_settings
         x3d_inertia_massprops
         x3d_contact_response
         x3d_event_scene_bridge
