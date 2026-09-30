@@ -63,7 +63,8 @@ breadth. Each is tracked as a card in the
 | Layering / Layout (per-layer binding + view volumes) | Needs binding stacks + view-dependent eval keyed by layer. |
 | Particle systems | Advanced component; breadth beyond the common-scene v1 target. (Rigid-body physics and audio ship as seams — see *In v1*.) |
 | The six X3D 4.1-only nodes (incl. `EnvironmentLight` / IBL) | `generated_cpp_bindings/` is code-generated from the **4.0** UOM under a byte-identical golden invariant, so a hand-authored 4.1 binding would conflict with the golden gate. All six nodes 4.1 adds over 4.0 are therefore absent: `EnvironmentLight`, `FontLibrary`, `HAnimPose`, `InlineGeometry`, `RenderedTexture`, `Tangent`. A 4.1 document still parses and runs — only these node types are missing. Needs a defined strategy for 4.1 extension nodes; for `EnvironmentLight` specifically the `ShaderUniformVocabulary` already reserves `envDiffuse`/`envSpecular`/`envSH`/`brdfLUT`. |
-| MultiTexture compositing, MovieTexture frames | Beyond the single-channel `TextureRef` descriptor. |
+| MultiTexture compositing, MovieTexture frames | Deferred for the façade and the GL PoC. The CPU rasterizer partly closes this: `examples/cpu_raster/cpuraster/MaterialShader.hpp` combines ordered stages on the base-colour slot (OFF, REPLACE, MODULATE/2X/4X, ADD, ADDSIGNED/2X, SUBTRACT, SELECTARG1/2; source DEFAULT/DIFFUSE/SPECULAR/FACTOR; function COMPLEMENT/ALPHAREPLICATE). Ignored: BLEND\*, DOTPRODUCT3, MODULATEALPHA_\*/MODULATEINV\*, and per-stage texcoords/transforms (the seam keeps only the first usable channel). Mode semantics follow the OpenGL fixed-function convention; not verified against the ISO prose. See REQ-MULTITEXTURE. |
+| MovieTexture frames | Beyond the single-channel `TextureRef` descriptor. |
 | Bidi / complex text shaping (language field) | Beyond left-to-right / top-to-bottom layout. |
 
 ## Known v1 limitations (work, with caveats)

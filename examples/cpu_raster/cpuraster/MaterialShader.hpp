@@ -23,8 +23,10 @@
 #include "Texture.hpp"
 #include "glsl.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <initializer_list>
+#include <string>
 #include <vector>
 
 namespace x3d::cpuraster {
@@ -125,6 +127,18 @@ struct MaterialTextures {
   Texture specular;  // Specular — sRGB.
   Texture mr;        // MetallicRoughness — G=roughness, B=metallic (linear).
   Texture occlusion; // Occlusion — R channel (linear); AO source (§12.4.6).
+  // §18.4.3 MultiTexture: the ordered stages bound to the base-colour slot,
+  // combined by detail::combineBaseStages. Empty for an ordinary single texture
+  // (which still binds `base`). MODULATE with a white FACTOR reduces to the
+  // previous single-texture multiply, so a one-stage scene is unchanged.
+  struct MultiStage {
+    Texture tex;
+    std::string mode = "MODULATE"; // §18.4.3 mode; OpenGL TexEnv operator.
+    std::string source;            // DEFAULT/DIFFUSE/SPECULAR/FACTOR.
+    std::string function;          // COMPLEMENT/ALPHAREPLICATE.
+    glsl::vec4 factor{1, 1, 1, 1}; // MultiTexture color.rgb + alpha.
+  };
+  std::vector<MultiStage> baseStages;
   // §18.4.8 TextureCoordinateGenerator: when set, UVs are generated per fragment
   // from eye-space state rather than the authored texcoords. Applies to the
   // textured-surface coordinate set (base/emissive/specular). TXF-2 covers the
@@ -182,10 +196,29 @@ inline MaterialTextures buildTextures(const ex::MaterialDesc &m, bool linearWork
   MaterialTextures tx;
   using Slot = ex::TextureRef::Slot;
   const bool colour = linearWorkflow;
-  if (const auto *r = findSlot(m, {Slot::BaseColor, Slot::Diffuse})) {
-    tx.base = Texture::fromRef(*r, /*srgb=*/colour);
-    tx.hasTexCoordGen = r->hasTexCoordGen;
-    tx.texCoordGenMode = r->texCoordGen.mode;
+  // §18.4.3 MultiTexture: gather every base-colour-slot stage in channel order.
+  // A plain single texture yields a one-stage list, and MODULATE-with-white
+  // reproduces the old `base = base * texel` path exactly.
+  std::vector<const ex::TextureRef *> baseRefs;
+  for (const ex::TextureRef &t : m.textures)
+    if (t.slot == Slot::BaseColor || t.slot == Slot::Diffuse) baseRefs.push_back(&t);
+  std::stable_sort(baseRefs.begin(), baseRefs.end(),
+                   [](const ex::TextureRef *a, const ex::TextureRef *b) {
+                     return a->channel < b->channel;
+                   });
+  for (const ex::TextureRef *r : baseRefs) {
+    MaterialTextures::MultiStage st;
+    st.tex = Texture::fromRef(*r, colour);
+    st.mode = r->multiMode;
+    st.source = r->multiSource;
+    st.function = r->multiFunction;
+    st.factor = {r->multiColor.r, r->multiColor.g, r->multiColor.b, r->multiAlpha};
+    tx.baseStages.push_back(std::move(st));
+  }
+  if (!baseRefs.empty()) {
+    tx.base = tx.baseStages.front().tex;
+    tx.hasTexCoordGen = baseRefs.front()->hasTexCoordGen;
+    tx.texCoordGenMode = baseRefs.front()->texCoordGen.mode;
   }
   if (const auto *r = findSlot(m, {Slot::Normal}))
     tx.normal = Texture::fromRef(*r, /*srgb=*/false);
@@ -201,6 +234,67 @@ inline MaterialTextures buildTextures(const ex::MaterialDesc &m, bool linearWork
 }
 
 namespace detail {
+
+// ---------------------------------------------------------------------------
+// §18.4.3 MultiTexture stage combiner. The X3D `mode` names are the OpenGL /
+// D3D fixed-function texture-environment operators, so this follows that
+// convention (an ISO-vs-convention caveat is recorded in REQ-MULTITEXTURE):
+// arg1 = this stage's texture operand, arg2 = the running accumulation from the
+// previous stage (seeded with the surface base colour). Each stage output is
+// clamped to [0,1], as the fixed-function pipeline does.
+// ---------------------------------------------------------------------------
+inline glsl::vec4 clamp01(const glsl::vec4 &v) {
+  return {glsl::clampf(v.x, 0.0f, 1.0f), glsl::clampf(v.y, 0.0f, 1.0f),
+          glsl::clampf(v.z, 0.0f, 1.0f), glsl::clampf(v.w, 0.0f, 1.0f)};
+}
+inline glsl::vec4 multiCombine(const std::string &mode, const std::string &func,
+                               const glsl::vec4 &arg1, const glsl::vec4 &arg2) {
+  glsl::vec4 r;
+  if (mode == "OFF") r = arg2;                                    // texture disabled
+  else if (mode == "REPLACE" || mode == "SELECTARG1") r = arg1;
+  else if (mode == "SELECTARG2") r = arg2;
+  else if (mode == "MODULATE2X") r = (arg1 * arg2) * 2.0f;
+  else if (mode == "MODULATE4X") r = (arg1 * arg2) * 4.0f;
+  else if (mode == "ADD") r = arg1 + arg2;
+  else if (mode == "ADDSIGNED") r = arg1 + arg2 - glsl::vec4(0.5f);
+  else if (mode == "ADDSIGNED2X") r = (arg1 + arg2 - glsl::vec4(0.5f)) * 2.0f;
+  else if (mode == "SUBTRACT") r = arg1 - arg2;
+  else r = arg1 * arg2; // MODULATE, the §18.4.3 default (and any unknown token).
+  if (func == "COMPLEMENT") r = glsl::vec4(1.0f) - r;         // (1 - x)
+  else if (func == "ALPHAREPLICATE") r = glsl::vec4(r.w);     // a -> rgb
+  return clamp01(r);
+}
+// `source` selects how the stage texel forms arg1 (convention, see finding):
+// DEFAULT uses the texel; DIFFUSE premultiplies by the surface diffuse colour;
+// SPECULAR by the surface specular colour; FACTOR by the MultiTexture
+// color/alpha. alpha is taken from the texel (unscaled except for FACTOR).
+inline glsl::vec4 multiArg1(const MaterialTextures::MultiStage &st,
+                            const glsl::vec4 &texel, const glsl::vec3 &diffuse,
+                            const glsl::vec3 &specular) {
+  if (st.source == "FACTOR")
+    return {texel.x * st.factor.x, texel.y * st.factor.y, texel.z * st.factor.z,
+            texel.w * st.factor.w};
+  if (st.source == "SPECULAR")
+    return {texel.x * specular.x, texel.y * specular.y, texel.z * specular.z, texel.w};
+  if (st.source == "DIFFUSE")
+    return {texel.x * diffuse.x, texel.y * diffuse.y, texel.z * diffuse.z, texel.w};
+  return texel; // DEFAULT / empty.
+}
+// Fold every base-colour stage into `initial` (the surface base colour) and
+// return the combined RGBA. An empty stage list returns `initial` unchanged.
+inline glsl::vec4 combineBaseStages(const MaterialTextures &tx,
+                                    const glsl::vec4 &initial,
+                                    const glsl::vec2 &uv,
+                                    const glsl::vec3 &diffuse,
+                                    const glsl::vec3 &specular) {
+  glsl::vec4 acc = initial;
+  for (const auto &st : tx.baseStages) {
+    // An unresolved/multisource stage samples white, so MODULATE is a no-op.
+    acc = multiCombine(st.mode, st.function,
+                       multiArg1(st, st.tex.sample(uv), diffuse, specular), acc);
+  }
+  return acc;
+}
 
 // Tangent-space normal mapping via screen-space derivative TBN — the exact
 // approach in lit.frag/pbr.frag (no precomputed tangents). Returns the perturbed
@@ -249,9 +343,16 @@ inline glsl::vec3 F_Schlick(float VdotH, glsl::vec3 F0) {
 inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors,
                                       const FogParams &fog = {}) {
   const glsl::vec4 baseColor = glsl::vec4(m.toRGBA());
+  const MaterialTextures tx = buildTextures(m, /*linearWorkflow=*/false);
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
     glsl::vec3 rgb = hasColors ? f.color.xyz() : baseColor.xyz();
     float a = hasColors ? f.color.w : baseColor.w;
+    if (!tx.baseStages.empty()) { // §18.4.3 MultiTexture.
+      glsl::vec4 c = detail::combineBaseStages(tx, glsl::vec4(rgb, a), f.texcoord,
+                                               rgb, glsl::vec3(1.0f));
+      rgb = c.xyz();
+      a = c.w;
+    }
     // §17: fog is the final step, applied to unlit output too.
     rgb = detail::applyFog(rgb, glsl::length(f.posEye), fog);
     out = glsl::vec4(rgb, a);
@@ -288,10 +389,12 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
             : f.texcoord;
     glsl::vec3 base = hasColors ? f.color.xyz() : uDiffuse.xyz();
     float alpha = uDiffuse.w;
-    if (tx.base.valid()) {
-      glsl::vec4 texel = tx.base.sample(uv);
-      base = base * texel.xyz();
-      alpha *= texel.w;
+    if (!tx.baseStages.empty()) { // §18.4.3 MultiTexture (one stage == old path).
+      glsl::vec4 c = detail::combineBaseStages(
+          tx, glsl::vec4(base, alpha), uv,
+          hasColors ? f.color.xyz() : uDiffuse.xyz(), uSpecular);
+      base = c.xyz();
+      alpha = c.w;
     }
     if (maskMode && alpha < alphaCutoff) return false; // MASK discard.
 
@@ -362,7 +465,9 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
             : f.texcoord;
     glsl::vec4 baseCol = uBaseColor;
     if (hasColors) { baseCol.x = f.color.x; baseCol.y = f.color.y; baseCol.z = f.color.z; }
-    if (tx.base.valid()) baseCol = baseCol * tx.base.sample(uv);
+    if (!tx.baseStages.empty()) // §18.4.3 MultiTexture (one stage == old path).
+      baseCol = detail::combineBaseStages(tx, baseCol, uv, baseCol.xyz(),
+                                          glsl::vec3(1.0f));
     float alpha = baseCol.w;
     if (maskMode && alpha < alphaCutoff) return false; // MASK.
 
