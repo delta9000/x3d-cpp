@@ -98,6 +98,7 @@ struct PathKeyHash {
 // RenderItemId — a dense uint32 handle into the extractor's path-interning
 // table. Stable across frames while topology is stable. NOT a raw hash and NOT
 // a pointer: it is an opaque dense index the consumer can use as an array key.
+// Structural replacement/fullSnapshot resets the baseline and may reuse IDs.
 // ---------------------------------------------------------------------------
 using RenderItemId = std::uint32_t;
 inline constexpr RenderItemId kInvalidRenderItemId = 0xFFFFFFFFu;
@@ -765,6 +766,10 @@ struct ClipPlaneList {
 // background/lights surfaces for a caching consumer.
 //
 // RenderItem carries NO changeBits: this struct is the only encoding of change.
+// Structural deltas remove ALL previously live IDs and add the current snapshot.
+// Apply removed BEFORE added; the same dense ID may occur in both. Drop stale
+// content-cache entries when their last live placement is removed (defer actual
+// GPU destruction according to host fences). A rebuild resets content versions.
 // ---------------------------------------------------------------------------
 struct RenderDelta {
   std::vector<RenderItemId> added;

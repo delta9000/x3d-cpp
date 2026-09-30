@@ -95,8 +95,10 @@ TEST_CASE("FillProperties field edits and replacement update render material") {
                          std::any(std::shared_ptr<X3DNode>(second))) ==
           FieldWriteResult::Ok);
   delta = ex.delta();
-  CHECK(delta.updatedMaterial == std::vector<extract::RenderItemId>{id});
-  CHECK(ex.item(id).material.fill.hatchStyle == 1);
+  CHECK(delta.removed == std::vector<extract::RenderItemId>{id});
+  REQUIRE(delta.added.size() == 1);
+  CHECK(ex.item(delta.added[0]).path.back() == shape.get());
+  CHECK(ex.item(delta.added[0]).material.fill.hatchStyle == 1);
   ctx.tick(3.0);
   REQUIRE(ctx.writeField(second.get(), "hatched", std::any(SFBool{false})) ==
           FieldWriteResult::Ok);

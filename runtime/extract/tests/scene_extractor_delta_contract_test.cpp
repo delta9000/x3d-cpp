@@ -26,6 +26,7 @@
 #include "doctest/doctest.h"
 #include <cstdint>
 #include <memory>
+#include <map>
 #include <vector>
 
 using namespace x3d::runtime;
@@ -165,4 +166,110 @@ TEST_CASE("delta contract: delta() with no prior fullSnapshot yields the baselin
   // rather than a second full snapshot.
   RenderDelta again = ex.delta();
   CHECK(again.added.empty());
+}
+
+TEST_CASE("delta contract: geometry replacement removal and reattachment reach consumers") {
+  auto shape = createX3DNode("Shape");
+  auto box = createX3DNode("Box");
+  std::weak_ptr<X3DNode> dead = box;
+  setF(shape, "geometry", box);
+  Scene scene; scene.rootNodes.push_back(shape);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene);
+  const auto initial = ex.fullSnapshot();
+  REQUIRE(initial.added.size() == 1);
+  auto retained = ex.item(initial.added[0]).mesh;
+  box.reset(); // the scene alone owns the old node
+
+  // Simulate a real consumer: removals first, additions/updates second. Keeping
+  // only non-owning geometry identity and an immutable mesh makes node lifetime
+  // independent of the mirror (a copied RenderItem is not a scene owner).
+  std::map<RenderItemId, RenderItem> mirror;
+  auto apply = [&](const RenderDelta &d) {
+    for (auto id : d.removed) mirror.erase(id);
+    for (auto id : d.added) mirror.insert_or_assign(id, ex.item(id));
+    for (const auto *updates : {&d.updatedTransform, &d.updatedGeometry, &d.updatedMaterial})
+      for (auto id : *updates) {
+        REQUIRE(mirror.count(id) == 1);
+        mirror.insert_or_assign(id, ex.item(id));
+      }
+    SceneExtractor oracle(ctx, scene);
+    auto snap = oracle.fullSnapshot();
+    REQUIRE(mirror.size() == snap.added.size());
+    for (auto id : snap.added) {
+      const auto &expected = oracle.item(id);
+      auto found = std::find_if(mirror.begin(), mirror.end(), [&](const auto &p) {
+        return p.second.path == expected.path;
+      });
+      REQUIRE(found != mirror.end());
+      CHECK(found->second.geometry.node == expected.geometry.node);
+      CHECK(found->second.mesh->positions == expected.mesh->positions);
+      CHECK(found->second.mesh->indices == expected.mesh->indices);
+    }
+  };
+  apply(initial);
+  auto sphere = createX3DNode("Sphere");
+  for (const auto &geometry : {sphere, std::shared_ptr<X3DNode>{}, sphere}) {
+    ctx.postEvent(shape.get(), "set_geometry", geometry);
+    ctx.tick(1); // same timestamp, three separate changes
+    const auto d = ex.delta();
+    apply(d);
+    CHECK(dead.expired());
+    CHECK(mirror.size() == (geometry ? 1 : 0));
+    const auto repeated = ex.delta();
+    CHECK(repeated.added.empty());
+    CHECK(repeated.removed.empty());
+  }
+  CHECK_FALSE(retained->positions.empty()); // immutable payload still owned
+}
+
+TEST_CASE("delta contract: shared group topology preserves every placement") {
+  auto group = createX3DNode("Group");
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("Box"));
+  addChild(group, shape);
+  auto left = createX3DNode("Transform"), right = createX3DNode("Transform");
+  setF(left, "translation", SFVec3f{-10,0,0});
+  setF(right, "translation", SFVec3f{10,0,0});
+  addChild(left, group); addChild(right, group);
+  Scene scene; scene.rootNodes = {left, right};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene);
+  REQUIRE(ex.fullSnapshot().added.size() == 2);
+  auto extra = createX3DNode("Shape");
+  setF(extra, "geometry", createX3DNode("Sphere"));
+  ctx.postEvent(group.get(), "children", std::vector<std::shared_ptr<X3DNode>>{shape, extra});
+  ctx.tick(0);
+  const auto d = ex.delta();
+  REQUIRE(d.removed.size() == 2);
+  REQUIRE(d.added.size() == 4);
+  std::vector<float> positions;
+  for (auto id : d.added) positions.push_back(ex.item(id).worldTransform.m[12]);
+  std::sort(positions.begin(), positions.end());
+  CHECK((positions == std::vector<float>{-10,-10,10,10}));
+  CHECK(ex.delta().added.empty()); // at most one rebuild for this tick
+}
+
+TEST_CASE("delta contract: structural replacement precedes stale dirty path traversal") {
+  auto root = createX3DNode("Group"), child = createX3DNode("Transform");
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("Box"));
+  addChild(child, shape); addChild(root, child);
+  Scene scene; scene.rootNodes = {root};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene);
+  REQUIRE(ex.fullSnapshot().added.size() == 1);
+  std::weak_ptr<X3DNode> dead = child;
+  ctx.postEvent(child.get(), "translation", SFVec3f{2,0,0});
+  ctx.postEvent(root.get(), "children", std::vector<std::shared_ptr<X3DNode>>{});
+  child.reset(); shape.reset();
+  ctx.tick(0);
+  CHECK(dead.expired());
+  auto d = ex.delta(); // must not reaccumulate through the destroyed Transform
+  CHECK(d.removed == std::vector<RenderItemId>{0});
+  CHECK(d.added.empty());
+  ctx.tick(0);
+  d = ex.delta();
+  CHECK(d.removed.empty());
+  CHECK(d.updatedTransform.empty());
 }
