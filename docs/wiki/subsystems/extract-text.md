@@ -2,7 +2,7 @@
 title: Text Extraction
 summary: Text node extraction and layout via the font-metrics seam — converts X3D Text/FontStyle into renderable glyph-quad geometry.
 tags: [subsystem, extract, text, font-metrics, text-layout]
-updated: 2026-09-26
+updated: 2026-09-30
 related:
   - ../architecture.md
   - ../subsystems/extract.md
@@ -28,6 +28,8 @@ This subsystem converts X3D `Text` and `FontStyle` nodes into renderable geometr
 | `runtime/extract/tests/text_extract_test.cpp` | Integration tests for `buildTextMesh` and `setTextOutputs`, including a full `SceneExtractor` walk and atlas glyph-box placement. |
 | `runtime/io/stbtt/StbttFontMetrics.hpp` | Decoder-free header for the stb_truetype `FontMetrics` backend (ADR-0025 / T-TEXT genericity proof, Backend A). Declares `makeStbttFontMetrics(FontFaceMap)` only; does not include `stb_truetype.h`. Part of the `x3d_stbtt` target (flag-gated, default OFF). |
 | `runtime/io/stbtt/StbttFontMetrics.cpp` | Single TU where `stb_truetype.h` is included PRIVATE (`STB_TRUETYPE_IMPLEMENTATION` defined here). Reads unscaled advances via `stbtt_GetGlyphHMetrics`, derives `unitsPerEm` from the raw `head` table uint16 at offset 18 (big-endian). Returns `makeFailed()` for .notdef (glyph 0), unmapped family, or non-PLAIN style. |
+| `runtime/io/stbtt/StbttGlyphAtlas.cpp` | Optional raster helper: bakes printable Basic Latin and Latin-1 Supplement into a bottom-up coverage atlas, with exact advances and bitmap-aligned glyph boxes/UVs. |
+| `runtime/io/tests/glyph_atlas_tests.cpp` | Atlas bitmap/metrics oracle over all three bundled Liberation faces, boundaries, blank glyphs, and failure cases (`x3d_text_atlas_tests`). |
 | `runtime/io/tests/font_metrics_tests.cpp` | Per-backend doctest binary (`x3d_text_tests`). Task 2: `fontmetrics_backend_a_stbtt` verifies Ready+sane advanceEm for 5 Liberation codepoints and Failed-parity for absent emoji, unmapped family, and BOLD style. Tasks 3–4 will add the FreeType case and the cross-backend swap-test. |
 
 ## Interfaces and seams
@@ -170,12 +172,38 @@ All conformant backends must:
   (`ctest -R x3d_text`): 5 Liberation codepoints (A, i, M, space, 0) → Ready with
   `0 < advanceEm < 2`; absent emoji U+1F600, unmapped family, BOLD style → Failed.
 
+### Optional glyph atlas
+
+`makeStbttGlyphAtlas` is a consumer-side helper in `x3d_stbtt`; the headless SDK
+still does no rasterization. It bakes U+0020–U+007E and U+00A0–U+00FF from each
+mapped face, covering the printable Basic Latin and Latin-1 Supplement
+repertoire required by [Immersive Annex E](https://www.web3d.org/documents/specifications/19775-1/V4.0/Part01/immersive.html).
+DEL/C1 controls, codepoints outside those ranges, missing glyphs, and unmapped
+families resolve to Failed. This is bounded repertoire support, not general
+Unicode, shaping, or style conformance; style continues to use the supplied
+PLAIN face. The CPU rasterizer's separate built-in 8x8 font remains ASCII-only.
+
+The atlas packs each complete bitmap with transparent padding, including tall
+accents and overhangs. Bottom-up UVs and `hasGlyphBox=true` geometry describe the
+same pixel rectangle relative to the baseline. Box coordinates are raster-pixel
+aligned (resolution dependent); `advanceEm`, ascent, and descent retain the raw
+font metrics. Space and non-breaking space retain their advance with empty
+boxes. `emPx` selects pixels per em, clamped to at least 8.
+
+`x3d_text_atlas_tests` compares every supported glyph's atlas pixels against an
+isolated stbtt rasterization across SERIF/SANS/TYPEWRITER at 8, 17, and 64 px per
+em. It verifies bottom-up orientation, unclipped ink, no overlap/stray ink, glyph
+box/UV alignment, exact advances, blank spaces, range boundaries, and failures.
+A UTF-8 `Text` extraction case verifies the resulting quad placement and UVs,
+including non-breaking-space advance before the next visible glyph.
+
 ### Build and run
 
 ```bash
 cmake -S . -B build-font -G Ninja -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_TESTS=ON
-cmake --build build-font --target x3d_text_tests
-ctest --test-dir build-font --output-on-failure -R x3d_text
+cmake --build build-font --target x3d_text_atlas_tests
+ctest --test-dir build-font --output-on-failure -R x3d_text_atlas_tests
+# Also enable -DX3D_CPP_BUILD_FREETYPE=ON to build/run x3d_text_tests (swap proof).
 ```
 
 ## Related specs and ADRs

@@ -430,9 +430,9 @@ jobs:
             -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_FREETYPE=ON \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET=x64-linux
-      # Build only the FontMetrics test binary — the `cpp` job covers the full build.
+      # Build only the FontMetrics test binaries — the `cpp` job covers the full build.
       - name: Build (FontMetrics swap-test target only)
-        run: cmake --build build --target x3d_text_tests
+        run: cmake --build build --target x3d_text_tests x3d_text_atlas_tests
       - name: Swap-test (stb_truetype vs FreeType exact-equal advanceEm)
         run: ctest --test-dir build --output-on-failure -R x3d_text
 

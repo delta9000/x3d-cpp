@@ -103,6 +103,7 @@ _x3d_classify_present_targets(opt-in
     x3d_theora
     x3d_freetype
     x3d_text_tests
+    x3d_text_atlas_tests
     x3d_texture_tests
     x3d_movie_tests
     x3d_example_01_load_validate_convert

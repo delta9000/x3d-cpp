@@ -40,10 +40,13 @@ struct GlyphAtlasResult {
   x3d::runtime::extract::FontMetrics fontMetrics;
 };
 
-/// Bake an ASCII (codepoints 32..126) coverage atlas for every family in `faces`
+/// Bake Basic Latin (U+0020..U+007E) and Latin-1 Supplement (U+00A0..U+00FF)
+/// coverage for every family in `faces`
 /// (family -> TTF/OTF path; all families packed into one atlas) and return it
-/// alongside a ready FontMetrics. `emPx` is the rasterized cell height (one em)
-/// in pixels. Out-of-range codepoints, unmapped families, and .notdef glyphs
+/// alongside a ready FontMetrics. `emPx` is the raster resolution in pixels per
+/// em (minimum 8). Glyph boxes/UVs enclose each complete bitmap, including
+/// accents and overhangs; advances retain the exact raw-font metric. DEL/C1
+/// controls, out-of-range codepoints, unmapped families, and .notdef glyphs
 /// resolve to Failed (the layout engine skips them). v1: style is ignored (all
 /// faces treated as PLAIN) — the atlas/raster path is outside the cross-backend
 /// equality surface (FontMetrics.hpp adapter contract item 4).

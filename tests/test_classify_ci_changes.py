@@ -13,6 +13,7 @@ def enabled_classes(paths: list[str]) -> set[str]:
     ("paths", "expected"),
     [
         (["runtime/parse/X3DParse.hpp"], {"cpp", "assets"}),
+        (["runtime/io/tests/glyph_atlas_tests.cpp"], {"cpp", "fontmetrics"}),
         (["generated_cpp_bindings/x3d/nodes/Box.hpp"], {"cpp"}),
         (["src/x3d_cpp_gen/generator.py"], {"generator"}),
         (
