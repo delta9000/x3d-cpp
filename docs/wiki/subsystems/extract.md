@@ -115,6 +115,19 @@ struct RenderDelta {
 };
 ```
 
+### View-dependent placements
+
+`delta()` checks recorded LOD selections in each placement's current world frame,
+including selections whose branch emits no mesh. A changed per-path selection
+uses the structural replacement contract below. The node-level `level_changed`
+event alone cannot represent all USE placements.
+
+Billboard descendants recompute their per-path transforms from the current
+tracked eye/up and authored ancestor transforms. A camera-only change emits
+`updatedTransform` only when the resulting matrix changes and retains immutable
+mesh payloads. No-motion ticks do not add Billboard transform updates. Regression:
+`runtime/extract/tests/scene_extractor_view_delta_test.cpp` (#136).
+
 ### Structural delta replacement contract
 
 Any `DirtyChildren` (including SFNode/MFNode writes and Switch/LOD active-child
@@ -272,7 +285,10 @@ Single-threaded producer+consumer. The mutable interning caches (`items_`, `inde
 
 ### One-delta-per-tick contract
 
-`delta()` asserts `snapped_` (a prior `fullSnapshot()` must have run) and that `ctx_.now()` has advanced since the last call. Calling `delta()` twice in one tick, or before any `fullSnapshot()`, trips the assert. This is intentional: `tick()` clears the dirty set at tick end, so a stale second call would silently drop changes.
+`delta()` without a baseline returns `fullSnapshot()`. A second call without an
+intervening tick returns an empty delta. The guard uses `tickGeneration()`, not
+the supplied clock, so repeated timestamps remain valid. `tick()` clears the
+dirty set at its start: consume each tick before advancing again.
 
 ## How it is tested
 

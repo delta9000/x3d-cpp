@@ -13,17 +13,16 @@
 //           draw NOTHING; otherwise recurse ONLY children[whichChoice]. A blind
 //           child loop would (wrongly) draw the first child at -1 and every child
 //           otherwise — the exact bug this special-case closes.
-//         * LOD: static PoC selects children[0] (highest detail), DOCUMENTED.
-//           Range selection needs an eye position not threaded into this DFS, so
-//           the level-0 pick is deliberate and stable; LOD draws exactly one
-//           child, never all levels.
+//         * LOD: range selection uses the viewer position in each placement's
+//           local frame. delta() checks every recorded LOD placement, including
+//           selections with no emitted mesh, before updating its baseline.
 //         * Group/Transform/Anchor/Billboard/Collision/StaticGroup and the rest:
 //           pass-through grouping nodes via the generic children/SFNode loop.
-//           Billboard is treated as identity orientation (documented wrong once
-//           the camera moves — view-facing rotation is a documented limitation).
+//           Billboard orientation is composed per path from the tracked eye/up;
+//           camera-only changes update affected transforms without mesh rebuilds.
 //       worldM is mutated by any transform-bearing node (Transform,
 //       HAnimHumanoid, HAnimJoint, CADPart — see TransformSystem::isTransform).
-//       Billboard is view-dependent (deferred to M2c/M2d).
+//       Billboard contributes its view-dependent frame in both walk and delta.
 //
 //   (b) Real geometry + material + lights. MeshBuilder (T2/T3/T4 — ALL types now,
 //       not just the three triangle sets) produces the local mesh; MaterialSystem
@@ -182,6 +181,8 @@ public:
     items_.clear();
     index_.clear();
     transformDeps_.clear();
+    billboardItems_.clear();
+    lodPlacements_.clear();
     geomDeps_.clear();
     skinPoseDeps_.clear();
     skinBindingDeps_.clear();
@@ -304,6 +305,16 @@ public:
       if (ctx_.dirtyTracker().flags(n) & DirtyChildren)
         return replacementSnapshot();
 
+    // LOD rendering is per placement; a node's level_changed announcement
+    // cannot describe every USE path. Retain even empty selections and compare
+    // their current per-path choice before consuming this tick's baseline.
+    LocalXfCache localXf;
+    for (const auto &[path, previous] : lodPlacements_) {
+      auto selected = traversedChild(*path.back(), worldAlongPath(path, localXf),
+                                     ctx_.cameraWorldPosition());
+      if (selected.get() != previous) return replacementSnapshot();
+    }
+
     lastDeltaGen_ = gen;
     const auto changedSkins = syncSkinChanges();
 
@@ -316,7 +327,6 @@ public:
     std::unordered_set<RenderItemId> transformSeen, materialSeen;
     // Shared across every reaccumulateWorld() in this delta() so a transform that
     // sits on the path of many dirty items is recomposed once, not once per item.
-    LocalXfCache localXf;
 
     // A source (Coordinate/Normal/Color/...) may feed several geometry nodes,
     // and several sources of one geometry may change in the same tick. Resolve
@@ -337,7 +347,8 @@ public:
       const unsigned f = dirty.flags(n);
 
       // --- transform: re-accumulate worldM along each dependent's PathKey -----
-      if (f & (DirtyLocalTransform | DirtyWorldTransform)) {
+      if ((f & (DirtyLocalTransform | DirtyWorldTransform)) ||
+          ((f & DirtyField) && n->nodeTypeName() == "Billboard")) {
         for (RenderItemId id : depsOf(transformDeps_, n)) {
           // Dedup the re-accumulation itself: propagate() flags every node in a
           // dirtied subtree, so the same item is reached via several dirty
@@ -361,6 +372,21 @@ public:
       // --- HAnim scalar configuration change => subtree re-walk ---------------
       if (f & DirtyField && n->nodeTypeName() == "HAnimHumanoid")
         rewalkSubtree(n, delta);
+    }
+
+    // Billboards depend on the tracked eye/up as well as scene fields. A camera
+    // change does not dirty a scene node, so compare the affected placements
+    // directly. Stable views retain both mesh payloads and transform uploads.
+    for (RenderItemId id : billboardItems_) {
+      if (!liveIds_.count(id) || transformSeen.count(id) ||
+          std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end())
+        continue;
+      Mat4 world = worldAlongPath(items_[id].path, localXf);
+      if (world.m != items_[id].worldTransform.m) {
+        items_[id].worldTransform = world;
+        transformSeen.insert(id);
+        delta.updatedTransform.push_back(id);
+      }
     }
 
     for (RenderItemId id = 0; id < items_.size(); ++id) {
@@ -689,8 +715,8 @@ private:
     return changed;
   }
 
-  // Delegates to TransformSystem so all transform-bearing types stay in sync.
-  // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
+  // Delegates authored transforms to TransformSystem. Billboard's view-dependent
+  // frame is composed separately, using each placement's accumulated world.
   static bool isTransform(const X3DNode *n) {
     return TransformSystem::isTransform(n);
   }
@@ -717,6 +743,8 @@ private:
   // path, and that product is still formed fresh per PathKey below.
   struct LocalXf {
     bool isXform;
+    bool isBillboard;
+    SFVec3f billboardAxis;
     Mat4 local;
   };
   using LocalXfCache = std::unordered_map<const X3DNode *, LocalXf>;
@@ -726,27 +754,31 @@ private:
     if (it != cache.end()) return it->second;
     LocalXf v;
     v.isXform = isTransform(n);
+    v.isBillboard = n->nodeTypeName() == "Billboard";
+    v.billboardAxis = v.isBillboard
+        ? geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0})
+        : SFVec3f{0, 1, 0};
     v.local = v.isXform ? TransformSystem::localMatrix(n) : Mat4::identity();
     return cache.emplace(n, v).first->second;
   }
 
-  void reaccumulateWorld(RenderItemId id, LocalXfCache &cache) {
-    RenderItem &rec = items_[id];
-    rec.worldTransform = worldAlongPath(rec.path, cache);
+  Mat4 worldAlongPath(const PathKey &path, LocalXfCache &cache) {
+    Mat4 world = Mat4::identity();
+    std::optional<std::pair<SFVec3f, SFVec3f>> view;
+    for (const X3DNode *node : path) {
+      const LocalXf &local = localXfOf(node, cache);
+      if (local.isXform) world = world * local.local;
+      if (local.isBillboard) {
+        if (!view) view = std::make_pair(ctx_.cameraWorldPosition(), ctx_.cameraWorldUp());
+        world = world * billboardLocalMatrix(world, view->first, view->second,
+                                             local.billboardAxis);
+      }
+    }
+    return world;
   }
 
-  Mat4 worldAlongPath(const PathKey &path, LocalXfCache &cache) {
-    Mat4 w = Mat4::identity();
-    // The PathKey is root..leaf; the leaf Shape itself is not a Transform, but a
-    // defensive isTransform() guard keeps this identical to the walk() idiom.
-    for (const X3DNode *n : path) {
-      const LocalXf &x = localXfOf(n, cache);
-      if (x.isXform) w = w * x.local;
-      if (n->nodeTypeName() == "Billboard")
-        w = w * billboardLocalMatrix(w, ctx_.cameraWorldPosition(), ctx_.cameraWorldUp(),
-                                    geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0}));
-    }
-    return w;
+  void reaccumulateWorld(RenderItemId id, LocalXfCache &cache) {
+    items_[id].worldTransform = worldAlongPath(items_[id].path, cache);
   }
 
   void refreshGeometry(const X3DNode *geom, const GeometryChange &change,
@@ -1018,8 +1050,9 @@ private:
     // VISIBILITY special-cases BY nodeTypeName, BEFORE the generic child loop.
     const std::string t = n->nodeTypeName();
     if (t == "Switch" || t == "LOD") {
-      if (auto child = traversedChild(*n, here, ctx_.cameraWorldPosition()))
-        walk(child.get(), here, path, delta);
+      auto child = traversedChild(*n, here, ctx_.cameraWorldPosition());
+      if (t == "LOD") lodPlacements_[path] = child.get();
+      if (child) walk(child.get(), here, path, delta);
       path.pop_back();
       return;
     }
@@ -1327,8 +1360,11 @@ private:
                            const X3DNode *geom, const X3DNode *appearance) {
     // transformDeps: every Transform ANCESTOR on this item's path. A change on any
     // of them re-accumulates this item's worldTransform.
-    for (const X3DNode *anc : path)
-      if (isTransform(anc)) appendDep(transformDeps_, anc, id);
+    for (const X3DNode *anc : path) {
+      const bool billboard = anc->nodeTypeName() == "Billboard";
+      if (isTransform(anc) || billboard) appendDep(transformDeps_, anc, id);
+      if (billboard) billboardItems_.insert(id);
+    }
 
     // geomDeps: the geometry node itself AND its direct content child-nodes
     // (Coordinate/Normal/Color/TextureCoordinate/...). classifyDirty marks a
@@ -1558,6 +1594,8 @@ private:
 
   // The three reverse indices + the interior-node entry-matrix cache (T8 inputs).
   DepMap transformDeps_;
+  std::unordered_set<RenderItemId> billboardItems_;
+  std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> lodPlacements_;
   DepMap geomDeps_;
   DepMap materialDeps_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> skinPoseDeps_;

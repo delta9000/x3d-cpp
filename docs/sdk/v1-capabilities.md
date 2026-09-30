@@ -24,7 +24,7 @@ CAVEOS validation.
 | Serialization | `XmlWriter` / `JsonWriter` / `VrmlWriter`, reflection-driven |
 | Incremental geometry deltas | Shared direct content sources reach every geometry owner; dirty sources coalesce per owner per tick. Native AoS empty/nonempty transitions remove/add affected placements without rebuilding unrelated meshes. Consume deltas for live membership; `itemCount()` counts allocated slots. |
 | Scene graph | DEF/USE, Transform hierarchy (+ HAnimHumanoid/HAnimJoint/CADPart), bounds, binding stacks |
-| View-dependent nodes | LOD, Billboard, ProximitySensor, VisibilitySensor |
+| View-dependent nodes | LOD, Billboard, ProximitySensor, VisibilitySensor. Render deltas track per-placement LOD selection and Billboard orientation under tracked-head and ancestor motion |
 | Animation | TimeSensor, full interpolator family, Followers (§39 Damper + Chaser, all 14 node types), ROUTE cascade (§4.4.2.2 `set_`/`_changed` aliases accepted) |
 | Custom behavior | subclass `System`, `ctx.addSystem`, dirty-aware `ctx.writeField` |
 | Input seam | `setPointer` / `setPointerButton` / `setPointerPresent` / `setKey` |
