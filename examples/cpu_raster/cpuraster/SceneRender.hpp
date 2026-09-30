@@ -354,12 +354,12 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
 
   // §24.4.2: the bound Fog reduced for the fragment shaders. visibilityRange is
   // world-scaled by the extractor; 0 disables fog (applyFog no-ops).
-  FogParams fog;
+  FogParams globalFog;
   {
     const ex::FogDesc fd = extractor.fog();
-    fog.color = glsl::vec3(fd.color);
-    fog.type = (fd.fogType == ex::FogDesc::Type::Exponential) ? 1 : 0;
-    fog.visibilityRange = fd.visibilityRange;
+    globalFog.color = glsl::vec3(fd.color);
+    globalFog.type = (fd.fogType == ex::FogDesc::Type::Exponential) ? 1 : 0;
+    globalFog.visibilityRange = fd.visibilityRange;
   }
 
   Rasterizer raster(fb);
@@ -386,6 +386,16 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
 
   auto drawOne = [&](ex::RenderItemId id, BlendMode blend) {
     const ex::RenderItem &it = extractor.item(id);
+
+    // §24.4.3: an item inside a LocalFog's grouping scope is fogged by that
+    // LocalFog (nearest wins); otherwise the bound global Fog applies.
+    FogParams fog = globalFog;
+    if (it.localFog >= 0 && it.localFog < (int)extractor.snapshotLocalFogs().size()) {
+      const ex::LocalFogDesc &lf = extractor.snapshotLocalFogs()[it.localFog];
+      fog.color = glsl::vec3(lf.color);
+      fog.type = (lf.fogType == ex::FogDesc::Type::Exponential) ? 1 : 0;
+      fog.visibilityRange = lf.visibilityRange;
+    }
     const ex::MeshData deformed = it.skin ? extractor.deformedMesh(id) : ex::MeshData{};
     const ex::MeshData &mesh = it.skin ? deformed : *it.mesh;
     if (mesh.positions.empty() || mesh.indices.empty()) return;

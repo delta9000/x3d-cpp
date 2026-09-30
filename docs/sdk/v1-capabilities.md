@@ -25,7 +25,7 @@ GitHub issues.
 | Pointing-device sensors | TouchSensor, PlaneSensor, CylinderSensor, SphereSensor (drag) |
 | Navigation | EXAMINE, FLY, WALK, LOOKAT, NONE; avatar collision (Collision node: enabled, proxy, isActive/collideTime), WALK gravity and terrain following with step height |
 | Picking engine | ray cast + closest hit; exact for Sphere/Box/Cone/Cylinder + indexed/triangle meshes; AABB proxy for the long tail |
-| Extraction → render feed | full snapshot + incremental delta; meshes, materials, lights (scoped), camera, background (gradient, the six panorama faces of Background/TextureBackground as TextureRefs, transparency), scene bounds; ComposedCubeMapTexture surfaces as a six-face cube ref (no bundled renderer samples cube maps yet) |
+| Extraction → render feed | full snapshot + incremental delta; meshes, materials, lights (scoped), fog (bound global `Fog` + scoped `LocalFog`, §24.4.3), camera, background (gradient, the six panorama faces of Background/TextureBackground as TextureRefs, transparency), scene bounds; ComposedCubeMapTexture surfaces as a six-face cube ref (no bundled renderer samples cube maps yet) |
 | Mesh primitives + sets | Box/Sphere/Cone/Cylinder, IFS/ITS/TriangleSet/strip/fan, ElevationGrid, Extrusion, IndexedLineSet/LineSet/PointSet, the 8 §14 2D primitives (Arc2D/ArcClose2D/Circle2D/Disk2D/Polyline2D/Polypoint2D/Rectangle2D/TriangleSet2D, XY plane). ElevationGrid/GeoElevationGrid honour authored `color`/`normal` + `colorPerVertex`/`normalPerVertex` (EXT-001 closed); Extrusion degenerate-spine SCP axes are pinned per ADR-0031 (EXTRUSION-SCP closed). |
 | NURBS curves, patches, swept/swung surfaces + interpolators | `NurbsCurve` → line mesh; `NurbsPatchSurface`, `NurbsSweptSurface`, `NurbsSwungSurface` → triangle mesh with analytic/central-difference normals; plus the three §27 interpolators (curve positions, tangent orientations, surface positions/normals), via shared first-party `runtime/extract/NurbsEval.hpp` math (ADR-0040; NRB-1/NRB-2 closed, NRB-3 swept/swung). **Caveat:** `NurbsTrimmedSurface` (needs 2D contour clipping/triangulation) and authored `NurbsTextureCoordinate` remain deferred (NRB-3); deferred geometry uses the `externalGeometryResolver` fallback |
 | Normals | flat + creaseAngle smoothing (lattice-adjacency) |
@@ -73,6 +73,7 @@ breadth. Each is tracked as a card in the
 | `MaterialDesc::textures[]` is descriptor-only in the first PoC | Populated but the SDK does not itself consume it; the consumer binds. |
 | `RenderDelta` unsupported-geometry push channel not wired | Use the `skippedGeometryCounts()` pull accessor instead. |
 | Per-light shadows are not generated — the §17 modulation is hardcoded to "unobstructed" | `X3DLightNode.shadows`/`shadowIntensity` round-trip but `shadowTest` is fixed at 1; the `ShadowQuery` seam + reference modulation are designed (ADR-0028 / ADR-0027) but not yet wired. |
+| `FogCoordinate` per-vertex depths are ignored | `MeshBuilder` never reads a geometry's `fogCoord` and `MeshData` carries no fog-depth array, so authored depths do not replace the computed eye-space distance. Reference renderers fog by distance only. `LocalFog` scope IS wired (see the render feed above). |
 
 ## v1 gate record
 

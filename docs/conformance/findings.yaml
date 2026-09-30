@@ -2743,8 +2743,8 @@
   clause: "24.2.2; 24.4.3; 24.4.4"
   severity: major
   status: open
-  summary: Global Fog works, but LocalFog scope and authored FogCoordinate depths are ignored.
-  note: "SceneExtractor::fog reads only ctx.boundFog(); MeshBuilder does not read fogCoord and MeshData carries no fog-depth array. Acceptance: nearest enabled local fog overrides global fog for the affected subtree; authored vertex depths replace implicit distance and repeat their final entry when short. Existing scene_extractor_fog_test proves only bound global Fog."
+  summary: Global Fog works and LocalFog scope is now wired end-to-end, but authored FogCoordinate depths remain ignored by the geometry pipeline.
+  note: "WIRED (LocalFog): LocalFogSystem (§24.4.3, the LightSystem walk pattern) collects every enabled LocalFog, world-scales visibilityRange, and records its enclosing grouping node as scopeRoot; SceneExtractor tags each RenderItem with the nearest in-scope LocalFog index (RenderItem.localFog, resolved via snapshotLocalFogs()), enabled==false being skipped so global Fog applies unchanged. The CPU rasterizer (examples/cpu_raster/cpuraster/SceneRender.hpp) selects the tagged LocalFog per item over the bound global Fog; tests: scene_extractor_local_fog_test (scope, enabled, world scale, nesting) and render_smoke_test's local-fog fragment check. IGNORED (FogCoordinate): MeshBuilder never reads a geometry's fogCoord field and MeshData carries no fog-depth array, so a per-vertex depth channel would have to thread a new vertex stream through MeshData, the PackedMesh slab and every material/GLSL model — not a small slice. Authored vertex depths therefore do not yet replace the computed eye-space distance, and a short depth list does not repeat its final entry. The GL poc_renderer (examples/poc_renderer) consumes the global FogDesc only and is a follow-up. Existing scene_extractor_fog_test proves bound global Fog is unchanged."
 - id: REQ-LAYER
   nodes: [Layer, LayerSet]
   component: Layering
