@@ -12,6 +12,7 @@
 #include "XmlWriter.hpp"
 #include "../../physics/PhysicsSystem.hpp"
 #include "x3d/nodes/LoadSensor.hpp"
+#include "x3d/nodes/TextureTransform.hpp"
 #include "doctest/doctest.h"
 
 #include <memory>
@@ -415,4 +416,50 @@ TEST_CASE("UNIT runtime: viewpoint far distance produces equivalent culling hint
     CHECK(std::any_cast<float>(findField(*viewpoint, "nearDistance")->get(*viewpoint)) == 1);
     CHECK(std::any_cast<float>(findField(*viewpoint, "farDistance")->get(*viewpoint)) == 5);
   }
+}
+
+TEST_CASE("UNIT runtime: TextureTransform angle converts but UV dimensions do not") {
+  auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><head>
+<unit category='angle' name='degree' conversionFactor='0.017453292519943295'/>
+<unit category='length' name='centimetre' conversionFactor='0.01'/>
+</head><Scene><Shape><Appearance><TextureTransform DEF='UV' rotation='90'
+center='0.25 0.5' translation='0.4 0.7' scale='2 3'/></Appearance><Box/></Shape>
+</Scene></X3D>)");
+  auto uv = std::dynamic_pointer_cast<x3d::nodes::TextureTransform>(doc.scene.resolve("UV"));
+  REQUIRE(uv);
+  CHECK(uv->getRotation() == doctest::Approx(90)); // authoring representation
+  auto session = RuntimeSession::create(std::move(doc));
+  CHECK(uv->getRotation() == doctest::Approx(1.5707963267948966));
+  CHECK(uv->getCenter().x == doctest::Approx(0.25));
+  CHECK(uv->getCenter().y == doctest::Approx(0.5));
+  CHECK(uv->getTranslation().x == doctest::Approx(0.4));
+  CHECK(uv->getTranslation().y == doctest::Approx(0.7));
+  CHECK(uv->getScale().x == doctest::Approx(2));
+  CHECK(uv->getScale().y == doctest::Approx(3));
+  // A repeated runtime entry must not apply the authored factor a second time.
+  normalizeRuntimeUnits(session->scene());
+  CHECK(uv->getRotation() == doctest::Approx(1.5707963267948966));
+  uv->setRotation(0.3f); // host writes already use radians
+  normalizeRuntimeUnits(session->scene());
+  CHECK(uv->getRotation() == doctest::Approx(0.3));
+}
+
+TEST_CASE("UNIT runtime: TextureTransform IS angle and built-in default") {
+  auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><head>
+<unit category='angle' name='degree' conversionFactor='0.017453292519943295'/>
+</head><Scene><ProtoDeclare name='UVRotation'><ProtoInterface>
+<field name='angle' type='SFFloat' accessType='inputOutput' value='45'/>
+</ProtoInterface><ProtoBody><TextureTransform><IS>
+<connect nodeField='rotation' protoField='angle'/>
+</IS></TextureTransform></ProtoBody></ProtoDeclare>
+<Shape><Appearance><ProtoInstance name='UVRotation' DEF='UV' containerField='textureTransform'>
+<fieldValue name='angle' value='90'/></ProtoInstance></Appearance><Box/></Shape>
+<Shape><Appearance><TextureTransform DEF='Default'/></Appearance><Box/></Shape>
+</Scene></X3D>)");
+  auto uv = std::dynamic_pointer_cast<x3d::nodes::TextureTransform>(doc.scene.resolve("UV"));
+  auto defaults = std::dynamic_pointer_cast<x3d::nodes::TextureTransform>(doc.scene.resolve("Default"));
+  REQUIRE(uv); REQUIRE(defaults);
+  auto session = RuntimeSession::create(std::move(doc));
+  CHECK(uv->getRotation() == doctest::Approx(1.5707963267948966));
+  CHECK(defaults->getRotation() == doctest::Approx(0));
 }

@@ -37,6 +37,7 @@ inline Dimension dimension(std::string_view node, std::string_view field) {
   static constexpr Entry entries[] = {
     {"Transform CADPart HAnimHumanoid HAnimJoint HAnimSite", "translation center", {1}},
     {"Transform CADPart HAnimHumanoid HAnimJoint HAnimSite", "rotation scaleOrientation", {0,1}},
+    {"TextureTransform", "rotation", {0,1}},
     {"HAnimHumanoid", "jointBindingPositions", {1}},
     {"HAnimHumanoid", "jointBindingRotations", {0,1}},
     {"HAnimDisplacer", "displacements", {1}},
