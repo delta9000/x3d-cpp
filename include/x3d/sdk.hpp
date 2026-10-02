@@ -1,8 +1,9 @@
 // ─── include/x3d/sdk.hpp ─────────────────────────────────────────────────────
 // Umbrella façade for the x3d-cpp headless SDK (v1).
 //
-// Include this ONE header; link the CMake target x3d_cpp::sdk. Everything an
-// embedder needs is re-exported into namespace `x3d::sdk`:
+// Include this ONE header; link the CMake target x3d_cpp::sdk. The
+// curated entry points below are re-exported into namespace `x3d::sdk`.
+// Lower-level system wiring remains in `x3d::runtime`:
 //
 //   • Load     — parse any of the 4 encodings (+ gzip, PROTO, lenient read) into
 //                an X3DDocument with conformance/range diagnostics.
@@ -16,8 +17,9 @@
 //                the embedder supplies the backend (adapter). The simulation and
 //                extraction core performs no hidden resource, network, image,
 //                font, media or rendering I/O — that stays in the embedder.
-//                parseFile() below is a synchronous local-file convenience API,
-//                the one deliberate exception.
+//                parseFile() and parseDocument()'s default Inline/EXTERNPROTO
+//                resolvers can read local files. Inject both parse resolvers
+//                for a fully host-controlled resource boundary.
 //
 // Stability: symbols are marked [STABLE] (frozen pre-v2, breaking change = major)
 // or [EXPERIMENTAL] (shape may evolve; embedder wiring still maturing). See
@@ -30,6 +32,7 @@
 //   sdk::X3DExecutionContext ctx;
 //   ctx.buildSceneGraph(doc.scene);
 //   ctx.buildFrom(doc.scene);
+//   x3d::runtime::attachStandardRuntime(doc.scene, ctx);
 //   sdk::SceneExtractor ex(ctx, doc.scene);
 //   sdk::RenderDelta f0 = ex.fullSnapshot();          // upload f0.added
 //   // each frame, with `now` = seconds since start (any monotonic clock):
@@ -94,7 +97,8 @@ using x3d::codec::CanonicalXmlWriter;    ///< X3D Canonical Form (X3DC14N) seria
 // Construct one per loaded document, default-constructed. Setup order:
 //   ctx.buildSceneGraph(doc.scene);   // index transforms/bindings/pick tree
 //   ctx.buildFrom(doc.scene);         // resolve DEF-named ROUTEs + IS redirects
-//   ctx.addSystem(...) / ctx.addScriptSystem(...);  // before the first tick()
+//   x3d::runtime::attachStandardRuntime(doc.scene, ctx); // built-in behaviors
+//   ctx.addSystem(...) / ctx.addScriptSystem(...);  // optional; before first tick()
 // Then once per frame: set inputs, ctx.tick(now) [now = seconds since start],
 // read the pull surface.
 using x3d::runtime::X3DExecutionContext;
@@ -121,7 +125,8 @@ using x3d::runtime::Aabb;                ///< axis-aligned bounds
 using x3d::runtime::RuntimeSession;      ///< create(doc, options) -> unique_ptr; tick()/fullSnapshot()/delta()
 using x3d::runtime::SessionOptions;      ///< { standardRuntime=true, interactive=false, meshOptions, textureResolver }
 
-// ── Extraction / render feed ─────────────────────────────────────────── [STABLE]
+// ── Extraction / render feed ────────────────────────────────────── [EXPERIMENTAL]
+// In-process descriptors, not a wire/ABI contract. See docs/wiki/guides/native-host.md.
 using x3d::runtime::extract::SceneExtractor; ///< fullSnapshot()/delta()/item()/camera()/lights()/...
 using x3d::runtime::extract::RenderItem;     ///< { path, worldTransform, geometry, material, mesh, lights, ... }
 using x3d::runtime::extract::RenderDelta;    ///< { added/removed/updatedTransform/Geometry/Material, *Changed }
@@ -130,7 +135,7 @@ using x3d::runtime::extract::kInvalidRenderItemId;
 using x3d::runtime::extract::PathKey;        ///< vector<const X3DNode*> root..leaf chain
 using x3d::runtime::extract::PathKeyHash;
 using x3d::runtime::extract::PathKeyEqual;
-using x3d::runtime::extract::GeomId;         ///< { node*, contentVersion } GPU cache key
+using x3d::runtime::extract::GeomId;         ///< { node*, contentVersion } in-process, baseline-scoped content key
 using x3d::runtime::extract::GeomIdHash;
 using x3d::runtime::extract::MeshData;       ///< positions/indices/normals/texcoords/colors/topology/...
 using x3d::runtime::extract::Topology;       ///< enum class { Triangles, Lines, Points }

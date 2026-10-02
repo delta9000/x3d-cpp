@@ -86,6 +86,7 @@ cmake --build "$product_build"
 (cd "$work_dir" && "$product_build/x3d_embed_authoring")
 [ -s "$work_dir/hello.x3d" ] || { echo "authoring example wrote no hello.x3d" >&2; exit 1; }
 (cd "$work_dir" && "$product_build/x3d_embed_minimal")
+"$product_build/x3d_embed_native_host"
 
 # ── Relocatability: the package must work from a MOVED copy of the prefix ─────
 # Static half: no absolute source- or build-tree path may be baked into any
@@ -115,6 +116,7 @@ cmake -S "$product_src" -B "$moved_build" -G "$generator" \
 cmake --build "$moved_build" >/dev/null
 (cd "$work_dir" && "$moved_build/x3d_embed_authoring")
 (cd "$work_dir" && "$moved_build/x3d_embed_minimal")
+"$moved_build/x3d_embed_native_host"
 mv "$prefix.hidden" "$prefix"
 trap - EXIT
-echo "relocatable: embed pair configured, built, and ran against a moved prefix with the original hidden"
+echo "relocatable: embed consumers configured, built, and ran against a moved prefix with the original hidden"

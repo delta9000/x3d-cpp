@@ -7,6 +7,11 @@ Behavioral / spec-conformance gaps are tracked in
 [`docs/conformance/findings.yaml`](../conformance/findings.yaml); other deferrals are
 GitHub issues.
 
+The render-feed surface is experimental; see the
+[native host contract](../wiki/guides/native-host.md) for ownership, mutation,
+resource and identity limits. The installed-package host test is not Vulkan or
+CAVEOS validation.
+
 ## In v1 (supported)
 
 | Capability | Notes |

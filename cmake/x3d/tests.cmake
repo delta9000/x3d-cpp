@@ -475,6 +475,11 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_cpp::authoring)
     add_test(NAME x3d_authoring_link_contract
         COMMAND x3d_authoring_link_contract)
+    add_executable(x3d_native_host_contract
+        "${CMAKE_CURRENT_SOURCE_DIR}/examples/embed_minimal/native_host.cpp")
+    target_link_libraries(x3d_native_host_contract PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_native_host_contract COMMAND x3d_native_host_contract)
+
     # Installed-package embed smoke: install THIS build, then configure/build/run
     # examples/embed_minimal against it via find_package(x3d_cpp), so a broken
     # export or a missing installed header fails CI on the actual embedder path.
