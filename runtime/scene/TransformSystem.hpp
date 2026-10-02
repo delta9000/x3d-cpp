@@ -44,11 +44,12 @@ public:
   void buildIndex(const Scene &scene) {
     parent_.clear(); children_.clear(); world_.clear(); walked_.clear();
     nearestTransform_.clear(); directChildren_.clear(); refCount_.clear();
-    roots_.clear();
+    roots_.clear(); lifetime_.clear();
     for (const auto &root : scene.rootNodes)
       if (root) {
         roots_.push_back(root.get());
-        walk(root.get(), /*parentNode=*/nullptr, /*parentTransform=*/nullptr);
+        ++refCount_[root.get()]; // scene roots are references too
+        walk(root, /*parentNode=*/nullptr, /*parentTransform=*/nullptr);
       }
     ++revision_;
   }
@@ -153,16 +154,24 @@ public:
       recompute(r, parentOf(r), worldTransform(parentOf(r)), dirty, visited);
 
     bool changed = !roots.empty();
-    staleCanonical_.clear();
+    sharedEdgeRemoved_ = false;
     for (const X3DNode *g : structural)
       if (reindexChildren(g, dirty)) changed = true;
-    // A Transform moved between two grouping nodes in the same tick can survive
-    // its canonical parent edge being dropped while another parent still reaches
-    // it (refCount_ > 1), leaving parent_/world_ pointing at the OLD frame. Once
-    // every DirtyChildren change is applied, re-point any such node along the
-    // first path (the same rule buildIndex uses) so the result is the same
-    // regardless of the order the dirty groups were processed.
-    if (repairCanonicalParents(dirty)) changed = true;
+    // Removing an edge to a shared subtree can change the serving Transform of
+    // its non-Transform nodes as well as the canonical parent of descendants.
+    // Rebuild once from live roots in that case; patching just the direct child's
+    // parent leaves stale flattened edges/ancestor pointers below a shared Group.
+    if (sharedEdgeRemoved_) {
+      Scene scene;
+      for (const X3DNode *r : roots_) {
+        auto it = lifetime_.find(r);
+        if (it != lifetime_.end())
+          if (auto live = it->second.lock()) scene.rootNodes.push_back(live);
+      }
+      buildIndex(scene);
+      for (const auto &entry : world_) dirty.markDirty(entry.first, DirtyWorldTransform);
+      return;
+    }
     if (changed) ++revision_;
   }
 
@@ -229,7 +238,7 @@ private:
   // itself if Transform-bearing, else its nearest ancestor Transform (or null).
   const X3DNode *servingTransformOf(const X3DNode *p) const {
     if (!p) return nullptr;
-    if (isTransform(p)) return p;
+    if (parent_.count(p)) return p;
     auto it = nearestTransform_.find(p);
     return it == nearestTransform_.end() ? nullptr : it->second;
   }
@@ -256,8 +265,10 @@ private:
   }
 
   // DFS the scene graph over node-typed fields; index Transforms + seed worlds.
-  void walk(const X3DNode *n, const X3DNode *parentNode,
+  void walk(const std::shared_ptr<X3DNode> &node, const X3DNode *parentNode,
             const X3DNode *parentTransform) {
+    const X3DNode *n = node.get();
+    lifetime_[n] = node;
     const X3DNode *nextParent = parentTransform;
     if (isTransform(n)) {
       registerEdge(n, parentTransform);
@@ -277,7 +288,7 @@ private:
     // per-path itself, so the render path is unaffected.
     if (!walked_.insert(n).second) return;
     forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      walk(c.get(), n, nextParent);
+      walk(c, n, nextParent);
     });
   }
 
@@ -289,6 +300,10 @@ private:
                  const Mat4 &parentWorld, DirtyTracker &dirty,
                  std::unordered_set<const X3DNode *> &visited) {
     if (!visited.insert(n).second) return;
+    auto itLive = lifetime_.find(n);
+    if (itLive == lifetime_.end()) return;
+    auto live = itLive->second.lock();
+    if (!live) return; // a dirty ancestor may precede the removing parent's diff
     Mat4 w = parentWorld * localMatrix(n);
     if (parentOf(n) == parentNode) world_[n] = w; // canonical edge only
     dirty.markDirty(n, DirtyWorldTransform);
@@ -313,13 +328,11 @@ private:
     auto it = directChildren_.find(g);
     if (it == directChildren_.end() || !it->second.erase(c)) return;
     const X3DNode *serving = servingTransformOf(g);
-    if (isTransform(c) && serving) removeEdgeChild(serving, c);
+    if (parent_.count(c) && serving) removeEdgeChild(serving, c);
     auto rc = refCount_.find(c);
     if (rc != refCount_.end() && rc->second > 1) {
       --rc->second;
-      // Still referenced elsewhere: its canonical parent edge may have just been
-      // dropped, so re-derive it once all structural changes settle.
-      if (isTransform(c)) staleCanonical_.push_back(c);
+      sharedEdgeRemoved_ = true;
       return;
     }
     if (rc != refCount_.end()) refCount_.erase(rc);
@@ -330,20 +343,26 @@ private:
   // that loses its last reference. `parentServing` is the transform serving c's
   // siblings (inherited by non-Transform children).
   void eraseSubtree(const X3DNode *c, const X3DNode *parentServing) {
-    const X3DNode *serving = isTransform(c) ? c : parentServing;
+    // Removed children may already be destroyed. Classification comes from the
+    // index, never from a virtual call through a cached raw pointer.
+    const X3DNode *serving = parent_.count(c) ? c : parentServing;
     auto it = directChildren_.find(c);
     if (it != directChildren_.end()) {
       std::vector<const X3DNode *> kids(it->second.begin(), it->second.end());
       directChildren_.erase(it);
       for (const X3DNode *k : kids) {
         auto rc = refCount_.find(k);
-        if (rc != refCount_.end() && rc->second > 1) { --rc->second; continue; }
+        if (rc != refCount_.end() && rc->second > 1) {
+          --rc->second;
+          sharedEdgeRemoved_ = true;
+          continue;
+        }
         if (rc != refCount_.end()) refCount_.erase(rc);
-        if (isTransform(k) && serving) removeEdgeChild(serving, k);
+        if (parent_.count(k) && serving) removeEdgeChild(serving, k);
         eraseSubtree(k, serving);
       }
     }
-    parent_.erase(c); world_.erase(c);
+    parent_.erase(c); world_.erase(c); children_.erase(c); lifetime_.erase(c);
     nearestTransform_.erase(c); walked_.erase(c); refCount_.erase(c);
   }
 
@@ -353,76 +372,37 @@ private:
   // untouched. Returns true when the index changed.
   bool reindexChildren(const X3DNode *g, DirtyTracker &dirty) {
     if (!walked_.count(g)) return false; // g is not part of the indexed graph
+    auto live = lifetime_.at(g).lock();
+    if (!live) return false; // removed earlier in the same batch of field writes
     std::unordered_set<const X3DNode *> now;
+    std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> owners;
     forEachChildNode(*g, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      if (c) now.insert(c.get());
+      now.insert(c.get());
+      owners.emplace(c.get(), c);
     });
     auto oldIt = directChildren_.find(g);
     std::vector<const X3DNode *> removed, added;
     if (oldIt != directChildren_.end())
       for (const X3DNode *c : oldIt->second)
-        if (!now.count(c)) removed.push_back(c);
+        if (!now.count(c) || lifetime_.at(c).expired()) removed.push_back(c);
     for (const X3DNode *c : now)
-      if (oldIt == directChildren_.end() || !oldIt->second.count(c)) added.push_back(c);
+      if (oldIt == directChildren_.end() || !oldIt->second.count(c) ||
+          lifetime_.at(c).expired()) added.push_back(c);
     if (removed.empty() && added.empty()) return false;
 
     const X3DNode *serving = servingTransformOf(g);
     for (const X3DNode *c : removed) dropEdge(g, c);
     for (const X3DNode *c : added) {
-      walk(c, g, serving);
+      walk(owners.at(c), g, serving);
       dirty.markDirty(c, DirtyWorldTransform);
     }
     directChildren_[g] = std::move(now);
     return true;
   }
 
-  // Re-point every Transform whose canonical parent edge was dropped this tick
-  // but that another parent still reaches. The new canonical parent is chosen by
-  // the same first-path DFS buildIndex uses (roots in scene order, then child
-  // fields in declaration order), so the outcome does not depend on the order the
-  // dirty grouping nodes were processed. Returns true when a world changed.
-  bool repairCanonicalParents(DirtyTracker &dirty) {
-    bool changed = false;
-    for (const X3DNode *n : staleCanonical_) {
-      if (!parent_.count(n)) continue; // erased by the drop (last reference)
-      const X3DNode *serving = nullptr;
-      if (!firstPathServing(n, serving)) continue; // unreachable; leave as-is
-      if (parentOf(n) == serving) continue;        // canonical edge still live
-      parent_[n] = serving;
-      std::unordered_set<const X3DNode *> visited;
-      recompute(n, serving, serving ? worldTransform(serving) : Mat4::identity(),
-                dirty, visited);
-      changed = true;
-    }
-    return changed;
-  }
-
-  // First DFS path from the buildIndex roots reaching `n`, in the same field
-  // order walk() recurses. `servingOut` receives the nearest ancestor Transform
-  // on that path (nullptr = n is a root or has no Transform ancestor).
-  bool firstPathServing(const X3DNode *n, const X3DNode *&servingOut) const {
-    std::unordered_set<const X3DNode *> seen;
-    for (const X3DNode *r : roots_) {
-      if (r == n) { servingOut = nullptr; return true; }
-      if (firstPathWalk(r, nullptr, n, servingOut, seen)) return true;
-    }
-    return false;
-  }
-
-  bool firstPathWalk(const X3DNode *cur, const X3DNode *serving,
-                     const X3DNode *target, const X3DNode *&servingOut,
-                     std::unordered_set<const X3DNode *> &seen) const {
-    const X3DNode *next = isTransform(cur) ? cur : serving;
-    if (!seen.insert(cur).second) return false; // subtree already recursed
-    bool found = false;
-    forEachChildNode(*cur, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      if (found || !c) return;
-      if (c.get() == target) { servingOut = next; found = true; return; }
-      if (firstPathWalk(c.get(), next, target, servingOut, seen)) found = true;
-    });
-    return found;
-  }
-
+  // Non-owning lifetime tokens: field replacement can destroy indexed nodes
+  // before propagate gets a chance to remove their cached edges.
+  std::unordered_map<const X3DNode *, std::weak_ptr<X3DNode>> lifetime_;
   std::unordered_map<const X3DNode *, const X3DNode *> parent_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> children_;
   std::unordered_map<const X3DNode *, Mat4> world_;
@@ -437,12 +417,10 @@ private:
   // distinct parent edges reaching it (drop only when it reaches zero).
   std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> directChildren_;
   std::unordered_map<const X3DNode *, std::size_t> refCount_;
-  // Scene roots in authored order — anchors the first-path DFS that re-derives a
-  // stale canonical parent deterministically (see repairCanonicalParents).
+  // Scene roots in authored order — anchors a deterministic shared-edge rebuild.
   std::vector<const X3DNode *> roots_;
-  // Scratch: Transforms whose canonical parent edge was dropped this tick while
-  // another parent still reaches them.
-  std::vector<const X3DNode *> staleCanonical_;
+  // A shared subtree lost an edge; its descendants may need new ancestor frames.
+  bool sharedEdgeRemoved_ = false;
   std::uint64_t revision_ = 0;
 };
 

@@ -2,7 +2,7 @@
 title: "Dirty Tracking, Transforms, and Bounds"
 summary: Dirty-flag propagation, world-transform accumulation, and bounding-volume computation across the scene graph.
 tags: [subsystem, dirty-tracking, transforms, bounds, cycle-breaker]
-updated: 2026-06-27
+updated: 2026-09-30
 related:
   - ../architecture.md
   - ../subsystems/scene-graph.md
@@ -38,7 +38,7 @@ enum DirtyFlags : unsigned {
   DirtyNone           = 0,
   DirtyLocalTransform = 1u << 0,  // a Transform's TRS field changed
   DirtyWorldTransform = 1u << 1,  // world matrix recomputed this tick
-  DirtyChildren       = 1u << 2,  // children/addChildren/removeChildren changed
+  DirtyChildren       = 1u << 2,  // node-reference field or active child selection changed
   DirtyField          = 1u << 3,  // any other field changed
   DirtyBounds         = 1u << 4,  // AABB needs recompute
 };
@@ -83,7 +83,8 @@ int breakContainmentCycles(Scene &scene);
 Key properties:
 
 - **Side-table design.** Nothing is stored on the node objects. `DirtyTracker`, `TransformSystem`, and `BoundsSystem` each hold their own `unordered_map<const X3DNode *, …>` keyed by pointer. This keeps the generated node bindings unchanged and means any consumer can hold a raw pointer and query the tables.
-- **Incremental propagation.** `TransformSystem::propagate` visits two kinds of change. For a `DirtyLocalTransform` it finds the minimal set of subtree roots (dirtied, no dirtied ancestor) and re-accumulates world matrices down from each. For a `DirtyChildren` (a grouping node's `children`/`addChildren`/`removeChildren`, or a `Switch.whichChoice` swap) it re-walks ONLY that node's changed direct children: new children (and their whole subtrees, across every DEF/USE edge) are indexed and their worlds computed, removed children are dropped when no other parent still reaches them, and unchanged children are left untouched — `reindexChildren` (`runtime/scene/TransformSystem.hpp`), mirroring `SceneExtractor::rewalkSubtree` for the render-item index. `BoundsSystem::propagate` walks upward from every dirty node via `recomputeUp`, stopping when the recomputed AABB matches the stored value.
+- **Incremental propagation.** `TransformSystem::propagate` visits two kinds of change. For a `DirtyLocalTransform` it finds the minimal set of subtree roots (dirtied, no dirtied ancestor) and re-accumulates world matrices down from each. For a `DirtyChildren` (any `SFNode`/`MFNode` field, including `Shape.geometry`, or a `Switch.whichChoice` swap) it re-walks ONLY that node's changed direct children: new children (and their whole subtrees, across every DEF/USE edge) are indexed and their worlds computed, removed children are dropped when no other parent still reaches them, and unchanged children are left untouched — `reindexChildren` (`runtime/scene/TransformSystem.hpp`), mirroring `SceneExtractor::rewalkSubtree` for the render-item index. Removing an edge to a still-shared subtree triggers one transform-index rebuild from live roots, so non-Transform descendants and flattened Transform edges also get current ancestor frames. `BoundsSystem::propagate` invalidates every dirty node and all of its parents before a memoized post-order recomputation. This updates every USE placement and joins diamond-shaped paths only after their children are current. A changed local Transform matrix invalidates parent unions even when that Transform's own local AABB is unchanged. An unchanged computed bound does not bump the bounds revision.
+- **Topology and lifetime.** Indexes keep weak node identities, so a field replacement may immediately destroy the old geometry. Transform removal uses cached classification rather than dereferencing removed nodes. Bounds compares the direct children of dirty nodes and rebuilds its topology and local bounds from live roots only when child identities actually change. Ordinary geometry/TRS updates remain incremental; structural updates are linear in distinct nodes and edges, not root-to-leaf paths. Rebuild scene indexes explicitly when changing scene roots.
 - **First-path vs per-parent world.** `world_`/`worldTransform` keep the documented per-node FIRST-path approximation (a USE-shared Transform under two parents has one cached world). `worldTransformUnder(parent, n)` resolves the world through a specific parent edge live (`worldTransform(parent) * localMatrix(n)`), so a DEF/USE instance under two parents reads back both matrices. The extractor and pick still re-accumulate per PATH themselves.
 - **Revision counter.** `TransformSystem::revision()` is a monotonic `std::uint64_t` bumped by `buildIndex`, by any transform re-accumulation, and by any structural re-walk; a no-op tick leaves it unchanged. It is the intended cache key for consumers that memoize transform-derived state (e.g. a pick index).
 - **World bounds are lazy.** `BoundsSystem::worldBounds` composes `localBounds` + `TransformSystem::worldTransform` on the fly; no separate world-AABB table is maintained. (A separate `worldTransformAny` walks up the parent index to resolve a target through its nearest ancestor Transform — for callers that need the world frame of a non-Transform node, e.g. `TransformSensor.targetObject`.)
@@ -95,7 +96,7 @@ Key properties:
 - **Field-write seam / event cascade** — When the event cascade applies a route-delivered value to a node field, it calls `DirtyTracker::markDirty` with appropriate flags (`DirtyLocalTransform` for a Transform TRS field, `DirtyField` for everything else). The dirty tracker is the single shared observer slot per tick (see `docs/superpowers/specs/2026-06-20-x3d-sim-design.md` ADR-0009).
 - **`ExecutionContext` / per-tick driver** — After the event cascade settles, the per-tick driver calls `TransformSystem::propagate(dirty)` then `BoundsSystem::propagate(dirty, ts)`. The order is enforced: bounds need the already-updated world transforms. (`DirtyTracker::clear()` is not called here — `X3DExecutionContext::tick` drops the previous tick's changed-set at the *start* of the next tick, before re-evaluating.)
 - **`TransformSystem::localMatrix` / `isTransform`** — `BoundsSystem` and `PickSystem` import `TransformSystem::localMatrix` and `TransformSystem::isTransform` directly (both are `static` public members) so there is a single canonical definition of the four transform-bearing node types: `Transform`, `HAnimHumanoid`, `HAnimJoint`, `CADPart`. `Billboard` is excluded from the static set because its effective transform depends on the active viewpoint (deferred to ViewDependentSystem).
-- **`GeometryBounds::localGeometryBounds`** — `BoundsSystem::compute` and `BoundsSystem::recomputeLocal` call the free function `localGeometryBounds(const X3DNode *)` from `GeometryBounds.hpp` to obtain a geometry leaf's own AABB. New geometry types are added here without changing `BoundsSystem`.
+- **`GeometryBounds::localGeometryBounds`** — `BoundsSystem::compute` calls the free function `localGeometryBounds(const X3DNode *)` from `GeometryBounds.hpp` to obtain a geometry leaf's own AABB. New geometry types are added here without changing `BoundsSystem`.
 - **Text bounds / FontMetrics seam** — `localGeometryBounds(const X3DNode *, const extract::FontMetrics &)` lays a `Text` node's glyphs out through the same §15 engine the renderer uses (`extract::computeTextLayout` + `extract::textLayoutExtent`) and returns the exact glyph extent, so the bound never under-bounds the rendered mesh. `BoundsSystem::setFontMetrics` injects the seam; with no seam set (the default — the SDK is IO-free) `Text` falls back to the conservative heuristic, byte-for-byte unchanged.
 - **Author `bboxSize` / `bboxCenter` override** — If a node carries both `bboxSize` fields with all components ≥ 0, `BoundsSystem::authorBounds` uses that box and skips the child union for that node (children still get their own entries computed).
 - **`CycleBreaker` / scene build** — `breakContainmentCycles(scene)` is called once inside `buildSceneGraph` (in `runtime/X3DRuntime.hpp` or equivalent) before any system indexes the scene. It requires read+write field access (`f.get` and `f.set`) to re-seat severed fields to null/empty. See [ADR-0016](../decisions/0016-cycle-breaker.md).
@@ -109,11 +110,14 @@ All of these are doctest cases compiled into the `x3d_geometry_scene` ctest exec
 | `dirty_tracker_test` | `DirtyTracker` flag OR-ing, first-transition-only list insertion, `clear()` |
 | `transform_system_test` | `buildIndex` + `worldTransform` for nested `Transform` chains; `propagate` incremental pass |
 | `transform_system_structural_add` / `_remove` | M2C-2: adding a child Transform under a Group at runtime indexes it and computes its world on the next `propagate`; removing it drops it from the index |
+| `transform_system_shared_subtree_survives_destroyed_ancestor` | Removing a parent subtree while a shared Transform or Group survives under another parent repairs canonical worlds and non-Transform ancestor queries |
 | `transform_system_defuse_two_parents` | M2C-2: a DEF/USE Transform under two parents resolves both worlds via `worldTransformUnder` |
 | `transform_system_revision` | M2C-2: `revision()` bumps on transform and structural changes and not on a no-op |
 | `transform_system_hanim_cadpart_test` | `HAnimHumanoid`, `HAnimJoint`, `CADPart` treated as transform-bearing nodes |
 | `geometry_bounds_test` | `localGeometryBounds` for each supported primitive and mesh type; `text_bounds_fontmetrics` pins exact Text bounds under an injected `FontMetrics` (contains the rendered mesh, equals the layout extent) and the unchanged heuristic fallback |
 | `bounds_system_test` | `buildBounds` post-order computation, author-bbox override, `propagate` bottom-up update |
+| `bounds_geometry_replacement_and_removal` / `bounds_removed_dirty_subtree_is_not_dereferenced` | Non-owning indexes survive replacement, null geometry and destroyed dirty descendants; new geometry participates in later updates |
+| `bounds_shared_geometry_updates_every_parent` / `bounds_dense_dag_incremental_and_noop` | All shared parents and diamond ancestors update, including local-TRS changes and shared-edge removal; unchanged bounds retain their revision |
 | `bounds_shared_subgraph_test` | USE/DEF sharing: a node reached by multiple paths gets one local AABB entry without multiplicative recompute; 30-second timeout |
 | `bounds_cycle_test` | Containment back-edge in `BoundsSystem::compute` is caught by the gray-set guard and does not overflow the stack; 30-second timeout |
 | `cycle_breaker_test` | `breakContainmentCycles` severs SFNode and MFNode back-edges; no effect on well-formed scenes; 30-second timeout |
@@ -123,6 +127,8 @@ Run the full group:
 ```
 ctest --preset dev -R x3d_geometry_scene
 ```
+
+The `m2b_tick_geometry_replacement_refreshes_node_indexes` case in `x3d_events_tests` also covers a routed `set_geometry` replacement and null assignment through the execution-context tick.
 
 There are no golden files for this subsystem — correctness is checked by assertion in each test binary.
 

@@ -267,3 +267,47 @@ TEST_CASE("transform_system_revision") {
   CHECK((ts.revision() == rev1));
   return;
 }
+
+TEST_CASE("transform_system_shared_subtree_survives_destroyed_ancestor") {
+  // The shared node may itself be a Transform or a non-Transform containing one.
+  for (bool throughGroup : {false, true}) {
+    auto removed = createX3DNode("Transform");
+    auto survivor = createX3DNode("Transform");
+    auto shared = createX3DNode(throughGroup ? "Group" : "Transform");
+    auto nested = createX3DNode("Transform");
+    auto shape = createX3DNode("Shape");
+    setTranslation(removed, {10,0,0});
+    setTranslation(survivor, {20,0,0});
+    setTranslation(nested, {0,2,0});
+    addChild(nested, shape); addChild(shared, nested);
+    addChild(removed, shared); addChild(survivor, shared);
+    auto root = createX3DNode("Group");
+    addChild(root, removed); addChild(root, survivor);
+    Scene scene; scene.addRootNode(root);
+    TransformSystem ts; ts.buildIndex(scene);
+    CHECK(feq(ts.worldTransform(nested.get()).transformPoint({0,0,0}).x, 10));
+
+    std::weak_ptr<X3DNode> dead = removed;
+    removeChild(root, removed); removed.reset();
+    CHECK(dead.expired());
+    DirtyTracker dirty; dirty.markDirty(root.get(), DirtyChildren);
+    ts.propagate(dirty);
+    CHECK(feq(ts.worldTransform(nested.get()).transformPoint({0,0,0}).x, 20));
+    CHECK(feq(ts.worldTransformAny(shape.get()).transformPoint({0,0,0}).x, 20));
+    CHECK(feq(ts.worldTransformAny(shared.get()).transformPoint({0,0,0}).x, 20));
+  }
+}
+
+TEST_CASE("transform_system_root_reference_survives_child_edge_removal") {
+  auto parent = createX3DNode("Transform");
+  auto shared = createX3DNode("Transform");
+  setTranslation(parent, {10,0,0}); setTranslation(shared, {0,2,0});
+  addChild(parent, shared);
+  Scene scene; scene.addRootNode(parent); scene.addRootNode(shared);
+  TransformSystem ts; ts.buildIndex(scene);
+  removeChild(parent, shared);
+  DirtyTracker dirty; dirty.markDirty(parent.get(), DirtyChildren);
+  ts.propagate(dirty);
+  const auto position = ts.worldTransform(shared.get()).transformPoint({0,0,0});
+  CHECK(feq(position.x, 0)); CHECK(feq(position.y, 2));
+}

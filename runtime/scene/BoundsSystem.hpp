@@ -32,12 +32,10 @@ public:
   }
 
   void buildBounds(const Scene &scene, const TransformSystem &ts) {
-    parent_.clear(); children_.clear(); local_.clear(); indexed_.clear();
-    computing_.clear();
+    roots_.clear();
     for (const auto &root : scene.rootNodes)
-      if (root) index(root.get(), nullptr);
-    for (const auto &root : scene.rootNodes)
-      if (root) compute(root.get(), ts);
+      if (root) roots_.push_back(root);
+    rebuild(ts);
     ++revision_;
   }
 
@@ -62,10 +60,57 @@ public:
     // Snapshot the changed nodes (markDirty during the walk would mutate the list).
     std::vector<const X3DNode *> seed(dirty.changedNodes().begin(),
                                       dirty.changedNodes().end());
-    bool changed = false;
+    // A node-reference write can destroy the old child before this pass. Compare
+    // identities without dereferencing cached pointers; rebuild only on an actual
+    // edge change (including an expired old node at a reused address).
+    bool topologyChanged = false;
     for (const X3DNode *n : seed) {
-      if (!local_.count(n)) continue;            // not bounds-participating
-      if (recomputeUp(n, ts, dirty)) changed = true;
+      auto it = lifetime_.find(n);
+      if (it == lifetime_.end()) continue;
+      auto live = it->second.lock();
+      if (!live || childrenChanged(*live)) { topologyChanged = true; break; }
+    }
+    if (topologyChanged) {
+      auto before = std::move(local_);
+      rebuild(ts);
+      bool changed = before.size() != local_.size();
+      for (const auto &[n, now] : local_) {
+        auto it = before.find(n);
+        if (it == before.end() || !equalish(it->second, now)) {
+          dirty.markDirty(n, DirtyBounds);
+          changed = true;
+        }
+      }
+      if (changed) ++revision_;
+      return;
+    }
+
+    // Invalidate the complete ancestor closure BEFORE recomputing. A single
+    // parent pointer misses USE placements; recursive recompute-up can process a
+    // diamond's common ancestor before its second branch has refreshed. Memoized
+    // post-order computation visits each affected node once, even on dense DAGs.
+    // Include ancestors even when the seed's local box is unchanged: changing a
+    // Transform's local matrix changes its contribution in its parent's frame.
+    std::unordered_set<const X3DNode *> affected;
+    std::vector<const X3DNode *> pending = seed;
+    while (!pending.empty()) {
+      const X3DNode *n = pending.back();
+      pending.pop_back();
+      if (!local_.count(n) || !affected.insert(n).second) continue;
+      auto it = parents_.find(n);
+      if (it != parents_.end())
+        pending.insert(pending.end(), it->second.begin(), it->second.end());
+    }
+    std::unordered_map<const X3DNode *, Aabb> before;
+    for (const X3DNode *n : affected) {
+      before.emplace(n, local_.at(n));
+      local_.erase(n);
+    }
+    bool changed = false;
+    for (const X3DNode *n : affected) {
+      Aabb now = compute(n, ts);
+      dirty.markDirty(n, DirtyBounds);
+      if (!equalish(before.at(n), now)) changed = true;
     }
     if (changed) ++revision_;
   }
@@ -75,16 +120,43 @@ private:
   // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
   bool isTransform(const X3DNode *n) const { return TransformSystem::isTransform(n); }
 
-  // DFS index: parent + children over node-typed fields (guard null getters).
-  void index(const X3DNode *n, const X3DNode *parent) {
-    parent_[n] = parent;
-    if (parent) children_[parent].push_back(n);   // record EVERY parent edge (bounds union needs all)
-    // Recurse into n's subtree ONCE: a USE-shared node reachable by many paths must
-    // not re-walk its subtree per path (multiplicative explosion / hang). Its parent
-    // edge is still recorded above on every reference, so the bounds union stays exact.
+  bool childrenChanged(const X3DNode &n) const {
+    std::unordered_set<const X3DNode *> now;
+    bool expired = false;
+    forEachChildNode(n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+      now.insert(c.get());
+      auto it = lifetime_.find(c.get());
+      if (it == lifetime_.end() || it->second.expired()) expired = true;
+    });
+    auto it = children_.find(&n);
+    if (expired) return true;
+    if (it == children_.end()) return !now.empty();
+    if (it->second.size() != now.size()) return true;
+    for (const X3DNode *c : it->second)
+      if (!now.count(c)) return true;
+    return false;
+  }
+
+  void rebuild(const TransformSystem &ts) {
+    parents_.clear(); children_.clear(); local_.clear(); indexed_.clear();
+    computing_.clear(); lifetime_.clear();
+    for (const auto &root : roots_)
+      if (auto live = root.lock()) index(live, nullptr);
+    for (const auto &root : roots_)
+      if (auto live = root.lock()) compute(live.get(), ts);
+  }
+
+  // Record every distinct parent edge, but recurse each shared subtree once.
+  // Weak identities keep the tables non-owning and let propagation recognize
+  // nodes destroyed by a field replacement without reading the old object.
+  void index(const std::shared_ptr<X3DNode> &node, const X3DNode *parent) {
+    const X3DNode *n = node.get();
+    if (parent && parents_[n].insert(parent).second)
+      children_[parent].push_back(n);
     if (!indexed_.insert(n).second) return;
+    lifetime_[n] = node;
     forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      index(c.get(), n);
+      index(c, n);
     });
   }
 
@@ -137,41 +209,6 @@ private:
     return a;
   }
 
-  // Recompute n's local AABB and re-union ancestors, stopping when unchanged.
-  // Returns true if any node in the chain actually changed.
-  bool recomputeUp(const X3DNode *n, const TransformSystem &ts, DirtyTracker &dirty) {
-    Aabb before = localBounds(n);
-    Aabb now = recomputeLocal(n, ts);
-    local_[n] = now;
-    dirty.markDirty(n, DirtyBounds);
-    if (equalish(before, now)) return false; // no change to propagate further? still update self
-    const X3DNode *p = parentOf(n);
-    if (p) recomputeUp(p, ts, dirty);
-    return true;
-  }
-
-  // Recompute one node's local AABB from its CURRENT geometry + its children's
-  // already-stored local bounds (mirrors compute() but non-recursive: children's
-  // local_ entries are reused, since propagate walks bottom-up from the changed leaf).
-  Aabb recomputeLocal(const X3DNode *n, const TransformSystem &ts) {
-    (void)ts;
-    Aabb a;
-    if (authorBounds(n, a)) return a;
-    a = localGeometryBounds(n, fontMetrics_);   // empty unless n is a geometry node
-    auto it = children_.find(n);
-    if (it != children_.end())
-      for (const X3DNode *c : it->second) {
-        Aabb cb = localBounds(c);
-        if (isTransform(c)) cb = cb.transformed(TransformSystem::localMatrix(c));
-        a.unionWith(cb);
-      }
-    return a;
-  }
-
-  const X3DNode *parentOf(const X3DNode *n) const {
-    auto it = parent_.find(n);
-    return it == parent_.end() ? nullptr : it->second;
-  }
   static bool equalish(const Aabb &a, const Aabb &b) {
     if (a.empty != b.empty) return false;
     if (a.empty) return true;
@@ -180,7 +217,9 @@ private:
            f(a.max.x,b.max.x) && f(a.max.y,b.max.y) && f(a.max.z,b.max.z);
   }
 
-  std::unordered_map<const X3DNode *, const X3DNode *> parent_;
+  std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> parents_;
+  std::unordered_map<const X3DNode *, std::weak_ptr<X3DNode>> lifetime_;
+  std::vector<std::weak_ptr<X3DNode>> roots_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> children_;
   std::unordered_map<const X3DNode *, Aabb> local_;
   std::unordered_set<const X3DNode *> indexed_;   // subtrees already recursed (cycle/sharing guard)
