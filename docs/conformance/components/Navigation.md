@@ -4,12 +4,12 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Billboard | 2 | ✓ | — | — | GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| Billboard | 2 | ✓ | — | — | EXTRACT-VISIBILITY-HINT-DELTA, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | Collision | 2 | ✓ | — | ? | COL-1, COL-2, COL-3, CONF-NAV-COLLISION, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DSensorNode |
 | LOD | 2 | ✓ | — | — | GRP-ADDCHILDREN, LOD-1, LOD-DELTA-1, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| NavigationInfo | 1 | ✓ | — | ? | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode |
+| NavigationInfo | 1 | ✓ | — | ? | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06, EXTRACT-VISIBILITY-HINT-DELTA, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode |
 | OrthoViewpoint | 3 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, NAV-FLY-ROLL, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
-| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, NAV-FLY-ROLL, NAV-LOOKAT-SCALE, REQ-UNIT, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, EXTRACT-VISIBILITY-HINT-DELTA, NAV-FLY-ROLL, NAV-LOOKAT-SCALE, REQ-UNIT, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 | ViewpointGroup | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode |
 
 ## Findings
@@ -51,6 +51,8 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
   - Do NOT retype MFFloat->SFVec4f (breaks ClassicVRML brackets vs the sfvec4fValue grammar; Mantis 1398/1468). Policy (ADR-0030) - keep MFFloat storage; add size==4 normalization (FOV_TUPLE_ARITY warning) + min<max ordering check (FOV_EXTENT_ORDER) applied to BOTH nodes; add a non-breaking SFVec4f convenience accessor. Sites OrthoViewpoint.hpp:111/177, TextureProjectorParallel.hpp:77. Closed 2026-09-26: runtime/X3DRangeValidate.hpp emits FOV_TUPLE_ARITY and FOV_EXTENT_ORDER for both nodes and exposes orthoFieldOfView4; runtime/parse/tests/range_warnings_test.cpp covers arities 3/5 and ordering. 4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView MFFloat (committee declined the retype for the same reason), so validate-don't-retype is correct.
 - **AUD-NAV-2** [minor/CLOSED] — §23.4.4: TELEPORT (and zero-duration) transitions never emit transitionComplete.
   - ViewpointBindSystem now emits transitionComplete for TELEPORT and zero-duration camera transitions. Covered by teleport_transition_signals_complete and zero_duration_transition_signals_complete.
+- **EXTRACT-VISIBILITY-HINT-DELTA** [minor/FIXED]: Optional RenderItem origin-distance visibility hints stayed stale after view, limit and placement changes.
+  - Issue #155: SceneExtractor now compares effective farDistance/visibilityLimit and current per-placement origins before consuming a delta. A changed live boolean uses the existing bounded remove-before-add replacement, so hosts honoring only advertised channels receive the descriptor; unchanged hints preserve incremental geometry/material/TRS behavior. Finite-to-unlimited clears true hints, empty/revived items read current inputs, and packed items use the same origin rule as AoS. Unlimited-to-unlimited ticks skip per-item checks; finite view/limit changes scan live origins, reusing static matrices and recomposing only dirty/Billboard paths. A crossing still costs a full bounded extraction. Tests: scene_extractor_visibility_delta_test.cpp has expected-value checks and a channel-respecting mirror versus fresh snapshots for precedence/fallback/bindings, eye/viewpoint motion, ancestor TRS, disabled limits, shared and empty placements, and packed stability. This is an optional SDK origin-distance hint, not bounds/frustum culling or complete visibility conformance.
 - **NAV-LOOKAT-SCALE** [low/CLOSED] — §23.4.4: LOOKAT framing distance mixes a world-space radius with a local-frame eye placement, so a non-uniformly-scaled ancestor Transform mis-sizes the framed object.
   - Pre-existing; compute the framing distance in the same (local) frame as the placement, or scale by the ancestor factor.
 - **NAV-FLY-ROLL** [low/CLOSED] — §23.4.4: FLY accumulates orientation incrementally (yaw-about-world-up + pitch-about-local-right), so a long mixed drag can introduce gradual horizon roll.

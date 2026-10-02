@@ -2281,6 +2281,7 @@
     },
     {
       "findings": [
+        "EXTRACT-VISIBILITY-HINT-DELTA",
         "GRP-ADDCHILDREN",
         "SENSOR-SWITCH",
         "SW-DELTA-1"
@@ -2375,6 +2376,7 @@
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "GRP-ADDCHILDREN",
             "REQ-UNIT",
             "ROUTE-IO-ALIAS"
@@ -3652,6 +3654,7 @@
         "COL-2",
         "COL-3",
         "CONF-NAV-COLLISION",
+        "EXTRACT-VISIBILITY-HINT-DELTA",
         "FOV-TYPE",
         "LOD-1",
         "LOD-DELTA-1",
@@ -3673,6 +3676,7 @@
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
@@ -3758,6 +3762,7 @@
             "AUD-NAV-2",
             "BIND-05",
             "BIND-06",
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3826,6 +3831,7 @@
             "BIND-07",
             "BIND-08",
             "BIND-09",
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "NAV-FLY-ROLL",
             "NAV-LOOKAT-SCALE",
             "REQ-UNIT",
@@ -5488,6 +5494,7 @@
     },
     {
       "findings": [
+        "EXTRACT-VISIBILITY-HINT-DELTA",
         "MAT-001",
         "MAT-002",
         "MAT-003",
@@ -5694,6 +5701,7 @@
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "MAT-001",
             "ROUTE-IO-ALIAS"
           ],
@@ -11334,6 +11342,20 @@
       "severity": "major",
       "status": "fixed",
       "summary": "The optional stbtt atlas drops Latin-1 Supplement glyphs present in its supplied font."
+    },
+    {
+      "id": "EXTRACT-VISIBILITY-HINT-DELTA",
+      "nodes": [
+        "Viewpoint",
+        "NavigationInfo",
+        "Transform",
+        "Billboard",
+        "Shape"
+      ],
+      "note": "Issue #155: SceneExtractor now compares effective farDistance/visibilityLimit and current per-placement origins before consuming a delta. A changed live boolean uses the existing bounded remove-before-add replacement, so hosts honoring only advertised channels receive the descriptor; unchanged hints preserve incremental geometry/material/TRS behavior. Finite-to-unlimited clears true hints, empty/revived items read current inputs, and packed items use the same origin rule as AoS. Unlimited-to-unlimited ticks skip per-item checks; finite view/limit changes scan live origins, reusing static matrices and recomposing only dirty/Billboard paths. A crossing still costs a full bounded extraction. Tests: scene_extractor_visibility_delta_test.cpp has expected-value checks and a channel-respecting mirror versus fresh snapshots for precedence/fallback/bindings, eye/viewpoint motion, ancestor TRS, disabled limits, shared and empty placements, and packed stability. This is an optional SDK origin-distance hint, not bounds/frustum culling or complete visibility conformance.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "Optional RenderItem origin-distance visibility hints stayed stale after view, limit and placement changes."
     }
   ],
   "meta": {
@@ -11506,10 +11528,10 @@
     ]
   },
   "summary": {
-    "closed_count": 263,
+    "closed_count": 264,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 300,
+    "finding_count": 301,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

@@ -181,6 +181,7 @@ public:
   // `added` (so frame 0 and frame N share one upload path).
   RenderDelta fullSnapshot() {
     syncSkinChanges();
+    visibility_ = currentVisibilityInputs();
     items_.clear();
     index_.clear();
     transformDeps_.clear();
@@ -344,6 +345,15 @@ public:
            scopedStateDeps_.count(n)))
         return replacementSnapshot();
     }
+
+    // This optional item descriptor has no narrow RenderDelta update channel.
+    // Check current values BEFORE consuming the baseline: only an actual hint
+    // change requires remove-before-add replacement (not every camera tick).
+    const auto visibility = currentVisibilityInputs();
+    LocalXfCache visibilityFrames;
+    if (visibilityHintsChanged(visibility, visibilityFrames))
+      return replacementSnapshot();
+    visibility_ = visibility;
 
     lastDeltaGen_ = gen;
     const auto changedSkins = syncSkinChanges();
@@ -780,6 +790,72 @@ private:
   };
   using LocalXfCache = std::unordered_map<const X3DNode *, LocalXf>;
 
+  struct VisibilityInputs {
+    float limit = 0; // nonpositive => unlimited
+    SFVec3f eye{}, up{};
+  };
+
+  VisibilityInputs currentVisibilityInputs() const {
+    VisibilityInputs inputs;
+    if (const X3DNode *vp = ctx_.boundViewpoint())
+      inputs.limit = geombounds::getField<float>(*vp, "farDistance", -1.0f);
+    if (!(inputs.limit > 0))
+      if (const X3DNode *ni = ctx_.boundNavigationInfo())
+        inputs.limit = geombounds::getField<float>(*ni, "visibilityLimit", 0.0f);
+    if (!(inputs.limit > 0)) inputs.limit = 0;
+    inputs.eye = ctx_.cameraWorldPosition();
+    inputs.up = ctx_.cameraWorldUp();
+    return inputs;
+  }
+
+  static bool isBeyondVisibilityLimit(const Mat4 &world, const VisibilityInputs &inputs) {
+    if (!(inputs.limit > 0)) return false;
+    const SFVec3f origin = world.transformPoint(SFVec3f{0, 0, 0});
+    // An origin-distance hint only: this does not test bounds or a frustum.
+    return viewdep::len(viewdep::sub(origin, inputs.eye)) > inputs.limit;
+  }
+
+  bool visibilityHintsChanged(const VisibilityInputs &inputs, LocalXfCache &cache) {
+    // No per-item work for the common unlimited case, even during head motion.
+    // A finite -> unlimited transition still clears previously true hints.
+    if (!(inputs.limit > 0) && !(visibility_.limit > 0)) return false;
+    std::unordered_set<RenderItemId> moved;
+    bool billboardEdited = false;
+    for (const X3DNode *node : ctx_.dirtyTracker().changedNodes()) {
+      const auto flags = ctx_.dirtyTracker().flags(node);
+      if (flags & (DirtyLocalTransform | DirtyWorldTransform)) {
+        const auto &ids = depsOf(transformDeps_, node);
+        moved.insert(ids.begin(), ids.end());
+      }
+      billboardEdited = billboardEdited ||
+          ((flags & DirtyField) && node->nodeTypeName() == "Billboard");
+    }
+    // Billboard edits can move child origins without ordinary TRS dirtiness.
+    if (billboardEdited) moved.insert(billboardItems_.begin(), billboardItems_.end());
+    auto changed = [&](RenderItemId id) {
+      if (!liveIds_.count(id)) return false;
+      const auto &rec = items_[id];
+      bool beyond = false;
+      if (inputs.limit > 0) {
+        // Static placements reuse their published world matrix on camera-only
+        // ticks. Only changed frames / Billboard paths need recomposition.
+        const Mat4 world = moved.count(id) || billboardItems_.count(id)
+            ? worldAlongPath(rec.path, cache) : rec.worldTransform;
+        beyond = isBeyondVisibilityLimit(world, inputs);
+      }
+      return beyond != rec.beyondVisibilityLimit;
+    };
+    if (inputs.limit != visibility_.limit || inputs.eye != visibility_.eye ||
+        inputs.up != visibility_.up) {
+      for (RenderItemId id : liveIds_)
+        if (changed(id)) return true;
+    } else {
+      for (RenderItemId id : moved)
+        if (changed(id)) return true;
+    }
+    return false;
+  }
+
   const LocalXf &localXfOf(const X3DNode *n, LocalXfCache &cache) {
     auto it = cache.find(n);
     if (it != cache.end()) return it->second;
@@ -842,10 +918,10 @@ private:
       } else if (liveIds_.count(id)) {
         delta.updatedGeometry.push_back(id);
       } else {
-        // No transform uploads are produced while this placement is dormant.
-        // Its tracked Billboard frame may have changed without a dirty scene
-        // node, so activation must publish a current per-path transform.
+        // Activation advertises the complete record, including a hint that may
+        // have changed while this placement was dormant. Use its current frame.
         rec.worldTransform = worldAlongPath(rec.path, localXf);
+        rec.beyondVisibilityLimit = isBeyondVisibilityLimit(rec.worldTransform, visibility_);
         delta.added.push_back(id);
       }
     }
@@ -1197,23 +1273,7 @@ private:
     // texture USE'd 200 times).
     resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
 
-    // §23.4.4 effective far = Viewpoint.farDistance>0 ? : NavigationInfo.visibilityLimit>0 ? : inf.
-    float far = 0.0f; // 0 => infinite
-    if (const X3DNode *vp = ctx_.boundViewpoint()) {
-      float fd = geombounds::getField<float>(*vp, "farDistance", -1.0f);
-      if (fd > 0.0f) far = fd;
-    }
-    if (far == 0.0f) {
-      if (const X3DNode *ni = ctx_.boundNavigationInfo())
-        far = geombounds::getField<float>(*ni, "visibilityLimit", 0.0f);
-    }
-    bool beyond = false;
-    if (far > 0.0f) {
-      const SFVec3f origin = worldM.transformPoint(SFVec3f{0, 0, 0});
-      const SFVec3f eye = ctx_.cameraWorldPosition();
-      const float d = viewdep::len(viewdep::sub(origin, eye));
-      beyond = d > far; // conservative: item origin beyond far
-    }
+    const bool beyond = isBeyondVisibilityLimit(worldM, visibility_);
 
     auto it = index_.find(path);
     RenderItemId id;
@@ -1295,7 +1355,7 @@ private:
       rec.mesh = emptyMeshRef(); // Packed items retain the never-null AoS channel.
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
-      rec.beyondVisibilityLimit = false;
+      rec.beyondVisibilityLimit = isBeyondVisibilityLimit(worldM, visibility_);
       rec.castShadow = castShadow;
       items_.push_back(std::move(rec));
     } else {
@@ -1307,6 +1367,7 @@ private:
       rec.mesh = emptyMeshRef();
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
+      rec.beyondVisibilityLimit = isBeyondVisibilityLimit(worldM, visibility_);
       rec.castShadow = castShadow;
     }
     // REQ-CLIP: attach the enabled ClipPlanes in scope at this placement.
@@ -1699,6 +1760,8 @@ private:
   // start of fullSnapshot()/delta()). Latches `tripped` when exhausted; surfaced
   // by budgetExceeded().
   WalkBudget walkBudget_;
+
+  VisibilityInputs visibility_; // inputs consumed by the last snapshot/delta
 
   // One-delta-per-tick contract state. snapped_ says a baseline exists (an
   // un-snapshotted delta() promotes itself to fullSnapshot()); lastDeltaGen_ is
