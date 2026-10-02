@@ -27,8 +27,8 @@ flat, POD-only descriptors (`RenderItem`, `MeshData`, `MaterialDesc`, `LightDesc
 `CameraDesc`, `BackgroundDesc`) that a renderer can consume without parsing X3D
 nodes directly. The split between a full snapshot (frame 0 and scene-reload) and
 an incremental `delta()` keeps scalar/TRS updates proportional to affected items.
-Structural/active-child changes take one bounded full-scene replacement walk per
-affected tick; correctness comes before preserving the old subtree optimization.
+Structural/active-child and scoped-descriptor changes take one bounded full-scene
+replacement walk per affected tick; correctness comes before preserving the old subtree optimization.
 
 ## Key files
 
@@ -41,7 +41,7 @@ affected tick; correctness comes before preserving the old subtree optimization.
 | `runtime/extract/TextureExtract.hpp` | Texture/material extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/MaterialSystem.hpp` | Appearance → `MaterialDesc` mapping (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/LightSystem.hpp` | World-resolved `LightDesc` collection (see [Texture extraction](extract-textures.md)) |
-| `runtime/extract/LocalFogSystem.hpp` | Enabled `LocalFogDesc` collection, each scoped to its enclosing grouping node (§24.4.3) |
+| `runtime/extract/LocalFogSystem.hpp` | Enabled `LocalFogDesc` collection, each scoped to its enclosing grouping placement path (§24.4.3) |
 | `runtime/extract/Topology.hpp` | `Topology` enum: `Triangles`, `Lines`, `Points` (see [Topology](extract-topology.md)) |
 | `runtime/extract/NurbsEval.hpp` | Node-free NURBS math unit (`x3d::runtime::extract::nurbs`): Cox–de Boor basis, rational (weighted) curve/surface eval, periodic/closed handling, analytic surface normals — plain arrays, no X3D-node dependency (see [NURBS](#nurbs)) |
 
@@ -115,10 +115,53 @@ struct RenderDelta {
 };
 ```
 
+### Scalar material update cost
+
+A scalar appearance-subtree edit refreshes each affected placement once per tick,
+even when several of its source nodes are dirty. It retains the reverse dependency
+index: only SFNode/MFNode replacements can change those edges, and those already
+use a structural baseline. This avoids rescanning a shared material's N-element
+placement vector once for each of N placements (#144). The performance regression
+uses a counted, non-rendered metadata child to prove scalar refresh does not walk
+unchanged dependency subtrees; structural replacement and subsequent scalar writes
+remain covered.
+
+### Geometry content identity
+
+A host cache keyed by `GeomId` can upload each immutable AoS payload once. The
+extractor interns payload variants within each geometry owner: identical
+TextureTransform parameters share their cached mesh and key; different baked UVs
+or HAnimSegment deformation produce distinct content versions. The bake cache
+includes the raw deformation payload as an input, so equal texture transforms do
+not collapse different Segment positions (#137).
+
+Geometry invalidation evicts that owner's current payload lookup, then assigns
+fresh content identities. Versions are never reused inside a baseline, even when
+only one Segment's placement changes. `fullSnapshot()` resets them under the
+existing host replacement/eviction protocol. Exhausting the uint32 identity space
+throws with a request to take a fresh full snapshot rather than aliasing an old
+resource. Consumer-cache and shared-Segment regressions verify actual mesh bytes,
+not just distinct CPU pointers.
+
+### View-dependent placements
+
+`delta()` checks recorded LOD selections in each placement's current world frame,
+including selections whose branch emits no mesh. A changed per-path selection
+uses the structural replacement contract below. The node-level `level_changed`
+event alone cannot represent all USE placements.
+
+Billboard descendants recompute their per-path transforms from the current
+tracked eye/up and authored ancestor transforms. A camera-only change emits
+`updatedTransform` only when the resulting matrix changes and retains immutable
+mesh payloads. No-motion ticks do not add Billboard transform updates. Geometry
+that becomes nonempty again also recomputes its current path frame before its
+addition is published, including tracked motion while it was absent. Regression:
+`runtime/extract/tests/scene_extractor_view_delta_test.cpp` (#136).
+
 ### Structural delta replacement contract
 
-Any `DirtyChildren` (including SFNode/MFNode writes and Switch/LOD active-child
-changes), or a scene topology revision, replaces the extraction baseline once:
+Any `DirtyChildren` (including SFNode/MFNode writes, `visible` changes and
+Switch/LOD active-child changes), or a scene topology revision, replaces the extraction baseline once:
 `removed` contains every previously live ID and `added` contains the complete
 current snapshot. **Apply removals before additions**; dense IDs can occur in
 both. Release their live content-cache entries before accepting new records;
@@ -129,7 +172,8 @@ this boundary. The snapshot resets caches and content versions.
 The full walk uses the existing traversal budget and may report a partial view
 through `budgetExceeded()`. It intentionally costs O(visited scene paths) plus
 mesh/material extraction, including unchanged placements, on structural ticks.
-Scalar geometry/material/TRS ticks retain the incremental and shared-mesh paths.
+Scalar geometry/material/TRS ticks retain the incremental and shared-mesh paths
+except for the descriptor dependencies described below.
 This avoids stale dependencies after geometry replacement, forgotten reattachment
 of a removed path, last-writer-only USE-group placement rebuilding, and walking
 raw path pointers after a removed subtree has already been destroyed.
@@ -138,6 +182,85 @@ raw path pointers after a removed subtree has already been destroyed.
 only `added`; the caller clears its previous state. `delta()` twice without a
 new tick is empty. Consumers must consume each tick or explicitly rebaseline;
 there is no retained history of missed ticks.
+
+### Scoped render-state replacement contract
+
+`Shape.castShadow`, `ClipPlane` fields and `LocalFog` fields do not have a dedicated
+per-item update bucket in `RenderDelta`. Changes to their cached dependencies take
+the same **remove-all-before-add-all replacement** path. `visible` is active
+traversal state and is classified as `DirtyChildren`, including an initially hidden
+branch that has no emitted item or reverse item dependency yet.
+
+The dependency sets include Shape records (also recognized-empty geometry), every
+encountered ClipPlane and LocalFog **before** testing `enabled`, and all static
+Transform ancestors of each scoped descriptor placement. Ancestor TRS changes
+therefore refresh world-space planes and world-scaled fog ranges, including every
+USE placement. Dependencies are rebuilt on each replacement. They are collected
+by the existing clip/fog walks, not by an additional per-tick scene traversal.
+For ClipPlanes below a Billboard, the extractor also retains the per-placement
+scope frame (including disabled planes and scopes without items). Each tick
+compares only those stored paths against the current tracked eye/up; a changed
+frame replaces the baseline. Billboard scalar edits participate in the scoped
+node dependencies too. This adds O(recorded view-dependent clip-scope paths ×
+path depth) checking; stable views and scenes without those scopes do not gain
+replacement walks. Unrelated transforms, including a Shape's frame below an
+already established clip/fog scope, remain incremental and retain their mesh
+allocations.
+
+Dirty tracking is node-granular: any `DirtyField` on an indexed Shape or scoped
+source/frame conservatively replaces the snapshot. A scoped frame's local/world
+transform dirtiness does too, even for disabled descriptors or empty scopes.
+This deliberately costs a bounded full walk and re-extraction of unchanged
+content on those ticks; it is a correctness fallback, not an O(changed-items)
+claim. Replacement refreshes `snapshotLocalFogs()` and item indices together and
+sets `fogChanged`. Consumers must not interpret a plain `updatedTransform` or
+`updatedMaterial` as permission to refresh unrelated clip or shadow descriptors.
+
+`scene_extractor_state_delta_test.cpp` exercises posted events through `tick()`
+and compares a channel-respecting consumer mirror against a separate fresh
+extractor: visibility, shadow flags, clip edits and frame changes, local fog
+color/type/range/enabled and scale, disabled/empty/hidden scopes, shared placements,
+unrelated TRS, coalesced edits, and camera-only/shared-empty Billboard clip
+scopes with independent expected world-plane values. Shared enclosing LocalFog
+groups also have explicit expected per-placement ranges before and after ancestor
+scale changes. This establishes delta/snapshot consistency and those snapshot
+semantics; it does not add clip/local-fog rendering to the OpenGL example.
+
+### Optional visibility-limit hints
+
+`RenderItem::beyondVisibilityLimit` is an **origin-distance hint**, for both AoS
+and packed placements: distance from the current world origin to the tracked eye
+is strictly greater than positive `Viewpoint.farDistance`, or, if that is not
+positive, positive `NavigationInfo.visibilityLimit`. Nonpositive effective limits
+leave the hint false; equality is false. This is neither a bounds test nor a
+frustum/occlusion guarantee. Geometry is still emitted and hosts may ignore it.
+
+The hint has no narrow `RenderDelta` channel. Before consuming a tick, the extractor
+compares relevant live hints with their current values. An actual boolean change
+uses the existing bounded **remove-all-before-add-all replacement**. A host must
+apply removals before additions and read the complete newly added records; plain
+transform/material/camera notifications do not grant unrelated descriptor updates.
+This catches far/fallback changes (including binding switches and finite-to-unlimited
+clearing), eye motion and ancestor TRS. Added/revived geometry gets its current hint
+even when the inputs changed while that placement was empty. Packed emission now
+uses this same rule instead of always initializing the hint to false.
+
+Unlimited-to-unlimited ticks do no per-item hint checking. With a finite limit,
+changed eye/up/limit inputs require O(live items) distance comparisons; static
+placements reuse their stored world origins. Dirty-frame and Billboard placements
+instead recompose current paths, sharing a local-matrix cache (O(affected path
+lengths)). Stable inputs inspect only dirty-frame dependencies; Billboard scalar
+edits also check the recorded Billboard placements. No hint change means no extra
+replacement or mesh allocation, including ordinary tracking ticks. A crossing does
+cost a bounded full scene walk and re-extraction of unchanged meshes, just like
+other unsupported per-item descriptor updates; this is an explicit correctness
+fallback, not a fine-grained state channel or a replacement on every head update.
+
+`scene_extractor_visibility_delta_test.cpp` checks explicit expected hint values
+and a channel-respecting mirror against independent snapshots, including shared
+placements, disabled/fallback limits, view motion, bindings, TRS, empty activation
+and packed geometry. Billboard transform/LOD refresh remains the separate
+view-dependent extraction contract; hint checks use current Billboard frames.
 
 ### Incremental geometry ownership and liveness
 
@@ -170,16 +293,28 @@ a separate seam.
 
 - `path` (`PathKey`) — full root-to-leaf node pointer chain; the per-path identity.
 - `worldTransform` (`Mat4`) — re-accumulated fresh per path, never from `TransformSystem::world_`.
-- `geometry` (`GeomId`) — `{node*, contentVersion}`; equal GeomIds share GPU geometry.
+- `geometry` (`GeomId`) — `{node*, contentVersion}`; equal GeomIds share identical GPU geometry. `contentVersion` is opaque: baked/deformed variants of the same node receive distinct values, as do revised payloads. It is not a field-write counter. Full baselines reset the namespace.
 - `geometry_ext` (`Geometry`) — union of AoS `MeshData` (default) and `PackedMesh` (binary resolver path).
 - `material` (`MaterialDesc`) — full Phong/Physical/Unlit descriptor with textures.
-- `mesh` (`MeshRef` = `shared_ptr<const MeshData>`) — local-frame triangles, **shared** across every placement of one `GeomId` ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)), so host RAM is O(distinct content) rather than O(placements). Never null (a Packed item points at `emptyMeshRef()`), so `item.mesh->positions` needs no null check. Immutable by contract: a content change builds a **new** mesh and bumps `GeomId::contentVersion` rather than editing one a co-owner can see.
+- `mesh` (`MeshRef` = `shared_ptr<const MeshData>`) — local-frame triangles, **shared** across every placement of one `GeomId` ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)), so host RAM is O(distinct content) rather than O(placements). Never null (a Packed item points at `emptyMeshRef()`), so `item.mesh->positions` needs no null check. `external_geom_seam_test.cpp` verifies this on emitted packed items and checks their empty AoS scene-bounds channel. Immutable by contract: a content change builds a **new** mesh and bumps `GeomId::contentVersion` rather than editing one a co-owner can see.
 - `lights` — indices into `snapshotLights()` for lights whose scope covers this placement.
 - `LightSystem` collects only lights reached through the same selected `Switch` child or distance-selected `LOD` level as geometry. It resolves locations and directions per path and scales PointLight/SpotLight radius through ancestor transforms (§17.4.2–3).
-- `LocalFogSystem` follows the same walk: a `LocalFog` is bound-independent and applies only within its enclosing grouping node, so each `LocalFogDesc` carries that `scopeRoot`; `enabled`=false `LocalFog`s are skipped so global `Fog` applies unchanged. `SceneExtractor` tags each `RenderItem::localFog` with the nearest in-scope index (global `Fog` governs when `-1`), and `visibilityRange` is world-scaled like global `Fog`.
+- `LocalFogSystem` collects a bound-independent `LocalFog` for each enclosing grouping **placement**. `LocalFogDesc::scopePath` contains the complete root-to-enclosing-group node-pointer chain; matching requires an exact prefix of the item path. The longest matching prefix wins, so USE-shared enclosing groups keep their own world-scaled `visibilityRange`, including shared nested scopes. An empty scope path is scene-wide root fog. Disabled fogs are skipped, leaving the nearest outer enabled fog or global `Fog`; `RenderItem::localFog == -1` selects global `Fog`. Existing equal-scope tie behavior is retained: the last collected scoped fog wins, while the first root fog supplies the scene-wide fallback. The walk keeps its shared visit budget and depth cap and rejects containment back-edges without deduplicating separate USE paths. This does not change light scoping.
+
 - `clipPlanes` (`ClipPlaneList`) — the enabled `ClipPlane` nodes (§11.4.1) in scope for this placement, resolved to **world space** (a plane's half-space is invariant, so a consumer maps it into its own frame — e.g. eye space — as needed). A `ClipPlane` affects the *following siblings and their subtrees* within its parent grouping node, threaded down the walk as scoped state. Fixed capacity — `ClipPlaneList::kMaxClipPlanes = 6` (the Annex F.5 minimum); planes beyond the sixth are dropped. `enabled=false` planes are ignored.
 - `beyondVisibilityLimit` — hint: item origin is past `Viewpoint.farDistance` / `NavigationInfo.visibilityLimit`.
 - `castShadow` — `X3DShapeNode.castShadow` (X3D default `true`); whether this shape occludes light. Carried, not interpreted — the shadow-visibility query (technique-defined per §17) is a consumer/seam concern (see [ADR-0028](../decisions/0028-shadow-visibility-seam.md)).
+
+`LocalFogDesc::scopeRoot` remains the enclosing group pointer (or null for root
+fog), but it is informational and cannot identify a USE placement by itself.
+The appended `scopePath` field preserves earlier member order, ordinary field
+access, and four-field aggregate initializers; code doing its own scope resolution
+must use the complete path, or consume the extractor's `RenderItem::localFog` index.
+This is an **experimental descriptor layout change**, not binary compatibility:
+the descriptor now owns a vector, requires recompilation, and cannot be copied or
+serialized as raw bytes. Pointer paths borrow scene-node lifetime, just like
+`RenderItem::path`; they are not persistent cross-scene IDs. Storage is proportional
+to the collected scope-path lengths. No stable public SDK facade changed.
 
 **`buildLocalMesh`** is the MeshBuilder entry point:
 
@@ -248,11 +383,11 @@ is in [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md).
 
 - **`TextureResolver` (embedder-configured)** — supplied at `SceneExtractor` construction; the SDK never decodes image bytes. The resolver is called per `TextureRef` with `Source::Url`; its result is threaded onto `TextureRef::resolvedPixels`. Default is `makeNullTextureResolver()` (always `Failed`; PoC white-fallback). See [Texture extraction](extract-textures.md).
 
-- **`externalGeometryResolver` / `PackedMesh`** — Phase 1 binary geometry path. When `buildLocalMesh` returns `recognized=false` and an `externalGeometryResolver` is wired, the extractor calls it with the unrecognized geometry node. A non-empty `PackedMesh` (glTF-accessor-compatible byte slabs, `attrib_mask` bitmask, `VertexBufferView` per attribute) triggers `emitPacked()`, producing a `RenderItem` with `geometry_ext.kind == Geometry::Kind::Packed`. An empty `PackedMesh` signals Pending (silent retry next tick). See [Ext firewall](ext-firewall.md).
+- **`externalGeometryResolver` / `PackedMesh`** — Phase 1 binary geometry path. When `buildLocalMesh` returns `recognized=false` and an `externalGeometryResolver` is wired, the extractor calls it with the unrecognized geometry node. A non-empty `PackedMesh` (glTF-accessor-compatible byte slabs, `attrib_mask` bitmask, `VertexBufferView` per attribute) triggers `emitPacked()`, producing a `RenderItem` with `geometry_ext.kind == Geometry::Kind::Packed`. An empty `PackedMesh` omits the placement as Pending. Once the host has geometry ready, take a fresh `fullSnapshot()` to retry the resolver. See [Ext firewall](ext-firewall.md).
 
 - **`X3DExecutionContext` (runtime dependency)** — provides `dirtyTracker()` (the `DirtyTracker` read by `delta()`), `tickGeneration()` (the monotonic advance count the one-delta-per-tick guard keys on — deliberately not `now()`, which an embedder may pause or replay), `boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`, `viewMatrix()`, and `cameraWorldPosition()`. See [Execution context](execution-context.md).
 
-- **`DirtyTracker` (runtime dependency)** — `delta()` reads `changedNodes()` and `flags(n)` exactly once per tick. Dirty flags consumed: `DirtyLocalTransform | DirtyWorldTransform` → transform re-accumulation; `DirtyField` → geometry content re-extract or material re-read; `DirtyChildren` → one authoritative replacement snapshot before traversing stale cached paths. See [Dirty/bounds/transform](dirty-bounds-transform.md).
+- **`DirtyTracker` (runtime dependency)** — `delta()` consumes the current tick's `changedNodes()` and `flags(n)` across its invalidation and update passes. Dirty flags consumed: `DirtyLocalTransform | DirtyWorldTransform` → transform re-accumulation; `DirtyField` → geometry content re-extract or material re-read; `DirtyChildren` → one authoritative replacement snapshot before traversing stale cached paths. See [Dirty/bounds/transform](dirty-bounds-transform.md).
 
 > **Per-`delta()` transform memoization.** The transform re-accumulation walks each
 > dirty item's full root→leaf `PathKey`, but `TransformSystem::localMatrix` (five
@@ -272,7 +407,10 @@ Single-threaded producer+consumer. The mutable interning caches (`items_`, `inde
 
 ### One-delta-per-tick contract
 
-`delta()` asserts `snapped_` (a prior `fullSnapshot()` must have run) and that `ctx_.now()` has advanced since the last call. Calling `delta()` twice in one tick, or before any `fullSnapshot()`, trips the assert. This is intentional: `tick()` clears the dirty set at tick end, so a stale second call would silently drop changes.
+`delta()` without a baseline returns `fullSnapshot()`. A second call without an
+intervening tick returns an empty delta. The guard uses `tickGeneration()`, not
+the supplied clock, so repeated timestamps remain valid. `tick()` clears the
+dirty set at its start: consume each tick before advancing again.
 
 ## How it is tested
 
@@ -308,7 +446,7 @@ MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are r
 | `x3d_packed_mesh` | `PackedMesh` descriptor: `set_attrib`, `has()`, `empty()`, `is_indexed()` |
 | `x3d_render_item_geometry` | `Geometry` union: AoS vs Packed kind switching |
 | `x3d_light_system` | `LightSystem::collect()` world-resolution + global/scoped flag |
-| `x3d_scene_extractor_fog` | Bound global `Fog` `FogDesc` + `LocalFog` scoping/enabled/world-scale (§24.4.3) |
+| `x3d_scene_extractor_fog` | Bound global `Fog` `FogDesc` + `LocalFog` placement paths, nested/disabled/root scope, world-scale, and bounded collection (§24.4.3) |
 | `x3d_material_system` | `MaterialSystem::materialOf()` Phong/Physical/Unlit dispatch |
 | `x3d_texture_extract` | Texture extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 

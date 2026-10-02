@@ -106,7 +106,9 @@ inline constexpr RenderItemId kInvalidRenderItemId = 0xFFFFFFFFu;
 // ---------------------------------------------------------------------------
 // GeomId — content identity of a mesh. Two placements with an equal GeomId
 // reference identical geometry content (upload-once / instance-N). contentVersion
-// is bumped by the extractor when a geometry node's CONTENT field changes.
+// is opaque: it distinguishes TextureTransform-baked / HAnimSegment-deformed
+// variants of one node as well as later content revisions. Do not interpret it
+// as a field-write count or require +1 arithmetic. A full baseline resets it.
 // ---------------------------------------------------------------------------
 struct GeomId {
   const X3DNode *node = nullptr;
@@ -712,15 +714,17 @@ struct FogDesc {
 // geometry within its enclosing grouping node's subtree. Same color/fogType/
 // visibilityRange semantics as FogDesc; visibilityRange is surfaced already
 // world-scaled (the spec defines it in the node's LOCAL frame). enabled==false
-// LocalFogs are skipped entirely, so global Fog applies unchanged in their
-// scope. A consumer resolves the NEAREST enabled LocalFog whose scopeRoot is an
-// ancestor of the item's path.
+// LocalFogs are skipped entirely, leaving an outer enabled LocalFog or global
+// Fog in scope. A consumer resolves the NEAREST
+// enabled LocalFog whose scopePath is a prefix of the item's path. The full
+// root-to-group path distinguishes USE placements of the same enclosing group.
 // ---------------------------------------------------------------------------
 struct LocalFogDesc {
   SFColor color{1.0f, 1.0f, 1.0f};
   FogDesc::Type fogType = FogDesc::Type::Linear;
   float visibilityRange = 0.0f; // world units; 0 disables fog.
-  const X3DNode *scopeRoot = nullptr; // enclosing grouping node for scoping.
+  const X3DNode *scopeRoot = nullptr; // enclosing grouping node; not placement identity.
+  PathKey scopePath{}; // full root..enclosing-group chain; empty = scene-wide.
 };
 
 // ---------------------------------------------------------------------------
@@ -766,7 +770,11 @@ struct ClipPlaneList {
 // background/lights surfaces for a caching consumer.
 //
 // RenderItem carries NO changeBits: this struct is the only encoding of change.
-// Structural deltas remove ALL previously live IDs and add the current snapshot.
+// Structural/visibility and cached Shape/ClipPlane/LocalFog state changes remove
+// ALL previously live IDs and add the current snapshot. Indexed scoped ancestor
+// frame changes take the same conservative replacement path; unrelated TRS is
+// incremental. There is no implicit clip/shadow/local-fog-index update attached
+// to updatedTransform or updatedMaterial.
 // Apply removed BEFORE added; the same dense ID may occur in both. Drop stale
 // content-cache entries when their last live placement is removed (defer actual
 // GPU destruction according to host fences). A rebuild resets content versions.

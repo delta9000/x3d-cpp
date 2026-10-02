@@ -13,17 +13,16 @@
 //           draw NOTHING; otherwise recurse ONLY children[whichChoice]. A blind
 //           child loop would (wrongly) draw the first child at -1 and every child
 //           otherwise — the exact bug this special-case closes.
-//         * LOD: static PoC selects children[0] (highest detail), DOCUMENTED.
-//           Range selection needs an eye position not threaded into this DFS, so
-//           the level-0 pick is deliberate and stable; LOD draws exactly one
-//           child, never all levels.
+//         * LOD: range selection uses the viewer position in each placement's
+//           local frame. delta() checks every recorded LOD placement, including
+//           selections with no emitted mesh, before updating its baseline.
 //         * Group/Transform/Anchor/Billboard/Collision/StaticGroup and the rest:
 //           pass-through grouping nodes via the generic children/SFNode loop.
-//           Billboard is treated as identity orientation (documented wrong once
-//           the camera moves — view-facing rotation is a documented limitation).
+//           Billboard orientation is composed per path from the tracked eye/up;
+//           camera-only changes update affected transforms without mesh rebuilds.
 //       worldM is mutated by any transform-bearing node (Transform,
 //       HAnimHumanoid, HAnimJoint, CADPart — see TransformSystem::isTransform).
-//       Billboard is view-dependent (deferred to M2c/M2d).
+//       Billboard contributes its view-dependent frame in both walk and delta.
 //
 //   (b) Real geometry + material + lights. MeshBuilder (T2/T3/T4 — ALL types now,
 //       not just the three triangle sets) produces the local mesh; MaterialSystem
@@ -79,13 +78,16 @@
 #include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
+#include <algorithm>
 #include <any>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -133,7 +135,7 @@ struct RenderItem {
   std::vector<std::size_t> lights;
 
   // §24.4.3: index into SceneExtractor::snapshotLocalFogs() for the NEAREST
-  // enabled LocalFog whose scopeRoot is an ancestor of this item's PathKey, or
+  // enabled LocalFog whose scopePath is a prefix of this item's PathKey, or
   // -1 when no LocalFog applies (global Fog governs). A LocalFog is
   // bound-independent and applies only within its enclosing grouping node.
   int localFog = -1;
@@ -175,19 +177,26 @@ public:
         textureResolver_(std::move(textureResolver)) {}
 
   // fullSnapshot — one full walk; (re)builds the PathIndex + per-item records +
-  // the three reverse indices + the entry-matrix cache and returns EVERY item in
+  // the dependency indices + the entry-matrix cache and returns EVERY item in
   // `added` (so frame 0 and frame N share one upload path).
   RenderDelta fullSnapshot() {
     syncSkinChanges();
+    visibility_ = currentVisibilityInputs();
     items_.clear();
     index_.clear();
     transformDeps_.clear();
+    billboardItems_.clear();
+    lodPlacements_.clear();
     geomDeps_.clear();
     skinPoseDeps_.clear();
     skinBindingDeps_.clear();
     materialDeps_.clear();
+    itemStateDeps_.clear();
+    scopedStateDeps_.clear();
+    viewScopedFrames_.clear();
     geomOwners_.clear();
     geomVersions_.clear();
+    meshContentVersions_.clear();
     unplacedGeometry_.clear();
     unplacedPaths_.clear();
     entryMatrix_.clear();
@@ -210,18 +219,20 @@ public:
     lights_ = ls.collect(scene_, walkBudget_, ctx_.cameraWorldPosition());
 
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
-    // RenderItem with the nearest one whose scopeRoot covers its PathKey.
+    // RenderItem with the nearest one whose scopePath prefixes its PathKey.
     LocalFogSystem lfs;
-    localFogs_ = lfs.collect(scene_, walkBudget_, ctx_.cameraWorldPosition());
+    localFogs_ = lfs.collect(scene_, walkBudget_, ctx_.cameraWorldPosition(),
+                             &scopedStateDeps_);
 
     RenderDelta delta;
     // REQ-CLIP: root-level ClipPlanes are walked in document order too, so a
     // root plane affects the following root nodes. activeClips_ is reset here and
     // scoped per grouping node inside walk().
     activeClips_.clear();
+    const PathKey rootPath;
     for (const auto &root : scene_.rootNodes) {
       if (!root) continue;
-      if (maybeClipPlane(root.get(), Mat4::identity())) continue;
+      if (maybeClipPlane(root.get(), Mat4::identity(), rootPath)) continue;
       PathKey path;
       walk(root.get(), Mat4::identity(), path, delta);
     }
@@ -240,7 +251,8 @@ public:
   // ---------------------------------------------------------------------------
   // delta — INCREMENTAL change channel. Reads ctx.dirtyTracker() ONCE for the
   // current tick and partitions the changed nodes into RenderDelta buckets,
-  // NEVER re-walking the whole scene for a transform/geometry/material-only tick.
+  // Geometry/material/TRS-only ticks stay incremental unless a changed frame
+  // also owns scoped descriptors (ClipPlane/LocalFog); those need replacement.
   //
   // ONE-DELTA-PER-TICK CONTRACT, made TOTAL (no misuse is undefined):
   //
@@ -281,7 +293,8 @@ public:
   //       the geometry leaf — so a parent scale does NOT pollute updatedGeometry).
   //   * DirtyField & n in materialDeps_  =>  re-read the MaterialDesc from the
   //       owning Shape's Appearance => updatedMaterial.
-  //   * Any DirtyChildren => one full replacement snapshot (bounded scene walk),
+  //   * Shape/scoped-descriptor dependencies or any DirtyChildren => one full
+  //       replacement snapshot (bounded scene walk),
   //       before reading stale paths. All old live ids removed, current ids added.
   // ---------------------------------------------------------------------------
   RenderDelta delta() {
@@ -304,6 +317,44 @@ public:
       if (ctx_.dirtyTracker().flags(n) & DirtyChildren)
         return replacementSnapshot();
 
+    // LOD rendering is per placement; a node's level_changed announcement
+    // cannot describe every USE path. Retain even empty selections and compare
+    // their current per-path choice before consuming this tick's baseline.
+    LocalXfCache localXf;
+    for (const auto &[path, previous] : lodPlacements_) {
+      auto selected = traversedChild(*path.back(), worldAlongPath(path, localXf),
+                                     ctx_.cameraWorldPosition());
+      if (selected.get() != previous) return replacementSnapshot();
+    }
+
+    // Clip planes below a Billboard also depend on the tracked eye/up, which
+    // need not dirty any scene node. Compare only those recorded scope paths;
+    // per-item transform updates cannot publish a changed world-plane equation.
+    for (const auto &[path, previous] : viewScopedFrames_)
+      if (worldAlongPath(path, localXf).m != previous.m)
+        return replacementSnapshot();
+
+    // RenderDelta has no per-item castShadow/clip/local-fog-index channel.
+    // Replace the baseline instead of silently changing descriptors under a
+    // transform/material notification. Dependencies are recorded independently
+    // of emitted geometry, including disabled state and empty placements.
+    for (const X3DNode *n : ctx_.dirtyTracker().changedNodes()) {
+      const unsigned flags = ctx_.dirtyTracker().flags(n);
+      if (((flags & DirtyField) && itemStateDeps_.count(n)) ||
+          ((flags & (DirtyField | DirtyLocalTransform | DirtyWorldTransform)) &&
+           scopedStateDeps_.count(n)))
+        return replacementSnapshot();
+    }
+
+    // This optional item descriptor has no narrow RenderDelta update channel.
+    // Check current values BEFORE consuming the baseline: only an actual hint
+    // change requires remove-before-add replacement (not every camera tick).
+    const auto visibility = currentVisibilityInputs();
+    LocalXfCache visibilityFrames;
+    if (visibilityHintsChanged(visibility, visibilityFrames))
+      return replacementSnapshot();
+    visibility_ = visibility;
+
     lastDeltaGen_ = gen;
     const auto changedSkins = syncSkinChanges();
 
@@ -316,7 +367,6 @@ public:
     std::unordered_set<RenderItemId> transformSeen, materialSeen;
     // Shared across every reaccumulateWorld() in this delta() so a transform that
     // sits on the path of many dirty items is recomposed once, not once per item.
-    LocalXfCache localXf;
 
     // A source (Coordinate/Normal/Color/...) may feed several geometry nodes,
     // and several sources of one geometry may change in the same tick. Resolve
@@ -337,7 +387,8 @@ public:
       const unsigned f = dirty.flags(n);
 
       // --- transform: re-accumulate worldM along each dependent's PathKey -----
-      if (f & (DirtyLocalTransform | DirtyWorldTransform)) {
+      if ((f & (DirtyLocalTransform | DirtyWorldTransform)) ||
+          ((f & DirtyField) && n->nodeTypeName() == "Billboard")) {
         for (RenderItemId id : depsOf(transformDeps_, n)) {
           // Dedup the re-accumulation itself: propagate() flags every node in a
           // dirtied subtree, so the same item is reached via several dirty
@@ -351,16 +402,32 @@ public:
 
       // --- appearance-subtree change => re-read MaterialDesc ------------------
       if (f & DirtyField) {
-        const auto dependentItems = depsOf(materialDeps_, n);
+        const auto &dependentItems = depsOf(materialDeps_, n);
         for (RenderItemId id : dependentItems) {
+          if (!materialSeen.insert(id).second) continue;
           refreshMaterial(id);
-          if (materialSeen.insert(id).second) delta.updatedMaterial.push_back(id);
+          delta.updatedMaterial.push_back(id);
         }
       }
 
       // --- HAnim scalar configuration change => subtree re-walk ---------------
       if (f & DirtyField && n->nodeTypeName() == "HAnimHumanoid")
         rewalkSubtree(n, delta);
+    }
+
+    // Billboards depend on the tracked eye/up as well as scene fields. A camera
+    // change does not dirty a scene node, so compare the affected placements
+    // directly. Stable views retain both mesh payloads and transform uploads.
+    for (RenderItemId id : billboardItems_) {
+      if (!liveIds_.count(id) || transformSeen.count(id) ||
+          std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end())
+        continue;
+      Mat4 world = worldAlongPath(items_[id].path, localXf);
+      if (world.m != items_[id].worldTransform.m) {
+        items_[id].worldTransform = world;
+        transformSeen.insert(id);
+        delta.updatedTransform.push_back(id);
+      }
     }
 
     for (RenderItemId id = 0; id < items_.size(); ++id) {
@@ -689,8 +756,8 @@ private:
     return changed;
   }
 
-  // Delegates to TransformSystem so all transform-bearing types stay in sync.
-  // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
+  // Delegates authored transforms to TransformSystem. Billboard's view-dependent
+  // frame is composed separately, using each placement's accumulated world.
   static bool isTransform(const X3DNode *n) {
     return TransformSystem::isTransform(n);
   }
@@ -717,42 +784,114 @@ private:
   // path, and that product is still formed fresh per PathKey below.
   struct LocalXf {
     bool isXform;
+    bool isBillboard;
+    SFVec3f billboardAxis;
     Mat4 local;
   };
   using LocalXfCache = std::unordered_map<const X3DNode *, LocalXf>;
+
+  struct VisibilityInputs {
+    float limit = 0; // nonpositive => unlimited
+    SFVec3f eye{}, up{};
+  };
+
+  VisibilityInputs currentVisibilityInputs() const {
+    VisibilityInputs inputs;
+    if (const X3DNode *vp = ctx_.boundViewpoint())
+      inputs.limit = geombounds::getField<float>(*vp, "farDistance", -1.0f);
+    if (!(inputs.limit > 0))
+      if (const X3DNode *ni = ctx_.boundNavigationInfo())
+        inputs.limit = geombounds::getField<float>(*ni, "visibilityLimit", 0.0f);
+    if (!(inputs.limit > 0)) inputs.limit = 0;
+    inputs.eye = ctx_.cameraWorldPosition();
+    inputs.up = ctx_.cameraWorldUp();
+    return inputs;
+  }
+
+  static bool isBeyondVisibilityLimit(const Mat4 &world, const VisibilityInputs &inputs) {
+    if (!(inputs.limit > 0)) return false;
+    const SFVec3f origin = world.transformPoint(SFVec3f{0, 0, 0});
+    // An origin-distance hint only: this does not test bounds or a frustum.
+    return viewdep::len(viewdep::sub(origin, inputs.eye)) > inputs.limit;
+  }
+
+  bool visibilityHintsChanged(const VisibilityInputs &inputs, LocalXfCache &cache) {
+    // No per-item work for the common unlimited case, even during head motion.
+    // A finite -> unlimited transition still clears previously true hints.
+    if (!(inputs.limit > 0) && !(visibility_.limit > 0)) return false;
+    std::unordered_set<RenderItemId> moved;
+    bool billboardEdited = false;
+    for (const X3DNode *node : ctx_.dirtyTracker().changedNodes()) {
+      const auto flags = ctx_.dirtyTracker().flags(node);
+      if (flags & (DirtyLocalTransform | DirtyWorldTransform)) {
+        const auto &ids = depsOf(transformDeps_, node);
+        moved.insert(ids.begin(), ids.end());
+      }
+      billboardEdited = billboardEdited ||
+          ((flags & DirtyField) && node->nodeTypeName() == "Billboard");
+    }
+    // Billboard edits can move child origins without ordinary TRS dirtiness.
+    if (billboardEdited) moved.insert(billboardItems_.begin(), billboardItems_.end());
+    auto changed = [&](RenderItemId id) {
+      if (!liveIds_.count(id)) return false;
+      const auto &rec = items_[id];
+      bool beyond = false;
+      if (inputs.limit > 0) {
+        // Static placements reuse their published world matrix on camera-only
+        // ticks. Only changed frames / Billboard paths need recomposition.
+        const Mat4 world = moved.count(id) || billboardItems_.count(id)
+            ? worldAlongPath(rec.path, cache) : rec.worldTransform;
+        beyond = isBeyondVisibilityLimit(world, inputs);
+      }
+      return beyond != rec.beyondVisibilityLimit;
+    };
+    if (inputs.limit != visibility_.limit || inputs.eye != visibility_.eye ||
+        inputs.up != visibility_.up) {
+      for (RenderItemId id : liveIds_)
+        if (changed(id)) return true;
+    } else {
+      for (RenderItemId id : moved)
+        if (changed(id)) return true;
+    }
+    return false;
+  }
 
   const LocalXf &localXfOf(const X3DNode *n, LocalXfCache &cache) {
     auto it = cache.find(n);
     if (it != cache.end()) return it->second;
     LocalXf v;
     v.isXform = isTransform(n);
+    v.isBillboard = n->nodeTypeName() == "Billboard";
+    v.billboardAxis = v.isBillboard
+        ? geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0})
+        : SFVec3f{0, 1, 0};
     v.local = v.isXform ? TransformSystem::localMatrix(n) : Mat4::identity();
     return cache.emplace(n, v).first->second;
   }
 
-  void reaccumulateWorld(RenderItemId id, LocalXfCache &cache) {
-    RenderItem &rec = items_[id];
-    rec.worldTransform = worldAlongPath(rec.path, cache);
+  Mat4 worldAlongPath(const PathKey &path, LocalXfCache &cache) {
+    Mat4 world = Mat4::identity();
+    std::optional<std::pair<SFVec3f, SFVec3f>> view;
+    for (const X3DNode *node : path) {
+      const LocalXf &local = localXfOf(node, cache);
+      if (local.isXform) world = world * local.local;
+      if (local.isBillboard) {
+        if (!view) view = std::make_pair(ctx_.cameraWorldPosition(), ctx_.cameraWorldUp());
+        world = world * billboardLocalMatrix(world, view->first, view->second,
+                                             local.billboardAxis);
+      }
+    }
+    return world;
   }
 
-  Mat4 worldAlongPath(const PathKey &path, LocalXfCache &cache) {
-    Mat4 w = Mat4::identity();
-    // The PathKey is root..leaf; the leaf Shape itself is not a Transform, but a
-    // defensive isTransform() guard keeps this identical to the walk() idiom.
-    for (const X3DNode *n : path) {
-      const LocalXf &x = localXfOf(n, cache);
-      if (x.isXform) w = w * x.local;
-      if (n->nodeTypeName() == "Billboard")
-        w = w * billboardLocalMatrix(w, ctx_.cameraWorldPosition(), ctx_.cameraWorldUp(),
-                                    geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0}));
-    }
-    return w;
+  void reaccumulateWorld(RenderItemId id, LocalXfCache &cache) {
+    items_[id].worldTransform = worldAlongPath(items_[id].path, cache);
   }
 
   void refreshGeometry(const X3DNode *geom, const GeometryChange &change,
                        RenderDelta &delta, LocalXfCache &localXf) {
     evictMeshCache(geom);
-    const auto version = ++geomVersions_[geom];
+    const auto version = advanceGeometryVersion(geom);
     // Keep the source's placement scope. A Coordinate affects every use, but
     // an HAnimSegment displacer only affects uses inside that Segment.
     for (RenderItemId id : change.items) {
@@ -766,6 +905,7 @@ private:
         continue;
       }
       rec.mesh = bakedMesh(geom, mesh, ttParamsOfItem(id));
+      rec.geometry.contentVersion = meshContentVersion(geom, rec.mesh);
       if (rec.skin) {
         const auto *humanoid = rec.skin->binding->humanoid;
         rec.skin->binding = skinBinding(humanoid);
@@ -778,6 +918,10 @@ private:
       } else if (liveIds_.count(id)) {
         delta.updatedGeometry.push_back(id);
       } else {
+        // Activation advertises the complete record, including a hint that may
+        // have changed while this placement was dormant. Use its current frame.
+        rec.worldTransform = worldAlongPath(rec.path, localXf);
+        rec.beyondVisibilityLimit = isBeyondVisibilityLimit(rec.worldTransform, visibility_);
         delta.added.push_back(id);
       }
     }
@@ -815,17 +959,11 @@ private:
     const X3DNode *shape = rec.path.back();
     auto appearance = geombounds::getNode(*shape, "appearance");
     rec.material = materialOf(appearance ? appearance.get() : nullptr);
-    // A child node can be replaced through Appearance.fillProperties (or any
-    // other SFNode field). Rebuild this item's subtree dependencies so later
-    // field writes to the replacement also produce updatedMaterial.
-    for (auto it = materialDeps_.begin(); it != materialDeps_.end();) {
-      auto &ids = it->second;
-      ids.erase(std::remove(ids.begin(), ids.end(), id), ids.end());
-      if (ids.empty()) it = materialDeps_.erase(it);
-      else ++it;
-    }
-    std::unordered_set<const X3DNode *> seen;
-    collectMaterialSubtree(appearance.get(), id, seen);
+    // SFNode/MFNode edits take the replacementSnapshot path before this scalar
+    // refresh. The appearance-subtree edges cannot change here, so preserve the
+    // reverse index instead of erasing/re-adding this id across every dependency.
+    // For one material shared by N placements that old teardown scanned an
+    // N-element vector N times, even when only diffuseColor changed.
     // T-TEX: re-enrich + re-resolve the textures of the refreshed material so an
     // appearance-subtree change (a new ImageTexture url, a TextureProperties edit)
     // re-runs the resolver and re-derives the §18.4.8/9 descriptor surface. The
@@ -896,8 +1034,18 @@ private:
   // parent grouping node's world frame (the ClipPlane's local frame). A disabled
   // plane (enabled=false) is ignored; a plane beyond the kMaxClipPlanes cap is
   // dropped (ClipPlaneList::push).
-  bool maybeClipPlane(const X3DNode *n, const Mat4 &worldM) {
+  bool maybeClipPlane(const X3DNode *n, const Mat4 &worldM, const PathKey &path) {
     if (!n || n->nodeTypeName() != "ClipPlane") return false;
+    // Record even disabled planes and scopes without any renderable geometry.
+    // Every USE path contributes its ancestor frames, never a first-path cache.
+    scopedStateDeps_.insert(n);
+    bool viewDependent = false;
+    for (const X3DNode *ancestor : path) {
+      const bool billboard = ancestor->nodeTypeName() == "Billboard";
+      if (isTransform(ancestor) || billboard) scopedStateDeps_.insert(ancestor);
+      viewDependent = viewDependent || billboard;
+    }
+    if (viewDependent) viewScopedFrames_.emplace(path, worldM);
     if (geombounds::getField<bool>(*n, "enabled", true)) {
       const SFVec4f local =
           geombounds::getField<SFVec4f>(*n, "plane", {0, 1, 0, 0});
@@ -961,6 +1109,8 @@ private:
       else rememberUnplacedGeometry(n, path);
     }
     if (geombounds::hasField(*n, "geometry")) {
+      // Includes recognized-empty geometry: later revival must read current state.
+      itemStateDeps_.insert(n);
       if (auto geom = geombounds::getNode(*n, "geometry")) {
         bool recognized = false;
         // ADR-0045: build-once per DISTINCT geometry node, not per placement.
@@ -1018,8 +1168,9 @@ private:
     // VISIBILITY special-cases BY nodeTypeName, BEFORE the generic child loop.
     const std::string t = n->nodeTypeName();
     if (t == "Switch" || t == "LOD") {
-      if (auto child = traversedChild(*n, here, ctx_.cameraWorldPosition()))
-        walk(child.get(), here, path, delta);
+      auto child = traversedChild(*n, here, ctx_.cameraWorldPosition());
+      if (t == "LOD") lodPlacements_[path] = child.get();
+      if (child) walk(child.get(), here, path, delta);
       path.pop_back();
       return;
     }
@@ -1086,7 +1237,7 @@ private:
         const std::string ct = c->nodeTypeName();
         if (ct != "Shape" && ct != "LOD" && ct != "Transform") return;
       }
-      if (maybeClipPlane(c.get(), here)) return; // scoped state, not geometry.
+      if (maybeClipPlane(c.get(), here, path)) return; // scoped state, not geometry.
       walk(c.get(), here, path, delta);
     });
     activeClips_.resize(clipMark);
@@ -1122,23 +1273,7 @@ private:
     // texture USE'd 200 times).
     resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
 
-    // §23.4.4 effective far = Viewpoint.farDistance>0 ? : NavigationInfo.visibilityLimit>0 ? : inf.
-    float far = 0.0f; // 0 => infinite
-    if (const X3DNode *vp = ctx_.boundViewpoint()) {
-      float fd = geombounds::getField<float>(*vp, "farDistance", -1.0f);
-      if (fd > 0.0f) far = fd;
-    }
-    if (far == 0.0f) {
-      if (const X3DNode *ni = ctx_.boundNavigationInfo())
-        far = geombounds::getField<float>(*ni, "visibilityLimit", 0.0f);
-    }
-    bool beyond = false;
-    if (far > 0.0f) {
-      const SFVec3f origin = worldM.transformPoint(SFVec3f{0, 0, 0});
-      const SFVec3f eye = ctx_.cameraWorldPosition();
-      const float d = viewdep::len(viewdep::sub(origin, eye));
-      beyond = d > far; // conservative: item origin beyond far
-    }
+    const bool beyond = isBeyondVisibilityLimit(worldM, visibility_);
 
     auto it = index_.find(path);
     RenderItemId id;
@@ -1148,7 +1283,7 @@ private:
       RenderItem rec;
       rec.path = path;
       rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, geomVersions_[geom]};
+      rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
       rec.material = std::move(material);
       rec.mesh = std::move(mesh);
       rec.beyondVisibilityLimit = beyond;
@@ -1160,7 +1295,7 @@ private:
       id = it->second;
       RenderItem &rec = items_[id];
       rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, geomVersions_[geom]};
+      rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
       rec.material = std::move(material);
       rec.mesh = std::move(mesh);
       rec.beyondVisibilityLimit = beyond;
@@ -1217,10 +1352,10 @@ private:
       rec.worldTransform = worldM;
       rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
-      rec.mesh = {};  // AoS mesh empty for packed items.
+      rec.mesh = emptyMeshRef(); // Packed items retain the never-null AoS channel.
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
-      rec.beyondVisibilityLimit = false;
+      rec.beyondVisibilityLimit = isBeyondVisibilityLimit(worldM, visibility_);
       rec.castShadow = castShadow;
       items_.push_back(std::move(rec));
     } else {
@@ -1229,8 +1364,10 @@ private:
       rec.worldTransform = worldM;
       rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
+      rec.mesh = emptyMeshRef();
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
+      rec.beyondVisibilityLimit = isBeyondVisibilityLimit(worldM, visibility_);
       rec.castShadow = castShadow;
     }
     // REQ-CLIP: attach the enabled ClipPlanes in scope at this placement.
@@ -1271,22 +1408,22 @@ private:
     }
   }
 
-  // §24.4.3: the NEAREST enabled LocalFog whose scopeRoot is an ancestor of the
+  // §24.4.3: the NEAREST enabled LocalFog whose scopePath is a prefix of the
   // item's path wins (nested LocalFogs: the innermost grouping node's fog). A
-  // root-level LocalFog (scopeRoot == nullptr, collected as scene-wide) applies
+  // root-level LocalFog (empty scopePath, collected as scene-wide) applies
   // to every item but any deeper scoped LocalFog overrides it.
   void tagLocalFog(RenderItem &rec, const PathKey &path) {
     rec.localFog = -1;
-    std::size_t bestDepth = 0; // depth of the winning scopeRoot on the path.
+    std::size_t bestDepth = 0; // length of the winning scopePath.
     for (std::size_t i = 0; i < localFogs_.size(); ++i) {
       const LocalFogDesc &F = localFogs_[i];
-      if (F.scopeRoot) {
-        for (std::size_t d = 0; d < path.size(); ++d)
-          if (path[d] == F.scopeRoot && d + 1 >= bestDepth) {
-            bestDepth = d + 1;
-            rec.localFog = static_cast<int>(i);
-            break;
-          }
+      if (!F.scopePath.empty()) {
+        const std::size_t depth = F.scopePath.size();
+        if (depth <= path.size() && depth >= bestDepth &&
+            std::equal(F.scopePath.begin(), F.scopePath.end(), path.begin())) {
+          bestDepth = depth;
+          rec.localFog = static_cast<int>(i);
+        }
       } else if (rec.localFog < 0) {
         // Scene-wide root LocalFog: applies unless a scoped one overrides.
         bestDepth = 0;
@@ -1327,8 +1464,11 @@ private:
                            const X3DNode *geom, const X3DNode *appearance) {
     // transformDeps: every Transform ANCESTOR on this item's path. A change on any
     // of them re-accumulates this item's worldTransform.
-    for (const X3DNode *anc : path)
-      if (isTransform(anc)) appendDep(transformDeps_, anc, id);
+    for (const X3DNode *anc : path) {
+      const bool billboard = anc->nodeTypeName() == "Billboard";
+      if (isTransform(anc) || billboard) appendDep(transformDeps_, anc, id);
+      if (billboard) billboardItems_.insert(id);
+    }
 
     // geomDeps: the geometry node itself AND its direct content child-nodes
     // (Coordinate/Normal/Color/TextureCoordinate/...). classifyDirty marks a
@@ -1417,10 +1557,11 @@ private:
     }
     return nullptr;
   }
-  // TextureTransform-baked variants, keyed by (geometry node, params bytes). Only
-  // populated when a TextureTransform is actually authored — the common
-  // untransformed case shares the raw entry directly and allocates nothing here.
-  std::map<std::pair<const X3DNode *, std::string>, MeshRef> bakedMeshCache_;
+  // TextureTransform baking depends on the raw payload as well as parameters:
+  // one geometry can have different HAnimSegment displacement variants. Keep
+  // each raw variant's bake namespace distinct and evict them together by owner.
+  using BakedVariants = std::unordered_map<const MeshData *, std::map<std::string, MeshRef>>;
+  std::unordered_map<const X3DNode *, BakedVariants> bakedMeshCache_;
 
   // Serialize a params list into a cache key. Field-by-field (NOT a memcpy of the
   // struct) — TextureTransform2DParams has padding after `hasMatrix`, and hashing
@@ -1483,21 +1624,20 @@ private:
   }
 
   // Bake `params` into `raw`, sharing the result across every caller that agrees
-  // on (geom, params). An empty params list means no TextureTransform is authored
+  // on (geom, raw payload, params). An empty params list means no TextureTransform is authored
   // and applyTextureTransformsToMesh() is a documented no-op — return the raw
   // mesh untouched so the common case costs nothing.
   MeshRef bakedMesh(const X3DNode *geom, MeshRef raw,
                     const std::vector<TextureTransform2DParams> &params) {
     if (params.empty()) return raw;
-    auto key = std::make_pair(geom, ttParamsKey(params));
-    auto it = bakedMeshCache_.find(key);
-    if (it == bakedMeshCache_.end()) {
+    auto &variants = bakedMeshCache_[geom][raw.get()];
+    auto key = ttParamsKey(params);
+    auto it = variants.find(key);
+    if (it == variants.end()) {
       MeshData baked = *raw; // the one deliberate copy: one per distinct bake.
       applyTextureTransformsToMesh(baked, params);
-      it = bakedMeshCache_
-               .emplace(std::move(key),
-                        std::make_shared<const MeshData>(std::move(baked)))
-               .first;
+      it = variants.emplace(std::move(key),
+                            std::make_shared<const MeshData>(std::move(baked))).first;
     }
     return it->second;
   }
@@ -1512,12 +1652,29 @@ private:
       while (hi != segmentMeshCache_.end() && hi->first.first == geom) ++hi;
       segmentMeshCache_.erase(lo, hi);
     }
-    // Baked keys are (geom, paramsBytes); the map is ordered by that pair, so all
-    // of one geometry's variants form a contiguous range starting at (geom, "").
-    auto lo = bakedMeshCache_.lower_bound({geom, std::string{}});
-    auto hi = lo;
-    while (hi != bakedMeshCache_.end() && hi->first.first == geom) ++hi;
-    bakedMeshCache_.erase(lo, hi);
+    bakedMeshCache_.erase(geom);
+    meshContentVersions_.erase(geom);
+  }
+
+  // contentVersion is an opaque content identity, not a count of field writes.
+  // Same-node baked/deformed variants must not alias in a GeomId-keyed host
+  // cache. Caches retain the payloads for these pointer keys; owner eviction
+  // drops the pointer index but never reuses a version within this baseline.
+  std::uint32_t advanceGeometryVersion(const X3DNode *geom) {
+    auto &version = geomVersions_[geom];
+    if (version == std::numeric_limits<std::uint32_t>::max())
+      throw std::overflow_error("geometry content identity exhausted; take a full snapshot");
+    return ++version;
+  }
+
+  std::uint32_t meshContentVersion(const X3DNode *geom, const MeshRef &mesh) {
+    auto &versions = meshContentVersions_[geom];
+    auto found = versions.find(mesh.get());
+    if (found != versions.end()) return found->second;
+    const auto version = versions.empty() ? geomVersions_[geom]
+                                          : advanceGeometryVersion(geom);
+    versions.emplace(mesh.get(), version);
+    return version;
   }
 
   // The TextureTransform params governing an already-emitted item, read back from
@@ -1558,8 +1715,19 @@ private:
 
   // The three reverse indices + the interior-node entry-matrix cache (T8 inputs).
   DepMap transformDeps_;
+  std::unordered_set<RenderItemId> billboardItems_;
+  std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> lodPlacements_;
   DepMap geomDeps_;
   DepMap materialDeps_;
+  // Shape-level descriptors and scoped ClipPlane/LocalFog sources + frames.
+  // These cannot be delivered by the existing narrow incremental channels.
+  // Scoped dependencies are collected before checking enabled/mesh emission so
+  // inactive descriptors and empty branches can become active correctly.
+  std::unordered_set<const X3DNode *> itemStateDeps_;
+  std::unordered_set<const X3DNode *> scopedStateDeps_;
+  // Per-path parent frames of ClipPlanes below Billboards, including disabled
+  // planes and scopes without items. Only these paths need a tracked-view check.
+  std::unordered_map<PathKey, Mat4, PathKeyHash, PathKeyEqual> viewScopedFrames_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> skinPoseDeps_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> skinBindingDeps_;
   std::unordered_map<const X3DNode *, std::shared_ptr<const hanim::SkinBinding>> skinBindings_;
@@ -1569,6 +1737,8 @@ private:
   // Content source -> ALL geometry owners (not a last-writer-wins owner).
   std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> geomOwners_;
   std::unordered_map<const X3DNode *, std::uint32_t> geomVersions_;
+  std::unordered_map<const X3DNode *,
+                     std::unordered_map<const MeshData *, std::uint32_t>> meshContentVersions_;
   struct UnplacedGeometry {
     PathKey path;
     std::vector<ClipPlaneDesc> clips;
@@ -1590,6 +1760,8 @@ private:
   // start of fullSnapshot()/delta()). Latches `tripped` when exhausted; surfaced
   // by budgetExceeded().
   WalkBudget walkBudget_;
+
+  VisibilityInputs visibility_; // inputs consumed by the last snapshot/delta
 
   // One-delta-per-tick contract state. snapped_ says a baseline exists (an
   // un-snapshotted delta() promotes itself to fullSnapshot()); lastDeltaGen_ is

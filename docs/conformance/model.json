@@ -2281,6 +2281,7 @@
     },
     {
       "findings": [
+        "EXTRACT-VISIBILITY-HINT-DELTA",
         "GRP-ADDCHILDREN",
         "SENSOR-SWITCH",
         "SW-DELTA-1"
@@ -2375,6 +2376,7 @@
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "GRP-ADDCHILDREN",
             "REQ-UNIT",
             "ROUTE-IO-ALIAS"
@@ -3652,6 +3654,7 @@
         "COL-2",
         "COL-3",
         "CONF-NAV-COLLISION",
+        "EXTRACT-VISIBILITY-HINT-DELTA",
         "FOV-TYPE",
         "LOD-1",
         "LOD-DELTA-1",
@@ -3673,6 +3676,7 @@
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "GRP-ADDCHILDREN",
             "ROUTE-IO-ALIAS"
           ],
@@ -3758,6 +3762,7 @@
             "AUD-NAV-2",
             "BIND-05",
             "BIND-06",
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -3826,6 +3831,7 @@
             "BIND-07",
             "BIND-08",
             "BIND-09",
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "NAV-FLY-ROLL",
             "NAV-LOOKAT-SCALE",
             "REQ-UNIT",
@@ -5488,6 +5494,7 @@
     },
     {
       "findings": [
+        "EXTRACT-VISIBILITY-HINT-DELTA",
         "MAT-001",
         "MAT-002",
         "MAT-003",
@@ -5694,6 +5701,7 @@
           "exists": true,
           "extracts": "n/a",
           "findings": [
+            "EXTRACT-VISIBILITY-HINT-DELTA",
             "MAT-001",
             "ROUTE-IO-ALIAS"
           ],
@@ -6325,7 +6333,8 @@
         "TXT-1",
         "TXT-2",
         "TXT-4",
-        "TXT-5"
+        "TXT-5",
+        "TXT-ATLAS-LATIN1"
       ],
       "levels": [
         1
@@ -6335,7 +6344,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1",
+          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1; 15.4.1, 15.4.2; Annex E FontStyle support",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6344,7 +6353,8 @@
             "TXT-1",
             "TXT-2",
             "TXT-4",
-            "TXT-5"
+            "TXT-5",
+            "TXT-ATLAS-LATIN1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6361,7 +6371,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1",
+          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1; 15.4.1, 15.4.2; Annex E FontStyle support",
           "exists": true,
           "extracts": "yes",
           "findings": [
@@ -6370,7 +6380,8 @@
             "TXT-1",
             "TXT-2",
             "TXT-4",
-            "TXT-5"
+            "TXT-5",
+            "TXT-ATLAS-LATIN1"
           ],
           "geometry": true,
           "interfaces": [
@@ -6690,7 +6701,8 @@
           "extracts": "n/a",
           "findings": [
             "ROUTE-IO-ALIAS",
-            "TXF-2"
+            "TXF-2",
+            "TXF-4"
           ],
           "geometry": false,
           "interfaces": [
@@ -8812,7 +8824,7 @@
       "nodes": [
         "LOD"
       ],
-      "note": "View-dependent sibling of SW-DELTA-1 (settable-field active-child). Fix: ViewDependentSystem calls X3DExecutionContext::markActiveChildChanged(lod) when the announced level flips, so delta() re-walks the LOD subtree and swaps the active child. Regression: scene_extractor_t8_test.cpp case 6 (move Viewpoint d=10 -> d=1 -> swap). RESIDUAL (deferred): ViewDependentSystem's per-node level uses worldTransform(node) = the FIRST-PATH (identity-if-unknown) transform (the M2C-1 per-node-event / per-path-render split), so an LOD under an ANIMATED PARENT TRANSFORM or a multi-path USE is not detected and stays stale in delta() \u2014 the accurate level is computed per-path only in the extractor walk. Same per-path view-dependent gap as Billboard orientation (deferred, classifyDirty M2c/M2d note). Found by differential testing: poc --animate (incremental delta) vs cpuraster --animate (full snapshot).",
+      "note": "ViewDependentSystem marks node-level selection changes. The previously deferred per-path residual is now covered by SceneExtractor: it records each LOD placement, including empty selected branches, checks its selection in its current world frame each delta, and replaces the baseline when a path changes. Billboard descendants recompute view-dependent per-path transforms without rebuilding meshes. Regression: scene_extractor_view_delta_test.cpp covers shared translated LODs, ancestor motion, empty branches, shared Billboards, tracked eye/up and no-motion stability (#136). The per-node level_changed event remains distinct from per-path rendering.",
       "severity": "minor",
       "status": "fixed",
       "summary": "LOD active-level changes were invisible to the incremental delta() channel \u2014 the rendered level is computed from the camera, not a settable field, so it never reaches classifyDirty. Incremental consumers (the OpenGL PoC) stayed on the stale level while full-snapshot consumers (cpuraster, which re-extracts every frame) swapped."
@@ -9100,10 +9112,22 @@
         "IndexedFaceSet",
         "ElevationGrid"
       ],
-      "note": "Render-time UVs implemented for the four view-dependent modes (SPHERE, CAMERASPACENORMAL, CAMERASPACEPOSITION, CAMERASPACEREFLECTIONVECTOR) per \u00a718.4.8 Table: cpu_raster computes them per fragment in MaterialShader.hpp detail::texCoordGenUv (base-colour UV; the seam already carried the mode on TextureRef::hasTexCoordGen/texCoordGen). The PoC reuses lit.vert (shared by Phong + PBR) with a new uTexCoordGenMode uniform fed from texCoordGenModeUniform() in main.cpp. Regression: examples/cpu_raster/tests/texcoord_gen_test.cpp. PoC shaders unbuilt here (GLFW is FetchContent). (2026-06-27)",
+      "note": "Reopened after checking all Table 18.6 modes. CPU Phong/PBR supports SPHERE, CAMERASPACENORMAL, CAMERASPACEPOSITION, CAMERASPACEREFLECTIONVECTOR and COORD-EYE (TXF-4 corrects the last two). SPHERE-LOCAL, COORD, NOISE, NOISE-EYE, SPHERE-REFLECT and SPHERE-REFLECT-LOCAL still use the CPU SPHERE fallback and ignore parameters; CPU unlit bypasses generation. The PoC lit.vert handles the original four camera-space modes per vertex, but reflection still uses the reversed eye vector; main.cpp maps COORD-EYE and the other unsupported modes to authored UVs. This is partial render-time support, not full node conformance. CPU regression: examples/cpu_raster/tests/texcoord_gen_test.cpp. (2026-09-30)",
       "severity": "major",
-      "status": "closed",
-      "summary": "TextureCoordinateGenerator UVs (SPHERE/CAMERASPACE*) are view-dependent per-vertex and must be computed at render time \u2014 the descriptor is surfaced but no UVs are produced."
+      "status": "open",
+      "summary": "Reference consumers implement only a subset of TextureCoordinateGenerator modes and paths."
+    },
+    {
+      "clause": "18.4.8",
+      "component": "Texturing",
+      "id": "TXF-4",
+      "nodes": [
+        "TextureCoordinateGenerator"
+      ],
+      "note": "COORD-EYE now shares the raw camera-space position path; reflection uses E=normalize(-posEye), the position-to-eye direction required by Table 18.6. Direct signed/unbounded UV assertions and Phong/PBR ramp sampling cover both changes, with existing mode controls retained in x3d_cpuraster_texcoord_gen_test. Scope is CPU Phong/PBR only; remaining modes and the PoC are tracked by TXF-2. Issue #140. (2026-09-30)",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "CPU COORD-EYE fell back to SPHERE and CAMERASPACEREFLECTIONVECTOR used the reversed eye vector."
     },
     {
       "clause": "18.4.10",
@@ -10960,7 +10984,7 @@
         "Viewpoint",
         "Box"
       ],
-      "note": "Runtime entry normalizes explicitly authored known dimensional fields to initial/SI units, while generated built-in defaults remain canonical. Focused tests: `UNIT runtime: equivalent authored length and angle geometry`, `UNIT runtime: routed motion, defaults, and subsequent writes use initial units`, `UNIT runtime: Inline and EXTERNPROTO use their source units`, `UNIT runtime: PhysicsSystem receives kilograms and newtons`, and `UNIT runtime: custom PROTO values convert independently at dimensional IS targets`. Coverage demonstrates equivalent degree/radian geometry, routed updates, length, mass, force and torque, source-specific Inline/EXTERNPROTO factors, dimensional IS targets, and codec round-trip preservation before runtime. REQ-UNIT remains open: the field-dimension map and its range are incomplete, and serialization after runtime conversion does not yet preserve authoring units. Resolve the published Core wording on external UNIT declarations separately from the demonstrated runtime behavior.",
+      "note": "Runtime entry normalizes explicitly authored known dimensional fields to initial/SI units, while generated built-in defaults remain canonical. Focused tests: `UNIT runtime: equivalent authored length and angle geometry`, `UNIT runtime: routed motion, defaults, and subsequent writes use initial units`, `UNIT runtime: Inline and EXTERNPROTO use their source units`, `UNIT runtime: PhysicsSystem receives kilograms and newtons`, and `UNIT runtime: custom PROTO values convert independently at dimensional IS targets`. TextureTransform.rotation now also converts authored angle units, including dimensional IS targets; two TextureTransform UNIT regressions retain dimensionless UV center/translation/scale, defaults, idempotent initialization and subsequent radian writes. Coverage demonstrates equivalent degree/radian geometry, routed updates, length, mass, force and torque, source-specific Inline/EXTERNPROTO factors, dimensional IS targets, and codec round-trip preservation before runtime. REQ-UNIT remains open: the field-dimension map and its range are incomplete, and serialization after runtime conversion does not yet preserve authoring units. Resolve the published Core wording on external UNIT declarations separately from the demonstrated runtime behavior.",
       "severity": "major",
       "status": "open",
       "summary": "Runtime applies UNIT factors to explicitly authored known dimensional values at initialization; field coverage and conversion-aware writing remain incomplete."
@@ -10972,7 +10996,7 @@
       "nodes": [
         "ClipPlane"
       ],
-      "note": "Wired: SceneExtractor collects enabled ClipPlane nodes as scoped state (a plane affects the following siblings and their subtrees within its parent grouping node) and carries the plane on RenderItem::clipPlanes (ClipPlaneList, fixed capacity kMaxClipPlanes=6 per Annex F.5) resolved to WORLD space (n' = M^-T n through the ClipPlane's world frame; x3d::runtime::transformPlane in runtime/math/Mat4.hpp). The CPU reference rasterizer (examples/cpu_raster) discards fragments where a*x+b*y+c*z+d < 0 in eye space (SceneRender.hpp maps each world plane through the view matrix, Rasterizer.hpp tests it). Tests: scene_extractor_clip_test (scope/enabled/world-transform/re-snapshot) and cpuraster clip_plane_test (half-space discard, multi-plane, all-clip). Ignored: the GL poc_renderer (examples/poc_renderer) has no clip-plane path yet \u2014 a follow-up needing shader/uniform plumbing; ShaderUniformVocabulary retains the reserved numClipPlanes/clipPlane uniform names but nothing binds them. Camera near/far clipping is a different operation.",
+      "note": "Wired: SceneExtractor collects enabled ClipPlane nodes as scoped state (a plane affects the following siblings and their subtrees within its parent grouping node) and carries the plane on RenderItem::clipPlanes (ClipPlaneList, fixed capacity kMaxClipPlanes=6 per Annex F.5) resolved to WORLD space (n' = M^-T n through the ClipPlane's world frame; x3d::runtime::transformPlane in runtime/math/Mat4.hpp). The CPU reference rasterizer (examples/cpu_raster) discards fragments where a*x+b*y+c*z+d < 0 in eye space (SceneRender.hpp maps each world plane through the view matrix, Rasterizer.hpp tests it). Posted ClipPlane field changes and indexed ancestor-frame changes now conservatively replace the extraction baseline, refreshing per-item world planes; disabled and empty scopes retain invalidation dependencies. Tests: scene_extractor_state_delta_test (channel-respecting mirror vs fresh snapshot, shared placements, disabled/empty scopes and unrelated-TRS retention), scene_extractor_clip_test (scope/enabled/world-transform/re-snapshot) and cpuraster clip_plane_test (half-space discard, multi-plane, all-clip). Ignored: the GL poc_renderer (examples/poc_renderer) has no clip-plane path yet \u2014 a follow-up needing shader/uniform plumbing; ShaderUniformVocabulary retains the reserved numClipPlanes/clipPlane uniform names but nothing binds them. Camera near/far clipping is a different operation.",
       "severity": "major",
       "status": "open",
       "summary": "ClipPlane equations and enabled state reach extraction and the CPU reference rasterizer, but the GL poc_renderer still ignores planes."
@@ -10997,7 +11021,7 @@
         "LocalFog",
         "FogCoordinate"
       ],
-      "note": "WIRED (LocalFog): LocalFogSystem (\u00a724.4.3, the LightSystem walk pattern) collects every enabled LocalFog, world-scales visibilityRange, and records its enclosing grouping node as scopeRoot; SceneExtractor tags each RenderItem with the nearest in-scope LocalFog index (RenderItem.localFog, resolved via snapshotLocalFogs()), enabled==false being skipped so global Fog applies unchanged. The CPU rasterizer (examples/cpu_raster/cpuraster/SceneRender.hpp) selects the tagged LocalFog per item over the bound global Fog; tests: scene_extractor_local_fog_test (scope, enabled, world scale, nesting) and render_smoke_test's local-fog fragment check. IGNORED (FogCoordinate): MeshBuilder never reads a geometry's fogCoord field and MeshData carries no fog-depth array, so a per-vertex depth channel would have to thread a new vertex stream through MeshData, the PackedMesh slab and every material/GLSL model \u2014 not a small slice. Authored vertex depths therefore do not yet replace the computed eye-space distance, and a short depth list does not repeat its final entry. The GL poc_renderer (examples/poc_renderer) consumes the global FogDesc only and is a follow-up. Existing scene_extractor_fog_test proves bound global Fog is unchanged.",
+      "note": "WIRED (LocalFog): LocalFogSystem (\u00a724.4.3, the LightSystem walk pattern) collects every enabled LocalFog, world-scales visibilityRange, and records the full enclosing-group placement chain as scopePath (scopeRoot remains informational); SceneExtractor tags each RenderItem with the nearest in-scope LocalFog index (RenderItem.localFog, resolved via snapshotLocalFogs()), enabled==false being skipped so global Fog applies unchanged. Posted LocalFog field changes and indexed ancestor-frame changes now conservatively replace the extraction baseline, refreshing snapshotLocalFogs and item indices together; disabled and empty scopes retain invalidation dependencies (scene_extractor_state_delta_test). Full path-prefix matching now distinguishes USE-shared enclosing groups, including nearest nested scopes; explicit expected ranges cover snapshots and ancestor-scale deltas. Root fog remains scene-wide, and disabled fog falls back to an outer enabled fog or global Fog. The appended vector is an experimental descriptor layout change requiring recompilation, not a stable ABI promise. The CPU rasterizer (examples/cpu_raster/cpuraster/SceneRender.hpp) selects the tagged LocalFog per item over the bound global Fog; tests: scene_extractor_local_fog_test (scope, enabled, world scale, nesting) and render_smoke_test's local-fog fragment check. IGNORED (FogCoordinate): MeshBuilder never reads a geometry's fogCoord field and MeshData carries no fog-depth array, so a per-vertex depth channel would have to thread a new vertex stream through MeshData, the PackedMesh slab and every material/GLSL model \u2014 not a small slice. Authored vertex depths therefore do not yet replace the computed eye-space distance, and a short depth list does not repeat its final entry. The GL poc_renderer (examples/poc_renderer) consumes the global FogDesc only and is a follow-up. Existing scene_extractor_fog_test proves bound global Fog is unchanged.",
       "severity": "major",
       "status": "open",
       "summary": "Global Fog works and LocalFog scope is now wired end-to-end, but authored FogCoordinate depths remain ignored by the geometry pipeline."
@@ -11301,10 +11325,37 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "FIXED for scalar interface fields. Expansion now registers every declared scalar interface field (SF*/MF* except node types) that no IS connection maps, on the primary, as independent storage in the per-node dynamic-field store \u2014 the same abstraction Script author fields use. The store seeds initializeOnly/inputOutput fields from the fieldValue override or the interface default and gives inputOutput fields a set (echoed as _changed) plus a get; inputOnly fields get a set (route sink); outputOnly fields get a get (route source); initializeOnly stays value-only. The scene bridge resolves a route endpoint on an expanded instance to the declared interface field and, when no IS redirect exists, to this independent endpoint instead of rejecting ('has no IS route target'); body-local ROUTEs of an enclosing PROTO resolve a nested instance's unconnected interface field the same way. proto_interface_state_test.cpp proves the recorded Relay reproduction (inputOutput SFVec3f value, Group body, no IS): Source.translation_changed -> RelayNode.set_value sets the field and RelayNode.value_changed -> Dest.set_translation relays (1,2,3), routes: 2 rejected: 0; an unconnected field keeps its 0 0 0 default and honours a fieldValue override; an IS-connected field still relays through its body clone; sibling nested instances of one prototype, a shared nested/outer primary, and an EXTERNPROTO instance keep independent per-instance entries without clobber. WIRED vs IGNORED: scalar interface fields with no IS are fully wired (state + endpoints, all four access types); SFNode/MFNode-valued interface fields with no IS still keep no independent per-instance node state (their node defaults remain declaration-owned/body-owned) and are not registered. This closes the recorded scalar field/endpoint gap but not complete prototype field semantics.",
+      "note": "FIXED for scalar and SFNode/MFNode interface fields. Expansion registers unmapped fields on each primary in DynamicFieldStore, preserving access types and existing IS redirects. Node defaults reuse the per-instance clone map, keeping declaration nodes private across instances while preserving internal DEF/USE aliases; caller fieldValue overrides retain identity, and explicit NULL/empty values suppress defaults. proto_interface_state_test.cpp verifies external SFNode/MFNode relays (2 routes, 0 rejected), same-pointer event delivery, NULL/empty updates, initializeOnly SFNode defaults, MFNode defaults, instance isolation and caller sharing. Existing scalar, nested-sibling, shared-primary and EXTERNPROTO cases remain. This establishes stored state and endpoints for the named cases; it does not establish complete prototype semantics or traversal of arbitrary dynamic node graphs.",
       "severity": "major",
-      "status": "open",
-      "summary": "Prototype interface fields without IS targets have no independent runtime field state or event endpoint."
+      "status": "fixed",
+      "summary": "Unconnected prototype interface fields lacked independent state and routable endpoints."
+    },
+    {
+      "clause": "15.4.1, 15.4.2; Annex E FontStyle support",
+      "component": "Text",
+      "id": "TXT-ATLAS-LATIN1",
+      "nodes": [
+        "Text",
+        "FontStyle"
+      ],
+      "note": "Fixed for the helper's bounded repertoire: makeStbttGlyphAtlas bakes U+0020\u2013U+007E and U+00A0\u2013U+00FF, preserving raw advances and packing complete raster glyph boxes so accents/overhangs are not cut off. x3d_text_atlas_tests checks every supported glyph's pixels, UVs, and baseline-relative geometry metrics against isolated rasterization across all three bundled Liberation faces at 8/17/64 px per em; blank spaces, range boundaries, missing families/files and unsupported codepoints are covered. DEL/C1 controls, out-of-range codepoints and .notdef still fail; styles still use the supplied PLAIN face. No claim of general Unicode/shaping support or whole-browser Immersive conformance. The headless SDK continues to use the consumer's FontMetrics seam; the CPU consumer's independent 8x8 font is still ASCII-only. Issue https://github.com/delta9000/x3d-cpp/issues/141.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "The optional stbtt atlas drops Latin-1 Supplement glyphs present in its supplied font."
+    },
+    {
+      "id": "EXTRACT-VISIBILITY-HINT-DELTA",
+      "nodes": [
+        "Viewpoint",
+        "NavigationInfo",
+        "Transform",
+        "Billboard",
+        "Shape"
+      ],
+      "note": "Issue #155: SceneExtractor now compares effective farDistance/visibilityLimit and current per-placement origins before consuming a delta. A changed live boolean uses the existing bounded remove-before-add replacement, so hosts honoring only advertised channels receive the descriptor; unchanged hints preserve incremental geometry/material/TRS behavior. Finite-to-unlimited clears true hints, empty/revived items read current inputs, and packed items use the same origin rule as AoS. Unlimited-to-unlimited ticks skip per-item checks; finite view/limit changes scan live origins, reusing static matrices and recomposing only dirty/Billboard paths. A crossing still costs a full bounded extraction. Tests: scene_extractor_visibility_delta_test.cpp has expected-value checks and a channel-respecting mirror versus fresh snapshots for precedence/fallback/bindings, eye/viewpoint motion, ancestor TRS, disabled limits, shared and empty placements, and packed stability. This is an optional SDK origin-distance hint, not bounds/frustum culling or complete visibility conformance.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "Optional RenderItem origin-distance visibility hints stayed stale after view, limit and placement changes."
     }
   ],
   "meta": {
@@ -11477,10 +11528,10 @@
     ]
   },
   "summary": {
-    "closed_count": 261,
+    "closed_count": 264,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 298,
+    "finding_count": 301,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

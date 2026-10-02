@@ -149,3 +149,65 @@ TEST_CASE("delta keeps per-path world transforms under DEF/USE instancing") {
   CHECK(std::fabs(xs[0] - (-5.0f)) < 1e-4f);
   CHECK(std::fabs(xs[1] - (5.0f)) < 1e-4f);
 }
+
+// Metadata contributes no MaterialDesc value. Reading it during a scalar
+// material edit would only rebuild unchanged dependency edges.
+#include "x3d/nodes/MetadataString.hpp"
+namespace {
+class CountingMetadata final : public MetadataString {
+public:
+  mutable std::size_t reads = 0;
+  const FieldTable &fields() const override {
+    ++reads;
+    return MetadataString::fields();
+  }
+};
+}
+
+TEST_CASE("material delta preserves dependency graph on scalar edits") {
+  auto metadata = std::make_shared<CountingMetadata>();
+  auto material = createX3DNode("Material");
+  auto appearance = createX3DNode("Appearance");
+  setF(appearance, "material", std::shared_ptr<X3DNode>{material});
+  setF(appearance, "metadata", std::shared_ptr<X3DNode>{metadata});
+  auto root = createX3DNode("Group");
+  for (int i = 0; i != 8; ++i) {
+    auto shape = makeTriShape();
+    setF(shape, "appearance", std::shared_ptr<X3DNode>{appearance});
+    addChild(root, shape);
+  }
+  Scene scene; scene.rootNodes = {root};
+  X3DExecutionContext context; context.buildSceneGraph(scene);
+  extract::SceneExtractor extractor(context, scene);
+  auto snapshot = extractor.fullSnapshot();
+  REQUIRE(snapshot.added.size() == 8);
+  auto originalDeps = extractor.materialDepsOf(material.get());
+  context.postEvent(material.get(), "diffuseColor", SFColor{1, 0, 0});
+  context.tick(1);
+  metadata->reads = 0;
+  auto delta = extractor.delta();
+  CHECK(delta.updatedMaterial.size() == 8);
+  CHECK(metadata->reads == 0);
+  CHECK(extractor.materialDepsOf(material.get()) == originalDeps);
+  for (auto id : delta.updatedMaterial)
+    CHECK(extractor.item(id).material.phong.diffuse == SFColor{1, 0, 0});
+
+  // Node-valued changes still rebuild the index, including the replacement's
+  // future dirty source. Scalar-only optimization must not hide later edits.
+  auto replacement = createX3DNode("Material");
+  context.postEvent(appearance.get(), "material", replacement);
+  context.tick(2);
+  delta = extractor.delta();
+  CHECK(delta.removed.size() == 8);
+  REQUIRE(delta.added.size() == 8);
+  CHECK(extractor.materialDepsOf(material.get()).empty());
+  CHECK(extractor.materialDepsOf(replacement.get()).size() == 8);
+  context.postEvent(replacement.get(), "diffuseColor", SFColor{0, 1, 0});
+  context.tick(3);
+  metadata->reads = 0;
+  delta = extractor.delta();
+  CHECK(delta.updatedMaterial.size() == 8);
+  CHECK(metadata->reads == 0);
+  for (auto id : delta.updatedMaterial)
+    CHECK(extractor.item(id).material.phong.diffuse == SFColor{0, 1, 0});
+}

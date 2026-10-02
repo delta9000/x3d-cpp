@@ -104,6 +104,14 @@ TEST_CASE("external_geom_seam_test") {
     CHECK((snap.added.size() == 1)); // resolver fired, emitPacked called
     const RenderItem& item = ex.item(snap.added[0]);
     CHECK((item.geometry_ext.is_packed())); // the new Geometry union field
+    // Packed payloads still satisfy MeshRef's never-null contract. Consumers
+    // that inspect the AoS channel see the shared empty mesh, not a null pointer.
+    CHECK(item.mesh != nullptr);
+    if (item.mesh) {
+      CHECK(item.mesh == emptyMeshRef());
+      CHECK(item.mesh->positions.empty());
+      CHECK(ex.sceneWorldBounds().empty); // packed bounds are a separate channel
+    }
   }
 
   // === 3) Resolver returning empty PackedMesh → Pending → NOT emitted ==========

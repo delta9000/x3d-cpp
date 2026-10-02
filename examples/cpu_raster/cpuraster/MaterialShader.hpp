@@ -143,19 +143,20 @@ struct MaterialTextures {
   // from eye-space state rather than the authored texcoords. Applies to the
   // textured-surface coordinate set (base/emissive/specular). TXF-2 covers the
   // view-dependent modes: SPHERE / CAMERASPACENORMAL / CAMERASPACEPOSITION /
-  // CAMERASPACEREFLECTIONVECTOR.
+  // CAMERASPACEREFLECTIONVECTOR / COORD-EYE.
   bool hasTexCoordGen = false;
   ex::TexCoordGenMode texCoordGenMode = ex::TexCoordGenMode::Sphere;
 };
 
 namespace detail {
 // §18.4.8 TextureCoordinateGenerator UVs from eye-space state. `normalEye` is the
-// front-facing-corrected, normalized camera-space normal; `posEye` the camera-
-// space position (eye at the origin, so normalize(posEye) = eye→fragment).
+// camera-space normal (normalized and face-corrected below); `posEye` is the
+// camera-space position (eye at the origin, so normalize(-posEye) = fragment→eye).
 //   SPHERE                      : u = Nx/2+0.5, v = Ny/2+0.5.
 //   CAMERASPACENORMAL           : (Nx, Ny).
-//   CAMERASPACEPOSITION         : (Px, Py).
-//   CAMERASPACEREFLECTIONVECTOR : R = reflect(−V, N) = 2·dot(V,N)·N − V → (Rx, Ry).
+//   CAMERASPACEPOSITION/COORD-EYE: (Px, Py).
+//   CAMERASPACEREFLECTIONVECTOR : R = reflect(−E, N) = 2·dot(E,N)·N − E → (Rx, Ry).
+// Local, noise and refraction modes still use the legacy SPHERE fallback.
 inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode, const glsl::vec3 &posEye,
                                 const glsl::vec3 &normalEye, bool frontFacing) {
   using Mode = ex::TexCoordGenMode;
@@ -167,10 +168,11 @@ inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode, const glsl::vec3 &posE
     case Mode::CameraSpaceNormal:
       return glsl::vec2{n.x, n.y};
     case Mode::CameraSpacePosition:
+    case Mode::CoordEye:
       return glsl::vec2{posEye.x, posEye.y};
     case Mode::CameraSpaceReflectionVector: {
-      const glsl::vec3 V = glsl::normalize(posEye);
-      const glsl::vec3 R = glsl::reflect(-V, n);
+      const glsl::vec3 E = glsl::normalize(-posEye);
+      const glsl::vec3 R = glsl::reflect(-E, n);
       return glsl::vec2{R.x, R.y};
     }
     default:

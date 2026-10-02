@@ -288,3 +288,56 @@ TEST_CASE("instancing: geometry content change rebuilds once and RE-shares") {
   CHECK(*after.begin() != before);
   CHECK(ex.item(0).geometry.contentVersion == 1);
 }
+
+TEST_CASE("instancing: GeomId cache distinguishes baked variants and revised content") {
+  auto first = makeQuadShape();
+  auto geom = geombounds::getNode(*first, "geometry");
+  auto second = createX3DNode("Shape"), third = createX3DNode("Shape");
+  setF(second, "geometry", geom); setF(third, "geometry", geom);
+  auto plain = createX3DNode("Appearance"), shifted = createX3DNode("Appearance");
+  auto plainTransform = createX3DNode("TextureTransform");
+  auto shiftedTransform = createX3DNode("TextureTransform");
+  setF(shiftedTransform, "translation", SFVec2f{0.5f, 0.25f});
+  setF(plain, "textureTransform", plainTransform);
+  setF(shifted, "textureTransform", shiftedTransform);
+  setF(first, "appearance", plain); setF(second, "appearance", shifted);
+  setF(third, "appearance", plain);
+  Scene scene; scene.rootNodes = {first, second, third};
+  X3DExecutionContext context; context.buildSceneGraph(scene);
+  SceneExtractor extractor(context, scene);
+  const auto initial = extractor.fullSnapshot();
+  REQUIRE(initial.added.size() == 3);
+
+  std::unordered_map<GeomId, MeshRef, GeomIdHash> uploads;
+  auto upload = [&](const std::vector<RenderItemId> &ids) {
+    for (auto id : ids) {
+      const auto &item = extractor.item(id);
+      const auto &cached = uploads.emplace(item.geometry, item.mesh).first->second;
+      CHECK(cached->positions == item.mesh->positions);
+      CHECK(cached->texcoords == item.mesh->texcoords);
+    }
+  };
+  upload(initial.added);
+  CHECK(uploads.size() == 2);
+  CHECK(extractor.item(0).geometry != extractor.item(1).geometry);
+  CHECK(extractor.item(0).geometry == extractor.item(2).geometry);
+  CHECK(extractor.item(0).mesh == extractor.item(2).mesh);
+  CHECK(extractor.item(0).mesh->texcoords != extractor.item(1).mesh->texcoords);
+  const auto originalPlain = extractor.item(0).geometry;
+  const auto originalShifted = extractor.item(1).geometry;
+  const auto retained = extractor.item(0).mesh;
+
+  auto coord = geombounds::getNode(*geom, "coord");
+  context.postEvent(coord.get(), "point", MFVec3f{{0,0,0},{2,0,0},{2,1,0},{0,1,0}});
+  context.tick(1);
+  auto delta = extractor.delta();
+  REQUIRE(delta.updatedGeometry.size() == 3);
+  CHECK(extractor.item(0).geometry != originalPlain);
+  CHECK(extractor.item(1).geometry != originalShifted);
+  CHECK(extractor.item(0).geometry != extractor.item(1).geometry);
+  CHECK(extractor.item(0).geometry == extractor.item(2).geometry);
+  CHECK(extractor.item(0).mesh == extractor.item(2).mesh);
+  CHECK(extractor.item(0).mesh->positions != retained->positions);
+  upload(delta.updatedGeometry);
+  CHECK(uploads.size() == 4); // old resources retained here to detect key reuse
+}

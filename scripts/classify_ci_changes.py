@@ -61,7 +61,7 @@ SEAM_PATTERNS = {
     ),
     "fontmetrics": (
         r"^runtime/io/(?:stbtt|freetype)/",
-        r"^runtime/io/tests/font_metrics",
+        r"^runtime/io/tests/(?:font_metrics|glyph_atlas)",
         r"^runtime/extract/FontMetrics\.(?:hpp|cpp)$",
         r"^runtime/extract/(?:TextLayout|TextExtract|MeshBuilder|RenderItem)\.(?:hpp|cpp)$",
     ),

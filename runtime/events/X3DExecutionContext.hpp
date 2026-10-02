@@ -643,6 +643,9 @@ private:
     // consumers (cpuraster) do. The extractor already reads whichChoice on a full
     // walk, so this only fixes the INCREMENTAL channel.
     if (a.field == "whichChoice") flags = DirtyChildren;
+    // visible changes active traversal even when the hidden branch emitted no
+    // RenderItems, so it must invalidate the extraction baseline like Switch.
+    if (a.field == "visible") flags |= DirtyChildren;
     if (isTransformNode)
       for (const char *f : kTRS)
         if (a.field == f) flags = DirtyLocalTransform;
