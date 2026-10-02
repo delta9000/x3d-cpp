@@ -186,7 +186,10 @@ public:
     skinPoseDeps_.clear();
     skinBindingDeps_.clear();
     materialDeps_.clear();
-    geomNodeOf_.clear();
+    geomOwners_.clear();
+    geomVersions_.clear();
+    unplacedGeometry_.clear();
+    unplacedPaths_.clear();
     entryMatrix_.clear();
     skippedGeometry_.clear(); // B2: recount unsupported drops for this full walk.
     // ADR-0045: a full walk is authoritative — it must re-read current field
@@ -310,10 +313,25 @@ public:
 
     RenderDelta delta;
     const DirtyTracker &dirty = ctx_.dirtyTracker();
-    std::unordered_set<RenderItemId> transformSeen, geomSeen, materialSeen;
+    std::unordered_set<RenderItemId> transformSeen, materialSeen;
     // Shared across every reaccumulateWorld() in this delta() so a transform that
     // sits on the path of many dirty items is recomposed once, not once per item.
     LocalXfCache localXf;
+
+    // A source (Coordinate/Normal/Color/...) may feed several geometry nodes,
+    // and several sources of one geometry may change in the same tick. Resolve
+    // the complete owner set first: each owner's cache is evicted exactly once.
+    std::unordered_map<const X3DNode *, GeometryChange> dirtyGeometry;
+    for (const X3DNode *n : dirty.changedNodes()) {
+      if (!(dirty.flags(n) & DirtyField)) continue;
+      auto owners = geomOwners_.find(n);
+      if (owners != geomOwners_.end())
+        for (const auto *geom : owners->second) dirtyGeometry[geom].sources.insert(n);
+      for (RenderItemId id : depsOf(geomDeps_, n))
+        dirtyGeometry[items_[id].geometry.node].items.insert(id);
+    }
+    for (const auto &[geom, change] : dirtyGeometry)
+      refreshGeometry(geom, change, delta, localXf);
 
     for (const X3DNode *n : dirty.changedNodes()) {
       const unsigned f = dirty.flags(n);
@@ -327,38 +345,6 @@ public:
           if (transformSeen.insert(id).second) {
             reaccumulateWorld(id, localXf);
             delta.updatedTransform.push_back(id);
-          }
-        }
-      }
-
-      // --- geometry CONTENT change (DirtyField, NOT bare DirtyBounds) ----------
-      if (f & DirtyField) {
-        const auto &gids = depsOf(geomDeps_, n);
-        if (!gids.empty()) {
-          // Re-extract the GEOMETRY node's local mesh once (n may be a content
-          // child like Coordinate — geomNodeOf_ maps it back to the geometry node
-          // whose mesh to rebuild); bump contentVersion so the consumer's
-          // GeomId-keyed GPU cache orphans the old buffer.
-          auto git = geomNodeOf_.find(n);
-          const X3DNode *geomNode = git == geomNodeOf_.end() ? n : git->second;
-          // The content changed, so every cached mesh derived from this geometry
-          // (the raw build AND every TextureTransform-baked variant of it) is
-          // stale. Evict first, then rebuild ONCE through the same cache — so the
-          // N dependent placements re-share a single new allocation instead of
-          // taking N full copies of it (ADR-0045).
-          evictMeshCache(geomNode);
-          for (RenderItemId id : gids) {
-            RenderItem &rec = items_[id];
-            // Each placement is displaced by its own enclosing Segment.
-            MeshRef mesh = cachedRawMesh(geomNode, nullptr,
-                                         displacingSegment(geomNode, rec.path));
-            rec.geometry.contentVersion++;
-            // Re-bake per dependent: two placements of this geometry may sit
-            // under different TextureTransforms. bakedMesh() is cache-backed, so
-            // placements that agree still share one allocation.
-            if (!mesh->indices.empty())
-              rec.mesh = bakedMesh(geomNode, mesh, ttParamsOfItem(id));
-            if (geomSeen.insert(id).second) delta.updatedGeometry.push_back(id);
           }
         }
       }
@@ -400,11 +386,19 @@ public:
     delta.lightsChanged = true;
     for (RenderItemId id : delta.removed) liveIds_.erase(id);
     liveIds_.insert(delta.added.begin(), delta.added.end());
+    const std::unordered_set<RenderItemId> added(delta.added.begin(), delta.added.end());
+    for (auto *updates : {&delta.updatedTransform, &delta.updatedGeometry,
+                         &delta.updatedMaterial, &delta.updatedSkinPose})
+      updates->erase(std::remove_if(updates->begin(), updates->end(), [&](RenderItemId id) {
+        return !liveIds_.count(id) || added.count(id);
+      }), updates->end());
     return delta;
   }
 
   // Dense-id accessors (the consumer keys arrays on RenderItemId).
   const RenderItem &item(RenderItemId id) const { return items_.at(id); }
+  // Allocated dense slots, including dormant removed items; consume deltas to
+  // track the live set. Initially empty placements allocate no slot.
   std::size_t itemCount() const { return items_.size(); }
 
   // CPU fallback for a skin item. The returned mesh owns its expanded corners.
@@ -590,7 +584,8 @@ public:
   // USE placement.
   Aabb sceneWorldBounds() const {
     Aabb out; // empty == union identity.
-    for (const RenderItem &it : items_) {
+    for (RenderItemId id : liveIds_) {
+      const RenderItem &it = items_[id];
       Aabb local;
       for (const SFVec3f &p : it.mesh->positions) local.expand(p);
       if (!local.empty) out.unionWith(local.transformed(it.worldTransform));
@@ -631,6 +626,10 @@ private:
   }
 
   using DepMap = std::unordered_map<const X3DNode *, std::vector<RenderItemId>>;
+  struct GeometryChange {
+    std::unordered_set<RenderItemId> items;
+    std::unordered_set<const X3DNode *> sources;
+  };
 
   std::shared_ptr<const hanim::SkinBinding> skinBinding(const X3DNode *humanoid) {
     auto &binding = skinBindings_[humanoid];
@@ -733,14 +732,79 @@ private:
 
   void reaccumulateWorld(RenderItemId id, LocalXfCache &cache) {
     RenderItem &rec = items_[id];
+    rec.worldTransform = worldAlongPath(rec.path, cache);
+  }
+
+  Mat4 worldAlongPath(const PathKey &path, LocalXfCache &cache) {
     Mat4 w = Mat4::identity();
     // The PathKey is root..leaf; the leaf Shape itself is not a Transform, but a
     // defensive isTransform() guard keeps this identical to the walk() idiom.
-    for (const X3DNode *n : rec.path) {
+    for (const X3DNode *n : path) {
       const LocalXf &x = localXfOf(n, cache);
       if (x.isXform) w = w * x.local;
+      if (n->nodeTypeName() == "Billboard")
+        w = w * billboardLocalMatrix(w, ctx_.cameraWorldPosition(), ctx_.cameraWorldUp(),
+                                    geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0}));
     }
-    rec.worldTransform = w;
+    return w;
+  }
+
+  void refreshGeometry(const X3DNode *geom, const GeometryChange &change,
+                       RenderDelta &delta, LocalXfCache &localXf) {
+    evictMeshCache(geom);
+    const auto version = ++geomVersions_[geom];
+    // Keep the source's placement scope. A Coordinate affects every use, but
+    // an HAnimSegment displacer only affects uses inside that Segment.
+    for (RenderItemId id : change.items) {
+      RenderItem &rec = items_[id];
+      MeshRef mesh = cachedRawMesh(geom, nullptr, displacingSegment(geom, rec.path));
+      rec.geometry.contentVersion = version;
+      // Packed geometry has a separate payload/resolver path. Do not infer its
+      // liveness from the empty AoS mesh.
+      if (rec.geometry_ext.is_packed()) {
+        delta.updatedGeometry.push_back(id);
+        continue;
+      }
+      rec.mesh = bakedMesh(geom, mesh, ttParamsOfItem(id));
+      if (rec.skin) {
+        const auto *humanoid = rec.skin->binding->humanoid;
+        rec.skin->binding = skinBinding(humanoid);
+        rec.skin->poseVersion = skinVersions_[humanoid];
+        rec.skin->sourceCoordIndex = rec.mesh->sourceCoordIndex;
+        rec.skin->sourceNormalIndex = rec.mesh->sourceNormalIndex;
+      }
+      if (mesh->indices.empty()) {
+        if (liveIds_.count(id)) delta.removed.push_back(id);
+      } else if (liveIds_.count(id)) {
+        delta.updatedGeometry.push_back(id);
+      } else {
+        delta.added.push_back(id);
+      }
+    }
+    auto pending = unplacedGeometry_.find(geom);
+    if (pending == unplacedGeometry_.end()) return;
+    auto &placements = pending->second;
+    auto retained = std::remove_if(placements.begin(), placements.end(), [&](const auto &placement) {
+      bool affected = false;
+      forEachGeometrySource(geom, placement.path, [&](const X3DNode *source) {
+        affected = affected || change.sources.count(source) != 0;
+      });
+      if (!affected) return false;
+      MeshRef mesh = cachedRawMesh(geom, nullptr, displacingSegment(geom, placement.path));
+      if (mesh->indices.empty()) return false;
+      auto savedClips = std::move(activeClips_);
+      const auto savedSkin = activeSkinHumanoid_;
+      activeClips_ = placement.clips;
+      activeSkinHumanoid_ = placement.skinHumanoid;
+      emit(*placement.path.back(), placement.path, worldAlongPath(placement.path, localXf), geom,
+           std::move(mesh), delta);
+      activeClips_ = std::move(savedClips);
+      activeSkinHumanoid_ = savedSkin;
+      unplacedPaths_.erase(placement.path);
+      return true;
+    });
+    placements.erase(retained, placements.end());
+    if (placements.empty()) unplacedGeometry_.erase(pending);
   }
 
   // Re-read the MaterialDesc for an item from its Shape's Appearance. The Shape
@@ -894,6 +958,7 @@ private:
       // X3D §26.3.2 also permits geometry nodes directly in Humanoid.skin.
       MeshRef mesh = cachedRawMesh(n, nullptr);
       if (!mesh->indices.empty()) emit(*n, path, here, n, std::move(mesh), delta);
+      else rememberUnplacedGeometry(n, path);
     }
     if (geombounds::hasField(*n, "geometry")) {
       if (auto geom = geombounds::getNode(*n, "geometry")) {
@@ -919,7 +984,9 @@ private:
         // node to it and emit via emitPacked() if it returns a non-empty PackedMesh.
         if (!mesh->indices.empty()) {
           emit(*n, path, here, geom.get(), std::move(mesh), delta);
-        } else if (!recognized) {
+        } else if (recognized) {
+          rememberUnplacedGeometry(geom.get(), path);
+        } else {
           if (meshOptions_.externalGeometryResolver) {
             // Phase 1 seam: offer unrecognized geometry to the embedder resolver.
             // An empty PackedMesh means Pending (the resolver is not ready yet);
@@ -1081,7 +1148,7 @@ private:
       RenderItem rec;
       rec.path = path;
       rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, /*contentVersion=*/0};
+      rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
       rec.mesh = std::move(mesh);
       rec.beyondVisibilityLimit = beyond;
@@ -1093,7 +1160,7 @@ private:
       id = it->second;
       RenderItem &rec = items_[id];
       rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, /*contentVersion=*/0};
+      rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
       rec.mesh = std::move(mesh);
       rec.beyondVisibilityLimit = beyond;
@@ -1148,7 +1215,7 @@ private:
       RenderItem rec;
       rec.path = path;
       rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, /*contentVersion=*/0};
+      rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
       rec.mesh = {};  // AoS mesh empty for packed items.
       rec.geometry_ext.kind = Geometry::Kind::Packed;
@@ -1160,7 +1227,7 @@ private:
       id = it->second;
       RenderItem& rec = items_[id];
       rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, /*contentVersion=*/0};
+      rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
@@ -1228,6 +1295,33 @@ private:
     }
   }
 
+  template <typename Visit>
+  void forEachGeometrySource(const X3DNode *geom, const PathKey &path, Visit visit) {
+    visit(geom);
+    forEachChildNode(*geom, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+      visit(c.get());
+    });
+    for (const X3DNode *ancestor : path) {
+      if (ancestor->nodeTypeName() != "HAnimSegment") continue;
+      forEachChildNode(*ancestor, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &c) {
+        if (field.x3dName == "displacers") visit(c.get());
+      });
+    }
+  }
+
+  void registerGeometryOwners(const X3DNode *geom, const PathKey &path) {
+    forEachGeometrySource(geom, path, [&](const X3DNode *source) {
+      geomOwners_[source].insert(geom);
+    });
+  }
+
+  void rememberUnplacedGeometry(const X3DNode *geom, const PathKey &path) {
+    registerGeometryOwners(geom, path);
+    if (index_.count(path)) return; // a dormant existing item already owns this path
+    if (unplacedPaths_.insert(path).second)
+      unplacedGeometry_[geom].push_back({path, activeClips_, activeSkinHumanoid_});
+  }
+
   // Populate transformDeps/geomDeps/materialDeps for one emitted RenderItem.
   void buildReverseIndices(RenderItemId id, const PathKey &path,
                            const X3DNode *geom, const X3DNode *appearance) {
@@ -1241,21 +1335,19 @@ private:
     // content change on the node that OWNS the field — e.g. Coordinate.point lands
     // DirtyField on the Coordinate, NOT the parent IndexedFaceSet — so without the
     // child registration a `point` animation would never reach this RenderItem.
-    // Every registered content node also maps back to its geometry node so delta()
-    // re-extracts the geometry's mesh (not the child's).
+    // Owner resolution is many-to-many: one Coordinate may feed, for example,
+    // both a TriangleSet and an IndexedLineSet.
     if (geom) {
       appendDep(geomDeps_, geom, id);
-      geomNodeOf_[geom] = geom;
+      registerGeometryOwners(geom, path);
       forEachChildNode(*geom, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
         appendDep(geomDeps_, c.get(), id);
-        geomNodeOf_[c.get()] = geom;
       });
       for (const X3DNode *ancestor : path) {
         if (ancestor->nodeTypeName() != "HAnimSegment") continue;
         forEachChildNode(*ancestor, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &child) {
           if (field.x3dName != "displacers") return;
           appendDep(geomDeps_, child.get(), id);
-          geomNodeOf_[child.get()] = geom;
         });
       }
     }
@@ -1474,9 +1566,19 @@ private:
   std::unordered_map<const X3DNode *, std::uint64_t> skinVersions_;
   std::uint64_t skinSyncGen_ = UINT64_MAX;
   const X3DNode *activeSkinHumanoid_ = nullptr;
-  // A content child-node (Coordinate/Normal/...) -> the geometry node whose mesh
-  // delta() must re-extract when that child's content field changes.
-  std::unordered_map<const X3DNode *, const X3DNode *> geomNodeOf_;
+  // Content source -> ALL geometry owners (not a last-writer-wins owner).
+  std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> geomOwners_;
+  std::unordered_map<const X3DNode *, std::uint32_t> geomVersions_;
+  struct UnplacedGeometry {
+    PathKey path;
+    std::vector<ClipPlaneDesc> clips;
+    const X3DNode *skinHumanoid = nullptr;
+  };
+  // Recognized-empty geometry still owns dependencies. These paths do not get
+  // a RenderItemId until they first produce content; previously emitted empty
+  // items retain their existing id/dependencies and are absent from liveIds_.
+  std::unordered_map<const X3DNode *, std::vector<UnplacedGeometry>> unplacedGeometry_;
+  std::unordered_set<PathKey, PathKeyHash, PathKeyEqual> unplacedPaths_;
   std::unordered_map<const X3DNode *, Mat4> entryMatrix_;
 
   // B2 unsupported-geometry signal: nodeTypeName -> count of dropped Shapes whose

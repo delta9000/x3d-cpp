@@ -139,6 +139,33 @@ only `added`; the caller clears its previous state. `delta()` twice without a
 new tick is empty. Consumers must consume each tick or explicitly rebaseline;
 there is no retained history of missed ticks.
 
+### Incremental geometry ownership and liveness
+
+A Coordinate, Normal, Color or other direct content child can feed several
+geometry owners. Each dirty source resolves to **all** of those owners, and
+multiple dirty sources coalesce into one cache invalidation and content-version
+advance per owner per tick. Each owner's placements rebuild from that owner's
+primitive type; placements with identical geometry and bake parameters continue
+to share immutable mesh storage. Unrelated meshes are retained. Scoped
+HAnimSegment displacers still affect only placements within their Segment, even
+when the geometry owner is shared.
+
+Recognized-empty AoS geometry keeps its source dependencies and placement paths.
+Becoming nonempty emits `added`; becoming empty emits `removed`, and replaces the
+stored mesh with the empty result rather than retaining stale drawable content.
+An already allocated placement reuses its ID when it becomes nonempty again.
+Initially empty placements allocate no ID until their first nonempty result.
+Transform/material edits while dormant are reflected when a placement returns,
+and update buckets never target removed or newly added placements. This path
+visits only affected geometry owners/placements, not the entire scene.
+
+`itemCount()` counts allocated dense slots, which may include dormant removed
+items; consumers maintain the live set from `added` and `removed`. Empty/nonempty
+transitions are content changes, so they do not reset the baseline. The structural
+replacement contract above still applies when node-valued fields change.
+These statements concern native AoS geometry; packed resolver retry/liveness is
+a separate seam.
+
 **`RenderItem`** (stored inside `SceneExtractor`, accessed via `item(id)`) carries:
 
 - `path` (`PathKey`) — full root-to-leaf node pointer chain; the per-path identity.

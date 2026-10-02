@@ -204,10 +204,12 @@ TEST_CASE("Segment-shared geometry keeps per-Segment displacement in snapshot an
   REQUIRE(initial.added.size()==2);
   CHECK(extractor.item(initial.added[0]).mesh->positions[0].z==doctest::Approx(1));
   CHECK(extractor.item(initial.added[1]).mesh->positions[0].z==doctest::Approx(2));
+  auto unchangedMesh = extractor.item(initial.added[0]).mesh;
   ctx.tick(1);
   REQUIRE(ctx.writeField(secondDisplacer.get(), "weight", std::any(3.0f))==FieldWriteResult::Ok);
   auto changed=extractor.delta();
   REQUIRE(changed.updatedGeometry.size()==1);
+  CHECK(extractor.item(initial.added[0]).mesh == unchangedMesh);
   auto deltaFirst=extractor.item(initial.added[0]).mesh->positions[0].z;
   auto deltaSecond=extractor.item(initial.added[1]).mesh->positions[0].z;
   extractor.fullSnapshot();
