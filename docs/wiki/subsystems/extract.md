@@ -115,6 +115,17 @@ struct RenderDelta {
 };
 ```
 
+### Scalar material update cost
+
+A scalar appearance-subtree edit refreshes each affected placement once per tick,
+even when several of its source nodes are dirty. It retains the reverse dependency
+index: only SFNode/MFNode replacements can change those edges, and those already
+use a structural baseline. This avoids rescanning a shared material's N-element
+placement vector once for each of N placements (#144). The performance regression
+uses a counted, non-rendered metadata child to prove scalar refresh does not walk
+unchanged dependency subtrees; structural replacement and subsequent scalar writes
+remain covered.
+
 ### Structural delta replacement contract
 
 Any `DirtyChildren` (including SFNode/MFNode writes and Switch/LOD active-child
