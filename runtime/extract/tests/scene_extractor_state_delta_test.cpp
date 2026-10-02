@@ -81,6 +81,7 @@ struct StateMirror {
       CHECK(fogs[i].fogType == expectedFogs[i].fogType);
       CHECK(fogs[i].visibilityRange == doctest::Approx(expectedFogs[i].visibilityRange));
       CHECK(fogs[i].scopeRoot == expectedFogs[i].scopeRoot);
+      CHECK(fogs[i].scopePath == expectedFogs[i].scopePath);
     }
     for (auto id : snapshot.added) {
       const auto &expected = oracle.item(id);
@@ -261,6 +262,43 @@ TEST_CASE("render state delta: disabled fog and frame remain tracked without ren
   CHECK(f.mirror.fogs[0].visibilityRange == doctest::Approx(30));
   replacement(f.event(hidden, "visible", true), 0, 1);
   CHECK(f.mirror.items.begin()->second.localFog == 0);
+}
+
+TEST_CASE("render state delta: shared fog scope placements survive ancestor scale replacement") {
+  auto fog = createX3DNode("LocalFog");
+  set(fog, "visibilityRange", 10.0f);
+  auto shared = group({fog, shape()}, "Group");
+  auto left = group({shared}), right = group({shared});
+  set(left, "scale", SFVec3f{2, 2, 2});
+  set(right, "scale", SFVec3f{3, 3, 3});
+  Fixture f({left, right});
+  const auto checkExpected = [&](float leftScale, bool enabled) {
+    REQUIRE(f.mirror.items.size() == 2);
+    REQUIRE(f.mirror.fogs.size() == (enabled ? 2 : 0));
+    for (const auto &[id, item] : f.mirror.items) {
+      (void)id;
+      const float scale = item.path.front() == left.get() ? leftScale : 3.0f;
+      CHECK(item.worldTransform.m[0] == doctest::Approx(scale));
+      if (!enabled) {
+        CHECK(item.localFog == -1);
+        continue;
+      }
+      REQUIRE(item.localFog >= 0);
+      const auto &desc = f.mirror.fogs.at(item.localFog);
+      CHECK(desc.visibilityRange == doctest::Approx(10 * scale));
+      CHECK(desc.scopeRoot == shared.get());
+      CHECK(desc.scopePath == PathKey{item.path.front(), shared.get()});
+    }
+  };
+  checkExpected(2, true); // independent expected values, not just a snapshot oracle.
+  replacement(f.event(left, "scale", SFVec3f{5, 5, 5}), 2, 2);
+  checkExpected(5, true);
+  replacement(f.event(fog, "enabled", false), 2, 2);
+  checkExpected(5, false);
+  replacement(f.event(left, "scale", SFVec3f{4, 4, 4}), 2, 2);
+  checkExpected(4, false); // disabled scopes still retain ancestor dependencies.
+  replacement(f.event(fog, "enabled", true), 2, 2);
+  checkExpected(4, true);
 }
 
 TEST_CASE("render state delta: root state and simultaneous edits coalesce into one replacement") {

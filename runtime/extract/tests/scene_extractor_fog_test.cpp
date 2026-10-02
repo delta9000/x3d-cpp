@@ -219,3 +219,139 @@ TEST_CASE("scene_extractor_local_fog_test") {
     CHECK((red == 1));  // inner-group Shape: nearest is the inner LocalFog.
   }
 }
+
+TEST_CASE("local fog placement: a shared enclosing group preserves each world range") {
+  auto fog = createX3DNode("LocalFog");
+  setF(fog, "visibilityRange", 10.0f);
+  auto shared = createX3DNode("Group");
+  addChild(shared, fog);
+  addChild(shared, makeBoxShape());
+  auto left = createX3DNode("Transform"), right = createX3DNode("Transform");
+  setF(left, "scale", SFVec3f{2, 2, 2});
+  setF(right, "scale", SFVec3f{3, 3, 3});
+  addChild(left, shared);
+  addChild(right, shared);
+  Scene scene;
+  SUBCASE("left first") { scene.rootNodes = {left, right}; }
+  SUBCASE("right first") { scene.rootNodes = {right, left}; }
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  const auto snapshot = ex.fullSnapshot();
+  REQUIRE(snapshot.added.size() == 2);
+  REQUIRE(ex.snapshotLocalFogs().size() == 2);
+  for (auto id : snapshot.added) {
+    const auto &item = ex.item(id);
+    REQUIRE(item.localFog >= 0);
+    const auto &desc = ex.snapshotLocalFogs().at(item.localFog);
+    const bool isLeft = item.path.front() == left.get();
+    CHECK(desc.visibilityRange == doctest::Approx(isLeft ? 20 : 30));
+    CHECK(desc.scopeRoot == shared.get());
+    CHECK(desc.scopePath == extract::PathKey{item.path.front(), shared.get()});
+  }
+  // Appending placement identity retains the previous four aggregate fields.
+  const extract::LocalFogDesc legacy{SFColor{1, 1, 1}, extract::FogDesc::Type::Linear,
+                                     10.0f, shared.get()};
+  CHECK(legacy.scopeRoot == shared.get());
+  CHECK(legacy.scopePath.empty());
+}
+
+TEST_CASE("local fog placement: shared nested scopes beat outer and root fogs") {
+  auto outerFog = createX3DNode("LocalFog"), innerFog = createX3DNode("LocalFog");
+  setF(outerFog, "visibilityRange", 10.0f);
+  setF(innerFog, "visibilityRange", 4.0f);
+  auto outerShape = makeBoxShape(), innerShape = makeBoxShape();
+  auto inner = createX3DNode("Group"), outer = createX3DNode("Group");
+  addChild(inner, innerFog);
+  addChild(inner, innerShape);
+  addChild(outer, outerFog);
+  addChild(outer, outerShape);
+  addChild(outer, inner);
+  auto left = createX3DNode("Transform"), right = createX3DNode("Transform");
+  setF(left, "scale", SFVec3f{2, 2, 2});
+  setF(right, "scale", SFVec3f{3, 3, 3});
+  addChild(left, outer);
+  addChild(right, outer);
+  auto extraRoot = createX3DNode("Group"); // unequal full path lengths.
+  addChild(extraRoot, left);
+  auto rootFog = createX3DNode("LocalFog");
+  setF(rootFog, "visibilityRange", 99.0f);
+  auto outside = makeBoxShape();
+  bool innerEnabled = true;
+  SUBCASE("nearest shared inner fog") {}
+  SUBCASE("disabled inner falls back to its own outer placement") {
+    innerEnabled = false;
+    setF(innerFog, "enabled", false);
+  }
+  Scene scene;
+  scene.rootNodes = {extraRoot, right, outside, rootFog}; // root fog collected last.
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  const auto snapshot = ex.fullSnapshot();
+  REQUIRE(snapshot.added.size() == 5);
+  REQUIRE(ex.snapshotLocalFogs().size() == (innerEnabled ? 5 : 3));
+  for (auto id : snapshot.added) {
+    const auto &item = ex.item(id);
+    REQUIRE(item.localFog >= 0);
+    const auto &desc = ex.snapshotLocalFogs().at(item.localFog);
+    if (item.path.back() == outside.get()) {
+      CHECK(desc.visibilityRange == doctest::Approx(99));
+      CHECK(desc.scopeRoot == nullptr);
+      CHECK(desc.scopePath.empty());
+      continue;
+    }
+    const bool useInner = innerEnabled && item.path.back() == innerShape.get();
+    const float scale = item.path.front() == extraRoot.get() ? 2.0f : 3.0f;
+    CHECK(desc.visibilityRange == doctest::Approx((useInner ? 4 : 10) * scale));
+    CHECK(desc.scopeRoot == (useInner ? inner.get() : outer.get()));
+    const auto end = std::find(item.path.begin(), item.path.end(), desc.scopeRoot);
+    REQUIRE(end != item.path.end());
+    CHECK(desc.scopePath == extract::PathKey(item.path.begin(), end + 1));
+  }
+}
+
+TEST_CASE("local fog placement: collection remains cycle depth and visit bounded") {
+  auto fog = createX3DNode("LocalFog");
+  auto shared = createX3DNode("Group");
+  addChild(shared, fog);
+  Scene scene;
+  extract::LocalFogSystem system;
+  SUBCASE("cycle stops at the back edge without suppressing a sibling placement") {
+    addChild(shared, shared);
+    auto left = createX3DNode("Group"), right = createX3DNode("Group");
+    addChild(left, shared);
+    addChild(right, shared);
+    scene.rootNodes = {left, right};
+    x3d::WalkBudget budget(20);
+    const auto fogs = system.collect(scene, budget, SFVec3f{0, 0, 0});
+    setF(shared, "children", std::vector<std::shared_ptr<X3DNode>>{fog}); // break ownership cycle.
+    CHECK_FALSE(budget.tripped);
+    REQUIRE(fogs.size() == 2);
+    CHECK(fogs[0].scopePath == extract::PathKey{left.get(), shared.get()});
+    CHECK(fogs[1].scopePath == extract::PathKey{right.get(), shared.get()});
+  }
+  SUBCASE("visit budget truncates then a new collection starts cleanly") {
+    scene.rootNodes = {shared, fog};
+    x3d::WalkBudget budget(2);
+    const auto partial = system.collect(scene, budget, SFVec3f{0, 0, 0});
+    CHECK(budget.tripped);
+    REQUIRE(partial.size() == 1);
+    CHECK(partial[0].scopePath == extract::PathKey{shared.get()});
+    const auto complete = system.collect(scene);
+    REQUIRE(complete.size() == 2);
+    CHECK(complete[1].scopePath.empty());
+  }
+  SUBCASE("depth cap does not hide a later shallow USE placement") {
+    auto chain = shared;
+    for (std::size_t i = 1; i < x3d::kMaxNestingDepth; ++i) {
+      auto parent = createX3DNode("Group");
+      addChild(parent, chain);
+      chain = parent;
+    }
+    scene.rootNodes = {chain, shared};
+    const auto fogs = system.collect(scene);
+    REQUIRE(fogs.size() == 1);
+    CHECK(fogs[0].scopePath == extract::PathKey{shared.get()});
+  }
+}

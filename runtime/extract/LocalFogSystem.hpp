@@ -1,18 +1,18 @@
 // LocalFogSystem.hpp — §24.4.3 LocalFog extraction: collect every ENABLED
 // LocalFog in the scene, resolved to WORLD scale at collection time, each
-// carrying the enclosing grouping node it is scoped to. namespace
+// carrying the full placement path of its enclosing grouping scope. namespace
 // x3d::runtime::extract. Header-only, node-as-truth (field reads go through
 // geombounds reflection).
 //
 // WHY a separate walk (the LightSystem pattern): LocalFog is bound-independent
 // — unlike global Fog it is NOT selected by the binding stack. It applies to
-// geometry within its PARENT grouping node's scope, exactly like a non-global
-// light's scopeRoot. This walk re-accumulates worldM down EACH path (the
+// geometry within its PARENT grouping node's scope. This walk re-accumulates
+// worldM and the enclosing grouping scope down EACH path (the
 // worldOfRec idiom) so a USE'd LocalFog under two Transforms keeps each
 // placement distinct.
 //
 // enabled==false LocalFogs are SKIPPED entirely (like on==false lights): a
-// disabled LocalFog does not override global Fog, so global Fog applies
+// disabled LocalFog leaves the nearest outer enabled LocalFog, or global Fog,
 // unchanged within its scope.
 //
 // SEAM/THREADING: single-threaded; collect() is a pure read over the scene graph.
@@ -55,11 +55,12 @@ public:
                                     std::unordered_set<const X3DNode *> *dependencies = nullptr) {
     std::vector<LocalFogDesc> out;
     std::vector<const X3DNode *> frames;
+    PathKey path;
     for (const auto &root : scene.rootNodes) {
       if (!root) continue;
       // A root LocalFog has no enclosing grouping node => scopeRoot null; a
       // root-level LocalFog applies scene-wide (§24.4.3).
-      walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, out, budget,
+      walk(root.get(), Mat4::identity(), path, /*scopeDepth=*/0, out, budget,
            eyeWorld, frames, dependencies);
     }
     return out;
@@ -85,7 +86,7 @@ private:
   }
 
   static LocalFogDesc makeFog(const X3DNode &n, const Mat4 &worldM,
-                              const X3DNode *scopeRoot) {
+                              const PathKey &path, std::size_t scopeDepth) {
     LocalFogDesc f;
     f.color = geombounds::getField<SFColor>(n, "color", SFColor{1.0f, 1.0f, 1.0f});
     const std::string tok = enumToken(n, "fogType", "LINEAR");
@@ -93,18 +94,20 @@ private:
                                        : FogDesc::Type::Linear;
     f.visibilityRange = geombounds::getField<float>(n, "visibilityRange", 0.0f);
     f.visibilityRange *= worldScale(worldM);
-    f.scopeRoot = scopeRoot;
+    f.scopePath.assign(path.begin(), path.begin() + scopeDepth);
+    f.scopeRoot = f.scopePath.empty() ? nullptr : f.scopePath.back();
     return f;
   }
 
-  void walk(const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
+  void walk(const X3DNode *n, const Mat4 &worldM, PathKey &path, std::size_t scopeDepth,
             std::vector<LocalFogDesc> &out, WalkBudget &budget,
             const SFVec3f &eyeWorld, std::vector<const X3DNode *> &frames,
-            std::unordered_set<const X3DNode *> *dependencies,
-            std::size_t depth = 0) {
+            std::unordered_set<const X3DNode *> *dependencies) {
     if (!n) return;
     if (!budget.spend()) return;
-    if (depth >= kMaxNestingDepth) return;
+    if (path.size() >= kMaxNestingDepth) return;
+    for (const X3DNode *ancestor : path)
+      if (ancestor == n) return; // reject back-edges, not separate USE placements.
     const bool frame = isTransform(n);
     const Mat4 here = frame ? worldM * TransformSystem::localMatrix(n) : worldM;
 
@@ -114,26 +117,28 @@ private:
         dependencies->insert(frames.begin(), frames.end());
       }
       // enabled==false (spec default true): skip entirely, exactly like a light
-      // with on==false — global Fog applies unchanged within this scope.
+      // with on==false — an outer LocalFog or global Fog remains in scope.
       if (geombounds::getField<bool>(*n, "enabled", true))
-        out.push_back(makeFog(*n, here, scopeRoot));
+        out.push_back(makeFog(*n, here, path, scopeDepth));
       return; // LocalFog bears no children; nothing below it to scope.
     }
 
+    path.push_back(n);
     if (frame) frames.push_back(n);
-    const X3DNode *childScope = isGroupingNode(n) ? n : scopeRoot;
+    const std::size_t childScopeDepth = isGroupingNode(n) ? path.size() : scopeDepth;
     const std::string typeName = n->nodeTypeName();
     if (typeName == "Switch" || typeName == "LOD") {
       if (auto child = traversedChild(*n, here, eyeWorld))
-        walk(child.get(), here, childScope, out, budget, eyeWorld,
-             frames, dependencies, depth + 1);
+        walk(child.get(), here, path, childScopeDepth, out, budget, eyeWorld,
+             frames, dependencies);
     } else {
       forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-        walk(c.get(), here, childScope, out, budget, eyeWorld,
-             frames, dependencies, depth + 1);
+        walk(c.get(), here, path, childScopeDepth, out, budget, eyeWorld,
+             frames, dependencies);
       });
     }
     if (frame) frames.pop_back();
+    path.pop_back();
   }
 };
 

@@ -41,7 +41,7 @@ replacement walk per affected tick; correctness comes before preserving the old 
 | `runtime/extract/TextureExtract.hpp` | Texture/material extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/MaterialSystem.hpp` | Appearance → `MaterialDesc` mapping (see [Texture extraction](extract-textures.md)) |
 | `runtime/extract/LightSystem.hpp` | World-resolved `LightDesc` collection (see [Texture extraction](extract-textures.md)) |
-| `runtime/extract/LocalFogSystem.hpp` | Enabled `LocalFogDesc` collection, each scoped to its enclosing grouping node (§24.4.3) |
+| `runtime/extract/LocalFogSystem.hpp` | Enabled `LocalFogDesc` collection, each scoped to its enclosing grouping placement path (§24.4.3) |
 | `runtime/extract/Topology.hpp` | `Topology` enum: `Triangles`, `Lines`, `Points` (see [Topology](extract-topology.md)) |
 | `runtime/extract/NurbsEval.hpp` | Node-free NURBS math unit (`x3d::runtime::extract::nurbs`): Cox–de Boor basis, rational (weighted) curve/surface eval, periodic/closed handling, analytic surface normals — plain arrays, no X3D-node dependency (see [NURBS](#nurbs)) |
 
@@ -221,11 +221,11 @@ and compares a channel-respecting consumer mirror against a separate fresh
 extractor: visibility, shadow flags, clip edits and frame changes, local fog
 color/type/range/enabled and scale, disabled/empty/hidden scopes, shared placements,
 unrelated TRS, coalesced edits, and camera-only/shared-empty Billboard clip
-scopes with independent expected world-plane values. This establishes delta/snapshot consistency;
-it does not add clip/local-fog rendering to the OpenGL example or change the
-existing node-keyed LocalFog scope identity for USE-shared enclosing groups
-([#150](https://github.com/delta9000/x3d-cpp/issues/150)). It also does not refresh
-the optional `beyondVisibilityLimit` hint on camera/TRS/far-distance changes.
+scopes with independent expected world-plane values. Shared enclosing LocalFog
+groups also have explicit expected per-placement ranges before and after ancestor
+scale changes. This establishes delta/snapshot consistency and those snapshot
+semantics; it does not add clip/local-fog rendering to the OpenGL example or
+refresh the optional `beyondVisibilityLimit` hint on camera/TRS/far-distance changes.
 
 ### Incremental geometry ownership and liveness
 
@@ -264,10 +264,22 @@ a separate seam.
 - `mesh` (`MeshRef` = `shared_ptr<const MeshData>`) — local-frame triangles, **shared** across every placement of one `GeomId` ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)), so host RAM is O(distinct content) rather than O(placements). Never null (a Packed item points at `emptyMeshRef()`), so `item.mesh->positions` needs no null check. `external_geom_seam_test.cpp` verifies this on emitted packed items and checks their empty AoS scene-bounds channel. Immutable by contract: a content change builds a **new** mesh and bumps `GeomId::contentVersion` rather than editing one a co-owner can see.
 - `lights` — indices into `snapshotLights()` for lights whose scope covers this placement.
 - `LightSystem` collects only lights reached through the same selected `Switch` child or distance-selected `LOD` level as geometry. It resolves locations and directions per path and scales PointLight/SpotLight radius through ancestor transforms (§17.4.2–3).
-- `LocalFogSystem` follows the same walk: a `LocalFog` is bound-independent and applies only within its enclosing grouping node, so each `LocalFogDesc` carries that `scopeRoot`; `enabled`=false `LocalFog`s are skipped so global `Fog` applies unchanged. `SceneExtractor` tags each `RenderItem::localFog` with the nearest in-scope index (global `Fog` governs when `-1`), and `visibilityRange` is world-scaled like global `Fog`.
+- `LocalFogSystem` collects a bound-independent `LocalFog` for each enclosing grouping **placement**. `LocalFogDesc::scopePath` contains the complete root-to-enclosing-group node-pointer chain; matching requires an exact prefix of the item path. The longest matching prefix wins, so USE-shared enclosing groups keep their own world-scaled `visibilityRange`, including shared nested scopes. An empty scope path is scene-wide root fog. Disabled fogs are skipped, leaving the nearest outer enabled fog or global `Fog`; `RenderItem::localFog == -1` selects global `Fog`. Existing equal-scope tie behavior is retained: the last collected scoped fog wins, while the first root fog supplies the scene-wide fallback. The walk keeps its shared visit budget and depth cap and rejects containment back-edges without deduplicating separate USE paths. This does not change light scoping.
+
 - `clipPlanes` (`ClipPlaneList`) — the enabled `ClipPlane` nodes (§11.4.1) in scope for this placement, resolved to **world space** (a plane's half-space is invariant, so a consumer maps it into its own frame — e.g. eye space — as needed). A `ClipPlane` affects the *following siblings and their subtrees* within its parent grouping node, threaded down the walk as scoped state. Fixed capacity — `ClipPlaneList::kMaxClipPlanes = 6` (the Annex F.5 minimum); planes beyond the sixth are dropped. `enabled=false` planes are ignored.
 - `beyondVisibilityLimit` — hint: item origin is past `Viewpoint.farDistance` / `NavigationInfo.visibilityLimit`.
 - `castShadow` — `X3DShapeNode.castShadow` (X3D default `true`); whether this shape occludes light. Carried, not interpreted — the shadow-visibility query (technique-defined per §17) is a consumer/seam concern (see [ADR-0028](../decisions/0028-shadow-visibility-seam.md)).
+
+`LocalFogDesc::scopeRoot` remains the enclosing group pointer (or null for root
+fog), but it is informational and cannot identify a USE placement by itself.
+The appended `scopePath` field preserves earlier member order, ordinary field
+access, and four-field aggregate initializers; code doing its own scope resolution
+must use the complete path, or consume the extractor's `RenderItem::localFog` index.
+This is an **experimental descriptor layout change**, not binary compatibility:
+the descriptor now owns a vector, requires recompilation, and cannot be copied or
+serialized as raw bytes. Pointer paths borrow scene-node lifetime, just like
+`RenderItem::path`; they are not persistent cross-scene IDs. Storage is proportional
+to the collected scope-path lengths. No stable public SDK facade changed.
 
 **`buildLocalMesh`** is the MeshBuilder entry point:
 
@@ -399,7 +411,7 @@ MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are r
 | `x3d_packed_mesh` | `PackedMesh` descriptor: `set_attrib`, `has()`, `empty()`, `is_indexed()` |
 | `x3d_render_item_geometry` | `Geometry` union: AoS vs Packed kind switching |
 | `x3d_light_system` | `LightSystem::collect()` world-resolution + global/scoped flag |
-| `x3d_scene_extractor_fog` | Bound global `Fog` `FogDesc` + `LocalFog` scoping/enabled/world-scale (§24.4.3) |
+| `x3d_scene_extractor_fog` | Bound global `Fog` `FogDesc` + `LocalFog` placement paths, nested/disabled/root scope, world-scale, and bounded collection (§24.4.3) |
 | `x3d_material_system` | `MaterialSystem::materialOf()` Phong/Physical/Unlit dispatch |
 | `x3d_texture_extract` | Texture extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
 

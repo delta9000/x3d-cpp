@@ -714,15 +714,17 @@ struct FogDesc {
 // geometry within its enclosing grouping node's subtree. Same color/fogType/
 // visibilityRange semantics as FogDesc; visibilityRange is surfaced already
 // world-scaled (the spec defines it in the node's LOCAL frame). enabled==false
-// LocalFogs are skipped entirely, so global Fog applies unchanged in their
-// scope. A consumer resolves the NEAREST enabled LocalFog whose scopeRoot is an
-// ancestor of the item's path.
+// LocalFogs are skipped entirely, leaving an outer enabled LocalFog or global
+// Fog in scope. A consumer resolves the NEAREST
+// enabled LocalFog whose scopePath is a prefix of the item's path. The full
+// root-to-group path distinguishes USE placements of the same enclosing group.
 // ---------------------------------------------------------------------------
 struct LocalFogDesc {
   SFColor color{1.0f, 1.0f, 1.0f};
   FogDesc::Type fogType = FogDesc::Type::Linear;
   float visibilityRange = 0.0f; // world units; 0 disables fog.
-  const X3DNode *scopeRoot = nullptr; // enclosing grouping node for scoping.
+  const X3DNode *scopeRoot = nullptr; // enclosing grouping node; not placement identity.
+  PathKey scopePath{}; // full root..enclosing-group chain; empty = scene-wide.
 };
 
 // ---------------------------------------------------------------------------
