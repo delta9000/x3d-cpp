@@ -1217,7 +1217,7 @@ private:
       rec.worldTransform = worldM;
       rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
-      rec.mesh = {};  // AoS mesh empty for packed items.
+      rec.mesh = emptyMeshRef(); // Packed items retain the never-null AoS channel.
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
       rec.beyondVisibilityLimit = false;
@@ -1229,6 +1229,7 @@ private:
       rec.worldTransform = worldM;
       rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
+      rec.mesh = emptyMeshRef();
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
       rec.castShadow = castShadow;
