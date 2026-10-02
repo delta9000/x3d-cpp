@@ -833,8 +833,8 @@ expandInstance(ProtoInstance &inst, Scene &scene,
   // keep independent storage and event endpoints on the primary (the
   // dynamic-field store, the same abstraction Script author fields use), so a
   // ROUTE may set an inputOnly/inputOutput field and fan out its value_changed
-  // even with no inner node to map onto. Scalar fields only: node-valued
-  // interface defaults stay body-owned.
+  // even with no inner node to map onto. Node defaults reuse this instance's
+  // clone map; caller overrides retain their already-materialized identity.
   {
     std::unordered_set<std::string> isMapped;
     for (const IsConnection &is : decl->body.isConnections)
@@ -847,17 +847,25 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     std::vector<AuthorFieldDecl> decls;
     for (const ProtoField &field : decl->interface) {
       if (isMapped.count(field.name)) continue;
-      if (field.type == X3DFieldType::SFNode ||
-          field.type == X3DFieldType::MFNode)
-        continue;
       AuthorFieldDecl d;
       d.x3dName = field.name;
       d.type = field.type;
       d.access = field.access;
       ProtoFieldValue eff;
-      if (proto_detail::resolveForwardedValue(
-              proto_detail::instanceValue(inst, field.name), field, eff))
-        d.initialValue = eff.value;
+      const auto *override_ = proto_detail::instanceValue(inst, field.name);
+      if (proto_detail::resolveForwardedValue(override_, field, eff)) {
+        if (field.type == X3DFieldType::SFNode ||
+            field.type == X3DFieldType::MFNode) {
+          if (!override_) eff.nodeValue = cloneNodes(eff.nodeValue);
+          if (field.type == X3DFieldType::SFNode)
+            d.initialValue = eff.nodeValue.empty()
+                ? std::shared_ptr<X3DNode>{} : eff.nodeValue.front();
+          else
+            d.initialValue = std::move(eff.nodeValue);
+        } else {
+          d.initialValue = eff.value;
+        }
+      }
       decls.push_back(std::move(d));
     }
     if (!decls.empty())

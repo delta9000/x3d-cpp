@@ -336,3 +336,109 @@ TEST_CASE("proto_interface_state_test") {
   }
   std::cout << "all proto interface-state tests passed\n";
 }
+
+TEST_CASE("unconnected PROTO MFNode interface relays node identity and empty values") {
+  dynamicFieldStore().clear();
+  auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Relay'><ProtoInterface>
+<field name='value' type='MFNode' accessType='inputOutput'/>
+</ProtoInterface><ProtoBody><Group/></ProtoBody></ProtoDeclare>
+<Group DEF='Source'/><ProtoInstance name='Relay' DEF='RelayNode'/><Group DEF='Dest'/>
+<ROUTE fromNode='Source' fromField='children_changed' toNode='RelayNode' toField='set_value'/>
+<ROUTE fromNode='RelayNode' fromField='value_changed' toNode='Dest' toField='set_children'/>
+</Scene></X3D>)", x3d::codec::Encoding::XML);
+  auto source = std::dynamic_pointer_cast<Group>(doc.scene.resolve("Source"));
+  auto relay = doc.scene.resolve("RelayNode");
+  auto dest = std::dynamic_pointer_cast<Group>(doc.scene.resolve("Dest"));
+  REQUIRE(source); REQUIRE(relay); REQUIRE(dest);
+  X3DExecutionContext ctx;
+  auto routes = buildRoutes(doc.scene, ctx);
+  REQUIRE(routes.routesAdded == 2);
+  REQUIRE(routes.rejected.empty());
+  ctx.buildSceneGraph(doc.scene);
+  const std::vector<std::shared_ptr<X3DNode>> nodes{std::make_shared<Transform>()};
+  ctx.postEvent(source.get(), "children", std::any(nodes));
+  ctx.tick(0.0);
+  CHECK(dest->getChildren() == nodes);
+  CHECK(std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
+      dynamicFieldStore().getValue(*relay, "value")) == nodes);
+  ctx.postEvent(source.get(), "children", std::any(std::vector<std::shared_ptr<X3DNode>>{}));
+  ctx.tick(1.0);
+  CHECK(dest->getChildren().empty());
+  dynamicFieldStore().clear();
+}
+
+TEST_CASE("unconnected PROTO SFNode interface relays node identity and NULL") {
+  dynamicFieldStore().clear();
+  auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Relay'><ProtoInterface>
+<field name='value' type='SFNode' accessType='inputOutput'/>
+</ProtoInterface><ProtoBody><Group/></ProtoBody></ProtoDeclare>
+<Shape DEF='Source'/><ProtoInstance name='Relay' DEF='RelayNode'/><Shape DEF='Dest'/>
+<ROUTE fromNode='Source' fromField='geometry_changed' toNode='RelayNode' toField='set_value'/>
+<ROUTE fromNode='RelayNode' fromField='value_changed' toNode='Dest' toField='set_geometry'/>
+</Scene></X3D>)", x3d::codec::Encoding::XML);
+  auto source = doc.scene.resolve("Source");
+  auto relay = doc.scene.resolve("RelayNode");
+  auto dest = doc.scene.resolve("Dest");
+  REQUIRE(source); REQUIRE(relay); REQUIRE(dest);
+  X3DExecutionContext ctx;
+  auto routes = buildRoutes(doc.scene, ctx);
+  REQUIRE(routes.routesAdded == 2);
+  REQUIRE(routes.rejected.empty());
+  const std::shared_ptr<X3DNode> geometry = x3d::nodes::X3DNodeFactory::create("Box");
+  REQUIRE(geometry);
+  ctx.postEvent(source.get(), "geometry", std::any(geometry));
+  ctx.tick(0.0);
+  CHECK(std::any_cast<std::shared_ptr<X3DNode>>(
+      dynamicFieldStore().getValue(*relay, "value")) == geometry);
+  CHECK(std::any_cast<std::shared_ptr<X3DNode>>(
+      proto_detail::findField(*dest, "geometry")->get(*dest)) == geometry);
+  ctx.postEvent(source.get(), "geometry", std::any(std::shared_ptr<X3DNode>{}));
+  ctx.tick(1.0);
+  CHECK_FALSE(std::any_cast<std::shared_ptr<X3DNode>>(
+      proto_detail::findField(*dest, "geometry")->get(*dest)));
+  dynamicFieldStore().clear();
+}
+
+TEST_CASE("unconnected PROTO node defaults are private but caller overrides retain sharing") {
+  dynamicFieldStore().clear();
+  auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Holder'><ProtoInterface>
+<field name='single' type='SFNode' accessType='initializeOnly'><Transform DEF='N' translation='1 2 3'/></field>
+<field name='many' type='MFNode' accessType='inputOutput'><Transform USE='N'/></field>
+</ProtoInterface><ProtoBody><Group/></ProtoBody></ProtoDeclare>
+<Transform DEF='Caller'/>
+<ProtoInstance name='Holder' DEF='A'/><ProtoInstance name='Holder' DEF='B'/>
+<ProtoInstance name='Holder' DEF='C'><fieldValue name='single'><Transform USE='Caller'/></fieldValue><fieldValue name='many'/></ProtoInstance>
+<ProtoInstance name='Holder' DEF='D'><fieldValue name='single'/><fieldValue name='many'><Transform USE='Caller'/></fieldValue></ProtoInstance>
+</Scene></X3D>)", x3d::codec::Encoding::XML);
+  auto sf = [&](const char *def) {
+    auto node = doc.scene.resolve(def);
+    REQUIRE(node);
+    auto value = dynamicFieldStore().getValue(*node, "single");
+    REQUIRE(value.type() == typeid(std::shared_ptr<X3DNode>));
+    return std::any_cast<std::shared_ptr<X3DNode>>(value);
+  };
+  auto mf = [&](const char *def) {
+    auto node = doc.scene.resolve(def);
+    REQUIRE(node);
+    auto value = dynamicFieldStore().getValue(*node, "many");
+    REQUIRE(value.type() == typeid(std::vector<std::shared_ptr<X3DNode>>));
+    return std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(value);
+  };
+  auto a = sf("A"), b = sf("B");
+  REQUIRE(a); REQUIRE(b);
+  CHECK(a != b);
+  CHECK(a != doc.scene.findProto("Holder")->interface[0].nodeDefault[0]);
+  REQUIRE(mf("A").size() == 1);
+  REQUIRE(mf("B").size() == 1);
+  CHECK(mf("A")[0] == a);
+  CHECK(mf("B")[0] == b);
+  CHECK(sf("C") == doc.scene.resolve("Caller"));
+  CHECK(mf("C").empty());
+  CHECK_FALSE(sf("D"));
+  REQUIRE(mf("D").size() == 1);
+  CHECK(mf("D")[0] == doc.scene.resolve("Caller"));
+  dynamicFieldStore().clear();
+}
