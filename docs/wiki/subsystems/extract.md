@@ -126,6 +126,23 @@ uses a counted, non-rendered metadata child to prove scalar refresh does not wal
 unchanged dependency subtrees; structural replacement and subsequent scalar writes
 remain covered.
 
+### Geometry content identity
+
+A host cache keyed by `GeomId` can upload each immutable AoS payload once. The
+extractor interns payload variants within each geometry owner: identical
+TextureTransform parameters share their cached mesh and key; different baked UVs
+or HAnimSegment deformation produce distinct content versions. The bake cache
+includes the raw deformation payload as an input, so equal texture transforms do
+not collapse different Segment positions (#137).
+
+Geometry invalidation evicts that owner's current payload lookup, then assigns
+fresh content identities. Versions are never reused inside a baseline, even when
+only one Segment's placement changes. `fullSnapshot()` resets them under the
+existing host replacement/eviction protocol. Exhausting the uint32 identity space
+throws with a request to take a fresh full snapshot rather than aliasing an old
+resource. Consumer-cache and shared-Segment regressions verify actual mesh bytes,
+not just distinct CPU pointers.
+
 ### Structural delta replacement contract
 
 Any `DirtyChildren` (including SFNode/MFNode writes and Switch/LOD active-child
@@ -181,7 +198,7 @@ a separate seam.
 
 - `path` (`PathKey`) — full root-to-leaf node pointer chain; the per-path identity.
 - `worldTransform` (`Mat4`) — re-accumulated fresh per path, never from `TransformSystem::world_`.
-- `geometry` (`GeomId`) — `{node*, contentVersion}`; equal GeomIds share GPU geometry.
+- `geometry` (`GeomId`) — `{node*, contentVersion}`; equal GeomIds share identical GPU geometry. `contentVersion` is opaque: baked/deformed variants of the same node receive distinct values, as do revised payloads. It is not a field-write counter. Full baselines reset the namespace.
 - `geometry_ext` (`Geometry`) — union of AoS `MeshData` (default) and `PackedMesh` (binary resolver path).
 - `material` (`MaterialDesc`) — full Phong/Physical/Unlit descriptor with textures.
 - `mesh` (`MeshRef` = `shared_ptr<const MeshData>`) — local-frame triangles, **shared** across every placement of one `GeomId` ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)), so host RAM is O(distinct content) rather than O(placements). Never null (a Packed item points at `emptyMeshRef()`), so `item.mesh->positions` needs no null check. `external_geom_seam_test.cpp` verifies this on emitted packed items and checks their empty AoS scene-bounds channel. Immutable by contract: a content change builds a **new** mesh and bumps `GeomId::contentVersion` rather than editing one a co-owner can see.
