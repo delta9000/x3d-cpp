@@ -6325,7 +6325,8 @@
         "TXT-1",
         "TXT-2",
         "TXT-4",
-        "TXT-5"
+        "TXT-5",
+        "TXT-ATLAS-LATIN1"
       ],
       "levels": [
         1
@@ -6335,7 +6336,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1",
+          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1; 15.4.1, 15.4.2; Annex E FontStyle support",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6344,7 +6345,8 @@
             "TXT-1",
             "TXT-2",
             "TXT-4",
-            "TXT-5"
+            "TXT-5",
+            "TXT-ATLAS-LATIN1"
           ],
           "geometry": false,
           "interfaces": [
@@ -6361,7 +6363,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1",
+          "clause": "15.2.2.3; 15.2.2.2; 4.4.2.2, 4.4.8.2; 15.4.2, 15.4.1; 15.4.1, 15.4.2; Annex E FontStyle support",
           "exists": true,
           "extracts": "yes",
           "findings": [
@@ -6370,7 +6372,8 @@
             "TXT-1",
             "TXT-2",
             "TXT-4",
-            "TXT-5"
+            "TXT-5",
+            "TXT-ATLAS-LATIN1"
           ],
           "geometry": true,
           "interfaces": [
@@ -11305,6 +11308,19 @@
       "severity": "major",
       "status": "open",
       "summary": "Prototype interface fields without IS targets have no independent runtime field state or event endpoint."
+    },
+    {
+      "clause": "15.4.1, 15.4.2; Annex E FontStyle support",
+      "component": "Text",
+      "id": "TXT-ATLAS-LATIN1",
+      "nodes": [
+        "Text",
+        "FontStyle"
+      ],
+      "note": "Fixed for the helper's bounded repertoire: makeStbttGlyphAtlas bakes U+0020\u2013U+007E and U+00A0\u2013U+00FF, preserving raw advances and packing complete raster glyph boxes so accents/overhangs are not cut off. x3d_text_atlas_tests checks every supported glyph's pixels, UVs, and baseline-relative geometry metrics against isolated rasterization across all three bundled Liberation faces at 8/17/64 px per em; blank spaces, range boundaries, missing families/files and unsupported codepoints are covered. DEL/C1 controls, out-of-range codepoints and .notdef still fail; styles still use the supplied PLAIN face. No claim of general Unicode/shaping support or whole-browser Immersive conformance. The headless SDK continues to use the consumer's FontMetrics seam; the CPU consumer's independent 8x8 font is still ASCII-only. Issue https://github.com/delta9000/x3d-cpp/issues/141.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "The optional stbtt atlas drops Latin-1 Supplement glyphs present in its supplied font."
     }
   ],
   "meta": {
@@ -11477,10 +11493,10 @@
     ]
   },
   "summary": {
-    "closed_count": 261,
+    "closed_count": 262,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 298,
+    "finding_count": 299,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

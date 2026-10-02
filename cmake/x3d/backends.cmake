@@ -396,6 +396,20 @@ if(X3D_CPP_BUILD_STBTT OR X3D_CPP_BUILD_POC)
     endif()
 endif()
 
+# The raster helper is independently testable without the FreeType swap backend.
+if(TARGET x3d_stbtt AND X3D_CPP_BUILD_TESTS)
+    enable_testing()
+    add_executable(x3d_text_atlas_tests
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/glyph_atlas_tests.cpp")
+    target_link_libraries(x3d_text_atlas_tests PRIVATE x3d_stbtt x3d_doctest_main)
+    target_include_directories(x3d_text_atlas_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/stbtt/vendor")
+    target_compile_definitions(x3d_text_atlas_tests PRIVATE
+        FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/third_party/fonts")
+    add_test(NAME x3d_text_atlas_tests COMMAND x3d_text_atlas_tests)
+    set_tests_properties(x3d_text_atlas_tests PROPERTIES TIMEOUT 120)
+endif()
+
 # ---------------------------------------------------------------------------
 # MovieDecoder seam — Backend A (pl_mpeg, MPEG-1). ADR-0041.
 # option() -> an isolated STATIC lib (x3d_plmpeg) whose single TU is

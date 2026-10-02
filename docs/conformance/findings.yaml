@@ -2943,3 +2943,22 @@
   status: open
   summary: "Prototype interface fields without IS targets have no independent runtime field state or event endpoint."
   note: "FIXED for scalar interface fields. Expansion now registers every declared scalar interface field (SF*/MF* except node types) that no IS connection maps, on the primary, as independent storage in the per-node dynamic-field store — the same abstraction Script author fields use. The store seeds initializeOnly/inputOutput fields from the fieldValue override or the interface default and gives inputOutput fields a set (echoed as _changed) plus a get; inputOnly fields get a set (route sink); outputOnly fields get a get (route source); initializeOnly stays value-only. The scene bridge resolves a route endpoint on an expanded instance to the declared interface field and, when no IS redirect exists, to this independent endpoint instead of rejecting ('has no IS route target'); body-local ROUTEs of an enclosing PROTO resolve a nested instance's unconnected interface field the same way. proto_interface_state_test.cpp proves the recorded Relay reproduction (inputOutput SFVec3f value, Group body, no IS): Source.translation_changed -> RelayNode.set_value sets the field and RelayNode.value_changed -> Dest.set_translation relays (1,2,3), routes: 2 rejected: 0; an unconnected field keeps its 0 0 0 default and honours a fieldValue override; an IS-connected field still relays through its body clone; sibling nested instances of one prototype, a shared nested/outer primary, and an EXTERNPROTO instance keep independent per-instance entries without clobber. WIRED vs IGNORED: scalar interface fields with no IS are fully wired (state + endpoints, all four access types); SFNode/MFNode-valued interface fields with no IS still keep no independent per-instance node state (their node defaults remain declaration-owned/body-owned) and are not registered. This closes the recorded scalar field/endpoint gap but not complete prototype field semantics."
+
+# Optional consumer raster helper; this does not broaden the headless SDK claim.
+- id: TXT-ATLAS-LATIN1
+  nodes: [Text, FontStyle]
+  component: Text
+  clause: "15.4.1, 15.4.2; Annex E FontStyle support"
+  severity: major
+  status: fixed
+  summary: The optional stbtt atlas drops Latin-1 Supplement glyphs present in its supplied font.
+  note: >-
+    Fixed for the helper's bounded repertoire: makeStbttGlyphAtlas bakes U+0020–U+007E and U+00A0–U+00FF,
+    preserving raw advances and packing complete raster glyph boxes so accents/overhangs are not cut off.
+    x3d_text_atlas_tests checks every supported glyph's pixels, UVs, and baseline-relative geometry metrics
+    against isolated rasterization across all three bundled Liberation faces at 8/17/64 px per em;
+    blank spaces, range boundaries, missing families/files and unsupported codepoints are covered.
+    DEL/C1 controls, out-of-range codepoints and .notdef still fail; styles still use the supplied PLAIN face.
+    No claim of general Unicode/shaping support or whole-browser Immersive conformance. The headless SDK
+    continues to use the consumer's FontMetrics seam; the CPU consumer's independent 8x8 font is still ASCII-only.
+    Issue https://github.com/delta9000/x3d-cpp/issues/141.
