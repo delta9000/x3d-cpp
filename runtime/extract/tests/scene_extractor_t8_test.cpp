@@ -11,8 +11,7 @@
 //      bare DirtyBounds bit ancestor-scale sets).
 //   3) A MATERIAL-COLOR change (diffuseColor delivered onto the Material) yields
 //      updatedMaterial with the new color re-read into the RenderItem.
-//   4) DirtyChildren on a grouping node yields added/removed via the cached
-//      entry-matrix subtree re-walk.
+//   4) DirtyChildren yields an authoritative remove-all/add-all replacement.
 #include "SceneExtractor.hpp"
 
 #include "X3DDocument.hpp" // Scene::addRootNode definition.
@@ -236,9 +235,11 @@ TEST_CASE("scene_extractor_t8_test") {
       ctx.postEvent(group.get(), "children", std::any(kids));
       ctx.tick(1.0);
       auto d = ex.delta();
-      CHECK((d.added.size() == 1));   // shape1's new placement.
-      CHECK((d.removed.empty()));     // shape0 still present.
-      CHECK((d.added[0] != id0));     // a genuinely new RenderItemId.
+      CHECK((d.added.size() == 2));   // both current placements.
+      CHECK((d.removed == std::vector<extract::RenderItemId>{id0}));
+      // Dense IDs may be reused after removing the old baseline.
+      CHECK((ex.item(d.added[0]).path.back() == shape0.get()));
+      CHECK((ex.item(d.added[1]).path.back() == shape1.get()));
     }
 
     // --- 4b) REMOVE a child: children back to {shape1} ----------------------
@@ -261,7 +262,7 @@ TEST_CASE("scene_extractor_t8_test") {
   //        ignores for a grouping node (it is in neither geomDeps_ nor
   //        materialDeps_), so incremental consumers (the OpenGL PoC) never saw
   //        the active-child swap — only full-snapshot consumers (cpuraster) did.
-  //        classifyDirty now maps whichChoice -> DirtyChildren -> subtree re-walk.
+  //        classifyDirty maps whichChoice -> DirtyChildren -> replacement snapshot.
   {
     auto sw = createX3DNode("Switch");
     auto shape0 = makeTriShape();
@@ -283,7 +284,7 @@ TEST_CASE("scene_extractor_t8_test") {
     ctx.tick(1.0);
     auto d = ex.delta();
     CHECK((d.added.size() == 1)); // child 1's new placement.
-    CHECK((d.added[0] != id0));   // a genuinely new RenderItemId.
+    CHECK((ex.item(d.added[0]).path.back() == shape1.get()));
     bool removedId0 = false;
     for (extract::RenderItemId id : d.removed)
       if (id == id0) removedId0 = true;
@@ -337,7 +338,7 @@ TEST_CASE("scene_extractor_t8_test") {
     ctx.tick(1.0);
     auto d = ex.delta();
     CHECK((d.added.size() == 1));
-    CHECK((d.added[0] != idFar));
+    CHECK((ex.item(d.added[0]).path.back() == s0.get()));
     bool removedFar = false;
     for (extract::RenderItemId id : d.removed)
       if (id == idFar) removedFar = true;

@@ -278,23 +278,29 @@ public:
   //       the geometry leaf — so a parent scale does NOT pollute updatedGeometry).
   //   * DirtyField & n in materialDeps_  =>  re-read the MaterialDesc from the
   //       owning Shape's Appearance => updatedMaterial.
-  //   * DirtyChildren & n is a grouping node  =>  resume the subtree walk from
-  //       n's cached entry matrix (O(subtree)) => added/removed.
+  //   * Any DirtyChildren => one full replacement snapshot (bounded scene walk),
+  //       before reading stale paths. All old live ids removed, current ids added.
   // ---------------------------------------------------------------------------
   RenderDelta delta() {
     // No baseline yet — a full snapshot IS the baseline (see contract above).
     if (!snapped_) return fullSnapshot();
 
-    if (topologyRevision_ != ctx_.sceneTopologyRevision()) {
-      const auto oldIds = liveIds_;
-      RenderDelta changed = fullSnapshot();
-      changed.removed.insert(changed.removed.end(), oldIds.begin(), oldIds.end());
-      std::sort(changed.removed.begin(), changed.removed.end());
-      return changed;
-    }
+    if (topologyRevision_ != ctx_.sceneTopologyRevision())
+      return replacementSnapshot();
 
     const std::uint64_t gen = ctx_.tickGeneration();
     if (gen == lastDeltaGen_) return {}; // no advance since the last delta().
+
+    // A node-reference/active-child change can invalidate stored paths and
+    // reverse dependencies, including pointers to already-destroyed nodes.
+    // Inspect flags WITHOUT dereferencing those nodes, before any incremental
+    // traversal. One authoritative rebuild handles all structural edits this
+    // tick, shared placements, same-path geometry replacement and reattachment.
+    // Consumers apply removed BEFORE added: dense IDs may be reused.
+    for (const X3DNode *n : ctx_.dirtyTracker().changedNodes())
+      if (ctx_.dirtyTracker().flags(n) & DirtyChildren)
+        return replacementSnapshot();
+
     lastDeltaGen_ = gen;
     const auto changedSkins = syncSkinChanges();
 
@@ -366,9 +372,8 @@ public:
         }
       }
 
-      // --- DirtyChildren on a grouping node => subtree re-walk ----------------
-      if ((f & DirtyChildren) ||
-          (f & DirtyField && n->nodeTypeName() == "HAnimHumanoid"))
+      // --- HAnim scalar configuration change => subtree re-walk ---------------
+      if (f & DirtyField && n->nodeTypeName() == "HAnimHumanoid")
         rewalkSubtree(n, delta);
     }
 
@@ -614,6 +619,17 @@ public:
   bool budgetExceeded() const { return walkBudget_.tripped; }
 
 private:
+  // Structural correctness deliberately takes the bounded full-walk path. A
+  // partial subtree patch cannot repair stale pointer-keyed dependencies or all
+  // USE paths safely. Scalar geometry/material/TRS changes stay incremental.
+  RenderDelta replacementSnapshot() {
+    const auto oldIds = liveIds_;
+    RenderDelta changed = fullSnapshot();
+    changed.removed.assign(oldIds.begin(), oldIds.end());
+    std::sort(changed.removed.begin(), changed.removed.end());
+    return changed;
+  }
+
   using DepMap = std::unordered_map<const X3DNode *, std::vector<RenderItemId>>;
 
   std::shared_ptr<const hanim::SkinBinding> skinBinding(const X3DNode *humanoid) {
@@ -1072,7 +1088,7 @@ private:
       rec.castShadow = castShadow;
       items_.push_back(std::move(rec));
     } else {
-      // Stable interning across full snapshots: reuse the dense id, refresh the
+      // Reuse an interned path within this baseline and refresh the
       // per-path world matrix + content (a rebuild reflects current field state).
       id = it->second;
       RenderItem &rec = items_[id];

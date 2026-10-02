@@ -2,7 +2,7 @@
 title: Extraction Pipeline
 summary: SceneExtractor → MeshBuilder → PackedMesh + RenderItem — the pull-based geometry extraction seam for renderers.
 tags: [subsystem, extract, scene-extractor, mesh-builder, packed-mesh, render-item, nurbs]
-updated: 2026-06-27
+updated: 2026-09-30
 related:
   - ../architecture.md
   - ../subsystems/extract-textures.md
@@ -26,8 +26,9 @@ what needs to be drawn, and how has that changed since last frame?" It produces
 flat, POD-only descriptors (`RenderItem`, `MeshData`, `MaterialDesc`, `LightDesc`,
 `CameraDesc`, `BackgroundDesc`) that a renderer can consume without parsing X3D
 nodes directly. The split between a full snapshot (frame 0 and scene-reload) and
-an incremental `delta()` (every subsequent frame) keeps per-frame cost proportional
-to what actually changed, not to scene size.
+an incremental `delta()` keeps scalar/TRS updates proportional to affected items.
+Structural/active-child changes take one bounded full-scene replacement walk per
+affected tick; correctness comes before preserving the old subtree optimization.
 
 ## Key files
 
@@ -113,6 +114,30 @@ struct RenderDelta {
   bool lightsChanged    = false;
 };
 ```
+
+### Structural delta replacement contract
+
+Any `DirtyChildren` (including SFNode/MFNode writes and Switch/LOD active-child
+changes), or a scene topology revision, replaces the extraction baseline once:
+`removed` contains every previously live ID and `added` contains the complete
+current snapshot. **Apply removals before additions**; dense IDs can occur in
+both. Release their live content-cache entries before accepting new records;
+actual GPU destruction remains fence-controlled by the consumer. IDs, borrowed
+references and content-version counters must not be treated as persistent across
+this boundary. The snapshot resets caches and content versions.
+
+The full walk uses the existing traversal budget and may report a partial view
+through `budgetExceeded()`. It intentionally costs O(visited scene paths) plus
+mesh/material extraction, including unchanged placements, on structural ticks.
+Scalar geometry/material/TRS ticks retain the incremental and shared-mesh paths.
+This avoids stale dependencies after geometry replacement, forgotten reattachment
+of a removed path, last-writer-only USE-group placement rebuilding, and walking
+raw path pointers after a removed subtree has already been destroyed.
+
+`fullSnapshot()` called directly is also authoritative replacement, but returns
+only `added`; the caller clears its previous state. `delta()` twice without a
+new tick is empty. Consumers must consume each tick or explicitly rebaseline;
+there is no retained history of missed ticks.
 
 **`RenderItem`** (stored inside `SceneExtractor`, accessed via `item(id)`) carries:
 
@@ -200,7 +225,7 @@ is in [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md).
 
 - **`X3DExecutionContext` (runtime dependency)** — provides `dirtyTracker()` (the `DirtyTracker` read by `delta()`), `tickGeneration()` (the monotonic advance count the one-delta-per-tick guard keys on — deliberately not `now()`, which an embedder may pause or replay), `boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`, `viewMatrix()`, and `cameraWorldPosition()`. See [Execution context](execution-context.md).
 
-- **`DirtyTracker` (runtime dependency)** — `delta()` reads `changedNodes()` and `flags(n)` exactly once per tick. Dirty flags consumed: `DirtyLocalTransform | DirtyWorldTransform` → transform re-accumulation; `DirtyField` → geometry content re-extract or material re-read; `DirtyChildren` → subtree re-walk from the cached entry matrix. See [Dirty/bounds/transform](dirty-bounds-transform.md).
+- **`DirtyTracker` (runtime dependency)** — `delta()` reads `changedNodes()` and `flags(n)` exactly once per tick. Dirty flags consumed: `DirtyLocalTransform | DirtyWorldTransform` → transform re-accumulation; `DirtyField` → geometry content re-extract or material re-read; `DirtyChildren` → one authoritative replacement snapshot before traversing stale cached paths. See [Dirty/bounds/transform](dirty-bounds-transform.md).
 
 > **Per-`delta()` transform memoization.** The transform re-accumulation walks each
 > dirty item's full root→leaf `PathKey`, but `TransformSystem::localMatrix` (five
@@ -246,7 +271,7 @@ MeshBuilder and SceneExtractor each have dedicated unit tests. All targets are r
 | `x3d_mesh_builder_txc1` | Seam-shifted longitudinal S for analytic primitives (TXC-1) |
 | `x3d_scene_extractor` | SceneExtractor core (early vertical slice) |
 | `x3d_scene_extractor_t7` | Full visibility-aware DFS: Switch/LOD special-cases, real material/lights |
-| `x3d_scene_extractor_t8` | `delta()` incremental engine: transform/geometry/material change dispatch + subtree re-walk |
+| `x3d_scene_extractor_t8` | `delta()` incremental scalar dispatch + structural replacement snapshot |
 | `x3d_scene_extractor_b2` | `skippedGeometryCounts()` coverage signal for unrecognized geometry types |
 | `x3d_scene_extractor_col2` | `Collision.proxy` excluded from render set (COL-2) |
 | `x3d_scene_extractor_cad1` | `CADFace.shape` traversed only for Shape/LOD/Transform children (CAD-1, §32.4.2) |
