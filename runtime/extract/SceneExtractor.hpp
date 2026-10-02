@@ -176,7 +176,7 @@ public:
         textureResolver_(std::move(textureResolver)) {}
 
   // fullSnapshot — one full walk; (re)builds the PathIndex + per-item records +
-  // the three reverse indices + the entry-matrix cache and returns EVERY item in
+  // the dependency indices + the entry-matrix cache and returns EVERY item in
   // `added` (so frame 0 and frame N share one upload path).
   RenderDelta fullSnapshot() {
     syncSkinChanges();
@@ -189,6 +189,9 @@ public:
     skinPoseDeps_.clear();
     skinBindingDeps_.clear();
     materialDeps_.clear();
+    itemStateDeps_.clear();
+    scopedStateDeps_.clear();
+    viewScopedFrames_.clear();
     geomOwners_.clear();
     geomVersions_.clear();
     meshContentVersions_.clear();
@@ -216,16 +219,18 @@ public:
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
     // RenderItem with the nearest one whose scopeRoot covers its PathKey.
     LocalFogSystem lfs;
-    localFogs_ = lfs.collect(scene_, walkBudget_, ctx_.cameraWorldPosition());
+    localFogs_ = lfs.collect(scene_, walkBudget_, ctx_.cameraWorldPosition(),
+                             &scopedStateDeps_);
 
     RenderDelta delta;
     // REQ-CLIP: root-level ClipPlanes are walked in document order too, so a
     // root plane affects the following root nodes. activeClips_ is reset here and
     // scoped per grouping node inside walk().
     activeClips_.clear();
+    const PathKey rootPath;
     for (const auto &root : scene_.rootNodes) {
       if (!root) continue;
-      if (maybeClipPlane(root.get(), Mat4::identity())) continue;
+      if (maybeClipPlane(root.get(), Mat4::identity(), rootPath)) continue;
       PathKey path;
       walk(root.get(), Mat4::identity(), path, delta);
     }
@@ -244,7 +249,8 @@ public:
   // ---------------------------------------------------------------------------
   // delta — INCREMENTAL change channel. Reads ctx.dirtyTracker() ONCE for the
   // current tick and partitions the changed nodes into RenderDelta buckets,
-  // NEVER re-walking the whole scene for a transform/geometry/material-only tick.
+  // Geometry/material/TRS-only ticks stay incremental unless a changed frame
+  // also owns scoped descriptors (ClipPlane/LocalFog); those need replacement.
   //
   // ONE-DELTA-PER-TICK CONTRACT, made TOTAL (no misuse is undefined):
   //
@@ -285,7 +291,8 @@ public:
   //       the geometry leaf — so a parent scale does NOT pollute updatedGeometry).
   //   * DirtyField & n in materialDeps_  =>  re-read the MaterialDesc from the
   //       owning Shape's Appearance => updatedMaterial.
-  //   * Any DirtyChildren => one full replacement snapshot (bounded scene walk),
+  //   * Shape/scoped-descriptor dependencies or any DirtyChildren => one full
+  //       replacement snapshot (bounded scene walk),
   //       before reading stale paths. All old live ids removed, current ids added.
   // ---------------------------------------------------------------------------
   RenderDelta delta() {
@@ -316,6 +323,25 @@ public:
       auto selected = traversedChild(*path.back(), worldAlongPath(path, localXf),
                                      ctx_.cameraWorldPosition());
       if (selected.get() != previous) return replacementSnapshot();
+    }
+
+    // Clip planes below a Billboard also depend on the tracked eye/up, which
+    // need not dirty any scene node. Compare only those recorded scope paths;
+    // per-item transform updates cannot publish a changed world-plane equation.
+    for (const auto &[path, previous] : viewScopedFrames_)
+      if (worldAlongPath(path, localXf).m != previous.m)
+        return replacementSnapshot();
+
+    // RenderDelta has no per-item castShadow/clip/local-fog-index channel.
+    // Replace the baseline instead of silently changing descriptors under a
+    // transform/material notification. Dependencies are recorded independently
+    // of emitted geometry, including disabled state and empty placements.
+    for (const X3DNode *n : ctx_.dirtyTracker().changedNodes()) {
+      const unsigned flags = ctx_.dirtyTracker().flags(n);
+      if (((flags & DirtyField) && itemStateDeps_.count(n)) ||
+          ((flags & (DirtyField | DirtyLocalTransform | DirtyWorldTransform)) &&
+           scopedStateDeps_.count(n)))
+        return replacementSnapshot();
     }
 
     lastDeltaGen_ = gen;
@@ -931,8 +957,18 @@ private:
   // parent grouping node's world frame (the ClipPlane's local frame). A disabled
   // plane (enabled=false) is ignored; a plane beyond the kMaxClipPlanes cap is
   // dropped (ClipPlaneList::push).
-  bool maybeClipPlane(const X3DNode *n, const Mat4 &worldM) {
+  bool maybeClipPlane(const X3DNode *n, const Mat4 &worldM, const PathKey &path) {
     if (!n || n->nodeTypeName() != "ClipPlane") return false;
+    // Record even disabled planes and scopes without any renderable geometry.
+    // Every USE path contributes its ancestor frames, never a first-path cache.
+    scopedStateDeps_.insert(n);
+    bool viewDependent = false;
+    for (const X3DNode *ancestor : path) {
+      const bool billboard = ancestor->nodeTypeName() == "Billboard";
+      if (isTransform(ancestor) || billboard) scopedStateDeps_.insert(ancestor);
+      viewDependent = viewDependent || billboard;
+    }
+    if (viewDependent) viewScopedFrames_.emplace(path, worldM);
     if (geombounds::getField<bool>(*n, "enabled", true)) {
       const SFVec4f local =
           geombounds::getField<SFVec4f>(*n, "plane", {0, 1, 0, 0});
@@ -996,6 +1032,8 @@ private:
       else rememberUnplacedGeometry(n, path);
     }
     if (geombounds::hasField(*n, "geometry")) {
+      // Includes recognized-empty geometry: later revival must read current state.
+      itemStateDeps_.insert(n);
       if (auto geom = geombounds::getNode(*n, "geometry")) {
         bool recognized = false;
         // ADR-0045: build-once per DISTINCT geometry node, not per placement.
@@ -1122,7 +1160,7 @@ private:
         const std::string ct = c->nodeTypeName();
         if (ct != "Shape" && ct != "LOD" && ct != "Transform") return;
       }
-      if (maybeClipPlane(c.get(), here)) return; // scoped state, not geometry.
+      if (maybeClipPlane(c.get(), here, path)) return; // scoped state, not geometry.
       walk(c.get(), here, path, delta);
     });
     activeClips_.resize(clipMark);
@@ -1619,6 +1657,15 @@ private:
   std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> lodPlacements_;
   DepMap geomDeps_;
   DepMap materialDeps_;
+  // Shape-level descriptors and scoped ClipPlane/LocalFog sources + frames.
+  // These cannot be delivered by the existing narrow incremental channels.
+  // Scoped dependencies are collected before checking enabled/mesh emission so
+  // inactive descriptors and empty branches can become active correctly.
+  std::unordered_set<const X3DNode *> itemStateDeps_;
+  std::unordered_set<const X3DNode *> scopedStateDeps_;
+  // Per-path parent frames of ClipPlanes below Billboards, including disabled
+  // planes and scopes without items. Only these paths need a tracked-view check.
+  std::unordered_map<PathKey, Mat4, PathKeyHash, PathKeyEqual> viewScopedFrames_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> skinPoseDeps_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> skinBindingDeps_;
   std::unordered_map<const X3DNode *, std::shared_ptr<const hanim::SkinBinding>> skinBindings_;

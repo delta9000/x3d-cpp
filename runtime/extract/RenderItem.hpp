@@ -768,7 +768,11 @@ struct ClipPlaneList {
 // background/lights surfaces for a caching consumer.
 //
 // RenderItem carries NO changeBits: this struct is the only encoding of change.
-// Structural deltas remove ALL previously live IDs and add the current snapshot.
+// Structural/visibility and cached Shape/ClipPlane/LocalFog state changes remove
+// ALL previously live IDs and add the current snapshot. Indexed scoped ancestor
+// frame changes take the same conservative replacement path; unrelated TRS is
+// incremental. There is no implicit clip/shadow/local-fog-index update attached
+// to updatedTransform or updatedMaterial.
 // Apply removed BEFORE added; the same dense ID may occur in both. Drop stale
 // content-cache entries when their last live placement is removed (defer actual
 // GPU destruction according to host fences). A rebuild resets content versions.

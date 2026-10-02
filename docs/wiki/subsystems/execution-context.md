@@ -2,7 +2,7 @@
 title: Execution Context
 summary: Per-tick driver, field-write seam, and scene bridge that coordinate the runtime event loop.
 tags: [subsystem, execution-context, tick, runtime, events]
-updated: 2026-09-29
+updated: 2026-09-30
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -25,6 +25,12 @@ setup and topology refreshes do not multiply conversion factors. Built-in
 defaults stay canonical. After entry, `writeField`, event payloads and routed
 updates use initial units directly. The implementation and field map live in
 `runtime/UnitConversion.hpp`.
+
+`visible` writes are active-traversal changes (`DirtyChildren | DirtyBounds`),
+like active-child selection. This lets extraction remove hidden placements and
+recover initially hidden branches without depending on existing render items.
+Other Shape and scoped ClipPlane/LocalFog descriptor invalidation is handled by
+the extractor's [replacement contract](extract.md#scoped-render-state-replacement-contract).
 
 ## Key files
 
