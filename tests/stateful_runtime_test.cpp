@@ -332,3 +332,40 @@ TEST_CASE(
   REQUIRE(f.host.replace_world(f.host.create_scene()));
   CHECK(destroyed);
 }
+
+TEST_CASE(
+    "queued runtime checkpoint facts survive later frames and nested drains") {
+  fixture f;
+  REQUIRE(f.host.set_runtime_factory(
+      f.scene,
+      [&](const sai::scene_snapshot &base,
+          sai::event_time) -> sai::result<sai::runtime_frame> {
+        auto previous = base.runtime_state<checkpoint>().value();
+        return sai::runtime_frame{
+            frame{f.output(), base, previous ? *previous->counter : 0}};
+      }));
+  std::vector<int> before_values;
+  std::vector<int> after_values;
+  auto observer = f.scene.observe([&](const sai::change_set &changes) {
+    for (const auto &change : changes.changes) {
+      if (const auto *native =
+              std::get_if<sai::runtime_state_change>(&change)) {
+        const auto before = native->before<checkpoint>().value();
+        const auto after = native->after<checkpoint>().value();
+        before_values.push_back(before ? *before->counter : 0);
+        after_values.push_back(*after->counter);
+      }
+    }
+    const auto nested = f.scene.drain();
+    CHECK(nested.already_draining);
+    CHECK(nested.delivered == 0);
+  });
+  REQUIRE(f.scene.events({1}).commit());
+  REQUIRE(f.scene.events({2}).commit());
+  CHECK(*f.scene.snapshot().runtime_state<checkpoint>().value()->counter == 2);
+  const auto drained = f.scene.drain();
+  CHECK_FALSE(drained.already_draining);
+  CHECK(drained.delivered == 2);
+  CHECK(before_values == std::vector<int>{0, 1});
+  CHECK(after_values == std::vector<int>{1, 2});
+}

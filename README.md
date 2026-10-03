@@ -117,6 +117,13 @@ The proposal makes these design choices executable:
   snapshots capture immutable source revisions without claiming a globally
   atomic multi-context snapshot.
 - Observation is explicit, queued, and drained outside internal locks.
+  Recursive or concurrent drains return `already_draining` without consuming
+  notifications; the active consumer preserves notification order. Callbacks
+  run on the active drain caller's thread; choosing that thread sets affinity.
+  A producer that publishes after the drain's final empty check needs a later drain.
+  Cancellation suppresses callbacks not yet acquired by the drain, while an
+  already acquired callback may finish. Callback captures are retired outside
+  context and browser locks, including registration failure and world replacement.
   `subscription` is move-only RAII; cancellation and destruction invoke no
   callbacks.
 - External event intent is a timestamped, move-only batch. `inputOnly` delivery

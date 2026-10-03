@@ -510,6 +510,9 @@ public:
   subscription &operator=(const subscription &) = delete;
 
   bool active() const noexcept;
+  // Suppresses callbacks not yet acquired by drain(). An already acquired
+  // callback may finish after cancellation; this call never waits for it.
+  // Callback captures are destroyed outside context and browser locks.
   void cancel() noexcept;
 
 private:
@@ -525,6 +528,7 @@ private:
 struct dispatch_report {
   std::size_t delivered = 0;
   std::vector<sai_error> errors;
+  bool already_draining = false;
 };
 
 class dynamic_multi_field_edit {
@@ -1133,6 +1137,10 @@ public:
                                event_observer callback) const {
     return observe(source.dynamic(), std::move(callback));
   }
+  // Exactly one consumer dispatches a context at a time. Recursive/concurrent
+  // calls return immediately with already_draining, leaving the queue alone.
+  // The active consumer also drains notifications enqueued by its callbacks.
+  // A concurrent producer publishing after the empty check needs a later drain.
   dispatch_report drain() const;
 
 private:
