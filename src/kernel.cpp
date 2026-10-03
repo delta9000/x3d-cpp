@@ -3815,8 +3815,7 @@ result<void> event_batch::send(const dynamic_field &target,
     return *impl_->poison;
   if (payload.is_null() && !payload.disposed())
     return send_value(target, value{node_id{}}, true);
-  const auto value_context = payload.context_.lock();
-  if (value_context != impl_->context ||
+  if (!same_owner(payload.context_, impl_->context) ||
       payload.generation_ != impl_->context->generation ||
       !impl_->base->nodes.contains(payload.id_.value)) {
     impl_->poison =
@@ -3839,8 +3838,7 @@ result<void> event_batch::send(const dynamic_field &target,
       ids.push_back(node_id{});
       continue;
     }
-    const auto value_context = candidate.context_.lock();
-    if (value_context != impl_->context ||
+    if (!same_owner(candidate.context_, impl_->context) ||
         candidate.generation_ != impl_->context->generation ||
         !impl_->base->nodes.contains(candidate.id_.value)) {
       impl_->poison =
@@ -3858,9 +3856,8 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                      bool node_authority_checked) {
   if (impl_->poison)
     return *impl_->poison;
-  const auto target_context = target.context_.lock();
   const auto found = impl_->base->nodes.find(target.node_.value);
-  if (target_context != impl_->context ||
+  if (!same_owner(target.context_, impl_->context) ||
       target.generation_ != impl_->context->generation ||
       found == impl_->base->nodes.end()) {
     impl_->poison =

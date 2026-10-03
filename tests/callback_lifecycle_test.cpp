@@ -629,3 +629,191 @@ TEST_CASE("runtime reads release imported host resources without step locks") {
   REQUIRE(host.set_runtime_processor(scene, {}));
   REQUIRE(scene.events({1}).commit());
 }
+
+
+namespace {
+enum class runtime_emit_check { field, node, node_range };
+
+void check_runtime_emit_release(runtime_emit_check check) {
+  auto registry = callback_registry();
+  sai::node_type_descriptor holder;
+  holder.name = "Holder";
+  for (bool multiple : {false, true}) {
+    sai::field_descriptor descriptor;
+    descriptor.name = multiple ? "children" : "child";
+    descriptor.kind = multiple ? sai::value_kind::mf_node
+                               : sai::value_kind::sf_node;
+    descriptor.access = sai::access_type::input_output;
+    descriptor.default_value = multiple ? sai::value{sai::node_list{}}
+                                       : sai::value{sai::node_id{}};
+    holder.fields.push_back(std::move(descriptor));
+  }
+  REQUIRE(registry.define(std::move(holder)));
+  sai::browser host{std::move(registry)};
+  auto scene = host.current_scene();
+  std::optional<sai::execution_context> source{host.create_scene()};
+  const auto foreign = [&] {
+    auto edit = source->edit();
+    auto node = edit.create_node("TestNode").value();
+    REQUIRE(edit.commit());
+    return node;
+  }();
+  const auto foreign_field = source->snapshot().field(foreign, "value").value();
+  const auto [local, fields] = [&] {
+    auto edit = scene.edit();
+    auto node = edit.create_node("TestNode").value();
+    auto owner = edit.create_node("Holder").value();
+    std::array fields{edit.field(node, "value").value(),
+                      edit.field(owner, "child").value(),
+                      edit.field(owner, "children").value()};
+    REQUIRE(edit.commit());
+    return std::pair{node, fields};
+  }();
+  const auto before = scene.snapshot().revision();
+  int observed_changes = 0;
+  int observed_fields = 0;
+  auto changes = scene.observe([&](const sai::change_set &) {
+    ++observed_changes;
+  });
+  auto values = scene.observe(fields[0], [&](const sai::event_delivery &) {
+    ++observed_fields;
+  });
+  REQUIRE(values);
+  const std::array range{sai::node{}, local, foreign, sai::node{}};
+  const auto attempt = [&](auto send) -> sai::result<void> {
+    if (check == runtime_emit_check::field)
+      return send(foreign_field, std::int32_t{3});
+    if (check == runtime_emit_check::node)
+      return send(fields[1], foreign);
+    return send(fields[2], std::span<const sai::node>{range});
+  };
+  // Calibrate against the public rejection diagnostic, not a hard-coded
+  // allocation number, capacity, or English message.
+  const auto expected = [&] {
+    auto batch = scene.events({1});
+    const auto rejected = attempt([&](const auto &target, const auto &payload) {
+      return batch.send(target, payload);
+    });
+    REQUIRE_FALSE(rejected);
+    return rejected.error();
+  }();
+  const auto diagnostic_bytes = string_copy_allocation_size(expected.message);
+  std::optional<sai::runtime_step> active;
+  std::atomic_bool release_requested{false};
+  std::atomic_bool owner_released{false};
+  const auto signal_release = [&] {
+    owner_released.store(true, std::memory_order_release);
+    owner_released.notify_all();
+  };
+  bool cleanup_read_ok = false;
+  int destroyed = 0;
+  auto capture = std::make_shared<on_destroy>([&] {
+    signal_release();
+    const auto read = active->read(fields[0]);
+    const auto *number = read ? std::get_if<std::int32_t>(&*read) : nullptr;
+    cleanup_read_ok = number && *number == 0;
+    ++destroyed;
+  });
+  REQUIRE(host.set_runtime_processor(
+      *source,
+      [capture](sai::runtime_step &) -> sai::result<void> { return {}; }));
+  capture.reset();
+  bool fail_diagnostic = false;
+  SUBCASE("ordinary rejection") {}
+  SUBCASE("rejection diagnostic allocation fails") { fail_diagnostic = true; }
+  bool dropped = false;
+  bool diagnostic_failed = false;
+  REQUIRE(host.set_runtime_processor(
+      scene, [&](sai::runtime_step &step) -> sai::result<void> {
+        active.emplace(step);
+        REQUIRE(step.emit(fields[0], std::int32_t{7}));
+        std::jthread dropper([&] {
+          release_requested.wait(false, std::memory_order_acquire);
+          source.reset();
+          signal_release();
+        });
+        on_destroy disarm{[&] {
+          allocation_action = nullptr;
+          allocations_before_failure = -1;
+          release_requested.store(true, std::memory_order_release);
+          release_requested.notify_all();
+        }};
+        std::function<void(std::size_t)> release_owner = [&](std::size_t size) {
+          if (size != diagnostic_bytes)
+            return;
+          allocation_action = nullptr;
+          dropped = true;
+          release_requested.store(true, std::memory_order_release);
+          release_requested.notify_all();
+          owner_released.wait(false, std::memory_order_acquire);
+          if (fail_diagnostic)
+            allocations_before_failure = 0;
+        };
+        allocation_action = &release_owner;
+        try {
+          const auto rejected = attempt([&](const auto &target,
+                                            const auto &payload) {
+            return step.emit(target, payload);
+          });
+          REQUIRE_FALSE(rejected);
+          CHECK(rejected.error().code == expected.code);
+          CHECK(rejected.error().operation == "runtime_step.emit");
+          CHECK(rejected.error().generation == scene.generation());
+          CHECK(rejected.error().base_revision == before);
+          CHECK(rejected.error().node == expected.node);
+          CHECK(rejected.error().field == expected.field);
+        } catch (const std::bad_alloc &) {
+          diagnostic_failed = true;
+        }
+        allocation_action = nullptr;
+        allocations_before_failure = -1;
+        release_requested.store(true, std::memory_order_release);
+        release_requested.notify_all();
+        dropper.join();
+        CHECK(cleanup_read_ok);
+        CHECK(destroyed == 1);
+        if (diagnostic_failed) {
+          sai::sai_error error;
+          error.code = sai::error_code::callback_failed;
+          error.operation = "host.emit";
+          return sai::failure(std::move(error));
+        }
+        return {};
+      }));
+  const auto evaluated = scene.events({1}).commit();
+  REQUIRE_FALSE(evaluated);
+  CHECK(dropped);
+  CHECK(diagnostic_failed == fail_diagnostic);
+  CHECK(evaluated.error().code ==
+        (fail_diagnostic ? sai::error_code::callback_failed : expected.code));
+  CHECK(scene.snapshot().revision() == before);
+  const auto retained = scene.snapshot().read(fields[0]);
+  REQUIRE(retained);
+  CHECK(std::get<std::int32_t>(*retained) == 0);
+  CHECK(scene.drain().delivered == 0);
+  CHECK(observed_changes == 0);
+  CHECK(observed_fields == 0);
+  const auto escaped = active->emit(fields[0], std::int32_t{9});
+  REQUIRE_FALSE(escaped);
+  CHECK(escaped.error().code == sai::error_code::stale_revision);
+  REQUIRE(host.set_runtime_processor(scene, {}));
+  auto retry = scene.events({1});
+  REQUIRE(retry.send(fields[0], std::int32_t{9}));
+  REQUIRE(retry.commit());
+  CHECK(scene.drain().delivered == 2);
+  CHECK(observed_changes == 1);
+  CHECK(observed_fields == 1);
+}
+} // namespace
+
+TEST_CASE("runtime output validation releases foreign hosts without step locks") {
+  SUBCASE("foreign field destination") {
+    check_runtime_emit_release(runtime_emit_check::field);
+  }
+  SUBCASE("foreign SFNode payload") {
+    check_runtime_emit_release(runtime_emit_check::node);
+  }
+  SUBCASE("foreign MFNode payload") {
+    check_runtime_emit_release(runtime_emit_check::node_range);
+  }
+}

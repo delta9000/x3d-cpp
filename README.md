@@ -267,10 +267,11 @@ value)` queues outputOnly or inputOutput events; node-valued outputs take local
 handles or spans, preserving NULL entries and applying the usual scope and
 type checks. Queued outputs become working values when processed after the
 callback. No mutable storage or snapshot view is exposed to the host.
-Local `runtime_step::read()` acquires no imported context owners. An imported
-host released during a local read can inspect local runtime fields from its
-destructor. Validation errors identify `runtime_step.read` and carry the
-field and node identity.
+Local `runtime_step::read()` and output-authority validation acquire no
+foreign context owners. A foreign host released during either operation can
+inspect local runtime fields from its destructor. Validation errors identify
+`runtime_step.read` or `runtime_step.emit`, with the offending node identity
+and field name when applicable.
 
 A native rule can call `step.ignore_input()` to reject an incoming value without
 failing the frame. Its node is realized, but the payload is not retained,

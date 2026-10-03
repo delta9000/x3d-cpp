@@ -388,3 +388,7 @@ set_tests_properties(sai_life_import_retirement PROPERTIES TIMEOUT 15)
 add_test(NAME sai_runtime_read_retirement COMMAND x3d_sai_callback_lifecycle_tests
     "--test-case=runtime reads release imported host resources without step locks")
 set_tests_properties(sai_runtime_read_retirement PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_runtime_emit_retirement COMMAND x3d_sai_callback_lifecycle_tests
+    "--test-case=runtime output validation releases foreign hosts without step locks")
+set_tests_properties(sai_runtime_emit_retirement PROPERTIES TIMEOUT 15)

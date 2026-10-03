@@ -575,7 +575,7 @@ services:
     buffering: owner installs outside a frame; synchronous commit evaluates then publishes one settled cascade
     errors: invalid owner, retired context, operation in progress, or failed evaluation
     events: preparation and input callbacks run outside context locks; field observations are queued after settlement
-    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_reentrant, sai_runtime_tick, sai_runtime_generated_host, sai_callback_ownership, sai_runtime_read_retirement]
+    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_reentrant, sai_runtime_tick, sai_runtime_generated_host, sai_callback_ownership, sai_runtime_read_retirement, sai_runtime_emit_retirement]
     preserves: [INV-EDIT-1, INV-EDIT-2, INV-EVT-1, INV-EVT-2, INV-EVT-3, INV-CONC-1]
   - <<: *command
     id: SVC-RUNTIME-EMIT
@@ -586,7 +586,7 @@ services:
     buffering: callback-scoped validated outputs settle at the enclosing batch timestamp; escaped authority expires on callback return
     events: outputOnly and inputOutput events retain working values and propagate through ROUTEs with causal indices
     errors: ordinary field, ownership, type, and scope failures poison the frame; expired authority returns stale_revision
-    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_authority, sai_runtime_ignored, sai_runtime_tick, sai_runtime_generated_host, sai_runtime_units]
+    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_authority, sai_runtime_ignored, sai_runtime_tick, sai_runtime_generated_host, sai_runtime_units, sai_runtime_emit_retirement]
     preserves: [INV-OWN-1, INV-OWN-2, INV-FIELD-1, INV-FIELD-3, INV-FIELD-4, INV-EDIT-2, INV-EVT-1, INV-EVT-2, INV-LIFE-1]
 
   - <<: *browser_command
@@ -597,7 +597,7 @@ services:
     buffering: an owned working frame produces one immutable checkpoint after its cascade settles; fields and checkpoint share one revision
     errors: invalid owner, retired context, operation in progress, or factory, processor, and finalizer failure
     events: frame callbacks and resource release run outside context locks; failed frames publish no observation or time advancement
-    tests: [sai_runtime_state_publish, sai_runtime_state_abort, sai_runtime_state_only, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_runtime_state_generated_host, sai_publication_integrity, sai_callback_ownership, sai_runtime_read_retirement]
+    tests: [sai_runtime_state_publish, sai_runtime_state_abort, sai_runtime_state_only, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_runtime_state_generated_host, sai_publication_integrity, sai_callback_ownership, sai_runtime_read_retirement, sai_runtime_emit_retirement]
     preserves: [INV-EDIT-1, INV-EDIT-2, INV-EDIT-4, INV-EVT-1, INV-CONC-1]
   - <<: *query
     id: SVC-RUNTIME-STATE
