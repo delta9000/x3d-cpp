@@ -38,6 +38,10 @@ add_executable(x3d_cpu_raster
     "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpuraster/ImageWrite.cpp")
 target_link_libraries(x3d_cpu_raster PRIVATE x3d_cpp::x3d_cpp x3d_stb)
+if(TARGET x3d_curl)
+    target_link_libraries(x3d_cpu_raster PRIVATE x3d_curl)
+    target_compile_definitions(x3d_cpu_raster PRIVATE X3D_CPURASTER_CURL=1)
+endif()
 target_include_directories(x3d_cpu_raster PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 target_compile_features(x3d_cpu_raster PRIVATE cxx_std_20)
@@ -65,6 +69,7 @@ set(CPURASTER_TESTS
     text_render_test
     texture_render_test
     texcoord_gen_test
+    interchange_test
     linepoint_style_test
     positional_light_test
     light_ambient_test
@@ -72,6 +77,7 @@ set(CPURASTER_TESTS
     skybox_test
     demo_animation_test)
 
+add_custom_target(x3d_cpuraster_tests)
 foreach(t IN LISTS CPURASTER_TESTS)
     add_executable(x3d_cpuraster_${t} "${CMAKE_CURRENT_SOURCE_DIR}/tests/${t}.cpp")
     target_link_libraries(x3d_cpuraster_${t} PRIVATE x3d_cpp::x3d_cpp x3d_stb)
@@ -81,5 +87,6 @@ foreach(t IN LISTS CPURASTER_TESTS)
         "X3D_CPURASTER_ASSET_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/assets\""
         "X3D_CPURASTER_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/shaders\""
         "X3D_CPURASTER_TEST_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/tests\"")
+    add_dependencies(x3d_cpuraster_tests x3d_cpuraster_${t})
     add_test(NAME x3d_cpuraster_${t} COMMAND x3d_cpuraster_${t})
 endforeach()

@@ -18,6 +18,7 @@
 
 #include "Framebuffer.hpp"
 #include "GeometryBounds.hpp"
+#include "Intersect.hpp"
 #include "MaterialShader.hpp"
 #include "Rasterizer.hpp"
 #include "SceneExtractor.hpp"
@@ -27,6 +28,8 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <limits>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -203,14 +206,11 @@ buildEyeLights(const std::vector<rt::extract::LightDesc> &lights,
                const rt::Mat4 &view, bool headlightOn) {
   using Type = rt::extract::LightDesc::Type;
   std::vector<EyeLight> out;
-  // The headlight takes one of the 8 slots, so cap the authored lights below it
-  // (the slot is never dropped — the headlight is required regardless).
-  const std::size_t cap = headlightOn ? 7u : 8u;
+  // Annex B.6 requires eight authored lights; the browser headlight is extra.
   for (const auto &L : lights) {
-    if (out.size() >= cap) break;
     EyeLight e;
-    e.color = glsl::vec3{L.color.r * L.intensity, L.color.g * L.intensity,
-                         L.color.b * L.intensity};
+    e.color = glsl::vec3{L.color.r, L.color.g, L.color.b};
+    e.intensity = L.intensity;
     e.ambientIntensity = L.ambientIntensity;
     if (L.type == Type::Directional) {
       e.dirEye = view.transformDirection(L.worldDirection);
@@ -247,6 +247,10 @@ inline std::vector<Vertex> toVertices(const rt::extract::MeshData &m) {
   std::vector<Vertex> v(m.positions.size());
   for (std::size_t i = 0; i < m.positions.size(); ++i) {
     v[i].pos = m.positions[i];
+    if (m.texcoordSets.size() > 1)
+      for (const auto &set : m.texcoordSets)
+        v[i].texcoordSets.push_back(i < set.size() ? glsl::vec2(set[i])
+                                                   : glsl::vec2{});
     v[i].normal = (i < m.normals.size()) ? glsl::vec3(m.normals[i])
                                          : glsl::vec3{0, 1, 0};
     v[i].color = (m.hasColors && i < m.colors.size())
@@ -310,8 +314,16 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
   float zNear = 0.1f, zFar = 10000.0f;
   if (!bounds.empty) {
     SFVec3f sz = bounds.size();
-    float diag = std::sqrt(sz.x * sz.x + sz.y * sz.y + sz.z * sz.z);
-    if (diag > 0.0f) { zFar = diag * 100.0f; zNear = glsl::maxf(0.001f, diag * 0.001f); }
+    float diag = std::hypot(sz.x, sz.y, sz.z);
+    if (diag > 0.0f) {
+      const auto center =
+          viewRT.transformPoint({(bounds.min.x + bounds.max.x) * 0.5f,
+                                 (bounds.min.y + bounds.max.y) * 0.5f,
+                                 (bounds.min.z + bounds.max.z) * 0.5f});
+      zFar = std::max(diag * 100.0f,
+                      std::hypot(center.x, center.y, center.z) + diag);
+      zNear = std::max(std::numeric_limits<float>::min(), diag * 0.001f);
+    }
   }
   const rt::Mat4 projRT = perspective(cam.fieldOfView, aspect, zNear, zFar);
   const glsl::mat4 viewG(viewRT), projG(projRT);
@@ -350,7 +362,57 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
   if (const X3DNode *nav = ctx.boundNavigationInfo())
     headlightOn = rt::geombounds::getField<bool>(*nav, "headlight", true);
   const std::vector<ex::LightDesc> lights = extractor.lights();
-  const std::vector<EyeLight> eyeLights = buildEyeLights(lights, viewRT, headlightOn);
+  std::vector<EyeLight> eyeLights = buildEyeLights(lights, viewRT, headlightOn);
+  // §17.2.2 shadowTest: only visible Shapes with castShadow TRUE occlude.
+  // Build eye-space triangles once, shared by every shadow-enabled light.
+  if (std::any_of(lights.begin(), lights.end(),
+                  [](const auto &l) { return l.shadows; })) {
+    const auto extent = bounds.size();
+    const float scale = std::hypot(extent.x, extent.y, extent.z);
+    const float inverseScale = scale > 0 ? 1.0f / scale : 1.0f;
+    auto triangles = std::make_shared<std::vector<std::array<SFVec3f, 3>>>();
+    for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
+      const auto &it = extractor.item(id);
+      if (!it.castShadow || it.mesh->topology != ex::Topology::Triangles)
+        continue;
+      const ex::MeshData deformed =
+          it.skin ? extractor.deformedMesh(id) : ex::MeshData{};
+      const auto &mesh = it.skin ? deformed : *it.mesh;
+      const auto mv = viewRT * it.worldTransform;
+      for (std::size_t j = 0; j + 2 < mesh.indices.size(); j += 3) {
+        std::array<SFVec3f, 3> t;
+        for (int k = 0; k < 3; ++k)
+          t[k] = (glsl::vec3(
+                      mv.transformPoint(mesh.positions[mesh.indices[j + k]])) *
+                  inverseScale)
+                     .toSF();
+        triangles->push_back(t);
+      }
+    }
+    for (std::size_t i = 0; i < lights.size(); ++i) {
+      if (!lights[i].shadows)
+        continue;
+      const auto light = eyeLights[i];
+      const float intensity = lights[i].shadowIntensity;
+      eyeLights[i].shadowVisibility = [triangles, light, intensity,
+                                       inverseScale](const glsl::vec3 &p) {
+        const auto delta = light.positional ? light.posEye - p : -light.dirEye;
+        const float distance = light.positional
+                                   ? glsl::length(delta)
+                                   : std::numeric_limits<float>::infinity();
+        const auto direction = glsl::normalize(delta);
+        // Offset along the ray to avoid numerical self-intersections.
+        constexpr float epsilon = 1e-5f;
+        rt::Ray ray{(p * inverseScale + direction * epsilon).toSF(),
+                    direction.toSF()};
+        for (const auto &t : *triangles)
+          if (auto hit = rt::rayTriangle(ray, t[0], t[1], t[2]);
+              hit && *hit > epsilon && *hit < distance * inverseScale - epsilon)
+            return 1.0f - intensity;
+        return 1.0f;
+      };
+    }
+  }
 
   // §24.4.2: the bound Fog reduced for the fragment shaders. visibilityRange is
   // world-scaled by the extractor; 0 disables fog (applyFog no-ops).

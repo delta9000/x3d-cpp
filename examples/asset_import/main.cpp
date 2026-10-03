@@ -348,7 +348,8 @@ int main(int argc, char** argv) {
   } else {
     // auto
     auto usage = profile_fit::sceneComponentUsage(doc.scene);
-    const profile_fit::ProfileDef* minProf = profile_fit::findMinimalProfile(usage);
+    const profile_fit::ProfileDef *minProf =
+        profile_fit::findMinimalProfile(usage, &doc.scene);
     if (minProf) {
       doc.profile = minProf->profile;
     } else {

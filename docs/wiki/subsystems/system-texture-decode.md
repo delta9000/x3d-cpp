@@ -2,7 +2,7 @@
 title: Texture Decode Seam
 summary: The TextureResolver decode seam (bytes → RGBA8 pixels) proven generic by two independent backends — stb_image + wuffs — and a CI-gated byte-equal swap-test over lossless formats; with a std-only multi-format sniff-dispatch composer.
 tags: [subsystem, texture, decode, seam, stb-image, wuffs, swap-test, genericity, thesis]
-updated: 2026-06-23
+updated: 2026-10-02
 related:
   - ../architecture.md
   - ../seam-status.md
@@ -64,7 +64,7 @@ flip to bottom-left origin to honor the seam contract.
 
 - **Backend A — stb_image** (`x3d_stb` static lib, `X3D_CPP_BUILD_STB`, OFF default). The
   hand-written C decoder already vendored for the PoC renderer. Bottom-left via
-  `stbi_set_flip_vertically_on_load(1)`. `stb_image.h` is included **PRIVATE** in the single TU,
+  `stbi_set_flip_vertically_on_load_thread(1)`. `stb_image.h` is included **PRIVATE** in the single TU,
   so consumers linking `x3d_stb` inherit no stb headers — the public `StbTextureResolver.hpp` is
   decoder-free. **No core `#ifdef`.**
 - **Backend B — wuffs v0.3.4** (`x3d_wuffs` static lib, `X3D_CPP_BUILD_WUFFS`, OFF default). A
@@ -74,6 +74,10 @@ flip to bottom-left origin to honor the seam contract.
   are flipped to bottom-left after decode. `WUFFS_IMPLEMENTATION` and the amalgamation live in the
   single TU only. **No core `#ifdef`.** wuffs additionally brings memory-safe decoding to the
   untrusted bytes AssetResolver fetches.
+
+### Decoding fetched bytes
+
+`makeStbTextureResolver(AssetResolver fetch)` fetches with `AssetKind::Texture`, propagates Pending/Failed, and decodes Ready bytes in memory. PNG/JPEG selection follows image bytes, including extensionless URLs and misleading suffixes. The no-argument factory retains local-file loading. The CPU host composes this overload with file/HTTP/FTP routes; `interchange_test` verifies PNG alpha, JPEG decode, Pending, Failed and corrupt bytes.
 
 ## The genericity proof — byte-equal decode swap-test
 

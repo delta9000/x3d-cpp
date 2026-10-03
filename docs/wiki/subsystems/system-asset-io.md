@@ -2,7 +2,7 @@
 title: Asset Resolver / IO Seam
 summary: The bytes path from a URL surfaced verbatim in `TextureRef` to the raw bytes a consumer decodes — one callback type, two invocation contracts, two proven-generic backends (libcurl HTTP + AWS S3 SDK). The seam that unblocks LoadSensor, http/urn EXTERNPROTO, Script external-URL, and autoRefresh.
 tags: [subsystem, seam, asset-resolver, io, libcurl, s3, genericity, proven]
-updated: 2026-09-26
+updated: 2026-10-02
 related:
   - ../architecture.md
   - ../seam-status.md
@@ -91,6 +91,12 @@ an **unknown scheme yields `Failed` without calling anything** (the router never
 guesses, and the `fallback` is not consulted for a named-but-unregistered scheme). A
 scheme-less / relative url goes to `fallback` when supplied, else `Failed`. A Windows drive path (`C:\models\a.x3d`) is also treated as scheme-less — its one-letter "scheme" is a drive designator, so it takes `fallback` rather than routing to a non-existent backend. Additive
 only — the `[STABLE]` seam type is unchanged.
+
+## FTP and the CPU reference host
+
+The optional `x3d_curl` backend exposes `makeFtpResolver(HttpResolverOptions)` alongside `makeHttpResolver`. FTP has its own protocol allowlist; HTTP redirects cannot switch to FTP. Both adapters enforce byte/time limits and post-DNS private-address restrictions. The FTP tests run a local passive server with an explicit private-network opt-in; the executable retains the default public-network policy.
+
+With `X3D_CPP_BUILD_CPURASTER`, `X3D_CPP_BUILD_STB` and `X3D_CPP_BUILD_CURL` enabled, the CPU host registers file/http/https/ftp routes and sends fetched image bytes to the stb decoder. Local reads are confined to the scene directory. `mise run interchange` builds this configuration and runs its tests. FTP is required by Interchange Annex B.6 as well as Full; a disconnected core SDK does not independently satisfy the host protocol requirement.
 
 ## Backends (both proven generic)
 

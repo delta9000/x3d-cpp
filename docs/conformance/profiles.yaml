@@ -66,3 +66,8 @@ profiles:
 
   Full:
     "*": 9   # Full profile includes every component at every level
+
+# Annex B table B.3 explicitly requires MultiTexture even though B.2 requests
+# Texturing 2 and the component chapter places MultiTexture at level 3.
+node_inclusions:
+  Interchange: [MultiTexture]

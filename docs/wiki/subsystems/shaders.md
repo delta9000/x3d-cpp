@@ -150,8 +150,11 @@ as a GPU-free golden-image harness; see `examples/cpu_raster/README.md`.
 Its `cpuraster/Texture.hpp` sampler consumes the §18.4.9 state surfaced on
 `TextureRef::extSampler` (see [Texture extraction](extract-textures.md)):
 REPEAT, CLAMP, CLAMP_TO_EDGE, CLAMP_TO_BOUNDARY and MIRRORED_REPEAT wrap modes,
-plus the magnification filter (nearest vs bilinear). **Mipmapping is unimplemented**
-(single mip level), so the minification filters have no effect (TXF-4).
+plus magnification/minification filters, generated box-filter mip levels and
+footprint sampling with anisotropy up to 16 (TXF-4). Each texture stage and material
+slot uses its own mapped/generated/transformed coordinates. The CPU also applies
+per-light triangle shadow queries and keeps direct intensity separate from ambient
+emission; the OpenGL PoC retains the remaining limitations recorded in the ledger.
 
 ## Related specs and ADRs
 

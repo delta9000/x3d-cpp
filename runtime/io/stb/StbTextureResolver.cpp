@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -44,19 +45,26 @@ bool readFile(const std::string& path, std::vector<std::uint8_t>& out) {
 
 }  // namespace
 
-x3d::runtime::extract::TextureResolver makeStbTextureResolver() {
+x3d::runtime::extract::TextureResolver
+makeStbTextureResolver(x3d::runtime::extract::AssetResolver fetch) {
   using x3d::runtime::extract::TexturePixelResult;
   using x3d::runtime::extract::TexturePixels;
 
-  return [](const std::string& url) -> TexturePixelResult {
-    std::vector<std::uint8_t> bytes;
-    if (!readFile(url, bytes) || bytes.empty()) {
+  return [fetch =
+              std::move(fetch)](const std::string &url) -> TexturePixelResult {
+    auto result = fetch(url, x3d::runtime::extract::AssetKind::Texture);
+    if (result.pending())
+      return TexturePixelResult::makePending();
+    const auto &bytes = result.bytes;
+    if (!result.ready() || bytes.empty() ||
+        bytes.size() >
+            static_cast<std::size_t>(std::numeric_limits<int>::max())) {
       return TexturePixelResult::makeFailed();
     }
 
     // Bottom-left origin (GL convention) — the seam contract. stb returns
     // top-left by default, so flip on load to match wuffs' flipped output.
-    stbi_set_flip_vertically_on_load(1);
+    stbi_set_flip_vertically_on_load_thread(1);
 
     int w = 0;
     int h = 0;
@@ -80,6 +88,16 @@ x3d::runtime::extract::TextureResolver makeStbTextureResolver() {
     stbi_image_free(data);
     return TexturePixelResult::makeReady(std::move(px));
   };
+}
+
+x3d::runtime::extract::TextureResolver makeStbTextureResolver() {
+  return makeStbTextureResolver([](const std::string &url,
+                                   x3d::runtime::extract::AssetKind) {
+    std::vector<std::uint8_t> bytes;
+    return readFile(url, bytes)
+               ? x3d::runtime::extract::AssetResult::makeReady(std::move(bytes))
+               : x3d::runtime::extract::AssetResult::makeFailed();
+  });
 }
 
 }  // namespace x3d::runtime::io::stb

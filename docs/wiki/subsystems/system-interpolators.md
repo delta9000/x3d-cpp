@@ -150,3 +150,7 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 - Conformance findings source of truth: `docs/conformance/findings.yaml`.
 - [Event Cascade subsystem](event-cascade.md) — delivers `value_changed` events posted by the interpolator handlers.
 - [TimeSensor System](system-time.md) — produces `fraction_changed` that ROUTEs into `set_fraction`.
+
+The Interchange capacity regression `Interchange capacity: 1000 keys with 15000
+coordinates per key` in `interpolator_conformance_test.cpp` drives a fraction
+through the event cascade and checks the emitted coordinate array at both ends.

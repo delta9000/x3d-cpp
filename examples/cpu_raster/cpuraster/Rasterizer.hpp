@@ -35,9 +35,13 @@ namespace x3d::cpuraster {
 // Per-fragment inputs handed to a fragment shader — the eye-space varyings the
 // PoC GLSL `in` block carries, plus screen-space derivatives and gl_FrontFacing.
 struct FragmentInput {
+  glsl::vec3 posLocal{0, 0, 0}, normalLocal{0, 0, 1};
   glsl::vec3 posEye{0, 0, 0};   // vPosEye
   glsl::vec3 normalEye{0, 0, 1}; // vNormalEye (not yet normalized, like GLSL)
   glsl::vec4 color{1, 1, 1, 1};  // vColor (per-vertex Color)
+  std::vector<glsl::vec2> texcoordSets, dTexSetsDx, dTexSetsDy;
+  glsl::vec3 dPosLocalDx{}, dPosLocalDy{}, dNormalEyeDx{}, dNormalEyeDy{},
+      dNormalLocalDx{}, dNormalLocalDy{};
   glsl::vec2 texcoord{0, 0};     // vTexCoord
   glsl::vec3 dPosEyeDx{0, 0, 0}, dPosEyeDy{0, 0, 0}; // dFdx/dFdy(vPosEye)
   glsl::vec2 dTexDx{0, 0}, dTexDy{0, 0};             // dFdx/dFdy(vTexCoord)
@@ -55,6 +59,7 @@ struct Vertex {
   glsl::vec3 normal{0, 1, 0};
   glsl::vec4 color{1, 1, 1, 1};
   glsl::vec2 texcoord{0, 0};
+  std::vector<glsl::vec2> texcoordSets;
 };
 
 enum class BlendMode { Opaque, Blend };
@@ -87,10 +92,13 @@ public:
         const Vertex &v = verts[indices[i + k]];
         ClipVertex cv;
         cv.clip = mvp * glsl::vec4(v.pos, 1.0f);
+        cv.posLocal = v.pos;
+        cv.normalLocal = v.normal;
         cv.posEye = (mv * glsl::vec4(v.pos, 1.0f)).xyz();
         cv.normalEye = normalMat * v.normal;
         cv.color = v.color;
         cv.texcoord = v.texcoord;
+        cv.texcoordSets = v.texcoordSets;
         tri[k] = cv;
       }
       // Near-plane clip -> 0,1, or 2 triangles (fan).
@@ -184,9 +192,11 @@ public:
 private:
   struct ClipVertex {
     glsl::vec4 clip{0, 0, 0, 1};
+    glsl::vec3 posLocal{0, 0, 0}, normalLocal{0, 0, 1};
     glsl::vec3 posEye{0, 0, 0};
     glsl::vec3 normalEye{0, 0, 1};
     glsl::vec4 color{1, 1, 1, 1};
+    std::vector<glsl::vec2> texcoordSets;
     glsl::vec2 texcoord{0, 0};
   };
 
@@ -196,10 +206,15 @@ private:
     auto L3 = [t](glsl::vec3 x, glsl::vec3 y) { return x + (y - x) * t; };
     auto L2 = [t](glsl::vec2 x, glsl::vec2 y) { return x + (y - x) * t; };
     r.clip = L4(a.clip, b.clip);
+    r.posLocal = L3(a.posLocal, b.posLocal);
+    r.normalLocal = L3(a.normalLocal, b.normalLocal);
     r.posEye = L3(a.posEye, b.posEye);
     r.normalEye = L3(a.normalEye, b.normalEye);
     r.color = L4(a.color, b.color);
     r.texcoord = L2(a.texcoord, b.texcoord);
+    for (std::size_t i = 0;
+         i < std::min(a.texcoordSets.size(), b.texcoordSets.size()); ++i)
+      r.texcoordSets.push_back(L2(a.texcoordSets[i], b.texcoordSets[i]));
     return r;
   }
 
@@ -305,10 +320,18 @@ private:
                     A2 * (b2 * invw[2])) * rw;
           };
           FragmentInput &f = p.frag;
+          f.posLocal = pc3(a.posLocal, b.posLocal, c.posLocal);
+          f.normalLocal = pc3(a.normalLocal, b.normalLocal, c.normalLocal);
           f.posEye = pc3(a.posEye, b.posEye, c.posEye);
           f.normalEye = pc3(a.normalEye, b.normalEye, c.normalEye);
           f.color = pc4(a.color, b.color, c.color);
           f.texcoord = pc2(a.texcoord, b.texcoord, c.texcoord);
+          for (std::size_t i = 0;
+               i < std::min({a.texcoordSets.size(), b.texcoordSets.size(),
+                             c.texcoordSets.size()});
+               ++i)
+            f.texcoordSets.push_back(
+                pc2(a.texcoordSets[i], b.texcoordSets[i], c.texcoordSets[i]));
           f.frontFacing = frontFacing;
         }
 
@@ -322,6 +345,18 @@ private:
         for (int sub = 0; sub < 4; ++sub) {
           QuadPix &p = q[sub];
           if (!p.inView || !p.inTri) continue;
+          p.frag.dPosLocalDx = q[1].frag.posLocal - q[0].frag.posLocal;
+          p.frag.dPosLocalDy = q[2].frag.posLocal - q[0].frag.posLocal;
+          p.frag.dNormalLocalDx = q[1].frag.normalLocal - q[0].frag.normalLocal;
+          p.frag.dNormalLocalDy = q[2].frag.normalLocal - q[0].frag.normalLocal;
+          p.frag.dNormalEyeDx = q[1].frag.normalEye - q[0].frag.normalEye;
+          p.frag.dNormalEyeDy = q[2].frag.normalEye - q[0].frag.normalEye;
+          for (std::size_t i = 0; i < q[0].frag.texcoordSets.size(); ++i) {
+            p.frag.dTexSetsDx.push_back(q[1].frag.texcoordSets[i] -
+                                        q[0].frag.texcoordSets[i]);
+            p.frag.dTexSetsDy.push_back(q[2].frag.texcoordSets[i] -
+                                        q[0].frag.texcoordSets[i]);
+          }
           // REQ-CLIP (§11.4.1): a clip plane is satisfied where
           // a*x+b*y+c*z+d >= 0; discard the fragment in the clipped half-space.
           // Planes are EYE-space (the space the interpolated vPosEye lives in).

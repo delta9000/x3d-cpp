@@ -73,7 +73,10 @@ Validates an X3D scene and reports diagnostics. Seven checks run in sequence:
 4. **Profile-fit** — walks every node via `nodeTypeName()` + a hardcoded
    node→`(component, level)` table (built from the generated headers); finds the
    minimal X3D 4.0 profile that contains all components used and flags nodes that
-   exceed a declared profile. Profile table sources: ISO/IEC 19775-1:2023 Annexes B–F.
+   exceed a declared profile. Interchange preserves the explicit Annex B MultiTexture
+   inclusion without admitting unrelated higher-level Texturing nodes. Component
+   levels and node inclusions are generated from `docs/conformance/profiles.yaml`;
+   inferred profiles retain the limitations documented in `profile_fit.hpp`.
 5. **Duplicate `<meta>`** — same `(name, content)` pair appearing more than once in `<head>`.
 6. **Unused ProtoDeclare / ExternProtoDeclare** — a top-level declaration with no bound instance in the scene or locally authored prototype bodies. The shared analysis follows local declaration bindings and retained nested declarations with a visited set. It compares declaration identity, so a used inner declaration does not mask an unused outer declaration with the same name. An EXTERNPROTO instance counts its external declaration, not the resolved implementation from another source. This remains an authoring warning, not a new restriction on valid prototype declarations.
 7. **IFS/ILS coord-without-index** — `IndexedFaceSet` or `IndexedLineSet` has a `Coordinate` node with point data but an empty `coordIndex` (4.0+-only to avoid false positives on older files).

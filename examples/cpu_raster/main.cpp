@@ -28,6 +28,11 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DParse.hpp"
 #include "X3DSceneBridge.hpp"
+#ifdef X3D_CPURASTER_CURL
+#include "HttpResolver.hpp"
+#include "SchemeRouter.hpp"
+#include "io/file/FileResolver.hpp"
+#endif
 
 #include "cpuraster/BuiltinFont.hpp"
 #include "cpuraster/Framebuffer.hpp"
@@ -143,10 +148,20 @@ int main(int argc, char **argv) {
   cr::BuiltinFont font = cr::makeBuiltinFont();
   ex::MeshBuildOptions meshOpts;
   meshOpts.fontMetrics = font.metrics;
-  // Texture resolver: synthesizes "proc:<name>" textures and decodes ".ppm"
-  // files next to the scene, so ImageTexture scenes render with no image library.
-  ex::SceneExtractor extractor(ctx, scene, meshOpts,
-                               cr::makeTextureResolver(dirOf(scenePath)));
+  // Texture resolver: procedural images and stb-decoded local/fetched bytes.
+  ex::AssetResolver fetch;
+#ifdef X3D_CPURASTER_CURL
+  auto file = x3d::runtime::io::file::makeFileResolver(dirOf(scenePath));
+  auto http = x3d::runtime::io::curl::makeHttpResolver();
+  fetch =
+      ex::makeSchemeRouter({{"file", file},
+                            {"http", http},
+                            {"https", http},
+                            {"ftp", x3d::runtime::io::curl::makeFtpResolver()}},
+                           file);
+#endif
+  ex::SceneExtractor extractor(
+      ctx, scene, meshOpts, cr::makeTextureResolver(dirOf(scenePath), fetch));
   ex::RenderDelta snap = extractor.fullSnapshot();
   const std::size_t items = extractor.itemCount();
 

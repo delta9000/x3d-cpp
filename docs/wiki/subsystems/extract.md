@@ -303,7 +303,7 @@ a separate seam.
 
 - `clipPlanes` (`ClipPlaneList`) — the enabled `ClipPlane` nodes (§11.4.1) in scope for this placement, resolved to **world space** (a plane's half-space is invariant, so a consumer maps it into its own frame — e.g. eye space — as needed). A `ClipPlane` affects the *following siblings and their subtrees* within its parent grouping node, threaded down the walk as scoped state. Fixed capacity — `ClipPlaneList::kMaxClipPlanes = 6` (the Annex F.5 minimum); planes beyond the sixth are dropped. `enabled=false` planes are ignored.
 - `beyondVisibilityLimit` — hint: item origin is past `Viewpoint.farDistance` / `NavigationInfo.visibilityLimit`.
-- `castShadow` — `X3DShapeNode.castShadow` (X3D default `true`); whether this shape occludes light. Carried, not interpreted — the shadow-visibility query (technique-defined per §17) is a consumer/seam concern (see [ADR-0028](../decisions/0028-shadow-visibility-seam.md)).
+- `castShadow` — `X3DShapeNode.castShadow` (X3D default `true`); whether this shape occludes light. The extractor carries this flag; the CPU consumer applies it in triangle shadow queries, while the GL PoC leaves lights unobstructed. The shadow-visibility query (technique-defined per §17) is a consumer/seam concern (see [ADR-0028](../decisions/0028-shadow-visibility-seam.md)).
 
 `LocalFogDesc::scopeRoot` remains the enclosing group pointer (or null for root
 fog), but it is informational and cannot identify a USE placement by itself.

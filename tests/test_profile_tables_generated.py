@@ -56,6 +56,8 @@ def test_primary_profile_tables_use_published_component_levels(tmp_path):
         for name in ("Interchange", "Interactive", "Immersive")
     }
     assert '"Networking", 1' in rows["Interchange"]
+    assert '"Texturing", 2' in rows["Interchange"]
+    assert '"MultiTexture"' in rows["Interchange"]
     assert '"EnvironmentalSensor", 1' in rows["Interactive"]
     assert '"Navigation", 1' in rows["Interactive"]
     assert '"EnvironmentalEffects", 1' in rows["Interactive"]

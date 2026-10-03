@@ -950,6 +950,19 @@ else
     echo "SKIP: gallery/smoke scene asset-hygiene gate (no repo root arg provided)"
 fi
 
+# Annex B includes MultiTexture explicitly despite Texturing level 2.
+cat > "$TD/interchange-multi.x3d" <<'XML'
+<X3D profile="Interchange" version="4.0"><Scene><Shape><Appearance>
+<MultiTexture><PixelTexture image="1 1 3 0xffffff"/></MultiTexture>
+</Appearance><Box/></Shape></Scene></X3D>
+XML
+ec=$("$CLI" validate "$TD/interchange-multi.x3d" >/dev/null 2>&1; echo $?)
+check "Interchange explicit MultiTexture inclusion" "$ec" "0"
+# The exception must not admit every higher-level Texturing node.
+sed 's@<MultiTexture><PixelTexture image="1 1 3 0xffffff"/></MultiTexture>@<MovieTexture/>@' "$TD/interchange-multi.x3d" > "$TD/interchange-movie.x3d"
+ec=$("$CLI" validate "$TD/interchange-movie.x3d" >/dev/null 2>&1; echo $?)
+check "Interchange still excludes MovieTexture" "$ec" "3"
+
 # ── summary ───────────────────────────────────────────────────────────────────
 echo ""
 if [[ "$failures" -gt 0 ]]; then

@@ -329,7 +329,7 @@ struct TextureRef {
   bool repeatT = true;
   SamplerParams sampler;
   SFImage inlinePixels;    // PixelTexture content when source == Inline.
-  int channel = 0;         // MultiTexture stage; descriptor-only, not exercised by PoC.
+  int channel = 0; // UV channel; initially the MultiTexture stage index.
   SFString multiMode = "MODULATE";
   SFString multiSource;
   SFString multiFunction;
@@ -382,6 +382,8 @@ struct TextureRef {
   // When false, the consumer uses MeshData::texcoords (authored or default).
   bool hasTexCoordGen = false;
   TexCoordGenDesc texCoordGen;
+  TextureTransform2DParams
+      generatedTransform; // applied by consumer after generation
 
   // Phase 1 binary extension: Source::Buffer fields.
   // Raw bytes provided by the embedder (encoded PNG/JPEG/KTX2/etc.).

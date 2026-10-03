@@ -68,6 +68,8 @@ struct ProfileDef {
     sdk::Profile profile;
     std::string  name;
     ComponentMap allowed; // component name → max allowed level
+    std::set<std::string>
+        nodeInclusions; // explicit profile node-table exceptions
 };
 
 const std::vector<ProfileDef> &profileDefs() {
@@ -79,11 +81,28 @@ const std::vector<ProfileDef> &profileDefs() {
     return kDefs;
 }
 
+const std::unordered_map<std::string, std::pair<std::string, int>> &
+nodeComponentTable();
+std::vector<std::string> nodeTypeNamesForComponent(const sdk::Scene &,
+                                                   const std::string &);
+
 // Returns true if (component, level) is allowed in the given profile def.
-bool allowedInProfile(const ProfileDef &prof, const std::string &comp, int level) {
-    auto it = prof.allowed.find(comp);
-    if (it == prof.allowed.end()) return false;
-    return level <= it->second;
+bool allowedInProfile(const ProfileDef &prof, const std::string &comp,
+                      int level, const sdk::Scene *scene = nullptr) {
+  auto it = prof.allowed.find(comp);
+  if (it == prof.allowed.end())
+    return false;
+  if (level <= it->second)
+    return true;
+  if (!scene || prof.nodeInclusions.empty())
+    return false;
+  for (const auto &name : nodeTypeNamesForComponent(*scene, comp)) {
+    const auto entry = nodeComponentTable().find(name);
+    if (entry != nodeComponentTable().end() &&
+        entry->second.second > it->second && !prof.nodeInclusions.count(name))
+      return false;
+  }
+  return true;
 }
 
 // Walk the scene graph, depth-first, collecting (nodeTypeName, component, level)
@@ -155,15 +174,21 @@ ComponentUsage sceneComponentUsage(const sdk::Scene &scene) {
 // Find the minimal profile that contains all (component, level) in usage.
 // Returns the ProfileDef if found, or nullptr if nothing fits (shouldn't happen
 // since Full covers everything in the table).
-const profile_fit::ProfileDef *findMinimalProfile(const ComponentUsage &usage) {
-    for (const auto &prof : profileDefs()) {
-        bool fits = true;
-        for (const auto &[comp, lvl] : usage) {
-            if (!allowedInProfile(prof, comp, lvl)) { fits = false; break; }
-        }
-        if (fits) return &prof;
+const profile_fit::ProfileDef *
+findMinimalProfile(const ComponentUsage &usage,
+                   const sdk::Scene *scene = nullptr) {
+  for (const auto &prof : profileDefs()) {
+    bool fits = true;
+    for (const auto &[comp, lvl] : usage) {
+      if (!allowedInProfile(prof, comp, lvl, scene)) {
+        fits = false;
+        break;
+      }
     }
-    return nullptr; // usage has a component not in Full (e.g. unknown type)
+    if (fits)
+      return &prof;
+  }
+  return nullptr; // usage has a component not in Full (e.g. unknown type)
 }
 
 // (profileExceedances removed: dead — no callers after the profile-fit emit

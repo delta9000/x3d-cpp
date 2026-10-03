@@ -64,6 +64,7 @@ inline Dimension dimension(std::string_view node, std::string_view field) {
     {"OrthoViewpoint", "fieldOfView", {1}},
     {"NavigationInfo", "avatarSize speed visibilityLimit", {1}},
     {"Fog LocalFog", "visibilityRange", {1}},
+    {"Background TextureBackground", "skyAngle groundAngle", {0,1}},
     {"PositionInterpolator PositionInterpolator2D CoordinateInterpolator CoordinateInterpolator2D SplinePositionInterpolator SplinePositionInterpolator2D", "keyValue", {1}},
     {"OrientationInterpolator SquadOrientationInterpolator", "keyValue", {0,1}},
     {"SplinePositionInterpolator SplinePositionInterpolator2D", "keyVelocity", {1}},
