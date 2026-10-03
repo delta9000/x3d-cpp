@@ -360,3 +360,9 @@ set_tests_properties(sai_callback_lifecycle PROPERTIES TIMEOUT 15)
 add_test(NAME sai_runtime_state_queued_history COMMAND x3d_sai_stateful_tests
     "--test-case=queued runtime checkpoint facts survive later frames and nested drains")
 set_tests_properties(sai_runtime_state_queued_history PROPERTIES TIMEOUT 15)
+
+add_executable(x3d_sai_publication_tests tests/publication_integrity_test.cpp)
+target_link_libraries(x3d_sai_publication_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_publication_integrity COMMAND x3d_sai_publication_tests)
+set_tests_properties(sai_publication_integrity PROPERTIES TIMEOUT 15)

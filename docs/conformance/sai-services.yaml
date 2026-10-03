@@ -112,7 +112,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.3.19 updateControl (end)
     public_symbol: x3d::sai::experimental::scene_edit::commit
     support: partial
-    tests: [sai_edit_failure_nonmutation]
+    tests: [sai_edit_failure_nonmutation, sai_publication_integrity]
     preserves: [INV-EDIT-1, INV-EDIT-2, INV-EVT-1]
   - <<: *observer
     id: SVC-BROWSER-LISTENER
@@ -305,14 +305,14 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (import update)
     public_symbol: x3d::sai::experimental::scene_edit::import_node
     support: partial
-    tests: [sai_context_import_authority, sai_context_alias_collision, sai_context_aperture_revalidate]
+    tests: [sai_context_import_authority, sai_context_alias_collision, sai_context_aperture_revalidate, sai_publication_integrity]
     preserves: [INV-OWN-2, INV-EDIT-1, INV-EDIT-3]
   - <<: *command
     id: SVC-CONTEXT-IMPORTED-NODE-REMOVE
     clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (import remove)
     public_symbol: x3d::sai::experimental::scene_edit::remove_import
     support: partial
-    tests: [sai_context_import_removal]
+    tests: [sai_context_import_removal, sai_publication_integrity]
     preserves: [INV-OWN-1, INV-OWN-2, INV-EDIT-3]
 
   # Descriptor and field discovery are executable kernel services. Their
@@ -430,7 +430,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue
     public_symbol: x3d::sai::experimental::scene_edit::set
     support: partial
-    tests: [sai_field_specialized_access, sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes, sai_node_null_access, sai_node_null_events]
+    tests: [sai_field_specialized_access, sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes, sai_node_null_access, sai_node_null_events, sai_publication_integrity]
     binding_obligations: [CPP-4.3.5.1-NULL-NODES, CPP-4.3.5.3-MFNODE-NULL-ORDER]
     preserves: [INV-FIELD-2, INV-FIELD-3, INV-FIELD-4, INV-CXX-4, INV-EVT-1]
   - <<: *observer
@@ -594,7 +594,7 @@ services:
     buffering: an owned working frame produces one immutable checkpoint after its cascade settles; fields and checkpoint share one revision
     errors: invalid owner, retired context, operation in progress, or factory, processor, and finalizer failure
     events: frame callbacks and resource release run outside context locks; failed frames publish no observation or time advancement
-    tests: [sai_runtime_state_publish, sai_runtime_state_abort, sai_runtime_state_only, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_runtime_state_generated_host]
+    tests: [sai_runtime_state_publish, sai_runtime_state_abort, sai_runtime_state_only, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_runtime_state_generated_host, sai_publication_integrity]
     preserves: [INV-EDIT-1, INV-EDIT-2, INV-EDIT-4, INV-EVT-1, INV-CONC-1]
   - <<: *query
     id: SVC-RUNTIME-STATE

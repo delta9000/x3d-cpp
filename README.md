@@ -348,6 +348,29 @@ external I/O or mutations made outside this protocol. The `live` capability
 stays false: this boundary does not supply the remaining live lifecycle and
 browser services.
 
+## Publication guarantees
+
+Authoring commits and event cascades validate node references and the declared
+containment graph before publication. A containment cycle rejects the entire
+commit; shared nodes, NULL slots, and non-containment reference cycles remain
+valid. Node-valued events, including transient inputs and routed deliveries,
+obey the same accepted-node-type and declaration-scope checks as authoring.
+These hierarchy checks follow
+[X3D 4.3.3 and 4.3.5](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/concepts.html#Scenegraphhierarchy);
+the reference kernel rejects an invalid candidate instead of publishing it.
+
+Commit prepares its result, notifications, candidate state, and import retention
+before changing any published state. An allocation exception during publication
+propagates as `std::bad_alloc` and leaves the visible revision, field values,
+queued observations, event time, and import retention unchanged. Exceptions at
+host callback boundaries follow the runtime failure rules above. Native frame
+and checkpoint resources are destroyed outside context locks on failed
+publication, so their cleanup can inspect the committed scene.
+
+After failure, discard the edit or batch and start a fresh one. Publication
+atomicity does not cover arbitrary mutations of a thread-confined staged edit
+or external host side effects.
+
 ## Deliberate limits
 
 This is a semantic reference kernel, not a complete ISO/IEC 19775-2 or
