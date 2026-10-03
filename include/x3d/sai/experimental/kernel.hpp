@@ -933,6 +933,10 @@ public:
   const std::vector<route> &routes() const noexcept;
 
 private:
+  static result<std::shared_ptr<const value>>
+  read_storage(const std::shared_ptr<detail::context_control> &context,
+               const std::shared_ptr<const detail::scene_state> &state,
+               const dynamic_field &source, const char *operation);
   result<std::shared_ptr<const value>>
   read_storage(const dynamic_field &source, const char *operation) const;
   result<std::shared_ptr<const value>>

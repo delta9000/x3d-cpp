@@ -1078,12 +1078,13 @@ result<value> runtime_step::read(const dynamic_field &source,
   if (!control_->active)
     return expired_runtime_step(*control_, "runtime_step.read");
   const auto &batch = *control_->outputs->impl_;
-  // Owning reads reuse snapshot validation. No view into the mutable working
-  // revision leaves this callback-scoped interface.
-  scene_snapshot working{batch.context, batch.base};
-  auto current = working.read(source);
-  if (!current)
-    return failure(current.error());
+  // Validate local storage directly: a full snapshot would borrow unrelated
+  // imported hosts and release their resources while holding the step mutex.
+  auto stored = scene_snapshot::read_storage(batch.context, batch.base, source,
+                                             "runtime_step.read");
+  if (!stored)
+    return failure(stored.error());
+  result<value> current{**stored};
   if (!control_->ignored && control_->incoming &&
       control_->incoming->target == source.node() &&
       control_->incoming->field == source.name())
@@ -4579,28 +4580,34 @@ result<bool> scene_snapshot::readable(const dynamic_field &source) const {
 result<std::shared_ptr<const value>>
 scene_snapshot::read_storage(const dynamic_field &source,
                              const char *operation) const {
-  const auto source_context = source.context_.lock();
-  const auto found = state_->nodes.find(source.node_.value);
-  if (source_context != context_ ||
-      source.generation_ != context_->generation ||
-      found == state_->nodes.end()) {
-    return edit_error(error_code::stale_handle, operation, *context_,
-                      state_->revision, "invalid field handle", source.node_,
+  return read_storage(context_, state_, source, operation);
+}
+
+result<std::shared_ptr<const value>> scene_snapshot::read_storage(
+    const std::shared_ptr<detail::context_control> &context,
+    const std::shared_ptr<const detail::scene_state> &state,
+    const dynamic_field &source, const char *operation) {
+  const auto found = state->nodes.find(source.node_.value);
+  if (!same_owner(source.context_, context) ||
+      source.generation_ != context->generation ||
+      found == state->nodes.end()) {
+    return edit_error(error_code::stale_handle, operation, *context,
+                      state->revision, "invalid field handle", source.node_,
                       source.name_);
   }
   const auto *descriptor =
-      find_descriptor(*context_, found->second, source.name_);
+      find_descriptor(*context, found->second, source.name_);
   if (!descriptor) {
-    return edit_error(error_code::unknown_field, operation, *context_,
-                      state_->revision, "unknown field: " + source.name_,
+    return edit_error(error_code::unknown_field, operation, *context,
+                      state->revision, "unknown field: " + source.name_,
                       source.node_, source.name_);
   }
   if (!field_is_readable(descriptor->access)) {
-    return edit_error(error_code::access_denied, operation, *context_,
-                      state_->revision, "inputOnly field is not readable",
+    return edit_error(error_code::access_denied, operation, *context,
+                      state->revision, "inputOnly field is not readable",
                       source.node_, source.name_);
   }
-  return std::shared_ptr<const value>{state_,
+  return std::shared_ptr<const value>{state,
                                       &found->second.fields.at(source.name_)};
 }
 

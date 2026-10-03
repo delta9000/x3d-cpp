@@ -63,6 +63,20 @@ struct on_destroy {
   ~on_destroy() { action(); }
 };
 
+std::size_t string_copy_allocation_size(const std::string &input) {
+  std::size_t bytes = 0;
+  std::function<void(std::size_t)> measure = [&](std::size_t size) {
+    bytes = size;
+  };
+  on_destroy disarm{[] { allocation_action = nullptr; }};
+  allocation_action = &measure;
+  const std::string copied = input;
+  allocation_action = nullptr;
+  REQUIRE(copied == input);
+  REQUIRE(bytes != 0);
+  return bytes;
+}
+
 void enqueue_creation(const sai::execution_context &context) {
   auto edit = context.edit();
   REQUIRE(edit.create_node("TestNode"));
@@ -422,17 +436,7 @@ void check_import_release(import_check check) {
     allocation_action = nullptr;
     allocations_before_failure = -1;
   }};
-  // Measure this standard library's string-copy allocation rather than
-  // assuming its capacity or allocation size.
-  std::size_t name_copy_bytes = 0;
-  std::function<void(std::size_t)> measure = [&](std::size_t size) {
-    name_copy_bytes = size;
-  };
-  allocation_action = &measure;
-  const std::string name_copy = local_name;
-  allocation_action = nullptr;
-  REQUIRE(name_copy == local_name);
-  REQUIRE(name_copy_bytes != 0);
+  const auto name_copy_bytes = string_copy_allocation_size(local_name);
   bool dropped = false;
   std::function<void(std::size_t)> drop_owner = [&](std::size_t size) {
     if (size != name_copy_bytes)
@@ -497,4 +501,131 @@ TEST_CASE("import retention releases temporary owners after unlocking") {
   SUBCASE("commit a template claim") {
     check_import_release(import_check::commit_template);
   }
+}
+
+TEST_CASE("runtime reads release imported host resources without step locks") {
+  auto registry = callback_registry();
+  const std::string payload(257, 'v');
+  sai::node_type_descriptor type;
+  type.name = "Reader";
+  sai::field_descriptor descriptor;
+  descriptor.name = "label";
+  descriptor.kind = sai::value_kind::sf_string;
+  descriptor.access = sai::access_type::input_output;
+  descriptor.default_value = payload;
+  type.fields.push_back(std::move(descriptor));
+  REQUIRE(registry.define(std::move(type)));
+  sai::browser host{std::move(registry)};
+  auto scene = host.current_scene();
+  std::optional<sai::execution_context> source{host.create_scene()};
+  const auto foreign = [&] {
+    auto edit = source->edit();
+    auto node = edit.create_node("TestNode").value();
+    auto field = edit.field(node, "value").value();
+    REQUIRE(edit.export_node("shared", node));
+    REQUIRE(edit.commit());
+    return field;
+  }();
+  const auto local = [&] {
+    auto edit = scene.edit();
+    auto node = edit.create_node("Reader").value();
+    auto field = edit.field(node, "label").value();
+    REQUIRE(edit.import_node("remote", *source, "shared"));
+    REQUIRE(edit.commit());
+    return field;
+  }();
+  const auto before = scene.snapshot().revision();
+  std::optional<sai::runtime_step> active;
+  std::atomic_bool release_requested{false};
+  std::atomic_bool owner_released{false};
+  const auto signal_release = [&] {
+    owner_released.store(true, std::memory_order_release);
+    owner_released.notify_all();
+  };
+  bool cleanup_read_ok = false;
+  int destroyed = 0;
+  auto capture = std::make_shared<on_destroy>([&] {
+    signal_release();
+    const auto read = active->read(local);
+    const auto *text = read ? std::get_if<std::string>(&*read) : nullptr;
+    cleanup_read_ok = text && *text == payload;
+    ++destroyed;
+  });
+  REQUIRE(host.set_runtime_processor(
+      *source,
+      [capture](sai::runtime_step &) -> sai::result<void> { return {}; }));
+  capture.reset();
+  bool fail_read = false;
+  SUBCASE("successful owning read") {}
+  SUBCASE("owning payload allocation fails") { fail_read = true; }
+  const auto copy_bytes = string_copy_allocation_size(payload);
+  bool dropped = false;
+  bool read_failed = false;
+  REQUIRE(host.set_runtime_processor(
+      scene, [&](sai::runtime_step &step) -> sai::result<void> {
+        active.emplace(step);
+        const auto invalid = step.read(foreign);
+        REQUIRE_FALSE(invalid);
+        CHECK(invalid.error().code == sai::error_code::stale_handle);
+        CHECK(invalid.error().operation == "runtime_step.read");
+        CHECK(invalid.error().node == foreign.node());
+        CHECK(invalid.error().field == "value");
+        std::jthread dropper([&] {
+          release_requested.wait(false, std::memory_order_acquire);
+          source.reset();
+          signal_release();
+        });
+        on_destroy disarm{[&] {
+          allocation_action = nullptr;
+          allocations_before_failure = -1;
+          release_requested.store(true, std::memory_order_release);
+          release_requested.notify_all();
+        }};
+        std::function<void(std::size_t)> release_owner = [&](std::size_t size) {
+          if (size != copy_bytes)
+            return;
+          allocation_action = nullptr;
+          dropped = true;
+          release_requested.store(true, std::memory_order_release);
+          release_requested.notify_all();
+          // The releaser signals after dropping its handle or when cleanup
+          // starts. Cleanup can then wait for this read to release its lock.
+          owner_released.wait(false, std::memory_order_acquire);
+          if (fail_read)
+            allocations_before_failure = 0;
+        };
+        allocation_action = &release_owner;
+        try {
+          const auto read = step.read(local);
+          REQUIRE(read);
+          CHECK(std::get<std::string>(*read) == payload);
+        } catch (const std::bad_alloc &) {
+          read_failed = true;
+        }
+        allocation_action = nullptr;
+        allocations_before_failure = -1;
+        release_requested.store(true, std::memory_order_release);
+        release_requested.notify_all();
+        dropper.join();
+        CHECK(cleanup_read_ok);
+        CHECK(destroyed == 1);
+        if (read_failed) {
+          sai::sai_error error;
+          error.code = sai::error_code::callback_failed;
+          error.operation = "host.read";
+          return sai::failure(std::move(error));
+        }
+        return {};
+      }));
+  const auto evaluated = scene.events({1}).commit();
+  CHECK(bool(evaluated) == !fail_read);
+  CHECK(dropped);
+  CHECK(read_failed == fail_read);
+  CHECK(scene.snapshot().revision() == before);
+  CHECK(scene.drain().delivered == 0);
+  const auto escaped = active->read(local);
+  REQUIRE_FALSE(escaped);
+  CHECK(escaped.error().code == sai::error_code::stale_revision);
+  REQUIRE(host.set_runtime_processor(scene, {}));
+  REQUIRE(scene.events({1}).commit());
 }
