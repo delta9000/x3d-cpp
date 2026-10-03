@@ -19,8 +19,7 @@ struct GeneratedCubeMapTexture {
   inline static constexpr field_key<GeneratedCubeMapTexture,
                                     ::x3d::sai::experimental::node_id>
       textureProperties{"textureProperties", access_type::initialize_only};
-  inline static constexpr field_key<GeneratedCubeMapTexture,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<GeneratedCubeMapTexture, std::string>
       update{"update", access_type::input_output};
   inline static constexpr std::array<field_key_descriptor, 5> field_keys{{
       {description.name(), description.kind, description.access()},

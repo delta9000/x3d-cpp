@@ -11,11 +11,9 @@ struct BiquadFilter {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<BiquadFilter, std::int32_t> channelCount{
       "channelCount", access_type::output_only};
-  inline static constexpr field_key<BiquadFilter,
-                                    ::x3d::sai::experimental::enum_value>
-      channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<BiquadFilter,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<BiquadFilter, std::string> channelCountMode{
+      "channelCountMode", access_type::input_output};
+  inline static constexpr field_key<BiquadFilter, std::string>
       channelInterpretation{"channelInterpretation", access_type::input_output};
   inline static constexpr field_key<BiquadFilter,
                                     ::x3d::sai::experimental::node_list>
@@ -57,9 +55,8 @@ struct BiquadFilter {
   inline static constexpr field_key<BiquadFilter,
                                     ::x3d::sai::experimental::time_value>
       tailTime{"tailTime", access_type::input_output};
-  inline static constexpr field_key<BiquadFilter,
-                                    ::x3d::sai::experimental::enum_value>
-      type{"type", access_type::input_output};
+  inline static constexpr field_key<BiquadFilter, std::string> type{
+      "type", access_type::input_output};
   inline static constexpr std::array<field_key_descriptor, 20> field_keys{{
       {channelCount.name(), channelCount.kind, channelCount.access()},
       {channelCountMode.name(), channelCountMode.kind,

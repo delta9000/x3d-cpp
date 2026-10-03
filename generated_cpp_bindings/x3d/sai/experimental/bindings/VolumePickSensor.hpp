@@ -17,8 +17,7 @@ struct VolumePickSensor {
       intersectionType{"intersectionType", access_type::initialize_only};
   inline static constexpr field_key<VolumePickSensor, bool> isActive{
       "isActive", access_type::output_only};
-  inline static constexpr field_key<VolumePickSensor,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<VolumePickSensor, std::string>
       matchCriterion{"matchCriterion", access_type::input_output};
   inline static constexpr field_key<VolumePickSensor,
                                     ::x3d::sai::experimental::node_id>

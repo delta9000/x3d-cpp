@@ -9,21 +9,25 @@ namespace x3d::sai::experimental::bindings {
 struct Layout {
   static constexpr std::string_view x3d_name = "Layout";
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
-  inline static constexpr field_key<Layout, ::x3d::sai::experimental::enum_list>
+  inline static constexpr field_key<Layout,
+                                    ::x3d::sai::experimental::string_list>
       align{"align", access_type::input_output};
   inline static constexpr field_key<Layout, ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<Layout,
                                     ::x3d::sai::experimental::float_list>
       offset{"offset", access_type::input_output};
-  inline static constexpr field_key<Layout, ::x3d::sai::experimental::enum_list>
+  inline static constexpr field_key<Layout,
+                                    ::x3d::sai::experimental::string_list>
       offsetUnits{"offsetUnits", access_type::input_output};
-  inline static constexpr field_key<Layout, ::x3d::sai::experimental::enum_list>
+  inline static constexpr field_key<Layout,
+                                    ::x3d::sai::experimental::string_list>
       scaleMode{"scaleMode", access_type::input_output};
   inline static constexpr field_key<Layout,
                                     ::x3d::sai::experimental::float_list>
       size{"size", access_type::input_output};
-  inline static constexpr field_key<Layout, ::x3d::sai::experimental::enum_list>
+  inline static constexpr field_key<Layout,
+                                    ::x3d::sai::experimental::string_list>
       sizeUnits{"sizeUnits", access_type::input_output};
   inline static constexpr std::array<field_key_descriptor, 7> field_keys{{
       {align.name(), align.kind, align.access()},

@@ -11,11 +11,9 @@ struct WaveShaper {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<WaveShaper, std::int32_t> channelCount{
       "channelCount", access_type::output_only};
-  inline static constexpr field_key<WaveShaper,
-                                    ::x3d::sai::experimental::enum_value>
-      channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<WaveShaper,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<WaveShaper, std::string> channelCountMode{
+      "channelCountMode", access_type::input_output};
+  inline static constexpr field_key<WaveShaper, std::string>
       channelInterpretation{"channelInterpretation", access_type::input_output};
   inline static constexpr field_key<WaveShaper,
                                     ::x3d::sai::experimental::node_list>
@@ -36,9 +34,8 @@ struct WaveShaper {
   inline static constexpr field_key<WaveShaper,
                                     ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
-  inline static constexpr field_key<WaveShaper,
-                                    ::x3d::sai::experimental::enum_value>
-      oversample{"oversample", access_type::input_output};
+  inline static constexpr field_key<WaveShaper, std::string> oversample{
+      "oversample", access_type::input_output};
   inline static constexpr field_key<WaveShaper,
                                     ::x3d::sai::experimental::time_value>
       pauseTime{"pauseTime", access_type::input_output};

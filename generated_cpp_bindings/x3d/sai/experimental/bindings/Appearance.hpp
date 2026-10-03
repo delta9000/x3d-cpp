@@ -14,9 +14,8 @@ struct Appearance {
       acousticProperties{"acousticProperties", access_type::input_output};
   inline static constexpr field_key<Appearance, float> alphaCutoff{
       "alphaCutoff", access_type::input_output};
-  inline static constexpr field_key<Appearance,
-                                    ::x3d::sai::experimental::enum_value>
-      alphaMode{"alphaMode", access_type::input_output};
+  inline static constexpr field_key<Appearance, std::string> alphaMode{
+      "alphaMode", access_type::input_output};
   inline static constexpr field_key<Appearance,
                                     ::x3d::sai::experimental::node_id>
       backMaterial{"backMaterial", access_type::input_output};

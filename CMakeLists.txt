@@ -83,7 +83,8 @@ add_executable(x3d_sai_experimental_tests
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_metadata_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/vocabulary_discovery_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/color_validation_test.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/numeric_range_test.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/numeric_range_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/string_fields_test.cpp")
 target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
@@ -106,6 +107,10 @@ add_test(NAME sai_generated_metadata_drift COMMAND x3d_sai_experimental_tests
     "--test-case=generated metadata adapter has exhaustive ordered descriptor parity")
 add_test(NAME sai_field_complete_vocabulary COMMAND x3d_sai_experimental_tests
     "--test-case=the owning value vocabulary preserves every non-node ISO kind")
+add_test(NAME sai_field_string_kinds COMMAND x3d_sai_experimental_tests
+    "--test-case=bounded string fields support ordinary typed and dynamic values")
+add_test(NAME sai_field_string_routes COMMAND x3d_sai_experimental_tests
+    "--test-case=bounded string fields exchange ISO payloads through events and routes")
 add_test(NAME sai_generated_metadata_executable COMMAND x3d_sai_experimental_tests
     "--test-case=every generated descriptor adapts into the executable vocabulary")
 add_test(NAME sai_generated_metadata_lexical COMMAND x3d_sai_experimental_tests

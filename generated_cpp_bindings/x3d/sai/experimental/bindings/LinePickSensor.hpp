@@ -17,9 +17,8 @@ struct LinePickSensor {
       intersectionType{"intersectionType", access_type::initialize_only};
   inline static constexpr field_key<LinePickSensor, bool> isActive{
       "isActive", access_type::output_only};
-  inline static constexpr field_key<LinePickSensor,
-                                    ::x3d::sai::experimental::enum_value>
-      matchCriterion{"matchCriterion", access_type::input_output};
+  inline static constexpr field_key<LinePickSensor, std::string> matchCriterion{
+      "matchCriterion", access_type::input_output};
   inline static constexpr field_key<LinePickSensor,
                                     ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};

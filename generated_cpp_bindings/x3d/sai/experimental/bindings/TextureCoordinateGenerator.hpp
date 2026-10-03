@@ -14,8 +14,7 @@ struct TextureCoordinateGenerator {
   inline static constexpr field_key<TextureCoordinateGenerator,
                                     ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
-  inline static constexpr field_key<TextureCoordinateGenerator,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<TextureCoordinateGenerator, std::string>
       mode{"mode", access_type::input_output};
   inline static constexpr field_key<TextureCoordinateGenerator,
                                     ::x3d::sai::experimental::float_list>

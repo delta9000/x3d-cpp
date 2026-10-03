@@ -185,7 +185,7 @@ TEST_CASE("numeric ranges validate descriptor shape and defaults") {
     CHECK(registry.node_types().empty());
   }
   for (const auto &initial : std::vector<sai::value>{
-           true, std::string{"text"}, sai::enum_value{"choice"}, sai::image{},
+           true, std::string{"text"}, sai::image{},
            sai::node_id{}, sai::bool_list{}, sai::string_list{}, sai::node_list{}}) {
     sai::type_registry registry;
     CHECK_FALSE(registry.define(bounded_type(initial, {.minimum = 0.})));

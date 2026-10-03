@@ -11,11 +11,9 @@ struct ChannelSelector {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<ChannelSelector, std::int32_t> channelCount{
       "channelCount", access_type::output_only};
-  inline static constexpr field_key<ChannelSelector,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<ChannelSelector, std::string>
       channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<ChannelSelector,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<ChannelSelector, std::string>
       channelInterpretation{"channelInterpretation", access_type::input_output};
   inline static constexpr field_key<ChannelSelector, std::int32_t>
       channelSelection{"channelSelection", access_type::input_output};

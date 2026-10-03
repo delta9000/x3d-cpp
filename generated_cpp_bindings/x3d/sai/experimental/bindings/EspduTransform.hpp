@@ -192,9 +192,8 @@ struct EspduTransform {
   inline static constexpr field_key<EspduTransform,
                                     ::x3d::sai::experimental::vec3f>
       munitionStartPoint{"munitionStartPoint", access_type::input_output};
-  inline static constexpr field_key<EspduTransform,
-                                    ::x3d::sai::experimental::enum_value>
-      networkMode{"networkMode", access_type::input_output};
+  inline static constexpr field_key<EspduTransform, std::string> networkMode{
+      "networkMode", access_type::input_output};
   inline static constexpr field_key<EspduTransform, std::int32_t> port{
       "port", access_type::input_output};
   inline static constexpr field_key<EspduTransform,

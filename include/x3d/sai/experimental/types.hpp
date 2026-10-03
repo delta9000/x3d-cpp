@@ -141,11 +141,6 @@ struct time_value {
   friend bool operator==(time_value, time_value) = default;
 };
 
-struct enum_value {
-  std::string token;
-  friend bool operator==(const enum_value &, const enum_value &) = default;
-};
-
 using node_list = std::vector<node_id>;
 
 class bool_list {
@@ -239,7 +234,6 @@ using vec3d_list = std::vector<vec3d>;
 using vec3f_list = std::vector<vec3f>;
 using vec4d_list = std::vector<vec4d>;
 using vec4f_list = std::vector<vec4f>;
-using enum_list = std::vector<enum_value>;
 
 enum class value_kind {
   sf_bool,
@@ -284,8 +278,6 @@ enum class value_kind {
   mf_vec3f,
   mf_vec4d,
   mf_vec4f,
-  sf_enum,
-  mf_enum,
 };
 
 using value = std::variant<
@@ -295,7 +287,7 @@ using value = std::variant<
     color3f_list, color4f_list, double_list, float_list, image_list, int32_list,
     matrix3d_list, matrix3f_list, matrix4d_list, matrix4f_list, node_list,
     rotation_list, string_list, time_list, vec2d_list, vec2f_list, vec3d_list,
-    vec3f_list, vec4d_list, vec4f_list, enum_value, enum_list>;
+    vec3f_list, vec4d_list, vec4f_list>;
 
 // Numerical operator== remains available on the vocabulary types. This
 // explicit relation is the SAI storage/event equivalence: it preserves IEEE
@@ -378,8 +370,6 @@ X3D_SAI_VALUE_TRAIT(vec3d_list, mf_vec3d);
 X3D_SAI_VALUE_TRAIT(vec3f_list, mf_vec3f);
 X3D_SAI_VALUE_TRAIT(vec4d_list, mf_vec4d);
 X3D_SAI_VALUE_TRAIT(vec4f_list, mf_vec4f);
-X3D_SAI_VALUE_TRAIT(enum_value, sf_enum);
-X3D_SAI_VALUE_TRAIT(enum_list, mf_enum);
 #undef X3D_SAI_VALUE_TRAIT
 
 enum class error_code {

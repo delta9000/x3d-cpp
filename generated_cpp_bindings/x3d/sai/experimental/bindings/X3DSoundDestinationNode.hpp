@@ -11,11 +11,9 @@ struct X3DSoundDestinationNode {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<X3DSoundDestinationNode, std::int32_t>
       channelCount{"channelCount", access_type::output_only};
-  inline static constexpr field_key<X3DSoundDestinationNode,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<X3DSoundDestinationNode, std::string>
       channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<X3DSoundDestinationNode,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<X3DSoundDestinationNode, std::string>
       channelInterpretation{"channelInterpretation", access_type::input_output};
   inline static constexpr field_key<X3DSoundDestinationNode, std::string>
       description{"description", access_type::input_output};

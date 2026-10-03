@@ -13,8 +13,8 @@ struct Fog {
       bindTime{"bindTime", access_type::output_only};
   inline static constexpr field_key<Fog, ::x3d::sai::experimental::color3f>
       color{"color", access_type::input_output};
-  inline static constexpr field_key<Fog, ::x3d::sai::experimental::enum_value>
-      fogType{"fogType", access_type::input_output};
+  inline static constexpr field_key<Fog, std::string> fogType{
+      "fogType", access_type::input_output};
   inline static constexpr field_key<Fog, bool> isBound{
       "isBound", access_type::output_only};
   inline static constexpr field_key<Fog, ::x3d::sai::experimental::node_id>

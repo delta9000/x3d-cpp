@@ -11,10 +11,10 @@ struct Delay {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<Delay, std::int32_t> channelCount{
       "channelCount", access_type::output_only};
-  inline static constexpr field_key<Delay, ::x3d::sai::experimental::enum_value>
-      channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<Delay, ::x3d::sai::experimental::enum_value>
-      channelInterpretation{"channelInterpretation", access_type::input_output};
+  inline static constexpr field_key<Delay, std::string> channelCountMode{
+      "channelCountMode", access_type::input_output};
+  inline static constexpr field_key<Delay, std::string> channelInterpretation{
+      "channelInterpretation", access_type::input_output};
   inline static constexpr field_key<Delay, ::x3d::sai::experimental::node_list>
       children{"children", access_type::input_output};
   inline static constexpr field_key<Delay, ::x3d::sai::experimental::time_value>

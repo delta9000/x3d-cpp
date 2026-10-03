@@ -10,7 +10,7 @@ struct CollisionCollection {
   static constexpr std::string_view x3d_name = "CollisionCollection";
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<CollisionCollection,
-                                    ::x3d::sai::experimental::enum_list>
+                                    ::x3d::sai::experimental::string_list>
       appliedParameters{"appliedParameters", access_type::input_output};
   inline static constexpr field_key<CollisionCollection,
                                     ::x3d::sai::experimental::vec3f>

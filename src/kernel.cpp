@@ -1188,8 +1188,6 @@ std::optional<value_kind> element_kind(value_kind sequence) {
     return value_kind::sf_vec4d;
   case value_kind::mf_vec4f:
     return value_kind::sf_vec4f;
-  case value_kind::mf_enum:
-    return value_kind::sf_enum;
   default:
     return std::nullopt;
   }

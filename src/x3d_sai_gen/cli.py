@@ -16,7 +16,7 @@ from importlib.resources import files
 from x3d_sai_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES
 from x3d_sai_gen.format import format_files
 from x3d_sai_gen.parser import (
-    parse_x3d_model, build_dependency_graph, parse_enum_definitions,
+    parse_x3d_model, build_dependency_graph,
 )
 from x3d_sai_gen.emit.reflection import gen_reflection_header
 from x3d_sai_gen.emit.sai_bindings import (
@@ -95,7 +95,6 @@ def _generate(out_dir: str, clang_format: str) -> None:
     if not nodes or skipped:
         raise SystemExit(f"UOM cannot produce a complete catalog: {len(skipped)} unsupported fields")
     graph = build_dependency_graph(nodes)
-    enum_defs = parse_enum_definitions(uom)
 
     # Only the SAI bindings and catalogs are clang-formatted. The reflection
     # header and the semantic registry carry their emitter's own layout, and
@@ -114,7 +113,7 @@ def _generate(out_dir: str, clang_format: str) -> None:
         os.path.join(nodes_dir, "X3DSemanticMetadataRegistry.hpp"),
         gen_semantic_metadata_header()))
     metadata = gen_semantic_metadata_source(
-        nodes, graph, enum_defs, SPEC_VERSION)
+        nodes, graph, SPEC_VERSION)
     written.append(_write(
         os.path.join(nodes_dir, "X3DSemanticMetadataRegistry.cpp"), metadata))
 
@@ -124,7 +123,7 @@ def _generate(out_dir: str, clang_format: str) -> None:
     for name in sorted(nodes):
         to_format.append(_write(
             os.path.join(bindings_dir, f"{name}.hpp"),
-            gen_sai_node_binding(nodes[name], nodes, graph, enum_defs)))
+            gen_sai_node_binding(nodes[name], nodes, graph)))
 
     # The fingerprint is read back out of the emitted catalog source so the
     # bindings and the registry cannot disagree about the model they describe.

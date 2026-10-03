@@ -80,9 +80,25 @@ node objects never participate in SAI identity. The adapter currently fails clos
 the experimental owning value vocabulary. The current generated vocabulary is
 complete: all scalar and multi-field kinds have exact tags, owning storage, and
 distinct strong types where C++ primitives would otherwise collapse X3D
-semantics (notably time/double and enum/string). Catalog provenance carries the X3D
-specification version, a deterministic SHA-256 fingerprint of the resolved
-semantic model, and the generator version.
+semantics (for example, time and double). Bounded string fields retain their
+normative `SFString` or `MFString` kind and use `std::string` or `string_list`.
+Generated keys, dynamic discovery, indexed edits, and ROUTEs share those types.
+`FontStyle.style` and `ScreenFontStyle.style` are semantic fields; the HTML
+`style` attribute declared on `X3DNode` is excluded from the SAI catalog.
+See the [X3D font and layout fields](https://www.web3d.org/documents/specifications/19775-1/V4.0/Part01/components/layout.html#ScreenFontStyle).
+
+The experimental `enum_value`, `enum_list`, `sf_enum`, and `mf_enum` extensions
+have been removed. Replace their values with strings and string lists, and
+inspect `sf_string` or `mf_string`. Vocabulary validation remains incomplete:
+the UOM choice lists omit some normative values and mix individual flags with
+whole sequences. For example, a single `"CENTER"` is a valid `Layout.align`
+value, and font styles permit an empty string. The SDK preserves these values.
+The [published physics vocabulary](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rigidBodyPhysics.html#CollisionCollection)
+uses underscore spellings such as `SLIP_1`; the pinned UOM uses hyphens for
+some flags. String values are retained exactly as supplied.
+
+Catalog provenance carries the X3D specification version, a deterministic
+SHA-256 fingerprint of the resolved semantic model, and the generator version.
 
 The proposal makes these design choices executable:
 

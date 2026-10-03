@@ -77,9 +77,8 @@ struct TransmitterPdu {
       multicastRelayHost{"multicastRelayHost", access_type::input_output};
   inline static constexpr field_key<TransmitterPdu, std::int32_t>
       multicastRelayPort{"multicastRelayPort", access_type::input_output};
-  inline static constexpr field_key<TransmitterPdu,
-                                    ::x3d::sai::experimental::enum_value>
-      networkMode{"networkMode", access_type::input_output};
+  inline static constexpr field_key<TransmitterPdu, std::string> networkMode{
+      "networkMode", access_type::input_output};
   inline static constexpr field_key<TransmitterPdu, std::int32_t> port{
       "port", access_type::input_output};
   inline static constexpr field_key<TransmitterPdu, float> power{

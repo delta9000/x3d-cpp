@@ -88,9 +88,8 @@ struct HAnimHumanoid {
   inline static constexpr field_key<HAnimHumanoid,
                                     ::x3d::sai::experimental::vec3f>
       translation{"translation", access_type::input_output};
-  inline static constexpr field_key<HAnimHumanoid,
-                                    ::x3d::sai::experimental::enum_value>
-      version{"version", access_type::input_output};
+  inline static constexpr field_key<HAnimHumanoid, std::string> version{
+      "version", access_type::input_output};
   inline static constexpr field_key<HAnimHumanoid,
                                     ::x3d::sai::experimental::node_list>
       viewpoints{"viewpoints", access_type::input_output};

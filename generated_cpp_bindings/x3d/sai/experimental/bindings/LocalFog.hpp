@@ -13,9 +13,8 @@ struct LocalFog {
       color{"color", access_type::input_output};
   inline static constexpr field_key<LocalFog, bool> enabled{
       "enabled", access_type::input_output};
-  inline static constexpr field_key<LocalFog,
-                                    ::x3d::sai::experimental::enum_value>
-      fogType{"fogType", access_type::input_output};
+  inline static constexpr field_key<LocalFog, std::string> fogType{
+      "fogType", access_type::input_output};
   inline static constexpr field_key<LocalFog, ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<LocalFog, float> visibilityRange{

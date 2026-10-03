@@ -85,7 +85,7 @@ invariants:
     evidence_strength: normative
     statement: Typed, generic, parser, Script, external SAI, IS, and ROUTE paths use the same type, access, constraints, accepted nodes, and unit metadata.
     preserving_operations: [describe field, read field, write field, route field, bind IS]
-    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation, sai_node_vocabulary_predictive, sai_field_color_authoring, sai_field_color_events, sai_field_color_runtime, sai_field_color_multi, sai_field_color_defaults, sai_field_image_multi, sai_field_range_authoring, sai_field_range_events, sai_field_range_runtime, sai_field_range_multi, sai_field_range_generated, sai_field_range_colors]
+    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation, sai_node_vocabulary_predictive, sai_field_color_authoring, sai_field_color_events, sai_field_color_runtime, sai_field_color_multi, sai_field_color_defaults, sai_field_image_multi, sai_field_range_authoring, sai_field_range_events, sai_field_range_runtime, sai_field_range_multi, sai_field_range_generated, sai_field_range_colors, sai_field_string_kinds, sai_field_string_routes]
   - <<: *invariant_defaults
     id: INV-FIELD-2
     review_marker: reviewed:sha256:7e69b9ddd522
@@ -305,7 +305,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Types, fields, access, defaults, constraints, units, profiles, components, docs, and serializers derive from one versioned semantic model with no dangling references.
     preserving_operations: [generate bindings, reflect runtime, serialize, build docs]
-    falsification_tests: [sai_generated_binding_parity, sai_generated_semantic_fields, sai_generated_typed_workflow, sai_generated_binding_drift, sai_generated_registry_provenance, sai_generated_registry_mutation, planned:sai_gen_no_drift, sai_node_vocabulary_predictive, sai_field_range_generated, sai_field_range_precision]
+    falsification_tests: [sai_generated_binding_parity, sai_generated_semantic_fields, sai_generated_typed_workflow, sai_generated_binding_drift, sai_generated_registry_provenance, sai_generated_registry_mutation, planned:sai_gen_no_drift, sai_node_vocabulary_predictive, sai_field_range_generated, sai_field_range_precision, sai_field_string_kinds, sai_field_string_routes]
 
   - <<: *invariant_defaults
     id: INV-CXX-1

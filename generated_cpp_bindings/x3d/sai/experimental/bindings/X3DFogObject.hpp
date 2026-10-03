@@ -12,9 +12,8 @@ struct X3DFogObject {
   inline static constexpr field_key<X3DFogObject,
                                     ::x3d::sai::experimental::color3f>
       color{"color", access_type::input_output};
-  inline static constexpr field_key<X3DFogObject,
-                                    ::x3d::sai::experimental::enum_value>
-      fogType{"fogType", access_type::input_output};
+  inline static constexpr field_key<X3DFogObject, std::string> fogType{
+      "fogType", access_type::input_output};
   inline static constexpr field_key<X3DFogObject, float> visibilityRange{
       "visibilityRange", access_type::input_output};
   inline static constexpr std::array<field_key_descriptor, 3> field_keys{{

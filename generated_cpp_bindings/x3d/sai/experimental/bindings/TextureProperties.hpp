@@ -16,28 +16,22 @@ struct TextureProperties {
       borderColor{"borderColor", access_type::input_output};
   inline static constexpr field_key<TextureProperties, std::int32_t>
       borderWidth{"borderWidth", access_type::input_output};
-  inline static constexpr field_key<TextureProperties,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<TextureProperties, std::string>
       boundaryModeR{"boundaryModeR", access_type::input_output};
-  inline static constexpr field_key<TextureProperties,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<TextureProperties, std::string>
       boundaryModeS{"boundaryModeS", access_type::input_output};
-  inline static constexpr field_key<TextureProperties,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<TextureProperties, std::string>
       boundaryModeT{"boundaryModeT", access_type::input_output};
   inline static constexpr field_key<TextureProperties, bool> generateMipMaps{
       "generateMipMaps", access_type::initialize_only};
-  inline static constexpr field_key<TextureProperties,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<TextureProperties, std::string>
       magnificationFilter{"magnificationFilter", access_type::input_output};
   inline static constexpr field_key<TextureProperties,
                                     ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
-  inline static constexpr field_key<TextureProperties,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<TextureProperties, std::string>
       minificationFilter{"minificationFilter", access_type::input_output};
-  inline static constexpr field_key<TextureProperties,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<TextureProperties, std::string>
       textureCompression{"textureCompression", access_type::input_output};
   inline static constexpr field_key<TextureProperties, float> texturePriority{
       "texturePriority", access_type::input_output};

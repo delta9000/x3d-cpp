@@ -9,11 +9,9 @@ namespace x3d::sai::experimental::bindings {
 struct StreamAudioSource {
   static constexpr std::string_view x3d_name = "StreamAudioSource";
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
-  inline static constexpr field_key<StreamAudioSource,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<StreamAudioSource, std::string>
       channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<StreamAudioSource,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<StreamAudioSource, std::string>
       channelInterpretation{"channelInterpretation", access_type::input_output};
   inline static constexpr field_key<StreamAudioSource, std::string> description{
       "description", access_type::input_output};

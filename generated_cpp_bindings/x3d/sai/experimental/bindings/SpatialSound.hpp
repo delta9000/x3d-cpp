@@ -23,9 +23,8 @@ struct SpatialSound {
   inline static constexpr field_key<SpatialSound,
                                     ::x3d::sai::experimental::vec3f>
       direction{"direction", access_type::input_output};
-  inline static constexpr field_key<SpatialSound,
-                                    ::x3d::sai::experimental::enum_value>
-      distanceModel{"distanceModel", access_type::input_output};
+  inline static constexpr field_key<SpatialSound, std::string> distanceModel{
+      "distanceModel", access_type::input_output};
   inline static constexpr field_key<SpatialSound, bool> dopplerEnabled{
       "dopplerEnabled", access_type::input_output};
   inline static constexpr field_key<SpatialSound, bool> enabled{

@@ -11,7 +11,9 @@ def wire_name(field):
 # The UOM also describes document syntax and HTML attributes as fields on
 # X3DNode. They are not event ports in the abstract node interface. DEF/USE
 # and IS are represented by names, shared identity and declaration bindings.
-_X3D_NODE_SYNTAX = frozenset({"DEF", "USE", "IS", "class", "id", "style"})
+# Only the style attribute declared on X3DNode is syntax: FontStyle and
+# ScreenFontStyle declare a semantic field with that same name.
+_X3D_NODE_SYNTAX = frozenset({"DEF", "USE", "IS", "class", "id"})
 
 
 def resolved_node_fields(node, nodes, graph, enum_defs=None):
@@ -35,5 +37,8 @@ def resolved_node_fields(node, nodes, graph, enum_defs=None):
         enum_defs=enum_defs,
     )
     return [
-        field for field in descriptors if field.x3d_name not in _X3D_NODE_SYNTAX
+        field for field in descriptors
+        if field.x3d_name not in _X3D_NODE_SYNTAX and
+        not (field.x3d_name == "style" and
+             (field.inherited_from or node.name) == "X3DNode")
     ]

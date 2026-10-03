@@ -50,9 +50,8 @@ struct ReceiverPdu {
       multicastRelayHost{"multicastRelayHost", access_type::input_output};
   inline static constexpr field_key<ReceiverPdu, std::int32_t>
       multicastRelayPort{"multicastRelayPort", access_type::input_output};
-  inline static constexpr field_key<ReceiverPdu,
-                                    ::x3d::sai::experimental::enum_value>
-      networkMode{"networkMode", access_type::input_output};
+  inline static constexpr field_key<ReceiverPdu, std::string> networkMode{
+      "networkMode", access_type::input_output};
   inline static constexpr field_key<ReceiverPdu, std::int32_t> port{
       "port", access_type::input_output};
   inline static constexpr field_key<ReceiverPdu, std::int32_t> radioID{

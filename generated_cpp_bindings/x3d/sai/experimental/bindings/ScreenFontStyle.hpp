@@ -15,7 +15,7 @@ struct ScreenFontStyle {
   inline static constexpr field_key<ScreenFontStyle, bool> horizontal{
       "horizontal", access_type::input_output};
   inline static constexpr field_key<ScreenFontStyle,
-                                    ::x3d::sai::experimental::enum_list>
+                                    ::x3d::sai::experimental::string_list>
       justify{"justify", access_type::input_output};
   inline static constexpr field_key<ScreenFontStyle, std::string> language{
       "language", access_type::input_output};
@@ -28,9 +28,11 @@ struct ScreenFontStyle {
       "pointSize", access_type::input_output};
   inline static constexpr field_key<ScreenFontStyle, float> spacing{
       "spacing", access_type::input_output};
+  inline static constexpr field_key<ScreenFontStyle, std::string> style{
+      "style", access_type::input_output};
   inline static constexpr field_key<ScreenFontStyle, bool> topToBottom{
       "topToBottom", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 9> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 10> field_keys{{
       {family.name(), family.kind, family.access()},
       {horizontal.name(), horizontal.kind, horizontal.access()},
       {justify.name(), justify.kind, justify.access()},
@@ -39,6 +41,7 @@ struct ScreenFontStyle {
       {metadata.name(), metadata.kind, metadata.access()},
       {pointSize.name(), pointSize.kind, pointSize.access()},
       {spacing.name(), spacing.kind, spacing.access()},
+      {style.name(), style.kind, style.access()},
       {topToBottom.name(), topToBottom.kind, topToBottom.access()},
   }};
 };

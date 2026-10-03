@@ -14,11 +14,9 @@ struct DynamicsCompressor {
       attack{"attack", access_type::input_output};
   inline static constexpr field_key<DynamicsCompressor, std::int32_t>
       channelCount{"channelCount", access_type::output_only};
-  inline static constexpr field_key<DynamicsCompressor,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<DynamicsCompressor, std::string>
       channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<DynamicsCompressor,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<DynamicsCompressor, std::string>
       channelInterpretation{"channelInterpretation", access_type::input_output};
   inline static constexpr field_key<DynamicsCompressor,
                                     ::x3d::sai::experimental::node_list>

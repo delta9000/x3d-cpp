@@ -16,9 +16,8 @@ struct ProjectionVolumeStyle {
   inline static constexpr field_key<ProjectionVolumeStyle,
                                     ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
-  inline static constexpr field_key<ProjectionVolumeStyle,
-                                    ::x3d::sai::experimental::enum_value>
-      type{"type", access_type::input_output};
+  inline static constexpr field_key<ProjectionVolumeStyle, std::string> type{
+      "type", access_type::input_output};
   inline static constexpr std::array<field_key_descriptor, 4> field_keys{{
       {enabled.name(), enabled.kind, enabled.access()},
       {intensityThreshold.name(), intensityThreshold.kind,

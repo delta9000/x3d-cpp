@@ -22,9 +22,8 @@ struct PeriodicWave {
   inline static constexpr field_key<PeriodicWave,
                                     ::x3d::sai::experimental::float_list>
       optionsReal{"optionsReal", access_type::input_output};
-  inline static constexpr field_key<PeriodicWave,
-                                    ::x3d::sai::experimental::enum_value>
-      type{"type", access_type::input_output};
+  inline static constexpr field_key<PeriodicWave, std::string> type{
+      "type", access_type::input_output};
   inline static constexpr std::array<field_key_descriptor, 6> field_keys{{
       {description.name(), description.kind, description.access()},
       {enabled.name(), enabled.kind, enabled.access()},

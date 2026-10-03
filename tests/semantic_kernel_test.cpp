@@ -603,7 +603,7 @@ TEST_CASE(
 }
 
 TEST_CASE("the owning value vocabulary preserves every non-node ISO kind") {
-  static_assert(std::variant_size_v<sai::value> == 45);
+  static_assert(std::variant_size_v<sai::value> == 43);
   static_assert(std::ranges::range<sai::bool_list>);
   static_assert(std::ranges::forward_range<sai::bool_list>);
   sai::bool_list booleans{true, false};
@@ -663,8 +663,6 @@ TEST_CASE("the owning value vocabulary preserves every non-node ISO kind") {
                                sai::vec4d{1, 2, 3, 4});
   check_owning_value_roundtrip("SFVec4fValue", sai::value_kind::sf_vec4f,
                                sai::vec4f{1, 2, 3, 4});
-  check_owning_value_roundtrip("SFEnumValue", sai::value_kind::sf_enum,
-                               sai::enum_value{"EXAMINE"});
 
   check_owning_value_roundtrip("MFBoolValue", sai::value_kind::mf_bool,
                                sai::bool_list{true, false});
@@ -717,8 +715,6 @@ TEST_CASE("the owning value vocabulary preserves every non-node ISO kind") {
                                sai::vec4d_list{{1, 2, 3, 4}});
   check_owning_value_roundtrip("MFVec4fValue", sai::value_kind::mf_vec4f,
                                sai::vec4f_list{{1, 2, 3, 4}});
-  check_owning_value_roundtrip("MFEnumValue", sai::value_kind::mf_enum,
-                               sai::enum_list{{"EXAMINE"}, {"WALK"}});
 }
 
 TEST_CASE("every generated descriptor adapts into the executable vocabulary") {

@@ -107,7 +107,7 @@ public:
 
 
 def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
-                                 enum_defs=None, spec_version="unknown") -> str:
+                                 spec_version="unknown") -> str:
     def wire(field):
         return getattr(field, "x3d_name", None) or field.name
 
@@ -138,7 +138,8 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
             f"{_quoted(component)}, {level},")
         lines.append(f"            {_strings(interfaces)},")
         lines.append("            std::vector<SemanticFieldDescriptor>{")
-        rendered = resolved_node_fields(node, nodes, graph, enum_defs)
+        # Legacy runtime enum-class storage is not an ISO SAI field kind.
+        rendered = resolved_node_fields(node, nodes, graph)
         raw_fields = {wire(field): field for field in node.fields}
         for descriptor in rendered:
             field = raw_fields[descriptor.x3d_name]

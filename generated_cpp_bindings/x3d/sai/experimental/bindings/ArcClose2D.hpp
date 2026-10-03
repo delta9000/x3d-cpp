@@ -9,9 +9,8 @@ namespace x3d::sai::experimental::bindings {
 struct ArcClose2D {
   static constexpr std::string_view x3d_name = "ArcClose2D";
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
-  inline static constexpr field_key<ArcClose2D,
-                                    ::x3d::sai::experimental::enum_value>
-      closureType{"closureType", access_type::initialize_only};
+  inline static constexpr field_key<ArcClose2D, std::string> closureType{
+      "closureType", access_type::initialize_only};
   inline static constexpr field_key<ArcClose2D, float> endAngle{
       "endAngle", access_type::initialize_only};
   inline static constexpr field_key<ArcClose2D,
