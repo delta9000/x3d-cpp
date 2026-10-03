@@ -195,7 +195,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Callbacks may change subscriptions, request edits, or dispose handles without invalidating traversal; reentrant edits are queued or rejected at a defined boundary.
     preserving_operations: [subscribe, unsubscribe, callback, request reentrant edit]
-    falsification_tests: [sai_evt_observer_mutation, sai_evt_callback_copy, sai_evt_field_observer, sai_evt_reentrant_batch, sai_life_observer_reference, sai_life_queued_event_reference, sai_callback_lifecycle, sai_runtime_state_queued_history]
+    falsification_tests: [sai_evt_observer_mutation, sai_evt_callback_copy, sai_evt_field_observer, sai_evt_reentrant_batch, sai_life_observer_reference, sai_life_queued_event_reference, sai_callback_lifecycle, sai_runtime_state_queued_history, sai_callback_ownership]
   - <<: *invariant_defaults
     id: INV-EVT-4
     review_marker: reviewed:sha256:35cf0e667b29
@@ -232,7 +232,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Immutable views declare thread safety, live mutation is serialized, callback affinity is documented, and commit conflict behavior is deterministic and data-race-free.
     preserving_operations: [read immutable view, stage concurrently, commit, dispatch callback]
-    falsification_tests: [sai_conc_boundary, sai_evt_reentrant_batch, sai_runtime_reentrant, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_callback_lifecycle]
+    falsification_tests: [sai_conc_boundary, sai_evt_reentrant_batch, sai_runtime_reentrant, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_callback_lifecycle, sai_callback_ownership]
   - <<: *invariant_defaults
     id: INV-ORDER-1
     review_marker: reviewed:sha256:23bcea329468
@@ -333,7 +333,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Rollback, unsubscribe, cancellation, and destruction are noexcept and appropriately idempotent, and invoke no user callback through a half-destroyed graph.
     preserving_operations: [rollback, unsubscribe, cancel, destroy]
-    falsification_tests: [sai_cxx_safe_destruction, sai_life_wrapper_disposal, sai_callback_lifecycle, sai_publication_integrity]
+    falsification_tests: [sai_cxx_safe_destruction, sai_life_wrapper_disposal, sai_callback_lifecycle, sai_publication_integrity, sai_callback_ownership]
   - <<: *invariant_defaults
     id: INV-CXX-4
     review_marker: reviewed:sha256:a82bcd9c8cad

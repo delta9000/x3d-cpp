@@ -119,7 +119,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.3.20 registerBrowserInterest
     public_symbol: x3d::sai::experimental::execution_context::observe
     support: partial
-    tests: [sai_evt_observer_mutation, sai_cxx_safe_destruction, sai_callback_lifecycle]
+    tests: [sai_evt_observer_mutation, sai_cxx_safe_destruction, sai_callback_lifecycle, sai_callback_ownership]
     binding_obligations: [CPP-4.3.1.2-CALLBACK-ROBUSTNESS]
     preserves: [INV-CXX-3, INV-EVT-3, INV-CONC-1, INV-EVT-5, INV-EVT-4]
 
@@ -438,7 +438,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.7.7 registerFieldInterest
     public_symbol: x3d::sai::experimental::execution_context::observe
     support: partial
-    tests: [sai_evt_field_observer, sai_evt_reentrant_batch, sai_runtime_cascade, sai_runtime_ignored, sai_callback_lifecycle]
+    tests: [sai_evt_field_observer, sai_evt_reentrant_batch, sai_runtime_cascade, sai_runtime_ignored, sai_callback_lifecycle, sai_callback_ownership]
     binding_obligations: [CPP-A.4.5-FIELD-OBSERVATION]
     preserves: [INV-CXX-3, INV-EVT-2, INV-EVT-3]
   - <<: *query
@@ -572,7 +572,7 @@ services:
     buffering: owner installs outside a frame; synchronous commit evaluates then publishes one settled cascade
     errors: invalid owner, retired context, operation in progress, or failed evaluation
     events: preparation and input callbacks run outside context locks; field observations are queued after settlement
-    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_reentrant, sai_runtime_tick, sai_runtime_generated_host]
+    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_reentrant, sai_runtime_tick, sai_runtime_generated_host, sai_callback_ownership]
     preserves: [INV-EDIT-1, INV-EDIT-2, INV-EVT-1, INV-EVT-2, INV-EVT-3, INV-CONC-1]
   - <<: *command
     id: SVC-RUNTIME-EMIT
@@ -594,7 +594,7 @@ services:
     buffering: an owned working frame produces one immutable checkpoint after its cascade settles; fields and checkpoint share one revision
     errors: invalid owner, retired context, operation in progress, or factory, processor, and finalizer failure
     events: frame callbacks and resource release run outside context locks; failed frames publish no observation or time advancement
-    tests: [sai_runtime_state_publish, sai_runtime_state_abort, sai_runtime_state_only, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_runtime_state_generated_host, sai_publication_integrity]
+    tests: [sai_runtime_state_publish, sai_runtime_state_abort, sai_runtime_state_only, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_runtime_state_generated_host, sai_publication_integrity, sai_callback_ownership]
     preserves: [INV-EDIT-1, INV-EDIT-2, INV-EDIT-4, INV-EVT-1, INV-CONC-1]
   - <<: *query
     id: SVC-RUNTIME-STATE

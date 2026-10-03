@@ -177,6 +177,13 @@ reuse the dynamic descriptor checks. `field.dynamic()` exposes the same handle
 for algorithms that discover their field types at runtime; it grants no extra
 access.
 
+`observe`, `set_runtime_processor`, and `set_runtime_factory` accept move-only
+callables directly, including lambdas that capture a `unique_ptr` or promise.
+Pass a named move-only callable with `std::move(callback)` to transfer ownership.
+The SDK retains the captured resources with the registration or installed host;
+cancellation, host removal, and world replacement release them outside internal
+locks. Copyable callables and the existing `std::function` aliases remain valid.
+
 A default-constructed `node{}` is X3D NULL and carries no context authority.
 `snapshot.read_node(field)` and `snapshot.read_nodes(field)` return usable
 handles, preserving every NULL position in MFNode. The existing `read` operation

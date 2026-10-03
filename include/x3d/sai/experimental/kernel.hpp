@@ -25,6 +25,22 @@ struct scene_edit_control;
 struct scene_state;
 struct runtime_step_control;
 
+// Copyable callables keep the std::function path; own move-only captures here.
+template <class Callback, class Result, class... Args>
+concept owned_callback =
+    (!std::is_copy_constructible_v<std::decay_t<Callback>>) &&
+    std::constructible_from<std::decay_t<Callback>, Callback &&> &&
+    std::is_invocable_r_v<Result, std::decay_t<Callback> &, Args...>;
+
+template <class Signature, class Callback>
+std::function<Signature> own_callback(Callback &&callback) {
+  auto owned = std::make_shared<std::decay_t<Callback>>(
+      std::forward<Callback>(callback));
+  return [owned = std::move(owned)](auto &&...args) -> decltype(auto) {
+    return std::invoke(*owned, std::forward<decltype(args)>(args)...);
+  };
+}
+
 // Checkpoints erase a shared const payload, so the host state may be move-only.
 template <class State>
 result<std::shared_ptr<const State>> runtime_state_as(const std::any &stored,
@@ -1130,12 +1146,31 @@ public:
   scene_edit edit() const;
   event_batch events(event_time time) const;
   subscription observe(observer callback) const;
+  template <class Callback>
+    requires detail::owned_callback<Callback, void, const change_set &>
+  subscription observe(Callback &&callback) const {
+    return observe(detail::own_callback<void(const change_set &)>(
+        std::forward<Callback>(callback)));
+  }
   result<subscription> observe(const dynamic_field &source,
                                event_observer callback) const;
+  template <class Callback>
+    requires detail::owned_callback<Callback, void, const event_delivery &>
+  result<subscription> observe(const dynamic_field &source,
+                               Callback &&callback) const {
+    return observe(source, detail::own_callback<void(const event_delivery &)>(
+                               std::forward<Callback>(callback)));
+  }
   template <class T>
   result<subscription> observe(const experimental::field<T> &source,
                                event_observer callback) const {
     return observe(source.dynamic(), std::move(callback));
+  }
+  template <class T, class Callback>
+    requires detail::owned_callback<Callback, void, const event_delivery &>
+  result<subscription> observe(const experimental::field<T> &source,
+                               Callback &&callback) const {
+    return observe(source.dynamic(), std::forward<Callback>(callback));
   }
   // Exactly one consumer dispatches a context at a time. Recursive/concurrent
   // calls return immediately with already_draining, leaving the queue alone.
@@ -1160,8 +1195,26 @@ public:
   result<void> replace_world(const execution_context &replacement);
   result<void> set_runtime_processor(const execution_context &scene,
                                      runtime_processor processor);
+  template <class Callback>
+    requires detail::owned_callback<Callback, result<void>, runtime_step &>
+  result<void> set_runtime_processor(const execution_context &scene,
+                                     Callback &&processor) {
+    return set_runtime_processor(
+        scene, detail::own_callback<result<void>(runtime_step &)>(
+                   std::forward<Callback>(processor)));
+  }
   result<void> set_runtime_factory(const execution_context &scene,
                                    runtime_factory factory);
+  template <class Callback>
+    requires detail::owned_callback<Callback, result<runtime_frame>,
+                                    const scene_snapshot &, event_time>
+  result<void> set_runtime_factory(const execution_context &scene,
+                                   Callback &&factory) {
+    return set_runtime_factory(scene,
+                               detail::own_callback<result<runtime_frame>(
+                                   const scene_snapshot &, event_time)>(
+                                   std::forward<Callback>(factory)));
+  }
   load_ticket begin_load();
   result<void> cancel(const load_ticket &ticket);
   result<void> complete_load(const load_ticket &ticket,

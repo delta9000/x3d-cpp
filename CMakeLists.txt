@@ -366,3 +366,9 @@ target_link_libraries(x3d_sai_publication_tests PRIVATE
     x3d_sai_experimental x3d_sai_doctest_main)
 add_test(NAME sai_publication_integrity COMMAND x3d_sai_publication_tests)
 set_tests_properties(sai_publication_integrity PROPERTIES TIMEOUT 15)
+
+add_executable(x3d_sai_callback_ownership_tests tests/callback_ownership_test.cpp)
+target_link_libraries(x3d_sai_callback_ownership_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_callback_ownership COMMAND x3d_sai_callback_ownership_tests)
+set_tests_properties(sai_callback_ownership PROPERTIES TIMEOUT 15)
