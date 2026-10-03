@@ -33,8 +33,6 @@ struct Analyser {
       "frequencyBinCount", access_type::input_output};
   inline static constexpr field_key<Analyser, float> gain{
       "gain", access_type::input_output};
-  inline static constexpr field_key<Analyser, ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<Analyser, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<Analyser, bool> isPaused{
@@ -62,17 +60,7 @@ struct Analyser {
   inline static constexpr field_key<Analyser,
                                     ::x3d::sai::experimental::time_value>
       tailTime{"tailTime", access_type::input_output};
-  inline static constexpr field_key<Analyser, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<Analyser, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<Analyser, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<Analyser, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<Analyser, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 27> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 21> field_keys{{
       {channelCount.name(), channelCount.kind, channelCount.access()},
       {channelCountMode.name(), channelCountMode.kind,
        channelCountMode.access()},
@@ -86,7 +74,6 @@ struct Analyser {
       {frequencyBinCount.name(), frequencyBinCount.kind,
        frequencyBinCount.access()},
       {gain.name(), gain.kind, gain.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {isPaused.name(), isPaused.kind, isPaused.access()},
       {maxDecibels.name(), maxDecibels.kind, maxDecibels.access()},
@@ -99,11 +86,6 @@ struct Analyser {
       {startTime.name(), startTime.kind, startTime.access()},
       {stopTime.name(), stopTime.kind, stopTime.access()},
       {tailTime.name(), tailTime.kind, tailTime.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

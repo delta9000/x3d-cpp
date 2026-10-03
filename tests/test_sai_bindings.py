@@ -62,15 +62,13 @@ def test_binding_index_covers_every_generated_tag_in_order(model):
     assert "Transform::schema_fingerprint" in generated
 
 
-def test_node_image_and_reserved_field_mappings_are_exact(model):
+def test_node_and_image_field_mappings_are_exact(model):
     group = emit("Group", model)
     texture = emit("PixelTexture", model)
     assert "field_key<Group, ::x3d::sai::experimental::node_list>" in group
     assert "children{" in group
     assert "field_key<PixelTexture, ::x3d::sai::experimental::image>" in texture
     assert "image{" in texture
-    assert "field_key<PixelTexture, std::string>" in texture
-    assert 'class_{"class",' in texture
 
 
 def test_bounded_enums_use_experimental_owning_values(model):
@@ -104,3 +102,50 @@ def test_duplicate_sanitized_field_identifier_fails_closed(model):
 
 def test_emission_is_byte_deterministic(model):
     assert emit("Transform", model) == emit("Transform", model)
+
+
+def test_transform_fields_match_the_abstract_node_interface(model):
+    # ISO/IEC 19775-1:2023, 10.4.4; independently listed rather than derived
+    # from another emitter consuming the same UOM fields.
+    from x3d_sai_gen.emit.semantic_fields import resolved_node_fields
+
+    nodes, graph, enum_defs = model
+    fields = resolved_node_fields(nodes["Transform"], nodes, graph, enum_defs)
+    assert {field.x3d_name for field in fields} == {
+        "addChildren", "removeChildren", "center", "children", "bboxDisplay",
+        "metadata", "rotation", "scale", "scaleOrientation", "translation",
+        "visible", "bboxCenter", "bboxSize",
+    }
+
+
+def test_encoding_attributes_are_not_sai_fields_on_any_node(model):
+    from x3d_sai_gen.emit.semantic_fields import resolved_node_fields
+
+    nodes, graph, enum_defs = model
+    for node in nodes.values():
+        fields = resolved_node_fields(node, nodes, graph, enum_defs)
+        assert not {field.x3d_name for field in fields} & {
+            "DEF", "USE", "IS", "class", "id", "style",
+        }, node.name
+
+
+@pytest.mark.parametrize("difference", ["content", "missing", "extra"])
+def test_generated_check_detects_drift_without_rewriting(tmp_path, difference):
+    from x3d_sai_gen.cli import check_generated
+
+    expected = tmp_path / "expected"
+    actual = tmp_path / "actual"
+    expected.mkdir()
+    actual.mkdir()
+    (expected / "binding.hpp").write_text("expected")
+    (actual / "binding.hpp").write_text("expected")
+    assert check_generated(expected, actual) == 0
+    if difference == "content":
+        (actual / "binding.hpp").write_text("changed")
+    elif difference == "missing":
+        (actual / "binding.hpp").unlink()
+    else:
+        (actual / "stale.hpp").write_text("stale")
+    before = {path.name: path.read_bytes() for path in actual.iterdir()}
+    assert check_generated(expected, actual) == 1
+    assert {path.name: path.read_bytes() for path in actual.iterdir()} == before

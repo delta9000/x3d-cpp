@@ -11,9 +11,6 @@ struct FloatVertexAttribute {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<FloatVertexAttribute,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<FloatVertexAttribute,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<FloatVertexAttribute, std::string> name{
       "name", access_type::initialize_only};
@@ -22,27 +19,11 @@ struct FloatVertexAttribute {
   inline static constexpr field_key<FloatVertexAttribute,
                                     ::x3d::sai::experimental::float_list>
       value{"value", access_type::input_output};
-  inline static constexpr field_key<FloatVertexAttribute, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<FloatVertexAttribute, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<FloatVertexAttribute, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<FloatVertexAttribute, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<FloatVertexAttribute, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 10> field_keys{{
-      {IS.name(), IS.kind, IS.access()},
+  inline static constexpr std::array<field_key_descriptor, 4> field_keys{{
       {metadata.name(), metadata.kind, metadata.access()},
       {name.name(), name.kind, name.access()},
       {numComponents.name(), numComponents.kind, numComponents.access()},
       {value.name(), value.kind, value.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

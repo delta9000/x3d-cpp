@@ -14,9 +14,6 @@ struct X3DTimeDependentNode {
   inline static constexpr field_key<X3DTimeDependentNode,
                                     ::x3d::sai::experimental::time_value>
       elapsedTime{"elapsedTime", access_type::output_only};
-  inline static constexpr field_key<X3DTimeDependentNode,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<X3DTimeDependentNode, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<X3DTimeDependentNode, bool> isPaused{
@@ -36,20 +33,9 @@ struct X3DTimeDependentNode {
   inline static constexpr field_key<X3DTimeDependentNode,
                                     ::x3d::sai::experimental::time_value>
       stopTime{"stopTime", access_type::input_output};
-  inline static constexpr field_key<X3DTimeDependentNode, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<X3DTimeDependentNode, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<X3DTimeDependentNode, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<X3DTimeDependentNode, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<X3DTimeDependentNode, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 9> field_keys{{
       {description.name(), description.kind, description.access()},
       {elapsedTime.name(), elapsedTime.kind, elapsedTime.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {isPaused.name(), isPaused.kind, isPaused.access()},
       {metadata.name(), metadata.kind, metadata.access()},
@@ -57,11 +43,6 @@ struct X3DTimeDependentNode {
       {resumeTime.name(), resumeTime.kind, resumeTime.access()},
       {startTime.name(), startTime.kind, startTime.access()},
       {stopTime.name(), stopTime.kind, stopTime.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

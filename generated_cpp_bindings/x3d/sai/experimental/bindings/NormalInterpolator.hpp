@@ -10,9 +10,6 @@ struct NormalInterpolator {
   static constexpr std::string_view x3d_name = "NormalInterpolator";
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<NormalInterpolator,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<NormalInterpolator,
                                     ::x3d::sai::experimental::float_list>
       key{"key", access_type::input_output};
   inline static constexpr field_key<NormalInterpolator,
@@ -26,28 +23,12 @@ struct NormalInterpolator {
   inline static constexpr field_key<NormalInterpolator,
                                     ::x3d::sai::experimental::vec3f_list>
       value_changed{"value_changed", access_type::output_only};
-  inline static constexpr field_key<NormalInterpolator, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<NormalInterpolator, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<NormalInterpolator, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<NormalInterpolator, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<NormalInterpolator, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 11> field_keys{{
-      {IS.name(), IS.kind, IS.access()},
+  inline static constexpr std::array<field_key_descriptor, 5> field_keys{{
       {key.name(), key.kind, key.access()},
       {keyValue.name(), keyValue.kind, keyValue.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {set_fraction.name(), set_fraction.kind, set_fraction.access()},
       {value_changed.name(), value_changed.kind, value_changed.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

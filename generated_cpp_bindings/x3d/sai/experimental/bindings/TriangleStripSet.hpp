@@ -27,9 +27,6 @@ struct TriangleStripSet {
       fogCoord{"fogCoord", access_type::input_output};
   inline static constexpr field_key<TriangleStripSet,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<TriangleStripSet,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<TriangleStripSet,
                                     ::x3d::sai::experimental::node_id>
@@ -44,35 +41,19 @@ struct TriangleStripSet {
   inline static constexpr field_key<TriangleStripSet,
                                     ::x3d::sai::experimental::node_id>
       texCoord{"texCoord", access_type::input_output};
-  inline static constexpr field_key<TriangleStripSet, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<TriangleStripSet, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<TriangleStripSet, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<TriangleStripSet, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<TriangleStripSet, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 12> field_keys{{
       {attrib.name(), attrib.kind, attrib.access()},
       {ccw.name(), ccw.kind, ccw.access()},
       {color.name(), color.kind, color.access()},
       {colorPerVertex.name(), colorPerVertex.kind, colorPerVertex.access()},
       {coord.name(), coord.kind, coord.access()},
       {fogCoord.name(), fogCoord.kind, fogCoord.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {normal.name(), normal.kind, normal.access()},
       {normalPerVertex.name(), normalPerVertex.kind, normalPerVertex.access()},
       {solid.name(), solid.kind, solid.access()},
       {stripCount.name(), stripCount.kind, stripCount.access()},
       {texCoord.name(), texCoord.kind, texCoord.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

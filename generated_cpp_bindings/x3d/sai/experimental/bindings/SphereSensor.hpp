@@ -15,9 +15,6 @@ struct SphereSensor {
       "description", access_type::input_output};
   inline static constexpr field_key<SphereSensor, bool> enabled{
       "enabled", access_type::input_output};
-  inline static constexpr field_key<SphereSensor,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<SphereSensor, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<SphereSensor, bool> isOver{
@@ -34,21 +31,10 @@ struct SphereSensor {
   inline static constexpr field_key<SphereSensor,
                                     ::x3d::sai::experimental::vec3f>
       trackPoint_changed{"trackPoint_changed", access_type::output_only};
-  inline static constexpr field_key<SphereSensor, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<SphereSensor, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<SphereSensor, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<SphereSensor, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<SphereSensor, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 9> field_keys{{
       {autoOffset.name(), autoOffset.kind, autoOffset.access()},
       {description.name(), description.kind, description.access()},
       {enabled.name(), enabled.kind, enabled.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {isOver.name(), isOver.kind, isOver.access()},
       {metadata.name(), metadata.kind, metadata.access()},
@@ -57,11 +43,6 @@ struct SphereSensor {
        rotation_changed.access()},
       {trackPoint_changed.name(), trackPoint_changed.kind,
        trackPoint_changed.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

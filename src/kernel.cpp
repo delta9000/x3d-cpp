@@ -9,6 +9,7 @@
 #include <limits>
 #include <map>
 #include <mutex>
+#include <set>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -161,9 +162,36 @@ bool value_matches(value_kind kind, const value &candidate) {
   return kind_of(candidate) == kind && value_is_well_formed(candidate);
 }
 
+bool has_non_null_node_identity(const value &candidate) {
+  if (const auto *single = std::get_if<node_id>(&candidate))
+    return single->value != 0;
+  if (const auto *many = std::get_if<node_list>(&candidate))
+    return std::ranges::any_of(*many, [](node_id id) { return id.value != 0; });
+  return false;
+}
+
 bool standard_unit_category(std::string_view category) {
   return category == "angle" || category == "force" || category == "length" ||
          category == "mass";
+}
+
+struct unit_basis {
+  std::string_view category;
+  int power;
+};
+
+std::optional<unit_basis> field_unit_basis(std::string_view category) {
+  if (standard_unit_category(category))
+    return unit_basis{category, 1};
+  if (category == "angular_velocity")
+    return unit_basis{"angle", 1};
+  if (category == "acceleration" || category == "speed")
+    return unit_basis{"length", 1};
+  if (category == "area")
+    return unit_basis{"length", 2};
+  if (category == "volume")
+    return unit_basis{"length", 3};
+  return std::nullopt;
 }
 
 bool unit_scalable_kind(value_kind kind) {
@@ -223,7 +251,12 @@ result<void> type_registry::define(node_type_descriptor descriptor) {
           error_code::invalid_descriptor, "type_registry.define",
           "default value does not match field kind: " + field.name);
     }
-    if (field.unit_category && (!standard_unit_category(*field.unit_category) ||
+    if (has_non_null_node_identity(field.default_value)) {
+      return descriptor_error(
+          error_code::invalid_descriptor, "type_registry.define",
+          "node default requires context-bearing authoring: " + field.name);
+    }
+    if (field.unit_category && (!field_unit_basis(*field.unit_category) ||
                                 !unit_scalable_kind(field.kind))) {
       return descriptor_error(error_code::invalid_descriptor,
                               "type_registry.define",
@@ -258,11 +291,10 @@ struct scene_state {
     std::string type_name;
     std::unordered_map<std::string, value> fields;
     std::optional<declaration_id> scope_owner;
+    bool realized = false;
   };
 
   revision_id revision = 0;
-  std::uint64_t next_node_id = 1;
-  std::uint64_t next_declaration_id = 1;
   std::unordered_map<std::uint64_t, node_record> nodes;
   std::vector<declaration_id> declaration_order;
   std::unordered_map<std::uint64_t, declaration_descriptor> declarations;
@@ -273,6 +305,7 @@ struct scene_state {
   std::vector<import_binding> imports;
   std::vector<std::weak_ptr<context_control>> import_sources;
   std::vector<route> routes;
+  std::any runtime_state;
 };
 
 struct context_control {
@@ -306,12 +339,19 @@ struct context_control {
   type_registry registry;
   std::shared_ptr<const scene_state> state = std::make_shared<scene_state>();
   std::atomic<revision_id> published_revision{0};
+  // Identity allocation belongs to the context, not the rollbackable scene.
+  // Concurrent, abandoned, and rejected edits may consume IDs, but cannot
+  // cause a later object to impersonate one of their leaked handles.
+  std::atomic<std::uint64_t> next_node_id{1};
+  std::atomic<std::uint64_t> next_declaration_id{1};
   std::uint64_t next_observer_id = 1;
   std::map<std::uint64_t, std::shared_ptr<const execution_context::observer>>
       observers;
   std::map<std::uint64_t, field_observer_record> event_observers;
   std::deque<pending_notification> pending;
   std::optional<event_time> last_event_time;
+  std::shared_ptr<const runtime_factory> factory;
+  bool processing = false;
   std::vector<import_dependent_record> import_dependents;
 };
 
@@ -334,6 +374,17 @@ struct browser_control {
 } // namespace detail
 
 namespace {
+
+std::optional<std::uint64_t>
+reserve_identity(std::atomic<std::uint64_t> &next) {
+  auto candidate = next.load(std::memory_order_relaxed);
+  while (candidate != std::numeric_limits<std::uint64_t>::max()) {
+    if (next.compare_exchange_weak(candidate, candidate + 1,
+                                   std::memory_order_relaxed))
+      return candidate;
+  }
+  return std::nullopt;
+}
 
 unexpected edit_error(error_code code, const char *operation,
                       const detail::context_control &context,
@@ -412,13 +463,18 @@ bool accepts_node_payload(const detail::context_control &context,
                           const detail::scene_state &state,
                           const field_descriptor &field, const value &payload) {
   if (field.kind == value_kind::sf_node) {
-    const auto candidate = state.nodes.find(std::get<node_id>(payload).value);
+    const auto id = std::get<node_id>(payload);
+    if (id.value == 0)
+      return true;
+    const auto candidate = state.nodes.find(id.value);
     return candidate != state.nodes.end() &&
            accepts_node_type(context, field, candidate->second);
   }
   if (field.kind == value_kind::mf_node) {
     return std::ranges::all_of(
         std::get<node_list>(payload), [&](const node_id id) {
+          if (id.value == 0)
+            return true;
           const auto candidate = state.nodes.find(id.value);
           return candidate != state.nodes.end() &&
                  accepts_node_type(context, field, candidate->second);
@@ -519,6 +575,16 @@ find_live_context_reference(const detail::context_control &context,
       return node_reference_blocker{
           "node is retained by an undrained event notification",
           event->delivery.field};
+    if (event) {
+      const value &payload = event->delivery.payload;
+      const auto *single = std::get_if<node_id>(&payload);
+      const auto *many = std::get_if<node_list>(&payload);
+      if ((single && *single == target) ||
+          (many && std::ranges::find(*many, target) != many->end()))
+        return node_reference_blocker{
+            "node is carried by an undrained event notification",
+            event->delivery.field};
+    }
   }
   return std::nullopt;
 }
@@ -530,16 +596,25 @@ struct interface_validation_issue {
 };
 
 std::optional<interface_validation_issue> validate_declaration_interface(
-    const std::vector<interface_field_descriptor> &interface) {
+    const std::vector<interface_field_descriptor> &interface,
+    bool external = false, bool allow_authored_node_defaults = false) {
   std::unordered_set<std::string> names;
   for (const auto &field : interface) {
     if (field.name.empty())
       return interface_validation_issue{
           .message = "interface field name must not be empty", .field = {}};
+    if (field.name == "metadata")
+      return interface_validation_issue{
+          .message = "prototype interface cannot redeclare metadata",
+          .field = field.name};
     if (!names.insert(field.name).second)
       return interface_validation_issue{
           .code = error_code::duplicate_field,
           .message = "interface field name is already defined: " + field.name,
+          .field = field.name};
+    if (external && field.default_value)
+      return interface_validation_issue{
+          .message = "external interface fields cannot declare defaults",
           .field = field.name};
     if (field.default_value && (field.access == access_type::input_only ||
                                 field.access == access_type::output_only))
@@ -551,7 +626,13 @@ std::optional<interface_validation_issue> validate_declaration_interface(
           .message =
               "interface default value does not match its exact field kind",
           .field = field.name};
-    if (field.unit_category && (!standard_unit_category(*field.unit_category) ||
+    if (!allow_authored_node_defaults && field.default_value &&
+        has_non_null_node_identity(*field.default_value))
+      return interface_validation_issue{
+          .message =
+              "node interface default requires context-bearing authoring",
+          .field = field.name};
+    if (field.unit_category && (!field_unit_basis(*field.unit_category) ||
                                 !unit_scalable_kind(field.kind)))
       return interface_validation_issue{
           .message = "interface unit category is unknown or incompatible",
@@ -567,21 +648,21 @@ std::optional<interface_validation_issue> validate_declaration_interface(
 
 bool compatible_interface_field(const interface_field_descriptor &external,
                                 const interface_field_descriptor &local) {
-  if (external.name != local.name || external.kind != local.kind ||
-      external.access != local.access ||
-      external.accepted_node_types != local.accepted_node_types ||
-      external.unit_category != local.unit_category ||
-      external.default_value.has_value() != local.default_value.has_value())
-    return false;
-  return !external.default_value ||
-         same_representation(*external.default_value, *local.default_value);
+  return external.kind == local.kind && external.access == local.access &&
+         (external.accepted_node_types.empty() ||
+          external.accepted_node_types == local.accepted_node_types) &&
+         (!external.unit_category ||
+          external.unit_category == local.unit_category);
 }
 
 bool compatible_declaration_interface(
     const std::vector<interface_field_descriptor> &external,
     const std::vector<interface_field_descriptor> &local) {
-  return external.size() == local.size() &&
-         std::ranges::equal(external, local, compatible_interface_field);
+  return std::ranges::all_of(external, [&](const auto &field) {
+    const auto match =
+        std::ranges::find(local, field.name, &interface_field_descriptor::name);
+    return match != local.end() && compatible_interface_field(field, *match);
+  });
 }
 
 std::optional<std::string>
@@ -607,10 +688,10 @@ validate_external_resolution(const detail::scene_state &state,
   return std::nullopt;
 }
 
-bool retained_write_allowed(access_type access, bool node_is_being_created) {
+bool retained_write_allowed(access_type access, bool node_is_in_setup) {
   switch (access) {
   case access_type::initialize_only:
-    return node_is_being_created;
+    return node_is_in_setup;
   case access_type::input_only:
   case access_type::output_only:
     return false;
@@ -625,11 +706,11 @@ bool field_is_readable(access_type access) {
 }
 
 bool field_is_writable(access_type access, write_intent intent,
-                       bool node_is_being_created) {
+                       bool node_is_in_setup) {
   switch (intent) {
   case write_intent::initialize:
-    return node_is_being_created && (access == access_type::initialize_only ||
-                                     access == access_type::input_output);
+    return node_is_in_setup && (access == access_type::initialize_only ||
+                                access == access_type::input_output);
   case write_intent::retained:
     return access == access_type::input_output;
   case write_intent::event_input:
@@ -642,42 +723,87 @@ bool field_is_writable(access_type access, write_intent intent,
   return false;
 }
 
+// Traverse node-valued fields in descriptor/element order, including shared
+// and non-containment references. NULL and cycles do not create transitions.
+bool realize_nodes(const detail::context_control &context,
+                   detail::scene_state &state, const value &roots,
+                   std::vector<semantic_change> &changes) {
+  std::vector<node_id> pending;
+  const auto enqueue = [&](const value &payload) {
+    if (const auto *single = std::get_if<node_id>(&payload))
+      pending.push_back(*single);
+    else if (const auto *many = std::get_if<node_list>(&payload))
+      pending.insert(pending.end(), many->begin(), many->end());
+  };
+  enqueue(roots);
+  bool changed = false;
+  for (std::size_t index = 0; index < pending.size(); ++index) {
+    const auto id = pending[index];
+    if (id.value == 0)
+      continue;
+    auto &record = state.nodes.at(id.value);
+    // Every reference mutation realizes its new targets. A realized node's
+    // existing graph therefore needs no second traversal, even for cycles.
+    if (record.realized)
+      continue;
+    record.realized = true;
+    changed = true;
+    changes.push_back(graph_change{.kind = change_kind::node_realized,
+                                   .node = id,
+                                   .field = {},
+                                   .before = false,
+                                   .after = true,
+                                   .index = 0});
+    for (const auto &field : context.registry.find(record.type_name)->fields)
+      enqueue(record.fields.at(field.name));
+  }
+  return changed;
+}
+
 template <class T> bool scale_unit_value(T &, double) { return false; }
 
 bool scale_unit_value(float &stored, double factor) {
-  stored = static_cast<float>(static_cast<double>(stored) * factor);
+  const double scaled = static_cast<double>(stored) * factor;
+  if (std::isfinite(stored) &&
+      (!std::isfinite(scaled) || scaled > std::numeric_limits<float>::max() ||
+       scaled < -std::numeric_limits<float>::max()))
+    return false;
+  stored = static_cast<float>(scaled);
   return true;
 }
 
 bool scale_unit_value(double &stored, double factor) {
-  stored *= factor;
+  const double scaled = stored * factor;
+  if (std::isfinite(stored) && !std::isfinite(scaled))
+    return false;
+  stored = scaled;
   return true;
 }
 
 #define X3D_SAI_SCALE_VECTOR(Type, ...)                                        \
-  bool scale_unit_value(Type &stored, double factor) {                         \
-    __VA_ARGS__;                                                               \
-    return true;                                                               \
-  }
-X3D_SAI_SCALE_VECTOR(vec2f, scale_unit_value(stored.x, factor);
-                     scale_unit_value(stored.y, factor));
-X3D_SAI_SCALE_VECTOR(vec3f, scale_unit_value(stored.x, factor);
-                     scale_unit_value(stored.y, factor);
-                     scale_unit_value(stored.z, factor));
-X3D_SAI_SCALE_VECTOR(vec4f, scale_unit_value(stored.x, factor);
-                     scale_unit_value(stored.y, factor);
-                     scale_unit_value(stored.z, factor);
-                     scale_unit_value(stored.w, factor));
-X3D_SAI_SCALE_VECTOR(vec2d, stored.x *= factor; stored.y *= factor);
-X3D_SAI_SCALE_VECTOR(vec3d, stored.x *= factor; stored.y *= factor;
-                     stored.z *= factor);
-X3D_SAI_SCALE_VECTOR(vec4d, stored.x *= factor; stored.y *= factor;
-                     stored.z *= factor; stored.w *= factor);
+  bool scale_unit_value(Type &stored, double factor) { return __VA_ARGS__; }
+X3D_SAI_SCALE_VECTOR(vec2f, scale_unit_value(stored.x, factor) &&
+                                scale_unit_value(stored.y, factor));
+X3D_SAI_SCALE_VECTOR(vec3f, scale_unit_value(stored.x, factor) &&
+                                scale_unit_value(stored.y, factor) &&
+                                scale_unit_value(stored.z, factor));
+X3D_SAI_SCALE_VECTOR(vec4f, scale_unit_value(stored.x, factor) &&
+                                scale_unit_value(stored.y, factor) &&
+                                scale_unit_value(stored.z, factor) &&
+                                scale_unit_value(stored.w, factor));
+X3D_SAI_SCALE_VECTOR(vec2d, scale_unit_value(stored.x, factor) &&
+                                scale_unit_value(stored.y, factor));
+X3D_SAI_SCALE_VECTOR(vec3d, scale_unit_value(stored.x, factor) &&
+                                scale_unit_value(stored.y, factor) &&
+                                scale_unit_value(stored.z, factor));
+X3D_SAI_SCALE_VECTOR(vec4d, scale_unit_value(stored.x, factor) &&
+                                scale_unit_value(stored.y, factor) &&
+                                scale_unit_value(stored.z, factor) &&
+                                scale_unit_value(stored.w, factor));
 #undef X3D_SAI_SCALE_VECTOR
 
 bool scale_unit_value(rotation &stored, double factor) {
-  scale_unit_value(stored.angle, factor);
-  return true;
+  return scale_unit_value(stored.angle, factor);
 }
 
 template <class T, class Allocator>
@@ -701,15 +827,26 @@ std::optional<value> convert_unit_value(const detail::scene_state &state,
   if (kind_of(payload) != descriptor.kind ||
       !unit_scalable_kind(descriptor.kind))
     return std::nullopt;
+  const auto basis = field_unit_basis(*descriptor.unit_category);
+  if (!basis)
+    return std::nullopt;
   const auto declaration = std::find_if(
       state.units.begin(), state.units.end(), [&](const auto &candidate) {
-        return candidate.category == *descriptor.unit_category;
+        return candidate.category == basis->category;
       });
   if (declaration == state.units.end() || declaration->conversion_factor == 1.0)
     return payload;
-  const double factor = source == value_space::authored
-                            ? declaration->conversion_factor
-                            : 1.0 / declaration->conversion_factor;
+  double factor = declaration->conversion_factor;
+  if (basis->power == 2)
+    factor *= declaration->conversion_factor;
+  else if (basis->power == 3)
+    factor *= declaration->conversion_factor * declaration->conversion_factor;
+  if (!std::isfinite(factor) || factor == 0.0)
+    return std::nullopt;
+  if (source == value_space::canonical)
+    factor = 1.0 / factor;
+  if (!std::isfinite(factor) || factor == 0.0)
+    return std::nullopt;
   const bool converted = std::visit(
       [&](auto &stored) { return scale_unit_value(stored, factor); }, payload);
   if (!converted)
@@ -793,7 +930,6 @@ struct detail::scene_edit_control {
   bool changed = false;
   std::optional<unexpected> poison;
   std::vector<semantic_change> changes;
-  std::unordered_set<std::uint64_t> created_nodes;
   std::unordered_set<std::uint64_t> removed_nodes;
   bool committed = false;
 };
@@ -804,8 +940,123 @@ struct event_batch::impl {
   event_time time;
   std::optional<unexpected> poison;
   std::vector<event_delivery> seeds;
+  write_intent intent = write_intent::event_input;
+  const char *send_operation() const noexcept {
+    return intent == write_intent::runtime_output ? "runtime_step.emit"
+                                                  : "event_batch.send";
+  }
   bool committed = false;
 };
+
+struct detail::runtime_step_control {
+  std::mutex mutex;
+  event_time stamp;
+  generation_id generation = 0;
+  revision_id revision = 0;
+  std::optional<event_delivery> incoming;
+  std::unique_ptr<event_batch> outputs;
+  bool active = true;
+  bool ignored = false;
+};
+
+namespace {
+unexpected expired_runtime_step(const detail::runtime_step_control &step,
+                                const char *operation) {
+  auto error = descriptor_error(error_code::stale_revision, operation,
+                                "runtime callback has finished");
+  error.value().generation = step.generation;
+  error.value().base_revision = step.revision;
+  return error;
+}
+
+// Declared before the publication lock: return paths release that lock before
+// this guard clears the reservation. Callbacks never execute under it.
+struct event_processing_guard {
+  std::shared_ptr<detail::context_control> context;
+  bool armed = false;
+  ~event_processing_guard() {
+    if (!armed)
+      return;
+    std::lock_guard lock(context->mutex);
+    context->processing = false;
+  }
+};
+} // namespace
+
+event_time runtime_step::time() const noexcept { return control_->stamp; }
+const event_delivery *runtime_step::input() const noexcept {
+  return control_->incoming ? &*control_->incoming : nullptr;
+}
+
+result<value> runtime_step::read(const dynamic_field &source,
+                                 value_space space) const {
+  std::lock_guard lock(control_->mutex);
+  if (!control_->active)
+    return expired_runtime_step(*control_, "runtime_step.read");
+  const auto &batch = *control_->outputs->impl_;
+  // Owning reads reuse snapshot validation. No view into the mutable working
+  // revision leaves this callback-scoped interface.
+  scene_snapshot working{batch.context, batch.base};
+  auto current = working.read(source);
+  if (!current)
+    return failure(current.error());
+  if (!control_->ignored && control_->incoming &&
+      control_->incoming->target == source.node() &&
+      control_->incoming->field == source.name())
+    current = control_->incoming->payload;
+  if (space == value_space::canonical)
+    return current;
+  const auto &owner = batch.base->nodes.at(source.node().value);
+  const auto *descriptor =
+      find_descriptor(*batch.context, owner, source.name());
+  auto converted =
+      convert_unit_value(*batch.base, *descriptor, std::move(*current),
+                         value_space::canonical, space);
+  if (!converted)
+    return edit_error(
+        error_code::invalid_value, "runtime_step.read", *batch.context,
+        batch.base->revision,
+        "field representation cannot carry the declared unit category",
+        source.node(), source.name());
+  return std::move(*converted);
+}
+
+result<void> runtime_step::emit(const dynamic_field &target, value payload,
+                                value_space space) {
+  std::lock_guard lock(control_->mutex);
+  if (!control_->active)
+    return expired_runtime_step(*control_, "runtime_step.emit");
+  return control_->outputs->send(target, std::move(payload), space);
+}
+result<void> runtime_step::emit(const dynamic_field &target,
+                                const node &payload) {
+  std::lock_guard lock(control_->mutex);
+  if (!control_->active)
+    return expired_runtime_step(*control_, "runtime_step.emit");
+  return control_->outputs->send(target, payload);
+}
+result<void> runtime_step::emit(const dynamic_field &target,
+                                std::span<const node> payload) {
+  std::lock_guard lock(control_->mutex);
+  if (!control_->active)
+    return expired_runtime_step(*control_, "runtime_step.emit");
+  return control_->outputs->send(target, payload);
+}
+result<void> runtime_step::ignore_input() {
+  std::lock_guard lock(control_->mutex);
+  if (!control_->active)
+    return expired_runtime_step(*control_, "runtime_step.ignore_input");
+  if (!control_->incoming) {
+    auto &batch = *control_->outputs->impl_;
+    batch.poison =
+        edit_error(error_code::invalid_context, "runtime_step.ignore_input",
+                   *batch.context, batch.base->revision,
+                   "prepare callback has no input to ignore");
+    return *batch.poison;
+  }
+  control_->ignored = true;
+  return {};
+}
 
 scene_edit::scene_edit(
     std::shared_ptr<detail::scene_edit_control> implementation)
@@ -888,14 +1139,20 @@ result<node> scene_edit::create_node(const std::string &type_name) {
                    "abstract node type cannot be instantiated: " + type_name);
     return *impl_->poison;
   }
-  const node_id id{impl_->staged.next_node_id++};
+  const auto reserved = reserve_identity(impl_->context->next_node_id);
+  if (!reserved) {
+    impl_->poison = edit_error(
+        error_code::invalid_value, "scene_edit.create_node", *impl_->context,
+        impl_->base->revision, "node identity space is exhausted");
+    return *impl_->poison;
+  }
+  const node_id id{*reserved};
   detail::scene_state::node_record record;
   record.type_name = type_name;
   for (const auto &field : type->fields) {
     record.fields.emplace(field.name, field.default_value);
   }
   impl_->staged.nodes.emplace(id.value, std::move(record));
-  impl_->created_nodes.insert(id.value);
   impl_->changed = true;
   impl_->changes.push_back(graph_change{.kind = change_kind::node_created,
                                         .node = id,
@@ -904,6 +1161,28 @@ result<node> scene_edit::create_node(const std::string &type_name) {
                                         .after = type_name,
                                         .index = 0});
   return node{impl_->context, impl_->context->generation, id};
+}
+
+result<void> scene_edit::realize(const node &target) {
+  if (impl_->poison)
+    return *impl_->poison;
+  if (impl_->committed) {
+    return edit_error(error_code::stale_revision, "scene_edit.realize",
+                      *impl_->context, impl_->base->revision,
+                      "scene edit was already committed", target.id_);
+  }
+  if (target.context_.lock() != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      !impl_->staged.nodes.contains(target.id_.value)) {
+    impl_->poison = edit_error(error_code::stale_handle, "scene_edit.realize",
+                               *impl_->context, impl_->base->revision,
+                               "invalid node handle", target.id_);
+    return *impl_->poison;
+  }
+  if (realize_nodes(*impl_->context, impl_->staged, value{target.id_},
+                    impl_->changes))
+    impl_->changed = true;
+  return {};
 }
 
 result<void> scene_edit::remove_node(const node &target) {
@@ -954,7 +1233,6 @@ result<void> scene_edit::remove_node(const node &target) {
   }
 
   impl_->staged.nodes.erase(found);
-  impl_->created_nodes.erase(target.id_.value);
   impl_->removed_nodes.insert(target.id_.value);
   impl_->changed = true;
   impl_->changes.push_back(graph_change{.kind = change_kind::node_removed,
@@ -994,6 +1272,8 @@ result<void> scene_edit::append_root(const node &child) {
                    .before = std::monostate{},
                    .after = child.id_,
                    .index = impl_->staged.roots.size() - 1});
+  realize_nodes(*impl_->context, impl_->staged, value{child.id_},
+                impl_->changes);
   return {};
 }
 
@@ -1052,8 +1332,8 @@ result<void> scene_edit::append(const node &parent, const std::string &field,
                    "field is not a containment node list", parent.id_, field);
     return *impl_->poison;
   }
-  if (!retained_write_allowed(descriptor->access, impl_->created_nodes.contains(
-                                                      parent.id_.value))) {
+  if (!retained_write_allowed(descriptor->access,
+                              !parent_record->second.realized)) {
     impl_->poison = edit_error(error_code::access_denied, "scene_edit.append",
                                *impl_->context, impl_->base->revision,
                                "containment field is not author-writable in "
@@ -1090,6 +1370,8 @@ result<void> scene_edit::append(const node &parent, const std::string &field,
                                         .before = before,
                                         .after = field_value,
                                         .index = children.size() - 1});
+  realize_nodes(*impl_->context, impl_->staged, value{child.id_},
+                impl_->changes);
   return {};
 }
 
@@ -1201,8 +1483,7 @@ result<bool> scene_edit::writable(const dynamic_field &target,
   if (intent == write_intent::event_input ||
       intent == write_intent::runtime_output)
     return false;
-  return field_is_writable(descriptor->access, intent,
-                           impl_->created_nodes.contains(target.node_.value));
+  return field_is_writable(descriptor->access, intent, !found->second.realized);
 }
 
 namespace {
@@ -1242,6 +1523,30 @@ active_multi_edit(const std::weak_ptr<detail::scene_edit_control> &weak,
                       edit->base->revision,
                       "multi-field editor is bound to a stale revision", node,
                       field);
+  }
+  return edit;
+}
+
+result<std::shared_ptr<detail::scene_edit_control>>
+writable_multi_edit(const std::weak_ptr<detail::scene_edit_control> &weak,
+                    const char *operation, node_id node,
+                    const std::string &field) {
+  auto edit = active_multi_edit(weak, operation, node, field);
+  if (!edit)
+    return failure(edit.error());
+  const auto owner = edit.value()->staged.nodes.find(node.value);
+  const auto *descriptor =
+      owner == edit.value()->staged.nodes.end()
+          ? nullptr
+          : find_descriptor(*edit.value()->context, owner->second, field);
+  if (!descriptor ||
+      !retained_write_allowed(descriptor->access, !owner->second.realized)) {
+    edit.value()->poison = edit_error(
+        descriptor ? error_code::access_denied : error_code::stale_handle,
+        operation, *edit.value()->context, edit.value()->base->revision,
+        "multi-field is not author-writable in this lifecycle phase", node,
+        field);
+    return *edit.value()->poison;
   }
   return edit;
 }
@@ -1349,8 +1654,7 @@ scene_edit::multi(const dynamic_field &target) {
                       *impl_->context, impl_->base->revision,
                       "field is not a multi-field", target.node_, target.name_);
   }
-  if (!retained_write_allowed(descriptor->access, impl_->created_nodes.contains(
-                                                      target.node_.value))) {
+  if (!retained_write_allowed(descriptor->access, !found->second.realized)) {
     return edit_error(error_code::access_denied, "scene_edit.multi",
                       *impl_->context, impl_->base->revision,
                       "multi-field is not author-writable", target.node_,
@@ -1410,6 +1714,8 @@ result<node> dynamic_multi_field_edit::node_at(std::size_t index) const {
                       target_.name());
   }
   const node_id id = std::get<node_id>(*element);
+  if (id.value == 0)
+    return node{};
   if (!edit.value()->staged.nodes.contains(id.value)) {
     return edit_error(error_code::stale_handle, "multi_field.node_at",
                       *edit.value()->context, edit.value()->base->revision,
@@ -1420,8 +1726,8 @@ result<node> dynamic_multi_field_edit::node_at(std::size_t index) const {
 }
 
 result<void> dynamic_multi_field_edit::set(std::size_t index, value element) {
-  auto edit = active_multi_edit(edit_, "multi_field.set", target_.node(),
-                                target_.name());
+  auto edit = writable_multi_edit(edit_, "multi_field.set", target_.node(),
+                                  target_.name());
   if (!edit)
     return failure(edit.error());
   const auto expected = element_kind(target_.kind());
@@ -1466,10 +1772,11 @@ result<void> dynamic_multi_field_edit::set(std::size_t index, value element) {
 
 result<void> dynamic_multi_field_edit::set(std::size_t index,
                                            const node &element) {
-  auto edit = active_multi_edit(edit_, "multi_field.set_node", target_.node(),
-                                target_.name());
+  auto edit = writable_multi_edit(edit_, "multi_field.set_node", target_.node(),
+                                  target_.name());
   if (!edit)
     return failure(edit.error());
+  const bool null_element = element.is_null() && !element.disposed();
   const auto element_context = element.context_.lock();
   const auto candidate = edit.value()->staged.nodes.find(element.id_.value);
   const auto owner = edit.value()->staged.nodes.find(target_.node().value);
@@ -1478,9 +1785,10 @@ result<void> dynamic_multi_field_edit::set(std::size_t index,
                                : find_descriptor(*edit.value()->context,
                                                  owner->second, target_.name());
   if (target_.kind() != value_kind::mf_node ||
-      element_context != edit.value()->context ||
-      element.generation_ != edit.value()->context->generation ||
-      candidate == edit.value()->staged.nodes.end()) {
+      (!null_element &&
+       (element_context != edit.value()->context ||
+        element.generation_ != edit.value()->context->generation ||
+        candidate == edit.value()->staged.nodes.end()))) {
     edit.value()->poison =
         edit_error(error_code::invalid_context, "multi_field.set_node",
                    *edit.value()->context, edit.value()->base->revision,
@@ -1488,8 +1796,9 @@ result<void> dynamic_multi_field_edit::set(std::size_t index,
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
-  if (!descriptor || !accepts_node_type(*edit.value()->context, *descriptor,
-                                        candidate->second)) {
+  if (!descriptor ||
+      (!null_element && !accepts_node_type(*edit.value()->context, *descriptor,
+                                           candidate->second))) {
     edit.value()->poison =
         edit_error(error_code::type_mismatch, "multi_field.set_node",
                    *edit.value()->context, edit.value()->base->revision,
@@ -1497,7 +1806,7 @@ result<void> dynamic_multi_field_edit::set(std::size_t index,
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
-  if (!same_node_scope(owner->second, candidate->second)) {
+  if (!null_element && !same_node_scope(owner->second, candidate->second)) {
     edit.value()->poison =
         edit_error(error_code::invalid_context, "multi_field.set_node",
                    *edit.value()->context, edit.value()->base->revision,
@@ -1525,13 +1834,15 @@ result<void> dynamic_multi_field_edit::set(std::size_t index,
                    .before = *before,
                    .after = authorized,
                    .index = index});
+  realize_nodes(*edit.value()->context, edit.value()->staged, authorized,
+                edit.value()->changes);
   return {};
 }
 
 result<void> dynamic_multi_field_edit::insert(std::size_t index,
                                               value element) {
-  auto edit = active_multi_edit(edit_, "multi_field.insert", target_.node(),
-                                target_.name());
+  auto edit = writable_multi_edit(edit_, "multi_field.insert", target_.node(),
+                                  target_.name());
   if (!edit)
     return failure(edit.error());
   const auto expected = element_kind(target_.kind());
@@ -1569,10 +1880,11 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
 
 result<void> dynamic_multi_field_edit::insert(std::size_t index,
                                               const node &element) {
-  auto edit = active_multi_edit(edit_, "multi_field.insert_node",
-                                target_.node(), target_.name());
+  auto edit = writable_multi_edit(edit_, "multi_field.insert_node",
+                                  target_.node(), target_.name());
   if (!edit)
     return failure(edit.error());
+  const bool null_element = element.is_null() && !element.disposed();
   const auto element_context = element.context_.lock();
   const auto candidate = edit.value()->staged.nodes.find(element.id_.value);
   const auto owner = edit.value()->staged.nodes.find(target_.node().value);
@@ -1581,9 +1893,10 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
                                : find_descriptor(*edit.value()->context,
                                                  owner->second, target_.name());
   if (target_.kind() != value_kind::mf_node ||
-      element_context != edit.value()->context ||
-      element.generation_ != edit.value()->context->generation ||
-      candidate == edit.value()->staged.nodes.end()) {
+      (!null_element &&
+       (element_context != edit.value()->context ||
+        element.generation_ != edit.value()->context->generation ||
+        candidate == edit.value()->staged.nodes.end()))) {
     edit.value()->poison =
         edit_error(error_code::invalid_context, "multi_field.insert_node",
                    *edit.value()->context, edit.value()->base->revision,
@@ -1591,8 +1904,9 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
-  if (!descriptor || !accepts_node_type(*edit.value()->context, *descriptor,
-                                        candidate->second)) {
+  if (!descriptor ||
+      (!null_element && !accepts_node_type(*edit.value()->context, *descriptor,
+                                           candidate->second))) {
     edit.value()->poison =
         edit_error(error_code::type_mismatch, "multi_field.insert_node",
                    *edit.value()->context, edit.value()->base->revision,
@@ -1600,7 +1914,7 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
-  if (!same_node_scope(owner->second, candidate->second)) {
+  if (!null_element && !same_node_scope(owner->second, candidate->second)) {
     edit.value()->poison =
         edit_error(error_code::invalid_context, "multi_field.insert_node",
                    *edit.value()->context, edit.value()->base->revision,
@@ -1627,6 +1941,8 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
                    .before = std::monostate{},
                    .after = authorized,
                    .index = index});
+  realize_nodes(*edit.value()->context, edit.value()->staged, authorized,
+                edit.value()->changes);
   return {};
 }
 
@@ -1645,8 +1961,8 @@ result<void> dynamic_multi_field_edit::append(const node &element) {
 }
 
 result<void> dynamic_multi_field_edit::erase(std::size_t index) {
-  auto edit = active_multi_edit(edit_, "multi_field.erase", target_.node(),
-                                target_.name());
+  auto edit = writable_multi_edit(edit_, "multi_field.erase", target_.node(),
+                                  target_.name());
   if (!edit)
     return failure(edit.error());
   auto *sequence = multi_sequence(*edit.value(), target_);
@@ -1688,8 +2004,8 @@ result<void> dynamic_multi_field_edit::erase(std::size_t index) {
 }
 
 result<void> dynamic_multi_field_edit::clear() {
-  auto edit = active_multi_edit(edit_, "multi_field.clear", target_.node(),
-                                target_.name());
+  auto edit = writable_multi_edit(edit_, "multi_field.clear", target_.node(),
+                                  target_.name());
   if (!edit)
     return failure(edit.error());
   auto *sequence = multi_sequence(*edit.value(), target_);
@@ -1719,8 +2035,8 @@ result<void> dynamic_multi_field_edit::clear() {
 }
 
 result<void> dynamic_multi_field_edit::replace(value replacement) {
-  auto edit = active_multi_edit(edit_, "multi_field.replace", target_.node(),
-                                target_.name());
+  auto edit = writable_multi_edit(edit_, "multi_field.replace", target_.node(),
+                                  target_.name());
   if (!edit)
     return failure(edit.error());
   if (target_.kind() == value_kind::mf_node) {
@@ -1761,8 +2077,8 @@ result<void> dynamic_multi_field_edit::replace(value replacement) {
 
 result<void>
 dynamic_multi_field_edit::replace(std::span<const node> replacement) {
-  auto edit = active_multi_edit(edit_, "multi_field.replace_nodes",
-                                target_.node(), target_.name());
+  auto edit = writable_multi_edit(edit_, "multi_field.replace_nodes",
+                                  target_.node(), target_.name());
   if (!edit)
     return failure(edit.error());
   const auto owner = edit.value()->staged.nodes.find(target_.node().value);
@@ -1781,6 +2097,10 @@ dynamic_multi_field_edit::replace(std::span<const node> replacement) {
   node_list authorized;
   authorized.reserve(replacement.size());
   for (const node &element : replacement) {
+    if (element.is_null() && !element.disposed()) {
+      authorized.push_back(node_id{});
+      continue;
+    }
     const auto element_context = element.context_.lock();
     const auto candidate = edit.value()->staged.nodes.find(element.id_.value);
     if (element_context != edit.value()->context ||
@@ -1830,6 +2150,8 @@ dynamic_multi_field_edit::replace(std::span<const node> replacement) {
                    .before = before,
                    .after = *sequence,
                    .index = 0});
+  realize_nodes(*edit.value()->context, edit.value()->staged, *sequence,
+                edit.value()->changes);
   return {};
 }
 
@@ -1873,6 +2195,8 @@ result<void> scene_edit::set(const dynamic_field &target,
                              const node &new_value) {
   if (impl_->poison)
     return *impl_->poison;
+  if (new_value.is_null() && !new_value.disposed())
+    return set_value(target, value{node_id{}}, true);
   const auto value_context = new_value.context_.lock();
   if (value_context != impl_->context ||
       new_value.generation_ != impl_->context->generation ||
@@ -1893,6 +2217,10 @@ result<void> scene_edit::set(const dynamic_field &target,
   node_list ids;
   ids.reserve(new_value.size());
   for (const node &candidate : new_value) {
+    if (candidate.is_null() && !candidate.disposed()) {
+      ids.push_back(node_id{});
+      continue;
+    }
     const auto value_context = candidate.context_.lock();
     if (value_context != impl_->context ||
         candidate.generation_ != impl_->context->generation ||
@@ -1932,8 +2260,7 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                    target.node_, target.name_);
     return *impl_->poison;
   }
-  if (!retained_write_allowed(descriptor->access, impl_->created_nodes.contains(
-                                                      target.node_.value))) {
+  if (!retained_write_allowed(descriptor->access, !found->second.realized)) {
     impl_->poison = edit_error(error_code::access_denied, "scene_edit.set",
                                *impl_->context, impl_->base->revision,
                                "field is not author-writable in this lifecycle "
@@ -1965,7 +2292,8 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                target.node_, target.name_);
     return *impl_->poison;
   }
-  if (node_authority_checked && descriptor->kind == value_kind::sf_node) {
+  if (node_authority_checked && descriptor->kind == value_kind::sf_node &&
+      std::get<node_id>(new_value).value != 0) {
     const auto id = std::get<node_id>(new_value);
     const auto candidate = impl_->staged.nodes.find(id.value);
     if (candidate == impl_->staged.nodes.end() ||
@@ -1989,6 +2317,8 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
   }
   if (node_authority_checked && descriptor->kind == value_kind::mf_node) {
     for (const auto id : std::get<node_list>(new_value)) {
+      if (id.value == 0)
+        continue;
       const auto candidate = impl_->staged.nodes.find(id.value);
       if (candidate == impl_->staged.nodes.end() ||
           !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
@@ -2019,6 +2349,7 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                         .before = before,
                                         .after = stored,
                                         .index = 0});
+  realize_nodes(*impl_->context, impl_->staged, stored, impl_->changes);
   return {};
 }
 
@@ -2351,6 +2682,124 @@ result<void> scene_edit::remove_route(const route &target) {
   return {};
 }
 
+result<void> scene_edit::claim_declaration_nodes(declaration_id owner,
+                                                 std::span<const node_id> roots,
+                                                 const char *operation) {
+  std::vector<node_id> pending{roots.begin(), roots.end()};
+  std::unordered_set<std::uint64_t> closure;
+  while (!pending.empty()) {
+    const node_id current = pending.back();
+    pending.pop_back();
+    if (!closure.insert(current.value).second)
+      continue;
+    const auto found = impl_->staged.nodes.find(current.value);
+    if (found == impl_->staged.nodes.end()) {
+      impl_->poison =
+          edit_error(error_code::invalid_descriptor, operation, *impl_->context,
+                     impl_->base->revision,
+                     "template closure contains a dangling node", current);
+      return *impl_->poison;
+    }
+    if (found->second.scope_owner && found->second.scope_owner != owner) {
+      impl_->poison = edit_error(
+          error_code::node_in_use, operation, *impl_->context,
+          impl_->base->revision,
+          "template node is already owned by another declaration", current);
+      return *impl_->poison;
+    }
+    for (const auto &[field_name, stored] : found->second.fields) {
+      (void)field_name;
+      if (const auto *single = std::get_if<node_id>(&stored)) {
+        if (single->value != 0)
+          pending.push_back(*single);
+      } else if (const auto *many = std::get_if<node_list>(&stored)) {
+        for (node_id child : *many)
+          if (child.value != 0)
+            pending.push_back(child);
+      }
+    }
+  }
+
+  std::unordered_map<std::uint64_t, int> colors;
+  std::function<bool(std::uint64_t)> acyclic = [&](std::uint64_t current) {
+    if (colors[current] == 1)
+      return false;
+    if (colors[current] == 2)
+      return true;
+    colors[current] = 1;
+    const auto &record = impl_->staged.nodes.at(current);
+    const auto *type = impl_->context->registry.find(record.type_name);
+    for (const field_descriptor &field : type->fields) {
+      if (!field.containment)
+        continue;
+      const value &stored = record.fields.at(field.name);
+      if (const auto *single = std::get_if<node_id>(&stored)) {
+        if (single->value != 0 && !acyclic(single->value))
+          return false;
+      } else if (const auto *many = std::get_if<node_list>(&stored)) {
+        for (node_id child : *many) {
+          if (child.value != 0 && !acyclic(child.value))
+            return false;
+        }
+      }
+    }
+    colors[current] = 2;
+    return true;
+  };
+  if (std::ranges::any_of(closure,
+                          [&](std::uint64_t node) { return !acyclic(node); })) {
+    impl_->poison = edit_error(error_code::containment_cycle, operation,
+                               *impl_->context, impl_->base->revision,
+                               "template body contains a containment cycle");
+    return *impl_->poison;
+  }
+
+  const auto in_closure = [&](node_id candidate) {
+    return closure.contains(candidate.value);
+  };
+  if (std::ranges::any_of(impl_->staged.roots, in_closure) ||
+      std::ranges::any_of(impl_->staged.names,
+                          [&](const name_binding &binding) {
+                            return in_closure(binding.node);
+                          }) ||
+      std::ranges::any_of(impl_->staged.exports,
+                          [&](const export_binding &binding) {
+                            return in_closure(binding.node);
+                          }) ||
+      std::ranges::any_of(impl_->staged.routes, [&](const route &candidate) {
+        return in_closure(candidate.source) || in_closure(candidate.sink);
+      })) {
+    impl_->poison =
+        edit_error(error_code::node_in_use, operation, *impl_->context,
+                   impl_->base->revision,
+                   "template closure is already referenced by the live scene");
+    return *impl_->poison;
+  }
+  for (const auto &[id, record] : impl_->staged.nodes) {
+    if (closure.contains(id) || record.scope_owner == owner)
+      continue;
+    for (const auto &[field_name, stored] : record.fields) {
+      bool crosses = false;
+      if (const auto *single = std::get_if<node_id>(&stored))
+        crosses = single->value != 0 && in_closure(*single);
+      else if (const auto *many = std::get_if<node_list>(&stored))
+        crosses = std::ranges::any_of(*many, in_closure);
+      if (crosses) {
+        impl_->poison =
+            edit_error(error_code::node_in_use, operation, *impl_->context,
+                       impl_->base->revision,
+                       "template closure is retained by an ordinary scene node",
+                       node_id{id}, field_name);
+        return *impl_->poison;
+      }
+    }
+  }
+
+  for (const auto id : closure)
+    impl_->staged.nodes.at(id).scope_owner = owner;
+  return {};
+}
+
 result<declaration>
 scene_edit::add_local_declaration(local_declaration_descriptor descriptor) {
   if (!descriptor.body_roots.empty()) {
@@ -2403,8 +2852,6 @@ scene_edit::add_local_declaration(local_declaration_descriptor descriptor,
 
   std::vector<node_id> authored_roots;
   authored_roots.reserve(body_roots.size());
-  std::vector<node_id> pending;
-  pending.reserve(body_roots.size());
   for (const node &root : body_roots) {
     const auto root_context = root.context_.lock();
     if (root_context != impl_->context ||
@@ -2417,121 +2864,22 @@ scene_edit::add_local_declaration(local_declaration_descriptor descriptor,
       return *impl_->poison;
     }
     authored_roots.push_back(root.id_);
-    pending.push_back(root.id_);
   }
 
-  std::unordered_set<std::uint64_t> closure;
-  while (!pending.empty()) {
-    const node_id current = pending.back();
-    pending.pop_back();
-    if (!closure.insert(current.value).second)
-      continue;
-    const auto found = impl_->staged.nodes.find(current.value);
-    if (found == impl_->staged.nodes.end()) {
-      impl_->poison = edit_error(
-          error_code::invalid_descriptor, "scene_edit.add_local_declaration",
-          *impl_->context, impl_->base->revision,
-          "template closure contains a dangling node", current);
-      return *impl_->poison;
-    }
-    if (found->second.scope_owner) {
-      impl_->poison = edit_error(
-          error_code::node_in_use, "scene_edit.add_local_declaration",
-          *impl_->context, impl_->base->revision,
-          "template node is already owned by another declaration", current);
-      return *impl_->poison;
-    }
-    for (const auto &[field_name, stored] : found->second.fields) {
-      (void)field_name;
-      if (const auto *single = std::get_if<node_id>(&stored)) {
-        if (single->value != 0)
-          pending.push_back(*single);
-      } else if (const auto *many = std::get_if<node_list>(&stored)) {
-        pending.insert(pending.end(), many->begin(), many->end());
-      }
-    }
-  }
-
-  std::unordered_map<std::uint64_t, int> colors;
-  std::function<bool(std::uint64_t)> acyclic = [&](std::uint64_t current) {
-    if (colors[current] == 1)
-      return false;
-    if (colors[current] == 2)
-      return true;
-    colors[current] = 1;
-    const auto &record = impl_->staged.nodes.at(current);
-    const auto *type = impl_->context->registry.find(record.type_name);
-    for (const field_descriptor &field : type->fields) {
-      if (!field.containment)
-        continue;
-      const value &stored = record.fields.at(field.name);
-      if (const auto *single = std::get_if<node_id>(&stored)) {
-        if (single->value != 0 && !acyclic(single->value))
-          return false;
-      } else if (const auto *many = std::get_if<node_list>(&stored)) {
-        for (node_id child : *many) {
-          if (!acyclic(child.value))
-            return false;
-        }
-      }
-    }
-    colors[current] = 2;
-    return true;
-  };
-  if (std::ranges::any_of(closure,
-                          [&](std::uint64_t node) { return !acyclic(node); })) {
-    impl_->poison = edit_error(error_code::containment_cycle,
+  const auto reserved = reserve_identity(impl_->context->next_declaration_id);
+  if (!reserved) {
+    impl_->poison = edit_error(error_code::invalid_value,
                                "scene_edit.add_local_declaration",
                                *impl_->context, impl_->base->revision,
-                               "template body contains a containment cycle");
+                               "declaration identity space is exhausted");
     return *impl_->poison;
   }
-
-  const auto in_closure = [&](node_id candidate) {
-    return closure.contains(candidate.value);
-  };
-  if (std::ranges::any_of(impl_->staged.roots, in_closure) ||
-      std::ranges::any_of(impl_->staged.names,
-                          [&](const name_binding &binding) {
-                            return in_closure(binding.node);
-                          }) ||
-      std::ranges::any_of(impl_->staged.exports,
-                          [&](const export_binding &binding) {
-                            return in_closure(binding.node);
-                          }) ||
-      std::ranges::any_of(impl_->staged.routes, [&](const route &candidate) {
-        return in_closure(candidate.source) || in_closure(candidate.sink);
-      })) {
-    impl_->poison =
-        edit_error(error_code::node_in_use, "scene_edit.add_local_declaration",
-                   *impl_->context, impl_->base->revision,
-                   "template closure is already referenced by the live scene");
-    return *impl_->poison;
-  }
-  for (const auto &[id, record] : impl_->staged.nodes) {
-    if (closure.contains(id))
-      continue;
-    for (const auto &[field_name, stored] : record.fields) {
-      bool crosses = false;
-      if (const auto *single = std::get_if<node_id>(&stored))
-        crosses = single->value != 0 && in_closure(*single);
-      else if (const auto *many = std::get_if<node_list>(&stored))
-        crosses = std::ranges::any_of(*many, in_closure);
-      if (crosses) {
-        impl_->poison = edit_error(
-            error_code::node_in_use, "scene_edit.add_local_declaration",
-            *impl_->context, impl_->base->revision,
-            "template closure is retained by an ordinary scene node",
-            node_id{id}, field_name);
-        return *impl_->poison;
-      }
-    }
-  }
-
-  const declaration_id id{impl_->staged.next_declaration_id++};
+  const declaration_id id{*reserved};
+  if (auto claimed = claim_declaration_nodes(
+          id, authored_roots, "scene_edit.add_local_declaration");
+      !claimed)
+    return failure(claimed.error());
   descriptor.body_roots = std::move(authored_roots);
-  for (const std::uint64_t node : closure)
-    impl_->staged.nodes.at(node).scope_owner = id;
   declaration_descriptor authored{.id = id, .payload = std::move(descriptor)};
   impl_->staged.declaration_order.push_back(id);
   impl_->staged.declarations.emplace(id.value, authored);
@@ -2566,7 +2914,8 @@ result<declaration> scene_edit::add_external_declaration(
         "new external declaration must be unresolved with at least one URL");
     return *impl_->poison;
   }
-  if (const auto issue = validate_declaration_interface(descriptor.interface)) {
+  if (const auto issue =
+          validate_declaration_interface(descriptor.interface, true)) {
     impl_->poison = edit_error(
         issue->code, "scene_edit.add_external_declaration", *impl_->context,
         impl_->base->revision, issue->message, std::nullopt, issue->field);
@@ -2584,7 +2933,15 @@ result<declaration> scene_edit::add_external_declaration(
         "declaration name is already defined: " + descriptor.name);
     return *impl_->poison;
   }
-  const declaration_id id{impl_->staged.next_declaration_id++};
+  const auto reserved = reserve_identity(impl_->context->next_declaration_id);
+  if (!reserved) {
+    impl_->poison = edit_error(error_code::invalid_value,
+                               "scene_edit.add_external_declaration",
+                               *impl_->context, impl_->base->revision,
+                               "declaration identity space is exhausted");
+    return *impl_->poison;
+  }
+  const declaration_id id{*reserved};
   declaration_descriptor authored{.id = id, .payload = std::move(descriptor)};
   impl_->staged.declaration_order.push_back(id);
   impl_->staged.declarations.emplace(id.value, authored);
@@ -2644,6 +3001,19 @@ result<void> scene_edit::rename_declaration(const declaration &target,
   return {};
 }
 
+void scene_edit::stage_declaration_update(declaration_id id,
+                                          declaration_payload replacement) {
+  auto &authored = impl_->staged.declarations.at(id.value);
+  const declaration_descriptor before = authored;
+  authored.payload = std::move(replacement);
+  impl_->changes.push_back(
+      declaration_change{.kind = declaration_change_kind::updated,
+                         .declaration = id,
+                         .before = before,
+                         .after = authored});
+  impl_->changed = true;
+}
+
 result<void> scene_edit::update_declaration(const declaration &target,
                                             declaration_payload replacement) {
   if (impl_->poison)
@@ -2682,7 +3052,10 @@ result<void> scene_edit::update_declaration(const declaration &target,
         return payload.interface;
       },
       replacement);
-  if (const auto issue = validate_declaration_interface(interface)) {
+  if (const auto issue = validate_declaration_interface(
+          interface,
+          std::holds_alternative<external_declaration_descriptor>(replacement),
+          std::holds_alternative<local_declaration_descriptor>(replacement))) {
     impl_->poison = declaration_edit_error(
         issue->code, "scene_edit.update_declaration", *impl_->context,
         impl_->base->revision, issue->message, target.id_, issue->field);
@@ -2700,10 +3073,62 @@ result<void> scene_edit::update_declaration(const declaration &target,
           target.id_);
       return *impl_->poison;
     }
+    for (const auto &field : local->interface) {
+      if (!field.default_value ||
+          !has_non_null_node_identity(*field.default_value))
+        continue;
+      const auto existing = std::ranges::find_if(
+          current.interface, [&](const interface_field_descriptor &candidate) {
+            return candidate.name == field.name;
+          });
+      bool preserved = existing != current.interface.end() &&
+                       existing->kind == field.kind &&
+                       existing->default_value &&
+                       *existing->default_value == *field.default_value;
+      if (preserved) {
+        const auto validate_id = [&](node_id id) {
+          if (!id.value)
+            return true;
+          const auto candidate = impl_->staged.nodes.find(id.value);
+          if (candidate == impl_->staged.nodes.end() ||
+              candidate->second.scope_owner != target.id_)
+            return false;
+          field_descriptor constraint;
+          constraint.accepted_node_types = field.accepted_node_types;
+          return accepts_node_type(*impl_->context, constraint,
+                                   candidate->second);
+        };
+        if (field.kind == value_kind::sf_node)
+          preserved = validate_id(std::get<node_id>(*field.default_value));
+        else
+          preserved = std::ranges::all_of(
+              std::get<node_list>(*field.default_value), validate_id);
+      }
+      if (!preserved) {
+        impl_->poison = declaration_edit_error(
+            error_code::invalid_descriptor, "scene_edit.update_declaration",
+            *impl_->context, impl_->base->revision,
+            "node default changes require context-bearing node handles",
+            target.id_, field.name);
+        return *impl_->poison;
+      }
+    }
   }
   if (const auto *external =
           std::get_if<external_declaration_descriptor>(&replacement);
       external) {
+    const auto &current =
+        std::get<external_declaration_descriptor>(found->second.payload);
+    if (external->resolved_declaration &&
+        (current.load_state != external_load_state::resolved ||
+         current.resolved_declaration != external->resolved_declaration)) {
+      impl_->poison = declaration_edit_error(
+          error_code::invalid_descriptor, "scene_edit.update_declaration",
+          *impl_->context, impl_->base->revision,
+          "resolved target changes require resolve_external_declaration",
+          target.id_);
+      return *impl_->poison;
+    }
     if (external->urls.empty() ||
         std::ranges::any_of(external->urls, [](const std::string &url) {
           return url.empty();
@@ -2746,8 +3171,182 @@ result<void> scene_edit::update_declaration(const declaration &target,
       return *impl_->poison;
     }
   }
+  stage_declaration_update(target.id_, std::move(replacement));
+  return {};
+}
+
+result<void>
+scene_edit::resolve_external_declaration(const declaration &external,
+                                         const declaration &local) {
+  if (impl_->poison)
+    return *impl_->poison;
+  const auto external_found =
+      impl_->staged.declarations.find(external.id_.value);
+  const auto local_found = impl_->staged.declarations.find(local.id_.value);
+  if (external.context_.lock() != impl_->context ||
+      external.generation_ != impl_->context->generation ||
+      external_found == impl_->staged.declarations.end() ||
+      local.context_.lock() != impl_->context ||
+      local.generation_ != impl_->context->generation ||
+      local_found == impl_->staged.declarations.end()) {
+    impl_->poison = declaration_edit_error(
+        error_code::stale_handle, "scene_edit.resolve_external_declaration",
+        *impl_->context, impl_->base->revision, "invalid declaration handle",
+        external.id_);
+    return *impl_->poison;
+  }
+  auto *external_payload = std::get_if<external_declaration_descriptor>(
+      &external_found->second.payload);
+  const auto *local_payload =
+      std::get_if<local_declaration_descriptor>(&local_found->second.payload);
+  if (!external_payload || !local_payload) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_descriptor,
+        "scene_edit.resolve_external_declaration", *impl_->context,
+        impl_->base->revision,
+        "resolution requires an external and a local declaration",
+        external.id_);
+    return *impl_->poison;
+  }
+  if (!compatible_declaration_interface(external_payload->interface,
+                                        local_payload->interface)) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_descriptor,
+        "scene_edit.resolve_external_declaration", *impl_->context,
+        impl_->base->revision,
+        "resolved external interface is incompatible with its local target",
+        external.id_);
+    return *impl_->poison;
+  }
+  auto resolved = *external_payload;
+  resolved.load_state = external_load_state::resolved;
+  resolved.diagnostic.clear();
+  resolved.resolved_declaration = local.id_;
+  stage_declaration_update(external.id_, std::move(resolved));
+  return {};
+}
+
+result<void>
+scene_edit::set_declaration_default(const declaration &target,
+                                    std::string_view field_name,
+                                    const std::optional<node> &authored) {
+  if (impl_->poison)
+    return *impl_->poison;
+  node_id id{};
+  if (authored) {
+    const auto context = authored->context_.lock();
+    if (authored->disposed_ || context != impl_->context ||
+        authored->generation_ != impl_->context->generation ||
+        !impl_->staged.nodes.contains(authored->id_.value)) {
+      impl_->poison = declaration_edit_error(
+          error_code::invalid_context, "scene_edit.set_declaration_default",
+          *impl_->context, impl_->base->revision,
+          "node default requires a live node handle in this context",
+          target.id_, std::string{field_name});
+      return *impl_->poison;
+    }
+    id = authored->id_;
+  }
+  return set_declaration_default_ids(target, field_name, value{id});
+}
+
+result<void> scene_edit::set_declaration_default(
+    const declaration &target, std::string_view field_name,
+    std::span<const std::optional<node>> authored) {
+  if (impl_->poison)
+    return *impl_->poison;
+  node_list ids;
+  ids.reserve(authored.size());
+  for (const auto &candidate : authored) {
+    if (!candidate) {
+      ids.push_back(node_id{});
+      continue;
+    }
+    const auto context = candidate->context_.lock();
+    if (candidate->disposed_ || context != impl_->context ||
+        candidate->generation_ != impl_->context->generation ||
+        !impl_->staged.nodes.contains(candidate->id_.value)) {
+      impl_->poison = declaration_edit_error(
+          error_code::invalid_context, "scene_edit.set_declaration_default",
+          *impl_->context, impl_->base->revision,
+          "node default requires live node handles in this context", target.id_,
+          std::string{field_name});
+      return *impl_->poison;
+    }
+    ids.push_back(candidate->id_);
+  }
+  return set_declaration_default_ids(target, field_name, value{std::move(ids)});
+}
+
+result<void> scene_edit::set_declaration_default_ids(
+    const declaration &target, std::string_view field_name, value authored) {
+  constexpr const char *operation = "scene_edit.set_declaration_default";
+  const auto context = target.context_.lock();
+  const auto found = impl_->staged.declarations.find(target.id_.value);
+  if (context != impl_->context ||
+      target.generation_ != impl_->context->generation ||
+      found == impl_->staged.declarations.end()) {
+    impl_->poison = declaration_edit_error(
+        error_code::stale_handle, operation, *impl_->context,
+        impl_->base->revision, "invalid declaration handle", target.id_);
+    return *impl_->poison;
+  }
+  auto *local =
+      std::get_if<local_declaration_descriptor>(&found->second.payload);
+  if (!local) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_descriptor, operation, *impl_->context,
+        impl_->base->revision, "node defaults require a local declaration",
+        target.id_);
+    return *impl_->poison;
+  }
+  const auto field = std::ranges::find_if(
+      local->interface, [&](const interface_field_descriptor &candidate) {
+        return candidate.name == field_name;
+      });
+  if (field == local->interface.end()) {
+    impl_->poison = declaration_edit_error(
+        error_code::unknown_field, operation, *impl_->context,
+        impl_->base->revision, "unknown interface field", target.id_,
+        std::string{field_name});
+    return *impl_->poison;
+  }
+  if (field->kind != kind_of(authored) ||
+      (field->access != access_type::initialize_only &&
+       field->access != access_type::input_output)) {
+    impl_->poison = declaration_edit_error(
+        error_code::invalid_descriptor, operation, *impl_->context,
+        impl_->base->revision, "field cannot receive this node default",
+        target.id_, std::string{field_name});
+    return *impl_->poison;
+  }
+  node_list roots;
+  if (const auto *single = std::get_if<node_id>(&authored)) {
+    if (single->value)
+      roots.push_back(*single);
+  } else {
+    for (node_id id : std::get<node_list>(authored))
+      if (id.value)
+        roots.push_back(id);
+  }
+  field_descriptor constraint;
+  constraint.accepted_node_types = field->accepted_node_types;
+  for (node_id id : roots) {
+    const auto candidate = impl_->staged.nodes.find(id.value);
+    if (candidate == impl_->staged.nodes.end() ||
+        !accepts_node_type(*impl_->context, constraint, candidate->second)) {
+      impl_->poison = declaration_edit_error(
+          error_code::type_mismatch, operation, *impl_->context,
+          impl_->base->revision, "node type is not accepted by the field",
+          target.id_, std::string{field_name});
+      return *impl_->poison;
+    }
+  }
+  if (auto claimed = claim_declaration_nodes(target.id_, roots, operation);
+      !claimed)
+    return failure(claimed.error());
   const declaration_descriptor before = found->second;
-  found->second.payload = std::move(replacement);
+  field->default_value = std::move(authored);
   impl_->changes.push_back(
       declaration_change{.kind = declaration_change_kind::updated,
                          .declaration = target.id_,
@@ -2848,7 +3447,8 @@ result<change_set> scene_edit::commit() {
           return false;
       } else if (descriptor.kind == value_kind::mf_node) {
         for (node_id child : std::get<node_list>(field_value)) {
-          if (!impl_->staged.nodes.contains(child.value) || !visit(child.value))
+          if (child.value != 0 && (!impl_->staged.nodes.contains(child.value) ||
+                                   !visit(child.value)))
             return false;
         }
       }
@@ -2900,6 +3500,11 @@ result<change_set> scene_edit::commit() {
   for (const auto &context : lock_order)
     locks.emplace_back(context->mutex);
 
+  if (impl_->context->processing) {
+    return edit_error(error_code::operation_in_progress, "scene_edit.commit",
+                      *impl_->context, impl_->base->revision,
+                      "runtime evaluation is in progress");
+  }
   if (!impl_->context->active) {
     return edit_error(error_code::stale_handle, "scene_edit.commit",
                       *impl_->context, impl_->base->revision,
@@ -2909,6 +3514,28 @@ result<change_set> scene_edit::commit() {
     return edit_error(error_code::stale_revision, "scene_edit.commit",
                       *impl_->context, impl_->base->revision,
                       "edit base revision is stale");
+  }
+  for (const auto &[id, staged] : impl_->staged.nodes) {
+    if (!staged.scope_owner)
+      continue;
+    const auto base = impl_->base->nodes.find(id);
+    if (base != impl_->base->nodes.end() &&
+        base->second.scope_owner == staged.scope_owner)
+      continue;
+    if (const auto blocker =
+            find_live_context_reference(*impl_->context, node_id{id})) {
+      return edit_error(error_code::node_in_use, "scene_edit.commit",
+                        *impl_->context, impl_->base->revision,
+                        blocker->message, node_id{id}, blocker->field);
+    }
+    if (const auto imported =
+            find_live_import_reference(*impl_->context, node_id{id})) {
+      return edit_error(error_code::node_in_use, "scene_edit.commit",
+                        *impl_->context, impl_->base->revision,
+                        "node acquired a committed import aperture while its "
+                        "template claim was staged",
+                        node_id{id}, *imported);
+    }
   }
   for (const auto removed : impl_->removed_nodes) {
     if (const auto blocker =
@@ -3041,7 +3668,9 @@ result<bool> event_batch::writable(const dynamic_field &target,
                       "unknown field: " + target.name_, target.node_,
                       target.name_);
   }
-  if (intent != write_intent::event_input)
+  if (found->second.scope_owner)
+    return false;
+  if (intent != impl_->intent)
     return false;
   return field_is_writable(descriptor->access, intent, false);
 }
@@ -3059,7 +3688,7 @@ result<void> event_batch::send(const dynamic_field &target, value payload,
           : find_descriptor(*impl_->context, owner->second, target.name_);
   if (!descriptor) {
     impl_->poison =
-        edit_error(error_code::unknown_field, "event_batch.send",
+        edit_error(error_code::unknown_field, impl_->send_operation(),
                    *impl_->context, impl_->base->revision,
                    "unknown unit-bearing field", target.node_, target.name_);
     return *impl_->poison;
@@ -3069,7 +3698,7 @@ result<void> event_batch::send(const dynamic_field &target, value payload,
                          value_space::canonical);
   if (!canonical) {
     impl_->poison = edit_error(
-        error_code::invalid_value, "event_batch.send", *impl_->context,
+        error_code::invalid_value, impl_->send_operation(), *impl_->context,
         impl_->base->revision,
         "field representation cannot carry the declared unit category",
         target.node_, target.name_);
@@ -3082,12 +3711,14 @@ result<void> event_batch::send(const dynamic_field &target,
                                const node &payload) {
   if (impl_->poison)
     return *impl_->poison;
+  if (payload.is_null() && !payload.disposed())
+    return send_value(target, value{node_id{}}, true);
   const auto value_context = payload.context_.lock();
   if (value_context != impl_->context ||
       payload.generation_ != impl_->context->generation ||
       !impl_->base->nodes.contains(payload.id_.value)) {
     impl_->poison =
-        edit_error(error_code::invalid_context, "event_batch.send",
+        edit_error(error_code::invalid_context, impl_->send_operation(),
                    *impl_->context, impl_->base->revision,
                    "node event belongs to another context", payload.id_);
     return *impl_->poison;
@@ -3102,12 +3733,16 @@ result<void> event_batch::send(const dynamic_field &target,
   node_list ids;
   ids.reserve(payload.size());
   for (const node &candidate : payload) {
+    if (candidate.is_null() && !candidate.disposed()) {
+      ids.push_back(node_id{});
+      continue;
+    }
     const auto value_context = candidate.context_.lock();
     if (value_context != impl_->context ||
         candidate.generation_ != impl_->context->generation ||
         !impl_->base->nodes.contains(candidate.id_.value)) {
       impl_->poison =
-          edit_error(error_code::invalid_context, "event_batch.send",
+          edit_error(error_code::invalid_context, impl_->send_operation(),
                      *impl_->context, impl_->base->revision,
                      "node event range crosses a context", candidate.id_);
       return *impl_->poison;
@@ -3127,7 +3762,7 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
       target.generation_ != impl_->context->generation ||
       found == impl_->base->nodes.end()) {
     impl_->poison =
-        edit_error(error_code::stale_handle, "event_batch.send",
+        edit_error(error_code::stale_handle, impl_->send_operation(),
                    *impl_->context, impl_->base->revision,
                    "invalid event destination", target.node_, target.name_);
     return *impl_->poison;
@@ -3136,66 +3771,92 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
       find_descriptor(*impl_->context, found->second, target.name_);
   if (!descriptor) {
     impl_->poison =
-        edit_error(error_code::unknown_field, "event_batch.send",
+        edit_error(error_code::unknown_field, impl_->send_operation(),
                    *impl_->context, impl_->base->revision,
                    "unknown event destination", target.node_, target.name_);
     return *impl_->poison;
   }
-  if (descriptor->access != access_type::input_only &&
-      descriptor->access != access_type::input_output) {
-    impl_->poison = edit_error(error_code::access_denied, "event_batch.send",
-                               *impl_->context, impl_->base->revision,
-                               "field does not accept external event intent",
-                               target.node_, target.name_);
+  if (found->second.scope_owner) {
+    impl_->poison =
+        edit_error(error_code::invalid_context, impl_->send_operation(),
+                   *impl_->context, impl_->base->revision,
+                   "template-scoped nodes cannot receive live events",
+                   target.node_, target.name_);
+    return *impl_->poison;
+  }
+  if (!field_is_writable(descriptor->access, impl_->intent, false)) {
+    impl_->poison = edit_error(
+        error_code::access_denied, impl_->send_operation(), *impl_->context,
+        impl_->base->revision, "field does not accept this event intent",
+        target.node_, target.name_);
     return *impl_->poison;
   }
   if ((descriptor->kind == value_kind::sf_node ||
        descriptor->kind == value_kind::mf_node) &&
       !node_authority_checked) {
     impl_->poison =
-        edit_error(error_code::invalid_context, "event_batch.send",
+        edit_error(error_code::invalid_context, impl_->send_operation(),
                    *impl_->context, impl_->base->revision,
                    "node-valued events require context-bearing node handles",
                    target.node_, target.name_);
     return *impl_->poison;
   }
   if (kind_of(payload) != descriptor->kind) {
-    impl_->poison = edit_error(error_code::type_mismatch, "event_batch.send",
-                               *impl_->context, impl_->base->revision,
-                               "event payload does not match field descriptor",
-                               target.node_, target.name_);
+    impl_->poison = edit_error(
+        error_code::type_mismatch, impl_->send_operation(), *impl_->context,
+        impl_->base->revision, "event payload does not match field descriptor",
+        target.node_, target.name_);
     return *impl_->poison;
   }
   if (!value_is_well_formed(payload)) {
-    impl_->poison = edit_error(error_code::invalid_value, "event_batch.send",
-                               *impl_->context, impl_->base->revision,
-                               "event violates field representation invariants",
-                               target.node_, target.name_);
+    impl_->poison = edit_error(
+        error_code::invalid_value, impl_->send_operation(), *impl_->context,
+        impl_->base->revision, "event violates field representation invariants",
+        target.node_, target.name_);
     return *impl_->poison;
   }
-  if (node_authority_checked && descriptor->kind == value_kind::sf_node) {
+  if (node_authority_checked && descriptor->kind == value_kind::sf_node &&
+      std::get<node_id>(payload).value != 0) {
     const auto id = std::get<node_id>(payload);
     const auto candidate = impl_->base->nodes.find(id.value);
     if (candidate == impl_->base->nodes.end() ||
         !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
       impl_->poison =
-          edit_error(error_code::type_mismatch, "event_batch.send",
+          edit_error(error_code::type_mismatch, impl_->send_operation(),
                      *impl_->context, impl_->base->revision,
                      "node event type is not accepted by the field descriptor",
+                     target.node_, target.name_);
+      return *impl_->poison;
+    }
+    if (candidate->second.scope_owner) {
+      impl_->poison =
+          edit_error(error_code::invalid_context, impl_->send_operation(),
+                     *impl_->context, impl_->base->revision,
+                     "live node event cannot reference a template-scoped node",
                      target.node_, target.name_);
       return *impl_->poison;
     }
   }
   if (node_authority_checked && descriptor->kind == value_kind::mf_node) {
     for (const auto id : std::get<node_list>(payload)) {
+      if (id.value == 0)
+        continue;
       const auto candidate = impl_->base->nodes.find(id.value);
       if (candidate == impl_->base->nodes.end() ||
           !accepts_node_type(*impl_->context, *descriptor, candidate->second)) {
         impl_->poison = edit_error(
-            error_code::type_mismatch, "event_batch.send", *impl_->context,
+            error_code::type_mismatch, impl_->send_operation(), *impl_->context,
             impl_->base->revision,
             "node event range contains a type not accepted by the field "
             "descriptor",
+            target.node_, target.name_);
+        return *impl_->poison;
+      }
+      if (candidate->second.scope_owner) {
+        impl_->poison = edit_error(
+            error_code::invalid_context, impl_->send_operation(),
+            *impl_->context, impl_->base->revision,
+            "live node event cannot reference a template-scoped node",
             target.node_, target.name_);
         return *impl_->poison;
       }
@@ -3207,8 +3868,10 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                                seed.field == target.name_;
                                       });
   if (duplicate != impl_->seeds.end()) {
+    if (impl_->intent == write_intent::runtime_output)
+      return {}; // validation precedes per-field loop suppression
     impl_->poison =
-        edit_error(error_code::ambiguous_event_seed, "event_batch.send",
+        edit_error(error_code::ambiguous_event_seed, impl_->send_operation(),
                    *impl_->context, impl_->base->revision,
                    "one event batch cannot seed the same field more than once",
                    target.node_, target.name_);
@@ -3226,74 +3889,234 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
 result<event_result> event_batch::commit() {
   if (impl_->poison)
     return *impl_->poison;
-  if (impl_->committed) {
+  if (impl_->committed)
     return edit_error(error_code::poisoned_edit, "event_batch.commit",
                       *impl_->context, impl_->base->revision,
                       "event batch was already committed");
-  }
   impl_->committed = true;
-  std::lock_guard lock(impl_->context->mutex);
-  if (!impl_->context->active) {
+  event_processing_guard reservation{impl_->context};
+  std::optional<runtime_frame> frame;
+  std::unique_lock lock(impl_->context->mutex);
+  if (impl_->context->processing)
+    return edit_error(error_code::operation_in_progress, "event_batch.commit",
+                      *impl_->context, impl_->base->revision,
+                      "runtime evaluation is in progress");
+  if (!impl_->context->active)
     return edit_error(error_code::stale_handle, "event_batch.commit",
                       *impl_->context, impl_->base->revision,
                       "execution context is no longer active");
-  }
-  if (impl_->context->state->revision != impl_->base->revision) {
+  if (impl_->context->state->revision != impl_->base->revision)
     return edit_error(error_code::stale_revision, "event_batch.commit",
                       *impl_->context, impl_->base->revision,
                       "event batch base revision is stale");
-  }
-  if (!impl_->seeds.empty() && impl_->context->last_event_time &&
-      !(impl_->context->last_event_time->seconds < impl_->time.seconds)) {
+  const auto factory = impl_->context->factory;
+  if ((!impl_->seeds.empty() || factory) && impl_->context->last_event_time &&
+      !(impl_->context->last_event_time->seconds < impl_->time.seconds))
     return edit_error(error_code::event_time_regression, "event_batch.commit",
                       *impl_->context, impl_->base->revision,
                       "event time must strictly advance");
+  impl_->context->processing = true;
+  reservation.armed = true;
+  lock.unlock();
+
+  if (factory) {
+    try {
+      auto created = (*factory)(scene_snapshot{impl_->context, impl_->base},
+                                impl_->time);
+      if (!created)
+        return failure(created.error());
+      frame.emplace(std::move(*created));
+      if (!frame->implementation_)
+        return edit_error(error_code::callback_failed, "event_batch.commit",
+                          *impl_->context, impl_->base->revision,
+                          "runtime factory returned a moved-from frame");
+    } catch (const std::exception &exception) {
+      return edit_error(error_code::callback_failed, "event_batch.commit",
+                        *impl_->context, impl_->base->revision, exception.what());
+    } catch (...) {
+      return edit_error(error_code::callback_failed, "event_batch.commit",
+                        *impl_->context, impl_->base->revision,
+                        "runtime factory threw a non-standard exception");
+    }
   }
-  detail::scene_state staged = *impl_->base;
-  std::vector<event_delivery> deliveries = std::move(impl_->seeds);
-  std::vector<bool> route_fired(staged.routes.size(), false);
-  for (std::size_t delivery_index = 0; delivery_index < deliveries.size();
-       ++delivery_index) {
-    const node_id source_target = deliveries[delivery_index].target;
-    const std::string source_field = deliveries[delivery_index].field;
-    const value source_payload = deliveries[delivery_index].payload;
-    for (std::size_t route_index = 0; route_index < staged.routes.size();
-         ++route_index) {
-      if (route_fired[route_index])
-        continue;
-      const route &candidate = staged.routes[route_index];
-      if (candidate.source != source_target ||
-          candidate.source_field != source_field)
-        continue;
-      const auto sink = staged.nodes.find(candidate.sink.value);
-      const auto *sink_descriptor =
-          sink == staged.nodes.end()
-              ? nullptr
-              : find_descriptor(*impl_->context, sink->second,
-                                candidate.sink_field);
-      if (!sink_descriptor ||
-          !accepts_node_payload(*impl_->context, staged, *sink_descriptor,
-                                source_payload)) {
-        return edit_error(
-            error_code::type_mismatch, "event_batch.commit", *impl_->context,
-            impl_->base->revision,
-            "routed node event type is not accepted by the destination field "
-            "descriptor",
-            candidate.sink, candidate.sink_field);
+  auto staged = std::make_shared<detail::scene_state>(*impl_->base);
+  std::deque<event_delivery> work;
+  for (auto &seed : impl_->seeds)
+    work.push_back(std::move(seed));
+  std::vector<event_delivery> deliveries;
+  std::vector<semantic_change> changes;
+  std::vector<bool> route_fired(staged->routes.size(), false);
+  std::set<std::pair<std::uint64_t, std::string>> output_fired;
+  std::vector<std::size_t> output_indices;
+  struct runtime_response {
+    std::vector<event_delivery> outputs;
+    bool ignored = false;
+  };
+  const auto evaluate =
+      [&](std::optional<event_delivery> input) -> result<runtime_response> {
+    if (!frame)
+      return runtime_response{};
+    auto validator = std::make_unique<impl>();
+    validator->context = impl_->context;
+    validator->base = staged;
+    validator->time = impl_->time;
+    validator->intent = write_intent::runtime_output;
+    auto scoped = std::make_shared<detail::runtime_step_control>();
+    scoped->stamp = impl_->time;
+    scoped->generation = impl_->context->generation;
+    scoped->revision = impl_->base->revision;
+    scoped->incoming = std::move(input);
+    scoped->outputs =
+        std::unique_ptr<event_batch>{new event_batch{std::move(validator)}};
+    runtime_step step{scoped};
+    result<void> processed;
+    try {
+      processed = frame->implementation_->process(step);
+    } catch (const std::exception &exception) {
+      processed =
+          edit_error(error_code::callback_failed, "event_batch.commit",
+                     *impl_->context, impl_->base->revision, exception.what());
+    } catch (...) {
+      processed =
+          edit_error(error_code::callback_failed, "event_batch.commit",
+                     *impl_->context, impl_->base->revision,
+                     "runtime processor threw a non-standard exception");
+    }
+    std::lock_guard step_lock(scoped->mutex);
+    scoped->active = false;
+    auto poison = std::move(scoped->outputs->impl_->poison);
+    runtime_response response{std::move(scoped->outputs->impl_->seeds),
+                              scoped->ignored};
+    // Retained steps own only immutable input facts, never the working state
+    // or a strong context reference that could form a processor ownership
+    // cycle.
+    scoped->outputs.reset();
+    if (poison)
+      return *poison;
+    if (!processed)
+      return failure(processed.error());
+    return response;
+  };
+  const auto queue_outputs = [&](runtime_response &response,
+                                 std::optional<std::size_t> cause) {
+    for (auto &output : response.outputs) {
+      output.origin = event_origin::runtime;
+      output.cause = cause;
+      work.push_back(std::move(output));
+    }
+  };
+  if (frame) {
+    auto prepared = evaluate(std::nullopt);
+    if (!prepared)
+      return failure(prepared.error());
+    queue_outputs(*prepared, std::nullopt);
+  }
+  while (!work.empty()) {
+    const event_delivery incoming = std::move(work.front());
+    work.pop_front();
+    const auto key = std::pair{incoming.target.value, incoming.field};
+    // Validation already happened in emit; suppress repeated output before
+    // assigning ledger indices so causal links never need renumbering.
+    if (incoming.origin == event_origin::runtime && output_fired.contains(key))
+      continue;
+    const std::size_t index = deliveries.size();
+    deliveries.push_back(incoming);
+    auto &record = staged->nodes.at(incoming.target.value);
+    const auto *descriptor =
+        find_descriptor(*impl_->context, record, incoming.field);
+    realize_nodes(*impl_->context, *staged, value{incoming.target}, changes);
+    runtime_response response;
+    if (incoming.origin != event_origin::runtime) {
+      auto evaluated = evaluate(incoming);
+      if (!evaluated)
+        return failure(evaluated.error());
+      response = std::move(*evaluated);
+      deliveries[index].ignored = response.ignored;
+    }
+    if (!response.ignored) {
+      // Native outputs and implicit inputOutput echoes share the ISO limit.
+      // Repeated native outputs are dropped only after send validation.
+      realize_nodes(*impl_->context, *staged, incoming.payload, changes);
+      if (descriptor->access == access_type::input_output ||
+          incoming.origin == event_origin::runtime) {
+        auto &stored = record.fields.at(incoming.field);
+        if (!same_representation(stored, incoming.payload)) {
+          const value before = stored;
+          stored = incoming.payload;
+          changes.push_back(graph_change{.kind = change_kind::field_changed,
+                                         .node = incoming.target,
+                                         .field = incoming.field,
+                                         .before = before,
+                                         .after = stored,
+                                         .index = 0});
+        }
       }
-      route_fired[route_index] = true;
-      deliveries.push_back(event_delivery{.time = impl_->time,
-                                          .target = candidate.sink,
-                                          .field = candidate.sink_field,
-                                          .payload = source_payload,
-                                          .cause = delivery_index,
-                                          .route_index = route_index});
+      const bool replaced_echo =
+          std::any_of(response.outputs.begin(), response.outputs.end(),
+                      [&](const event_delivery &output) {
+                        return output.target == incoming.target &&
+                               output.field == incoming.field;
+                      });
+      if (descriptor->access != access_type::input_only && !replaced_echo &&
+          output_fired.insert(key).second) {
+        output_indices.push_back(index);
+        for (std::size_t route_index = 0; route_index < staged->routes.size();
+             ++route_index) {
+          if (route_fired[route_index])
+            continue;
+          const route &candidate = staged->routes[route_index];
+          if (candidate.source != incoming.target ||
+              candidate.source_field != incoming.field)
+            continue;
+          const auto &sink = staged->nodes.at(candidate.sink.value);
+          const auto *sink_descriptor =
+              find_descriptor(*impl_->context, sink, candidate.sink_field);
+          if (!accepts_node_payload(*impl_->context, *staged, *sink_descriptor,
+                                    incoming.payload))
+            return edit_error(error_code::type_mismatch, "event_batch.commit",
+                              *impl_->context, impl_->base->revision,
+                              "routed node event type is not accepted by the "
+                              "destination field descriptor",
+                              candidate.sink, candidate.sink_field);
+          route_fired[route_index] = true;
+          work.push_back(event_delivery{.time = impl_->time,
+                                        .target = candidate.sink,
+                                        .field = candidate.sink_field,
+                                        .payload = incoming.payload,
+                                        .cause = index,
+                                        .route_index = route_index,
+                                        .origin = event_origin::route});
+        }
+      }
+    }
+    queue_outputs(response, index);
+  }
+  if (frame) {
+    try {
+      auto finished = frame->implementation_->finish();
+      if (!finished)
+        return failure(finished.error());
+      if (finished->has_value() || impl_->base->runtime_state.has_value()) {
+        changes.push_back(runtime_state_change{impl_->base->runtime_state,
+                                               *finished});
+        staged->runtime_state = std::move(*finished);
+      }
+    } catch (const std::exception &exception) {
+      return edit_error(error_code::callback_failed, "event_batch.commit",
+                        *impl_->context, impl_->base->revision, exception.what());
+    } catch (...) {
+      return edit_error(error_code::callback_failed, "event_batch.commit",
+                        *impl_->context, impl_->base->revision,
+                        "runtime finalization threw a non-standard exception");
     }
   }
   std::vector<event_issue> portability_issues;
   std::map<std::pair<std::uint64_t, std::string>, std::size_t> first_delivery;
   std::map<std::pair<std::uint64_t, std::string>, std::size_t> issue_by_target;
   for (std::size_t index = 0; index < deliveries.size(); ++index) {
+    if (deliveries[index].ignored ||
+        deliveries[index].origin == event_origin::runtime)
+      continue;
     const auto key =
         std::pair{deliveries[index].target.value, deliveries[index].field};
     const auto [found, inserted] = first_delivery.emplace(key, index);
@@ -3312,72 +4135,58 @@ result<event_result> event_batch::commit() {
       portability_issues[issue->second].delivery_indices.push_back(index);
     }
   }
-  std::vector<semantic_change> changes;
-  for (const event_delivery &delivery : deliveries) {
-    auto found = staged.nodes.find(delivery.target.value);
-    const auto *descriptor =
-        find_descriptor(*impl_->context, found->second, delivery.field);
-    if (descriptor->access != access_type::input_output)
-      continue;
-    auto &stored = found->second.fields.at(delivery.field);
-    if (same_representation(stored, delivery.payload))
-      continue;
-    const value before = stored;
-    stored = delivery.payload;
-    changes.push_back(graph_change{.kind = change_kind::field_changed,
-                                   .node = delivery.target,
-                                   .field = delivery.field,
-                                   .before = before,
-                                   .after = stored,
-                                   .index = 0});
-  }
-
   event_result result{.time = impl_->time,
                       .before_revision = impl_->base->revision,
                       .after_revision = impl_->base->revision,
                       .deliveries = std::move(deliveries),
                       .state_changes = std::nullopt,
                       .portability_issues = std::move(portability_issues)};
-  if (!result.deliveries.empty()) {
-    impl_->context->last_event_time = impl_->time;
-    for (const event_delivery &delivery : result.deliveries) {
+  if (!changes.empty()) {
+    staged->revision = impl_->base->revision + 1;
+    result.after_revision = staged->revision;
+    result.state_changes.emplace(
+        change_set{.before_revision = impl_->base->revision,
+                   .after_revision = staged->revision,
+                   .changes = std::move(changes)});
+  }
+  lock.lock();
+  const auto pending_before = impl_->context->pending.size();
+  try {
+    for (const auto index : output_indices) {
+      const auto &delivery = result.deliveries[index];
       std::vector<std::uint64_t> recipients;
       for (const auto &[observer_id, observer] :
-           impl_->context->event_observers) {
+           impl_->context->event_observers)
         if (observer.target == delivery.target &&
             observer.field == delivery.field)
           recipients.push_back(observer_id);
-      }
-      if (!recipients.empty()) {
+      if (!recipients.empty())
         impl_->context->pending.push_back(
             detail::context_control::pending_event{
                 .delivery = delivery, .recipients = std::move(recipients)});
+    }
+    if (result.state_changes && !impl_->context->observers.empty()) {
+      std::vector<std::uint64_t> recipients;
+      for (const auto &[observer_id, callback] : impl_->context->observers) {
+        (void)callback;
+        recipients.push_back(observer_id);
       }
+      impl_->context->pending.push_back(detail::context_control::pending_change{
+          .changes = *result.state_changes,
+          .recipients = std::move(recipients)});
     }
+  } catch (...) {
+    while (impl_->context->pending.size() > pending_before)
+      impl_->context->pending.pop_back();
+    throw;
   }
-  if (changes.empty())
-    return result;
-
-  staged.revision = impl_->base->revision + 1;
-  auto published = std::make_shared<detail::scene_state>(std::move(staged));
-  impl_->context->state = published;
-  impl_->context->published_revision.store(published->revision,
-                                           std::memory_order_release);
-  change_set committed{.before_revision = impl_->base->revision,
-                       .after_revision = published->revision,
-                       .changes = std::move(changes)};
-  result.after_revision = published->revision;
-  result.state_changes = committed;
-  if (!impl_->context->observers.empty()) {
-    std::vector<std::uint64_t> recipients;
-    recipients.reserve(impl_->context->observers.size());
-    for (const auto &[observer_id, callback] : impl_->context->observers) {
-      (void)callback;
-      recipients.push_back(observer_id);
-    }
-    impl_->context->pending.push_back(detail::context_control::pending_change{
-        .changes = committed, .recipients = std::move(recipients)});
+  if (result.state_changes) {
+    impl_->context->state = staged;
+    impl_->context->published_revision.store(staged->revision,
+                                             std::memory_order_release);
   }
+  if (!result.deliveries.empty() || factory)
+    impl_->context->last_event_time = impl_->time;
   return result;
 }
 
@@ -3403,6 +4212,10 @@ scene_snapshot::scene_snapshot(std::shared_ptr<detail::context_control> context,
     import_contexts_.push_back(source);
     import_states_.push_back(source->state);
   }
+}
+
+const std::any &scene_snapshot::runtime_state_storage() const noexcept {
+  return state_->runtime_state;
 }
 
 revision_id scene_snapshot::revision() const noexcept {
@@ -3448,6 +4261,8 @@ std::vector<occurrence> scene_snapshot::occurrences() const {
             const auto &children = std::get<node_list>(field_value);
             for (std::size_t child_index = 0; child_index < children.size();
                  ++child_index) {
+              if (children[child_index].value == 0)
+                continue;
               auto child_path = path;
               child_path.push_back(child_index);
               walk(children[child_index], occurrence_index, descriptor.name,
@@ -3521,6 +4336,44 @@ scene_snapshot::declaration_named(std::string_view requested_name) const {
         "declaration name is not defined: " + std::string{requested_name});
   }
   return declaration{context_, context_->generation, *found};
+}
+
+result<void> scene_snapshot::require_node_type(
+    const node &owner, std::string_view type_name,
+    std::optional<std::string_view> schema_fingerprint) const {
+  auto descriptor = describe(owner);
+  if (!descriptor)
+    return failure(descriptor.error());
+  if (descriptor->name != type_name &&
+      std::ranges::find(descriptor->interfaces, type_name) ==
+          descriptor->interfaces.end()) {
+    return edit_error(error_code::type_mismatch, "scene_snapshot.as", *context_,
+                      state_->revision,
+                      "node does not implement the requested type", owner.id_);
+  }
+  if (schema_fingerprint) {
+    const auto actual = context_->registry.schema_fingerprint();
+    if (!actual || *actual != *schema_fingerprint) {
+      return edit_error(
+          error_code::invalid_descriptor, "scene_snapshot.as", *context_,
+          state_->revision,
+          "generated node binding does not match the registry schema",
+          owner.id_);
+    }
+  }
+  return {};
+}
+
+result<bool> scene_snapshot::is_realized(const node &owner) const {
+  const auto found = state_->nodes.find(owner.id_.value);
+  if (owner.context_.lock() != context_ ||
+      owner.generation_ != context_->generation ||
+      found == state_->nodes.end()) {
+    return edit_error(error_code::stale_handle, "scene_snapshot.is_realized",
+                      *context_, state_->revision, "invalid node handle",
+                      owner.id_);
+  }
+  return found->second.realized;
 }
 
 result<node_type_descriptor> scene_snapshot::describe(const node &owner) const {
@@ -3655,31 +4508,83 @@ result<bool> scene_snapshot::readable(const dynamic_field &source) const {
   return field_is_readable(descriptor->access);
 }
 
-result<value> scene_snapshot::read(const dynamic_field &source) const {
+result<std::shared_ptr<const value>>
+scene_snapshot::read_storage(const dynamic_field &source,
+                             const char *operation) const {
   const auto source_context = source.context_.lock();
   const auto found = state_->nodes.find(source.node_.value);
   if (source_context != context_ ||
       source.generation_ != context_->generation ||
       found == state_->nodes.end()) {
-    return edit_error(error_code::stale_handle, "scene_snapshot.read",
-                      *context_, state_->revision, "invalid field handle",
-                      source.node_, source.name_);
+    return edit_error(error_code::stale_handle, operation, *context_,
+                      state_->revision, "invalid field handle", source.node_,
+                      source.name_);
   }
   const auto *descriptor =
       find_descriptor(*context_, found->second, source.name_);
   if (!descriptor) {
-    return edit_error(error_code::unknown_field, "scene_snapshot.read",
-                      *context_, state_->revision,
-                      "unknown field: " + source.name_, source.node_,
-                      source.name_);
+    return edit_error(error_code::unknown_field, operation, *context_,
+                      state_->revision, "unknown field: " + source.name_,
+                      source.node_, source.name_);
   }
   if (!field_is_readable(descriptor->access)) {
-    return edit_error(error_code::access_denied, "scene_snapshot.read",
-                      *context_, state_->revision,
-                      "inputOnly field is not readable", source.node_,
-                      source.name_);
+    return edit_error(error_code::access_denied, operation, *context_,
+                      state_->revision, "inputOnly field is not readable",
+                      source.node_, source.name_);
   }
-  return found->second.fields.at(source.name_);
+  return std::shared_ptr<const value>{state_,
+                                      &found->second.fields.at(source.name_)};
+}
+
+result<std::shared_ptr<const value>>
+scene_snapshot::read_view(const dynamic_field &source) const {
+  return read_storage(source, "scene_snapshot.read_view");
+}
+
+result<value> scene_snapshot::read(const dynamic_field &source) const {
+  auto stored = read_storage(source, "scene_snapshot.read");
+  if (!stored)
+    return failure(stored.error());
+  return **stored;
+}
+
+result<node> scene_snapshot::read_node(const dynamic_field &source) const {
+  auto stored = read_storage(source, "scene_snapshot.read_node");
+  if (!stored)
+    return failure(stored.error());
+  const auto *id = std::get_if<node_id>(stored->get());
+  if (!id) {
+    return edit_error(error_code::type_mismatch, "scene_snapshot.read_node",
+                      *context_, state_->revision, "field is not SFNode",
+                      source.node_, source.name_);
+  }
+  return id->value == 0 ? result<node>{node{}} : lookup(*id);
+}
+
+result<std::vector<node>>
+scene_snapshot::read_nodes(const dynamic_field &source) const {
+  auto stored = read_storage(source, "scene_snapshot.read_nodes");
+  if (!stored)
+    return failure(stored.error());
+  const auto *ids = std::get_if<node_list>(stored->get());
+  if (!ids) {
+    return edit_error(error_code::type_mismatch, "scene_snapshot.read_nodes",
+                      *context_, state_->revision, "field is not MFNode",
+                      source.node_, source.name_);
+  }
+  std::vector<node> nodes;
+  nodes.reserve(ids->size());
+  for (const auto id : *ids) {
+    if (id.value == 0) {
+      nodes.emplace_back();
+      continue;
+    }
+    auto handle = lookup(id);
+    if (!handle)
+      return failure(handle.error());
+    nodes.push_back(std::move(handle).value());
+  }
+  return nodes;
 }
 
 result<value> scene_snapshot::read(const dynamic_field &source,
@@ -3714,22 +4619,22 @@ result<value> scene_snapshot::read(const dynamic_imported_field &field) const {
   return read(field, value_space::canonical);
 }
 
-result<value> scene_snapshot::read(const dynamic_imported_field &field,
-                                   value_space space) const {
+result<std::shared_ptr<const value>>
+scene_snapshot::read_storage(const dynamic_imported_field &field,
+                             const char *operation) const {
   const auto importer = field.importer_.lock();
   const auto source = field.source_.lock();
   if (importer != context_ ||
       field.importer_generation_ != context_->generation) {
-    return edit_error(error_code::invalid_context, "scene_snapshot.read_import",
-                      *context_, state_->revision,
+    return edit_error(error_code::invalid_context, operation, *context_,
+                      state_->revision,
                       "imported field belongs to another snapshot context",
                       field.node_, field.name_);
   }
   if (!source || source->generation != field.source_generation_) {
-    return edit_error(error_code::stale_handle, "scene_snapshot.read_import",
-                      *context_, state_->revision,
-                      "invalid imported field handle", field.node_,
-                      field.name_);
+    return edit_error(error_code::stale_handle, operation, *context_,
+                      state_->revision, "invalid imported field handle",
+                      field.node_, field.name_);
   }
   std::optional<std::size_t> binding_index;
   for (std::size_t index = 0; index < state_->imports.size(); ++index) {
@@ -3740,42 +4645,69 @@ result<value> scene_snapshot::read(const dynamic_imported_field &field,
     }
   }
   if (!binding_index) {
-    return edit_error(error_code::invalid_context, "scene_snapshot.read_import",
-                      *context_, state_->revision,
+    return edit_error(error_code::invalid_context, operation, *context_,
+                      state_->revision,
                       "imported field does not belong to this snapshot",
                       field.node_, field.name_);
   }
   const auto &source_state = import_states_[*binding_index];
   if (!source_state || source_state->revision != field.source_revision_) {
-    return edit_error(error_code::stale_handle, "scene_snapshot.read_import",
-                      *context_, state_->revision,
+    return edit_error(error_code::stale_handle, operation, *context_,
+                      state_->revision,
                       "imported field source revision is unavailable",
                       field.node_, field.name_);
   }
   const auto found = source_state->nodes.find(field.node_.value);
   if (found == source_state->nodes.end()) {
-    return edit_error(error_code::unknown_node, "scene_snapshot.read_import",
-                      *context_, state_->revision,
-                      "imported field owner is absent", field.node_,
-                      field.name_);
+    return edit_error(error_code::unknown_node, operation, *context_,
+                      state_->revision, "imported field owner is absent",
+                      field.node_, field.name_);
   }
   const auto *descriptor = find_descriptor(*source, found->second, field.name_);
   if (!descriptor || descriptor->kind != field.kind_ ||
       descriptor->access != field.access_) {
-    return edit_error(error_code::unknown_field, "scene_snapshot.read_import",
-                      *context_, state_->revision,
-                      "imported field descriptor changed", field.node_,
-                      field.name_);
+    return edit_error(error_code::unknown_field, operation, *context_,
+                      state_->revision, "imported field descriptor changed",
+                      field.node_, field.name_);
   }
   if (descriptor->access == access_type::input_only) {
-    return edit_error(error_code::access_denied, "scene_snapshot.read_import",
-                      *context_, state_->revision,
-                      "inputOnly imported field is not readable", field.node_,
-                      field.name_);
+    return edit_error(
+        error_code::access_denied, operation, *context_, state_->revision,
+        "inputOnly imported field is not readable", field.node_, field.name_);
   }
-  value stored = found->second.fields.at(field.name_);
+  return std::shared_ptr<const value>{source_state,
+                                      &found->second.fields.at(field.name_)};
+}
+
+result<std::shared_ptr<const value>>
+scene_snapshot::read_view(const dynamic_imported_field &field) const {
+  return read_storage(field, "scene_snapshot.read_view_import");
+}
+
+result<value> scene_snapshot::read(const dynamic_imported_field &field,
+                                   value_space space) const {
+  auto view = read_storage(field, "scene_snapshot.read_import");
+  if (!view)
+    return failure(view.error());
+  value stored = **view;
   if (space == value_space::canonical)
     return stored;
+  // The checked view above guarantees this source and binding are pinned.
+  const auto source = field.source_.lock();
+  std::size_t index = 0;
+  while (index < state_->imports.size() &&
+         (state_->imports[index].target != field.node() ||
+          import_contexts_[index] != source))
+    ++index;
+  if (index == state_->imports.size()) {
+    return edit_error(error_code::invalid_context, "scene_snapshot.read_import",
+                      *context_, state_->revision,
+                      "imported field source state is unavailable", field.node_,
+                      field.name_);
+  }
+  const auto &source_state = import_states_[index];
+  const auto &record = source_state->nodes.at(field.node_.value);
+  const auto *descriptor = find_descriptor(*source, record, field.name_);
   auto authored =
       convert_unit_value(*source_state, *descriptor, std::move(stored),
                          value_space::canonical, space);
@@ -4073,43 +5005,100 @@ execution_context browser::create_scene() {
   return execution_context{std::move(context)};
 }
 
-result<void> browser::replace_world(const execution_context &replacement) {
-  std::lock_guard browser_lock(control_->mutex);
-  if (!replacement.control_) {
-    sai_error error;
-    error.code = error_code::stale_handle;
-    error.operation = "browser.replace_world";
-    error.message = "replacement context is empty";
-    return failure(std::move(error));
+result<void> browser::set_runtime_processor(const execution_context &scene,
+                                            runtime_processor processor) {
+  runtime_factory factory;
+  if (processor) {
+    auto shared = std::make_shared<const runtime_processor>(std::move(processor));
+    factory = [shared = std::move(shared)](const scene_snapshot &, event_time)
+        -> result<runtime_frame> { return runtime_frame{shared}; };
   }
-  if (replacement.control_->owner.lock() != control_) {
-    sai_error error;
-    error.code = error_code::invalid_context;
-    error.operation = "browser.replace_world";
-    error.message = "replacement context belongs to another browser";
-    return failure(std::move(error));
+  return install_runtime_factory(scene, std::move(factory),
+                                  "browser.set_runtime_processor");
+}
+
+result<void> browser::set_runtime_factory(const execution_context &scene,
+                                          runtime_factory factory) {
+  return install_runtime_factory(scene, std::move(factory),
+                                  "browser.set_runtime_factory");
+}
+
+result<void> browser::install_runtime_factory(const execution_context &scene,
+                                              runtime_factory factory,
+                                              const char *operation) {
+  if (!scene.control_ || scene.control_->owner.lock() != control_)
+    return descriptor_error(error_code::invalid_context, operation,
+                            "scene belongs to another browser");
+  auto installed = factory
+      ? std::make_shared<const runtime_factory>(std::move(factory))
+      : std::shared_ptr<const runtime_factory>{};
+  std::shared_ptr<const runtime_factory> retired;
+  {
+    std::lock_guard lock(scene.control_->mutex);
+    if (!scene.control_->active)
+      return edit_error(error_code::stale_handle, operation, *scene.control_,
+                        scene.control_->state->revision, "scene is retired");
+    if (scene.control_->processing)
+      return edit_error(error_code::operation_in_progress, operation,
+                        *scene.control_, scene.control_->state->revision,
+                        "runtime evaluation is in progress");
+    retired = std::exchange(scene.control_->factory, std::move(installed));
   }
-  if (replacement.control_ == control_->current)
+  return {}; // callable destruction is outside the context lock
+}
+
+namespace {
+struct retired_context_callbacks {
+  std::shared_ptr<detail::context_control> context;
+  decltype(detail::context_control::observers) changes;
+  decltype(detail::context_control::event_observers) fields;
+  decltype(detail::context_control::pending) pending;
+  std::shared_ptr<const runtime_factory> factory;
+};
+
+// The caller holds the browser lock through ticket validation and publication.
+// It destroys retired callables after releasing that lock.
+result<void> replace_world_locked(
+    const std::shared_ptr<detail::browser_control> &browser,
+    const std::shared_ptr<detail::context_control> &replacement,
+    retired_context_callbacks &retired) {
+  if (!replacement)
+    return descriptor_error(error_code::stale_handle, "browser.replace_world",
+                            "replacement context is empty");
+  if (replacement->owner.lock() != browser)
+    return descriptor_error(error_code::invalid_context,
+                            "browser.replace_world",
+                            "replacement context belongs to another browser");
+  if (replacement == browser->current)
     return {};
-  {
-    std::lock_guard replacement_lock(replacement.control_->mutex);
-    if (!replacement.control_->active) {
-      return edit_error(error_code::stale_handle, "browser.replace_world",
-                        *replacement.control_,
-                        replacement.control_->state->revision,
-                        "replacement context is stale");
-    }
-  }
-  {
-    std::lock_guard old_lock(control_->current->mutex);
-    control_->current->active = false;
-    control_->current->observers.clear();
-    control_->current->event_observers.clear();
-    control_->current->pending.clear();
-  }
-  control_->current = replacement.control_;
-  ++control_->world_epoch;
+  // Keep the retired context alive until both of its locks are released.
+  const auto current = browser->current;
+  std::scoped_lock context_locks(replacement->mutex, current->mutex);
+  if (!replacement->active)
+    return edit_error(error_code::stale_handle, "browser.replace_world",
+                      *replacement, replacement->state->revision,
+                      "replacement context is stale");
+  if (replacement->processing || current->processing)
+    return edit_error(error_code::operation_in_progress,
+                      "browser.replace_world", *current,
+                      current->state->revision,
+                      "world replacement conflicts with runtime evaluation");
+  current->active = false;
+  retired.changes.swap(current->observers);
+  retired.fields.swap(current->event_observers);
+  retired.pending.swap(current->pending);
+  retired.factory.swap(current->factory);
+  retired.context = current;
+  browser->current = replacement;
+  ++browser->world_epoch;
   return {};
+}
+} // namespace
+
+result<void> browser::replace_world(const execution_context &replacement) {
+  retired_context_callbacks retired;
+  std::lock_guard browser_lock(control_->mutex);
+  return replace_world_locked(control_, replacement.control_, retired);
 }
 
 load_ticket browser::begin_load() {
@@ -4155,34 +5144,37 @@ result<void> browser::complete_load(const load_ticket &ticket,
     error.message = "load ticket belongs to another browser";
     return failure(std::move(error));
   }
-  {
-    std::lock_guard lock(control_->mutex);
-    const auto found = control_->requests.find(ticket.request_id_);
-    if (found == control_->requests.end()) {
-      sai_error error;
-      error.code = error_code::stale_completion;
-      error.operation = "browser.complete_load";
-      error.message = "load ticket is unknown or already completed";
-      return failure(std::move(error));
-    }
-    if (found->second.cancelled) {
-      sai_error error;
-      error.code = error_code::cancelled;
-      error.operation = "browser.complete_load";
-      error.message = "load request was cancelled";
-      return failure(std::move(error));
-    }
-    if (found->second.world_epoch != control_->world_epoch ||
-        ticket.world_epoch_ != control_->world_epoch) {
-      sai_error error;
-      error.code = error_code::stale_completion;
-      error.operation = "browser.complete_load";
-      error.message = "browser world changed after the load began";
-      return failure(std::move(error));
-    }
-    control_->requests.erase(found);
+  retired_context_callbacks retired;
+  std::lock_guard lock(control_->mutex);
+  const auto found = control_->requests.find(ticket.request_id_);
+  if (found == control_->requests.end()) {
+    sai_error error;
+    error.code = error_code::stale_completion;
+    error.operation = "browser.complete_load";
+    error.message = "load ticket is unknown or already completed";
+    return failure(std::move(error));
   }
-  return replace_world(replacement);
+  if (found->second.cancelled) {
+    sai_error error;
+    error.code = error_code::cancelled;
+    error.operation = "browser.complete_load";
+    error.message = "load request was cancelled";
+    return failure(std::move(error));
+  }
+  if (found->second.world_epoch != control_->world_epoch ||
+      ticket.world_epoch_ != control_->world_epoch) {
+    sai_error error;
+    error.code = error_code::stale_completion;
+    error.operation = "browser.complete_load";
+    error.message = "browser world changed after the load began";
+    return failure(std::move(error));
+  }
+  auto published =
+      replace_world_locked(control_, replacement.control_, retired);
+  if (!published)
+    return published;
+  control_->requests.erase(found);
+  return {};
 }
 
 } // namespace x3d::sai::experimental

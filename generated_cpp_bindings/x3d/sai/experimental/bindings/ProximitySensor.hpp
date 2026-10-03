@@ -26,9 +26,6 @@ struct ProximitySensor {
   inline static constexpr field_key<ProximitySensor,
                                     ::x3d::sai::experimental::time_value>
       exitTime{"exitTime", access_type::output_only};
-  inline static constexpr field_key<ProximitySensor,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<ProximitySensor, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<ProximitySensor,
@@ -43,17 +40,7 @@ struct ProximitySensor {
   inline static constexpr field_key<ProximitySensor,
                                     ::x3d::sai::experimental::vec3f>
       size{"size", access_type::input_output};
-  inline static constexpr field_key<ProximitySensor, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<ProximitySensor, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<ProximitySensor, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<ProximitySensor, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<ProximitySensor, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 17> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 11> field_keys{{
       {center.name(), center.kind, center.access()},
       {centerOfRotation_changed.name(), centerOfRotation_changed.kind,
        centerOfRotation_changed.access()},
@@ -61,7 +48,6 @@ struct ProximitySensor {
       {enabled.name(), enabled.kind, enabled.access()},
       {enterTime.name(), enterTime.kind, enterTime.access()},
       {exitTime.name(), exitTime.kind, exitTime.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {orientation_changed.name(), orientation_changed.kind,
@@ -69,11 +55,6 @@ struct ProximitySensor {
       {position_changed.name(), position_changed.kind,
        position_changed.access()},
       {size.name(), size.kind, size.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

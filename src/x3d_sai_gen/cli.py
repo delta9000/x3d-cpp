@@ -9,6 +9,8 @@ x3d-cpp's generator.
 import argparse
 import hashlib
 import os
+from pathlib import Path
+import tempfile
 from importlib.resources import files
 
 from x3d_sai_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES
@@ -54,16 +56,44 @@ def main(argv=None) -> int:
     parser.add_argument("--out-dir", default="generated_cpp_bindings")
     parser.add_argument("--clang-format", default="clang-format")
     parser.add_argument("--check-uom-only", action="store_true")
+    parser.add_argument("--check", action="store_true",
+                        help="Compare generated files without modifying the output directory.")
     args = parser.parse_args(argv)
 
     verify_uom()
     if args.check_uom_only:
         return 0
 
+    if args.check:
+        with tempfile.TemporaryDirectory(prefix="x3d-sai-gen-") as temporary:
+            _generate(temporary, args.clang_format)
+            return check_generated(Path(temporary), Path(args.out_dir))
+    _generate(args.out_dir, args.clang_format)
+    return 0
+
+
+def check_generated(expected: Path, actual: Path) -> int:
+    """Check both content and inventory; no git or staging-state dependency."""
+    expected_files = {path.relative_to(expected) for path in expected.rglob("*")
+                      if path.is_file()}
+    actual_files = {path.relative_to(actual) for path in actual.rglob("*")
+                    if path.is_file()}
+    changed = sorted(expected_files ^ actual_files)
+    changed += sorted(path for path in expected_files & actual_files
+                      if (expected / path).read_bytes() != (actual / path).read_bytes())
+    if changed:
+        for path in changed:
+            print(f"generated file differs: {path}")
+        return 1
+    print(f"Generated files match: {len(expected_files)} files")
+    return 0
+
+
+def _generate(out_dir: str, clang_format: str) -> None:
     uom = str(_data(f"X3dUnifiedObjectModel-{SPEC_VERSION}.xml"))
     nodes, skipped = parse_x3d_model(uom, FIELD_TYPE_MAPPING, XS_TYPES)
-    if skipped:
-        print(f"note: parser skipped {len(skipped)} field(s)")
+    if not nodes or skipped:
+        raise SystemExit(f"UOM cannot produce a complete catalog: {len(skipped)} unsupported fields")
     graph = build_dependency_graph(nodes)
     enum_defs = parse_enum_definitions(uom)
 
@@ -73,12 +103,12 @@ def main(argv=None) -> int:
     written = []
     to_format = []
 
-    core_dir = os.path.join(args.out_dir, "x3d", "core")
+    core_dir = os.path.join(out_dir, "x3d", "core")
     os.makedirs(core_dir, exist_ok=True)
     written.append(_write(
         os.path.join(core_dir, "X3DReflection.hpp"), gen_reflection_header()))
 
-    nodes_dir = os.path.join(args.out_dir, "x3d", "nodes")
+    nodes_dir = os.path.join(out_dir, "x3d", "nodes")
     os.makedirs(nodes_dir, exist_ok=True)
     written.append(_write(
         os.path.join(nodes_dir, "X3DSemanticMetadataRegistry.hpp"),
@@ -88,7 +118,7 @@ def main(argv=None) -> int:
     written.append(_write(
         os.path.join(nodes_dir, "X3DSemanticMetadataRegistry.cpp"), metadata))
 
-    root = os.path.join(args.out_dir, "x3d", "sai", "experimental")
+    root = os.path.join(out_dir, "x3d", "sai", "experimental")
     bindings_dir = os.path.join(root, "bindings")
     os.makedirs(bindings_dir, exist_ok=True)
     for name in sorted(nodes):
@@ -108,10 +138,9 @@ def main(argv=None) -> int:
         os.path.join(root, "X3DSAIBindingCatalog.hpp"),
         gen_sai_binding_index(nodes)))
 
-    format_files(to_format, args.clang_format)
+    format_files(to_format, clang_format)
     print(f"Generated {len(written) + len(to_format)} files into "
-          f"{args.out_dir}")
-    return 0
+          f"{out_dir}")
 
 
 if __name__ == "__main__":

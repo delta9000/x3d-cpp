@@ -18,9 +18,6 @@ struct PositionChaser {
   inline static constexpr field_key<PositionChaser,
                                     ::x3d::sai::experimental::vec3f>
       initialValue{"initialValue", access_type::initialize_only};
-  inline static constexpr field_key<PositionChaser,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<PositionChaser, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<PositionChaser,
@@ -35,32 +32,16 @@ struct PositionChaser {
   inline static constexpr field_key<PositionChaser,
                                     ::x3d::sai::experimental::vec3f>
       value_changed{"value_changed", access_type::output_only};
-  inline static constexpr field_key<PositionChaser, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<PositionChaser, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<PositionChaser, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<PositionChaser, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<PositionChaser, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 14> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 8> field_keys{{
       {duration.name(), duration.kind, duration.access()},
       {initialDestination.name(), initialDestination.kind,
        initialDestination.access()},
       {initialValue.name(), initialValue.kind, initialValue.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {set_destination.name(), set_destination.kind, set_destination.access()},
       {set_value.name(), set_value.kind, set_value.access()},
       {value_changed.name(), value_changed.kind, value_changed.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

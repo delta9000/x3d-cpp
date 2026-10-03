@@ -146,13 +146,153 @@ services:
     support: planned
     tests: [planned:sai_context_world_url]
     preserves: [INV-CXX-2, INV-PORT-1]
+  - <<: *query
+    id: SVC-CONTEXT-NAMED-NODE-GET
+    clause: ISO/IEC 19775-2:2015, 6.4.7 getNode (local name)
+    public_symbol: x3d::sai::experimental::scene_snapshot::named
+    support: partial
+    tests: [sai_context_alias_collision, sai_edit_query_mutation_dual]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-OWN-2]
+  - <<: *command
+    id: SVC-CONTEXT-NODE-CREATE
+    clause: ISO/IEC 19775-2:2015, 6.4.8 createNode
+    public_symbol: x3d::sai::experimental::scene_edit::create_node
+    support: partial
+    tests: [sai_id_shared_node, sai_life_node_removal]
+    preserves: [INV-ID-1, INV-OWN-1, INV-EDIT-1]
+  - <<: *command
+    id: SVC-CONTEXT-NAMED-NODE-DEFINE
+    clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (define)
+    public_symbol: x3d::sai::experimental::scene_edit::define_name
+    support: partial
+    tests: [sai_context_alias_collision, sai_edit_query_mutation_dual]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-EDIT-1]
   - <<: *command
     id: SVC-CONTEXT-NAMED-NODE-REMOVE
     clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (remove)
     public_symbol: x3d::sai::experimental::scene_edit::undefine_name
     support: partial
     tests: [sai_edit_query_mutation_dual]
-    preserves: [INV-OWN-1, INV-EDIT-1, INV-EDIT-3]
+    preserves: [INV-ID-3, INV-OWN-1, INV-EDIT-1, INV-EDIT-3, INV-EDIT-5]
+  - <<: *query
+    id: SVC-CONTEXT-NAMES
+    clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (enumerate)
+    public_symbol: x3d::sai::experimental::scene_snapshot::names
+    support: partial
+    tests: [sai_edit_query_mutation_dual]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-ORDER-1]
+  - <<: *query
+    id: SVC-CONTEXT-ROOTS
+    clause: ISO/IEC 19775-2:2015, 6.4.15 getRootNodes
+    public_symbol: x3d::sai::experimental::scene_snapshot::roots
+    support: partial
+    tests: [sai_edit_query_mutation_dual, sai_order_public_ranges]
+    preserves: [INV-ID-2, INV-EDIT-5, INV-ORDER-1]
+  - <<: *query
+    id: SVC-CONTEXT-ROUTES
+    clause: ISO/IEC 19775-2:2015, 6.4.16 getRoutes
+    public_symbol: x3d::sai::experimental::scene_snapshot::routes
+    support: partial
+    tests: [sai_edit_query_mutation_dual, sai_order_public_ranges]
+    preserves: [INV-EDIT-5, INV-ORDER-1]
+  - <<: *query
+    id: SVC-CONTEXT-PROTO-DECLARATION
+    clause: ISO/IEC 19775-2:2015, 6.4.11 getProtoDeclaration
+    public_symbol: x3d::sai::experimental::scene_snapshot::declaration_named
+    support: partial
+    tests: [sai_decl_identity_order, sai_decl_mutation_duals]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-OWN-2]
+  - <<: *command
+    id: SVC-CONTEXT-PROTO-DECLARE
+    clause: ISO/IEC 19775-2:2015, 6.4.12 protoDeclarationHandling
+    public_symbol: x3d::sai::experimental::scene_edit::add_local_declaration
+    support: partial
+    tests: [sai_decl_interface_validation, sai_decl_interface_metadata, sai_decl_mutation_duals, sai_decl_template_scope, sai_decl_node_default_authority]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-OWN-2]
+  - <<: *query
+    id: SVC-CONTEXT-EXTERNPROTO-DECLARATION
+    clause: ISO/IEC 19775-2:2015, 6.4.13 getExternProtoDeclaration
+    public_symbol: x3d::sai::experimental::scene_snapshot::declaration_named
+    support: partial
+    tests: [sai_decl_external_state, sai_decl_identity_order]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-OWN-2]
+  - <<: *command
+    id: SVC-CONTEXT-EXTERNPROTO-DECLARE
+    clause: ISO/IEC 19775-2:2015, 6.4.14 externprotoDeclarationHandling
+    public_symbol: x3d::sai::experimental::scene_edit::add_external_declaration
+    support: partial
+    tests: [sai_decl_external_state, sai_decl_interface_metadata, sai_decl_external_compatibility, sai_decl_external_subset, sai_decl_mutation_duals]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-OWN-2]
+  - <<: *command
+    id: SVC-CONTEXT-EXTERNPROTO-RESOLVE
+    clause: ISO/IEC 19775-2:2015, 6.4.14 externprotoDeclarationHandling (resolve)
+    public_symbol: x3d::sai::experimental::scene_edit::resolve_external_declaration
+    support: partial
+    tests: [sai_decl_external_authority, sai_decl_external_compatibility]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-OWN-2, INV-EDIT-1]
+  - <<: *command
+    id: SVC-CONTEXT-ROUTE-ADD
+    clause: ISO/IEC 19775-2:2015, 6.4.17 dynamicRouteHandling (add)
+    public_symbol: x3d::sai::experimental::scene_edit::add_route
+    support: partial
+    tests: [sai_route_access, sai_route_unique]
+    preserves: [INV-EDIT-1, INV-EDIT-5, INV-EVT-1]
+  - <<: *command
+    id: SVC-CONTEXT-ROUTE-REMOVE
+    clause: ISO/IEC 19775-2:2015, 6.4.17 dynamicRouteHandling (remove)
+    public_symbol: x3d::sai::experimental::scene_edit::remove_route
+    support: partial
+    tests: [sai_edit_query_mutation_dual]
+    preserves: [INV-EDIT-1, INV-EDIT-5]
+  - <<: *command
+    id: SVC-SCENE-ROOT-ADD
+    clause: ISO/IEC 19775-2:2015, 6.5.5 rootNodeHandling (add)
+    public_symbol: x3d::sai::experimental::scene_edit::append_root
+    support: partial
+    tests: [sai_id_shared_node, sai_edit_query_mutation_dual]
+    preserves: [INV-ID-1, INV-ID-2, INV-EDIT-5]
+  - <<: *command
+    id: SVC-SCENE-ROOT-REMOVE
+    clause: ISO/IEC 19775-2:2015, 6.5.5 rootNodeHandling (remove)
+    public_symbol: x3d::sai::experimental::scene_edit::remove_root
+    support: partial
+    tests: [sai_edit_query_mutation_dual, sai_life_remove_references]
+    preserves: [INV-ID-2, INV-EDIT-5, INV-EDIT-1]
+  - <<: *query
+    id: SVC-CONTEXT-DECLARATIONS
+    clause: ISO/IEC 19775-2:2015, 6.4.11 getProtoDeclaration; 6.4.13 getExternProtoDeclaration (enumerate)
+    public_symbol: x3d::sai::experimental::scene_snapshot::declarations
+    support: partial
+    tests: [sai_decl_identity_order, sai_decl_mutation_duals]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-ORDER-1]
+  - <<: *command
+    id: SVC-CONTEXT-DECLARATION-RENAME
+    clause: ISO/IEC 19775-2:2015, 6.4.12 protoDeclarationHandling; 6.4.14 externprotoDeclarationHandling (rename)
+    public_symbol: x3d::sai::experimental::scene_edit::rename_declaration
+    support: partial
+    tests: [sai_decl_update_intent, sai_decl_mutation_duals]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-EDIT-1]
+  - <<: *command
+    id: SVC-CONTEXT-DECLARATION-UPDATE
+    clause: ISO/IEC 19775-2:2015, 6.4.12 protoDeclarationHandling; 6.4.14 externprotoDeclarationHandling (update)
+    public_symbol: x3d::sai::experimental::scene_edit::update_declaration
+    support: partial
+    tests: [sai_decl_update_intent, sai_decl_failure_nonmutation]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-EDIT-1]
+  - <<: *command
+    id: SVC-CONTEXT-DECLARATION-DEFAULT
+    clause: ISO/IEC 19775-2:2015, 6.4.12 protoDeclarationHandling (node defaults)
+    public_symbol: x3d::sai::experimental::scene_edit::set_declaration_default
+    support: partial
+    tests: [sai_decl_node_defaults, sai_decl_scope_live_reference]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-OWN-2, INV-EDIT-1]
+  - <<: *command
+    id: SVC-CONTEXT-DECLARATION-REMOVE
+    clause: ISO/IEC 19775-2:2015, 6.4.12 protoDeclarationHandling; 6.4.14 externprotoDeclarationHandling (remove)
+    public_symbol: x3d::sai::experimental::scene_edit::remove_declaration
+    support: partial
+    tests: [sai_decl_mutation_duals, sai_decl_scope_release]
+    preserves: [INV-ID-3, INV-EDIT-5, INV-OWN-2]
   - <<: *query
     id: SVC-CONTEXT-IMPORTED-NODE-GET
     clause: ISO/IEC 19775-2:2015, 6.4.7 getNode (imported)
@@ -174,6 +314,52 @@ services:
     support: partial
     tests: [sai_context_import_removal]
     preserves: [INV-OWN-1, INV-OWN-2, INV-EDIT-3]
+
+  # Descriptor and field discovery are executable kernel services. Their
+  # coverage remains partial because no full browser/profile surface exists.
+  - <<: *query
+    id: SVC-NODE-TYPE-NAME
+    clause: ISO/IEC 19775-2:2015, 6.6.2 getTypeName
+    public_symbol: x3d::sai::experimental::scene_snapshot::describe
+    support: partial
+    tests: [sai_inspect_descriptor, sai_generated_binding_parity]
+    preserves: [INV-FIELD-1, INV-GEN-1, INV-CXX-4]
+  - <<: *query
+    id: SVC-NODE-FIELD-GET
+    clause: ISO/IEC 19775-2:2015, 6.6.4 getField
+    public_symbol: x3d::sai::experimental::scene_snapshot::field
+    support: partial
+    tests: [sai_cxx_typed_generic, sai_inspect_descriptor]
+    preserves: [INV-FIELD-1, INV-CXX-4, INV-GEN-1]
+  - <<: *query
+    id: SVC-NODE-FIELD-DEFINITIONS
+    clause: ISO/IEC 19775-2:2015, 6.6.5 getFieldDefinitions
+    public_symbol: x3d::sai::experimental::scene_snapshot::describe
+    support: partial
+    tests: [sai_inspect_descriptor, sai_generated_binding_parity]
+    binding_obligations: [CPP-A.4.4-FIELD-DEFINITION]
+    preserves: [INV-FIELD-1, INV-GEN-1, INV-ORDER-1]
+
+  # Authoring extensions expose the lifecycle distinction without changing
+  # immutable inspection into an implicit live service request.
+  - <<: *command
+    id: SVC-NODE-REALIZE
+    clause: ISO/IEC 19775-2:2015, 4.4.8 node lifecycle (explicit authoring boundary)
+    profiles: [authoring]
+    public_symbol: x3d::sai::experimental::scene_edit::realize
+    support: partial
+    tests: [sai_life_setup_across_revisions, sai_life_realization_access, sai_life_realization_authority, sai_life_realization_mf, sai_life_realization_cycles]
+    buffering: stages an idempotent setup-to-realized transition in the atomic scene edit
+    events: queues a node_realized change after publication; no runtime initialization callback yet
+    preserves: [INV-FIELD-3, INV-EDIT-1, INV-EDIT-2, INV-LIFE-1]
+  - <<: *query
+    id: SVC-NODE-IS-REALIZED
+    clause: ISO/IEC 19775-2:2015, 4.4.8 node lifecycle (snapshot inspection extension)
+    public_symbol: x3d::sai::experimental::scene_snapshot::is_realized
+    support: partial
+    tests: [sai_life_setup_across_revisions, sai_life_realization_authority, sai_life_realization_events]
+    buffering: reads the phase captured by the immutable snapshot
+    preserves: [INV-FIELD-3, INV-FIELD-5, INV-LIFE-1, INV-CXX-4]
 
   - <<: *command
     id: SVC-NODE-DISPOSE
@@ -215,21 +401,44 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.7.5 getValue
     public_symbol: x3d::sai::experimental::scene_snapshot::read
     support: partial
-    tests: [sai_field_pure_read, sai_field_units_once]
+    tests: [sai_field_pure_read, sai_field_units_once, sai_field_unit_read_range, sai_node_null_access, sai_node_null_events, sai_field_snapshot_view]
+    binding_obligations: [CPP-4.3.5.1-NULL-NODES, CPP-4.3.5.3-MFNODE-NULL-ORDER]
     preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5, INV-CXX-4]
+  - <<: *query
+    id: SVC-FIELD-ACCESS-TYPE
+    clause: ISO/IEC 19775-2:2015, 6.7.2 getAccessType
+    public_symbol: x3d::sai::experimental::dynamic_field::access
+    support: partial
+    tests: [sai_inspect_descriptor, sai_field_access_state_machine]
+    preserves: [INV-FIELD-1, INV-GEN-1]
+  - <<: *query
+    id: SVC-FIELD-TYPE
+    clause: ISO/IEC 19775-2:2015, 6.7.3 getType
+    public_symbol: x3d::sai::experimental::dynamic_field::kind
+    support: partial
+    tests: [sai_inspect_descriptor, sai_cxx_typed_generic]
+    preserves: [INV-FIELD-1, INV-GEN-1, INV-CXX-4]
+  - <<: *query
+    id: SVC-FIELD-NAME
+    clause: ISO/IEC 19775-2:2015, 6.7.4 getName
+    public_symbol: x3d::sai::experimental::dynamic_field::name
+    support: partial
+    tests: [sai_inspect_descriptor]
+    preserves: [INV-FIELD-1, INV-GEN-1]
   - <<: *command
     id: SVC-FIELD-WRITE
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue
     public_symbol: x3d::sai::experimental::scene_edit::set
     support: partial
-    tests: [sai_field_specialized_access, sai_field_units_once, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes]
+    tests: [sai_field_specialized_access, sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes, sai_node_null_access, sai_node_null_events]
+    binding_obligations: [CPP-4.3.5.1-NULL-NODES, CPP-4.3.5.3-MFNODE-NULL-ORDER]
     preserves: [INV-FIELD-2, INV-FIELD-3, INV-FIELD-4, INV-CXX-4, INV-EVT-1]
   - <<: *observer
     id: SVC-FIELD-OBSERVE
     clause: ISO/IEC 19775-2:2015, 6.7.7 registerFieldInterest
     public_symbol: x3d::sai::experimental::execution_context::observe
     support: partial
-    tests: [sai_evt_field_observer, sai_evt_reentrant_batch]
+    tests: [sai_evt_field_observer, sai_evt_reentrant_batch, sai_runtime_cascade, sai_runtime_ignored]
     binding_obligations: [CPP-A.4.5-FIELD-OBSERVATION]
     preserves: [INV-CXX-3, INV-EVT-2, INV-EVT-3]
   - <<: *query
@@ -237,7 +446,7 @@ services:
     clause: ISO/IEC 19777-4, Annex A.4.5 X3DField::isReadable
     public_symbol: x3d::sai::experimental::scene_snapshot::readable
     support: partial
-    tests: [sai_field_readable]
+    tests: [sai_field_readable, sai_life_setup_across_revisions]
     binding_obligations: [CPP-A.4.5-FIELD-CAPABILITY]
     preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5]
   - <<: *query
@@ -245,7 +454,7 @@ services:
     clause: ISO/IEC 19777-4, Annex A.4.5 X3DField::isWritable
     public_symbol: x3d::sai::experimental::scene_edit::writable
     support: partial
-    tests: [sai_field_writable]
+    tests: [sai_field_writable, sai_life_setup_across_revisions, sai_life_realization_mf]
     binding_obligations: [CPP-A.4.5-FIELD-CAPABILITY]
     preserves: [INV-FIELD-1, INV-FIELD-3, INV-FIELD-5]
   - <<: *query
@@ -270,7 +479,7 @@ services:
   - <<: *query
     id: SVC-MFIELD-SIZE
     clause: ISO/IEC 19775-2:2015, 6.7.5 getValue (MF size)
-    public_symbol: x3d::sai::experimental::multi_field_edit::size
+    public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::size
     support: partial
     tests: [sai_mf_size_read]
     binding_obligations: [CPP-4.3.5.4-MFIELD-ARRAYS, CPP-A.4.6-MFIELD-EDITING]
@@ -278,14 +487,14 @@ services:
   - <<: *query
     id: SVC-MFIELD-ELEMENT-READ
     clause: ISO/IEC 19775-2:2015, 6.7.5 getValue (MF element)
-    public_symbol: x3d::sai::experimental::multi_field_edit::at
+    public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::at
     support: partial
     tests: [sai_mf_size_read]
     preserves: [INV-FIELD-3, INV-CXX-4, INV-RT-1]
   - <<: *command
     id: SVC-MFIELD-ELEMENT-WRITE
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF element)
-    public_symbol: x3d::sai::experimental::multi_field_edit::set
+    public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::set
     support: partial
     tests: [sai_mf_set, sai_mf_typed_dynamic, sai_mf_node_authority]
     binding_obligations: [CPP-4.3.5.2-EXTERNAL-MF-EVENTS, CPP-4.3.5.5-SET1VALUE]
@@ -293,7 +502,7 @@ services:
   - <<: *command
     id: SVC-MFIELD-INSERT
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF insert)
-    public_symbol: x3d::sai::experimental::multi_field_edit::insert
+    public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::insert
     support: partial
     tests: [sai_mf_insert, sai_mf_typed_dynamic, sai_mf_node_authority]
     binding_obligations: [CPP-A.4.48-MFNODE-EDITING]
@@ -301,7 +510,7 @@ services:
   - <<: *command
     id: SVC-MFIELD-ERASE
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF erase)
-    public_symbol: x3d::sai::experimental::multi_field_edit::erase
+    public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::erase
     support: partial
     tests: [sai_mf_erase]
     binding_obligations: [CPP-A.4.6-MFIELD-EDITING]
@@ -309,7 +518,7 @@ services:
   - <<: *command
     id: SVC-MFIELD-CLEAR
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF clear)
-    public_symbol: x3d::sai::experimental::multi_field_edit::clear
+    public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::clear
     support: partial
     tests: [sai_mf_clear]
     binding_obligations: [CPP-4.3.5.4-MFIELD-ARRAYS, CPP-A.4.6-MFIELD-EDITING]
@@ -317,7 +526,7 @@ services:
   - <<: *command
     id: SVC-MFIELD-APPEND
     clause: ISO/IEC 19777-4, Annex A.4.48 MFNode::append
-    public_symbol: x3d::sai::experimental::multi_field_edit::append
+    public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::append
     support: partial
     tests: [sai_mf_append, sai_mf_node_authority]
     binding_obligations: [CPP-A.4.48-MFNODE-EDITING]
@@ -330,3 +539,70 @@ services:
     support: planned
     tests: [planned:sai_matrix_decompose]
     preserves: [INV-CXX-2, INV-RT-1, INV-PORT-1]
+
+  # These are explicit gaps in the broader convergence model. They do not
+  # claim executable kernel support or ISO coverage beyond the cited clause.
+  - <<: *query
+    id: SVC-SOURCE-PROVENANCE
+    clause: Proposed C++ framework source-fidelity policy (INV-RT-2)
+    public_symbol: planned:x3d::sai::scene_snapshot::source_provenance
+    support: planned
+    tests: [planned:sai_rt_source_fidelity]
+    preserves: [INV-RT-2]
+  - <<: *command
+    id: SVC-VALIDATE-AUTHORING
+    clause: Proposed C++ framework validation policy (INV-VAL-1 and INV-VAL-2)
+    public_symbol: planned:x3d::sai::scene_edit::validate
+    support: planned
+    tests: [planned:sai_val_no_secret_repair, planned:sai_val_stable_diagnostic]
+    preserves: [INV-VAL-1, INV-VAL-2]
+  - <<: *query
+    id: SVC-ADAPTER-SEMANTIC-TRACE
+    clause: Proposed C++ adapter ABI and semantic-trace policy (INV-CXX-5)
+    public_symbol: planned:x3d::sai::adapter::semantic_trace
+    support: planned
+    tests: [planned:sai_cxx_abi_boundary]
+    preserves: [INV-CXX-5, INV-PORT-1]
+
+  - <<: *browser_command
+    id: SVC-RUNTIME-PROCESSOR
+    clause: Proposed C++ host extension of ISO/IEC 19775-1, 4.4.8 event model
+    public_symbol: x3d::sai::experimental::browser::set_runtime_processor
+    support: partial
+    buffering: owner installs outside a frame; synchronous commit evaluates then publishes one settled cascade
+    errors: invalid owner, retired context, operation in progress, or failed evaluation
+    events: preparation and input callbacks run outside context locks; field observations are queued after settlement
+    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_reentrant, sai_runtime_tick, sai_runtime_generated_host]
+    preserves: [INV-EDIT-1, INV-EDIT-2, INV-EVT-1, INV-EVT-2, INV-EVT-3, INV-CONC-1]
+  - <<: *command
+    id: SVC-RUNTIME-EMIT
+    clause: Proposed C++ host extension of ISO/IEC 19775-1, 4.4.8 event model
+    public_symbol: x3d::sai::experimental::runtime_step::emit
+    support: partial
+    profiles: [browser-adapter]
+    buffering: callback-scoped validated outputs settle at the enclosing batch timestamp; escaped authority expires on callback return
+    events: outputOnly and inputOutput events retain working values and propagate through ROUTEs with causal indices
+    errors: ordinary field, ownership, type, and scope failures poison the frame; expired authority returns stale_revision
+    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_authority, sai_runtime_ignored, sai_runtime_tick, sai_runtime_generated_host, sai_runtime_units]
+    preserves: [INV-OWN-1, INV-OWN-2, INV-FIELD-1, INV-FIELD-3, INV-FIELD-4, INV-EDIT-2, INV-EVT-1, INV-EVT-2, INV-LIFE-1]
+
+  - <<: *browser_command
+    id: SVC-RUNTIME-FACTORY
+    clause: Proposed C++ host extension of ISO/IEC 19775-1, 4.4.8 event model
+    public_symbol: x3d::sai::experimental::browser::set_runtime_factory
+    support: partial
+    buffering: an owned working frame produces one immutable checkpoint after its cascade settles; fields and checkpoint share one revision
+    errors: invalid owner, retired context, operation in progress, or factory, processor, and finalizer failure
+    events: frame callbacks and resource release run outside context locks; failed frames publish no observation or time advancement
+    tests: [sai_runtime_state_publish, sai_runtime_state_abort, sai_runtime_state_only, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_runtime_state_generated_host]
+    preserves: [INV-EDIT-1, INV-EDIT-2, INV-EDIT-4, INV-EVT-1, INV-CONC-1]
+  - <<: *query
+    id: SVC-RUNTIME-STATE
+    clause: Proposed C++ host extension of ISO/IEC 19775-2, 4.4.4 execution context
+    public_symbol: x3d::sai::experimental::scene_snapshot::runtime_state
+    support: partial
+    profiles: [inspection, browser-adapter]
+    buffering: immutable checkpoint belongs to the queried revision; shared ownership pins historical state
+    errors: successful null denotes absence; exact state type mismatch is a structured error
+    tests: [sai_runtime_state_publish, sai_runtime_state_only, sai_runtime_state_generated_host]
+    preserves: [INV-EDIT-1, INV-EDIT-4, INV-CONC-1]

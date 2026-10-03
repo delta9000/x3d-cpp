@@ -28,9 +28,6 @@ struct TextureProperties {
   inline static constexpr field_key<TextureProperties, bool> generateMipMaps{
       "generateMipMaps", access_type::initialize_only};
   inline static constexpr field_key<TextureProperties,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<TextureProperties,
                                     ::x3d::sai::experimental::enum_value>
       magnificationFilter{"magnificationFilter", access_type::input_output};
   inline static constexpr field_key<TextureProperties,
@@ -44,17 +41,7 @@ struct TextureProperties {
       textureCompression{"textureCompression", access_type::input_output};
   inline static constexpr field_key<TextureProperties, float> texturePriority{
       "texturePriority", access_type::input_output};
-  inline static constexpr field_key<TextureProperties, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<TextureProperties, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<TextureProperties, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<TextureProperties, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<TextureProperties, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 12> field_keys{{
       {anisotropicDegree.name(), anisotropicDegree.kind,
        anisotropicDegree.access()},
       {borderColor.name(), borderColor.kind, borderColor.access()},
@@ -63,7 +50,6 @@ struct TextureProperties {
       {boundaryModeS.name(), boundaryModeS.kind, boundaryModeS.access()},
       {boundaryModeT.name(), boundaryModeT.kind, boundaryModeT.access()},
       {generateMipMaps.name(), generateMipMaps.kind, generateMipMaps.access()},
-      {IS.name(), IS.kind, IS.access()},
       {magnificationFilter.name(), magnificationFilter.kind,
        magnificationFilter.access()},
       {metadata.name(), metadata.kind, metadata.access()},
@@ -72,11 +58,6 @@ struct TextureProperties {
       {textureCompression.name(), textureCompression.kind,
        textureCompression.access()},
       {texturePriority.name(), texturePriority.kind, texturePriority.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

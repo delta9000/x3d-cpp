@@ -31,9 +31,6 @@ struct IndexedLineSet {
       fogCoord{"fogCoord", access_type::input_output};
   inline static constexpr field_key<IndexedLineSet,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<IndexedLineSet,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<IndexedLineSet,
                                     ::x3d::sai::experimental::node_id>
@@ -44,17 +41,7 @@ struct IndexedLineSet {
   inline static constexpr field_key<IndexedLineSet,
                                     ::x3d::sai::experimental::int32_list>
       set_coordIndex{"set_coordIndex", access_type::input_only};
-  inline static constexpr field_key<IndexedLineSet, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<IndexedLineSet, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<IndexedLineSet, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<IndexedLineSet, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<IndexedLineSet, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 17> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 11> field_keys{{
       {attrib.name(), attrib.kind, attrib.access()},
       {color.name(), color.kind, color.access()},
       {colorIndex.name(), colorIndex.kind, colorIndex.access()},
@@ -62,16 +49,10 @@ struct IndexedLineSet {
       {coord.name(), coord.kind, coord.access()},
       {coordIndex.name(), coordIndex.kind, coordIndex.access()},
       {fogCoord.name(), fogCoord.kind, fogCoord.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {normal.name(), normal.kind, normal.access()},
       {set_colorIndex.name(), set_colorIndex.kind, set_colorIndex.access()},
       {set_coordIndex.name(), set_coordIndex.kind, set_coordIndex.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

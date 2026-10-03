@@ -18,9 +18,6 @@ struct PlaneSensor {
       "description", access_type::input_output};
   inline static constexpr field_key<PlaneSensor, bool> enabled{
       "enabled", access_type::input_output};
-  inline static constexpr field_key<PlaneSensor,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<PlaneSensor, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<PlaneSensor, bool> isOver{
@@ -43,22 +40,11 @@ struct PlaneSensor {
   inline static constexpr field_key<PlaneSensor,
                                     ::x3d::sai::experimental::vec3f>
       translation_changed{"translation_changed", access_type::output_only};
-  inline static constexpr field_key<PlaneSensor, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<PlaneSensor, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<PlaneSensor, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<PlaneSensor, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<PlaneSensor, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 12> field_keys{{
       {autoOffset.name(), autoOffset.kind, autoOffset.access()},
       {axisRotation.name(), axisRotation.kind, axisRotation.access()},
       {description.name(), description.kind, description.access()},
       {enabled.name(), enabled.kind, enabled.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {isOver.name(), isOver.kind, isOver.access()},
       {maxPosition.name(), maxPosition.kind, maxPosition.access()},
@@ -69,11 +55,6 @@ struct PlaneSensor {
        trackPoint_changed.access()},
       {translation_changed.name(), translation_changed.kind,
        translation_changed.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

@@ -48,9 +48,6 @@ struct TransmitterPdu {
       geoSystem{"geoSystem", access_type::initialize_only};
   inline static constexpr field_key<TransmitterPdu, std::int32_t> inputSource{
       "inputSource", access_type::input_output};
-  inline static constexpr field_key<TransmitterPdu,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<TransmitterPdu, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<TransmitterPdu, bool> isNetworkReader{
@@ -131,17 +128,7 @@ struct TransmitterPdu {
   inline static constexpr field_key<TransmitterPdu,
                                     ::x3d::sai::experimental::time_value>
       writeInterval{"writeInterval", access_type::input_output};
-  inline static constexpr field_key<TransmitterPdu, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<TransmitterPdu, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<TransmitterPdu, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<TransmitterPdu, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<TransmitterPdu, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 56> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 50> field_keys{{
       {address.name(), address.kind, address.access()},
       {antennaLocation.name(), antennaLocation.kind, antennaLocation.access()},
       {antennaPatternLength.name(), antennaPatternLength.kind,
@@ -161,7 +148,6 @@ struct TransmitterPdu {
       {geoCoords.name(), geoCoords.kind, geoCoords.access()},
       {geoSystem.name(), geoSystem.kind, geoSystem.access()},
       {inputSource.name(), inputSource.kind, inputSource.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {isNetworkReader.name(), isNetworkReader.kind, isNetworkReader.access()},
       {isNetworkWriter.name(), isNetworkWriter.kind, isNetworkWriter.access()},
@@ -213,11 +199,6 @@ struct TransmitterPdu {
       {visible.name(), visible.kind, visible.access()},
       {whichGeometry.name(), whichGeometry.kind, whichGeometry.access()},
       {writeInterval.name(), writeInterval.kind, writeInterval.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

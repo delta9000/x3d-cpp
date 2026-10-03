@@ -56,8 +56,11 @@ int main() {
   auto texture = edit.create<bindings::PixelTexture>();
   auto world_info = edit.create<bindings::WorldInfo>();
   if (!transform || !shape || !point_set || !coordinate || !appearance ||
-      !texture || !world_info)
+      !texture || !world_info || !edit.commit())
     return EXIT_FAILURE;
+
+  // Committing an unattached node leaves setup open for later authoring.
+  auto configure = scene.edit();
 
   const sai::vec3f_list authored_points{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};
   const sai::image authored_image{1, 1, 4, {0x20, 0x40, 0x80, 0xff}};
@@ -76,24 +79,36 @@ int main() {
   const auto info = world_info->field(bindings::WorldInfo::info);
   const std::array child_nodes{*shape};
 
-  if (!edit.set(children, child_nodes) || !edit.set(geometry, *point_set) ||
-      !edit.set(shape_appearance, *appearance) ||
-      !edit.set(coord, *coordinate) || !edit.set(point, authored_points) ||
-      !edit.set(appearance_texture, *texture) ||
-      !edit.set(image, authored_image) ||
-      !edit.set(title, std::string{"Generated authoring"}) ||
-      !edit.set(info, authored_info) || !edit.append_root(*transform) ||
-      !edit.append_root(*world_info) || !edit.commit())
+  if (!configure.set(children, child_nodes) || !configure.set(geometry, *point_set) ||
+      !configure.set(shape_appearance, *appearance) ||
+      !configure.set(coord, *coordinate) || !configure.set(point, authored_points) ||
+      !configure.set(appearance_texture, *texture) ||
+      !configure.set(image, authored_image) ||
+      !configure.set(title, std::string{"Generated authoring"}) ||
+      !configure.set(info, authored_info) || !configure.append_root(*transform) ||
+      !configure.append_root(*world_info) || !configure.commit())
     return EXIT_FAILURE;
 
   const auto snapshot = scene.snapshot();
+  auto inspected_children = snapshot.read_nodes(children);
+  if (!inspected_children || inspected_children->size() != 1)
+    return EXIT_FAILURE;
+  auto inspected_shape = snapshot.as<bindings::Shape>(inspected_children->front());
+  if (!inspected_shape)
+    return EXIT_FAILURE;
+  auto inspected_geometry =
+      snapshot.read_node(inspected_shape->field(bindings::Shape::geometry));
+  if (!inspected_geometry || inspected_geometry->id() != point_set->id())
+    return EXIT_FAILURE;
+  const auto inspected_points = snapshot.read_view(point);
+  if (!inspected_points || **inspected_points != authored_points)
+    return EXIT_FAILURE;
   const std::vector<sai::unit_declaration> expected_units{
       {.category = "length", .name = "centimetre", .conversion_factor = 0.01}};
   if (snapshot.units() != expected_units ||
       !holds(snapshot.read(translation), authored_translation) ||
       !holds(snapshot.read(children), sai::node_list{shape->id()}) ||
       !holds(snapshot.read(geometry), point_set->id()) ||
-      !holds(snapshot.read(point), authored_points) ||
       !holds(snapshot.read(image), authored_image) ||
       !holds(snapshot.read(title), std::string{"Generated authoring"}) ||
       !holds(snapshot.read(info), authored_info))

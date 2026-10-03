@@ -18,9 +18,6 @@ struct PolylineEmitter {
   inline static constexpr field_key<PolylineEmitter,
                                     ::x3d::sai::experimental::vec3f>
       direction{"direction", access_type::input_output};
-  inline static constexpr field_key<PolylineEmitter,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<PolylineEmitter, float> mass{
       "mass", access_type::input_output};
   inline static constexpr field_key<PolylineEmitter,
@@ -37,21 +34,10 @@ struct PolylineEmitter {
       "surfaceArea", access_type::input_output};
   inline static constexpr field_key<PolylineEmitter, float> variation{
       "variation", access_type::input_output};
-  inline static constexpr field_key<PolylineEmitter, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<PolylineEmitter, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<PolylineEmitter, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<PolylineEmitter, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<PolylineEmitter, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 16> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 10> field_keys{{
       {coord.name(), coord.kind, coord.access()},
       {coordIndex.name(), coordIndex.kind, coordIndex.access()},
       {direction.name(), direction.kind, direction.access()},
-      {IS.name(), IS.kind, IS.access()},
       {mass.name(), mass.kind, mass.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {on.name(), on.kind, on.access()},
@@ -59,11 +45,6 @@ struct PolylineEmitter {
       {speed.name(), speed.kind, speed.access()},
       {surfaceArea.name(), surfaceArea.kind, surfaceArea.access()},
       {variation.name(), variation.kind, variation.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

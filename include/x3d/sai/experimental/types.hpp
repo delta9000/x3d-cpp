@@ -411,6 +411,7 @@ enum class error_code {
   stale_completion,
   unsupported_field_type,
   abstract_type,
+  operation_in_progress,
 };
 
 struct sai_error {

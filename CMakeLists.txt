@@ -93,6 +93,14 @@ add_test(NAME sai_field_writable COMMAND x3d_sai_experimental_tests
     "--test-case=field capability queries predict every lifecycle intent")
 add_test(NAME sai_field_units_once COMMAND x3d_sai_experimental_tests
     "--test-case=authored unit boundaries convert exactly once around canonical state")
+add_test(NAME sai_field_derived_units COMMAND x3d_sai_experimental_tests
+    "--test-case=*derived*unit*")
+add_test(NAME sai_field_unit_write_range COMMAND x3d_sai_experimental_tests
+    "--test-case=authored unit writes reject finite payloads outside field range")
+add_test(NAME sai_field_unit_event_range COMMAND x3d_sai_experimental_tests
+    "--test-case=unit conversion failure cancels earlier events in the same batch")
+add_test(NAME sai_field_unit_read_range COMMAND x3d_sai_experimental_tests
+    "--test-case=inverse unit reads reject finite canonical values outside field range")
 add_test(NAME sai_field_pure_read COMMAND x3d_sai_experimental_tests
     "--test-case=public semantic ranges stay pure derived and authored-order stable")
 add_test(NAME sai_order_public_ranges COMMAND x3d_sai_experimental_tests
@@ -109,6 +117,12 @@ add_test(NAME sai_decl_identity_order COMMAND x3d_sai_experimental_tests
     "--test-case=declarations have stable identity and authored order")
 add_test(NAME sai_decl_interface_validation COMMAND x3d_sai_experimental_tests
     "--test-case=declaration interfaces validate exact field semantics")
+add_test(NAME sai_decl_interface_metadata COMMAND x3d_sai_experimental_tests
+    "--test-case=prototype interfaces cannot redeclare inherited metadata")
+add_test(NAME sai_decl_node_default_authority COMMAND x3d_sai_experimental_tests
+    "--test-case=*node defaults*")
+add_test(NAME sai_decl_node_defaults COMMAND x3d_sai_experimental_tests
+    "--test-case=local PROTO node default*")
 add_test(NAME sai_decl_failure_nonmutation COMMAND x3d_sai_experimental_tests
     "--test-case=rejected declaration edits publish nothing")
 add_test(NAME sai_decl_mutation_duals COMMAND x3d_sai_experimental_tests
@@ -125,14 +139,22 @@ add_test(NAME sai_decl_scope_claim_atomic COMMAND x3d_sai_experimental_tests
     "--test-case=template claims reject live references and cycles atomically")
 add_test(NAME sai_decl_scope_live_reference COMMAND x3d_sai_experimental_tests
     "--test-case=template claims revalidate live references at commit")
+add_test(NAME sai_decl_live_observer COMMAND x3d_sai_experimental_tests
+    "--test-case=template claims reject observers and undrained node payloads")
 add_test(NAME sai_decl_scope_leakage COMMAND x3d_sai_experimental_tests
     "--test-case=template scope rejects public aliases routes and removal")
 add_test(NAME sai_decl_scope_release COMMAND x3d_sai_experimental_tests
     "--test-case=removing a declaration releases rather than deletes template nodes")
+add_test(NAME sai_decl_event_scope COMMAND x3d_sai_experimental_tests
+    "--test-case=template nodes cannot participate in live event delivery")
 add_test(NAME sai_decl_external_state COMMAND x3d_sai_experimental_tests
     "--test-case=external declarations expose honest explicit load states")
+add_test(NAME sai_decl_external_authority COMMAND x3d_sai_experimental_tests
+    "--test-case=*external resolution*,raw foreign declaration ID cannot resolve an external")
 add_test(NAME sai_decl_external_compatibility COMMAND x3d_sai_experimental_tests
     "--test-case=resolved externals require and retain compatible local identity")
+add_test(NAME sai_decl_external_subset COMMAND x3d_sai_experimental_tests
+    "--test-case=resolved EXTERNPROTO interfaces are named subsets without defaults")
 add_test(NAME sai_own_node_value COMMAND x3d_sai_experimental_tests
     "--test-case=node-valued writes require a context-bearing node handle")
 add_test(NAME sai_own_node_range COMMAND x3d_sai_experimental_tests
@@ -252,3 +274,79 @@ target_compile_features(x3d_sai_experimental_generated_example PRIVATE
     cxx_std_20)
 add_test(NAME sai_generated_author_inspect
     COMMAND x3d_sai_experimental_generated_example)
+
+add_test(NAME sai_generated_semantic_fields COMMAND x3d_sai_experimental_tests
+    "--test-case=generated node interfaces distinguish fields from document syntax")
+add_test(NAME sai_generated_typed_workflow COMMAND x3d_sai_experimental_tests
+    "--test-case=typed discovery*")
+add_test(NAME sai_node_null_access COMMAND x3d_sai_experimental_tests
+    "--test-case=nullable node*,null SFNode*")
+add_test(NAME sai_node_null_events COMMAND x3d_sai_experimental_tests
+    "--test-case=null node*,null SFNode*")
+
+add_test(NAME sai_field_snapshot_view COMMAND x3d_sai_experimental_tests
+    "--test-case=snapshot field views*,imported field views*")
+
+add_test(NAME sai_life_setup_across_revisions COMMAND x3d_sai_experimental_tests
+    "--test-case=node setup*")
+add_test(NAME sai_life_realization_access COMMAND x3d_sai_experimental_tests
+    "--test-case=node setup*,attaching a generated*")
+add_test(NAME sai_life_realization_authority COMMAND x3d_sai_experimental_tests
+    "--test-case=realization rejects*")
+add_test(NAME sai_life_realization_mf COMMAND x3d_sai_experimental_tests
+    "--test-case=captured initializeOnly*")
+add_test(NAME sai_life_realization_events COMMAND x3d_sai_experimental_tests
+    "--test-case=the first event*")
+add_test(NAME sai_life_realization_cycles COMMAND x3d_sai_experimental_tests
+    "--test-case=realization preserves*")
+
+find_package(Threads REQUIRED)
+add_executable(x3d_sai_runtime_tests tests/runtime_boundary_test.cpp)
+target_link_libraries(x3d_sai_runtime_tests PRIVATE
+    x3d_sai_experimental_metadata x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_runtime_cascade COMMAND x3d_sai_runtime_tests
+    "--test-case=runtime outputs settle with causal routes in one revision")
+add_test(NAME sai_runtime_atomic COMMAND x3d_sai_runtime_tests
+    "--test-case=failed runtime evaluation publishes no partial frame")
+add_test(NAME sai_runtime_authority COMMAND x3d_sai_runtime_tests
+    "--test-case=runtime output authority expires and validates every payload,escaped runtime input facts survive destruction of their host")
+add_test(NAME sai_runtime_reentrant COMMAND x3d_sai_runtime_tests
+    "--test-case=runtime callbacks can inspect but cannot publish reentrantly,world replacement retains the old mutex and retires the processor outside locks")
+add_test(NAME sai_runtime_ignored COMMAND x3d_sai_runtime_tests
+    "--test-case=ignored native inputs do not retain echo or notify")
+add_test(NAME sai_runtime_tick COMMAND x3d_sai_runtime_tests
+    "--test-case=autonomous runtime output advances time and breaks feedback")
+
+add_executable(x3d_sai_generated_runtime examples/generated_runtime.cpp)
+target_link_libraries(x3d_sai_generated_runtime PRIVATE x3d_sai_experimental_metadata)
+add_test(NAME sai_runtime_generated_host COMMAND x3d_sai_generated_runtime)
+set_tests_properties(sai_runtime_cascade sai_runtime_atomic sai_runtime_authority
+    sai_runtime_reentrant sai_runtime_ignored sai_runtime_tick
+    sai_runtime_generated_host PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_runtime_units COMMAND x3d_sai_runtime_tests
+    "--test-case=runtime reads and outputs convert authored units exactly once")
+set_tests_properties(sai_runtime_units PROPERTIES TIMEOUT 15)
+
+add_executable(x3d_sai_stateful_tests tests/stateful_runtime_test.cpp)
+target_link_libraries(x3d_sai_stateful_tests PRIVATE x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_runtime_state_publish COMMAND x3d_sai_stateful_tests
+    "--test-case=stateful runtime checkpoints publish with fields and retain history")
+add_test(NAME sai_runtime_state_abort COMMAND x3d_sai_stateful_tests
+    "--test-case=stateful runtime failures abort the checkpoint and the settled cascade")
+add_test(NAME sai_runtime_state_only COMMAND x3d_sai_stateful_tests
+    "--test-case=stateful-only frames revise and stateless processing clears the checkpoint")
+set_tests_properties(sai_runtime_state_publish sai_runtime_state_abort
+    sai_runtime_state_only PROPERTIES TIMEOUT 15)
+
+add_executable(x3d_sai_generated_stateful_runtime examples/generated_stateful_runtime.cpp)
+target_link_libraries(x3d_sai_generated_stateful_runtime PRIVATE x3d_sai_experimental_metadata)
+add_test(NAME sai_runtime_state_generated_host COMMAND x3d_sai_generated_stateful_runtime)
+set_tests_properties(sai_runtime_state_generated_host PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_runtime_state_failure_protocol COMMAND x3d_sai_stateful_tests
+    "--test-case=runtime factory and finalizer failures preserve state and diagnostics")
+add_test(NAME sai_runtime_state_retirement COMMAND x3d_sai_stateful_tests
+    "--test-case=retired native checkpoints release resources outside browser locks")
+set_tests_properties(sai_runtime_state_failure_protocol sai_runtime_state_retirement
+    PROPERTIES TIMEOUT 15)

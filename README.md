@@ -47,6 +47,9 @@ The proposal makes these design choices executable:
   edge with its own parent, field, index, and path.
 - An `execution_context` owns one generation. `scene_snapshot` is immutable;
   `scene_edit` stages an atomic revision and returns an ordered `change_set`.
+  The context reserves node and declaration IDs when they are created, so an
+  abandoned or conflicting edit can leave gaps but cannot lend its IDs to a
+  later object. Local and external declarations share one ID sequence.
   For ordinary state changes, `before` and `after` are transition facts. The
   `unit_declared` kind is explicitly discriminated metadata: `field` is the
   category, `before` is the declared name, `after` is the canonical conversion
@@ -62,11 +65,18 @@ The proposal makes these design choices executable:
   never borrowed mutable containers. Indexed changes remain ordered inside one
   atomic `scene_edit`; MFNode mutations accept only context-bearing handles and
   validate the complete replacement range before staging it.
-- `readable()` and intent-specific `writable()` queries execute the same access
-  state machine as reads, retained edits, external events, and runtime output.
+- `readable()` predicts snapshot inspection. Intent-specific `writable()`
+  distinguishes setup authoring, retained writes, event input, and host-only
+  runtime output. Each operation uses the dynamic descriptor's access rules.
   Unit declarations are ordered scene facts: authored-space values cross one
   explicit conversion boundary while storage, ROUTEs, and changes stay in
-  canonical space.
+  canonical space. Custom field and declaration-interface descriptors accept
+  the X3D derived categories acceleration, angular_velocity, area, speed, and
+  volume; their conversion uses the declared angle or length base factor.
+  UNIT declarations remain limited to angle, force, length, and mass. A finite
+  authored value whose converted result exceeds the field's finite range is
+  rejected before a retained edit or event batch is published; authored reads
+  report the same error when inverse conversion exceeds that range.
 - Field storage and event equivalence is the public `same_representation`
   relation: IEEE payload bits survive, signed zeros differ, and identical NaN
   payloads match. Ordinary numerical `operator==` remains numerical.
@@ -84,6 +94,24 @@ The proposal makes these design choices executable:
 - Node type and ordered field descriptors are discoverable as owning values.
   Node-valued writes require context-bearing `node` handles (or spans of them),
   preventing a bare ID from aliasing an object in another ownership domain.
+  Local PROTO interface SFNode and MFNode defaults are authored through
+  `scene_edit::set_declaration_default(proto, field, node_or_null)` and its
+  `std::span<const std::optional<node>>` overload. For example, create a local
+  declaration and node in one edit, then call
+  `edit.set_declaration_default(proto.value(), "child", child.value())` before
+  committing. The complete referenced node graph becomes declaration-owned;
+  defaults and body roots share that scope. Replacing a default leaves its
+  previously claimed nodes owned until the declaration is removed. Bare IDs
+  remain inspection data and cannot author non-null defaults.
+  PROTO and EXTERNPROTO interfaces cannot redeclare the inherited `metadata`
+  field.
+  EXTERNPROTO interfaces have no authored defaults. Their by-name kind/access
+  fields must be compatible with the resolved local declaration; omitted
+  optional annotations are unconstrained. A resolved target remains retained
+  while the exposed interface fields are compatible. Resolve with
+  `edit.resolve_external_declaration(external, local)` using declaration handles;
+  `update_declaration` may edit metadata or reset load state, but cannot assign
+  a new resolved target from a bare ID.
 - Execution-context boundaries have explicit ordered EXPORT/IMPORT apertures.
   Imported nodes and fields are distinct inspection-only proxy types; parent
   snapshots capture immutable source revisions without claiming a globally
@@ -94,6 +122,9 @@ The proposal makes these design choices executable:
 - External event intent is a timestamped, move-only batch. `inputOnly` delivery
   is transient, `inputOutput` delivery publishes retained state once, and ROUTE
   propagation records causal predecessors while breaking loops per route.
+  PROTO template nodes cannot receive live events or appear in their node-valued
+  payloads; template changes remain authoring edits. Template claims cannot take
+  nodes retained by field observers, undrained events, or committed imports.
 - Field observation is access-governed and shares the explicit drain boundary.
   Fan-in remains inspectable as a deterministic trace plus a structured
   portability issue instead of silently blessing queue order as semantics.
@@ -117,13 +148,206 @@ fixture for event, ROUTE, shared-node, and import behavior.
 The focused doctest suite is also registered as stable `sai_*` CTests so each
 demonstrated invariant can be cited independently by the convergence register.
 
+## Typed and dynamic access
+
+Generated bindings describe the abstract X3D node fields. Document constructs
+(`DEF`, `USE`, `IS`) and HTML attributes (`class`, `id`, `style`) do not become
+ordinary field/event ports. Use scoped names, shared handles, and declaration
+operations for their semantic roles. Document syntax preservation remains part
+of the future codec work. Independent node-interface tests supplement parity
+between generated artifacts.
+
+A tool can discover a node dynamically and specialize it through
+`snapshot.as<bindings::Transform>(node)`. This checks context, node type, and
+model provenance. Generated abstract interfaces also work: a Transform can be
+viewed as `typed_node<bindings::X3DGroupingNode>`. Historical snapshots retain
+that inspection ability after a world is replaced; publishing an edit against
+a retired context fails.
+
+Typed fields support `readable`, intent-specific `writable`, `add_route`, and
+`observe`, as well as the existing reads, writes, and range edits. These paths
+reuse the dynamic descriptor checks. `field.dynamic()` exposes the same handle
+for algorithms that discover their field types at runtime; it grants no extra
+access.
+
+A default-constructed `node{}` is X3D NULL and carries no context authority.
+`snapshot.read_node(field)` and `snapshot.read_nodes(field)` return usable
+handles, preserving every NULL position in MFNode. The existing `read` operation
+continues to return IDs as inspection data. Author with node handles, including
+NULL, through `set`, events, or the MFNode range editor. All non-null values
+retain type, context, and scope checks; passing raw IDs remains rejected.
+`is_null()` tests absence, while `disposed()` reports local wrapper disposal.
+Disposed wrappers cannot be used to author values.
+
+`snapshot.read_view(field)` returns `result<std::shared_ptr<const T>>` for a
+typed field and `result<std::shared_ptr<const value>>` for a dynamic field.
+The standard shared pointer pins immutable canonical storage without copying
+its payload. It stays valid after the snapshot, context, or browser is gone;
+later revisions never change its contents. Imported views pin the exact source
+revision and enforce the same aperture and access checks as owning reads.
+Views carry inspection data, not mutation authority. Release them when finished:
+a view retains its entire source revision. Use `read(field, value_space::authored)`
+when a converted owning value is needed. Editing still copies the scene state.
+
+`mise run gen-determinism` generates into a temporary directory and compares
+both contents and file inventory. It never rewrites the current bindings and
+works while source and generated changes are uncommitted. Set `TMPDIR` to select
+the scratch location. `X3D_SAI_BUILD_DIR` selects the CMake/CTest directory
+for both `mise run build` and `mise run ci`; its default is `build`. Builds use
+three parallel jobs so the test and generated-catalog translation units do not
+consume unbounded memory.
+
+## Node setup and realization
+
+A new node starts in setup. Committing an unattached node preserves that state,
+so its initializeOnly fields can be configured in a later edit. The generated
+consumer example authors WorldInfo.title across that boundary.
+`edit.realize(node)` explicitly ends setup and is idempotent;
+`snapshot.is_realized(node)` inspects the state at that revision. Both operations
+accept generated typed nodes and dynamic handles.
+
+Assigning a node-valued field or adding a child/root realizes the referenced
+node graph in the same edit. The containing node remains in setup until it is
+itself referenced, added as a root, or explicitly realized. NULL slots and shared
+references produce no duplicate transitions. Removing a reference never reopens
+setup. MF editors check access again at every mutation, including editors
+obtained before their owner was realized. A first event realizes its target and
+node payloads together with the event's retained effects.
+
+Realization produces a `node_realized` graph change with an empty field name,
+`before=false`, and `after=true`. Publication advances the revision and queues
+observation through the existing commit boundary. Failed or conflicting edits
+publish neither phase nor field changes; historical snapshots keep their phase.
+
+This authoring boundary follows the setup/realized distinction in
+[SAI 4.4.8](https://www.web3d.org/documents/specifications/19775-2/V3.3/Part02/concepts.html).
+Snapshot reads are observational. Name/declaration metadata changes leave
+realization unchanged.
+Snapshots can inspect retained initializeOnly facts after realization. Live SAI
+field access must enforce its lifecycle table at the live service boundary;
+inspection does not stand in for that boundary. The semantic transition does
+not yet initialize a renderer, Script, or runtime adapter.
+
+## Evaluating runtime events
+
+The browser owner can install a `runtime_processor` for one of its scenes with
+`browser::set_runtime_processor(scene, callback)`. Passing an empty callback
+removes it. A callback receives a `runtime_step`; execution-context clients
+cannot construct one or obtain output authority through a write-intent flag.
+
+Each `event_batch::commit()` with a processor first calls it once with
+`step.input() == nullptr`. That preparation call can emit sensor outputs from
+`step.time()`, including for an otherwise empty batch. The kernel then invokes
+the processor for each external or routed input. Native outputs go through
+ROUTEs; they do not recursively invoke the processor as inputs. All deliveries
+in the settled cascade share the batch timestamp. A successful processor frame
+advances the time floor even if it produces no events. Later frames must have
+strictly increasing finite timestamps.
+
+`step.read(field)` returns an owning copy of the working value. It sees prior
+processed deliveries and the current tentative inputOutput value; committed
+scene snapshots still show the previous revision until publication. inputOnly
+payloads are available through `step.input()->payload`. Both typed and dynamic
+reads and outputs support explicit authored-unit conversion. `step.emit(field,
+value)` queues outputOnly or inputOutput events; node-valued outputs take local
+handles or spans, preserving NULL entries and applying the usual scope and
+type checks. Queued outputs become working values when processed after the
+callback. No mutable storage or snapshot view is exposed to the host.
+
+A native rule can call `step.ignore_input()` to reject an incoming value without
+failing the frame. Its node is realized, but the payload is not retained,
+echoed, or observed. `read()` then sees the prior stored value. A host may emit
+an adjusted inputOutput value; that explicit output replaces the automatic
+echo of the incoming value. The ledger retains incoming events and marks
+ignored ones. Field observations report emitted outputs. Per-field and
+per-ROUTE limits allow one output per timestamp, including when the graph feeds
+native output back into its input. Every attempted output is validated before
+loop suppression, so a repeated field cannot hide a foreign or malformed value.
+
+The returned `event_result` distinguishes `external`, `route`, and `runtime`
+origins. Runtime outputs point to their input's ledger index through `cause`;
+preparation outputs have no cause. ROUTE deliveries also carry `route_index`.
+State changes and queued observations become visible only after the whole
+cascade succeeds. A returned error, processor exception, or invalid output aborts field
+storage, realization changes, queues, revisions, and time advancement. Copies
+of a `runtime_step` keep its input and time facts alive, but reads and outputs
+return `stale_revision` after the callback returns.
+
+Processor callbacks run outside context locks. They can inspect committed
+snapshots or manage subscriptions. Concurrent or reentrant publication to that
+context, processor replacement, and world replacement return
+`operation_in_progress`. A load completion rejected at this boundary retains
+its ticket for retry. Retired callbacks are destroyed outside browser and context
+locks. This synchronous boundary reports processed completion
+when `commit()` returns; asynchronous acceptance and presentation scheduling
+remain separate work.
+
+[generated_runtime.cpp](examples/generated_runtime.cpp) is an independent host
+using generated PositionInterpolator and Transform fields. It reads key data,
+computes interpolation, emits `value_changed`, and checks routed translation and
+settled observation, including endpoint clamping. It links only this SAI
+project. This example proves the host boundary; it does not implement every
+Interpolation component behavior. Its requirements follow the
+[X3D event model](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/concepts.html#Eventmodel)
+and [PositionInterpolator](https://www.web3d.org/documents/specifications/19775-1/V3.3/Part01/components/interp.html#PositionInterpolator).
+
+### Stateful hosts
+
+A stateful host installs `browser::set_runtime_factory(scene, factory)`. The
+factory receives the immutable base snapshot and frame time, and returns
+`result<runtime_frame>`. Wrap an ordinary moveable object whose public members
+are `result<void> process(runtime_step&)` and `result<State> finish()`. The
+`runtime_frame_adapter` concept checks this protocol. Neither the frame nor
+its state needs to be copyable; host code does not inherit an SDK base class.
+
+The factory runs once before preparation. The kernel processes the cascade,
+then calls `finish()` once. It moves the returned state into an owned const
+checkpoint and publishes it with field values and realization in one revision.
+A factory, processor, or finalizer error aborts that frame, including routed
+changes, observation queues, and time advancement. Frame resources are released
+through their ordinary destructors outside context locks on both success and
+failure. Factories and finalizers have the same reentrant publication limits
+as processor callbacks.
+
+`scene_snapshot::runtime_state<State>()` returns
+`result<std::shared_ptr<const State>>`: successful null means there is no
+checkpoint, while requesting a different state type returns `type_mismatch`.
+The shared pointer pins the checkpoint; historical snapshots keep their previous
+state. A `runtime_state_change` alternative in `semantic_change` owns the
+before/after checkpoints and exposes the same typed queries. A stateful frame
+advances the revision even when its X3D fields remain equal.
+
+Both installation methods replace the same host evaluator. Passing an empty
+factory or processor disables evaluation and leaves the last checkpoint intact.
+Installing a stateless processor clears that checkpoint on its next successful
+frame. Authoring edits preserve it without evaluating the host; derived host
+facts are refreshed at the next runtime frame.
+
+[generated_stateful_runtime.cpp](examples/generated_stateful_runtime.cpp) uses
+only the public SDK and generated RigidBody and Transform bindings. Its small
+free-motion evaluator integrates `position` from `linearVelocity`, emits
+position through a ROUTE to translation, and owns a move-only checkpoint. It
+checks late finalizer failure, retry at the same timestamp, coherent observation,
+and retained history. Velocity inputs change the following interval; incoming
+position events are ignored by this host. Other RigidBody fields, including
+forces, torques, mass, damping, gravity, orientation, geometry, and collision
+behavior, are not evaluated. This is an adapter example with limited motion
+semantics, not RigidBodyPhysics conformance.
+
+Hosts must stage private working resources and return an owned checkpoint.
+Const state access does not prevent mutation through aliases kept by host code;
+the adapter must preserve the checkpoint's immutability. The kernel cannot undo
+external I/O or mutations made outside this protocol. The `live` capability
+stays false: this boundary does not supply the remaining live lifecycle and
+browser services.
+
 ## Deliberate limits
 
 This is a semantic reference kernel, not a complete ISO/IEC 19775-2 or
 19777-4 implementation. It currently omits parsing and serialization,
 profiles and document-codec unit integration, PROTO/EXTERNPROTO expansion,
 cross-context field writes and ROUTEs, Inline loading, PROTO/IS
-apertures, runtime-originated outputOnly events, Script integration, URL
+apertures, Script integration, URL
 transport, concrete browser adapters, presentation scheduling, scene-change
 provenance, and an ABI-stable boundary. Generated catalog provenance is
 explicit. EXPORT/IMPORT currently provides snapshot
@@ -131,6 +355,13 @@ inspection,
 not multi-context live publication. The event kernel is a synchronous reference
 model, not a claim that the complete live SAI capability is available.
 The load API models only cancellation and stale-completion publication rules.
+
+Live lifecycle remains partial: browser-driven initialization, Script phases,
+live read restrictions, and observation-triggered realization need a host
+boundary. The kernel's historical inspection surface deliberately stays pure.
+Atomic `scene_edit` is an authoring extension; it does not yet implement SAI
+session update buffering or accepted/published/processed completion for a live
+host. The synchronous event model cannot establish those guarantees.
 
 Handwritten type registries remain explicit test fixtures for fast iteration.
 Production-facing experiments can instead select descriptors from the
@@ -148,3 +379,16 @@ No API in this directory should be promoted merely because it compiles. The
 invariant tests and composed examples are the review surface: revise the
 experimental vocabulary until those user stories remain clear and the
 remaining planned invariants can be expressed without privileged access.
+
+## Conformance register review
+
+Run `mise run sai-conformance-gate` and `mise run sai-invariants` in this
+repository to check the service register, invariant links, CTest names, and
+generated `docs/conformance/SAI-BASELINE.md`. These checks also run in
+`mise run ci`. After editing either YAML register, run `mise run sai-baseline`
+and commit the generated baseline with the register change. Run
+`mise run sai-conformance` separately to see the remaining full SAI gaps; it
+is expected to fail while services are partial or planned.
+The normal checks validate register consistency and drift. They do not require
+every ISO service or C++ binding obligation to be mapped; the baseline lists
+those gaps, and the strict gate requires complete coverage.

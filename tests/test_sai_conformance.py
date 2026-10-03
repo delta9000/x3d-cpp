@@ -276,15 +276,6 @@ def test_baseline_report_is_deterministic_and_exposes_gaps():
     assert "Preserving services" in first
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="2026-07-19 split: seven invariants (INV-CXX-5, INV-EDIT-5, "
-           "INV-GEN-1, INV-ID-3, INV-RT-2, INV-VAL-1, INV-VAL-2) have no "
-           "preserving service. The register was authored x3d-cpp-first and "
-           "never recorded the kernel's implementation of roughly nine ISO "
-           "services, so SAI-BASELINE.md cannot be regenerated until those "
-           "rows are written. Delete this marker with those rows.",
-)
 def test_committed_registries_are_valid_and_report_is_current():
     services, invariants = sai.load_registries(REPO / "docs" / "conformance")
     catalog = sai.load_catalog(REPO / "docs" / "conformance")

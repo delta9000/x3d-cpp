@@ -12,9 +12,6 @@ struct TextureTransform3D {
   inline static constexpr field_key<TextureTransform3D,
                                     ::x3d::sai::experimental::vec3f>
       center{"center", access_type::input_output};
-  inline static constexpr field_key<TextureTransform3D,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<TextureTransform3D, std::string> mapping{
       "mapping", access_type::input_output};
   inline static constexpr field_key<TextureTransform3D,
@@ -29,29 +26,13 @@ struct TextureTransform3D {
   inline static constexpr field_key<TextureTransform3D,
                                     ::x3d::sai::experimental::vec3f>
       translation{"translation", access_type::input_output};
-  inline static constexpr field_key<TextureTransform3D, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<TextureTransform3D, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<TextureTransform3D, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<TextureTransform3D, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<TextureTransform3D, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 12> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 6> field_keys{{
       {center.name(), center.kind, center.access()},
-      {IS.name(), IS.kind, IS.access()},
       {mapping.name(), mapping.kind, mapping.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {rotation.name(), rotation.kind, rotation.access()},
       {scale.name(), scale.kind, scale.access()},
       {translation.name(), translation.kind, translation.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

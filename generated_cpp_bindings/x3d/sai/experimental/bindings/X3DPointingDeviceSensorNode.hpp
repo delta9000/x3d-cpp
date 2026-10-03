@@ -13,9 +13,6 @@ struct X3DPointingDeviceSensorNode {
       description{"description", access_type::input_output};
   inline static constexpr field_key<X3DPointingDeviceSensorNode, bool> enabled{
       "enabled", access_type::input_output};
-  inline static constexpr field_key<X3DPointingDeviceSensorNode,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<X3DPointingDeviceSensorNode, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<X3DPointingDeviceSensorNode, bool> isOver{
@@ -23,28 +20,12 @@ struct X3DPointingDeviceSensorNode {
   inline static constexpr field_key<X3DPointingDeviceSensorNode,
                                     ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
-  inline static constexpr field_key<X3DPointingDeviceSensorNode, std::string>
-      DEF{"DEF", access_type::input_output};
-  inline static constexpr field_key<X3DPointingDeviceSensorNode, std::string>
-      USE{"USE", access_type::input_output};
-  inline static constexpr field_key<X3DPointingDeviceSensorNode, std::string>
-      class_{"class", access_type::input_output};
-  inline static constexpr field_key<X3DPointingDeviceSensorNode, std::string>
-      id{"id", access_type::input_output};
-  inline static constexpr field_key<X3DPointingDeviceSensorNode, std::string>
-      style{"style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 11> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 5> field_keys{{
       {description.name(), description.kind, description.access()},
       {enabled.name(), enabled.kind, enabled.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {isOver.name(), isOver.kind, isOver.access()},
       {metadata.name(), metadata.kind, metadata.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

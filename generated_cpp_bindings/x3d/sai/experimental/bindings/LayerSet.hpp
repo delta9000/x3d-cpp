@@ -11,8 +11,6 @@ struct LayerSet {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<LayerSet, std::int32_t> activeLayer{
       "activeLayer", access_type::input_output};
-  inline static constexpr field_key<LayerSet, ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<LayerSet,
                                     ::x3d::sai::experimental::node_list>
       layers{"layers", access_type::input_output};
@@ -21,27 +19,11 @@ struct LayerSet {
   inline static constexpr field_key<LayerSet,
                                     ::x3d::sai::experimental::int32_list>
       order{"order", access_type::input_output};
-  inline static constexpr field_key<LayerSet, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<LayerSet, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<LayerSet, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<LayerSet, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<LayerSet, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 10> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 4> field_keys{{
       {activeLayer.name(), activeLayer.kind, activeLayer.access()},
-      {IS.name(), IS.kind, IS.access()},
       {layers.name(), layers.kind, layers.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {order.name(), order.kind, order.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 
