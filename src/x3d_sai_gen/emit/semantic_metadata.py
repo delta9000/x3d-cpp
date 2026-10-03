@@ -8,6 +8,7 @@ read-only catalog from the same parsed UOM model.
 
 import hashlib
 import json
+import math
 from typing import Dict, List, Optional
 
 from x3d_sai_gen import __version__
@@ -30,6 +31,26 @@ def _strings(values) -> str:
     return f"std::vector<std::string>{{{body}}}"
 
 
+def _numeric_range(field) -> str:
+    def bound(inclusive, exclusive):
+        if inclusive is not None and exclusive is not None:
+            raise ValueError(f"ambiguous numeric bound on {field.name}")
+        lexical = inclusive if inclusive is not None else exclusive
+        if lexical is None:
+            return "std::nullopt"
+        number = float(lexical)
+        if not math.isfinite(number):
+            raise ValueError(f"non-finite numeric bound on {field.name}")
+        return repr(number)
+
+    minimum = bound(field.min_inclusive, field.min_exclusive)
+    maximum = bound(field.max_inclusive, field.max_exclusive)
+    min_inclusive = "true" if field.min_exclusive is None else "false"
+    max_inclusive = "true" if field.max_exclusive is None else "false"
+    return (f"SemanticNumericRange{{{minimum}, {maximum}, "
+            f"{min_inclusive}, {max_inclusive}}}")
+
+
 def gen_semantic_metadata_header() -> str:
     return """// X3DSemanticMetadataRegistry.hpp
 // Auto-generated: owning, instance-free X3D semantic descriptors.
@@ -45,6 +66,13 @@ def gen_semantic_metadata_header() -> str:
 
 namespace x3d::nodes {
 
+struct SemanticNumericRange {
+    std::optional<double> minimum{};
+    std::optional<double> maximum{};
+    bool minimumInclusive = true;
+    bool maximumInclusive = true;
+};
+
 struct SemanticFieldDescriptor {
     std::string name;
     x3d::core::X3DFieldType type;
@@ -52,6 +80,7 @@ struct SemanticFieldDescriptor {
     std::optional<std::string> defaultValue;
     std::vector<std::string> acceptableNodeTypes;
     std::optional<std::string> unitCategory;
+    SemanticNumericRange range{};
 };
 
 struct SemanticNodeDescriptor {
@@ -122,6 +151,10 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
                 "accepted_node_types": list(
                     descriptor.acceptable_node_types or []),
                 "unit_category": unit,
+                "min_inclusive": field.min_inclusive,
+                "max_inclusive": field.max_inclusive,
+                "min_exclusive": field.min_exclusive,
+                "max_exclusive": field.max_exclusive,
             })
             lines.append(
                 "                SemanticFieldDescriptor{"
@@ -131,7 +164,10 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
                 f"{_optional(field.default)}, "
                 f"{_strings(descriptor.acceptable_node_types)}, "
                 f"{_optional(unit)}"
-                "},")
+                + (f", {_numeric_range(field)}" if any(bound is not None for bound in
+                   (field.min_inclusive, field.max_inclusive,
+                    field.min_exclusive, field.max_exclusive)) else "")
+                + "},")
         lines.extend(["            },", "        },"])
         semantic_model.append({
             "name": node.name,

@@ -19,6 +19,7 @@ struct schema_field_descriptor {
   std::optional<std::string> declared_default;
   std::vector<std::string> accepted_node_types;
   std::optional<std::string> unit_category;
+  numeric_range range{};
 };
 
 struct schema_node_descriptor {

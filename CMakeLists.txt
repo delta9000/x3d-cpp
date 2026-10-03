@@ -82,7 +82,8 @@ add_executable(x3d_sai_experimental_tests
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit_validation_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_metadata_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/vocabulary_discovery_test.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/color_validation_test.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/color_validation_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/numeric_range_test.cpp")
 target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
@@ -489,3 +490,32 @@ add_test(NAME sai_field_color_endpoints COMMAND x3d_sai_experimental_tests
 
 add_test(NAME sai_field_image_multi COMMAND x3d_sai_experimental_tests
     "--test-case=image MF editors distinguish malformed values from wrong kinds")
+
+add_test(NAME sai_field_range_authoring COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric range authoring rejects invalid components atomically")
+
+add_test(NAME sai_field_range_events COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric range event input rejects invalid components atomically")
+
+add_test(NAME sai_field_range_runtime COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric range runtime output rejects invalid components atomically")
+
+add_test(NAME sai_field_range_descriptors COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric ranges validate descriptor shape and defaults")
+
+add_test(NAME sai_field_range_components COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric ranges reach every scalar and sequence component")
+
+add_test(NAME sai_field_range_multi COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric range MF editors validate the entire mutation")
+
+add_test(NAME sai_field_range_routes COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric range ROUTE admission rolls back sources and destinations")
+
+add_test(NAME sai_field_range_generated COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric ranges are discoverable from generated UOM fields")
+
+add_test(NAME sai_field_range_precision COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric range endpoints use the field component precision")
+add_test(NAME sai_field_range_colors COMMAND x3d_sai_experimental_tests
+    "--test-case=numeric ranges constrain normalized scalar and multi colors")

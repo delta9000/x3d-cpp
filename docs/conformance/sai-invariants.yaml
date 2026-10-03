@@ -85,7 +85,7 @@ invariants:
     evidence_strength: normative
     statement: Typed, generic, parser, Script, external SAI, IS, and ROUTE paths use the same type, access, constraints, accepted nodes, and unit metadata.
     preserving_operations: [describe field, read field, write field, route field, bind IS]
-    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation, sai_node_vocabulary_predictive, sai_field_color_authoring, sai_field_color_events, sai_field_color_runtime, sai_field_color_multi, sai_field_color_defaults, sai_field_image_multi]
+    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation, sai_node_vocabulary_predictive, sai_field_color_authoring, sai_field_color_events, sai_field_color_runtime, sai_field_color_multi, sai_field_color_defaults, sai_field_image_multi, sai_field_range_authoring, sai_field_range_events, sai_field_range_runtime, sai_field_range_multi, sai_field_range_generated, sai_field_range_colors]
   - <<: *invariant_defaults
     id: INV-FIELD-2
     review_marker: reviewed:sha256:7e69b9ddd522
@@ -94,7 +94,7 @@ invariants:
     evidence_strength: framework_proposal
     statement: Equal write intent, value, timestamp, and starting state yield equal storage, invalidation, event, diagnostic, and semantic change through typed and generic paths.
     preserving_operations: [typed write, generic write, Script write, route delivery]
-    falsification_tests: [sai_field_equal_intent, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_context_import_snapshot, sai_field_color_authoring, sai_field_color_events, sai_field_color_runtime, sai_field_color_multi, sai_field_color_endpoints]
+    falsification_tests: [sai_field_equal_intent, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_context_import_snapshot, sai_field_color_authoring, sai_field_color_events, sai_field_color_runtime, sai_field_color_multi, sai_field_color_endpoints, sai_field_range_authoring, sai_field_range_events, sai_field_range_runtime, sai_field_range_multi]
   - <<: *invariant_defaults
     id: INV-FIELD-3
     review_marker: reviewed:sha256:7b7769f2becb
@@ -112,7 +112,7 @@ invariants:
     evidence_strength: normative
     statement: Authored and canonical unit interpretation is explicit; parse, assign, route, inspect, and serialize never double-convert or lose the scene unit declaration.
     preserving_operations: [inspect units, parse value, assign value, route value, serialize value]
-    falsification_tests: [sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_field_unit_read_range, planned:sai_field_unit_codec_bridge, sai_runtime_units, sai_field_unit_validation]
+    falsification_tests: [sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_field_unit_read_range, planned:sai_field_unit_codec_bridge, sai_runtime_units, sai_field_unit_validation, sai_field_range_authoring, sai_field_range_events, sai_field_range_runtime]
   - <<: *invariant_defaults
     id: INV-FIELD-5
     review_marker: reviewed:sha256:d96ae0eeba5d
@@ -305,7 +305,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Types, fields, access, defaults, constraints, units, profiles, components, docs, and serializers derive from one versioned semantic model with no dangling references.
     preserving_operations: [generate bindings, reflect runtime, serialize, build docs]
-    falsification_tests: [sai_generated_binding_parity, sai_generated_semantic_fields, sai_generated_typed_workflow, sai_generated_binding_drift, sai_generated_registry_provenance, sai_generated_registry_mutation, planned:sai_gen_no_drift, sai_node_vocabulary_predictive]
+    falsification_tests: [sai_generated_binding_parity, sai_generated_semantic_fields, sai_generated_typed_workflow, sai_generated_binding_drift, sai_generated_registry_provenance, sai_generated_registry_mutation, planned:sai_gen_no_drift, sai_node_vocabulary_predictive, sai_field_range_generated, sai_field_range_precision]
 
   - <<: *invariant_defaults
     id: INV-CXX-1

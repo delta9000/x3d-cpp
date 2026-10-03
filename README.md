@@ -134,8 +134,24 @@ The proposal makes these design choices executable:
   descriptors and local declaration interfaces are checked on admission.
   Valid endpoints and signed zero retain their representation. MF editors also
   report malformed images as `invalid_value`, while a wrong field kind remains
-  `type_mismatch`. Field-specific UOM numeric ranges and enumerated vocabularies
-  are not yet enforced.
+  `type_mismatch`.
+- Each field descriptor owns a `numeric_range`: optional minimum and maximum,
+  with inclusive/exclusive flags. Generated UOM bounds survive catalog and node
+  discovery and participate in the schema fingerprint. Custom descriptors use
+  the same range. Authoring, event input, native output, MF edits, and ROUTE
+  destinations check every numeric component before staging its value. Bounds
+  use canonical units and are checked after authored-unit conversion. Floating
+  endpoints use the component precision; integer bounds retain fractional
+  limits. A bounded field rejects non-finite components, while an unbounded
+  field retains its existing IEEE representation behavior.
+  Descriptor admission rejects non-finite limits and component intervals with
+  no representable values. Rejected writes return `invalid_value` and leave
+  the whole revision unpublished.
+  Input-only and output-only ports may initially hold their exact field-type
+  default even when it lies outside the field's range; declared defaults and
+  subsequent events must satisfy the range. For example, `aspectRatio` starts
+  at zero but can emit only positive values. Numeric ranges do not implement
+  coupled rules such as the all-axes `bboxSize` sentinel, or enum vocabularies.
 - Field storage and event equivalence is the public `same_representation`
   relation: IEEE payload bits survive, signed zeros differ, and identical NaN
   payloads match. Ordinary numerical `operator==` remains numerical.

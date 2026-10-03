@@ -245,7 +245,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.4.17 dynamicRouteHandling (add)
     public_symbol: x3d::sai::experimental::scene_edit::add_route
     support: partial
-    tests: [sai_route_access, sai_route_unique]
+    tests: [sai_route_access, sai_route_unique, sai_field_range_routes]
     preserves: [INV-EDIT-1, INV-EDIT-5, INV-EVT-1]
   - <<: *command
     id: SVC-CONTEXT-ROUTE-REMOVE
@@ -367,7 +367,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.6.5 getFieldDefinitions
     public_symbol: x3d::sai::experimental::scene_snapshot::describe
     support: partial
-    tests: [sai_inspect_descriptor, sai_generated_binding_parity, sai_node_vocabulary_predictive]
+    tests: [sai_inspect_descriptor, sai_generated_binding_parity, sai_node_vocabulary_predictive, sai_field_range_generated]
     binding_obligations: [CPP-A.4.4-FIELD-DEFINITION]
     preserves: [INV-FIELD-1, INV-GEN-1, INV-ORDER-1]
 
@@ -461,7 +461,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue
     public_symbol: x3d::sai::experimental::scene_edit::set
     support: partial
-    tests: [sai_field_specialized_access, sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes, sai_node_null_access, sai_node_null_events, sai_publication_integrity, sai_field_unit_validation, sai_field_color_authoring, sai_field_color_events, sai_field_color_defaults, sai_field_color_endpoints]
+    tests: [sai_field_specialized_access, sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_own_node_value, sai_own_node_range, sai_evt_input_transient, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_own_event_nodes, sai_node_null_access, sai_node_null_events, sai_publication_integrity, sai_field_unit_validation, sai_field_color_authoring, sai_field_color_events, sai_field_color_defaults, sai_field_color_endpoints, sai_field_range_authoring, sai_field_range_events, sai_field_range_descriptors, sai_field_range_components, sai_field_range_precision, sai_field_range_colors]
     binding_obligations: [CPP-4.3.5.1-NULL-NODES, CPP-4.3.5.3-MFNODE-NULL-ORDER]
     preserves: [INV-FIELD-2, INV-FIELD-3, INV-FIELD-4, INV-CXX-4, INV-EVT-1]
   - <<: *observer
@@ -527,7 +527,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF element)
     public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::set
     support: partial
-    tests: [sai_mf_set, sai_mf_typed_dynamic, sai_mf_node_authority, sai_field_color_multi, sai_field_image_multi]
+    tests: [sai_mf_set, sai_mf_typed_dynamic, sai_mf_node_authority, sai_field_color_multi, sai_field_image_multi, sai_field_range_multi]
     binding_obligations: [CPP-4.3.5.2-EXTERNAL-MF-EVENTS, CPP-4.3.5.5-SET1VALUE]
     preserves: [INV-FIELD-3, INV-CXX-4, INV-EDIT-1]
   - <<: *command
@@ -535,7 +535,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.7.6 setValue (MF insert)
     public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::insert
     support: partial
-    tests: [sai_mf_insert, sai_mf_typed_dynamic, sai_mf_node_authority, sai_field_color_multi, sai_field_image_multi]
+    tests: [sai_mf_insert, sai_mf_typed_dynamic, sai_mf_node_authority, sai_field_color_multi, sai_field_image_multi, sai_field_range_multi]
     binding_obligations: [CPP-A.4.48-MFNODE-EDITING]
     preserves: [INV-FIELD-3, INV-EDIT-1, INV-RT-1]
   - <<: *command
@@ -559,7 +559,7 @@ services:
     clause: ISO/IEC 19777-4, Annex A.4.48 MFNode::append
     public_symbol: x3d::sai::experimental::dynamic_multi_field_edit::append
     support: partial
-    tests: [sai_mf_append, sai_mf_node_authority, sai_field_color_multi, sai_field_image_multi]
+    tests: [sai_mf_append, sai_mf_node_authority, sai_field_color_multi, sai_field_image_multi, sai_field_range_multi]
     binding_obligations: [CPP-A.4.48-MFNODE-EDITING]
     preserves: [INV-FIELD-3, INV-EDIT-1, INV-ORDER-1]
 
@@ -617,7 +617,7 @@ services:
     buffering: callback-scoped validated outputs settle at the enclosing batch timestamp; escaped authority expires on callback return
     events: outputOnly and inputOutput events retain working values and propagate through ROUTEs with causal indices
     errors: ordinary field, ownership, type, and scope failures poison the frame; expired authority returns stale_revision
-    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_authority, sai_runtime_ignored, sai_runtime_tick, sai_runtime_generated_host, sai_runtime_units, sai_runtime_emit_retirement, sai_field_unit_validation, sai_field_color_runtime, sai_field_color_endpoints]
+    tests: [sai_runtime_cascade, sai_runtime_atomic, sai_runtime_authority, sai_runtime_ignored, sai_runtime_tick, sai_runtime_generated_host, sai_runtime_units, sai_runtime_emit_retirement, sai_field_unit_validation, sai_field_color_runtime, sai_field_color_endpoints, sai_field_range_runtime, sai_field_range_generated]
     preserves: [INV-OWN-1, INV-OWN-2, INV-FIELD-1, INV-FIELD-3, INV-FIELD-4, INV-EDIT-2, INV-EVT-1, INV-EVT-2, INV-LIFE-1]
 
   - <<: *browser_command

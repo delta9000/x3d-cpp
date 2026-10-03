@@ -590,6 +590,10 @@ metadata_catalog generated_metadata_catalog() {
           .declared_default = field.defaultValue,
           .accepted_node_types = field.acceptableNodeTypes,
           .unit_category = field.unitCategory,
+          .range = {.minimum = field.range.minimum,
+                    .maximum = field.range.maximum,
+                    .minimum_inclusive = field.range.minimumInclusive,
+                    .maximum_inclusive = field.range.maximumInclusive},
       });
     }
     adapted.nodes.push_back(std::move(adapted_node));
@@ -637,6 +641,7 @@ generated_type_registry(std::span<const std::string_view> node_types) {
                          field.type == schema_field_type::mf_node,
           .accepted_node_types = field.accepted_node_types,
           .unit_category = field.unit_category,
+          .range = field.range,
       });
     }
     if (auto defined = registry.define(std::move(adapted)); !defined)

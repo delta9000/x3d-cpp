@@ -93,6 +93,144 @@ bool value_is_well_formed(const value &candidate) {
       candidate);
 }
 
+bool valid_range(const numeric_range &range) {
+  if ((range.minimum && !std::isfinite(*range.minimum)) ||
+      (range.maximum && !std::isfinite(*range.maximum)))
+    return false;
+  if (range.minimum && range.maximum) {
+    if (*range.minimum > *range.maximum)
+      return false;
+    if (*range.minimum == *range.maximum &&
+        (!range.minimum_inclusive || !range.maximum_inclusive))
+      return false;
+  }
+  return true;
+}
+
+template <class T> constexpr bool numeric_storage_type() {
+  if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double> ||
+                std::is_same_v<T, std::int32_t> ||
+                std::is_same_v<T, time_value>)
+    return true;
+  else if constexpr (requires(const T &v) { v.x; v.y; } ||
+                     requires(const T &v) { v.r; v.g; v.b; } ||
+                     requires(const T &v) { v.elements; })
+    return true;
+  else if constexpr (requires { typename T::value_type; })
+    return numeric_storage_type<typename T::value_type>();
+  else
+    return false;
+}
+
+template <class T> double range_endpoint(double bound) {
+  if constexpr (std::is_same_v<T, float>) {
+    if (bound >= std::numeric_limits<float>::lowest() &&
+        bound <= std::numeric_limits<float>::max())
+      return static_cast<double>(static_cast<float>(bound));
+  }
+  return bound;
+}
+
+template <class T>
+bool component_within_range(T stored, const numeric_range &range) {
+  const double component = static_cast<double>(stored);
+  if (!std::isfinite(component))
+    return false;
+  if (range.minimum &&
+      !(range.minimum_inclusive ? component >= range_endpoint<T>(*range.minimum)
+                                : component > range_endpoint<T>(*range.minimum)))
+    return false;
+  if (range.maximum &&
+      !(range.maximum_inclusive ? component <= range_endpoint<T>(*range.maximum)
+                                : component < range_endpoint<T>(*range.maximum)))
+    return false;
+  return true;
+}
+
+template <class T> bool component_range_has_value(const numeric_range &range) {
+  const double lowest = std::numeric_limits<T>::lowest();
+  const double highest = std::numeric_limits<T>::max();
+  const double minimum = range.minimum ? range_endpoint<T>(*range.minimum)
+                                       : lowest;
+  if (minimum > highest)
+    return false;
+  if constexpr (std::is_integral_v<T>) {
+    double candidate = std::ceil(std::max(minimum, lowest));
+    if (range.minimum && candidate == minimum && !range.minimum_inclusive)
+      candidate += 1.;
+    return candidate <= highest &&
+           component_within_range(static_cast<T>(candidate), range);
+  } else {
+    T candidate = static_cast<T>(std::max(minimum, lowest));
+    if (range.minimum && candidate == minimum && !range.minimum_inclusive)
+      candidate = std::nextafter(candidate, std::numeric_limits<T>::infinity());
+    return component_within_range(candidate, range);
+  }
+}
+
+template <class T>
+bool range_has_values(const T &stored, const numeric_range &range) {
+  if constexpr (!numeric_storage_type<T>())
+    return false;
+  else if constexpr (std::is_arithmetic_v<T>)
+    return component_range_has_value<T>(range);
+  else if constexpr (std::is_same_v<T, time_value>)
+    return component_range_has_value<double>(range);
+  else if constexpr (requires { typename T::value_type; })
+    return range_has_values(typename T::value_type{}, range);
+  else if constexpr (requires { stored.elements; })
+    return component_range_has_value<
+        typename decltype(stored.elements)::value_type>(range);
+  else if constexpr (requires { stored.r; })
+    return component_range_has_value<decltype(stored.r)>(range);
+  else
+    return component_range_has_value<decltype(stored.x)>(range);
+}
+
+template <class T>
+bool stored_within_range(const T &stored, const numeric_range &range) {
+  if constexpr (!numeric_storage_type<T>()) {
+    return false;
+  } else if constexpr (std::is_arithmetic_v<T>) {
+    return component_within_range(stored, range);
+  } else if constexpr (std::is_same_v<T, time_value>) {
+    return component_within_range(stored.seconds, range);
+  } else if constexpr (requires { typename T::value_type; }) {
+    return std::ranges::all_of(stored, [&](const auto &element) {
+      return stored_within_range(element, range);
+    });
+  } else if constexpr (requires { stored.elements; }) {
+    return std::ranges::all_of(stored.elements, [&](const auto &element) {
+      return component_within_range(element, range);
+    });
+  } else if constexpr (requires { stored.r; stored.g; stored.b; }) {
+    bool valid = component_within_range(stored.r, range) &&
+                 component_within_range(stored.g, range) &&
+                 component_within_range(stored.b, range);
+    if constexpr (requires { stored.a; })
+      valid = valid && component_within_range(stored.a, range);
+    return valid;
+  } else {
+    bool valid = component_within_range(stored.x, range) &&
+                 component_within_range(stored.y, range);
+    if constexpr (requires { stored.z; })
+      valid = valid && component_within_range(stored.z, range);
+    if constexpr (requires { stored.w; })
+      valid = valid && component_within_range(stored.w, range);
+    if constexpr (requires { stored.angle; })
+      valid = valid && component_within_range(stored.angle, range);
+    return valid;
+  }
+}
+
+bool value_within_range(const value &candidate, const numeric_range &range) {
+  if (!range.minimum && !range.maximum)
+    return true;
+  return std::visit([&](const auto &stored) {
+    return stored_within_range(stored, range);
+  }, candidate);
+}
+
 bool representation_equal(float left, float right) {
   return std::bit_cast<std::uint32_t>(left) ==
          std::bit_cast<std::uint32_t>(right);
@@ -188,6 +326,15 @@ bool representation_equal(const value &left, const value &right) {
       left);
 }
 
+bool field_type_default(const value &candidate) {
+  return std::visit([]<class T>(const T &stored) {
+    if constexpr (std::is_same_v<T, std::monostate>)
+      return false;
+    else
+      return representation_equal(stored, T{});
+  }, candidate);
+}
+
 bool value_matches(value_kind kind, const value &candidate) {
   return kind_of(candidate) == kind && value_is_well_formed(candidate);
 }
@@ -280,6 +427,23 @@ result<void> type_registry::define(node_type_descriptor descriptor) {
       return descriptor_error(
           error_code::invalid_descriptor, "type_registry.define",
           "default value violates field kind or representation: " + field.name);
+    }
+    if (field.range.minimum || field.range.maximum) {
+      const bool inhabited = std::visit([&](const auto &stored) {
+        return range_has_values(stored, field.range);
+      }, field.default_value);
+      const bool uninitialized_port =
+          (field.access == access_type::input_only ||
+           field.access == access_type::output_only) &&
+          field.default_origin == default_source::field_type &&
+          field_type_default(field.default_value);
+      if (!valid_range(field.range) || !inhabited ||
+          (!uninitialized_port &&
+           !value_within_range(field.default_value, field.range))) {
+        return descriptor_error(error_code::invalid_descriptor,
+                                "type_registry.define",
+                                "invalid numeric range or default: " + field.name);
+      }
     }
     if (has_non_null_node_identity(field.default_value)) {
       return descriptor_error(
@@ -1719,6 +1883,12 @@ value *multi_sequence(detail::scene_edit_control &edit,
                                                    : &value_found->second;
 }
 
+const numeric_range &multi_range(const detail::scene_edit_control &edit,
+                                 const dynamic_field &target) {
+  return find_descriptor(*edit.context, edit.staged.nodes.at(target.node().value),
+                         target.name())->range;
+}
+
 std::size_t sequence_size(const value &sequence) {
   return std::visit(
       []<class T>(const T &stored) -> std::size_t {
@@ -1898,7 +2068,8 @@ result<void> dynamic_multi_field_edit::set(std::size_t index, value element) {
     return *edit.value()->poison;
   }
   const bool matches_kind = expected && kind_of(element) == expected;
-  if (!matches_kind || !value_is_well_formed(element)) {
+  if (!matches_kind || !value_is_well_formed(element) ||
+      !value_within_range(element, multi_range(*edit.value(), target_))) {
     edit.value()->poison =
         edit_error(matches_kind ? error_code::invalid_value
                                 : error_code::type_mismatch,
@@ -2008,7 +2179,8 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
   const auto expected = element_kind(target_.kind());
   const bool matches_kind = expected && kind_of(element) == expected;
   if (target_.kind() == value_kind::mf_node || !matches_kind ||
-      !value_is_well_formed(element)) {
+      !value_is_well_formed(element) ||
+      !value_within_range(element, multi_range(*edit.value(), target_))) {
     edit.value()->poison = edit_error(
         target_.kind() == value_kind::mf_node ? error_code::invalid_context
         : matches_kind ? error_code::invalid_value : error_code::type_mismatch,
@@ -2209,7 +2381,8 @@ result<void> dynamic_multi_field_edit::replace(value replacement) {
     return *edit.value()->poison;
   }
   const bool matches_kind = kind_of(replacement) == target_.kind();
-  if (!matches_kind || !value_is_well_formed(replacement)) {
+  if (!matches_kind || !value_is_well_formed(replacement) ||
+      !value_within_range(replacement, multi_range(*edit.value(), target_))) {
     edit.value()->poison =
         edit_error(matches_kind ? error_code::invalid_value
                                 : error_code::type_mismatch,
@@ -2435,10 +2608,12 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
     }
     new_value = std::move(*canonical);
   }
-  if (!value_is_well_formed(new_value)) {
+  if (!value_is_well_formed(new_value) ||
+      !value_within_range(new_value, descriptor->range)) {
     impl_->poison = edit_error(error_code::invalid_value, "scene_edit.set",
                                *impl_->context, impl_->base->revision,
-                               "value violates field representation invariants",
+                               "value violates field representation or numeric "
+                               "range",
                                target.node_, target.name_);
     return *impl_->poison;
   }
@@ -3954,10 +4129,12 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
     }
     payload = std::move(*canonical);
   }
-  if (!value_is_well_formed(payload)) {
+  if (!value_is_well_formed(payload) ||
+      !value_within_range(payload, descriptor->range)) {
     impl_->poison = edit_error(
         error_code::invalid_value, impl_->send_operation(), *impl_->context,
-        impl_->base->revision, "event violates field representation invariants",
+        impl_->base->revision,
+        "event violates field representation or numeric range",
         target.node_, target.name_);
     return *impl_->poison;
   }
@@ -4181,6 +4358,11 @@ result<event_result> event_batch::commit() {
           const auto &sink = staged->nodes.at(candidate.sink.value);
           const auto *sink_descriptor =
               find_descriptor(*impl_->context, sink, candidate.sink_field);
+          if (!value_within_range(incoming.payload, sink_descriptor->range))
+            return edit_error(
+                error_code::invalid_value, "event_batch.commit", *impl_->context,
+                impl_->base->revision, "routed event violates numeric range",
+                candidate.sink, candidate.sink_field);
           if (const auto issue =
                   node_payload_issue(*impl_->context, *staged, sink,
                                      *sink_descriptor, incoming.payload))

@@ -590,6 +590,10 @@ TEST_CASE(
       CHECK(adapted_field.accepted_node_types ==
             source_field.acceptableNodeTypes);
       CHECK(adapted_field.unit_category == source_field.unitCategory);
+      CHECK(adapted_field.range.minimum == source_field.range.minimum);
+      CHECK(adapted_field.range.maximum == source_field.range.maximum);
+      CHECK(adapted_field.range.minimum_inclusive == source_field.range.minimumInclusive);
+      CHECK(adapted_field.range.maximum_inclusive == source_field.range.maximumInclusive);
     }
 
     // Live x3d-cpp runtime reflection parity moved to x3d-cpp with the

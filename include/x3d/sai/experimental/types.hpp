@@ -432,6 +432,18 @@ inline unexpected failure(sai_error error) {
 }
 template <class T> using result = tl::expected<T, sai_error>;
 
+// Bounds use canonical units and apply to each numeric component. A field
+// with either bound admits only finite components; absent bounds are inert.
+// Floating bounds are compared at the component precision; integer bounds
+// retain their double value (a fractional limit is not truncated).
+struct numeric_range {
+  std::optional<double> minimum{};
+  std::optional<double> maximum{};
+  bool minimum_inclusive = true;
+  bool maximum_inclusive = true;
+  friend bool operator==(const numeric_range &, const numeric_range &) = default;
+};
+
 struct field_descriptor {
   std::string name;
   value_kind kind = value_kind::sf_string;
@@ -441,6 +453,7 @@ struct field_descriptor {
   bool containment = false;
   std::vector<std::string> accepted_node_types;
   std::optional<std::string> unit_category;
+  numeric_range range{};
 };
 
 struct node_type_descriptor {

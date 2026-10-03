@@ -149,3 +149,56 @@ def test_generated_check_detects_drift_without_rewriting(tmp_path, difference):
     before = {path.name: path.read_bytes() for path in actual.iterdir()}
     assert check_generated(expected, actual) == 1
     assert {path.name: path.read_bytes() for path in actual.iterdir()} == before
+
+
+def test_semantic_metadata_preserves_uom_numeric_bounds(model):
+    from x3d_sai_gen.emit.semantic_metadata import gen_semantic_metadata_source
+
+    nodes, graph, enum_defs = model
+    radius = next(f for f in nodes["Sphere"].fields if f.name == "radius")
+    angle = next(f for f in nodes["Arc2D"].fields if f.name == "endAngle")
+    assert radius.min_exclusive == "0"
+    assert angle.min_exclusive == "-6.2832"
+    assert angle.max_exclusive == "6.2832"
+    source = gen_semantic_metadata_source(nodes, graph, enum_defs, "4.0")
+    radius_line = next(line for line in source.splitlines()
+                       if 'SemanticFieldDescriptor{"radius"' in line)
+    assert radius_line.endswith('SemanticNumericRange{0.0, std::nullopt, false, true}},')
+
+
+@pytest.mark.parametrize("attribute", [
+    "min_inclusive", "max_inclusive", "min_exclusive", "max_exclusive",
+])
+def test_semantic_fingerprint_covers_each_numeric_bound(model, attribute):
+    import re
+    from x3d_sai_gen.emit.semantic_metadata import gen_semantic_metadata_source
+
+    nodes, graph, enum_defs = model
+    baseline = gen_semantic_metadata_source(nodes, graph, enum_defs, "4.0")
+    changed = copy.deepcopy(nodes)
+    translation = next(f for f in changed["Transform"].fields
+                       if f.name == "translation")
+    setattr(translation, attribute, "2")
+    emitted = gen_semantic_metadata_source(changed, graph, enum_defs, "4.0")
+    fingerprint = r'return "([a-f0-9]{64})";'
+    assert re.search(fingerprint, baseline).group(1) != re.search(
+        fingerprint, emitted).group(1)
+
+
+@pytest.mark.parametrize("bounds", [
+    {"min_inclusive": "0", "min_exclusive": "0"},
+    {"max_inclusive": "1", "max_exclusive": "1"},
+    {"min_inclusive": "NaN"},
+    {"max_inclusive": "inf"},
+])
+def test_numeric_bound_emission_rejects_ambiguous_or_nonfinite_limits(model, bounds):
+    from x3d_sai_gen.emit.semantic_metadata import gen_semantic_metadata_source
+
+    nodes, graph, enum_defs = model
+    changed = copy.deepcopy(nodes)
+    translation = next(f for f in changed["Transform"].fields
+                       if f.name == "translation")
+    for key, value in bounds.items():
+        setattr(translation, key, value)
+    with pytest.raises(ValueError):
+        gen_semantic_metadata_source(changed, graph, enum_defs, "4.0")
