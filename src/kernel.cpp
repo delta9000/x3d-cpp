@@ -58,6 +58,21 @@ bool valid_image(const image &candidate) {
          bytes == candidate.data.size();
 }
 
+bool valid_color_component(float channel) {
+  return channel >= 0.f && channel <= 1.f;
+}
+
+bool valid_color(const color3f &candidate) {
+  return valid_color_component(candidate.r) &&
+         valid_color_component(candidate.g) &&
+         valid_color_component(candidate.b);
+}
+
+bool valid_color(const color4f &candidate) {
+  return valid_color(color3f{candidate.r, candidate.g, candidate.b}) &&
+         valid_color_component(candidate.a);
+}
+
 bool value_is_well_formed(const value &candidate) {
   return std::visit(
       []<class T>(const T &stored) {
@@ -65,6 +80,13 @@ bool value_is_well_formed(const value &candidate) {
           return valid_image(stored);
         else if constexpr (std::is_same_v<T, image_list>)
           return std::ranges::all_of(stored, valid_image);
+        else if constexpr (std::is_same_v<T, color3f> ||
+                           std::is_same_v<T, color4f>)
+          return valid_color(stored);
+        else if constexpr (std::is_same_v<T, color3f_list> ||
+                           std::is_same_v<T, color4f_list>)
+          return std::ranges::all_of(
+              stored, [](const auto &color) { return valid_color(color); });
         else
           return true;
       },
@@ -257,7 +279,7 @@ result<void> type_registry::define(node_type_descriptor descriptor) {
     if (!value_matches(field.kind, field.default_value)) {
       return descriptor_error(
           error_code::invalid_descriptor, "type_registry.define",
-          "default value does not match field kind: " + field.name);
+          "default value violates field kind or representation: " + field.name);
     }
     if (has_non_null_node_identity(field.default_value)) {
       return descriptor_error(
@@ -718,7 +740,7 @@ std::optional<interface_validation_issue> validate_declaration_interface(
     if (field.default_value && !value_matches(field.kind, *field.default_value))
       return interface_validation_issue{
           .message =
-              "interface default value does not match its exact field kind",
+              "interface default value violates its field kind or representation",
           .field = field.name};
     if (!allow_authored_node_defaults && field.default_value &&
         has_non_null_node_identity(*field.default_value))
@@ -1875,12 +1897,14 @@ result<void> dynamic_multi_field_edit::set(std::size_t index, value element) {
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
-  if (!expected || kind_of(element) != expected ||
-      !value_is_well_formed(element)) {
+  const bool matches_kind = expected && kind_of(element) == expected;
+  if (!matches_kind || !value_is_well_formed(element)) {
     edit.value()->poison =
-        edit_error(error_code::type_mismatch, "multi_field.set",
+        edit_error(matches_kind ? error_code::invalid_value
+                                : error_code::type_mismatch,
+                   "multi_field.set",
                    *edit.value()->context, edit.value()->base->revision,
-                   "element does not match the multi-field descriptor",
+                   "element does not satisfy the multi-field descriptor",
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
@@ -1982,11 +2006,12 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
   if (!edit)
     return failure(edit.error());
   const auto expected = element_kind(target_.kind());
-  if (target_.kind() == value_kind::mf_node || !expected ||
-      kind_of(element) != expected || !value_is_well_formed(element)) {
+  const bool matches_kind = expected && kind_of(element) == expected;
+  if (target_.kind() == value_kind::mf_node || !matches_kind ||
+      !value_is_well_formed(element)) {
     edit.value()->poison = edit_error(
         target_.kind() == value_kind::mf_node ? error_code::invalid_context
-                                              : error_code::type_mismatch,
+        : matches_kind ? error_code::invalid_value : error_code::type_mismatch,
         "multi_field.insert", *edit.value()->context,
         edit.value()->base->revision,
         "element is not authorizable for the multi-field", target_.node(),
@@ -2183,12 +2208,14 @@ result<void> dynamic_multi_field_edit::replace(value replacement) {
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }
-  if (kind_of(replacement) != target_.kind() ||
-      !value_is_well_formed(replacement)) {
+  const bool matches_kind = kind_of(replacement) == target_.kind();
+  if (!matches_kind || !value_is_well_formed(replacement)) {
     edit.value()->poison =
-        edit_error(error_code::type_mismatch, "multi_field.replace",
+        edit_error(matches_kind ? error_code::invalid_value
+                                : error_code::type_mismatch,
+                   "multi_field.replace",
                    *edit.value()->context, edit.value()->base->revision,
-                   "replacement does not match the multi-field descriptor",
+                   "replacement does not satisfy the multi-field descriptor",
                    target_.node(), target_.name());
     return *edit.value()->poison;
   }

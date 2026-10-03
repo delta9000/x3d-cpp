@@ -85,7 +85,7 @@ invariants:
     evidence_strength: normative
     statement: Typed, generic, parser, Script, external SAI, IS, and ROUTE paths use the same type, access, constraints, accepted nodes, and unit metadata.
     preserving_operations: [describe field, read field, write field, route field, bind IS]
-    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation, sai_node_vocabulary_predictive]
+    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation, sai_node_vocabulary_predictive, sai_field_color_authoring, sai_field_color_events, sai_field_color_runtime, sai_field_color_multi, sai_field_color_defaults, sai_field_image_multi]
   - <<: *invariant_defaults
     id: INV-FIELD-2
     review_marker: reviewed:sha256:7e69b9ddd522
@@ -94,7 +94,7 @@ invariants:
     evidence_strength: framework_proposal
     statement: Equal write intent, value, timestamp, and starting state yield equal storage, invalidation, event, diagnostic, and semantic change through typed and generic paths.
     preserving_operations: [typed write, generic write, Script write, route delivery]
-    falsification_tests: [sai_field_equal_intent, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_context_import_snapshot]
+    falsification_tests: [sai_field_equal_intent, sai_evt_inputoutput_publish, sai_evt_typed_generic, sai_context_import_snapshot, sai_field_color_authoring, sai_field_color_events, sai_field_color_runtime, sai_field_color_multi, sai_field_color_endpoints]
   - <<: *invariant_defaults
     id: INV-FIELD-3
     review_marker: reviewed:sha256:7b7769f2becb

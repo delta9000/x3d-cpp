@@ -126,6 +126,16 @@ The proposal makes these design choices executable:
   therefore agree between canonical and authored representations, including
   typed calls. An admitted value that overflows during conversion still returns
   `invalid_value` and publishes nothing.
+- SFColor, SFColorRGBA, MFColor, and MFColorRGBA channels must lie in [0, 1],
+  as specified by the X3D [color field types](https://www.web3d.org/documents/specifications/19775-1/V3.3/Part01/fieldsDef.html).
+  Authoring, event input, native output, and MF editors reject out-of-range,
+  NaN, or infinite channels with `invalid_value`; rejection poisons the whole
+  transaction without publishing earlier staged changes. Defaults in node
+  descriptors and local declaration interfaces are checked on admission.
+  Valid endpoints and signed zero retain their representation. MF editors also
+  report malformed images as `invalid_value`, while a wrong field kind remains
+  `type_mismatch`. Field-specific UOM numeric ranges and enumerated vocabularies
+  are not yet enforced.
 - Field storage and event equivalence is the public `same_representation`
   relation: IEEE payload bits survive, signed zeros differ, and identical NaN
   payloads match. Ordinary numerical `operator==` remains numerical.

@@ -81,7 +81,8 @@ add_executable(x3d_sai_experimental_tests
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/authoring_validation_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit_validation_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_metadata_test.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/vocabulary_discovery_test.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/vocabulary_discovery_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/color_validation_test.cpp")
 target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
@@ -472,3 +473,19 @@ add_test(NAME sai_node_vocabulary_predictive COMMAND x3d_sai_experimental_tests
     "--test-case=generated node vocabulary predicts creation and field inspection")
 set_tests_properties(sai_node_vocabulary_ownership sai_node_vocabulary_predictive
     PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_field_color_authoring COMMAND x3d_sai_experimental_tests
+    "--test-case=color authoring rejects invalid channels atomically")
+add_test(NAME sai_field_color_events COMMAND x3d_sai_experimental_tests
+    "--test-case=color event input rejects invalid channels atomically")
+add_test(NAME sai_field_color_runtime COMMAND x3d_sai_experimental_tests
+    "--test-case=color runtime output rejects invalid channels atomically")
+add_test(NAME sai_field_color_multi COMMAND x3d_sai_experimental_tests
+    "--test-case=color MF editors reject invalid elements atomically")
+add_test(NAME sai_field_color_defaults COMMAND x3d_sai_experimental_tests
+    "--test-case=color defaults reject invalid scalar and multi representations")
+add_test(NAME sai_field_color_endpoints COMMAND x3d_sai_experimental_tests
+    "--test-case=color endpoints and signed zero survive every owning boundary")
+
+add_test(NAME sai_field_image_multi COMMAND x3d_sai_experimental_tests
+    "--test-case=image MF editors distinguish malformed values from wrong kinds")
