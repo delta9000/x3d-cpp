@@ -14,7 +14,8 @@ set(_sai_generated "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings")
 # and platform threading; it has no dependency on x3d-cpp's generated objects.
 add_library(x3d_sai_experimental STATIC "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel.cpp")
 add_library(x3d::sai ALIAS x3d_sai_experimental)
-set_target_properties(x3d_sai_experimental PROPERTIES EXPORT_NAME sai)
+set_target_properties(x3d_sai_experimental PROPERTIES
+    EXPORT_NAME sai POSITION_INDEPENDENT_CODE ON)
 target_include_directories(x3d_sai_experimental PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third_party>"
@@ -29,7 +30,8 @@ add_library(x3d_sai_experimental_metadata STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/metadata.cpp"
     "${_sai_generated}/x3d/nodes/X3DSemanticMetadataRegistry.cpp")
 add_library(x3d::sai_metadata ALIAS x3d_sai_experimental_metadata)
-set_target_properties(x3d_sai_experimental_metadata PROPERTIES EXPORT_NAME sai_metadata)
+set_target_properties(x3d_sai_experimental_metadata PROPERTIES
+    EXPORT_NAME sai_metadata POSITION_INDEPENDENT_CODE ON)
 target_include_directories(x3d_sai_experimental_metadata PUBLIC
     "$<BUILD_INTERFACE:${_sai_generated}>")
 target_link_libraries(x3d_sai_experimental_metadata PUBLIC x3d_sai_experimental)

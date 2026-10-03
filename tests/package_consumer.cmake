@@ -6,6 +6,8 @@ set(work "${SAI_BINARY_DIR}/package-consumer")
 file(REMOVE_RECURSE "${work}/original-prefix" "${work}/relocated-prefix")
 file(MAKE_DIRECTORY "${work}/consumer")
 file(COPY "${SAI_SOURCE_DIR}/tests/package_consumer/CMakeLists.txt"
+    "${SAI_SOURCE_DIR}/tests/package_consumer/shared.cpp"
+    "${SAI_SOURCE_DIR}/tests/package_consumer/shared_main.cpp"
     "${SAI_SOURCE_DIR}/examples/author_inspect.cpp"
     "${SAI_SOURCE_DIR}/examples/generated_author_inspect.cpp"
     DESTINATION "${work}/consumer")

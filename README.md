@@ -47,6 +47,8 @@ catalog, `<x3d/sai/experimental/metadata.hpp>`, and typed bindings such as
 C++20 requirement, include directories, and platform thread support. The
 installed SDK includes the pinned `tl::expected` header and its license;
 Python and the generator are not needed to build an application.
+Both SDK archives use position-independent code, so shared libraries and
+renderer plugins can link the same targets.
 
 Embedding the checkout uses the same targets:
 
