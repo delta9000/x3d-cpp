@@ -291,6 +291,37 @@ field access must enforce its lifecycle table at the live service boundary;
 inspection does not stand in for that boundary. The semantic transition does
 not yet initialize a renderer, Script, or runtime adapter.
 
+## Scene metadata
+
+Scene META statements are edited with the graph in the same atomic revision:
+
+```cpp
+auto edit = scene.edit();
+if (!edit.set_metadata("title", "A world"))
+  return;
+if (!edit.set_metadata("obsolete", std::nullopt))
+  return;
+auto committed = edit.commit();
+```
+
+`snapshot.metadata("title")` returns an owning `std::optional<std::string>`;
+absence differs from a present empty string. `snapshot.metadata()` exposes
+immutable `metadata_entry` values in insertion order; keep the snapshot alive
+while using that range. Replacement keeps a key's
+position; removal followed by reinsertion appends it. Keys are case-sensitive.
+Setting an identical value or removing an absent key adds no change.
+
+Metadata changes are `metadata_change` alternatives in the ordered `change_set`,
+with a key and optional `before`/`after` strings. Graph and metadata changes
+publish together and use the same queued observation boundary. Metadata does
+not emit field events or realize nodes. Historical snapshots retain their
+metadata, including after runtime frames and world replacement.
+
+The zero-or-one value and NULL-removal rules follow the
+[SAI scene services](https://web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-2v4.0-CD/Part02/services.html#getMetaData).
+These are document META facts; node metadata remains ordinary node/field data.
+Parsing, serialization, and Script access remain open conformance work.
+
 ## Evaluating runtime events
 
 The browser owner can install a `runtime_processor` for one of its scenes with

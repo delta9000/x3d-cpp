@@ -31,7 +31,9 @@ int main() {
   sai::browser browser{std::move(registry).value()};
   auto scene = browser.current_scene();
   auto edit = scene.edit();
-  // This is ordered scene metadata only: the current UOM does not annotate
+  if (!edit.set_metadata("title", "A generated world"))
+    return EXIT_FAILURE;
+  // This is an ordered unit declaration: the current UOM does not annotate
   // Transform.translation with a length category, so no conversion is claimed.
   if (!edit.declare_unit(sai::unit_declaration{.category = "length",
                                                .name = "centimetre",
@@ -105,7 +107,8 @@ int main() {
     return EXIT_FAILURE;
   const std::vector<sai::unit_declaration> expected_units{
       {.category = "length", .name = "centimetre", .conversion_factor = 0.01}};
-  if (snapshot.units() != expected_units ||
+  if (snapshot.metadata("title") != "A generated world" ||
+      snapshot.units() != expected_units ||
       !holds(snapshot.read(translation), authored_translation) ||
       !holds(snapshot.read(children), sai::node_list{shape->id()}) ||
       !holds(snapshot.read(geometry), point_set->id()) ||

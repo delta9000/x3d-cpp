@@ -5,6 +5,7 @@
 #include <memory>
 #include <new>
 #include <optional>
+#include <string>
 
 namespace {
 thread_local int fail_after = -1;
@@ -137,13 +138,16 @@ TEST_CASE("allocation failure cannot partially publish edits or events") {
         scene.observe(field, [&](const auto &) { ++event_calls; }).value();
     auto prior = scene.edit();
     REQUIRE(prior.set(field, std::int32_t{1}));
+    REQUIRE(prior.set_metadata("title", std::string(120, 'a')));
     REQUIRE(prior.commit());
     auto edit = scene.edit();
     auto events = scene.events({1});
     if (event_mode)
       REQUIRE(events.send(field, std::int32_t{2}));
-    else
+    else {
       REQUIRE(edit.set(field, std::int32_t{2}));
+      REQUIRE(edit.set_metadata("title", std::string(140, 'b')));
+    }
     bool threw = false;
     bool accepted = false;
     fail_after = allocation;
@@ -155,6 +159,7 @@ TEST_CASE("allocation failure cannot partially publish edits or events") {
     fail_after = -1;
     INFO("allocation index " << allocation << ", event mode " << event_mode);
     if (threw) {
+      CHECK(scene.snapshot().metadata("title") == std::string(120, 'a'));
       CHECK(scene.snapshot().revision() == 2);
       CHECK(scene.snapshot().read(field).value() ==
             sai::value{std::int32_t{1}});
@@ -169,6 +174,8 @@ TEST_CASE("allocation failure cannot partially publish edits or events") {
     } else {
       REQUIRE(accepted);
       reached_success = true;
+      CHECK(scene.snapshot().metadata("title") ==
+            (event_mode ? std::string(120, 'a') : std::string(140, 'b')));
       CHECK(scene.snapshot().revision() == 3);
       CHECK(scene.snapshot().read(field).value() ==
             sai::value{std::int32_t{2}});
@@ -177,6 +184,50 @@ TEST_CASE("allocation failure cannot partially publish edits or events") {
       CHECK(event_calls == (event_mode ? 1 : 0));
     }
   }
+  REQUIRE(reached_success);
+}
+
+TEST_CASE("allocation failure preserves staged scene metadata changes") {
+  bool reached_success = false;
+  int failures = 0;
+  const auto key = std::string(80, 'k');
+  const auto data = std::string(120, 'v');
+  for (int allocation = 0; allocation < 1000 && !reached_success; ++allocation) {
+    sai::browser host{registry()};
+    auto scene = host.current_scene();
+    auto edit = scene.edit();
+    REQUIRE(edit.set_metadata("guard", "Already staged"));
+    bool threw = false;
+    bool accepted = false;
+    fail_after = allocation;
+    try {
+      accepted = bool(edit.set_metadata(key, data));
+    } catch (const std::bad_alloc &) {
+      threw = true;
+    }
+    fail_after = -1;
+    INFO("metadata allocation index " << allocation);
+    CHECK(scene.snapshot().metadata().empty());
+    const auto committed = edit.commit();
+    REQUIRE(committed);
+    CHECK(scene.snapshot().metadata("guard") == "Already staged");
+    if (threw) {
+      ++failures;
+      CHECK_FALSE(scene.snapshot().metadata(key));
+      REQUIRE(committed->changes.size() == 1);
+      CHECK(std::get<sai::metadata_change>(committed->changes.front()).key == "guard");
+    } else {
+      REQUIRE(accepted);
+      reached_success = true;
+      CHECK(scene.snapshot().metadata(key) == data);
+      REQUIRE(committed->changes.size() == 2);
+      const auto &change = std::get<sai::metadata_change>(committed->changes.back());
+      CHECK(change.key == key);
+      CHECK_FALSE(change.before);
+      CHECK(change.after == data);
+    }
+  }
+  CHECK(failures > 0);
   REQUIRE(reached_success);
 }
 

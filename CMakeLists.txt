@@ -79,7 +79,8 @@ target_compile_features(x3d_sai_doctest_main PUBLIC cxx_std_20)
 add_executable(x3d_sai_experimental_tests
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_kernel_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/authoring_validation_test.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit_validation_test.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit_validation_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_metadata_test.cpp")
 target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
@@ -452,3 +453,14 @@ set_tests_properties(sai_package_consumer PROPERTIES TIMEOUT 300)
 add_test(NAME sai_field_unit_validation COMMAND x3d_sai_experimental_tests
     "--test-case=unit representation preserves validation priority*")
 set_tests_properties(sai_field_unit_validation PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_scene_metadata_values COMMAND x3d_sai_experimental_tests
+    "--test-case=scene metadata preserves values and ordered discovery")
+add_test(NAME sai_scene_metadata_publication COMMAND x3d_sai_experimental_tests
+    "--test-case=scene metadata shares graph publication and queued observation")
+add_test(NAME sai_scene_metadata_rejection COMMAND x3d_sai_experimental_tests
+    "--test-case=scene metadata rejects conflicting poisoned and retired edits")
+add_test(NAME sai_scene_metadata_history COMMAND x3d_sai_experimental_tests
+    "--test-case=scene metadata survives runtime frames and world replacement")
+set_tests_properties(sai_scene_metadata_values sai_scene_metadata_publication
+    sai_scene_metadata_rejection sai_scene_metadata_history PROPERTIES TIMEOUT 15)

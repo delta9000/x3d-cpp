@@ -244,6 +244,27 @@ services:
     support: partial
     tests: [sai_edit_query_mutation_dual]
     preserves: [INV-EDIT-1, INV-EDIT-5]
+  - <<: *query
+    id: SVC-SCENE-METADATA-READ
+    clause: ISO/IEC 19775-2, 6.5.2 getMetaData
+    public_symbol: x3d::sai::experimental::scene_snapshot::metadata
+    support: partial
+    buffering: reads the immutable snapshot revision; returned optional strings own their values
+    events: none; discovery is ordered by first insertion
+    errors: none; a missing key is optional absence, distinct from an empty value
+    tests: [sai_scene_metadata_values, sai_scene_metadata_history, sai_package_consumer]
+    preserves: [INV-EDIT-5, INV-ORDER-1, INV-CXX-1]
+  - <<: *command
+    id: SVC-SCENE-METADATA-WRITE
+    clause: ISO/IEC 19775-2, 6.5.3 setMetaData
+    public_symbol: x3d::sai::experimental::scene_edit::set_metadata
+    support: partial
+    profiles: [authoring]
+    buffering: stages one optional value per key; nullopt removes; publication shares the scene edit boundary
+    events: queues metadata before/after facts with graph changes; no field events or realization
+    errors: original poisoned-edit errors or structured commit admission errors; Script and document codecs remain unavailable
+    tests: [sai_scene_metadata_values, sai_scene_metadata_publication, sai_scene_metadata_rejection, sai_scene_metadata_history, sai_publication_integrity, sai_package_consumer]
+    preserves: [INV-EDIT-1, INV-EDIT-2, INV-EDIT-4, INV-EDIT-5, INV-ORDER-1]
   - <<: *command
     id: SVC-SCENE-ROOT-ADD
     clause: ISO/IEC 19775-2:2015, 6.5.5 rootNodeHandling (add)

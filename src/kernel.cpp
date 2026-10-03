@@ -307,6 +307,7 @@ struct scene_state {
   std::vector<declaration_id> declaration_order;
   std::unordered_map<std::uint64_t, declaration_descriptor> declarations;
   std::vector<unit_declaration> units;
+  std::vector<metadata_entry> metadata;
   std::vector<node_id> roots;
   std::vector<name_binding> names;
   std::vector<export_binding> exports;
@@ -1502,6 +1503,41 @@ result<void> scene_edit::declare_unit(unit_declaration declaration) {
                                         .after = declaration.conversion_factor,
                                         .index = impl_->staged.units.size()});
   impl_->staged.units.push_back(std::move(declaration));
+  return {};
+}
+
+result<void> scene_edit::set_metadata(std::string key,
+                                      std::optional<std::string> data) {
+  if (impl_->poison)
+    return *impl_->poison;
+  auto &entries = impl_->staged.metadata;
+  const auto found = std::ranges::find(entries, key, &metadata_entry::key);
+  const bool present = found != entries.end();
+  std::optional<std::string> before;
+  if (present)
+    before = found->value;
+  if (before == data)
+    return {};
+
+  impl_->changes.push_back(metadata_change{.key = key,
+                                            .before = std::move(before),
+                                            .after = data});
+  if (data) {
+    if (present) {
+      found->value = std::move(*data);
+    } else {
+      try {
+        entries.push_back(metadata_entry{std::move(key), std::move(*data)});
+      } catch (...) {
+        // Preserve the staged change trace if allocating a new entry fails.
+        impl_->changes.pop_back();
+        throw;
+      }
+    }
+  } else {
+    entries.erase(found);
+  }
+  impl_->changed = true;
   return {};
 }
 
@@ -4265,6 +4301,17 @@ revision_id scene_snapshot::revision() const noexcept {
 
 const std::vector<unit_declaration> &scene_snapshot::units() const noexcept {
   return state_->units;
+}
+
+const std::vector<metadata_entry> &scene_snapshot::metadata() const noexcept {
+  return state_->metadata;
+}
+
+std::optional<std::string> scene_snapshot::metadata(std::string_view key) const {
+  const auto found = std::ranges::find(state_->metadata, key, &metadata_entry::key);
+  if (found == state_->metadata.end())
+    return std::nullopt;
+  return found->value;
 }
 
 const std::vector<node_id> &scene_snapshot::roots() const noexcept {

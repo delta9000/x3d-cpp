@@ -357,6 +357,21 @@ struct occurrence {
   std::vector<std::size_t> path;
 };
 
+struct metadata_entry {
+  std::string key;
+  std::string value;
+  friend bool operator==(const metadata_entry &, const metadata_entry &) = default;
+};
+
+enum class metadata_change_kind { updated };
+
+struct metadata_change {
+  metadata_change_kind kind = metadata_change_kind::updated;
+  std::string key;
+  std::optional<std::string> before;
+  std::optional<std::string> after;
+};
+
 enum class change_kind {
   node_created,
   node_removed,
@@ -419,9 +434,11 @@ private:
 };
 
 using semantic_change =
-    std::variant<graph_change, declaration_change, runtime_state_change>;
+    std::variant<graph_change, declaration_change, runtime_state_change,
+                 metadata_change>;
 using semantic_change_kind =
-    std::variant<change_kind, declaration_change_kind, runtime_change_kind>;
+    std::variant<change_kind, declaration_change_kind, runtime_change_kind,
+                 metadata_change_kind>;
 
 inline semantic_change_kind
 change_kind_of(const semantic_change &candidate) noexcept {
@@ -680,6 +697,8 @@ public:
   result<void> append(const node &parent, const std::string &field,
                       const node &child);
   result<void> declare_unit(unit_declaration declaration);
+  // Scene META statements: an empty string is a value; nullopt removes the key.
+  result<void> set_metadata(std::string key, std::optional<std::string> data);
   result<dynamic_field> field(const node &owner, const std::string &name) const;
   result<bool> writable(const dynamic_field &target, write_intent intent) const;
   template <class T>
@@ -808,6 +827,10 @@ public:
                                           "scene_snapshot.runtime_state");
   }
   const std::vector<unit_declaration> &units() const noexcept;
+  // Ordered enumeration borrows this snapshot's storage.
+  const std::vector<metadata_entry> &metadata() const noexcept;
+  // A keyed lookup owns its optional string and can outlive this snapshot.
+  std::optional<std::string> metadata(std::string_view key) const;
   const std::vector<node_id> &roots() const noexcept;
   std::vector<occurrence> occurrences() const;
   result<node> lookup(node_id id) const;
