@@ -852,6 +852,8 @@ public:
   result<bool> is_realized(const typed_node<Tag> &owner) const {
     return is_realized(owner.dynamic());
   }
+  // Owning descriptions of the configured built-in vocabulary.
+  std::vector<node_type_descriptor> node_types() const;
   result<node_type_descriptor> describe(const node &owner) const;
   result<node_type_descriptor> describe(const imported_node &owner) const;
   result<declaration_descriptor> describe(const declaration &owner) const;

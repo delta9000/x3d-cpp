@@ -514,6 +514,8 @@ class type_registry {
 public:
   result<void> define(node_type_descriptor descriptor);
   const node_type_descriptor *find(const std::string &name) const noexcept;
+  // Owning descriptors in name order, including abstract types.
+  std::vector<node_type_descriptor> node_types() const;
   std::optional<std::string_view> schema_fingerprint() const noexcept {
     if (!schema_fingerprint_)
       return std::nullopt;

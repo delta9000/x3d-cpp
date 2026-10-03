@@ -85,7 +85,7 @@ invariants:
     evidence_strength: normative
     statement: Typed, generic, parser, Script, external SAI, IS, and ROUTE paths use the same type, access, constraints, accepted nodes, and unit metadata.
     preserving_operations: [describe field, read field, write field, route field, bind IS]
-    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation]
+    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation, sai_node_vocabulary_predictive]
   - <<: *invariant_defaults
     id: INV-FIELD-2
     review_marker: reviewed:sha256:7e69b9ddd522
@@ -287,7 +287,7 @@ invariants:
     evidence_strength: normative
     statement: Reported support for a profile, component, node, or service cannot fail as unsupported under the same generation and configuration; negotiation changes are revisioned.
     preserving_operations: [query capability, negotiate profile, invoke service]
-    falsification_tests: [planned:sai_cap_predictive]
+    falsification_tests: [planned:sai_cap_predictive, sai_node_vocabulary_predictive]
   - <<: *invariant_defaults
     id: INV-PORT-1
     review_marker: reviewed:sha256:1e34fcc0b7c9
@@ -305,7 +305,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Types, fields, access, defaults, constraints, units, profiles, components, docs, and serializers derive from one versioned semantic model with no dangling references.
     preserving_operations: [generate bindings, reflect runtime, serialize, build docs]
-    falsification_tests: [sai_generated_binding_parity, sai_generated_semantic_fields, sai_generated_typed_workflow, sai_generated_binding_drift, sai_generated_registry_provenance, sai_generated_registry_mutation, planned:sai_gen_no_drift]
+    falsification_tests: [sai_generated_binding_parity, sai_generated_semantic_fields, sai_generated_typed_workflow, sai_generated_binding_drift, sai_generated_registry_provenance, sai_generated_registry_mutation, planned:sai_gen_no_drift, sai_node_vocabulary_predictive]
 
   - <<: *invariant_defaults
     id: INV-CXX-1
@@ -315,7 +315,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Values, views, RAII handles, and smart ownership are deliberate; raw pointers own nothing and borrowed views cannot silently outlive their revision or generation.
     preserving_operations: [create handle, borrow view, transfer ownership, destroy handle]
-    falsification_tests: [sai_context_import_authority, sai_context_import_firewall, sai_scene_metadata_values, sai_scene_metadata_history]
+    falsification_tests: [sai_context_import_authority, sai_context_import_firewall, sai_scene_metadata_values, sai_scene_metadata_history, sai_node_vocabulary_ownership]
   - <<: *invariant_defaults
     id: INV-CXX-2
     review_marker: reviewed:sha256:91df91985065

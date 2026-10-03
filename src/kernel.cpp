@@ -292,6 +292,15 @@ type_registry::find(const std::string &name) const noexcept {
   return found == types_.end() ? nullptr : &found->second;
 }
 
+std::vector<node_type_descriptor> type_registry::node_types() const {
+  std::vector<node_type_descriptor> descriptors;
+  descriptors.reserve(types_.size());
+  for (const auto &entry : types_)
+    descriptors.push_back(entry.second);
+  std::ranges::sort(descriptors, {}, &node_type_descriptor::name);
+  return descriptors;
+}
+
 namespace detail {
 
 struct scene_state {
@@ -4301,6 +4310,10 @@ revision_id scene_snapshot::revision() const noexcept {
 
 const std::vector<unit_declaration> &scene_snapshot::units() const noexcept {
   return state_->units;
+}
+
+std::vector<node_type_descriptor> scene_snapshot::node_types() const {
+  return context_->registry.node_types();
 }
 
 const std::vector<metadata_entry> &scene_snapshot::metadata() const noexcept {

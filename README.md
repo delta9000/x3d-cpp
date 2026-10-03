@@ -204,6 +204,36 @@ fixture for event, ROUTE, shared-node, and import behavior.
 The focused doctest suite is also registered as stable `sai_*` CTests so each
 demonstrated invariant can be cited independently by the convergence register.
 
+## Discovering the configured vocabulary
+
+`registry.node_types()` and `snapshot.node_types()` return owning
+`node_type_descriptor` values sorted by name. The list contains the configured
+built-in types, including abstract interfaces. Every descriptor includes its
+ordered fields, exact value kinds, defaults, access, accepted node types, units,
+component facts, and interface ancestry. Editing or retaining this returned
+collection cannot change the registry or scene.
+
+A palette or inspector can discover choices before creating any node:
+
+```cpp
+const auto choices = scene.snapshot().node_types();
+for (const auto &type : choices) {
+  if (type.abstract)
+    continue;
+  // Display type.name and choose field editors from type.fields.
+}
+```
+
+After a concrete entry is selected, pass its name to `edit.create_node(type.name)`
+and check the result before staging fields or roots.
+
+The vocabulary stays with its execution-context generation and is inspectable
+through historical snapshots after world replacement. It describes which node
+and field facts the authoring kernel accepts. Runtime behavior, component-level
+conformance, and complete profile support require their own capability evidence;
+`capabilities().live` remains false. Local declarations have their existing
+separate declaration discovery API.
+
 ## Typed and dynamic access
 
 Generated bindings describe the abstract X3D node fields. Document constructs

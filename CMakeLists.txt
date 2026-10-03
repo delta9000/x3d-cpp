@@ -80,7 +80,8 @@ add_executable(x3d_sai_experimental_tests
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_kernel_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/authoring_validation_test.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit_validation_test.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_metadata_test.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/scene_metadata_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/vocabulary_discovery_test.cpp")
 target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
@@ -464,3 +465,10 @@ add_test(NAME sai_scene_metadata_history COMMAND x3d_sai_experimental_tests
     "--test-case=scene metadata survives runtime frames and world replacement")
 set_tests_properties(sai_scene_metadata_values sai_scene_metadata_publication
     sai_scene_metadata_rejection sai_scene_metadata_history PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_node_vocabulary_ownership COMMAND x3d_sai_experimental_tests
+    "--test-case=node vocabulary discovery owns ordered configured descriptors")
+add_test(NAME sai_node_vocabulary_predictive COMMAND x3d_sai_experimental_tests
+    "--test-case=generated node vocabulary predicts creation and field inspection")
+set_tests_properties(sai_node_vocabulary_ownership sai_node_vocabulary_predictive
+    PROPERTIES TIMEOUT 15)

@@ -1,5 +1,6 @@
 #include "x3d/sai/experimental/kernel.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <optional>
 
@@ -46,10 +47,15 @@ int main() {
 
   sai::browser browser{std::move(registry)};
   auto scene = browser.current_scene();
+  const auto vocabulary = scene.snapshot().node_types();
+  const auto transform_type =
+      std::ranges::find(vocabulary, "Transform", &sai::node_type_descriptor::name);
+  if (transform_type == vocabulary.end() || transform_type->abstract)
+    return EXIT_FAILURE;
   auto edit = scene.edit();
   auto root = edit.create_node("Group");
-  auto shared = edit.create_node("Transform");
-  auto event_sink = edit.create_node("Transform");
+  auto shared = edit.create_node(transform_type->name);
+  auto event_sink = edit.create_node(transform_type->name);
   if (!root || !shared || !event_sink)
     return EXIT_FAILURE;
   auto translation = edit.field(shared.value(), "translation");
