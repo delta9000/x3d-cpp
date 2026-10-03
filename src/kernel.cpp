@@ -2252,34 +2252,7 @@ result<void> scene_edit::set(const dynamic_field &target, value new_value) {
 
 result<void> scene_edit::set(const dynamic_field &target, value new_value,
                              value_space space) {
-  if (space == value_space::canonical)
-    return set(target, std::move(new_value));
-  if (impl_->poison)
-    return *impl_->poison;
-  const auto owner = impl_->staged.nodes.find(target.node_.value);
-  const auto *descriptor =
-      owner == impl_->staged.nodes.end()
-          ? nullptr
-          : find_descriptor(*impl_->context, owner->second, target.name_);
-  if (!descriptor) {
-    impl_->poison =
-        edit_error(error_code::unknown_field, "scene_edit.set", *impl_->context,
-                   impl_->base->revision, "unknown unit-bearing field",
-                   target.node_, target.name_);
-    return *impl_->poison;
-  }
-  auto canonical =
-      convert_unit_value(impl_->staged, *descriptor, std::move(new_value),
-                         space, value_space::canonical);
-  if (!canonical) {
-    impl_->poison = edit_error(
-        error_code::invalid_value, "scene_edit.set", *impl_->context,
-        impl_->base->revision,
-        "field representation cannot carry the declared unit category",
-        target.node_, target.name_);
-    return *impl_->poison;
-  }
-  return set_value(target, std::move(*canonical), false);
+  return set_value(target, std::move(new_value), false, space);
 }
 
 result<void> scene_edit::set(const dynamic_field &target,
@@ -2328,12 +2301,12 @@ result<void> scene_edit::set(const dynamic_field &target,
 }
 
 result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
-                                   bool node_authority_checked) {
+                                   bool node_authority_checked,
+                                   value_space space) {
   if (impl_->poison)
     return *impl_->poison;
-  const auto target_context = target.context_.lock();
   auto found = impl_->staged.nodes.find(target.node_.value);
-  if (target_context != impl_->context ||
+  if (!same_owner(target.context_, impl_->context) ||
       target.generation_ != impl_->context->generation ||
       found == impl_->staged.nodes.end()) {
     impl_->poison =
@@ -2375,6 +2348,20 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                "value does not match field descriptor",
                                target.node_, target.name_);
     return *impl_->poison;
+  }
+  if (space != value_space::canonical) {
+    auto canonical =
+        convert_unit_value(impl_->staged, *descriptor, std::move(new_value),
+                           space, value_space::canonical);
+    if (!canonical) {
+      impl_->poison = edit_error(
+          error_code::invalid_value, "scene_edit.set", *impl_->context,
+          impl_->base->revision,
+          "field representation cannot carry the declared unit category",
+          target.node_, target.name_);
+      return *impl_->poison;
+    }
+    new_value = std::move(*canonical);
   }
   if (!value_is_well_formed(new_value)) {
     impl_->poison = edit_error(error_code::invalid_value, "scene_edit.set",
@@ -3779,34 +3766,7 @@ result<bool> event_batch::writable(const dynamic_field &target,
 
 result<void> event_batch::send(const dynamic_field &target, value payload,
                                value_space space) {
-  if (space == value_space::canonical)
-    return send(target, std::move(payload));
-  if (impl_->poison)
-    return *impl_->poison;
-  const auto owner = impl_->base->nodes.find(target.node_.value);
-  const auto *descriptor =
-      owner == impl_->base->nodes.end()
-          ? nullptr
-          : find_descriptor(*impl_->context, owner->second, target.name_);
-  if (!descriptor) {
-    impl_->poison =
-        edit_error(error_code::unknown_field, impl_->send_operation(),
-                   *impl_->context, impl_->base->revision,
-                   "unknown unit-bearing field", target.node_, target.name_);
-    return *impl_->poison;
-  }
-  auto canonical =
-      convert_unit_value(*impl_->base, *descriptor, std::move(payload), space,
-                         value_space::canonical);
-  if (!canonical) {
-    impl_->poison = edit_error(
-        error_code::invalid_value, impl_->send_operation(), *impl_->context,
-        impl_->base->revision,
-        "field representation cannot carry the declared unit category",
-        target.node_, target.name_);
-    return *impl_->poison;
-  }
-  return send_value(target, std::move(*canonical), false);
+  return send_value(target, std::move(payload), false, space);
 }
 
 result<void> event_batch::send(const dynamic_field &target,
@@ -3853,7 +3813,8 @@ result<void> event_batch::send(const dynamic_field &target,
 }
 
 result<void> event_batch::send_value(const dynamic_field &target, value payload,
-                                     bool node_authority_checked) {
+                                     bool node_authority_checked,
+                                     value_space space) {
   if (impl_->poison)
     return *impl_->poison;
   const auto found = impl_->base->nodes.find(target.node_.value);
@@ -3906,6 +3867,20 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
         impl_->base->revision, "event payload does not match field descriptor",
         target.node_, target.name_);
     return *impl_->poison;
+  }
+  if (space != value_space::canonical) {
+    auto canonical =
+        convert_unit_value(*impl_->base, *descriptor, std::move(payload), space,
+                           value_space::canonical);
+    if (!canonical) {
+      impl_->poison = edit_error(
+          error_code::invalid_value, impl_->send_operation(), *impl_->context,
+          impl_->base->revision,
+          "field representation cannot carry the declared unit category",
+          target.node_, target.name_);
+      return *impl_->poison;
+    }
+    payload = std::move(*canonical);
   }
   if (!value_is_well_formed(payload)) {
     impl_->poison = edit_error(

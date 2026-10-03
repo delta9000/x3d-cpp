@@ -120,6 +120,12 @@ The proposal makes these design choices executable:
   authored value whose converted result exceeds the field's finite range is
   rejected before a retained edit or event batch is published; authored reads
   report the same error when inverse conversion exceeds that range.
+- Retained writes, event inputs, and native outputs validate destination
+  ownership, lifecycle/access, applicable template restrictions, and payload
+  type before converting units. Structural error codes, identities, and messages
+  therefore agree between canonical and authored representations, including
+  typed calls. An admitted value that overflows during conversion still returns
+  `invalid_value` and publishes nothing.
 - Field storage and event equivalence is the public `same_representation`
   relation: IEEE payload bits survive, signed zeros differ, and identical NaN
   payloads match. Ordinary numerical `operator==` remains numerical.

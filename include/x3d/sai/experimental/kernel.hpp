@@ -792,7 +792,8 @@ private:
                                            value authored);
   result<void> require_schema_fingerprint(std::string_view expected);
   result<void> set_value(const dynamic_field &target, value new_value,
-                         bool node_authority_checked);
+                         bool node_authority_checked,
+                         value_space space = value_space::canonical);
   explicit scene_edit(
       std::shared_ptr<detail::scene_edit_control> implementation);
   std::shared_ptr<detail::scene_edit_control> impl_;
@@ -1135,7 +1136,8 @@ public:
 
 private:
   result<void> send_value(const dynamic_field &target, value payload,
-                          bool node_authority_checked);
+                          bool node_authority_checked,
+                          value_space space = value_space::canonical);
   struct impl;
   explicit event_batch(std::unique_ptr<impl> implementation);
   std::unique_ptr<impl> impl_;

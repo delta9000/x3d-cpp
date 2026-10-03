@@ -85,7 +85,7 @@ invariants:
     evidence_strength: normative
     statement: Typed, generic, parser, Script, external SAI, IS, and ROUTE paths use the same type, access, constraints, accepted nodes, and unit metadata.
     preserving_operations: [describe field, read field, write field, route field, bind IS]
-    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot]
+    falsification_tests: [sai_field_one_descriptor, sai_context_import_snapshot, sai_field_unit_validation]
   - <<: *invariant_defaults
     id: INV-FIELD-2
     review_marker: reviewed:sha256:7e69b9ddd522
@@ -103,7 +103,7 @@ invariants:
     evidence_strength: normative
     statement: initializeOnly, inputOnly, outputOnly, and inputOutput legality depends on lifecycle phase and write intent; rejected writes change no storage or dirtiness.
     preserving_operations: [inspect access, initialize field, write live field]
-    falsification_tests: [sai_field_access_state_machine, sai_field_specialized_access, sai_evt_input_transient, sai_life_setup_across_revisions, sai_life_realization_access, sai_life_realization_mf, sai_life_realization_cycles, planned:sai_live_lifecycle_access]
+    falsification_tests: [sai_field_access_state_machine, sai_field_specialized_access, sai_evt_input_transient, sai_life_setup_across_revisions, sai_life_realization_access, sai_life_realization_mf, sai_life_realization_cycles, planned:sai_live_lifecycle_access, sai_field_unit_validation]
   - <<: *invariant_defaults
     id: INV-FIELD-4
     review_marker: reviewed:sha256:8ba4f0f86dd4
@@ -112,7 +112,7 @@ invariants:
     evidence_strength: normative
     statement: Authored and canonical unit interpretation is explicit; parse, assign, route, inspect, and serialize never double-convert or lose the scene unit declaration.
     preserving_operations: [inspect units, parse value, assign value, route value, serialize value]
-    falsification_tests: [sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_field_unit_read_range, planned:sai_field_unit_codec_bridge, sai_runtime_units]
+    falsification_tests: [sai_field_units_once, sai_field_unit_write_range, sai_field_unit_event_range, sai_field_unit_read_range, planned:sai_field_unit_codec_bridge, sai_runtime_units, sai_field_unit_validation]
   - <<: *invariant_defaults
     id: INV-FIELD-5
     review_marker: reviewed:sha256:d96ae0eeba5d
@@ -140,7 +140,7 @@ invariants:
     evidence_strength: framework_proposal
     statement: A rejected edit leaves semantic state, indexes, queues, revisions, and dirty state unchanged; diagnostics require no cleanup edit.
     preserving_operations: [validate edit, reject edit, rollback edit]
-    falsification_tests: [sai_edit_failure_nonmutation, sai_context_aperture_revalidate, sai_life_remove_nonmutation, sai_runtime_atomic, sai_runtime_state_abort, sai_runtime_state_failure_protocol, sai_publication_integrity, sai_runtime_emit_retirement]
+    falsification_tests: [sai_edit_failure_nonmutation, sai_context_aperture_revalidate, sai_life_remove_nonmutation, sai_runtime_atomic, sai_runtime_state_abort, sai_runtime_state_failure_protocol, sai_publication_integrity, sai_runtime_emit_retirement, sai_field_unit_validation]
   - <<: *invariant_defaults
     id: INV-EDIT-3
     review_marker: reviewed:sha256:9a19304ccb4e
@@ -324,7 +324,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Validation, capability, lookup, stale-handle, and transaction failures use a consistent expected-style SaiError; exceptions follow one narrow documented policy.
     preserving_operations: [lookup, validate, commit, inspect error]
-    falsification_tests: [sai_cxx_failure_value, sai_cxx_result_composition, sai_runtime_read_retirement, sai_runtime_emit_retirement]
+    falsification_tests: [sai_cxx_failure_value, sai_cxx_result_composition, sai_runtime_read_retirement, sai_runtime_emit_retirement, sai_field_unit_validation]
   - <<: *invariant_defaults
     id: INV-CXX-3
     review_marker: reviewed:sha256:9bb0fb0c824b

@@ -78,7 +78,8 @@ target_compile_features(x3d_sai_doctest_main PUBLIC cxx_std_20)
 
 add_executable(x3d_sai_experimental_tests
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_kernel_test.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/authoring_validation_test.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/authoring_validation_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/unit_validation_test.cpp")
 target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
@@ -447,3 +448,7 @@ add_test(NAME sai_package_consumer COMMAND "${CMAKE_COMMAND}"
     "-DSAI_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}"
     -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_consumer.cmake")
 set_tests_properties(sai_package_consumer PROPERTIES TIMEOUT 300)
+
+add_test(NAME sai_field_unit_validation COMMAND x3d_sai_experimental_tests
+    "--test-case=unit representation preserves validation priority*")
+set_tests_properties(sai_field_unit_validation PROPERTIES TIMEOUT 15)
