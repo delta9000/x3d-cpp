@@ -623,6 +623,8 @@ generated_type_registry(std::span<const std::string_view> node_types) {
           .default_value = adapted_value.value(),
           .default_origin = field.declared_default ? default_source::schema
                                                    : default_source::field_type,
+          // Provisional conservative policy, not an audited classification of
+          // every X3D node reference. See docs/generated-field-projection.md.
           .containment = field.type == schema_field_type::sf_node ||
                          field.type == schema_field_type::mf_node,
           .accepted_node_types = field.accepted_node_types,

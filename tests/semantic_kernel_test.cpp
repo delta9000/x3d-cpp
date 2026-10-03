@@ -551,6 +551,7 @@ TEST_CASE("generated metadata authors without runtime node identity") {
   CHECK(described.value().fields[1].default_value ==
         sai::value{sai::vec3f{2, 2, 2}});
   CHECK(described.value().fields[2].name == "solid");
+  CHECK(described.value().fields[2].default_value == sai::value{true});
 }
 
 TEST_CASE(

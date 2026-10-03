@@ -53,40 +53,6 @@ defaults:
 services:
   # Reconcile the split kernel's existing public services. These are partial
   # native/offline implementations, not new claims of complete ISO semantics.
-  - <<: *command
-    id: SVC-CONTEXT-NAMED-NODE-UPDATE
-    clause: ISO/IEC 19775-2:2015, 6.4.10 namedNodeHandling (local update)
-    public_symbol: x3d::sai::experimental::scene_edit::define_name
-    support: partial
-    errors: atomic local collision checks exist; complete live named-node semantics remain unaudited
-    tests: [sai_edit_atomic_indexes, sai_context_alias_collision, sai_edit_query_mutation_dual]
-    preserves: [INV-ID-3, INV-EDIT-1, INV-EDIT-5]
-  - <<: *query
-    id: SVC-CONTEXT-ROOTS-GET
-    clause: ISO/IEC 19775-2:2015, 6.4.15 getRootNodes
-    public_symbol: x3d::sai::experimental::scene_snapshot::roots
-    support: partial
-    errors: returns an ordered immutable snapshot view; live-host behavior is not implemented
-    tests: [sai_edit_query_mutation_dual, sai_id_occurrence_edge]
-    preserves: [INV-ID-2, INV-EDIT-5, INV-ORDER-1]
-  - <<: *command
-    id: SVC-SCENE-ROOTS-WRITE
-    clause: ISO/IEC 19775-2:2015, 6.5.5 rootNodeHandling
-    public_symbol: x3d::sai::experimental::scene_edit::append_root
-    support: partial
-    errors: append_root and remove_root validate offline edits; no live runtime adapter
-    tests: [sai_edit_query_mutation_dual, sai_life_remove_atomic]
-    preserves: [INV-ID-2, INV-EDIT-1, INV-EDIT-5]
-  - <<: *query
-    id: SVC-CONTEXT-ROUTES-GET
-    clause: ISO/IEC 19775-2:2015, 6.4.16 getRoutes
-    public_symbol: x3d::sai::experimental::scene_snapshot::routes
-    support: partial
-    errors: ordered offline route descriptors are available; live cross-context routes are not implemented
-    tests: [sai_edit_query_mutation_dual, sai_edit_atomic_indexes]
-    preserves: [INV-EDIT-5, INV-ORDER-1]
-  # Planned responsibilities must have an owner too. Cross-linking them fixes
-  # register health, not missing implementation or executable evidence.
   - <<: *browser_command
     id: SVC-BROWSER-IMPORT-DOCUMENT
     clause: ISO/IEC 19775-2:2015, 6.3.13 importDocument
@@ -150,7 +116,7 @@ services:
     clause: ISO/IEC 19775-2:2015, 6.3.14 loadURL
     public_symbol: x3d::sai::experimental::browser::begin_load
     support: partial
-    tests: [sai_evt_stale_async]
+    tests: [sai_evt_stale_async, sai_async_world_installation]
     preserves: [INV-LIFE-1, INV-EDIT-3, INV-EVT-5]
   - <<: *browser_command
     id: SVC-BROWSER-BEGIN-UPDATE

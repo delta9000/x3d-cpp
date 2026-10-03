@@ -213,7 +213,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Loads and imports carry generation and request identity; completion after cancellation, replacement, or disposal cannot mutate or callback into a new world.
     preserving_operations: [load URL, resolve Inline, resolve EXTERNPROTO, cancel load]
-    falsification_tests: [sai_evt_stale_async]
+    falsification_tests: [sai_evt_stale_async, sai_async_world_installation]
 
   - <<: *invariant_defaults
     id: INV-LIFE-1
