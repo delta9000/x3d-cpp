@@ -21,8 +21,6 @@ struct Script {
       "directOutput", access_type::initialize_only};
   inline static constexpr field_key<Script, ::x3d::sai::experimental::node_list>
       field{"field", access_type::input_output};
-  inline static constexpr field_key<Script, ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<Script, bool> load{
       "load", access_type::input_output};
   inline static constexpr field_key<Script, ::x3d::sai::experimental::node_id>
@@ -34,34 +32,18 @@ struct Script {
   inline static constexpr field_key<Script,
                                     ::x3d::sai::experimental::string_list>
       url{"url", access_type::input_output};
-  inline static constexpr field_key<Script, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<Script, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<Script, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<Script, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<Script, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 16> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 10> field_keys{{
       {autoRefresh.name(), autoRefresh.kind, autoRefresh.access()},
       {autoRefreshTimeLimit.name(), autoRefreshTimeLimit.kind,
        autoRefreshTimeLimit.access()},
       {description.name(), description.kind, description.access()},
       {directOutput.name(), directOutput.kind, directOutput.access()},
       {field.name(), field.kind, field.access()},
-      {IS.name(), IS.kind, IS.access()},
       {load.name(), load.kind, load.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {mustEvaluate.name(), mustEvaluate.kind, mustEvaluate.access()},
       {sourceCode.name(), sourceCode.kind, sourceCode.access()},
       {url.name(), url.kind, url.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

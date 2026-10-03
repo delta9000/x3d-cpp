@@ -26,9 +26,6 @@ struct HAnimHumanoid {
                                     ::x3d::sai::experimental::string_list>
       info{"info", access_type::input_output};
   inline static constexpr field_key<HAnimHumanoid,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<HAnimHumanoid,
                                     ::x3d::sai::experimental::vec3f_list>
       jointBindingPositions{"jointBindingPositions", access_type::input_output};
   inline static constexpr field_key<HAnimHumanoid,
@@ -91,32 +88,20 @@ struct HAnimHumanoid {
   inline static constexpr field_key<HAnimHumanoid,
                                     ::x3d::sai::experimental::vec3f>
       translation{"translation", access_type::input_output};
-  inline static constexpr field_key<HAnimHumanoid,
-                                    ::x3d::sai::experimental::enum_value>
-      version{"version", access_type::input_output};
+  inline static constexpr field_key<HAnimHumanoid, std::string> version{
+      "version", access_type::input_output};
   inline static constexpr field_key<HAnimHumanoid,
                                     ::x3d::sai::experimental::node_list>
       viewpoints{"viewpoints", access_type::input_output};
   inline static constexpr field_key<HAnimHumanoid, bool> visible{
       "visible", access_type::input_output};
-  inline static constexpr field_key<HAnimHumanoid, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<HAnimHumanoid, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<HAnimHumanoid, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<HAnimHumanoid, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<HAnimHumanoid, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 37> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 31> field_keys{{
       {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
       {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
       {bboxSize.name(), bboxSize.kind, bboxSize.access()},
       {center.name(), center.kind, center.access()},
       {description.name(), description.kind, description.access()},
       {info.name(), info.kind, info.access()},
-      {IS.name(), IS.kind, IS.access()},
       {jointBindingPositions.name(), jointBindingPositions.kind,
        jointBindingPositions.access()},
       {jointBindingRotations.name(), jointBindingRotations.kind,
@@ -149,11 +134,6 @@ struct HAnimHumanoid {
       {version.name(), version.kind, version.access()},
       {viewpoints.name(), viewpoints.kind, viewpoints.access()},
       {visible.name(), visible.kind, visible.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

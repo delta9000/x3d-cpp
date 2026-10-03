@@ -12,6 +12,13 @@
 
 namespace x3d::nodes {
 
+struct SemanticNumericRange {
+    std::optional<double> minimum{};
+    std::optional<double> maximum{};
+    bool minimumInclusive = true;
+    bool maximumInclusive = true;
+};
+
 struct SemanticFieldDescriptor {
     std::string name;
     x3d::core::X3DFieldType type;
@@ -19,6 +26,7 @@ struct SemanticFieldDescriptor {
     std::optional<std::string> defaultValue;
     std::vector<std::string> acceptableNodeTypes;
     std::optional<std::string> unitCategory;
+    SemanticNumericRange range{};
 };
 
 struct SemanticNodeDescriptor {

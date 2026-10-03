@@ -53,9 +53,6 @@ struct DoubleAxisHingeJoint {
       "hinge2Angle", access_type::output_only};
   inline static constexpr field_key<DoubleAxisHingeJoint, float>
       hinge2AngleRate{"hinge2AngleRate", access_type::output_only};
-  inline static constexpr field_key<DoubleAxisHingeJoint,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<DoubleAxisHingeJoint, float> maxAngle1{
       "maxAngle1", access_type::input_output};
   inline static constexpr field_key<DoubleAxisHingeJoint, float> maxTorque1{
@@ -78,17 +75,7 @@ struct DoubleAxisHingeJoint {
                                 access_type::input_output};
   inline static constexpr field_key<DoubleAxisHingeJoint, float>
       suspensionForce{"suspensionForce", access_type::input_output};
-  inline static constexpr field_key<DoubleAxisHingeJoint, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<DoubleAxisHingeJoint, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<DoubleAxisHingeJoint, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<DoubleAxisHingeJoint, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<DoubleAxisHingeJoint, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 32> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 26> field_keys{{
       {anchorPoint.name(), anchorPoint.kind, anchorPoint.access()},
       {axis1.name(), axis1.kind, axis1.access()},
       {axis2.name(), axis2.kind, axis2.access()},
@@ -109,7 +96,6 @@ struct DoubleAxisHingeJoint {
       {hinge1AngleRate.name(), hinge1AngleRate.kind, hinge1AngleRate.access()},
       {hinge2Angle.name(), hinge2Angle.kind, hinge2Angle.access()},
       {hinge2AngleRate.name(), hinge2AngleRate.kind, hinge2AngleRate.access()},
-      {IS.name(), IS.kind, IS.access()},
       {maxAngle1.name(), maxAngle1.kind, maxAngle1.access()},
       {maxTorque1.name(), maxTorque1.kind, maxTorque1.access()},
       {maxTorque2.name(), maxTorque2.kind, maxTorque2.access()},
@@ -123,11 +109,6 @@ struct DoubleAxisHingeJoint {
       {suspensionErrorCorrection.name(), suspensionErrorCorrection.kind,
        suspensionErrorCorrection.access()},
       {suspensionForce.name(), suspensionForce.kind, suspensionForce.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

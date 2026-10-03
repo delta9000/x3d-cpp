@@ -11,11 +11,9 @@ struct ChannelSplitter {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<ChannelSplitter, std::int32_t> channelCount{
       "channelCount", access_type::output_only};
-  inline static constexpr field_key<ChannelSplitter,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<ChannelSplitter, std::string>
       channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<ChannelSplitter,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<ChannelSplitter, std::string>
       channelInterpretation{"channelInterpretation", access_type::input_output};
   inline static constexpr field_key<ChannelSplitter,
                                     ::x3d::sai::experimental::node_list>
@@ -28,24 +26,11 @@ struct ChannelSplitter {
       "gain", access_type::input_output};
   inline static constexpr field_key<ChannelSplitter,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<ChannelSplitter,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<ChannelSplitter,
                                     ::x3d::sai::experimental::node_list>
       outputs{"outputs", access_type::input_output};
-  inline static constexpr field_key<ChannelSplitter, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<ChannelSplitter, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<ChannelSplitter, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<ChannelSplitter, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<ChannelSplitter, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 9> field_keys{{
       {channelCount.name(), channelCount.kind, channelCount.access()},
       {channelCountMode.name(), channelCountMode.kind,
        channelCountMode.access()},
@@ -55,14 +40,8 @@ struct ChannelSplitter {
       {description.name(), description.kind, description.access()},
       {enabled.name(), enabled.kind, enabled.access()},
       {gain.name(), gain.kind, gain.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {outputs.name(), outputs.kind, outputs.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

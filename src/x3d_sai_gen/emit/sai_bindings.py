@@ -71,14 +71,9 @@ def sai_value_type(kind):
         raise ValueError(f"unsupported SAI field type: {kind!r}") from error
 
 
-def _descriptor_value_type(descriptor):
-    if descriptor.is_enum:
-        return f"{_NS}{'enum_list' if descriptor.runtime_field_type == 'MFEnum' else 'enum_value'}"
-    return sai_value_type(descriptor.x3d_type)
-
-
-def gen_sai_node_binding(node, nodes, graph, enum_defs=None):
-    descriptors = resolved_node_fields(node, nodes, graph, enum_defs)
+def gen_sai_node_binding(node, nodes, graph):
+    # Vocabulary choices never replace the normative SFString/MFString kind.
+    descriptors = resolved_node_fields(node, nodes, graph)
     identifiers = set()
     rendered = []
     for descriptor in descriptors:
@@ -88,7 +83,7 @@ def gen_sai_node_binding(node, nodes, graph, enum_defs=None):
                 f"duplicate SAI field identifier {identifier!r} on {node.name}"
             )
         identifiers.add(identifier)
-        rendered.append((descriptor, identifier, _descriptor_value_type(descriptor)))
+        rendered.append((descriptor, identifier, sai_value_type(descriptor.x3d_type)))
 
     lines = [
         "#pragma once",

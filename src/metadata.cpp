@@ -130,9 +130,9 @@ std::optional<schema_field_type> adapt_type(X3DFieldType type) {
   case X3DFieldType::MFVec4f:
     return schema_field_type::mf_vec4f;
   case X3DFieldType::SFEnum:
-    return schema_field_type::sf_enum;
   case X3DFieldType::MFEnum:
-    return schema_field_type::mf_enum;
+    // Synthetic legacy runtime storage tags are not SAI field types.
+    return std::nullopt;
   }
   return std::nullopt;
 }
@@ -524,20 +524,6 @@ adapt_value(const schema_field_descriptor &field) {
   case value_kind::mf_vec4f:
     return finish_value(field, declared ? parse_grouped<float, 4>(lexical, f4)
                                         : std::optional{vec4f_list{}});
-  case value_kind::sf_enum:
-    return finish_value(field,
-                        std::optional{enum_value{parse_string(lexical)}});
-  case value_kind::mf_enum: {
-    const auto parsed =
-        declared ? parse_strings(lexical) : std::optional{string_list{}};
-    if (!parsed)
-      return finish_value<enum_list>(field, std::nullopt);
-    enum_list result;
-    result.reserve(parsed->size());
-    for (auto &token : *parsed)
-      result.push_back(enum_value{std::move(token)});
-    return finish_value(field, std::optional{std::move(result)});
-  }
   }
   return metadata_error(error_code::unsupported_field_type,
                         "generated field type is not represented", field.name);
@@ -590,6 +576,10 @@ metadata_catalog generated_metadata_catalog() {
           .declared_default = field.defaultValue,
           .accepted_node_types = field.acceptableNodeTypes,
           .unit_category = field.unitCategory,
+          .range = {.minimum = field.range.minimum,
+                    .maximum = field.range.maximum,
+                    .minimum_inclusive = field.range.minimumInclusive,
+                    .maximum_inclusive = field.range.maximumInclusive},
       });
     }
     adapted.nodes.push_back(std::move(adapted_node));
@@ -633,10 +623,13 @@ generated_type_registry(std::span<const std::string_view> node_types) {
           .default_value = adapted_value.value(),
           .default_origin = field.declared_default ? default_source::schema
                                                    : default_source::field_type,
+          // Provisional conservative policy, not an audited classification of
+          // every X3D node reference. See docs/generated-field-projection.md.
           .containment = field.type == schema_field_type::sf_node ||
                          field.type == schema_field_type::mf_node,
           .accepted_node_types = field.accepted_node_types,
           .unit_category = field.unit_category,
+          .range = field.range,
       });
     }
     if (auto defined = registry.define(std::move(adapted)); !defined)

@@ -47,9 +47,6 @@ struct RigidBody {
   inline static constexpr field_key<RigidBody,
                                     ::x3d::sai::experimental::matrix3f>
       inertia{"inertia", access_type::input_output};
-  inline static constexpr field_key<RigidBody,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<RigidBody, float> linearDampingFactor{
       "linearDampingFactor", access_type::input_output};
   inline static constexpr field_key<RigidBody, ::x3d::sai::experimental::vec3f>
@@ -76,17 +73,7 @@ struct RigidBody {
       "useGlobalGravity", access_type::input_output};
   inline static constexpr field_key<RigidBody, bool> visible{
       "visible", access_type::input_output};
-  inline static constexpr field_key<RigidBody, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<RigidBody, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<RigidBody, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<RigidBody, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<RigidBody, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 34> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 28> field_keys{{
       {angularDampingFactor.name(), angularDampingFactor.kind,
        angularDampingFactor.access()},
       {angularVelocity.name(), angularVelocity.kind, angularVelocity.access()},
@@ -108,7 +95,6 @@ struct RigidBody {
       {forces.name(), forces.kind, forces.access()},
       {geometry.name(), geometry.kind, geometry.access()},
       {inertia.name(), inertia.kind, inertia.access()},
-      {IS.name(), IS.kind, IS.access()},
       {linearDampingFactor.name(), linearDampingFactor.kind,
        linearDampingFactor.access()},
       {linearVelocity.name(), linearVelocity.kind, linearVelocity.access()},
@@ -124,11 +110,6 @@ struct RigidBody {
       {useGlobalGravity.name(), useGlobalGravity.kind,
        useGlobalGravity.access()},
       {visible.name(), visible.kind, visible.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

@@ -34,9 +34,6 @@ struct TwoSidedMaterial {
       emissiveColor{"emissiveColor", access_type::input_output};
   inline static constexpr field_key<TwoSidedMaterial,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<TwoSidedMaterial,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<TwoSidedMaterial, bool> separateBackColor{
       "separateBackColor", access_type::input_output};
@@ -47,17 +44,7 @@ struct TwoSidedMaterial {
       specularColor{"specularColor", access_type::input_output};
   inline static constexpr field_key<TwoSidedMaterial, float> transparency{
       "transparency", access_type::input_output};
-  inline static constexpr field_key<TwoSidedMaterial, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<TwoSidedMaterial, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<TwoSidedMaterial, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<TwoSidedMaterial, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<TwoSidedMaterial, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 20> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 14> field_keys{{
       {ambientIntensity.name(), ambientIntensity.kind,
        ambientIntensity.access()},
       {backAmbientIntensity.name(), backAmbientIntensity.kind,
@@ -73,18 +60,12 @@ struct TwoSidedMaterial {
        backTransparency.access()},
       {diffuseColor.name(), diffuseColor.kind, diffuseColor.access()},
       {emissiveColor.name(), emissiveColor.kind, emissiveColor.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {separateBackColor.name(), separateBackColor.kind,
        separateBackColor.access()},
       {shininess.name(), shininess.kind, shininess.access()},
       {specularColor.name(), specularColor.kind, specularColor.access()},
       {transparency.name(), transparency.kind, transparency.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

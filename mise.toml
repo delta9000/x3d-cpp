@@ -3,11 +3,11 @@ python = "3.12"
 
 [tasks.build]
 description = "Configure and build the experimental SAI kernel."
-run = "cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build -j"
+run = 'cmake -S . -B "${X3D_SAI_BUILD_DIR:-build}" -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build "${X3D_SAI_BUILD_DIR:-build}" --parallel 3'
 
 [tasks.ctest]
 description = "Run the SAI falsification suite."
-run = "ctest --test-dir build --output-on-failure"
+run = 'ctest --test-dir "${X3D_SAI_BUILD_DIR:-build}" --output-on-failure'
 
 [tasks.sai-baseline]
 description = "Regenerate the SAI service/invariant baseline from the editable YAML registers."
@@ -30,8 +30,8 @@ description = "Regenerate the SAI bindings and semantic catalog from the vendore
 run = "uv run python -m x3d_sai_gen.cli --out-dir generated_cpp_bindings"
 
 [tasks.gen-determinism]
-description = "Fail if regenerating the committed bindings produces any diff."
-run = "uv run python -m x3d_sai_gen.cli --out-dir generated_cpp_bindings && git diff --exit-code -- generated_cpp_bindings"
+description = "Fail if generated bindings drift from the generator, without rewriting files."
+run = "uv run python -m x3d_sai_gen.cli --check"
 
 [tasks.uom-pin]
 description = "Fail if the vendored UOM drifted from its recorded SHA-256."

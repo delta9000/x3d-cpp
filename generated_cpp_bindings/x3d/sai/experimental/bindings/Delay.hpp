@@ -11,10 +11,10 @@ struct Delay {
   static constexpr std::string_view schema_fingerprint = model_fingerprint;
   inline static constexpr field_key<Delay, std::int32_t> channelCount{
       "channelCount", access_type::output_only};
-  inline static constexpr field_key<Delay, ::x3d::sai::experimental::enum_value>
-      channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<Delay, ::x3d::sai::experimental::enum_value>
-      channelInterpretation{"channelInterpretation", access_type::input_output};
+  inline static constexpr field_key<Delay, std::string> channelCountMode{
+      "channelCountMode", access_type::input_output};
+  inline static constexpr field_key<Delay, std::string> channelInterpretation{
+      "channelInterpretation", access_type::input_output};
   inline static constexpr field_key<Delay, ::x3d::sai::experimental::node_list>
       children{"children", access_type::input_output};
   inline static constexpr field_key<Delay, ::x3d::sai::experimental::time_value>
@@ -27,8 +27,6 @@ struct Delay {
       "enabled", access_type::input_output};
   inline static constexpr field_key<Delay, float> gain{
       "gain", access_type::input_output};
-  inline static constexpr field_key<Delay, ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<Delay, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<Delay, bool> isPaused{
@@ -47,17 +45,7 @@ struct Delay {
       stopTime{"stopTime", access_type::input_output};
   inline static constexpr field_key<Delay, ::x3d::sai::experimental::time_value>
       tailTime{"tailTime", access_type::input_output};
-  inline static constexpr field_key<Delay, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<Delay, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<Delay, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<Delay, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<Delay, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 24> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
       {channelCount.name(), channelCount.kind, channelCount.access()},
       {channelCountMode.name(), channelCountMode.kind,
        channelCountMode.access()},
@@ -69,7 +57,6 @@ struct Delay {
       {elapsedTime.name(), elapsedTime.kind, elapsedTime.access()},
       {enabled.name(), enabled.kind, enabled.access()},
       {gain.name(), gain.kind, gain.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {isPaused.name(), isPaused.kind, isPaused.access()},
       {maxDelayTime.name(), maxDelayTime.kind, maxDelayTime.access()},
@@ -79,11 +66,6 @@ struct Delay {
       {startTime.name(), startTime.kind, startTime.access()},
       {stopTime.name(), stopTime.kind, stopTime.access()},
       {tailTime.name(), tailTime.kind, tailTime.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

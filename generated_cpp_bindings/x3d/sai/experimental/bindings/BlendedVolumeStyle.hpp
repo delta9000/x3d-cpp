@@ -13,9 +13,6 @@ struct BlendedVolumeStyle {
       "enabled", access_type::input_output};
   inline static constexpr field_key<BlendedVolumeStyle,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<BlendedVolumeStyle,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<BlendedVolumeStyle,
                                     ::x3d::sai::experimental::node_id>
@@ -39,19 +36,8 @@ struct BlendedVolumeStyle {
                                     ::x3d::sai::experimental::node_id>
       weightTransferFunction2{"weightTransferFunction2",
                               access_type::input_output};
-  inline static constexpr field_key<BlendedVolumeStyle, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<BlendedVolumeStyle, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<BlendedVolumeStyle, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<BlendedVolumeStyle, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<BlendedVolumeStyle, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 16> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 10> field_keys{{
       {enabled.name(), enabled.kind, enabled.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {renderStyle.name(), renderStyle.kind, renderStyle.access()},
       {voxels.name(), voxels.kind, voxels.access()},
@@ -63,11 +49,6 @@ struct BlendedVolumeStyle {
        weightTransferFunction1.access()},
       {weightTransferFunction2.name(), weightTransferFunction2.kind,
        weightTransferFunction2.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

@@ -14,9 +14,6 @@ struct NurbsSurfaceInterpolator {
       controlPoint{"controlPoint", access_type::input_output};
   inline static constexpr field_key<NurbsSurfaceInterpolator,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<NurbsSurfaceInterpolator,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<NurbsSurfaceInterpolator,
                                     ::x3d::sai::experimental::vec3f>
@@ -44,19 +41,8 @@ struct NurbsSurfaceInterpolator {
   inline static constexpr field_key<NurbsSurfaceInterpolator,
                                     ::x3d::sai::experimental::double_list>
       weight{"weight", access_type::input_output};
-  inline static constexpr field_key<NurbsSurfaceInterpolator, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<NurbsSurfaceInterpolator, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<NurbsSurfaceInterpolator, std::string>
-      class_{"class", access_type::input_output};
-  inline static constexpr field_key<NurbsSurfaceInterpolator, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<NurbsSurfaceInterpolator, std::string>
-      style{"style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 12> field_keys{{
       {controlPoint.name(), controlPoint.kind, controlPoint.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {normal_changed.name(), normal_changed.kind, normal_changed.access()},
       {position_changed.name(), position_changed.kind,
@@ -69,11 +55,6 @@ struct NurbsSurfaceInterpolator {
       {vKnot.name(), vKnot.kind, vKnot.access()},
       {vOrder.name(), vOrder.kind, vOrder.access()},
       {weight.name(), weight.kind, weight.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

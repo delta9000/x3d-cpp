@@ -25,8 +25,6 @@ struct Inline {
       "description", access_type::input_output};
   inline static constexpr field_key<Inline, bool> global{
       "global", access_type::input_output};
-  inline static constexpr field_key<Inline, ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<Inline, bool> load{
       "load", access_type::input_output};
   inline static constexpr field_key<Inline, ::x3d::sai::experimental::node_id>
@@ -36,17 +34,7 @@ struct Inline {
       url{"url", access_type::input_output};
   inline static constexpr field_key<Inline, bool> visible{
       "visible", access_type::input_output};
-  inline static constexpr field_key<Inline, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<Inline, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<Inline, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<Inline, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<Inline, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 17> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 11> field_keys{{
       {autoRefresh.name(), autoRefresh.kind, autoRefresh.access()},
       {autoRefreshTimeLimit.name(), autoRefreshTimeLimit.kind,
        autoRefreshTimeLimit.access()},
@@ -55,16 +43,10 @@ struct Inline {
       {bboxSize.name(), bboxSize.kind, bboxSize.access()},
       {description.name(), description.kind, description.access()},
       {global.name(), global.kind, global.access()},
-      {IS.name(), IS.kind, IS.access()},
       {load.name(), load.kind, load.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {url.name(), url.kind, url.access()},
       {visible.name(), visible.kind, visible.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

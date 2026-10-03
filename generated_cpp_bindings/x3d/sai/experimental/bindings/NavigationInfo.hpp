@@ -17,9 +17,6 @@ struct NavigationInfo {
       bindTime{"bindTime", access_type::output_only};
   inline static constexpr field_key<NavigationInfo, bool> headlight{
       "headlight", access_type::input_output};
-  inline static constexpr field_key<NavigationInfo,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<NavigationInfo, bool> isBound{
       "isBound", access_type::output_only};
   inline static constexpr field_key<NavigationInfo,
@@ -42,21 +39,10 @@ struct NavigationInfo {
       type{"type", access_type::input_output};
   inline static constexpr field_key<NavigationInfo, float> visibilityLimit{
       "visibilityLimit", access_type::input_output};
-  inline static constexpr field_key<NavigationInfo, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<NavigationInfo, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<NavigationInfo, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<NavigationInfo, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<NavigationInfo, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 18> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 12> field_keys{{
       {avatarSize.name(), avatarSize.kind, avatarSize.access()},
       {bindTime.name(), bindTime.kind, bindTime.access()},
       {headlight.name(), headlight.kind, headlight.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isBound.name(), isBound.kind, isBound.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {set_bind.name(), set_bind.kind, set_bind.access()},
@@ -67,11 +53,6 @@ struct NavigationInfo {
       {transitionType.name(), transitionType.kind, transitionType.access()},
       {type.name(), type.kind, type.access()},
       {visibilityLimit.name(), visibilityLimit.kind, visibilityLimit.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

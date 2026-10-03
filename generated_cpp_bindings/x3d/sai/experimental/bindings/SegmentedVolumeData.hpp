@@ -22,9 +22,6 @@ struct SegmentedVolumeData {
       dimensions{"dimensions", access_type::input_output};
   inline static constexpr field_key<SegmentedVolumeData,
                                     ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
-  inline static constexpr field_key<SegmentedVolumeData,
-                                    ::x3d::sai::experimental::node_id>
       metadata{"metadata", access_type::input_output};
   inline static constexpr field_key<SegmentedVolumeData,
                                     ::x3d::sai::experimental::node_list>
@@ -40,22 +37,11 @@ struct SegmentedVolumeData {
   inline static constexpr field_key<SegmentedVolumeData,
                                     ::x3d::sai::experimental::node_id>
       voxels{"voxels", access_type::input_output};
-  inline static constexpr field_key<SegmentedVolumeData, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<SegmentedVolumeData, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<SegmentedVolumeData, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<SegmentedVolumeData, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<SegmentedVolumeData, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 16> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 10> field_keys{{
       {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
       {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
       {bboxSize.name(), bboxSize.kind, bboxSize.access()},
       {dimensions.name(), dimensions.kind, dimensions.access()},
-      {IS.name(), IS.kind, IS.access()},
       {metadata.name(), metadata.kind, metadata.access()},
       {renderStyle.name(), renderStyle.kind, renderStyle.access()},
       {segmentEnabled.name(), segmentEnabled.kind, segmentEnabled.access()},
@@ -63,11 +49,6 @@ struct SegmentedVolumeData {
        segmentIdentifiers.access()},
       {visible.name(), visible.kind, visible.access()},
       {voxels.name(), voxels.kind, voxels.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

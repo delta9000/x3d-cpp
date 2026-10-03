@@ -19,6 +19,7 @@ struct schema_field_descriptor {
   std::optional<std::string> declared_default;
   std::vector<std::string> accepted_node_types;
   std::optional<std::string> unit_category;
+  numeric_range range{};
 };
 
 struct schema_node_descriptor {
@@ -38,8 +39,11 @@ struct metadata_catalog {
   std::vector<schema_node_descriptor> nodes;
 };
 
-// Returns an owning copy of every generated descriptor, including field kinds
-// that the current executable value vocabulary cannot yet author.
+// Returns owning runtime-field descriptors, not a lossless UOM/document model.
+// DEF/USE/IS and host class/id/CSS style are intentionally excluded. Text-style
+// fields on FontStyle/ScreenFontStyle remain. See docs/generated-field-projection.md.
+// Bounds, enum-membership and reference/containment classification are not a
+// complete constraint model; unit_categories_complete also remains false.
 metadata_catalog generated_metadata_catalog();
 
 // Converts a schema lexical default (or the ISO field-type default when

@@ -27,9 +27,6 @@ struct TextureBackground {
   inline static constexpr field_key<TextureBackground,
                                     ::x3d::sai::experimental::color3f_list>
       groundColor{"groundColor", access_type::input_output};
-  inline static constexpr field_key<TextureBackground,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<TextureBackground, bool> isBound{
       "isBound", access_type::output_only};
   inline static constexpr field_key<TextureBackground,
@@ -54,24 +51,13 @@ struct TextureBackground {
       topTexture{"topTexture", access_type::input_output};
   inline static constexpr field_key<TextureBackground, float> transparency{
       "transparency", access_type::input_output};
-  inline static constexpr field_key<TextureBackground, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<TextureBackground, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<TextureBackground, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<TextureBackground, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<TextureBackground, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 21> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 15> field_keys{{
       {backTexture.name(), backTexture.kind, backTexture.access()},
       {bindTime.name(), bindTime.kind, bindTime.access()},
       {bottomTexture.name(), bottomTexture.kind, bottomTexture.access()},
       {frontTexture.name(), frontTexture.kind, frontTexture.access()},
       {groundAngle.name(), groundAngle.kind, groundAngle.access()},
       {groundColor.name(), groundColor.kind, groundColor.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isBound.name(), isBound.kind, isBound.access()},
       {leftTexture.name(), leftTexture.kind, leftTexture.access()},
       {metadata.name(), metadata.kind, metadata.access()},
@@ -81,11 +67,6 @@ struct TextureBackground {
       {skyColor.name(), skyColor.kind, skyColor.access()},
       {topTexture.name(), topTexture.kind, topTexture.access()},
       {transparency.name(), transparency.kind, transparency.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 

@@ -25,11 +25,9 @@ struct BufferAudioSource {
       bufferlength{"bufferlength", access_type::output_only};
   inline static constexpr field_key<BufferAudioSource, std::int32_t>
       channelCount{"channelCount", access_type::output_only};
-  inline static constexpr field_key<BufferAudioSource,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<BufferAudioSource, std::string>
       channelCountMode{"channelCountMode", access_type::input_output};
-  inline static constexpr field_key<BufferAudioSource,
-                                    ::x3d::sai::experimental::enum_value>
+  inline static constexpr field_key<BufferAudioSource, std::string>
       channelInterpretation{"channelInterpretation", access_type::input_output};
   inline static constexpr field_key<BufferAudioSource, std::string> description{
       "description", access_type::input_output};
@@ -42,9 +40,6 @@ struct BufferAudioSource {
       "enabled", access_type::input_output};
   inline static constexpr field_key<BufferAudioSource, float> gain{
       "gain", access_type::input_output};
-  inline static constexpr field_key<BufferAudioSource,
-                                    ::x3d::sai::experimental::node_id>
-      IS{"IS", access_type::input_output};
   inline static constexpr field_key<BufferAudioSource, bool> isActive{
       "isActive", access_type::output_only};
   inline static constexpr field_key<BufferAudioSource, bool> isPaused{
@@ -83,17 +78,7 @@ struct BufferAudioSource {
   inline static constexpr field_key<BufferAudioSource,
                                     ::x3d::sai::experimental::string_list>
       url{"url", access_type::input_output};
-  inline static constexpr field_key<BufferAudioSource, std::string> DEF{
-      "DEF", access_type::input_output};
-  inline static constexpr field_key<BufferAudioSource, std::string> USE{
-      "USE", access_type::input_output};
-  inline static constexpr field_key<BufferAudioSource, std::string> class_{
-      "class", access_type::input_output};
-  inline static constexpr field_key<BufferAudioSource, std::string> id{
-      "id", access_type::input_output};
-  inline static constexpr field_key<BufferAudioSource, std::string> style{
-      "style", access_type::input_output};
-  inline static constexpr std::array<field_key_descriptor, 35> field_keys{{
+  inline static constexpr std::array<field_key_descriptor, 29> field_keys{{
       {autoRefresh.name(), autoRefresh.kind, autoRefresh.access()},
       {autoRefreshTimeLimit.name(), autoRefreshTimeLimit.kind,
        autoRefreshTimeLimit.access()},
@@ -110,7 +95,6 @@ struct BufferAudioSource {
       {elapsedTime.name(), elapsedTime.kind, elapsedTime.access()},
       {enabled.name(), enabled.kind, enabled.access()},
       {gain.name(), gain.kind, gain.access()},
-      {IS.name(), IS.kind, IS.access()},
       {isActive.name(), isActive.kind, isActive.access()},
       {isPaused.name(), isPaused.kind, isPaused.access()},
       {length.name(), length.kind, length.access()},
@@ -128,11 +112,6 @@ struct BufferAudioSource {
       {startTime.name(), startTime.kind, startTime.access()},
       {stopTime.name(), stopTime.kind, stopTime.access()},
       {url.name(), url.kind, url.access()},
-      {DEF.name(), DEF.kind, DEF.access()},
-      {USE.name(), USE.kind, USE.access()},
-      {class_.name(), class_.kind, class_.access()},
-      {id.name(), id.kind, id.access()},
-      {style.name(), style.kind, style.access()},
   }};
 };
 
