@@ -20,20 +20,61 @@ Commit history before the seed commits of 2026-07-19 is provenance, not a builda
 sequence. Those commits predate this repository's build system, so `git bisect` does
 not work back across the import boundary.
 
+## Using the C++ SDK
+
+The SDK requires CMake 3.24 and a C++20 compiler. Build and install a standalone
+copy with:
+
+```sh
+cmake -S . -B build-sdk -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
+cmake --build build-sdk --parallel 3
+cmake --install build-sdk --prefix /path/to/sdk
+```
+
+An application locates that prefix with `-DCMAKE_PREFIX_PATH=/path/to/sdk` and
+links the target for the vocabulary it uses:
+
+```cmake
+find_package(x3d_sai CONFIG REQUIRED)
+add_executable(world_editor main.cpp)
+target_link_libraries(world_editor PRIVATE x3d::sai_metadata)
+```
+
+`x3d::sai` supplies the semantic kernel and
+`<x3d/sai/experimental/kernel.hpp>`. `x3d::sai_metadata` adds the generated UOM
+catalog, `<x3d/sai/experimental/metadata.hpp>`, and typed bindings such as
+`<x3d/sai/experimental/bindings/Transform.hpp>`. Both targets propagate the
+C++20 requirement, include directories, and platform thread support. The
+installed SDK includes the pinned `tl::expected` header and its license;
+Python and the generator are not needed to build an application.
+
+Embedding the checkout uses the same targets:
+
+```cmake
+add_subdirectory(path/to/x3d-sai)
+target_link_libraries(world_editor PRIVATE x3d::sai_metadata)
+```
+
+Tests and example executables are added only by standalone builds with
+`BUILD_TESTING=ON`. The installed prefix can be relocated; its CMake files
+contain no checkout paths. The C++ API remains experimental, and an explicit
+package version request must match exactly. Packaging follows CMake's
+[exported-target model](https://cmake.org/cmake/help/latest/guide/importing-exporting/index.html).
+
 ## The proposal
 
 This repository is a compiling proposal for the irreducible semantics of a
 modern C++ X3D SAI. It is deliberately firewalled in
-`x3d::sai::experimental`: the library links only the C++ standard library and
-does not modify or depend on x3d-cpp's runtime. Its C++20
+`x3d::sai::experimental`: the library uses the C++ standard runtime and platform
+thread support, and does not modify or depend on x3d-cpp's runtime. Its C++20
 `result<T>` is a public alias to the pinned, single-header `tl::expected` 1.3.1
 (CC0-1.0), providing `and_then`, `transform`, `transform_error`, and `or_else`
 without a configure-time dependency or a homegrown expected implementation.
 
 An optional `x3d_sai_experimental_metadata` bridge copies node and field facts
-from an instance-free catalog generated from the UOM. The core kernel remains
-link-dependency-free, and generated runtime node objects never participate in SAI
-identity. The adapter currently fails closed for field types not yet present in
+from an instance-free catalog generated from the UOM. The core kernel requires
+only the C++ standard runtime and platform thread support; generated runtime
+node objects never participate in SAI identity. The adapter currently fails closed for field types not yet present in
 the experimental owning value vocabulary. The current generated vocabulary is
 complete: all scalar and multi-field kinds have exact tags, owning storage, and
 distinct strong types where C++ primitives would otherwise collapse X3D

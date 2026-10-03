@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.24)
+project(sai_consumer LANGUAGES CXX)
+
+if(SAI_SOURCE_DIR)
+    add_subdirectory("${SAI_SOURCE_DIR}" sdk)
+else()
+    find_package(x3d_sai CONFIG REQUIRED)
+endif()
+if(TARGET x3d_sai_doctest_main)
+    message(FATAL_ERROR "Embedding the SDK must not add its tests")
+endif()
+
+add_executable(kernel_consumer author_inspect.cpp)
+target_link_libraries(kernel_consumer PRIVATE x3d::sai)
+add_executable(metadata_consumer generated_author_inspect.cpp)
+target_link_libraries(metadata_consumer PRIVATE x3d::sai_metadata)
+
+enable_testing()
+add_test(NAME kernel_consumer COMMAND kernel_consumer)
+add_test(NAME metadata_consumer COMMAND metadata_consumer)

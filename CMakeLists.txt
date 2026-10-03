@@ -1,17 +1,26 @@
 cmake_minimum_required(VERSION 3.24)
 project(x3d_sai VERSION 0.1.0 LANGUAGES CXX)
 
-include(CTest)
+if(PROJECT_IS_TOP_LEVEL)
+    include(CTest)
+endif()
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+find_package(Threads REQUIRED)
 
 set(_sai_generated "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings")
 
-# Firewalled modern-C++ SAI proposal. This target links only the C++ standard
-# library: it has no dependency on x3d-cpp's runtime or generated node objects.
+# Firewalled modern-C++ SAI proposal. The kernel uses the C++ standard runtime
+# and platform threading; it has no dependency on x3d-cpp's generated objects.
 add_library(x3d_sai_experimental STATIC "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel.cpp")
+add_library(x3d::sai ALIAS x3d_sai_experimental)
+set_target_properties(x3d_sai_experimental PROPERTIES EXPORT_NAME sai)
 target_include_directories(x3d_sai_experimental PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third_party>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_compile_features(x3d_sai_experimental PUBLIC cxx_std_20)
+target_link_libraries(x3d_sai_experimental PUBLIC Threads::Threads)
 
 # Optional generated-schema bridge. Keeping this separate preserves the
 # dependency-light semantic kernel while allowing consumers to opt into the UOM
@@ -19,11 +28,45 @@ target_compile_features(x3d_sai_experimental PUBLIC cxx_std_20)
 add_library(x3d_sai_experimental_metadata STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/metadata.cpp"
     "${_sai_generated}/x3d/nodes/X3DSemanticMetadataRegistry.cpp")
+add_library(x3d::sai_metadata ALIAS x3d_sai_experimental_metadata)
+set_target_properties(x3d_sai_experimental_metadata PROPERTIES EXPORT_NAME sai_metadata)
 target_include_directories(x3d_sai_experimental_metadata PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${_sai_generated}")
+    "$<BUILD_INTERFACE:${_sai_generated}>")
 target_link_libraries(x3d_sai_experimental_metadata PUBLIC x3d_sai_experimental)
 target_compile_features(x3d_sai_experimental_metadata PUBLIC cxx_std_20)
+
+# The same target names and usage requirements work in a source checkout and
+# an installed SDK. Install only the public SAI headers; the catalog's generated
+# reflection support stays inside the compiled metadata bridge.
+set(_sai_package_dir "${CMAKE_INSTALL_LIBDIR}/cmake/x3d_sai")
+install(TARGETS x3d_sai_experimental x3d_sai_experimental_metadata
+    EXPORT x3d_saiTargets ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install(DIRECTORY include/x3d/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d"
+    FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY "${_sai_generated}/x3d/sai/"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d/sai"
+    FILES_MATCHING PATTERN "*.hpp")
+install(FILES third_party/tl/expected.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/tl")
+install(FILES LICENSE NOTICE DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/x3d_sai")
+install(FILES third_party/tl/COPYING
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/x3d_sai"
+    RENAME tl-expected-COPYING)
+install(EXPORT x3d_saiTargets FILE x3d_saiTargets.cmake NAMESPACE x3d::
+    DESTINATION "${_sai_package_dir}")
+configure_package_config_file(cmake/x3d_saiConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/x3d_saiConfig.cmake"
+    INSTALL_DESTINATION "${_sai_package_dir}")
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/x3d_saiConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}" COMPATIBILITY ExactVersion)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/x3d_saiConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/x3d_saiConfigVersion.cmake"
+    DESTINATION "${_sai_package_dir}")
+
+# Embedding applications control their own testing. A standalone SDK build can
+# also disable these targets with the standard BUILD_TESTING option.
+if(NOT PROJECT_IS_TOP_LEVEL OR NOT BUILD_TESTING)
+    return()
+endif()
 
 add_library(x3d_sai_doctest_main STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/doctest/doctest_main.cpp")
@@ -301,7 +344,6 @@ add_test(NAME sai_life_realization_events COMMAND x3d_sai_experimental_tests
 add_test(NAME sai_life_realization_cycles COMMAND x3d_sai_experimental_tests
     "--test-case=realization preserves*")
 
-find_package(Threads REQUIRED)
 add_executable(x3d_sai_runtime_tests tests/runtime_boundary_test.cpp)
 target_link_libraries(x3d_sai_runtime_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main Threads::Threads)
@@ -392,3 +434,14 @@ set_tests_properties(sai_runtime_read_retirement PROPERTIES TIMEOUT 15)
 add_test(NAME sai_runtime_emit_retirement COMMAND x3d_sai_callback_lifecycle_tests
     "--test-case=runtime output validation releases foreign hosts without step locks")
 set_tests_properties(sai_runtime_emit_retirement PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_package_consumer COMMAND "${CMAKE_COMMAND}"
+    "-DSAI_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+    "-DSAI_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+    "-DSAI_CONFIG=$<CONFIG>"
+    "-DSAI_GENERATOR=${CMAKE_GENERATOR}"
+    "-DSAI_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+    "-DSAI_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+    "-DSAI_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_consumer.cmake")
+set_tests_properties(sai_package_consumer PROPERTIES TIMEOUT 300)
