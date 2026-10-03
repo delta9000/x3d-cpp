@@ -570,6 +570,10 @@ inspection,
 not multi-context live publication. The event kernel is a synchronous reference
 model, not a claim that the complete live SAI capability is available.
 The load API models only cancellation and stale-completion publication rules.
+Completion validates its ticket and installs the world atomically with respect
+to replacement and other completions. Success consumes the ticket, even for the
+current scene; rejected replacements leave it retryable or cancellable while
+its original epoch remains current.
 
 Live lifecycle remains partial: browser-driven initialization, Script phases,
 live read restrictions, and observation-triggered realization need a host

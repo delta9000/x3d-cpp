@@ -532,3 +532,9 @@ add_test(NAME sai_id_unpublished_nodes COMMAND x3d_sai_experimental_tests
     "--test-case=unpublished node handles never alias committed creations")
 add_test(NAME sai_id_unpublished_declarations COMMAND x3d_sai_experimental_tests
     "--test-case=unpublished declaration handles never alias committed declarations")
+
+add_executable(x3d_sai_async_world_tests tests/async_world_installation_test.cpp)
+target_link_libraries(x3d_sai_async_world_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_async_world_installation COMMAND x3d_sai_async_world_tests)
+set_tests_properties(sai_async_world_installation PROPERTIES TIMEOUT 60)
