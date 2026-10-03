@@ -223,7 +223,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Replacement, removal, declaration change, and disposal have explicit per-handle effects; stale handles never alias new allocations, dereference freed memory, or switch generation.
     preserving_operations: [dispose, replace world, remove node, use stale handle]
-    falsification_tests: [sai_life_stale_handle, sai_context_import_firewall, sai_life_node_removal, sai_life_remove_references, sai_life_wrapper_disposal, sai_life_removed_handle, sai_life_removed_event, sai_life_observer_reference, sai_life_queued_event_reference, sai_life_import_reference, sai_life_import_race, sai_publication_integrity]
+    falsification_tests: [sai_life_stale_handle, sai_context_import_firewall, sai_life_node_removal, sai_life_remove_references, sai_life_wrapper_disposal, sai_life_removed_handle, sai_life_removed_event, sai_life_observer_reference, sai_life_queued_event_reference, sai_life_import_reference, sai_life_import_race, sai_publication_integrity, sai_life_import_retirement]
   - <<: *invariant_defaults
     id: INV-CONC-1
     review_marker: reviewed:sha256:7b1e40335ca8
@@ -232,7 +232,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Immutable views declare thread safety, live mutation is serialized, callback affinity is documented, and commit conflict behavior is deterministic and data-race-free.
     preserving_operations: [read immutable view, stage concurrently, commit, dispatch callback]
-    falsification_tests: [sai_conc_boundary, sai_evt_reentrant_batch, sai_runtime_reentrant, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_callback_lifecycle, sai_callback_ownership]
+    falsification_tests: [sai_conc_boundary, sai_evt_reentrant_batch, sai_runtime_reentrant, sai_runtime_state_failure_protocol, sai_runtime_state_retirement, sai_callback_lifecycle, sai_callback_ownership, sai_life_import_retirement]
   - <<: *invariant_defaults
     id: INV-ORDER-1
     review_marker: reviewed:sha256:23bcea329468
@@ -333,7 +333,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Rollback, unsubscribe, cancellation, and destruction are noexcept and appropriately idempotent, and invoke no user callback through a half-destroyed graph.
     preserving_operations: [rollback, unsubscribe, cancel, destroy]
-    falsification_tests: [sai_cxx_safe_destruction, sai_life_wrapper_disposal, sai_callback_lifecycle, sai_publication_integrity, sai_callback_ownership]
+    falsification_tests: [sai_cxx_safe_destruction, sai_life_wrapper_disposal, sai_callback_lifecycle, sai_publication_integrity, sai_callback_ownership, sai_life_import_retirement]
   - <<: *invariant_defaults
     id: INV-CXX-4
     review_marker: reviewed:sha256:a82bcd9c8cad

@@ -2,12 +2,14 @@
 
 #include "doctest/doctest.h"
 
+#include <array>
 #include <atomic>
 #include <cstdlib>
 #include <functional>
 #include <latch>
 #include <memory>
 #include <new>
+#include <optional>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -17,9 +19,12 @@
 // failure.
 namespace {
 thread_local int allocations_before_failure = -1;
-}
+thread_local std::function<void(std::size_t)> *allocation_action = nullptr;
+} // namespace
 
 void *operator new(std::size_t size) {
+  if (allocation_action)
+    (*allocation_action)(size);
   if (allocations_before_failure >= 0 && allocations_before_failure-- == 0) {
     allocations_before_failure = -1;
     throw std::bad_alloc{};
@@ -358,4 +363,138 @@ TEST_CASE(
     CHECK(observer.error().code == sai::error_code::stale_handle);
   }
   CHECK(destroyed == 1);
+}
+
+namespace {
+enum class import_check {
+  remove,
+  validate_removed_node,
+  commit_removed_node,
+  validate_template,
+  commit_template
+};
+
+void check_import_release(import_check check) {
+  sai::browser host{callback_registry()};
+  auto source = host.current_scene();
+  sai::node exported;
+  {
+    auto edit = source.edit();
+    exported = edit.create_node("TestNode").value();
+    REQUIRE(edit.export_node("shared", exported));
+    REQUIRE(edit.commit());
+  }
+  int destroyed = 0;
+  std::optional<sai::execution_context> importer{host.create_scene()};
+  const std::string local_name(257, 'i');
+  auto edit = source.edit();
+  REQUIRE(edit.remove_export(source.snapshot().exports().front()));
+  if (check == import_check::validate_removed_node ||
+      check == import_check::commit_removed_node) {
+    REQUIRE(edit.remove_node(exported));
+  } else if (check == import_check::validate_template ||
+             check == import_check::commit_template) {
+    sai::local_declaration_descriptor descriptor;
+    descriptor.name = "Template";
+    REQUIRE(edit.add_local_declaration(std::move(descriptor),
+                                       std::array{exported}));
+  }
+  {
+    auto incoming = importer->edit();
+    REQUIRE(incoming.import_node(local_name, source, "shared"));
+    REQUIRE(incoming.commit());
+  }
+  auto capture = std::make_shared<on_destroy>([&] {
+    CHECK(source.snapshot().revision() == 1);
+    CHECK(host.current_scene().generation() == source.generation());
+    ++destroyed;
+  });
+  REQUIRE(host.set_runtime_processor(
+      *importer,
+      [capture](sai::runtime_step &) -> sai::result<void> { return {}; }));
+  capture.reset();
+  bool fail_copy = false;
+  SUBCASE("ordinary rejection") {}
+  SUBCASE("allocation failure after releasing the external owner") {
+    fail_copy = true;
+  }
+  on_destroy disarm{[] {
+    allocation_action = nullptr;
+    allocations_before_failure = -1;
+  }};
+  // Measure this standard library's string-copy allocation rather than
+  // assuming its capacity or allocation size.
+  std::size_t name_copy_bytes = 0;
+  std::function<void(std::size_t)> measure = [&](std::size_t size) {
+    name_copy_bytes = size;
+  };
+  allocation_action = &measure;
+  const std::string name_copy = local_name;
+  allocation_action = nullptr;
+  REQUIRE(name_copy == local_name);
+  REQUIRE(name_copy_bytes != 0);
+  bool dropped = false;
+  std::function<void(std::size_t)> drop_owner = [&](std::size_t size) {
+    if (size != name_copy_bytes)
+      return;
+    allocation_action = nullptr;
+    dropped = true;
+    importer.reset();
+    if (fail_copy)
+      allocations_before_failure = 0;
+  };
+  // Copying the long import name happens while retention holds a temporary
+  // owner. Drop the external owner at that point without a timing-based race.
+  allocation_action = &drop_owner;
+  bool failed = false;
+  try {
+    const auto rejected = [&]() -> sai::result<void> {
+      if (check == import_check::remove)
+        return edit.remove_node(exported);
+      if (check == import_check::validate_removed_node ||
+          check == import_check::validate_template)
+        return edit.validate();
+      auto committed = edit.commit();
+      if (!committed)
+        return sai::failure(committed.error());
+      return {};
+    }();
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::node_in_use);
+    CHECK(rejected.error().node == exported.id());
+    CHECK(rejected.error().field == local_name);
+  } catch (const std::bad_alloc &) {
+    failed = true;
+  }
+  allocation_action = nullptr;
+  allocations_before_failure = -1;
+  CHECK(dropped);
+  CHECK(failed == fail_copy);
+  CHECK(destroyed == 1);
+  CHECK(source.snapshot().revision() == 1);
+  CHECK(source.snapshot().exports().size() == 1);
+  auto retry = source.edit();
+  REQUIRE(retry.remove_export(source.snapshot().exports().front()));
+  REQUIRE(retry.remove_node(exported));
+  REQUIRE(retry.commit());
+  CHECK_FALSE(source.snapshot().lookup(exported.id()));
+}
+} // namespace
+
+TEST_CASE("import retention releases temporary owners after unlocking") {
+  SUBCASE("remove an imported node") {
+    check_import_release(import_check::remove);
+  }
+  SUBCASE("validate a removed node") {
+    check_import_release(import_check::validate_removed_node);
+  }
+  SUBCASE("commit a removed node") {
+    check_import_release(import_check::commit_removed_node);
+  }
+  SUBCASE("validate a template claim") {
+    check_import_release(import_check::validate_template);
+  }
+  SUBCASE("commit a template claim") {
+    check_import_release(import_check::commit_template);
+  }
 }

@@ -373,6 +373,10 @@ queued observations, event time, and import retention unchanged. Exceptions at
 host callback boundaries follow the runtime failure rules above. Native frame
 and checkpoint resources are destroyed outside context locks on failed
 publication, so their cleanup can inspect the committed scene.
+Admission checks that borrow an importer keep that owner until context locks
+are released. Releasing its last external handle during a check therefore
+leaves its host resource cleanup free to inspect the source scene, including
+when allocating the rejection diagnostic fails.
 
 `scene_edit::validate() const` preflights the same checks as `commit()`:
 previous mutation errors, consumed edits, declaration compatibility, node

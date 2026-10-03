@@ -380,3 +380,7 @@ add_test(NAME sai_val_stable_diagnostic COMMAND x3d_sai_experimental_tests
     "--test-case=authoring validation reports stable cycle endpoints")
 set_tests_properties(sai_val_no_secret_repair sai_val_stable_diagnostic
     PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_life_import_retirement COMMAND x3d_sai_callback_lifecycle_tests
+    "--test-case=import retention releases temporary owners after unlocking")
+set_tests_properties(sai_life_import_retirement PROPERTIES TIMEOUT 15)

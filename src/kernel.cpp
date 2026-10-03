@@ -20,6 +20,13 @@ namespace x3d::sai::experimental {
 
 namespace {
 
+// Authority comparisons must not borrow foreign owners inside internal locks.
+template <class Control>
+bool same_owner(const std::weak_ptr<Control> &candidate,
+                const std::shared_ptr<Control> &owner) noexcept {
+  return !candidate.owner_before(owner) && !owner.owner_before(candidate);
+}
+
 unexpected descriptor_error(error_code code, std::string operation,
                             std::string message) {
   sai_error error;
@@ -617,13 +624,19 @@ find_node_reference(const detail::context_control &context,
   return std::nullopt;
 }
 
-std::optional<std::string>
-find_live_import_reference(const detail::context_control &source,
-                           node_id target) {
+std::optional<std::string> find_live_import_reference(
+    const detail::context_control &source, node_id target,
+    std::vector<std::shared_ptr<detail::context_control>> &retained_importers) {
   for (const auto &dependent : source.import_dependents) {
-    const auto importer = dependent.importer.lock();
-    if (dependent.target == target && importer &&
-        importer->active.load(std::memory_order_acquire) &&
+    if (dependent.target != target)
+      continue;
+    // Allocate the slot before acquiring an owner. It then outlives the
+    // caller's lock even when allocation of the returned name or diagnostic
+    // fails.
+    retained_importers.emplace_back();
+    auto &importer = retained_importers.back();
+    importer = dependent.importer.lock();
+    if (importer && importer->active.load(std::memory_order_acquire) &&
         importer->generation == dependent.importer_generation)
       return dependent.local_name;
   }
@@ -1288,6 +1301,7 @@ result<void> scene_edit::remove_node(const node &target) {
         impl_->base->revision, blocker->message, target.id_, blocker->field);
     return *impl_->poison;
   }
+  std::vector<std::shared_ptr<detail::context_control>> retained_importers;
   {
     std::lock_guard lock(impl_->context->mutex);
     if (const auto blocker =
@@ -1297,8 +1311,8 @@ result<void> scene_edit::remove_node(const node &target) {
           impl_->base->revision, blocker->message, target.id_, blocker->field);
       return *impl_->poison;
     }
-    if (const auto imported =
-            find_live_import_reference(*impl_->context, target.id_)) {
+    if (const auto imported = find_live_import_reference(
+            *impl_->context, target.id_, retained_importers)) {
       impl_->poison =
           edit_error(error_code::node_in_use, "scene_edit.remove_node",
                      *impl_->context, impl_->base->revision,
@@ -3486,7 +3500,8 @@ struct edit_admission {
   std::vector<std::shared_ptr<detail::context_control>> import_sources;
   std::vector<std::shared_ptr<detail::context_control>> dependency_sources;
   std::vector<std::shared_ptr<detail::context_control>> lock_order;
-  // Release locks before any pinned source can run its resource destructors.
+  std::vector<std::shared_ptr<detail::context_control>> retained_importers;
+  // Release locks before any pinned context can run its resource destructors.
   std::vector<std::unique_lock<std::mutex>> locks;
 };
 
@@ -3580,8 +3595,8 @@ result<edit_admission> validate_edit(const detail::scene_edit_control &edit,
                         edit.base->revision, blocker->message, node_id{id},
                         blocker->field);
     }
-    if (const auto imported =
-            find_live_import_reference(*edit.context, node_id{id})) {
+    if (const auto imported = find_live_import_reference(
+            *edit.context, node_id{id}, admission.retained_importers)) {
       return edit_error(error_code::node_in_use, operation, *edit.context,
                         edit.base->revision,
                         "node acquired a committed import aperture while its "
@@ -3596,8 +3611,8 @@ result<edit_admission> validate_edit(const detail::scene_edit_control &edit,
                         edit.base->revision, blocker->message, node_id{removed},
                         blocker->field);
     }
-    if (const auto imported =
-            find_live_import_reference(*edit.context, node_id{removed})) {
+    if (const auto imported = find_live_import_reference(
+            *edit.context, node_id{removed}, admission.retained_importers)) {
       return edit_error(error_code::node_in_use, operation, *edit.context,
                         edit.base->revision,
                         "node acquired a committed import aperture while its "
@@ -3661,7 +3676,7 @@ result<change_set> scene_edit::commit() {
       continue;
     auto updated = source->import_dependents;
     std::erase_if(updated, [&](const auto &dependent) {
-      return dependent.importer.lock() == impl_->context &&
+      return same_owner(dependent.importer, impl_->context) &&
              dependent.importer_generation == impl_->context->generation;
     });
     for (std::size_t index = 0; index < impl_->staged.imports.size(); ++index) {
@@ -4928,7 +4943,7 @@ result<subscription> execution_context::observe(const dynamic_field &source,
         control_->state->revision, "execution context is no longer active",
         source.node_, source.name_);
   }
-  if (source.context_.lock() != control_ ||
+  if (!same_owner(source.context_, control_) ||
       source.generation_ != control_->generation) {
     return edit_error(error_code::invalid_context,
                       "execution_context.observe_event", *control_,
@@ -5129,7 +5144,7 @@ result<void> replace_world_locked(
   if (!replacement)
     return descriptor_error(error_code::stale_handle, "browser.replace_world",
                             "replacement context is empty");
-  if (replacement->owner.lock() != browser)
+  if (!same_owner(replacement->owner, browser))
     return descriptor_error(error_code::invalid_context,
                             "browser.replace_world",
                             "replacement context belongs to another browser");
