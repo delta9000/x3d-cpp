@@ -252,3 +252,8 @@ target_compile_features(x3d_sai_experimental_generated_example PRIVATE
     cxx_std_20)
 add_test(NAME sai_generated_author_inspect
     COMMAND x3d_sai_experimental_generated_example)
+
+add_test(NAME sai_id_unpublished_nodes COMMAND x3d_sai_experimental_tests
+    "--test-case=unpublished node handles never alias committed creations")
+add_test(NAME sai_id_unpublished_declarations COMMAND x3d_sai_experimental_tests
+    "--test-case=unpublished declaration handles never alias committed declarations")

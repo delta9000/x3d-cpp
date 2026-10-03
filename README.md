@@ -43,6 +43,9 @@ semantic model, and the generator version.
 
 The proposal makes these design choices executable:
 
+- Node and declaration identities are reserved from non-reusing context-owned
+  counters, including creations in abandoned, poisoned, and conflicting edits.
+  A handle from an unpublished creation never resolves to a different object.
 - `node_id` is semantic identity; an `occurrence` is an ordered containment
   edge with its own parent, field, index, and path.
 - An `execution_context` owns one generation. `scene_snapshot` is immutable;
