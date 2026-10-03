@@ -2,7 +2,7 @@
 title: X3D 4.0 Requirements Audit
 summary: Published Full-profile requirements, implementation evidence, missing behavior, and acceptance work at a8aefc5.
 tags: [conformance, audit, requirements]
-updated: 2026-09-28
+updated: 2026-10-02
 ---
 
 # X3D 4.0 requirements audit
@@ -1449,3 +1449,47 @@ items; this register is not a measured percentage of specification compliance.
 After integrating H-Anim PRs #126 and #127, the regenerated combined register
 contains 297 findings: 37 open or deferred and 260 closed. The earlier count
 above records the audit branch before those five H-Anim findings were added.
+
+## Interchange reference host acceptance (2026-10-02)
+
+The closeout target is the headless CPU reference host, reading X3D 4.0 XML,
+with the stb image decoder and curl asset adapters enabled. Build and exercise
+that configuration with `mise run interchange`. `mise run ci-all` supplies the
+shared runtime, codec, event, sanitizer and example-consumer gates. This is
+implementation acceptance against Annex B of ISO/IEC 19775-1:2023; no external
+certification is asserted. Dynamic CLI runs use `--animate --fps 30 --duration 1
+--frames-dir <directory>` to attach the standard runtime and advance events;
+without `--animate`, the executable exports one static snapshot. The earlier Full-profile audit remains historical
+evidence and does not describe the current CPU host in every detail.
+
+| Requirement | Concrete implementation and acceptance evidence |
+|---|---|
+| Core 1, metadata and field events | Generated nodes and shared reflection/event engine; codec, field-write and ROUTE alias regression suites. `interchange_test` exercises 50-byte DEF names, 30,000-byte SFString, ten 30,000-byte MFStrings, and the numeric MF storage minima through FieldValueIO. |
+| Time 1 and Interpolation 2 | Standard runtime TimeSensor and interpolator registration; time-origin, cycle/pause/stop and interpolation regression suites. A capacity case drives a fraction through 1,000 keys with 15,000 coordinates per key and checks the emitted array. |
+| Grouping 1 | SceneExtractor walks Group/Transform and updates descendants after events. Acceptance extracts 500 children and retains all output items. UNIT tests cover authored translation, rotation and subsequent writes. |
+| Rendering 3, Geometry3D 2 | MeshBuilder plus CPU triangle/line/point paths. Acceptance checks emitted indices at the TriangleSet/fan/strip, indexed triangle/fan/strip, line and point minima, and 5,000 ten-vertex IFS faces with 65,535 coordinate/texture-coordinate entries. Existing geometry tests cover primitive meshes, normals, winding and default UVs. |
+| Shape 1 and Lighting 1 | Material descriptors feed unlit/Phong shading, including material-free textured Appearance. Eight authored lights survive alongside the headlight. Ambient emission remains independent of direct light intensity. CPU triangle queries apply shadows, shadowIntensity, castShadow and visibility; rendered assertions include equivalent small/large scenes. The Interchange minimum does not require interactive navigation. |
+| Texturing 2 and explicit Annex B nodes | PNG/JPEG fetched bytes and 512×512 PixelTexture with transparent/opaque pixels; all coordinate-generator modes; boundary/filter/mipmap state; per-channel and named UV transforms, including live transform and nested coordinate/generator edits. MultiTexture combines every listed mode and source/function control. Annex B explicitly includes MultiTexture despite the Texturing component-level mismatch, so both the conformance view and CLI include that node exception. |
+| Networking 1 / URL fields | CPU host composes confined file, HTTP/HTTPS and FTP adapters with ordered texture URL fallback. Curl backend tests exercise HTTP failure/redirect/address policies and successful passive FTP, including byte limits and case-insensitive schemes. Decode tests use PNG/JPEG bytes with misleading URL extensions. Private network destinations remain an explicit embedder policy opt-in. |
+| Navigation 1 / EnvironmentalEffects 1 | Existing bindable stack, Viewpoint projection, NavigationInfo headlight and Background presentation. Background angle UNIT conversion now joins the existing viewpoint/geometry/texture-transform conversions. Optional presentation fields retain shared field-change event handling. |
+
+The headless executable has no interactive navigation controls: it does not use
+`NavigationInfo.avatarSize`, `speed` or `type` for user movement, and does not use
+`Viewpoint.description` or `WorldInfo.info/title` for a user interface. These are
+optional or ignored presentation fields in Annex B; their stored values and
+field-change events remain available in the shared runtime. Geometry bbox hints
+are not used to override computed mesh bounds.
+
+The CPU uses deterministic Perlin noise and refract-based mapping for generator
+modes whose published definitions leave algorithm details unspecified. For the
+contradictory MultiTexture entries, REPLACE selects the stage texture and
+SELECTARG2 selects the previous result. These interpretations are tested and
+recorded in the ledger; they should accompany interoperability reports.
+
+Open global findings TXF-2, REQ-MULTITEXTURE and REQ-SHADOW now describe the
+OpenGL PoC's remaining gaps. They do not negate the CPU implementations above.
+REQ-UNIT remains open for dimensional fields outside this checked profile and
+for writing a scene after runtime normalization while preserving authoring
+units. This host acceptance covers reading and presentation; it does not make
+an authoring, JSON, ClassicVRML, SAI or Full-profile claim. FTP was incorrectly
+classified as Full-only in the earlier audit; Annex B.6 requires it too.

@@ -140,6 +140,101 @@ class TestServer {
   int port_ = 0;
 };
 
+// Passive FTP fixture: exercises libcurl's control and data connections.
+class FtpServer {
+public:
+  FtpServer() {
+    fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    assert(::bind(fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) == 0);
+    assert(::listen(fd_, 8) == 0);
+    socklen_t len = sizeof(addr);
+    assert(::getsockname(fd_, reinterpret_cast<sockaddr *>(&addr), &len) == 0);
+    port = ntohs(addr.sin_port);
+    thread_ = std::thread([this] { serve(); });
+  }
+  ~FtpServer() {
+    running_ = false;
+    ::shutdown(fd_, SHUT_RDWR);
+    ::close(fd_);
+    if (thread_.joinable())
+      thread_.join();
+  }
+  int port;
+
+private:
+  void serve() {
+    while (running_) {
+      int c = ::accept(fd_, nullptr, nullptr);
+      if (c < 0)
+        break;
+      auto send = [c](const std::string &s) {
+        ::send(c, s.data(), s.size(), MSG_NOSIGNAL);
+      };
+      send("220 fixture\r\n");
+      int data = -1;
+      std::string line;
+      char ch;
+      while (::recv(c, &ch, 1, 0) == 1) {
+        line += ch;
+        if (ch != '\n')
+          continue;
+        if (line.rfind("USER", 0) == 0)
+          send("331 password\r\n");
+        else if (line.rfind("PASS", 0) == 0)
+          send("230 logged in\r\n");
+        else if (line.rfind("PWD", 0) == 0)
+          send("257 \"/\"\r\n");
+        else if (line.rfind("EPSV", 0) == 0) {
+          data = ::socket(AF_INET, SOCK_STREAM, 0);
+          sockaddr_in a{};
+          a.sin_family = AF_INET;
+          a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+          assert(::bind(data, reinterpret_cast<sockaddr *>(&a), sizeof(a)) ==
+                 0);
+          assert(::listen(data, 1) == 0);
+          socklen_t len = sizeof(a);
+          assert(::getsockname(data, reinterpret_cast<sockaddr *>(&a), &len) ==
+                 0);
+          send("229 Entering Extended Passive Mode (|||" +
+               std::to_string(ntohs(a.sin_port)) + "|)\r\n");
+        } else if (line.rfind("SIZE", 0) == 0)
+          send("213 5\r\n");
+        else if (line.rfind("RETR", 0) == 0) {
+          if (line.find("missing") != std::string::npos)
+            send("550 not found\r\n");
+          else {
+            send("150 opening\r\n");
+            int d = ::accept(data, nullptr, nullptr);
+            if (d >= 0) {
+              ::send(d, "hello", 5, MSG_NOSIGNAL);
+              ::close(d);
+            }
+            send("226 complete\r\n");
+          }
+          if (data >= 0) {
+            ::close(data);
+            data = -1;
+          }
+        } else if (line.rfind("QUIT", 0) == 0) {
+          send("221 goodbye\r\n");
+          break;
+        } else
+          send("200 ok\r\n");
+        line.clear();
+      }
+      if (data >= 0)
+        ::close(data);
+      ::close(c);
+    }
+  }
+  int fd_;
+  std::atomic<bool> running_{true};
+  std::thread thread_;
+};
+
 }  // namespace
 
 int main() {
@@ -213,5 +308,20 @@ int main() {
     assert(resolved(base + "/loop", AssetKind::Texture).failed());
   }
 
+  FtpServer ftp;
+  const std::string ftpUrl =
+      "ftp://127.0.0.1:" + std::to_string(ftp.port) + "/hello";
+  assert(makeFtpResolver()(ftpUrl, AssetKind::Texture).failed());
+  HttpResolverOptions ftpOptions;
+  ftpOptions.allowPrivateNetworks = true;
+  auto ftpFetch = makeFtpResolver(ftpOptions);
+  auto fetched = ftpFetch(ftpUrl, AssetKind::Texture);
+  assert(fetched.ready());
+  assert(std::string(fetched.bytes.begin(), fetched.bytes.end()) == "hello");
+  assert(ftpFetch("FTP" + ftpUrl.substr(3), AssetKind::Texture).ready());
+  assert(ftpFetch("http://127.0.0.1/", AssetKind::Texture).failed());
+  assert(ftpFetch(ftpUrl + "missing", AssetKind::Texture).failed());
+  ftpOptions.maxBytes = 4;
+  assert(makeFtpResolver(ftpOptions)(ftpUrl, AssetKind::Texture).failed());
   return 0;
 }

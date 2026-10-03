@@ -112,9 +112,15 @@ to both faces in either consumer.
 
 - A material-borne texture slot (`Material.diffuseTexture`, `PhysicalMaterial.baseTexture`, etc.) wins.
 - ONLY when no material slot is populated is `Appearance.texture` surfaced as `Slot::BaseColor`.
-- `MultiTexture` in any slot expands to one `TextureRef` per channel, each carrying its stage index in `channel`.
+- `MultiTexture` in any slot expands to one `TextureRef` per channel, each initially carrying its stage index in `channel`. Enrichment resolves named mapping labels to geometry UV channels while retaining authored stage order.
 
 Each `TextureRef` carries `texCoordMapping` (the X3D v4 `xxxTextureMapping` field value, empty = UV set 0).  `mappingOf(materialNode, textureFieldName)` reads the mapping by constructing `fieldName + "Mapping"` and using the reflection layer — no generated-node dependency.
+
+The CPU consumes these mappings for every material slot, including ambient and
+shininess textures. Ambient texture RGB modulates ambient colour; shininess texture
+alpha modulates the specular exponent. Material-free Appearance textures render
+through the unlit Emissive slot. See [Texture extraction](extract-textures.md)
+for coordinate generators and MultiTexture operators.
 
 ## ORM channel-packing and the AO source (MAT-008, MAT-011)
 

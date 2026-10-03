@@ -217,17 +217,57 @@ inline void applyTextureTransformsToMesh(
   if (params.empty()) return;
   if (mesh.texcoordSets.empty() && !mesh.texcoords.empty())
     mesh.texcoordSets.push_back(mesh.texcoords);
-  for (std::size_t i = 0; i < params.size() && i < mesh.texcoordSets.size(); ++i) {
-    if (isIdentityTextureTransform(params[i])) continue;
+  for (std::size_t i = 0; i < mesh.texcoordSets.size(); ++i) {
+    if (params.size() != 1 && i >= params.size())
+      continue;
+    const auto &transform = params[params.size() == 1 ? 0 : i];
+    if (isIdentityTextureTransform(transform))
+      continue;
     for (SFVec2f &uv : mesh.texcoordSets[i]) {
       const std::array<float, 2> r =
-          applyTextureTransform(uv.x, uv.y, params[i]);
+          applyTextureTransform(uv.x, uv.y, transform);
       uv.x = r[0];
       uv.y = r[1];
     }
   }
   if (!mesh.texcoordSets.empty())
     mesh.texcoords = mesh.texcoordSets[0];
+}
+
+// X3D 4 material mapping labels select coordinates and transforms separately.
+// Align named transforms with the geometry's UV-set order before baking.
+inline std::vector<TextureTransform2DParams>
+textureTransformsForGeometry(const X3DNode *appearance, const X3DNode *geom) {
+  auto params = textureTransformParamsListOf(appearance);
+  if (!appearance || !geom)
+    return params;
+  auto tt = geombounds::getNode(*appearance, "textureTransform");
+  auto tc = geombounds::getNode(*geom, "texCoord");
+  if (!tt || !tc || tt->nodeTypeName() != "MultiTextureTransform")
+    return params;
+  auto transforms = geombounds::getField<MFNode>(*tt, "textureTransform", {});
+  bool named =
+      std::any_of(transforms.begin(), transforms.end(), [](const auto &n) {
+        return n && !geombounds::getField<SFString>(*n, "mapping", {}).empty();
+      });
+  if (!named)
+    return params;
+  MFNode coordinates = tc->nodeTypeName() == "MultiTextureCoordinate"
+                           ? geombounds::getField<MFNode>(*tc, "texCoord", {})
+                           : MFNode{tc};
+  std::vector<TextureTransform2DParams> out(coordinates.size());
+  for (std::size_t i = 0; i < coordinates.size(); ++i) {
+    if (!coordinates[i])
+      continue;
+    auto label = geombounds::getField<SFString>(*coordinates[i], "mapping", {});
+    for (std::size_t j = 0; j < transforms.size(); ++j)
+      if (transforms[j] && geombounds::getField<SFString>(
+                               *transforms[j], "mapping", {}) == label) {
+        out[i] = params[j];
+        break;
+      }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,12 +359,21 @@ inline ExtendedSamplerParams extendedSamplerOf(const std::shared_ptr<x3d::nodes:
 // Sets *has=true only when a generator is present; otherwise *has=false and the
 // returned (default-Sphere) descriptor must be ignored.
 // ---------------------------------------------------------------------------
-inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has) {
+inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has,
+                                     int channel = 0) {
   using namespace texextract;
   TexCoordGenDesc d;
   if (has) *has = false;
   if (!geom) return d;
   auto tc = geombounds::getNode(*geom, "texCoord");
+  if (tc && tc->nodeTypeName() == "MultiTextureCoordinate") {
+    const auto children = geombounds::getField<MFNode>(*tc, "texCoord", {});
+    if (children.empty())
+      return d;
+    const auto index = std::min(static_cast<std::size_t>(std::max(channel, 0)),
+                                children.size() - 1);
+    tc = children[index];
+  }
   if (!tc || tc->nodeTypeName() != "TextureCoordinateGenerator") return d;
   d.mode = genModeFromToken(enumToken(*tc, "mode", "SPHERE"));
   d.parameter = geombounds::getField<std::vector<float>>(*tc, "parameter", {});
@@ -402,17 +451,39 @@ inline void resolveTextureRefs(
 // or nullptr); pass an empty vector to skip the sampler enrichment (the legacy
 // SamplerParams on each ref still stands).
 // ---------------------------------------------------------------------------
-inline void enrichTextureRefs(std::vector<TextureRef> &refs,
-                              const std::vector<std::shared_ptr<x3d::nodes::X3DNode>> &texNodes,
-                              const x3d::nodes::X3DNode *geom) {
+inline void enrichTextureRefs(
+    std::vector<TextureRef> &refs,
+    const std::vector<std::shared_ptr<x3d::nodes::X3DNode>> &texNodes,
+    const x3d::nodes::X3DNode *geom,
+    const x3d::nodes::X3DNode *appearance = nullptr) {
   bool hasGen = false;
-  TexCoordGenDesc gen = texCoordGenOf(geom, &hasGen);
+  const auto transforms = textureTransformsForGeometry(appearance, geom);
   for (std::size_t i = 0; i < refs.size(); ++i) {
     if (i < texNodes.size() && texNodes[i])
       refs[i].extSampler = extendedSamplerOf(texNodes[i]);
+    if (geom && !refs[i].texCoordMapping.empty()) {
+      auto tc = geombounds::getNode(*geom, "texCoord");
+      if (tc && tc->nodeTypeName() == "MultiTextureCoordinate") {
+        auto sets = geombounds::getField<MFNode>(*tc, "texCoord", {});
+        refs[i].channel = 0;
+        for (std::size_t j = 0; j < sets.size(); ++j)
+          if (sets[j] &&
+              geombounds::getField<SFString>(*sets[j], "mapping", {}) ==
+                  refs[i].texCoordMapping) {
+            refs[i].channel = static_cast<int>(j);
+            break;
+          }
+      }
+    }
+    auto gen = texCoordGenOf(geom, &hasGen, refs[i].channel);
     if (hasGen) {
       refs[i].hasTexCoordGen = true;
       refs[i].texCoordGen = gen;
+      if (transforms.size() == 1)
+        refs[i].generatedTransform = transforms[0];
+      else if (refs[i].channel >= 0 &&
+               static_cast<std::size_t>(refs[i].channel) < transforms.size())
+        refs[i].generatedTransform = transforms[refs[i].channel];
     }
   }
 }

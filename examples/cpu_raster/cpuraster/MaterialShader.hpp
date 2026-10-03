@@ -34,15 +34,18 @@ namespace x3d::cpuraster {
 namespace ex = x3d::runtime::extract;
 
 // A light reduced to what the lit/pbr shaders consume, in eye space, with the
-// RGB color premultiplied by intensity. Mirrors the PoC's EyeLight, extended to
-// carry positional (PointLight/SpotLight) lights as well as directional ones.
+// raw RGB color and separate direct intensity. Mirrors the PoC's EyeLight,
+// extended to carry positional (PointLight/SpotLight) lights as well as
+// directional ones.
 //
 //   * Directional (positional=false): `dirEye` is the eye-space direction of
 //     TRAVEL; the light vector L = normalize(-dirEye) is constant per fragment.
 //   * Positional (positional=true): `posEye` is the eye-space light position;
 //     per fragment L = normalize(posEye - fragPosEye), with X3D distance
-//     attenuation 1/max(c0 + c1·d + c2·d², 1) and no contribution past `radius`.
-//   * Spot (isSpot=true): additionally cones the contribution about `spotDirEye`
+//     attenuation 1/max(c0 + c1·d + c2·d², 1) and no contribution past
+//     `radius`.
+//   * Spot (isSpot=true): additionally cones the contribution about
+//   `spotDirEye`
 //     (eye-space beam axis, direction of travel) — full inside `beamWidth`,
 //     linear falloff to zero at `cutOffAngle` (radians).
 struct EyeLight {
@@ -59,6 +62,8 @@ struct EyeLight {
   glsl::vec3 spotDirEye{0, 0, -1};
   float beamWidth = 1.5708f;
   float cutOffAngle = 0.7854f;
+  std::function<float(const glsl::vec3 &)> shadowVisibility;
+  float intensity = 1; // Direct emission; ambientIntensity is independent.
 };
 
 // The bound Fog reduced to what the fragment shaders consume (§24.4.2). The
@@ -94,7 +99,7 @@ inline bool resolveLight(const EyeLight &Lt, const glsl::vec3 &posEye,
                          glsl::vec3 &L, float &atten) {
   if (!Lt.positional) {
     L = glsl::normalize(-Lt.dirEye);
-    atten = 1.0f;
+    atten = Lt.shadowVisibility ? Lt.shadowVisibility(posEye) : 1.0f;
     return true;
   }
   const glsl::vec3 toLight = Lt.posEye - posEye;
@@ -114,55 +119,132 @@ inline bool resolveLight(const EyeLight &Lt, const glsl::vec3 &posEye,
     if (ang > Lt.beamWidth && Lt.cutOffAngle > Lt.beamWidth)
       atten *= (Lt.cutOffAngle - ang) / (Lt.cutOffAngle - Lt.beamWidth);
   }
+  if (Lt.shadowVisibility)
+    atten *= Lt.shadowVisibility(posEye);
   return true;
 }
 } // namespace detail
 
+struct TextureCoordinates {
+  int channel = 0;
+  bool hasGenerator = false;
+  ex::TexCoordGenDesc generator;
+  ex::TextureTransform2DParams generatedTransform;
+  TextureCoordinates() = default;
+  explicit TextureCoordinates(const ex::TextureRef &r)
+      : channel(r.channel), hasGenerator(r.hasTexCoordGen),
+        generator(r.texCoordGen), generatedTransform(r.generatedTransform) {}
+};
+struct TextureSampleCoordinates {
+  glsl::vec2 uv, dx, dy;
+};
+
 // The texture set a material can bind, pre-resolved to CPU samplers with the
 // correct color space per slot (matches the PoC's sRGB-vs-linear bind rules).
 struct MaterialTextures {
-  Texture base;      // BaseColor/Diffuse — sRGB.
+  Texture base;      // Stable sampler binding for interpreted author shaders.
   Texture normal;    // Normal map — linear.
   Texture emissive;  // Emissive — sRGB.
   Texture specular;  // Specular — sRGB.
   Texture mr;        // MetallicRoughness — G=roughness, B=metallic (linear).
   Texture occlusion; // Occlusion — R channel (linear); AO source (§12.4.6).
+  Texture ambient, shininess;
+  std::array<TextureCoordinates,
+             static_cast<std::size_t>(ex::TextureRef::Slot::Ambient) + 1>
+      coordinates;
   // §18.4.3 MultiTexture: the ordered stages bound to the base-colour slot,
-  // combined by detail::combineBaseStages. Empty for an ordinary single texture
-  // (which still binds `base`). MODULATE with a white FACTOR reduces to the
+  // combined by detail::combineBaseStages. A single texture is one stage.
+  // MODULATE with a white FACTOR reduces to the
   // previous single-texture multiply, so a one-stage scene is unchanged.
   struct MultiStage {
     Texture tex;
+    TextureCoordinates coordinates;
     std::string mode = "MODULATE"; // §18.4.3 mode; OpenGL TexEnv operator.
     std::string source;            // DEFAULT/DIFFUSE/SPECULAR/FACTOR.
     std::string function;          // COMPLEMENT/ALPHAREPLICATE.
     glsl::vec4 factor{1, 1, 1, 1}; // MultiTexture color.rgb + alpha.
   };
   std::vector<MultiStage> baseStages;
-  // §18.4.8 TextureCoordinateGenerator: when set, UVs are generated per fragment
-  // from eye-space state rather than the authored texcoords. Applies to the
-  // textured-surface coordinate set (base/emissive/specular). TXF-2 covers the
-  // view-dependent modes: SPHERE / CAMERASPACENORMAL / CAMERASPACEPOSITION /
-  // CAMERASPACEREFLECTIONVECTOR / COORD-EYE.
-  bool hasTexCoordGen = false;
-  ex::TexCoordGenMode texCoordGenMode = ex::TexCoordGenMode::Sphere;
 };
 
 namespace detail {
-// §18.4.8 TextureCoordinateGenerator UVs from eye-space state. `normalEye` is the
-// camera-space normal (normalized and face-corrected below); `posEye` is the
-// camera-space position (eye at the origin, so normalize(-posEye) = fragment→eye).
-//   SPHERE                      : u = Nx/2+0.5, v = Ny/2+0.5.
-//   CAMERASPACENORMAL           : (Nx, Ny).
-//   CAMERASPACEPOSITION/COORD-EYE: (Px, Py).
-//   CAMERASPACEREFLECTIONVECTOR : R = reflect(−E, N) = 2·dot(E,N)·N − E → (Rx, Ry).
-// Local, noise and refraction modes still use the legacy SPHERE fallback.
-inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode, const glsl::vec3 &posEye,
-                                const glsl::vec3 &normalEye, bool frontFacing) {
+// Deterministic 3D gradient noise with Perlin's quintic interpolation.
+// Table 18.6 specifies Perlin solid noise, but no seed or gradient table.
+inline float perlinNoise(glsl::vec3 p, unsigned seed) {
+  auto lattice = [](float x) {
+    return static_cast<int>(std::floor(std::fmod(x, 256.0f)));
+  };
+  int ix = lattice(p.x), iy = lattice(p.y), iz = lattice(p.z);
+  float x = p.x - std::floor(p.x), y = p.y - std::floor(p.y),
+        z = p.z - std::floor(p.z);
+  auto fade = [](float t) { return t * t * t * (t * (t * 6 - 15) + 10); };
+  auto mix = [](float a, float b, float t) { return a + (b - a) * t; };
+  auto grad = [seed](int a, int b, int c, float dx, float dy, float dz) {
+    unsigned h = (static_cast<unsigned>(a) & 255u) * 374761393u ^
+                 (static_cast<unsigned>(b) & 255u) * 668265263u ^
+                 (static_cast<unsigned>(c) & 255u) * 2246822519u ^ seed;
+    h = (h ^ (h >> 13)) * 1274126177u;
+    h = (h ^ (h >> 16)) & 15u;
+    float u = h < 8 ? dx : dy;
+    float v = h < 4 ? dy : (h == 12 || h == 14 ? dx : dz);
+    return ((h & 1u) ? -u : u) + ((h & 2u) ? -v : v);
+  };
+  float a[2];
+  for (int k = 0; k < 2; ++k) {
+    float b[2];
+    for (int j = 0; j < 2; ++j)
+      b[j] = mix(grad(ix, iy + j, iz + k, x, y - j, z - k),
+                 grad(ix + 1, iy + j, iz + k, x - 1, y - j, z - k), fade(x));
+    a[k] = mix(b[0], b[1], fade(y));
+  }
+  return mix(a[0], a[1], fade(z));
+}
+
+// §18.4.8 Table 18.6. Local modes use geometry coordinates, independently
+// of the placement/camera. Refraction follows Snell's law (eta is the authored
+// ratio); absent eta defaults to 1. Total internal reflection returns zero.
+inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode,
+                                const glsl::vec3 &posEye,
+                                const glsl::vec3 &normalEye, bool frontFacing,
+                                const glsl::vec3 &posLocal = {},
+                                const glsl::vec3 &normalLocal = {0, 0, 1},
+                                const std::vector<float> &parameters = {}) {
   using Mode = ex::TexCoordGenMode;
   glsl::vec3 n = glsl::normalize(normalEye);
   if (!frontFacing) n = -n;
+  auto parameter = [&](std::size_t i, float fallback) {
+    return i < parameters.size() ? parameters[i] : fallback;
+  };
+  glsl::vec3 nl = glsl::normalize(normalLocal);
+  if (!frontFacing)
+    nl = -nl;
   switch (mode) {
+  case Mode::SphereLocal:
+    return {nl.x * 0.5f + 0.5f, nl.y * 0.5f + 0.5f};
+  case Mode::Coord:
+    return {posLocal.x, posLocal.y};
+  case Mode::Noise:
+  case Mode::NoiseEye: {
+    glsl::vec3 p = mode == Mode::Noise ? posLocal : posEye;
+    p = p * glsl::vec3{parameter(0, 1), parameter(1, 1), parameter(2, 1)} +
+        glsl::vec3{parameter(3, 0), parameter(4, 0), parameter(5, 0)};
+    return {perlinNoise(p, 0), perlinNoise(p, 1013)};
+  }
+  case Mode::SphereReflect:
+  case Mode::SphereReflectLocal: {
+    const bool local = mode == Mode::SphereReflectLocal;
+    glsl::vec3 incident = glsl::normalize(
+        local ? posLocal - glsl::vec3{parameter(1, 0), parameter(2, 0),
+                                      parameter(3, 0)}
+              : posEye);
+    glsl::vec3 normal = -(local ? nl : n);
+    float eta = parameter(0, 1), d = glsl::dot(normal, incident);
+    float k = 1 - eta * eta * (1 - d * d);
+    glsl::vec3 v = k < 0 ? glsl::vec3{}
+                         : incident * eta - normal * (eta * d + std::sqrt(k));
+    return {v.x, v.y};
+  }
+
     case Mode::Sphere:
       return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f};
     case Mode::CameraSpaceNormal:
@@ -198,30 +280,28 @@ inline MaterialTextures buildTextures(const ex::MaterialDesc &m, bool linearWork
   MaterialTextures tx;
   using Slot = ex::TextureRef::Slot;
   const bool colour = linearWorkflow;
-  // §18.4.3 MultiTexture: gather every base-colour-slot stage in channel order.
+  // §18.4.3 MultiTexture: preserve authored stage order; channel selects UVs.
   // A plain single texture yields a one-stage list, and MODULATE-with-white
   // reproduces the old `base = base * texel` path exactly.
   std::vector<const ex::TextureRef *> baseRefs;
   for (const ex::TextureRef &t : m.textures)
-    if (t.slot == Slot::BaseColor || t.slot == Slot::Diffuse) baseRefs.push_back(&t);
-  std::stable_sort(baseRefs.begin(), baseRefs.end(),
-                   [](const ex::TextureRef *a, const ex::TextureRef *b) {
-                     return a->channel < b->channel;
-                   });
+    if (t.slot == Slot::BaseColor || t.slot == Slot::Diffuse ||
+        (m.model == ex::MaterialModel::Unlit && t.slot == Slot::Emissive))
+      baseRefs.push_back(&t);
   for (const ex::TextureRef *r : baseRefs) {
     MaterialTextures::MultiStage st;
     st.tex = Texture::fromRef(*r, colour);
+    st.coordinates = TextureCoordinates(*r);
     st.mode = r->multiMode;
     st.source = r->multiSource;
     st.function = r->multiFunction;
     st.factor = {r->multiColor.r, r->multiColor.g, r->multiColor.b, r->multiAlpha};
     tx.baseStages.push_back(std::move(st));
   }
-  if (!baseRefs.empty()) {
+  if (!tx.baseStages.empty())
     tx.base = tx.baseStages.front().tex;
-    tx.hasTexCoordGen = baseRefs.front()->hasTexCoordGen;
-    tx.texCoordGenMode = baseRefs.front()->texCoordGen.mode;
-  }
+  for (const auto &r : m.textures)
+    tx.coordinates[static_cast<std::size_t>(r.slot)] = TextureCoordinates(r);
   if (const auto *r = findSlot(m, {Slot::Normal}))
     tx.normal = Texture::fromRef(*r, /*srgb=*/false);
   if (const auto *r = findSlot(m, {Slot::Emissive}))
@@ -232,6 +312,10 @@ inline MaterialTextures buildTextures(const ex::MaterialDesc &m, bool linearWork
     tx.mr = Texture::fromRef(*r, /*srgb=*/false);
   if (const auto *r = findSlot(m, {Slot::Occlusion}))
     tx.occlusion = Texture::fromRef(*r, /*srgb=*/false);
+  if (const auto *r = findSlot(m, {Slot::Ambient}))
+    tx.ambient = Texture::fromRef(*r, false);
+  if (const auto *r = findSlot(m, {Slot::Shininess}))
+    tx.shininess = Texture::fromRef(*r, false);
   return tx;
 }
 
@@ -250,7 +334,8 @@ inline glsl::vec4 clamp01(const glsl::vec4 &v) {
           glsl::clampf(v.z, 0.0f, 1.0f), glsl::clampf(v.w, 0.0f, 1.0f)};
 }
 inline glsl::vec4 multiCombine(const std::string &mode, const std::string &func,
-                               const glsl::vec4 &arg1, const glsl::vec4 &arg2) {
+                               const glsl::vec4 &arg1, const glsl::vec4 &arg2,
+                               float diffuseAlpha = 1, float factorAlpha = 1) {
   glsl::vec4 r;
   if (mode == "OFF") r = arg2;                                    // texture disabled
   else if (mode == "REPLACE" || mode == "SELECTARG1") r = arg1;
@@ -261,39 +346,121 @@ inline glsl::vec4 multiCombine(const std::string &mode, const std::string &func,
   else if (mode == "ADDSIGNED") r = arg1 + arg2 - glsl::vec4(0.5f);
   else if (mode == "ADDSIGNED2X") r = (arg1 + arg2 - glsl::vec4(0.5f)) * 2.0f;
   else if (mode == "SUBTRACT") r = arg1 - arg2;
+  else if (mode == "ADDSMOOTH")
+    r = arg1 + arg2 - arg1 * arg2;
+  else if (mode == "BLENDDIFFUSEALPHA" || mode == "BLENDTEXTUREALPHA" ||
+           mode == "BLENDFACTORALPHA" || mode == "BLENDCURRENTALPHA") {
+    float alpha = mode == "BLENDDIFFUSEALPHA"   ? diffuseAlpha
+                  : mode == "BLENDTEXTUREALPHA" ? arg1.w
+                  : mode == "BLENDFACTORALPHA"  ? factorAlpha
+                                                : arg2.w;
+    r = arg1 * alpha + arg2 * (1 - alpha);
+  } else if (mode == "MODULATEALPHA_ADDCOLOR")
+    r = glsl::vec4(arg1.xyz() + arg2.xyz() * arg1.w, arg1.w * arg2.w);
+  else if (mode == "MODULATEINVALPHA_ADDCOLOR")
+    r = glsl::vec4(arg1.xyz() + arg2.xyz() * (1 - arg1.w), arg1.w * arg2.w);
+  else if (mode == "MODULATEINVCOLOR_ADDALPHA")
+    r = glsl::vec4((glsl::vec3(1) - arg1.xyz()) * arg2.xyz() +
+                       glsl::vec3(arg1.w),
+                   arg1.w * arg2.w);
+  else if (mode == "DOTPRODUCT3")
+    r = glsl::vec4(glsl::dot(arg1.xyz() * 2 - glsl::vec3(1),
+                             arg2.xyz() * 2 - glsl::vec3(1)));
   else r = arg1 * arg2; // MODULATE, the §18.4.3 default (and any unknown token).
   if (func == "COMPLEMENT") r = glsl::vec4(1.0f) - r;         // (1 - x)
   else if (func == "ALPHAREPLICATE") r = glsl::vec4(r.w);     // a -> rgb
   return clamp01(r);
 }
-// `source` selects how the stage texel forms arg1 (convention, see finding):
-// DEFAULT uses the texel; DIFFUSE premultiplies by the surface diffuse colour;
-// SPECULAR by the surface specular colour; FACTOR by the MultiTexture
-// color/alpha. alpha is taken from the texel (unscaled except for FACTOR).
-inline glsl::vec4 multiArg1(const MaterialTextures::MultiStage &st,
-                            const glsl::vec4 &texel, const glsl::vec3 &diffuse,
-                            const glsl::vec3 &specular) {
+// §18.4.3 source selects ARG2, replacing the previous stage colour.
+inline glsl::vec4 multiArg2(const MaterialTextures::MultiStage &st,
+                            const glsl::vec4 &previous,
+                            const glsl::vec3 &diffuse,
+                            const glsl::vec3 &specular, float alpha) {
   if (st.source == "FACTOR")
-    return {texel.x * st.factor.x, texel.y * st.factor.y, texel.z * st.factor.z,
-            texel.w * st.factor.w};
+    return st.factor;
   if (st.source == "SPECULAR")
-    return {texel.x * specular.x, texel.y * specular.y, texel.z * specular.z, texel.w};
+    return {specular, alpha};
   if (st.source == "DIFFUSE")
-    return {texel.x * diffuse.x, texel.y * diffuse.y, texel.z * diffuse.z, texel.w};
-  return texel; // DEFAULT / empty.
+    return {diffuse, alpha};
+  return previous;
 }
+inline TextureSampleCoordinates
+textureCoordinates(const TextureCoordinates &source, const FragmentInput &f) {
+  auto stageUv = f.texcoord, stageDx = f.dTexDx, stageDy = f.dTexDy;
+  if (!f.texcoordSets.empty()) {
+    auto index = std::min(static_cast<std::size_t>(std::max(source.channel, 0)),
+                          f.texcoordSets.size() - 1);
+    stageUv = f.texcoordSets[index];
+    if (index < f.dTexSetsDx.size())
+      stageDx = f.dTexSetsDx[index];
+    if (index < f.dTexSetsDy.size())
+      stageDy = f.dTexSetsDy[index];
+  }
+  if (source.hasGenerator) {
+    auto generated = [&](glsl::vec3 pe, glsl::vec3 ne, glsl::vec3 pl,
+                         glsl::vec3 nl) {
+      auto uv = texCoordGenUv(source.generator.mode, pe, ne, f.frontFacing, pl,
+                              nl, source.generator.parameter);
+      auto t = ex::applyTextureTransform(uv.x, uv.y, source.generatedTransform);
+      return glsl::vec2{t[0], t[1]};
+    };
+    stageUv = generated(f.posEye, f.normalEye, f.posLocal, f.normalLocal);
+    stageDx = generated(f.posEye + f.dPosEyeDx, f.normalEye + f.dNormalEyeDx,
+                        f.posLocal + f.dPosLocalDx,
+                        f.normalLocal + f.dNormalLocalDx) -
+              stageUv;
+    stageDy = generated(f.posEye + f.dPosEyeDy, f.normalEye + f.dNormalEyeDy,
+                        f.posLocal + f.dPosLocalDy,
+                        f.normalLocal + f.dNormalLocalDy) -
+              stageUv;
+  }
+  return {stageUv, stageDx, stageDy};
+}
+inline TextureSampleCoordinates textureCoordinates(const MaterialTextures &tx,
+                                                   ex::TextureRef::Slot slot,
+                                                   const FragmentInput &f) {
+  return textureCoordinates(tx.coordinates[static_cast<std::size_t>(slot)], f);
+}
+inline glsl::vec4 sampleTexture(const Texture &texture,
+                                const MaterialTextures &tx,
+                                ex::TextureRef::Slot slot,
+                                const FragmentInput &f) {
+  const auto coordinates = textureCoordinates(tx, slot, f);
+  return texture.sample(coordinates.uv, coordinates.dx, coordinates.dy);
+}
+
 // Fold every base-colour stage into `initial` (the surface base colour) and
 // return the combined RGBA. An empty stage list returns `initial` unchanged.
 inline glsl::vec4 combineBaseStages(const MaterialTextures &tx,
                                     const glsl::vec4 &initial,
-                                    const glsl::vec2 &uv,
+                                    const FragmentInput &f,
                                     const glsl::vec3 &diffuse,
                                     const glsl::vec3 &specular) {
   glsl::vec4 acc = initial;
   for (const auto &st : tx.baseStages) {
     // An unresolved/multisource stage samples white, so MODULATE is a no-op.
-    acc = multiCombine(st.mode, st.function,
-                       multiArg1(st, st.tex.sample(uv), diffuse, specular), acc);
+    const auto coordinates = textureCoordinates(st.coordinates, f);
+    const auto texel =
+        st.tex.sample(coordinates.uv, coordinates.dx, coordinates.dy);
+    const auto arg2 = multiArg2(st, acc, diffuse, specular, initial.w);
+    const auto comma = st.mode.find(',');
+    if (comma == std::string::npos)
+      acc = multiCombine(st.mode, st.function, texel, arg2, initial.w,
+                         st.factor.w);
+    else {
+      auto trim = [](std::string token) {
+        auto begin = token.find_first_not_of(" ");
+        return begin == std::string::npos
+                   ? std::string{}
+                   : token.substr(begin,
+                                  token.find_last_not_of(" ") - begin + 1);
+      };
+      auto rgb = multiCombine(trim(st.mode.substr(0, comma)), st.function,
+                              texel, arg2, initial.w, st.factor.w);
+      auto alpha = multiCombine(trim(st.mode.substr(comma + 1)), st.function,
+                                texel, arg2, initial.w, st.factor.w);
+      acc = {rgb.xyz(), alpha.w};
+    }
   }
   return acc;
 }
@@ -302,13 +469,17 @@ inline glsl::vec4 combineBaseStages(const MaterialTextures &tx,
 // approach in lit.frag/pbr.frag (no precomputed tangents). Returns the perturbed
 // eye-space normal, or Ngeo unchanged when the UV jacobian is degenerate.
 inline glsl::vec3 applyNormalMap(const FragmentInput &f, glsl::vec3 Ngeo,
-                                 const Texture &normalTex, float normalScale) {
+                                 const Texture &normalTex, float normalScale,
+                                 const TextureSampleCoordinates &coordinates) {
   if (!normalTex.valid()) return Ngeo;
-  glsl::vec3 tsN = normalTex.sample(f.texcoord).xyz() * 2.0f - glsl::vec3(1.0f);
+  glsl::vec3 tsN =
+      normalTex.sample(coordinates.uv, coordinates.dx, coordinates.dy).xyz() *
+          2.0f -
+      glsl::vec3(1.0f);
   tsN.x *= normalScale;
   tsN.y *= normalScale;
   tsN = glsl::normalize(tsN);
-  const glsl::vec2 dUVdx = f.dTexDx, dUVdy = f.dTexDy;
+  const glsl::vec2 dUVdx = coordinates.dx, dUVdy = coordinates.dy;
   const float det = dUVdx.x * dUVdy.y - dUVdx.y * dUVdy.x;
   if (std::fabs(det) <= 1e-6f) return Ngeo;
   glsl::vec3 T = glsl::normalize(
@@ -350,8 +521,8 @@ inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors,
     glsl::vec3 rgb = hasColors ? f.color.xyz() : baseColor.xyz();
     float a = hasColors ? f.color.w : baseColor.w;
     if (!tx.baseStages.empty()) { // §18.4.3 MultiTexture.
-      glsl::vec4 c = detail::combineBaseStages(tx, glsl::vec4(rgb, a), f.texcoord,
-                                               rgb, glsl::vec3(1.0f));
+      glsl::vec4 c = detail::combineBaseStages(tx, glsl::vec4(rgb, a), f, rgb,
+                                               glsl::vec3(1.0f));
       rgb = c.xyz();
       a = c.w;
     }
@@ -384,49 +555,71 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
   const MaterialTextures tx = buildTextures(m, /*linearWorkflow=*/false);
 
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
-    const glsl::vec2 uv =
-        tx.hasTexCoordGen
-            ? detail::texCoordGenUv(tx.texCoordGenMode, f.posEye, f.normalEye,
-                                    f.frontFacing)
-            : f.texcoord;
     glsl::vec3 base = hasColors ? f.color.xyz() : uDiffuse.xyz();
     float alpha = uDiffuse.w;
     if (!tx.baseStages.empty()) { // §18.4.3 MultiTexture (one stage == old path).
       glsl::vec4 c = detail::combineBaseStages(
-          tx, glsl::vec4(base, alpha), uv,
+          tx, glsl::vec4(base, alpha), f,
           hasColors ? f.color.xyz() : uDiffuse.xyz(), uSpecular);
       base = c.xyz();
       alpha = c.w;
     }
-    if (maskMode && alpha < alphaCutoff) return false; // MASK discard.
+    if (maskMode && alpha < alphaCutoff)
+      return false; // MASK discard.
 
     glsl::vec3 Ngeo = glsl::normalize(f.normalEye);
-    if (!f.frontFacing) Ngeo = -Ngeo;
-    glsl::vec3 N = detail::applyNormalMap(f, Ngeo, tx.normal, normalScale);
+    if (!f.frontFacing)
+      Ngeo = -Ngeo;
+    glsl::vec3 N = detail::applyNormalMap(
+        f, Ngeo, tx.normal, normalScale,
+        detail::textureCoordinates(tx, ex::TextureRef::Slot::Normal, f));
 
     glsl::vec3 emissive = uEmissive;
-    if (tx.emissive.valid()) emissive = emissive * tx.emissive.sample(uv).xyz();
+    if (tx.emissive.valid())
+      emissive =
+          emissive * detail::sampleTexture(tx.emissive, tx,
+                                           ex::TextureRef::Slot::Emissive, f)
+                         .xyz();
     glsl::vec3 specCol = uSpecular;
-    if (tx.specular.valid()) specCol = specCol * tx.specular.sample(uv).xyz();
+    if (tx.specular.valid())
+      specCol =
+          specCol * detail::sampleTexture(tx.specular, tx,
+                                          ex::TextureRef::Slot::Specular, f)
+                        .xyz();
 
     const glsl::vec3 V = glsl::normalize(-f.posEye);
-    const float expo = glsl::maxf(uShininess * 128.0f, 1.0f);
+    const float textureShininess =
+        tx.shininess.valid()
+            ? detail::sampleTexture(tx.shininess, tx,
+                                    ex::TextureRef::Slot::Shininess, f)
+                  .w
+            : 1;
+    const auto textureAmbient =
+        tx.ambient.valid()
+            ? detail::sampleTexture(tx.ambient, tx,
+                                    ex::TextureRef::Slot::Ambient, f)
+                  .xyz()
+            : glsl::vec3(1);
+    const float expo = glsl::maxf(uShininess * textureShininess * 128.0f, 1.0f);
     glsl::vec3 lit = emissive;
     for (const EyeLight &Lt : lights) {
       glsl::vec3 L;
       float atten;
-      if (!detail::resolveLight(Lt, f.posEye, L, atten)) continue;
+      if (!detail::resolveLight(Lt, f.posEye, L, atten))
+        continue;
       // §17 ambient: light.ambientIntensity × ambientParameter, where
       // ambientParameter = material ambientIntensity × diffuseParameter (the
       // textured/vertex-coloured base) — linear in diffuse (ADR-0027). Gated by
       // attenuation/spot like the light's other terms.
-      lit = lit + (base * ai) * Lt.color * (Lt.ambientIntensity * atten);
+      lit = lit + (base * ai * textureAmbient) * Lt.color *
+                      (Lt.ambientIntensity * atten);
       float ndl = glsl::maxf(glsl::dot(N, L), 0.0f);
-      lit = lit + base * Lt.color * (ndl * atten);
+      lit = lit + base * Lt.color * (Lt.intensity * ndl * atten);
       if (ndl > 0.0f) {
         glsl::vec3 H = glsl::normalize(L + V);
         float ndh = glsl::maxf(glsl::dot(N, H), 0.0f);
-        lit = lit + specCol * Lt.color * (std::pow(ndh, expo) * atten);
+        lit = lit +
+              specCol * Lt.color * (Lt.intensity * std::pow(ndh, expo) * atten);
       }
     }
     // §17: fog is the final step, in the shader's output (display) space.
@@ -457,25 +650,26 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
   const MaterialTextures tx = buildTextures(m, /*linearWorkflow=*/true);
 
   return [=](const FragmentInput &f, glsl::vec4 &out) -> bool {
-    // §18.4.8 generated UV for the base colour when the geometry bound a
-    // TextureCoordinateGenerator. ORM/occlusion stay on the authored coords (they
-    // are packed material maps, not a reflection set).
-    const glsl::vec2 uv =
-        tx.hasTexCoordGen
-            ? detail::texCoordGenUv(tx.texCoordGenMode, f.posEye, f.normalEye,
-                                    f.frontFacing)
-            : f.texcoord;
+    // Each texture slot selects its mapped/authored/generated coordinates.
     glsl::vec4 baseCol = uBaseColor;
-    if (hasColors) { baseCol.x = f.color.x; baseCol.y = f.color.y; baseCol.z = f.color.z; }
+    if (hasColors) {
+      baseCol.x = f.color.x;
+      baseCol.y = f.color.y;
+      baseCol.z = f.color.z;
+    }
     if (!tx.baseStages.empty()) // §18.4.3 MultiTexture (one stage == old path).
-      baseCol = detail::combineBaseStages(tx, baseCol, uv, baseCol.xyz(),
+      baseCol = detail::combineBaseStages(tx, baseCol, f, baseCol.xyz(),
                                           glsl::vec3(1.0f));
     float alpha = baseCol.w;
-    if (maskMode && alpha < alphaCutoff) return false; // MASK.
+    if (maskMode && alpha < alphaCutoff)
+      return false; // MASK.
 
     float metallic = uMetallic, roughness = uRoughness;
     if (tx.mr.valid()) {
-      glsl::vec3 orm = tx.mr.sample(f.texcoord).xyz();
+      glsl::vec3 orm =
+          detail::sampleTexture(tx.mr, tx,
+                                ex::TextureRef::Slot::MetallicRoughness, f)
+              .xyz();
       roughness *= orm.y; // G
       metallic *= orm.z;  // B
     }
@@ -488,12 +682,18 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
     // explicitly ORM-packed (the extractor emits no such marker, so we never
     // derive AO from tx.mr). Matches pbr.frag.
     float ao = 1.0f;
-    if (tx.occlusion.valid()) ao = tx.occlusion.sample(f.texcoord).x;
+    if (tx.occlusion.valid())
+      ao = detail::sampleTexture(tx.occlusion, tx,
+                                 ex::TextureRef::Slot::Occlusion, f)
+               .x;
     ao = glsl::mixf(1.0f, ao, occlusionStrength);
 
     glsl::vec3 Ngeo = glsl::normalize(f.normalEye);
-    if (!f.frontFacing) Ngeo = -Ngeo;
-    glsl::vec3 N = detail::applyNormalMap(f, Ngeo, tx.normal, normalScale);
+    if (!f.frontFacing)
+      Ngeo = -Ngeo;
+    glsl::vec3 N = detail::applyNormalMap(
+        f, Ngeo, tx.normal, normalScale,
+        detail::textureCoordinates(tx, ex::TextureRef::Slot::Normal, f));
 
     const glsl::vec3 V = glsl::normalize(-f.posEye);
     const float NdV = glsl::maxf(glsl::dot(N, V), 0.0f);
@@ -501,19 +701,25 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
     const glsl::vec3 diffColor = (1.0f - metallic) * baseCol.xyz();
 
     glsl::vec3 emissive = uEmissive;
-    if (tx.emissive.valid()) emissive = emissive * tx.emissive.sample(uv).xyz();
+    if (tx.emissive.valid())
+      emissive =
+          emissive * detail::sampleTexture(tx.emissive, tx,
+                                           ex::TextureRef::Slot::Emissive, f)
+                         .xyz();
 
     glsl::vec3 color = emissive;
     for (const EyeLight &Lt : lights) {
       glsl::vec3 L;
       float atten;
-      if (!detail::resolveLight(Lt, f.posEye, L, atten)) continue;
+      if (!detail::resolveLight(Lt, f.posEye, L, atten))
+        continue;
       // §17.2.2.4 per-light ambient (normal-independent, so applied before the
       // NdL gate below). PhysicalMaterial has no ambientIntensity field, so the
       // ambient surface is diffColor; gated by attenuation/spot like the rest.
       color = color + diffColor * Lt.color * (Lt.ambientIntensity * atten);
       float NdL = glsl::maxf(glsl::dot(N, L), 0.0f);
-      if (NdL <= 0.0f) continue;
+      if (NdL <= 0.0f)
+        continue;
       glsl::vec3 H = glsl::normalize(L + V);
       float NdH = glsl::maxf(glsl::dot(N, H), 0.0f);
       float VdH = glsl::maxf(glsl::dot(V, H), 0.0f);
@@ -522,7 +728,8 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
       glsl::vec3 F = detail::F_Schlick(VdH, F0);
       glsl::vec3 spec = D * Vis * F;
       glsl::vec3 kD = (glsl::vec3(1.0f) - F) * (1.0f - metallic);
-      color = color + (kD * diffColor / detail::kPI + spec) * Lt.color * (NdL * atten);
+      color = color + (kD * diffColor / detail::kPI + spec) * Lt.color *
+                          (Lt.intensity * NdL * atten);
     }
     color = color + 0.03f * diffColor * ao; // small ambient term (pbr.frag).
     color = glsl::linearToSRGB(color);

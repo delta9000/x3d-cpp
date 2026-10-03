@@ -577,7 +577,8 @@ int cmdValidate(const std::vector<std::string> &args) {
 
     // ── Profile-fit ───────────────────────────────────────────────────────────
     profile_fit::ComponentUsage usage = profile_fit::sceneComponentUsage(doc.scene);
-    const profile_fit::ProfileDef *minProf = profile_fit::findMinimalProfile(usage);
+    const profile_fit::ProfileDef *minProf =
+        profile_fit::findMinimalProfile(usage, &doc.scene);
     std::string profileFitName = minProf ? minProf->name : "unknown (exceeds Full)";
 
     // Check declared profile vs minimal required.
@@ -593,22 +594,28 @@ int cmdValidate(const std::vector<std::string> &args) {
     if (declProf) {
         // Walk scene to find nodes that exceed the declared profile.
         for (const auto &[comp, lvl] : usage) {
-            if (!profile_fit::allowedInProfile(*declProf, comp, lvl)) {
-                // Which node types in the scene use this component?
-                auto types = profile_fit::nodeTypeNamesForComponent(doc.scene, comp);
-                std::string nodeList;
-                for (size_t i = 0; i < types.size() && i < 3; ++i) {
-                    if (i) nodeList += ", ";
-                    nodeList += types[i];
-                }
-                if (types.size() > 3) nodeList += ", ...";
-
-                std::string msg = "component " + comp + ":" + std::to_string(lvl)
-                                + " exceeds declared profile " + declaredProfile;
-                if (!nodeList.empty()) msg += " (nodes: " + nodeList + ")";
-                diags.push_back({"profile", "error", msg});
-                if (!nodeList.empty()) exceedances.push_back(nodeList);
+          if (!profile_fit::allowedInProfile(*declProf, comp, lvl,
+                                             &doc.scene)) {
+            // Which node types in the scene use this component?
+            auto types =
+                profile_fit::nodeTypeNamesForComponent(doc.scene, comp);
+            std::string nodeList;
+            for (size_t i = 0; i < types.size() && i < 3; ++i) {
+              if (i)
+                nodeList += ", ";
+              nodeList += types[i];
             }
+            if (types.size() > 3)
+              nodeList += ", ...";
+
+            std::string msg = "component " + comp + ":" + std::to_string(lvl) +
+                              " exceeds declared profile " + declaredProfile;
+            if (!nodeList.empty())
+              msg += " (nodes: " + nodeList + ")";
+            diags.push_back({"profile", "error", msg});
+            if (!nodeList.empty())
+              exceedances.push_back(nodeList);
+          }
         }
     }
 

@@ -396,3 +396,28 @@ TEST_CASE("interpolator_initial_value_readback") {
   splineSystem.attach(&spline, ctx);
   CHECK(feq(spline.getValue_changed(), 5.0f));
 }
+
+TEST_CASE("Interchange capacity: 1000 keys with 15000 coordinates per key") {
+  CoordinateInterpolator coord;
+  MFFloat keys(1000);
+  MFVec3f values(1000 * 15000);
+  for (std::size_t k = 0; k < keys.size(); ++k) {
+    keys[k] = float(k) / 999;
+    for (std::size_t j = 0; j < 15000; ++j)
+      values[k * 15000 + j] = SFVec3f{keys[k], float(j), 0};
+  }
+  coord.setKey(std::move(keys));
+  coord.setKeyValue(std::move(values));
+  X3DExecutionContext ctx;
+  MultiInterpolatorSystem<CoordinateInterpolator, SFVec3f> system(
+      [](const SFVec3f &a, const SFVec3f &b, float t) {
+        return lerpVec3(a, b, t);
+      });
+  system.attach(&coord, ctx);
+  post(ctx, &coord, 0.5f);
+  const auto output = coord.getValue_changed();
+  REQUIRE(output.size() == 15000);
+  CHECK(feq(output.front().x, 0.5f));
+  CHECK(feq(output.back().x, 0.5f));
+  CHECK(feq(output.back().y, 14999));
+}

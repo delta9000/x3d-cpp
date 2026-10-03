@@ -1,8 +1,8 @@
-// Texture.hpp — a CPU sampler2D for the rasterizer. Builds an RGBA8 surface from
-// the extraction seam's two inline pixel sources (PixelTexture SFImage, or an
-// embedder-resolved TexturePixels via TextureRef::resolvedPixels) and samples it
-// with bilinear filtering + repeat/clamp/mirror/border wrap, origin bottom-left
-// (X3D == GL, NO V-flip — same invariant the PoC honors).
+// Texture.hpp — a CPU sampler2D for the rasterizer. Builds an RGBA8 surface
+// from the extraction seam's two inline pixel sources (PixelTexture SFImage, or
+// an embedder-resolved TexturePixels via TextureRef::resolvedPixels) and
+// samples it with bilinear filtering + repeat/clamp/mirror/border wrap, origin
+// bottom-left (X3D == GL, NO V-flip — same invariant the PoC honors).
 //
 // SAMPLER STATE: the §18.4.9 wrap/filter modes the extractor surfaces on
 // TextureRef::extSampler are honored: REPEAT, CLAMP, CLAMP_TO_EDGE,
@@ -11,14 +11,15 @@
 // filtering CLAMP and CLAMP_TO_BOUNDARY let the outermost taps read the border
 // colour, so CLAMP differs from CLAMP_TO_EDGE near the edge.
 // Magnification NEAREST_PIXEL/FASTEST selects nearest-neighbor fetch;
-// AVG_PIXEL/NICEST/DEFAULT stay bilinear. MIPMAPPING (the minification filters)
-// is deliberately UNIMPLEMENTED — the CPU sampler has a single mip level.
+// AVG_PIXEL/NICEST/DEFAULT stay bilinear. Footprint-aware minification uses
+// optional generated mipmaps and up to 16 anisotropic samples.
 //
-// sRGB: color slots (BaseColor/Diffuse/Emissive/Specular) are authored sRGB; the
-// PoC uploads them as GL_SRGB8_ALPHA8 so the GPU linearises on sample and the
-// shaders read linear. We replicate that by decoding sRGB→linear AT SAMPLE TIME
-// when `srgb` is set, so the ported shaders need no in-shader pow(2.2) (matching
-// the GL path exactly). Data textures (Normal/ORM/Occlusion) sample raw (linear).
+// sRGB: color slots (BaseColor/Diffuse/Emissive/Specular) are authored sRGB;
+// the PoC uploads them as GL_SRGB8_ALPHA8 so the GPU linearises on sample and
+// the shaders read linear. We replicate that by decoding sRGB→linear AT SAMPLE
+// TIME when `srgb` is set, so the ported shaders need no in-shader pow(2.2)
+// (matching the GL path exactly). Data textures (Normal/ORM/Occlusion) sample
+// raw (linear).
 //
 // Out-of-SDK consumer code. namespace x3d::cpuraster.
 #ifndef X3D_CPURASTER_TEXTURE_HPP
@@ -43,6 +44,9 @@ public:
     ex::BoundaryMode wrapT = ex::BoundaryMode::Repeat;
     glsl::vec4 borderColor{0.0f, 0.0f, 0.0f, 0.0f}; // CLAMP_TO_BOUNDARY border.
     bool nearestMagnification = false;
+    ex::MinFilter minification = ex::MinFilter::Default;
+    bool generateMipmaps = false;
+    float anisotropy = 1;
   };
 
   Texture() = default;
@@ -69,6 +73,37 @@ public:
     t.sampler_ = sampler;
     t.srgb_ = srgb;
     t.data_.assign(rgba, rgba + static_cast<std::size_t>(w) * h * 4);
+    if (sampler.generateMipmaps) {
+      const Texture *previous = &t;
+      while (previous->w_ > 1 || previous->h_ > 1) {
+        Texture level;
+        level.w_ = std::max(1, previous->w_ / 2);
+        level.h_ = std::max(1, previous->h_ / 2);
+        level.srgb_ = srgb;
+        level.sampler_ = sampler;
+        level.sampler_.generateMipmaps = false;
+        level.data_.resize(static_cast<std::size_t>(level.w_) * level.h_ * 4);
+        for (int y = 0; y < level.h_; ++y)
+          for (int x = 0; x < level.w_; ++x)
+            for (int c = 0; c < 4; ++c) {
+              unsigned sum = 0;
+              for (int j = 0; j < 2; ++j)
+                for (int i = 0; i < 2; ++i)
+                  sum +=
+                      previous->data_[(static_cast<std::size_t>(std::min(
+                                           previous->h_ - 1, 2 * y + j)) *
+                                           previous->w_ +
+                                       std::min(previous->w_ - 1, 2 * x + i)) *
+                                          4 +
+                                      c];
+              level
+                  .data_[(static_cast<std::size_t>(y) * level.w_ + x) * 4 + c] =
+                  static_cast<std::uint8_t>((sum + 2) / 4);
+            }
+        t.mipmaps_.push_back(std::move(level));
+        previous = &t.mipmaps_.back();
+      }
+    }
     return t;
   }
 
@@ -149,6 +184,26 @@ public:
     return lerp(a, b, ty);
   }
 
+  // Footprint-aware §18.4.9 filtering. Maximum supported anisotropy is 16.
+  glsl::vec4 sample(glsl::vec2 uv, glsl::vec2 dx, glsl::vec2 dy) const {
+    if (!valid())
+      return {1, 1, 1, 1};
+    float lx = std::sqrt(dx.x * dx.x * w_ * w_ + dx.y * dx.y * h_ * h_);
+    float ly = std::sqrt(dy.x * dy.x * w_ * w_ + dy.y * dy.y * h_ * h_);
+    float major = std::max(lx, ly), minor = std::max(std::min(lx, ly), 1.0f);
+    if (major <= 1)
+      return sample(uv);
+    int taps = static_cast<int>(std::ceil(
+        std::min(major / minor, std::clamp(sampler_.anisotropy, 1.0f, 16.0f))));
+    float lod = std::log2(std::max(major / taps, 1.0f));
+    auto axis = lx >= ly ? dx : dy;
+    glsl::vec4 result{};
+    for (int i = 0; i < taps; ++i)
+      result =
+          result + sampleMinified(uv + axis * ((i + 0.5f) / taps - 0.5f), lod);
+    return result * (1.0f / taps);
+  }
+
   // Map a §18.4.9 sampler descriptor onto the CPU sampler state.
   static Sampler samplerOf(const ex::TextureRef &ref) {
     Sampler s;
@@ -157,10 +212,47 @@ public:
     const auto &c = ref.extSampler.borderColor;
     s.borderColor = {c.r, c.g, c.b, c.a};
     s.nearestMagnification = magIsNearest(ref.extSampler.magnificationFilter);
+    s.minification = ref.extSampler.minificationFilter;
+    s.generateMipmaps = ref.extSampler.generateMipmaps;
+    s.anisotropy = ref.extSampler.anisotropicDegree;
     return s;
   }
 
 private:
+  glsl::vec4 sampleMinified(glsl::vec2 uv, float lod) const {
+    using F = ex::MinFilter;
+    F f = sampler_.minification;
+    bool nearest = f == F::NearestPixel || f == F::NearestPixelAvgMipmap ||
+                   f == F::NearestPixelNearestMipmap || f == F::Fastest;
+    bool mip = f == F::AvgPixelAvgMipmap || f == F::AvgPixelNearestMipmap ||
+               f == F::NearestPixelAvgMipmap ||
+               f == F::NearestPixelNearestMipmap;
+    bool linearMip = f == F::AvgPixelAvgMipmap || f == F::NearestPixelAvgMipmap;
+    auto at = [&](int i) {
+      const Texture &level =
+          i == 0 ? *this : mipmaps_[static_cast<std::size_t>(i - 1)];
+      float x = wrapf(uv.x, level.sampler_.wrapS, level.w_) * level.w_ - 0.5f;
+      float y = wrapf(uv.y, level.sampler_.wrapT, level.h_) * level.h_ - 0.5f;
+      if (nearest)
+        return level.texel(static_cast<int>(std::floor(x + 0.5f)),
+                           static_cast<int>(std::floor(y + 0.5f)));
+      int ix = static_cast<int>(std::floor(x)),
+          iy = static_cast<int>(std::floor(y));
+      return lerp(
+          lerp(level.texel(ix, iy), level.texel(ix + 1, iy), x - ix),
+          lerp(level.texel(ix, iy + 1), level.texel(ix + 1, iy + 1), x - ix),
+          y - iy);
+    };
+    if (!mip || mipmaps_.empty())
+      return at(0);
+    lod = std::clamp(lod, 0.0f, static_cast<float>(mipmaps_.size()));
+    if (!linearMip)
+      return at(static_cast<int>(std::floor(lod + 0.5f)));
+    int low = static_cast<int>(std::floor(lod));
+    return lerp(at(low),
+                at(std::min(low + 1, static_cast<int>(mipmaps_.size()))),
+                lod - low);
+  }
   // NEAREST_PIXEL / FASTEST fetch the nearest texel; AVG_PIXEL / NICEST /
   // DEFAULT interpolate (bilinear).
   static bool magIsNearest(ex::MagFilter f) {
@@ -240,6 +332,7 @@ private:
   int w_ = 0, h_ = 0;
   bool srgb_ = false;
   Sampler sampler_;
+  std::vector<Texture> mipmaps_;
   std::vector<std::uint8_t> data_; // RGBA8, bottom-left origin.
 };
 

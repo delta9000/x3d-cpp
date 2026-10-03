@@ -396,3 +396,11 @@ run = "uv run --group docs mkdocs serve"
 [tasks.docs-build]
 description = "Build the wiki with --strict (fails on broken internal links / nav orphans). The wiki's golden gate."
 run = "uv run --group docs mkdocs build --strict"
+
+[tasks.interchange]
+description = "Build the CPU reference host with PNG/JPEG and file/HTTP/FTP, then run its acceptance and backend suites."
+run = """
+cmake -S . -B build-cpuraster -G Ninja -DX3D_CPP_BUILD_CPURASTER=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CURL=ON
+cmake --build build-cpuraster --target x3d_cpu_raster x3d_cpuraster_tests x3d_assetresolver_backend_a_test
+ctest --test-dir build-cpuraster -R '^(x3d_cpuraster_.*_test|x3d_assetresolver_backend_a)$' --output-on-failure
+"""

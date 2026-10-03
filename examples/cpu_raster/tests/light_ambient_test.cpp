@@ -89,6 +89,12 @@ int main() {
     CHECK(ambientLuma(lights(1.0f), 0.0f) < 0.01f);
   }
 
+  // Direct intensity must not suppress ambient emission (§17.2.1.1).
+  auto ambientOnly = directional(1);
+  ambientOnly.intensity = 0;
+  CHECK(ambientLuma(render_detail::buildEyeLights({ambientOnly}, view, false),
+                    0.2f) > 0.1f);
+
   // ---- (a) headlight independence ----
   {
     // No scene lights, headlight on (default) => the headlight alone.
@@ -102,12 +108,11 @@ int main() {
     CHECK(render_detail::buildEyeLights({directional(0.0f)}, view, false)
               .size() == 1);
 
-    // The headlight never starves itself out of the 8-slot cap: 8 authored
-    // lights + headlight still keeps the headlight (7 authored + headlight).
+    // Annex B.6: eight authored lights remain available with the headlight.
     std::vector<ex::LightDesc> many;
     for (int i = 0; i < 8; ++i) many.push_back(directional(0.0f));
     auto capped = render_detail::buildEyeLights(many, view, true);
-    CHECK(capped.size() == 8);
+    CHECK(capped.size() == 9);
     // §23.4.4 pins the headlight ambientIntensity to 0.0; it is appended last.
     CHECK(capped.back().ambientIntensity == 0.0f);
   }

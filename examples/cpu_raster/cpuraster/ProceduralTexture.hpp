@@ -193,14 +193,20 @@ inline bool writePpm(const std::string &path, const ex::TexturePixels &t) {
 
 // A TextureResolver bound to a scene dir: "proc:<name>" -> generated; "*.ppm" ->
 // decoded file; anything else -> Failed (flat-color fallback).
-inline ex::TextureResolver makeTextureResolver(const std::string &sceneDir) {
+inline ex::TextureResolver makeTextureResolver(const std::string &sceneDir,
+                                               ex::AssetResolver fetch = {}) {
   // PNG/JPEG decode is delegated to the SDK's TextureResolver decode-seam
   // backend (x3d_stb, ADR-0024) — same vendored stb_image, bottom-left origin,
   // no parallel decoder. proc:/.ppm stay built-in (synthetic + dependency-free).
-  ex::TextureResolver stb = x3d::runtime::io::stb::makeStbTextureResolver();
-  return [sceneDir, stb](const std::string &url) -> ex::TexturePixelResult {
+  ex::TextureResolver stb =
+      fetch ? x3d::runtime::io::stb::makeStbTextureResolver(fetch)
+            : x3d::runtime::io::stb::makeStbTextureResolver();
+  return [sceneDir, stb,
+          fetch](const std::string &url) -> ex::TexturePixelResult {
     if (url.rfind("proc:", 0) == 0)
       return ex::TexturePixelResult::makeReady(makeNamed(url.substr(5)));
+    if (fetch)
+      return stb(url);
     auto ends = [&](const char *s) {
       const std::string e(s);
       return url.size() >= e.size() && url.compare(url.size() - e.size(), e.size(), e) == 0;
@@ -212,7 +218,8 @@ inline ex::TextureResolver makeTextureResolver(const std::string &sceneDir) {
       return p.rgba.empty() ? ex::TexturePixelResult::makeFailed()
                             : ex::TexturePixelResult::makeReady(std::move(p));
     }
-    if (ends(".png") || ends(".jpg") || ends(".jpeg")) return stb(path);
+    if (ends(".png") || ends(".jpg") || ends(".jpeg"))
+      return stb(path);
     return ex::TexturePixelResult::makeFailed();
   };
 }

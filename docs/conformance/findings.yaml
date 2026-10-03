@@ -1218,7 +1218,7 @@
   severity: minor
   status: fixed
   summary: CPU reference sampler honored only repeat/clamp — MIRRORED_REPEAT and CLAMP_TO_BOUNDARY were ignored and the magnification filter was not applied.
-  note: "The extractor already surfaces the full §18.4.9 sampler (extendedSamplerOf); the CPU sampler (examples/cpu_raster/cpuraster/Texture.hpp) now honors REPEAT/CLAMP/CLAMP_TO_EDGE/CLAMP_TO_BOUNDARY (border color = the TextureProperties default 0,0,0,0 — borderColor is not extracted) and MIRRORED_REPEAT, and applies the magnification filter (NEAREST_PIXEL/FASTEST nearest; AVG_PIXEL/NICEST/DEFAULT bilinear). Mipmapping (the minification filters) remains unimplemented — the sampler has a single mip level. Regression: x3d_cpuraster_texture_render_test."
+  note: "CPU Texture.hpp consumes all extracted boundary modes and borderColor, magnification and minification filters, generateMipMaps and anisotropy (supported maximum 16). Generated box-filter mip levels use nearest/bilinear selection and nearest/trilinear mip selection; absent mipmaps fall back to the corresponding base-level filter. Derivatives are perspective-correct per UV channel and are recomputed for procedural coordinates. Tests: texture_render_test and interchange_test. Scope is the CPU reference sampler, not the OpenGL PoC. (2026-10-02)"
 - id: TXF-1
   nodes: [TextureTransform, Box, Sphere, Cone, Cylinder]
   component: Texturing
@@ -1233,8 +1233,8 @@
   clause: "18.4.8"
   severity: major
   status: open
-  summary: Reference consumers implement only a subset of TextureCoordinateGenerator modes and paths.
-  note: "Reopened after checking all Table 18.6 modes. CPU Phong/PBR supports SPHERE, CAMERASPACENORMAL, CAMERASPACEPOSITION, CAMERASPACEREFLECTIONVECTOR and COORD-EYE (TXF-4 corrects the last two). SPHERE-LOCAL, COORD, NOISE, NOISE-EYE, SPHERE-REFLECT and SPHERE-REFLECT-LOCAL still use the CPU SPHERE fallback and ignore parameters; CPU unlit bypasses generation. The PoC lit.vert handles the original four camera-space modes per vertex, but reflection still uses the reversed eye vector; main.cpp maps COORD-EYE and the other unsupported modes to authored UVs. This is partial render-time support, not full node conformance. CPU regression: examples/cpu_raster/tests/texcoord_gen_test.cpp. (2026-09-30)"
+  summary: The CPU reference host implements all TextureCoordinateGenerator modes; the OpenGL PoC still implements a subset.
+  note: "CPU unlit, Phong and PBR select coordinates independently for each texture stage and material slot. All eleven Table 18.6 modes consume local/eye positions and normals, noise scale/translation and refraction parameters; generated coordinates receive the matching TextureTransform. Deterministic 3D Perlin noise and refract-based mapping are documented implementation choices where the published table is underspecified. Tests: texcoord_gen_test and interchange_test. The PoC still handles four camera-space modes per vertex, has the reversed reflection eye vector, and maps the other modes to authored UVs. This finding remains open for that consumer. (2026-10-02)"
 - id: TXF-4
   nodes: [TextureCoordinateGenerator]
   component: Texturing
@@ -2744,7 +2744,7 @@
   severity: major
   status: open
   summary: Runtime applies UNIT factors to explicitly authored known dimensional values at initialization; field coverage and conversion-aware writing remain incomplete.
-  note: "Runtime entry normalizes explicitly authored known dimensional fields to initial/SI units, while generated built-in defaults remain canonical. Focused tests: `UNIT runtime: equivalent authored length and angle geometry`, `UNIT runtime: routed motion, defaults, and subsequent writes use initial units`, `UNIT runtime: Inline and EXTERNPROTO use their source units`, `UNIT runtime: PhysicsSystem receives kilograms and newtons`, and `UNIT runtime: custom PROTO values convert independently at dimensional IS targets`. TextureTransform.rotation now also converts authored angle units, including dimensional IS targets; two TextureTransform UNIT regressions retain dimensionless UV center/translation/scale, defaults, idempotent initialization and subsequent radian writes. Coverage demonstrates equivalent degree/radian geometry, routed updates, length, mass, force and torque, source-specific Inline/EXTERNPROTO factors, dimensional IS targets, and codec round-trip preservation before runtime. REQ-UNIT remains open: the field-dimension map and its range are incomplete, and serialization after runtime conversion does not yet preserve authoring units. Resolve the published Core wording on external UNIT declarations separately from the demonstrated runtime behavior."
+  note: "Runtime entry normalizes explicitly authored known dimensional fields to initial/SI units, while generated built-in defaults remain canonical. Focused tests: `UNIT runtime: equivalent authored length and angle geometry`, `UNIT runtime: routed motion, defaults, and subsequent writes use initial units`, `UNIT runtime: Inline and EXTERNPROTO use their source units`, `UNIT runtime: PhysicsSystem receives kilograms and newtons`, and `UNIT runtime: custom PROTO values convert independently at dimensional IS targets`. TextureTransform.rotation now also converts authored angle units, including dimensional IS targets; two TextureTransform UNIT regressions retain dimensionless UV center/translation/scale, defaults, idempotent initialization and subsequent radian writes. Coverage demonstrates equivalent degree/radian geometry, routed updates, length, mass, force and torque, source-specific Inline/EXTERNPROTO factors, dimensional IS targets, and codec round-trip preservation before runtime. REQ-UNIT remains open: the field-dimension map and its range are incomplete, and serialization after runtime conversion does not yet preserve authoring units. Background and TextureBackground skyAngle/groundAngle now normalize authored angle units, with an idempotence regression. Resolve the published Core wording on external UNIT declarations separately from the demonstrated runtime behavior."
 - id: REQ-CLIP
   nodes: [ClipPlane]
   component: Rendering
@@ -2807,8 +2807,8 @@
   clause: "18.2.4; 18.4.3-18.4.5"
   severity: major
   status: open
-  summary: MultiTexture stage controls are extracted; the CPU rasterizer now combines ordered stages, but the OpenGL PoC renderer still uses only the first matching material texture slot.
-  note: "MaterialSystem retains mode/source/function/color/alpha and channel (MaterialSystem.hpp refOf). cpu_raster now runs a per-stage combiner over MaterialTextures::baseStages (MaterialShader.hpp detail::combineBaseStages): textures sampled with texcoords, folded stage by stage. DONE (CPU rasterizer, base-colour slot): OFF, REPLACE, MODULATE, MODULATE2X, MODULATE4X, ADD, ADDSIGNED, ADDSIGNED2X, SUBTRACT, SELECTARG1, SELECTARG2; source DEFAULT/DIFFUSE/SPECULAR/FACTOR (FACTOR = MultiTexture color.rgb + alpha); function COMPLEMENT/ALPHAREPLICATE. IGNORED: BLENDCURRENTALPHA/BLENDDIFFUSEALPHA/BLENDFACTORALPHA/BLENDTEXTUREALPHA, DOTPRODUCT3, MODULATEALPHA_ADDCOLOR, MODULATEINVALPHA_ADDCOLOR, MODULATEINVCOLOR_ADDALPHA (treated as MODULATE), and per-stage texcoords/transforms (the seam normalizes MultiTextureCoordinate/MultiTextureTransform to the first usable channel — see texture_extract_test). The OpenGL poc_renderer still binds only findTexSlot's first match and has NO stage combiner. CHECKED against ISO/IEC 19775-1 v4.0 Tables 18.3-18.5 (2026-09-29): Arg1 is this stage's texture and Arg2 the previous stage, so MODULATE, ADD, ADDSIGNED and SUBTRACT (Arg1 - Arg2 = texture - previous) match the standard. The standard's own table is inconsistent for REPLACE (listed as Arg2 although it replaces the current colour) and SELECTARG2 (described as colour argument 1); the combiner takes REPLACE = the stage texture and SELECTARG2 = the previous stage. DIVERGENCE not yet reconciled: for source DIFFUSE/SPECULAR/FACTOR the standard says the argument IS that colour, whereas multiArg1 multiplies the stage texel by it (fixed-function convention), and the standard's prose says source selects the SECOND argument. Acceptance: two-stage rendering across the modes above with source/function/color/alpha is covered on the CPU rasterizer (test multi_texture_test: two-stage MODULATE product, REPLACE second, single-texture unchanged); the GL PoC follow-up and per-stage coordinates/transforms remain open. This is a host rendering obligation; the existing descriptor tests remain valid for their narrower scope."
+  summary: The CPU reference host combines all MultiTexture modes with independent stage coordinates; the OpenGL PoC still binds only the first matching slot.
+  note: "CPU implements all Table 18.3 modes, separate RGB/alpha mode tokens, Table 18.4 source selection of Arg2, and Table 18.5 post-operation functions. Each stage selects its MultiTextureCoordinate channel or named mapping and matching MultiTextureTransform, including generators. A single TextureTransform applies to every channel. Live transform and nested coordinate edits refresh baked meshes and coordinate-generation descriptors through the existing dependency indices; RuntimeSession regressions cover both channels. Tests: multi_texture_test and interchange_test, including rendering two stages with distinct transformed UVs and a material-free Appearance. The published table contradicts itself for REPLACE and SELECTARG2: REPLACE selects the stage texture (Arg1), SELECTARG2 selects the previous result (Arg2), following the respective operation meanings. The OpenGL PoC has no stage combiner; this finding remains open for it. Annex B explicitly includes MultiTexture despite its component level exceeding Texturing 2; the conformance view and CLI preserve that node-table exception. (2026-10-02)"
 - id: REQ-PROJECTION
   nodes: [TextureProjector, TextureProjectorParallel]
   component: TextureProjection
@@ -2823,8 +2823,8 @@
   clause: "17.2.2.8; 17.3.1"
   severity: major
   status: open
-  summary: Light shadows/shadowIntensity and Shape.castShadow reach descriptors but have no occlusion effect in either reference renderer.
-  note: "LightSystem::makeLight copies the fields and SceneExtractor copies castShadow; the CPU and GLSL shading paths have no occluder query/shadow map or visibility factor. Acceptance: two lights with independent occlusion, castShadow FALSE, shadows FALSE, and intermediate shadowIntensity. Soft-shadow fidelity is optional; the ordinary occlusion effect is the missing behavior."
+  summary: The CPU reference host applies per-light occlusion and shadowIntensity; the OpenGL PoC has no shadow query.
+  note: "CPU renderScene collects visible triangle occluders with castShadow TRUE and traces each shadow-enabled light in normalized scene coordinates. Visibility multiplies the light contribution by 1-shadowIntensity for an occluded fragment. Tests exercise enabled/disabled shadows, intermediate intensity, hidden and non-casting occluders, and equivalent very small/large scenes. Soft-shadow fidelity is optional. The OpenGL PoC still uses unobstructed visibility; this finding remains open for it. (2026-10-02)"
 - id: REQ-JAVA
   nodes: [Script]
   component: Scripting
@@ -2836,11 +2836,11 @@
 - id: REQ-FTP
   interfaces: [X3DUrlObject]
   component: Networking
-  clause: "F.6 Table F.4 (URL fields); 9.2.1"
+  clause: "B.6 Table B.4; F.6 Table F.4; 9.2.1"
   severity: major
-  status: deferred
-  summary: No supplied asset backend implements the Full-profile FTP protocol requirement.
-  note: "HttpResolver accepts only http/https and restricts libcurl protocols accordingly; SchemeRouter dispatches registered callbacks but ships no FTP backend. Acceptance: an explicitly configured Full host resolves file/http/ftp with relative references and ordered fallback. Preserve the HTTP adapter's protocol restrictions; supply a separate appropriate adapter instead. Offline SDK use does not itself claim the complete host configuration."
+  status: fixed
+  summary: The optional curl backend supplies separate HTTP/HTTPS and FTP adapters; the CPU reference host routes these alongside confined local files.
+  note: "Annex B also requires FTP; the earlier Full-only classification was incorrect. makeFtpResolver shares the bounded curl transport and post-DNS address policy but permits FTP only. makeHttpResolver remains restricted to HTTP/HTTPS. Hermetic passive-FTP tests cover successful bytes, missing files, size limits and private-network policy. The CPU host wires file/http/https/ftp through SchemeRouter and decodes fetched PNG/JPEG bytes through the stb adapter. Private networks require explicit opt-in by an embedder; the reference executable uses the default public-network policy. (2026-10-02)"
 
 - id: PROTO-NODE-INIT
   interfaces: [X3DPrototypeInstance]

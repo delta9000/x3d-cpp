@@ -189,13 +189,15 @@ def classify_behaves(behavioral: bool, wired: bool, findings: list[dict]) -> str
     return "partial" if wired and open_f else "unverified"
 
 
-def node_profiles(component: Optional[str], level: Optional[int], profiles: dict) -> list[str]:
+def node_profiles(component: Optional[str], level: Optional[int], profiles: dict,
+                  node: str = "", inclusions: Optional[dict] = None) -> list[str]:
     if not component:
         return []
     lvl = level or 1
     # A profile dict may use "*" as a wildcard (Full includes every component).
     out = [p for p, comps in profiles.items()
-           if comps.get(component, comps.get("*", 0)) >= lvl]
+           if comps.get(component, comps.get("*", 0)) >= lvl or
+           node in (inclusions or {}).get(p, [])]
     return sorted(out, key=lambda p: list(profiles).index(p))
 
 
@@ -313,7 +315,8 @@ def build_model(repo: pathlib.Path) -> dict:
             "extracts": extracts, "behaves": behaves,
             "behavioral": behavioral, "geometry": geometry,
             "interfaces": sorted(ifaces),
-            "profiles": node_profiles(nf.component, nf.level, profiles),
+            "profiles": node_profiles(nf.component, nf.level, profiles, name,
+                                      profiles_doc.get("node_inclusions", {})),
             "clause": _finding_clause(node_findings),
             "findings": sorted({f["id"] for f in node_findings if f.get("id")}),
         })

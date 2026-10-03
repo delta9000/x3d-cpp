@@ -280,9 +280,8 @@ public:
   // cannot repeat — NOT on ctx_.now(), which an embedder may legitimately hold
   // still or replay.
   //
-  // Per changed node n (dispatch is mutually exclusive — a Transform is only ever
-  // in transformDeps_, a geometry node only in geomDeps_, an appearance-subtree
-  // node only in materialDeps_):
+  // Per changed node n: texture-coordinate and transform nodes may affect both
+  // geometry UVs and material coordinate-generation descriptors.
   //   * DirtyLocalTransform|DirtyWorldTransform & n in transformDeps_  =>
   //       RE-ACCUMULATE each dependent item's worldTransform along its STORED
   //       PathKey (O(path) per item) — NEVER ctx.worldTransform() (first-path).
@@ -967,9 +966,10 @@ private:
     // T-TEX: re-enrich + re-resolve the textures of the refreshed material so an
     // appearance-subtree change (a new ImageTexture url, a TextureProperties edit)
     // re-runs the resolver and re-derives the §18.4.8/9 descriptor surface. The
-    // TextureTransform bake lives on the MESH texcoords (updatedGeometry), not the
-    // material — a textureTransform-only change is a documented v1 narrowing.
-    enrichTextureRefs(rec.material.textures, /*texNodes=*/{}, rec.geometry.node);
+    // Authored UV transforms update the mesh; generated UV transforms update
+    // the material descriptor. Both dependency channels are registered below.
+    enrichTextureRefs(rec.material.textures, /*texNodes=*/{}, rec.geometry.node,
+                      appearance.get());
     // Memoized (ADR-0045): one Appearance is routinely shared by many placements,
     // so an appearance change calls refreshMaterial() once PER DEPENDENT — without
     // the memo that is N decodes of the same URL. A CHANGED url is a memo miss and
@@ -1265,9 +1265,9 @@ private:
     // and shared by every placement that agrees on both (ADR-0045). One geometry
     // USE'd under two DIFFERENT TextureTransforms legitimately yields two meshes.
     mesh = bakedMesh(geom, std::move(mesh),
-                     textureTransformParamsListOf(appearance ? appearance.get()
-                                                             : nullptr));
-    enrichTextureRefs(material.textures, /*texNodes=*/{}, geom);
+                     textureTransformsForGeometry(appearance.get(), geom));
+    enrichTextureRefs(material.textures, /*texNodes=*/{}, geom,
+                      appearance.get());
     // ADR-0045: decode-once per URL. Without the memo the embedder's decoder was
     // invoked once per PLACEMENT (200 calls + 200 MiB retained for one 512x512
     // texture USE'd 200 times).
@@ -1336,7 +1336,8 @@ private:
     auto appearance = geombounds::getNode(shape, "appearance");
     MaterialDesc material = materialOf(appearance ? appearance.get() : nullptr);
     const bool castShadow = geombounds::getField<bool>(shape, "castShadow", true);
-    enrichTextureRefs(material.textures, /*texNodes=*/{}, geom);
+    enrichTextureRefs(material.textures, /*texNodes=*/{}, geom,
+                      appearance.get());
     // ADR-0045: decode-once per URL. Without the memo the embedder's decoder was
     // invoked once per PLACEMENT (200 calls + 200 MiB retained for one 512x512
     // texture USE'd 200 times).
@@ -1433,15 +1434,26 @@ private:
   }
 
   template <typename Visit>
-  void forEachGeometrySource(const X3DNode *geom, const PathKey &path, Visit visit) {
+  void forEachGeometrySource(const X3DNode *geom, const PathKey &path,
+                             Visit visit) {
     visit(geom);
-    forEachChildNode(*geom, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+    forEachChildNode(*geom, [&](const FieldInfo &,
+                                const std::shared_ptr<X3DNode> &c) {
       visit(c.get());
+      if (c->nodeTypeName() == "MultiTextureCoordinate")
+        forEachChildNode(*c, [&](const FieldInfo &field,
+                                 const std::shared_ptr<X3DNode> &coordinate) {
+          if (field.x3dName == "texCoord")
+            visit(coordinate.get());
+        });
     });
     for (const X3DNode *ancestor : path) {
-      if (ancestor->nodeTypeName() != "HAnimSegment") continue;
-      forEachChildNode(*ancestor, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &c) {
-        if (field.x3dName == "displacers") visit(c.get());
+      if (ancestor->nodeTypeName() != "HAnimSegment")
+        continue;
+      forEachChildNode(*ancestor, [&](const FieldInfo &field,
+                                      const std::shared_ptr<X3DNode> &c) {
+        if (field.x3dName == "displacers")
+          visit(c.get());
       });
     }
   }
@@ -1472,31 +1484,29 @@ private:
 
     // geomDeps: the geometry node itself AND its direct content child-nodes
     // (Coordinate/Normal/Color/TextureCoordinate/...). classifyDirty marks a
-    // content change on the node that OWNS the field — e.g. Coordinate.point lands
-    // DirtyField on the Coordinate, NOT the parent IndexedFaceSet — so without the
-    // child registration a `point` animation would never reach this RenderItem.
-    // Owner resolution is many-to-many: one Coordinate may feed, for example,
-    // both a TriangleSet and an IndexedLineSet.
+    // content change on the node that OWNS the field — e.g. Coordinate.point
+    // lands DirtyField on the Coordinate, NOT the parent IndexedFaceSet — so
+    // without the child registration a `point` animation would never reach this
+    // RenderItem. Owner resolution is many-to-many: one Coordinate may feed,
+    // for example, both a TriangleSet and an IndexedLineSet.
     if (geom) {
-      appendDep(geomDeps_, geom, id);
       registerGeometryOwners(geom, path);
-      forEachChildNode(*geom, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-        appendDep(geomDeps_, c.get(), id);
+      forEachGeometrySource(geom, path, [&](const X3DNode *source) {
+        appendDep(geomDeps_, source, id);
       });
-      for (const X3DNode *ancestor : path) {
-        if (ancestor->nodeTypeName() != "HAnimSegment") continue;
-        forEachChildNode(*ancestor, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &child) {
-          if (field.x3dName != "displacers") return;
-          appendDep(geomDeps_, child.get(), id);
-        });
+      // Geometry-owned coordinate generators/mappings are consumed by
+      // materials.
+      if (auto tc = geombounds::getNode(*geom, "texCoord")) {
+        std::unordered_set<const X3DNode *> seen;
+        collectMaterialSubtree(tc.get(), id, seen);
       }
     }
 
     // materialDeps: every appearance-subtree node reachable from the Shape
-    // (appearance, material, textures, textureProperties). classifyDirty marks a
-    // Material/Appearance field change ONLY on the owning node — which sits BELOW
-    // the Shape and is neither a path ancestor nor the renderable leaf — so the
-    // material channel is dead without this subtree-keyed index.
+    // (appearance, material, textures, textureProperties). classifyDirty marks
+    // a Material/Appearance field change ONLY on the owning node — which sits
+    // BELOW the Shape and is neither a path ancestor nor the renderable leaf —
+    // so the material channel is dead without this subtree-keyed index.
     if (appearance) {
       std::unordered_set<const X3DNode *> seen;
       collectMaterialSubtree(appearance, id, seen);
@@ -1505,34 +1515,43 @@ private:
 
   static void appendDep(DepMap &m, const X3DNode *n, RenderItemId id) {
     auto &v = m[n];
-    // Avoid duplicate ids for the SAME node (e.g. a Transform appearing twice on
-    // a path is impossible, but a defensive de-dup keeps deltas clean).
-    if (v.empty() || v.back() != id) v.push_back(id);
+    // Avoid duplicate ids for the SAME node (e.g. a Transform appearing twice
+    // on a path is impossible, but a defensive de-dup keeps deltas clean).
+    if (v.empty() || v.back() != id)
+      v.push_back(id);
   }
 
   // Recurse the appearance subtree via SFNode/MFNode slots, recording each node
   // -> id in materialDeps_. Bounded by `seen` against a USE cycle.
   void collectMaterialSubtree(const X3DNode *n, RenderItemId id,
                               std::unordered_set<const X3DNode *> &seen) {
-    if (!n || !seen.insert(n).second) return;
+    if (!n || !seen.insert(n).second)
+      return;
     appendDep(materialDeps_, n, id);
-    forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      collectMaterialSubtree(c.get(), id, seen);
-    });
+    const auto type = n->nodeTypeName();
+    if (type == "TextureTransform" || type == "MultiTextureTransform" ||
+        type == "TextureTransform2D" || type == "TextureTransformMatrix3D")
+      appendDep(geomDeps_, n, id);
+    forEachChildNode(*n,
+                     [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
+                       collectMaterialSubtree(c.get(), id, seen);
+                     });
   }
 
   // -------------------------------------------------------------------------
-  // ADR-0045: content-keyed mesh cache — the SDK side of upload-once/instance-N.
+  // ADR-0045: content-keyed mesh cache — the SDK side of
+  // upload-once/instance-N.
   //
   // GeomId already told the CONSUMER which placements share content; the walk
   // ignored its own key and re-tessellated per placement, retaining N copies.
   // These two caches make the identity structural: one build and one allocation
   // per DISTINCT (geometry content [, TextureTransform params]).
   //
-  // LIFETIME: both are cleared by fullSnapshot() — a fresh full walk must re-read
-  // current field state, which is what makes a rebuild authoritative. Within one
-  // snapshot, and across the delta()s that follow it, an entry is only evicted
-  // when that geometry's content actually changes (evictMeshCache).
+  // LIFETIME: both are cleared by fullSnapshot() — a fresh full walk must
+  // re-read current field state, which is what makes a rebuild authoritative.
+  // Within one snapshot, and across the delta()s that follow it, an entry is
+  // only evicted when that geometry's content actually changes
+  // (evictMeshCache).
   // -------------------------------------------------------------------------
   struct RawMeshEntry {
     MeshRef mesh = emptyMeshRef();
@@ -1684,7 +1703,7 @@ private:
     const RenderItem &rec = items_[id];
     if (rec.path.empty() || !rec.path.back()) return {};
     auto appearance = geombounds::getNode(*rec.path.back(), "appearance");
-    return textureTransformParamsListOf(appearance ? appearance.get() : nullptr);
+    return textureTransformsForGeometry(appearance.get(), rec.geometry.node);
   }
 
   const X3DExecutionContext &ctx_;

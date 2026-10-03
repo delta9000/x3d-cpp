@@ -10,8 +10,6 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 ## Findings
 
-- **REQ-FTP** [major/DEFERRED] — §F.6 Table F.4 (URL fields); 9.2.1: No supplied asset backend implements the Full-profile FTP protocol requirement.
-  - HttpResolver accepts only http/https and restricts libcurl protocols accordingly; SchemeRouter dispatches registered callbacks but ships no FTP backend. Acceptance: an explicitly configured Full host resolves file/http/ftp with relative references and ordered fallback. Preserve the HTTP adapter's protocol restrictions; supply a separate appropriate adapter instead. Offline SDK use does not itself claim the complete host configuration.
 - **NSN-2** [critical/CLOSED `9bb71c2`] — §9.4.3: isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.
 - **NSN-3** [critical/CLOSED `9bb71c2`] — §9.4.3: isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.
 - **NSN-4** [critical/CLOSED `9bb71c2`] — §9.4.3: loadTime (now, on successful completion only) not emitted.
@@ -23,6 +21,8 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
   - wireInlineImports now requires an explicit child EXPORT whose public name matches importedDEF; a private DEF no longer becomes a parent alias. Regression: import_requires_explicit_export.
 - **AUD-NET-2** [major/CLOSED] — §9.4.2: An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing.
   - InlineRuntimeSystem unloads on load=FALSE and unloads then reloads on url change. System::detach removes per-node runtime state before the old subtree is released; routes, pending deliveries, IMPORT aliases, binding/pick entries, and extracted RenderItems are removed. Regression tests: inline_load_unload_reload_detaches_content_and_reports_removal, inline_url_change_replaces_loaded_content, nested_inline_loaded_with_parent_can_unload, inline_repeated_replacement_drops_unowned_nodes. ADR-0051 records the detach order and extraction delta rule.
+- **REQ-FTP** [major/FIXED] — §B.6 Table B.4; F.6 Table F.4; 9.2.1: The optional curl backend supplies separate HTTP/HTTPS and FTP adapters; the CPU reference host routes these alongside confined local files.
+  - Annex B also requires FTP; the earlier Full-only classification was incorrect. makeFtpResolver shares the bounded curl transport and post-DNS address policy but permits FTP only. makeHttpResolver remains restricted to HTTP/HTTPS. Hermetic passive-FTP tests cover successful bytes, missing files, size limits and private-network policy. The CPU host wires file/http/https/ftp through SchemeRouter and decodes fetched PNG/JPEG bytes through the stb adapter. Private networks require explicit opt-in by an embedder; the reference executable uses the default public-network policy. (2026-10-02)
 - **NSN-1** [minor/CLOSED `9bb71c2`] — §9.4.3: LoadSensor not wired as an active System observing child URL-object load state per tick.
   - Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/subsystems/system-loadsensor.md. Drives NSN-2..9.
 - **NSN-11** [minor/CLOSED] — §9.4.3, 9.4.1: Spec-literal Anchor children cases (b) replacement-world / (c) separate-window are not the SDK default; the headless default policy treats "#Name" as loaded iff a Viewpoint DEF exists and other Anchor urls as resolver load-request-acknowledged.

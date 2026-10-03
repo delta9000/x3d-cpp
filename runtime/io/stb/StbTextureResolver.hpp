@@ -6,7 +6,8 @@
 #ifndef X3D_RUNTIME_IO_STB_STB_TEXTURE_RESOLVER_HPP
 #define X3D_RUNTIME_IO_STB_STB_TEXTURE_RESOLVER_HPP
 
-#include "TextureResolver.hpp"  // x3d::runtime::extract::TextureResolver
+#include "AssetResolver.hpp" // x3d::runtime::extract::TextureResolver
+#include "TextureResolver.hpp"
 
 namespace x3d::runtime::io::stb {
 
@@ -23,6 +24,12 @@ namespace x3d::runtime::io::stb {
 /// opened as a path and therefore return Failed — fetching is AssetResolver's
 /// job; this seam only turns bytes into pixels.
 x3d::runtime::extract::TextureResolver makeStbTextureResolver();
+
+/// Fetch bytes through the supplied oracle, then decode from memory.
+/// Pending and Failed are preserved; URLs and fallback order belong to the
+/// caller.
+x3d::runtime::extract::TextureResolver
+makeStbTextureResolver(x3d::runtime::extract::AssetResolver fetch);
 
 }  // namespace x3d::runtime::io::stb
 

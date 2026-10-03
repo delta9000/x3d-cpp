@@ -56,6 +56,12 @@ struct HttpResolverOptions {
 x3d::runtime::extract::AssetResolver makeHttpResolver(
     HttpResolverOptions options = {});
 
+/// Separate FTP-only adapter for the profile URL requirements (Annex B.6).
+/// Uses the same address, byte, and timeout limits as the HTTP adapter.
+/// HTTP requests and redirects retain their original protocol restrictions.
+x3d::runtime::extract::AssetResolver
+makeFtpResolver(HttpResolverOptions options = {});
+
 }  // namespace x3d::runtime::io::curl
 
 #endif  // X3D_RUNTIME_IO_CURL_HTTP_RESOLVER_HPP

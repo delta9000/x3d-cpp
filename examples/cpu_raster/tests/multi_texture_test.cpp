@@ -112,7 +112,7 @@ int main() {
     CHECK(near(o.x, k2));
   }
 
-  // ---- source=FACTOR: arg1 = texel * MultiTexture color/alpha --------------
+  // ---- source=FACTOR selects arg2 from MultiTexture color/alpha -----------
   {
     // White texel * factor 0.5, MODULATE against white base -> 0.5.
     g::vec4 o = shadeUnlit(unlitWhite({stage(255, 0, "MODULATE", "FACTOR", "", 0.5f)}));

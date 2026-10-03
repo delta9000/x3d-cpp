@@ -2,6 +2,7 @@
 // AssetResolver seam. The single TU where libcurl meets the seam (mirrors the
 // QuickJsBackend.cpp isolation discipline).
 #include "HttpResolver.hpp"
+#include "SchemeRouter.hpp"
 
 #include <curl/curl.h>
 
@@ -21,10 +22,6 @@
 namespace x3d::runtime::io::curl {
 
 namespace {
-
-bool isHttpUrl(const std::string &url) {
-  return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
-}
 
 // ── Resolved-address guard (SEC-6) ──────────────────────────────────────────
 // Runs in CURLOPT_OPENSOCKETFUNCTION, i.e. on the actual sockaddr libcurl is
@@ -117,12 +114,15 @@ std::size_t writeCb(char *ptr, std::size_t size, std::size_t nmemb,
 
 }  // namespace
 
-x3d::runtime::extract::AssetResolver makeHttpResolver(
-    HttpResolverOptions options) {
-  return [options](const std::string &url,
-                   x3d::runtime::extract::AssetKind /*kind*/)
+static x3d::runtime::extract::AssetResolver
+makeResolver(HttpResolverOptions options, bool ftp) {
+  return [options, ftp](const std::string &url,
+                        x3d::runtime::extract::AssetKind /*kind*/)
              -> x3d::runtime::extract::AssetResult {
-    if (!isHttpUrl(url)) {
+    const auto scheme =
+        x3d::runtime::extract::scheme_router_detail::urlScheme(url);
+    if (!scheme ||
+        (ftp ? *scheme != "ftp" : (*scheme != "http" && *scheme != "https"))) {
       return x3d::runtime::extract::AssetResult::makeFailed();
     }
 
@@ -157,13 +157,14 @@ x3d::runtime::extract::AssetResolver makeHttpResolver(
       curl_easy_setopt(curl, CURLOPT_PROXY, "");
     }
 
-    // Restrict both the request and every redirect to http(s).
+    // Restrict requests and redirects to this adapter's protocol allowlist.
 #if LIBCURL_VERSION_NUM >= 0x075500
-    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https");
-    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https");
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, ftp ? "ftp" : "http,https");
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR,
+                     ftp ? "ftp" : "http,https");
 #else
-    const long http_protos =
-        static_cast<long>(CURLPROTO_HTTP | CURLPROTO_HTTPS);
+    const long http_protos = static_cast<long>(
+        ftp ? CURLPROTO_FTP : (CURLPROTO_HTTP | CURLPROTO_HTTPS));
     curl_easy_setopt(curl, CURLOPT_PROTOCOLS, http_protos);
     curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, http_protos);
 #endif
@@ -187,6 +188,16 @@ x3d::runtime::extract::AssetResolver makeHttpResolver(
     return x3d::runtime::extract::AssetResult::makeReady(
         std::move(sink.bytes));
   };
+}
+
+x3d::runtime::extract::AssetResolver
+makeHttpResolver(HttpResolverOptions options) {
+  return makeResolver(options, false);
+}
+
+x3d::runtime::extract::AssetResolver
+makeFtpResolver(HttpResolverOptions options) {
+  return makeResolver(options, true);
 }
 
 }  // namespace x3d::runtime::io::curl

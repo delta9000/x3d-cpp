@@ -463,3 +463,82 @@ TEST_CASE("UNIT runtime: TextureTransform IS angle and built-in default") {
   CHECK(uv->getRotation() == doctest::Approx(1.5707963267948966));
   CHECK(defaults->getRotation() == doctest::Approx(0));
 }
+
+TEST_CASE("UNIT runtime: Background angle fields use radians") {
+  auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><head>
+<unit category='angle' name='degree' conversionFactor='0.017453292519943295'/>
+</head><Scene><Background DEF='BG' skyAngle='90' skyColor='1 0 0 0 0 1'
+groundAngle='45' groundColor='0 1 0 1 1 0'/></Scene></X3D>)");
+  auto bg = doc.scene.resolve("BG");
+  REQUIRE(bg);
+  auto session = RuntimeSession::create(std::move(doc));
+  CHECK(geombounds::getField<MFFloat>(*bg, "skyAngle", {}).at(0) ==
+        doctest::Approx(1.5707963267948966));
+  CHECK(geombounds::getField<MFFloat>(*bg, "groundAngle", {}).at(0) ==
+        doctest::Approx(0.7853981633974483));
+  normalizeRuntimeUnits(session->scene());
+  CHECK(geombounds::getField<MFFloat>(*bg, "skyAngle", {}).at(0) ==
+        doctest::Approx(1.5707963267948966));
+}
+
+TEST_CASE("Interchange: live texture transforms update baked UVs") {
+  auto session = RuntimeSession::create(x3d::codec::parseDocument(R"(
+<X3D profile='Interchange' version='4.0'><Scene><Shape><Appearance>
+<PixelTexture image='1 1 3 0xffffff'/><TextureTransform DEF='UV'/></Appearance>
+<IndexedFaceSet coordIndex='0 1 2 -1'><Coordinate point='0 0 0 1 0 0 0 1 0'/>
+<MultiTextureCoordinate><TextureCoordinate DEF='TC' point='0 0 1 0 0 1'/></MultiTextureCoordinate>
+</IndexedFaceSet></Shape></Scene></X3D>)"));
+  session->fullSnapshot();
+  session->tick(0);
+  auto uv = session->scene().resolve("UV");
+  REQUIRE(session->context().writeField(uv.get(), "translation",
+                                        std::any(SFVec2f{0.5f, 0})) ==
+          FieldWriteResult::Ok);
+  auto delta = session->delta();
+  CHECK(delta.updatedGeometry.size() == 1);
+  CHECK(session->extractor().item(0).mesh->texcoords.front().x ==
+        doctest::Approx(0.5f));
+  session->tick(1);
+  auto tc = session->scene().resolve("TC");
+  REQUIRE(
+      session->context().writeField(
+          tc.get(), "point", std::any(MFVec2f{{0.25f, 0}, {1, 0}, {0, 1}})) ==
+      FieldWriteResult::Ok);
+  delta = session->delta();
+  CHECK(delta.updatedGeometry.size() == 1);
+  CHECK(session->extractor().item(0).mesh->texcoords.front().x ==
+        doctest::Approx(0.75f));
+}
+
+TEST_CASE("Interchange: nested coordinate generator edits refresh material "
+          "descriptors") {
+  auto session = RuntimeSession::create(x3d::codec::parseDocument(R"(
+<X3D profile='Interchange' version='4.0'><Scene><Shape><Appearance>
+<PixelTexture image='1 1 3 0xffffff'/><TextureTransform DEF='UV'/></Appearance>
+<IndexedFaceSet coordIndex='0 1 2 -1'><Coordinate point='0 0 0 1 0 0 0 1 0'/>
+<MultiTextureCoordinate><TextureCoordinateGenerator DEF='GEN' mode='NOISE' parameter='1 1 1 0 0 0'/></MultiTextureCoordinate>
+</IndexedFaceSet></Shape></Scene></X3D>)"));
+  session->fullSnapshot();
+  session->tick(0);
+  auto gen = session->scene().resolve("GEN");
+  REQUIRE(session->context().writeField(gen.get(), "parameter",
+                                        std::any(MFFloat{2, 3, 4, 5, 6, 7})) ==
+          FieldWriteResult::Ok);
+  auto delta = session->delta();
+  CHECK(delta.updatedMaterial.size() == 1);
+  CHECK(session->extractor()
+            .item(0)
+            .material.textures.front()
+            .texCoordGen.parameter == MFFloat{2, 3, 4, 5, 6, 7});
+  session->tick(1);
+  auto uv = session->scene().resolve("UV");
+  REQUIRE(session->context().writeField(uv.get(), "translation",
+                                        std::any(SFVec2f{0.5f, 0})) ==
+          FieldWriteResult::Ok);
+  delta = session->delta();
+  CHECK(delta.updatedMaterial.size() == 1);
+  CHECK(session->extractor()
+            .item(0)
+            .material.textures.front()
+            .generatedTransform.translationS == doctest::Approx(0.5f));
+}

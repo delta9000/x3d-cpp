@@ -1024,7 +1024,7 @@ seedUniforms(const x3d::runtime::extract::MaterialDesc &m,
   auto colArr = std::make_shared<std::vector<Value>>();
   for (const EyeLight &L : lights) {
     dirArr->push_back(Value::v3(L.dirEye));
-    colArr->push_back(Value::v3(L.color));
+    colArr->push_back(Value::v3(L.color * L.intensity));
   }
   Value dv; dv.t = VT::Array; dv.arr = dirArr; u["uLightDirEye"] = dv;
   Value cv; cv.t = VT::Array; cv.arr = colArr; u["uLightColor"] = cv;

@@ -5,7 +5,7 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | Analyser | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| AudioClip | 1 | ✓ | — | ◑ | AUD-MEDIA-2, AUD-TIME-3, MULTI-INHERIT, REQ-FTP, ROUTE-IO-ALIAS, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
+| AudioClip | 1 | ✓ | — | ? | AUD-MEDIA-2, AUD-TIME-3, MULTI-INHERIT, REQ-FTP, ROUTE-IO-ALIAS, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
 | AudioDestination | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-7 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
 | BiquadFilter | 2 | ✓ | — | ◑ | AUD-TIME-3, ROUTE-IO-ALIAS, SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 | BufferAudioSource | 2 | ✓ | — | ◑ | REQ-FTP, ROUTE-IO-ALIAS, SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |

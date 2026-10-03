@@ -241,3 +241,10 @@ def test_real_repo_generates_clean():
     interp = next(c for c in model["components"] if c["name"] == "Interpolation")
     names = {n["name"] for n in interp["nodes"]}
     assert "SplinePositionInterpolator" in names
+
+
+def test_interchange_explicit_multitexture_inclusion():
+    profiles = {"Interchange": {"Texturing": 2}}
+    inclusions = {"Interchange": ["MultiTexture"]}
+    assert cv.node_profiles("Texturing", 3, profiles, "MultiTexture", inclusions) == ["Interchange"]
+    assert cv.node_profiles("Texturing", 4, profiles, "MovieTexture", inclusions) == []
