@@ -2498,6 +2498,10 @@ result<void> scene_edit::set(const dynamic_field &target, value new_value,
   return set_value(target, std::move(new_value), false, space);
 }
 
+result<void> scene_edit::set(const dynamic_field &target, std::nullopt_t) {
+  return set_value(target, value{node_id{}}, true);
+}
+
 result<void> scene_edit::set(const dynamic_field &target,
                              const node &new_value) {
   if (impl_->poison)
@@ -4012,6 +4016,10 @@ result<bool> event_batch::writable(const dynamic_field &target,
 result<void> event_batch::send(const dynamic_field &target, value payload,
                                value_space space) {
   return send_value(target, std::move(payload), false, space);
+}
+
+result<void> event_batch::send(const dynamic_field &target, std::nullopt_t) {
+  return send_value(target, value{node_id{}}, true);
 }
 
 result<void> event_batch::send(const dynamic_field &target,

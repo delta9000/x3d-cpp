@@ -719,6 +719,7 @@ public:
   result<void> set(const dynamic_field &target, value new_value,
                    value_space space);
   result<void> set(const dynamic_field &target, const node &new_value);
+  result<void> set(const dynamic_field &target, std::nullopt_t);
   result<void> set(const dynamic_field &target,
                    std::span<const node> new_value);
   template <class T>
@@ -735,6 +736,9 @@ public:
   result<void> set(const experimental::field<node_id> &target,
                    const node &new_value) {
     return set(target.dynamic_, new_value);
+  }
+  result<void> set(const experimental::field<node_id> &target, std::nullopt_t) {
+    return set(target.dynamic_, std::nullopt);
   }
   template <class Tag>
   result<void> set(const experimental::field<node_id> &target,
@@ -1137,6 +1141,7 @@ public:
   result<void> send(const dynamic_field &target, value payload,
                     value_space space);
   result<void> send(const dynamic_field &target, const node &payload);
+  result<void> send(const dynamic_field &target, std::nullopt_t);
   result<void> send(const dynamic_field &target, std::span<const node> payload);
   template <class T>
     requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
@@ -1152,6 +1157,9 @@ public:
   result<void> send(const experimental::field<node_id> &target,
                     const node &payload) {
     return send(target.dynamic_, payload);
+  }
+  result<void> send(const experimental::field<node_id> &target, std::nullopt_t) {
+    return send(target.dynamic_, std::nullopt);
   }
   result<void> send(const experimental::field<node_list> &target,
                     std::span<const node> payload) {

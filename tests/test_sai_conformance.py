@@ -279,7 +279,36 @@ def test_baseline_report_is_deterministic_and_exposes_gaps():
 def test_committed_registries_are_valid_and_report_is_current():
     services, invariants = sai.load_registries(REPO / "docs" / "conformance")
     catalog = sai.load_catalog(REPO / "docs" / "conformance")
-    assert sai.validate_registries(services, invariants, catalog_doc=catalog) == []
+    assert sai.validate_registries(
+        services, invariants, catalog_doc=catalog, known_tests=sai.known_ctests(REPO)
+    ) == []
     expected = sai.render_baseline(services, invariants, catalog_doc=catalog)
     committed = (REPO / "docs" / "conformance" / "SAI-BASELINE.md").read_text()
     assert committed == expected
+
+
+def test_repository_health_does_not_claim_semantic_completion():
+    services, invariants = sai.load_registries(REPO / "docs" / "conformance")
+    catalog = sai.load_catalog(REPO / "docs" / "conformance")
+    by_id = {row["id"]: row for row in services["services"]}
+    assert by_id["SVC-NATIVE-ABI-BOUNDARY"]["support"] == "planned"
+    assert by_id["SVC-BROWSER-IMPORT-DOCUMENT"]["support"] == "planned"
+    assert "not an ISO abstract service" in by_id["SVC-NATIVE-ABI-BOUNDARY"]["clause"]
+    errors = sai.validate_registries(
+        services, invariants, catalog_doc=catalog,
+        known_tests=sai.known_ctests(REPO), strict=True,
+    )
+    assert any("unmapped ISO service" in error for error in errors)
+    assert any("C++ binding catalog audit is incomplete" in error for error in errors)
+    assert any("INV-RT-2" in error for error in errors)
+
+
+def test_ci_requires_register_health_without_claiming_full_conformance():
+    import tomllib
+
+    tasks = tomllib.loads((REPO / "mise.toml").read_text())["tasks"]
+    steps = tasks["ci"]["run"].splitlines()
+    assert "mise run sai-conformance-gate" in steps
+    assert "mise run sai-invariants" in steps
+    assert "mise run sai-conformance" not in steps
+    assert "--strict" in tasks["sai-conformance"]["run"]

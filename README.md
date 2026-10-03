@@ -607,3 +607,12 @@ is expected to fail while services are partial or planned.
 The normal checks validate register consistency and drift. They do not require
 every ISO service or C++ binding obligation to be mapped; the baseline lists
 those gaps, and the strict gate requires complete coverage.
+
+The register includes partial native services and explicitly planned document
+ingestion and ABI policy. Responsibility links and service counts do not
+establish ISO conformance. Ordinary allocation failures may throw
+`std::bad_alloc`; semantic failures use `result<T>`.
+
+For SFNode fields, `edit.set(field, std::nullopt)` and
+`events.send(field, std::nullopt)` assign NULL, as do nullable `node{}` handles.
+MFNode handle ranges preserve positional NULL entries. Bare IDs remain rejected.

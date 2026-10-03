@@ -42,7 +42,7 @@ description = "Run the generator test suite."
 run = "uv run pytest tests/ -v"
 
 [tasks.ci]
-description = "Blocking gate set: UOM pin, generator determinism, register checks, python tests, C++ build and ctest."
+description = "Blocking gate set: UOM pin, generator determinism, register health, python tests, C++ build and ctest."
 # Sequential on purpose: these steps share one uv virtualenv and one build
 # directory, so mise's parallel `depends` races them.
 run = """
@@ -54,3 +54,7 @@ mise run pytest
 mise run build
 mise run ctest
 """
+
+# Register health is blocking; full semantic convergence is intentionally not.
+# `mise run sai-conformance` remains opt-in and fails while services, invariant
+# evidence, or the independent C++ binding audit are incomplete.

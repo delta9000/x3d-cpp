@@ -4,7 +4,7 @@
 The registers deliberately distinguish three claims:
 
 * an ISO service exists and has defined observable semantics;
-* x3d-cpp exposes some, all, or none of that service today;
+* x3d-sai exposes some, all, or none of that service today;
 * executable tests falsify the semantic claim.
 
 Normal validation is a consistency/drift gate. ``--strict`` is the opt-in
@@ -460,6 +460,10 @@ def render_baseline(
         "Normal validation checks that claims are complete and cross-linked. The opt-in",
         "strict gate also requires every service to be implemented and every claim to have",
         "an executable falsification test.",
+        "Rows may include explicitly labelled native policy extensions. Row counts and",
+        "catalog mappings measure inventory coverage, not an ISO conformance percentage.",
+        "A preserving-service link names responsibility; partial/planned services and",
+        "planned invariant tests remain incomplete evidence even when normal CI is green.",
         "",
         "## Profile × support",
         "",
@@ -586,8 +590,9 @@ def main(argv: list[str] | None = None) -> int:
     if not baseline.exists() or baseline.read_text() != rendered:
         print("SAI CONFORMANCE: generated baseline drift; run `mise run sai-baseline`", file=sys.stderr)
         return 1
+    gate = "strict convergence" if args.command == "strict" else "register health"
     print(
-        f"SAI conformance OK: {len(services['services'])} services, "
+        f"SAI {gate} OK: {len(services['services'])} service/policy rows, "
         f"{len(invariants['invariants'])} invariants"
     )
     return 0

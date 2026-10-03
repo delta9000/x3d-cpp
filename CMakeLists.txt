@@ -524,3 +524,11 @@ add_test(NAME sai_field_range_precision COMMAND x3d_sai_experimental_tests
     "--test-case=numeric range endpoints use the field component precision")
 add_test(NAME sai_field_range_colors COMMAND x3d_sai_experimental_tests
     "--test-case=numeric ranges constrain normalized scalar and multi colors")
+
+add_test(NAME sai_field_null_assignment COMMAND x3d_sai_experimental_tests
+    "--test-case=explicit NULL*,NULL does not weaken*")
+
+add_test(NAME sai_id_unpublished_nodes COMMAND x3d_sai_experimental_tests
+    "--test-case=unpublished node handles never alias committed creations")
+add_test(NAME sai_id_unpublished_declarations COMMAND x3d_sai_experimental_tests
+    "--test-case=unpublished declaration handles never alias committed declarations")

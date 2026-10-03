@@ -5867,3 +5867,167 @@ TEST_CASE("captured initializeOnly MFNode editors cannot realize rejected payloa
   CHECK_FALSE(context.snapshot().is_realized(*owner).value());
   CHECK_FALSE(context.snapshot().is_realized(*candidate).value());
 }
+
+TEST_CASE("explicit NULL clears SFNode values through dynamic and typed writes") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto owner = author.create_node("Link").value();
+  auto target = author.create_node("Transform").value();
+  auto field = author.field(owner, "target").value();
+  REQUIRE(author.set(field, target));
+  REQUIRE(author.commit());
+  auto historical = context.snapshot();
+  auto edit = context.edit();
+  SUBCASE("dynamic") { REQUIRE(edit.set(field, std::nullopt)); }
+  SUBCASE("typed") {
+    REQUIRE(edit.set(field.as<sai::node_id>().value(), std::nullopt));
+  }
+  REQUIRE(edit.commit());
+  CHECK(context.snapshot().read(field).value() == sai::value{sai::node_id{}});
+  CHECK(historical.read(field).value() == sai::value{target.id()});
+  auto removal = context.edit();
+  REQUIRE(removal.remove_node(target));
+  REQUIRE(removal.commit());
+}
+
+TEST_CASE("explicit NULL SFNode events propagate through routes") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto source = author.create_node("Link").value();
+  auto sink = author.create_node("Link").value();
+  auto target = author.create_node("Transform").value();
+  auto source_field = author.field(source, "target").value();
+  auto sink_field = author.field(sink, "target").value();
+  REQUIRE(author.set(source_field, target));
+  REQUIRE(author.set(sink_field, target));
+  REQUIRE(author.add_route(source_field, sink_field));
+  REQUIRE(author.commit());
+  auto events = context.events({1});
+  SUBCASE("dynamic") { REQUIRE(events.send(source_field, std::nullopt)); }
+  SUBCASE("typed") {
+    REQUIRE(events.send(source_field.as<sai::node_id>().value(), std::nullopt));
+  }
+  const auto delivered = events.commit();
+  REQUIRE(delivered);
+  CHECK(delivered->deliveries.size() == 2);
+  CHECK(context.snapshot().read(source_field).value() == sai::value{sai::node_id{}});
+  CHECK(context.snapshot().read(sink_field).value() == sai::value{sai::node_id{}});
+}
+
+TEST_CASE("NULL does not weaken node authority or change MFNode semantics") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto author = context.edit();
+  auto owner = author.create_node("Link").value();
+  auto field = author.field(owner, "target").value();
+  auto many = author.field(owner, "targets").value();
+  REQUIRE(author.commit());
+  SUBCASE("bare NULL identity is still not a capability") {
+    auto edit = context.edit();
+    REQUIRE_FALSE(edit.set(field, sai::value{sai::node_id{}}));
+  }
+  SUBCASE("NULL is not an empty MFNode sequence") {
+    auto edit = context.edit();
+    const auto rejected = edit.set(many, std::nullopt);
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::type_mismatch);
+  }
+  SUBCASE("empty MFNode still uses an empty handle range") {
+    auto edit = context.edit();
+    REQUIRE(edit.set(many, std::span<const sai::node>{}));
+    REQUIRE(edit.commit());
+  }
+  SUBCASE("foreign non-NULL handles still fail") {
+    auto other = host.create_scene();
+    auto creation = other.edit();
+    auto foreign = creation.create_node("Transform").value();
+    REQUIRE(creation.commit());
+    auto edit = context.edit();
+    REQUIRE_FALSE(edit.set(field, foreign));
+  }
+}
+
+static_assert(!noexcept(std::declval<const sai::typed_node<BoundTransform> &>()
+                           .field(BoundTransform::translation)));
+
+TEST_CASE("unpublished node handles never alias committed creations") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  std::optional<sai::node> unpublished;
+  SUBCASE("abandoned edit") {
+    auto edit = context.edit();
+    unpublished = edit.create_node("Transform").value();
+  }
+  SUBCASE("poisoned edit") {
+    auto edit = context.edit();
+    unpublished = edit.create_node("Transform").value();
+    REQUIRE_FALSE(edit.create_node("MissingType"));
+    REQUIRE_FALSE(edit.commit());
+  }
+  SUBCASE("competing edit") {
+    auto losing = context.edit();
+    unpublished = losing.create_node("Transform").value();
+    auto winning = context.edit();
+    const auto winner = winning.create_node("Transform");
+    REQUIRE(winner);
+    REQUIRE(winning.commit());
+    REQUIRE_FALSE(losing.commit());
+    CHECK(winner->id() != unpublished->id());
+    CHECK_FALSE(context.snapshot().describe(*unpublished));
+  }
+  REQUIRE(unpublished);
+  auto edit = context.edit();
+  const auto replacement = edit.create_node("Transform");
+  REQUIRE(replacement);
+  REQUIRE(edit.commit());
+  CHECK(replacement->id() != unpublished->id());
+  CHECK_FALSE(context.snapshot().lookup(unpublished->id()));
+  CHECK_FALSE(context.snapshot().describe(*unpublished));
+  auto mutation = context.edit();
+  CHECK_FALSE(mutation.remove_node(*unpublished));
+}
+
+TEST_CASE("unpublished declaration handles never alias committed declarations") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  std::optional<sai::declaration> unpublished;
+  SUBCASE("abandoned local declaration") {
+    auto edit = context.edit();
+    unpublished = edit.add_local_declaration(test_local_declaration("Lost")).value();
+  }
+  SUBCASE("abandoned external declaration") {
+    auto edit = context.edit();
+    unpublished = edit.add_external_declaration(
+        test_external_declaration("Lost", {"lost.x3d#Lost"})).value();
+  }
+  SUBCASE("poisoned declaration edit") {
+    auto edit = context.edit();
+    unpublished = edit.add_local_declaration(test_local_declaration("Lost")).value();
+    REQUIRE_FALSE(edit.create_node("MissingType"));
+    REQUIRE_FALSE(edit.commit());
+  }
+  SUBCASE("competing declaration edit") {
+    auto losing = context.edit();
+    unpublished = losing.add_local_declaration(test_local_declaration("Lost")).value();
+    auto winning = context.edit();
+    auto winner = winning.add_external_declaration(
+        test_external_declaration("Winner", {"winner.x3d#Winner"}));
+    REQUIRE(winner);
+    REQUIRE(winning.commit());
+    REQUIRE_FALSE(losing.commit());
+    CHECK(winner->id() != unpublished->id());
+    CHECK_FALSE(context.snapshot().describe(*unpublished));
+  }
+  REQUIRE(unpublished);
+  auto edit = context.edit();
+  const auto replacement = edit.add_local_declaration(test_local_declaration("Replacement"));
+  REQUIRE(replacement);
+  REQUIRE(edit.commit());
+  CHECK(replacement->id() != unpublished->id());
+  CHECK_FALSE(context.snapshot().declaration_at(unpublished->id()));
+  CHECK_FALSE(context.snapshot().describe(*unpublished));
+  auto mutation = context.edit();
+  CHECK_FALSE(mutation.rename_declaration(*unpublished, "MustNotRename"));
+}
