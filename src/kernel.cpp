@@ -425,7 +425,10 @@ bool accepts_node_payload(const detail::context_control &context,
                           const detail::scene_state &state,
                           const field_descriptor &field, const value &payload) {
   if (field.kind == value_kind::sf_node) {
-    const auto candidate = state.nodes.find(std::get<node_id>(payload).value);
+    const auto id = std::get<node_id>(payload);
+    if (id.value == 0)
+      return true;
+    const auto candidate = state.nodes.find(id.value);
     return candidate != state.nodes.end() &&
            accepts_node_type(context, field, candidate->second);
   }
@@ -1888,6 +1891,10 @@ result<void> scene_edit::set(const dynamic_field &target, value new_value,
   return set_value(target, std::move(*canonical), false);
 }
 
+result<void> scene_edit::set(const dynamic_field &target, std::nullopt_t) {
+  return set_value(target, value{node_id{}}, true);
+}
+
 result<void> scene_edit::set(const dynamic_field &target,
                              const node &new_value) {
   if (impl_->poison)
@@ -1984,7 +1991,8 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                target.node_, target.name_);
     return *impl_->poison;
   }
-  if (node_authority_checked && descriptor->kind == value_kind::sf_node) {
+  if (node_authority_checked && descriptor->kind == value_kind::sf_node &&
+      std::get<node_id>(new_value).value != 0) {
     const auto id = std::get<node_id>(new_value);
     const auto candidate = impl_->staged.nodes.find(id.value);
     if (candidate == impl_->staged.nodes.end() ||
@@ -3111,6 +3119,10 @@ result<void> event_batch::send(const dynamic_field &target, value payload,
   return send_value(target, std::move(*canonical), false);
 }
 
+result<void> event_batch::send(const dynamic_field &target, std::nullopt_t) {
+  return send_value(target, value{node_id{}}, true);
+}
+
 result<void> event_batch::send(const dynamic_field &target,
                                const node &payload) {
   if (impl_->poison)
@@ -3206,7 +3218,8 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                target.node_, target.name_);
     return *impl_->poison;
   }
-  if (node_authority_checked && descriptor->kind == value_kind::sf_node) {
+  if (node_authority_checked && descriptor->kind == value_kind::sf_node &&
+      std::get<node_id>(payload).value != 0) {
     const auto id = std::get<node_id>(payload);
     const auto candidate = impl_->base->nodes.find(id.value);
     if (candidate == impl_->base->nodes.end() ||

@@ -253,6 +253,9 @@ target_compile_features(x3d_sai_experimental_generated_example PRIVATE
 add_test(NAME sai_generated_author_inspect
     COMMAND x3d_sai_experimental_generated_example)
 
+add_test(NAME sai_field_null_assignment COMMAND x3d_sai_experimental_tests
+    "--test-case=explicit NULL*,NULL does not weaken*")
+
 add_test(NAME sai_id_unpublished_nodes COMMAND x3d_sai_experimental_tests
     "--test-case=unpublished node handles never alias committed creations")
 add_test(NAME sai_id_unpublished_declarations COMMAND x3d_sai_experimental_tests
