@@ -552,9 +552,12 @@ services:
   - <<: *command
     id: SVC-VALIDATE-AUTHORING
     clause: Proposed C++ framework validation policy (INV-VAL-1 and INV-VAL-2)
-    public_symbol: planned:x3d::sai::scene_edit::validate
-    support: planned
-    tests: [planned:sai_val_no_secret_repair, planned:sai_val_stable_diagnostic]
+    public_symbol: x3d::sai::experimental::scene_edit::validate
+    support: partial
+    buffering: checks commit admission without consuming or modifying the staged edit; success reserves nothing and commit rechecks
+    events: none; no revision or observation is published
+    errors: original mutation error or structured declaration, graph, lifecycle, retention, and import admission error; no lenient ingestion or source diagnostics yet
+    tests: [sai_val_no_secret_repair, sai_val_stable_diagnostic]
     preserves: [INV-VAL-1, INV-VAL-2]
   - <<: *query
     id: SVC-ADAPTER-SEMANTIC-TRACE

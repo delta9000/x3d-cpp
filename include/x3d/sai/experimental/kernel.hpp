@@ -776,6 +776,9 @@ public:
                           std::string_view field_name,
                           std::span<const std::optional<node>> values);
   result<void> remove_declaration(const declaration &target);
+  // Preflight the same admission checks as commit without consuming or
+  // modifying this edit. Success reserves nothing; commit rechecks admission.
+  result<void> validate() const;
   result<change_set> commit();
 
 private:

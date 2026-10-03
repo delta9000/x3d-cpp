@@ -269,7 +269,7 @@ invariants:
     evidence_strength: recurrent_intent
     statement: Strict authoring rejects before commit, lenient ingestion preserves recoverable facts, and correction is an explicit inspectable SceneEdit.
     preserving_operations: [validate strict, ingest lenient, propose repair]
-    falsification_tests: [planned:sai_val_no_secret_repair]
+    falsification_tests: [sai_val_no_secret_repair, planned:sai_val_lenient_ingestion]
   - <<: *invariant_defaults
     id: INV-VAL-2
     review_marker: reviewed:sha256:5781b400ff8c
@@ -278,7 +278,7 @@ invariants:
     evidence_strength: cpp_policy
     statement: Code, severity, operation, context, identity, occurrence, endpoints, source location, and causal chain are machine-readable independently of human wording.
     preserving_operations: [validate, report error, serialize diagnostic]
-    falsification_tests: [planned:sai_val_stable_diagnostic]
+    falsification_tests: [sai_val_stable_diagnostic, planned:sai_val_source_diagnostic]
   - <<: *invariant_defaults
     id: INV-CAP-1
     review_marker: reviewed:sha256:c51fbfbe939f

@@ -492,7 +492,15 @@ result<void> validate_candidate_graph(const detail::context_control &context,
                                       const detail::scene_state &state,
                                       const char *operation,
                                       revision_id base_revision) {
+  std::vector<std::uint64_t> node_ids;
+  node_ids.reserve(state.nodes.size());
   for (const auto &[id, record] : state.nodes) {
+    (void)record;
+    node_ids.push_back(id);
+  }
+  std::sort(node_ids.begin(), node_ids.end());
+  for (const auto id : node_ids) {
+    const auto &record = state.nodes.at(id);
     const auto *type = context.registry.find(record.type_name);
     for (const auto &field : type->fields) {
       if (const auto issue = node_payload_issue(context, state, record, field,
@@ -504,6 +512,7 @@ result<void> validate_candidate_graph(const detail::context_control &context,
     }
   }
   std::unordered_map<std::uint64_t, int> colors;
+  std::optional<std::pair<node_id, std::string>> cycle;
   std::function<bool(std::uint64_t)> visit = [&](std::uint64_t id) {
     if (id == 0 || colors[id] == 2)
       return true;
@@ -516,12 +525,19 @@ result<void> validate_candidate_graph(const detail::context_control &context,
       if (!field.containment)
         continue;
       const auto &payload = record.fields.at(field.name);
+      const auto follow = [&](node_id child) {
+        if (visit(child.value))
+          return true;
+        if (!cycle)
+          cycle.emplace(node_id{id}, field.name);
+        return false;
+      };
       if (field.kind == value_kind::sf_node) {
-        if (!visit(std::get<node_id>(payload).value))
+        if (!follow(std::get<node_id>(payload)))
           return false;
       } else if (field.kind == value_kind::mf_node) {
         for (node_id child : std::get<node_list>(payload)) {
-          if (!visit(child.value))
+          if (!follow(child))
             return false;
         }
       }
@@ -529,11 +545,11 @@ result<void> validate_candidate_graph(const detail::context_control &context,
     colors[id] = 2;
     return true;
   };
-  for (const auto &[id, record] : state.nodes) {
-    (void)record;
+  for (const auto id : node_ids) {
     if (!visit(id))
       return edit_error(error_code::containment_cycle, operation, context,
-                        base_revision, "containment graph contains a cycle");
+                        base_revision, "containment graph contains a cycle",
+                        cycle->first, cycle->second);
   }
   return {};
 }
@@ -3465,57 +3481,65 @@ result<void> scene_edit::remove_declaration(const declaration &target) {
   return {};
 }
 
-result<change_set> scene_edit::commit() {
-  static_assert(std::is_nothrow_move_constructible_v<change_set>);
-  if (impl_->poison)
-    return *impl_->poison;
-  if (impl_->committed) {
-    return edit_error(error_code::poisoned_edit, "scene_edit.commit",
-                      *impl_->context, impl_->base->revision,
-                      "scene edit was already committed");
+namespace {
+struct edit_admission {
+  std::vector<std::shared_ptr<detail::context_control>> import_sources;
+  std::vector<std::shared_ptr<detail::context_control>> dependency_sources;
+  std::vector<std::shared_ptr<detail::context_control>> lock_order;
+  // Release locks before any pinned source can run its resource destructors.
+  std::vector<std::unique_lock<std::mutex>> locks;
+};
+
+result<edit_admission> validate_edit(const detail::scene_edit_control &edit,
+                                     const char *operation) {
+  if (edit.poison)
+    return *edit.poison;
+  if (edit.committed) {
+    return edit_error(error_code::poisoned_edit, operation, *edit.context,
+                      edit.base->revision, "scene edit was already committed");
   }
 
-  for (declaration_id id : impl_->staged.declaration_order) {
+  for (declaration_id id : edit.staged.declaration_order) {
     const auto *external = std::get_if<external_declaration_descriptor>(
-        &impl_->staged.declarations.at(id.value).payload);
+        &edit.staged.declarations.at(id.value).payload);
     if (!external)
       continue;
     if (const auto issue =
-            validate_external_resolution(impl_->staged, *external)) {
-      return declaration_edit_error(error_code::invalid_descriptor,
-                                    "scene_edit.commit", *impl_->context,
-                                    impl_->base->revision, *issue, id);
+            validate_external_resolution(edit.staged, *external)) {
+      return declaration_edit_error(error_code::invalid_descriptor, operation,
+                                    *edit.context, edit.base->revision, *issue,
+                                    id);
     }
   }
 
-  if (auto valid =
-          validate_candidate_graph(*impl_->context, impl_->staged,
-                                   "scene_edit.commit", impl_->base->revision);
+  if (auto valid = validate_candidate_graph(*edit.context, edit.staged,
+                                            operation, edit.base->revision);
       !valid)
     return failure(valid.error());
 
-  std::vector<std::shared_ptr<detail::context_control>> import_sources;
-  import_sources.reserve(impl_->staged.import_sources.size());
-  for (const auto &weak_source : impl_->staged.import_sources) {
+  edit_admission admission;
+  auto &import_sources = admission.import_sources;
+  import_sources.reserve(edit.staged.import_sources.size());
+  for (const auto &weak_source : edit.staged.import_sources) {
     auto source = weak_source.lock();
     if (!source) {
-      return edit_error(error_code::stale_aperture, "scene_edit.commit",
-                        *impl_->context, impl_->base->revision,
+      return edit_error(error_code::stale_aperture, operation, *edit.context,
+                        edit.base->revision,
                         "import source context no longer exists");
     }
     import_sources.push_back(std::move(source));
   }
-  std::vector<std::shared_ptr<detail::context_control>> dependency_sources =
-      import_sources;
+  auto &dependency_sources = admission.dependency_sources;
+  dependency_sources = import_sources;
   dependency_sources.reserve(dependency_sources.size() +
-                             impl_->base->import_sources.size());
-  for (const auto &weak_source : impl_->base->import_sources) {
+                             edit.base->import_sources.size());
+  for (const auto &weak_source : edit.base->import_sources) {
     if (auto source = weak_source.lock())
       dependency_sources.push_back(std::move(source));
   }
-  std::vector<std::shared_ptr<detail::context_control>> lock_order =
-      dependency_sources;
-  lock_order.push_back(impl_->context);
+  auto &lock_order = admission.lock_order;
+  lock_order = dependency_sources;
+  lock_order.push_back(edit.context);
   std::sort(lock_order.begin(), lock_order.end(),
             [](const auto &left, const auto &right) {
               if (left->generation != right->generation)
@@ -3524,70 +3548,69 @@ result<change_set> scene_edit::commit() {
             });
   lock_order.erase(std::unique(lock_order.begin(), lock_order.end()),
                    lock_order.end());
-  std::vector<std::unique_lock<std::mutex>> locks;
+  auto &locks = admission.locks;
   locks.reserve(lock_order.size());
   for (const auto &context : lock_order)
     locks.emplace_back(context->mutex);
 
-  if (impl_->context->processing) {
-    return edit_error(error_code::operation_in_progress, "scene_edit.commit",
-                      *impl_->context, impl_->base->revision,
+  if (edit.context->processing) {
+    return edit_error(error_code::operation_in_progress, operation,
+                      *edit.context, edit.base->revision,
                       "runtime evaluation is in progress");
   }
-  if (!impl_->context->active) {
-    return edit_error(error_code::stale_handle, "scene_edit.commit",
-                      *impl_->context, impl_->base->revision,
+  if (!edit.context->active) {
+    return edit_error(error_code::stale_handle, operation, *edit.context,
+                      edit.base->revision,
                       "execution context is no longer active");
   }
-  if (impl_->context->state->revision != impl_->base->revision) {
-    return edit_error(error_code::stale_revision, "scene_edit.commit",
-                      *impl_->context, impl_->base->revision,
-                      "edit base revision is stale");
+  if (edit.context->state->revision != edit.base->revision) {
+    return edit_error(error_code::stale_revision, operation, *edit.context,
+                      edit.base->revision, "edit base revision is stale");
   }
-  for (const auto &[id, staged] : impl_->staged.nodes) {
+  for (const auto &[id, staged] : edit.staged.nodes) {
     if (!staged.scope_owner)
       continue;
-    const auto base = impl_->base->nodes.find(id);
-    if (base != impl_->base->nodes.end() &&
+    const auto base = edit.base->nodes.find(id);
+    if (base != edit.base->nodes.end() &&
         base->second.scope_owner == staged.scope_owner)
       continue;
     if (const auto blocker =
-            find_live_context_reference(*impl_->context, node_id{id})) {
-      return edit_error(error_code::node_in_use, "scene_edit.commit",
-                        *impl_->context, impl_->base->revision,
-                        blocker->message, node_id{id}, blocker->field);
+            find_live_context_reference(*edit.context, node_id{id})) {
+      return edit_error(error_code::node_in_use, operation, *edit.context,
+                        edit.base->revision, blocker->message, node_id{id},
+                        blocker->field);
     }
     if (const auto imported =
-            find_live_import_reference(*impl_->context, node_id{id})) {
-      return edit_error(error_code::node_in_use, "scene_edit.commit",
-                        *impl_->context, impl_->base->revision,
+            find_live_import_reference(*edit.context, node_id{id})) {
+      return edit_error(error_code::node_in_use, operation, *edit.context,
+                        edit.base->revision,
                         "node acquired a committed import aperture while its "
                         "template claim was staged",
                         node_id{id}, *imported);
     }
   }
-  for (const auto removed : impl_->removed_nodes) {
+  for (const auto removed : edit.removed_nodes) {
     if (const auto blocker =
-            find_live_context_reference(*impl_->context, node_id{removed})) {
-      return edit_error(error_code::node_in_use, "scene_edit.commit",
-                        *impl_->context, impl_->base->revision,
-                        blocker->message, node_id{removed}, blocker->field);
+            find_live_context_reference(*edit.context, node_id{removed})) {
+      return edit_error(error_code::node_in_use, operation, *edit.context,
+                        edit.base->revision, blocker->message, node_id{removed},
+                        blocker->field);
     }
     if (const auto imported =
-            find_live_import_reference(*impl_->context, node_id{removed})) {
-      return edit_error(error_code::node_in_use, "scene_edit.commit",
-                        *impl_->context, impl_->base->revision,
+            find_live_import_reference(*edit.context, node_id{removed})) {
+      return edit_error(error_code::node_in_use, operation, *edit.context,
+                        edit.base->revision,
                         "node acquired a committed import aperture while its "
                         "removal was staged",
                         node_id{removed}, *imported);
     }
   }
-  for (std::size_t index = 0; index < impl_->staged.imports.size(); ++index) {
-    const import_binding &binding = impl_->staged.imports[index];
+  for (std::size_t index = 0; index < edit.staged.imports.size(); ++index) {
+    const import_binding &binding = edit.staged.imports[index];
     const auto &source = import_sources[index];
     if (!source->active || source->generation != binding.source_generation) {
-      return edit_error(error_code::stale_aperture, "scene_edit.commit",
-                        *impl_->context, impl_->base->revision,
+      return edit_error(error_code::stale_aperture, operation, *edit.context,
+                        edit.base->revision,
                         "import source generation is stale",
                         binding.target.local);
     }
@@ -3598,12 +3621,31 @@ result<change_set> scene_edit::commit() {
         });
     if (exported == source->state->exports.end() ||
         exported->node != binding.target.local) {
-      return edit_error(error_code::stale_aperture, "scene_edit.commit",
-                        *impl_->context, impl_->base->revision,
+      return edit_error(error_code::stale_aperture, operation, *edit.context,
+                        edit.base->revision,
                         "source export changed before import publication",
                         binding.target.local);
     }
   }
+  return admission;
+}
+} // namespace
+
+result<void> scene_edit::validate() const {
+  auto checked = validate_edit(*impl_, "scene_edit.validate");
+  if (!checked)
+    return failure(checked.error());
+  return {};
+}
+
+result<change_set> scene_edit::commit() {
+  static_assert(std::is_nothrow_move_constructible_v<change_set>);
+  auto checked = validate_edit(*impl_, "scene_edit.commit");
+  if (!checked)
+    return failure(checked.error());
+  const auto &import_sources = checked->import_sources;
+  const auto &dependency_sources = checked->dependency_sources;
+  const auto &lock_order = checked->lock_order;
   if (!impl_->changed) {
     impl_->committed = true;
     return change_set{.before_revision = impl_->base->revision,

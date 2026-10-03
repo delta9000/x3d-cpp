@@ -32,7 +32,8 @@ target_include_directories(x3d_sai_doctest_main PUBLIC
 target_compile_features(x3d_sai_doctest_main PUBLIC cxx_std_20)
 
 add_executable(x3d_sai_experimental_tests
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_kernel_test.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/semantic_kernel_test.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/authoring_validation_test.cpp")
 target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
@@ -372,3 +373,10 @@ target_link_libraries(x3d_sai_callback_ownership_tests PRIVATE
     x3d_sai_experimental x3d_sai_doctest_main Threads::Threads)
 add_test(NAME sai_callback_ownership COMMAND x3d_sai_callback_ownership_tests)
 set_tests_properties(sai_callback_ownership PROPERTIES TIMEOUT 15)
+
+add_test(NAME sai_val_no_secret_repair COMMAND x3d_sai_experimental_tests
+    "--test-case=authoring validation*")
+add_test(NAME sai_val_stable_diagnostic COMMAND x3d_sai_experimental_tests
+    "--test-case=authoring validation reports stable cycle endpoints")
+set_tests_properties(sai_val_no_secret_repair sai_val_stable_diagnostic
+    PROPERTIES TIMEOUT 15)

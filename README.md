@@ -374,9 +374,26 @@ host callback boundaries follow the runtime failure rules above. Native frame
 and checkpoint resources are destroyed outside context locks on failed
 publication, so their cleanup can inspect the committed scene.
 
-After failure, discard the edit or batch and start a fresh one. Publication
-atomicity does not cover arbitrary mutations of a thread-confined staged edit
-or external host side effects.
+`scene_edit::validate() const` preflights the same checks as `commit()`:
+previous mutation errors, consumed edits, declaration compatibility, node
+references and containment, current revision/lifecycle, live retention, and
+import source exports. It returns the existing `result<void>` and `sai_error`
+data without consuming the edit, repairing its graph, realizing nodes, or
+publishing state or observations. It releases its context locks before returning.
+Success reserves nothing; an intervening edit, retirement, observation, import,
+or runtime evaluation can change whether the later commit is admitted.
+
+Containment diagnostics identify the node and field whose edge closes a cycle.
+Validation traverses nodes by identity and fields/children in their declared
+order, making that endpoint deterministic. An earlier mutation error retains
+its original operation and identity. Source locations, severity, and complete
+causal diagnostic chains remain future work.
+
+A failed validation leaves the staged edit intact. A commit-time graph error
+can be corrected through explicit further edits and validated again; a mutation
+that already poisoned the edit requires a fresh edit. Discard a failed event
+batch and start a fresh one. Publication atomicity does not cover arbitrary
+mutations of a thread-confined staged edit or external host side effects.
 
 ## Deliberate limits
 
