@@ -43,6 +43,9 @@ semantic model, and the generator version.
 
 The proposal makes these design choices executable:
 
+- Node and declaration identities are reserved from non-reusing context-owned
+  counters, including creations in abandoned, poisoned, and conflicting edits.
+  A handle from an unpublished creation never resolves to a different object.
 - `node_id` is semantic identity; an `occurrence` is an ordered containment
   edge with its own parent, field, index, and path.
 - An `execution_context` owns one generation. `scene_snapshot` is immutable;
@@ -162,3 +165,24 @@ this API yet.
 Allocation failure may throw `std::bad_alloc`; ordinary semantic failures use
 `result<T>`. In particular, `typed_node::field` constructs an owning field name
 and is not `noexcept`.
+
+## Conformance records and CI
+
+`mise run ci` requires both `sai-conformance-gate` and `sai-invariants` in
+addition to generator, Python and C++ checks. These validate register schemas,
+service/invariant cross-links, literal CTest references and deterministic
+`docs/conformance/SAI-BASELINE.md` regeneration. They do **not** certify runtime
+semantics, live execution, or a formal ISO C++ binding.
+
+The register includes the split kernel's previously omitted native/offline
+services as **partial**, plus explicitly **planned** document-ingestion and
+ABI-boundary responsibilities. Native extension policy is labelled separately
+from normative service clauses. A responsibility link does not mean an entire
+invariant has been proven. No existing service is promoted by this bookkeeping
+repair.
+
+Regenerate the baseline after an intentional register edit with
+`mise run sai-baseline`. `mise run sai-conformance` remains the opt-in strict
+convergence gate and is expected to fail while services, falsification evidence,
+and the independent C++ binding audit are incomplete. CI does not weaken that
+gate to manufacture a conformance claim.

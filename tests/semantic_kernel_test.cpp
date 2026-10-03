@@ -4097,3 +4097,83 @@ TEST_CASE("NULL does not weaken node authority or change MFNode semantics") {
 
 static_assert(!noexcept(std::declval<const sai::typed_node<BoundTransform> &>()
                            .field(BoundTransform::translation)));
+
+TEST_CASE("unpublished node handles never alias committed creations") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  std::optional<sai::node> unpublished;
+  SUBCASE("abandoned edit") {
+    auto edit = context.edit();
+    unpublished = edit.create_node("Transform").value();
+  }
+  SUBCASE("poisoned edit") {
+    auto edit = context.edit();
+    unpublished = edit.create_node("Transform").value();
+    REQUIRE_FALSE(edit.create_node("MissingType"));
+    REQUIRE_FALSE(edit.commit());
+  }
+  SUBCASE("competing edit") {
+    auto losing = context.edit();
+    unpublished = losing.create_node("Transform").value();
+    auto winning = context.edit();
+    const auto winner = winning.create_node("Transform");
+    REQUIRE(winner);
+    REQUIRE(winning.commit());
+    REQUIRE_FALSE(losing.commit());
+    CHECK(winner->id() != unpublished->id());
+    CHECK_FALSE(context.snapshot().describe(*unpublished));
+  }
+  REQUIRE(unpublished);
+  auto edit = context.edit();
+  const auto replacement = edit.create_node("Transform");
+  REQUIRE(replacement);
+  REQUIRE(edit.commit());
+  CHECK(replacement->id() != unpublished->id());
+  CHECK_FALSE(context.snapshot().lookup(unpublished->id()));
+  CHECK_FALSE(context.snapshot().describe(*unpublished));
+  auto mutation = context.edit();
+  CHECK_FALSE(mutation.remove_node(*unpublished));
+}
+
+TEST_CASE("unpublished declaration handles never alias committed declarations") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  std::optional<sai::declaration> unpublished;
+  SUBCASE("abandoned local declaration") {
+    auto edit = context.edit();
+    unpublished = edit.add_local_declaration(test_local_declaration("Lost")).value();
+  }
+  SUBCASE("abandoned external declaration") {
+    auto edit = context.edit();
+    unpublished = edit.add_external_declaration(
+        test_external_declaration("Lost", {"lost.x3d#Lost"})).value();
+  }
+  SUBCASE("poisoned declaration edit") {
+    auto edit = context.edit();
+    unpublished = edit.add_local_declaration(test_local_declaration("Lost")).value();
+    REQUIRE_FALSE(edit.create_node("MissingType"));
+    REQUIRE_FALSE(edit.commit());
+  }
+  SUBCASE("competing declaration edit") {
+    auto losing = context.edit();
+    unpublished = losing.add_local_declaration(test_local_declaration("Lost")).value();
+    auto winning = context.edit();
+    auto winner = winning.add_external_declaration(
+        test_external_declaration("Winner", {"winner.x3d#Winner"}));
+    REQUIRE(winner);
+    REQUIRE(winning.commit());
+    REQUIRE_FALSE(losing.commit());
+    CHECK(winner->id() != unpublished->id());
+    CHECK_FALSE(context.snapshot().describe(*unpublished));
+  }
+  REQUIRE(unpublished);
+  auto edit = context.edit();
+  const auto replacement = edit.add_local_declaration(test_local_declaration("Replacement"));
+  REQUIRE(replacement);
+  REQUIRE(edit.commit());
+  CHECK(replacement->id() != unpublished->id());
+  CHECK_FALSE(context.snapshot().declaration_at(unpublished->id()));
+  CHECK_FALSE(context.snapshot().describe(*unpublished));
+  auto mutation = context.edit();
+  CHECK_FALSE(mutation.rename_declaration(*unpublished, "MustNotRename"));
+}
