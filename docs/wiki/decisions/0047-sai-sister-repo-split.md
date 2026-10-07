@@ -112,3 +112,18 @@ The 29 x3d-cpp rows became a working register: they now live at
 `defaults:` merge anchors, and are validated by `scripts/check_sai_services.py`
 (`mise run sai-services`, also run under `uv run pytest`). The first validator run
 found four cited evidence names with no x3d-cpp counterpart and corrected them.
+
+## Update — 2026-10-07: composition boundary
+
+Independent builds are necessary but insufficient: both libraries must also be
+safe to include and link in one process. The runtime owns `x3d::core` and
+`x3d::nodes`; the SAI kernel's private generated metadata must not redefine those
+types or publish headers under the runtime's `x3d/core` and `x3d/nodes` paths.
+The kernel's public experimental API belongs under `x3d/sai/experimental`.
+
+`runtime/script/SaiContext.hpp` remains the legacy Script-backend API. It is not
+the kernel's browser and does not adapt kernel handles, owning field values,
+errors, routes or events to runtime objects. A real adapter is separate work and
+must explicitly cover ownership/lifetime, identity, field conversion, access
+rules and cascade semantics. Coexistence is a packaging and C++ boundary check,
+not adapter evidence, interoperability certification or standards conformance.

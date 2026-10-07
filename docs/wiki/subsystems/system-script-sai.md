@@ -2,7 +2,7 @@
 title: Script / SAI Runtime
 summary: Script node runtime — ScriptEngine seam, SAI execution context, ECMAScript (Duktape) backend, and dynamic field marshalling.
 tags: [subsystem, script, sai, ecmascript, duktape, quickjs, dynamic-fields]
-updated: 2026-09-26
+updated: 2026-10-07
 related:
   - ../architecture.md
   - ../subsystems/routes.md
@@ -22,6 +22,13 @@ related:
     modern-C++ SAI *semantic kernel*, which lives in the `x3d-sai` sister repository as
     of 2026-07-19. See [ADR-0047](../decisions/0047-sai-sister-repo-split.md). The two
     share a standard, not an implementation.
+
+    `SaiContext` is the legacy **Script-backend API**, not an adapter to
+    `x3d::sai::experimental`. Its `std::any` values and runtime node pointers
+    retain x3d-cpp's ownership, identity, event and lifetime rules. No conversion
+    to the kernel's owning values or handles is implicit. A future adapter must
+    translate and test those rules explicitly; merely linking both packages
+    does not connect their scenes or prove standards conformance.
 
 ## Purpose
 
