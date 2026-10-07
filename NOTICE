@@ -122,3 +122,11 @@ via vcpkg, each under its own license:
     aws-checksums, s2n-tls                                        Apache-2.0
     OpenSSL 3.x                                                   Apache-2.0
     zlib                                                          zlib
+
+Optional SAI provider companion (adapters/sai)
+--------------------------------------------
+The experimental companion explicitly depends on the separately supplied
+x3d-sai provider interface and its existing tl::expected header dependency.
+They are not fetched or vendored by x3d-cpp. Retain the independently installed
+x3d-sai LICENSE/NOTICE and tl-expected license when distributing that package.
+Ordinary x3d-cpp builds do not include this companion dependency.
