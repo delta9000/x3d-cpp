@@ -6,6 +6,7 @@ namespace x3d::runtime {
 class Scene;
 }
 namespace x3d::sai::experimental::native {
+namespace detail { struct presentation_access; }
 // One native storage backend for both setup authoring and host-driven runtime.
 // The final portable service owns this backend and all public handle authority.
 // No reference-kernel model or metadata is linked or mirrored here.
@@ -58,6 +59,7 @@ protected:
   void do_retire(std::uint64_t) noexcept override;
 
 private:
+  friend struct detail::presentation_access;
   struct storage;
   std::unique_ptr<storage> state_;
 };

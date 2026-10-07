@@ -1,4 +1,5 @@
 #include "x3d/sai_provider.hpp"
+#include "x3d/sai_presentation.hpp"
 #include "RuntimeSession.hpp"
 #include "x3d/nodes/Box.hpp"
 #include "x3d/nodes/PositionInterpolator.hpp"
@@ -10,6 +11,8 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include <cmath>
 #include <map>
+#include <limits>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -186,6 +189,78 @@ sai::value scalar_portable(const x3d::core::FieldInfo &f, const X3DNode &n) {
 }
 } // namespace
 
+namespace detail {
+struct presentation_state {
+  const p::service *owner = nullptr; // Compared only; never dereferenced.
+  p::scene source;
+  std::shared_ptr<const presentation_frame> current;
+  std::set<x3d::runtime::extract::RenderItemId> live;
+  std::map<std::vector<std::uint64_t>, std::uint64_t> placements;
+  using mesh_ref = x3d::runtime::extract::MeshRef;
+  std::map<mesh_ref, std::uint64_t, std::owner_less<mesh_ref>> meshes;
+  std::uint64_t next_placement = 1, next_mesh = 1;
+
+  static std::uint64_t mint(std::uint64_t &next) {
+    if (next == std::numeric_limits<std::uint64_t>::max())
+      throw std::overflow_error("native presentation identity exhausted");
+    return next++;
+  }
+  result<void> capture(RuntimeSession &session,
+               const std::unordered_map<const X3DNode *, std::uint64_t> &ids,
+               const x3d::runtime::extract::RenderDelta &delta,
+               std::optional<event_time> time) {
+    if (session.extractor().budgetExceeded())
+      return failure(sai_error{error_code::resource_limit, "native.presentation.capture",
+          "native extraction budget prevented a complete presentation frame"});
+    auto next_live = live;
+    for (auto id : delta.removed) next_live.erase(id);
+    for (auto id : delta.added) next_live.insert(id);
+    decltype(placements) next_placements;
+    decltype(meshes) next_meshes;
+    auto placement_counter = next_placement, mesh_counter = next_mesh;
+    auto frame = std::make_shared<presentation_frame>();
+    frame->source = source;
+    frame->native_tick = session.context().tickGeneration();
+    frame->host_time = time;
+    frame->items.reserve(next_live.size());
+    for (auto id : next_live) {
+      const auto &item = session.extractor().item(id);
+      std::vector<std::uint64_t> path;
+      path.reserve(item.path.size());
+      for (auto node : item.path) {
+        const auto found = ids.find(node);
+        if (found == ids.end())
+          throw std::logic_error("presentation path contains a foreign node");
+        path.push_back(found->second);
+      }
+      const auto previous = placements.find(path);
+      const auto placement = previous == placements.end()
+          ? mint(placement_counter) : previous->second;
+      if (!next_placements.emplace(std::move(path), placement).second)
+        throw std::logic_error("native extractor repeated a live path");
+      auto mesh = next_meshes.find(item.mesh);
+      if (mesh == next_meshes.end()) {
+        const auto previous_mesh = meshes.find(item.mesh);
+        const auto key = previous_mesh == meshes.end()
+            ? mint(mesh_counter) : previous_mesh->second;
+        mesh = next_meshes.emplace(item.mesh, key).first;
+      }
+      frame->items.push_back({placement, mesh->second, item.worldTransform,
+                              item.mesh});
+    }
+    // Commit only a complete projection. These maps contain current objects,
+    // never all historical paths or mesh owners. Older frames belong to hosts.
+    live = std::move(next_live);
+    placements = std::move(next_placements);
+    meshes = std::move(next_meshes);
+    next_placement = placement_counter;
+    next_mesh = mesh_counter;
+    current = std::move(frame);
+    return {};
+  }
+};
+} // namespace detail
+
 struct backend::storage {
   struct fixture {
     std::shared_ptr<X3DDocument> setup = std::make_shared<X3DDocument>();
@@ -194,6 +269,7 @@ struct backend::storage {
     std::unordered_map<const X3DNode *, std::uint64_t> identities;
     std::uint64_t next_node = 1;
     native_evidence evidence;
+    std::shared_ptr<detail::presentation_state> presentation;
     std::vector<address> retained_seeds;
     std::size_t next_retained_seed = 0;
     Scene &scene() { return session ? session->scene() : setup->scene; }
@@ -302,6 +378,7 @@ struct backend::storage {
     }
   };
   std::map<std::uint64_t, std::unique_ptr<fixture>> scenes;
+  std::shared_ptr<detail::presentation_state> *creation_capture = nullptr;
   std::uint64_t next_scene = 1;
   std::thread::id thread = std::this_thread::get_id();
 };
@@ -327,7 +404,12 @@ p::capabilities backend::supported() const {
 }
 result<std::uint64_t> backend::do_create_scene() {
   auto id = state_->next_scene++;
-  state_->scenes.emplace(id, std::make_unique<storage::fixture>());
+  auto fixture = std::make_unique<storage::fixture>();
+  if (state_->creation_capture) {
+    fixture->presentation = std::make_shared<detail::presentation_state>();
+    *state_->creation_capture = fixture->presentation;
+  }
+  state_->scenes.emplace(id, std::move(fixture));
   return id;
 }
 result<std::uint64_t> backend::do_create_node(std::uint64_t scene,
@@ -526,6 +608,39 @@ result<void> backend::do_validate_configuration(
   auto graph = f.graph(nullptr, nullptr, &writes);
   if (!graph)
     return failure(graph.error());
+  if (f.presentation) {
+    // The extractor silently truncates deep paths. Its complete-frame adapter
+    // therefore admits only a conservative bounded registered graph. Compute
+    // longest paths in topological order: a shared node may have a longer path
+    // than the first DFS path that reaches it. Detached nodes count as well.
+    std::unordered_map<std::uint64_t, std::size_t> incoming, depth;
+    for (const auto &[id, children] : *graph) {
+      incoming.try_emplace(id, 0);
+      depth.emplace(id, 1);
+      for (const auto child : children)
+        if (child) ++incoming[*child];
+    }
+    std::vector<std::uint64_t> ready;
+    for (const auto &[id, count] : incoming)
+      if (count == 0) ready.push_back(id);
+    std::size_t consumed = 0;
+    while (!ready.empty()) {
+      const auto id = ready.back();
+      ready.pop_back();
+      ++consumed;
+      for (const auto child : graph->at(id)) {
+        if (!child) continue;
+        if (depth.at(id) >= x3d::kMaxNestingDepth)
+          return error(error_code::resource_limit, "native.presentation.preflight",
+                       "registered graph exceeds complete-presentation depth");
+        depth.at(*child) = std::max(depth.at(*child), depth.at(id) + 1);
+        if (--incoming.at(*child) == 0) ready.push_back(*child);
+      }
+    }
+    if (consumed != graph->size())
+      return error(error_code::containment_cycle, "native.presentation.preflight",
+                   "presentation graph could not be ordered");
+  }
   for (const auto &[id, node] : f.nodes) {
     const auto interpolator =
         std::dynamic_pointer_cast<x3d::nodes::PositionInterpolator>(node);
@@ -582,7 +697,12 @@ result<void> backend::do_activate(std::uint64_t scene) {
     return error(error_code::invalid_route, "native.activate",
                  "native ROUTE bridge rejected an admitted route");
   f.evidence.routes = f.session->routes().routesAdded;
-  f.evidence.snapshot_items = f.session->fullSnapshot().added.size();
+  const auto initial = f.session->fullSnapshot();
+  f.evidence.snapshot_items = initial.added.size();
+  if (f.presentation) {
+    auto captured = f.presentation->capture(*f.session, f.identities, initial, std::nullopt);
+    if (!captured) return failure(captured.error());
+  }
   f.session->context().addFieldWriteListener(
       [this, scene](const x3d::runtime::FieldAddress &a) {
         auto &f = *state_->scenes.at(scene);
@@ -681,6 +801,12 @@ backend::do_turn(std::uint64_t scene, event_time time,
     const auto &m = f.session->extractor().item(id).worldTransform.m;
     e.rendered_translations.push_back({m[12], m[13], m[14]});
   }
+  if (f.presentation) {
+    auto captured = f.presentation->capture(*f.session, f.identities, delta, time);
+    if (!captured)
+      return tl::unexpected<backend_failure>{
+          backend_failure{captured.error(), p::failure_effect::partial_or_unknown}};
+  }
   return {};
 }
 backend::native_evidence backend::inspect(std::uint64_t scene) const {
@@ -714,5 +840,59 @@ std::unique_ptr<p::backend> make_backend() {
 }
 result<std::unique_ptr<p::service>> make_service(p::resource_limits limits) {
   return std::make_unique<p::service>(make_backend(), limits);
+}
+
+namespace detail {
+struct presentation_access {
+  static result<presented_scene> create(p::resource_limits limits) {
+    auto engine = std::make_unique<backend>();
+    auto &native = *engine;
+    auto service = std::make_unique<p::service>(std::move(engine), limits);
+    std::shared_ptr<presentation_state> captured;
+    struct capture_scope {
+      backend::storage &storage;
+      explicit capture_scope(backend::storage &s,
+                             std::shared_ptr<presentation_state> &out)
+          : storage(s) { storage.creation_capture = &out; }
+      ~capture_scope() { storage.creation_capture = nullptr; }
+    };
+    result<p::scene> created;
+    {
+      capture_scope capture(*native.state_, captured);
+      created = service->create_scene();
+    }
+    if (!created) return failure(created.error());
+    if (!captured)
+      throw std::logic_error("native scene creation did not bind a render feed");
+    captured->owner = service.get();
+    captured->source = *created;
+    render_feed feed;
+    feed.state_ = captured;
+    return presented_scene{std::move(service), *created, std::move(feed)};
+  }
+};
+} // namespace detail
+
+result<presented_scene> make_presented_scene(p::resource_limits limits) {
+  return detail::presentation_access::create(limits);
+}
+result<std::shared_ptr<const presentation_frame>>
+render_feed::snapshot(const p::service &service) const {
+  const auto state = state_.lock();
+  const auto fail = [](error_code code, std::string message) {
+    return failure(sai_error{code, "native.presentation.snapshot", std::move(message)});
+  };
+  if (!state) return fail(error_code::stale_handle, "native scene is no longer available");
+  if (state->owner != &service)
+    return fail(error_code::invalid_context, "render feed belongs to another service");
+  // The frontend can fault after native execution succeeds (for example when
+  // capturing notifications overflows). Never expose that candidate as active.
+  auto status = service.state(state->source);
+  if (!status) return failure(status.error());
+  if (*status != p::activation_state::active)
+    return fail(error_code::access_denied, "render feed requires an active scene");
+  if (!state->current)
+    return fail(error_code::operation_in_progress, "native frame is not available");
+  return state->current;
 }
 } // namespace x3d::sai::experimental::native

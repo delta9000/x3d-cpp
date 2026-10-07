@@ -20,7 +20,7 @@ target_compile_features(x3d_cpp_sai_provider PUBLIC cxx_std_20)
 target_include_directories(x3d_cpp_sai_provider PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>")
-target_link_libraries(x3d_cpp_sai_provider PUBLIC x3d::sai
+target_link_libraries(x3d_cpp_sai_provider PUBLIC x3d::sai x3d_cpp::headers
     PRIVATE x3d_cpp::x3d_cpp)
 
 set(_package_dir "${CMAKE_INSTALL_LIBDIR}/cmake/x3d_cpp_sai")

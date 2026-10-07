@@ -81,3 +81,52 @@ The harness checks common authoring/live conformance, native storage/containment
 and runtime evidence, cross-backend report parity, reference-free native link
 commands, source builds and relocated installed consumers. See
 `tests/coverage-ledger.md` for assertion migration details.
+
+## Owned presentation feed
+
+`<x3d/sai_presentation.hpp>` adds the native-only `make_presented_scene()`
+factory. It returns the ordinary portable service, one ordinary setup scene,
+and a feed bound to that exact scene and service. Continue to create nodes,
+author fields, activate, enqueue, pump, drain callbacks and close through the
+portable service. Other scenes created on that service do not acquire a feed.
+The portable contract and existing `make_service()` factory are unchanged.
+
+`feed.snapshot(service)` explicitly pulls the latest complete immutable frame.
+It checks the exact service, lifetime and active frontend state, including a
+frontend fault after native execution completed. Setup, wrong-thread, retired,
+closed and foreign-service access fail. No presentation callback runs in a
+native turn. The activation frame has no host time; later frames record the
+native tick and supplied time. A rejected submission that never enters the
+backend does not create a native frame.
+
+A frame owns its item vector, matrices and shared immutable mesh data. It
+contains no native node pointers, storage IDs, scene/session storage or callback
+captures. Its opaque scene identity namespaces placement and mesh keys. Host
+code may retain and render an old frame after the service is destroyed; that
+does not retain authority to operate on its expired scene handle.
+
+Placement keys survive unchanged paths across extractor rebuilds. Removed paths
+are forgotten, and a later re-addition receives a new key. Mesh keys identify
+currently live immutable mesh ownership, so shared placements share a key;
+equivalent freshly rebuilt mesh content may receive another key. Neither key
+space is a portable node handle. Identity exhaustion fails explicitly.
+
+This is a latest-full-snapshot policy: the backend keeps one current frame and
+current identity maps, with no historical frame queue. Slow hosts deliberately
+skip intermediate presentation frames and replace their displayed scene from
+the next complete frame. Portable event/receipt queues retain their separate
+policies. Producer retention scales with the current scene; consumer-retained
+frames and backend scene storage are outside portable queue byte budgets.
+
+The feed exposes only geometry and world transforms for the four-node slice.
+Its configuration preflight conservatively limits every registered node path,
+including detached nodes, to the native nesting bound (currently 1,000 nodes).
+This prevents the extractor's silent depth truncation from becoming an alleged
+complete frame. If extraction exhausts its separate visit budget after native
+execution starts, capture fails, the activation faults, and the feed rejects
+that candidate; previously retained complete frames remain valid.
+Camera, flat shading, rasterization and presentation belong to the host. It does
+not represent a complete renderer, profile, material system or CAVEOS binding.
+The existing extractor distinguishes shared shapes under different Transform
+paths, but collapses repeated identical root/path occurrences. This extension
+preserves that behavior and does not claim occurrence-distinct rendering there.

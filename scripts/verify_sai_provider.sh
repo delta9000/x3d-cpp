@@ -50,6 +50,7 @@ check_native_link() {
 }
 check_native_link "$source"
 check_native_link "$source" sai_provider_native_runtime
+check_native_link "$source" sai_provider_presentation
 ctest --test-dir "$source" --output-on-failure -R '^sai_provider_'
 
 prefix="$work/original-prefix"
@@ -67,6 +68,7 @@ fi
 mv "$prefix" "$moved"
 cp -R "$consumer" "$work/consumer"
 cp "$cpp/adapters/sai_provider/tests/native_runtime_test.cpp" "$work/consumer/native_runtime_test.cpp"
+cp "$cpp/adapters/sai_provider/tests/presentation_test.cpp" "$work/consumer/presentation_test.cpp"
 cmake -S "$work/consumer" -B "$work/installed-build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DSAI_PROVIDER_INSTALLED=ON \
   -DCMAKE_PREFIX_PATH="$moved" -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
@@ -74,5 +76,17 @@ cmake -S "$work/consumer" -B "$work/installed-build" -G Ninja \
 cmake --build "$work/installed-build" --target sai_provider_all --parallel "$jobs"
 check_native_link "$work/installed-build"
 check_native_link "$work/installed-build" sai_provider_native_runtime
+check_native_link "$work/installed-build" sai_provider_presentation
 ctest --test-dir "$work/installed-build" --output-on-failure -R '^sai_provider_'
-echo "Unified provider passed: reference/native/parity in source and relocated installed consumers ($shared shared nodes)"
+
+# An ordinary application consumes only relocated public packages. Its finite
+# recording, CPU presentation and malformed-input checks do not use test helpers.
+cp -R "$cpp/examples/sai_host" "$work/host-consumer"
+cmake -S "$work/host-consumer" -B "$work/host-build" -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$moved" \
+  -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
+  -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
+cmake --build "$work/host-build" --target sai_cpu_host --parallel "$jobs"
+check_native_link "$work/host-build" sai_cpu_host
+ctest --test-dir "$work/host-build" --output-on-failure
+echo "Unified provider and ordinary host passed in relocated packages ($shared shared nodes)"
