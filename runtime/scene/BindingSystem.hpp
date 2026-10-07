@@ -6,6 +6,7 @@
 #ifndef X3D_RUNTIME_BINDING_SYSTEM_HPP
 #define X3D_RUNTIME_BINDING_SYSTEM_HPP
 
+#include "CallbackLifetime.hpp"
 #include "FieldRead.hpp"
 #include "BindingStack.hpp"
 #include "x3d/nodes/X3DBindableNode.hpp"
@@ -27,6 +28,18 @@ using namespace x3d::nodes;
 
 class BindingSystem {
 public:
+  BindingSystem() = default;
+  // User-owned poster/clock/sink captures can run code from their destructors.
+  // Revoke before either those captures or the binding maps start destruction.
+  ~BindingSystem() { if (!retireCallbacks()) std::terminate(); }
+  BindingSystem(const BindingSystem &) = delete;
+  BindingSystem &operator=(const BindingSystem &) = delete;
+  BindingSystem(BindingSystem &&) = delete;
+  BindingSystem &operator=(BindingSystem &&) = delete;
+
+  [[nodiscard]] bool retireCallbacks() noexcept { return callbacks_.retire(); }
+  bool canRetireCallbacks() const noexcept { return callbacks_.canRetire(); }
+
   using Poster = std::function<void(X3DNode *, const std::string &, std::any)>;
   using Clock = std::function<double()>;
   using TransitionSink = std::function<void(BindTransition)>;
@@ -122,7 +135,7 @@ private:
     if (!b) return;
     const std::string cat = category(node);
     enrolled_[cat].push_back(node);
-    b->setOnSet_bindHandler([this, node, cat](const SFBool &v) {
+    b->setOnSet_bindHandler(callbacks_.guard([this, node, cat](const SFBool &v) {
       BindingStack::Emit emit = [this](X3DNode *t, bool bound) {
         // §23.3.1: bindTime fires on EVERY isBound transition (bind AND unbind).
         poster_(t, "isBound", std::any(SFBool(bound)));
@@ -136,7 +149,7 @@ private:
           sink_(BindTransition::Pop);
         stacks_[cat].unbind(node, emit);
       }
-    });
+    }));
   }
 
   void walk(X3DNode *n) {
@@ -146,6 +159,7 @@ private:
     });
   }
 
+  CallbackLifetime callbacks_;
   Poster poster_;
   Clock clock_;
   TransitionSink sink_;

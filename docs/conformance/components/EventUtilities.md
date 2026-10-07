@@ -4,13 +4,13 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| BooleanFilter | 1 | ✓ | — | ? | EUF-1, EUF-4, EUF-5, ROUTE-IO-ALIAS | X3DChildNode |
-| BooleanSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
-| BooleanToggle | 1 | ✓ | — | ? | EUF-2, EUF-5, ROUTE-IO-ALIAS | X3DChildNode |
-| BooleanTrigger | 1 | ✓ | — | ? | ROUTE-IO-ALIAS, TRIG-1, TRIG-6 | X3DChildNode, X3DTriggerNode |
-| IntegerSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
-| IntegerTrigger | 1 | ✓ | — | ? | ROUTE-IO-ALIAS, TRIG-2, TRIG-4, TRIG-6 | X3DChildNode, X3DTriggerNode |
-| TimeTrigger | 1 | ✓ | — | ? | ROUTE-IO-ALIAS, TRIG-3, TRIG-5, TRIG-6 | X3DChildNode, X3DTriggerNode |
+| BooleanFilter | 1 | ✓ | — | ? | EUF-1, EUF-4, EUF-5, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS | X3DChildNode |
+| BooleanSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
+| BooleanToggle | 1 | ✓ | — | ? | EUF-2, EUF-5, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS | X3DChildNode |
+| BooleanTrigger | 1 | ✓ | — | ? | NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, TRIG-1, TRIG-6 | X3DChildNode, X3DTriggerNode |
+| IntegerSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
+| IntegerTrigger | 1 | ✓ | — | ? | NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, TRIG-2, TRIG-4, TRIG-6 | X3DChildNode, X3DTriggerNode |
+| TimeTrigger | 1 | ✓ | — | ? | NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, TRIG-3, TRIG-5, TRIG-6 | X3DChildNode, X3DTriggerNode |
 
 ## Findings
 
@@ -28,6 +28,8 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 - **SEQ-5** [critical/CLOSED `47c0714`] — §30.3.1: next/previous index wrap-around (last→0, 0→last) unimplemented.
 - **EUF-1** [critical/CLOSED `47c0714`] — §30.4.1: BooleanFilter routes nothing — on set_boolean it must emit inputTrue/inputFalse (by value) + always inputNegate; no System.
 - **EUF-2** [critical/CLOSED `47c0714`] — §30.4.3: BooleanToggle never toggles — on set_boolean=TRUE it must flip and emit toggle_changed; FALSE is a no-op. No System.
+- **NATIVE-CALLBACK-RETIREMENT** [critical/FIXED] — §4.4.3 (execution-context integration lifetime): Native runtime callbacks retained by nodes are revoked before their activation or behavior state is destroyed.
+  - Weak per-context and per-system callback leases cover bindable handlers, interpolators (including spline, NURBS and geospatial), followers, event utilities, HAnimMotion and context-owned timing/key/trigger hooks. RuntimeSession retires before extractor teardown; context destruction also covers partial-construction unwinding. Standalone BindingSystem and standard callback-owning systems retire in their destructor bodies before member captures can invoke a retained node. Custom most-derived systems must call the protected early-retirement hook before destroying members. No raw-node traversal or global lifetime registry is used, so retirement cannot clear a replacement's handlers. Runtime/extract/tests/runtime_callback_retirement_test.cpp pins retained storage, valid behavior, replacement, failed construction, independent owner lifetimes and reentrant retirement rejection. Native access stays serial: the host defers destruction until no call is in flight; reentrant destruction fails closed. Context, BindingSystem and System owners are noncopyable/nonmovable; transfer owning pointers or build fresh owners. Custom unguarded callbacks and global DynamicFieldStore/GeoFrame isolation are outside this fix. Process-wide pick/local-matrix diagnostic counters use relaxed atomics so distinct owner-thread worlds do not race on metrics; runtime_diagnostic_counters_test.cpp verifies the combined totals. These metrics are not per-world semantic state. This does not establish full browser/SAI conformance.
 - **TRIG-4** [major/CLOSED] — §30.4.6: IntegerTrigger integerKey inputOutput write does not emit integerKey_changed / triggerValue_changed.
   - Writing integerKey (even to the same value) now also emits triggerValue with that value, per the §30.4.6 text; integerKey_changed already came from the inputOutput fan-out (events_misc_test).
 - **SEQ-7** [major/CLOSED `47c0714`] — §30.2.4: Duplicate-key tie-break (lowest index wins) + steady-fraction re-emit semantics unimplemented.

@@ -134,6 +134,53 @@ Encoding sniffByExtension(std::string_view path);
 
 - **Inline resolver** — `runtime::InlineResolver` (`runtime/InlineExpand.hpp`): a `std::function<shared_ptr<Scene>(urls, baseUrl)>` injected into `parseDocument`. The default `localFileInlineResolver` follows the same lenient file-local pattern. Embedders override for custom asset resolution and pass that resolver plus the base URL to the runtime when deferred `load=TRUE` events should load content.
 
+### Recursive asset loader policy
+
+`assetResolversFrom(AssetResolver, Encoding)` in
+`runtime/parse/AssetDocumentResolvers.hpp` returns `.proto` and `.inlineScene`.
+Pass both to `parseDocument` to retain one synchronous asset policy across every
+Inline/EXTERNPROTO document boundary. Nested parsing never enables the default
+local-file loader. Backends receive fragment-free URLs resolved against the
+source document's directory, including nested relative references. The helper
+normalizes dot segments for cycle identity while preserving the authority,
+query/fragment bytes, opaque identifiers and significant empty path segments.
+Terminal `/.` and `/..` retain directory semantics (including authority and
+relative roots), so documents fetched at directory URLs resolve their nested
+references against that same directory. It performs no
+filesystem or network I/O itself.
+
+```cpp
+const auto loaders = x3d::codec::assetResolversFrom(myAssets);
+auto doc = x3d::codec::parseDocument(text, encoding, sourceDirectory,
+                                    loaders.proto, loaders.inlineScene);
+```
+
+`protoResolverFrom(asset, hint)` remains available in `AssetProtoResolver.hpp`;
+its nested Inline loads now use the same asset backend rather than an implicit
+local-file default. `inlineResolverFrom(asset, hint)` in
+`AssetInlineResolver.hpp` supplies the symmetric loader. To retain an independent
+opposite policy, use `protoResolverFrom(asset, hint, inlinePolicy)` or
+`inlineResolverFrom(asset, hint, protoPolicy)`. An explicitly empty opposite
+callback denies those loads. Independently supplied callbacks are opaque: pass
+the intended override to the helper as well as the top-level parser, or use the
+paired factory. No global or thread-local loader policy is installed.
+
+Failed/unparseable candidates remain lenient and try the next URL. A Pending
+asset result aborts the entire active recursive asset load, including parent
+candidate lists; the parser records its ordinary unresolved Inline/EXTERNPROTO
+warning. Backend exceptions are treated as failed candidates. Cross-kind
+cycles share an explicit per-call active-URL stack; a new call starts clean.
+
+The front door also captures source-directory provenance separately from
+serialized values. `ProtoDeclaration::sourceBaseUrl` and
+`ExternProtoDeclaration::sourceBaseUrl` survive cached/fetched declarations;
+body/default clones retain that directory in `Scene::nodeBaseUrls`. URL values
+forwarded by IS retain the supplying fieldValue's source directory. Consequently
+an imported prototype's body URLs resolve against its library while an authored
+URL override resolves against the caller. Authored URL strings are unchanged.
+The local-file Inline resolver uses the same confinement/canonicalization helper
+as EXTERNPROTO; rejected absolute/escaping includes never open the target.
+
 The front door snapshots each document's authored `head.units` onto its `Scene::sourceUnits` and locally authored `ProtoDeclaration::sourceUnits` before expansion. Child Scenes returned by Inline and declarations selected by file or asset EXTERNPROTO resolution therefore carry their own source UNIT declarations; an empty snapshot means that source declared none. These runtime snapshots do not change `Head` serialization or numeric field values.
 
 - **Dialect hooks on `ClassicVrmlReader`** — three protected virtual methods that `Vrml97Reader` overrides:
@@ -179,6 +226,7 @@ The front door snapshots each document's authored `head.units` onto its `Scene::
 - `ctest --preset dev -R x3d_codecs_tests` (doctest case: `proto_nested_instance_placement_roundtrip_test`) — parent/containerField linkage of nested ProtoInstances survives a parse → expand → re-emit round-trip.
 - `ctest --preset dev -R x3d_vrml_script_field` — VRML/Classic VRML Script author-field capture into DynamicFieldStore (`vrml_script_field_test.cpp`).
 - `ctest --preset dev -R x3d_json_script_field` — JSON Script author-field capture + `#sourceText` / inline-URL source extraction (`json_script_field_test.cpp`).
+- `ctest --preset dev -R x3d_parse` (doctest cases: `asset policy:*`) — recursive paired and explicitly rejecting policies, both Inline/EXTERNPROTO directions, relative source bases, cached fragment selection, caller IS URL overrides, cycles, Pending/Failed/throwing backends, and local confinement (`asset_loader_policy_test.cpp`). Fixtures are generated under the test working directory; on Linux, in-process file-event watches verify that the rejecting paths never open/read the local decoys, with a permitted local read as a positive control. No live network backend is used.
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_expand_test`) — Inline node expansion via `localFileInlineResolver` (parse-time seam) (`inline_expand_test.cpp`).
 - `ctest --preset dev -R x3d_inline_roundtrip` — Inline-expanded scenes survive a write → re-parse round-trip (`inline_roundtrip_test.cpp`).
 - `ctest --preset dev -R x3d_parse_tests` (doctest case: `inline_carriers_test`) — Inline load=TRUE/FALSE carrier semantics (`inline_carriers_test.cpp`).

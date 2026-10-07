@@ -32,7 +32,10 @@ cmake -S "$consumer" -B "$source" -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DX3D_SAI_SOURCE_DIR="$sai" -DX3D_CPP_SHARED_NODES="$shared"
 # The runtime target is built for the complete x3d-cpp package installation;
 # the independent native executable does not link or use it.
-cmake --build "$source" --target sai_provider_all x3d_cpp_runtime --parallel "$jobs"
+# x3d-sai also exports the additive hosted archives. Build them for complete
+# package installation only; the native offline provider still cannot link them.
+cmake --build "$source" --target sai_provider_all x3d_cpp_runtime \
+  x3d_sai_hosted x3d_sai_reference_hosted --parallel "$jobs"
 
 check_native_link() {
   local build="$1"

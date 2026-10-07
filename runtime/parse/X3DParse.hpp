@@ -78,7 +78,10 @@ localFileInlineResolver(const std::vector<std::string> &urls,
 /// not landed yet); PROTO expansion itself is lenient (diagnostics land in
 /// doc.protoWarnings). `inlineResolver` mirrors the proto resolver seam: an
 /// embedder can supply a custom Inline loader (network fetch, virtual FS,
-/// etc.); the default falls back to the file-local resolver.
+/// etc.); the default falls back to the file-local resolver. Recursive custom
+/// loaders must pass both intended callbacks on every nested parse; use
+/// AssetDocumentResolvers.hpp's paired assetResolversFrom for one asset policy
+/// across both kinds of load, without an implicit local-file fallback.
 runtime::X3DDocument parseDocument(
     const std::string &text, Encoding hint = Encoding::Unknown,
     const std::string &baseUrl = "",

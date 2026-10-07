@@ -61,8 +61,10 @@ void validateUnits(const runtime::X3DDocument &doc) {
 // Reader-created declarations can also be reached through instances inside a
 // ProtoBody's local scope. Walk those handles before expansion, while every
 // declaration still belongs to this parsed document. External declarations
-// are resolved later and retain the snapshot from their own parseDocument call.
-void snapshotSourceUnits(runtime::X3DDocument &doc) {
+// are resolved later and retain source units and URL provenance from their
+// own parseDocument call.
+void snapshotSourceProvenance(runtime::X3DDocument &doc,
+                              const std::string &baseUrl) {
   doc.scene.sourceUnits = doc.head.units;
   std::unordered_set<runtime::ProtoDeclaration *> visited;
   std::unordered_set<const x3d::nodes::X3DNode *> visitedNodes;
@@ -70,11 +72,15 @@ void snapshotSourceUnits(runtime::X3DDocument &doc) {
                        const std::shared_ptr<x3d::nodes::X3DNode> &node,
                        auto &&visitDecl) -> void {
     if (!node || !visitedNodes.insert(node.get()).second) return;
+    doc.scene.nodeBaseUrls.try_emplace(node, baseUrl);
     if (auto wrapper =
             std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(node)) {
       visitDecl(wrapper->instance.declaration);
+      if (wrapper->instance.externDeclaration)
+        wrapper->instance.externDeclaration->sourceBaseUrl = baseUrl;
       for (auto &value : wrapper->instance.fieldValues) {
         value.sourceUnits = doc.head.units;
+        value.sourceBaseUrl = baseUrl;
         for (const auto &child : value.nodeValue)
           self(self, child, visitDecl);
       }
@@ -97,6 +103,7 @@ void snapshotSourceUnits(runtime::X3DDocument &doc) {
                    const std::shared_ptr<runtime::ProtoDeclaration> &decl) -> void {
     if (!decl || !visited.insert(decl.get()).second) return;
     decl->sourceUnits = doc.head.units;
+    decl->sourceBaseUrl = baseUrl;
     auto visitDecl = [&](const auto &nested) { self(self, nested); };
     for (const auto &field : decl->interface)
       for (const auto &node : field.nodeDefault)
@@ -106,15 +113,24 @@ void snapshotSourceUnits(runtime::X3DDocument &doc) {
     for (const auto &statement : decl->body.statements)
       if (statement.kind == runtime::ProtoBodyStatement::Kind::Proto)
         self(self, statement.proto);
-    for (const auto &[parent, statements] : decl->body.nodeStatements)
-      if (!parent.expired())
-        for (const auto &statement : statements)
-          if (statement.kind == runtime::ProtoBodyStatement::Kind::Proto)
-            self(self, statement.proto);
+      else if (statement.externProto)
+        statement.externProto->sourceBaseUrl = baseUrl;
+    for (const auto &[parent, statements] : decl->body.nodeStatements) {
+      if (parent.expired()) continue;
+      for (const auto &statement : statements) {
+        if (statement.kind == runtime::ProtoBodyStatement::Kind::Proto)
+          self(self, statement.proto);
+        else if (statement.externProto)
+          statement.externProto->sourceBaseUrl = baseUrl;
+      }
+    }
     for (auto &nested : decl->body.nestedInstances) {
       self(self, nested.declaration);
+      if (nested.externDeclaration)
+        nested.externDeclaration->sourceBaseUrl = baseUrl;
       for (auto &value : nested.fieldValues) {
         value.sourceUnits = doc.head.units;
+        value.sourceBaseUrl = baseUrl;
         for (const auto &node : value.nodeValue)
           visitNode(visitNode, node, visitDecl);
       }
@@ -122,11 +138,15 @@ void snapshotSourceUnits(runtime::X3DDocument &doc) {
   };
   for (const auto &decl : doc.scene.protoDeclarations)
     visit(visit, decl);
+  for (const auto &decl : doc.scene.externProtoDeclarations)
+    if (decl) decl->sourceBaseUrl = baseUrl;
   for (auto &inst : doc.scene.protoInstances) {
     visit(visit, inst.declaration);
+    if (inst.externDeclaration) inst.externDeclaration->sourceBaseUrl = baseUrl;
     auto visitDecl = [&](const auto &nested) { visit(visit, nested); };
     for (auto &value : inst.fieldValues) {
       value.sourceUnits = doc.head.units;
+      value.sourceBaseUrl = baseUrl;
       for (const auto &node : value.nodeValue)
         visitNode(visitNode, node, visitDecl);
     }
@@ -258,7 +278,7 @@ parseDocument(const std::string &text, Encoding hint,
         "parseDocument: could not determine X3D encoding from content");
   runtime::X3DDocument doc = reader->readDocument(body);
   validateUnits(doc);
-  snapshotSourceUnits(doc);
+  snapshotSourceProvenance(doc, baseUrl);
   // ADR-0033: drop any PROTO/EXTERNPROTO that reuses a built-in node name (the
   // built-in keeps precedence) before instances are expanded against it.
   quarantineBuiltinShadowingProtos(doc);
@@ -337,9 +357,10 @@ localFileInlineResolver(const std::vector<std::string> &urls,
     if (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0 ||
         url.rfind("urn:", 0) == 0)
       continue;
-    std::string path = url;
-    if (!baseUrl.empty() && !path.empty() && path.front() != '/')
-      path = baseUrl + "/" + path;
+    auto confined =
+        confineLocalIncludePath(url, baseUrl, detail::activeConfineRoot());
+    if (!confined) continue;
+    const std::string path = std::move(*confined);
     if (std::find(activeFiles.begin(), activeFiles.end(), path) !=
         activeFiles.end())
       continue; // cycle: this file is already being resolved up the stack

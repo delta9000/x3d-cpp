@@ -54,12 +54,14 @@ inline x3d::core::SFRotation rotationFromPositiveZ(x3d::core::SFVec3f d) {
 
 class NurbsPositionInterpolatorSystem : public System {
 public:
+  ~NurbsPositionInterpolatorSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode* node, X3DExecutionContext& ctx) override {
     auto* interp=dynamic_cast<xn::NurbsPositionInterpolator*>(node); if (!interp) return;
-    interp->setOnSet_fractionHandler([&ctx,interp](const SFFloat& f) {
+    interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx,interp](const SFFloat& f) {
       nurbs::CurveDef c; c.cp=nurbsPoints(interp->getControlPoint()); c.w=interp->getWeight(); c.knot=interp->getKnot(); c.order=interp->getOrder();
       SFVec3f p; if (nurbs::evalCurve(c,f,p)) ctx.postEvent(interp,"value_changed",std::any(p));
-    });
+    }));
   }
   void detach(X3DNode* node, X3DExecutionContext&) override {
     if (auto* n=dynamic_cast<xn::NurbsPositionInterpolator*>(node)) n->setOnSet_fractionHandler({});
@@ -68,13 +70,15 @@ public:
 
 class NurbsOrientationInterpolatorSystem : public System {
 public:
+  ~NurbsOrientationInterpolatorSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode* node, X3DExecutionContext& ctx) override {
     auto* interp=dynamic_cast<xn::NurbsOrientationInterpolator*>(node); if (!interp) return;
-    interp->setOnSet_fractionHandler([&ctx,interp](const SFFloat& f) {
+    interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx,interp](const SFFloat& f) {
       nurbs::CurveDef c; c.cp=nurbsPoints(interp->getControlPoint()); c.w=interp->getWeight(); c.knot=interp->getKnot(); c.order=interp->getOrder();
       SFVec3f tangent; if (!nurbsTangent(c,f,tangent)) return;
       ctx.postEvent(interp,"value_changed",std::any(rotationFromPositiveZ(tangent)));
-    });
+    }));
   }
   void detach(X3DNode* node, X3DExecutionContext&) override {
     if (auto* n=dynamic_cast<xn::NurbsOrientationInterpolator*>(node)) n->setOnSet_fractionHandler({});
@@ -83,9 +87,11 @@ public:
 
 class NurbsSurfaceInterpolatorSystem : public System {
 public:
+  ~NurbsSurfaceInterpolatorSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode* node, X3DExecutionContext& ctx) override {
     auto* interp=dynamic_cast<xn::NurbsSurfaceInterpolator*>(node); if (!interp) return;
-    interp->setOnSet_fractionHandler([&ctx,interp](const SFVec2f& uv) {
+    interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx,interp](const SFVec2f& uv) {
       nurbs::SurfaceDef s; s.cp=nurbsPoints(interp->getControlPoint()); s.w=interp->getWeight();
       s.uDim=interp->getUDimension(); s.vDim=interp->getVDimension(); s.uOrder=interp->getUOrder(); s.vOrder=interp->getVOrder(); s.uKnot=interp->getUKnot(); s.vKnot=interp->getVKnot();
       auto prepared=nurbs::detail::prepareSurface(s);
@@ -107,7 +113,7 @@ public:
       if (sample.n.x*sample.n.x+sample.n.y*sample.n.y+sample.n.z*sample.n.z < 1e-12f) return;
       ctx.postEvent(interp,"position_changed",std::any(sample.p));
       ctx.postEvent(interp,"normal_changed",std::any(sample.n));
-    });
+    }));
   }
   void detach(X3DNode* node, X3DExecutionContext&) override {
     if (auto* n=dynamic_cast<xn::NurbsSurfaceInterpolator*>(node)) n->setOnSet_fractionHandler({});

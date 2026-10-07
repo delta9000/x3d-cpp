@@ -30,6 +30,8 @@ class DamperSystem : public System {
   std::vector<std::unique_ptr<Entry>> entries_;
 
 public:
+  ~DamperSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *d = dynamic_cast<NodeT *>(node);
     if (!d) return;
@@ -49,16 +51,16 @@ public:
       ctx.postEvent(d, "isActive", std::any(SFBool{true}));
     }
     // set_destination: update target, activate if not already active.
-    d->setOnSet_destinationHandler([ep, d, &ctx](const ValueT &v) {
+    d->setOnSet_destinationHandler(ctx.guardCallback(*this, [ep, d, &ctx](const ValueT &v) {
       ep->destination = v;
       if (!ep->active) {
         ep->active = true;
         d->emitIsActive(SFBool{true});
         ctx.postEvent(d, "isActive", std::any(SFBool{true}));
       }
-    });
+    }));
     // set_value: snap all filters + destination to v, deactivate.
-    d->setOnSet_valueHandler([ep, d, &ctx](const ValueT &v) {
+    d->setOnSet_valueHandler(ctx.guardCallback(*this, [ep, d, &ctx](const ValueT &v) {
       for (auto &f : ep->filters) f = v;
       ep->destination = v;
       d->emitValue_changed(v);
@@ -69,7 +71,7 @@ public:
         ctx.postEvent(d, "isActive", std::any(SFBool{false}));
       }
       ep->active = false;
-    });
+    }));
   }
 
   void detach(X3DNode *node, X3DExecutionContext &) override {
@@ -168,6 +170,8 @@ class ChaserSystem : public System {
   std::vector<std::unique_ptr<Entry>> entries_;
 
 public:
+  ~ChaserSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *c = dynamic_cast<NodeT *>(node);
     if (!c) return;
@@ -195,7 +199,7 @@ public:
     }
 
     // Keep each event's delta; transitions inside duration add independently.
-    c->setOnSet_destinationHandler([ep, c, &ctx](const ValueT &v) {
+    c->setOnSet_destinationHandler(ctx.guardCallback(*this, [ep, c, &ctx](const ValueT &v) {
       ValueT previous = Arith::reshapeLike(ep->destination, v);
       ValueT next = FollowerArith<ValueT>::reshapeLike(v, v);
       Delta delta = Arith::delta(previous, next);
@@ -207,10 +211,10 @@ public:
         c->emitIsActive(SFBool{true});
         ctx.postEvent(c, "isActive", std::any(SFBool{true}));
       }
-    });
+    }));
 
     // set_value: jump output, clear transition.
-    c->setOnSet_valueHandler([ep, c, &ctx](const ValueT &v) {
+    c->setOnSet_valueHandler(ctx.guardCallback(*this, [ep, c, &ctx](const ValueT &v) {
       ep->baseline = v;
       ep->destination = v;
       ep->taps.clear();
@@ -222,7 +226,7 @@ public:
         ctx.postEvent(c, "isActive", std::any(SFBool{false}));
       }
       ep->active = false;
-    });
+    }));
   }
 
   void detach(X3DNode *node, X3DExecutionContext &) override {

@@ -34,6 +34,8 @@ using namespace x3d::core;
 
 class KeyDeviceSensorSystem : public System {
 public:
+  ~KeyDeviceSensorSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     if (auto *k = dynamic_cast<x3d::nodes::KeySensor *>(node)) keySensors_.push_back(k);
     else if (auto *s = dynamic_cast<x3d::nodes::StringSensor *>(node)) stringSensors_.push_back(s);
@@ -43,13 +45,13 @@ public:
     // an enabled event with value FALSE" (KDS-6).
     if (!focusListener_) {
       focusListener_ = true;
-      ctx.addFieldWriteListener([this, &ctx](const FieldAddress &a) {
+      ctx.addFieldWriteListener(ctx.guardCallback(*this, [this, &ctx](const FieldAddress &a) {
         if (a.field != "enabled" && a.field != "set_enabled") return;
         if (!isKeyDevice(a.node) || !enabledOf(a.node)) return;
         for (X3DNode *other : devices())
           if (other != a.node && enabledOf(other))
             ctx.postEvent(other, "enabled", std::any(SFBool{false}));
-      });
+      }));
     }
   }
 

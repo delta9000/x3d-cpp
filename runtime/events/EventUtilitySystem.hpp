@@ -34,12 +34,14 @@ using namespace x3d::core;
 /// §30.4.4 BooleanTrigger: any set_triggerTime -> triggerTrue=TRUE.
 class BooleanTriggerSystem : public System {
 public:
+  ~BooleanTriggerSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *n = dynamic_cast<x3d::nodes::BooleanTrigger *>(node);
     if (!n) return;
-    n->setOnSet_triggerTimeHandler([&ctx, n](const SFTime &) {
+    n->setOnSet_triggerTimeHandler(ctx.guardCallback(*this, [&ctx, n](const SFTime &) {
       ctx.postEvent(n, "triggerTrue", std::any(SFBool{true}));
-    });
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<x3d::nodes::BooleanTrigger *>(node))
@@ -54,17 +56,19 @@ public:
 /// field-write listener adds triggerValue (TRIG-4), same value or not.
 class IntegerTriggerSystem : public System {
 public:
+  ~IntegerTriggerSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *n = dynamic_cast<x3d::nodes::IntegerTrigger *>(node);
     if (!n) return;
-    n->setOnSet_booleanHandler([&ctx, n](const SFBool &v) {
+    n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &v) {
       if (!v) return; // honored only on TRUE
       ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
-    });
-    ctx.addFieldWriteListener([&ctx, n](const FieldAddress &a) {
+    }));
+    ctx.addFieldWriteListener(ctx.guardCallback(*this, [&ctx, n](const FieldAddress &a) {
       if (a.node == n && (a.field == "integerKey" || a.field == "set_integerKey"))
         ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
-    });
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<x3d::nodes::IntegerTrigger *>(node))
@@ -75,12 +79,14 @@ public:
 /// §30.4.7 TimeTrigger: set_boolean (any value, value ignored) -> triggerTime=now.
 class TimeTriggerSystem : public System {
 public:
+  ~TimeTriggerSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *n = dynamic_cast<x3d::nodes::TimeTrigger *>(node);
     if (!n) return;
-    n->setOnSet_booleanHandler([&ctx, n](const SFBool &) {
+    n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &) {
       ctx.postEvent(n, "triggerTime", std::any(SFTime{ctx.now()}));
-    });
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<x3d::nodes::TimeTrigger *>(node))
@@ -92,14 +98,16 @@ public:
 /// always inputNegate=!value.
 class BooleanFilterSystem : public System {
 public:
+  ~BooleanFilterSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *n = dynamic_cast<x3d::nodes::BooleanFilter *>(node);
     if (!n) return;
-    n->setOnSet_booleanHandler([&ctx, n](const SFBool &v) {
+    n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &v) {
       if (v) ctx.postEvent(n, "inputTrue", std::any(SFBool{true}));
       else   ctx.postEvent(n, "inputFalse", std::any(SFBool{false}));
       ctx.postEvent(n, "inputNegate", std::any(SFBool{!v}));
-    });
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<x3d::nodes::BooleanFilter *>(node))
@@ -111,13 +119,15 @@ public:
 /// the inputOutput alias); FALSE is a no-op.
 class BooleanToggleSystem : public System {
 public:
+  ~BooleanToggleSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node);
     if (!n) return;
-    n->setOnSet_booleanHandler([&ctx, n](const SFBool &v) {
+    n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &v) {
       if (!v) return; // FALSE has no effect (§30.4.3)
       ctx.postEvent(n, "toggle", std::any(SFBool{!n->getToggle()}));
-    });
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node))
@@ -153,10 +163,12 @@ inline std::size_t sequencerStepIndex(const MFFloat &key, float t) {
 template <typename NodeT, typename ValueT>
 class SequencerSystem : public System {
 public:
+  ~SequencerSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *n = dynamic_cast<NodeT *>(node);
     if (!n) return;
-    n->setOnSet_fractionHandler([&ctx, n, this](const SFFloat &f) {
+    n->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, n, this](const SFFloat &f) {
       const auto kv = n->getKeyValue();
       const auto key = n->getKey();
       if (key.empty() || kv.empty()) return; // §19.3.1-style: no keys -> no events
@@ -164,13 +176,13 @@ public:
       if (i >= kv.size()) i = kv.size() - 1;
       index_[n] = i;
       ctx.postEvent(n, "value_changed", std::any(ValueT{kv[i]}));
-    });
-    n->setOnNextHandler([&ctx, n, this](const SFBool &v) {
+    }));
+    n->setOnNextHandler(ctx.guardCallback(*this, [&ctx, n, this](const SFBool &v) {
       if (v) step(ctx, n, +1);
-    });
-    n->setOnPreviousHandler([&ctx, n, this](const SFBool &v) {
+    }));
+    n->setOnPreviousHandler(ctx.guardCallback(*this, [&ctx, n, this](const SFBool &v) {
       if (v) step(ctx, n, -1);
-    });
+    }));
   }
 
   void detach(X3DNode *node, X3DExecutionContext &) override {

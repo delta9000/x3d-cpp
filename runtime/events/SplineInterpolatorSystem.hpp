@@ -26,20 +26,22 @@ namespace x3d::runtime {
 template <typename NodeT, typename ValueT>
 class SplineInterpolatorSystem : public System {
 public:
+  ~SplineInterpolatorSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *interp = dynamic_cast<NodeT *>(node);
     if (!interp) return;
     // §19.3.1: first keyValue is readable before set_fraction, without an event.
     if (!interp->getKeyValue().empty())
       interp->emitValue_changed(interp->getKeyValue().front());
-    interp->setOnSet_fractionHandler([&ctx, interp](const SFFloat &fraction) {
+    interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, interp](const SFFloat &fraction) {
       if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
       ctx.postEvent(interp, "value_changed",
                     std::any(hermiteSpline<ValueT>(
                         interp->getKey(), interp->getKeyValue(),
                         interp->getKeyVelocity(), interp->getClosed(),
                         interp->getNormalizeVelocity(), fraction)));
-    });
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<NodeT *>(node)) n->setOnSet_fractionHandler({});
@@ -49,18 +51,20 @@ public:
 /// §19.4.13 Squad orientation interpolator.
 class SquadOrientationInterpolatorSystem : public System {
 public:
+  ~SquadOrientationInterpolatorSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *interp = dynamic_cast<x3d::nodes::SquadOrientationInterpolator *>(node);
     if (!interp) return;
     if (!interp->getKeyValue().empty())
       interp->emitValue_changed(interp->getKeyValue().front());
-    interp->setOnSet_fractionHandler([&ctx, interp](const SFFloat &fraction) {
+    interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, interp](const SFFloat &fraction) {
       if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
       ctx.postEvent(
           interp, "value_changed",
           std::any(squadOrientation(interp->getKey(), interp->getKeyValue(),
                                     fraction, interp->getNormalizeVelocity())));
-    });
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<x3d::nodes::SquadOrientationInterpolator *>(node))
@@ -71,14 +75,16 @@ public:
 /// §19.4.4 EaseInEaseOut fraction modifier.
 class EaseInEaseOutSystem : public System {
 public:
+  ~EaseInEaseOutSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *ease = dynamic_cast<x3d::nodes::EaseInEaseOut *>(node);
     if (!ease) return;
-    ease->setOnSet_fractionHandler([&ctx, ease](const SFFloat &fraction) {
+    ease->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, ease](const SFFloat &fraction) {
       ctx.postEvent(ease, "modifiedFraction_changed",
                     std::any(SFFloat{easeInEaseOut(
                         ease->getKey(), ease->getEaseInEaseOut(), fraction)}));
-    });
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<x3d::nodes::EaseInEaseOut *>(node))

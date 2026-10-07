@@ -1,0 +1,60 @@
+cmake_minimum_required(VERSION 3.24)
+project(x3d_sai_hosted_proof LANGUAGES CXX C)
+include(CTest)
+option(SAI_HOSTED_INSTALLED "Consume relocated installed packages" OFF)
+if(SAI_HOSTED_INSTALLED)
+    find_package(x3d_cpp_sai_hosted CONFIG REQUIRED)
+    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/native_evidence.cpp")
+        set(_default_evidence "${CMAKE_CURRENT_LIST_DIR}/native_evidence.cpp")
+    endif()
+else()
+    get_filename_component(_default_cpp_root "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
+    set(X3D_CPP_SOURCE_DIR "${_default_cpp_root}" CACHE PATH "x3d-cpp source checkout")
+    set(X3D_SAI_SOURCE_DIR "" CACHE PATH "Independent x3d-sai source checkout")
+    if(NOT EXISTS "${X3D_SAI_SOURCE_DIR}/include/x3d/sai/experimental/hosted.hpp")
+        message(FATAL_ERROR "Set X3D_SAI_SOURCE_DIR to the hosted-enabled x3d-sai checkout")
+    endif()
+    set(X3D_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(X3D_CPP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(X3D_CPP_BUILD_SCRIPT OFF CACHE BOOL "" FORCE)
+    set(X3D_CPP_BUILD_CGLTF OFF CACHE BOOL "" FORCE)
+    set(X3D_CPP_ENABLE_DEV_TOOLING OFF CACHE BOOL "" FORCE)
+    set(X3D_CPP_SAI_HOSTED_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    add_subdirectory("${X3D_SAI_SOURCE_DIR}" x3d-sai EXCLUDE_FROM_ALL)
+    add_subdirectory("${X3D_CPP_SOURCE_DIR}" x3d-cpp EXCLUDE_FROM_ALL)
+    add_subdirectory("${X3D_CPP_SOURCE_DIR}/adapters/sai_hosted" adapter EXCLUDE_FROM_ALL)
+    set(_default_evidence "${X3D_CPP_SOURCE_DIR}/adapters/sai_hosted/tests/hosted_native_test.cpp")
+endif()
+
+add_executable(sai_hosted_native native.cpp)
+target_link_libraries(sai_hosted_native PRIVATE
+    x3d_cpp::sai_hosted x3d::sai_hosted_fixture)
+add_executable(sai_hosted_reference reference.cpp)
+target_link_libraries(sai_hosted_reference PRIVATE
+    x3d::sai_reference_hosted x3d::sai_hosted_fixture)
+add_executable(sai_hosted_parity parity.cpp)
+target_link_libraries(sai_hosted_parity PRIVATE
+    x3d_cpp::sai_hosted x3d::sai_reference_hosted x3d::sai_hosted_fixture)
+foreach(kind IN ITEMS native reference parity)
+    add_test(NAME sai_hosted_${kind} COMMAND sai_hosted_${kind})
+    set_tests_properties(sai_hosted_${kind} PROPERTIES TIMEOUT 30)
+endforeach()
+add_custom_target(sai_hosted_all DEPENDS
+    sai_hosted_native sai_hosted_reference sai_hosted_parity)
+
+# Reuse the companion's actual native-only evidence source without maintaining
+# a second copy in the repository. The verification script stages this source
+# beside the copied consumer for an entirely source-independent relocated test.
+set(SAI_HOSTED_NATIVE_EVIDENCE_SOURCE "${_default_evidence}" CACHE FILEPATH
+    "Optional standalone native runtime evidence source")
+if(SAI_HOSTED_NATIVE_EVIDENCE_SOURCE)
+    if(NOT EXISTS "${SAI_HOSTED_NATIVE_EVIDENCE_SOURCE}")
+        message(FATAL_ERROR "SAI_HOSTED_NATIVE_EVIDENCE_SOURCE does not exist")
+    endif()
+    add_executable(sai_hosted_native_evidence "${SAI_HOSTED_NATIVE_EVIDENCE_SOURCE}")
+    target_link_libraries(sai_hosted_native_evidence PRIVATE
+        x3d_cpp::sai_hosted x3d_cpp::x3d_cpp x3d::sai_hosted_fixture)
+    add_test(NAME sai_hosted_native_evidence COMMAND sai_hosted_native_evidence)
+    set_tests_properties(sai_hosted_native_evidence PROPERTIES TIMEOUT 30)
+    add_dependencies(sai_hosted_all sai_hosted_native_evidence)
+endif()

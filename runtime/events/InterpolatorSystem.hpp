@@ -23,6 +23,8 @@ namespace x3d::runtime {
 template <typename NodeT, typename ValueT>
 class InterpolatorSystem : public System {
 public:
+  ~InterpolatorSystem() override { retireCallbacksBeforeDestruction(); }
+
   using LerpFn = std::function<ValueT(const ValueT &, const ValueT &, float)>;
   explicit InterpolatorSystem(LerpFn lerp) : lerp_(std::move(lerp)) {}
 
@@ -34,7 +36,7 @@ public:
       interp->emitValue_changed(interp->getKeyValue().front());
     LerpFn lerp = lerp_;
     interp->setOnSet_fractionHandler(
-        [&ctx, interp, lerp](const SFFloat &fraction) {
+        ctx.guardCallback(*this, [&ctx, interp, lerp](const SFFloat &fraction) {
           // §19.3.1: an interpolator with no keys shall produce no events
           // (INTERP-02). Checked live so a later non-empty key re-enables it.
           if (interp->getKey().empty()) return;
@@ -42,7 +44,7 @@ public:
                         std::any(interpolateValue(interp->getKey(),
                                                   interp->getKeyValue(),
                                                   fraction, lerp)));
-        });
+        }));
   }
 
   void detach(X3DNode *node, X3DExecutionContext &) override {
@@ -58,6 +60,8 @@ private:
 template <typename NodeT, typename ElemT>
 class MultiInterpolatorSystem : public System {
 public:
+  ~MultiInterpolatorSystem() override { retireCallbacksBeforeDestruction(); }
+
   using LerpFn = std::function<ElemT(const ElemT &, const ElemT &, float)>;
   explicit MultiInterpolatorSystem(LerpFn lerp) : lerp_(std::move(lerp)) {}
 
@@ -73,14 +77,14 @@ public:
     }
     LerpFn lerp = lerp_;
     interp->setOnSet_fractionHandler(
-        [&ctx, interp, lerp](const SFFloat &fraction) {
+        ctx.guardCallback(*this, [&ctx, interp, lerp](const SFFloat &fraction) {
           // §19.3.1: no keys -> no events (INTERP-02).
           if (interp->getKey().empty()) return;
           ctx.postEvent(interp, "value_changed",
                         std::any(interpolateMulti(interp->getKey(),
                                                   interp->getKeyValue(),
                                                   fraction, lerp)));
-        });
+        }));
   }
 
   void detach(X3DNode *node, X3DExecutionContext &) override {

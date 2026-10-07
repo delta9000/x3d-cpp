@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <any>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -37,8 +38,13 @@ public:
   /// ancestors instead of recomposing them once per dependent render item. Tests
   /// snapshot this around delta() to assert the re-accumulation stays
   /// O(distinct transforms), not O(items * depth).
-  static inline std::uint64_t localMatrixCalls_ = 0;
-  static std::uint64_t localMatrixCallCount() { return localMatrixCalls_; }
+  // Process-wide diagnostics only, not semantic state or per-world metrics.
+  // Independent owner-thread worlds may contribute concurrently. Relaxed
+  // ordering counts work without imposing synchronization on scene state.
+  static inline std::atomic<std::uint64_t> localMatrixCalls_{0};
+  static std::uint64_t localMatrixCallCount() {
+    return localMatrixCalls_.load(std::memory_order_relaxed);
+  }
 
   /// Build the Transform hierarchy index + initial world transforms from a Scene.
   void buildIndex(const Scene &scene) {
@@ -178,7 +184,7 @@ public:
   // Read a transform-bearing node's local matrix from its TRS fields via
   // reflection. Public so BoundsSystem/PickSystem/LightSystem can reuse it.
   static Mat4 localMatrix(const X3DNode *n) {
-    ++localMatrixCalls_;
+    localMatrixCalls_.fetch_add(1, std::memory_order_relaxed);
     const std::string type = n->nodeTypeName();
     if (type == "GeoLocation") {
       Mat4 frame;

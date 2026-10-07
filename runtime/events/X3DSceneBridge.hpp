@@ -450,8 +450,14 @@ attachLoadSensors(Scene &scene, X3DExecutionContext &ctx,
  *          ROUTEs). TimeSensor is attached first so its `fraction_changed` is
  *          available to interpolators within the same tick's cascade drain.
  *          Embedders add Script/Physics separately, and interactive consumers
- *          add `attachInteractive` on top. The CLI's `attachFullRuntime`
- *          currently composes the same system set by hand (Script/Physics on
+ *          add `attachInteractive` on top.
+ *          One node graph belongs to one live activation: do not attach the
+ *          same mutable nodes to two live contexts. All installed input handlers
+ *          have weak activation/system guards; context retirement makes retained
+ *          nodes inert and never clears a replacement activation's callbacks.
+ *          Custom systems must use ctx.guardCallback(*this, handler) for the same
+ *          guarantee. Retire/destroy only outside runtime calls and callbacks.
+ *          The CLI's attachFullRuntime composes the same set by hand (Script/Physics on
  *          top); converging it onto this helper is a deferred dedup follow-up.
  */
 inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,

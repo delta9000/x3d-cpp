@@ -101,7 +101,10 @@ inline void setInstanceFieldValue(ProtoInstance &inst, ProtoFieldValue &&fv) {
 /// Returns false when a scalar/event field has no supplied value.
 inline bool resolveForwardedValue(const ProtoFieldValue *override_,
                                   const ProtoField &pf, ProtoFieldValue &out) {
-  if (override_) out.sourceUnits = override_->sourceUnits;
+  if (override_) {
+    out.sourceUnits = override_->sourceUnits;
+    out.sourceBaseUrl = override_->sourceBaseUrl;
+  }
   if (pf.type == X3DFieldType::SFNode || pf.type == X3DFieldType::MFNode) {
     if (override_ && override_->value.has_value())
       out.value = override_->value; // mistyped input: let the setter diagnose it
@@ -250,7 +253,8 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     // An EXTERN always consults the supplied resolver for this expansion
     // attempt, even when a prior attempt retained its selected declaration.
     inst.declaration.reset();
-    decl = resolver(inst.externDeclaration->url, baseUrl);
+    decl = resolver(inst.externDeclaration->url,
+                    inst.externDeclaration->sourceBaseUrl.value_or(baseUrl));
     if (!decl) {
       warnings.push_back(
           {ProtoWarning::Kind::UnresolvedExtern, inst.name,
@@ -268,6 +272,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
         {ProtoWarning::Kind::MissingDeclaration, inst.name, "no declaration"});
     return nullptr;
   }
+  const std::string bodyBaseUrl = decl->sourceBaseUrl.value_or(baseUrl);
   const auto bodyStatements = decl->body.orderedStatements();
   const auto firstNode = std::find_if(bodyStatements.begin(), bodyStatements.end(),
       [](const ProtoBodyStatement &s) {
@@ -364,7 +369,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
           std::shared_ptr<X3DNode> primary;
           {
             proto_detail::DepthScope ds(guard);
-            primary = expandInstance(nested, scene, resolver, baseUrl, guard,
+            primary = expandInstance(nested, scene, resolver, bodyBaseUrl, guard,
                                      warnings, context);
           }
           cloneMap[source.get()] = primary;
@@ -437,7 +442,10 @@ expandInstance(ProtoInstance &inst, Scene &scene,
       if (!proto_detail::resolveForwardedValue(
               outerOverride, *outerPf, forwarded))
         continue;
-      if (!outerOverride) forwarded.sourceUnits = decl->sourceUnits;
+      if (!outerOverride) {
+        forwarded.sourceUnits = decl->sourceUnits;
+        forwarded.sourceBaseUrl = bodyBaseUrl;
+      }
       if (!outerOverride && (outerPf->type == X3DFieldType::SFNode ||
                              outerPf->type == X3DFieldType::MFNode))
         forwarded.nodeValue = cloneNodes(forwarded.nodeValue);
@@ -474,6 +482,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
   decl->authoredScalarFields.copyClonesTo(cloneMap, scene.authoredScalarFields);
   for (const auto &[source, clone] : cloneMap) {
     if (!clone) continue;
+    scene.nodeBaseUrls.try_emplace(clone, bodyBaseUrl);
     for (const FieldInfo &field : clone->fields())
       if (scene.authoredScalarFields.contains(clone, field.x3dName))
         scene.unitFieldSources[clone].try_emplace(field.x3dName, decl->sourceUnits);
@@ -540,6 +549,9 @@ expandInstance(ProtoInstance &inst, Scene &scene,
       if (eff.value.has_value()) {
         if (setScalar(fi, cloned, eff.value)) {
           scene.authoredScalarFields.record(cit->second, is.nodeField);
+          if (is.nodeField == "url")
+            scene.nodeBaseUrls[cit->second] =
+                eff.sourceBaseUrl.value_or(override_ ? baseUrl : bodyBaseUrl);
           scene.unitFieldSources[cit->second][is.nodeField] =
               eff.sourceUnits.value_or(override_ ? scene.sourceUnits : decl->sourceUnits);
         }
@@ -580,7 +592,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     {
       proto_detail::DepthScope ds(guard);
       nestedPrimary =
-          expandInstance(nested, scene, resolver, baseUrl, guard, warnings,
+          expandInstance(nested, scene, resolver, bodyBaseUrl, guard, warnings,
                          context);
     }
     if (!nestedPrimary) continue;

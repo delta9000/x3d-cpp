@@ -19,6 +19,8 @@ namespace x3d::runtime {
 
 class SoundTimeSystem : public X3DTimeDependentSystem {
 public:
+  ~SoundTimeSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(x3d::nodes::X3DNode *node, X3DExecutionContext &ctx) override {
     if (dynamic_cast<x3d::nodes::OscillatorSource *>(node) ||
         dynamic_cast<x3d::nodes::Gain *>(node) ||

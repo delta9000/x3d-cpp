@@ -18,6 +18,8 @@
 #ifndef X3D_RUNTIME_SYSTEM_HPP
 #define X3D_RUNTIME_SYSTEM_HPP
 
+#include "CallbackLifetime.hpp"
+
 namespace x3d::nodes { class X3DNode; }
 
 namespace x3d::runtime {
@@ -35,7 +37,27 @@ class X3DExecutionContext;
  */
 class System {
 public:
-  virtual ~System() = default;
+  System() = default;
+  System(const System &) = delete;
+  System &operator=(const System &) = delete;
+  System(System &&) = delete;
+  System &operator=(System &&) = delete;
+  virtual ~System() { retireCallbacksBeforeDestruction(); }
+
+protected:
+  /// A callback-owning most-derived destructor MUST call this before its
+  /// members start destruction. Base destruction alone is too late if member
+  /// captures/destructors synchronously invoke a retained node handler.
+  /// Standard callback-owning systems do so; custom subclasses must do likewise.
+  void retireCallbacksBeforeDestruction() noexcept {
+    if (!callbacks_.retire()) std::terminate();
+  }
+
+private:
+  friend class X3DExecutionContext;
+  CallbackLifetime callbacks_;
+
+public:
 
   /**
    * @brief Enroll a node in this system (call after routes are built).

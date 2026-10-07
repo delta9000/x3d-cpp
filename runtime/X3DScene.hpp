@@ -128,6 +128,11 @@ public:
   // survive repeated builds and separate execution contexts without owning nodes.
   AuthoredScalarFields normalizedUnitFields;
 
+  // URL provenance follows weak node identity without changing authored URLs.
+  // PROTO clones and retained Inline scenes preserve their source directory.
+  std::map<std::weak_ptr<X3DNode>, std::string,
+           std::owner_less<std::weak_ptr<X3DNode>>> nodeBaseUrls;
+
   // PROTO body clones retain the declaration's units. IS scalar targets carry
   // the supplied value's source units; dimensions belong to the concrete target.
   std::map<std::weak_ptr<X3DNode>,

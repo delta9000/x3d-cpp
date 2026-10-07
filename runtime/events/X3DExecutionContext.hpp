@@ -27,6 +27,7 @@
 #include "X3DSystem.hpp"
 
 #include <any>
+#include <atomic>
 #include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
 #include <memory>
@@ -96,6 +97,38 @@ struct BridgeResult;
  */
 class X3DExecutionContext {
 public:
+  X3DExecutionContext() = default;
+  // The cascade, scene bindings and handlers refer to this exact address.
+  X3DExecutionContext(const X3DExecutionContext &) = delete;
+  X3DExecutionContext &operator=(const X3DExecutionContext &) = delete;
+  X3DExecutionContext(X3DExecutionContext &&) = delete;
+  X3DExecutionContext &operator=(X3DExecutionContext &&) = delete;
+  ~X3DExecutionContext() { if (!retireCallbacks()) std::terminate(); }
+
+  /// Terminal callback revocation for this activation. Idempotent; returns
+  /// false without retiring anything while tick/process/writeField or one of
+  /// our node callbacks is on the stack. The host must defer teardown until it
+  /// returns. All access is serial; concurrent destruction is NOT supported.
+  /// Retire before destroying context-owned state, including on constructor
+  /// unwinding. Node storage may survive; its retired runtime inputs are inert.
+  [[nodiscard]] bool retireCallbacks() noexcept {
+    if (!callbacks_.canRetire() || !bindings_.canRetireCallbacks()) return false;
+    (void)callbacks_.retire();
+    (void)bindings_.retireCallbacks();
+    return true;
+  }
+
+  /// Runtime-owned node handlers are valid only while BOTH their activation
+  /// and their behavior system live. Weak guards cover partial attachment
+  /// failure before addSystem(), without retaining nodes or either owner.
+  template <class F> auto guardCallback(System &owner, F callback) const {
+    return callbacks_.guard(owner.callbacks_.guard(std::move(callback)));
+  }
+
+  template <class F> auto guardInputFilter(System &owner, F filter) const {
+    return callbacks_.guardOr(owner.callbacks_.guardOr(std::move(filter), true), true);
+  }
+
   /** @brief Register a ROUTE from a source field endpoint to a sink endpoint.
    */
   void addRoute(const FieldAddress &from, const FieldAddress &to) {
@@ -295,6 +328,7 @@ public:
   [[nodiscard]] FieldWriteResult writeField(X3DNode *node,
                                             const std::string &field,
                                             std::any value) {
+    auto invocation = callbacks_.enter();
     if (!node) return FieldWriteResult::NullNode;
     if (detached_.count(node)) return FieldWriteResult::DetachedNode;
     if (!cascade_.acceptsInput(FieldAddress{node, resolveFieldAlias(node, field)}, value))
@@ -336,6 +370,7 @@ public:
    *          the finite set of fields).
    */
   void tick(double now) {
+    auto invocation = callbacks_.enter();
     // Guard against re-entrant tick() (e.g. a System calling tick() from
     // update()).  A recursive tick would clobber the outer tick's timestamp
     // state (now_, dirty_, produced_/fired_ guards) and consume pending
@@ -378,7 +413,10 @@ public:
   }
 
   /** @brief Drain any pending events without advancing the clock. */
-  void process() { cascade_.process(); }
+  void process() {
+    auto invocation = callbacks_.enter();
+    cascade_.process();
+  }
 
   double now() const { return now_; }
 
@@ -545,11 +583,16 @@ public:
   // Pointing-sensor resolution picks the scene on every pointer motion, so a
   // scene with no pointing-device sensors should never incur one; tests snapshot
   // this around tick() to assert PointingSensorSystem skips the pick entirely.
-  static inline std::uint64_t pickCalls_ = 0;
-  static std::uint64_t pickCallCount() { return pickCalls_; }
+  // Process-wide diagnostics only, not semantic state or per-world metrics.
+  // Independent owner-thread worlds may contribute concurrently. Relaxed
+  // ordering counts work without imposing synchronization on scene state.
+  static inline std::atomic<std::uint64_t> pickCalls_{0};
+  static std::uint64_t pickCallCount() {
+    return pickCalls_.load(std::memory_order_relaxed);
+  }
 
   PickResult pick(const Ray &worldRay) const {
-    ++pickCalls_;
+    pickCalls_.fetch_add(1, std::memory_order_relaxed);
     return pick_.pickClosest(worldRay, bounds_, cameraWorldPosition(),
                              cameraWorldUp(), x3d::kMaxGraphWalkVisits, &transforms_);
   }
@@ -679,6 +722,7 @@ private:
     std::shared_ptr<ActiveNode> node_;
   };
 
+  CallbackLifetime callbacks_; // revoked in destructor body before any members
   EventGraph graph_;
   EventCascade cascade_{graph_};
   std::vector<std::shared_ptr<System>> systems_;

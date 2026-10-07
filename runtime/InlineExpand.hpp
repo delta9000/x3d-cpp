@@ -160,7 +160,9 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
                        X3DNode *parent /* null => scene root */) {
     if (!readLoad(*inl)) return; // load=FALSE: leave node un-expanded (Tier 3)
     std::vector<std::string> urls = readUrl(*inl);
-    std::shared_ptr<Scene> child = resolver(urls, baseUrl);
+    const auto origin = scene.nodeBaseUrls.find(inl);
+    std::shared_ptr<Scene> child = resolver(
+        urls, origin == scene.nodeBaseUrls.end() ? baseUrl : origin->second);
     if (!child) {
       warnings.push_back({InlineWarning::Kind::UnresolvedUrl, inl->getDEF(),
                           urls.empty() ? "no url" : urls.front()});
@@ -170,6 +172,7 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     // copy child.defs into scene.defs).
     auto group = makeGroup(child->rootNodes);
     hoistChildRoutes(*child, scene.resolvedInlineRoutes);
+    scene.nodeBaseUrls.insert(child->nodeBaseUrls.begin(), child->nodeBaseUrls.end());
     for (const auto &[nestedGroup, nestedInline] : child->expandedInlines)
       scene.expandedInlines[nestedGroup] = nestedInline;
     for (const auto &[nestedInline, nestedScene] : child->expandedInlineScenes)

@@ -44,12 +44,14 @@ using namespace x3d::core;
  */
 class X3DTimeDependentSystem : public System {
 public:
+  ~X3DTimeDependentSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     if (auto *tdn = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node)) {
       if (!filterInstalled_) {
-        ctx.addInputFilter([this, &ctx](const FieldAddress &addr, const std::any &value) {
+        ctx.addInputFilter(ctx.guardInputFilter(*this, [this, &ctx](const FieldAddress &addr, const std::any &value) {
           return acceptTimingInput(addr, value, ctx.now());
-        });
+        }));
         filterInstalled_ = true;
       }
       state_.emplace(tdn, State{});

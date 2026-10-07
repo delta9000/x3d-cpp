@@ -105,6 +105,11 @@ public:
         new RuntimeSession(std::move(doc), std::move(options)));
   }
 
+  /// The host must finish all native calls before destruction (including calls
+  /// entered from a node handler). Retire before extractor/context teardown;
+  /// ctx_'s own destructor also covers partially constructed sessions.
+  ~RuntimeSession() { if (!ctx_.retireCallbacks()) std::terminate(); }
+
   RuntimeSession(const RuntimeSession &) = delete;
   RuntimeSession &operator=(const RuntimeSession &) = delete;
   RuntimeSession(RuntimeSession &&) = delete;

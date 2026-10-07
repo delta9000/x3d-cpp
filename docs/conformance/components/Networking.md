@@ -5,7 +5,7 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, NSN-11, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
-| Inline | 2 | ✓ | — | — | AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, NSN-12, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DUrlObject |
+| Inline | 2 | ✓ | — | — | ASSET-LOADER-TRANSITIVE-POLICY, AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, NSN-12, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DUrlObject |
 | LoadSensor | 3 | ✓ | — | ? | AUD-NET-3, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9, ROUTE-IO-ALIAS | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 
 ## Findings
@@ -16,6 +16,8 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 - **NSN-5** [critical/CLOSED `9bb71c2`] — §9.4.3: progress events (advancing to 1.0 on full load) not emitted.
 - **NSN-6** [critical/CLOSED `597e5a0`] — §9.4.3: timeOut deadline tracking (emit isLoaded=FALSE/isActive=FALSE on expiry) unimplemented.
 - **NSN-9** [critical/CLOSED `9bb71c2`] — §9.4.3: Already-resolved children at scene-build must emit the immediate isLoaded/loadTime/progress burst.
+- **ASSET-LOADER-TRANSITIVE-POLICY** [critical/FIXED] — §4.4.4.2; 9.2 (host I/O policy and source-URL integration): Nested Inline and EXTERNPROTO parsing preserves the supplied AssetResolver policy and declaration-source bases without local-file fallback.
+  - Paired synchronous loaders carry one explicit resolver policy throughout Inline/EXTERNPROTO recursion, including declaration caching, body expansion and IS URL overrides; Pending aborts the recursive synchronous load. Source-base provenance follows declarations and weak node ownership instead of being replaced by the enclosing document URL. Local Inline file loading uses the existing confinement/canonicalization helper. The focused asset_loader_policy_test.cpp and asset_proto_resolver_test.cpp suite verifies nested and mixed resolution, URL fallback, cached declaration reuse, Pending propagation and real local-decoy zero-read/open evidence with a positive control. This closes an I/O integration bypass; it does not assert full asynchronous loading or browser/SAI conformance.
 - **NSN-7** [major/CLOSED `632d8a2`] — §9.4.3: watched child url/load change must reset LoadSensor state and re-evaluate.
 - **AUD-NET-1** [major/CLOSED] — §9.2.5: IMPORT resolves an Inline DEF that the Inline never EXPORTed.
   - wireInlineImports now requires an explicit child EXPORT whose public name matches importedDEF; a private DEF no longer becomes a parent alias. Regression: import_requires_explicit_export.

@@ -114,6 +114,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parser_depth_guard_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/asset_proto_resolver_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/asset_loader_policy_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/core_diagnostics_test.cpp")
     target_link_libraries(x3d_parse_tests PRIVATE
         x3d_cpp::sdk x3d_doctest_main)
@@ -134,6 +135,8 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_state_delta_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_visibility_delta_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_session_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_callback_retirement_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_diagnostic_counters_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/material_system_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_mapping_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_orm_test.cpp"
@@ -182,8 +185,9 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_nurbs_swept_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_geom2d_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scheme_router_test.cpp")
+    find_package(Threads REQUIRED)
     target_link_libraries(x3d_extract_tests PRIVATE
-        x3d_cpp::sdk x3d_doctest_main)
+        x3d_cpp::sdk x3d_doctest_main Threads::Threads)
     target_include_directories(x3d_extract_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support")
     add_test(NAME x3d_extract_tests COMMAND x3d_extract_tests)
