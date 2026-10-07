@@ -48,6 +48,31 @@ presence, rather than using the lenient unchecked reflection-write path. DEF
 creation updates both the native Scene table and node's DEF. Root insertion uses
 `Scene::addRootNode`; duplicate occurrences share the same shared_ptr.
 
+`Transform.children` supports owner-bearing `read_nodes` / `set_nodes`, both by
+field name and by the existing generated `Transform::children` key. Reads inspect
+the real `getChildren()` pointer sequence and writes publish one complete native
+`setChildren()` vector. Order and explicit NULL slots are preserved. A non-NULL
+node can occur only once in a single children list (`invalid_value` on a repeat),
+but the same identity can be shared by different parents. Repeated scene-root
+occurrences remain legal. Children never enter `Scene::authoredScalarFields`.
+
+Each node-valued read reconstructs and validates the full registered native
+children graph, including unnamed detached nodes, before returning owned
+handles. Foreign native pointers fail with `invalid_context`, same-list duplicate
+non-NULL entries with `invalid_value`, and self/indirect cycles with
+`containment_cycle`. Iterative traversal avoids recursion-depth limits. Native
+out-of-band structural edits are visible immediately and fail closed if invalid;
+an unrelated invalid component cannot be hidden by querying a valid node.
+
+Each write resolves the owner-checked payload to native pointers and validates a
+candidate graph with the target list replaced, before making any native change.
+This allows the offending target list to be repaired when the entire candidate
+graph is valid. An invalid list elsewhere still rejects the operation. Ordinary
+returned errors leave native fields, roots, names and authored-scalar marks
+unchanged; allocation/system exceptions are outside this guarantee. Validation
+uses temporary local state, not a persistent mirrored graph or reference-kernel
+adapter.
+
 The native-only proof confirms:
 
 - Native DEF and repeated root occurrences resolve to the same actual Transform
@@ -56,19 +81,28 @@ The native-only proof confirms:
   without a synchronization/copy step
 - Thread guards apply to native extension access; close expires SAI wrappers
   even while callers retain the native Scene and its nodes
+- Owned MFNode writes install the exact real native pointer sequence, and native
+  list edits are visible in dynamic/generated reads without synchronization
+- Foreign pointers, duplicates and detached/self/indirect cycles fail closed,
+  candidate repair succeeds only for a valid full graph, and errors preserve state
+- A 4,096-node unnamed detached chain and cycle exercise iterative validation;
+  tests explicitly remove any installed shared_ptr cycles, even on failure
 
 `native_scene()` is a provider-specific inspection/authoring extension, not
 part of the portable oracle. Native accesses must be serialized on the creator
 thread. It exposes this provider's own offline scene, not an existing live
 execution context or extractor. Direct native mutation of existing Transform
 fields is supported. Adding/replacing nodes outside the provider's identity
-registry is outside the pilot; queries fail with `invalid_context` for such
-foreign entries. Callers using other native structural operations must preserve
-native Scene invariants themselves. This is not a live graph-editing integration,
+registry is outside the pilot; relevant queries fail with `invalid_context` for
+such foreign entries. Children operations validate all registered containment
+lists, but do not validate unrelated native structures such as ROUTEs or imports.
+Callers using other native structural operations must preserve native Scene
+invariants themselves. This is not a live graph-editing integration,
 and no derived runtime/extractor state is claimed to be synchronized.
 
-The narrow common interface leaves initialize-only authoring, node-valued
-mutation, full field kinds, all profiles/components, generated typed handles,
+The narrow common interface leaves initialize-only authoring, node-valued fields
+beyond `Transform.children` (including SFNode and inputOnly add/removeChildren),
+full field kinds, all profiles/components, generated typed handles,
 full lifecycle, snapshots/transactions, events/ROUTEs, update buffering, loading,
 world replacement, import authority, concurrent access and rendering unproven.
 Reference-kernel-only tests do not fill these independent-provider gaps.

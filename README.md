@@ -27,8 +27,9 @@ API, not an adapter to the proposal. An opt-in
 [combined consumer check](tests/cmake/sai_coexistence/README.md) verifies that
 the packages can coexist in source and relocated installed builds. The separate
 [optional native provider](tests/cmake/sai_provider/README.md) maps a bounded
-modern SAI offline contract to this SDK's authoritative Scene state. It is a
-source-level interoperability experiment, not a full SAI implementation; normal
+modern SAI offline contract to this SDK's authoritative Scene state, including
+owner-checked `Transform.children` lists with full registered-graph validation.
+It is a source-level interoperability experiment, not a full SAI implementation; normal
 SDK builds and installations do not acquire an SAI dependency.
 
 ## Gallery — real X3D, rendered headless

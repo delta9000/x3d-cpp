@@ -18,6 +18,8 @@ public:
   // Native extension, deliberately absent from the common provider interface.
   // Inspect the authoritative scene, or mutate its existing Transform fields
   // serially on the creating thread. No live context/extractor is attached.
+  // Children reads/writes validate all registered native containment lists,
+  // including detached nodes. A valid candidate can repair its target list.
   // Retaining this storage after close does not preserve SAI handle authority.
   x3d::sai::experimental::result<std::shared_ptr<Scene>> native_scene() const;
 
@@ -43,6 +45,12 @@ private:
   x3d::sai::experimental::result<void>
       do_write_field(std::uint64_t, std::string_view,
                      x3d::sai::experimental::vec3f) override;
+  x3d::sai::experimental::result<
+      std::vector<std::optional<std::uint64_t>>>
+  do_read_nodes(std::uint64_t, std::string_view) const override;
+  x3d::sai::experimental::result<void>
+  do_set_nodes(std::uint64_t, std::string_view,
+               const std::vector<std::optional<std::uint64_t>> &) override;
   void do_close() noexcept override;
 };
 } // namespace x3d::runtime

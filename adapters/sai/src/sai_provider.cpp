@@ -4,6 +4,7 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <unordered_map>
+#include <unordered_set>
 
 namespace x3d::runtime {
 namespace sai = x3d::sai::experimental;
@@ -58,6 +59,91 @@ struct SaiOfflineProvider::state {
   // model.
   std::unordered_map<std::uint64_t, std::shared_ptr<x3d::nodes::X3DNode>> nodes;
   std::uint64_t next_id = 1;
+
+  using node_ids = std::vector<std::optional<std::uint64_t>>;
+  using graph = std::unordered_map<std::uint64_t, node_ids>;
+
+  // Reconstruct the entire registered containment graph from authoritative
+  // native pointers on each node-valued operation, including detached nodes.
+  // A replacement is validated instead of the target's existing list so that
+  // a valid candidate can repair an out-of-band mutation. Nothing is published
+  // until this complete candidate graph has passed validation.
+  sai::result<graph> children_graph(std::string_view operation,
+                                   std::uint64_t replacement_id = 0,
+                                   const x3d::core::MFNode *replacement = nullptr) const {
+    std::unordered_map<const x3d::nodes::X3DNode *, std::uint64_t> identities;
+    for (const auto &[id, node] : nodes)
+      identities.emplace(node.get(), id);
+
+    graph edges;
+    for (const auto &[id, node] : nodes) {
+      const auto transform =
+          std::dynamic_pointer_cast<x3d::nodes::Transform>(node);
+      if (!transform)
+        return SaiOfflineProvider::error(
+            sai::error_code::type_mismatch, std::string(operation),
+            "registered native node is not a Transform", "children");
+      const auto &children = replacement && id == replacement_id
+                                 ? *replacement
+                                 : transform->getChildren();
+      auto &ids = edges[id];
+      ids.reserve(children.size());
+      std::unordered_set<std::uint64_t> seen;
+      for (const auto &child : children) {
+        if (!child) {
+          ids.push_back(std::nullopt);
+          continue;
+        }
+        const auto found = identities.find(child.get());
+        if (found == identities.end())
+          return SaiOfflineProvider::error(
+              sai::error_code::invalid_context, std::string(operation),
+              "native children contain a node outside this provider", "children");
+        if (!seen.insert(found->second).second)
+          return SaiOfflineProvider::error(
+              sai::error_code::invalid_value, std::string(operation),
+              "native children repeat a non-NULL node", "children");
+        ids.push_back(found->second);
+      }
+    }
+
+    // Iterative three-colour DFS: long detached chains cannot exhaust the C++
+    // call stack. A completed node may be visited from several parents (USE).
+    enum class colour { unseen, active, complete };
+    std::unordered_map<std::uint64_t, colour> colours;
+    struct frame {
+      std::uint64_t id;
+      std::size_t next_child = 0;
+    };
+    std::vector<frame> stack;
+    for (const auto &[id, ignored] : edges) {
+      if (colours[id] != colour::unseen)
+        continue;
+      colours[id] = colour::active;
+      stack.push_back({id});
+      while (!stack.empty()) {
+        auto &top = stack.back();
+        const auto &children = edges.at(top.id);
+        if (top.next_child == children.size()) {
+          colours[top.id] = colour::complete;
+          stack.pop_back();
+          continue;
+        }
+        const auto child = children[top.next_child++];
+        if (!child)
+          continue;
+        if (colours[*child] == colour::active)
+          return SaiOfflineProvider::error(
+              sai::error_code::containment_cycle, std::string(operation),
+              "native children contain a containment cycle", "children");
+        if (colours[*child] == colour::unseen) {
+          colours[*child] = colour::active;
+          stack.push_back({*child});
+        }
+      }
+    }
+    return edges;
+  }
 
   sai::result<std::shared_ptr<x3d::nodes::X3DNode>>
   lookup(std::uint64_t id) const {
@@ -164,11 +250,13 @@ SaiOfflineProvider::do_fields(std::uint64_t id) const {
     if (!field_kind)
       return sai::failure(field_kind.error());
     auto field_access = access(field.access);
+    const bool children = field.x3dName == "children" &&
+                          *field_kind == sai::value_kind::mf_node;
     result.push_back({field.x3dName, *field_kind, field_access,
-                      *field_kind == sai::value_kind::sf_vec3f &&
-                          field_access != sai::access_type::input_only,
-                      *field_kind == sai::value_kind::sf_vec3f &&
-                          field_access == sai::access_type::input_output});
+                      children || (*field_kind == sai::value_kind::sf_vec3f &&
+                                   field_access != sai::access_type::input_only),
+                      children || (*field_kind == sai::value_kind::sf_vec3f &&
+                                   field_access == sai::access_type::input_output)});
   }
   return result;
 }
@@ -222,5 +310,53 @@ sai::result<void> SaiOfflineProvider::do_write_field(std::uint64_t id,
   state_->scene->authoredScalarFields.record(*node, std::string(name));
   return {};
 }
+sai::result<std::vector<std::optional<std::uint64_t>>>
+SaiOfflineProvider::do_read_nodes(std::uint64_t id, std::string_view name) const {
+  if (name != "children")
+    return error(sai::error_code::unsupported_operation, "read_nodes",
+                 "only Transform.children is supported", name);
+  auto node = state_->lookup(id);
+  if (!node)
+    return sai::failure(node.error());
+  auto graph = state_->children_graph("read_nodes");
+  if (!graph)
+    return sai::failure(graph.error());
+  return std::move(graph->at(id));
+}
+
+sai::result<void> SaiOfflineProvider::do_set_nodes(
+    std::uint64_t id, std::string_view name,
+    const std::vector<std::optional<std::uint64_t>> &ids) {
+  if (name != "children")
+    return error(sai::error_code::unsupported_operation, "set_nodes",
+                 "only Transform.children is supported", name);
+  auto node = state_->lookup(id);
+  if (!node)
+    return sai::failure(node.error());
+  auto transform = std::dynamic_pointer_cast<x3d::nodes::Transform>(*node);
+  if (!transform)
+    return error(sai::error_code::type_mismatch, "set_nodes",
+                 "native node is not a Transform", name);
+  x3d::core::MFNode candidate;
+  candidate.reserve(ids.size());
+  for (const auto child_id : ids) {
+    if (!child_id) {
+      candidate.push_back(nullptr);
+      continue;
+    }
+    auto child = state_->lookup(*child_id);
+    if (!child)
+      return sai::failure(child.error());
+    candidate.push_back(*child);
+  }
+  auto graph = state_->children_graph("set_nodes", id, &candidate);
+  if (!graph)
+    return sai::failure(graph.error());
+  // Publishing the complete vector is the only native mutation. In particular,
+  // node-valued fields never enter Scene::authoredScalarFields.
+  transform->setChildren(std::move(candidate));
+  return {};
+}
+
 void SaiOfflineProvider::do_close() noexcept { state_.reset(); }
 } // namespace x3d::runtime
