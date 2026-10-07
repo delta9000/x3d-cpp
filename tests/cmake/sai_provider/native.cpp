@@ -70,6 +70,54 @@ static void native_authority_proof() {
           "closed provider must reject native extension access");
 }
 
+// Application metadata is provider-local sidecar state, never a mirrored node
+// graph or an authored X3D field. The real native scene remains authoritative.
+static void native_user_data_authority_proof() {
+  x3d::runtime::SaiOfflineProvider provider;
+  const auto scene = *provider.native_scene();
+  const auto node = *provider.create_node("Transform");
+  const auto child = *provider.create_node("Transform");
+  require(bool(provider.define_name(node, "UserDataOwner")) &&
+              bool(provider.append_root(node)) &&
+              bool(provider.set_nodes(node, "children", {child, std::nullopt})),
+          "native metadata fixture must create a named rooted graph");
+  const auto native = std::dynamic_pointer_cast<x3d::nodes::Transform>(
+      scene->resolve("UserDataOwner"));
+  const auto roots = scene->rootNodes;
+  const auto children = native->getChildren();
+  const auto definitions = scene->defs;
+  const auto translation = native->getTranslation();
+  int destroyed = 0;
+  require(bool(provider.set_user_data(
+              node, sai::user_data_value::make<sai::testing::provider_cleanup_probe>(
+                        [&] { ++destroyed; }))) &&
+              bool(provider.set_user_data(node, "set_metadata",
+                                          sai::user_data_value::make<std::string>("metadata"))) &&
+              bool(provider.set_user_data(node, sai::bindings::Transform::addChildren,
+                                          sai::user_data_value::make<int>(17))) &&
+              bool(provider.set_user_data(node, "translation_changed",
+                                          sai::user_data_value::make<int>(23))),
+          "native metadata must support nodes, aliases and unsupported value fields");
+  require(scene->rootNodes == roots && scene->defs == definitions &&
+              native->getChildren() == children && native->getTranslation() == translation &&
+              native->getDEF() == "UserDataOwner",
+          "user metadata must leave native values, roots, definitions and children unchanged");
+  for (const auto &field : native->fields())
+    require(!scene->authoredScalarFields.contains(native, field.x3dName),
+            "metadata must never record native authored-scalar presence");
+  native->setTranslation(x3d::core::SFVec3f{6, 7, 8});
+  require(*provider.read_field(node, sai::bindings::Transform::translation) == sai::vec3f{6, 7, 8} &&
+              **provider.user_data(node, "translation")->as<int>() == 23,
+          "native mutation must be visible without changing canonical metadata");
+  const auto field = *provider.field(node, "metadata_changed");
+  auto retained = provider.user_data(field);
+  require(bool(provider.close()) && destroyed == 1 && node.expired() && field.expired() &&
+              native->getChildren() == children && scene->rootNodes == roots &&
+              native->getTranslation() == x3d::core::SFVec3f{6, 7, 8} &&
+              **retained->as<std::string>() == "metadata",
+          "provider close must retire metadata authority while preserving retained native storage and reads");
+}
+
 // Every supported scalar lives in the native Transform, including inherited
 // bool fields. Read results own their values across native edits and close.
 static void native_scalar_authority_proof() {
@@ -436,10 +484,11 @@ int main() {
         });
     native_authority_proof();
     native_scalar_authority_proof();
+    native_user_data_authority_proof();
     native_children_proof();
     native_deep_detached_graph_proof();
     std::cout << "native offline provider: " << report.checks
-              << " common checks plus native scalar authority and containment "
+              << " common checks plus native scalar/metadata authority and containment "
                  "proofs passed\n";
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';

@@ -3,6 +3,7 @@
 #include "x3d/nodes/Transform.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -59,6 +60,43 @@ struct SaiOfflineProvider::state {
   // model.
   std::unordered_map<std::uint64_t, std::shared_ptr<x3d::nodes::X3DNode>> nodes;
   std::uint64_t next_id = 1;
+  // Application metadata only. No scene values or graph facts are mirrored.
+  // An empty field name identifies the node itself; field names are canonical.
+  std::map<std::pair<std::uint64_t, std::string>, sai::user_data_value> user_data;
+
+  sai::result<sai::user_data_value>
+  access_user_data(std::uint64_t id, std::string_view name,
+                   sai::user_data_value *replacement = nullptr) {
+    auto node = lookup(id);
+    if (!node)
+      return sai::failure(node.error());
+    if (!name.empty()) {
+      const auto &fields = (*node)->fields();
+      if (document_syntax(name) ||
+          std::none_of(fields.begin(), fields.end(), [&](const auto &field) {
+            return field.x3dName == name;
+          }))
+        return SaiOfflineProvider::error(
+            sai::error_code::unknown_field, "user_data",
+            "native field does not exist", name);
+    }
+    const auto key = std::pair{id, std::string(name)};
+    auto found = user_data.find(key);
+    if (!replacement)
+      return found == user_data.end() ? sai::user_data_value{} : found->second;
+    if (found != user_data.end()) {
+      found->second.swap(*replacement);
+      if (!found->second.has_value())
+        user_data.erase(found); // empty slot: no user destructor runs here
+    } else if (replacement->has_value()) {
+      // Allocate before moving payload ownership, preserving old state on failure.
+      auto slot = user_data.try_emplace(key).first;
+      slot->second.swap(*replacement);
+    }
+    // The caller owns the old value and releases it only after this state
+    // access has finished. Cleanup may read metadata, replace it or close us.
+    return sai::user_data_value{};
+  }
 
   using node_ids = std::vector<std::optional<std::uint64_t>>;
   using graph = std::unordered_map<std::uint64_t, node_ids>;
@@ -165,7 +203,10 @@ struct SaiOfflineProvider::state {
 };
 
 SaiOfflineProvider::SaiOfflineProvider() : state_(std::make_unique<state>()) {}
-SaiOfflineProvider::~SaiOfflineProvider() = default;
+SaiOfflineProvider::~SaiOfflineProvider() {
+  invalidate_handles();
+  state_.reset();
+}
 
 sai::result<std::shared_ptr<Scene>> SaiOfflineProvider::native_scene() const {
   if (auto valid = check("native_scene"); !valid)
@@ -401,6 +442,30 @@ sai::result<void> SaiOfflineProvider::do_set_nodes(
   // Publishing the complete vector is the only native mutation. In particular,
   // node-valued fields never enter Scene::authoredScalarFields.
   transform->setChildren(std::move(candidate));
+  return {};
+}
+
+sai::result<sai::user_data_value>
+SaiOfflineProvider::do_node_user_data(std::uint64_t id) const {
+  return state_->access_user_data(id, {});
+}
+sai::result<void> SaiOfflineProvider::do_set_node_user_data(
+    std::uint64_t id, sai::user_data_value data) {
+  auto changed = state_->access_user_data(id, {}, &data);
+  if (!changed)
+    return sai::failure(changed.error());
+  return {};
+}
+sai::result<sai::user_data_value>
+SaiOfflineProvider::do_field_user_data(std::uint64_t id,
+                                      std::string_view name) const {
+  return state_->access_user_data(id, name);
+}
+sai::result<void> SaiOfflineProvider::do_set_field_user_data(
+    std::uint64_t id, std::string_view name, sai::user_data_value data) {
+  auto changed = state_->access_user_data(id, name, &data);
+  if (!changed)
+    return sai::failure(changed.error());
   return {};
 }
 

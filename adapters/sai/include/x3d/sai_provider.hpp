@@ -51,6 +51,16 @@ private:
   x3d::sai::experimental::result<void>
   do_set_nodes(std::uint64_t, std::string_view,
                const std::vector<std::optional<std::uint64_t>> &) override;
+  x3d::sai::experimental::result<x3d::sai::experimental::user_data_value>
+      do_node_user_data(std::uint64_t) const override;
+  x3d::sai::experimental::result<void>
+      do_set_node_user_data(std::uint64_t,
+                           x3d::sai::experimental::user_data_value) override;
+  x3d::sai::experimental::result<x3d::sai::experimental::user_data_value>
+      do_field_user_data(std::uint64_t, std::string_view) const override;
+  x3d::sai::experimental::result<void>
+      do_set_field_user_data(std::uint64_t, std::string_view,
+                            x3d::sai::experimental::user_data_value) override;
   void do_close() noexcept override;
 };
 } // namespace x3d::runtime

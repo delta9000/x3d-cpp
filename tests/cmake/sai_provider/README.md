@@ -88,8 +88,34 @@ unchanged; allocation/system exceptions are outside this guarantee. Validation
 uses temporary local state, not a persistent mirrored graph or reference-kernel
 adapter.
 
+Node and canonical-field application user data is supported through the common
+`user_data` / `set_user_data` services and kernel-free `user_data_value` ownership
+type. `field(node, name)` and generated-key overloads return owner-bearing field
+handles; exact names win before inputOutput `set_` / `_changed` aliases. Dynamic
+scalar and node-list services use the same canonicalization. A copied field
+handle remains usable after the original node wrapper is disposed. Disposing a
+field wrapper preserves both its copies and metadata reacquired through the node.
+
+User data is immediate, provider-local application metadata. The native adapter
+stores only metadata sidecars keyed by node identity and canonical field name;
+it does not mirror the native scene or field values and never marks authored
+scalar fields. Every discovered field supports metadata, including SFNode and
+inputOnly/initializeOnly fields whose value writes are unavailable. Capability
+`user_data` is true; existing value-support flags and offline limitations retain
+their previous meanings. Payloads expose exact-type `shared_ptr<const T>` reads,
+can hold move-only objects, and outlive replacement/close when a caller retains
+a read. Empty payloads clear associations. Replacement and clear release the old
+payload after internal state access; payload destructors may re-enter or close
+the provider. Explicit close and implicit destruction revoke handle authority
+before releasing any payloads, including destruction off the creating thread.
+
 The native-only proof confirms:
 
+- Node/field metadata shares canonical identity across copied/reacquired handles,
+  remains independent of value support, and does not mutate native values,
+  roots, DEFs, containment or authored-field marks
+- Metadata cleanup is reentrant and lifetime-safe on replacement, clear, close
+  and implicit destruction; owning reads survive while handles expire
 - Native DEF and repeated root occurrences resolve to the same actual Transform
 - Every supported scalar write changes the matching native Transform getter and
   authored-presence mark, without marking unrelated scalar or node fields
