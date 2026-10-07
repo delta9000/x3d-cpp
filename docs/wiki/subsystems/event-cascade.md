@@ -34,6 +34,8 @@ policy, not a uniquely mandated ISO selection among simultaneous events.
 
 The single-value and multi-value template families in `InterpolatorSystem.hpp`,
 plus the Spline/Squad/Ease, NURBS and GeoPosition systems, use this path.
+The six outputOnly Event Utilities types also use it, covering eight fields and
+both IntegerTrigger producer paths; BooleanToggle remains excluded.
 Attach-time first-key readback remains initialization without a posted event.
 Producers must not call a node emitter or write its backing field before calling
 `postOutputEvent`.
@@ -203,6 +205,13 @@ notifications but only one ROUTE delivery. The same probe source, rebuilt with t
 both inputs and one coherent output. Its separate-timestamp control still
 progresses normally.
 
+`runtime/events/tests/event_utility_output_admission_test.cpp` extends admission
+to BooleanTrigger, IntegerTrigger, TimeTrigger, BooleanFilter and both sequencers through
+production registration. It counts all input deliveries, independently caps each
+filter output, and verifies private sequencer advancement despite suppressed
+outputs. False/no-op and empty-data guards leave admission available for later
+valid work. BooleanToggle and sequencer interval suppression remain separate.
+
 The provider-neutral paired gate checks the portable rule: all input occurrences
 are handled, with bounded generated output and matching readback/ROUTE values.
 It does not require every conforming implementation to choose the first value.
@@ -217,9 +226,11 @@ It does not require every conforming implementation to choose the first value.
   `isActive=true` and `isActive=false`; changing this mechanically to first-wins
   would leave its final stored state active. Its state transition/output selection
   needs separate reconciliation, not queue-only deduplication.
-- Followers, event utilities, binding, key/pointing sensors and other producers
+- Followers, BooleanToggle, binding, key/pointing sensors and other producers
   still need review, especially emitter-before-post sites. Their state changes
   cannot be migrated by mechanically changing the queue call.
+- Sequencer per-key-interval suppression across ticks remains distinct from
+  per-cascade output admission; see [Event Utilities](system-eventutility.md).
 - Author-declared outputOnly fields have no reflection setter thunk and are
   rejected by `postOutputEvent`; their storage path needs a separate migration.
   Internal Script `SaiContext::setField` and `ScriptSystem::runEventsProcessed`

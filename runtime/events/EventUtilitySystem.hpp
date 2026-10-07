@@ -1,9 +1,9 @@
 // EventUtilitySystem.hpp
 // Event-driven Systems for the ISO/IEC 19775-1 §30 Event Utilities cluster
 // (campaign wave-3 fix). Each node was behaviorally inert (no System wired);
-// these wire the node's inputOnly handlers in attach() and emit the spec-mandated
-// outputs through the cascade (ctx.postEvent writes the source field via the
-// reflection set-thunk AND fans out along ROUTEs).
+// these wire the node's inputOnly handlers in attach(). OutputOnly producers
+// use checked admission before storage/observer/ROUTE delivery. BooleanToggle
+// retains legacy inputOutput delivery pending separate state/output handling.
 //
 //   - BooleanTriggerSystem  §30.4.4: set_triggerTime -> triggerTrue=TRUE
 //   - IntegerTriggerSystem  §30.4.6: set_boolean=TRUE -> triggerValue=integerKey (FALSE ignored)
@@ -40,7 +40,7 @@ public:
     auto *n = dynamic_cast<x3d::nodes::BooleanTrigger *>(node);
     if (!n) return;
     n->setOnSet_triggerTimeHandler(ctx.guardCallback(*this, [&ctx, n](const SFTime &) {
-      ctx.postEvent(n, "triggerTrue", std::any(SFBool{true}));
+      ctx.postOutputEvent(n, "triggerTrue", std::any(SFBool{true}));
     }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
@@ -63,11 +63,11 @@ public:
     if (!n) return;
     n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &v) {
       if (!v) return; // honored only on TRUE
-      ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
+      ctx.postOutputEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
     }));
     ctx.addFieldWriteListener(ctx.guardCallback(*this, [&ctx, n](const FieldAddress &a) {
       if (a.node == n && (a.field == "integerKey" || a.field == "set_integerKey"))
-        ctx.postEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
+        ctx.postOutputEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
     }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
@@ -85,7 +85,7 @@ public:
     auto *n = dynamic_cast<x3d::nodes::TimeTrigger *>(node);
     if (!n) return;
     n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &) {
-      ctx.postEvent(n, "triggerTime", std::any(SFTime{ctx.now()}));
+      ctx.postOutputEvent(n, "triggerTime", std::any(SFTime{ctx.now()}));
     }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
@@ -104,9 +104,9 @@ public:
     auto *n = dynamic_cast<x3d::nodes::BooleanFilter *>(node);
     if (!n) return;
     n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &v) {
-      if (v) ctx.postEvent(n, "inputTrue", std::any(SFBool{true}));
-      else   ctx.postEvent(n, "inputFalse", std::any(SFBool{false}));
-      ctx.postEvent(n, "inputNegate", std::any(SFBool{!v}));
+      if (v) ctx.postOutputEvent(n, "inputTrue", std::any(SFBool{true}));
+      else   ctx.postOutputEvent(n, "inputFalse", std::any(SFBool{false}));
+      ctx.postOutputEvent(n, "inputNegate", std::any(SFBool{!v}));
     }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
@@ -175,7 +175,7 @@ public:
       std::size_t i = sequencerStepIndex(key, f);
       if (i >= kv.size()) i = kv.size() - 1;
       index_[n] = i;
-      ctx.postEvent(n, "value_changed", std::any(ValueT{kv[i]}));
+      ctx.postOutputEvent(n, "value_changed", std::any(ValueT{kv[i]}));
     }));
     n->setOnNextHandler(ctx.guardCallback(*this, [&ctx, n, this](const SFBool &v) {
       if (v) step(ctx, n, +1);
@@ -203,7 +203,7 @@ private:
     const std::size_t next =
         dir > 0 ? (cur + 1) % sz : (cur + sz - 1) % sz;
     index_[n] = next;
-    ctx.postEvent(n, "value_changed", std::any(ValueT{kv[next]}));
+    ctx.postOutputEvent(n, "value_changed", std::any(ValueT{kv[next]}));
   }
 
   std::unordered_map<X3DNode *, std::size_t> index_;
