@@ -3,6 +3,7 @@
 #include "x3d/sai/experimental/testing/provider_fixture.hpp"
 #include "x3d/sai_provider.hpp"
 #include <iostream>
+#include <limits>
 
 #ifdef X3D_SAI_EXPERIMENTAL_KERNEL_HPP
 #error "The independent native provider must not include the reference kernel"
@@ -69,6 +70,141 @@ static void native_authority_proof() {
           "closed provider must reject native extension access");
 }
 
+// Every supported scalar lives in the native Transform, including inherited
+// bool fields. Read results own their values across native edits and close.
+static void native_scalar_authority_proof() {
+  x3d::runtime::SaiOfflineProvider provider;
+  auto scene = *provider.native_scene();
+  auto handle = *provider.create_node("Transform");
+  require(bool(provider.append_root(handle)), "scalar fixture root must append");
+  auto native = std::dynamic_pointer_cast<x3d::nodes::Transform>(
+      scene->rootNodes.front());
+  require(bool(native), "scalar fixture must expose a real native Transform");
+  std::vector<std::string> authored;
+  const auto check_authored = [&] {
+    for (const auto &field : native->fields()) {
+      const bool expected = std::find(authored.begin(), authored.end(),
+                                      field.x3dName) != authored.end();
+      require(scene->authoredScalarFields.contains(native, field.x3dName) == expected,
+              "each write must preserve the exact native authored-field set");
+    }
+  };
+  const auto author = [&](const char *name, sai::value payload) {
+    require(bool(provider.write_field(handle, name, std::move(payload))),
+            "all inputOutput scalar writes must succeed");
+    authored.emplace_back(name);
+    check_authored();
+  };
+  auto rejected_flag = provider.write_field(handle, "visible", std::int32_t{0});
+  auto rejected_rotation = provider.write_field(handle, "scaleOrientation", false);
+  require(!rejected_flag && !rejected_rotation &&
+              rejected_flag.error().code == sai::error_code::type_mismatch &&
+              rejected_rotation.error().code == sai::error_code::type_mismatch &&
+              native->getVisible() &&
+              native->getScaleOrientation() == x3d::core::SFRotation{0, 0, 1, 0} &&
+              !scene->authoredScalarFields.contains(native, "visible") &&
+              !scene->authoredScalarFields.contains(native, "scaleOrientation"),
+          "failed writes must preserve default values and absent authored marks");
+  check_authored();
+  for (const auto invalid : {sai::rotation{0, 0, 0, 0},
+                             sai::rotation{0, 2, 0, 1},
+                             sai::rotation{std::numeric_limits<float>::infinity(),
+                                           0, 0, 1}}) {
+    const auto rejected = provider.write_field(handle, "rotation", invalid);
+    require(!rejected && rejected.error().code == sai::error_code::invalid_value &&
+                native->getRotation() == x3d::core::SFRotation{0, 0, 1, 0},
+            "invalid rotation axes must fail before native mutation");
+    check_authored();
+  }
+  author("center", sai::vec3f{1, 2, 3});
+  author("scale", sai::vec3f{-2, 0, 4});
+  author("translation", sai::vec3f{4, 5, 6});
+  author("rotation", sai::rotation{0, 1, 0, 1});
+  author("scaleOrientation", sai::rotation{1, 0, 0, 2});
+  author("visible", false);
+  author("bboxDisplay", true);
+  require(native->getCenter() == x3d::core::SFVec3f{1, 2, 3} &&
+              native->getScale() == x3d::core::SFVec3f{-2, 0, 4} &&
+              native->getTranslation() == x3d::core::SFVec3f{4, 5, 6} &&
+              native->getRotation() == x3d::core::SFRotation{0, 1, 0, 1} &&
+              native->getScaleOrientation() == x3d::core::SFRotation{1, 0, 0, 2} &&
+              !native->getVisible() && native->getBboxDisplay(),
+          "all scalar writes, including negative and zero scale, must store exactly");
+  for (const char *name : {"center", "scale", "translation", "rotation",
+                           "scaleOrientation", "visible", "bboxDisplay"})
+    require(scene->authoredScalarFields.contains(native, name),
+            "all scalar writes must record native authored presence");
+  for (const char *name : {"bboxCenter", "bboxSize", "children", "metadata"})
+    require(!scene->authoredScalarFields.contains(native, name),
+            "scalar writes must not author unrelated fields");
+
+  const auto retained_rotation = *provider.read_field(handle, "rotation");
+  const auto retained_visible = *provider.read_field(handle, "visible");
+  native->setCenter(x3d::core::SFVec3f{-1, -2, -3});
+  native->setScale(x3d::core::SFVec3f{5, 6, 7});
+  native->setTranslation(x3d::core::SFVec3f{8, 9, 10});
+  native->setRotation(x3d::core::SFRotation{0, 0, 1, 3});
+  // Direct native writes can bypass SAI validity. Reads must reject such
+  // storage without silently normalizing or repairing it.
+  native->setScaleOrientation(x3d::core::SFRotation{0, 0, 0, 4});
+  native->setVisible(true);
+  native->setBboxDisplay(false);
+  native->setBboxCenterUnchecked(x3d::core::SFVec3f{11, 12, 13});
+  native->setBboxSizeUnchecked(x3d::core::SFVec3f{14, 15, 16});
+  const auto read_equals = [&](const char *name, sai::value expected) {
+    const auto value = provider.read_field(handle, name);
+    require(value && *value == expected,
+            "native scalar edits must be visible through owning reads");
+  };
+  read_equals("center", sai::vec3f{-1, -2, -3});
+  read_equals("scale", sai::vec3f{5, 6, 7});
+  read_equals("translation", sai::vec3f{8, 9, 10});
+  read_equals("rotation", sai::rotation{0, 0, 1, 3});
+  const auto malformed = provider.read_field(handle, "scaleOrientation");
+  require(!malformed && malformed.error().code == sai::error_code::invalid_value &&
+              native->getScaleOrientation() == x3d::core::SFRotation{0, 0, 0, 4},
+          "malformed native rotation reads must fail without changing native state");
+  check_authored();
+  require(bool(provider.write_field(handle, "scaleOrientation",
+                                     sai::rotation{0, 1, 0, 4})),
+          "a valid scalar write must repair its malformed native field");
+  require(native->getScaleOrientation() == x3d::core::SFRotation{0, 1, 0, 4},
+          "repair must publish the exact valid native rotation");
+  check_authored();
+  read_equals("scaleOrientation", sai::rotation{0, 1, 0, 4});
+  read_equals("visible", true);
+  read_equals("bboxDisplay", false);
+  read_equals("bboxCenter", sai::vec3f{11, 12, 13});
+  read_equals("bboxSize", sai::vec3f{14, 15, 16});
+
+  const auto wrong_bool = provider.write_field(handle, "visible", 1.0f);
+  const auto wrong_rotation = provider.write_field(handle, "rotation",
+                                                     sai::vec4f{0, 0, 1, 2});
+  const auto wrong_vector = provider.write_field(handle, "translation",
+                                                   sai::rotation{0, 0, 1, 2});
+  require(!wrong_bool && !wrong_rotation && !wrong_vector &&
+              wrong_bool.error().code == sai::error_code::type_mismatch &&
+              wrong_rotation.error().code == sai::error_code::type_mismatch &&
+              wrong_vector.error().code == sai::error_code::type_mismatch,
+          "scalar writes must reject numerically compatible but wrong kinds");
+  check_authored();
+  read_equals("visible", true);
+  read_equals("rotation", sai::rotation{0, 0, 1, 3});
+  read_equals("translation", sai::vec3f{8, 9, 10});
+  auto initialization = provider.write_field(handle, "bboxSize", sai::vec3f{1, 2, 3});
+  require(!initialization &&
+              initialization.error().code == sai::error_code::unsupported_operation,
+          "initializeOnly writes must remain explicitly unavailable");
+  read_equals("bboxSize", sai::vec3f{14, 15, 16});
+  require(!scene->authoredScalarFields.contains(native, "bboxSize"),
+          "rejected writes must not mark native authored presence");
+  check_authored();
+  require(bool(provider.close()), "scalar fixture must close");
+  require(std::get<sai::rotation>(retained_rotation) == sai::rotation{0, 1, 0, 1} &&
+              !std::get<bool>(retained_visible),
+          "owning scalar results must survive native mutation and provider close");
+}
+
 // Retain every node so deliberately installed shared_ptr cycles can always be
 // removed, including on a failed assertion. The native registry is authoritative
 // for unnamed detached nodes too; root/DEF membership is not an ownership test.
@@ -99,6 +235,8 @@ struct native_graph_fixture {
   struct snapshot {
     std::vector<x3d::core::MFNode> children;
     std::vector<x3d::core::SFVec3f> vectors;
+    std::vector<x3d::core::SFRotation> rotations;
+    std::vector<bool> flags;
     std::vector<std::string> names;
     std::vector<bool> authored;
     x3d::core::MFNode roots;
@@ -115,6 +253,12 @@ struct native_graph_fixture {
       result.vectors.push_back(node->getTranslation());
       result.vectors.push_back(node->getScale());
       result.vectors.push_back(node->getCenter());
+      result.vectors.push_back(node->getBboxCenter());
+      result.vectors.push_back(node->getBboxSize());
+      result.rotations.push_back(node->getRotation());
+      result.rotations.push_back(node->getScaleOrientation());
+      result.flags.push_back(node->getVisible());
+      result.flags.push_back(node->getBboxDisplay());
       result.names.push_back(node->getDEF());
       for (const auto &field : node->fields())
         result.authored.push_back(
@@ -291,10 +435,12 @@ int main() {
               std::make_unique<x3d::runtime::SaiOfflineProvider>()};
         });
     native_authority_proof();
+    native_scalar_authority_proof();
     native_children_proof();
     native_deep_detached_graph_proof();
     std::cout << "native offline provider: " << report.checks
-              << " common checks plus native authority and containment proofs passed\n";
+              << " common checks plus native scalar authority and containment "
+                 "proofs passed\n";
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';
     return 1;

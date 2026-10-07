@@ -42,9 +42,24 @@ no mirrored fields, roots or name bindings. `Scene::rootNodes` and `Scene::defs`
 are authoritative; native `FieldInfo` reflection supplies the ordered semantic
 field definitions. DEF/USE/IS and host class/id/style syntax are filtered out.
 
-SFVec3f reads inspect current native fields. Supported inputOutput writes call
-the generated checked Transform setters and record native authored-field
-presence, rather than using the lenient unchecked reflection-write path. DEF
+Owning scalar reads inspect current native SFBool, SFVec3f and SFRotation
+fields, checking reflection's exact declared kind against its actual payload.
+All seven Transform inputOutput scalar fields support typed and dynamic reads
+and writes: `bboxDisplay`, `visible`, `center`, `scale`, `translation`, `rotation`
+and `scaleOrientation`. InitializeOnly `bboxCenter` and `bboxSize` support reads;
+authoring them remains unavailable until the provider has an explicit
+realization contract. Metadata support flags state these exact limits.
+
+InputOutput writes call the public generated Transform setters and record native
+authored-field presence, rather than using the lenient unchecked reflection-write
+path. Boolean, vector and rotation payloads are never implicitly converted.
+Conversions preserve valid stored components, including negative and zero scale.
+The shared front end requires finite SFRotation axis components in `[-1, 1]`
+with `abs(x*x + y*y + z*z - 1) <= 8 * float epsilon` computed in double precision;
+it does not normalize accepted axes or impose an extra angle restriction.
+Invalid axes fail with `invalid_value` before a native write and on native reads,
+leaving storage and authored marks untouched. A valid write can repair a field
+made invalid through the native extension. DEF
 creation updates both the native Scene table and node's DEF. Root insertion uses
 `Scene::addRootNode`; duplicate occurrences share the same shared_ptr.
 
@@ -76,7 +91,13 @@ adapter.
 The native-only proof confirms:
 
 - Native DEF and repeated root occurrences resolve to the same actual Transform
-- Adapter writes are immediately visible through that Transform's native getter
+- Every supported scalar write changes the matching native Transform getter and
+  authored-presence mark, without marking unrelated scalar or node fields
+- Exact kind mismatches and unavailable initializeOnly writes leave native values
+  and authored-presence marks unchanged
+- Invalid rotation axes are rejected before authoring; malformed native rotation
+  reads fail unchanged, and a valid write repairs the target field
+- Scalar reads own their values across native mutation and provider close
 - Serial native setter writes are immediately visible through adapter reads,
   without a synchronization/copy step
 - Thread guards apply to native extension access; close expires SAI wrappers
@@ -102,7 +123,8 @@ and no derived runtime/extractor state is claimed to be synchronized.
 
 The narrow common interface leaves initialize-only authoring, node-valued fields
 beyond `Transform.children` (including SFNode and inputOnly add/removeChildren),
-full field kinds, all profiles/components, generated typed handles,
+field kinds beyond SFBool/SFVec3f/SFRotation and owned MFNode lists,
+all profiles/components, generated typed handles,
 full lifecycle, snapshots/transactions, events/ROUTEs, update buffering, loading,
 world replacement, import authority, concurrent access and rendering unproven.
 Reference-kernel-only tests do not fill these independent-provider gaps.

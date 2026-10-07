@@ -44,7 +44,7 @@ private:
       do_read_field(std::uint64_t, std::string_view) const override;
   x3d::sai::experimental::result<void>
       do_write_field(std::uint64_t, std::string_view,
-                     x3d::sai::experimental::vec3f) override;
+                     x3d::sai::experimental::value) override;
   x3d::sai::experimental::result<
       std::vector<std::optional<std::uint64_t>>>
   do_read_nodes(std::uint64_t, std::string_view) const override;

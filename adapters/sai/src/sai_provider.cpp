@@ -252,10 +252,13 @@ SaiOfflineProvider::do_fields(std::uint64_t id) const {
     auto field_access = access(field.access);
     const bool children = field.x3dName == "children" &&
                           *field_kind == sai::value_kind::mf_node;
+    const bool scalar = *field_kind == sai::value_kind::sf_bool ||
+                        *field_kind == sai::value_kind::sf_vec3f ||
+                        *field_kind == sai::value_kind::sf_rotation;
     result.push_back({field.x3dName, *field_kind, field_access,
-                      children || (*field_kind == sai::value_kind::sf_vec3f &&
+                      children || (scalar &&
                                    field_access != sai::access_type::input_only),
-                      children || (*field_kind == sai::value_kind::sf_vec3f &&
+                      children || (scalar &&
                                    field_access == sai::access_type::input_output)});
   }
   return result;
@@ -274,11 +277,28 @@ SaiOfflineProvider::do_read_field(std::uint64_t id,
       return error(sai::error_code::access_denied, "read_field",
                    "native field has no getter", name);
     const auto native = field.get(**node);
-    const auto *vec = std::any_cast<x3d::core::SFVec3f>(&native);
-    if (!vec)
-      return error(sai::error_code::type_mismatch, "read_field",
-                   "native getter returned the wrong value kind", name);
-    return sai::value{sai::vec3f{vec->x, vec->y, vec->z}};
+    // Reflection's declared X3D kind and the owning std::any payload must
+    // agree exactly. Do not convert bool, vector and rotation storage based on
+    // a field name or numeric compatibility.
+    switch (field.type) {
+    case x3d::core::X3DFieldType::SFBool:
+      if (const auto *flag = std::any_cast<x3d::core::SFBool>(&native))
+        return sai::value{*flag};
+      break;
+    case x3d::core::X3DFieldType::SFVec3f:
+      if (const auto *vec = std::any_cast<x3d::core::SFVec3f>(&native))
+        return sai::value{sai::vec3f{vec->x, vec->y, vec->z}};
+      break;
+    case x3d::core::X3DFieldType::SFRotation:
+      if (const auto *rot = std::any_cast<x3d::core::SFRotation>(&native))
+        return sai::value{sai::rotation{rot->x, rot->y, rot->z, rot->angle}};
+      break;
+    default:
+      return error(sai::error_code::unsupported_field_type, "read_field",
+                   "native field has no supported scalar authoring read", name);
+    }
+    return error(sai::error_code::type_mismatch, "read_field",
+                 "native getter returned the wrong value kind", name);
   }
   return error(sai::error_code::unknown_field, "read_field",
                "native field does not exist", name);
@@ -286,7 +306,7 @@ SaiOfflineProvider::do_read_field(std::uint64_t id,
 
 sai::result<void> SaiOfflineProvider::do_write_field(std::uint64_t id,
                                                      std::string_view name,
-                                                     sai::vec3f payload) {
+                                                     sai::value payload) {
   auto node = state_->lookup(id);
   if (!node)
     return sai::failure(node.error());
@@ -294,19 +314,45 @@ sai::result<void> SaiOfflineProvider::do_write_field(std::uint64_t id,
   if (!transform)
     return error(sai::error_code::type_mismatch, "write_field",
                  "native node is not a Transform", name);
-  const x3d::core::SFVec3f native{payload.x, payload.y, payload.z};
-  // Checked generated setters are the native AUTHORING path. This adapter does
-  // not use the lenient/unchecked reflection setters or a live execution
-  // context.
-  if (name == "translation")
-    transform->setTranslation(native);
-  else if (name == "center")
-    transform->setCenter(native);
-  else if (name == "scale")
-    transform->setScale(native);
-  else
+  // Public generated setters are the native AUTHORING path. This adapter
+  // does not use the unchecked reflection setters or a live execution context.
+  // The common front end already verifies exact kinds and access. Check again
+  // at this conversion boundary so no unsupported payload can reach a setter.
+  if (name == "translation" || name == "center" || name == "scale") {
+    const auto *vec = std::get_if<sai::vec3f>(&payload);
+    if (!vec)
+      return error(sai::error_code::type_mismatch, "write_field",
+                   "native vector setter requires SFVec3f", name);
+    const x3d::core::SFVec3f native{vec->x, vec->y, vec->z};
+    if (name == "translation")
+      transform->setTranslation(native);
+    else if (name == "center")
+      transform->setCenter(native);
+    else
+      transform->setScale(native);
+  } else if (name == "rotation" || name == "scaleOrientation") {
+    const auto *rot = std::get_if<sai::rotation>(&payload);
+    if (!rot)
+      return error(sai::error_code::type_mismatch, "write_field",
+                   "native rotation setter requires SFRotation", name);
+    const x3d::core::SFRotation native{rot->x, rot->y, rot->z, rot->angle};
+    if (name == "rotation")
+      transform->setRotation(native);
+    else
+      transform->setScaleOrientation(native);
+  } else if (name == "visible" || name == "bboxDisplay") {
+    const auto *flag = std::get_if<bool>(&payload);
+    if (!flag)
+      return error(sai::error_code::type_mismatch, "write_field",
+                   "native boolean setter requires SFBool", name);
+    if (name == "visible")
+      transform->setVisible(*flag);
+    else
+      transform->setBboxDisplay(*flag);
+  } else {
     return error(sai::error_code::unsupported_operation, "write_field",
                  "field has no supported native authoring write", name);
+  }
   state_->scene->authoredScalarFields.record(*node, std::string(name));
   return {};
 }
