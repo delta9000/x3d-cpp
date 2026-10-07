@@ -199,7 +199,7 @@ admission coverage, not complete component or numerical-domain conformance.
 
 Before migration, a SplineScalar input pair at one tick produced source readback
 8.4375 while its ROUTE retained 1.5625; identical inputs also produced two source
-notifications but only one ROUTE delivery. The unchanged executable now retains
+notifications but only one ROUTE delivery. The same probe source, rebuilt with the updated event headers, now retains
 both inputs and one coherent output. Its separate-timestamp control still
 progresses normally.
 
