@@ -25,6 +25,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace x3d::runtime {
@@ -32,6 +33,12 @@ using namespace x3d::core;
 
 class TransformSystem {
 public:
+  explicit TransformSystem(std::shared_ptr<const geo::GeoProjection> projection = {})
+      : geoProjection_(projection ? std::move(projection) : geo::builtinProjectionOwner()) {}
+
+  /// Fixed for this index's lifetime, including dirty and live transform reads.
+  const geo::GeoProjection &geoProjection() const { return *geoProjection_; }
+
   /// Diagnostic counter: number of localMatrix() TRS recompositions performed
   /// process-wide. localMatrix() is non-trivial — five reflective field scans
   /// plus a quaternion compose — so incremental consumers must memoize shared
@@ -92,10 +99,10 @@ public:
     // Accumulate from `root` UP through Transform ancestors via the parent
     // index. localMatrix() is a static read of current field values — always
     // fresh, no stale-cache hazard.
-    Mat4 m = localMatrix(root);
+    Mat4 m = localMatrix(root, geoProjection());
     for (const X3DNode *a = parentOf(root); a; a = parentOf(a)) {
       if (!isTransform(a)) break; // parent_ only stores Transform parents
-      m = localMatrix(a) * m;
+      m = localMatrix(a, geoProjection()) * m;
     }
     return m;
   }
@@ -104,7 +111,7 @@ public:
   /// `parent` (a transform-bearing node, or nullptr for a root placement). A
   /// DEF/USE node shared under two parents has a DISTINCT world matrix per
   /// parent; this resolves the one for `parent` live as `worldTransform(parent)
-  /// * localMatrix(n)` — always fresh, no stale cache. Returns identity when
+  /// * localMatrix(n, geoProjection())` — always fresh, no stale cache. Returns identity when
   /// `parent` is not an indexed parent edge of `n`. For `n`'s canonical (first)
   /// parent it equals `worldTransform(n)`.
   Mat4 worldTransformUnder(const X3DNode *parent, const X3DNode *n) const {
@@ -118,7 +125,7 @@ public:
     auto it = children_.find(parent);
     if (it == children_.end()) return Mat4::identity();
     for (const X3DNode *c : it->second)
-      if (c == n) return worldTransform(parent) * localMatrix(n);
+      if (c == n) return worldTransform(parent) * localMatrix(n, geoProjection());
     return Mat4::identity();
   }
 
@@ -183,17 +190,17 @@ public:
 
   // Read a transform-bearing node's local matrix from its TRS fields via
   // reflection. Public so BoundsSystem/PickSystem/LightSystem can reuse it.
-  static Mat4 localMatrix(const X3DNode *n) {
+  static Mat4 localMatrix(const X3DNode *n, const geo::GeoProjection &projection) {
     localMatrixCalls_.fetch_add(1, std::memory_order_relaxed);
     const std::string type = n->nodeTypeName();
     if (type == "GeoLocation") {
       Mat4 frame;
-      return geo::tangentFrameOf(*n, geo::fieldOf<SFVec3d>(*n, "geoCoords", {0,0,0}), frame)
+      return geo::tangentFrameOf(*n, geo::fieldOf<SFVec3d>(*n, "geoCoords", {0,0,0}), frame, projection)
                  ? frame : Mat4::identity(); // §25.3.3: east/up/south at geoCoords
     }
     if (type == "GeoTransform") {
       Mat4 frame;
-      if (!geo::tangentFrameOf(*n, geo::fieldOf<SFVec3d>(*n, "geoCenter", {0,0,0}), frame))
+      if (!geo::tangentFrameOf(*n, geo::fieldOf<SFVec3d>(*n, "geoCenter", {0,0,0}), frame, projection))
         return Mat4::identity();
       // §25.3.10: ordinary Transform fields operate in the geoCenter tangent frame.
       return frame * transformMatrix(getVec(n, "translation"), getRot(n, "rotation"),
@@ -258,11 +265,11 @@ private:
       parent_[n] = parentTransform;
       world_[n] = (parentTransform ? worldTransform(parentTransform)
                                    : Mat4::identity()) *
-                  localMatrix(n);
+                  localMatrix(n, geoProjection());
     } else if (pit->second == parentTransform) {
       world_[n] = (parentTransform ? worldTransform(parentTransform)
                                    : Mat4::identity()) *
-                  localMatrix(n);
+                  localMatrix(n, geoProjection());
     }
     if (parentTransform) {
       auto &kids = children_[parentTransform];
@@ -310,7 +317,7 @@ private:
     if (itLive == lifetime_.end()) return;
     auto live = itLive->second.lock();
     if (!live) return; // a dirty ancestor may precede the removing parent's diff
-    Mat4 w = parentWorld * localMatrix(n);
+    Mat4 w = parentWorld * localMatrix(n, geoProjection());
     if (parentOf(n) == parentNode) world_[n] = w; // canonical edge only
     dirty.markDirty(n, DirtyWorldTransform);
     auto it = children_.find(n);
@@ -405,6 +412,8 @@ private:
     directChildren_[g] = std::move(now);
     return true;
   }
+
+  const std::shared_ptr<const geo::GeoProjection> geoProjection_;
 
   // Non-owning lifetime tokens: field replacement can destroy indexed nodes
   // before propagate gets a chance to remove their cached edges.

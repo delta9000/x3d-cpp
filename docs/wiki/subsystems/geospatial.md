@@ -27,7 +27,7 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 | `runtime/math/GeoBuiltinProjection.hpp` | The default backend: closed-form geodetic → geocentric, iterative inverse, Krüger 6th-order UTM (Karney 2011). No dependencies, no IO; accepts an optional geoid function. |
 | `runtime/io/proj/ProjGeoProjection.{hpp,cpp}` | Optional PROJ backend (`X3D_CPP_BUILD_PROJ`): ellipsoid cart/UTM conversions and a configured vertical geoid grid. |
 | `runtime/io/proj/tests/proj_geo_swap_test.cpp` | Grid swap-test against the built-in backend on six ellipsoids, including polar and antimeridian cases; checked-in small geoid fixture and optional external grid case. |
-| `runtime/math/GeoFrame.hpp` | SDK-side conversions shared by every backend: authored coordinate ↔ geodetic ↔ geocentric (axis order, degrees, geoid heights, Web Mercator), the local east/up/south basis, `OriginFrame` (GeoOrigin, `rotateYUp`), `tangentFrame`; and the process-wide backend (`projection()` / `setProjection()`). |
+| `runtime/math/GeoFrame.hpp` | SDK-side conversions shared by every backend: authored coordinate ↔ geodetic ↔ geocentric (axis order, degrees, geoid heights, Web Mercator), the local east/up/south basis, `OriginFrame` (GeoOrigin, `rotateYUp`), `tangentFrame`; and the immutable built-in default. Every shared conversion helper requires an explicit projection reference. |
 | `runtime/scene/GeoNodes.hpp` | Node glue: `systemOf`, `originOf`, `toWorld` (one point or a list), `fromWorld`, `tangentFrameOf` — reads `geoSystem`, `geoOrigin`, `geoCoords`, `rotateYUp` by reflection. |
 | `runtime/scene/GeometryBounds.hpp` and `runtime/extract/MeshBuilder.cpp` | Convert GeoCoordinate lists and GeoElevationGrid lattices through the node helpers for bounds and meshes; grid heights are absolute elevations, so `geoGridOrigin.z` is not added. |
 | `runtime/scene/TransformSystem.hpp` | GeoLocation tangent placement and GeoTransform tangent-frame TRS, shared by scene walks. |
@@ -35,7 +35,7 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 | `runtime/events/GeoPositionInterpolatorSystem.hpp` | Interpolates in the authored geoSystem, then projects the result to world coordinates. |
 | `runtime/scene/ViewDependentSystem.hpp` and `runtime/events/InlineRuntimeSystem.hpp` | GeoProximitySensor's tangent box and geographic viewer output (in the sensor's local geo frame), GeoViewpoint centre-of-rotation output; GeoLOD range selection, URL tile loading, and children events. |
 | `runtime/events/PointingSensorSystem.hpp` | GeoTouchSensor pick events and geographic hit coordinates. |
-| `runtime/io/tinygeoid/TinygeoidGeoid.hpp` | Optional WGS84 geoid for the built-in backend from a tinygeoid `.tng` grid (vendored tinygeoid, MIT): `makeGeoidFunction(grid)`, or `makeBuiltinWithGeoid(path)` to pass to `geo::setProjection`. Lives under `runtime/io/` because loading reads a file; the application supplies the grid (e.g. EGM2008 2.5′ converted with tinygeoid's `tng_pack`). |
+| `runtime/io/tinygeoid/TinygeoidGeoid.hpp` | Optional WGS84 geoid for the built-in backend from a tinygeoid `.tng` grid (vendored tinygeoid, MIT): `makeGeoidFunction(grid)`, or `makeBuiltinWithGeoid(path)` to set in `SessionOptions::geoProjection`. Lives under `runtime/io/` because loading reads a file; the application supplies the grid (e.g. EGM2008 2.5′ converted with tinygeoid's `tng_pack`). |
 | `runtime/math/tests/geo_projection_test.cpp` | Reference values from PROJ 9.8 on WGS84, Clarke 1866, Airy and International ellipsoids; UTM north/south/zone edges; Web Mercator; parsing; the geoid hook; GeoOrigin frames; node glue. |
 
 ## Conventions
@@ -84,3 +84,28 @@ node converts through it:
 
 Set `X3D_GEOID_GRID` to a local GTX or GTG grid to exercise the PROJ backend's
 geoid lookup in the swap-test; without it that case is skipped.
+
+
+## World ownership and migration
+
+[ADR-0058](../decisions/0058-context-owned-geo-projection.md) makes projection
+selection immutable for each execution context. Set `SessionOptions::geoProjection`
+before `RuntimeSession::create`, or construct a low-level context with
+`X3DExecutionContext(scene.authorFields, projection)`. Null selects the shared
+immutable built-in backend. The world retains the supplied backend after caller
+references and option objects disappear.
+
+All world conversions use `ctx.geoProjection()`: transforms, geometry and bounds,
+picking/collision, camera/navigation, sensors, geospatial interpolation, delayed
+Inline/GeoLOD enrollment, lighting/fog and HAnim ancestor transforms. The extractor
+has no separate projection override. No runtime replacement is permitted, so
+caches cannot silently mix projections. Shared helper functions now require the
+projection explicitly; standalone calls may pass `geo::builtinProjection()`.
+
+This is a source/layout migration; rebuild concrete runtime consumers. The
+GeoProjection mathematical virtual interface is unchanged. Independent worlds
+may run on separate owner threads; operations within one mutable world remain
+serialized. A shared custom backend must provide stable conversion behavior and
+synchronize its own mutable caches. Sharing mutable native node graphs between
+active worlds is not an isolation guarantee. This ownership proof does not add
+Geospatial capabilities to the portable four-node SAI provider.

@@ -1,3 +1,4 @@
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/Box.hpp"
 #include "doctest/doctest.h"
@@ -15,7 +16,7 @@ TEST_CASE("Mesh diagnostics: independent geometries share a race-free counter") 
   // Warm immutable generated reflection before disjoint-world work; this
   // test targets counter sharing, not generated-table initialization.
   x3d::nodes::Box warm;
-  (void)extract::buildLocalMesh(&warm);
+  (void)extract::buildLocalMesh(&warm, geo::builtinProjection());
   constexpr std::size_t owners = 4, iterations = 1000;
   std::barrier phase(static_cast<std::ptrdiff_t>(owners + 1));
   std::array<bool, owners> correct{};
@@ -24,12 +25,12 @@ TEST_CASE("Mesh diagnostics: independent geometries share a race-free counter") 
     threads.emplace_back([&, owner] {
       x3d::nodes::Box box;
       bool recognized = false;
-      (void)extract::buildLocalMesh(&box, {}, &recognized);
+      (void)extract::buildLocalMesh(&box, geo::builtinProjection(), {}, &recognized);
       phase.arrive_and_wait();
       phase.arrive_and_wait();
       bool matches = recognized;
       for (std::size_t i = 0; i < iterations; ++i) {
-        const auto mesh = extract::buildLocalMesh(&box, {}, &recognized);
+        const auto mesh = extract::buildLocalMesh(&box, geo::builtinProjection(), {}, &recognized);
         matches &= recognized && !mesh.positions.empty();
       }
       correct[owner] = matches;

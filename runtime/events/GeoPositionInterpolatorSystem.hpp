@@ -19,7 +19,7 @@ public:
     if (!n->getKeyValue().empty()) {
       n->emitGeovalue_changed(n->getKeyValue().front());
       SFVec3f world;
-      if (geo::toWorld(*n, n->getKeyValue().front(), world)) n->emitValue_changed(world);
+      if (geo::toWorld(*n, n->getKeyValue().front(), world, ctx.geoProjection())) n->emitValue_changed(world);
     }
     n->setOnSet_fractionHandler(ctx.guardCallback(*this, [n, &ctx](const SFFloat &fraction) {
       if (n->getKey().empty() || n->getKeyValue().empty()) return;
@@ -30,7 +30,7 @@ public:
                            a.z + (b.z - a.z) * t};
           });
       SFVec3f world;
-      if (!geo::toWorld(*n, authored, world)) return;
+      if (!geo::toWorld(*n, authored, world, ctx.geoProjection())) return;
       ctx.postEvent(n, "geovalue_changed", std::any(authored));
       ctx.postEvent(n, "value_changed", std::any(world));
     }));

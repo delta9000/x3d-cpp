@@ -324,7 +324,7 @@ private:
     // §25.3.9: the geo output is the picked world point in this sensor's geoSystem.
     if (ts->nodeTypeName() == "GeoTouchSensor") {
       SFVec3d geoPoint;
-      if (geo::fromWorld(*ts, localPoint, geoPoint))  // sensor-local frame (ADR-0053)
+      if (geo::fromWorld(*ts, localPoint, geoPoint, ctx.geoProjection()))  // sensor-local frame (ADR-0053)
         ctx.postEvent(ts, "hitGeoCoord_changed", std::any(geoPoint));
     }
   }

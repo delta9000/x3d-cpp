@@ -8,6 +8,7 @@
 // top from below and (b) makes the whole surface back-facing, so a consumer's
 // default back-face cull (solid=TRUE) erases the terrain when viewed from above.
 // That was the Kelp Forest RockFloor "holes" regression.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -42,7 +43,7 @@ TEST_CASE("elevationgrid_default_ccw_surface_faces_up") {
   setWindF(g, "zSpacing", std::any(1.0f));
   setWindF(g, "height", std::any(std::vector<float>(9, 0.0f)));
 
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   REQUIRE((!m.normals.empty()));
   // For a flat grid every generated normal must point UP (+Y). A reversed
   // winding yields n.y < 0 (the bug).

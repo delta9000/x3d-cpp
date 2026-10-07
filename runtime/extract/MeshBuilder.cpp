@@ -1264,10 +1264,11 @@ nurbs::Curve2DDef readControlCurve2D(const X3DNode &n) {
 }
 
 // NurbsCurve (3D) -> curve def, control points off its Coordinate child.
-nurbs::CurveDef readTrajectoryCurve3D(const X3DNode &n) {
+nurbs::CurveDef readTrajectoryCurve3D(const X3DNode &n,
+                                     const geo::GeoProjection &projection) {
   nurbs::CurveDef c;
   if (auto cp = geombounds::getNode(n, "controlPoint"))
-    c.cp = geombounds::getPointsLenient(*cp, "point");
+    c.cp = geombounds::getPointsLenient(*cp, "point", projection);
   c.w = geombounds::getField<std::vector<double>>(n, "weight", {});
   c.knot = geombounds::getField<std::vector<double>>(n, "knot", {});
   c.order = geombounds::getField<SFInt32>(n, "order", 3);
@@ -1342,7 +1343,8 @@ bool recognizedGeometryType(const std::string &t) {
       t == "TriangleSet2D";
 }
 
-MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
+MeshData buildLocalMesh(const X3DNode *geom, const geo::GeoProjection &projection,
+                        const MeshBuildOptions &opt,
                         bool *recognized) {
   using namespace mesh_detail;
   buildLocalMeshCalls_.fetch_add(1, std::memory_order_relaxed);
@@ -1365,7 +1367,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     if (!cpNode)
       return mesh; // recognized, empty
     nurbs::CurveDef c;
-    c.cp = geombounds::getPointsLenient(*cpNode, "point");
+    c.cp = geombounds::getPointsLenient(*cpNode, "point", projection);
     c.w = geombounds::getField<std::vector<double>>(*geom, "weight", {});
     c.knot = geombounds::getField<std::vector<double>>(*geom, "knot", {});
     c.order = geombounds::getField<SFInt32>(*geom, "order", 3);
@@ -1397,7 +1399,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
     if (!cpNode)
       return mesh;
     nurbs::SurfaceDef s;
-    s.cp = geombounds::getPointsLenient(*cpNode, "point");
+    s.cp = geombounds::getPointsLenient(*cpNode, "point", projection);
     s.w = geombounds::getField<std::vector<double>>(*geom, "weight", {});
     s.uKnot = geombounds::getField<std::vector<double>>(*geom, "uKnot", {});
     s.vKnot = geombounds::getField<std::vector<double>>(*geom, "vKnot", {});
@@ -1449,7 +1451,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
       return mesh; // recognized, empty
     nurbs::Curve2DDef cs = readControlCurve2D(*crossNode);
     cs.weightMode = opt.nurbsWeightMode; // NRB-4
-    nurbs::CurveDef tj = readTrajectoryCurve3D(*trajNode);
+    nurbs::CurveDef tj = readTrajectoryCurve3D(*trajNode, projection);
     tj.weightMode = opt.nurbsWeightMode;
     if ((int)cs.cp.size() < cs.order || (int)tj.cp.size() < tj.order)
       return mesh; // recognized, empty
@@ -1582,7 +1584,8 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
           [&](int i, int j) -> SFVec3f {
             const double elev = h[static_cast<std::size_t>(j) * xd + i] * yScale;
             SFVec3f world{};
-            geo::toWorld(*geom, geo::gridCoordinate(*geom, i, j, elev), world);
+            geo::toWorld(*geom, geo::gridCoordinate(*geom, i, j, elev), world,
+                         projection);
             return world;
           },
           crease, mesh.ccw, &attrs, true); // §25.3.2: rows advance north (local −Z).
@@ -1597,7 +1600,8 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
           const int nj = attrs.normalPerVertex ? j : cell / (xd - 1);
           const double elev = h[static_cast<std::size_t>(nj) * xd + ni] * yScale;
           Mat4 frame;
-          if (geo::tangentFrameOf(*geom, geo::gridCoordinate(*geom, ni, nj, elev), frame))
+          if (geo::tangentFrameOf(*geom, geo::gridCoordinate(*geom, ni, nj, elev),
+                                  frame, projection))
             mesh.normals[corner] = frame.transformDirection(mesh.normals[corner]);
         }
       }
@@ -1705,7 +1709,7 @@ MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt,
   auto coord = geombounds::getNode(*geom, "coord");
   if (!coord)
     return mesh;
-  auto pts = geombounds::getPointsLenient(*coord, "point");
+  auto pts = geombounds::getPointsLenient(*coord, "point", projection);
   // ISO/IEC 19774-1 §6.6: Segment displacers act in Segment coordinates.
   if (opt.hanimSegment)
     hanim::displaceSegmentPoints(*opt.hanimSegment, *coord, pts);

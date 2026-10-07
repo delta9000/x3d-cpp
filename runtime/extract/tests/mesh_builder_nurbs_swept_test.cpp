@@ -1,4 +1,5 @@
 // mesh_builder_nurbs_swept_test.cpp — NurbsSweptSurface / NurbsSwungSurface.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "GeometryBounds.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -48,7 +49,7 @@ TEST_CASE("nurbs_swept_circle_along_line_is_cylinder") {
   setF(swept, "trajectoryCurve", std::any(std::shared_ptr<X3DNode>(traj)));
 
   bool rec = false;
-  auto mesh = buildLocalMesh(swept.get(), MeshBuildOptions{}, &rec);
+  auto mesh = buildLocalMesh(swept.get(), geo::builtinProjection(), MeshBuildOptions{}, &rec);
   CHECK(rec);
   CHECK(mesh.topology == Topology::Triangles);
   CHECK(mesh.hasNormals);
@@ -74,7 +75,7 @@ TEST_CASE("nurbs_swung_line_profile_around_circle_revolves") {
   setF(swung, "trajectoryCurve", std::any(std::shared_ptr<X3DNode>(traj)));
 
   bool rec = false;
-  auto mesh = buildLocalMesh(swung.get(), MeshBuildOptions{}, &rec);
+  auto mesh = buildLocalMesh(swung.get(), geo::builtinProjection(), MeshBuildOptions{}, &rec);
   CHECK(rec);
   CHECK(mesh.topology == Topology::Triangles);
   CHECK(mesh.hasNormals);
@@ -97,11 +98,11 @@ TEST_CASE("nurbs_swept_swung_recognized_oracle") {
 TEST_CASE("nurbs_swept_swung_missing_curves_recognized_but_empty") {
   auto swept = createX3DNode("NurbsSweptSurface");
   bool rec = false;
-  auto m1 = buildLocalMesh(swept.get(), MeshBuildOptions{}, &rec);
+  auto m1 = buildLocalMesh(swept.get(), geo::builtinProjection(), MeshBuildOptions{}, &rec);
   CHECK(rec);
   CHECK(m1.positions.empty());
   auto swung = createX3DNode("NurbsSwungSurface");
-  auto m2 = buildLocalMesh(swung.get(), MeshBuildOptions{}, &rec);
+  auto m2 = buildLocalMesh(swung.get(), geo::builtinProjection(), MeshBuildOptions{}, &rec);
   CHECK(rec);
   CHECK(m2.positions.empty());
 }
@@ -119,7 +120,7 @@ TEST_CASE("nurbs_swept_swung_bounds") {
   auto swept = createX3DNode("NurbsSweptSurface");
   setF(swept, "crossSectionCurve", std::any(std::shared_ptr<X3DNode>(cross)));
   setF(swept, "trajectoryCurve", std::any(std::shared_ptr<X3DNode>(traj)));
-  const Aabb sb = localGeometryBounds(swept.get());
+  const Aabb sb = localGeometryBounds(swept.get(), geo::builtinProjection());
   CHECK(!sb.empty);
   CHECK(std::fabs(sb.min.x + 2.0f) < 1e-4f);
   CHECK(std::fabs(sb.max.x - 2.0f) < 1e-4f);
@@ -134,7 +135,7 @@ TEST_CASE("nurbs_swept_swung_bounds") {
   auto swung = createX3DNode("NurbsSwungSurface");
   setF(swung, "profileCurve", std::any(std::shared_ptr<X3DNode>(profile)));
   setF(swung, "trajectoryCurve", std::any(std::shared_ptr<X3DNode>(traj2)));
-  const Aabb wb = localGeometryBounds(swung.get());
+  const Aabb wb = localGeometryBounds(swung.get(), geo::builtinProjection());
   CHECK(!wb.empty);
   CHECK(std::fabs(wb.min.x + 2.0f) < 1e-4f);
   CHECK(std::fabs(wb.max.x - 2.0f) < 1e-4f);

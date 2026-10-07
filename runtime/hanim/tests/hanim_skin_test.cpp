@@ -1,3 +1,4 @@
+#include "GeoFrame.hpp"
 #include "HAnimSkin.hpp"
 #include "x3d/nodes/Coordinate.hpp"
 #include "x3d/nodes/CoordinateDouble.hpp"
@@ -39,10 +40,10 @@ TEST_CASE("two joint arm, skeleton pose and unweighted vertex") {
   elbow->setSkinCoordIndex({2}); elbow->setSkinCoordWeight({1});
   auto h=humanoid(c,{shoulder,elbow});
   h->setTranslation({100,0,0}); // excluded from the humanoid-local pose
-  auto b=compileBinding(*h);
+  auto b=compileBinding(*h, x3d::runtime::geo::builtinProjection());
   CHECK(b.joints.size()==2);
   elbow->setRotation({0,0,1,std::numbers::pi_v<float>/2});
-  auto pose=evaluatePose(b);
+  auto pose=evaluatePose(b, x3d::runtime::geo::builtinProjection());
   std::vector<SFVec3f> p; deform(b,pose,p,nullptr);
   xy(p[0],0,0); xy(p[1],2,0); xy(p[2],2,3);
 }
@@ -58,14 +59,14 @@ TEST_CASE("weight normalization, unbounded influences and inverse transpose norm
   }
   auto h=humanoid(c,joints); h->setSkinNormal(normal);
   h->setSkeleton({joints[0],joints[1],joints[2],joints[3],joints[4]});
-  auto b=compileBinding(*h);
+  auto b=compileBinding(*h, x3d::runtime::geo::builtinProjection());
   CHECK(b.influences.size()==5);
   for (const auto &in:b.influences) CHECK(near(in.weight,.2f));
-  auto pose=evaluatePose(b);
+  auto pose=evaluatePose(b, x3d::runtime::geo::builtinProjection());
   std::vector<SFVec3f> p,n; deform(b,pose,p,&n);
   xy(p[0],3,0);
   joints[0]->setScale({2,1,1});
-  pose=evaluatePose(b); deform(b,pose,p,&n);
+  pose=evaluatePose(b, x3d::runtime::geo::builtinProjection()); deform(b,pose,p,&n);
   // Blend of four identity normal maps and one inverse-scale map.
   CHECK(near(n[0].x, .9f/std::sqrt(.9f*.9f+1)));
   CHECK(near(n[0].y, 1/std::sqrt(.9f*.9f+1)));
@@ -82,20 +83,20 @@ TEST_CASE("v2 bind fields use joint-list positions and single-value rule") {
   h->setSkinBindingCoords(bind);
   h->setSkinNormal(currentNormal); h->setSkinBindingNormals(bindNormal);
   h->setJointBindingPositions({{1,0,0},{4,0,0}});
-  auto b=compileBinding(*h);
-  std::vector<SFVec3f> p,n; deform(b,evaluatePose(b),p,&n);
+  auto b=compileBinding(*h, x3d::runtime::geo::builtinProjection());
+  std::vector<SFVec3f> p,n; deform(b,evaluatePose(b, x3d::runtime::geo::builtinProjection()),p,&n);
   xy(p[0],2,0);
   xy(n[0],1,0);
   h->setJointBindingPositions({{4,0,0}});
   bJoint->setTranslation({5,0,0});
-  b=compileBinding(*h); deform(b,evaluatePose(b),p,nullptr);
+  b=compileBinding(*h, x3d::runtime::geo::builtinProjection()); deform(b,evaluatePose(b, x3d::runtime::geo::builtinProjection()),p,nullptr);
   xy(p[0],3,0); // the single authored value also applies to the second joint
   bJoint->setTranslation({4,0,0});
   bJoint->setRotation({0,0,1,std::numbers::pi_v<float>/2});
   bJoint->setScale({2,1,1});
   h->setJointBindingRotations({{0,0,1,std::numbers::pi_v<float>/2}});
   h->setJointBindingScales({{2,1,1}});
-  b=compileBinding(*h); deform(b,evaluatePose(b),p,nullptr);
+  b=compileBinding(*h, x3d::runtime::geo::builtinProjection()); deform(b,evaluatePose(b, x3d::runtime::geo::builtinProjection()),p,nullptr);
   xy(p[0],2,0);
 }
 TEST_CASE("child joint binding matrix composes with its parent binding") {
@@ -110,9 +111,9 @@ TEST_CASE("child joint binding matrix composes with its parent binding") {
   h->setName("audit_humanoid");
   h->setSkeletalConfiguration("CUSTOM");
   h->setJointBindingPositions({{2,0,0},{1,0,0}});
-  auto binding=compileBinding(*h);
+  auto binding=compileBinding(*h, x3d::runtime::geo::builtinProjection());
   std::vector<SFVec3f> p;
-  deform(binding,evaluatePose(binding),p,nullptr);
+  deform(binding,evaluatePose(binding, x3d::runtime::geo::builtinProjection()),p,nullptr);
   REQUIRE(p.size()==1);
   CHECK(p[0].x==doctest::Approx(3)); // current skeleton equals binding pose
 }
@@ -120,7 +121,7 @@ TEST_CASE("CoordinateDouble is accepted as a legacy skinCoord source") {
   auto h=std::make_shared<HAnimHumanoid>();
   auto c=std::make_shared<CoordinateDouble>(); c->setPoint({{1.25,2.5,3.75}});
   h->setSkinCoord(c);
-  auto b=compileBinding(*h);
+  auto b=compileBinding(*h, x3d::runtime::geo::builtinProjection());
   CHECK(b.bindPositions.size()==1);
   CHECK(near(b.bindPositions[0].x,1.25f));
   CHECK(b.influenceOffset.size()==2);
@@ -135,9 +136,9 @@ TEST_CASE("joint and segment displacers read live weights") {
   d->setCoordIndex({0}); d->setDisplacements({{1,0,0}}); d->setWeight(2);
   j->setDisplacers({d});
   auto h=humanoid(c,{j});
-  auto b=compileBinding(*h);
-  std::vector<SFVec3f> p; deform(b,evaluatePose(b),p,nullptr); xy(p[0],0,3);
-  d->setWeight(-1); deform(b,evaluatePose(b),p,nullptr); xy(p[0],0,0);
+  auto b=compileBinding(*h, x3d::runtime::geo::builtinProjection());
+  std::vector<SFVec3f> p; deform(b,evaluatePose(b, x3d::runtime::geo::builtinProjection()),p,nullptr); xy(p[0],0,3);
+  d->setWeight(-1); deform(b,evaluatePose(b, x3d::runtime::geo::builtinProjection()),p,nullptr); xy(p[0],0,0);
   auto segment=std::make_shared<HAnimSegment>();
   auto shape=std::make_shared<Shape>();
   auto reusedShape=std::make_shared<Shape>();
@@ -158,12 +159,12 @@ TEST_CASE("bad input diagnostics and weighted skeleton-only joints") {
   a->setChildren({extra});
   extra->setSkinCoordIndex({0,4}); extra->setSkinCoordWeight({-1,1});
   auto h=humanoid(c,{a,a});
-  auto b=compileBinding(*h);
+  auto b=compileBinding(*h, x3d::runtime::geo::builtinProjection());
   CHECK(b.joints.size()==2);
   CHECK(b.influences.empty());
   CHECK(b.diagnostics.size()>=2);
   extra->setSkinCoordIndex({0,1,2});
-  b=compileBinding(*h);
+  b=compileBinding(*h, x3d::runtime::geo::builtinProjection());
   CHECK(b.diagnostics.size()>=2);
 }
 
@@ -194,10 +195,10 @@ TEST_CASE("optional archive skin smoke and timing") {
     for (const auto &n:doc.scene.rootNodes) search(search,n);
     REQUIRE(found);
     auto t0=std::chrono::steady_clock::now();
-    auto b=compileBinding(*found);
+    auto b=compileBinding(*found, x3d::runtime::geo::builtinProjection());
     auto t1=std::chrono::steady_clock::now();
     CHECK(b.influences.size()==fixture.influences);
-    auto pose=evaluatePose(b);
+    auto pose=evaluatePose(b, x3d::runtime::geo::builtinProjection());
     std::vector<SFVec3f> p;
     deform(b,pose,p,nullptr);
     auto t2=std::chrono::steady_clock::now();

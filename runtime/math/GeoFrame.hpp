@@ -11,9 +11,9 @@
 // until a point is made relative to its GeoOrigin; only then is it narrowed to
 // the float SFVec3f the rest of the runtime uses (§25.2.5).
 //
-// The process-wide backend defaults to the first-party BuiltinGeoProjection.
-// An application may install another (for example the PROJ backend) with
-// setProjection() before building scenes; conversions are otherwise pure.
+// Each execution context owns its immutable backend selection. These low-level
+// conversions require an explicit backend; standalone callers can select the
+// stable first-party BuiltinGeoProjection with builtinProjection().
 #ifndef X3D_RUNTIME_MATH_GEO_FRAME_HPP
 #define X3D_RUNTIME_MATH_GEO_FRAME_HPP
 
@@ -30,25 +30,19 @@ inline constexpr double kDegToRad = 3.14159265358979323846 / 180.0;
 inline constexpr double kRadToDeg = 180.0 / 3.14159265358979323846;
 inline constexpr double kWebMercatorRadius = 6378137.0;  // WGS84 a (EPSG:3857 sphere)
 
-namespace detail {
-inline std::shared_ptr<const GeoProjection> &projectionSlot() {
-  static std::shared_ptr<const GeoProjection> slot = std::make_shared<BuiltinGeoProjection>();
-  return slot;
+/// Stable built-in backend owner. There is no replaceable process-wide selection.
+inline std::shared_ptr<const GeoProjection> builtinProjectionOwner() {
+  static const std::shared_ptr<const GeoProjection> owner =
+      std::make_shared<const BuiltinGeoProjection>();
+  return owner;
 }
-} // namespace detail
 
-/// The process-wide projection backend (never null).
-inline const GeoProjection &projection() { return *detail::projectionSlot(); }
-
-/// Install a backend for subsequent conversions; null restores the built-in one.
-/// Call before building scenes; the setter is not synchronised.
-inline void setProjection(std::shared_ptr<const GeoProjection> p) {
-  detail::projectionSlot() = p ? std::move(p) : std::make_shared<BuiltinGeoProjection>();
-}
+/// Stable built-in backend for explicit standalone conversions.
+inline const GeoProjection &builtinProjection() { return *builtinProjectionOwner(); }
 
 /// Authored coordinate -> geodetic (radians, metres above the ellipsoid).
 inline bool toGeodetic(const GeoSystem &s, const SFVec3d &c, double &lat, double &lon, double &h,
-                       const GeoProjection &p = projection()) {
+                       const GeoProjection &p) {
   using F = GeoSystem::Frame;
   switch (s.frame) {
   case F::GD:
@@ -81,7 +75,7 @@ inline bool toGeodetic(const GeoSystem &s, const SFVec3d &c, double &lat, double
 
 /// Authored coordinate -> earth-fixed geocentric metres.
 inline bool toGeocentric(const GeoSystem &s, const SFVec3d &c, SFVec3d &gc,
-                         const GeoProjection &p = projection()) {
+                         const GeoProjection &p) {
   if (s.frame == GeoSystem::Frame::GC) { gc = c; return true; }
   double lat, lon, h;
   if (!toGeodetic(s, c, lat, lon, h, p)) return false;
@@ -90,7 +84,7 @@ inline bool toGeocentric(const GeoSystem &s, const SFVec3d &c, SFVec3d &gc,
 
 /// Earth-fixed geocentric metres -> a coordinate authored in `s`.
 inline bool fromGeocentric(const GeoSystem &s, const SFVec3d &gc, SFVec3d &c,
-                           const GeoProjection &p = projection()) {
+                           const GeoProjection &p) {
   using F = GeoSystem::Frame;
   if (s.frame == F::GC) { c = gc; return true; }
   double lat, lon, h;
@@ -165,7 +159,7 @@ struct OriginFrame {
 
 /// Build the frame of a GeoOrigin authored at `coords` in `sys`.
 inline bool makeOriginFrame(const GeoSystem &sys, const SFVec3d &coords, bool rotateYUp,
-                            OriginFrame &out, const GeoProjection &p = projection()) {
+                            OriginFrame &out, const GeoProjection &p) {
   SFVec3d gc;
   if (!toGeocentric(sys, coords, gc, p)) return false;
   out.origin = gc;
@@ -182,7 +176,7 @@ inline bool makeOriginFrame(const GeoSystem &sys, const SFVec3d &coords, bool ro
 /// coordinate (GeoLocation, GeoTransform's geoCenter, GeoViewpoint): columns
 /// are the world-space east / up / south axes, translation is the anchor.
 inline bool tangentFrame(const GeoSystem &sys, const SFVec3d &coords, const OriginFrame &origin,
-                         Mat4 &out, const GeoProjection &p = projection()) {
+                         Mat4 &out, const GeoProjection &p) {
   double lat, lon, h;
   if (!toGeodetic(sys, coords, lat, lon, h, p)) return false;
   SFVec3d gc;

@@ -18,6 +18,7 @@
 //   convex==FALSE a concave polygon must be triangulated with ear-clipping, not a
 //   naive fan (which produces inverted/overlapping triangles). The total triangle
 //   area must equal the polygon area and all triangles share one winding.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -78,13 +79,13 @@ TEST_CASE("mesh_builder_b7_test") {
     setF(gT, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(tri))));
     setF(gT, "coordIndex", std::any(idx));
     setF(gT, "ccw", std::any(true));
-    MeshData mT = buildLocalMesh(gT.get());
+    MeshData mT = buildLocalMesh(gT.get(), geo::builtinProjection());
 
     auto gF = createX3DNode("IndexedFaceSet");
     setF(gF, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(tri))));
     setF(gF, "coordIndex", std::any(idx));
     setF(gF, "ccw", std::any(false));
-    MeshData mF = buildLocalMesh(gF.get());
+    MeshData mF = buildLocalMesh(gF.get(), geo::builtinProjection());
 
     CHECK((mT.hasNormals && mF.hasNormals));
     CHECK((mT.normals.size() == mF.normals.size() && !mT.normals.empty()));
@@ -108,7 +109,7 @@ TEST_CASE("mesh_builder_b7_test") {
     setF(nrm, "vector", std::any(std::vector<SFVec3f>{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}}));
     setF(g, "normal", std::any(std::static_pointer_cast<X3DNode>(nrm)));
     setF(g, "normalPerVertex", std::any(true));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // Authored +Z stays +Z despite ccw=FALSE.
     for (const auto &n : m.normals) CHECK((vecEq(n, SFVec3f{0, 0, 1})));
   }
@@ -132,7 +133,7 @@ TEST_CASE("mesh_builder_b7_test") {
     auto g = createX3DNode("IndexedTriangleSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(pts))));
     setF(g, "index", std::any(idx));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.hasNormals && m.normals.size() == m.positions.size()));
 
     // Flat face normals of each triangle (as authored / CCW).
@@ -168,7 +169,7 @@ TEST_CASE("mesh_builder_b7_test") {
     setF(nrm, "vector", std::any(std::vector<SFVec3f>{
                             {0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {0, 0, 1}}));
     setF(g, "normal", std::any(std::static_pointer_cast<X3DNode>(nrm)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     for (const auto &n : m.normals) CHECK((vecEq(n, SFVec3f{0, 0, 1})));
   }
 
@@ -212,7 +213,7 @@ TEST_CASE("mesh_builder_b7_test") {
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(poly))));
     setF(g, "coordIndex", std::any(idx));
     setF(g, "convex", std::any(false));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.indices.empty() && m.indices.size() % 3 == 0));
 
     // Sum signed triangle areas (vector area along +Z) and confirm every
@@ -246,7 +247,7 @@ TEST_CASE("mesh_builder_b7_test") {
     auto g = createX3DNode("IndexedFaceSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(quad))));
     setF(g, "coordIndex", std::any(idx));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     float area = 0.0f;
     for (std::size_t t = 0; t + 2 < m.indices.size(); t += 3) {
       const SFVec3f &a = m.positions[m.indices[t]];

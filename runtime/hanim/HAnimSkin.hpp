@@ -30,6 +30,7 @@
 #define X3D_RUNTIME_HANIM_SKIN_HPP
 
 #include "Mat4.hpp"
+#include "GeoProjection.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -83,10 +84,14 @@ struct SkinPose {
 
 /// Compile the skin binding of an HAnimHumanoid. An empty binding (no skinCoord,
 /// no weights) means the humanoid has no deformable skin.
-SkinBinding compileBinding(const X3DNode &humanoid);
+/// Geographic skeleton ancestors use the supplied world projection.
+SkinBinding compileBinding(const X3DNode &humanoid,
+                           const geo::GeoProjection &projection);
 
 /// Evaluate the current pose from the live skeleton (joint TRS as of this tick).
-SkinPose evaluatePose(const SkinBinding &binding);
+/// Supply the same world projection used when compiling the binding.
+SkinPose evaluatePose(const SkinBinding &binding,
+                      const geo::GeoProjection &projection);
 
 /// Reference CPU skinner: fill `positions` (and `normals`, if non-null and the
 /// binding has normals) indexed by source coordinate/normal index.

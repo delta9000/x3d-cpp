@@ -80,7 +80,8 @@ inline SFVec3f deformCornerNormal(const SkinBinding &b,
 }
 } // namespace detail
 
-inline SkinBinding compileBinding(const X3DNode &humanoid) {
+inline SkinBinding compileBinding(const X3DNode &humanoid,
+                                   const geo::GeoProjection &projection) {
   using namespace detail;
   SkinBinding b;
   b.humanoid = &humanoid;
@@ -121,7 +122,8 @@ inline SkinBinding compileBinding(const X3DNode &humanoid) {
   // single value applies to all; otherwise by position in the joints list.
   auto localBind=[&](const X3DNode *n) {
     auto *joint=dynamic_cast<const HAnimJoint *>(n);
-    if (!joint) return TransformSystem::isTransform(n) ? TransformSystem::localMatrix(n) : Mat4::identity();
+    if (!joint) return TransformSystem::isTransform(n)
+        ? TransformSystem::localMatrix(n, projection) : Mat4::identity();
     auto it=std::find_if(h->getJoints().begin(),h->getJoints().end(),
                          [&](const auto &p){return p.get()==n;});
     size_t slot=it==h->getJoints().end() ? h->getJoints().size() : size_t(it-h->getJoints().begin());
@@ -196,14 +198,16 @@ inline SkinBinding compileBinding(const X3DNode &humanoid) {
   return b;
 }
 
-inline SkinPose evaluatePose(const SkinBinding &b) {
+inline SkinPose evaluatePose(const SkinBinding &b,
+                             const geo::GeoProjection &projection) {
   using namespace detail;
   SkinPose pose;
   std::unordered_map<const X3DNode *,Mat4> matrices;
   std::unordered_set<const X3DNode *> visited;
   auto walk=[&](auto &&self,const Ptr &n,const Mat4 &parent)->void {
     if (!n || !visited.insert(n.get()).second) return;
-    Mat4 m=TransformSystem::isTransform(n.get()) ? parent*TransformSystem::localMatrix(n.get()) : parent;
+    Mat4 m=TransformSystem::isTransform(n.get())
+        ? parent*TransformSystem::localMatrix(n.get(), projection) : parent;
     matrices.emplace(n.get(),m);
     for (const auto &c : nodes(*n,"children")) self(self,c,m);
   };
@@ -211,7 +215,8 @@ inline SkinPose evaluatePose(const SkinBinding &b) {
     walk(walk,n,Mat4::identity()); // Humanoid's own TRS is excluded.
   for (size_t j=0;j<b.joints.size();++j) {
     auto it=matrices.find(b.joints[j]);
-    Mat4 m=it==matrices.end() ? TransformSystem::localMatrix(b.joints[j]) : it->second;
+    Mat4 m=it==matrices.end()
+        ? TransformSystem::localMatrix(b.joints[j], projection) : it->second;
     pose.jointMatrix.push_back(m);
     pose.palette.push_back(m*b.inverseBind[j]);
   }

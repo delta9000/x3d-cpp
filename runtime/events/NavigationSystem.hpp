@@ -234,28 +234,28 @@ private:
   // ---- user-offset I/O (CONF-VIEWNAV) --------------------------------------
   // Navigation reads the EFFECTIVE local eye (authored pose ∘ offset) and writes
   // a new offset — it never touches the authored position/orientation (§23.2.3).
-  static Mat4 poseOf(X3DNode *vp) {
+  static Mat4 poseOf(X3DNode *vp, const geo::GeoProjection &projection) {
     // GeoViewpoint.position is SFVec3d; read leniently so a bound GeoViewpoint
     // isn't pinned to the origin (GEO-1 sibling).
     if (vp->nodeTypeName() == "GeoViewpoint") {
       Mat4 frame;
-      if (geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), frame))
+      if (geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), frame, projection))
         return frame * Mat4::rotation(geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0}));
     }
     return Mat4::translation(geombounds::getVec3fLenient(*vp, "position", {0,0,0})) *
            Mat4::rotation(geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0}));
   }
   static SFVec3f effPos(X3DExecutionContext &ctx, X3DNode *vp) {
-    return (poseOf(vp) * ctx.viewpointOffset(vp).local).transformPoint(SFVec3f{0,0,0});
+    return (poseOf(vp, ctx.geoProjection()) * ctx.viewpointOffset(vp).local).transformPoint(SFVec3f{0,0,0});
   }
   static SFRotation effOri(X3DExecutionContext &ctx, X3DNode *vp) {
-    return rotationFromMatrix(poseOf(vp) * ctx.viewpointOffset(vp).local);
+    return rotationFromMatrix(poseOf(vp, ctx.geoProjection()) * ctx.viewpointOffset(vp).local);
   }
-  static SFVec3f cor(X3DNode *vp) {
+  static SFVec3f cor(X3DNode *vp, const geo::GeoProjection &projection) {
     // GeoViewpoint.centerOfRotation is SFVec3d; read leniently (GEO-1 sibling).
     if (vp->nodeTypeName() == "GeoViewpoint") {
       SFVec3f world;
-      if (geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0,0,0}), world))
+      if (geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0,0,0}), world, projection))
         return world;
     }
     return geombounds::getVec3fLenient(*vp, "centerOfRotation", {0,0,0});
@@ -264,7 +264,7 @@ private:
   static void commitEye(X3DExecutionContext &ctx, X3DNode *vp,
                         const SFVec3f &pos, const SFRotation &ori) {
     ViewpointOffset off;
-    off.local = poseOf(vp).inverse() * Mat4::translation(pos) * Mat4::rotation(ori);
+    off.local = poseOf(vp, ctx.geoProjection()).inverse() * Mat4::translation(pos) * Mat4::rotation(ori);
     ctx.setViewpointOffset(vp, off);
   }
 
@@ -345,7 +345,7 @@ private:
   // Orbit the eye about centerOfRotation; re-aim the camera at the pivot.
   // up = (0,1,0) in viewpoint-local coords (§23.3.1).
   void examineOrbit(X3DExecutionContext &ctx, X3DNode *vp, float dx, float dy) {
-    const SFVec3f C = cor(vp);
+    const SFVec3f C = cor(vp, ctx.geoProjection());
     SFVec3f P = effPos(ctx, vp);
     SFVec3f arm = sub(P, C);
     if (len(arm) < 1e-4f) return; // eye at pivot: singular, skip.
@@ -409,8 +409,8 @@ private:
       // §25.3.11: refresh elevation-based velocity as the eye moves.
       SFVec3d authored;
       double lat, lon, elevation;
-      if (geo::fromWorld(*vp, P, authored) &&
-          geo::toGeodetic(geo::systemOf(*vp), authored, lat, lon, elevation))
+      if (geo::fromWorld(*vp, P, authored, ctx.geoProjection()) &&
+          geo::toGeodetic(geo::systemOf(*vp), authored, lat, lon, elevation, ctx.geoProjection()))
         speed = static_cast<float>(std::max(0.0, elevation / 10.0)) *
                 geo::fieldOf<float>(*vp, "speedFactor", 1.0f);
     }
@@ -455,8 +455,8 @@ private:
     if (vp->nodeTypeName() == "GeoViewpoint") {
       SFVec3d authored;
       double lat, lon, elevation;
-      if (geo::fromWorld(*vp, ctx.cameraWorldPosition(), authored) &&
-          geo::toGeodetic(geo::systemOf(*vp), authored, lat, lon, elevation)) {
+      if (geo::fromWorld(*vp, ctx.cameraWorldPosition(), authored, ctx.geoProjection()) &&
+          geo::toGeodetic(geo::systemOf(*vp), authored, lat, lon, elevation, ctx.geoProjection())) {
         // §25.3.11 gives only the speed formula (elevation / 10); for avatarSize
         // and visibilityLimit it asks for "an appropriate value". Grow them with
         // altitude but never shrink below the authored values: avatarSize also
@@ -651,7 +651,7 @@ private:
     // Set the pivot for subsequent EXAMINE in the bound viewpoint's own frame.
     if (vp->nodeTypeName() == "GeoViewpoint") {
       SFVec3d geoCenter;
-      if (geo::fromWorld(*vp, centerLocal, geoCenter))
+      if (geo::fromWorld(*vp, centerLocal, geoCenter, ctx.geoProjection()))
         (void)ctx.writeField(vp, "centerOfRotation", std::any(geoCenter));
     } else {
       (void)ctx.writeField(vp, "centerOfRotation", std::any(centerLocal));

@@ -75,21 +75,23 @@ private:
 
   // Pull the coord node's points, tolerating MFVec3f/MFVec3d (Coordinate /
   // CoordinateDouble/GeoCoordinate) via the shared lenient reader.
-  static std::vector<SFVec3f> coordPoints(const X3DNode *geom) {
+  static std::vector<SFVec3f> coordPoints(const X3DNode *geom,
+                                        const geo::GeoProjection &projection) {
     auto coord = geombounds::getNode(*geom, "coord");
     if (!coord) return {};
-    return geombounds::getPointsLenient(*coord, "point");
+    return geombounds::getPointsLenient(*coord, "point", projection);
   }
 
   // Extract the segments of a LineSet / IndexedLineSet pickingGeometry (§11).
   // IndexedLineSet: coordIndex with -1 runs, consecutive vertices per polyline.
   // LineSet: vertexCount consuming `coord` sequentially. Other geometry types
   // contribute no segments (LinePickSensor tests line geometry only).
-  static std::vector<Segment> segmentsOf(const X3DNode *geom) {
+  static std::vector<Segment> segmentsOf(const X3DNode *geom,
+                                       const geo::GeoProjection &projection) {
     std::vector<Segment> out;
     if (!geom) return out;
     const std::string &t = geom->nodeTypeName();
-    const std::vector<SFVec3f> pts = coordPoints(geom);
+    const std::vector<SFVec3f> pts = coordPoints(geom, projection);
     if (pts.empty()) return out;
     auto pushRun = [&](const std::vector<int> &idx) {
       for (std::size_t i = 0; i + 1 < idx.size(); ++i) {
@@ -150,7 +152,8 @@ private:
     }
 
     auto geom = geombounds::getNode(*s, "pickingGeometry");
-    const std::vector<Segment> segs = geom ? segmentsOf(geom.get()) : std::vector<Segment>{};
+    const std::vector<Segment> segs = geom ? segmentsOf(geom.get(), ctx.geoProjection())
+                                         : std::vector<Segment>{};
 
     const MFNode targets = geombounds::getField<MFNode>(*s, "pickTarget", {});
     const MFString objectType = geombounds::getField<MFString>(*s, "objectType", MFString{"ALL"});
@@ -178,7 +181,7 @@ private:
           for (const Segment &seg : segs) {
             const SFVec3f dir = sub(seg.b, seg.a);
             Ray localRay{inv.transformPoint(seg.a), inv.transformDirection(dir)};
-            auto t = PickSystem::intersectGeometry(shapeGeom.get(), localRay);
+            auto t = PickSystem::intersectGeometry(shapeGeom.get(), ctx.geoProjection(), localRay);
             if (!t || *t < -1e-5f || *t > 1.0f + 1e-5f) continue; // beyond segment
             const SFVec3f worldHit = wm.transformPoint(localRay.pointAt(*t));
             pickedPoints.push_back(geomInv.transformPoint(worldHit));

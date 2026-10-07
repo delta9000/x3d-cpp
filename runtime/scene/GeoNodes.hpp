@@ -42,7 +42,7 @@ inline GeoSystem systemOf(const X3DNode &n) {
 /// The frame of the node's `geoOrigin` (§25.3.6). Without one — or if its
 /// coordinates cannot be converted — the world is geocentric (origin 0, no
 /// rotation).
-inline OriginFrame originOf(const X3DNode &n, const GeoProjection &p = projection()) {
+inline OriginFrame originOf(const X3DNode &n, const GeoProjection &p) {
   OriginFrame frame;
   auto o = fieldOf<std::shared_ptr<X3DNode>>(n, "geoOrigin", nullptr);
   if (!o) return frame;
@@ -56,7 +56,7 @@ inline OriginFrame originOf(const X3DNode &n, const GeoProjection &p = projectio
 /// Convert one coordinate authored on `n` into the X3D world. False if the
 /// coordinate cannot be converted (e.g. UTM without a zone).
 inline bool toWorld(const X3DNode &n, const SFVec3d &coords, SFVec3f &out,
-                    const GeoProjection &p = projection()) {
+                    const GeoProjection &p) {
   SFVec3d gc;
   if (!toGeocentric(systemOf(n), coords, gc, p)) return false;
   out = originOf(n, p).toWorld(gc);
@@ -67,8 +67,8 @@ inline bool toWorld(const X3DNode &n, const SFVec3d &coords, SFVec3f &out,
 /// parse of the node's geoSystem/geoOrigin. Unconvertible entries become
 /// (0,0,0) and are counted in `failures`.
 inline std::vector<SFVec3f> toWorld(const X3DNode &n, const std::vector<SFVec3d> &coords,
-                                    std::size_t *failures = nullptr,
-                                    const GeoProjection &p = projection()) {
+                                    std::size_t *failures,
+                                    const GeoProjection &p) {
   const GeoSystem sys = systemOf(n);
   const OriginFrame origin = originOf(n, p);
   std::vector<SFVec3f> out;
@@ -102,13 +102,13 @@ inline SFVec3d gridCoordinate(const X3DNode &n, int i, int j, double elevation) 
 /// `n` (+X east, +Y up, −Z north; §25.3.3): GeoLocation's placement,
 /// GeoTransform's geoCenter frame, GeoViewpoint's orientation frame.
 inline bool tangentFrameOf(const X3DNode &n, const SFVec3d &coords, Mat4 &out,
-                           const GeoProjection &p = projection()) {
+                           const GeoProjection &p) {
   return tangentFrame(systemOf(n), coords, originOf(n, p), out, p);
 }
 
 /// Inverse of toWorld for outputs such as geoCoord_changed / hitGeoCoord_changed.
 inline bool fromWorld(const X3DNode &n, const SFVec3f &world, SFVec3d &coords,
-                      const GeoProjection &p = projection()) {
+                      const GeoProjection &p) {
   const OriginFrame origin = originOf(n, p);
   SFVec3d d{world.x, world.y, world.z};
   if (origin.rotateYUp) {

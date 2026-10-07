@@ -76,6 +76,7 @@
 
 #include "AssetResolver.hpp"   // AssetResolver (binary-geometry seam)
 #include "FontMetrics.hpp"     // T-TEXT: font-metrics seam (Text branch)
+#include "GeoProjection.hpp"   // explicit world-selected geographic backend
 #include "NurbsEval.hpp"       // NRB-4: NurbsWeightMode (controlPoint convention)
 #include "PackedMesh.hpp"      // PackedMesh (Phase 1 binary geometry)
 #include "RecursionLimits.hpp" // #21: kMaxGraphWalkVisits (walk budget default)
@@ -95,7 +96,7 @@ using namespace x3d::core;
 using x3d::nodes::X3DNode;
 
 // ---------------------------------------------------------------------------
-// GeoElevationGrid uses the shared geospatial backend in GeoNodes.hpp.
+// Geographic geometry uses the caller's explicit backend in GeoNodes.hpp.
 // Mesh build options remain for tessellation and authored resource data.
 struct MeshBuildOptions {
   int sphereRings = 16;    // latitude bands (pole-to-pole), >= 2.
@@ -567,6 +568,8 @@ bool recognizedGeometryType(const std::string &t);
 // are parallel to positions — same length, one per corner. When no Normal node
 // is authored the builder fills `normals` with flat per-face normals so a
 // consumer always has shading data. Unsupported types return an empty mesh.
+// The projection is borrowed for this call; world consumers pass their context's
+// immutable backend so geometry, bounds, transforms and picking agree.
 //
 // B2 observability: the optional `recognized` out-param is set to whether
 // `geom`'s nodeTypeName is a type this builder knows how to tessellate
@@ -576,7 +579,8 @@ bool recognizedGeometryType(const std::string &t);
 // triangles (IFS empty coordIndex, a degenerate ElevationGrid grid —
 // recognized=true, indices empty). The caller (SceneExtractor) uses it to count
 // ONLY genuinely-unsupported drops, never legitimately-empty ones.
-MeshData buildLocalMesh(const X3DNode *geom, const MeshBuildOptions &opt = {},
+MeshData buildLocalMesh(const X3DNode *geom, const geo::GeoProjection &projection,
+                        const MeshBuildOptions &opt = {},
                         bool *recognized = nullptr);
 
 /// Diagnostic counter: number of buildLocalMesh() tessellations performed

@@ -35,7 +35,7 @@ TEST_CASE("Runtime diagnostics: distinct owner-thread worlds share race-free cou
       phase.arrive_and_wait();
       bool matches = true;
       for (std::size_t i = 0; i < iterations; ++i) {
-        const auto matrix = TransformSystem::localMatrix(transform.get());
+        const auto matrix = TransformSystem::localMatrix(transform.get(), context.geoProjection());
         matches &= matrix.m[12] == static_cast<float>(owner);
         (void)context.pick(Ray{});
       }

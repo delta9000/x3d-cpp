@@ -270,7 +270,7 @@ private:
     auto *lod = dynamic_cast<x3d::nodes::GeoLOD *>(node);
     if (!lod) return;
     SFVec3f center;
-    if (!geo::toWorld(*lod, lod->getCenter(), center)) return;
+    if (!geo::toWorld(*lod, lod->getCenter(), center, ctx.geoProjection())) return;
     const SFVec3f eye = ctx.worldTransform(lod).inverse().transformPoint(ctx.cameraWorldPosition());
     const bool near = viewdep::len(viewdep::sub(eye, center)) < lod->getRange();
     const int wasDisplayed = state.displayed;

@@ -34,6 +34,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace x3d::runtime {
@@ -98,11 +99,17 @@ struct BridgeResult;
 class X3DExecutionContext {
 public:
   X3DExecutionContext() = default;
-  explicit X3DExecutionContext(std::shared_ptr<DynamicFieldStore> fields)
-      : authorFields_(std::move(fields)), authorOwnerFixed_(true),
+  /// Bind the scene field owner and resolve null to the built-in backend once.
+  explicit X3DExecutionContext(std::shared_ptr<DynamicFieldStore> fields,
+                               std::shared_ptr<const geo::GeoProjection> projection = {})
+      : geoProjection_(projection ? std::move(projection) : geo::builtinProjectionOwner()),
+        authorFields_(std::move(fields)), authorOwnerFixed_(true),
         cascade_(graph_, authorFields_) {
     if (!authorFields_) throw std::invalid_argument("null author-field owner");
   }
+
+  /// Immutable backend selection shared by all runtime paths in this context.
+  const geo::GeoProjection &geoProjection() const { return *geoProjection_; }
 
   /// A standalone context owns fresh fields. Access fixes that owner; a parsed
   /// Scene should be supplied at construction, or bound before first access.
@@ -656,7 +663,7 @@ public:
     Mat4 pose;
     if (vp->nodeTypeName() == "GeoViewpoint") {
       // §25.3.11: position is geographic; orientation is relative to local east/up/south.
-      if (!geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), pose))
+      if (!geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), pose, geoProjection()))
         pose = Mat4::identity();
       pose = pose * Mat4::rotation(ori);
     } else {
@@ -762,6 +769,8 @@ private:
     std::shared_ptr<ActiveNode> node_;
   };
 
+  // Declare before every dependent system so the owner also survives their teardown.
+  const std::shared_ptr<const geo::GeoProjection> geoProjection_ = geo::builtinProjectionOwner();
   std::shared_ptr<DynamicFieldStore> authorFields_ = std::make_shared<DynamicFieldStore>();
   mutable bool authorOwnerFixed_ = false;
   CallbackLifetime callbacks_; // revoked in destructor body before any members
@@ -772,10 +781,10 @@ private:
   std::uint64_t sceneTopologyRevision_ = 0;
   std::vector<std::function<void(X3DExecutionContext &)>> postCascade_;
   DirtyTracker dirty_;
-  TransformSystem transforms_;
+  TransformSystem transforms_{geoProjection_};
   BoundsSystem bounds_;
   BindingSystem bindings_;
-  PickSystem pick_;
+  PickSystem pick_{geoProjection_};
   PointerState pointer_;
   KeyState keys_;
   HeadPose head_;                                          // CONF-VIEWNAV head seam

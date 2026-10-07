@@ -32,6 +32,7 @@
 //     already spec-exact; no change needed).
 //
 // Tests fail against the pre-TXC-1 code (seam placed at +Z) and pass after.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -90,7 +91,7 @@ static bool seamAtPosZ(const MeshData &m, float threshold = 0.05f) {
 static void testSphereSeam() {
   auto g = createX3DNode("Sphere");
   setF(g, "radius", std::any(SFFloat(1.0f)));
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((!m.texcoords.empty()));
   CHECK((m.texcoords.size() == m.positions.size()));
 
@@ -151,7 +152,7 @@ static void testConeSeam() {
   auto g = createX3DNode("Cone");
   setF(g, "bottomRadius", std::any(SFFloat(1.0f)));
   setF(g, "height", std::any(SFFloat(2.0f)));
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((!m.texcoords.empty()));
   CHECK((m.texcoords.size() == m.positions.size()));
 
@@ -203,7 +204,7 @@ static void testCylinderSeam() {
   auto g = createX3DNode("Cylinder");
   setF(g, "radius", std::any(SFFloat(1.0f)));
   setF(g, "height", std::any(SFFloat(2.0f)));
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((!m.texcoords.empty()));
   CHECK((m.texcoords.size() == m.positions.size()));
 

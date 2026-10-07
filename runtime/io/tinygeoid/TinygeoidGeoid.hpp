@@ -8,7 +8,10 @@
 // optional PROJ backend. Loading reads a file, so this lives under
 // runtime/io/ and is not part of the IO-free SDK headers.
 //
-//   geo::setProjection(io::geoid::makeBuiltinWithGeoid("egm2008_25.tng"));
+//   runtime::SessionOptions options;
+//   options.geoProjection = io::geoid::makeBuiltinWithGeoid("egm2008_25.tng");
+//   auto session = runtime::RuntimeSession::create(std::move(document), std::move(options));
+// The session retains the backend; loading the grid remains an explicit host operation.
 #ifndef X3D_RUNTIME_IO_TINYGEOID_GEOID_HPP
 #define X3D_RUNTIME_IO_TINYGEOID_GEOID_HPP
 
