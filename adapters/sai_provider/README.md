@@ -47,7 +47,12 @@ another invalid component. Traversal is iterative.
 
 A released update gate produces one host submission. Stateful writes coalesce;
 ordered inputOnly occurrences, including identical repeats, remain in that
-submission. They are delivered in one native tick. Output-event and ROUTE
+submission. The complete retained inputOutput seed prefix is stored before
+its source notifications are read or published, so a valid final graph can
+repair a temporarily cyclic prefix. Later routed and inputOnly occurrences
+retain per-occurrence validation and delivery. This relies on the bounded
+backend installing only inputOnly interpolation handlers; it is not a blanket
+guarantee for other native systems. All inputs run in one native tick. Output-event and ROUTE
 cardinality follows the runtime's timestamp rules, independently of external
 input occurrence counts. No synthetic epsilon time or per-input event reset is
 introduced by the adapter.

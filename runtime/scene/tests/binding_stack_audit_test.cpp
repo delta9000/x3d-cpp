@@ -74,7 +74,8 @@ TEST_CASE("binding_stack_audit_test") {
   {
     auto vp = createX3DNode("Viewpoint");
     Scene scene; scene.addRootNode(vp);
-    X3DExecutionContext ctx;
+    // Select this scene's author-field owner before advancing the clock.
+    X3DExecutionContext ctx(scene.authorFields);
     constexpr double kFrac = 12345.678901234;
     ctx.tick(kFrac);
     ctx.buildSceneGraph(scene);

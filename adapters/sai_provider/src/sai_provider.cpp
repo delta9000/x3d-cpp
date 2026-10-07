@@ -194,6 +194,8 @@ struct backend::storage {
     std::unordered_map<const X3DNode *, std::uint64_t> identities;
     std::uint64_t next_node = 1;
     native_evidence evidence;
+    std::vector<address> retained_seeds;
+    std::size_t next_retained_seed = 0;
     Scene &scene() { return session ? session->scene() : setup->scene; }
     const Scene &scene() const {
       return session ? session->scene() : setup->scene;
@@ -590,13 +592,29 @@ result<void> backend::do_activate(std::uint64_t scene) {
         const auto *info = field_info(*a.node, a.field);
         if (info && info->access == x3d::core::AccessType::InputOnly)
           ++f.evidence.input_occurrences;
-        if (info && supported_field(*a.node, *info) && info->get) {
-          auto value = do_read({scene, 1, id->second, info->x3dName});
+        const auto publish = [&](const address &source) {
+          auto value = do_read(source);
           if (!value)
             throw std::runtime_error(value.error().message);
-          record_event({scene, 1, id->second, info->x3dName},
-                       std::move(*value));
+          record_event(source, std::move(*value));
+        };
+        if (f.next_retained_seed < f.retained_seeds.size()) {
+          const auto &expected = f.retained_seeds[f.next_retained_seed];
+          if (expected.node != id->second || expected.field != a.field)
+            throw std::runtime_error("native retained seed prefix was interrupted");
+          if (++f.next_retained_seed != f.retained_seeds.size())
+            return;
+          // Only the admitted inputOutput seed prefix is buffered. Its final
+          // graph was preflighted as a whole, so an intermediate graph must
+          // not be validated or published before all seeds are installed.
+          for (const auto &source : f.retained_seeds)
+            publish(source);
+          f.retained_seeds.clear();
+          f.next_retained_seed = 0;
+          return;
         }
+        if (info && supported_field(*a.node, *info) && info->get)
+          publish({scene, 1, id->second, info->x3dName});
       });
   return {};
 }
@@ -609,20 +627,31 @@ backend::do_turn(std::uint64_t scene, event_time time,
   for (const auto &w : writes)
     values.push_back(f.native_value(w.value));
   f.evidence.input_occurrences = 0;
+  f.retained_seeds.clear();
+  f.next_retained_seed = 0;
   // Retained inputOutput state is staged before inputOnly behavior. Preserve
   // occurrence order within each group, in one native tick and loop-guard
   // scope. No time perturbation or per-input reset is introduced here.
+  // EventCascade delivers these direct seeds FIFO before appended ROUTEs and
+  // outputs. This bounded backend installs only inputOnly interpolation
+  // handlers; retained writes classify dirtiness without evaluating the graph.
+  // The listener checks that exact prefix, then resumes per-occurrence reads.
   for (bool retained : {true, false})
     for (std::size_t i = 0; i < writes.size(); ++i) {
       const auto &a = writes[i].target;
       const auto *info = field_info(*f.nodes.at(a.node), a.field);
       const bool stateful =
           info && info->access == x3d::core::AccessType::InputOutput;
-      if (stateful == retained)
+      if (stateful == retained) {
+        if (stateful)
+          f.retained_seeds.push_back(a);
         f.session->context().postEvent(f.nodes.at(a.node).get(), a.field,
                                        std::move(values[i]));
+      }
     }
   f.session->tick(time.seconds);
+  if (!f.retained_seeds.empty())
+    throw std::runtime_error("native retained seed prefix was not delivered");
   const auto delta = f.session->delta();
   auto &e = f.evidence;
   e.tick = f.session->context().tickGeneration();
