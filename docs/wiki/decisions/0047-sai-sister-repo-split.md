@@ -127,3 +127,10 @@ errors, routes or events to runtime objects. A real adapter is separate work and
 must explicitly cover ownership/lifetime, identity, field conversion, access
 rules and cascade semantics. Coexistence is a packaging and C++ boundary check,
 not adapter evidence, interoperability certification or standards conformance.
+
+`scripts/verify_sai_coexistence.sh <x3d-sai-source>` enforces this boundary with
+the consumer in `tests/cmake/sai_coexistence/`. It compiles and runs both lexical
+header orders and both link/include-search orders, installs both packages into
+one prefix, moves that prefix, and repeats the checks with `find_package`.
+This is an opt-in integration gate so each repository remains independently
+buildable. It does not pull the sister repository into the runtime's targets.

@@ -25,6 +25,20 @@ mise run validate-examples   # the out-of-SDK renderer consumers (cpu_raster + p
 mise run docs-drift working  # which docs your change may have staled
 ```
 
+When changing generated header ownership, exported include paths or the SAI
+boundary, also run the opt-in cross-repository consumer check with a separate
+`x3d-sai` checkout:
+
+```bash
+bash scripts/verify_sai_coexistence.sh ../x3d-sai
+X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_coexistence.sh ../x3d-sai
+```
+
+It checks all header/link orders from source and from a relocated common install
+prefix. See the [consumer test contract](tests/cmake/sai_coexistence/README.md).
+It is deliberately separate from the standalone gate: a normal x3d-cpp build
+does not fetch or require x3d-sai.
+
 `mise run docs-drift` needs `X3D_QDRANT_URL` set; without it, it falls back to
 `localhost:6333` and fails.
 

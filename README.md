@@ -20,6 +20,13 @@ The C++ node layer is **generated from the official X3D Unified Object Model
 behavioral conformance is tested separately. Generation substantially reduces
 structural drift — it does not prove runtime semantics or eliminate UOM errata.
 
+The experimental portable SAI proposal lives independently in
+[x3d-sai](https://github.com/delta9000/x3d-sai). Neither project depends on the
+other. This SDK's `runtime/script/SaiContext.hpp` is its legacy Script-backend
+API, not an adapter to the proposal. An opt-in
+[combined consumer check](tests/cmake/sai_coexistence/README.md) verifies that
+the packages can coexist in source and relocated installed builds.
+
 ## Gallery — real X3D, rendered headless
 
 Every image below is **real X3D**, parsed by the SDK and drawn by the
