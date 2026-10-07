@@ -26,6 +26,7 @@
 
 #include <any>
 #include <iostream>
+#include <memory>
 #include <string>
 
 using namespace x3d;
@@ -52,6 +53,52 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
 }
 
 SFVec3f transformTranslation(Transform &t) { return t.getTranslation(); }
+
+// The same node identity must resolve author state through the SAI's context,
+// never through another live context's table.
+void testAuthorFieldOwnerIsolation() {
+  Script script;
+  X3DExecutionContext first;
+  X3DExecutionContext second;
+  first.authorFields().addAuthorField(
+      script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
+                              AccessType::InputOutput, std::any(SFFloat(1))});
+  second.authorFields().addAuthorField(
+      script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
+                              AccessType::InputOutput, std::any(SFFloat(2))});
+  first.authorFields().addAuthorField(
+      script, AuthorFieldDecl{"onlyFirst", X3DFieldType::SFBool,
+                              AccessType::InputOutput, std::any(SFBool(true))});
+  SaiContext firstSai(first, script, "b", "v");
+  SaiContext secondSai(second, script, "b", "v");
+  check(&first.authorFields() != &second.authorFields(),
+        "default contexts own distinct author-field stores");
+  check(std::any_cast<SFFloat>(firstSai.getField(&script, "level")) == 1 &&
+            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2,
+        "SAI reads same-node author values from its own context");
+  check(!secondSai.getField(&script, "onlyFirst").has_value(),
+        "SAI cannot discover another context's author declarations");
+
+  firstSai.setField(&script, "level", std::any(SFFloat(3)));
+  first.process();
+  check(std::any_cast<SFFloat>(firstSai.getField(&script, "level")) == 3 &&
+            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2,
+        "author-field cascade writes stay in the originating context");
+  first.authorFields().erase(script);
+  check(!firstSai.getField(&script, "level").has_value() &&
+            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2,
+        "erasing one context's author state preserves another context's state");
+
+  auto declaredFields = std::make_shared<DynamicFieldStore>();
+  declaredFields->addAuthorField(
+      script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
+                              AccessType::InputOutput, std::any(SFFloat(4))});
+  X3DExecutionContext explicitOwner(declaredFields);
+  SaiContext explicitSai(explicitOwner, script, "b", "v");
+  check(&explicitOwner.authorFields() == declaredFields.get() &&
+            std::any_cast<SFFloat>(explicitSai.getField(&script, "level")) == 4,
+        "explicit context owner retains fields declared before construction");
+}
 
 // --- field get/set round-trip, on the owning script's own node -------------
 void testFieldRoundTrip() {
@@ -147,7 +194,7 @@ void testDirectOutputGate() {
     Transform sink;
     sink.setTranslation(SFVec3f{0, 0, 0});
     // An outputOnly author field on the Script, ROUTEd to the sink.
-    dynamicFieldStore().addAuthorField(
+    ctx.authorFields().addAuthorField(
         script, AuthorFieldDecl{"out", X3DFieldType::SFVec3f,
                                 AccessType::OutputOnly, {}});
     ctx.addRoute(FieldAddress{&script, "out"},
@@ -158,7 +205,7 @@ void testDirectOutputGate() {
     ctx.process();
     check(veq(transformTranslation(sink), 7, 8, 9),
           "DO-CASCADE: a self-write keeps the routable path (fans out)");
-    dynamicFieldStore().erase(script);
+    ctx.authorFields().erase(script);
   }
 }
 
@@ -289,6 +336,7 @@ void testSeamWithMock() {
 } // namespace
 
 int main() {
+  testAuthorFieldOwnerIsolation();
   testFieldRoundTrip();
   testDirectOutputGate();
   testRouteGateAndEffect();

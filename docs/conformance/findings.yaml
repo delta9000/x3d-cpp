@@ -3003,8 +3003,8 @@
     access stays serial: the host defers destruction until no call is in flight;
     reentrant destruction fails closed. Context, BindingSystem and System owners
     are noncopyable/nonmovable; transfer owning pointers or build fresh owners.
-    Custom unguarded callbacks and global DynamicFieldStore/GeoFrame isolation
-    are outside this fix. Process-wide pick/local-matrix diagnostic counters
+    Custom unguarded callbacks and GeoFrame configuration isolation are outside
+    this fix; author-field ownership is tracked separately below. Process-wide pick/local-matrix diagnostic counters
     use relaxed atomics so distinct owner-thread worlds do not race on metrics;
     runtime_diagnostic_counters_test.cpp verifies the combined totals. These
     metrics are not per-world semantic state. This does not establish full
@@ -3029,3 +3029,29 @@
     propagation and real local-decoy zero-read/open evidence with a positive
     control. This closes an I/O integration bypass; it does not assert full
     asynchronous loading or browser/SAI conformance.
+
+
+- id: NATIVE-AUTHOR-FIELD-OWNERSHIP
+  interfaces: [X3DPrototypeInstance, X3DScriptNode]
+  nodes: [Script, Inline, GeoLOD]
+  clause: "4.4.4; 9.2; 29.2 (native ownership and host integration)"
+  severity: critical
+  status: fixed
+  summary: Scene and declaration owners replace process-global author-field storage and clone factory configuration.
+  note: >-
+    Fresh Scenes have fresh shared stores; shallow copies deliberately alias
+    graph and store. Readers, writers, execution/cascade and Script backends
+    propagate explicit owners. Declarations retain template data after temporary
+    source-document destruction, while clones get fresh author entries and use
+    one clone map for generated and author node-valued fields. Inline adoption
+    shares entry identity, parent detach removes only its view, and cached
+    GeoLOD tiles re-import preserved child entries before attachment. Authored
+    GeoLOD roots retain their own selected entry view while inactive and return
+    it to the Scene on redisplay. Tracked
+    copied FieldInfo thunks reject expired and wrong-node identities without
+    waiting for a store sweep. Extension factories are declaration-local and
+    ext::install no longer mutates process configuration. Regression evidence:
+    scene_author_field_ownership_test.cpp and migrated memory, cascade, codec,
+    parser and Script tests. This is a concrete source/ABI migration with no
+    singleton or TLS fallback, not full Script/PROTO/SAI conformance. The separate
+    Geo projection selector and local-file parse operation context remain.

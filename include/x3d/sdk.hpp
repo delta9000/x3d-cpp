@@ -192,14 +192,15 @@ using x3d::runtime::extract::makeMonospaceStub; ///< default monospaced FontMetr
 // Geospatial conversion is provided by runtime::geo::projection() and
 // runtime::geo::setProjection() (ADR-0053).
 
-// ── Script / SAI seam (T-SCRIPT) ─────────────────────────────────────── [STABLE]
-// Frozen pre-v2: the ScriptEngine abstract interface carried two independent
-// backends — Duktape (EcmaScriptBackend) and QuickJS (QuickJsBackend, behind
-// X3D_CPP_BUILD_QUICKJS) — with NO signature change, proven by the x3d_quickjs_swap
-// behavioral parity test (genericity proof; see ADR-0022 + docs/wiki/seam-status.md).
-// The whole surface (ScriptEngine / ScriptSystem / SaiContext) is part of the same
-// frozen seam. Implement ScriptEngine, construct a ScriptSystem, then
-// ctx.addScriptSystem(ss). SaiContext is the backend↔runtime channel.
+// ── Script / SAI seam (T-SCRIPT) ────────────────────────────────────────────
+// ScriptEngine's abstract backend interface remains [STABLE]: Duktape and
+// QuickJS implement it without a signature change (ADR-0022). Concrete runtime
+// ownership and author-field APIs are [EXPERIMENTAL], not a frozen ABI.
+// Bind a parsed scene with X3DExecutionContext(doc.scene.authorFields), or let
+// an untouched default context bind once at its first scene build. Register
+// author fields through that owner and use effectiveFields(node, store).
+// ScriptSystem/SaiContext use the bound context; no process-global store exists.
+// See ADR-0057 for cloning, serialization and source-compatibility migration.
 using x3d::runtime::ScriptEngine;             ///< abstract: load/initialize/shutdown/prepareEvents/invoke/...
 using x3d::runtime::ScriptSystem;             ///< System subclass; ctor(engine, browserName, version)
 using x3d::runtime::SaiContext;               ///< getField/setField/addRoute/deleteRoute/getName/getVersion

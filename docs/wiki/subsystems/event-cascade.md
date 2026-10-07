@@ -2,7 +2,7 @@
 title: Event Cascade
 summary: Per-tick event propagation engine — route-loop deduplication and timestamp quantum enforcement.
 tags: [subsystem, event-cascade, routes, tick, dedup]
-updated: 2026-06-20
+updated: 2026-10-07
 related:
   - ../architecture.md
   - ../subsystems/routes.md
@@ -12,23 +12,36 @@ related:
 # Event Cascade
 
 The event cascade engine propagates field events along the ROUTE graph within a
-single X3D timestamp. It owns the breadth-first delivery loop, two independent
-loop-breaking guards mandated by ISO/IEC 19775-1, field-alias normalization, and
-the quiescence signal used by the tick re-evaluation loop.
+single logical timestamp. It owns breadth-first delivery, per-ROUTE guards,
+scoped generated-output admission, field-alias normalization, and the quiescence
+signal used by the tick re-evaluation loop.
 
-## Purpose
+## Purpose and supported scope
 
-X3D defines a _single-timestamp_ event model: every ROUTE that is reachable
-from an initial set of field postings fires within the same logical instant, and
-no field is produced more than once per timestamp. The event cascade subsystem
-realises this contract. It sits between the behavior Systems (time sensors,
-interpolators, script, pointing-device sensors) that _post_ events and the node
-reflection layer that _receives_ them, ensuring delivery is breadth-first,
-deduplicated, and bounded regardless of cycles or fan-in in the ROUTE graph.
+[ISO/IEC 19775-1:2023 §4.4.8.3](https://www.web3d.org/documents/specifications/19775-1/V4.0/Part01/concepts.html#ExecutionModel)
+limits each **output field** and each ROUTE to one event per timestamp. It does
+not limit an inputOnly field to one incoming occurrence. Distinct fan-in ROUTEs
+and repeated external inputOnly events, including equal values, must remain
+separate handler deliveries.
 
-The subsystem has no knowledge of scene structure, node types, or what the
-fields mean; it operates entirely on `FieldAddress` endpoints and `std::any`
-values routed through the `EventGraph`.
+`postOutputEvent` is the explicit generated-output path. It validates a writable
+outputOnly endpoint against the context's effective field table, then queues
+without changing storage. When drained, the **first admitted output wins**;
+subsequent values for that field in the same cascade are dropped **before** the
+reflection setter, observer, or ROUTEs see them. The selected value therefore
+agrees with readback and every routed copy. First-admitted is this implementation's
+policy, not a uniquely mandated ISO selection among simultaneous events.
+
+The single-value and multi-value template families in `InterpolatorSystem.hpp`
+use this path. Their attach-time first-key readback remains initialization without
+a posted event. Producers must not call a node emitter or write its backing
+field before calling `postOutputEvent`.
+
+`postEvent` still supports external ingress and legacy System producers. It
+preserves every direct seed occurrence and retains the old cap for routed
+non-inputOnly destinations. Legacy output producers are not covered by the new
+output guarantee; see the limitations below. The subsystem therefore does not
+yet implement the complete event model for every runtime producer.
 
 ## Key files
 
@@ -68,14 +81,19 @@ std::string resolveFieldAlias(const X3DNode *node, const std::string &name);
 class EventCascade {
   explicit EventCascade(const EventGraph &graph);
 
-  // Seed an event (direct post, always delivers, last-wins within a timestamp).
+  // External input or legacy seed: preserve all accepted occurrences.
   void postEvent(X3DNode *node, const std::string &field, std::any value);
+
+  // Generated outputOnly: enqueue without mutation; admit once before delivery.
+  // Throws invalid_argument for unknown/unwritable/non-outputOnly endpoints.
+  void postOutputEvent(X3DNode *node, const std::string &field, std::any value);
 
   // Open a new timestamp: clears the per-route fired_ and per-field produced_ sets.
   void beginTimestamp();
 
   // Drain pending events to quiescence.
-  // freshTimestamp=true (default): calls beginTimestamp() first (standalone one-shot).
+  // freshTimestamp=true (default): begins a timestamp for an outermost drain.
+  // Nested drains always retain the active timestamp, including on exceptions.
   // freshTimestamp=false: continues the current timestamp (tick re-eval loop).
   // Returns count of first-time field productions this call; 0 signals quiescence.
   std::size_t process(bool freshTimestamp = true);
@@ -93,7 +111,7 @@ class EventCascade {
   Any node with a reflection table (`X3DNode::fields()`) is automatically
   deliverable; no cascade-specific registration is needed. When the static table
   has no match, `deliver` falls back to the node's **author fields** in
-  `dynamicFieldStore()` (`authorFields()`) and writes through their synthesized
+  its explicitly supplied `DynamicFieldStore` (`authorFields()`) and writes through their synthesized
   `set` thunk. This is what lets a ROUTE whose sink is a `<field>` on a Script /
   ComposedShader actually deliver: `buildRoutes` resolves such sinks via
   `effectiveFields()` (static ∪ author), so without this fallback the edge
@@ -116,8 +134,10 @@ class EventCascade {
   calls `cascade_.beginTimestamp()` once, then loops
   `cascade_.process(false)` (continuing the same timestamp) after each System
   pass until the return value reaches zero. This implements ISO 19775-1 §4.4.8.3
-  step 4: re-evaluate sensors + drain repeatedly within one tick. The per-field
-  cap (`produced_`) persists across these drain calls, bounding the loop.
+  step 4: re-evaluate sensors + drain repeatedly within one tick. The reached-field
+  bookkeeping (`produced_`) and generated-output cap persist across these drain
+  calls. First-time reachability, rather than the raw number of input occurrences,
+  determines whether another System pass is required.
 
 - **Dynamic route mutation during a cascade** — `EventCascade::process` snapshots
   the sink list (copy, not reference) before invoking `deliver`, so a handler
@@ -128,7 +148,10 @@ class EventCascade {
 - **Script eventsProcessed hook** — `X3DExecutionContext::addPostCascadeHook`
   installs a callback run _after_ the cascade drains each tick. `ScriptSystem`
   uses this for the §29.2.4 `eventsProcessed()` phase; that hook may post and
-  drain further events (calling `process()` internally on a fresh timestamp).
+  drain further events. A `process()` call inside `tick()` continues that tick's
+  guards, including this post-cascade phase. Nested `process()` calls outside a
+  tick also preserve the enclosing cascade; an exception-safe depth guard allows
+  only a subsequent outermost fresh call to start another cascade.
 
 ## How it is tested
 
@@ -136,7 +159,7 @@ class EventCascade {
   per-route loop-breaking, inputOnly delivery (`runtime/events/tests/cascade_test.cpp`).
 
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_conformance_test`) — RTC-5 (fan-in delivers
-  once per timestamp, cyclic re-drive broken by per-field cap) and RTC-6
+  once for legacy value-bearing destinations, cyclic re-drive bounded) and RTC-6
   (tick re-evaluation loop terminates and resolves within one tick)
   (`runtime/events/tests/cascade_conformance_test.cpp`).
 
@@ -152,6 +175,49 @@ class EventCascade {
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_dynamic_route_test`) — route added/removed
   during an active cascade takes effect on the next cascade (mid-cascade mutation
   safety) (`runtime/events/tests/cascade_dynamic_route_test.cpp`).
+
+## Generated-output regression coverage
+
+`runtime/events/tests/output_admission_test.cpp`, registered in the ordinary
+`x3d_events_tests` target, counts actual input and output deliveries for equal
+and distinct fractions, repeated external input, routed inputOnly fan-in, a
+returning loop, and System re-evaluation within a single tick. It checks both
+templated interpolator families, per-output/per-ROUTE cardinality, coherent
+readback, no mutation before admission, invalid endpoints, post-cascade and
+nested drains, exception-safe drain-depth restoration, and owner-specific
+author-field input fan-in. A subsequent timestamp can emit a new value.
+
+The provider-neutral paired gate checks the portable rule: all input occurrences
+are handled, with bounded generated output and matching readback/ROUTE values.
+It does not require every conforming implementation to choose the first value.
+
+## Remaining producer and timestamp limitations
+
+- `postOutputEvent` currently accepts **outputOnly** fields. inputOutput fields
+  need an explicit input-side/output-side contract before migration; treating
+  every incoming write as a generated output would discard valid input.
+- `X3DTimeDependentSystem::emit`, used by `TimeSensorSystem`, still posts legacy
+  seeds. Activation followed by completion in one update may queue both
+  `isActive=true` and `isActive=false`; changing this mechanically to first-wins
+  would leave its final stored state active. Its state transition/output selection
+  needs separate reconciliation, not queue-only deduplication.
+- Spline, Squad, EaseInEaseOut, GeoPosition, and Nurbs interpolator Systems still
+  use legacy `postEvent` outputs. These families require their own producer
+  migration and tests. Followers, event utilities, binding, key/pointing sensors,
+  and other producers similarly need review, especially emitter-before-post sites.
+- Author-declared outputOnly fields have no reflection setter thunk and are
+  rejected by `postOutputEvent`; their storage path needs a separate migration.
+  Internal Script `SaiContext::setField` and `ScriptSystem::runEventsProcessed`
+  retain legacy output behavior. Their drains now preserve the enclosing tick's
+  guards, but their output storage/selection still needs producer-specific work.
+- Each standalone `process()` and each `tick(now)` opens a fresh logical
+  timestamp; repeated numeric `now` values are not currently reconciled into one
+  ISO timestamp. No epsilon times or per-input reset are used by the paired
+  provider gate, which batches every accepted input into one native tick.
+- Native setter/emitter calls and `writeField` remain direct writes; callers
+  bypassing the generated-output path are outside its guarantee. This scoped fix
+  does not change their public behavior or claim complete Script/TimeSensor
+  timestamp conformance.
 
 ## Related specs and ADRs
 

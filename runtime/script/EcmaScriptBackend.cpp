@@ -1107,7 +1107,7 @@ std::string jsonOfAny(duk_context *ctx, const std::any &v, X3DFieldType type) {
 void EcmaScriptBackend::seedAuthorGlobals(Entry &e) {
   if (!e.node || !e.ctx) return;
   duk_context *ctx = e.ctx;
-  for (const FieldInfo &info : dynamicFieldStore().authorFields(*e.node)) {
+  for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
     // Only fields with a persistent value (initializeOnly/inputOutput) seed a
     // global; inputOnly/outputOnly carry no initial value. isReadable() == has
     // a get thunk, which the store synthesizes exactly for those two accesses.
@@ -1131,14 +1131,14 @@ void EcmaScriptBackend::seedAuthorGlobals(Entry &e) {
 void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
   if (!e.node || !e.ctx || !e.sai) return;
   duk_context *ctx = e.ctx;
-  for (const FieldInfo &info : dynamicFieldStore().authorFields(*e.node)) {
+  for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
     // Read back only fields the script may emit: outputOnly + inputOutput. Both
     // synthesize a get thunk in the store; inputOnly does not (isReadable false).
     if (!info.isReadable()) continue;
     // Read the global and convert it under protection: the value may be an
     // accessor, carry a toJSON, or be a Proxy, and any of those can throw. A
     // throw drops this field's event for this callback (logged), nothing else.
-    std::any prev = dynamicFieldStore().getValue(*e.node, info.x3dName);
+    std::any prev = e.sai->context().authorFields().getValue(*e.node, info.x3dName);
     std::any value;
     protectedRun(ctx, "readback of '" + info.x3dName + "'",
                  [&](duk_context *c) {
@@ -1160,7 +1160,7 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
     // timestamp. (The cascade carries the value, not the timestamp itself; the
     // triggering-timestamp contract is satisfied by emitting within this
     // cascade — see ScriptSystem deliverInputEvent.)
-    dynamicFieldStore().setValue(*e.node, info.x3dName, value);
+    e.sai->context().authorFields().setValue(*e.node, info.x3dName, value);
     (void)timestamp;
     e.sai->setField(e.node, info.x3dName, value);
   }

@@ -45,6 +45,7 @@ struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
+class DynamicFieldStore;
 class X3DDocument;
 } // namespace x3d::runtime
 
@@ -126,6 +127,7 @@ private:
   std::unordered_set<const X3DNode *> seen_;
   std::unordered_map<std::string, std::shared_ptr<X3DNode>> defaults_;
   const runtime::Scene *scene_ = nullptr;
+  const runtime::DynamicFieldStore *authorFields_ = nullptr;
   const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;
   const runtime::ProtoBody *bodyOrder_ = nullptr;
 

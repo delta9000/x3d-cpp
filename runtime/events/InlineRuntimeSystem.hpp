@@ -131,6 +131,9 @@ private:
     bool everAttached = false;
   };
   struct GeoLodState {
+    // Authored rootNode content has no child Scene to retain its field entries.
+    // Keep only that subgraph's entries while a URL tile is displayed.
+    DynamicFieldStore authoredRootFields;
     Tile root;
     Tile children[4];
     int displayed = -1;
@@ -193,6 +196,8 @@ private:
       };
       if (state.displayed == 0) collectPeers(state.root);
       else for (const auto &tile : state.children) collectPeers(tile);
+      if (state.displayed == 0 && !lod->getRootNode().empty())
+        state.authoredRootFields.importFrom(*scene_.authorFields, &oldNodes);
       ctx.detachNodes(oldNodes);
       scene_.resolvedInlineRoutes.erase(std::remove_if(scene_.resolvedInlineRoutes.begin(),
           scene_.resolvedInlineRoutes.end(), [&](const ResolvedProtoRoute &r) {
@@ -201,6 +206,8 @@ private:
     }
     MFNode displayed;
     if (level == 0) {
+      scene_.authorFields->importFrom(state.authoredRootFields);
+      state.authoredRootFields.clear(); // the active Scene owns the entries again
       displayed = lod->getRootNode();
       if (displayed.empty() && state.root.group) displayed.push_back(state.root.group);
     } else {
@@ -216,6 +223,7 @@ private:
     ctx.markSceneTopologyChanged();
     auto addRoutes = [&](Tile &tile) {
       if (!tile.scene) return;
+      scene_.authorFields->importFrom(*tile.scene->authorFields);
       const auto first = scene_.resolvedInlineRoutes.size();
       inline_detail::hoistChildRoutes(*tile.scene, scene_.resolvedInlineRoutes);
       for (std::size_t i = first; i < scene_.resolvedInlineRoutes.size(); ++i) {

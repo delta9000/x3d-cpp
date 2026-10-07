@@ -13,6 +13,11 @@ related:
 
 ## Status
 
+The side-table design remains in use. Its process-global ownership decision is
+superseded by [ADR-0057](0057-scene-owned-author-fields.md): Scene/declaration
+owners and explicit store parameters replace the global accessor. The original
+decision below is retained as history.
+
 Accepted — implemented in commit `20d6382` (Phase 0, 2026-06-17), completed across Phase 1 commits `6418b0f`, `f4af46d`, `bedef06`, `f4e11ad`, and Phase 2 integration `f18da0d`.
 
 ## Context

@@ -1,183 +1,40 @@
-# Independent offline SAI provider pilot
+# Unified native/reference SAI provider proof
 
-This **experimental C++20 source-level review proposal** maps x3d-sai's bounded
-provider interface onto actual x3d-cpp Scene/X3DNode state. It is not the legacy
-Script `SaiContext`, a replacement for x3d-sai's current concrete handles, an ABI
-promise, or complete ISO SAI conformance.
+The optional companion in `adapters/sai_provider` implements the shared final
+`provider::service` through one owned native backend. The same scene/context/
+node/field handles work during generic setup and after runtime activation.
+This is bounded experimental evidence, not complete ISO SAI conformance.
 
-## Run the paired evidence
-
-Requirements: provider-enabled x3d-sai checkout, CMake 3.24+, Ninja, and a C++20
-compiler. The check fetches no code and changes neither production package's
-normal dependencies.
+Requirements: C++20, CMake 3.24+, Ninja and the independent x3d-sai source tree.
+No repository is fetched and ordinary x3d-cpp builds gain no SAI dependency.
 
 ```sh
-bash scripts/verify_sai_provider.sh /path/to/x3d-sai
-X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_provider.sh /path/to/x3d-sai
+bash scripts/verify_sai_provider.sh /path/to/x3d-sai /empty/work/directory
+X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_provider.sh /path/to/x3d-sai /another/empty/directory
 ```
 
-An optional second argument selects an empty evidence/build directory. Compiler
-concurrency is `CMAKE_BUILD_PARALLEL_LEVEL` (default 2). The script retains build
-outputs and the native-only link command. Record both repository revisions and
-compiler/linkage details in review evidence.
+Each shared/static run builds source consumers, installs both projects and the
+companion, relocates the complete prefix, then configures copied standalone
+consumers with package registries disabled. Four executables run in each mode:
 
-Each run configures independent source consumers and copied consumers of a
-relocated installation, with package registries disabled. Both run:
+1. `sai_provider_reference`: common authoring + live oracle on reference backend
+2. `sai_provider_native`: same oracle plus native scalar/metadata/graph evidence
+3. `sai_provider_parity`: exact comparison of complete backend-blind reports
+4. `sai_provider_native_runtime`: common live oracle plus six native session,
+   interpolation, ROUTE, world-transform, RenderDelta and failure-effect proofs
 
-1. The exact shared `testing/provider_fixture.hpp` against the reference kernel
-2. That same oracle against the native provider, plus native-only assertions
-3. Direct equality of both providers' complete fixture reports
+All checks remain active under Release/NDEBUG. Native-only link commands are
+checked for absence of reference-kernel and reference-metadata libraries; the
+parity executable deliberately links both backends. The source-level native
+header guards additionally reject accidental reference implementation includes.
 
-The native-only binary includes neither kernel nor metadata headers and its
-link command is checked to contain no SAI reference kernel/metadata library.
-The parity binary deliberately links both implementations; it is not the
-independence assertion. All checks remain active under Release/NDEBUG.
+The generic shared fixture creates Transform, PositionInterpolator, Shape and
+Box nodes, with named roots and nested renderable geometry. There is no native
+production fixture bootstrap API or separate hosted public service. Native-only
+extraction inspection is an explicit extension outside the portable contract.
 
-## Supported mapping and authority
-
-The common contract is documented in x3d-sai's `docs/provider-pilot.md`.
-`x3d::runtime::SaiOfflineProvider` creates native Transform objects through
-`createX3DNode`. Its identity registry retains created/detached nodes, but stores
-no mirrored fields, roots or name bindings. `Scene::rootNodes` and `Scene::defs`
-are authoritative; native `FieldInfo` reflection supplies the ordered semantic
-field definitions. DEF/USE/IS and host class/id/style syntax are filtered out.
-
-Owning scalar reads inspect current native SFBool, SFVec3f and SFRotation
-fields, checking reflection's exact declared kind against its actual payload.
-All seven Transform inputOutput scalar fields support typed and dynamic reads
-and writes: `bboxDisplay`, `visible`, `center`, `scale`, `translation`, `rotation`
-and `scaleOrientation`. InitializeOnly `bboxCenter` and `bboxSize` support reads;
-authoring them remains unavailable until the provider has an explicit
-realization contract. Metadata support flags state these exact limits.
-
-InputOutput writes call the public generated Transform setters and record native
-authored-field presence, rather than using the lenient unchecked reflection-write
-path. Boolean, vector and rotation payloads are never implicitly converted.
-Conversions preserve valid stored components, including negative and zero scale.
-The shared front end requires finite SFRotation axis components in `[-1, 1]`
-with `abs(x*x + y*y + z*z - 1) <= 8 * float epsilon` computed in double precision;
-it does not normalize accepted axes or impose an extra angle restriction.
-Invalid axes fail with `invalid_value` before a native write and on native reads,
-leaving storage and authored marks untouched. A valid write can repair a field
-made invalid through the native extension. DEF
-creation updates both the native Scene table and node's DEF. Root insertion uses
-`Scene::addRootNode`; duplicate occurrences share the same shared_ptr.
-
-`Transform.children` supports owner-bearing `read_nodes` / `set_nodes`, both by
-field name and by the existing generated `Transform::children` key. Reads inspect
-the real `getChildren()` pointer sequence and writes publish one complete native
-`setChildren()` vector. Order and explicit NULL slots are preserved. A non-NULL
-node can occur only once in a single children list (`invalid_value` on a repeat),
-but the same identity can be shared by different parents. Repeated scene-root
-occurrences remain legal. Children never enter `Scene::authoredScalarFields`.
-
-Each node-valued read reconstructs and validates the full registered native
-children graph, including unnamed detached nodes, before returning owned
-handles. Foreign native pointers fail with `invalid_context`, same-list duplicate
-non-NULL entries with `invalid_value`, and self/indirect cycles with
-`containment_cycle`. Iterative traversal avoids recursion-depth limits. Native
-out-of-band structural edits are visible immediately and fail closed if invalid;
-an unrelated invalid component cannot be hidden by querying a valid node.
-
-Each write resolves the owner-checked payload to native pointers and validates a
-candidate graph with the target list replaced, before making any native change.
-This allows the offending target list to be repaired when the entire candidate
-graph is valid. An invalid list elsewhere still rejects the operation. Ordinary
-returned errors leave native fields, roots, names and authored-scalar marks
-unchanged; allocation/system exceptions are outside this guarantee. Validation
-uses temporary local state, not a persistent mirrored graph or reference-kernel
-adapter.
-
-Node and canonical-field application user data is supported through the common
-`user_data` / `set_user_data` services and kernel-free `user_data_value` ownership
-type. `field(node, name)` and generated-key overloads return owner-bearing field
-handles; exact names win before inputOutput `set_` / `_changed` aliases. Dynamic
-scalar and node-list services use the same canonicalization. A copied field
-handle remains usable after the original node wrapper is disposed. Disposing a
-field wrapper preserves both its copies and metadata reacquired through the node.
-
-User data is immediate, provider-local application metadata. The native adapter
-stores only metadata sidecars keyed by node identity and canonical field name;
-it does not mirror the native scene or field values and never marks authored
-scalar fields. Every discovered field supports metadata, including SFNode and
-inputOnly/initializeOnly fields whose value writes are unavailable. Capability
-`user_data` is true; existing value-support flags and offline limitations retain
-their previous meanings. Payloads expose exact-type `shared_ptr<const T>` reads,
-can hold move-only objects, and outlive replacement/close when a caller retains
-a read. Empty payloads clear associations. Replacement and clear release the old
-payload after internal state access; payload destructors may re-enter or close
-the provider. Explicit close and implicit destruction revoke handle authority
-before releasing any payloads, including destruction off the creating thread.
-
-The native-only proof confirms:
-
-- Node/field metadata shares canonical identity across copied/reacquired handles,
-  remains independent of value support, and does not mutate native values,
-  roots, DEFs, containment or authored-field marks
-- Metadata cleanup is reentrant and lifetime-safe on replacement, clear, close
-  and implicit destruction; owning reads survive while handles expire
-- Native DEF and repeated root occurrences resolve to the same actual Transform
-- Every supported scalar write changes the matching native Transform getter and
-  authored-presence mark, without marking unrelated scalar or node fields
-- Exact kind mismatches and unavailable initializeOnly writes leave native values
-  and authored-presence marks unchanged
-- Invalid rotation axes are rejected before authoring; malformed native rotation
-  reads fail unchanged, and a valid write repairs the target field
-- Scalar reads own their values across native mutation and provider close
-- Serial native setter writes are immediately visible through adapter reads,
-  without a synchronization/copy step
-- Thread guards apply to native extension access; close expires SAI wrappers
-  even while callers retain the native Scene and its nodes
-- Owned MFNode writes install the exact real native pointer sequence, and native
-  list edits are visible in dynamic/generated reads without synchronization
-- Foreign pointers, duplicates and detached/self/indirect cycles fail closed,
-  candidate repair succeeds only for a valid full graph, and errors preserve state
-- A 4,096-node unnamed detached chain and cycle exercise iterative validation;
-  tests explicitly remove any installed shared_ptr cycles, even on failure
-
-`native_scene()` is a provider-specific inspection/authoring extension, not
-part of the portable oracle. Native accesses must be serialized on the creator
-thread. It exposes this provider's own offline scene, not an existing live
-execution context or extractor. Direct native mutation of existing Transform
-fields is supported. Adding/replacing nodes outside the provider's identity
-registry is outside the pilot; relevant queries fail with `invalid_context` for
-such foreign entries. Children operations validate all registered containment
-lists, but do not validate unrelated native structures such as ROUTEs or imports.
-Callers using other native structural operations must preserve native Scene
-invariants themselves. This is not a live graph-editing integration,
-and no derived runtime/extractor state is claimed to be synchronized.
-
-The narrow common interface leaves initialize-only authoring, node-valued fields
-beyond `Transform.children` (including SFNode and inputOnly add/removeChildren),
-field kinds beyond SFBool/SFVec3f/SFRotation and owned MFNode lists,
-all profiles/components, generated typed handles,
-full lifecycle, snapshots/transactions, events/ROUTEs, update buffering, loading,
-world replacement, import authority, concurrent access and rendering unproven.
-Reference-kernel-only tests do not fill these independent-provider gaps.
-
-## Optional companion package
-
-`adapters/sai` is configured explicitly, either with source targets already in
-scope or with installed dependencies. Ordinary x3d-cpp builds do not enter that
-directory and acquire no new dependency.
-
-```sh
-cmake -S adapters/sai -B build/sai-adapter \
-  -DCMAKE_PREFIX_PATH="/prefix/with/x3d_cpp;/prefix/with/x3d_sai"
-cmake --build build/sai-adapter
-cmake --install build/sai-adapter --prefix /adapter/prefix
-```
-
-Installed consumers use:
-
-```cmake
-find_package(x3d_cpp_sai CONFIG REQUIRED)
-target_link_libraries(application PRIVATE x3d_cpp::sai_provider)
-```
-
-The companion exports only the adapter target and public
-`<x3d/sai_provider.hpp>` header, under x3d-cpp's isolated include prefix. It links
-`x3d_cpp::authoring` and header-only `x3d::sai_provider`, without the reference
-kernel or metadata. No generated support headers are copied between projects.
-The dependency packages supply their own licenses; no new third-party source is
-vendored by this adapter.
+See `adapters/sai_provider/README.md` for capability restrictions and
+`adapters/sai_provider/tests/coverage-ledger.md` for the retained baseline
+assertions and intentional initializeOnly authoring capability expansion.
+`native_authoring_fixture.hpp` is a test-only convenience wrapper over the final
+service, never installed and never an additional application API.

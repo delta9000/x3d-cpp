@@ -74,6 +74,7 @@ std::string CanonicalXmlWriter::writeDocument(const runtime::X3DDocument &doc) {
 void CanonicalXmlWriter::writeSceneInto(xml::Element *scene,
                                         const runtime::Scene &s) {
   scene_ = &s;
+  authorFields_ = s.authorFields.get();
   for (const auto &e : s.externProtoDeclarations)
     if (e)
       scene->children.push_back(writeExternProtoDeclareElement(*e));
@@ -273,7 +274,8 @@ CanonicalXmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
 void CanonicalXmlWriter::writeScriptAuthorFields(xml::Element &el,
                                                  const Script &script) {
   const std::size_t staticCount = script.fields().size();
-  FieldTable eff = runtime::effectiveFields(script);
+  FieldTable eff = authorFields_ ? runtime::effectiveFields(script, *authorFields_)
+                                 : script.fields();
   for (std::size_t i = staticCount; i < eff.size(); ++i) {
     const FieldInfo &f = eff[i];
     xml::Element *fe = el.addChild("field");
@@ -378,6 +380,7 @@ std::unique_ptr<xml::Element> CanonicalXmlWriter::writeProtoDeclareElement(
   auto iface = std::make_unique<xml::Element>();
   iface->name = "ProtoInterface";
   CanonicalXmlWriter bodyWriter;
+  bodyWriter.authorFields_ = d.authorFields.get();
   bodyWriter.bodyIsc_ = &d.body.isConnections;
   bodyWriter.bodyOrder_ = &d.body;
   for (const auto &f : d.interface)

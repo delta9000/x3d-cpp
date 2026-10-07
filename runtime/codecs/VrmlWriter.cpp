@@ -51,6 +51,7 @@ std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
   seen_.clear();
   defaults_.clear();
   scene_ = &doc.scene;
+  authorFields_ = doc.scene.authorFields.get();
   std::ostringstream os;
   os << "#X3D V" << headerVersion(doc.version) << " utf8\n";
   os << "PROFILE " << doc.profileToken() << "\n";
@@ -268,6 +269,7 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
   os << "PROTO " << d.name << " [\n";
   // One local DEF scope spans interface defaults and body nodes.
   VrmlWriter bodyWriter;
+  bodyWriter.authorFields_ = d.authorFields.get();
   bodyWriter.bodyIsc_ = &d.body.isConnections;
   bodyWriter.bodyOrder_ = &d.body;
   bodyWriter.bodyNested_ = &d.body.nestedInstances;
@@ -607,9 +609,9 @@ void VrmlWriter::writeNode(std::ostringstream &os,
 
 void VrmlWriter::writeAuthorFields(std::ostringstream &os, const X3DNode &node,
                                    int depth) {
-  if (!runtime::dynamicFieldStore().hasAuthorFields(node))
+  if (!authorFields_ || !authorFields_->hasAuthorFields(node))
     return;
-  for (const FieldInfo &f : runtime::dynamicFieldStore().authorFields(node)) {
+  for (const FieldInfo &f : authorFields_->authorFields(node)) {
     pad(os, depth);
     os << accessTypeName(f.access) << " " << fieldTypeName(f.type) << " "
        << f.x3dName;

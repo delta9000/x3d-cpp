@@ -5,10 +5,10 @@ include(CMakePackageConfigHelpers)
 
 # Explicit opt-in companion package. Ordinary x3d-cpp builds do not include it,
 # find x3d-sai, fetch another repository, or acquire a new dependency.
-if(NOT TARGET x3d_cpp::authoring)
+if(NOT TARGET x3d_cpp::x3d_cpp)
     find_package(x3d_cpp CONFIG REQUIRED)
 endif()
-if(NOT TARGET x3d::sai_provider)
+if(NOT TARGET x3d::sai)
     find_package(x3d_sai CONFIG REQUIRED)
 endif()
 
@@ -20,8 +20,8 @@ target_compile_features(x3d_cpp_sai_provider PUBLIC cxx_std_20)
 target_include_directories(x3d_cpp_sai_provider PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>")
-target_link_libraries(x3d_cpp_sai_provider PUBLIC
-    x3d_cpp::authoring x3d::sai_provider)
+target_link_libraries(x3d_cpp_sai_provider PUBLIC x3d::sai
+    PRIVATE x3d_cpp::x3d_cpp)
 
 set(_package_dir "${CMAKE_INSTALL_LIBDIR}/cmake/x3d_cpp_sai")
 install(TARGETS x3d_cpp_sai_provider EXPORT x3d_cpp_saiTargets

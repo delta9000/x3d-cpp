@@ -154,6 +154,7 @@ nav:
       - "ADR-0054: GeoLOD Tiles and GeoViewpoint Navigation Scale": decisions/0054-geolod-tiles-navigation-scale.md
       - "ADR-0055: H-Anim Skinning Through a Descriptor With a Reference CPU Skinner": decisions/0055-hanim-skinning-descriptor.md
       - "ADR-0056: Prototype Instance Templates in Node Defaults": decisions/0056-prototype-instance-default-templates.md
+      - "ADR-0057: Scene-Owned Author Fields and Scoped Clone Services": decisions/0057-scene-owned-author-fields.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

@@ -250,7 +250,6 @@ void testCdataSplit() {
   <Script DEF="S"><![CDATA[ecmascript: function initialize() {}]]></Script>
 </Scene></X3D>
 )XML";
-  runtime::dynamicFieldStore().clear();
   codec::XmlReader xml;
   auto doc = xml.readDocument(kXml);
   auto script = findNode<Script>(doc.scene);

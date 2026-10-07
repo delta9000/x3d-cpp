@@ -4,8 +4,8 @@
 int main() {
   try {
     auto report = x3d::sai::experimental::testing::run_provider_fixture(
-        x3d::sai::experimental::make_reference_provider);
-    std::cout << "reference offline provider: " << report.checks
+        [] { return x3d::sai::experimental::make_reference_provider(); });
+    std::cout << "reference unified provider: " << report.checks
               << " checks passed\n";
   } catch (const std::exception &error) {
     std::cerr << error.what() << '\n';

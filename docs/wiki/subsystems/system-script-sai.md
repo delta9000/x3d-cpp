@@ -51,12 +51,28 @@ not the tests flag): "enrolled N Script node(s)" when linked, or the inert-scrip
     `x3d_quickjs_swap` test (`runtime/script/tests/quickjs_swap_test.cpp`) drives the same
     fixtures through both backends and asserts **identical observable parity** (the field writes
     and ROUTE-target values into the cascade), CI-gated. Because the interface carried two
-    backends with no signature change, the Script/SAI seam (`ScriptEngine` / `ScriptSystem` /
-    `SaiContext`) is now **`[STABLE]`** in `include/x3d/sdk.hpp`. See the
+    backends with no signature change, the abstract `ScriptEngine` seam is **`[STABLE]`** in `include/x3d/sdk.hpp`.
+    Concrete context ownership and author-field APIs remain experimental and
+    changed with [ADR-0057](../decisions/0057-scene-owned-author-fields.md). See the
     [Seam-Status Matrix](../seam-status.md) and
     [ADR-0022](../decisions/0022-scriptengine-second-backend-swap-test.md). The `SCR-*`
     conformance claims are backend-independent — the swap-test evidences they hold identically
     under QuickJS.
+
+## Ownership migration
+
+Construct parsed-scene contexts with `X3DExecutionContext ctx(doc.scene.authorFields)`
+before attaching ScriptSystem. Standalone contexts have their own fresh store;
+register programmatic fields with `ctx.authorFields().addAuthorField(...)`.
+`SaiContext` and both engine backends use this owner for seeding, reads and
+readback; there is no ambient store. `ScriptEngine`'s abstract virtual interface
+is unchanged. The concrete runtime types require a rebuild and the global
+`dynamicFieldStore()` API has been removed. FieldInfo copies track their node
+lifetime and cannot activate fields at a recycled node address.
+
+This migration preserves programmatically registered node-valued fields during
+cloning. It does not fill existing SFNode/MFNode author-default reader gaps or
+claim full author-field IS, Script-language or SAI conformance.
 
 ## Key files
 
@@ -164,7 +180,7 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 - **`ScriptEngine` seam** — the only place Duktape API calls appear. All values crossing the seam are `std::any` boxed with the runtime's own field types and a `X3DFieldType` tag; no scripting-language objects cross this boundary.
 
-- **`DynamicFieldStore` / `effectiveFields()`** — author `<field>` declarations captured by readers into the dynamic-field store (see [ADR-0014](../decisions/0014-dynamic-field-foundation.md)). `SaiContext::findField()` calls `effectiveFields(node)` to resolve author fields alongside static fields. `EcmaScriptBackend::seedAuthorGlobals()` reads author initial values into JS globals before `initialize()`; `readbackAuthorGlobals()` reads them back after every handler and posts them as cascade events so ROUTEs fan out.
+- **`DynamicFieldStore` / `effectiveFields()`** — author `<field>` declarations captured by readers into `Scene::authorFields`, retained on declarations for PROTO templates (see [ADR-0014](../decisions/0014-dynamic-field-foundation.md)). `SaiContext::findField()` calls `effectiveFields(node, ctx.authorFields())` to resolve author fields alongside static fields. `EcmaScriptBackend::seedAuthorGlobals()` reads author initial values into JS globals before `initialize()`; `readbackAuthorGlobals()` reads them back after every handler and posts them as cascade events so ROUTEs fan out.
 
 - **`Script.sourceCode`** — readers write inline `<![CDATA[...]]>` blocks / JSON source members / VRML body text into `Script.getSourceCode()`. `ScriptSystem::scriptSource()` prefers this over the `url` inline-scheme decode, enabling file-authored scripts (the SCR-SAI-DYN S1 closure).
 

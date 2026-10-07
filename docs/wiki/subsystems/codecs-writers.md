@@ -52,7 +52,10 @@ public:
     std::string writeScene(const runtime::Scene &scene);
 
     // Single-node subtree (no Scene/X3D wrapper; DEF/USE tracking reset).
-    std::string writeNode(const std::shared_ptr<X3DNode> &node);
+    std::string writeNode(const std::shared_ptr<X3DNode> &node,
+                          const runtime::DynamicFieldStore *authorFields = nullptr);
+    // Supply the owner for author fields; omitted owner means generated fields
+    // plus Script source only. Full document/Scene writers select it automatically.
 };
 
 class VrmlWriter {
@@ -134,8 +137,8 @@ All four writers emit the document's `profile` from `X3DDocument::profileToken()
 - **`runtime::X3DDocument` / `runtime::Scene`** — the root input type; writers read `rootNodes`, `protoDeclarations`, `externProtoDeclarations`, `protoInstances`, `expandedSources`, `expandedInlines`, `routes`, `imports`, `exports`, `head`.
 - **`X3DNode::fields()` → `FieldTable`** — the reflection table that drives field iteration; writers call `FieldInfo::get`, `FieldInfo::isNode()`, `FieldInfo::isEnum()`, `FieldInfo::getEnumString`, `FieldInfo::isReadable()`.
 - **`X3DNodeFactory::create(typeName)`** — instantiates a fresh default node for default-elision comparison; called once per type per writer instance and cached in `defaults_`.
-- **`runtime::effectiveFields(script)`** — used by `XmlWriter` and `CanonicalXmlWriter` to obtain the merged static + dynamic field list for `Script` nodes, so author `<field>` declarations are included in the emit (SCR-SAI-DYN S1).
-- **`runtime::dynamicFieldStore()`** — accessed by `VrmlWriter` and `JsonWriter` to retrieve author field declarations from the `DynamicFieldStore` per-node side-table.
+- **`runtime::effectiveFields(script, store)`** — used by `XmlWriter` and `CanonicalXmlWriter` to obtain the merged static + dynamic field list for `Script` nodes, so author `<field>` declarations are included in the emit (SCR-SAI-DYN S1).
+- **Scene/declaration author owner** — `VrmlWriter` and `JsonWriter` retrieve declarations from the current `Scene::authorFields` or `ProtoDeclaration::authorFields` store. All four body writers switch to the declaration owner. Bare-node XML writing accepts an optional explicit store; without one it emits generated fields and Script source only. See [ADR-0057](../decisions/0057-scene-owned-author-fields.md).
 - **`Script::getSourceCode()`** — queried by `XmlWriter`, `JsonWriter`, and `CanonicalXmlWriter` to retrieve the inline source body for re-emit. `VrmlWriter` does not call `getSourceCode()` directly; it emits the `sourceCode` field value via the generic reflection `formatValue` path.
 - **`FieldValueIO::formatValue` / `parseValue`** — the single text↔value bridge; both readers and writers call this; it is the only place where `X3DFieldType` → wire-format logic lives.
 

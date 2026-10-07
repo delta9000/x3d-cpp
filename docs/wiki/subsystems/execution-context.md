@@ -78,8 +78,43 @@ construction; if a custom constructor installs handlers and then can throw, it
 must retire them before member-unwinding begins. It does not
 apply to unguarded callbacks supplied by an embedder, dangling native raw
 pointers, concurrent native access, or arbitrary structural mutation. It also
-does not migrate the separate process-global DynamicFieldStore or GeoFrame
-configuration into the activation.
+does not migrate the separate process-wide GeoFrame projection selector.
+Author fields now have the explicit scene ownership described below.
+
+### Author-field ownership
+
+Every fresh `Scene` owns a fresh `shared_ptr<DynamicFieldStore>` in
+`scene.authorFields`. Shallow Scene copies deliberately share both node identity
+and that store; they are not independent worlds. `ProtoDeclaration::authorFields`
+retains its template/default fields after an EXTERN resolver's temporary document
+dies. `RuntimeSession` binds its context to its owned document's store. Retaining only
+a node does not retain that Scene store; retain the explicit shared owner too
+when author fields must remain readable after world teardown.
+
+For low-level setup, prefer `X3DExecutionContext ctx(doc.scene.authorFields)`.
+An untouched default context binds once when `buildSceneGraph`, `buildFrom` or
+`buildRoutes` receives a Scene. Calling `ctx.authorFields()` first fixes its fresh
+standalone owner; later attempts to switch owners, or to bind while events are
+pending or after a tick, throw before changing scene state. Rebuild all concrete
+runtime consumers for this source/ABI change. Never replace a Scene's owner while
+it is active.
+
+Inline adoption shares author-field entries for its imported nodes, preserving
+one value identity without sharing the entire store. Detachment drops only the
+parent view: a retained child Scene or cached GeoLOD tile keeps its author data.
+Redisplaying a cached tile imports those entries again before system attachment.
+Authored GeoLOD rootNode fields use a per-LOD retained entry view while inactive,
+then return to the active Scene on redisplay.
+Conflicting live entries for one imported node are rejected. Copied FieldInfo
+thunks are inert after their tracked node expires, even before any store lookup
+sweeps the entry; they also reject calls on a different node identity.
+
+The removed zero-argument `dynamicFieldStore()` has no global or thread-local
+compatibility fallback. Use `*scene.authorFields`, `*declaration.authorFields`, or
+`ctx.authorFields()` at the appropriate ownership boundary, and pass that store
+to `effectiveFields(node, store)`. See [ADR-0057](../decisions/0057-scene-owned-author-fields.md)
+for the clone and serializer migration. This does not establish general SAI,
+Script, PROTO or Geo conformance.
 
 ### Process-wide diagnostics
 
@@ -285,7 +320,7 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 - **`addChildren` / `removeChildren`** — handled in the cascade (`EventCascade::editChildren`) for any node with an MFNode `children` field (§10.2.1): add appends nodes not already present, remove drops the listed ones, edits apply in delivery order, and a `children` event with the final value follows in the same cascade, so dirty tracking and `children_changed` ROUTEs see it.
 - **`classifyDirty` (private)** — the cascade's field-delivery observer; maps any delivered `FieldAddress` to dirty flags (`DirtyField`, `DirtyLocalTransform`, `DirtyChildren`, `DirtyBounds`) on the owning node. `writeField` mirrors this classification for direct System writes (M2C-3). `DirtyChildren` (a `children`/`addChildren`/`removeChildren` write, or a `Switch.whichChoice` swap) is what drives `TransformSystem`'s structural re-walk each tick (M2C-2).
 
-- **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute` after field, direction, and type checks. For expanded PROTOs it consults the declared interface before the primary node's fields, follows `IS` targets on either endpoint, and retains inherited `metadata` through the primary's current storage. Pre-resolved PROTO-body and Inline-internal routes bypass DEF-name lookup but receive the same physical endpoint checks through `effectiveFields()`, without another PROTO redirect lookup. `BridgeResult` counts added edges; `RouteError::scope` identifies the Scene, PROTO-body, or Inline route collection for its relative `index`. Dangling Scene DEFs are skipped silently. The attach helpers walk rendered roots and non-rendered PROTO peers via `detail::forEachNode`. `InlineRuntimeSystem` enrolls a newly loaded subtree and installs its dynamic routes through a separate path; it also refreshes transform, bounds, and pick indices before extraction. Independent PROTO interface event state without an `IS` target remains unsupported.
+- **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute` after field, direction, and type checks. For expanded PROTOs it consults the declared interface before the primary node's fields, follows `IS` targets on either endpoint, and retains inherited `metadata` through the primary's current storage. Pre-resolved PROTO-body and Inline-internal routes bypass DEF-name lookup but receive the same physical endpoint checks through `effectiveFields()`, without another PROTO redirect lookup. `BridgeResult` counts added edges; `RouteError::scope` identifies the Scene, PROTO-body, or Inline route collection for its relative `index`. Dangling Scene DEFs are skipped silently. The attach helpers walk rendered roots and non-rendered PROTO peers via `detail::forEachNode`. `InlineRuntimeSystem` enrolls a newly loaded subtree and installs its dynamic routes through a separate path; it also refreshes transform, bounds, and pick indices before extraction. Unconnected PROTO interface fields use Scene-owned entries; this does not establish a general native SAI prototype object model.
 
 - **Consumer input seams** — the context owns `PointerState`, `KeyState`, and `HeadPose` structs that the consumer writes between ticks via the `setPointer*`, `setKey*`, `push*Key*`, and `setHeadPose` methods. Systems read these via `ctx.pointerState()`, `ctx.keyState()`, and `ctx.headPose()` inside `update`.
 

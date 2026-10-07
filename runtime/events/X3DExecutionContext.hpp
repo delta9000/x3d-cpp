@@ -98,6 +98,31 @@ struct BridgeResult;
 class X3DExecutionContext {
 public:
   X3DExecutionContext() = default;
+  explicit X3DExecutionContext(std::shared_ptr<DynamicFieldStore> fields)
+      : authorFields_(std::move(fields)), authorOwnerFixed_(true),
+        cascade_(graph_, authorFields_) {
+    if (!authorFields_) throw std::invalid_argument("null author-field owner");
+  }
+
+  /// A standalone context owns fresh fields. Access fixes that owner; a parsed
+  /// Scene should be supplied at construction, or bound before first access.
+  DynamicFieldStore &authorFields() const {
+    authorOwnerFixed_ = true;
+    return *authorFields_;
+  }
+
+  /// First scene build may bind an untouched default context. Later builds must
+  /// use that same owner; silently replacing live author state is forbidden.
+  void bindSceneAuthorFields(const Scene &scene) {
+    if (!scene.authorFields) throw std::invalid_argument("null Scene author-field owner");
+    if (authorFields_ == scene.authorFields) { authorOwnerFixed_ = true; return; }
+    if (authorOwnerFixed_ || authorFields_->entryCount() != 0 ||
+        tickGeneration_ != 0 || !cascade_.pending_.empty())
+      throw std::logic_error("execution context already has another author-field owner");
+    authorFields_ = scene.authorFields;
+    cascade_.bindAuthorFields(authorFields_);
+    authorOwnerFixed_ = true;
+  }
   // The cascade, scene bindings and handlers refer to this exact address.
   X3DExecutionContext(const X3DExecutionContext &) = delete;
   X3DExecutionContext &operator=(const X3DExecutionContext &) = delete;
@@ -155,6 +180,7 @@ public:
   /// Build the M2a scene-graph layer for a parsed Scene: index the Transform
   /// hierarchy and route the cascade's field deliveries into the dirty tracker.
   void buildSceneGraph(Scene &scene) {
+    bindSceneAuthorFields(scene);
     normalizeRuntimeUnits(scene);
     detached_.clear();
     // Sanitize first: sever any containment cycle (a node that is its own
@@ -176,6 +202,7 @@ public:
 
   // Called after an Inline subtree is spliced into the live Scene.
   void refreshSceneTopology(Scene &scene) {
+    bindSceneAuthorFields(scene);
     normalizeRuntimeUnits(scene);
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
@@ -206,7 +233,7 @@ public:
       auto *node = const_cast<X3DNode *>(n);
       for (const auto &s : systems_) s->detach(node, *this);
       bindings_.removeNode(node);
-      dynamicFieldStore().erase(*node);
+      authorFields_->erase(*node);
       detached_.insert(node);
     }
     cascade_.removeNodes(nodes); // discard unbind events addressed to removed nodes
@@ -283,10 +310,19 @@ public:
         });
   }
 
-  /** @brief Seed an event; processed by the next process()/tick() drain. */
+  /** @brief External input or legacy seed; preserves every accepted occurrence. */
   void postEvent(X3DNode *node, const std::string &field, std::any value) {
     if (detached_.count(node)) return;
     cascade_.postEvent(node, field, std::move(value));
+  }
+
+  /// Queue an outputOnly production for first-admitted, per-timestamp delivery.
+  /// Producers MUST NOT call a node emitter/setter before this: the cascade
+  /// owns admission and storage mutation together. Legacy postEvent producers
+  /// are unchanged and are outside this scoped generated-output guarantee.
+  void postOutputEvent(X3DNode *node, const std::string &field, std::any value) {
+    if (detached_.count(node)) return;
+    cascade_.postOutputEvent(node, field, std::move(value));
   }
 
   void addInputFilter(std::function<bool(const FieldAddress &, const std::any &)> filter) {
@@ -365,9 +401,10 @@ public:
    *          otherwise read the stale value and lag a frame). The whole loop is
    *          ONE timestamp: the per-field cap (RTC-5) persists across the passes
    *          (each drain continues the timestamp via `process(false)`), so a
-   *          field re-emitted every pass is delivered once and the loop is
-   *          guaranteed to terminate (productions are monotone and bounded by
-   *          the finite set of fields).
+   *          generated outputOnly fields using postOutputEvent emit once. The
+   *          reached-field bookkeeping is monotone and bounded by the finite
+   *          set of fields; repeated inputOnly occurrences still deliver. Legacy
+   *          seed producers are not covered by the generated-output cap.
    */
   void tick(double now) {
     auto invocation = callbacks_.enter();
@@ -412,10 +449,13 @@ public:
     bounds_.propagate(dirty_, transforms_); // dirtied geometry -> bounds
   }
 
-  /** @brief Drain any pending events without advancing the clock. */
+  /** @brief Drain pending events without advancing the clock.
+   * Standalone outermost calls begin a fresh cascade. Calls inside tick (including
+   * Script post-cascade hooks), or nested inside another drain, share its guards.
+   */
   void process() {
     auto invocation = callbacks_.enter();
-    cascade_.process();
+    cascade_.process(/*freshTimestamp=*/!ticking_);
   }
 
   double now() const { return now_; }
@@ -722,9 +762,11 @@ private:
     std::shared_ptr<ActiveNode> node_;
   };
 
+  std::shared_ptr<DynamicFieldStore> authorFields_ = std::make_shared<DynamicFieldStore>();
+  mutable bool authorOwnerFixed_ = false;
   CallbackLifetime callbacks_; // revoked in destructor body before any members
   EventGraph graph_;
-  EventCascade cascade_{graph_};
+  EventCascade cascade_{graph_, authorFields_};
   std::vector<std::shared_ptr<System>> systems_;
   std::unordered_set<const X3DNode *> detached_;
   std::uint64_t sceneTopologyRevision_ = 0;

@@ -92,7 +92,7 @@ int main() {
 
   // (1) Author <field> landed in the DynamicFieldStore.
   bool hasTint = false;
-  for (const FieldInfo &fi : runtime::dynamicFieldStore().authorFields(*cs))
+  for (const FieldInfo &fi : doc.scene.authorFields->authorFields(*cs))
     if (fi.x3dName == "tint" && fi.type == X3DFieldType::SFColor)
       hasTint = true;
   check(hasTint, "author <field> 'tint' (SFColor) captured into the store");
@@ -110,7 +110,6 @@ int main() {
   check(vsOk, "VERTEX ShaderPart CDATA captured into sourceCode");
   check(fsOk, "FRAGMENT ShaderPart CDATA captured into sourceCode");
 
-  runtime::dynamicFieldStore().clear();
   if (failures) {
     std::cerr << failures << " check(s) failed\n";
     return 1;

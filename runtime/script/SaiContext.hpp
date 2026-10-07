@@ -134,7 +134,7 @@ public:
     // the static table writeField scans, so fall back to the dynamic-field store.
     if (ctx_.writeField(node, fieldName, std::any(value)) ==
         FieldWriteResult::UnknownField) {
-      dynamicFieldStore().setValue(*node, fieldName, std::move(value));
+      ctx_.authorFields().setValue(*node, fieldName, std::move(value));
     }
   }
 
@@ -222,7 +222,7 @@ private:
     }
   }
 
-  static void validateRoute(X3DNode *fromNode, const std::string &fromField,
+  void validateRoute(X3DNode *fromNode, const std::string &fromField,
                             X3DNode *toNode, const std::string &toField) {
     if (!fromNode || !toNode)
       throw std::invalid_argument(
@@ -257,9 +257,9 @@ private:
   // the synthesized author FieldInfos — a pointer into it would dangle.
   // std::nullopt if absent. (S1 NOTE closed: author fields now resolve here, so
   // script get/set/addRoute see them.)
-  static std::optional<FieldInfo> findField(const X3DNode &node,
-                                            const std::string &name) {
-    for (FieldInfo &info : effectiveFields(node)) {
+  std::optional<FieldInfo> findField(const X3DNode &node,
+                                            const std::string &name) const {
+    for (FieldInfo &info : effectiveFields(node, ctx_.authorFields())) {
       if (info.x3dName == name) return std::move(info);
     }
     return std::nullopt;

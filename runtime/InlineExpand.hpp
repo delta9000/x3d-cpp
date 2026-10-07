@@ -170,6 +170,7 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     }
     // Build the Group from the child's root nodes; isolate child DEFs (we never
     // copy child.defs into scene.defs).
+    scene.authorFields->importFrom(*child->authorFields);
     auto group = makeGroup(child->rootNodes);
     hoistChildRoutes(*child, scene.resolvedInlineRoutes);
     scene.nodeBaseUrls.insert(child->nodeBaseUrls.begin(), child->nodeBaseUrls.end());

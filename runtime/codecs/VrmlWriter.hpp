@@ -39,6 +39,7 @@ struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
+class DynamicFieldStore;
 class X3DDocument;
 } // namespace x3d::runtime
 
@@ -84,6 +85,7 @@ private:
   std::unordered_map<std::string, std::shared_ptr<X3DNode>> defaults_;
   // Scene being written, for expandedSources lookup. Null for body writers.
   const runtime::Scene *scene_ = nullptr;
+  const runtime::DynamicFieldStore *authorFields_ = nullptr;
   // PRF-1: while re-emitting a ProtoBody, the body's IsConnection list so that
   // writeNode can emit `nodeField IS protoField` lines inside EVERY emitted
   // body node at any depth (mirrors the XML writer's bodyIsc_). Null outside a

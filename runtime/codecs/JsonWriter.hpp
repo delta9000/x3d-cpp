@@ -38,6 +38,7 @@ struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
+class DynamicFieldStore;
 class X3DDocument;
 } // namespace x3d::runtime
 
@@ -60,6 +61,7 @@ private:
   // Scene being written, for expandedSources lookup. Null for body-internal
   // fresh writers so proto expansion redirect is off inside proto bodies.
   const runtime::Scene *scene_ = nullptr;
+  const runtime::DynamicFieldStore *authorFields_ = nullptr;
   // PRF-1: while re-emitting a ProtoBody, the body's IsConnection list so that
   // writeNode can attach an "IS":{"connect":[...]} member to EVERY emitted body
   // node at any depth (mirrors the XML writer's bodyIsc_). Null outside a body.

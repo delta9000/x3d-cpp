@@ -31,7 +31,9 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace x3d::runtime {
@@ -125,13 +127,14 @@ struct AuthorFieldDecl {
  *          `const X3DNode&` overloads register an UNTRACKED entry — the caller
  *          guarantees the node outlives it or calls erase()/clear().
  *
- *          Thread-safety: a process-global instance is exposed via
- *          dynamicFieldStore(); the table is guarded by the store mutex and each
+ *          Ownership: each Scene or standalone execution context owns a store.
+ *          Inline adoption may share entries with its retained child Scene.
+ *          The table is guarded by the store mutex and each
  *          node's value store by its own entry mutex (lock order: store, then
  *          entry; the thunks take only the entry mutex). The synthesized get/set
  *          thunks hold a weak_ptr to their entry, so a FieldInfo copied out by
- *          authorFields() stays safe after erase()/clear() — its get returns an
- *          empty std::any and its set is a no-op. The set thunk enforces the
+ *          authorFields() stays safe after erase()/clear(): it is inert once no
+ *          store retains the entry, or its tracked node expires. The set thunk enforces the
  *          same AUD-MEM-1 type check as setValue(), so the event cascade cannot
  *          bypass it.
  */
@@ -193,7 +196,20 @@ public:
     std::shared_ptr<NodeEntry> entry = find(&node);
     if (!entry) return {};
     std::lock_guard<std::mutex> lock(entry->mutex);
-    return entry->infos;
+    auto infos = entry->infos;
+    // Imported entries share values, not diagnostics. A copied writable view
+    // attributes rejected writes to the store through which it was obtained,
+    // just like setValue() on that store.
+    for (auto &info : infos) {
+      if (!info.set) continue;
+      std::weak_ptr<NodeEntry> weak = entry;
+      info.set = [weak, name = info.x3dName, drops = drops_](
+                     X3DNode &node, const std::any &value) {
+        if (auto e = weak.lock(); e && e->identity == &node)
+          writeValue(*e, *drops, name, value);
+      };
+    }
+    return infos;
   }
 
   /** @brief True if `node` has at least one author field. */
@@ -232,14 +248,33 @@ public:
     writeValue(*entry, *drops_, name, std::move(value));
   }
 
-  /** @brief Drop all author fields for `node`. Outstanding FieldInfo copies
-   *         become inert (get -> empty, set -> no-op). */
+  /** @brief Drop this owner's view of `node`. Copies become inert when the
+   *         final owner drops the entry, or the tracked node expires. */
   void erase(const X3DNode &node) {
     std::lock_guard<std::mutex> lock(mutex_);
     table_.erase(&node);
   }
 
-  /** @brief Drop the entire table (test isolation). */
+  /// Adopt entries for the SAME imported nodes, preserving shared value identity.
+  /// Removing a parent view never destroys fields retained by the child Scene.
+  /// A conflicting live entry is an ownership error, not a last-writer-wins merge.
+  /// Optional identity selection retains only a temporarily inactive subgraph.
+  void importFrom(const DynamicFieldStore &source,
+                  const std::unordered_set<const X3DNode *> *nodes = nullptr) {
+    if (this == &source) return;
+    std::scoped_lock lock(mutex_, source.mutex_);
+    for (const auto &[node, entry] : source.table_) {
+      if ((nodes && !nodes->count(node)) || stale(*entry)) continue;
+      const auto found = table_.find(node);
+      if (found != table_.end() && !stale(*found->second) &&
+          found->second != entry)
+        throw std::logic_error("conflicting author-field owners for one node");
+    }
+    for (const auto &[node, entry] : source.table_)
+      if ((!nodes || nodes->count(node)) && !stale(*entry)) table_[node] = entry;
+  }
+
+  /** @brief Drop this owner's entries, leaving other owners intact. */
   void clear() {
     std::lock_guard<std::mutex> lock(mutex_);
     table_.clear();
@@ -268,6 +303,7 @@ private:
   /// shared_ptr in the table; the thunks hold a weak_ptr (a shared_ptr would
   /// form a cycle through `infos` and keep erased entries alive).
   struct NodeEntry {
+    const X3DNode *identity = nullptr; ///< immutable identity, never dereferenced
     std::weak_ptr<const X3DNode> owner; ///< set for lifetime-tracked entries
     bool tracked = false;
     mutable std::mutex mutex;           ///< guards the three members below
@@ -279,8 +315,13 @@ private:
   using DropCounter = std::atomic<std::size_t>;
   static constexpr std::size_t kMinSweep = 64;
 
-  static bool stale(const NodeEntry &entry) {
+  static bool staleLocked(const NodeEntry &entry) {
     return entry.tracked && entry.owner.expired();
+  }
+
+  static bool stale(const NodeEntry &entry) {
+    std::lock_guard<std::mutex> lock(entry.mutex);
+    return staleLocked(entry);
   }
 
   // Look up a live entry; a stale (node destroyed) entry reads as absent and is
@@ -301,6 +342,7 @@ private:
                                       const std::shared_ptr<const X3DNode> &owner) {
     auto it = table_.find(node);
     if (it != table_.end() && !stale(*it->second)) {
+      std::lock_guard<std::mutex> entryLock(it->second->mutex);
       if (owner && !it->second->tracked) {
         it->second->owner = owner;
         it->second->tracked = true;
@@ -310,6 +352,7 @@ private:
     if (it != table_.end()) table_.erase(it);
     if (table_.size() >= sweepAt_) sweep();
     auto entry = std::make_shared<NodeEntry>();
+    entry->identity = node;
     if (owner) {
       entry->owner = owner;
       entry->tracked = true;
@@ -330,6 +373,7 @@ private:
 
   static std::any readValue(const NodeEntry &entry, const std::string &name) {
     std::lock_guard<std::mutex> lock(entry.mutex);
+    if (staleLocked(entry)) return {};
     auto vIt = entry.values.find(name);
     return vIt == entry.values.end() ? std::any{} : vIt->second;
   }
@@ -345,6 +389,7 @@ private:
   static void writeValue(NodeEntry &entry, DropCounter &drops,
                          const std::string &name, std::any value) {
     std::lock_guard<std::mutex> lock(entry.mutex);
+    if (staleLocked(entry)) return;
     auto declIt = entry.declared.find(name);
     if (declIt == entry.declared.end()) return;
     if (!anyMatchesFieldType(value, entry.infos[declIt->second].type)) {
@@ -373,15 +418,15 @@ private:
     std::weak_ptr<NodeEntry> weak = entry;
     const std::string name = decl.x3dName;
     if (readable) {
-      info.get = [weak, name](const X3DNode &) -> std::any {
+      info.get = [weak, name](const X3DNode &node) -> std::any {
         std::shared_ptr<NodeEntry> e = weak.lock();
-        return e ? readValue(*e, name) : std::any{};
+        return e && e->identity == &node ? readValue(*e, name) : std::any{};
       };
     }
     if (writable) {
-      info.set = [weak, name, drops = drops_](X3DNode &,
+      info.set = [weak, name, drops = drops_](X3DNode &node,
                                               const std::any &value) {
-        if (std::shared_ptr<NodeEntry> e = weak.lock())
+        if (std::shared_ptr<NodeEntry> e = weak.lock(); e && e->identity == &node)
           writeValue(*e, *drops, name, value);
       };
     }
@@ -413,26 +458,10 @@ private:
 };
 
 /**
- * @brief Process-global author-field store.
- * @details effectiveFields() and both findField sites read this single shared
- *          store. CHOICE (design §3.1): a global accessor — rather than a store
- *          ref threaded through every consumer — because X3DSceneBridge is a
- *          stateless free-function bridge and SaiContext is constructed per
- *          Script with no store handle; a shared global integrates cleanly with
- *          both without widening their constructors or signatures, and matches
- *          the document-scoped lifetime of author fields. Readers populate it;
- *          consumers read it. Tests call clear() for isolation.
- */
-inline DynamicFieldStore &dynamicFieldStore() {
-  static DynamicFieldStore store;
-  return store;
-}
-
-/**
  * @brief The node's effective field table: static fields() + author fields.
  * @details Returns a freshly-built FieldTable that is the node's generated
  *          reflection table concatenated with its author FieldInfos from the
- *          process-global store. Consumers that must see author fields
+ *          explicit owner's store. Consumers that must see author fields
  *          (ROUTE endpoint resolution in X3DSceneBridge, script get/set/route in
  *          SaiContext) resolve through this instead of node.fields(). Geometry/
  *          extraction/bounds/range-validate/material/texture sites stay on
@@ -442,9 +471,10 @@ inline DynamicFieldStore &dynamicFieldStore() {
  *          is a side-table: keeping it out of the generated node preserves the
  *          golden-byte-identical invariant.
  */
-inline FieldTable effectiveFields(const X3DNode &node) {
+inline FieldTable effectiveFields(const X3DNode &node,
+                                  const DynamicFieldStore &store) {
   FieldTable table = node.fields();  // copy of the static table
-  std::vector<FieldInfo> author = dynamicFieldStore().authorFields(node);
+  std::vector<FieldInfo> author = store.authorFields(node);
   table.insert(table.end(), std::make_move_iterator(author.begin()),
                std::make_move_iterator(author.end()));
   return table;

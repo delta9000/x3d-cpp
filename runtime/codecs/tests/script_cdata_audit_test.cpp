@@ -63,7 +63,6 @@ function tick() {
 )XML";
 
 void testParseStoresNoCdataWrapper() {
-  runtime::dynamicFieldStore().clear();
   codec::XmlReader reader;
   auto doc = reader.readDocument(kXmlWithCdata);
   auto script = findScript(doc.scene);
@@ -93,7 +92,6 @@ void testParseStoresNoCdataWrapper() {
 }
 
 void testXmlRoundTripWrapsCdata() {
-  runtime::dynamicFieldStore().clear();
   codec::XmlReader reader;
   auto doc = reader.readDocument(kXmlWithCdata);
   codec::XmlWriter writer;
@@ -105,7 +103,6 @@ void testXmlRoundTripWrapsCdata() {
         "xml-write: output contains ]]>");
 
   // Re-parse the XML and verify sourceCode is still clean.
-  runtime::dynamicFieldStore().clear();
   auto doc2 = reader.readDocument(xml);
   auto script = findScript(doc2.scene);
   check(script != nullptr, "xml-roundtrip: Script re-parsed");
@@ -122,7 +119,6 @@ void testXmlRoundTripWrapsCdata() {
 }
 
 void testVrmlRoundTripNoCdataLeak() {
-  runtime::dynamicFieldStore().clear();
   codec::XmlReader reader;
   auto doc = reader.readDocument(kXmlWithCdata);
   codec::VrmlWriter writer;
@@ -135,7 +131,6 @@ void testVrmlRoundTripNoCdataLeak() {
         "vrml-write: output does not contain ]]>");
 
   // Re-parse the VRML and verify sourceCode is still clean.
-  runtime::dynamicFieldStore().clear();
   codec::ClassicVrmlReader vrmlReader;
   auto doc2 = vrmlReader.readDocument(vrml);
   auto script = findScript(doc2.scene);
@@ -183,7 +178,6 @@ DEF S Script {
 void testScriptSourceVerbatimVrmlToXml() {
   // Decode the VRML; the inline javascript: body (with its significant leading
   // space and trailing-line indentation) is mirrored into sourceCode.
-  runtime::dynamicFieldStore().clear();
   codec::ClassicVrmlReader vrmlReader;
   auto doc = vrmlReader.readDocument(kVrmlScriptLeadingWs);
   std::shared_ptr<Script> s0;
@@ -203,7 +197,6 @@ void testScriptSourceVerbatimVrmlToXml() {
   codec::XmlWriter xmlWriter;
   std::string xml = xmlWriter.writeDocument(doc);
 
-  runtime::dynamicFieldStore().clear();
   codec::XmlReader xmlReader;
   auto doc2 = xmlReader.readDocument(xml);
   std::shared_ptr<Script> s1;

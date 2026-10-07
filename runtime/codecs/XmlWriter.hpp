@@ -42,6 +42,7 @@ struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
+class DynamicFieldStore;
 class X3DDocument;
 } // namespace x3d::runtime
 
@@ -67,8 +68,10 @@ public:
   /// Serialize just a Scene's children/routes (no <X3D> wrapper).
   std::string writeScene(const runtime::Scene &scene);
 
-  /// Serialize a single node subtree (no Scene/X3D wrapper). Useful for tests.
-  std::string writeNode(const std::shared_ptr<X3DNode> &node);
+  /// Serialize a single subtree. Pass its owner to include author fields;
+  /// without an owner this is generated-fields-only (plus Script source).
+  std::string writeNode(const std::shared_ptr<X3DNode> &node,
+                        const runtime::DynamicFieldStore *authorFields = nullptr);
 
 private:
   // Identity set of nodes already written with a DEF (for USE on revisits).
@@ -79,6 +82,7 @@ private:
   // when serializing a bare node (writeNode) — expansion round-trip is then
   // off.
   const runtime::Scene *scene_ = nullptr;
+  const runtime::DynamicFieldStore *authorFields_ = nullptr;
   // PRF-2: while re-emitting a ProtoBody, the body's IsConnection list so that
   // writeNodeElement can attach an <IS> block to EVERY emitted body node at any
   // depth (not just the top body node). Null outside ProtoBody re-emit.

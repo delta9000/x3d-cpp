@@ -59,19 +59,25 @@ inline const FieldInfo *findField(const X3DNode &n, const std::string &name) {
   return nullptr;
 }
 
-inline const FieldInfo *findIsBodyField(const X3DNode &n,
+inline std::optional<FieldInfo> findIsBodyField(const X3DNode &n,
                                         const std::string &name,
-                                        AccessType interfaceAccess) {
-  if (auto exact = findField(n, name)) return exact;
+                                        AccessType interfaceAccess,
+                                        const DynamicFieldStore &store) {
+  auto find = [&](const std::string &fieldName) -> std::optional<FieldInfo> {
+    for (const auto &field : effectiveFields(n, store))
+      if (field.x3dName == fieldName) return field;
+    return std::nullopt;
+  };
+  if (auto exact = find(name)) return exact;
   std::string base;
   if (interfaceAccess == AccessType::InputOnly && name.rfind("set_", 0) == 0)
     base = name.substr(4);
   else if (interfaceAccess == AccessType::OutputOnly && name.size() > 8 &&
            name.compare(name.size() - 8, 8, "_changed") == 0)
     base = name.substr(0, name.size() - 8);
-  if (base.empty()) return nullptr;
-  auto field = findField(n, base);
-  return field && field->access == AccessType::InputOutput ? field : nullptr;
+  if (base.empty()) return std::nullopt;
+  auto field = find(base);
+  return field && field->access == AccessType::InputOutput ? field : std::nullopt;
 }
 
 inline const ProtoField *interfaceField(const ProtoDeclaration &d,
@@ -395,7 +401,8 @@ expandInstance(ProtoInstance &inst, Scene &scene,
       };
   cloneGraph = [&](const std::shared_ptr<X3DNode> &source) {
     materialize(source);
-    return deepClone(source, cloneMap);
+    return deepClone(source, cloneMap,
+        {decl->authorFields.get(), scene.authorFields.get(), decl->createNode});
   };
   auto cloneNodes = [&cloneGraph](
       const std::vector<std::shared_ptr<X3DNode>> &sources) {
@@ -494,14 +501,18 @@ expandInstance(ProtoInstance &inst, Scene &scene,
   // arrives as a string and must go through the enum-string setter (mirroring
   // the reader's enum path) rather than the typed `set`, which would
   // bad_any_cast on a string.
-  auto setScalar = [](const FieldInfo *fi, X3DNode &cloned,
+  auto setScalar = [&scene](const FieldInfo *fi, X3DNode &cloned,
                       const std::any &val) -> bool {
     if (fi->isEnum() && fi->setEnumString && val.type() == typeid(std::string)) {
       const auto &token = std::any_cast<const std::string &>(val);
       fi->setEnumString(cloned, token);
       return fi->getEnumString && fi->getEnumString(cloned) == token;
     }
-    fi->set(cloned, val);
+    if (fi->set) fi->set(cloned, val);
+    else {
+      if (!anyMatchesFieldType(val, fi->type)) return false;
+      scene.authorFields->setValue(cloned, fi->x3dName, val);
+    }
     return true;
   };
 
@@ -520,9 +531,9 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     if (pf->access != AccessType::InitializeOnly &&
         pf->access != AccessType::InputOutput)
       continue; // event fields handled by redirects in a later task
-    const FieldInfo *fi =
-        proto_detail::findIsBodyField(cloned, is.nodeField, pf->access);
-    if (!fi || !fi->set) continue;
+    const auto fi =
+        proto_detail::findIsBodyField(cloned, is.nodeField, pf->access, *scene.authorFields);
+    if (!fi) continue;
     if (!isValidIsMapping(fi->access, pf->access) ||
         !isCompatibleIsType(*fi, *pf)) {
       warnings.push_back({ProtoWarning::Kind::InterfaceMismatch, inst.name,
@@ -547,7 +558,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     // keep the read lenient by recording an InterfaceMismatch and moving on.
     try {
       if (eff.value.has_value()) {
-        if (setScalar(fi, cloned, eff.value)) {
+        if (setScalar(&*fi, cloned, eff.value)) {
           scene.authoredScalarFields.record(cit->second, is.nodeField);
           if (is.nodeField == "url")
             scene.nodeBaseUrls[cit->second] =
@@ -558,11 +569,11 @@ expandInstance(ProtoInstance &inst, Scene &scene,
       } else if (fi->type == X3DFieldType::SFNode ||
                  fi->type == X3DFieldType::MFNode) {
         if (fi->type == X3DFieldType::SFNode)
-          fi->set(cloned, std::any(eff.nodeValue.empty()
+          setScalar(&*fi, cloned, std::any(eff.nodeValue.empty()
                                        ? std::shared_ptr<X3DNode>{}
                                        : eff.nodeValue.front()));
         else if (fi->type == X3DFieldType::MFNode)
-          fi->set(cloned, std::any(eff.nodeValue));
+          setScalar(&*fi, cloned, std::any(eff.nodeValue));
       }
     } catch (const std::exception &) {
       warnings.push_back(
@@ -793,8 +804,8 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     if (pf->access == AccessType::InitializeOnly) continue;
     auto cit = cloneMap.find(is.node.get());
     if (cit == cloneMap.end() || !cit->second) continue;
-    const FieldInfo *fi = proto_detail::findIsBodyField(
-        *cit->second, is.nodeField, pf->access);
+    const auto fi = proto_detail::findIsBodyField(
+        *cit->second, is.nodeField, pf->access, *scene.authorFields);
     if (!fi) continue;
     if (!isValidIsMapping(fi->access, pf->access) ||
         !isCompatibleIsType(*fi, *pf)) {
@@ -881,7 +892,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
       decls.push_back(std::move(d));
     }
     if (!decls.empty())
-      dynamicFieldStore().addAuthorFields(
+      scene.authorFields->addAuthorFields(
           std::static_pointer_cast<const X3DNode>(primary), decls);
   }
 

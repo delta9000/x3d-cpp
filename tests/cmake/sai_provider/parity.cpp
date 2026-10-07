@@ -5,13 +5,10 @@
 namespace sai = x3d::sai::experimental;
 int main() {
   try {
-    auto reference =
-        sai::testing::run_provider_fixture(sai::make_reference_provider);
+    auto reference = sai::testing::run_provider_fixture(
+        [] { return sai::make_reference_provider(); });
     auto native = sai::testing::run_provider_fixture(
-        []() -> sai::result<std::unique_ptr<sai::offline_provider>> {
-          return std::unique_ptr<sai::offline_provider>{
-              std::make_unique<x3d::runtime::SaiOfflineProvider>()};
-        });
+        [] { return sai::native::make_service(); });
     if (native != reference)
       throw std::runtime_error(
           "independent providers returned different fixture reports");

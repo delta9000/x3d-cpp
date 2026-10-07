@@ -30,28 +30,26 @@ consumer="$cpp/tests/cmake/sai_provider"
 cmake -S "$consumer" -B "$source" -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_LIBDIR=lib -DX3D_CPP_SOURCE_DIR="$cpp" \
   -DX3D_SAI_SOURCE_DIR="$sai" -DX3D_CPP_SHARED_NODES="$shared"
-# The runtime target is built for the complete x3d-cpp package installation;
-# the independent native executable does not link or use it.
-# x3d-sai also exports the additive hosted archives. Build them for complete
-# package installation only; the native offline provider still cannot link them.
-cmake --build "$source" --target sai_provider_all x3d_cpp_runtime \
-  x3d_sai_hosted x3d_sai_reference_hosted --parallel "$jobs"
+# The one native backend owns a real RuntimeSession in live mode.
+cmake --build "$source" --target sai_provider_all --parallel "$jobs"
 
 check_native_link() {
   local build="$1"
+  local target="${2:-sai_provider_native}"
   local command
-  command="$(ninja -C "$build" -t commands sai_provider_native | tail -1)"
-  printf '%s\n' "$command" > "$build/native-link-command.txt"
-  if [[ "$command" != *"-o sai_provider_native"* ]]; then
+  command="$(ninja -C "$build" -t commands "$target" | tail -1)"
+  printf '%s\n' "$command" > "$build/${target}-link-command.txt"
+  if [[ "$command" != *"-o $target"* ]]; then
     echo "could not identify the independent native executable's link command" >&2
     exit 1
   fi
-  if grep -E 'sai_experimental|sai_reference|sai_metadata' "$build/native-link-command.txt"; then
+  if grep -E 'sai_experimental|sai_reference|sai_metadata' "$build/${target}-link-command.txt"; then
     echo "independent native provider links the SAI reference implementation" >&2
     exit 1
   fi
 }
 check_native_link "$source"
+check_native_link "$source" sai_provider_native_runtime
 ctest --test-dir "$source" --output-on-failure -R '^sai_provider_'
 
 prefix="$work/original-prefix"
@@ -68,11 +66,13 @@ if grep -RIlF -e "$cpp" -e "$sai" -e "$source" "$prefix/lib/cmake"; then
 fi
 mv "$prefix" "$moved"
 cp -R "$consumer" "$work/consumer"
+cp "$cpp/adapters/sai_provider/tests/native_runtime_test.cpp" "$work/consumer/native_runtime_test.cpp"
 cmake -S "$work/consumer" -B "$work/installed-build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DSAI_PROVIDER_INSTALLED=ON \
   -DCMAKE_PREFIX_PATH="$moved" -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
   -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
 cmake --build "$work/installed-build" --target sai_provider_all --parallel "$jobs"
 check_native_link "$work/installed-build"
+check_native_link "$work/installed-build" sai_provider_native_runtime
 ctest --test-dir "$work/installed-build" --output-on-failure -R '^sai_provider_'
-echo "Provider pilot passed: reference/native/parity in source and relocated installed consumers ($shared shared nodes)"
+echo "Unified provider passed: reference/native/parity in source and relocated installed consumers ($shared shared nodes)"

@@ -57,8 +57,9 @@ std::shared_ptr<Script> findScript(const runtime::Scene &scene) {
 // Locate an author FieldInfo on a node by name via effectiveFields. `tableOut`
 // owns the temporary FieldTable so the returned pointer stays valid.
 const FieldInfo *authorField(const x3d::nodes::X3DNode &node, const std::string &name,
+                             const runtime::DynamicFieldStore &store,
                              FieldTable &tableOut) {
-  tableOut = runtime::effectiveFields(node);
+  tableOut = runtime::effectiveFields(node, store);
   for (const FieldInfo &f : tableOut) {
     if (f.x3dName == name)
       return &f;
@@ -98,7 +99,8 @@ void checkDecls(const runtime::Scene &scene, const std::string &phase) {
     return;
 
   FieldTable table;
-  const FieldInfo *frac = authorField(*script, "set_fraction", table);
+  const FieldInfo *frac =
+      authorField(*script, "set_fraction", *scene.authorFields, table);
   check(frac != nullptr, phase + ": author field set_fraction visible");
   if (frac) {
     check(frac->access == AccessType::InputOnly,
@@ -111,7 +113,7 @@ void checkDecls(const runtime::Scene &scene, const std::string &phase) {
   }
 
   FieldTable table2;
-  const FieldInfo *color = authorField(*script, "color", table2);
+  const FieldInfo *color = authorField(*script, "color", *scene.authorFields, table2);
   check(color != nullptr, phase + ": author field color visible");
   if (color) {
     check(color->access == AccessType::InputOutput,
@@ -137,9 +139,6 @@ void checkDecls(const runtime::Scene &scene, const std::string &phase) {
 } // namespace
 
 int main() {
-  // Test isolation: the DynamicFieldStore is process-global.
-  runtime::dynamicFieldStore().clear();
-
   codec::XmlReader reader;
   codec::XmlWriter writer;
 
@@ -149,7 +148,7 @@ int main() {
 
   // ---- Author-field ROUTE resolves ----
   {
-    runtime::X3DExecutionContext ctx;
+    runtime::X3DExecutionContext ctx(doc.scene.authorFields);
     runtime::BridgeResult br = runtime::buildRoutes(doc.scene, ctx);
     check(br.rejected.empty(),
           "author-field ROUTE not rejected (resolves via effectiveFields)");
@@ -167,13 +166,12 @@ int main() {
   check(out.find("function set_fraction") != std::string::npos,
         "writer re-emits CDATA source body");
 
-  runtime::dynamicFieldStore().clear();
   runtime::X3DDocument doc2 = reader.readDocument(out);
   checkDecls(doc2.scene, "reparse");
 
   // The round-tripped ROUTE still resolves on reparse.
   {
-    runtime::X3DExecutionContext ctx;
+    runtime::X3DExecutionContext ctx(doc2.scene.authorFields);
     runtime::BridgeResult br = runtime::buildRoutes(doc2.scene, ctx);
     check(br.rejected.empty(), "reparse: author-field ROUTE still resolves");
     check(br.routesAdded == 1, "reparse: author-field ROUTE added");
@@ -181,7 +179,6 @@ int main() {
 
   // ---- Inline ecmascript: scheme in url is still accepted as a source ----
   {
-    runtime::dynamicFieldStore().clear();
     const std::string urlXml =
         "<X3D profile=\"Interchange\" version=\"4.0\"><Scene>"
         "<Script DEF=\"U\" url='\"ecmascript: function f(){}\"'>"
@@ -196,7 +193,7 @@ int main() {
                 s->getUrl()[0].find("ecmascript:") != std::string::npos,
             "inline ecmascript: scheme retained in url");
       FieldTable t;
-      check(authorField(*s, "on", t) != nullptr,
+      check(authorField(*s, "on", *d.scene.authorFields, t) != nullptr,
             "author field present alongside url source");
     }
   }

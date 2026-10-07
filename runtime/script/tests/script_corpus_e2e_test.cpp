@@ -99,8 +99,9 @@ std::string slurp(const std::string &path) {
   return ss.str();
 }
 
-bool hasAuthorField(const X3DNode &node, const std::string &name) {
-  for (const FieldInfo &f : effectiveFields(node))
+bool hasAuthorField(const X3DNode &node, const DynamicFieldStore &fields,
+                    const std::string &name) {
+  for (const FieldInfo &f : effectiveFields(node, fields))
     if (f.x3dName == name) return true;
   return false;
 }
@@ -111,7 +112,7 @@ bool hasAuthorField(const X3DNode &node, const std::string &name) {
 // status=false, then landed==0 toggles status -> true).
 void driveAndAssertStatus(Script *script, ScriptSystem &sys,
                           X3DExecutionContext &ctx, const std::string &tag) {
-  std::any before = dynamicFieldStore().getValue(*script, "status");
+  std::any before = ctx.authorFields().getValue(*script, "status");
   check(!before.has_value(),
         tag + ": status author field starts unwritten (inert baseline)");
 
@@ -123,7 +124,7 @@ void driveAndAssertStatus(Script *script, ScriptSystem &sys,
                         X3DFieldType::SFBool, 1.0);
   ctx.tick(1.0);
 
-  std::any after = dynamicFieldStore().getValue(*script, "status");
+  std::any after = ctx.authorFields().getValue(*script, "status");
   check(after.has_value(),
         tag + ": status WRITTEN after enabled(true) — the script RAN");
   if (after.has_value()) {
@@ -136,7 +137,6 @@ void driveAndAssertStatus(Script *script, ScriptSystem &sys,
 // (a) XML fixture loaded through the real XmlReader: author <field>s + CDATA.
 // ---------------------------------------------------------------------------
 void testXmlFixture(const std::string &dataDir) {
-  dynamicFieldStore().clear();
 
   std::string xml = slurp(dataDir + "/AuthorScriptExample.x3d");
   check(!xml.empty(), "xml fixture: AuthorScriptExample.x3d readable");
@@ -153,13 +153,14 @@ void testXmlFixture(const std::string &dataDir) {
   if (scripts.empty()) return;
   Script *script = scripts[0];
 
-  check(hasAuthorField(*script, "enabled") && hasAuthorField(*script, "status") &&
-            hasAuthorField(*script, "landed"),
+  check(hasAuthorField(*script, *doc.scene.authorFields, "enabled") &&
+            hasAuthorField(*script, *doc.scene.authorFields, "status") &&
+            hasAuthorField(*script, *doc.scene.authorFields, "landed"),
         "xml fixture: author <field>s (enabled/status/landed) captured");
   check(script->getSourceCode().find("function enabled") != std::string::npos,
         "xml fixture: CDATA ecmascript body captured into sourceCode");
 
-  X3DExecutionContext ctx;
+  X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = std::make_shared<EcmaScriptBackend>();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
@@ -174,7 +175,6 @@ void testXmlFixture(const std::string &dataDir) {
 // (b) ClassicVRML (.x3dv) fixture loaded through the real ClassicVrmlReader.
 // ---------------------------------------------------------------------------
 void testVrmlFixture(const std::string &dataDir) {
-  dynamicFieldStore().clear();
 
   std::string vrml = slurp(dataDir + "/AuthorScriptExample.x3dv");
   check(!vrml.empty(), "vrml fixture: AuthorScriptExample.x3dv readable");
@@ -194,7 +194,7 @@ void testVrmlFixture(const std::string &dataDir) {
   check(script->getSourceCode().find("function enabled") != std::string::npos,
         "vrml fixture: inline url body mirrored into sourceCode");
 
-  X3DExecutionContext ctx;
+  X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = std::make_shared<EcmaScriptBackend>();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
@@ -211,7 +211,6 @@ void testVrmlFixture(const std::string &dataDir) {
 //     its handler now genuinely DISPATCHES (rather than being a silent no-op).
 // ---------------------------------------------------------------------------
 void testRealCorpusNotInert() {
-  dynamicFieldStore().clear();
 
   // Corpus root comes from the X3D_CORPUS_DIR env var (the archive is not
   // bundled). Unset/absent => skip (the XML+VRML fixtures above still run).
@@ -241,13 +240,14 @@ void testRealCorpusNotInert() {
 
   // The author interface from the <field> children is now visible (was wholly
   // absent when the Script was inert).
-  check(hasAuthorField(*script, "enabled") && hasAuthorField(*script, "status") &&
-            hasAuthorField(*script, "landed"),
+  check(hasAuthorField(*script, *doc.scene.authorFields, "enabled") &&
+            hasAuthorField(*script, *doc.scene.authorFields, "status") &&
+            hasAuthorField(*script, *doc.scene.authorFields, "landed"),
         "real corpus: author <field>s (enabled/status/landed) captured");
   check(script->getSourceCode().find("function enabled") != std::string::npos,
         "real corpus: CDATA ecmascript body captured into sourceCode");
 
-  X3DExecutionContext ctx;
+  X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = std::make_shared<EcmaScriptBackend>();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
@@ -278,7 +278,6 @@ void testRealCorpusNotInert() {
 //       Src.translation -> S.set_pos (inputOnly) ; S.pos (outputOnly) -> T.translation
 // ---------------------------------------------------------------------------
 void testRoutedEventInEndToEnd() {
-  dynamicFieldStore().clear();
   const std::string xml = R"(<X3D profile='Immersive' version='4.0'><Scene>
   <Transform DEF='Src'/>
   <Transform DEF='T'/>
@@ -305,7 +304,7 @@ void testRoutedEventInEndToEnd() {
   check(scripts.size() == 1 && src && t, "eventIn e2e: scene parsed");
   if (scripts.empty() || !src || !t) return;
 
-  X3DExecutionContext ctx;
+  X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = std::make_shared<EcmaScriptBackend>();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
@@ -327,7 +326,6 @@ void testRoutedEventInEndToEnd() {
 //     field must not write the stale script-side value back over it.
 // ---------------------------------------------------------------------------
 void testRoutedInputOutputSticks() {
-  dynamicFieldStore().clear();
   const std::string xml = R"(<X3D profile='Immersive' version='4.0'><Scene>
   <Script DEF='S' mustEvaluate='true'>
     <field name='level' type='SFFloat' accessType='inputOutput' value='0'/>
@@ -347,7 +345,7 @@ void testRoutedInputOutputSticks() {
   if (scripts.empty()) { check(false, "inputOutput: scene parsed"); return; }
   Script *script = scripts[0];
 
-  X3DExecutionContext ctx;
+  X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = std::make_shared<EcmaScriptBackend>();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
@@ -358,8 +356,8 @@ void testRoutedInputOutputSticks() {
   ctx.postEvent(script, "poke", std::any(SFBool(true)));
   ctx.tick(2.0);
 
-  std::any level = dynamicFieldStore().getValue(*script, "level");
-  std::any seen = dynamicFieldStore().getValue(*script, "seen");
+  std::any level = ctx.authorFields().getValue(*script, "level");
+  std::any seen = ctx.authorFields().getValue(*script, "seen");
   check(level.has_value() && std::any_cast<SFFloat>(level) == 0.5f,
         "inputOutput: a routed write is not reverted by a later handler");
   check(seen.has_value() && std::any_cast<SFFloat>(seen) == 0.5f,
@@ -378,7 +376,6 @@ int main(int argc, char **argv) {
   testRoutedEventInEndToEnd();
   testRoutedInputOutputSticks();
 
-  dynamicFieldStore().clear();  // leave the global store clean for other tests
   if (failures == 0) {
     std::cout << "ALL SCRIPT CORPUS END-TO-END TESTS PASSED\n";
     return 0;

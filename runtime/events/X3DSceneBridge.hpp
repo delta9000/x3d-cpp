@@ -84,8 +84,9 @@ namespace detail {
 /// effectiveFields() builds a temporary table that includes the synthesized
 /// author FieldInfos; a pointer into it would dangle. std::nullopt if absent.
 inline std::optional<FieldInfo> findField(const X3DNode &node,
-                                          const std::string &x3dName) {
-  for (FieldInfo &f : effectiveFields(node)) {
+                                          const std::string &x3dName,
+                                          const DynamicFieldStore &store) {
+  for (FieldInfo &f : effectiveFields(node, store)) {
     if (f.x3dName == x3dName) {
       return std::move(f);
     }
@@ -99,8 +100,9 @@ inline std::optional<FieldInfo> findField(const X3DNode &node,
 /// carries the canonical name the route must be registered under.
 inline std::optional<FieldInfo> findEndpoint(const X3DNode &node,
                                              const std::string &x3dName,
-                                             bool asSource) {
-  if (auto exact = findField(node, x3dName)) return exact;
+                                             bool asSource,
+                                             const DynamicFieldStore &store) {
+  if (auto exact = findField(node, x3dName, store)) return exact;
   std::string base;
   if (!asSource && x3dName.rfind("set_", 0) == 0)
     base = x3dName.substr(4);
@@ -108,7 +110,7 @@ inline std::optional<FieldInfo> findEndpoint(const X3DNode &node,
            x3dName.compare(x3dName.size() - 8, 8, "_changed") == 0)
     base = x3dName.substr(0, x3dName.size() - 8);
   if (base.empty()) return std::nullopt;
-  auto field = findField(node, base);
+  auto field = findField(node, base, store);
   if (field && field->access == AccessType::InputOutput) return field;
   return std::nullopt;
 }
@@ -148,6 +150,7 @@ inline bool isRoutableSink(AccessType a) {
  *          lifetime). Never throws on a bad route — diagnostics are returned.
  */
 inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
+  ctx.bindSceneAuthorFields(scene);
   BridgeResult result;
   ctx.clearRoutes();
   scene.resolveRoutes();
@@ -166,8 +169,8 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
                          std::optional<X3DFieldType> nominalSource,
                          std::optional<X3DFieldType> nominalSink) {
     if (!from || !to) return;
-    auto source = detail::findEndpoint(*from, fromName, true);
-    auto sink = detail::findEndpoint(*to, toName, false);
+    auto source = detail::findEndpoint(*from, fromName, true, ctx.authorFields());
+    auto sink = detail::findEndpoint(*to, toName, false, ctx.authorFields());
     if (!source) {
       reject(index, scope, "unknown source field '" + fromName + "'");
     } else if (!sink) {
@@ -222,7 +225,7 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
       // redeclare it. Its current storage is the expanded primary node.
       if (field == "metadata" || (!asSource && field == "set_metadata") ||
           (asSource && field == "metadata_changed")) {
-        auto metadata = detail::findEndpoint(*node, field, asSource);
+        auto metadata = detail::findEndpoint(*node, field, asSource, ctx.authorFields());
         if (metadata && metadata->x3dName == "metadata")
           return Endpoint{metadata->type, metadata->access,
                           {{node, metadata->x3dName}}};
@@ -248,13 +251,13 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
       // instance (independent storage registered at expansion), so resolve it
       // physically — an inputOutput field echoes a set value as its _changed
       // event through the ordinary route graph. PROTO-INTERFACE-STATE.
-      if (auto own = detail::findEndpoint(*node, field, asSource))
+      if (auto own = detail::findEndpoint(*node, field, asSource, ctx.authorFields()))
         return Endpoint{interface->type, own->access, {{node, own->x3dName}}};
       reject(index, Scope::Scene, "interface field '" + def + "." + field +
                                       "' has no IS route target");
       return std::nullopt;
     }
-    auto reflected = detail::findEndpoint(*node, field, asSource);
+    auto reflected = detail::findEndpoint(*node, field, asSource, ctx.authorFields());
     if (!reflected) {
       reject(index, Scope::Scene, "unknown " + side + " field '" + field +
                                       "' on node '" + def + "'");
@@ -528,6 +531,7 @@ attachInteractive(Scene &scene, X3DExecutionContext &ctx) {
  *          and defined here, where both types are complete.
  */
 inline BridgeResult X3DExecutionContext::buildFrom(Scene &scene) {
+  bindSceneAuthorFields(scene);
   normalizeRuntimeUnits(scene);
   return buildRoutes(scene, *this);
 }

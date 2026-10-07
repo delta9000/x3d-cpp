@@ -699,6 +699,7 @@ ClassicVrmlReader::parseProto(VrmlTokenizer &tok, runtime::Scene &scene) {
   expectPunct(tok, '}', "PROTO body close");
   decl->body.nodes = std::move(local.rootNodes);
   decl->body.routes = std::move(local.routes);
+  decl->authorFields = std::move(local.authorFields);
   decl->authoredScalarFields = std::move(local.authoredScalarFields);
   scene.declareProto(decl);
   return decl;
@@ -863,7 +864,7 @@ void ClassicVrmlReader::consumeInterfaceDeclaration(
     tok.next();
     expectWord(tok, "IS proto-field name");
     if (captureAuthor)
-      captureAuthorField(nodeShared, fieldName, type, access, std::any{});
+      captureAuthorField(scene, nodeShared, fieldName, type, access, std::any{});
     return;
   }
 
@@ -886,18 +887,18 @@ void ClassicVrmlReader::consumeInterfaceDeclaration(
     }
   }
   if (captureAuthor)
-    captureAuthorField(nodeShared, fieldName, type, access, std::move(initialValue));
+    captureAuthorField(scene, nodeShared, fieldName, type, access, std::move(initialValue));
 }
 
 void ClassicVrmlReader::captureAuthorField(
-    const std::shared_ptr<X3DNode> &node, const std::string &name,
+    runtime::Scene &scene, const std::shared_ptr<X3DNode> &node, const std::string &name,
     X3DFieldType type, AccessType access, std::any initialValue) {
   runtime::AuthorFieldDecl decl;
   decl.x3dName = name;
   decl.type = type;
   decl.access = access;
   decl.initialValue = std::move(initialValue);
-  runtime::dynamicFieldStore().addAuthorField(node, decl);
+  scene.authorFields->addAuthorField(node, decl);
 }
 
 bool ClassicVrmlReader::nextIsNodeValue(VrmlTokenizer &tok) {

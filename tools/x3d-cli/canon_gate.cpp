@@ -87,10 +87,9 @@ static std::vector<std::string> loadSubset(const std::string &path) {
 }
 
 // ── Canonicalize via CLI subprocess ──────────────────────────────────────────
-// Using subprocess for process isolation: the DynamicFieldStore (global
-// singleton keyed on node pointer) accumulates entries across same-process
-// parse calls. On pass 2, new nodes may reuse freed addresses from pass 1
-// and pick up phantom author fields. Subprocess invocation avoids this.
+// Exercise each pass as an independent CLI invocation. Author fields are now
+// scene-owned and tracked against node lifetime (ADR-0057); subprocess isolation
+// is no longer required to avoid phantom author fields at recycled addresses.
 
 static std::string g_x3dBin; // set from argv[1] in main()
 

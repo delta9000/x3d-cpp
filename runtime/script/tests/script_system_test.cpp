@@ -492,10 +492,10 @@ void testRoutedEventInvokesHandler() {
   X3DExecutionContext ctx;
   Script script = makeScript();
   Transform source;
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, AuthorFieldDecl{"set_pos", X3DFieldType::SFVec3f,
                               AccessType::InputOnly, {}});
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
                               AccessType::InputOutput, std::any(SFFloat(0))});
 
@@ -528,7 +528,7 @@ void testRoutedEventInvokesHandler() {
   ctx.tick(7.0);
   check(engine->count("invoke") == 2,
         "SCRIPT-EVENTIN: an inputOutput author field write invokes nothing");
-  dynamicFieldStore().erase(script);
+  ctx.authorFields().erase(script);
 }
 
 int main() {

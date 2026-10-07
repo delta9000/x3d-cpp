@@ -81,7 +81,6 @@ AuthorFieldDecl decl(const std::string &name, X3DFieldType type,
 //     empty url but a non-empty sourceCode must still load + initialize.
 // ---------------------------------------------------------------------------
 void testSourceFromSourceCode() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
   Script script;
   // No url at all — only sourceCode carries the body (the reader-CDATA path).
@@ -105,7 +104,6 @@ void testSourceFromSourceCode() {
 // T2: sourceCode takes precedence over url when both are present.
 // ---------------------------------------------------------------------------
 void testSourceCodePrecedence() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
   Script script;
   script.setUrl(MFString{"ecmascript:function initialize(){Browser.print('URL');}"});
@@ -125,7 +123,6 @@ void testSourceCodePrecedence() {
 // T3: url fallback still works when sourceCode is empty (no regression).
 // ---------------------------------------------------------------------------
 void testUrlFallback() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
   Script script;
   script.setUrl(MFString{"ecmascript:function initialize(){Browser.print('URL');}"});
@@ -145,7 +142,6 @@ void testUrlFallback() {
 //     initializeOnly author field's boxed default is visible to the script.
 // ---------------------------------------------------------------------------
 void testInitialValueSeeding() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
   Script script;
   script.setSourceCode(
@@ -153,7 +149,7 @@ void testInitialValueSeeding() {
   script.setLoad(true);
 
   // Author field 'amount' (initializeOnly SFFloat) with boxed default 0.5.
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, decl("amount", X3DFieldType::SFFloat, AccessType::InitializeOnly,
                    std::any(SFFloat(0.5f))));
 
@@ -176,7 +172,6 @@ void testInitialValueSeeding() {
 //     author field, written by its own handler, drives the cascade.
 // ---------------------------------------------------------------------------
 void testAuthorOutputDrivesRoute() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
 
   Script script;
@@ -195,9 +190,9 @@ void testAuthorOutputDrivesRoute() {
 
   // Author interface: set_value (inputOnly SFFloat), position_changed
   // (outputOnly SFVec3f).
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, decl("set_value", X3DFieldType::SFFloat, AccessType::InputOnly));
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script,
       decl("position_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly));
 
@@ -227,7 +222,7 @@ void testAuthorOutputDrivesRoute() {
         "T5: author outputOnly write drove the ROUTE to target.translation");
 
   // The store also holds the written-back author-field value.
-  std::any stored = dynamicFieldStore().getValue(script, "position_changed");
+  std::any stored = ctx.authorFields().getValue(script, "position_changed");
   check(stored.has_value(), "T5: author outputOnly value written back to store");
   if (stored.has_value()) {
     auto v = std::any_cast<SFVec3f>(stored);
@@ -240,7 +235,6 @@ void testAuthorOutputDrivesRoute() {
 //     value, mutates it, and the mutation is read back into the store + emitted.
 // ---------------------------------------------------------------------------
 void testInputOutputAuthorField() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
 
   Script script;
@@ -250,10 +244,10 @@ void testInputOutputAuthorField() {
   // 'count' is inputOutput SFInt32 seeded to 10; set_bump increments it.
   script.setSourceCode("function set_bump(v, ts) { count = count + v; }");
 
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, decl("count", X3DFieldType::SFInt32, AccessType::InputOutput,
                    std::any(SFInt32(10))));
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, decl("set_bump", X3DFieldType::SFInt32, AccessType::InputOnly));
 
   auto backend = std::make_shared<EcmaScriptBackend>();
@@ -265,7 +259,7 @@ void testInputOutputAuthorField() {
                          X3DFieldType::SFInt32, 1.0);
   ctx.process();
 
-  std::any stored = dynamicFieldStore().getValue(script, "count");
+  std::any stored = ctx.authorFields().getValue(script, "count");
   check(stored.has_value() && std::any_cast<SFInt32>(stored) == 15,
         "T6: inputOutput author field seeded(10)+bump(5) -> 15 read back to store");
 }
@@ -278,7 +272,6 @@ void testInputOutputAuthorField() {
 //     not a missing call).
 // ---------------------------------------------------------------------------
 void testPrepareEventsAuthorOutput() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
 
   Script script;
@@ -291,7 +284,7 @@ void testPrepareEventsAuthorOutput() {
       "  position_changed = { x: 7, y: 7, z: 7 };"
       "}");
 
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script,
       decl("position_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly));
 
@@ -319,7 +312,6 @@ void testPrepareEventsAuthorOutput() {
 //     all 16 components; previously matrices fell through to JS undefined.
 // ---------------------------------------------------------------------------
 void testMatrixFieldMarshalling() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
 
   Script script;
@@ -328,9 +320,9 @@ void testMatrixFieldMarshalling() {
   script.setLoad(true);
   script.setSourceCode("function set_m(v, ts) { m_changed = v; }");
 
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, decl("set_m", X3DFieldType::SFMatrix4f, AccessType::InputOnly));
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script,
       decl("m_changed", X3DFieldType::SFMatrix4f, AccessType::OutputOnly));
 
@@ -348,7 +340,7 @@ void testMatrixFieldMarshalling() {
                          1.0);
   ctx.process();
 
-  std::any stored = dynamicFieldStore().getValue(script, "m_changed");
+  std::any stored = ctx.authorFields().getValue(script, "m_changed");
   check(stored.has_value(), "scr006: SFMatrix4f author output written back");
   bool ok = stored.has_value();
   if (ok) {
@@ -366,7 +358,6 @@ void testMatrixFieldMarshalling() {
 //     FALSE defers the input to the batch so eventsProcessed fires this tick.
 // ---------------------------------------------------------------------------
 void testEventsProcessedAuthorOutput() {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
 
   Script script;
@@ -377,9 +368,9 @@ void testEventsProcessedAuthorOutput() {
       "function set_trigger(v, ts) {}"
       "function eventsProcessed() { out_changed = { x: 9, y: 9, z: 9 }; }");
 
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, decl("set_trigger", X3DFieldType::SFFloat, AccessType::InputOnly));
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       script, decl("out_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly));
 
   Transform target;
@@ -413,7 +404,6 @@ int main() {
   testMatrixFieldMarshalling();
   testEventsProcessedAuthorOutput();
 
-  dynamicFieldStore().clear();  // leave the global store clean for other tests
   if (failures == 0) {
     std::cout << "ALL SCRIPT AUTHOR RUNTIME TESTS PASSED\n";
     return 0;

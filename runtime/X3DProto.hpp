@@ -14,11 +14,13 @@
 
 #include "x3d/core/X3DReflection.hpp" // AccessType, X3DFieldType
 #include "X3DAuthoredScalarFields.hpp"
+#include "DynamicField.hpp"
 #include "X3DHeader.hpp"
 #include "X3DRoute.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
 #include <any>
+#include <functional>
 #include <memory>
 #include <map>
 #include <optional>
@@ -212,7 +214,14 @@ struct ProtoBody {
 /**
  * @brief A <ProtoDeclare> statement: a named, locally-defined prototype.
  */
+using FallbackNodeCreator =
+    std::function<std::shared_ptr<X3DNode>(const std::string &)>;
+
 struct ProtoDeclaration {
+  // Template/default fields outlive the reader's temporary Scene.
+  std::shared_ptr<DynamicFieldStore> authorFields = std::make_shared<DynamicFieldStore>();
+  // Explicit per-declaration factory for extension nodes; empty by default.
+  FallbackNodeCreator createNode;
   std::string name;
   std::vector<ProtoField> interface; // <ProtoInterface> fields
   ProtoBody body;                    // <ProtoBody>
