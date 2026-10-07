@@ -31,8 +31,8 @@ public:
           });
       SFVec3f world;
       if (!geo::toWorld(*n, authored, world, ctx.geoProjection())) return;
-      ctx.postEvent(n, "geovalue_changed", std::any(authored));
-      ctx.postEvent(n, "value_changed", std::any(world));
+      ctx.postOutputEvent(n, "geovalue_changed", std::any(authored));
+      ctx.postOutputEvent(n, "value_changed", std::any(world));
     }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {

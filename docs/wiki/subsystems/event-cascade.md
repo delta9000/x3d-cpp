@@ -18,7 +18,7 @@ signal used by the tick re-evaluation loop.
 
 ## Purpose and supported scope
 
-[ISO/IEC 19775-1:2023 §4.4.8.3](https://www.web3d.org/documents/specifications/19775-1/V4.0/Part01/concepts.html#ExecutionModel)
+[ISO/IEC 19775-1:2023 §4.4.8.3](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/concepts.html#ExecutionModel)
 limits each **output field** and each ROUTE to one event per timestamp. It does
 not limit an inputOnly field to one incoming occurrence. Distinct fan-in ROUTEs
 and repeated external inputOnly events, including equal values, must remain
@@ -32,10 +32,11 @@ reflection setter, observer, or ROUTEs see them. The selected value therefore
 agrees with readback and every routed copy. First-admitted is this implementation's
 policy, not a uniquely mandated ISO selection among simultaneous events.
 
-The single-value and multi-value template families in `InterpolatorSystem.hpp`
-use this path. Their attach-time first-key readback remains initialization without
-a posted event. Producers must not call a node emitter or write its backing
-field before calling `postOutputEvent`.
+The single-value and multi-value template families in `InterpolatorSystem.hpp`,
+plus the Spline/Squad/Ease, NURBS and GeoPosition systems, use this path.
+Attach-time first-key readback remains initialization without a posted event.
+Producers must not call a node emitter or write its backing field before calling
+`postOutputEvent`.
 
 `postEvent` still supports external ingress and legacy System producers. It
 preserves every direct seed occurrence and retains the old cap for routed
@@ -187,6 +188,21 @@ readback, no mutation before admission, invalid endpoints, post-cascade and
 nested drains, exception-safe drain-depth restoration, and owner-specific
 author-field input fan-in. A subsequent timestamp can emit a new value.
 
+`runtime/events/tests/interpolator_output_admission_test.cpp` extends the proof
+to the remaining nine registered node types and eleven output fields, including
+both NURBS surface and GeoPosition outputs. It preserves all equal/distinct
+input occurrences, checks source/observer/ROUTE agreement and later-tick
+progression, and exercises reentrant delivery between paired outputs. Existing
+rejection paths leave admission available for a repaired input in the same tick;
+EaseInEaseOut's insufficient-data passthrough remains unchanged. This is output
+admission coverage, not complete component or numerical-domain conformance.
+
+Before migration, a SplineScalar input pair at one tick produced source readback
+8.4375 while its ROUTE retained 1.5625; identical inputs also produced two source
+notifications but only one ROUTE delivery. The unchanged executable now retains
+both inputs and one coherent output. Its separate-timestamp control still
+progresses normally.
+
 The provider-neutral paired gate checks the portable rule: all input occurrences
 are handled, with bounded generated output and matching readback/ROUTE values.
 It does not require every conforming implementation to choose the first value.
@@ -201,10 +217,9 @@ It does not require every conforming implementation to choose the first value.
   `isActive=true` and `isActive=false`; changing this mechanically to first-wins
   would leave its final stored state active. Its state transition/output selection
   needs separate reconciliation, not queue-only deduplication.
-- Spline, Squad, EaseInEaseOut, GeoPosition, and Nurbs interpolator Systems still
-  use legacy `postEvent` outputs. These families require their own producer
-  migration and tests. Followers, event utilities, binding, key/pointing sensors,
-  and other producers similarly need review, especially emitter-before-post sites.
+- Followers, event utilities, binding, key/pointing sensors and other producers
+  still need review, especially emitter-before-post sites. Their state changes
+  cannot be migrated by mechanically changing the queue call.
 - Author-declared outputOnly fields have no reflection setter thunk and are
   rejected by `postOutputEvent`; their storage path needs a separate migration.
   Internal Script `SaiContext::setField` and `ScriptSystem::runEventsProcessed`

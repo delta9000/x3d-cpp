@@ -36,7 +36,7 @@ public:
       interp->emitValue_changed(interp->getKeyValue().front());
     interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, interp](const SFFloat &fraction) {
       if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
-      ctx.postEvent(interp, "value_changed",
+      ctx.postOutputEvent(interp, "value_changed",
                     std::any(hermiteSpline<ValueT>(
                         interp->getKey(), interp->getKeyValue(),
                         interp->getKeyVelocity(), interp->getClosed(),
@@ -60,7 +60,7 @@ public:
       interp->emitValue_changed(interp->getKeyValue().front());
     interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, interp](const SFFloat &fraction) {
       if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
-      ctx.postEvent(
+      ctx.postOutputEvent(
           interp, "value_changed",
           std::any(squadOrientation(interp->getKey(), interp->getKeyValue(),
                                     fraction, interp->getNormalizeVelocity())));
@@ -81,7 +81,7 @@ public:
     auto *ease = dynamic_cast<x3d::nodes::EaseInEaseOut *>(node);
     if (!ease) return;
     ease->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, ease](const SFFloat &fraction) {
-      ctx.postEvent(ease, "modifiedFraction_changed",
+      ctx.postOutputEvent(ease, "modifiedFraction_changed",
                     std::any(SFFloat{easeInEaseOut(
                         ease->getKey(), ease->getEaseInEaseOut(), fraction)}));
     }));

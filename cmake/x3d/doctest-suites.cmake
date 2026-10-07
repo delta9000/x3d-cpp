@@ -233,6 +233,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/animation_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/interpolator_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/output_admission_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/interpolator_output_admission_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/follower_conformance_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/interpolator_conformance_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/event_utility_test.cpp"

@@ -104,9 +104,9 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 
 ### Seam points
 
-- **`set_fraction` handler registration** — `attach(node, ctx)` installs a `setOnSet_fractionHandler` lambda on the matched node. The lambda reads the node's `key`/`keyValue` fields, calls the math function, then calls `ctx.postEvent(node, "value_changed", std::any(...))`. The [Event Cascade subsystem](event-cascade.md) delivers that event downstream through any ROUTEs.
+- **`set_fraction` handler registration** — `attach(node, ctx)` installs a `setOnSet_fractionHandler` lambda on the matched node. The lambda reads the node's `key`/`keyValue` fields, calls the math function, then calls `ctx.postOutputEvent(node, "value_changed", std::any(...))`. The [Event Cascade subsystem](event-cascade.md) delivers that event downstream through any ROUTEs.
 
-- **`X3DExecutionContext` event queue** — the subsystem depends on `X3DExecutionContext::postEvent` and `ctx.process()` for event delivery. These are declared in `runtime/events/X3DExecutionContext.hpp`.
+- **`X3DExecutionContext` event queue** — the subsystem uses `X3DExecutionContext::postEvent` for external inputs and `postOutputEvent` for generated outputOnly values. The cascade admits the output before changing source storage, notifying observers or routing it; all input occurrences remain separate. These are declared in `runtime/events/X3DExecutionContext.hpp`.
 
 - **[TimeSensor System](system-time.md) as upstream source** — in production, a TimeSensor emits `fraction_changed` (an `SFFloat`), which is ROUTEd to an interpolator's `set_fraction`. The Interpolator System does not depend on TimeSensor directly; the ROUTE graph wires them.
 
@@ -142,6 +142,15 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `interpolator_conformance_test`) — behavioral conformance tests (`runtime/events/tests/interpolator_conformance_test.cpp`). Closes INTERP-02 (empty-key guard: sentinel value held after `set_fraction`; re-enabled after non-empty key assigned), INTERP-01 (Hermite scalar 2-key and 3-key exact values; author `keyVelocity` endpoint form; SplinePositionInterpolator component values; Squad N=2 reduces to SLERP; EaseInEaseOut three piecewise regions; S>1 rescaling path), and PIV-1 (`attachInterpolators` wires ScalarInterpolator and SplinePositionInterpolator via scene-walk, no manual per-node attach). All expected values are hand-computed from the normative §19.2.4 Hermite basis and §19.4.4 algorithm.
 - NRB-2 coverage in the same test: degree-1 curve interpolation, rational quarter-circle position and tangent rotation, bilinear patch position/normal, and degenerate curve input.
 - `interpolator_initial_value_readback` checks scalar, multi-value, and spline readback after attachment and before any input event.
+
+- `interpolator_output_admission_test.cpp` covers all nine Spline/Squad/Ease,
+  NURBS and GeoPosition types and their eleven output fields through ordinary
+  registration. Five focused cases pass 984 assertions for equal/distinct input
+  occurrences, source/observer/ROUTE agreement, silent initialization,
+  next-tick progress, existing rejection paths and paired-output reentrancy.
+  First-admitted is the native selection policy; the standard does not prescribe
+  a unique ordering among simultaneous events. The broader event-model limits,
+  including repeated numeric host times, are listed in [Event Cascade](event-cascade.md).
 
 ## Related specs and ADRs
 
