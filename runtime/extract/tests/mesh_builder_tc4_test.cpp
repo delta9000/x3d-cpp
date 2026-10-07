@@ -14,6 +14,7 @@
 //   4) Cone — side s = angle/(2pi) around, t = 0 at base .. 1 at apex; bottom
 //      cap radial in [0,1]x[0,1]. One texcoord per corner.
 //   5) Toggling caps off keeps texcoords parallel to positions (no orphans).
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -49,7 +50,7 @@ TEST_CASE("mesh_builder_tc4_test") {
   {
     auto g = createX3DNode("Box");
     setF(g, "size", std::any(SFVec3f{2, 2, 2}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.texcoords.empty()));
     CHECK((m.texcoords.size() == m.positions.size())); // one per corner.
     // The four canonical corners must ALL be present (each face maps the unit
@@ -83,7 +84,7 @@ TEST_CASE("mesh_builder_tc4_test") {
   {
     auto g = createX3DNode("Sphere");
     setF(g, "radius", std::any(SFFloat(1.0f)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.texcoords.empty()));
     CHECK((m.texcoords.size() == m.positions.size()));
     // t correlates with height: the -Y pole (bottom) has t~0, +Y pole t~1.
@@ -121,7 +122,7 @@ TEST_CASE("mesh_builder_tc4_test") {
     auto g = createX3DNode("Cylinder");
     setF(g, "radius", std::any(SFFloat(1.0f)));
     setF(g, "height", std::any(SFFloat(2.0f)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.texcoords.empty()));
     CHECK((m.texcoords.size() == m.positions.size()));
     // All UVs in [0,1].
@@ -140,7 +141,7 @@ TEST_CASE("mesh_builder_tc4_test") {
     setF(g, "height", std::any(SFFloat(2.0f)));
     setF(g, "top", std::any(SFBool(false)));
     setF(g, "bottom", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     bool sawBottom = false, sawTop = false;
     for (std::size_t i = 0; i < m.positions.size(); ++i) {
       const SFVec3f &p = m.positions[i];
@@ -157,7 +158,7 @@ TEST_CASE("mesh_builder_tc4_test") {
     auto g = createX3DNode("Cone");
     setF(g, "bottomRadius", std::any(SFFloat(1.0f)));
     setF(g, "height", std::any(SFFloat(2.0f)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.texcoords.empty()));
     CHECK((m.texcoords.size() == m.positions.size()));
     for (const auto &uv : m.texcoords) {
@@ -183,13 +184,13 @@ TEST_CASE("mesh_builder_tc4_test") {
     auto g = createX3DNode("Cylinder");
     setF(g, "top", std::any(SFBool(false)));
     setF(g, "bottom", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
   }
   {
     auto g = createX3DNode("Cone");
     setF(g, "side", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
   }
 

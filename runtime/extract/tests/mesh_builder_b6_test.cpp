@@ -22,6 +22,7 @@
 //   4) ElevationGrid smooths keyed on the lattice id (row*xDim+col); creaseAngle=0
 //      stays byte-identical to the pre-B6 flat output.
 //   5) Authored Normal node WINS: creaseAngle is ignored when a Normal is present.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -99,7 +100,7 @@ TEST_CASE("mesh_builder_b6_test") {
     auto g = createX3DNode("IndexedFaceSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
     setF(g, "coordIndex", std::any(cubeIdx));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.hasNormals && m.normals.size() == m.positions.size()));
     // Every triangle's three corner normals == its own geometric face normal
     // (faceted). Each face's two tris point along the same axis.
@@ -116,13 +117,13 @@ TEST_CASE("mesh_builder_b6_test") {
     auto g0 = createX3DNode("IndexedFaceSet");
     setF(g0, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
     setF(g0, "coordIndex", std::any(cubeIdx));
-    MeshData a = buildLocalMesh(g0.get());
+    MeshData a = buildLocalMesh(g0.get(), geo::builtinProjection());
 
     auto g1 = createX3DNode("IndexedFaceSet");
     setF(g1, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
     setF(g1, "coordIndex", std::any(cubeIdx));
     setF(g1, "creaseAngle", std::any(0.0f));
-    MeshData b = buildLocalMesh(g1.get());
+    MeshData b = buildLocalMesh(g1.get(), geo::builtinProjection());
 
     CHECK((a.normals.size() == b.normals.size()));
     for (std::size_t i = 0; i < a.normals.size(); ++i)
@@ -138,7 +139,7 @@ TEST_CASE("mesh_builder_b6_test") {
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
     setF(g, "coordIndex", std::any(cubeIdx));
     setF(g, "creaseAngle", std::any(PI));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     bool sawCorner = false;
     for (std::size_t i = 0; i < m.positions.size(); ++i)
       if (vecEq(m.positions[i], SFVec3f{1, 1, 1})) {
@@ -168,7 +169,7 @@ TEST_CASE("mesh_builder_b6_test") {
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(oct))));
     setF(g, "coordIndex", std::any(octIdx));
     setF(g, "creaseAngle", std::any(PI));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // Each expanded corner at coord vertex V must carry the normalized V
     // (outward radial) — the smooth sphere-of-quads result.
     for (std::size_t i = 0; i < m.positions.size(); ++i) {
@@ -202,7 +203,7 @@ TEST_CASE("mesh_builder_b6_test") {
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(tent))));
     setF(g, "coordIndex", std::any(tIdx));
     setF(g, "creaseAngle", std::any(PI));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // Faces A and B share NO coord id (2,3 vs 4,5 are distinct entries), so each
     // corner keeps its OWN face normal — no cross-seam fusing.
     const SFVec3f fnA = triGeoNormal(m, 0);
@@ -221,7 +222,7 @@ TEST_CASE("mesh_builder_b6_test") {
     // A non-planar bump so face normals genuinely differ cell-to-cell.
     setF(flat, "height",
          std::any(std::vector<float>{0, 0, 0, 0, 2, 0, 0, 0, 0}));
-    MeshData a = buildLocalMesh(flat.get());
+    MeshData a = buildLocalMesh(flat.get(), geo::builtinProjection());
     CHECK((!a.positions.empty()));
     CHECK((a.latticeIndex.size() == a.positions.size()));
     // creaseAngle 0 => every corner == its triangle's geometric face normal.
@@ -238,7 +239,7 @@ TEST_CASE("mesh_builder_b6_test") {
     setF(smooth, "height",
          std::any(std::vector<float>{0, 0, 0, 0, 2, 0, 0, 0, 0}));
     setF(smooth, "creaseAngle", std::any(PI));
-    MeshData b = buildLocalMesh(smooth.get());
+    MeshData b = buildLocalMesh(smooth.get(), geo::builtinProjection());
     // The raised centre vertex (lattice id 4) is shared by many cells; with PI
     // its corners are smoothed to the AVERAGE of incident faces — NOT the flat
     // per-face normal. Find a corner at the centre and confirm it changed.
@@ -267,7 +268,7 @@ TEST_CASE("mesh_builder_b6_test") {
     setF(g, "normal", std::any(std::static_pointer_cast<X3DNode>(nrm)));
     setF(g, "normalPerVertex", std::any(true));
     setF(g, "normalIndex", std::any(std::vector<int>{})); // coordIndex doubles.
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // Every corner uses the authored normal (coord-indexed into a 1-entry list:
     // pickIndex returns coord which is >0 -> out of range -> flat fallback for
     // most corners; the point is creaseAngle did NOT run, so corners are NOT the

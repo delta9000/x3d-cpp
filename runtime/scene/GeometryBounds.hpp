@@ -72,15 +72,18 @@ inline SFVec3f getVec3fLenient(const X3DNode &n, const char *name, SFVec3f dflt)
   return dflt;
 }
 
-// Reads an MFVec3f "point"-style field, also accepting MFVec3d (GeoCoordinate.point)
-// by narrowing each element to float. Empty if absent or another type (GEO-2).
-inline std::vector<SFVec3f> getPointsLenient(const X3DNode &n, const char *name) {
+// Reads an MFVec3f "point"-style field, also accepting MFVec3d. GeoCoordinate
+// points use the supplied world projection; other double points are narrowed.
+// Empty if absent or another type (GEO-2).
+inline std::vector<SFVec3f> getPointsLenient(const X3DNode &n, const char *name,
+                                           const geo::GeoProjection &projection) {
   std::vector<SFVec3f> f;
   if (readField(n, name, f) == FieldRead::Ok) return f;
   std::vector<SFVec3d> d;
   if (readField(n, name, d) == FieldRead::Ok) {
     // §25.3.1: GeoCoordinate points use the node's own geographic frame.
-    if (n.nodeTypeName() == "GeoCoordinate") return geo::toWorld(n, d);
+    if (n.nodeTypeName() == "GeoCoordinate")
+      return geo::toWorld(n, d, nullptr, projection);
     std::vector<SFVec3f> out;
     out.reserve(d.size());
     for (const auto &p : d) out.push_back(SFVec3f{(float)p.x, (float)p.y, (float)p.z});
@@ -121,10 +124,11 @@ inline bool hasField(const X3DNode &n, const char *name) {
 
 // AABB over a Coordinate-like node's "point". Accepts MFVec3f and MFVec3d
 // (GeoCoordinate / CoordinateDouble) via getPointsLenient. Empty if none.
-inline Aabb pointsBounds(const std::shared_ptr<X3DNode> &coordNode) {
+inline Aabb pointsBounds(const std::shared_ptr<X3DNode> &coordNode,
+                         const geo::GeoProjection &projection) {
   Aabb r;
   if (!coordNode) return r;
-  auto pts = getPointsLenient(*coordNode, "point");
+  auto pts = getPointsLenient(*coordNode, "point", projection);
   for (const auto &p : pts) r.expand(p);
   return r;
 }
@@ -296,6 +300,7 @@ inline extract::FontMetricsCallback makeLayoutMetricsAdapter(
 /// FontMetrics `fm` is supplied (never under-bounds the rendered glyphs);
 /// otherwise it falls back to the conservative heuristic.
 inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
+                                    const geo::GeoProjection &projection,
                                     const extract::FontMetrics *fm) {
   using namespace geombounds;
   if (!geom) return {};
@@ -373,13 +378,13 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
     return r2;
   }
   if (t == "NurbsCurve" || t == "NurbsPatchSurface")
-    return pointsBounds(getNode(*geom, "controlPoint"));
+    return pointsBounds(getNode(*geom, "controlPoint"), projection);
   if (t == "NurbsSweptSurface") {
     // Conservative: inflate the trajectory control hull by the cross-section's
     // max radius (the swept surface lies in trajectory-hull ⊕ ball(rmax)).
     auto trajNode = getNode(*geom, "trajectoryCurve");
     const Aabb traj = pointsBounds(trajNode ? getNode(*trajNode, "controlPoint")
-                                            : nullptr);
+                                            : nullptr, projection);
     if (traj.empty) return {};
     float rmax = 0.0f;
     for (const auto &p : getControlCurvePoints(getNode(*geom, "crossSectionCurve")))
@@ -412,9 +417,9 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
   }
   // Generic mesh: any geometry carrying a Coordinate via "coord" or "controlPoint".
   if (hasField(*geom, "coord"))
-    return pointsBounds(getNode(*geom, "coord"));
+    return pointsBounds(getNode(*geom, "coord"), projection);
   if (hasField(*geom, "controlPoint"))
-    return pointsBounds(getNode(*geom, "controlPoint"));
+    return pointsBounds(getNode(*geom, "controlPoint"), projection);
 
   if (t == "GeoElevationGrid") {
     // §25.3.2: bound the converted curved lattice, including yScale.
@@ -428,7 +433,8 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
       for (int i = 0; i < xd; ++i) {
         SFVec3f p;
         const double h = heights[static_cast<std::size_t>(j) * xd + i] * scale;
-        if (geo::toWorld(*geom, geo::gridCoordinate(*geom, i, j, h), p)) r.expand(p);
+        if (geo::toWorld(*geom, geo::gridCoordinate(*geom, i, j, h), p, projection))
+          r.expand(p);
       }
     return r;
   }
@@ -523,16 +529,18 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
 
 /// Local-frame AABB of a geometry node. Text uses the conservative heuristic
 /// (no font metrics available at this call site).
-inline Aabb localGeometryBounds(const X3DNode *geom) {
-  return localGeometryBoundsImpl(geom, nullptr);
+inline Aabb localGeometryBounds(const X3DNode *geom,
+                                const geo::GeoProjection &projection) {
+  return localGeometryBoundsImpl(geom, projection, nullptr);
 }
 
 /// Local-frame AABB of a geometry node with a FontMetrics seam: Text lays its
 /// glyphs out exactly (matching the renderer) so the bound never under-bounds
 /// them. A null/empty `fm` degrades to the heuristic path above.
 inline Aabb localGeometryBounds(const X3DNode *geom,
+                                const geo::GeoProjection &projection,
                                 const extract::FontMetrics &fm) {
-  return localGeometryBoundsImpl(geom, &fm);
+  return localGeometryBoundsImpl(geom, projection, &fm);
 }
 
 } // namespace x3d::runtime

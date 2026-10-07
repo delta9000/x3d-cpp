@@ -117,7 +117,7 @@ void test_geo_touch() {
   check(!sensor->getIsActive() && sensor->getTouchTime() == 2.0,
         "GeoTouchSensor emits touchTime on release");
   SFVec3d expected;
-  check(geo::fromWorld(*sensor, SFVec3f{0, 0, 1}, expected), "geo hit converts");
+  check(geo::fromWorld(*sensor, SFVec3f{0, 0, 1}, expected, r.ctx.geoProjection()), "geo hit converts");
   const auto actual = sensor->getHitGeoCoord_changed();
   check(std::fabs(actual.x - expected.x) < 1e-6 &&
         std::fabs(actual.y - expected.y) < 1e-6 &&
@@ -144,7 +144,7 @@ void test_geo_touch_under_transform() {
   r.ctx.setPointer(Ray{{5, 0, 10}, {0, 0, -1}});
   r.ctx.tick(1.0);
   SFVec3d expected;
-  check(geo::fromWorld(*sensor, SFVec3f{0, 0, 1}, expected), "local geo hit converts");
+  check(geo::fromWorld(*sensor, SFVec3f{0, 0, 1}, expected, r.ctx.geoProjection()), "local geo hit converts");
   const auto actual = sensor->getHitGeoCoord_changed();
   check(std::fabs(actual.x - expected.x) < 1e-6 && std::fabs(actual.y - expected.y) < 1e-6 &&
             std::fabs(actual.z - expected.z) < 1e-3,

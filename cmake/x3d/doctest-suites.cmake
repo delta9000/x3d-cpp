@@ -12,6 +12,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/vec_math_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/intersect_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/geo_projection_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/geo_projection_ownership_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tinygeoid/tests/tinygeoid_geoid_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/geometry_bounds_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/getfield_typecheck_test.cpp"
@@ -35,8 +36,9 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/binding_system_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/bind_time_conformance_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/binding_stack_audit_test.cpp")
+    find_package(Threads REQUIRED)
     target_link_libraries(x3d_geometry_scene_tests PRIVATE
-        x3d_cpp::sdk x3d_doctest_main)
+        x3d_cpp::sdk x3d_doctest_main Threads::Threads)
     target_include_directories(x3d_geometry_scene_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tinygeoid")

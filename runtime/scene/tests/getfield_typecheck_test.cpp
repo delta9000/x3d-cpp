@@ -1,6 +1,7 @@
 // getfield_typecheck_test.cpp — readField() distinguishes a field that is
 // absent (default is correct) from one that is present but of the wrong type
 // (a caller-side contract violation that getField must surface, not hide).
+#include "GeoFrame.hpp"
 #include "GeometryBounds.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "doctest/doctest.h"
@@ -68,7 +69,7 @@ TEST_CASE("getPointsLenient reads MFVec3f and MFVec3d coord points") {
   for (auto &f : gc->fields())
     if (f.x3dName == std::string("point") && f.set)
       f.set(*gc, std::any(std::vector<SFVec3d>{{1, 2, 3}, {-4, -5, -6}}));
-  std::vector<SFVec3f> pts = getPointsLenient(*gc, "point");
+  std::vector<SFVec3f> pts = getPointsLenient(*gc, "point", geo::builtinProjection());
   REQUIRE(pts.size() == 2);
   CHECK(pts[0].x == doctest::Approx(1.0f));
   CHECK(pts[1].z == doctest::Approx(-6.0f));

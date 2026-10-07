@@ -19,6 +19,7 @@
 //   6) Empty/degenerate guards: a 1-vertex polyline / empty coordIndex / empty
 //      point array yields an empty mesh with NO OOB read, and the type stays
 //      recognized (legitimately empty, not an unsupported drop).
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -80,7 +81,7 @@ TEST_CASE("mesh_builder_b4_test") {
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, SFVec3f{1, 1, 0}});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.topology == Topology::Triangles));
     CHECK((m.solid == true));     // composed-geometry default.
     CHECK((m.hasNormals == true)); // flat normals generated.
@@ -93,7 +94,7 @@ TEST_CASE("mesh_builder_b4_test") {
     attachCoord(g, {P0, P1, P2});
     // coordIndex 0,1,2,-1 => polyline (P0,P1,P2) => segments P0-P1, P1-P2.
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, -1}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
 
     CHECK((m.topology == Topology::Lines));
     CHECK((m.hasNormals == false));
@@ -115,7 +116,7 @@ TEST_CASE("mesh_builder_b4_test") {
     attachCoord(g, {P0, P1});
     attachColor(g, {SFColor{1, 0, 0}, SFColor{0, 1, 0}});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, -1}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.topology == Topology::Lines));
     CHECK((m.hasColors == true));
     CHECK((m.colors.size() == 2));
@@ -130,7 +131,7 @@ TEST_CASE("mesh_builder_b4_test") {
     attachColorRGBA(g, {SFColorRGBA{0.2f, 0.4f, 0.6f, 0.5f},
                         SFColorRGBA{0.1f, 0.2f, 0.3f, 0.25f}});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, -1}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.hasColors == true));
     CHECK((rgbaEq(m.colors[0], 0.2f, 0.4f, 0.6f, 0.5f)));
     CHECK((rgbaEq(m.colors[1], 0.1f, 0.2f, 0.3f, 0.25f)));
@@ -141,7 +142,7 @@ TEST_CASE("mesh_builder_b4_test") {
     auto g = createX3DNode("LineSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "vertexCount", std::any(std::vector<int>{3}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.topology == Topology::Lines));
     CHECK((m.hasNormals == false));
     CHECK((m.solid == false));
@@ -155,7 +156,7 @@ TEST_CASE("mesh_builder_b4_test") {
     auto g = createX3DNode("LineSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "vertexCount", std::any(std::vector<int>{2, 2}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.topology == Topology::Lines));
     CHECK((m.positions.size() == 4)); // 2 segments, 1 per polyline.
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1)));
@@ -167,7 +168,7 @@ TEST_CASE("mesh_builder_b4_test") {
     auto g = createX3DNode("PointSet");
     attachCoord(g, {P0, P1, P2});
     attachColor(g, {SFColor{1, 0, 0}, SFColor{0, 1, 0}, SFColor{0, 0, 1}});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.topology == Topology::Points));
     CHECK((m.hasNormals == false));
     CHECK((m.solid == false));
@@ -187,7 +188,7 @@ TEST_CASE("mesh_builder_b4_test") {
     attachCoord(g, {P0, P1});
     setF(g, "coordIndex", std::any(std::vector<int>{0, -1, 5, 6, -1}));
     bool recognized = false;
-    MeshData m = buildLocalMesh(g.get(), {}, &recognized);
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection(), {}, &recognized);
     CHECK((recognized));           // recognized type...
     CHECK((m.indices.empty()));    // ...but legitimately empty (no valid segment).
     CHECK((m.topology == Topology::Lines));
@@ -196,7 +197,7 @@ TEST_CASE("mesh_builder_b4_test") {
     // 6b: empty PointSet (no coord) -> empty mesh, recognized.
     auto g = createX3DNode("PointSet");
     bool recognized = false;
-    MeshData m = buildLocalMesh(g.get(), {}, &recognized);
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection(), {}, &recognized);
     CHECK((recognized));
     CHECK((m.positions.empty() && m.indices.empty()));
   }
@@ -215,7 +216,7 @@ TEST_CASE("line_and_point_normals_enable_lighting") {
       setF(g, "vertexCount", std::any(std::vector<int>{2}));
     if (std::string(type) == "IndexedLineSet")
       setF(g, "coordIndex", std::any(std::vector<int>{0,1,-1}));
-    const auto m = buildLocalMesh(g.get());
+    const auto m = buildLocalMesh(g.get(), geo::builtinProjection());
     REQUIRE(m.positions.size() == 2);
     CHECK(m.hasNormals);
     CHECK(m.normals.size() == m.positions.size());

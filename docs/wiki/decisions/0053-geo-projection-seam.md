@@ -2,7 +2,7 @@
 title: "ADR-0053: Geospatial Coordinates Through a GeoProjection Seam With a First-Party Default"
 summary: X3D Geospatial coordinates (GD, UTM, GC, WM on the 23 §25 ellipsoids, optional WGS84 geoid heights) are converted to earth-fixed geocentric metres and then into each node's GeoOrigin frame. The ellipsoid mathematics sits behind a GeoProjection seam whose default backend is first-party closed-form math (no dependencies, no IO); a PROJ backend is optional and doubles as the reference in a swap-test. Axis order, units, Web Mercator and the local frames are SDK-side and identical for every backend.
 tags: [adr, geospatial, seam, math]
-updated: 2026-09-27
+updated: 2026-10-07
 related:
   - ../subsystems/geospatial.md
   - 0040-nurbs-tessellation-first-party.md
@@ -13,7 +13,9 @@ related:
 
 ## Status
 
-Accepted
+Accepted for the mathematical seam. The process-wide selection decision is
+superseded by [ADR-0058](0058-context-owned-geo-projection.md); the virtual
+`GeoProjection` interface is unchanged.
 
 ## Context
 
@@ -89,12 +91,12 @@ both. It also provides the geoid when the application points it at a grid.
 - **The "WGS84" geoid option without a geoid model** keeps ellipsoidal
   heights. The geoSystem validator (GEOSYSTEM) already reports tokens; the
   geoid's absence is a backend capability, not a scene error.
-- **The backend is process-wide** (`geo::projection()` / `geo::setProjection()`),
-  defaulting to the first-party one. Transform, bounds and mesh code reach
-  conversions through static paths that take no context, and the conversion
-  is pure, so a per-context injection would thread a pointer through every
-  one of them for no behavioural gain. An application that wants PROJ sets it
-  once before building scenes; the setter is not synchronised.
+- **Backend ownership is context-local.** The original process-wide selector
+  proved unsafe for independent worlds: a new selection changed fresh reads
+  in an existing world without rebuilding its caches and could release its
+  backend. [ADR-0058](0058-context-owned-geo-projection.md) replaces that policy
+  with a constructor-fixed shared const owner and explicit helper arguments.
+  The built-in default is immutable; there is no global setter.
 - **Frame of the converted coordinates.** A node's geographic coordinates
   are converted into that node's local coordinate system (relative to its
   GeoOrigin); ancestor transforms then apply on top, exactly as for any other
@@ -112,8 +114,9 @@ both. It also provides the geoid when the application points it at a grid.
 
 - The B5 `MeshBuildOptions::geoProjection` / `GeoSystemDesc` callback is
   removed from the SDK façade. It covered only GeoElevationGrid, only inside
-  mesh extraction, and had no default; the process-wide backend replaces it
-  for every Geospatial consumer.
+  mesh extraction, and had no default. The common mathematical seam replaces
+  it for every Geospatial consumer; selection now belongs to the context,
+  not an independently configurable renderer.
 
 - The Geospatial nodes can now be wired: GeoCoordinate and GeoElevationGrid
   geometry and bounds, GeoLocation and GeoTransform as transforms, the

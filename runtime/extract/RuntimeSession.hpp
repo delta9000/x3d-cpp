@@ -57,6 +57,10 @@ namespace x3d::runtime {
 /// Everything RuntimeSession::create can be told, in one named bag. A struct
 /// rather than positional parameters so a call site reads as what it turns on.
 struct SessionOptions {
+  /// One constructor-fixed backend for transforms, geometry, camera and events.
+  /// Null selects the stable built-in backend once, before any scene attachment.
+  std::shared_ptr<const geo::GeoProjection> geoProjection;
+
   /// Attach the standard behavior systems: §8 TimeSensor, §19 interpolators,
   /// §39 followers, §30 event utilities, §22/§23 LOD/Billboard/Proximity/
   /// Visibility, §21 key-device sensors, §9 LoadSensor, §23.3.1 viewpoint bind.
@@ -154,6 +158,7 @@ private:
       // into its scene), then ctx_, then extractor_ last (it captures both by
       // reference). Declaration order below fixes this; do not reorder.
       : doc_(std::move(doc)),
+        ctx_(std::move(options.geoProjection)),
         extractor_(ctx_, doc_.scene, std::move(options.meshOptions),
                    std::move(options.textureResolver)) {
     ctx_.buildSceneGraph(doc_.scene);

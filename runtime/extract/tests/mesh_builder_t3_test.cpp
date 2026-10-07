@@ -16,6 +16,7 @@
 //   5) ColorRGBA carried vs Color promoted — a Color (MFColor) node yields
 //      alpha=1; a ColorRGBA (MFColorRGBA) node carries its authored alpha.
 //   6) hasColors / hasNormals flags + texCoord resolution.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 
 #include "x3d/nodes/X3DNode.hpp"
@@ -82,7 +83,7 @@ TEST_CASE("mesh_builder_t3_test") {
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2}); // CCW in z=0 plane.
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 3));
     CHECK((m.hasNormals && !m.hasColors));
     CHECK((m.normals.size() == 3)); // one per corner.
@@ -93,7 +94,7 @@ TEST_CASE("mesh_builder_t3_test") {
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P2, P1}); // reversed winding.
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     for (const auto &n : m.normals) CHECK((vecEq(n, SFVec3f{0, 0, -1})));
   }
 
@@ -111,7 +112,7 @@ TEST_CASE("mesh_builder_t3_test") {
     attachNormal(g, {NA, NB, NC});
     setF(g, "normalPerVertex", std::any(true));
     setF(g, "normalIndex", std::any(std::vector<int>{2, 0, 1, -1})); // corner0->NC.
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.normals.size() == 3));
     CHECK((vecEq(m.normals[0], NC)));
     CHECK((vecEq(m.normals[1], NA)));
@@ -127,7 +128,7 @@ TEST_CASE("mesh_builder_t3_test") {
     setF(g, "index", std::any(std::vector<int>{2, 0, 1})); // coord order remapped.
     const SFVec3f NA{1, 0, 0}, NB{0, 1, 0}, NC{0, 0, 1};
     attachNormal(g, {NA, NB, NC});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.normals.size() == 3));
     CHECK((vecEq(m.normals[0], NC))); // coord 2 -> NC
     CHECK((vecEq(m.normals[1], NA))); // coord 0 -> NA
@@ -142,7 +143,7 @@ TEST_CASE("mesh_builder_t3_test") {
     attachColor(g, {SFColor{1, 0, 0}, SFColor{0, 1, 0}, SFColor{0, 0, 1}});
     setF(g, "colorPerVertex", std::any(true));
     setF(g, "colorIndex", std::any(std::vector<int>{1, 2, 0, -1}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.hasColors));
     CHECK((m.colors.size() == 3));
     CHECK((rgbaEq(m.colors[0], 0, 1, 0, 1)));
@@ -157,7 +158,7 @@ TEST_CASE("mesh_builder_t3_test") {
     setF(g, "coordIndex", std::any(std::vector<int>{2, 0, 1, -1})); // remapped.
     attachColor(g, {SFColor{1, 0, 0}, SFColor{0, 1, 0}, SFColor{0, 0, 1}});
     // no colorIndex -> color[coordIndex] : corner0 uses coord 2 -> blue, etc.
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((rgbaEq(m.colors[0], 0, 0, 1, 1))); // coord 2
     CHECK((rgbaEq(m.colors[1], 1, 0, 0, 1))); // coord 0
     CHECK((rgbaEq(m.colors[2], 0, 1, 0, 1))); // coord 1
@@ -174,7 +175,7 @@ TEST_CASE("mesh_builder_t3_test") {
     attachColor(g, {SFColor{0.2f, 0.4f, 0.6f}, SFColor{1, 1, 1}});
     setF(g, "colorPerVertex", std::any(false)); // per-FACE.
     // no colorIndex -> face 0 uses color[0].
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.colors.size() == 6)); // quad fan -> 2 tris -> 6 corners.
     for (const auto &c : m.colors) CHECK((rgbaEq(c, 0.2f, 0.4f, 0.6f, 1)));
   }
@@ -188,7 +189,7 @@ TEST_CASE("mesh_builder_t3_test") {
     attachColor(g, {SFColor{1, 0, 0}, SFColor{0, 1, 0}, SFColor{0, 0, 1}});
     setF(g, "colorPerVertex", std::any(false));
     setF(g, "colorIndex", std::any(std::vector<int>{2, 0})); // face0->blue, face1->red
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.colors.size() == 6)); // 2 faces, 1 tri each -> 6 corners.
     // face 0 (corners 0..2) -> blue
     CHECK((rgbaEq(m.colors[0], 0, 0, 1, 1) && rgbaEq(m.colors[2], 0, 0, 1, 1)));
@@ -202,7 +203,7 @@ TEST_CASE("mesh_builder_t3_test") {
     attachCoord(g, {P0, P1, P2});
     attachColorRGBA(g, {SFColorRGBA{1, 0, 0, 0.25f}, SFColorRGBA{0, 1, 0, 0.5f},
                         SFColorRGBA{0, 0, 1, 0.75f}});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.hasColors));
     CHECK((rgbaEq(m.colors[0], 1, 0, 0, 0.25f))); // authored alpha PRESERVED.
     CHECK((rgbaEq(m.colors[1], 0, 1, 0, 0.5f)));
@@ -213,7 +214,7 @@ TEST_CASE("mesh_builder_t3_test") {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
     attachColor(g, {SFColor{1, 0, 0}, SFColor{0, 1, 0}, SFColor{0, 0, 1}});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((rgbaEq(m.colors[0], 1, 0, 0, 1)));
     CHECK((rgbaEq(m.colors[1], 0, 1, 0, 1)));
     CHECK((rgbaEq(m.colors[2], 0, 0, 1, 1)));
@@ -226,7 +227,7 @@ TEST_CASE("mesh_builder_t3_test") {
     attachTexCoord(g, {SFVec2f{0, 0}, SFVec2f{1, 0}, SFVec2f{1, 1}});
     // authored normals all +Y (NOT the geometric +Z) so we prove they're honored.
     attachNormal(g, {SFVec3f{0, 1, 0}, SFVec3f{0, 1, 0}, SFVec3f{0, 1, 0}});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == 3));
     CHECK((feq(m.texcoords[0].x, 0) && feq(m.texcoords[0].y, 0)));
     CHECK((feq(m.texcoords[2].x, 1) && feq(m.texcoords[2].y, 1)));
@@ -240,13 +241,13 @@ TEST_CASE("mesh_builder_t3_test") {
     attachCoord(g, {P0, P1, P2});
     setF(g, "ccw", std::any(false));
     setF(g, "solid", std::any(false));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.ccw == false && m.solid == false));
   }
   {
     auto g = createX3DNode("TriangleSet"); // defaults true.
     attachCoord(g, {P0, P1, P2});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.ccw == true && m.solid == true));
   }
 
@@ -273,7 +274,7 @@ TEST_CASE("custom vertex attributes follow expanded coordinate vertices") {
     attachCoord(g, {{0,0,0},{1,0,0},{1,1,0},{0,1,0}});
     if (std::string(type) == "IndexedFaceSet") setF(g, "coordIndex", std::any(std::vector<int>{2,0,3,1,-1}));
     makeAttributes(g);
-    const MeshData mesh = buildLocalMesh(g.get());
+    const MeshData mesh = buildLocalMesh(g.get(), geo::builtinProjection());
     REQUIRE(mesh.vertexAttributes.size() == 2);
     CHECK(mesh.vertexAttributes[0].name == "weights");
     CHECK(mesh.vertexAttributes[0].components == 3);

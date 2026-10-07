@@ -318,9 +318,10 @@ GpuSkin uploadSkin(const ex::RenderItem &item, const ex::MeshData &mesh,
   return s;
 }
 
-void updateSkinPose(GpuSkin &s, const ex::RenderItem &item) {
+void updateSkinPose(GpuSkin &s, const ex::RenderItem &item,
+                    const x3d::runtime::geo::GeoProjection &projection) {
   if (s.cpuFallback) return;
-  auto pose = x3d::runtime::hanim::evaluatePose(*item.skin->binding);
+  auto pose = x3d::runtime::hanim::evaluatePose(*item.skin->binding, projection);
   // Seven RGBA texels per joint: four matrix columns, then three columns of
   // inverse-transpose 3x3. The reference skinner uses the same inverse.
   std::vector<float> data;
@@ -1433,7 +1434,7 @@ int main(int argc, char **argv) {
       }
     }
     GpuSkin skin = uploadSkin(it, fallback ? extractor.deformedMesh(id) : bindMesh, fallback);
-    if (!fallback) updateSkinPose(skin, it);
+    if (!fallback) updateSkinPose(skin, it, ctx.geoProjection());
     gpuSkins.emplace(id, std::move(skin));
     std::fprintf(stderr, "[poc] skin item %u: %s, %zu influences\n",
                  static_cast<unsigned>(id), fallback ? "CPU reference" : "GPU palette",
@@ -1641,7 +1642,7 @@ int main(int argc, char **argv) {
         destroySkin(skin->second);
         skin->second = std::move(next);
       } else {
-        updateSkinPose(skin->second, extractor.item(id));
+        updateSkinPose(skin->second, extractor.item(id), ctx.geoProjection());
       }
     }
     // updatedTransform needs no GPU work: the model uniform is sourced from

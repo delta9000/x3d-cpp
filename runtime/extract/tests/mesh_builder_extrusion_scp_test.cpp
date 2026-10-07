@@ -7,6 +7,7 @@
 //   X = normalize(Y × Z),  Z = X × Y.
 // It also requires that fewer than 2 DISTINCT (coincident-collapsed) spine
 // points render nothing.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -49,7 +50,7 @@ TEST_CASE("extrusion_scp_coincident_spine_culls") {
   auto g = createX3DNode("Extrusion");
   setF(g, "crossSection", std::any(kUnitSquare));
   setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 0, 0}}));
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((m.positions.empty()));
   CHECK((m.indices.empty()));
 
@@ -57,7 +58,7 @@ TEST_CASE("extrusion_scp_coincident_spine_culls") {
   auto g2 = createX3DNode("Extrusion");
   setF(g2, "crossSection", std::any(kUnitSquare));
   setF(g2, "spine", std::any(MFVec3f{{2, 2, 2}, {2, 2, 2}, {2, 2, 2}}));
-  CHECK((buildLocalMesh(g2.get()).positions.empty()));
+  CHECK((buildLocalMesh(g2.get(), geo::builtinProjection()).positions.empty()));
 }
 
 TEST_CASE("extrusion_scp_two_point_spine_uses_model_axes") {
@@ -68,7 +69,7 @@ TEST_CASE("extrusion_scp_two_point_spine_uses_model_axes") {
   auto g = createX3DNode("Extrusion");
   setF(g, "crossSection", std::any(kUnitSquare));
   setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {4, 0, 0}}));
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   REQUIRE((!m.positions.empty()));
 
   // lattice id 0 == section 0, crossSection vertex 0 == (cv.x=1, cv.y=1).
@@ -87,7 +88,7 @@ TEST_CASE("extrusion_scp_tangent_parallel_modelz_falls_back_to_modelx") {
   auto g = createX3DNode("Extrusion");
   setF(g, "crossSection", std::any(kUnitSquare));
   setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 0, 4}}));
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   SFVec3f p;
   REQUIRE(cornerPos(m, 0, p));
   CHECK(feq(p.x, 1.0f));
@@ -101,7 +102,7 @@ TEST_CASE("extrusion_scp_well_defined_spine_untouched") {
   auto g = createX3DNode("Extrusion");
   setF(g, "crossSection", std::any(kUnitSquare));
   setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 2, 0}, {2, 2, 0}}));
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((!m.positions.empty()));
   CHECK((m.hasNormals));
 }

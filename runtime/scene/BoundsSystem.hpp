@@ -196,12 +196,12 @@ private:
     if (it != children_.end())
       for (const X3DNode *c : it->second) {
         Aabb cb = compute(c, ts); // post-order: child entry set first
-        if (isTransform(c)) cb = cb.transformed(TransformSystem::localMatrix(c));
+        if (isTransform(c)) cb = cb.transformed(TransformSystem::localMatrix(c, ts.geoProjection()));
         childUnion.unionWith(cb);
       }
     Aabb a;
     if (!authorBounds(n, a)) {       // author bbox is authoritative; else compute
-      a = localGeometryBounds(n, fontMetrics_); // empty unless n is itself a geometry node
+      a = localGeometryBounds(n, ts.geoProjection(), fontMetrics_); // empty unless n is itself a geometry node
       a.unionWith(childUnion);
     }
     local_[n] = a;

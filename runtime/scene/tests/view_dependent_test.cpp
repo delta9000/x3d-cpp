@@ -206,7 +206,7 @@ static void testGeoProximity() {
   CHECK(getF<SFBool>(ps, "isActive"));
   const SFVec3d coords = getF<SFVec3d>(ps, "geoCoord_changed");
   SFVec3f roundTrip;
-  CHECK(geo::toWorld(*ps, coords, roundTrip));
+  CHECK(geo::toWorld(*ps, coords, roundTrip, ctx.geoProjection()));
   CHECK((feq(roundTrip.x, 0) && feq(roundTrip.y, 0) && feq(roundTrip.z, 0)));
   setF(vp, "position", std::any(SFVec3f{0, 0, 30}));
   ctx.tick(1.0);
@@ -1113,7 +1113,7 @@ TEST_CASE("GeoProximitySensor geoCoord is in the sensor's local geo frame") {
   ctx.tick(0);
   REQUIRE(getF<SFBool>(ps, "isActive"));
   SFVec3f reported;
-  REQUIRE(geo::toWorld(*ps, getF<SFVec3d>(ps, "geoCoord_changed"), reported));
+  REQUIRE(geo::toWorld(*ps, getF<SFVec3d>(ps, "geoCoord_changed"), reported, ctx.geoProjection()));
   CHECK(std::fabs(reported.x) < 1e-3f);
 }
 

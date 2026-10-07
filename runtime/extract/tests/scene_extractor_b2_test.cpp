@@ -13,6 +13,7 @@
 //      map — legitimate emptiness is not a coverage gap.
 //   3) A supported Shape (TriangleSet) still emits and is never counted.
 //   4) fullSnapshot() recounts from scratch (the map is cleared each full walk).
+#include "GeoFrame.hpp"
 #include "SceneExtractor.hpp"
 
 #include "MeshBuilder.hpp" // extract::recognizedGeometryType (the static oracle).
@@ -100,7 +101,7 @@ TEST_CASE("scene_extractor_b2_test") {
   {
     bool rec = true;
     auto ex = createX3DNode("NurbsTrimmedSurface");
-    auto m = extract::buildLocalMesh(ex.get(), extract::MeshBuildOptions{}, &rec);
+    auto m = extract::buildLocalMesh(ex.get(), geo::builtinProjection(), extract::MeshBuildOptions{}, &rec);
     CHECK((m.indices.empty() && !rec)); // unrecognized -> empty + recognized=false.
 
     auto coord = createX3DNode("Coordinate");
@@ -108,7 +109,7 @@ TEST_CASE("scene_extractor_b2_test") {
     auto ifs = createX3DNode("IndexedFaceSet");
     setF(ifs, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
     rec = false;
-    auto m2 = extract::buildLocalMesh(ifs.get(), extract::MeshBuildOptions{}, &rec);
+    auto m2 = extract::buildLocalMesh(ifs.get(), geo::builtinProjection(), extract::MeshBuildOptions{}, &rec);
     CHECK((m2.indices.empty() && rec)); // recognized-but-empty -> recognized=true.
   }
 

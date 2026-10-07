@@ -1,5 +1,6 @@
 // mesh_builder_ext002_test.cpp — EXT-002: with colorPerVertex=FALSE, fan/strip
 // sets apply ONE color per FAN/STRIP (§11.3.2/§11.4.13/§11.4.15), not per triangle.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -41,7 +42,7 @@ TEST_CASE("mesh_builder_ext002_test") {
     setF(g, "color", std::any(std::shared_ptr<X3DNode>(color2())));
     setF(g, "colorPerVertex", std::any(SFBool{false}));
     setF(g, "fanCount", std::any(std::vector<int>{3, 4}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.colors.size() == 9));
     for (int i = 0; i < 3; ++i) CHECK((isRed(m.colors[i])));   // fan0 -> color[0]
     for (int i = 3; i < 9; ++i) CHECK((isGreen(m.colors[i]))); // fan1 -> color[1] (both tris)
@@ -54,7 +55,7 @@ TEST_CASE("mesh_builder_ext002_test") {
     setF(g, "color", std::any(std::shared_ptr<X3DNode>(color2())));
     setF(g, "colorPerVertex", std::any(SFBool{false}));
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3, -1, 4, 5, 6}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.colors.size() == 9));
     for (int i = 0; i < 6; ++i) CHECK((isRed(m.colors[i])));   // strip0 (2 tris) -> color[0]
     for (int i = 6; i < 9; ++i) CHECK((isGreen(m.colors[i]))); // strip1 (1 tri) -> color[1]

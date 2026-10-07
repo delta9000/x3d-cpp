@@ -49,31 +49,37 @@ class LightSystem {
 public:
   // One full walk; returns every active (on==true) light, world-resolved. The
   // self-budgeted overload caps the fan-out with a fresh default budget.
-  std::vector<LightDesc> collect(const Scene &scene) {
+  std::vector<LightDesc> collect(const Scene &scene,
+                                const geo::GeoProjection &projection) {
     WalkBudget budget(kMaxGraphWalkVisits);
-    return collect(scene, budget, SFVec3f{0, 0, 0});
+    return collect(scene, projection, budget, SFVec3f{0, 0, 0});
   }
 
-  std::vector<LightDesc> collect(const Scene &scene, const SFVec3f &eyeWorld) {
+  std::vector<LightDesc> collect(const Scene &scene,
+                                const geo::GeoProjection &projection,
+                                const SFVec3f &eyeWorld) {
     WalkBudget budget(kMaxGraphWalkVisits);
-    return collect(scene, budget, eyeWorld);
+    return collect(scene, projection, budget, eyeWorld);
   }
 
   // #21: collect against a shared node-visit budget — the extractor threads the
   // SAME budget through light collection and its geometry walk, so one snapshot
   // ceiling covers both. `budget.tripped` reports an early stop.
-  std::vector<LightDesc> collect(const Scene &scene, WalkBudget &budget) {
-    return collect(scene, budget, SFVec3f{0, 0, 0});
+  std::vector<LightDesc> collect(const Scene &scene,
+                                const geo::GeoProjection &projection,
+                                WalkBudget &budget) {
+    return collect(scene, projection, budget, SFVec3f{0, 0, 0});
   }
 
-  std::vector<LightDesc> collect(const Scene &scene, WalkBudget &budget,
-                                 const SFVec3f &eyeWorld) {
+  std::vector<LightDesc> collect(const Scene &scene,
+                                const geo::GeoProjection &projection,
+                                WalkBudget &budget, const SFVec3f &eyeWorld) {
     std::vector<LightDesc> out;
     for (const auto &root : scene.rootNodes) {
       if (!root) continue;
       // A root light has no enclosing grouping node => scopeRoot null.
       walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, out, budget,
-           eyeWorld);
+           eyeWorld, projection);
     }
     return out;
   }
@@ -110,6 +116,7 @@ private:
   void walk(const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
             std::vector<LightDesc> &out, WalkBudget &budget,
             const SFVec3f &eyeWorld,
+            const geo::GeoProjection &projection,
             std::size_t depth = 0) {
     if (!n) return;
     // #21: bound total node-visits so a wide acyclic ("doubling DAG") light
@@ -120,7 +127,8 @@ private:
     // USE-cyclic / pathologically deep graph (this walk runs before the
     // extractor's own walk in fullSnapshot, so it must be self-safe too).
     if (depth >= kMaxNestingDepth) return;
-    Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
+    Mat4 here = isTransform(n)
+        ? worldM * TransformSystem::localMatrix(n, projection) : worldM;
 
     bool isLight = false;
     LightDesc::Type type = lightType(n->nodeTypeName(), isLight);
@@ -139,11 +147,12 @@ private:
     const std::string typeName = n->nodeTypeName();
     if (typeName == "Switch" || typeName == "LOD") {
       if (auto child = traversedChild(*n, here, eyeWorld))
-        walk(child.get(), here, childScope, out, budget, eyeWorld, depth + 1);
+        walk(child.get(), here, childScope, out, budget, eyeWorld, projection,
+             depth + 1);
       return;
     }
     forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      walk(c.get(), here, childScope, out, budget, eyeWorld, depth + 1);
+      walk(c.get(), here, childScope, out, budget, eyeWorld, projection, depth + 1);
     });
   }
 

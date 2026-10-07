@@ -1,3 +1,4 @@
+#include "GeoFrame.hpp"
 #include "doctest/doctest.h"
 // navigation_test.cpp — M2D NavigationSystem driving the bound Viewpoint from
 // the input seam (pointer-drag + KeyState) and the bound NavigationInfo, per
@@ -470,7 +471,7 @@ TEST_CASE("geospatial transforms and viewpoint use local tangent frames") {
   setF(location, "geoOrigin", std::any(origin));
   setF(location, "geoCoords", std::any(SFVec3d{0,0,10}));
   REQUIRE(TransformSystem::isTransform(location.get()));
-  Mat4 place = TransformSystem::localMatrix(location.get());
+  Mat4 place = TransformSystem::localMatrix(location.get(), geo::builtinProjection());
   CHECK(feq(place.transformPoint({0,0,0}).y, 10.0f, 0.01f));
   SFVec3f up = place.transformDirection({0,1,0});
   CHECK(feq(up.y, 1.0f, 0.001f));
@@ -488,10 +489,10 @@ TEST_CASE("geospatial transforms and viewpoint use local tangent frames") {
   setF(transform, "geoCenter", std::any(SFVec3d{0,0,0}));
   setF(transform, "rotation", std::any(SFRotation{0,1,0,1.57079632679f}));
   REQUIRE(TransformSystem::isTransform(transform.get()));
-  SFVec3f rotated = TransformSystem::localMatrix(transform.get()).transformPoint({1,0,0});
+  SFVec3f rotated = TransformSystem::localMatrix(transform.get(), geo::builtinProjection()).transformPoint({1,0,0});
   CHECK(feq(rotated.z, -1.0f, 0.001f));
   setF(transform, "translation", std::any(SFVec3f{0,5,0}));
-  SFVec3f translated = TransformSystem::localMatrix(transform.get()).transformPoint({0,0,0});
+  SFVec3f translated = TransformSystem::localMatrix(transform.get(), geo::builtinProjection()).transformPoint({0,0,0});
   CHECK(feq(translated.y, 5.0f, 0.001f));
 
   auto vp = createX3DNode("GeoViewpoint");

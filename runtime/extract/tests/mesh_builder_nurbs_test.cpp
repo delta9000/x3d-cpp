@@ -1,4 +1,5 @@
 // mesh_builder_nurbs_test.cpp — NurbsCurve/NurbsPatchSurface -> MeshData.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -23,7 +24,7 @@ TEST_CASE("nurbs_curve_arm_emits_lines") {
   setF(curve, "order", std::any(SFInt32{3}));
   setF(curve, "tessellation", std::any(SFInt32{8})); // 8 segments => 9 sample points
   bool rec = false;
-  auto mesh = buildLocalMesh(curve.get(), MeshBuildOptions{}, &rec);
+  auto mesh = buildLocalMesh(curve.get(), x3d::runtime::geo::builtinProjection(), MeshBuildOptions{}, &rec);
   CHECK(rec);
   CHECK(mesh.topology == Topology::Lines);
   CHECK(mesh.solid == false);
@@ -43,7 +44,7 @@ TEST_CASE("nurbs_curve_degenerate_recognized_but_empty") {
   setF(curve, "controlPoint", std::any(std::shared_ptr<X3DNode>(coord)));
   setF(curve, "order", std::any(SFInt32{3}));
   bool rec = false;
-  auto mesh = buildLocalMesh(curve.get(), MeshBuildOptions{}, &rec);
+  auto mesh = buildLocalMesh(curve.get(), x3d::runtime::geo::builtinProjection(), MeshBuildOptions{}, &rec);
   CHECK(rec);                      // recognized type...
   CHECK(mesh.positions.empty());   // ...but legitimately empty
 }
@@ -63,7 +64,7 @@ TEST_CASE("nurbs_patch_arm_emits_triangles") {
   setF(patch, "uTessellation", std::any(SFInt32{4}));
   setF(patch, "vTessellation", std::any(SFInt32{4}));
   bool rec = false;
-  auto mesh = buildLocalMesh(patch.get(), MeshBuildOptions{}, &rec);
+  auto mesh = buildLocalMesh(patch.get(), x3d::runtime::geo::builtinProjection(), MeshBuildOptions{}, &rec);
   CHECK(rec);
   CHECK(mesh.topology == Topology::Triangles);
   CHECK(mesh.hasNormals);

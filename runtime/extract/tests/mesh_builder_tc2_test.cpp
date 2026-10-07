@@ -14,6 +14,7 @@
 //   3) GeoElevationGrid gets the SAME grid parameterization when
 //      texCoord is NULL.
 //   4) A degenerate 1-wide axis guards the s/t along that axis to 0 (no div0).
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -68,7 +69,7 @@ TEST_CASE("mesh_builder_tc2_test") {
     setF(g, "zSpacing", std::any(1.0f));
     setF(g, "height", std::any(std::vector<float>(9, 0.0f)));
 
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 24)); // (3-1)*(3-1)=4 cells -> 8 tris.
     CHECK((!m.texcoords.empty()));
     CHECK((m.texcoords.size() == m.positions.size())); // parallel.
@@ -89,7 +90,7 @@ TEST_CASE("mesh_builder_tc2_test") {
     setF(g2, "xSpacing", std::any(10.0f));
     setF(g2, "zSpacing", std::any(10.0f));
     setF(g2, "height", std::any(std::vector<float>(9, 0.0f)));
-    MeshData m2 = buildLocalMesh(g2.get());
+    MeshData m2 = buildLocalMesh(g2.get(), geo::builtinProjection());
     CHECK((m2.texcoords.size() == m.texcoords.size()));
     for (std::size_t i = 0; i < m.texcoords.size(); ++i)
       CHECK((feq(m.texcoords[i].x, m2.texcoords[i].x) &&
@@ -111,7 +112,7 @@ TEST_CASE("mesh_builder_tc2_test") {
     attachTexCoord(g, {SFVec2f{0.1f, 0.2f}, SFVec2f{0.3f, 0.4f},
                        SFVec2f{0.5f, 0.6f}, SFVec2f{0.7f, 0.8f}});
 
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
     // lid 0 -> (0,0,0) carries authored (0.1,0.2), NOT the generated (0,0).
     CHECK((hasUvAt(m, SFVec3f{0, 0, 0}, 0.1f, 0.2f)));
@@ -132,7 +133,7 @@ TEST_CASE("mesh_builder_tc2_test") {
     setF(g, "zSpacing", std::any(1.0));
     setF(g, "height", std::any(std::vector<double>(9, 0.0)));
 
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
     for (std::size_t c = 0; c < m.texcoords.size(); ++c) {
       const auto lid = m.latticeIndex[c];
@@ -152,7 +153,7 @@ TEST_CASE("mesh_builder_tc2_test") {
     setF(g, "xSpacing", std::any(1.0f));
     setF(g, "zSpacing", std::any(1.0f));
     setF(g, "height", std::any(std::vector<float>(6, 0.0f)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
     // col 1, row 2 -> (1, 0, 2) -> s=1/(2-1)=1, t=2/(3-1)=1.
     CHECK((hasUvAt(m, SFVec3f{1, 0, 2}, 1.0f, 1.0f)));
