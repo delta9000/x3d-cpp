@@ -26,6 +26,7 @@
 #include "X3DFieldAddress.hpp"
 #include "X3DSystem.hpp"
 
+#include <algorithm>
 #include <any>
 #include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
@@ -172,6 +173,10 @@ public:
     for (const X3DNode *n : nodes) {
       auto *node = const_cast<X3DNode *>(n);
       for (const auto &s : systems_) s->detach(node, *this);
+      // Per-node field-write listeners capture `node` by raw pointer; they must
+      // not outlive it. detachNodes is the last gate before the caller drops
+      // the node's shared_ptr (e.g. InlineRuntimeSystem tile retirement).
+      removeFieldWriteListeners(n);
       bindings_.removeNode(node);
       dynamicFieldStore().erase(*node);
       detached_.insert(node);
@@ -524,10 +529,27 @@ public:
   /// listener may post events; they join the current timestamp.
   using FieldWriteListener = std::function<void(const FieldAddress &)>;
   void addFieldWriteListener(FieldWriteListener l) {
-    fieldWriteListeners_.push_back(std::move(l));
+    addFieldWriteListener(nullptr, std::move(l));
+  }
+  /**
+   * @brief Owner-tagged variant: the listener is removed when `owner` is
+   *        detached (detachNodes), so it can never outlive the node it
+   *        captures a raw pointer to. Use for per-node listeners.
+   */
+  void addFieldWriteListener(const X3DNode *owner, FieldWriteListener l) {
+    fieldWriteListeners_.push_back({owner, std::move(l)});
     // Listeners must hear cascade deliveries even before (or without)
     // buildSceneGraph, which otherwise installs this same observer.
     cascade_.setFieldObserver([this](const FieldAddress &a) { onFieldWritten(a); });
+  }
+  /// Remove every listener registered with this owner (no-op if none).
+  void removeFieldWriteListeners(const X3DNode *owner) {
+    fieldWriteListeners_.erase(
+        std::remove_if(fieldWriteListeners_.begin(), fieldWriteListeners_.end(),
+                       [owner](const FieldWriteListenerEntry &e) {
+                         return e.owner == owner;
+                       }),
+        fieldWriteListeners_.end());
   }
   void setPointerConsumedBySensor(bool v) { pointerConsumedBySensor_ = v; }
 
@@ -613,7 +635,7 @@ private:
   // then the Systems that react to inputOutput writes.
   void onFieldWritten(const FieldAddress &a) {
     classifyDirty(a);
-    for (const auto &l : fieldWriteListeners_) l(a);
+    for (const auto &l : fieldWriteListeners_) l.fn(a);
   }
 
   void classifyDirty(const FieldAddress &a) {
@@ -699,7 +721,11 @@ private:
   std::uint64_t tickGeneration_ = 0; // monotonic advance count; see tickGeneration()
   bool ticking_ = false; // reentrancy guard for tick()
   bool pointerConsumedBySensor_ = false; // per-tick nav/sensor arbitration flag
-  std::vector<FieldWriteListener> fieldWriteListeners_;
+  struct FieldWriteListenerEntry {
+    const X3DNode *owner; // nullptr = context-lifetime listener
+    FieldWriteListener fn;
+  };
+  std::vector<FieldWriteListenerEntry> fieldWriteListeners_;
 };
 
 } // namespace x3d::runtime
