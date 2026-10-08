@@ -80,6 +80,41 @@ void test_integer_trigger_key_write() {
   check(triggerEvents == 3, "TRIG-4: set_boolean TRUE still emits triggerValue");
 }
 
+// LIFETIME: the IntegerTrigger field-write listener must be disconnected when
+// the node is detached (detachNodes is the last gate before the caller drops
+// the shared_ptr), and a detach -> attachNewSubtree cycle must not stack
+// duplicate listeners (double-emit / unbounded growth on GeoLOD churn).
+void test_integer_trigger_listener_lifetime() {
+  auto trig = std::make_shared<IntegerTrigger>();
+  X3DExecutionContext ctx;
+  auto sys = std::make_shared<IntegerTriggerSystem>();
+  ctx.addSystem(sys);
+  sys->attach(trig.get(), ctx);
+  sys->attach(trig.get(), ctx); // double attach must not double-emit
+  int triggerEvents = 0;
+  ctx.addFieldWriteListener([&](const FieldAddress &a) {
+    if (a.node == trig.get() && a.field == "triggerValue") ++triggerEvents;
+  });
+  ctx.postEvent(trig.get(), "integerKey", std::any(SFInt32{7}));
+  ctx.tick(0.1);
+  check(triggerEvents == 1,
+        "LIFETIME: double attach does not duplicate the integerKey listener");
+
+  ctx.detachNodes({trig.get()});
+  ctx.postEvent(trig.get(), "integerKey", std::any(SFInt32{9}));
+  ctx.tick(0.2);
+  check(triggerEvents == 1 && trig->getTriggerValue() == 7,
+        "LIFETIME: detached node's field-write listener is disconnected");
+
+  // Re-attach (as InlineRuntimeSystem does on topology churn): exactly one
+  // listener again, not the old one plus a new one.
+  ctx.attachNewSubtree(trig.get());
+  ctx.postEvent(trig.get(), "integerKey", std::any(SFInt32{11}));
+  ctx.tick(0.3);
+  check(triggerEvents == 2 && trig->getTriggerValue() == 11,
+        "LIFETIME: re-attach reinstalls exactly one listener");
+}
+
 void test_key_device_focus() {
   auto k1 = std::make_shared<KeySensor>();
   auto k2 = std::make_shared<KeySensor>();
@@ -278,6 +313,7 @@ void test_anchor_loadsensor_waits_for_viewpoint_bind() {
 
 TEST_CASE("events_misc_test") {
   test_integer_trigger_key_write();
+  test_integer_trigger_listener_lifetime();
   test_key_device_focus();
   test_pause_resume_now();
   test_same_instant_restart();
