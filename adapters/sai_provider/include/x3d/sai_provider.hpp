@@ -37,6 +37,12 @@ public:
 
 protected:
   result<std::uint64_t> do_create_scene() override;
+  result<std::vector<unit_declaration>> do_units(std::uint64_t) const override;
+  result<void> do_declare_unit(std::uint64_t,
+                               const unit_declaration &) override;
+  result<std::vector<metadata_entry>> do_metadata(std::uint64_t) const override;
+  result<void> do_set_metadata(std::uint64_t, std::string_view,
+                               const std::optional<std::string> &) override;
   result<std::uint64_t> do_create_node(std::uint64_t,
                                        std::string_view) override;
   result<void> do_append_root(const address &) override;

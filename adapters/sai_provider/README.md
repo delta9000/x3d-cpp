@@ -130,3 +130,22 @@ not represent a complete renderer, profile, material system or CAVEOS binding.
 The existing extractor distinguishes shared shapes under different Transform
 paths, but collapses repeated identical root/path occurrences. This extension
 preserves that behavior and does not claim occurrence-distinct rendering there.
+
+## Scene information
+
+The adapter advertises `scene_units` and `scene_metadata` for the canonical
+provider. Effective unit discovery includes SI defaults. Setup declarations are
+stored in native `X3DDocument::head.units` and `Scene::sourceUnits` together, before
+node creation. Ordered scene META entries live in the document head and survive
+activation through `RuntimeSession::document()`.
+
+Provider field inputs and outputs always use canonical SI values. Authored scalar
+fields are marked already normalized, including detached nodes; declarations do
+not trigger a second conversion on activation. Generated defaults and live writes
+remain canonical. The shared provider fixture and native-runtime fixture cover
+nonidentity length/angle declarations, metadata, defaults, interpolation and
+live values. This introduces no parsed-document importer or serializer: a future
+writer must inverse-convert canonical values or adjust UNIT declarations before
+serialization. Metadata writes are immediate and setup-only, not the standard
+live per-client buffered service. Duplicate document META projection, optional
+XML META attributes and complete ISO unit/codec fidelity remain outside the slice.

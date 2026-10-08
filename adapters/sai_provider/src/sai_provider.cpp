@@ -276,6 +276,9 @@ struct backend::storage {
     const Scene &scene() const {
       return session ? session->scene() : setup->scene;
     }
+    const X3DDocument &document() const {
+      return session ? session->document() : *setup;
+    }
     result<std::uint64_t> identity(const std::shared_ptr<X3DNode> &n) const {
       const auto i = identities.find(n.get());
       if (i == identities.end())
@@ -394,7 +397,9 @@ p::capabilities backend::supported() const {
            {S::notifications},
            {S::node_values},
            {S::indexed_writes},
-           {S::user_data}},
+           {S::user_data},
+           {S::scene_units},
+           {S::scene_metadata}},
           {{"Transform", "Grouping", 1},
            {"PositionInterpolator", "Interpolation", 1},
            {"Shape", "Shape", 1},
@@ -411,6 +416,62 @@ result<std::uint64_t> backend::do_create_scene() {
   }
   state_->scenes.emplace(id, std::move(fixture));
   return id;
+}
+result<std::vector<unit_declaration>>
+backend::do_units(std::uint64_t scene) const {
+  const auto &units = state_->scenes.at(scene)->document().head.units;
+  std::vector<unit_declaration> out;
+  out.reserve(units.size());
+  for (const auto &unit : units)
+    out.push_back({unit.category, unit.name, unit.conversionFactor});
+  return out;
+}
+result<void> backend::do_declare_unit(std::uint64_t scene,
+                                     const unit_declaration &unit) {
+  auto &f = *state_->scenes.at(scene);
+  if (f.session)
+    return error(error_code::access_denied, "native.declare_unit",
+                 "setup-only unit declaration after activation");
+  // Preserve document provenance without exposing a half-updated document if
+  // preparing either owning vector fails. The frontend validates declarations.
+  auto units = f.setup->head.units;
+  units.push_back({unit.category, unit.name, unit.conversion_factor});
+  auto source_units = units;
+  f.setup->head.units.swap(units);
+  f.setup->scene.sourceUnits.swap(source_units);
+  return {};
+}
+result<std::vector<metadata_entry>>
+backend::do_metadata(std::uint64_t scene) const {
+  const auto &metadata = state_->scenes.at(scene)->document().head.meta;
+  std::vector<metadata_entry> out;
+  out.reserve(metadata.size());
+  for (const auto &entry : metadata)
+    out.push_back({entry.name, entry.content});
+  return out;
+}
+result<void> backend::do_set_metadata(
+    std::uint64_t scene, std::string_view key,
+    const std::optional<std::string> &value) {
+  auto &f = *state_->scenes.at(scene);
+  if (f.session)
+    return error(error_code::access_denied, "native.set_metadata",
+                 "setup-only metadata authoring after activation");
+  auto metadata = f.setup->head.meta;
+  const auto found = std::find_if(metadata.begin(), metadata.end(),
+      [&](const auto &entry) { return entry.name == key; });
+  if (value) {
+    if (found == metadata.end()) {
+      x3d::runtime::Meta entry;
+      entry.name = key;
+      entry.content = *value;
+      metadata.push_back(std::move(entry));
+    } else
+      found->content = *value;
+  } else if (found != metadata.end())
+    metadata.erase(found);
+  f.setup->head.meta.swap(metadata);
+  return {};
 }
 result<std::uint64_t> backend::do_create_node(std::uint64_t scene,
                                               std::string_view type) {
@@ -572,8 +633,13 @@ result<void> backend::do_author(const address &a, const backend_value &value) {
                                                       : initial.front());
     }
   }
-  if (!nodes)
+  if (!nodes) {
     fixture.scene().authoredScalarFields.record(n, a.field);
+    // Provider payloads are already canonical SI, unlike parsed source-unit
+    // literals. Carry the mark with every owned node, including detached ones,
+    // so runtime activation never scales provider-authored values again.
+    fixture.scene().normalizedUnitFields.record(n, a.field);
+  }
   return {};
 }
 result<void> backend::do_add_route(const address &from, const address &to) {

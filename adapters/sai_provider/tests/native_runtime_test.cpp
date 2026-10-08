@@ -480,6 +480,103 @@ void shared_root_behavior_once() {
           "activation does not fabricate or remove render roots");
 }
 
+void native_scene_information() {
+  class information_backend : public sai::native::backend {
+  public:
+    sai::result<std::vector<sai::unit_declaration>> declarations() const {
+      return do_units(1);
+    }
+  };
+  auto owned = std::make_unique<information_backend>();
+  auto *native = owned.get();
+  h::service service(std::move(owned));
+  auto scene = take(service.create_scene());
+  auto context = take(service.root_context(scene));
+  require(take(native->declarations()).empty(),
+          "native document stores only explicitly declared units");
+  take(service.declare_unit(scene, {"length", "centimetre", .01}));
+  take(service.declare_unit(scene, {"angle", "degree", .017453292519943295}));
+  take(service.set_metadata(scene, "title", "original"));
+  take(service.set_metadata(scene, "Title", "case-sensitive"));
+  take(service.set_metadata(scene, "title", "replacement"));
+  take(service.set_metadata(scene, "", ""));
+  const auto metadata = take(service.metadata(scene));
+  require(metadata == std::vector<sai::metadata_entry>{
+                          {"title", "replacement"},
+                          {"Title", "case-sensitive"}, {"", ""}},
+          "native metadata retains order, exact keys and empty values");
+  const auto units = take(service.units(context));
+  auto transform = take(service.create_node(context, "Transform"));
+  auto interpolator = take(service.create_node(context, "PositionInterpolator"));
+  auto shape = take(service.create_node(context, "Shape"));
+  auto box = take(service.create_node(context, "Box"));
+  take(service.define_name(transform, "Root"));
+  take(service.define_name(interpolator, "Detached"));
+  take(service.define_name(box, "DefaultBox"));
+  take(service.append_root(context, transform));
+  take(service.author(take(service.get_field(transform, "children")),
+                      h::node_values{shape}));
+  take(service.author(take(service.get_field(shape, "geometry")),
+                      h::node_value{box}));
+  const auto translation = take(service.get_field(transform, "translation"));
+  const auto rotation = take(service.get_field(transform, "rotation"));
+  const auto size = take(service.get_field(box, "size"));
+  const auto key = take(service.get_field(interpolator, "key"));
+  const auto values = take(service.get_field(interpolator, "keyValue"));
+  const auto fraction = take(service.get_field(interpolator, "set_fraction"));
+  const auto output = take(service.get_field(interpolator, "value_changed"));
+  take(service.author(translation, sai::vec3f{3, 4, 5}));
+  const sai::rotation canonical_rotation{0, 1, 0, .5f};
+  take(service.author(rotation, canonical_rotation));
+  take(service.author(key, std::vector<float>{0, 1}));
+  take(service.author(values, std::vector<sai::vec3f>{{2, 4, 6}, {6, 8, 10}}));
+  take(service.add_route(context, output, translation));
+  {
+    const auto storage = take(native->native_scene(1));
+    const auto declared = take(native->declarations());
+    require(storage->sourceUnits.size() == declared.size(),
+            "native document and scene source declarations have matching size");
+    for (std::size_t i = 0; i < declared.size(); ++i)
+      require(storage->sourceUnits[i].category == declared[i].category &&
+                  storage->sourceUnits[i].name == declared[i].name &&
+                  storage->sourceUnits[i].conversionFactor ==
+                      declared[i].conversion_factor,
+              "native document and scene source declarations stay synchronized");
+    require(storage->normalizedUnitFields.contains(storage->resolve("Root"),
+                                                   "translation") &&
+                storage->normalizedUnitFields.contains(storage->resolve("Root"),
+                                                       "rotation") &&
+                storage->normalizedUnitFields.contains(
+                    storage->resolve("Detached"), "keyValue"),
+            "all provider-authored dimensional scalars carry canonical marks");
+    require(!storage->authoredScalarFields.contains(
+                storage->resolve("DefaultBox"), "size"),
+            "generated defaults remain unauthored");
+  }
+  auto active = take(service.activate(scene));
+  require(take(service.units(context)) == units &&
+              take(service.metadata(scene)) == metadata,
+          "native document declarations survive runtime activation");
+  eq(std::get<sai::vec3f>(take(service.read(translation))), {3, 4, 5},
+     "length declaration never rescales canonical setup translation");
+  require(std::get<sai::rotation>(take(service.read(rotation))) ==
+              canonical_rotation,
+          "angle declaration never rescales canonical setup rotation");
+  eq(std::get<sai::vec3f>(take(service.read(size))), {2, 2, 2},
+     "length declaration never rescales generated Box defaults");
+  eq(std::get<sai::vec3f>(take(service.read(output))), {2, 4, 6},
+     "detached initialized output remains canonical at activation");
+  auto client = take(service.connect(active));
+  take(service.enqueue(client, {{fraction, .5f}}));
+  take(service.pump(active, {0}));
+  eq(std::get<sai::vec3f>(take(service.read(translation))), {4, 6, 8},
+     "detached interpolation and routed values remain canonical");
+  take(service.enqueue(client, {{translation, sai::vec3f{9, 10, 11}}}));
+  take(service.pump(active, {1}));
+  eq(std::get<sai::vec3f>(take(service.read(translation))), {9, 10, 11},
+     "live ingress remains canonical with retained source units");
+}
+
 } // namespace
 int main() {
   try {
@@ -508,6 +605,7 @@ int main() {
     ordered_inputs_bounded_outputs();
     unnamed_routes_and_weak_identity();
     shared_root_behavior_once();
+    native_scene_information();
     require(
         author_fields.entryCount() == author_count,
         "provider fixture does not populate or clear another scene's author "
