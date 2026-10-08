@@ -27,6 +27,7 @@
 #include <any>
 #include <cstddef>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace x3d::runtime {
 using namespace x3d::core;
@@ -65,15 +66,28 @@ public:
       if (!v) return; // honored only on TRUE
       ctx.postOutputEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
     }));
-    ctx.addFieldWriteListener(ctx.guardCallback(*this, [&ctx, n](const FieldAddress &a) {
-      if (a.node == n && (a.field == "integerKey" || a.field == "set_integerKey"))
-        ctx.postOutputEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
-    }));
+    // The field-write listener captures `n` raw, so it is owner-tagged: it is
+    // dropped by detachNodes (and our detach below) and cannot outlive the
+    // node. The guard keeps a detach -> attachNewSubtree cycle (GeoLOD level
+    // churn) from stacking duplicate listeners, which would double-emit
+    // triggerValue on every integerKey write.
+    if (listened_.insert(n).second)
+      ctx.addFieldWriteListener(n, ctx.guardCallback(*this, [&ctx, n](const FieldAddress &a) {
+        if (a.node == n && (a.field == "integerKey" || a.field == "set_integerKey"))
+          ctx.postOutputEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
+      }));
   }
-  void detach(X3DNode *node, X3DExecutionContext &) override {
-    if (auto *n = dynamic_cast<x3d::nodes::IntegerTrigger *>(node))
+
+  void detach(X3DNode *node, X3DExecutionContext &ctx) override {
+    if (auto *n = dynamic_cast<x3d::nodes::IntegerTrigger *>(node)) {
       n->setOnSet_booleanHandler({});
+      listened_.erase(n);
+      ctx.removeFieldWriteListeners(n);
+    }
   }
+
+private:
+  std::unordered_set<const X3DNode *> listened_;
 };
 
 /// §30.4.7 TimeTrigger: set_boolean (any value, value ignored) -> triggerTime=now.
