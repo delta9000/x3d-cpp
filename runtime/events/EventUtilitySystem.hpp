@@ -2,8 +2,8 @@
 // Event-driven Systems for the ISO/IEC 19775-1 §30 Event Utilities cluster
 // (campaign wave-3 fix). Each node was behaviorally inert (no System wired);
 // these wire the node's inputOnly handlers in attach(). OutputOnly producers
-// use checked admission before storage/observer/ROUTE delivery. BooleanToggle
-// retains legacy inputOutput delivery pending separate state/output handling.
+// use checked admission before storage/observer/ROUTE delivery. BooleanToggle's
+// inputOutput state flips per TRUE input and is published once per cascade.
 //
 //   - BooleanTriggerSystem  §30.4.4: set_triggerTime -> triggerTrue=TRUE
 //   - IntegerTriggerSystem  §30.4.6: set_boolean=TRUE -> triggerValue=integerKey (FALSE ignored)
@@ -11,7 +11,8 @@
 //   - BooleanFilterSystem   §30.4.1: set_boolean -> inputTrue|inputFalse (by value) + always inputNegate
 //   - BooleanToggleSystem   §30.4.3: set_boolean=TRUE flips toggle; FALSE is a no-op
 //   - SequencerSystem<N,V>  §30.2.4/§30.3.1: stepwise (NON-interpolated) keyValue
-//     selection on set_fraction + next/previous index stepping with wrap-around
+//     selection on set_fraction (one value_changed per key interval) +
+//     next/previous index stepping with wrap-around
 #ifndef X3D_RUNTIME_EVENT_UTILITY_SYSTEM_HPP
 #define X3D_RUNTIME_EVENT_UTILITY_SYSTEM_HPP
 
@@ -129,8 +130,15 @@ public:
   }
 };
 
-/// §30.4.3 BooleanToggle: set_boolean=TRUE flips toggle (emits toggle_changed via
-/// the inputOutput alias); FALSE is a no-op.
+/// §30.4.3 BooleanToggle: each set_boolean=TRUE flips toggle; FALSE is a no-op.
+///
+/// `toggle` is inputOutput, so it is the node's state and its output at once.
+/// Each TRUE flips the stored state immediately, so a second TRUE in the same
+/// cascade flips the first one's result instead of recomputing from the same
+/// old value. The output is one re-read seed per cascade: it delivers the state
+/// as it stands when drained, so storage, observers and ROUTEs agree on one
+/// toggle_changed carrying the final value. An explicit set_toggle is ordinary
+/// inputOutput delivery and later TRUE inputs flip from it.
 class BooleanToggleSystem : public System {
 public:
   ~BooleanToggleSystem() override { retireCallbacksBeforeDestruction(); }
@@ -138,15 +146,32 @@ public:
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node);
     if (!n) return;
-    n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &v) {
+    n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n, this](const SFBool &v) {
       if (!v) return; // FALSE has no effect (§30.4.3)
-      ctx.postEvent(n, "toggle", std::any(SFBool{!n->getToggle()}));
+      n->setToggle(!n->getToggle());
+      // An empty value asks the cascade to deliver the field as it stands then.
+      if (scheduled_.insert(n).second) ctx.postEvent(n, "toggle", std::any{});
     }));
+    // Any delivery to toggle (ours or an explicit set) publishes the current
+    // state, so a later TRUE needs a fresh publication. Owner-tagged like
+    // IntegerTrigger's listener, and guarded against attach churn.
+    if (listened_.insert(n).second)
+      ctx.addFieldWriteListener(n, ctx.guardCallback(*this, [n, this](const FieldAddress &a) {
+        if (a.node == n && (a.field == "toggle" || a.field == "set_toggle"))
+          scheduled_.erase(n);
+      }));
   }
-  void detach(X3DNode *node, X3DExecutionContext &) override {
-    if (auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node))
+  void detach(X3DNode *node, X3DExecutionContext &ctx) override {
+    if (auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node)) {
       n->setOnSet_booleanHandler({});
+      scheduled_.erase(n);
+      listened_.erase(n);
+      ctx.removeFieldWriteListeners(n);
+    }
   }
+
+private:
+  std::unordered_set<const X3DNode *> scheduled_, listened_;
 };
 
 /// §30.2.4 stepwise selection index: largest i with key[i] <= t (boundary-clamped),
@@ -174,6 +199,12 @@ inline std::size_t sequencerStepIndex(const MFFloat &key, float t) {
 /// §30.2.4/§30.3.1 X3DSequencerNode: BooleanSequencer (SFBool/MFBool) and
 /// IntegerSequencer (SFInt32/MFInt32). Stepwise value_changed on set_fraction;
 /// next/previous step an internal index (TRUE only) with wrap-around.
+///
+/// §30.2.4: "only one value_changed output event per key[i] interval". A
+/// fraction that stays in the interval the previous fraction selected produces
+/// nothing. next/previous leave that interval, so the following fraction emits
+/// even when it lands in the same interval again. Editing key or keyValue also
+/// forgets the interval, because the same index can now mean another value.
 template <typename NodeT, typename ValueT>
 class SequencerSystem : public System {
 public:
@@ -189,6 +220,9 @@ public:
       std::size_t i = sequencerStepIndex(key, f);
       if (i >= kv.size()) i = kv.size() - 1;
       index_[n] = i;
+      const auto last = interval_.find(n);
+      if (last != interval_.end() && last->second == i) return; // same interval
+      interval_[n] = i;
       ctx.postOutputEvent(n, "value_changed", std::any(ValueT{kv[i]}));
     }));
     n->setOnNextHandler(ctx.guardCallback(*this, [&ctx, n, this](const SFBool &v) {
@@ -197,14 +231,23 @@ public:
     n->setOnPreviousHandler(ctx.guardCallback(*this, [&ctx, n, this](const SFBool &v) {
       if (v) step(ctx, n, -1);
     }));
+    if (listened_.insert(n).second)
+      ctx.addFieldWriteListener(n, ctx.guardCallback(*this, [n, this](const FieldAddress &a) {
+        if (a.node == n && (a.field == "key" || a.field == "set_key" ||
+                            a.field == "keyValue" || a.field == "set_keyValue"))
+          interval_.erase(n);
+      }));
   }
 
-  void detach(X3DNode *node, X3DExecutionContext &) override {
+  void detach(X3DNode *node, X3DExecutionContext &ctx) override {
     index_.erase(node);
+    interval_.erase(node);
     if (auto *n = dynamic_cast<NodeT *>(node)) {
       n->setOnSet_fractionHandler({});
       n->setOnNextHandler({});
       n->setOnPreviousHandler({});
+      listened_.erase(n);
+      ctx.removeFieldWriteListeners(n);
     }
   }
 
@@ -217,10 +260,14 @@ private:
     const std::size_t next =
         dir > 0 ? (cur + 1) % sz : (cur + sz - 1) % sz;
     index_[n] = next;
+    interval_.erase(n);
     ctx.postOutputEvent(n, "value_changed", std::any(ValueT{kv[next]}));
   }
 
   std::unordered_map<X3DNode *, std::size_t> index_;
+  // Key interval of the last set_fraction that emitted; absent after a step.
+  std::unordered_map<X3DNode *, std::size_t> interval_;
+  std::unordered_set<const X3DNode *> listened_;
 };
 
 } // namespace x3d::runtime
