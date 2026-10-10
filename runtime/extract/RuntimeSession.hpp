@@ -4,7 +4,7 @@
 // The low-level path is five steps whose LIFETIME rules are invisible in the
 // call itself, and one of which is silent to omit:
 //
-//   sdk::X3DExecutionContext ctx;
+//   sdk::X3DExecutionContext ctx(doc.scene.authorFields);
 //   ctx.buildSceneGraph(doc.scene);         // transforms/bounds/bindings/pick
 //   ctx.buildFrom(doc.scene);               // resolve DEF-named ROUTEs
 //   x3d::runtime::attachStandardRuntime(doc.scene, ctx);  // §8/§19/§39/§30/§22/§23/§21/§9
@@ -109,6 +109,11 @@ public:
         new RuntimeSession(std::move(doc), std::move(options)));
   }
 
+  /// The host must finish all native calls before destruction (including calls
+  /// entered from a node handler). Retire before extractor/context teardown;
+  /// ctx_'s own destructor also covers partially constructed sessions.
+  ~RuntimeSession() { if (!ctx_.retireCallbacks()) std::terminate(); }
+
   RuntimeSession(const RuntimeSession &) = delete;
   RuntimeSession &operator=(const RuntimeSession &) = delete;
   RuntimeSession(RuntimeSession &&) = delete;
@@ -158,7 +163,7 @@ private:
       // into its scene), then ctx_, then extractor_ last (it captures both by
       // reference). Declaration order below fixes this; do not reorder.
       : doc_(std::move(doc)),
-        ctx_(std::move(options.geoProjection)),
+        ctx_(doc_.scene.authorFields, std::move(options.geoProjection)),
         extractor_(ctx_, doc_.scene, std::move(options.meshOptions),
                    std::move(options.textureResolver)) {
     ctx_.buildSceneGraph(doc_.scene);

@@ -248,23 +248,32 @@ TEST_CASE("geo ownership: default and null owners use the stable builtin and GC 
   REQUIRE(points.size()==2); CHECK(points[1]==SFVec3f{4,5,6});
 }
 
-TEST_CASE("geo ownership: the context retains its backend until destruction") {
+TEST_CASE("geo ownership: retained node and escaped guarded callback neither execute nor pin backend after context destruction") {
   auto projection=std::make_shared<OwnershipProjection>(3);
   std::weak_ptr<const geo::GeoProjection> weak=projection;
   auto node=std::make_shared<GeoPositionInterpolator>();
   node->setKey({0,1}); node->setKeyValue({{0,0,0},{0,0,10}});
+  auto system=std::make_shared<GeoPositionInterpolatorSystem>();
+  std::function<void()> escaped;
+  int calls=0;
   {
-    auto system=std::make_shared<GeoPositionInterpolatorSystem>();
-    X3DExecutionContext context(projection);
+    Scene scene;
+    X3DExecutionContext context(scene.authorFields,projection);
     projection.reset();
     system->attach(node.get(),context); context.addSystem(system);
-    SFVec3f p;
-    CHECK(geo::toWorld(*node,{0,0,5},p,context.geoProjection()));
+    escaped=context.guardCallback(*system,[&context,&calls,node] {
+      SFVec3f p;
+      if (geo::toWorld(*node,{0,0,5},p,context.geoProjection())) ++calls;
+    });
+    escaped(); CHECK(calls==1);
     node->onSet_fraction(.5f); context.process();
     CHECK(node->getValue_changed().x==doctest::Approx(3*(6378137.0+5)));
     CHECK_FALSE(weak.expired());
   }
   CHECK(weak.expired());
+  const auto frozen=node->getValue_changed();
+  escaped(); node->onSet_fraction(1);
+  CHECK(calls==1); CHECK(node->getValue_changed()==frozen);
 }
 
 TEST_CASE("geo ownership: independent owner threads interleave construction tick extraction and destruction") {

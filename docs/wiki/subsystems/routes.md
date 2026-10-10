@@ -91,8 +91,8 @@ BridgeResult X3DExecutionContext::buildFrom(Scene &scene); // defined in X3DScen
 
 // runtime/events/DynamicField.hpp — effective field lookup
 namespace x3d::runtime {
-FieldTable effectiveFields(const X3DNode &node);  // static fields() + author fields
-DynamicFieldStore &dynamicFieldStore();            // process-global store
+FieldTable effectiveFields(const X3DNode &node, const DynamicFieldStore &store);
+// Owners: *scene.authorFields, *declaration.authorFields, ctx.authorFields()
 } // namespace x3d::runtime
 ```
 
@@ -104,7 +104,7 @@ DynamicFieldStore &dynamicFieldStore();            // process-global store
 
 - **Inline expander → Scene::resolvedInlineRoutes** — `InlineExpand` stores inlined-scene-internal ROUTEs in `Scene::resolvedInlineRoutes`. The bridge validates these physical endpoints with the same field checks. Routes installed later by `InlineRuntimeSystem` follow a separate path.
 
-- **DynamicFieldStore → effectiveFields** — `detail::findField` in `X3DSceneBridge.hpp` calls `effectiveFields(node)` which concatenates the node's generated `fields()` table with the author fields from the process-global `DynamicFieldStore`. This makes Script author `<field>` declarations first-class ROUTE endpoints (S1 dynamic-field seam).
+- **DynamicFieldStore → effectiveFields** — `detail::findField` in `X3DSceneBridge.hpp` calls `effectiveFields(node, ctx.authorFields())`, concatenating generated `fields()` with the explicit owner's author fields. This makes Script author `<field>` declarations first-class ROUTE endpoints (S1 dynamic-field seam).
 
 - **EventGraph → X3DEventCascade** — after `buildRoutes` populates the `EventGraph` inside `X3DExecutionContext`, the event cascade consults `EventGraph::sinks()` on each tick to propagate field changes across edges. The cascade holds the graph by reference; nodes are never owned.
 
@@ -119,7 +119,7 @@ DynamicFieldStore &dynamicFieldStore();            // process-global store
 3. **Direction** — source must be `outputOnly` or `inputOutput`; sink must be `inputOnly` or `inputOutput`: else rejected.
 4. **Type** — `fromField.type` must equal `toField.type`; X3D performs no implicit field-type coercion across a ROUTE (ISO/IEC 19775-1 §4.4.8.2): else rejected.
 
-The bridge checks declared PROTO interface direction and type, then checks each physical target pair through `effectiveFields()`. Pre-resolved PROTO-body and Inline routes receive the physical checks without another PROTO redirect lookup. `RouteError::scope` identifies `Scene`, `ProtoBody`, or `Inline`; `index` is relative to that route collection. Independent PROTO interface event state without an `IS` target is not implemented, so such an endpoint cannot carry an event through this bridge.
+The bridge checks declared PROTO interface direction and type, then checks each physical target pair through `effectiveFields()`. Pre-resolved PROTO-body and Inline routes receive the physical checks without another PROTO redirect lookup. `RouteError::scope` identifies `Scene`, `ProtoBody`, or `Inline`; `index` is relative to that route collection. Unconnected PROTO interface fields use their independent entries in the Scene author-field store; this does not imply a general native SAI prototype object model.
 
 ## How it is tested
 

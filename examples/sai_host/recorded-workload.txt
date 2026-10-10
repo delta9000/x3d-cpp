@@ -1,0 +1,14 @@
+# Bounded local replay: host-time operation arguments
+# Equal times are intentional. Presentation is sampled every third native tick.
+0.00 fraction 0.125
+0.00 fraction 0.25
+0.10 group 0.35 0.50
+0.20 swap large
+0.20 fraction 0.75
+0.30 remove right
+0.40 add right
+0.40 swap small
+0.50 fraction 1.00
+0.60 fraction 0.50
+0.60 group 0.25 0.00
+0.70 idle

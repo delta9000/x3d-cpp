@@ -6,7 +6,7 @@
 //   eventIn  <type> <name>
 //   eventOut <type> <name>
 // is captured into the S1 DynamicFieldStore (so the decls appear in
-// effectiveFields(scriptNode)) and that the inline `url ["ecmascript:..."]`
+// effectiveFields(scriptNode, store)) and that the inline `url ["ecmascript:..."]`
 // body is ALSO mirrored into Script.sourceCode for a uniform runtime path.
 // Round-trips through VrmlWriter: write -> reparse -> decls + source survive.
 //
@@ -87,12 +87,13 @@ const char *kScriptDoc =
 
 // Assert the four author decls + sourceCode on a freshly-parsed Script.
 void assertCaptured(const std::shared_ptr<Script> &script,
+                    const runtime::DynamicFieldStore &store,
                     const std::string &tag) {
   check(static_cast<bool>(script), tag + ": Script root node parsed");
   if (!script)
     return;
 
-  FieldTable eff = effectiveFields(*script);
+  FieldTable eff = effectiveFields(*script, store);
 
   const FieldInfo *fraction = find(eff, "fraction");
   check(fraction != nullptr,
@@ -148,14 +149,12 @@ void assertCaptured(const std::shared_ptr<Script> &script,
 }
 
 void testClassicVrmlCapture() {
-  x3d::runtime::dynamicFieldStore().clear();
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(kScriptDoc);
-  assertCaptured(findScript(doc.scene), "classic-read");
+  assertCaptured(findScript(doc.scene), *doc.scene.authorFields, "classic-read");
 }
 
 void testVrml97Capture() {
-  x3d::runtime::dynamicFieldStore().clear();
   // VRML97 uses eventIn/eventOut/field keywords + a #VRML header. The shared
   // base maps those keywords to the same AccessTypes.
   std::string wrl =
@@ -171,11 +170,10 @@ void testVrml97Capture() {
       "}\n";
   Vrml97Reader reader;
   runtime::X3DDocument doc = reader.readDocument(wrl);
-  assertCaptured(findScript(doc.scene), "vrml97-read");
+  assertCaptured(findScript(doc.scene), *doc.scene.authorFields, "vrml97-read");
 }
 
 void testRoundTrip() {
-  x3d::runtime::dynamicFieldStore().clear();
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(kScriptDoc);
   auto script = findScript(doc.scene);
@@ -194,10 +192,10 @@ void testRoundTrip() {
         "roundtrip: writer emits the outputOnly 'scale' decl");
 
   // Re-parse the written text into a clean store and re-assert capture.
-  x3d::runtime::dynamicFieldStore().clear();
   ClassicVrmlReader reader2;
   runtime::X3DDocument doc2 = reader2.readDocument(out);
-  assertCaptured(findScript(doc2.scene), "roundtrip-reparse");
+  assertCaptured(findScript(doc2.scene), *doc2.scene.authorFields,
+                 "roundtrip-reparse");
 }
 
 } // namespace

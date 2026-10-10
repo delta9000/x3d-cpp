@@ -83,6 +83,7 @@
 #include "RenderItem.hpp"      // MeshData
 #include "x3d/core/X3Dtypes.hpp"
 
+#include <atomic>
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -589,8 +590,12 @@ MeshData buildLocalMesh(const X3DNode *geom, const geo::GeoProjection &projectio
 /// placement. Tests snapshot this around fullSnapshot()/delta() to assert the
 /// build stays O(distinct geometry), not O(placements) — the trap that made 200
 /// USEs of one DEF'd IFS cost ~1.08 s and 493 MiB (see ADR-0045).
-inline std::uint64_t buildLocalMeshCalls_ = 0;
-inline std::uint64_t buildLocalMeshCallCount() { return buildLocalMeshCalls_; }
+// Independent owner-thread scenes share this diagnostic only; it is not a
+// scene synchronization mechanism or a per-world counter.
+inline std::atomic<std::uint64_t> buildLocalMeshCalls_{0};
+inline std::uint64_t buildLocalMeshCallCount() {
+  return buildLocalMeshCalls_.load(std::memory_order_relaxed);
+}
 
 } // namespace x3d::runtime::extract
 #endif

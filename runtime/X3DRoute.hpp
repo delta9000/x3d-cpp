@@ -6,7 +6,9 @@
 #include <memory>
 #include <string>
 
-namespace x3d::nodes { class X3DNode; }
+namespace x3d::nodes {
+class X3DNode;
+}
 
 namespace x3d::runtime {
 using x3d::nodes::X3DNode;
@@ -22,10 +24,17 @@ using x3d::nodes::X3DNode;
  *          (IMPORTed) node. fromField/toField are the X3D field names.
  */
 struct Route {
-  std::string fromNode;   // DEF name of the source node
-  std::string fromField;  // source field (outputOnly / inputOutput)
-  std::string toNode;     // DEF name of the destination node
-  std::string toField;    // destination field (inputOnly / inputOutput)
+  // Encoded routes are name-bound by default. Explicit API-authored routes may
+  // instead bind directly to weak node identities, including unnamed nodes.
+  // Direct routes are runtime authoring objects; codecs and PROTO cloning do
+  // not promise to serialize or remap their unnamed endpoints.
+  enum class Binding { DefNames, DirectNodes };
+  Binding binding = Binding::DefNames;
+
+  std::string fromNode;  // DEF name of the source node
+  std::string fromField; // source field (outputOnly / inputOutput)
+  std::string toNode;    // DEF name of the destination node
+  std::string toField;   // destination field (inputOnly / inputOutput)
 
   // Optional resolved endpoints (filled in from the Scene DEF table).
   std::weak_ptr<X3DNode> from;

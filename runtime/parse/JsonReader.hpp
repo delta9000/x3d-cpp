@@ -162,7 +162,7 @@ private:
   /// inline scheme. Lenient: a malformed entry is skipped, never thrown.
   void captureScriptInterface(const json::Value &body,
                               const std::shared_ptr<X3DNode> &node,
-                              runtime::Scene & /*scene*/);
+                              runtime::Scene &scene);
 
   /// Return the body of the first ecmascript:/javascript:/vrmlscript: entry in
   /// `url`, or empty if none is an inline script. Mirrors

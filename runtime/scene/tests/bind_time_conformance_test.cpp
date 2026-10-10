@@ -24,7 +24,8 @@ static void test_load_time_bind_emits_bindTime() {
   auto vp = createX3DNode("Viewpoint");
   Scene scene; scene.addRootNode(vp);
 
-  X3DExecutionContext ctx;
+  // Select this scene's author-field owner before advancing the clock.
+  X3DExecutionContext ctx(scene.authorFields);
   // Advance the context clock so the load-time bindTime has a known, exact value.
   constexpr double kLoadTime = 42.0;
   ctx.tick(kLoadTime);

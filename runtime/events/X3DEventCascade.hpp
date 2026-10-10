@@ -21,48 +21,60 @@ namespace x3d::runtime {
 using namespace x3d::core;
 
 /**
- * @brief Drives a single-timestamp event cascade over an EventGraph.
- * @details `postEvent` seeds one or more initial field events; `process`
- *          delivers each event to its target field and fans it out along the
- *          ROUTEs, enqueuing the downstream events. X3D single-timestamp
- *          semantics are enforced by TWO independent guards (ISO 19775-1
- *          §4.4.8.3):
- *            - the per-ROUTE-edge guard: each ROUTE edge fires at most once per
- *              timestamp, which bounds fan-out and breaks cyclic routes;
- *            - the per-FIELD cap (RTC-5): a given `(node, field)` is produced at
- *              most once per timestamp, so fan-in (two ROUTEs into one field)
- *              delivers ONCE and a node re-emitting on input cannot re-drive a
- *              loop. The per-edge guard alone does not catch fan-in (the edges
- *              have distinct sources), hence the distinct node/output-layer cap.
- *          The per-field cap applies to ROUTED (fan-out) deliveries only: a
- *          routed event whose target field was already produced this timestamp
- *          is dropped. SEED events — those a System/handler posts directly via
- *          `postEvent` — always deliver (last-writer-wins), so a node that emits
- *          a deliberate sequence on its own output within one update (e.g. a
- *          TimeSensor that activates then immediately completes, isActive
- *          TRUE→FALSE) lands its final value. Seeds still MARK the field
- *          produced, so a route that would re-drive that field is still broken.
- *          The per-field cap also bounds the §4.4.8.3 step-4 re-evaluation loop
- *          that X3DExecutionContext::tick runs (guaranteeing termination), so
- *          the cap must span an entire timestamp — which may comprise several
- *          `process()` calls interleaved with System re-evaluation. Callers pass
- *          `freshTimestamp=false` to continue the current timestamp; the default
- *          `true` starts a new one (the standalone one-shot drain).
+ * @brief Drives a single logical timestamp over an EventGraph.
+ * @details ISO/IEC 19775-1 §4.4.8.3 limits OUTPUT events and ROUTEs, not
+ *          inputOnly delivery occurrences. Each ROUTE fires at most once.
+ *          postOutputEvent queues a generated outputOnly value; first-admitted
+ *          wins before field storage, observers or ROUTEs can see that value.
+ *          All inputOnly arrivals (including fan-in and equal repeats) reach
+ *          their handlers. First-admitted is our selection policy, not a
+ *          uniquely required ISO ordering of simultaneous events.
+ *
+ *          postEvent remains a legacy direct-seed API: every seed delivers.
+ *          Unmigrated Systems using it for output are NOT output-capped. Routed
+ *          non-inputOnly destinations retain their legacy per-field cap. This
+ *          is intentionally not a claim of complete event-model conformance.
+ *
+ *          Guards span every process(false) drain in one timestamp. A fresh
+ *          process() or beginTimestamp() opens a new logical timestamp.
  */
 class EventCascade {
 public:
-  explicit EventCascade(const EventGraph &graph) : graph_(graph) {}
+  explicit EventCascade(const EventGraph &graph,
+      std::shared_ptr<DynamicFieldStore> fields = std::make_shared<DynamicFieldStore>())
+      : graph_(graph), authorFields_(std::move(fields)) {
+    if (!authorFields_) throw std::invalid_argument("null author-field owner");
+  }
 
-  /**
-   * @brief Seed an initial event: deliver `value` to (node, field) and cascade.
-   * @details The event is queued; call `process()` to run the cascade.
-   */
+  DynamicFieldStore &authorFields() const { return *authorFields_; }
+
+  /// Queue external input or a legacy direct seed. Every accepted occurrence
+  /// delivers; generated outputOnly producers should use postOutputEvent.
   void postEvent(x3d::nodes::X3DNode *node, const std::string &field, std::any value) {
-    // A direct post is a SEED (routed=false): it always delivers (last-wins) and
-    // is exempt from the per-field cap. Fan-out within process() enqueues ROUTED
-    // deliveries, which the cap can drop.
     pending_.push_back(
-        Delivery{FieldAddress{node, field}, std::move(value), /*routed=*/false});
+        Delivery{FieldAddress{node, field}, std::move(value), Origin::Seed});
+  }
+
+  /// Queue a generated outputOnly value WITHOUT first mutating node storage.
+  /// Validates the writable endpoint now; admission happens when drained. Only
+  /// the first admitted value in this timestamp reaches the setter, observer,
+  /// or ROUTEs. No synchronous emission or acceptance is implied by queueing.
+  /// inputOutput needs a distinct input/output-side contract and is not covered
+  /// by this deliberately scoped primitive. Unknown/unwritable/non-outputOnly
+  /// endpoints throw invalid_argument; value types follow postEvent's contract.
+  void postOutputEvent(X3DNode *node, const std::string &field, std::any value) {
+    if (node) {
+      for (const auto &info : effectiveFields(*node, *authorFields_)) {
+        if (info.x3dName != field) continue;
+        if (info.access == AccessType::OutputOnly && info.set) {
+          pending_.push_back(
+              Delivery{FieldAddress{node, field}, std::move(value), Origin::Output});
+          return;
+        }
+        break;
+      }
+    }
+    throw std::invalid_argument("postOutputEvent requires a writable outputOnly field");
   }
 
   /**
@@ -92,31 +104,22 @@ public:
   }
 
   /**
-   * @brief Run the cascade to quiescence within the current timestamp.
-   * @details Breadth-first: deliver each queued event to its target field, then
-   *          fan it out along every ROUTE leaving that target, enqueuing the
-   *          downstream events. Two guards bound the work and enforce X3D
-   *          single-timestamp semantics (§4.4.8.3):
-   *            - a ROUTE edge that has already fired this timestamp is skipped
-   *              (loop-breaking / fan-out bound);
-   *            - a ROUTED delivery whose `(node, field)` was already produced
-   *              this timestamp is dropped (RTC-5 per-field cap) — fan-in
-   *              delivers once and a re-emitting node cannot re-drive a loop.
-   *              SEED deliveries (direct `postEvent`) are exempt (last-wins) but
-   *              still mark the field produced, so they break routed re-drives.
-   * @param freshTimestamp When true (default) start a new timestamp first
-   *        (`beginTimestamp`); pass false to continue the current timestamp,
-   *        which the tick re-evaluation loop does so the per-field cap spans the
-   *        whole tick.
-   * @return The number of NEW fields produced this call (first-time productions,
-   *         seed or routed). The tick re-eval loop uses this to detect
-   *         quiescence; the per-field cap guarantees it reaches zero (a field
-   *         re-posted every pass is no longer "new", so the count drops to 0).
+   * @brief Drain breadth-first; admit generated output before field mutation.
+   * @param freshTimestamp True opens a timestamp for an outermost drain; nested
+   *        drains always continue it. False preserves guards across the enclosing
+   *        timestamp's System/cascade passes.
+   * @return Number of newly reached field endpoints, used for quiescence.
+   *         Input occurrences are not deduplicated by this bookkeeping set.
    */
   std::size_t process(bool freshTimestamp = true) {
-    if (freshTimestamp) {
-      beginTimestamp();
-    }
+    // A callback may request a nested drain. It joins the active cascade;
+    // only an outermost fresh drain may reset timestamp guards.
+    if (freshTimestamp && processDepth_ == 0) beginTimestamp();
+    struct DrainGuard {
+      std::size_t &depth;
+      explicit DrainGuard(std::size_t &value) : depth(value) { ++depth; }
+      ~DrainGuard() { --depth; }
+    } drain{processDepth_};
     std::size_t newProductions = 0;
     while (!pending_.empty()) {
       Delivery d = std::move(pending_.front());
@@ -135,17 +138,17 @@ public:
       FieldAddress norm{d.target.node,
                         resolveFieldAlias(d.target.node, d.target.field)};
 
-      if (!acceptsInput(norm, d.value)) continue;
+      if (d.origin != Origin::Output && !acceptsInput(norm, d.value)) continue;
 
       const bool firstProduction = produced_.insert(norm).second;
 
-      // RTC-5 per-field cap: drop a ROUTED delivery whose field was already
-      // produced this timestamp. This is the loop-break for fan-in (two ROUTEs
-      // into one field) and cyclic re-drive (a node re-emitting on input) that
-      // the per-edge `fired_` guard cannot see — distinct edges target the same
-      // field. A SEED (direct post) is exempt: a System may emit a deliberate
-      // last-wins sequence on its own output within one update. §4.4.8.3.
-      if (d.routed && !firstProduction) {
+      // Admit the selected output BEFORE reflection mutates its backing field.
+      // A suppressed value must never leak into readback or observers. Keep
+      // the legacy cap for routed value-bearing destinations, but an inputOnly
+      // arrival is an occurrence, not production of an output field (§4.4.8.5).
+      if (!firstProduction &&
+          (d.origin == Origin::Output ||
+           (d.origin == Origin::Route && !isInputOnly(norm)))) {
         continue;
       }
 
@@ -165,8 +168,7 @@ public:
       for (const auto &sink : sinks) {
         RouteEdge edge{norm, sink};
         if (fired_.insert(edge).second) {
-          // Fan-out events are ROUTED: subject to the per-field cap downstream.
-          pending_.push_back(Delivery{sink, d.value, /*routed=*/true});
+          pending_.push_back(Delivery{sink, d.value, Origin::Route});
         }
       }
     }
@@ -204,10 +206,12 @@ public:
   }
 
 private:
+  enum class Origin { Seed, Output, Route };
+
   struct Delivery {
     FieldAddress target;
     std::any value;
-    bool routed;  // false = seed (direct post); true = fan-out along a ROUTE
+    Origin origin;
   };
 
   struct RouteEdge {
@@ -225,6 +229,13 @@ private:
       return h1 ^ (h2 + 0x9e3779b97f4a7c15ULL + (h1 << 6) + (h1 >> 2));
     }
   };
+
+  bool isInputOnly(const FieldAddress &addr) const {
+    if (!addr.node) return false;
+    for (const auto &info : effectiveFields(*addr.node, *authorFields_))
+      if (info.x3dName == addr.field) return info.access == AccessType::InputOnly;
+    return false;
+  }
 
   // Deliver a value to one field endpoint via the node's reflection table, then
   // notify the field observer (the dirty-tracking feed). Fields with no writable
@@ -250,7 +261,7 @@ private:
     // fields() table — they live in the per-node dynamic-field store. Fall back to
     // it so ROUTEs into a Script's inputOnly/inputOutput fields actually deliver
     // (the embedder's ScriptSystem then picks the value up post-cascade).
-    for (FieldInfo &info : dynamicFieldStore().authorFields(*addr.node)) {
+    for (FieldInfo &info : authorFields_->authorFields(*addr.node)) {
       if (info.x3dName == addr.field) {
         if (info.set) {
           info.set(*addr.node, value);
@@ -293,14 +304,20 @@ private:
       // queue a re-read of the final value for dirty tracking and fan-out.
       info.set(*addr.node, std::any(std::move(children)));
       pending_.push_back(
-          Delivery{FieldAddress{addr.node, "children"}, std::any{}, /*routed=*/false});
+          Delivery{FieldAddress{addr.node, "children"}, std::any{}, Origin::Seed});
       return true;
     }
     return false;
   }
 
+  friend class X3DExecutionContext;
+  void bindAuthorFields(const std::shared_ptr<DynamicFieldStore> &fields) {
+    authorFields_ = fields;
+  }
   const EventGraph &graph_;
+  std::shared_ptr<DynamicFieldStore> authorFields_;
   std::deque<Delivery> pending_;
+  std::size_t processDepth_ = 0;  // nested drains share the active timestamp
   std::function<void(const FieldAddress &)> observer_;
   std::vector<std::function<bool(const FieldAddress &, const std::any &)>> inputFilters_;
   std::vector<AuthorInputListener> authorInputListeners_;
@@ -308,7 +325,7 @@ private:
   // several process() calls one tick may make (the §4.4.8.3 step-4 re-eval
   // loop), so the per-field cap bounds the whole tick — not just one drain.
   std::unordered_set<RouteEdge, RouteEdgeHash> fired_;  // per-ROUTE-edge guard
-  std::unordered_set<FieldAddress> produced_;           // RTC-5 per-field cap
+  std::unordered_set<FieldAddress> produced_;  // reachability + scoped output cap
 };
 
 } // namespace x3d::runtime

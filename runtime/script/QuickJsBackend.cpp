@@ -758,7 +758,7 @@ struct QuickJsBackend::Impl {
   void seedAuthorGlobals(Entry &e) {
     if (!e.node || !e.ctx) return;
     JSContext *ctx = e.ctx;
-    for (const FieldInfo &info : dynamicFieldStore().authorFields(*e.node)) {
+    for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
       if (!info.isReadable() || !info.get) continue;
       std::any v = info.get(*e.node);
       if (!v.has_value()) continue;
@@ -782,7 +782,7 @@ struct QuickJsBackend::Impl {
   void readbackAuthorGlobals(Entry &e, double timestamp) {
     if (!e.node || !e.ctx || !e.sai) return;
     JSContext *ctx = e.ctx;
-    for (const FieldInfo &info : dynamicFieldStore().authorFields(*e.node)) {
+    for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
       if (!info.isReadable()) continue;
       // Reading the global and converting it can run script code (an
       // accessor, toJSON, getters, a Proxy trap). QuickJS reports a throw there
@@ -801,7 +801,7 @@ struct QuickJsBackend::Impl {
       // output channel — an explicit assignment generates an event regardless of
       // value (§29.2.4 / ISO 19777-1), so it is never diffed away
       // (SCRIPT-OUTPUTONLY-REEMIT).
-      std::any prev = dynamicFieldStore().getValue(*e.node, info.x3dName);
+      std::any prev = e.sai->context().authorFields().getValue(*e.node, info.x3dName);
       if (info.access == AccessType::InputOutput && prev.has_value()) {
         JsValue prevJs(ctx, pushValue(ctx, prev, info.type));
         const bool same = jsonOf(ctx, g.get()) == jsonOf(ctx, prevJs.get());
@@ -817,7 +817,7 @@ struct QuickJsBackend::Impl {
         continue;
       }
       if (!value.has_value()) continue;
-      dynamicFieldStore().setValue(*e.node, info.x3dName, value);
+      e.sai->context().authorFields().setValue(*e.node, info.x3dName, value);
       (void)timestamp;
       e.sai->setField(e.node, info.x3dName, value);
     }

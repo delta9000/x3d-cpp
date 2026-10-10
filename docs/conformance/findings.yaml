@@ -2977,3 +2977,81 @@
   status: fixed
   summary: "Optional RenderItem origin-distance visibility hints stayed stale after view, limit and placement changes."
   note: "Issue #155: SceneExtractor now compares effective farDistance/visibilityLimit and current per-placement origins before consuming a delta. A changed live boolean uses the existing bounded remove-before-add replacement, so hosts honoring only advertised channels receive the descriptor; unchanged hints preserve incremental geometry/material/TRS behavior. Finite-to-unlimited clears true hints, empty/revived items read current inputs, and packed items use the same origin rule as AoS. Unlimited-to-unlimited ticks skip per-item checks; finite view/limit changes scan live origins, reusing static matrices and recomposing only dirty/Billboard paths. A crossing still costs a full bounded extraction. Tests: scene_extractor_visibility_delta_test.cpp has expected-value checks and a channel-respecting mirror versus fresh snapshots for precedence/fallback/bindings, eye/viewpoint motion, ancestor TRS, disabled limits, shared and empty placements, and packed stability. This is an optional SDK origin-distance hint, not bounds/frustum culling or complete visibility conformance."
+
+# Native host-activation integration safety (not a claim of full SAI coverage).
+- id: NATIVE-CALLBACK-RETIREMENT
+  interfaces: [X3DBindableNode, X3DInterpolatorNode, X3DFollowerNode]
+  nodes: [BooleanTrigger, IntegerTrigger, TimeTrigger, BooleanFilter, BooleanToggle, BooleanSequencer, IntegerSequencer, HAnimMotion]
+  clause: "4.4.3 (execution-context integration lifetime)"
+  severity: critical
+  status: fixed
+  summary: Native runtime callbacks retained by nodes are revoked before their activation or behavior state is destroyed.
+  note: >-
+    Weak per-context and per-system callback leases cover bindable handlers,
+    interpolators (including spline, NURBS and geospatial), followers,
+    event utilities, HAnimMotion and context-owned timing/key/trigger hooks.
+    RuntimeSession retires before extractor teardown; context destruction also
+    covers partial-construction unwinding. Standalone BindingSystem and standard
+    callback-owning systems retire in their destructor bodies before member
+    captures can invoke a retained node. Custom most-derived systems must call
+    the protected early-retirement hook before destroying members. No raw-node
+    traversal or global
+    lifetime registry is used, so retirement cannot clear a replacement's
+    handlers. Runtime/extract/tests/runtime_callback_retirement_test.cpp pins
+    retained storage, valid behavior, replacement, failed construction,
+    independent owner lifetimes and reentrant retirement rejection. Native
+    access stays serial: the host defers destruction until no call is in flight;
+    reentrant destruction fails closed. Context, BindingSystem and System owners
+    are noncopyable/nonmovable; transfer owning pointers or build fresh owners.
+    Custom unguarded callbacks and GeoFrame configuration isolation are outside
+    this fix; author-field ownership is tracked separately below. Process-wide pick/local-matrix diagnostic counters
+    use relaxed atomics so distinct owner-thread worlds do not race on metrics;
+    runtime_diagnostic_counters_test.cpp verifies the combined totals. These
+    metrics are not per-world semantic state. This does not establish full
+    browser/SAI conformance.
+
+- id: ASSET-LOADER-TRANSITIVE-POLICY
+  interfaces: [X3DPrototypeInstance]
+  nodes: [Inline]
+  clause: "4.4.4.2; 9.2 (host I/O policy and source-URL integration)"
+  severity: critical
+  status: fixed
+  summary: Nested Inline and EXTERNPROTO parsing preserves the supplied AssetResolver policy and declaration-source bases without local-file fallback.
+  note: >-
+    Paired synchronous loaders carry one explicit resolver policy throughout
+    Inline/EXTERNPROTO recursion, including declaration caching, body expansion
+    and IS URL overrides; Pending aborts the recursive synchronous load.
+    Source-base provenance follows declarations and weak node ownership instead
+    of being replaced by the enclosing document URL. Local Inline file loading
+    uses the existing confinement/canonicalization helper. The focused
+    asset_loader_policy_test.cpp and asset_proto_resolver_test.cpp suite verifies
+    nested and mixed resolution, URL fallback, cached declaration reuse, Pending
+    propagation and real local-decoy zero-read/open evidence with a positive
+    control. This closes an I/O integration bypass; it does not assert full
+    asynchronous loading or browser/SAI conformance.
+
+
+- id: NATIVE-AUTHOR-FIELD-OWNERSHIP
+  interfaces: [X3DPrototypeInstance, X3DScriptNode]
+  nodes: [Script, Inline, GeoLOD]
+  clause: "4.4.4; 9.2; 29.2 (native ownership and host integration)"
+  severity: critical
+  status: fixed
+  summary: Scene and declaration owners replace process-global author-field storage and clone factory configuration.
+  note: >-
+    Fresh Scenes have fresh shared stores; shallow copies deliberately alias
+    graph and store. Readers, writers, execution/cascade and Script backends
+    propagate explicit owners. Declarations retain template data after temporary
+    source-document destruction, while clones get fresh author entries and use
+    one clone map for generated and author node-valued fields. Inline adoption
+    shares entry identity, parent detach removes only its view, and cached
+    GeoLOD tiles re-import preserved child entries before attachment. Authored
+    GeoLOD roots retain their own selected entry view while inactive and return
+    it to the Scene on redisplay. Tracked
+    copied FieldInfo thunks reject expired and wrong-node identities without
+    waiting for a store sweep. Extension factories are declaration-local and
+    ext::install no longer mutates process configuration. Regression evidence:
+    scene_author_field_ownership_test.cpp and migrated memory, cascade, codec,
+    parser and Script tests. This is a concrete source/ABI migration with no
+    singleton or TLS fallback, not full Script/PROTO/SAI conformance. The separate
+    Geo projection selector and local-file parse operation context remain.

@@ -6,7 +6,7 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 |------|-----|--------|---------|---------|----------|------------|
 | GeoCoordinate | 1 | ✓ | — | — | GEO-2, GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, ROUTE-IO-ALIAS | X3DCoordinateNode, X3DGeometricPropertyNode |
 | GeoElevationGrid | 1 | ✓ | ✓ | — | EXT-001, EXT-003, GEO-2, GEO-AUDIT-1, GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS | X3DGeometryNode |
-| GeoLOD | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOLOD-1, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| GeoLOD | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOLOD-1, NATIVE-AUTHOR-FIELD-OWNERSHIP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
 | GeoLocation | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | GeoMetadata | 1 | ✓ | — | — | GEO-AUDIT-2, REQ-FTP, ROUTE-IO-ALIAS | X3DChildNode, X3DInfoNode, X3DUrlObject |
 | GeoOrigin | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS |  |
@@ -28,6 +28,8 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - Fixed: hitGeoCoord_changed converts the world hit through GeoNodes::fromWorld, alongside TouchSensor outputs; covered by a box pick regression.
 - **GEO-AUDIT-5** [critical/CLOSED] — §22.4.1, 25.3.8: GeoProximitySensor read GeoViewpoint.centerOfRotation as SFVec3f and crashed in debug.
   - ViewDependentSystem reads SFVec3d and converts it with geo::toWorld before parent and sensor transforms. Regression: GeoProximitySensor reports GeoViewpoint geographic centerOfRotation.
+- **NATIVE-AUTHOR-FIELD-OWNERSHIP** [critical/FIXED] — §4.4.4; 9.2; 29.2 (native ownership and host integration): Scene and declaration owners replace process-global author-field storage and clone factory configuration.
+  - Fresh Scenes have fresh shared stores; shallow copies deliberately alias graph and store. Readers, writers, execution/cascade and Script backends propagate explicit owners. Declarations retain template data after temporary source-document destruction, while clones get fresh author entries and use one clone map for generated and author node-valued fields. Inline adoption shares entry identity, parent detach removes only its view, and cached GeoLOD tiles re-import preserved child entries before attachment. Authored GeoLOD roots retain their own selected entry view while inactive and return it to the Scene on redisplay. Tracked copied FieldInfo thunks reject expired and wrong-node identities without waiting for a store sweep. Extension factories are declaration-local and ext::install no longer mutates process configuration. Regression evidence: scene_author_field_ownership_test.cpp and migrated memory, cascade, codec, parser and Script tests. This is a concrete source/ABI migration with no singleton or TLS fallback, not full Script/PROTO/SAI conformance. The separate Geo projection selector and local-file parse operation context remain.
 - **INTERP-02** [major/CLOSED `07c31ca`] — §19.3.1: Empty key must emit no events; added a live empty-key guard to all interpolator Systems.
 - **BIND-03** [major/CLOSED `e3235ee`] — §23.3.1: dynamic_cast<Viewpoint*> in NavigationSystem disables navigation for non-Viewpoint viewpoints.
   - CONF-VIEWNAV cluster.

@@ -199,12 +199,12 @@ class HAnimMotionSystem : public System {
       playback.motionSlot = i;
       kept.push_back(std::move(playback));
       // Draft 2.1 §6.3: TRUE steps once and wraps; FALSE is inert.
-      motion->setOnNextHandler([this, motion, &ctx](const SFBool &v) {
+      motion->setOnNextHandler(ctx.guardCallback(*this, [this, motion, &ctx](const SFBool &v) {
         if (v) step(motion, 1, ctx);
-      });
-      motion->setOnPreviousHandler([this, motion, &ctx](const SFBool &v) {
+      }));
+      motion->setOnPreviousHandler(ctx.guardCallback(*this, [this, motion, &ctx](const SFBool &v) {
         if (v) step(motion, -1, ctx);
-      });
+      }));
     }
     for (const Playback &p : playbacks_) if (p.humanoid == humanoid) {
       p.motion->setOnNextHandler({}); p.motion->setOnPreviousHandler({});
@@ -215,6 +215,8 @@ class HAnimMotionSystem : public System {
   }
 
 public:
+  ~HAnimMotionSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *humanoid = dynamic_cast<HAnimHumanoid *>(node);
     if (!humanoid) return;

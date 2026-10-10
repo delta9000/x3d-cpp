@@ -74,7 +74,9 @@ std::string XmlWriter::writeScene(const runtime::Scene &scene) {
   return os.str();
 }
 
-std::string XmlWriter::writeNode(const std::shared_ptr<X3DNode> &node) {
+std::string XmlWriter::writeNode(const std::shared_ptr<X3DNode> &node,
+                                 const runtime::DynamicFieldStore *authorFields) {
+  authorFields_ = authorFields;
   seen_.clear();
   scene_ = nullptr; // no scene context: expandedSources lookup is disabled
   auto el = writeNodeElement(node, "");
@@ -85,7 +87,8 @@ std::string XmlWriter::writeNode(const std::shared_ptr<X3DNode> &node) {
 }
 
 void XmlWriter::writeSceneInto(xml::Element *scene, const runtime::Scene &s) {
-  scene_ = &s; // enable <ProtoInstance> re-emit for expanded primaries below
+  scene_ = &s;
+  authorFields_ = s.authorFields.get(); // enable <ProtoInstance> re-emit for expanded primaries below
   // Emit declarations before nodes: X3D requires declarations before use.
   for (const auto &e : s.externProtoDeclarations)
     if (e)
@@ -317,7 +320,8 @@ XmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
 void XmlWriter::writeScriptAuthorFields(xml::Element &el,
                                         const Script &script) {
   const std::size_t staticCount = script.fields().size();
-  FieldTable eff = runtime::effectiveFields(script);
+  FieldTable eff = authorFields_ ? runtime::effectiveFields(script, *authorFields_)
+                                 : script.fields();
   for (std::size_t i = staticCount; i < eff.size(); ++i) {
     const FieldInfo &f = eff[i];
     xml::Element *fe = el.addChild("field");
@@ -429,6 +433,7 @@ XmlWriter::writeProtoDeclareElement(const runtime::ProtoDeclaration &d) {
   iface->name = "ProtoInterface";
   // Interface defaults and body nodes share the declaration's DEF scope.
   XmlWriter bodyWriter;
+  bodyWriter.authorFields_ = d.authorFields.get();
   bodyWriter.bodyIsc_ = &d.body.isConnections;
   bodyWriter.bodyOrder_ = &d.body;
   for (const auto &f : d.interface)

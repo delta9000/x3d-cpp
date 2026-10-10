@@ -23,6 +23,7 @@ std::string JsonWriter::writeDocument(const runtime::X3DDocument &doc) {
   seen_.clear();
   defaults_.clear();
   scene_ = &doc.scene;
+  authorFields_ = doc.scene.authorFields.get();
   std::ostringstream os;
   os << "{\n";
   os << "  \"X3D\": {\n";
@@ -368,6 +369,7 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
   // Interface defaults and body nodes use one declaration-local DEF scope.
   JsonWriter bodyWriter;
   bodyWriter.bodyNested_ = &d.body.nestedInstances;
+  bodyWriter.authorFields_ = d.authorFields.get();
   bodyWriter.bodyIsc_ = &d.body.isConnections;
   bodyWriter.bodyOrder_ = &d.body;
   pad(os, depth);
@@ -901,7 +903,7 @@ std::string JsonWriter::jsonNodeField(const std::shared_ptr<X3DNode> &node,
 
 std::string JsonWriter::jsonScriptFields(const X3DNode &node) {
   std::vector<FieldInfo> author =
-      runtime::dynamicFieldStore().authorFields(node);
+      authorFields_ ? authorFields_->authorFields(node) : std::vector<FieldInfo>{};
   if (author.empty())
     return "";
   std::string out = "\"field\": [";

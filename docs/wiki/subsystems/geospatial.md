@@ -91,7 +91,7 @@ geoid lookup in the swap-test; without it that case is skipped.
 [ADR-0058](../decisions/0058-context-owned-geo-projection.md) makes projection
 selection immutable for each execution context. Set `SessionOptions::geoProjection`
 before `RuntimeSession::create`, or construct a low-level context with
-`X3DExecutionContext(projection)`. Null selects the shared
+`X3DExecutionContext(scene.authorFields, projection)`. Null selects the shared
 immutable built-in backend. The world retains the supplied backend after caller
 references and option objects disappear.
 

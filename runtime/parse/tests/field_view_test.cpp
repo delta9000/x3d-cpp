@@ -62,11 +62,12 @@ TEST_CASE("fieldPtr borrows the stored member") {
 
 TEST_CASE("FieldRef falls back to get() for synthesized author fields") {
   auto script = std::make_shared<x3d::nodes::Script>();
-  dynamicFieldStore().addAuthorField(
+  DynamicFieldStore fields;
+  fields.addAuthorField(
       script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
                               AccessType::InputOutput, std::any(0.25f)});
   bool found = false;
-  for (const FieldInfo &f : dynamicFieldStore().authorFields(*script)) {
+  for (const FieldInfo &f : fields.authorFields(*script)) {
     if (f.x3dName != "level") continue;
     found = true;
     CHECK_FALSE(f.isViewable());
@@ -76,7 +77,7 @@ TEST_CASE("FieldRef falls back to get() for synthesized author fields") {
     CHECK(*level == 0.25f);
   }
   CHECK(found);
-  dynamicFieldStore().erase(*script);
+  fields.erase(*script);
 }
 
 TEST_CASE("FieldRef is falsy for a write-only field") {

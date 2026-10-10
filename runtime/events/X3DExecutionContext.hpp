@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <any>
+#include <atomic>
 #include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
 #include <memory>
@@ -99,13 +100,67 @@ struct BridgeResult;
 class X3DExecutionContext {
 public:
   X3DExecutionContext() = default;
-  /// Fix the geospatial backend for this context's lifetime; null selects the
-  /// built-in backend.
-  explicit X3DExecutionContext(std::shared_ptr<const geo::GeoProjection> projection)
-      : geoProjection_(projection ? std::move(projection) : geo::builtinProjectionOwner()) {}
+  /// Bind the scene field owner and resolve null to the built-in backend once.
+  explicit X3DExecutionContext(std::shared_ptr<DynamicFieldStore> fields,
+                               std::shared_ptr<const geo::GeoProjection> projection = {})
+      : geoProjection_(projection ? std::move(projection) : geo::builtinProjectionOwner()),
+        authorFields_(std::move(fields)), authorOwnerFixed_(true),
+        cascade_(graph_, authorFields_) {
+    if (!authorFields_) throw std::invalid_argument("null author-field owner");
+  }
 
   /// Immutable backend selection shared by all runtime paths in this context.
   const geo::GeoProjection &geoProjection() const { return *geoProjection_; }
+
+  /// A standalone context owns fresh fields. Access fixes that owner; a parsed
+  /// Scene should be supplied at construction, or bound before first access.
+  DynamicFieldStore &authorFields() const {
+    authorOwnerFixed_ = true;
+    return *authorFields_;
+  }
+
+  /// First scene build may bind an untouched default context. Later builds must
+  /// use that same owner; silently replacing live author state is forbidden.
+  void bindSceneAuthorFields(const Scene &scene) {
+    if (!scene.authorFields) throw std::invalid_argument("null Scene author-field owner");
+    if (authorFields_ == scene.authorFields) { authorOwnerFixed_ = true; return; }
+    if (authorOwnerFixed_ || authorFields_->entryCount() != 0 ||
+        tickGeneration_ != 0 || !cascade_.pending_.empty())
+      throw std::logic_error("execution context already has another author-field owner");
+    authorFields_ = scene.authorFields;
+    cascade_.bindAuthorFields(authorFields_);
+    authorOwnerFixed_ = true;
+  }
+  // The cascade, scene bindings and handlers refer to this exact address.
+  X3DExecutionContext(const X3DExecutionContext &) = delete;
+  X3DExecutionContext &operator=(const X3DExecutionContext &) = delete;
+  X3DExecutionContext(X3DExecutionContext &&) = delete;
+  X3DExecutionContext &operator=(X3DExecutionContext &&) = delete;
+  ~X3DExecutionContext() { if (!retireCallbacks()) std::terminate(); }
+
+  /// Terminal callback revocation for this activation. Idempotent; returns
+  /// false without retiring anything while tick/process/writeField or one of
+  /// our node callbacks is on the stack. The host must defer teardown until it
+  /// returns. All access is serial; concurrent destruction is NOT supported.
+  /// Retire before destroying context-owned state, including on constructor
+  /// unwinding. Node storage may survive; its retired runtime inputs are inert.
+  [[nodiscard]] bool retireCallbacks() noexcept {
+    if (!callbacks_.canRetire() || !bindings_.canRetireCallbacks()) return false;
+    (void)callbacks_.retire();
+    (void)bindings_.retireCallbacks();
+    return true;
+  }
+
+  /// Runtime-owned node handlers are valid only while BOTH their activation
+  /// and their behavior system live. Weak guards cover partial attachment
+  /// failure before addSystem(), without retaining nodes or either owner.
+  template <class F> auto guardCallback(System &owner, F callback) const {
+    return callbacks_.guard(owner.callbacks_.guard(std::move(callback)));
+  }
+
+  template <class F> auto guardInputFilter(System &owner, F filter) const {
+    return callbacks_.guardOr(owner.callbacks_.guardOr(std::move(filter), true), true);
+  }
 
   /** @brief Register a ROUTE from a source field endpoint to a sink endpoint.
    */
@@ -133,6 +188,7 @@ public:
   /// Build the M2a scene-graph layer for a parsed Scene: index the Transform
   /// hierarchy and route the cascade's field deliveries into the dirty tracker.
   void buildSceneGraph(Scene &scene) {
+    bindSceneAuthorFields(scene);
     normalizeRuntimeUnits(scene);
     detached_.clear();
     // Sanitize first: sever any containment cycle (a node that is its own
@@ -154,6 +210,7 @@ public:
 
   // Called after an Inline subtree is spliced into the live Scene.
   void refreshSceneTopology(Scene &scene) {
+    bindSceneAuthorFields(scene);
     normalizeRuntimeUnits(scene);
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
@@ -188,7 +245,7 @@ public:
       // the node's shared_ptr (e.g. InlineRuntimeSystem tile retirement).
       removeFieldWriteListeners(n);
       bindings_.removeNode(node);
-      dynamicFieldStore().erase(*node);
+      authorFields_->erase(*node);
       detached_.insert(node);
     }
     cascade_.removeNodes(nodes); // discard unbind events addressed to removed nodes
@@ -265,10 +322,19 @@ public:
         });
   }
 
-  /** @brief Seed an event; processed by the next process()/tick() drain. */
+  /** @brief External input or legacy seed; preserves every accepted occurrence. */
   void postEvent(X3DNode *node, const std::string &field, std::any value) {
     if (detached_.count(node)) return;
     cascade_.postEvent(node, field, std::move(value));
+  }
+
+  /// Queue an outputOnly production for first-admitted, per-timestamp delivery.
+  /// Producers MUST NOT call a node emitter/setter before this: the cascade
+  /// owns admission and storage mutation together. Legacy postEvent producers
+  /// are unchanged and are outside this scoped generated-output guarantee.
+  void postOutputEvent(X3DNode *node, const std::string &field, std::any value) {
+    if (detached_.count(node)) return;
+    cascade_.postOutputEvent(node, field, std::move(value));
   }
 
   void addInputFilter(std::function<bool(const FieldAddress &, const std::any &)> filter) {
@@ -310,6 +376,7 @@ public:
   [[nodiscard]] FieldWriteResult writeField(X3DNode *node,
                                             const std::string &field,
                                             std::any value) {
+    auto invocation = callbacks_.enter();
     if (!node) return FieldWriteResult::NullNode;
     if (detached_.count(node)) return FieldWriteResult::DetachedNode;
     if (!cascade_.acceptsInput(FieldAddress{node, resolveFieldAlias(node, field)}, value))
@@ -346,11 +413,13 @@ public:
    *          otherwise read the stale value and lag a frame). The whole loop is
    *          ONE timestamp: the per-field cap (RTC-5) persists across the passes
    *          (each drain continues the timestamp via `process(false)`), so a
-   *          field re-emitted every pass is delivered once and the loop is
-   *          guaranteed to terminate (productions are monotone and bounded by
-   *          the finite set of fields).
+   *          generated outputOnly fields using postOutputEvent emit once. The
+   *          reached-field bookkeeping is monotone and bounded by the finite
+   *          set of fields; repeated inputOnly occurrences still deliver. Legacy
+   *          seed producers are not covered by the generated-output cap.
    */
   void tick(double now) {
+    auto invocation = callbacks_.enter();
     // Guard against re-entrant tick() (e.g. a System calling tick() from
     // update()).  A recursive tick would clobber the outer tick's timestamp
     // state (now_, dirty_, produced_/fired_ guards) and consume pending
@@ -392,8 +461,14 @@ public:
     bounds_.propagate(dirty_, transforms_); // dirtied geometry -> bounds
   }
 
-  /** @brief Drain any pending events without advancing the clock. */
-  void process() { cascade_.process(); }
+  /** @brief Drain pending events without advancing the clock.
+   * Standalone outermost calls begin a fresh cascade. Calls inside tick (including
+   * Script post-cascade hooks), or nested inside another drain, share its guards.
+   */
+  void process() {
+    auto invocation = callbacks_.enter();
+    cascade_.process(/*freshTimestamp=*/!ticking_);
+  }
 
   double now() const { return now_; }
 
@@ -577,11 +652,16 @@ public:
   // Pointing-sensor resolution picks the scene on every pointer motion, so a
   // scene with no pointing-device sensors should never incur one; tests snapshot
   // this around tick() to assert PointingSensorSystem skips the pick entirely.
-  static inline std::uint64_t pickCalls_ = 0;
-  static std::uint64_t pickCallCount() { return pickCalls_; }
+  // Process-wide diagnostics only, not semantic state or per-world metrics.
+  // Independent owner-thread worlds may contribute concurrently. Relaxed
+  // ordering counts work without imposing synchronization on scene state.
+  static inline std::atomic<std::uint64_t> pickCalls_{0};
+  static std::uint64_t pickCallCount() {
+    return pickCalls_.load(std::memory_order_relaxed);
+  }
 
   PickResult pick(const Ray &worldRay) const {
-    ++pickCalls_;
+    pickCalls_.fetch_add(1, std::memory_order_relaxed);
     return pick_.pickClosest(worldRay, bounds_, cameraWorldPosition(),
                              cameraWorldUp(), x3d::kMaxGraphWalkVisits, &transforms_);
   }
@@ -713,8 +793,11 @@ private:
 
   // Declare before every dependent system so the owner also survives their teardown.
   const std::shared_ptr<const geo::GeoProjection> geoProjection_ = geo::builtinProjectionOwner();
+  std::shared_ptr<DynamicFieldStore> authorFields_ = std::make_shared<DynamicFieldStore>();
+  mutable bool authorOwnerFixed_ = false;
+  CallbackLifetime callbacks_; // revoked in destructor body before any members
   EventGraph graph_;
-  EventCascade cascade_{graph_};
+  EventCascade cascade_{graph_, authorFields_};
   std::vector<std::shared_ptr<System>> systems_;
   std::unordered_set<const X3DNode *> detached_;
   std::uint64_t sceneTopologyRevision_ = 0;

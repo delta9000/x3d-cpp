@@ -180,10 +180,10 @@ struct Watch {
   bool fromStore;            // true: read DynamicFieldStore; false: reflection
 };
 
-std::string readWatch(const Watch &w) {
+std::string readWatch(const Watch &w, const DynamicFieldStore &fields) {
   std::any v;
   if (w.fromStore) {
-    v = dynamicFieldStore().getValue(*w.node, w.field);
+    v = fields.getValue(*w.node, w.field);
   } else {
     // Reflection read via the node's field table (the typed get thunk).
     for (const auto &fi : w.node->fields()) {
@@ -199,11 +199,12 @@ std::string readWatch(const Watch &w) {
 // A trace is a vector of per-tick lines; each line is the watched fields joined.
 using Trace = std::vector<std::string>;
 
-std::string snapshot(const std::vector<Watch> &watches) {
+std::string snapshot(const std::vector<Watch> &watches,
+                     const DynamicFieldStore &fields) {
   std::string line;
   for (std::size_t i = 0; i < watches.size(); ++i) {
     if (i) line += " | ";
-    line += readWatch(watches[i]);
+    line += readWatch(watches[i], fields);
   }
   return line;
 }
@@ -246,7 +247,6 @@ bool traceNonTrivial(const Trace &t) {
 // ROUTE -> Transform.translation. Driven over a fixed schedule of input values.
 // --------------------------------------------------------------------------
 Trace runF1(const BackendFactory &bf) {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
 
   auto script = std::make_unique<Script>();
@@ -257,11 +257,11 @@ Trace runF1(const BackendFactory &bf) {
       "function set_value(v, ts) {"
       "  position_changed = { x: v, y: v, z: v };"
       "}");
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script,
       AuthorFieldDecl{"set_value", X3DFieldType::SFFloat, AccessType::InputOnly,
                       {}});
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script, AuthorFieldDecl{"position_changed", X3DFieldType::SFVec3f,
                                AccessType::OutputOnly, {}});
 
@@ -287,10 +287,9 @@ Trace runF1(const BackendFactory &bf) {
     sys->deliverInputEvent(script.get(), "set_value", std::any(SFFloat(in)),
                            X3DFieldType::SFFloat, now);
     ctx.tick(now);
-    trace.push_back(snapshot(watches));
+    trace.push_back(snapshot(watches, ctx.authorFields()));
     now += 1.0;
   }
-  dynamicFieldStore().clear();
   return trace;
 }
 
@@ -298,7 +297,6 @@ Trace runF1(const BackendFactory &bf) {
 // F2: inputOutput STATEFUL accumulation. count seeded 10; set_bump(v): count+=v.
 // --------------------------------------------------------------------------
 Trace runF2(const BackendFactory &bf) {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
 
   auto script = std::make_unique<Script>();
@@ -306,10 +304,10 @@ Trace runF2(const BackendFactory &bf) {
   script->setMustEvaluateUnchecked(true);
   script->setLoad(true);
   script->setSourceCode("function set_bump(v, ts) { count = count + v; }");
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script, AuthorFieldDecl{"count", X3DFieldType::SFInt32,
                                AccessType::InputOutput, std::any(SFInt32(10))});
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script, AuthorFieldDecl{"set_bump", X3DFieldType::SFInt32,
                                AccessType::InputOnly, {}});
 
@@ -329,10 +327,9 @@ Trace runF2(const BackendFactory &bf) {
     sys->deliverInputEvent(script.get(), "set_bump", std::any(SFInt32(b)),
                            X3DFieldType::SFInt32, now);
     ctx.tick(now);
-    trace.push_back(snapshot(watches));
+    trace.push_back(snapshot(watches, ctx.authorFields()));
     now += 1.0;
   }
-  dynamicFieldStore().clear();
   return trace;
 }
 
@@ -345,7 +342,6 @@ Trace runF2(const BackendFactory &bf) {
 //   observed BOTH as the script author field AND on a downstream Transform.
 // --------------------------------------------------------------------------
 Trace runF3(const BackendFactory &bf) {
-  dynamicFieldStore().clear();
   X3DExecutionContext ctx;
 
   auto script = std::make_unique<Script>();
@@ -358,19 +354,19 @@ Trace runF3(const BackendFactory &bf) {
       "  value_changed = v;"
       "  pos_changed = { x: v, y: v, z: v };"
       "}");
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script, AuthorFieldDecl{"lo", X3DFieldType::SFFloat,
                                AccessType::InitializeOnly, std::any(SFFloat(2.0f))});
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script, AuthorFieldDecl{"hi", X3DFieldType::SFFloat,
                                AccessType::InitializeOnly, std::any(SFFloat(10.0f))});
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script, AuthorFieldDecl{"set_fraction", X3DFieldType::SFFloat,
                                AccessType::InputOnly, {}});
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script, AuthorFieldDecl{"value_changed", X3DFieldType::SFFloat,
                                AccessType::OutputOnly, {}});
-  dynamicFieldStore().addAuthorField(
+  ctx.authorFields().addAuthorField(
       *script, AuthorFieldDecl{"pos_changed", X3DFieldType::SFVec3f,
                                AccessType::OutputOnly, {}});
 
@@ -396,10 +392,9 @@ Trace runF3(const BackendFactory &bf) {
     sys->deliverInputEvent(script.get(), "set_fraction", std::any(SFFloat(f)),
                            X3DFieldType::SFFloat, now);
     ctx.tick(now);
-    trace.push_back(snapshot(watches));
+    trace.push_back(snapshot(watches, ctx.authorFields()));
     now += 1.0;
   }
-  dynamicFieldStore().clear();
   return trace;
 }
 
@@ -435,7 +430,6 @@ void collectScripts(X3DNode *n, std::vector<Script *> &out) {
 // --------------------------------------------------------------------------
 Trace runF4(const BackendFactory &bf, const std::string &dataDir, bool &loaded) {
   loaded = false;
-  dynamicFieldStore().clear();
 
   std::string xml = slurp(dataDir + "/AuthorScriptExample.x3d");
   if (xml.empty()) return {};
@@ -450,7 +444,7 @@ Trace runF4(const BackendFactory &bf, const std::string &dataDir, bool &loaded) 
   if (scripts.size() != 1) return {};
   Script *script = scripts[0];
 
-  X3DExecutionContext ctx;
+  X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = bf.make();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
@@ -471,10 +465,9 @@ Trace runF4(const BackendFactory &bf, const std::string &dataDir, bool &loaded) 
     sys->deliverInputEvent(script, "enabled", std::any(SFBool(true)),
                            X3DFieldType::SFBool, now);
     ctx.tick(now);
-    trace.push_back(snapshot(watches));
+    trace.push_back(snapshot(watches, ctx.authorFields()));
     now += 1.0;
   }
-  dynamicFieldStore().clear();
   return trace;
 }
 
@@ -555,7 +548,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  dynamicFieldStore().clear();
   if (failures == 0) {
     std::cout << "ALL QUICKJS SWAP TESTS PASSED — ScriptEngine seam proven "
                  "generic (Duktape == QuickJS observable behavior)\n";

@@ -42,6 +42,8 @@ inline void reportMovieDuration(X3DExecutionContext &ctx, x3d::nodes::MovieTextu
 
 class MediaTimeSystem : public X3DTimeDependentSystem {
 public:
+  ~MediaTimeSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(x3d::nodes::X3DNode *node, X3DExecutionContext &ctx) override {
     auto *media = dynamic_cast<x3d::nodes::X3DTimeDependentNode *>(node);
     if (!media || (!dynamic_cast<x3d::nodes::AudioClip *>(node) &&

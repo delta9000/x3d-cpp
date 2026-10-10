@@ -26,11 +26,12 @@
 //       BEFORE buildSceneGraph, SYNCHRONOUSLY. A pending result here is
 //       INCOHERENT: nodes must exist before extraction can walk them, so this
 //       call site requires Status::Ready (or Status::Failed) and treats Pending
-//       as a hard error. This site is OUTSIDE this milestone's PoC wiring; the
-//       type is shared so a single embedder resolver covers both, but the
-//       contract difference is documented here, not papered over.
+//       as a hard error. parse/AssetDocumentResolvers.hpp supplies paired
+//       loaders that retain this policy for every nested Inline/EXTERNPROTO;
+//       a Pending result aborts the active recursive asset load. The callback
+//       receives a fragment-free URL resolved against its source directory.
 //
-// The PoC wires only contract (A): a local-file resolver (relative to the scene
+// The renderer PoC wires contract (A): a local-file resolver (relative to the scene
 // dir, owned by the PoC, NOT the SDK) feeds stb_image at upload time.
 #ifndef X3D_RUNTIME_EXTRACT_ASSET_RESOLVER_HPP
 #define X3D_RUNTIME_EXTRACT_ASSET_RESOLVER_HPP

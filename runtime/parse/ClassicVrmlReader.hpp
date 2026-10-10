@@ -259,7 +259,8 @@ private:
   // Register one author field declaration on `node` in the S1 store. Empty
   // initialValue for input/outputOnly (they carry no persistent value) is the
   // store's own contract; we pass through whatever the caller boxed.
-  static void captureAuthorField(const std::shared_ptr<X3DNode> &node,
+  static void captureAuthorField(runtime::Scene &scene,
+                                 const std::shared_ptr<X3DNode> &node,
                                  const std::string &name,
                                  X3DFieldType type, AccessType access,
                                  std::any initialValue);

@@ -5,6 +5,7 @@ tags: [adr, geospatial, ownership, runtime]
 updated: 2026-10-07
 related:
   - 0053-geo-projection-seam.md
+  - 0057-scene-owned-author-fields.md
   - ../subsystems/geospatial.md
 ---
 
@@ -12,9 +13,7 @@ related:
 
 ## Status
 
-Accepted ownership decision; supersedes the process-wide selector in ADR-0053.
-The early implementation checkpoint passes focused ownership tests. Full native
-regression, package and exact-head CI results are tracked in the draft PR.
+Accepted; supersedes the process-wide selector in ADR-0053.
 
 ## Problem
 
@@ -66,7 +65,7 @@ auto world = x3d::runtime::RuntimeSession::create(
     std::move(document), std::move(options));
 
 // Or select ownership before a low-level context builds the scene:
-x3d::runtime::X3DExecutionContext context(projection);
+x3d::runtime::X3DExecutionContext context(scene.authorFields, projection);
 context.buildSceneGraph(scene);
 auto mesh = x3d::runtime::extract::buildLocalMesh(
     geometry, context.geoProjection(), meshOptions);
@@ -75,14 +74,16 @@ auto mesh = x3d::runtime::extract::buildLocalMesh(
 Calls to `geo::projection()` and `geo::setProjection()` must migrate. Shared
 helper calls now pass the projection explicitly. Concrete context/system layout
 and function signatures change, so rebuild runtime consumers; the mathematical
-virtual interface alone remains stable.
+virtual interface alone remains stable. Existing untouched default-context
+author-field binding behavior is preserved.
 
 ## Evidence and limits
 
 `geo_projection_ownership_test` exercises interleaved worlds, backend
 retention/destruction, full/delta and dirty geometry, transforms/bounds/picking,
 camera and interpolation, geographic sensors/navigation, delayed Inline/GeoLOD
-enrollment, HAnim walks and independent owner threads. Existing test migrations
+enrollment, HAnim walks, escaped callback retirement and independent owner
+threads. Existing test migrations
 preserve their assertions and numerical expectations.
 
 Operations within one mutable world remain serialized. Custom backends must

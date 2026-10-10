@@ -2,7 +2,7 @@
 title: Execution Context
 summary: Per-tick driver, field-write seam, and scene bridge that coordinate the runtime event loop.
 tags: [subsystem, execution-context, tick, runtime, events]
-updated: 2026-09-30
+updated: 2026-10-07
 related:
   - ../architecture.md
   - ../subsystems/event-cascade.md
@@ -32,6 +32,122 @@ recover initially hidden branches without depending on existing render items.
 Other Shape and scoped ClipPlane/LocalFog descriptor invalidation is handled by
 the extractor's [replacement contract](extract.md#scoped-render-state-replacement-contract).
 
+## Activation ownership and retirement
+
+A mutable native node graph belongs to one active execution context. The host
+owns that activation and serializes construction, ticks, field calls and
+teardown; there is no hidden event loop and no concurrent-destruction guarantee.
+`RuntimeSession` owns the document, context and extractor. A caller may retain a
+node `shared_ptr` beyond the session, but that does not retain its runtime.
+
+Native-installed bindable, interpolator (including spline, NURBS and geospatial),
+follower, event-utility and H-Anim motion input handlers carry weak lifetime
+leases. Behavior handlers require both the context and the individual `System`
+to survive; bindable handlers require their context-owned `BindingSystem`.
+Context-owned timing filters and key/trigger write listeners are guarded too.
+After retirement, calling these retained native input handlers is a no-op:
+readable field storage remains, and ordinary native storage setters still work.
+The guards do not traverse retained nodes, retain the scene, or clear a handler
+installed by a later activation. They also cover attachment failure before a
+new system has reached `addSystem`, and session-constructor unwinding. Standalone
+`BindingSystem` and all standard callback-owning systems retire in their
+destructor bodies before member-owned captures or state can be destroyed; a
+capture destructor that invokes a retained node therefore sees an inert handler.
+
+`bool X3DExecutionContext::retireCallbacks() noexcept` is an idempotent, terminal
+revocation seam. It returns `false`, leaving the activation unchanged, while a
+native guarded input handler or `tick`, `process`, or `writeField` is in flight.
+The host must defer replacement/destruction until its current runtime call has
+returned. Destroying the context/session reentrantly is a contract violation and
+fails closed with `std::terminate`; the guards are not a lock or a mechanism to
+make deletion from a running callback safe. No further runtime operations may
+be made on a retired activation. The session destructor retires callbacks before
+extractor teardown; the context destructor independently retires them before any
+context-owned member is destroyed. The low-level context path therefore has the
+same retained-node protection.
+
+Custom `System` implementations must wrap escaping void handlers with
+`ctx.guardCallback(*this, handler)` (or predicate filters with
+`ctx.guardInputFilter(*this, filter)`) to opt into that protection. A custom
+most-derived owner must also call the protected
+`retireCallbacksBeforeDestruction()` at the start of its destructor, before its
+members are destroyed. The `System` base destructor alone is too late for a
+member/capture destructor that invokes an escaped handler. This applies equally
+to further subclasses of built-in systems. Install custom handlers after full
+construction; if a custom constructor installs handlers and then can throw, it
+must retire them before member-unwinding begins. It does not
+apply to unguarded callbacks supplied by an embedder, dangling native raw
+pointers, concurrent native access, or arbitrary structural mutation. It also
+does not migrate the separate process-wide GeoFrame projection selector.
+Author fields now have the explicit scene ownership described below.
+
+### Author-field ownership
+
+Every fresh `Scene` owns a fresh `shared_ptr<DynamicFieldStore>` in
+`scene.authorFields`. Shallow Scene copies deliberately share both node identity
+and that store; they are not independent worlds. `ProtoDeclaration::authorFields`
+retains its template/default fields after an EXTERN resolver's temporary document
+dies. `RuntimeSession` binds its context to its owned document's store. Retaining only
+a node does not retain that Scene store; retain the explicit shared owner too
+when author fields must remain readable after world teardown.
+
+For low-level setup, prefer `X3DExecutionContext ctx(doc.scene.authorFields)`.
+An untouched default context binds once when `buildSceneGraph`, `buildFrom` or
+`buildRoutes` receives a Scene. Calling `ctx.authorFields()` first fixes its fresh
+standalone owner; later attempts to switch owners, or to bind while events are
+pending or after a tick, throw before changing scene state. Rebuild all concrete
+runtime consumers for this source/ABI change. Never replace a Scene's owner while
+it is active.
+
+Inline adoption shares author-field entries for its imported nodes, preserving
+one value identity without sharing the entire store. Detachment drops only the
+parent view: a retained child Scene or cached GeoLOD tile keeps its author data.
+Redisplaying a cached tile imports those entries again before system attachment.
+Authored GeoLOD rootNode fields use a per-LOD retained entry view while inactive,
+then return to the active Scene on redisplay.
+Conflicting live entries for one imported node are rejected. Copied FieldInfo
+thunks are inert after their tracked node expires, even before any store lookup
+sweeps the entry; they also reject calls on a different node identity.
+
+The removed zero-argument `dynamicFieldStore()` has no global or thread-local
+compatibility fallback. Use `*scene.authorFields`, `*declaration.authorFields`, or
+`ctx.authorFields()` at the appropriate ownership boundary, and pass that store
+to `effectiveFields(node, store)`. See [ADR-0057](../decisions/0057-scene-owned-author-fields.md)
+for the clone and serializer migration. This does not establish general SAI,
+Script, PROTO or Geo conformance.
+
+### Process-wide diagnostics
+
+`TransformSystem::localMatrixCallCount()` and
+`X3DExecutionContext::pickCallCount()` return process-wide diagnostic totals,
+not per-world measurements or semantic scene state. Their backing counters use
+relaxed atomic increments and reads so separate owner-thread worlds can
+contribute without a diagnostic data race. This does not make an individual
+scene/context thread-safe, nor synchronize scene changes. The concurrent
+`runtime_diagnostic_counters_test.cpp` test drives four distinct owner-thread
+worlds and checks their combined totals after joining those threads. The two
+public backing variables now have atomic type; callers should use the unchanged
+`uint64_t` accessors rather than copying a backing counter object.
+
+### Source compatibility and migration
+
+`X3DExecutionContext`, `BindingSystem`, and `System` (therefore all built-in and
+custom derived systems) explicitly delete copy construction, copy assignment,
+move construction and move assignment. Their callbacks and internal references
+bind to a stable owner address. The previous context and binding-system copies,
+and stateless system copies, really compiled; they were not safe activation
+clones. Context copy/move assignment already failed because its cascade holds
+a reference; those deletions make the existing restriction explicit. Some
+stateful systems already failed to instantiate copies because they own
+`unique_ptr` state. `RuntimeSession` was already noncopyable/nonmovable.
+
+Keep these owners in place or transfer `unique_ptr`/`shared_ptr` ownership,
+rather than moving the owner object. To duplicate an activation, create a fresh
+context and fresh systems, then attach them to a separately owned node graph.
+To re-use retained nodes, first retire the previous activation outside all
+runtime calls, then attach the replacement. This is a source-compatibility
+tightening; downstream applications need a rebuild and call-site audit.
+
 ## Key files
 
 | File | Role |
@@ -39,6 +155,7 @@ the extractor's [replacement contract](extract.md#scoped-render-state-replacemen
 | `runtime/events/X3DExecutionContext.hpp` | Primary type: owns route graph, cascade, System list, post-cascade hooks, and all scene-level subsystem instances; exposes `tick`, `buildSceneGraph`, `buildFrom`, `postEvent`, `writeField`, and pull surfaces |
 | `runtime/events/X3DSceneBridge.hpp` | Free functions that bridge a parsed `Scene`'s DEF-named ROUTEs onto a context (`buildRoutes`), and convenience attach helpers for view-dependent, interpolator, event-utility, and key-device Systems |
 | `runtime/events/X3DActiveNode.hpp` | `ActiveNode` — the legacy per-node behavior protocol (deprecated; wrapped by `ActiveNodeAdapter` inside `X3DExecutionContext`) |
+| `runtime/events/CallbackLifetime.hpp` | Weak serial callback leases, terminal revocation and in-flight teardown checks |
 | `runtime/events/X3DSystem.hpp` | `System` — the current behavior-family abstraction; `attach(node, ctx)` + `update(now, ctx)` |
 
 ## Interfaces and seams
@@ -203,7 +320,7 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 - **`addChildren` / `removeChildren`** — handled in the cascade (`EventCascade::editChildren`) for any node with an MFNode `children` field (§10.2.1): add appends nodes not already present, remove drops the listed ones, edits apply in delivery order, and a `children` event with the final value follows in the same cascade, so dirty tracking and `children_changed` ROUTEs see it.
 - **`classifyDirty` (private)** — the cascade's field-delivery observer; maps any delivered `FieldAddress` to dirty flags (`DirtyField`, `DirtyLocalTransform`, `DirtyChildren`, `DirtyBounds`) on the owning node. `writeField` mirrors this classification for direct System writes (M2C-3). `DirtyChildren` (a `children`/`addChildren`/`removeChildren` write, or a `Switch.whichChoice` swap) is what drives `TransformSystem`'s structural re-walk each tick (M2C-2).
 
-- **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute` after field, direction, and type checks. For expanded PROTOs it consults the declared interface before the primary node's fields, follows `IS` targets on either endpoint, and retains inherited `metadata` through the primary's current storage. Pre-resolved PROTO-body and Inline-internal routes bypass DEF-name lookup but receive the same physical endpoint checks through `effectiveFields()`, without another PROTO redirect lookup. `BridgeResult` counts added edges; `RouteError::scope` identifies the Scene, PROTO-body, or Inline route collection for its relative `index`. Dangling Scene DEFs are skipped silently. The attach helpers walk rendered roots and non-rendered PROTO peers via `detail::forEachNode`. `InlineRuntimeSystem` enrolls a newly loaded subtree and installs its dynamic routes through a separate path; it also refreshes transform, bounds, and pick indices before extraction. Independent PROTO interface event state without an `IS` target remains unsupported.
+- **`X3DSceneBridge.hpp` free functions** — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute` after field, direction, and type checks. For expanded PROTOs it consults the declared interface before the primary node's fields, follows `IS` targets on either endpoint, and retains inherited `metadata` through the primary's current storage. Pre-resolved PROTO-body and Inline-internal routes bypass DEF-name lookup but receive the same physical endpoint checks through `effectiveFields()`, without another PROTO redirect lookup. `BridgeResult` counts added edges; `RouteError::scope` identifies the Scene, PROTO-body, or Inline route collection for its relative `index`. Dangling Scene DEFs are skipped silently. The attach helpers walk rendered roots and non-rendered PROTO peers via `detail::forEachNode`. `InlineRuntimeSystem` enrolls a newly loaded subtree and installs its dynamic routes through a separate path; it also refreshes transform, bounds, and pick indices before extraction. Unconnected PROTO interface fields use Scene-owned entries; this does not establish a general native SAI prototype object model.
 
 - **Consumer input seams** — the context owns `PointerState`, `KeyState`, and `HeadPose` structs that the consumer writes between ticks via the `setPointer*`, `setKey*`, `push*Key*`, and `setHeadPose` methods. Systems read these via `ctx.pointerState()`, `ctx.keyState()`, and `ctx.headPose()` inside `update`.
 
@@ -246,3 +363,15 @@ The `tick(now)` implementation enforces two spec requirements:
 - Spec: `docs/superpowers/specs/2026-06-20-project-wiki-design.md`
 - ISO 19775-1 §4.4.8.3 (event model, per-tick evaluation order) and §29.2.4 (Script `eventsProcessed` timing) are the normative grounding for the tick loop and post-cascade hook ordering.
 - BACKLOG items: M2C-3 (writeField dirty seam), M2.5 (input seam), M2D (keyboard + nav), CONF-VIEWNAV (viewMatrix formula), RTC-5/RTC-6 (timestamp cap + quiescence loop) — all closed; see `docs/superpowers/BACKLOG.md` (deprecated, historical).
+
+### Retirement regression coverage
+
+`runtime/extract/tests/runtime_callback_retirement_test.cpp` (the
+`x3d_extract_tests` suite) exercises live behavior, retained nodes after session
+teardown, a replacement on explicitly retired nodes, independent context/system
+lifetimes, failure partway through `RuntimeSession` construction, expired
+filters/listeners, all standard node callback families, callback exception
+unwinding, standalone poster/clock/sink and interpolation-capture destruction,
+custom-owner early retirement, reentrant retirement rejection, and fail-closed
+reentrant destruction
+(the death test is enabled on Unix). Compile-time assertions pin owner mobility.

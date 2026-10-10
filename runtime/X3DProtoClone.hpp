@@ -3,6 +3,7 @@
 #define X3D_RUNTIME_PROTO_CLONE_HPP
 
 #include "FieldRead.hpp"
+#include "X3DProto.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "x3d/core/X3DReflection.hpp"
@@ -17,37 +18,31 @@
 namespace x3d::runtime {
 using namespace x3d::core;
 
-/// A fallback creator for node types not registered in the generated
-/// X3DNodeFactory (e.g. hand-written x3d::runtime::ext extension nodes).
-/// Default: empty (no fallback). An opt-in extension (such as
-/// x3d::runtime::ext::install()) sets this so deepClone() can clone its nodes
-/// without any generated-layer edits.
-///
-/// Contract: process-global, sticky (no uninstall), set-once opt-in slot.
-/// Must be set at single-threaded setup time before parsing begins.
-/// Concurrent writes (install()-during-deepClone) are not synchronized.
-using FallbackNodeCreator =
-    std::function<std::shared_ptr<x3d::nodes::X3DNode>(const std::string &)>;
-
-inline FallbackNodeCreator &fallbackNodeCreator() {
-  static FallbackNodeCreator f;
-  return f;
-}
+/// Explicit services for one clone transaction. With no stores, cloning is
+/// generated-fields-only. Pass both stores to include author fields; their
+/// lifetime is borrowed only for the synchronous call. No ambient factory.
+struct CloneContext {
+  const DynamicFieldStore *sourceFields = nullptr;
+  DynamicFieldStore *destinationFields = nullptr;
+  FallbackNodeCreator createNode;
+};
 
 /// Deep-clone a node tree. `cloneMap` (original ptr -> clone) preserves
 /// intra-tree DEF/USE shared identity: a node referenced twice clones once.
 inline std::shared_ptr<x3d::nodes::X3DNode>
 deepClone(const std::shared_ptr<x3d::nodes::X3DNode> &src,
-          std::unordered_map<const x3d::nodes::X3DNode *, std::shared_ptr<x3d::nodes::X3DNode>> &cloneMap) {
+          std::unordered_map<const x3d::nodes::X3DNode *, std::shared_ptr<x3d::nodes::X3DNode>> &cloneMap,
+          const CloneContext &context = {}) {
+  if (!!context.sourceFields != !!context.destinationFields)
+    throw std::invalid_argument("clone author fields require source and destination owners");
   if (!src) return nullptr;
   auto it = cloneMap.find(src.get());
   if (it != cloneMap.end()) return it->second;       // USE: same clone
 
   std::shared_ptr<x3d::nodes::X3DNode> dst = x3d::nodes::X3DNodeFactory::create(src->nodeTypeName());
-  // On factory miss, consult the opt-in ext-populated hook (only set when the
-  // ext module is installed; absent by default — degrades gracefully to nullptr).
-  if (!dst && fallbackNodeCreator())
-    dst = fallbackNodeCreator()(src->nodeTypeName());
+  // A resolver may opt this declaration into extension cloning only.
+  if (!dst && context.createNode)
+    dst = context.createNode(src->nodeTypeName());
   if (!dst) return nullptr;                            // genuinely unknown type: drop
   cloneMap[src.get()] = dst;
   dst->setDEF(src->getDEF());
@@ -57,25 +52,46 @@ deepClone(const std::shared_ptr<x3d::nodes::X3DNode> &src,
     if (f.type == X3DFieldType::SFNode) {
       FieldRef<std::shared_ptr<x3d::nodes::X3DNode>> child(*src, f);
       if (!child) continue;
-      f.set(*dst, std::any(deepClone(*child, cloneMap)));
+      f.set(*dst, std::any(deepClone(*child, cloneMap, context)));
     } else if (f.type == X3DFieldType::MFNode) {
       // Borrowed: the walk never writes `src`, only the clones.
       FieldRef<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>> kids(*src, f);
       if (!kids) continue;
       std::vector<std::shared_ptr<x3d::nodes::X3DNode>> out;
       out.reserve(kids->size());
-      for (const auto &k : *kids) out.push_back(deepClone(k, cloneMap));
+      for (const auto &k : *kids) out.push_back(deepClone(k, cloneMap, context));
       f.set(*dst, std::any(std::move(out)));
     } else {
       f.set(*dst, f.get(*src));                         // scalar: copy boxed any
     }
   }
+  if (context.sourceFields) {
+    for (const FieldInfo &field : context.sourceFields->authorFields(*src)) {
+      std::any value = context.sourceFields->getValue(*src, field.x3dName);
+      if (value.has_value() && field.type == X3DFieldType::SFNode) {
+        value = deepClone(std::any_cast<SFNode>(value), cloneMap, context);
+      } else if (value.has_value() && field.type == X3DFieldType::MFNode) {
+        MFNode copies;
+        for (const auto &node : std::any_cast<const MFNode &>(value))
+          copies.push_back(deepClone(node, cloneMap, context));
+        value = std::move(copies);
+      }
+      context.destinationFields->addAuthorField(dst,
+          {field.x3dName, field.type, field.access, value});
+      // Preserve any already-stored event value, too. Registration seeds only
+      // initializeOnly/inputOutput; direct store writes validate every type.
+      if (value.has_value() && (field.access == AccessType::InputOnly ||
+                                field.access == AccessType::OutputOnly))
+        context.destinationFields->setValue(*dst, field.x3dName, std::move(value));
+    }
+  }
   return dst;
 }
 
-inline std::shared_ptr<x3d::nodes::X3DNode> deepClone(const std::shared_ptr<x3d::nodes::X3DNode> &src) {
+inline std::shared_ptr<x3d::nodes::X3DNode> deepClone(const std::shared_ptr<x3d::nodes::X3DNode> &src,
+                                                               const CloneContext &context = {}) {
   std::unordered_map<const x3d::nodes::X3DNode *, std::shared_ptr<x3d::nodes::X3DNode>> m;
-  return deepClone(src, m);
+  return deepClone(src, m, context);
 }
 
 } // namespace x3d::runtime

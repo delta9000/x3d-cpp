@@ -530,7 +530,7 @@ int main() {
     Script script;
     script.setDirectOutputUnchecked(true);
     SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
-    dynamicFieldStore().addAuthorField(
+    ctx.authorFields().addAuthorField(
         script, AuthorFieldDecl{"echo", X3DFieldType::SFNode,
                                 AccessType::InputOutput, {}});
     auto a = std::make_shared<Transform>();
@@ -546,7 +546,7 @@ int main() {
     backend.initialize(h);
     backend.invoke(h, "keep", std::any(SFNode(a)), X3DFieldType::SFNode, 1.0);
 
-    std::any out = dynamicFieldStore().getValue(script, "echo");
+    std::any out = ctx.authorFields().getValue(script, "echo");
     const SFNode *outNode = std::any_cast<SFNode>(&out);
     check(outNode && outNode->get() == a.get() &&
               !outNode->owner_before(a) && !a.owner_before(*outNode),
@@ -558,7 +558,7 @@ int main() {
     std::weak_ptr<Transform> weak = a;
     a.reset();
     out.reset();
-    dynamicFieldStore().erase(script);
+    ctx.authorFields().erase(script);
     check(weak.expired(),
           "T15c: the script's handle does not keep a dropped node alive");
     backend.invoke(h, "wire", std::any(1.0), X3DFieldType::SFTime, 2.0);
@@ -643,9 +643,9 @@ int main() {
       X3DExecutionContext ctx;
       Script script;
       SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
-      dynamicFieldStore().addAuthorField(
+      ctx.authorFields().addAuthorField(
           script, AuthorFieldDecl{"out", c.type, AccessType::OutputOnly, {}});
-      dynamicFieldStore().addAuthorField(
+      ctx.authorFields().addAuthorField(
           script, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
                                   AccessType::OutputOnly, {}});
       std::string src = std::string(c.source) +
@@ -655,16 +655,16 @@ int main() {
             std::string("T15f: load hostile script (") + c.what + ")");
       backend.initialize(h);
       backend.invoke(h, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
-      check(dynamicFieldStore().getValue(script, "out").has_value() ==
+      check(ctx.authorFields().getValue(script, "out").has_value() ==
                 c.firstReadbackEmits,
             std::string("T15f: ") + c.what +
                 " is contained (no crash; emits only a valid value)");
       backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
-      std::any ok = dynamicFieldStore().getValue(script, "ok");
+      std::any ok = ctx.authorFields().getValue(script, "ok");
       check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
             std::string("T15f: script still works after ") + c.what);
       backend.shutdown(h);
-      dynamicFieldStore().erase(script);
+      ctx.authorFields().erase(script);
     }
   }
 
@@ -697,7 +697,7 @@ int main() {
       X3DExecutionContext ctx;
       Script script;
       SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
-      dynamicFieldStore().addAuthorField(
+      ctx.authorFields().addAuthorField(
           script, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
                                   AccessType::OutputOnly, {}});
       ScriptHandle h = backend.load(
@@ -711,11 +711,11 @@ int main() {
       check(Clock::now() - start < limit,
             std::string("T15g: ") + c.what + " is interrupted");
       backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
-      std::any ok = dynamicFieldStore().getValue(script, "ok");
+      std::any ok = ctx.authorFields().getValue(script, "ok");
       check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
             std::string("T15g: script still works after ") + c.what);
       backend.shutdown(h);
-      dynamicFieldStore().erase(script);
+      ctx.authorFields().erase(script);
     }
 
     {
@@ -747,7 +747,7 @@ int main() {
     X3DExecutionContext ctx;
     Script script;
     SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
-    dynamicFieldStore().addAuthorField(
+    ctx.authorFields().addAuthorField(
         script, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
                                 AccessType::OutputOnly, {}});
     // Each string is ~1 MB and unique (engines may intern equal strings).
@@ -763,11 +763,11 @@ int main() {
     check(Clock::now() - start < budget / 2,
           "T15h: unbounded allocation is stopped by the memory limit");
     backend.invoke(h, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
-    std::any ok = dynamicFieldStore().getValue(script, "ok");
+    std::any ok = ctx.authorFields().getValue(script, "ok");
     check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
           "T15h: script still works after hitting the memory limit");
     backend.shutdown(h);
-    dynamicFieldStore().erase(script);
+    ctx.authorFields().erase(script);
     backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
     backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
   }
@@ -781,31 +781,31 @@ int main() {
     X3DExecutionContext ctx;
     Script script;
     SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
-    dynamicFieldStore().addAuthorField(
+    ctx.authorFields().addAuthorField(
         script, AuthorFieldDecl{"level", X3DFieldType::SFFloat,
                                 AccessType::InputOutput, std::any(0.0f)});
-    dynamicFieldStore().addAuthorField(
+    ctx.authorFields().addAuthorField(
         script, AuthorFieldDecl{"seen", X3DFieldType::SFFloat,
                                 AccessType::OutputOnly, {}});
     ScriptHandle h = backend.load(script,
         "function poke(v, t) { seen = level; }", sai);
     check(h != kInvalidScriptHandle, "T15i: load updateField script");
     backend.initialize(h);
-    dynamicFieldStore().setValue(script, "level", std::any(0.5f));
+    ctx.authorFields().setValue(script, "level", std::any(0.5f));
     backend.updateField(h, "level", std::any(0.5f), X3DFieldType::SFFloat);
     backend.invoke(h, "poke", std::any(1.0), X3DFieldType::SFTime, 1.0);
-    std::any seen = dynamicFieldStore().getValue(script, "seen");
+    std::any seen = ctx.authorFields().getValue(script, "seen");
     check(seen.has_value() && std::any_cast<float>(seen) == 0.5f,
           "T15i: the script sees the updated inputOutput value");
-    std::any level = dynamicFieldStore().getValue(script, "level");
+    std::any level = ctx.authorFields().getValue(script, "level");
     check(level.has_value() && std::any_cast<float>(level) == 0.5f,
           "T15i: the update is not reverted by readback");
     backend.shutdown(h);
-    dynamicFieldStore().erase(script);
+    ctx.authorFields().erase(script);
 
     Script hostile;
     SaiContext sai2(ctx, hostile, "x3d-cpp-gen", "dev");
-    dynamicFieldStore().addAuthorField(
+    ctx.authorFields().addAuthorField(
         hostile, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
                                  AccessType::OutputOnly, {}});
     ScriptHandle h2 = backend.load(hostile,
@@ -817,11 +817,11 @@ int main() {
     backend.initialize(h2);
     backend.updateField(h2, "level", std::any(0.5f), X3DFieldType::SFFloat);
     backend.invoke(h2, "fine", std::any(1.0), X3DFieldType::SFTime, 2.0);
-    std::any ok = dynamicFieldStore().getValue(hostile, "ok");
+    std::any ok = ctx.authorFields().getValue(hostile, "ok");
     check(ok.has_value() && std::any_cast<float>(ok) == 7.0f,
           "T15i: a throwing setter on update is contained");
     backend.shutdown(h2);
-    dynamicFieldStore().erase(hostile);
+    ctx.authorFields().erase(hostile);
   }
 
   // -------------------------------------------------------------------------
@@ -837,7 +837,7 @@ int main() {
     script.setDirectOutputUnchecked(true);
     script.setMustEvaluateUnchecked(true);
     SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
-    dynamicFieldStore().addAuthorField(
+    ctx.authorFields().addAuthorField(
         script, AuthorFieldDecl{"out", X3DFieldType::SFVec3f,
                                 AccessType::OutputOnly, {}});
     Transform sink;
@@ -862,7 +862,7 @@ int main() {
           "T18: a same-value outputOnly re-assignment still generates an event");
 
     backend.shutdown(h);
-    dynamicFieldStore().erase(script);
+    ctx.authorFields().erase(script);
   }
 
   // -------------------------------------------------------------------------
@@ -919,7 +919,7 @@ int main() {
       if (std::string(f) == "funcMatches") t = X3DFieldType::SFBool;
       if (std::string(f) == "subclassOk") t = X3DFieldType::SFBool;
       if (std::string(f) == "dateLength") t = X3DFieldType::SFInt32;
-      dynamicFieldStore().addAuthorField(
+      ctx.authorFields().addAuthorField(
           script, AuthorFieldDecl{f, t, AccessType::OutputOnly, {}});
     }
 
@@ -949,35 +949,35 @@ int main() {
     check(h != kInvalidScriptHandle, "T17: load deterministic-Date script");
     backend.initialize(h);
 
-    std::any now = dynamicFieldStore().getValue(script, "now");
-    std::any newGet = dynamicFieldStore().getValue(script, "newGet");
+    std::any now = ctx.authorFields().getValue(script, "now");
+    std::any newGet = ctx.authorFields().getValue(script, "newGet");
     check(now.has_value() && std::any_cast<double>(now) == 12500.0,
           "T17: Date.now() == injected clock in ms");
     check(newGet.has_value() && std::any_cast<double>(newGet) == 12500.0,
           "T17: new Date().getTime() == injected clock in ms");
-    std::any year = dynamicFieldStore().getValue(script, "year");
+    std::any year = ctx.authorFields().getValue(script, "year");
     check(year.has_value() && std::any_cast<double>(year) == 2020.0,
           "T17: new Date(2020,0,1) is unaffected (year 2020)");
-    std::any differs = dynamicFieldStore().getValue(script, "fixedDiffers");
+    std::any differs = ctx.authorFields().getValue(script, "fixedDiffers");
     check(differs.has_value() && std::any_cast<bool>(differs),
           "T17: explicit-argument Date is not the injected clock");
-    std::any inst = dynamicFieldStore().getValue(script, "sameInstance");
+    std::any inst = ctx.authorFields().getValue(script, "sameInstance");
     check(inst.has_value() && std::any_cast<bool>(inst),
           "T17: new Date() instanceof Date holds");
-    std::any ft = dynamicFieldStore().getValue(script, "funcType");
+    std::any ft = ctx.authorFields().getValue(script, "funcType");
     check(ft.has_value() && std::any_cast<std::string>(ft) == "string",
           "T17: Date() as a function still returns a string");
-    std::any parsed = dynamicFieldStore().getValue(script, "parsed");
-    std::any utc = dynamicFieldStore().getValue(script, "utc");
+    std::any parsed = ctx.authorFields().getValue(script, "parsed");
+    std::any utc = ctx.authorFields().getValue(script, "utc");
     check(parsed.has_value() && utc.has_value() &&
               std::any_cast<double>(parsed) == std::any_cast<double>(utc),
           "T17: Date.parse / Date.UTC still work");
 
     // Bypass paths (review (a)): all must reach the injected clock, not the
     // wall clock.
-    std::any b1 = dynamicFieldStore().getValue(script, "bypassCtorNow");
-    std::any b2 = dynamicFieldStore().getValue(script, "bypassCtorNewGet");
-    std::any b3 = dynamicFieldStore().getValue(script, "bypassProtoNow");
+    std::any b1 = ctx.authorFields().getValue(script, "bypassCtorNow");
+    std::any b2 = ctx.authorFields().getValue(script, "bypassCtorNewGet");
+    std::any b3 = ctx.authorFields().getValue(script, "bypassProtoNow");
     check(b1.has_value() && std::any_cast<double>(b1) == 12500.0,
           "T17: (new Date()).constructor.now() == injected clock");
     check(b2.has_value() && std::any_cast<double>(b2) == 12500.0,
@@ -985,18 +985,18 @@ int main() {
     check(b3.has_value() && std::any_cast<double>(b3) == 12500.0,
           "T17: Object.getPrototypeOf(new Date()).constructor.now() == clock");
     // Semantics (review (b)).
-    std::any len = dynamicFieldStore().getValue(script, "dateLength");
+    std::any len = ctx.authorFields().getValue(script, "dateLength");
     check(len.has_value() && std::any_cast<SFInt32>(len) == 7,
           "T17: Date.length === 7");
-    std::any pc = dynamicFieldStore().getValue(script, "protoCtorIsDate");
+    std::any pc = ctx.authorFields().getValue(script, "protoCtorIsDate");
     check(pc.has_value() && std::any_cast<bool>(pc),
           "T17: Date.prototype.constructor === Date");
-    std::any fm = dynamicFieldStore().getValue(script, "funcMatches");
+    std::any fm = ctx.authorFields().getValue(script, "funcMatches");
     check(fm.has_value() && std::any_cast<bool>(fm),
           "T17: Date() returns the injected time's string");
 
     backend.shutdown(h);
-    dynamicFieldStore().erase(script);
+    ctx.authorFields().erase(script);
   }
 
   if (failures == 0) {

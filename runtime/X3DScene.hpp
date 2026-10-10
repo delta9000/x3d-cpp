@@ -32,6 +32,10 @@ namespace x3d::runtime {
  */
 class Scene {
 public:
+  // Fresh scenes are independent. Shallow copies deliberately alias both graph
+  // and author-field values; use an explicit graph clone for independent worlds.
+  std::shared_ptr<DynamicFieldStore> authorFields = std::make_shared<DynamicFieldStore>();
+
   // Root-level children of the scene (MFNode).
   std::vector<std::shared_ptr<X3DNode>> rootNodes;
 
@@ -128,6 +132,11 @@ public:
   // survive repeated builds and separate execution contexts without owning nodes.
   AuthoredScalarFields normalizedUnitFields;
 
+  // URL provenance follows weak node identity without changing authored URLs.
+  // PROTO clones and retained Inline scenes preserve their source directory.
+  std::map<std::weak_ptr<X3DNode>, std::string,
+           std::owner_less<std::weak_ptr<X3DNode>>> nodeBaseUrls;
+
   // PROTO body clones retain the declaration's units. IS scalar targets carry
   // the supplied value's source units; dimensions belong to the concrete target.
   std::map<std::weak_ptr<X3DNode>,
@@ -207,6 +216,11 @@ public:
    */
   void resolveRoutes() {
     for (auto &r : routes) {
+      // Direct API-authored endpoints are already bound. An expired weak
+      // endpoint stays expired and is safely omitted by the runtime bridge;
+      // never resurrect it through a coincidentally reused DEF name.
+      if (r.binding == Route::Binding::DirectNodes)
+        continue;
       r.from = resolve(r.fromNode);
       r.to = resolve(r.toNode);
     }

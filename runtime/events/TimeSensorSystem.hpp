@@ -34,6 +34,8 @@ using namespace x3d::core;
  */
 class TimeSensorSystem : public X3DTimeDependentSystem {
 public:
+  ~TimeSensorSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(x3d::nodes::X3DNode *node, X3DExecutionContext &ctx) override {
     if (dynamic_cast<x3d::nodes::TimeSensor *>(node)) {
       X3DTimeDependentSystem::attach(node, ctx);

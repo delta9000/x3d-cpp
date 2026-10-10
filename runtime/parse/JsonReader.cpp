@@ -406,6 +406,7 @@ JsonReader::readJsonProtoDeclare(const json::Value &obj,
   if (const json::Value *bodyObj = obj.member("ProtoBody");
       bodyObj && bodyObj->isObject())
     readJsonProtoBody(*bodyObj, local, decl->body);
+  decl->authorFields = std::move(local.authorFields);
   decl->authoredScalarFields = std::move(local.authoredScalarFields);
   scene.declareProto(decl);
   return decl;
@@ -491,7 +492,7 @@ void JsonReader::collectJsonIsConnections(const json::Value &wrapper,
 
 void JsonReader::captureScriptInterface(const json::Value &body,
                                         const std::shared_ptr<X3DNode> &node,
-                                        runtime::Scene & /*scene*/) {
+                                        runtime::Scene &scene) {
   // 1) Author field declarations.
   std::vector<runtime::AuthorFieldDecl> decls;
   if (const json::Value *fields = body.member("field")) {
@@ -530,7 +531,7 @@ void JsonReader::captureScriptInterface(const json::Value &body,
     }
   }
   if (!decls.empty())
-    runtime::dynamicFieldStore().addAuthorFields(node, decls);
+    scene.authorFields->addAuthorFields(node, decls);
 
   // 2) Inline source. "#sourceText" is an array of lines (the X3D-JSON CDATA
   // convention); join with newlines into Script.sourceCode. A lone string is

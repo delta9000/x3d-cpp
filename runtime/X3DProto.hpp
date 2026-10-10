@@ -14,11 +14,13 @@
 
 #include "x3d/core/X3DReflection.hpp" // AccessType, X3DFieldType
 #include "X3DAuthoredScalarFields.hpp"
+#include "DynamicField.hpp"
 #include "X3DHeader.hpp"
 #include "X3DRoute.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
 #include <any>
+#include <functional>
 #include <memory>
 #include <map>
 #include <optional>
@@ -212,7 +214,14 @@ struct ProtoBody {
 /**
  * @brief A <ProtoDeclare> statement: a named, locally-defined prototype.
  */
+using FallbackNodeCreator =
+    std::function<std::shared_ptr<X3DNode>(const std::string &)>;
+
 struct ProtoDeclaration {
+  // Template/default fields outlive the reader's temporary Scene.
+  std::shared_ptr<DynamicFieldStore> authorFields = std::make_shared<DynamicFieldStore>();
+  // Explicit per-declaration factory for extension nodes; empty by default.
+  FallbackNodeCreator createNode;
   std::string name;
   std::vector<ProtoField> interface; // <ProtoInterface> fields
   ProtoBody body;                    // <ProtoBody>
@@ -225,6 +234,9 @@ struct ProtoDeclaration {
   // Body nodes may outlive their reader's temporary Scene (including an
   // EXTERN resolver's document). Carry their field-presence marks here.
   AuthoredScalarFields authoredScalarFields;
+  // Source directory for deferred body/default URL resolution. nullopt is a
+  // programmatic declaration; an engaged empty base is an in-memory source.
+  std::optional<std::string> sourceBaseUrl;
 };
 
 /**
@@ -239,6 +251,7 @@ struct ExternProtoDeclaration {
   std::vector<std::string> url;
   std::string appinfo;
   std::string documentation;
+  std::optional<std::string> sourceBaseUrl;
 };
 
 /**
@@ -251,6 +264,7 @@ struct ProtoFieldValue {
   // Source of an authored/forwarded scalar, independent of its eventual IS
   // target. nullopt supports programmatically assembled values in caller units.
   std::optional<std::vector<Unit>> sourceUnits = std::nullopt;
+  std::optional<std::string> sourceBaseUrl;
 };
 
 /// One `nodeField IS protoField` mapping attached to a ProtoInstance.

@@ -6,8 +6,8 @@
 // the runtime model:
 //
 //   * each author <field> decl -> AuthorFieldDecl -> DynamicFieldStore, so it
-//     shows up in effectiveFields(script) (the view ROUTE endpoint resolution
-//     and the SAI use);
+//     shows up in effectiveFields(script, store) (the view ROUTE endpoint
+//     resolution and the SAI use);
 //   * the inline body -> Script.sourceCode.
 //
 // The JSON writer must re-emit both so a read -> write -> reparse round-trip
@@ -79,7 +79,6 @@ const char *kScriptJson = R"JSON({ "X3D": { "@profile": "Interchange", "@version
   ] } } })JSON";
 
 void parsesDeclsAndSource() {
-  dynamicFieldStore().clear();
   auto doc = codec::parseDocument(kScriptJson);
   auto script = firstScript(doc);
   check(script != nullptr, "JSON Script parses to a Script node");
@@ -87,10 +86,10 @@ void parsesDeclsAndSource() {
     return;
 
   // Author field decls land in the dynamic store / effectiveFields.
-  check(dynamicFieldStore().hasAuthorFields(*script),
+  check(doc.scene.authorFields->hasAuthorFields(*script),
         "Script has author fields in the dynamic store");
 
-  const FieldTable fields = effectiveFields(*script);
+  const FieldTable fields = effectiveFields(*script, *doc.scene.authorFields);
   const FieldInfo *fraction = byName(fields, "fraction");
   check(fraction != nullptr, "author field 'fraction' visible in effectiveFields");
   if (fraction) {
@@ -125,19 +124,17 @@ void parsesDeclsAndSource() {
 }
 
 void roundTrips() {
-  dynamicFieldStore().clear();
   auto doc0 = codec::parseDocument(kScriptJson);
   std::string js = codec::JsonWriter().writeDocument(doc0);
 
   // Re-parse the writer's output; decls + source must survive.
-  dynamicFieldStore().clear();
   auto doc1 = codec::parseDocument(js);
   auto script = firstScript(doc1);
   check(script != nullptr, "round-trip: Script survives write->reparse");
   if (!script)
     return;
 
-  const FieldTable fields = effectiveFields(*script);
+  const FieldTable fields = effectiveFields(*script, *doc1.scene.authorFields);
   const FieldInfo *fraction = byName(fields, "fraction");
   const FieldInfo *scale = byName(fields, "scale");
   check(fraction != nullptr && fraction->access == AccessType::InputOnly,

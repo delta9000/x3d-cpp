@@ -62,8 +62,10 @@ card follows:
   two independent backends with **no signature change** — that is the empirical proof it is
   generic, so it was promoted `[EXPERIMENTAL]` → `[STABLE]` in
   [`include/x3d/sdk.hpp`](https://github.com/delta9000/x3d-cpp/blob/main/include/x3d/sdk.hpp).
-  The whole Script/SAI surface (`ScriptEngine` / `ScriptSystem` / `SaiContext`) is part of the
-  same frozen seam.
+  This promise applies to the abstract `ScriptEngine` backend interface only.
+  Concrete runtime ownership and author-field APIs are experimental; the
+  [scene-owned field migration](decisions/0057-scene-owned-author-fields.md)
+  removes the global store and requires concrete consumers to rebuild.
 - **Backend A — Duktape** (`runtime/script/EcmaScriptBackend.{hpp,cpp}`): the originally
   shipped backend (vendored Duktape 2.7.0).
 - **Backend B — QuickJS** (`runtime/script/QuickJsBackend.{hpp,cpp}`, quickjs-ng **v0.15.1**):

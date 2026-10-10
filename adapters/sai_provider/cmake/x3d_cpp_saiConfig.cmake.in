@@ -1,0 +1,6 @@
+@PACKAGE_INIT@
+include(CMakeFindDependencyMacro)
+find_dependency(x3d_cpp CONFIG)
+find_dependency(x3d_sai CONFIG)
+include("${CMAKE_CURRENT_LIST_DIR}/x3d_cpp_saiTargets.cmake")
+check_required_components(x3d_cpp_sai)

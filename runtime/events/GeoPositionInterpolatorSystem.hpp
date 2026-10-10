@@ -11,6 +11,8 @@ namespace x3d::runtime {
 
 class GeoPositionInterpolatorSystem : public System {
 public:
+  ~GeoPositionInterpolatorSystem() override { retireCallbacksBeforeDestruction(); }
+
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     auto *n = dynamic_cast<x3d::nodes::GeoPositionInterpolator *>(node);
     if (!n) return;
@@ -19,7 +21,7 @@ public:
       SFVec3f world;
       if (geo::toWorld(*n, n->getKeyValue().front(), world, ctx.geoProjection())) n->emitValue_changed(world);
     }
-    n->setOnSet_fractionHandler([n, &ctx](const SFFloat &fraction) {
+    n->setOnSet_fractionHandler(ctx.guardCallback(*this, [n, &ctx](const SFFloat &fraction) {
       if (n->getKey().empty() || n->getKeyValue().empty()) return;
       // §25.3.7: interpolate in geoSystem coordinates, then project the result.
       const SFVec3d authored = interpolateValue(n->getKey(), n->getKeyValue(), fraction,
@@ -29,9 +31,9 @@ public:
           });
       SFVec3f world;
       if (!geo::toWorld(*n, authored, world, ctx.geoProjection())) return;
-      ctx.postEvent(n, "geovalue_changed", std::any(authored));
-      ctx.postEvent(n, "value_changed", std::any(world));
-    });
+      ctx.postOutputEvent(n, "geovalue_changed", std::any(authored));
+      ctx.postOutputEvent(n, "value_changed", std::any(world));
+    }));
   }
   void detach(X3DNode *node, X3DExecutionContext &) override {
     if (auto *n = dynamic_cast<x3d::nodes::GeoPositionInterpolator *>(node))

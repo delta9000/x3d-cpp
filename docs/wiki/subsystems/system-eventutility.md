@@ -33,13 +33,14 @@ bindings define but whose handlers were never wired to a `System`:
 | `TimeTrigger` | §30.4.7 | Any `set_boolean` (value irrelevant) → emits `triggerTime=now` |
 | `BooleanFilter` | §30.4.1 | Routes `inputTrue`/`inputFalse` by value; always emits `inputNegate` |
 | `BooleanToggle` | §30.4.3 | `set_boolean=TRUE` flips `toggle`; FALSE is a no-op |
-| `BooleanSequencer` | §30.3.1 | Stepwise `value_changed` (SFBool) on `set_fraction`; `next`/`previous` step with wrap |
-| `IntegerSequencer` | §30.2.4 | Stepwise `value_changed` (SFInt32) on `set_fraction`; `next`/`previous` step with wrap |
+| `BooleanSequencer` | §30.4.2 | Stepwise `value_changed` (SFBool) on `set_fraction`; `next`/`previous` step with wrap |
+| `IntegerSequencer` | §30.4.5 | Stepwise `value_changed` (SFInt32) on `set_fraction`; `next`/`previous` step with wrap |
 
-All seven are event-driven (not time-driven): they register an `inputOnly`
-handler in `attach()` and leave `update()` a no-op. Each handler calls
-`ctx.postEvent(...)` to emit the spec-mandated output, which the cascade then
-fans out along any downstream ROUTEs.
+All seven are event-driven: they register input handlers in `attach()` and
+leave `update()` a no-op. The six nodes with outputOnly fields use
+`ctx.postOutputEvent(...)`; admission precedes source storage, observers and
+ROUTEs. BooleanToggle retains legacy inputOutput delivery and is excluded from
+this admission slice.
 
 The sequencer stepwise-selection rule (`sequencerStepIndex`) deserves explicit
 notation: it is the largest index `i` such that `key[i] <= t`, boundary-clamped
@@ -55,7 +56,7 @@ at or beyond that key (AUD-SEQ-1). This is NOT linear interpolation.
 | `runtime/events/EventUtilitySystem.hpp` | All seven System classes + `sequencerStepIndex`; the entire subsystem is header-only |
 | `runtime/events/X3DSceneBridge.hpp` | `attachEventUtilities(scene, ctx)` — production wiring; iterates every node in the scene, calls `attach` on each system, then registers all seven with `ctx.addSystem` |
 | `runtime/events/X3DSystem.hpp` | `System` base class (`attach` / `update`) that all seven classes extend |
-| `runtime/events/X3DExecutionContext.hpp` | `postEvent` + `addSystem` + `tick` — the cascade/context seams the systems call |
+| `runtime/events/X3DExecutionContext.hpp` | `postOutputEvent` / `postEvent` + `addSystem` + `tick` — the cascade/context seams the systems call |
 | `generated_cpp_bindings/x3d/nodes/BooleanFilter.hpp` | `setOnSet_booleanHandler` / `emitInput*` accessors |
 | `generated_cpp_bindings/x3d/nodes/BooleanToggle.hpp` | `setOnSet_booleanHandler` / `getToggle` |
 | `generated_cpp_bindings/x3d/nodes/BooleanTrigger.hpp` | `setOnSet_triggerTimeHandler` / `emitTriggerTrue` |
@@ -107,11 +108,12 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
   (all seven nodes are event-driven). The `System` base is in
   `runtime/events/X3DSystem.hpp`.
 
-- **`ctx.postEvent(node, field, value)`** — the mechanism handlers use to emit
-  outputs. `postEvent` seeds a pending event into the cascade; the cascade
-  delivers it to the node's reflected field table and fans out along all ROUTEs
-  from that field within the same tick. Declared on `X3DExecutionContext`
-  (`runtime/events/X3DExecutionContext.hpp`).
+- **`ctx.postOutputEvent(node, field, value)`** — outputOnly producers queue a
+  candidate without pre-writing its backing field. The first admitted output per
+  field in a logical cascade reaches storage, observers and ROUTEs. All incoming
+  inputOnly occurrences still run their handlers. This is the existing native
+  selection policy, not a uniquely prescribed ordering for simultaneous events.
+  `postEvent` remains external ingress and BooleanToggle's legacy inputOutput path.
 
 - **`ctx.now()`** — `TimeTriggerSystem` reads this to stamp `triggerTime`. The
   clock is advanced by `ctx.tick(now)` before systems run, so `now()` is the
@@ -125,7 +127,8 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
 - **`SequencerSystem::index_`** — a per-system `unordered_map<X3DNode*, size_t>`
   that tracks the current keyValue index for each enrolled sequencer node across
   ticks, so `next`/`previous` step from the last fraction-set position rather
-  than resetting to zero each time.
+  than resetting to zero each time. Every valid input still updates this private
+  index even when its candidate output is later suppressed by admission.
 
 - **`attachEventUtilities` (in `X3DSceneBridge.hpp`)** — the production caller.
   Must be called after `ctx.buildSceneGraph(scene)` and `ctx.buildFrom(scene)`
@@ -163,21 +166,39 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
   `attachFullRuntime` wires `attachEventUtilities`, so the CLI sim golden traces
   implicitly exercise the event-utility systems on real corpus fixtures.
 
+- `event_utility_output_admission_test.cpp` uses production registration and
+  real aliased ROUTE sinks for all six scoped types and eight output fields.
+  It covers equal/distinct input occurrences,
+  independent BooleanFilter branch/negation admission, nested drains and loops,
+  both IntegerTrigger producer paths, valid sequencer transitions despite
+  suppressed output, FALSE no-ops where required, wraparound and same-cascade
+  repair. TimeTrigger still fires for FALSE. Equal numeric host-time behavior is
+  labeled current logical-tick compatibility, not ISO timestamp conformance.
+
 ## Open findings
 
-One finding remains open after the wave-3 fix cycle:
+This outputOnly migration does not complete the component:
 
-- **TRIG-4** (`docs/conformance/findings.yaml`) — `IntegerTrigger.integerKey`
-  is an `inputOutput` field; a write to it via ROUTE should also emit
-  `integerKey_changed`/`triggerValue_changed` side-effects (§30.4.6).
-  Deferred for a targeted re-review of the spec prose.
+- BooleanToggle's `toggle` is inputOutput. Its deferred toggle/reset state and
+  output-side admission need a separate contract; two queued TRUE inputs can
+  currently compute from the same old stored value.
+- [§30.2.4](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html#SequencingSingleFieldEvents)
+  requires sequencer suppression within a key interval. The current fraction
+  handler still emits across later ticks in the same interval. That distinct
+  interval-state gap is not fixed or treated as normative by the admission tests.
+- IntegerTrigger's key-write listener is implemented and participates in checked
+  `triggerValue` admission. Its `integerKey` inputOutput writes/notifications
+  retain their existing behavior; this slice does not generalize inputOutput
+  output-side admission or routed fan-in.
+- Each outer tick/process still opens a new logical timestamp, even for equal
+  numeric host times. See [Event Cascade](event-cascade.md) for this limitation.
+- Followers and stateful time producers require their own storage/state review,
+  especially sites that mutate output storage before queueing. They are not
+  safely migrated by a mechanical queue-call replacement.
 
-Follower nodes (`X3DFollowerNode` / §39 Chaser/Damper) were audited alongside
-Event Utilities in wave-3 (FOL-1..9) but are deferred per `docs/conformance/findings.yaml`:
-§39 is advanced, has low corpus prevalence, and has no current consumer. They are
-behaviorally inert (no `FollowerSystem` wired); closing them needs a dedicated
-time-integration easing System, NOT a rigid-body physics engine — Chasers/Dampers
-ease an output toward a destination over a duration, independent of the physics seam.
+The older wave-3 finding labels below are historical audit records. This focused
+proof raises no portable SAI capability, complete component/profile claim or
+service-register status.
 
 ## Related specs and ADRs
 
@@ -192,5 +213,4 @@ ease an output toward a destination over a duration, independent of the physics 
 - Spec: `docs/superpowers/specs/2026-06-18-conformance-audit-workflow-design.md`
   — the audit workflow that produced the wave-3 findings (TRIG-*/SEQ-*/EUF-*).
 - Conformance findings source of truth: `docs/conformance/findings.yaml`
-  (wave-3 block, IDs TRIG-1..6, SEQ-1..8, EUF-1/2/4/5 — all closed except
-  TRIG-4).
+  (historical wave-3 block, IDs TRIG-1..6, SEQ-1..8, EUF-1/2/4/5).

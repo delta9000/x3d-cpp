@@ -122,7 +122,7 @@ int main() {
     for (auto &root : scene.rootNodes) collectScripts(root.get(), scripts);
     check(scripts.size() == 1, "known scene: one Script parsed from the graph");
 
-    X3DExecutionContext ctx;
+    X3DExecutionContext ctx(scene.authorFields);
     auto backend = std::make_shared<EcmaScriptBackend>();
     auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
     ctx.addScriptSystem(sys);
@@ -179,7 +179,7 @@ int main() {
       std::vector<Script *> scripts;
       for (auto &root : scene.rootNodes) collectScripts(root.get(), scripts);
 
-      X3DExecutionContext ctx;
+      X3DExecutionContext ctx(scene.authorFields);
       auto backend = std::make_shared<EcmaScriptBackend>();
       auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
       ctx.addScriptSystem(sys);
