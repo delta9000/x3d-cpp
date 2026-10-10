@@ -18,6 +18,7 @@
 //      TexCoordGenDesc descriptor (mode + parameter, §18.4.8).
 //   6. resolveTextureRefs() threads a consumer TextureResolver onto each
 //      TextureRef::resolvedPixels (Url goes through the resolver; Inline does NOT).
+#include "GeoFrame.hpp"
 #include "MaterialSystem.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -67,7 +68,7 @@ static void testAuthoredTexCoord() {
   setF(g, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
   setF(g, "texCoord", std::any(std::shared_ptr<X3DNode>(tc)));
 
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((m.positions.size() == 3));
   CHECK((m.texcoords.size() == 3));
   CHECK((feq(m.texcoords[0].x, 0.1f) && feq(m.texcoords[0].y, 0.2f)));
@@ -89,7 +90,7 @@ static void testMultiTextureCoordinateFirstUsableChannel() {
   setF(g, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
   setF(g, "texCoord", std::any(std::shared_ptr<X3DNode>(mtc)));
 
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((m.texcoords.size() == 3));
   CHECK((m.texcoordSets.size() == 2));
   CHECK((feq(m.texcoords[0].x, 0.2f) && feq(m.texcoords[0].y, 0.1f)));
@@ -116,7 +117,7 @@ static void testTextureCoordinate3DAnd4DProjectToST() {
   setF(g3, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
   setF(g3, "texCoord", std::any(std::shared_ptr<X3DNode>(tc3)));
 
-  MeshData m3 = buildLocalMesh(g3.get());
+  MeshData m3 = buildLocalMesh(g3.get(), geo::builtinProjection());
   CHECK((m3.texcoords.size() == 3));
   CHECK((feq(m3.texcoords[0].x, 0.1f) && feq(m3.texcoords[0].y, 0.2f)));
   CHECK((feq(m3.texcoords[1].x, 0.4f) && feq(m3.texcoords[1].y, 0.5f)));
@@ -131,7 +132,7 @@ static void testTextureCoordinate3DAnd4DProjectToST() {
   setF(g4, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
   setF(g4, "texCoord", std::any(std::shared_ptr<X3DNode>(tc4)));
 
-  MeshData m4 = buildLocalMesh(g4.get());
+  MeshData m4 = buildLocalMesh(g4.get(), geo::builtinProjection());
   CHECK((m4.texcoords.size() == 3));
   CHECK((feq(m4.texcoords[0].x, 0.15f) && feq(m4.texcoords[0].y, 0.25f)));
   CHECK((feq(m4.texcoords[1].x, 0.45f) && feq(m4.texcoords[1].y, 0.55f)));

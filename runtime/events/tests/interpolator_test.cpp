@@ -121,7 +121,7 @@ void test_geo_position() {
   const auto geoValue = interp->getGeovalue_changed();
   const auto world = interp->getValue_changed();
   SFVec3f expected;
-  check(geo::toWorld(*interp, SFVec3d{0, 0.001, 0}, expected), "geo midpoint projects");
+  check(geo::toWorld(*interp, SFVec3d{0, 0.001, 0}, expected, ctx.geoProjection()), "geo midpoint projects");
   check(std::fabs(geoValue.x) < 1e-10 && std::fabs(geoValue.y - 0.001) < 1e-10,
         "geo interpolator midpoint stays in geoSystem");
   check(feq(world.x, expected.x) && feq(world.y, expected.y) && feq(world.z, expected.z),

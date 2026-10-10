@@ -2,6 +2,7 @@
 // end-to-end WITHOUT any ext module. A NurbsPatchSurface (recognized==false)
 // triggers the resolver; a non-empty PackedMesh causes emitPacked(); the
 // RenderItem's geometry_ext.kind == Packed.
+#include "GeoFrame.hpp"
 #include "SceneExtractor.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -60,7 +61,7 @@ TEST_CASE("external_geom_seam_test") {
   {
     bool rec = true;
     auto nurbs = createX3DNode("NurbsTrimmedSurface");
-    auto mesh = buildLocalMesh(nurbs.get(), MeshBuildOptions{}, &rec);
+    auto mesh = buildLocalMesh(nurbs.get(), geo::builtinProjection(), MeshBuildOptions{}, &rec);
     CHECK((!rec && mesh.indices.empty())); // still unrecognized
   }
 

@@ -14,6 +14,7 @@
 //   5) recognizedGeometryType("Extrusion") is true.
 //   6) Per-section scale shrinks the cross-section: a 2x-scaled section's verts
 //      sit at twice the radius of an unscaled one.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -68,7 +69,7 @@ TEST_CASE("mesh_builder_b3_test") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // sides: (ns-1)*(nc-1)*2 = 1*4*2 = 8 tris. caps: closed -> capCount=4,
     // fan = 2 tris each, begin+end = 4 tris. total 12 tris.
     CHECK((m.indices.size() == 12 * 3));
@@ -86,7 +87,7 @@ TEST_CASE("mesh_builder_b3_test") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // The last 4 triangles are the caps (2 begin then 2 end). Collect a normal
     // for a begin-cap tri and an end-cap tri.
     std::size_t ntri = m.indices.size() / 3;
@@ -106,13 +107,13 @@ TEST_CASE("mesh_builder_b3_test") {
     auto g1 = createX3DNode("Extrusion");
     setF(g1, "crossSection", std::any(unitSquare));
     setF(g1, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
-    MeshData mc = buildLocalMesh(g1.get());
+    MeshData mc = buildLocalMesh(g1.get(), geo::builtinProjection());
 
     auto g2 = createX3DNode("Extrusion");
     setF(g2, "crossSection", std::any(unitSquare));
     setF(g2, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
     setF(g2, "ccw", std::any(SFBool(false)));
-    MeshData mcw = buildLocalMesh(g2.get());
+    MeshData mcw = buildLocalMesh(g2.get(), geo::builtinProjection());
 
     CHECK((mc.indices.size() == mcw.indices.size()));
     // Every triangle's geometric normal sign should invert between the two.
@@ -128,7 +129,7 @@ TEST_CASE("mesh_builder_b3_test") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.positions.empty()));
     CHECK((m.indices.empty()));
   }
@@ -139,7 +140,7 @@ TEST_CASE("mesh_builder_b3_test") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
-    buildLocalMesh(g.get(), {}, &recognized);
+    buildLocalMesh(g.get(), geo::builtinProjection(), {}, &recognized);
     CHECK((recognized));
     CHECK((recognizedGeometryType("Extrusion")));
   }
@@ -151,7 +152,7 @@ TEST_CASE("mesh_builder_b3_test") {
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
     // section 0 unit-scale, section 1 doubled.
     setF(g, "scale", std::any(MFVec2f{{1, 1}, {2, 2}}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // Straight spine on +Y: section i sits at y = i. Find the max horizontal
     // radius at y~0 (section 0) and y~1 (section 1).
     float r0 = 0.0f, r1 = 0.0f;
@@ -174,7 +175,7 @@ TEST_CASE("extrusion_concave_cap_does_not_cover_notch") {
                      {1,1}, {1,3}, {0,3}, {0,0}};
   setF(g, "crossSection", std::any(u));
   setF(g, "convex", std::any(SFBool(false)));
-  const MeshData m = buildLocalMesh(g.get());
+  const MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   float area = 0.0f;
   for (std::size_t i = 0; i + 2 < m.indices.size(); i += 3) {
     const auto &a = m.positions[m.indices[i]];

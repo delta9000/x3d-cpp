@@ -224,22 +224,22 @@ TEST_CASE("geo: node glue converts through the node's geoSystem and GeoOrigin") 
   setF(coord, "geoSystem", std::any(std::vector<std::string>{"GD", "longitude_first"}));
 
   SFVec3f w;
-  REQUIRE(toWorld(*coord, SFVec3d{-71.5, 41.5, 100}, w));  // longitude first
+  REQUIRE(toWorld(*coord, SFVec3d{-71.5, 41.5, 100}, w, builtinProjection()));  // longitude first
   CHECK(std::fabs(w.x) < 1e-4f);
   CHECK(w.y == doctest::Approx(100.0f).epsilon(1e-6));
   CHECK(std::fabs(w.z) < 1e-4f);
 
   SFVec3d back;
-  REQUIRE(fromWorld(*coord, SFVec3f{30, 5, -40}, back));
+  REQUIRE(fromWorld(*coord, SFVec3f{30, 5, -40}, back, builtinProjection()));
   SFVec3f again;
-  REQUIRE(toWorld(*coord, back, again));
+  REQUIRE(toWorld(*coord, back, again, builtinProjection()));
   CHECK(std::fabs(again.x - 30) + std::fabs(again.y - 5) + std::fabs(again.z + 40) < 1e-3f);
 
-  const auto pts = toWorld(*coord, std::vector<SFVec3d>{{-71.5, 41.5, 0}, {-71.5, 41.5, 10}});
+  const auto pts = toWorld(*coord, std::vector<SFVec3d>{{-71.5, 41.5, 0}, {-71.5, 41.5, 10}}, nullptr, builtinProjection());
   REQUIRE(pts.size() == 2);
   CHECK(pts[1].y == doctest::Approx(10.0f).epsilon(1e-5));
 
   auto bare = x3d::nodes::createX3DNode("GeoCoordinate");  // no GeoOrigin: geocentric world
-  REQUIRE(toWorld(*bare, SFVec3d{0, 0, 0}, w));
+  REQUIRE(toWorld(*bare, SFVec3d{0, 0, 0}, w, builtinProjection()));
   CHECK(w.x == doctest::Approx(6378137.0f));
 }

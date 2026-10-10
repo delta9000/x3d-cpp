@@ -34,6 +34,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace x3d::runtime {
@@ -97,6 +98,15 @@ struct BridgeResult;
  */
 class X3DExecutionContext {
 public:
+  X3DExecutionContext() = default;
+  /// Fix the geospatial backend for this context's lifetime; null selects the
+  /// built-in backend.
+  explicit X3DExecutionContext(std::shared_ptr<const geo::GeoProjection> projection)
+      : geoProjection_(projection ? std::move(projection) : geo::builtinProjectionOwner()) {}
+
+  /// Immutable backend selection shared by all runtime paths in this context.
+  const geo::GeoProjection &geoProjection() const { return *geoProjection_; }
+
   /** @brief Register a ROUTE from a source field endpoint to a sink endpoint.
    */
   void addRoute(const FieldAddress &from, const FieldAddress &to) {
@@ -595,7 +605,7 @@ public:
     Mat4 pose;
     if (vp->nodeTypeName() == "GeoViewpoint") {
       // §25.3.11: position is geographic; orientation is relative to local east/up/south.
-      if (!geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), pose))
+      if (!geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), pose, geoProjection()))
         pose = Mat4::identity();
       pose = pose * Mat4::rotation(ori);
     } else {
@@ -701,6 +711,8 @@ private:
     std::shared_ptr<ActiveNode> node_;
   };
 
+  // Declare before every dependent system so the owner also survives their teardown.
+  const std::shared_ptr<const geo::GeoProjection> geoProjection_ = geo::builtinProjectionOwner();
   EventGraph graph_;
   EventCascade cascade_{graph_};
   std::vector<std::shared_ptr<System>> systems_;
@@ -708,10 +720,10 @@ private:
   std::uint64_t sceneTopologyRevision_ = 0;
   std::vector<std::function<void(X3DExecutionContext &)>> postCascade_;
   DirtyTracker dirty_;
-  TransformSystem transforms_;
+  TransformSystem transforms_{geoProjection_};
   BoundsSystem bounds_;
   BindingSystem bindings_;
-  PickSystem pick_;
+  PickSystem pick_{geoProjection_};
   PointerState pointer_;
   KeyState keys_;
   HeadPose head_;                                          // CONF-VIEWNAV head seam

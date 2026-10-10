@@ -189,8 +189,11 @@ using x3d::runtime::extract::GlyphResult;     ///< { status, metrics }
 using x3d::runtime::extract::GlyphStatus;     ///< enum class { Ready, Pending, Failed }
 using x3d::runtime::extract::makeMonospaceStub; ///< default monospaced FontMetrics (advanceEm=0.6)
 
-// Geospatial conversion is provided by runtime::geo::projection() and
-// runtime::geo::setProjection() (ADR-0053).
+// Geospatial worlds retain a constructor-fixed projection through
+// SessionOptions::geoProjection or X3DExecutionContext(fields, projection).
+// Pure helpers require an explicit projection reference; use
+// runtime::geo::builtinProjection() for standalone built-in conversions
+// (ADR-0058). The GeoProjection virtual interface is unchanged.
 
 // ── Script / SAI seam (T-SCRIPT) ─────────────────────────────────────── [STABLE]
 // Frozen pre-v2: the ScriptEngine abstract interface carried two independent

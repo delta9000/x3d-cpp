@@ -14,6 +14,7 @@
 //   5) Malformed-index / count safety — out-of-range indices, ragged counts,
 //      and too-short coord arrays never read out of bounds; they drop the bad
 //      primitive and keep the valid ones.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -67,7 +68,7 @@ TEST_CASE("mesh_builder_t2_test") {
     auto g = createX3DNode("IndexedTriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3, 4}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 9)); // (5-2)=3 triangles
     // Fan corners: (0,1,2)(0,2,3)(0,3,4) — apex P0 repeated.
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
@@ -80,7 +81,7 @@ TEST_CASE("mesh_builder_t2_test") {
     auto g = createX3DNode("IndexedTriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, -1, 2, 3, 4}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 6)); // 1 + 1 triangles
   }
 
@@ -90,7 +91,7 @@ TEST_CASE("mesh_builder_t2_test") {
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "fanCount", std::any(std::vector<int>{3, 2}));
     // first fan = pts[0..2] -> 1 tri; second fan = pts[3..4] -> 0 tris (needs 3).
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 3));
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
   }
@@ -98,7 +99,7 @@ TEST_CASE("mesh_builder_t2_test") {
     auto g = createX3DNode("TriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "fanCount", std::any(std::vector<int>{5}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 9)); // 5-vertex fan -> 3 triangles
   }
 
@@ -111,7 +112,7 @@ TEST_CASE("mesh_builder_t2_test") {
     auto g = createX3DNode("IndexedTriangleStripSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 6)); // (4-2)=2 triangles
     // tri0: P0,P1,P2
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
@@ -125,7 +126,7 @@ TEST_CASE("mesh_builder_t2_test") {
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "stripCount", std::any(std::vector<int>{4, 1}));
     // strip0 = pts[0..3] -> 2 tris; strip1 = pts[4] -> 0 tris.
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 6));
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
     CHECK((posEq(m, 3, P1) && posEq(m, 4, P3) && posEq(m, 5, P2))); // odd flip
@@ -136,7 +137,7 @@ TEST_CASE("mesh_builder_t2_test") {
     auto g = createX3DNode("IndexedQuadSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 6));
     // (0,1,2) + (0,2,3)
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
@@ -147,7 +148,7 @@ TEST_CASE("mesh_builder_t2_test") {
   {
     auto g = createX3DNode("QuadSet");
     attachCoord(g, {P0, P1, P2, P3});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 6));
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
     CHECK((posEq(m, 3, P0) && posEq(m, 4, P2) && posEq(m, 5, P3)));
@@ -163,7 +164,7 @@ TEST_CASE("mesh_builder_t2_test") {
     setF(g, "zSpacing", std::any(3.0f));
     // height row-major: (x + z*xDim). Heights all 0 except corner.
     setF(g, "height", std::any(std::vector<float>{0.0f, 0.0f, 0.0f, 5.0f}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 6)); // (2-1)*(2-1)=1 cell -> 2 tris
     // Grid vertex (i,j) at (i*xSpacing, height[j*xDim+i], j*zSpacing).
     // Corner (1,1) carries height 5 at world (2, 5, 3).
@@ -186,7 +187,7 @@ TEST_CASE("mesh_builder_t2_test") {
     setF(g, "xSpacing", std::any(1.0f));
     setF(g, "zSpacing", std::any(1.0f));
     setF(g, "height", std::any(std::vector<float>(6, 0.0f)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 12));
   }
 
@@ -196,7 +197,7 @@ TEST_CASE("mesh_builder_t2_test") {
     auto g = createX3DNode("IndexedTriangleFanSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "index", std::any(std::vector<int>{0, 1, 99, -1, 0, 1, 2}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // first fan has an OOB vertex (only its bad triangle is dropped);
     // second fan is fully valid -> at least the valid triangle survives.
     CHECK((m.indices.size() == 3));
@@ -207,7 +208,7 @@ TEST_CASE("mesh_builder_t2_test") {
     auto g = createX3DNode("IndexedTriangleStripSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 99}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // tri0 (0,1,2) valid; tri1 (1,99,2) dropped.
     CHECK((m.indices.size() == 3));
   }
@@ -216,7 +217,7 @@ TEST_CASE("mesh_builder_t2_test") {
     auto g = createX3DNode("TriangleFanSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "fanCount", std::any(std::vector<int>{10})); // claims 10, only 3 exist
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // Only the 3 real points form 1 triangle; the phantom run is clamped.
     CHECK((m.indices.size() == 3));
   }
@@ -224,7 +225,7 @@ TEST_CASE("mesh_builder_t2_test") {
   {
     auto g = createX3DNode("QuadSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 6)); // exactly one quad
   }
   // 5e. ElevationGrid with too-short height array -> guarded, empty mesh.
@@ -233,7 +234,7 @@ TEST_CASE("mesh_builder_t2_test") {
     setF(g, "xDimension", std::any(2));
     setF(g, "zDimension", std::any(2));
     setF(g, "height", std::any(std::vector<float>{0.0f})); // need 4
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.positions.empty() && m.indices.empty()));
   }
   // 5f. Degenerate grid dims -> empty.
@@ -242,7 +243,7 @@ TEST_CASE("mesh_builder_t2_test") {
     setF(g, "xDimension", std::any(1));
     setF(g, "zDimension", std::any(1));
     setF(g, "height", std::any(std::vector<float>{0.0f}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.empty()));
   }
 

@@ -16,6 +16,7 @@
 //   4) Generation spans EVERY composed/triangle geometry node type when texCoord
 //      is NULL (one texcoord per expanded position).
 //   5) Line/point sets get NO generated texcoords (spec carries none).
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -72,7 +73,7 @@ TEST_CASE("mesh_builder_tc1_test") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, 3, -1}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.texcoords.empty()));
     CHECK((m.texcoords.size() == m.positions.size())); // one per expanded corner.
     CHECK((hasUvAt(m, P0, 0.0f, 0.0f)));
@@ -89,7 +90,7 @@ TEST_CASE("mesh_builder_tc1_test") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {Q0, Q1, Q2, Q3});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, 3, -1}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.texcoords.empty()));
     CHECK((hasUvAt(m, Q0, 0.0f, 0.0f)));
     CHECK((hasUvAt(m, Q1, 1.0f, 0.0f)));   // s = 2/2
@@ -109,7 +110,7 @@ TEST_CASE("mesh_builder_tc1_test") {
     // generation overwrite them would change the values.
     attachTexCoord(g, {SFVec2f{0.25f, 0.75f}, SFVec2f{0.25f, 0.75f},
                        SFVec2f{0.25f, 0.75f}, SFVec2f{0.25f, 0.75f}});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
     for (const auto &tc : m.texcoords)
       CHECK((feq(tc.x, 0.25f) && feq(tc.y, 0.75f))); // authored, NOT projected.
@@ -120,27 +121,27 @@ TEST_CASE("mesh_builder_tc1_test") {
     // TriangleSet: 3 implicit coords -> 3 corners, all get a texcoord.
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size() && m.texcoords.size() == 3));
   }
   {
     auto g = createX3DNode("IndexedTriangleSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size() && !m.texcoords.empty()));
   }
   {
     auto g = createX3DNode("QuadSet");
     attachCoord(g, {P0, P1, P2, P3});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size() && !m.texcoords.empty()));
   }
   {
     auto g = createX3DNode("IndexedQuadSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size() && !m.texcoords.empty()));
   }
 
@@ -149,14 +150,14 @@ TEST_CASE("mesh_builder_tc1_test") {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, -1}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.topology == Topology::Lines));
     CHECK((m.texcoords.empty())); // no implicit UVs for lines.
   }
   {
     auto g = createX3DNode("PointSet");
     attachCoord(g, {P0, P1, P2});
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.topology == Topology::Points));
     CHECK((m.texcoords.empty()));
   }
@@ -168,7 +169,7 @@ TEST_CASE("mesh_builder_tc1_test") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {R0, R1, R2, R3});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, 3, -1}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((hasUvAt(m, R0, 0.0f, 0.0f)));   // z=0,x=0
     CHECK((hasUvAt(m, R2, 1.0f, 0.5f)));   // s=z/4=1, t=x/4=0.5
     CHECK((hasUvAt(m, R3, 1.0f, 0.0f)));   // s=z/4=1, t=x/4=0

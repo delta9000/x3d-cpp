@@ -1,3 +1,4 @@
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "GeometryBounds.hpp"
 #include "GeoNodes.hpp"
@@ -31,18 +32,18 @@ TEST_CASE("GeoCoordinate IFS uses node geoSystem and GeoOrigin; CoordinateDouble
   auto ifs = createX3DNode("IndexedFaceSet");
   setGeoField(ifs, "coord", coord);
   setGeoField(ifs, "coordIndex", std::vector<int>{0,1,2,-1});
-  MeshData mesh = buildLocalMesh(ifs.get());
+  MeshData mesh = buildLocalMesh(ifs.get(), geo::builtinProjection());
   REQUIRE(mesh.positions.size() == 3);
   CHECK(mesh.positions[0].x == doctest::Approx(0).epsilon(0.01));
   CHECK(mesh.positions[1].x == doctest::Approx(1.1132).epsilon(0.01));
   CHECK(mesh.positions[2].z == doctest::Approx(-1.1057).epsilon(0.01));
-  Aabb bounds = localGeometryBounds(ifs.get());
+  Aabb bounds = localGeometryBounds(ifs.get(), geo::builtinProjection());
   CHECK(bounds.max.x == doctest::Approx(1.1132).epsilon(0.01));
   CHECK(bounds.min.z == doctest::Approx(-1.1057).epsilon(0.01));
 
   auto plain = createX3DNode("CoordinateDouble");
   setGeoField(plain, "point", std::vector<SFVec3d>{{2,3,4}});
-  auto points = geombounds::getPointsLenient(*plain, "point");
+  auto points = geombounds::getPointsLenient(*plain, "point", geo::builtinProjection());
   REQUIRE(points.size() == 1);
   CHECK(points[0].x == 2);
   CHECK(points[0].y == 3);
@@ -57,11 +58,11 @@ TEST_CASE("GeoElevationGrid uses geographic lattice, elevation, tangent normals,
   setGeoField(grid, "zSpacing", 0.00001);
   setGeoField(grid, "yScale", 2.0f);
   setGeoField(grid, "height", std::vector<double>(4, 0));
-  MeshData flat = buildLocalMesh(grid.get());
+  MeshData flat = buildLocalMesh(grid.get(), geo::builtinProjection());
   REQUIRE(flat.normals.size() == 6);
   for (const auto &normal : flat.normals) CHECK(normal.y > 0.99f);
   setGeoField(grid, "height", std::vector<double>{0,0,0,5});
-  MeshData mesh = buildLocalMesh(grid.get());
+  MeshData mesh = buildLocalMesh(grid.get(), geo::builtinProjection());
   REQUIRE(mesh.positions.size() == 6);
   CHECK(mesh.latticeIndex.size() == 6);
   CHECK(mesh.texcoords.size() == 6);
@@ -75,19 +76,19 @@ TEST_CASE("GeoElevationGrid uses geographic lattice, elevation, tangent normals,
     }
   }
   CHECK(foundRaised);
-  Aabb bound = localGeometryBounds(grid.get());
+  Aabb bound = localGeometryBounds(grid.get(), geo::builtinProjection());
   CHECK(bound.max.y == doctest::Approx(10).epsilon(0.01));
   CHECK(bound.max.x == doctest::Approx(1.1132).epsilon(0.01));
 
   auto normal = createX3DNode("Normal");
   setGeoField(normal, "vector", std::vector<SFVec3f>(4, {0,1,0}));
   setGeoField(grid, "normal", normal);
-  MeshData lit = buildLocalMesh(grid.get());
+  MeshData lit = buildLocalMesh(grid.get(), geo::builtinProjection());
   REQUIRE(lit.normals.size() == 6);
   for (const auto &n : lit.normals) CHECK(n.y == doctest::Approx(1).epsilon(0.001));
   setGeoField(grid, "geoGridOrigin", SFVec3d{0,1,0});
   setGeoField(normal, "vector", std::vector<SFVec3f>(4, {1,0,0}));
-  MeshData angled = buildLocalMesh(grid.get());
+  MeshData angled = buildLocalMesh(grid.get(), geo::builtinProjection());
   REQUIRE(angled.normals.size() == 6);
   CHECK(angled.normals[0].y == doctest::Approx(-0.0174524).epsilon(0.01));
 }
@@ -104,7 +105,7 @@ TEST_CASE("GeoElevationGrid UTM spacing advances eastings and northings") {
   const auto a = geo::gridCoordinate(*grid, 1, 1, 0);
   CHECK(a.x == 3);
   CHECK(a.y == 500002);
-  MeshData mesh = buildLocalMesh(grid.get());
+  MeshData mesh = buildLocalMesh(grid.get(), geo::builtinProjection());
   CHECK(mesh.positions.size() == 6);
 }
 
@@ -117,10 +118,10 @@ TEST_CASE("GeoElevationGrid heights are absolute elevations regardless of geoGri
   setGeoField(grid, "xSpacing", 0.00001);
   setGeoField(grid, "zSpacing", 0.00001);
   setGeoField(grid, "height", std::vector<double>(4, 10));
-  const MeshData mesh = buildLocalMesh(grid.get());
+  const MeshData mesh = buildLocalMesh(grid.get(), geo::builtinProjection());
   REQUIRE(mesh.positions.size() == 6);
   CHECK(mesh.positions[0].y == doctest::Approx(10).epsilon(0.001));
-  const Aabb bounds = localGeometryBounds(grid.get());
+  const Aabb bounds = localGeometryBounds(grid.get(), geo::builtinProjection());
   CHECK(bounds.max.y == doctest::Approx(10).epsilon(0.001));
 }
 
@@ -129,7 +130,7 @@ TEST_CASE("height grid lattice indices and degenerate guards remain intact") {
   setGeoField(planar, "xDimension", 3);
   setGeoField(planar, "zDimension", 2);
   setGeoField(planar, "height", std::vector<float>(6, 0));
-  MeshData plain = buildLocalMesh(planar.get());
+  MeshData plain = buildLocalMesh(planar.get(), geo::builtinProjection());
   CHECK(plain.indices.size() == 12);
   CHECK(plain.latticeIndex.size() == plain.positions.size());
   for (auto id : plain.latticeIndex) CHECK(id < 6u);
@@ -138,8 +139,8 @@ TEST_CASE("height grid lattice indices and degenerate guards remain intact") {
   setGeoField(geoGrid, "xDimension", 2);
   setGeoField(geoGrid, "zDimension", 2);
   setGeoField(geoGrid, "height", std::vector<double>{0});
-  CHECK(buildLocalMesh(geoGrid.get()).positions.empty());
+  CHECK(buildLocalMesh(geoGrid.get(), geo::builtinProjection()).positions.empty());
   setGeoField(geoGrid, "xDimension", 1);
   setGeoField(geoGrid, "zDimension", 1);
-  CHECK(buildLocalMesh(geoGrid.get()).indices.empty());
+  CHECK(buildLocalMesh(geoGrid.get(), geo::builtinProjection()).indices.empty());
 }

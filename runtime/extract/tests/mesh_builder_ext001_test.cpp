@@ -6,6 +6,7 @@
 // no colors: authored nodes were dropped entirely. §13.3.4 maps a per-vertex
 // value to the LATTICE vertex (row*xDim + col) and a per-quad value
 // (colorPerVertex/normalPerVertex FALSE) to the CELL (row*(xDim-1) + col).
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -71,7 +72,7 @@ TEST_CASE("ext001_elevationgrid_authored_normal_per_vertex") {
   attachNormal(g, nrm);
   setF(g, "normalPerVertex", std::any(true));
 
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   REQUIRE((!m.normals.empty()));
   REQUIRE((m.latticeIndex.size() == m.normals.size()));
   // Every emitted corner normal must equal the AUTHORED normal of its lattice
@@ -86,7 +87,7 @@ TEST_CASE("ext001_elevationgrid_authored_normal_per_quad") {
   attachNormal(g, nrm);
   setF(g, "normalPerVertex", std::any(false));
 
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   REQUIRE((!m.normals.empty()));
   // Emitted cell order is (0,0),(1,0),(0,1),(1,1) -> 2 triangles (6 corners)
   // per cell, so every corner normal equals its CELL's entry.
@@ -104,7 +105,7 @@ TEST_CASE("ext001_elevationgrid_authored_color_per_vertex") {
   attachColor(g, col);
   setF(g, "colorPerVertex", std::any(true));
 
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((m.hasColors));
   REQUIRE((m.colors.size() == m.positions.size()));
   for (std::size_t c = 0; c < m.colors.size(); ++c) {
@@ -119,7 +120,7 @@ TEST_CASE("ext001_elevationgrid_authored_color_per_quad") {
   attachColor(g, col);
   setF(g, "colorPerVertex", std::any(false));
 
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((m.hasColors));
   REQUIRE((m.colors.size() == m.positions.size()));
   for (std::size_t c = 0; c < m.colors.size(); ++c) {
@@ -141,7 +142,7 @@ TEST_CASE("ext001_geoelevationgrid_authored_color_per_vertex") {
       col[latticeOf(i, j)] = SFColor{0.1f * i, 0.1f * j, 0.5f};
   attachColor(g, col);
 
-  MeshData m = buildLocalMesh(g.get());
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   CHECK((m.hasColors));
   REQUIRE((!m.colors.empty()));
   REQUIRE((m.colors.size() == m.positions.size()));

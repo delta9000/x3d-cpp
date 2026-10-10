@@ -32,6 +32,7 @@
 #include <optional>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace x3d::runtime {
@@ -66,6 +67,11 @@ struct NarrowHit {
 
 class PickSystem {
 public:
+  explicit PickSystem(std::shared_ptr<const geo::GeoProjection> projection = {})
+      : geoProjection_(projection ? std::move(projection) : geo::builtinProjectionOwner()) {}
+
+  const geo::GeoProjection &geoProjection() const { return *geoProjection_; }
+
   void build(const Scene &scene) {
     roots_.clear();
     for (const auto &r : scene.rootNodes) if (r) roots_.push_back(r.get());
@@ -185,9 +191,11 @@ public:
   /// Local-frame narrow phase for one geometry node, as picking uses it: the
   /// entry parameter along `local` (which keeps the world ray's parameter when
   /// the direction is transformed without renormalizing), or nullopt.
-  static std::optional<float> intersectGeometry(const X3DNode *geom, const Ray &local) {
+  static std::optional<float> intersectGeometry(const X3DNode *geom,
+                                                const geo::GeoProjection &projection,
+                                                const Ray &local) {
     bool gotHit = false;
-    NarrowHit h = narrowPhase(geom, local, gotHit);
+    NarrowHit h = narrowPhase(geom, projection, local, gotHit);
     if (!gotHit) return std::nullopt;
     return h.t;
   }
@@ -245,7 +253,8 @@ private:
     }
   }
 
-  static NarrowHit narrowPhase(const X3DNode *geom, const Ray &local, bool &gotHit) {
+  static NarrowHit narrowPhase(const X3DNode *geom, const geo::GeoProjection &projection,
+                               const Ray &local, bool &gotHit) {
     gotHit = false;
     NarrowHit hit;
     const std::string t = geom->nodeTypeName();
@@ -327,7 +336,7 @@ private:
       return hit;
     }
     if (isMeshType(t)) {
-      extract::MeshData mesh = extract::buildLocalMesh(geom);
+      extract::MeshData mesh = extract::buildLocalMesh(geom, projection);
       // Behavior-identical to the promoted inline extraction: when the type
       // yields triangles, pick against them; when it yields NONE (e.g. missing
       // coord), fall through to the rayAabb proxy exactly as before.
@@ -369,7 +378,7 @@ private:
     // Long-tail / AABB-proxy fallback (exact for Box). Best-effort normal from
     // the AABB face the local hit lands on; texcoord (0,0). For Box this yields
     // the spec §13.3.1 per-face parameterization (size = full extents).
-    if (auto h = rayAabb(local, localGeometryBounds(geom))) {
+    if (auto h = rayAabb(local, localGeometryBounds(geom, projection))) {
       hit.t = *h;
       const SFVec3f p = local.pointAt(*h);
       if (t == "Box") {
@@ -380,7 +389,7 @@ private:
         hit.normal = n;
       } else {
         // Generic AABB proxy: pick the dominant face from the local hit point.
-        const Aabb bb = localGeometryBounds(geom);
+        const Aabb bb = localGeometryBounds(geom, projection);
         const SFVec3f c{(bb.min.x+bb.max.x)*0.5f, (bb.min.y+bb.max.y)*0.5f, (bb.min.z+bb.max.z)*0.5f};
         const SFVec3f e{std::max(1e-6f,(bb.max.x-bb.min.x)*0.5f),
                         std::max(1e-6f,(bb.max.y-bb.min.y)*0.5f),
@@ -421,7 +430,7 @@ private:
       if (ancestor == n) return; // n is its own ancestor: containment cycle.
     path.push_back(n);
     const Mat4 childM =
-        TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
+        TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n, geoProjection()) : worldM;
     const bool childBillboard = billboardSeen || n->nodeTypeName() == "Billboard";
     if (geombounds::hasField(*n, "geometry")) {
       if (geombounds::getNode(*n, "geometry")) {
@@ -455,7 +464,7 @@ private:
     Mat4 m = Mat4::identity();
     for (std::size_t i = 0; i + 1 < path.size(); ++i) {
       const X3DNode *n = path[i];
-      if (TransformSystem::isTransform(n)) m = m * TransformSystem::localMatrix(n);
+      if (TransformSystem::isTransform(n)) m = m * TransformSystem::localMatrix(n, geoProjection());
       if (n->nodeTypeName() == "Billboard") {
         const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
         m = m * billboardLocalMatrix(m, cameraPos, cameraUp, axis);
@@ -467,13 +476,13 @@ private:
   // §10.4.3/§23.4.3: picking follows the active transformation path (ADR-0034).
   // Check live selection so Switch and camera-driven LOD changes do not require
   // rebuilding the geometry-placement index.
-  static bool pathActive(const extract::PathKey &path, const SFVec3f &cameraPos,
-                         const SFVec3f &cameraUp) {
+  bool pathActive(const extract::PathKey &path, const SFVec3f &cameraPos,
+                  const SFVec3f &cameraUp) const {
     Mat4 world = Mat4::identity();
     for (std::size_t i = 0; i + 1 < path.size(); ++i) {
       const X3DNode *n = path[i];
       if (TransformSystem::isTransform(n))
-        world = world * TransformSystem::localMatrix(n);
+        world = world * TransformSystem::localMatrix(n, geoProjection());
       const std::string type = n->nodeTypeName();
       if (type == "Switch" || type == "LOD") {
         const auto kids = geombounds::getField<std::vector<std::shared_ptr<X3DNode>>>(
@@ -518,7 +527,7 @@ private:
     Mat4 inv = worldM.inverse();
     Ray local{inv.transformPoint(worldRay.origin), inv.transformDirection(worldRay.direction)};
     bool gotHit = false;
-    NarrowHit h = narrowPhase(geom.get(), local, gotHit);
+    NarrowHit h = narrowPhase(geom.get(), geoProjection(), local, gotHit);
     if (!gotHit) return;
     SFVec3f wp = worldM.transformPoint(local.pointAt(h.t));
     float dx = wp.x - worldRay.origin.x, dy = wp.y - worldRay.origin.y,
@@ -590,7 +599,7 @@ private:
     // completed false return proves `target` is not under `n`; a depth-truncated
     // one does not, so only complete subtrees are inserted below.
     if (visited.count(n)) return false;
-    Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
+    Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n, geoProjection()) : worldM;
     if (n == target) { out = here; return true; }
     bool found = false;
     bool childIncomplete = false;
@@ -624,7 +633,7 @@ private:
     path.push_back(n);
     if (isCollision) enclosing.push_back(const_cast<X3DNode *>(n));
     const Mat4 childM =
-        TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
+        TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n, geoProjection()) : worldM;
 
     if (geombounds::hasField(*n, "geometry")) {
       auto geom = geombounds::getNode(*n, "geometry");
@@ -634,7 +643,7 @@ private:
         Mat4 inv = worldM.inverse();
         Ray local{inv.transformPoint(worldRay.origin),
                   inv.transformDirection(worldRay.direction)};
-        if (auto t = intersectGeometry(geom.get(), local); t && *t >= 0.0f) {
+        if (auto t = intersectGeometry(geom.get(), geoProjection(), local); t && *t >= 0.0f) {
           SFVec3f wp = worldM.transformPoint(local.pointAt(*t));
           float dx = wp.x - worldRay.origin.x, dy = wp.y - worldRay.origin.y,
                 dz = wp.z - worldRay.origin.z;
@@ -685,6 +694,7 @@ private:
     });
   }
 
+  const std::shared_ptr<const geo::GeoProjection> geoProjection_;
   std::vector<X3DNode *> roots_;
 
   // Lazily-maintained pick index (see pickClosest). Mutable so the const pick can

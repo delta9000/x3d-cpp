@@ -6,6 +6,7 @@
 //   3) visibilityRange is in the Fog node's LOCAL frame: a world Transform
 //      scale multiplies it (uniform scale exact).
 //   4) delta()/fullSnapshot() flag fogChanged for a caching consumer.
+#include "GeoFrame.hpp"
 #include "SceneExtractor.hpp"
 
 #include "X3DDocument.hpp" // Scene::addRootNode definition.
@@ -324,7 +325,7 @@ TEST_CASE("local fog placement: collection remains cycle depth and visit bounded
     addChild(right, shared);
     scene.rootNodes = {left, right};
     x3d::WalkBudget budget(20);
-    const auto fogs = system.collect(scene, budget, SFVec3f{0, 0, 0});
+    const auto fogs = system.collect(scene, geo::builtinProjection(), budget, SFVec3f{0, 0, 0});
     setF(shared, "children", std::vector<std::shared_ptr<X3DNode>>{fog}); // break ownership cycle.
     CHECK_FALSE(budget.tripped);
     REQUIRE(fogs.size() == 2);
@@ -334,11 +335,11 @@ TEST_CASE("local fog placement: collection remains cycle depth and visit bounded
   SUBCASE("visit budget truncates then a new collection starts cleanly") {
     scene.rootNodes = {shared, fog};
     x3d::WalkBudget budget(2);
-    const auto partial = system.collect(scene, budget, SFVec3f{0, 0, 0});
+    const auto partial = system.collect(scene, geo::builtinProjection(), budget, SFVec3f{0, 0, 0});
     CHECK(budget.tripped);
     REQUIRE(partial.size() == 1);
     CHECK(partial[0].scopePath == extract::PathKey{shared.get()});
-    const auto complete = system.collect(scene);
+    const auto complete = system.collect(scene, geo::builtinProjection());
     REQUIRE(complete.size() == 2);
     CHECK(complete[1].scopePath.empty());
   }
@@ -350,7 +351,7 @@ TEST_CASE("local fog placement: collection remains cycle depth and visit bounded
       chain = parent;
     }
     scene.rootNodes = {chain, shared};
-    const auto fogs = system.collect(scene);
+    const auto fogs = system.collect(scene, geo::builtinProjection());
     REQUIRE(fogs.size() == 1);
     CHECK(fogs[0].scopePath == extract::PathKey{shared.get()});
   }

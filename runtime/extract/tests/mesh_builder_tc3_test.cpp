@@ -22,6 +22,7 @@
 //      square cap corners carry s,t in {0,1}.
 //   5) Zero-extent guards: a degenerate single-point-repeated cross-section /
 //      coincident spine does not divide by zero (no NaN/inf in texcoords).
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
@@ -64,7 +65,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     setF(g, "beginCap", std::any(SFBool(false)));
     setF(g, "endCap", std::any(SFBool(false)));
 
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.texcoords.empty()));
     CHECK((m.texcoords.size() == m.positions.size()));     // parallel.
     CHECK((m.latticeIndex.size() == m.positions.size()));
@@ -113,7 +114,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
     setF(g, "beginCap", std::any(SFBool(false)));
     setF(g, "endCap", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
 
     const int nc = 3;
     const float chord[3] = {0.0f, 0.25f, 1.0f};
@@ -132,7 +133,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}, {0, 4, 0}}));
     setF(g, "beginCap", std::any(SFBool(false)));
     setF(g, "endCap", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
 
     const int nc = 5;
     const float tparam[3] = {0.0f, 0.25f, 1.0f};
@@ -153,7 +154,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
     // caps default true.
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
 
     // The cap corners are the trailing triangles. Collect cap-corner UVs via the
@@ -188,7 +189,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     setF(g, "crossSection",
          std::any(MFVec2f{{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     for (const auto &uv : m.texcoords) {
       CHECK((std::isfinite(uv.x) && std::isfinite(uv.y)));
     }
@@ -200,7 +201,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
     setF(g, "ccw", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
     // The per-corner UV still matches its lattice id (S=chord[k], T=section)
     // for side-wall corners — the swap reorders b/c consistently across pos and uv.

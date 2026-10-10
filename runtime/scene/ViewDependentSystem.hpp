@@ -234,7 +234,7 @@ private:
                          WalkBudget &budget) {
     if (!n || !sensorBelow_.count(n) || !budget.spend()) return;
     if (seen.size() >= kMaxNestingDepth || !seen.insert(n).second) return;
-    if (TransformSystem::isTransform(n)) world = world * TransformSystem::localMatrix(n);
+    if (TransformSystem::isTransform(n)) world = world * TransformSystem::localMatrix(n, ctx.geoProjection());
     if (sensorActive_.count(const_cast<X3DNode *>(n))) {
       auto &paths = sensorPaths_[n];
       if (paths.empty() || paths.back().m != world.m) paths.push_back(world);
@@ -398,7 +398,7 @@ private:
     if (geographic) {
       // §25.3.8: the sensor box is tangent to the ellipsoid at geoCenter.
       const SFVec3d geoCenter = geombounds::getField<SFVec3d>(*node, "geoCenter", {0, 0, 0});
-      if (!geo::tangentFrameOf(*node, geoCenter, tangent)) {
+      if (!geo::tangentFrameOf(*node, geoCenter, tangent, ctx.geoProjection())) {
         deactivateIfActive(node, last, now, ctx);
         return;
       }
@@ -440,7 +440,7 @@ private:
           // Geographic coordinates live in the sensor's local frame (ADR-0053):
           // ancestor transforms place the geo content, so undo them first.
           const Mat4 parent = w * tangent.inverse();
-          if (geo::fromWorld(*node, parent.inverse().transformPoint(eyeWorld), coords))
+          if (geo::fromWorld(*node, parent.inverse().transformPoint(eyeWorld), coords, ctx.geoProjection()))
             ctx.postEvent(node, "geoCoord_changed", std::any(coords));
         }
       }
@@ -457,7 +457,7 @@ private:
         X3DNode *vp = ctx.boundViewpoint();
         SFVec3f cor{0, 0, 0};
         if (vp && vp->nodeTypeName() == "GeoViewpoint")
-          geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0, 0, 0}), cor);
+          geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0, 0, 0}), cor, ctx.geoProjection());
         else if (vp)
           cor = geombounds::getField<SFVec3f>(*vp, "centerOfRotation", {0, 0, 0});
         const SFVec3f corWorld = vp ? ctx.worldOf(vp).transformPoint(cor) : cor;

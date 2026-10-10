@@ -9,6 +9,7 @@
 //      is CARRIED verbatim — never silently promoted to scene-wide.
 // Plus: a Spot/Point direction world-resolves through rotation; on==false lights
 // are skipped; scopeRoot carries the enclosing grouping node.
+#include "GeoFrame.hpp"
 #include "LightSystem.hpp"
 
 #include "X3DDocument.hpp" // Scene::addRootNode definition.
@@ -65,7 +66,7 @@ TEST_CASE("light_system_test") {
     ctx.buildSceneGraph(scene);
 
     extract::LightSystem ls;
-    auto lights = ls.collect(scene);
+    auto lights = ls.collect(scene, ctx.geoProjection());
     CHECK((lights.size() == 1));
     const extract::LightDesc &L = lights[0];
     CHECK((L.type == extract::LightDesc::Type::Point));
@@ -88,7 +89,7 @@ TEST_CASE("light_system_test") {
     ctx.buildSceneGraph(scene);
 
     extract::LightSystem ls;
-    auto lights = ls.collect(scene);
+    auto lights = ls.collect(scene, ctx.geoProjection());
     CHECK((lights.size() == 1));
     const extract::LightDesc &L = lights[0];
     CHECK((L.type == extract::LightDesc::Type::Directional));
@@ -112,7 +113,7 @@ TEST_CASE("light_system_test") {
     X3DExecutionContext ctx;
     ctx.buildSceneGraph(scene);
     extract::LightSystem ls;
-    CHECK((ls.collect(scene).empty()));
+    CHECK((ls.collect(scene, ctx.geoProjection()).empty()));
   }
 
   // --- generic field reads: color/intensity/radius/attenuation ------------
@@ -127,7 +128,7 @@ TEST_CASE("light_system_test") {
     X3DExecutionContext ctx;
     ctx.buildSceneGraph(scene);
     extract::LightSystem ls;
-    auto lights = ls.collect(scene);
+    auto lights = ls.collect(scene, ctx.geoProjection());
     CHECK((lights.size() == 1));
     const extract::LightDesc &L = lights[0];
     CHECK((feq(L.color.r, 0.2f) && feq(L.color.g, 0.4f) && feq(L.color.b, 0.6f)));
@@ -145,7 +146,7 @@ TEST_CASE("light_system_test") {
     X3DExecutionContext ctx;
     ctx.buildSceneGraph(scene);
     extract::LightSystem ls;
-    auto lights = ls.collect(scene);
+    auto lights = ls.collect(scene, ctx.geoProjection());
     CHECK((lights.size() == 1));
     CHECK((lights[0].shadows == false));
     CHECK((feq(lights[0].shadowIntensity, 1.0f)));
@@ -160,7 +161,7 @@ TEST_CASE("light_system_test") {
     X3DExecutionContext ctx;
     ctx.buildSceneGraph(scene);
     extract::LightSystem ls;
-    auto lights = ls.collect(scene);
+    auto lights = ls.collect(scene, ctx.geoProjection());
     CHECK((lights.size() == 1));
     CHECK((lights[0].type == extract::LightDesc::Type::Spot));
     CHECK((lights[0].shadows == true));
@@ -179,7 +180,7 @@ TEST_CASE("point_light_radius_scales_with_parent_transform") {
   Scene scene;
   scene.addRootNode(transform);
   extract::LightSystem system;
-  const auto lights = system.collect(scene);
+  const auto lights = system.collect(scene, geo::builtinProjection());
   REQUIRE(lights.size() == 1);
   CHECK(lights[0].radius == doctest::Approx(6.0f));
 }
@@ -193,7 +194,7 @@ TEST_CASE("spot_light_radius_scales_with_parent_transform") {
   Scene scene;
   scene.addRootNode(transform);
   extract::LightSystem system;
-  const auto lights = system.collect(scene);
+  const auto lights = system.collect(scene, geo::builtinProjection());
   REQUIRE(lights.size() == 1);
   CHECK(lights[0].radius == doctest::Approx(6.0f));
 }
@@ -205,7 +206,7 @@ TEST_CASE("light_under_inactive_switch_does_not_illuminate") {
   Scene scene;
   scene.addRootNode(sw);
   extract::LightSystem system;
-  CHECK(system.collect(scene).empty());
+  CHECK(system.collect(scene, geo::builtinProjection()).empty());
 }
 
 TEST_CASE("light_under_unselected_lod_level_does_not_illuminate") {
@@ -216,8 +217,8 @@ TEST_CASE("light_under_unselected_lod_level_does_not_illuminate") {
   Scene scene;
   scene.addRootNode(lod);
   extract::LightSystem system;
-  const auto nearLights = system.collect(scene, SFVec3f{0, 0, 0});
-  const auto farLights = system.collect(scene, SFVec3f{0, 0, 20});
+  const auto nearLights = system.collect(scene, geo::builtinProjection(), SFVec3f{0, 0, 0});
+  const auto farLights = system.collect(scene, geo::builtinProjection(), SFVec3f{0, 0, 20});
   REQUIRE(nearLights.size() == 1);
   REQUIRE(farLights.size() == 1);
   CHECK(nearLights[0].type == extract::LightDesc::Type::Point);

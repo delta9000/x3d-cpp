@@ -17,6 +17,7 @@
 //   6) CCW outward winding — for every emitted triangle the geometric face
 //      normal (CCW cross product) agrees in sign with the stored per-corner
 //      normal, so the primitives compose under the SAME cull rule as meshes.
+#include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 
 #include "x3d/nodes/X3DNode.hpp"
@@ -85,7 +86,7 @@ TEST_CASE("mesh_builder_t4_test") {
   {
     auto g = createX3DNode("Box");
     setF(g, "size", std::any(SFVec3f{2, 2, 2}));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 36)); // 6 faces * 2 tris * 3
     CHECK((m.positions.size() == 36));
     CHECK((m.hasNormals));
@@ -100,7 +101,7 @@ TEST_CASE("mesh_builder_t4_test") {
   {
     auto g = createX3DNode("Sphere");
     setF(g, "radius", std::any(SFFloat(1.0f)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // UV sphere with R rings, S segments: top+bottom cap rows are triangles,
     // the (R-2) middle rows are quads (2 tris). Total tris = S*2*(R-1).
     // R=16, S=16 -> 16*2*15 = 480 triangles.
@@ -121,7 +122,7 @@ TEST_CASE("mesh_builder_t4_test") {
     auto g = createX3DNode("Cone");
     setF(g, "bottomRadius", std::any(SFFloat(1.0f)));
     setF(g, "height", std::any(SFFloat(2.0f)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // side: 24 tris ; bottom cap fan: 24 tris -> 48 tris.
     CHECK((m.indices.size() == 48 * 3));
     CHECK((m.hasNormals));
@@ -144,14 +145,14 @@ TEST_CASE("mesh_builder_t4_test") {
   {
     auto g = createX3DNode("Cone");
     setF(g, "side", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 24 * 3)); // bottom cap only
   }
   // ---- 3c. Cone with bottom off -> only side ----------------------------
   {
     auto g = createX3DNode("Cone");
     setF(g, "bottom", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 24 * 3)); // side only
   }
 
@@ -160,7 +161,7 @@ TEST_CASE("mesh_builder_t4_test") {
     auto g = createX3DNode("Cylinder");
     setF(g, "radius", std::any(SFFloat(1.0f)));
     setF(g, "height", std::any(SFFloat(2.0f)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // side: 24*2 quads tris = 48 ; top fan 24 ; bottom fan 24 -> 96 tris.
     CHECK((m.indices.size() == 96 * 3));
     CHECK((m.hasNormals));
@@ -180,7 +181,7 @@ TEST_CASE("mesh_builder_t4_test") {
     auto g = createX3DNode("Cylinder");
     setF(g, "top", std::any(SFBool(false)));
     setF(g, "bottom", std::any(SFBool(false)));
-    MeshData m = buildLocalMesh(g.get());
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 48 * 3)); // side quads only
   }
 
@@ -190,7 +191,7 @@ TEST_CASE("mesh_builder_t4_test") {
     MeshBuildOptions opt;
     opt.sphereRings = 8;
     opt.sphereSegments = 8;
-    MeshData m = buildLocalMesh(g.get(), opt);
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection(), opt);
     // S*2*(R-1) = 8*2*7 = 112 triangles.
     CHECK((m.indices.size() == 112 * 3));
   }
@@ -198,7 +199,7 @@ TEST_CASE("mesh_builder_t4_test") {
     auto g = createX3DNode("Cylinder");
     MeshBuildOptions opt;
     opt.radialSlices = 8;
-    MeshData m = buildLocalMesh(g.get(), opt);
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection(), opt);
     // side 8*2 + top 8 + bottom 8 = 32 tris.
     CHECK((m.indices.size() == 32 * 3));
   }

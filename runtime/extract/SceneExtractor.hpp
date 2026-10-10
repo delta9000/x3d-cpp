@@ -216,12 +216,14 @@ public:
     // M25-5: collect all active lights once per snapshot. emit() uses this to
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
-    lights_ = ls.collect(scene_, walkBudget_, ctx_.cameraWorldPosition());
+    lights_ = ls.collect(scene_, ctx_.geoProjection(), walkBudget_,
+                         ctx_.cameraWorldPosition());
 
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
     // RenderItem with the nearest one whose scopePath prefixes its PathKey.
     LocalFogSystem lfs;
-    localFogs_ = lfs.collect(scene_, walkBudget_, ctx_.cameraWorldPosition(),
+    localFogs_ = lfs.collect(scene_, ctx_.geoProjection(), walkBudget_,
+                             ctx_.cameraWorldPosition(),
                              &scopedStateDeps_);
 
     RenderDelta delta;
@@ -473,7 +475,7 @@ public:
     MeshData out = *rec.mesh;
     if (!rec.skin) return out;
     const auto &skin = *rec.skin;
-    auto pose = hanim::evaluatePose(*skin.binding);
+    auto pose = hanim::evaluatePose(*skin.binding, ctx_.geoProjection());
     std::vector<SFVec3f> positions;
     hanim::deform(*skin.binding, pose, positions, nullptr);
     if (positions.empty()) return out; // temporary core stub has no bind data.
@@ -577,7 +579,7 @@ public:
   // lightsOf() indices are positions in); this fresh collect is for standalone use.
   std::vector<LightDesc> lights() const {
     LightSystem ls;
-    return ls.collect(scene_, ctx_.cameraWorldPosition());
+    return ls.collect(scene_, ctx_.geoProjection(), ctx_.cameraWorldPosition());
   }
 
   // background — the bound Background's sky/ground gradient, read reflection-
@@ -699,7 +701,8 @@ private:
 
   std::shared_ptr<const hanim::SkinBinding> skinBinding(const X3DNode *humanoid) {
     auto &binding = skinBindings_[humanoid];
-    if (!binding) binding = std::make_shared<const hanim::SkinBinding>(hanim::compileBinding(*humanoid));
+    if (!binding) binding = std::make_shared<const hanim::SkinBinding>(
+        hanim::compileBinding(*humanoid, ctx_.geoProjection()));
     return binding;
   }
 
@@ -864,7 +867,8 @@ private:
     v.billboardAxis = v.isBillboard
         ? geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0})
         : SFVec3f{0, 1, 0};
-    v.local = v.isXform ? TransformSystem::localMatrix(n) : Mat4::identity();
+    v.local = v.isXform ? TransformSystem::localMatrix(n, ctx_.geoProjection())
+                       : Mat4::identity();
     return cache.emplace(n, v).first->second;
   }
 
@@ -1082,7 +1086,8 @@ private:
     if (geombounds::hasField(*n, "visible") &&
         !geombounds::getField<bool>(*n, "visible", true))
       return;
-    Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n) : worldM;
+    Mat4 here = isTransform(n)
+        ? worldM * TransformSystem::localMatrix(n, ctx_.geoProjection()) : worldM;
     if (n->nodeTypeName() == "Billboard") {
       const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
       here = worldM * billboardLocalMatrix(worldM, ctx_.cameraWorldPosition(),
@@ -1618,7 +1623,7 @@ private:
         bool rec = false;
         MeshBuildOptions options = meshOptions_;
         options.hanimSegment = segment;
-        MeshData built = buildLocalMesh(geom, options, &rec);
+        MeshData built = buildLocalMesh(geom, ctx_.geoProjection(), options, &rec);
         sit = segmentMeshCache_
                   .emplace(key, RawMeshEntry{std::make_shared<const MeshData>(std::move(built)),
                                              rec})
@@ -1630,7 +1635,7 @@ private:
     auto it = rawMeshCache_.find(geom);
     if (it == rawMeshCache_.end()) {
       bool rec = false;
-      MeshData built = buildLocalMesh(geom, meshOptions_, &rec);
+      MeshData built = buildLocalMesh(geom, ctx_.geoProjection(), meshOptions_, &rec);
       it = rawMeshCache_
                .emplace(geom,
                         RawMeshEntry{std::make_shared<const MeshData>(
