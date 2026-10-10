@@ -75,7 +75,8 @@ set(CPURASTER_TESTS
     light_ambient_test
     tier1_features_test
     skybox_test
-    demo_animation_test)
+    demo_animation_test
+    author_shader_test)
 
 add_custom_target(x3d_cpuraster_tests)
 foreach(t IN LISTS CPURASTER_TESTS)

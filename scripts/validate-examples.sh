@@ -141,6 +141,10 @@ xvfb-run -a env \
 echo "== poc eye-space TextureCoordinateGenerator gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/texgen_gl_test.py "$POC"
 
+# ---- SHADERS scene-authored program GL pixel regression (REQ-SHADER) -------
+echo "== poc author-shader selection gate under Xvfb (software GL) =="
+python3 examples/poc_renderer/tests/author_shader_gl_test.py "$POC"
+
 echo "== build asset_import (cgltf default, no assimp) =="
 cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
 cmake --build build-asset-import --target x3d_asset_import x3d_assetimport_cgltf

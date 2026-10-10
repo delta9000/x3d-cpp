@@ -28,12 +28,13 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DParse.hpp"
 #include "X3DSceneBridge.hpp"
+#include "io/file/FileResolver.hpp"
 #ifdef X3D_CPURASTER_CURL
 #include "HttpResolver.hpp"
 #include "SchemeRouter.hpp"
-#include "io/file/FileResolver.hpp"
 #endif
 
+#include "cpuraster/AuthorShader.hpp"
 #include "cpuraster/BuiltinFont.hpp"
 #include "cpuraster/Framebuffer.hpp"
 #include "cpuraster/GlslInterpreter.hpp"
@@ -140,8 +141,6 @@ int main(int argc, char **argv) {
   if (!bridge.ok())
     std::fprintf(stderr, "[cpu-raster] scene bridge: %zu rejected route(s)\n",
                  bridge.rejected.size());
-  if (animate) x3d::runtime::attachStandardRuntime(scene, ctx);
-  ctx.tick(0.0); // resolve bindings + initial transforms/bounds.
 
   // Built-in glyph font so Text nodes render as readable letters: its metrics
   // (with atlas UVs) go to the extractor, its atlas is bound in the glyph draw.
@@ -150,8 +149,8 @@ int main(int argc, char **argv) {
   meshOpts.fontMetrics = font.metrics;
   // Texture resolver: procedural images and stb-decoded local/fetched bytes.
   ex::AssetResolver fetch;
-#ifdef X3D_CPURASTER_CURL
   auto file = x3d::runtime::io::file::makeFileResolver(dirOf(scenePath));
+#ifdef X3D_CPURASTER_CURL
   auto http = x3d::runtime::io::curl::makeHttpResolver();
   fetch =
       ex::makeSchemeRouter({{"file", file},
@@ -160,6 +159,14 @@ int main(int argc, char **argv) {
                             {"ftp", x3d::runtime::io::curl::makeFtpResolver()}},
                            file);
 #endif
+  // §31: ShaderPart urls load like textures; a program is valid when its
+  // fragment stage compiles in the interpreter (else selection falls through).
+  meshOpts.shaders.resolver = fetch ? fetch : file;
+  meshOpts.shaders.validator = cr::interpreterShaderValidator();
+  if (animate)
+    x3d::runtime::attachStandardRuntime(scene, ctx, nullptr, {}, {}, meshOpts.shaders);
+  ctx.tick(0.0); // resolve bindings + initial transforms/bounds.
+
   ex::SceneExtractor extractor(
       ctx, scene, meshOpts, cr::makeTextureResolver(dirOf(scenePath), fetch));
   ex::RenderDelta snap = extractor.fullSnapshot();
@@ -229,9 +236,13 @@ int main(int argc, char **argv) {
   }
   if (skybox.any()) opt.skybox = &skybox;
 
+  // Scene-authored shaders: each item's selected ComposedShader/ProgramShader
+  // (RenderItem::shaderProgram) runs its fragment stage in the interpreter.
+  cr::AuthorShaderCache authorShaders;
+  opt.authorShaderFor = authorShaders.hook();
+
   // --frag: compile an author GLSL fragment shader once and apply it to every
-  // item via the interpreter (a standalone demo of the ComposedShader path; when
-  // the SDK wires RenderItem::shaderProgram this same machinery binds it).
+  // item via the interpreter, overriding scene-authored programs.
   cr::InterpretedProgram authorProg;
   bool haveAuthor = false;
   if (!fragPath.empty()) {

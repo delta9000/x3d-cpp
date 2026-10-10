@@ -71,6 +71,8 @@
 #include "PlMpegMovieDecoder.hpp"   // MovieDecoder backend A (x3d_plmpeg io backend)
 #include "RenderItem.hpp"          // extract descriptors
 #include "SceneExtractor.hpp"      // T7a minimal extractor
+#include "ShaderOptions.hpp"        // §31 shader validator/resolver seam
+#include "io/file/FileResolver.hpp" // §31 ShaderPart urls (scene-relative files)
 #include "ShaderBindingPlan.hpp"   // Phase 5 author-shader vocab dispatch
 #include "StbttGlyphAtlas.hpp"     // T-TEXT glyph atlas (x3d_stbtt io backend)
 #include "TextureResolver.hpp"     // T-TEX decoded-pixel seam (the consumer decode)
@@ -90,10 +92,13 @@
 #include <cstdlib>
 #include <fstream>
 #include <iterator> // std::istreambuf_iterator (B8 local-file resolver)
+#include <memory>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <utility> // std::pair (B7 blended-item sort key)
+#include <variant>
 #include <vector>
 
 namespace {
@@ -187,6 +192,66 @@ GLuint compileShader(GLenum stage, const std::string &src, const char *label) {
     return 0;
   }
   return sh;
+}
+
+// §31.3.2 isValid for this host: the program compiles and links in the
+// current GL context. Results are cached by source so selection (extractor and
+// ShaderSystem) compiles each distinct program once. Before the context exists
+// (the --headless probe) only the structural check runs.
+x3d::runtime::extract::ShaderValidator makeGlShaderValidator(std::shared_ptr<bool> glReady) {
+  namespace ex = x3d::runtime::extract;
+  auto cache = std::make_shared<std::unordered_map<std::string, ex::ShaderValidation>>();
+  return [glReady, cache](const ex::ShaderProgramDesc &p) -> ex::ShaderValidation {
+    ex::ShaderValidation v = ex::structuralShaderValidation(p);
+    if (!v.valid || !*glReady) return v;
+    std::string key;
+    for (const auto &stage : p.stages) key += stage.source + "\n---\n";
+    if (auto it = cache->find(key); it != cache->end()) return it->second;
+    auto compile = [&](GLenum type, const std::string &src) -> GLuint {
+      GLuint sh = glCreateShader(type);
+      const char *c = src.c_str();
+      glShaderSource(sh, 1, &c, nullptr);
+      glCompileShader(sh);
+      GLint ok = GL_FALSE;
+      glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+      if (ok) return sh;
+      char log[2048] = {};
+      glGetShaderInfoLog(sh, sizeof(log), nullptr, log);
+      v = {false, log};
+      glDeleteShader(sh);
+      return 0;
+    };
+    GLuint vs = 0, fs = 0;
+    for (const auto &stage : p.stages) {
+      if (stage.stage == ex::ShaderStageDesc::Stage::Vertex)
+        vs = compile(GL_VERTEX_SHADER, stage.source);
+      else if (stage.stage == ex::ShaderStageDesc::Stage::Fragment)
+        fs = compile(GL_FRAGMENT_SHADER, stage.source);
+    }
+    if (vs && fs) {
+      GLuint prog = glCreateProgram();
+      glAttachShader(prog, vs);
+      glAttachShader(prog, fs);
+      glLinkProgram(prog);
+      GLint ok = GL_FALSE;
+      glGetProgramiv(prog, GL_LINK_STATUS, &ok);
+      if (ok) {
+        v = {true, {}};
+      } else {
+        char log[2048] = {};
+        glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
+        v = {false, log};
+      }
+      glDeleteProgram(prog);
+    } else if (v.valid) {
+      v = {false, "vertex/fragment compile failed"};
+    }
+    if (vs) glDeleteShader(vs);
+    if (fs) glDeleteShader(fs);
+    if (!v.valid) std::fprintf(stderr, "[poc] author shader invalid: %s\n", v.error.c_str());
+    (*cache)[key] = v;
+    return v;
+  };
 }
 
 GLuint linkProgram(GLuint vs, GLuint fs) {
@@ -963,6 +1028,10 @@ int main(int argc, char **argv) {
   auto glyphAtlas = x3d::runtime::io::stbtt::makeStbttGlyphAtlas(resolveFontFaces());
   ex::MeshBuildOptions meshOptions;
   if (glyphAtlas.fontMetrics) meshOptions.fontMetrics = glyphAtlas.fontMetrics;
+  // §31: authored shaders are selected against this GL context's compiler.
+  auto glReady = std::make_shared<bool>(false);
+  meshOptions.shaders.resolver = x3d::runtime::io::file::makeFileResolver(dirOf(scenePath));
+  meshOptions.shaders.validator = makeGlShaderValidator(glReady);
   ex::SceneExtractor extractor(ctx, scene, meshOptions, textureResolver);
 
   // ----------------------------------------------------------------------
@@ -1146,6 +1215,7 @@ int main(int argc, char **argv) {
     glfwTerminate();
     return 1;
   }
+  *glReady = true; // author shaders now validate by compiling.
   std::fprintf(stderr, "[poc] GL_VERSION  : %s\n", glGetString(GL_VERSION));
   std::fprintf(stderr, "[poc] GL_RENDERER : %s\n", glGetString(GL_RENDERER));
 
@@ -1169,7 +1239,7 @@ int main(int argc, char **argv) {
   // Light up the full behavior runtime (TimeSensor clock, interpolators,
   // followers, event utilities, view-dependent, key sensors, viewpoint bind) so
   // authored animation/sensors actually run — then add the interactive systems.
-  x3d::runtime::attachStandardRuntime(scene, ctx);
+  x3d::runtime::attachStandardRuntime(scene, ctx, nullptr, {}, {}, meshOptions.shaders);
   auto navSys = x3d::runtime::attachInteractive(scene, ctx);
   InputBridge input(ctx, win, navSys);
   Mat4 lastView = Mat4::identity();
@@ -2079,15 +2149,12 @@ int main(int argc, char **argv) {
           applyCull(g, it.worldTransform);
 
         // ----------------------------------------------------------------
-        // PATH 4: AUTHOR-SHADER (ComposedShader via ShaderBindingPlan).
-        // Currently unreachable — ComposedShader extraction (wiring
-        // RenderItem::shaderProgram from the scene graph) is not yet
-        // implemented; infrastructure only (see docs/wiki/subsystems/shaders.md).
-        // ----------------------------------------------------------------
-        // isValid is set by the SDK's ComposedShader extraction; we gate on
-        // it above (hasAuthor). Link success/failure is logged by compileShader/
-        // linkProgram below; a 0 entry in authorProgCache means "failed to link"
-        // and the draw is silently skipped (same as isValid=false semantics).
+        // PATH 4: AUTHOR-SHADER (ComposedShader/ProgramShader via
+        // ShaderBindingPlan). The SDK selects each Appearance's shader
+        // (§31.2.2.3) against makeGlShaderValidator, so a program reaching here
+        // compiled in this context; an invalid one was skipped for the next
+        // shader or the material. A 0 entry in authorProgCache (a link that
+        // still failed) skips the draw.
         } else if (hasAuthor) {
           // Build a cache key from the combined stage sources.
           std::string cacheKey;
@@ -2205,13 +2272,21 @@ int main(int argc, char **argv) {
             if (e.isAuthorField) {
               for (const auto &f : it.shaderProgram->fields) {
                 if (f.name != e.declaredName) continue;
-                // Upload scalar types the PoC knows about.
-                if (f.type == X3DFieldType::SFFloat &&
-                    std::holds_alternative<float>(f.value.value))
-                  glUniform1f(loc, std::get<float>(f.value.value));
-                else if (f.type == X3DFieldType::SFInt32 &&
-                         std::holds_alternative<int>(f.value.value))
-                  glUniform1i(loc, std::get<int>(f.value.value));
+                // Every SF value the descriptor carries (SFNode/MF fields
+                // arrive empty and stay unbound).
+                std::visit([&](const auto &x) {
+                  using T = std::decay_t<decltype(x)>;
+                  if constexpr (std::is_same_v<T, float>) glUniform1f(loc, x);
+                  else if constexpr (std::is_same_v<T, int>) glUniform1i(loc, x);
+                  else if constexpr (std::is_same_v<T, bool>) glUniform1i(loc, x ? 1 : 0);
+                  else if constexpr (std::is_same_v<T, SFColor>) glUniform3f(loc, x.r, x.g, x.b);
+                  else if constexpr (std::is_same_v<T, SFColorRGBA>) glUniform4f(loc, x.r, x.g, x.b, x.a);
+                  else if constexpr (std::is_same_v<T, SFVec2f>) glUniform2f(loc, x.x, x.y);
+                  else if constexpr (std::is_same_v<T, SFVec3f>) glUniform3f(loc, x.x, x.y, x.z);
+                  else if constexpr (std::is_same_v<T, SFVec4f>) glUniform4f(loc, x.x, x.y, x.z, x.w);
+                  else if constexpr (std::is_same_v<T, SFMatrix3f>) glUniformMatrix3fv(loc, 1, GL_FALSE, &x.matrix[0][0]);
+                  else if constexpr (std::is_same_v<T, SFMatrix4f>) glUniformMatrix4fv(loc, 1, GL_FALSE, &x.matrix[0][0]);
+                }, f.value.value);
                 break;
               }
             }
