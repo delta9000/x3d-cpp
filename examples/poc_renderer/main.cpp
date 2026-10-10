@@ -166,14 +166,28 @@ Mat4 lookAt(const SFVec3f &eye, const SFVec3f &center, const SFVec3f &up) {
   return m;
 }
 
+// Reads a shader source. A line `#include "name"` is replaced by the file
+// `name` beside it (one level; the PoC shares multitexture.glsl this way).
 std::string readTextFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
   if (!in) {
     std::fprintf(stderr, "[poc] cannot open %s\n", path.c_str());
     return {};
   }
+  const std::string dir = path.substr(0, path.find_last_of('/') + 1);
   std::ostringstream ss;
-  ss << in.rdbuf();
+  for (std::string line; std::getline(in, line);) {
+    const std::string directive = "#include \"";
+    if (line.compare(0, directive.size(), directive) == 0 && line.back() == '"') {
+      std::ifstream part(dir + line.substr(directive.size(),
+                                           line.size() - directive.size() - 1),
+                         std::ios::binary);
+      if (!part) std::fprintf(stderr, "[poc] cannot open include in %s\n", path.c_str());
+      ss << part.rdbuf() << '\n';
+      continue;
+    }
+    ss << line << '\n';
+  }
   return ss.str();
 }
 
@@ -299,6 +313,9 @@ struct GpuVertex {
   SFVec3f normal;
   SFColorRGBA color;
   SFVec2f texcoord; // B8: X3D LOCAL origin = bottom-left = GL; NO v-flip here.
+  // §18.4.3 MultiTexture: UV sets 1..3 (aTexCoord1..3); a missing set repeats
+  // set 0, so a stage whose channel exceeds the authored sets still samples.
+  SFVec2f texcoordSet[3];
 };
 
 struct GpuMesh {
@@ -437,6 +454,12 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
     // GL convention; NO v-flip). Default (0,0) when the mesh has none.
     verts[i].texcoord =
         (i < m.texcoords.size()) ? m.texcoords[i] : SFVec2f{0.0f, 0.0f};
+    for (std::size_t s = 0; s < 3; ++s) {
+      const auto *set = s + 1 < m.texcoordSets.size() ? &m.texcoordSets[s + 1]
+                                                       : nullptr;
+      verts[i].texcoordSet[s] =
+          set && i < set->size() ? (*set)[i] : verts[i].texcoord;
+    }
   }
 
   glGenVertexArrays(1, &g.vao);
@@ -461,6 +484,12 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
   glEnableVertexAttribArray(3); // aTexCoord (B8)
   glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
                         reinterpret_cast<void *>(offsetof(GpuVertex, texcoord)));
+  for (GLuint s = 0; s < 3; ++s) { // aTexCoord1..3 (§18.4.3 UV sets)
+    glEnableVertexAttribArray(5 + s);
+    glVertexAttribPointer(5 + s, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
+                          reinterpret_cast<void *>(offsetof(GpuVertex, texcoordSet) +
+                                                   s * sizeof(SFVec2f)));
+  }
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g.ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
@@ -767,6 +796,45 @@ int texCoordGenModeUniform(const ex::MaterialDesc &mat) {
     }
   }
   return 0;
+}
+
+// §18.4.3 MultiTexture: the base-colour stages in authored order. The SDK
+// expands a MultiTexture into one TextureRef per stage (channel = stage UV
+// set); a plain texture is one stage. Same rule as cpu_raster buildTextures.
+std::vector<const ex::TextureRef *> baseStageRefs(const ex::MaterialDesc &mat) {
+  std::vector<const ex::TextureRef *> out;
+  for (const ex::TextureRef &t : mat.textures)
+    if (t.slot == ex::TextureRef::Slot::BaseColor ||
+        t.slot == ex::TextureRef::Slot::Diffuse ||
+        (mat.model == ex::MaterialModel::Unlit && t.slot == ex::TextureRef::Slot::Emissive))
+      out.push_back(&t);
+  return out;
+}
+
+// True when the stages need multitexture.glsl's combiner. A single default
+// MODULATE stage on UV set 0 is the shaders' plain texture multiply.
+bool needsStageCombiner(const std::vector<const ex::TextureRef *> &stages) {
+  if (stages.size() > 1) return true;
+  if (stages.empty()) return false;
+  const ex::TextureRef &t = *stages.front();
+  return t.multiMode != "MODULATE" || !t.multiSource.empty() ||
+         !t.multiFunction.empty() || t.channel != 0;
+}
+
+// multitexture.glsl mode code for one §18.4.3 mode token (Table 18.3).
+int multiTextureModeCode(std::string token) {
+  const auto b = token.find_first_not_of(' ');
+  token = b == std::string::npos ? "" : token.substr(b, token.find_last_not_of(' ') - b + 1);
+  static const char *const names[] = {
+      "MODULATE", "REPLACE", "SELECTARG2", "MODULATE2X", "MODULATE4X", "ADD",
+      "ADDSIGNED", "ADDSIGNED2X", "SUBTRACT", "ADDSMOOTH", "BLENDDIFFUSEALPHA",
+      "BLENDTEXTUREALPHA", "BLENDFACTORALPHA", "BLENDCURRENTALPHA",
+      "MODULATEALPHA_ADDCOLOR", "MODULATEINVALPHA_ADDCOLOR",
+      "MODULATEINVCOLOR_ADDALPHA", "DOTPRODUCT3", "OFF"};
+  if (token == "SELECTARG1") return 1;
+  for (int i = 0; i < static_cast<int>(std::size(names)); ++i)
+    if (token == names[i]) return i;
+  return 0; // MODULATE, the default (and any unknown token).
 }
 
 // MovieTexture decode state (ADR-0041). The MovieDecoder owns per-URL codec
@@ -1854,6 +1922,56 @@ int main(int argc, char **argv) {
         if (hasLoc >= 0) glUniform1i(hasLoc, tex ? 1 : 0);
       };
 
+      // §18.4.3 MultiTexture (multitexture.glsl): bind each base-colour stage
+      // on unit 8+i (6/7 hold the skin buffers) with its mode/source/function/
+      // factor/channel. Sets
+      // uNumStages 0 (the plain single-texture path) when no combiner is
+      // needed, the mesh has no UVs, or the program lacks the combiner.
+      auto uploadStages = [&](GLuint program, const ex::RenderItem &item,
+                              const GpuMesh &mesh, bool srgb) {
+        const GLint locNum = glGetUniformLocation(program, "uNumStages");
+        if (locNum < 0) return;
+        const ex::MaterialDesc &m = item.material;
+        std::vector<const ex::TextureRef *> stages = baseStageRefs(m);
+        if (!mesh.hasTexcoords || mesh.isGlyphMesh || !needsStageCombiner(stages))
+          stages.clear();
+        constexpr int kMaxStages = 4; // multitexture.glsl; extra stages are ignored.
+        const int n = std::min(static_cast<int>(stages.size()), kMaxStages);
+        glUniform1i(locNum, n);
+        // The vertex stage generates coordinates for the first generator only.
+        const ex::TextureRef *generated = nullptr;
+        for (const ex::TextureRef &t : m.textures)
+          if (t.hasTexCoordGen) { generated = &t; break; }
+        const bool genActive = generated && texCoordGenModeUniform(m) != 0;
+        for (int i = 0; i < n; ++i) {
+          const ex::TextureRef &t = *stages[i];
+          auto loc = [&](const char *name) {
+            return glGetUniformLocation(
+                program, (std::string(name) + "[" + std::to_string(i) + "]").c_str());
+          };
+          bindTex(8 + i, loc("uStageTex"), loc("uStageHasTex"),
+                  resolveTexRef(&t, texCache, assetResolver, srgb, &movieState));
+          const auto comma = t.multiMode.find(',');
+          const int rgbMode = multiTextureModeCode(t.multiMode.substr(0, comma));
+          const int alphaMode = comma == std::string::npos
+                                    ? rgbMode
+                                    : multiTextureModeCode(t.multiMode.substr(comma + 1));
+          glUniform2i(loc("uStageMode"), rgbMode, alphaMode);
+          glUniform1i(loc("uStageSource"), t.multiSource == "DIFFUSE"    ? 1
+                                            : t.multiSource == "SPECULAR" ? 2
+                                            : t.multiSource == "FACTOR"   ? 3
+                                                                          : 0);
+          glUniform1i(loc("uStageFunction"), t.multiFunction == "COMPLEMENT"       ? 1
+                                              : t.multiFunction == "ALPHAREPLICATE" ? 2
+                                                                                    : 0);
+          glUniform4f(loc("uStageFactor"), t.multiColor.r, t.multiColor.g,
+                      t.multiColor.b, t.multiAlpha);
+          glUniform1i(loc("uStageChannel"),
+                      genActive && &t == generated ? -1 : std::max(t.channel, 0));
+        }
+        glActiveTexture(GL_TEXTURE0);
+      };
+
       // Helper: upload standard eye-space lights to a program (already bound).
       auto uploadLights = [&](GLuint program, GLint locNum, GLint locDir, GLint locCol,
                               GLint locAmb) {
@@ -2006,6 +2124,7 @@ int main(int argc, char **argv) {
           } else {
             bindTex(0, uUnlitTexture, uUnlitHasTexture, 0);
           }
+          uploadStages(unlitProg, it, g, /*srgb=*/false);
           glDisable(GL_CULL_FACE); // lines/points/normal-less always double-sided.
 
         // ----------------------------------------------------------------
@@ -2085,6 +2204,7 @@ int main(int argc, char **argv) {
             bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);
             bindTex(3, uSpecularTex, uHasSpecularTex, 0);
           }
+          uploadStages(phongProg, it, g, /*srgb=*/false);
           applyCull(g, it.worldTransform);
 
         // ----------------------------------------------------------------
@@ -2167,6 +2287,7 @@ int main(int argc, char **argv) {
             bindTex(3, uPbrMRTex,          uPbrHasMRTex,          0);
             bindTex(4, uPbrOcclusionTex,   uPbrHasOcclusionTex,   0);
           }
+          uploadStages(pbrProg, it, g, /*srgb=*/true);
           applyCull(g, it.worldTransform);
 
         // ----------------------------------------------------------------

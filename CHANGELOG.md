@@ -71,6 +71,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **MultiTexture in the OpenGL PoC (REQ-MULTITEXTURE).** The unlit, Phong and
+  PBR programs combine up to four base-colour stages with every §18.4.3 mode,
+  source and function (`shaders/multitexture.glsl`), each stage sampling the
+  UV set its channel selects. Previously only the first stage drew. New Xvfb
+  pixel gate `multitexture_gl_test.py`; the stage and UV-set caps are
+  REQ-MULTITEXTURE-2.
 - **LocalFog in the OpenGL PoC (REQ-LOCALFOG).** Phong, PBR and unlit draws
   now use the item's in-scope `LocalFog` (`RenderItem::localFog`) instead of
   always the bound global `Fog`. New Xvfb pixel gate `local_fog_gl_test.py`.
