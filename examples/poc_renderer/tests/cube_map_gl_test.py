@@ -9,9 +9,12 @@ A radius-2 sphere (an IndexedFaceSet, so it can carry a generator) faces a
 camera on +Z. Its six 1x1 faces have distinct colours, so a pixel names the
 face its lookup direction pierced. The same scenes and expectations are pinned
 for the CPU reference host by examples/cpu_raster/tests/cube_map_test.cpp.
+An ImageCubeMapTexture (§34.4.3) naming a DDS cube with the same colours must
+match the composed cube.
 """
 import math
 import pathlib
+import struct
 import subprocess
 import sys
 import tempfile
@@ -56,6 +59,22 @@ def sphere(generator):
     return (f'<IndexedFaceSet coordIndex="{" ".join(index)}">'
             f'<Coordinate point="{" ".join(points)}"/>'
             f'<Normal vector="{" ".join(normals)}"/>{generator}</IndexedFaceSet>')
+
+
+def dds_cube(path):
+    """A 1x1 BGRA DDS cube map. DDS stores faces +X, -X, +Y, -Y, +Z, -Z for a
+    left-handed space; +Z is the X3D front (DdsDecode.hpp)."""
+    header = bytearray(128)
+    header[0:4] = b'DDS '
+    for offset, value in ((4, 124), (8, 0x1007), (12, 1), (16, 1), (76, 32),
+                          (80, 0x41), (88, 32), (92, 0xFF0000), (96, 0xFF00),
+                          (100, 0xFF), (104, 0xFF000000), (108, 0x1008),
+                          (112, 0xFE00)):
+        struct.pack_into('<I', header, offset, value)
+    faces = 'RLTDFB'  # +X right, -X left, +Y top, -Y bottom, +Z front, -Z back
+    pixels = b''.join(bytes((round(255 * FACES[f][2]), round(255 * FACES[f][1]),
+                             round(255 * FACES[f][0]), 255)) for f in faces)
+    path.write_bytes(bytes(header) + pixels)
 
 
 def render(tmp, name, appearance, generator=''):
@@ -118,6 +137,19 @@ with tempfile.TemporaryDirectory() as directory:
                 assert face(got) == want, (name, gen, (x, y), want, got)
                 checked += 1
 
+    # ImageCubeMapTexture: the DDS cube decodes to the same faces.
+    dds = tmp / 'cube.dds'
+    dds_cube(dds)
+    image = f'<ImageCubeMapTexture url=\'"{dds}"\'/>'
+    for gen, samples in (('', [((0, 0), 'B'), ((R45, 0), 'R'), ((-R45, 0), 'L'),
+                               ((0, R45), 'T'), ((0, -R45), 'D')]),
+                         (generator('CAMERASPACEPOSITION'), [((0, 0), 'F')])):
+        pixel = render(tmp, f'image{len(gen)}', image, gen)
+        for (x, y), want in samples:
+            got = pixel(x, y)
+            assert face(got) == want, ('ImageCubeMapTexture', gen, (x, y), want, got)
+            checked += 1
+
     # A cube stage inside MultiTexture: right face (yellow) x 50% grey.
     pixel = render(tmp, 'multi', '<MultiTexture mode=\'"MODULATE" "MODULATE"\'>'
                    + CUBE + '<PixelTexture image="1 1 1 0x80"/></MultiTexture>')
@@ -125,4 +157,4 @@ with tempfile.TemporaryDirectory() as directory:
     assert abs(r - 128) < 12 and abs(g - 128) < 12 and b < 12, (r, g, b)
     print(f'GL cube maps: reflection, position and normal lookups hit the '
           f'Figure 34.1 faces in unlit, Phong and PBR ({checked} samples); '
-          f'cube MultiTexture stage combines')
+          f'DDS ImageCubeMapTexture matches; cube MultiTexture stage combines')

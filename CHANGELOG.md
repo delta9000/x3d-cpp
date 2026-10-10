@@ -71,6 +71,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **ImageCubeMapTexture (REQ-CUBE).** The SDK extracts it as a url cube ref
+  and the texture decode seam returns a cube image as six layers
+  (`TexturePixels::layers`, ADR-0059). The stb and wuffs backends, and the GL
+  PoC, decode DDS (uncompressed and BC1-BC3, 2D or cube) with the new
+  std-only `runtime/io/dds/DdsDecode.hpp`. Both reference hosts render it as an
+  environment map. Previously it drew white.
 - **Cube-map environment textures (REQ-CUBE, ComposedCubeMapTexture).** cpu_raster
   and the OpenGL PoC sample a ComposedCubeMapTexture (base-colour slot or
   MultiTexture stage) by the camera-space reflection vector, or by the

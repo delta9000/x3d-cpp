@@ -2,7 +2,8 @@
 // (SEAM-BACKGROUND, ENV-11) and ComposedCubeMapTexture surfaces its faces
 // (CMT-1): BackgroundDesc carries the six faces + transparency for Background
 // (*Url lists) and TextureBackground (*Texture nodes); refOf() maps a
-// ComposedCubeMapTexture to Source::Cube with six face refs.
+// ComposedCubeMapTexture to Source::Cube with six face refs, and an
+// ImageCubeMapTexture to a url Source::Cube ref (REQ-CUBE).
 #include "SceneExtractor.hpp"
 #include "TextureExtract.hpp"
 
@@ -109,6 +110,35 @@ TEST_CASE("refOf: ComposedCubeMapTexture surfaces six face refs (CMT-1)") {
     return extract::TexturePixelResult::makeFailed();
   });
   CHECK(asked == std::vector<std::string>{"f.png", "t.png"});
+}
+
+TEST_CASE("refOf: ImageCubeMapTexture is a url cube ref resolved as one image (REQ-CUBE)") {
+  auto cube = createX3DNode("ImageCubeMapTexture");
+  setF(cube, "url", std::any(MFString{"missing.dds", "sky.dds"}));
+  const TextureRef r = extract::matsys::refOf(cube, TextureRef::Slot::BaseColor);
+  REQUIRE(r.source == TextureRef::Source::Cube);
+  CHECK(r.cubeFaces.empty());
+  CHECK(r.url == MFString{"missing.dds", "sky.dds"});
+
+  // The resolver decodes the single image (six layers); MFString fallback.
+  std::vector<TextureRef> refs{r};
+  std::vector<std::string> asked;
+  extract::resolveTextureRefs(refs, [&](const std::string &u) {
+    asked.push_back(u);
+    if (u != "sky.dds") return extract::TexturePixelResult::makeFailed();
+    extract::TexturePixels px;
+    px.width = px.height = 1;
+    px.layers = 6;
+    px.rgba.assign(24, 255);
+    return extract::TexturePixelResult::makeReady(std::move(px));
+  });
+  CHECK(asked == std::vector<std::string>{"missing.dds", "sky.dds"});
+  REQUIRE(refs[0].resolvedPixels.ready());
+  CHECK(refs[0].resolvedPixels.pixels->layers == 6);
+
+  // §9.3.2 load FALSE: no url candidates.
+  setF(cube, "load", std::any(false));
+  CHECK(extract::matsys::refOf(cube, TextureRef::Slot::BaseColor).url.empty());
 }
 
 TEST_CASE("TextureBackground preserves MultiTexture panorama face") {

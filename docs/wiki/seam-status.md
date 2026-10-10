@@ -152,7 +152,9 @@ TextureResolver decodes them (`bytes → RGBA8 pixels`)**.
   `[EXPERIMENTAL]` → `[STABLE]` in
   [`include/x3d/sdk.hpp`](https://github.com/delta9000/x3d-cpp/blob/main/include/x3d/sdk.hpp).
   The whole `TextureResolver` / `TexturePixels` / `TexturePixelResult` / `TextureResolveStatus`
-  surface is one frozen seam.
+  surface is one frozen seam. [ADR-0059](decisions/0059-cube-map-images-through-texture-decode.md) added
+  one defaulted member, `TexturePixels::layers` (1 for 2D, 6 for a cube image); the callback
+  and lifecycle are unchanged and existing aggregate initialisers still compile.
 - **Backend A — stb_image** (`runtime/io/stb/StbTextureResolver.{hpp,cpp}`): the hand-written C
   decoder already vendored for the PoC, behind `X3D_CPP_BUILD_STB` (OFF default), with **no core
   `#ifdef`** — stb meets the seam in a single isolated TU (`x3d_stb` static lib), `stb_image.h`

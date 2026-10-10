@@ -40,11 +40,17 @@ namespace x3d::runtime::extract {
 // rgba is tightly packed: stride = width * 4 bytes, origin = bottom-left
 // (GL convention — matches MeshData::texcoords; no V-flip needed here).
 // width and height are 0 on Pending and Failed results.
+//
+// layers is 1 for a 2D image. A cube-map image (§34.4.3 ImageCubeMapTexture,
+// e.g. a DDS cube) decodes to layers = 6 equal faces stored one after another
+// in X3D face order front, back, left, right, top, bottom, each bottom-left
+// origin and upright as seen from the cube's centre (Figure 34.1).
 // ---------------------------------------------------------------------------
 struct TexturePixels {
     std::uint32_t width  = 0;
     std::uint32_t height = 0;
-    std::vector<std::uint8_t> rgba; // width * height * 4 bytes when Ready.
+    std::vector<std::uint8_t> rgba; // width * height * 4 * layers bytes when Ready.
+    std::uint32_t layers = 1;
 };
 
 // ---------------------------------------------------------------------------

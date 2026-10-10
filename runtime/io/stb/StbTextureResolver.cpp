@@ -4,6 +4,7 @@
 // leaks to consumers. The factory returns a plain std::function exchanging only
 // std types, so linking x3d_stb pulls in no stb headers.
 #include "StbTextureResolver.hpp"
+#include "DdsDecode.hpp"
 
 #include <cstdint>
 #include <fstream>
@@ -60,6 +61,13 @@ makeStbTextureResolver(x3d::runtime::extract::AssetResolver fetch) {
         bytes.size() >
             static_cast<std::size_t>(std::numeric_limits<int>::max())) {
       return TexturePixelResult::makeFailed();
+    }
+    // DDS (2D or the six faces of a §34.4.3 cube map): std-only decoder,
+    // shared with the wuffs backend. stb_image has no DDS support.
+    if (dds::isDds(bytes.data(), bytes.size())) {
+      auto px = dds::decodeDds(bytes.data(), bytes.size());
+      return px ? TexturePixelResult::makeReady(std::move(*px))
+                : TexturePixelResult::makeFailed();
     }
 
     // Bottom-left origin (GL convention) — the seam contract. stb returns

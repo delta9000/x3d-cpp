@@ -147,6 +147,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0056-prototype-instance-default-templates.md` | Declaration-only node templates preserve direct PROTO default identity; expansion materializes selected defaults before IS forwarding | `runtime/X3DProto.hpp`; `runtime/X3DProtoExpand.hpp` |
 | covered | `decisions/0057-scene-owned-author-fields.md` | Explicit Scene/declaration owners, shared Inline entry views, safe tracked reflection and scoped clone factories | `scene_author_field_ownership_test.cpp`, migrated Script/codec/cascade tests |
 | covered | `decisions/0058-context-owned-geo-projection.md` | Each execution context fixes its geospatial backend at construction and retains it; no process-wide selector | `geo_projection_ownership_test.cpp`; `runtime/events/X3DExecutionContext.hpp` |
+| covered | `decisions/0059-cube-map-images-through-texture-decode.md` | ImageCubeMapTexture is a url cube ref; the TextureResolver decodes it to six layers (`TexturePixels::layers`) with a std-only DDS decoder shared by the stb and wuffs backends | `runtime/io/dds/DdsDecode.hpp`; `runtime/io/tests/texture_decode_tests.cpp`; `background_desc_test.cpp` |
 
 ## 3. Guides
 

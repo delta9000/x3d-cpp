@@ -200,13 +200,30 @@ public:
   }
 
   // §34.4.1 ComposedCubeMapTexture: each face resolves like a 2D texture.
-  // TextureRef::cubeFaces is front, back, left, right, top, bottom; stored in
-  // CubeFace order. Faces are clamped (§34.4.1 ignores repeatS/T).
+  // §34.4.3 ImageCubeMapTexture: one resolved image of six layers. Both come
+  // in the order front, back, left, right, top, bottom; stored in CubeFace
+  // order. Faces are clamped (§34.4.1 ignores repeatS/T).
   static Texture fromCubeRef(const ex::TextureRef &ref, bool srgb) {
     static constexpr CubeFace order[] = {CubeFace::Front, CubeFace::Back,
                                          CubeFace::Left,  CubeFace::Right,
                                          CubeFace::Top,   CubeFace::Bottom};
     auto faces = std::make_shared<std::array<Texture, 6>>();
+    if (ref.cubeFaces.empty()) {
+      if (!ref.resolvedPixels.ready() || ref.resolvedPixels.pixels->layers != 6)
+        return {}; // pending, failed or not a cube image: flat colour.
+      const auto &p = *ref.resolvedPixels.pixels;
+      const std::size_t layer = static_cast<std::size_t>(p.width) * p.height * 4;
+      if (p.rgba.size() < layer * 6) return {};
+      Sampler s = samplerOf(ref);
+      s.wrapS = s.wrapT = ex::BoundaryMode::ClampToEdge;
+      for (std::size_t i = 0; i < 6; ++i)
+        (*faces)[static_cast<std::size_t>(order[i])] =
+            fromRGBA8(p.rgba.data() + layer * i, static_cast<int>(p.width),
+                      static_cast<int>(p.height), s, srgb);
+      Texture t;
+      t.cube_ = std::move(faces);
+      return t;
+    }
     for (std::size_t i = 0; i < ref.cubeFaces.size() && i < 6; ++i) {
       ex::TextureRef face = ref.cubeFaces[i];
       face.extSampler.boundaryModeS = face.extSampler.boundaryModeT =

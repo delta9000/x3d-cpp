@@ -413,11 +413,14 @@ inline void resolveTextureRefs(
       resolveTextureRefs(ref.multiStages, resolver, memo);
       continue;
     }
-    if (ref.source == TextureRef::Source::Cube) { // resolve each face (CMT-1)
-      resolveTextureRefs(ref.cubeFaces, resolver, memo);
+    if (ref.source == TextureRef::Source::Cube && !ref.cubeFaces.empty()) {
+      resolveTextureRefs(ref.cubeFaces, resolver, memo); // each face (CMT-1)
       continue;
     }
-    if (ref.source != TextureRef::Source::Url) continue; // Inline/Movie: skip.
+    // Url, or an ImageCubeMapTexture's single six-face image (REQ-CUBE).
+    if (ref.source != TextureRef::Source::Url &&
+        ref.source != TextureRef::Source::Cube)
+      continue; // Inline/Movie: skip.
     TexturePixelResult result = TexturePixelResult::makeFailed();
     for (const std::string &url : ref.url) {
       if (url.empty()) continue;
