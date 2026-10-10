@@ -114,6 +114,13 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
     for (const char *face : {"frontTexture", "backTexture", "leftTexture", "rightTexture",
                              "topTexture", "bottomTexture"})
       ref.cubeFaces.push_back(refOf(geombounds::getNode(*texNode, face), slot));
+  } else if (t == "ImageCubeMapTexture") {
+    // §34.4.3: one image file holds all six faces (e.g. a DDS cube map). A
+    // Source::Cube ref with a url and no cubeFaces; the TextureResolver decodes
+    // it to six layers (TexturePixels::layers). load FALSE defers reading.
+    ref.source = TextureRef::Source::Cube;
+    if (geombounds::getField<bool>(*texNode, "load", true))
+      ref.url = geombounds::getField<MFString>(*texNode, "url", {});
   } else if (t == "PixelTexture3D") {
     // §33.4.3: inline voxel data — no IO, materialised verbatim (T3D-1).
     ref.source = TextureRef::Source::Tex3D;

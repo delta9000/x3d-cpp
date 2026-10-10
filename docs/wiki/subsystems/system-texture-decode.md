@@ -53,6 +53,7 @@ using TextureResolver =
 | `runtime/io/stb/StbTextureResolver.{hpp,cpp}` | **Backend A** — stb_image. `makeStbTextureResolver()`. The `.cpp` is the one TU that `#include`s `stb_image.h` (PRIVATE). Built behind `X3D_CPP_BUILD_STB`. |
 | `runtime/io/wuffs/WuffsTextureResolver.{hpp,cpp}` | **Backend B** — wuffs. `makeWuffsTextureResolver()`. The `.cpp` is the one TU that defines `WUFFS_IMPLEMENTATION` and `#include`s the vendored amalgamation (PRIVATE). Built behind `X3D_CPP_BUILD_WUFFS`. |
 | `runtime/io/wuffs/vendor/wuffs-v0.3.c` | The vendored wuffs v0.3.4 single-file amalgamation (Apache-2.0; see `WUFFS_LICENSE.txt`). |
+| `runtime/io/dds/DdsDecode.hpp` | std-only, header-only DDS decoder both backends call on `DDS ` bytes ([ADR-0059](../decisions/0059-cube-map-images-through-texture-decode.md)): 2D textures and §34.4.3 cube maps (six layers in X3D face order), uncompressed masks and BC1-BC3. |
 | `runtime/io/tests/texture_decode_tests.cpp` | The grouped doctest binary `x3d_texture_tests`: per-backend cases, the byte-equal swap-test, Failed-parity, and the composer routing cases. Talks only through the seam factories — no decoder headers. |
 | `runtime/io/tests/fixtures/texture/` | Controlled 8-bit fixtures (PNG/BMP/GIF/TGA) + `generate_fixtures.py` + corrupt/garbage inputs. |
 
@@ -74,6 +75,10 @@ flip to bottom-left origin to honor the seam contract.
   are flipped to bottom-left after decode. `WUFFS_IMPLEMENTATION` and the amalgamation live in the
   single TU only. **No core `#ifdef`.** wuffs additionally brings memory-safe decoding to the
   untrusted bytes AssetResolver fetches.
+
+### DDS and cube-map images
+
+Both backends hand bytes that start with `DDS ` to `runtime/io/dds/DdsDecode.hpp` before their own decoder ([ADR-0059](../decisions/0059-cube-map-images-through-texture-decode.md)). It reads uncompressed 8/16/24/32-bit channel masks and BC1/BC2/BC3 (FourCC or DX10 header), first mip level only. A cube map comes back as `TexturePixels::layers = 6`, faces in X3D order front, back, left, right, top, bottom; DDS's left-handed +Z face is the X3D front. Volume textures, arrays and other formats fail. `texture_dds_cube_and_2d` in `x3d_texture_tests` checks face order, row orientation, BC1/BC3, a partial cube and truncation through each backend. DDS is outside the byte-equal swap matrix, since both backends run the same decoder.
 
 ### Decoding fetched bytes
 

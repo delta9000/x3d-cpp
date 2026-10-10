@@ -138,6 +138,11 @@ endif()
 
 target_compile_features(x3d_poc_renderer PRIVATE cxx_std_20)
 
+# The std-only DDS decoder (runtime/io/dds) the TextureResolver backends share;
+# the PoC's own texture resolver decodes DDS 2D and cube-map images with it.
+target_include_directories(x3d_poc_renderer PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/io/dds")
+
 # Surface the asset/shaders dir to the binary so it can find the bundled
 # hand-written triangle scene + GLSL without a working-directory dance.
 target_compile_definitions(x3d_poc_renderer PRIVATE

@@ -338,6 +338,8 @@ if(X3D_CPP_BUILD_STB)
     target_link_libraries(x3d_stb PUBLIC x3d_cpp::x3d_cpp)
     target_include_directories(x3d_stb PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/stb")
+    target_include_directories(x3d_stb PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/dds")
     # stb_image.h is PRIVATE: only StbTextureResolver.cpp needs it; the factory
     # returns a std::function exchanging std types, so consumers linking x3d_stb
     # inherit no stb headers (decoder-free StbTextureResolver.hpp).
@@ -363,6 +365,8 @@ if(X3D_CPP_BUILD_WUFFS)
     target_link_libraries(x3d_wuffs PUBLIC x3d_cpp::x3d_cpp)
     target_include_directories(x3d_wuffs PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/wuffs")
+    target_include_directories(x3d_wuffs PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/dds")
     # The wuffs amalgamation lives under runtime/io/wuffs/vendor and is included
     # by the TU relative to its own dir (PRIVATE — decoder-free public header).
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -524,7 +528,8 @@ if(TARGET x3d_stb AND TARGET x3d_wuffs AND X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
     target_compile_definitions(x3d_texture_tests PRIVATE
-        FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/fixtures/texture")
+        FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/fixtures/texture"
+        TEMP_DIR="${CMAKE_CURRENT_BINARY_DIR}")
     add_test(NAME x3d_texture_tests COMMAND x3d_texture_tests)
     set_tests_properties(x3d_texture_tests PROPERTIES TIMEOUT 120)
 endif()

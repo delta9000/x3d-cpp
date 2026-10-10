@@ -76,6 +76,7 @@
 #include "ShaderBindingPlan.hpp"   // Phase 5 author-shader vocab dispatch
 #include "StbttGlyphAtlas.hpp"     // T-TEXT glyph atlas (x3d_stbtt io backend)
 #include "TextureResolver.hpp"     // T-TEX decoded-pixel seam (the consumer decode)
+#include "DdsDecode.hpp"           // DDS 2D / cube-map images (§34.4.3)
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DParse.hpp"            // x3d::codec::parseFile
@@ -695,6 +696,11 @@ ex::TextureResolver makeLocalTextureResolver(const std::string &sceneDir) {
     std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(in)),
                                     std::istreambuf_iterator<char>());
     if (bytes.empty()) return ex::TexturePixelResult::makeFailed();
+    if (x3d::runtime::io::dds::isDds(bytes.data(), bytes.size())) {
+      auto px = x3d::runtime::io::dds::decodeDds(bytes.data(), bytes.size());
+      return px ? ex::TexturePixelResult::makeReady(std::move(*px))
+                : ex::TexturePixelResult::makeFailed();
+    }
 
     int w = 0, h = 0, comp = 0;
     stbi_set_flip_vertically_on_load(1); // top-first decode -> GL bottom-up rows.
@@ -1062,16 +1068,46 @@ bool decodeFacePixels(const ex::TextureRef &ref, const ex::AssetResolver &resolv
   return false;
 }
 
-// §34.4.1 ComposedCubeMapTexture as a six-layer GL_TEXTURE_2D_ARRAY in
-// TextureRef::cubeFaces order (front, back, left, right, top, bottom), which
-// multitexture.glsl sampleCubeFaces indexes by direction. §34.2.2 requires
-// equal square faces; a face of another size is resampled (nearest) to the
-// largest, and a missing or undecodable face is white. Faces are clamped
-// (§34.4.1 ignores repeatS/T). Returns 0 while a face is pending.
+// Upload six equal RGBA8 layers as a clamped, linear-filtered 2D array.
+GLuint uploadCubeLayers(const unsigned char *layers, int w, int h, bool srgb) {
+  GLuint tex = 0;
+  glGenTextures(1, &tex);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8, w, h, 6, 0,
+               GL_RGBA, GL_UNSIGNED_BYTE, layers);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+  return tex;
+}
+
+// A §34 cube map as a six-layer GL_TEXTURE_2D_ARRAY in TextureRef::cubeFaces
+// order (front, back, left, right, top, bottom), which multitexture.glsl
+// sampleCubeFaces indexes by direction. ImageCubeMapTexture (no cubeFaces):
+// the SDK-resolved six-layer image (TexturePixels::layers). Composed
+// (§34.4.1): each face decoded; §34.2.2 requires equal square faces, so a face
+// of another size is resampled (nearest) to the largest, and a missing or
+// undecodable face is white. Faces are clamped (§34.4.1 ignores repeatS/T).
+// Returns 0 while anything is pending or when an image is not a cube.
 GLuint resolveCubeTex(const ex::TextureRef &cube, TextureCache &caches,
                       const ex::AssetResolver &resolver, bool srgb) {
   if (cube.source != ex::TextureRef::Source::Cube) return 0;
   TextureCacheFormat &cache = caches.format(srgb);
+  if (cube.cubeFaces.empty()) {
+    if (cube.url.empty() || !cube.resolvedPixels.ready()) return 0;
+    const ex::TexturePixels &p = *cube.resolvedPixels.pixels;
+    const std::string key = "image:" + cube.url.front();
+    if (auto it = cache.byCube.find(key); it != cache.byCube.end()) return it->second;
+    GLuint tex = 0;
+    if (p.layers == 6 && p.rgba.size() >= static_cast<std::size_t>(p.width) * p.height * 24)
+      tex = uploadCubeLayers(p.rgba.data(), static_cast<int>(p.width),
+                             static_cast<int>(p.height), srgb);
+    cache.byCube[key] = tex;
+    return tex;
+  }
   std::string key;
   for (const ex::TextureRef &face : cube.cubeFaces) {
     if (face.source == ex::TextureRef::Source::Inline)
@@ -1103,17 +1139,7 @@ GLuint resolveCubeTex(const ex::TextureRef &cube, TextureCache &caches,
                     &layers[((static_cast<std::size_t>(f) * size + y) * size + x) * 4]);
       }
   }
-  GLuint tex = 0;
-  glGenTextures(1, &tex);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8, size, size,
-               6, 0, GL_RGBA, GL_UNSIGNED_BYTE, layers.data());
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+  GLuint tex = uploadCubeLayers(layers.data(), size, size, srgb);
   cache.byCube[key] = tex;
   return tex;
 }

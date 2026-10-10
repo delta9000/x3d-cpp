@@ -5,6 +5,7 @@
 // in exactly one object file and never leaks to consumers. The factory returns
 // a plain std::function exchanging only std types.
 #include "WuffsTextureResolver.hpp"
+#include "DdsDecode.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -61,6 +62,12 @@ x3d::runtime::extract::TextureResolver makeWuffsTextureResolver() {
     std::vector<std::uint8_t> bytes;
     if (!readFile(url, bytes) || bytes.empty()) {
       return TexturePixelResult::makeFailed();
+    }
+    // DDS: the same std-only decoder as the stb backend (wuffs has none).
+    if (io::dds::isDds(bytes.data(), bytes.size())) {
+      auto px = io::dds::decodeDds(bytes.data(), bytes.size());
+      return px ? TexturePixelResult::makeReady(std::move(*px))
+                : TexturePixelResult::makeFailed();
     }
 
     Rgba8Callbacks callbacks;

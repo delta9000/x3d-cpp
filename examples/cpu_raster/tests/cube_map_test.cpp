@@ -11,14 +11,21 @@
 //   * CAMERASPACEPOSITION: the direction to the fragment (-Z, front face).
 //   * CAMERASPACENORMAL: the normal (+Z at the centre, +X on the right).
 //   * Inside a MultiTexture, a cube stage combines like any other stage.
+//   * §34.4.3 ImageCubeMapTexture: a DDS cube file with the same six colours
+//     decodes (x3d_stb) to the same faces.
 // Before this change the cube ref sampled white, so every pixel was white.
 #include "RuntimeSession.hpp"
+#include "StbTextureResolver.hpp"
 #include "X3DParse.hpp"
 #include "cpuraster/SceneRender.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <string>
+#include <vector>
 
 using namespace x3d::cpuraster;
 namespace rt = x3d::runtime;
@@ -80,7 +87,10 @@ static Framebuffer render(const std::string &texture,
       "<Shape><Appearance>" +
       texture + "</Appearance>" + sphere(generator) +
       "</Shape></Scene></X3D>";
-  auto session = rt::RuntimeSession::create(x3d::codec::parseDocument(scene));
+  rt::SessionOptions options;
+  options.textureResolver = x3d::runtime::io::stb::makeStbTextureResolver();
+  auto session =
+      rt::RuntimeSession::create(x3d::codec::parseDocument(scene), options);
   session->fullSnapshot();
   RenderOptions opt;
   opt.width = opt.height = 128;
@@ -140,6 +150,34 @@ int main() {
     auto fb = render(std::string("<MultiTexture mode='\"MODULATE\" \"MODULATE\"'>") +
                      kCube + "<PixelTexture image='1 1 1 0x80'/></MultiTexture>");
     CHECK(face(fb, c + o, c) == 'h');
+  }
+  {  // ImageCubeMapTexture: a 1x1 BGRA DDS cube, faces stored +X, -X, +Y,
+     // -Y, +Z, -Z (DDS's left-handed layout; +Z is the X3D front).
+    std::vector<std::uint8_t> dds(128, 0);
+    auto put = [&](std::size_t at, std::uint32_t v) {
+      for (int i = 0; i < 4; ++i) dds[at + i] = static_cast<std::uint8_t>(v >> (8 * i));
+    };
+    dds[0] = 'D'; dds[1] = 'D'; dds[2] = 'S'; dds[3] = ' ';
+    put(4, 124); put(8, 0x1007); put(12, 1); put(16, 1); put(76, 32);
+    put(80, 0x41); put(88, 32); put(92, 0xFF0000); put(96, 0xFF00);
+    put(100, 0xFF); put(104, 0xFF000000u); put(108, 0x1008); put(112, 0xFE00);
+    const std::uint8_t bgra[6][4] = {{0, 255, 255, 255}, {255, 0, 0, 255},
+                                     {255, 0, 255, 255}, {255, 255, 0, 255},
+                                     {0, 0, 255, 255},   {0, 255, 0, 255}};
+    for (const auto &face : bgra) dds.insert(dds.end(), face, face + 4);
+    const auto path = std::filesystem::temp_directory_path() / "x3d_cube_map_test.dds";
+    std::ofstream(path, std::ios::binary)
+        .write(reinterpret_cast<const char *>(dds.data()),
+               static_cast<std::streamsize>(dds.size()));
+    auto fb = render("<ImageCubeMapTexture url='\"" + path.string() + "\"'/>");
+    CHECK(face(fb, c, c) == 'B');
+    CHECK(face(fb, c + o, c) == 'R');
+    CHECK(face(fb, c - o, c) == 'L');
+    CHECK(face(fb, c, c + o) == 'T');
+    CHECK(face(fb, c, c - o) == 'D');
+    auto position = render("<ImageCubeMapTexture url='\"" + path.string() + "\"'/>",
+                           generator("CAMERASPACEPOSITION"));
+    CHECK(face(position, c, c) == 'F');
   }
   return failures ? 1 : 0;
 }

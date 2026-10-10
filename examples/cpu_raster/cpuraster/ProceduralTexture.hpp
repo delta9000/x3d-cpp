@@ -218,8 +218,8 @@ inline ex::TextureResolver makeTextureResolver(const std::string &sceneDir,
       return p.rgba.empty() ? ex::TexturePixelResult::makeFailed()
                             : ex::TexturePixelResult::makeReady(std::move(p));
     }
-    if (ends(".png") || ends(".jpg") || ends(".jpeg"))
-      return stb(path);
+    if (ends(".png") || ends(".jpg") || ends(".jpeg") || ends(".dds"))
+      return stb(path); // x3d_stb also decodes DDS, incl. cube maps.
     return ex::TexturePixelResult::makeFailed();
   };
 }

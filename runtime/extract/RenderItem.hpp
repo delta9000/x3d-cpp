@@ -310,7 +310,9 @@ struct TextureRef {
     Inline, // PixelTexture — pixels carried inline below.
     Movie,  // MovieTexture — descriptor-only, not exercised by PoC.
     Multi,  // MultiTexture — stages in multiStages.
-    Cube,   // ComposedCubeMapTexture (§34.4.1): six face refs in cubeFaces.
+    Cube,   // ComposedCubeMapTexture (§34.4.1): six face refs in cubeFaces;
+            // ImageCubeMapTexture (§34.4.3): url, no cubeFaces, and
+            // resolvedPixels with layers = 6 once decoded.
     Buffer, // Phase 1 binary extension: raw bytes provided by the embedder.
             // bufferBytes carries the raw encoded bytes; mimeHint is a MIME
             // type hint ("image/png", "image/jpeg", etc.). The SDK does NOT
