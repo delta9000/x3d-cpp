@@ -1486,8 +1486,8 @@ contradictory MultiTexture entries, REPLACE selects the stage texture and
 SELECTARG2 selects the previous result. These interpretations are tested and
 recorded in the ledger; they should accompany interoperability reports.
 
-Open global findings TXF-2, REQ-MULTITEXTURE-2 and REQ-SHADOW now describe the
-OpenGL PoC's remaining gaps (REQ-MULTITEXTURE itself was fixed in the PoC on
+Open global findings REQ-MULTITEXTURE-2 and REQ-SHADOW now describe the OpenGL
+PoC's remaining gaps (REQ-MULTITEXTURE and TXF-2 were fixed in the PoC on
 2026-10-10). They do not negate the CPU implementations above.
 REQ-UNIT remains open for dimensional fields outside this checked profile and
 for writing a scene after runtime normalization while preserving authoring
