@@ -199,6 +199,11 @@ add_test(NAME x3d_poc_clip_plane_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/clip_plane_gl_test.py"
             $<TARGET_FILE:x3d_poc_renderer>)
 
+# Real GL regression: LocalFog fogs its scope in every built-in program.
+add_test(NAME x3d_poc_local_fog_gl
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/local_fog_gl_test.py"
+            $<TARGET_FILE:x3d_poc_renderer>)
+
 # Real GL regression: scene-authored shaders select, bind uniforms, fall back.
 add_test(NAME x3d_poc_author_shader_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/author_shader_gl_test.py"
