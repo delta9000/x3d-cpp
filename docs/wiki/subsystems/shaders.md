@@ -1,8 +1,8 @@
 ---
-title: "Shaders (ComposedShader introspection + binding plan)"
-summary: "Author-shader binding INFRASTRUCTURE: ShaderProgramDesc / ShaderStageDesc / ShaderFieldBinding descriptors; ShaderUniformVocabulary typed portability surface; buildBindingPlan() vocab/author-field/unrecognized dispatch. ComposedShader extraction wiring (populating RenderItem::shaderProgram) is a deferred follow-on."
+title: "Shaders (selection, program descriptors + binding plan)"
+summary: "§31 shaders end to end: selectShader() picks each Appearance's first valid GLSL ComposedShader/ProgramShader and SceneExtractor puts it on RenderItem::shaderProgram; ShaderSystem emits isSelected/isValid and handles activate; ShaderUniformVocabulary + buildBindingPlan() classify uniforms; cpu_raster and the GL PoC run the program."
 tags: [subsystem, shaders, extract, composedshader, vocab, binding-plan]
-updated: 2026-09-26
+updated: 2026-10-10
 related:
   - ../architecture.md
   - ../subsystems/materials.md
@@ -10,13 +10,64 @@ related:
   - ../decisions/0021-material-shader-design.md
 ---
 
-# Shaders (ComposedShader introspection + binding plan)
+# Shaders (selection, program descriptors + binding plan)
 
 ## Purpose
 
-This subsystem provides the **infrastructure** for `ComposedShader` author-shader support: `ShaderProgramDesc` / `ShaderUniformVocabulary` / `buildBindingPlan()` are fully defined and tested, and the PoC consumer's PATH 4 dispatch is wired to drive them.  The **parse side is now captured**: the XML reader lands a `ComposedShader`'s author `<field>` uniforms in the current `Scene::authorFields` store and each `ShaderPart`'s inline `<![CDATA[...]]>` GLSL in `ShaderPart.sourceCode` (see [parse-readers](parse-readers.md); `x3d_xml_composed_shader` test).  **However, the ComposedShader extraction itself — populating `RenderItem::shaderProgram` from the scene graph — is not yet wired.**  `RenderItem::shaderProgram` is never set by any extractor codepath, so PATH 4 is currently unreachable; a consumer that wants ComposedShader today must walk the scene graph itself (Shape → `Appearance.shaders` → `ComposedShader.parts`) to assemble the program.  Extraction-layer population is a tracked follow-on.
+This subsystem carries §31 programmable shaders from the scene graph to a
+renderer. `selectShader()` (`runtime/extract/ShaderExtract.hpp`) chooses each
+Appearance's program, `SceneExtractor` puts it on `RenderItem::shaderProgram`,
+and `ShaderSystem` (`runtime/events/ShaderSystem.hpp`) reports the choice to
+the scene as `isSelected`/`isValid` events. A consumer binds the program and
+calls `buildBindingPlan()` to classify each uniform name into three buckets:
+**vocab match** (a known semantic from the vocabulary header), **author field**
+(a `<field>` declared on the shader), or **unrecognized** (a diagnostic with a
+nearest-vocab suggestion).
 
-When extraction is wired, the design intent is: the extraction layer surfaces a `ComposedShader` as a `ShaderProgramDesc` on the `RenderItem`; the consumer calls `buildBindingPlan()` to classify each uniform name into three buckets: **vocab match** (a known semantic from the vocabulary header), **author field** (a `<field>` declared on the `ComposedShader`), or **unrecognized** (a diagnostic with a nearest-vocab suggestion).  This gives the consumer a typed portability surface for binding SDK-managed state to author shaders without re-inventing the naming convention.
+## Selection and sources (§31.2.2.3, §31.2.4)
+
+`selectShader(appearance, authorFields, ShaderOptions)` walks
+`Appearance.shaders` in order and returns the first candidate that is:
+
+1. a `ComposedShader` (ShaderPart children) or `ProgramShader` (ShaderProgram
+   children) — `PackagedShader` and other nodes are skipped;
+2. in language `GLSL` (case-insensitive) — HLSL/Cg candidates stay inert, as
+   §31.2.2.3 permits;
+3. fully sourced: each part's inline body (`sourceCode`, filled from the XML
+   CDATA for ShaderPart and ShaderProgram), else its first url that resolves.
+   `data:` urls (RFC 2397, percent-encoded or `;base64`) decode in the SDK;
+   other urls go to `ShaderOptions::resolver` with `AssetKind::Shader`, and a
+   Pending result marks the candidate `pending`. `load` FALSE skips the urls;
+4. valid according to `ShaderOptions::validator` — the host's compile check.
+   The default, `structuralShaderValidation`, wants one VERTEX and one FRAGMENT
+   part. The SDK cannot compile GLSL, so a host that can should supply its own.
+
+The result lists the candidates it evaluated (with each host error) and, when
+one wins, the assembled `ShaderProgramDesc`. With no winner the item keeps the
+fixed-function material path.
+
+`ShaderOptions` lives on `MeshBuildOptions::shaders`. `RuntimeSession` hands the
+same options to `attachStandardRuntime`, so the extractor and `ShaderSystem`
+agree on the selection.
+
+## Events and updates (§31.3.2)
+
+`ShaderSystem` attaches to every Appearance, shader and part. It re-runs the
+selection after a write to `Appearance.shaders`, a shader's `parts`/`programs`,
+or a part's `url`/`load`/`sourceCode`/`type`, after `activate` TRUE, and each
+tick while a url is Pending. It emits:
+
+- `isValid` for each evaluated candidate when first evaluated, when its validity
+  changes and after every `activate` TRUE (nothing while its url is Pending);
+- `isSelected` TRUE when the shader becomes the selection of at least one
+  Appearance and FALSE when it stops being selected anywhere.
+
+Edits take effect immediately; `activate` TRUE additionally re-resolves urls
+and re-runs the validator (an interpretation recorded in the
+[requirements audit](../guides/x3d4-requirements-audit.md#shader-selection-and-execution-2026-10-10)).
+On the extraction side, shaders, parts and programs are appearance-subtree
+nodes, so uniform events, source edits and the emitted outputs all reach
+`delta()` as `updatedMaterial`, and `refreshMaterial()` re-selects.
 
 Composed-geometry `attrib` children are extracted separately from the uniform
 binding plan. `MeshData::vertexAttributes` contains one stream per supported
@@ -32,6 +83,9 @@ inputs.
 
 | File | Role |
 |---|---|
+| `runtime/extract/ShaderExtract.hpp` | `selectShader()` — §31.2.2.3 selection, part source resolution (`data:` decode, resolver), field values |
+| `runtime/extract/ShaderOptions.hpp` | `ShaderOptions` (resolver + validator), `ShaderValidation`, `structuralShaderValidation()` |
+| `runtime/events/ShaderSystem.hpp` | `isSelected` / `isValid` events and `activate`; attached by `attachShaders()` / `attachStandardRuntime()` |
 | `runtime/extract/RenderItem.hpp` | Defines `ShaderStageDesc`, `ShaderFieldBinding`, `ShaderProgramDesc` (the extraction descriptors), and `X3DFieldValue` (discriminated union for author `<field>` values) |
 | `runtime/extract/X3DFieldValue.hpp` | `X3DFieldValue` variant covering all non-node SF types — `float`, `int`, `bool`, `SFColor`, `SFColorRGBA`, `SFVec2f/3f/4f`, `SFMatrix3f/4f`, `SFString` |
 | `runtime/extract/ShaderUniformVocabulary.hpp` | `kVocabulary[]` constexpr table + `UniformSource` enum — the typed portability surface |
@@ -56,13 +110,23 @@ struct ShaderFieldBinding {
 };
 
 struct ShaderProgramDesc {
-  std::vector<ShaderStageDesc>    stages;
-  std::vector<ShaderFieldBinding> fields;
-  std::string                     language;  // "GLSL" / "CG" / ""
+  std::vector<ShaderStageDesc>    stages;      // resolved source per part, in order
+  std::vector<ShaderFieldBinding> fields;      // author <field>s with current values
+  bool isSelected = false;                     // true on an extracted item
+  bool isValid = false;                        // true on an extracted item
+  std::string lastError;
+  std::vector<std::string> attributeBindings;
+  std::string language;                        // "GLSL"
 };
 ```
 
 A non-null `ShaderProgramDesc` on a `RenderItem` signals the consumer to bind the author program instead of the fixed-function material path.
+
+Field values: SF scalar, vector, colour and matrix types map directly;
+SFDouble/SFTime narrow to float, SFRotation becomes `(x, y, z, angle)` and the
+double vectors/matrices narrow to float. SFNode (texture) and MF (array)
+fields are listed with an empty value: `X3DFieldValue` has no channel for them
+yet (finding REQ-SHADER-2).
 
 ## ShaderUniformVocabulary
 
@@ -103,11 +167,11 @@ The result `ShaderBindingPlan::entries` is a classified, ordered list parallel t
 
 ## PoC consumer dispatch (Phase 5)
 
-The PoC consumer in `examples/poc_renderer/main.cpp` demonstrates the four-program dispatch:
+The PoC consumer in `examples/poc_renderer/main.cpp` demonstrates the four-program dispatch. Its `makeGlShaderValidator` compiles and links each candidate in the GL context, so a program that fails to compile is skipped for the next shader or the material (`tests/author_shader_gl_test.py`):
 
 | Condition | Program | Shader files |
 |---|---|---|
-| `item.shader` non-null | author | compiled per-ComposedShader, cached by source hash (PATH 4; currently unreachable — ComposedShader extraction not yet wired) |
+| `item.shaderProgram` set and valid | author | compiled per program, cached by source (PATH 4); every SF author field is uploaded |
 | `topology != Triangles OR !hasNormals` | unlit | `unlit.vert` / `unlit.frag` |
 | `model == Physical` | PBR | `lit.vert` / `pbr.frag` |
 | `model == Phong` | Phong | `lit.vert` / `lit.frag` |
@@ -141,11 +205,14 @@ This keeps the vocabulary includable in any header without dragging in the full 
 headlessly (no GPU/GLFW). It carries **CPU ports** of `lit.frag`/`pbr.frag`/
 `unlit.frag` (all three material models) written against a small `glsl::` value
 layer, **and** a GLSL-subset **interpreter** (`cpuraster/GlslInterpreter.hpp`)
-that *executes* author `ComposedShader` fragment source on the CPU — the
-`RenderItem::shaderProgram` path, reachable today via the binary's `--frag` flag
-even before the SDK wires ComposedShader extraction. It binds the same
-`ShaderUniformVocabulary` names this seam defines, making the shader seam testable
-as a GPU-free golden-image harness; see `examples/cpu_raster/README.md`.
+that *executes* the FRAGMENT stage of each item's `RenderItem::shaderProgram`
+with its author fields as uniforms (`cpuraster/AuthorShader.hpp`). Its
+`interpreterShaderValidator()` makes "the fragment stage compiles in the
+interpreter" the host's isValid check; the vertex stage is accepted but not run
+(the rasterizer supplies the varyings). `--frag` still forces one fragment
+shader onto every item. It binds the same `ShaderUniformVocabulary` names this
+seam defines, making the shader seam testable as a GPU-free golden-image
+harness (`tests/author_shader_test.cpp`); see `examples/cpu_raster/README.md`.
 
 Its `cpuraster/Texture.hpp` sampler consumes the §18.4.9 state surfaced on
 `TextureRef::extSampler` (see [Texture extraction](extract-textures.md)):
@@ -162,5 +229,5 @@ emission; the OpenGL PoC retains the remaining limitations recorded in the ledge
 - [Materials subsystem](materials.md) — `MaterialDesc` discriminated union this seam sits alongside.
 - [Texture, Material, and Light Extraction](extract-textures.md) — the broader extraction pipeline.
 - Design spec: `docs/superpowers/specs/2026-06-21-material-shader-design.md`
-- Source files: `runtime/extract/ShaderUniformVocabulary.hpp`, `runtime/extract/ShaderBindingPlan.hpp`, `runtime/extract/RenderItem.hpp`, `runtime/extract/X3DFieldValue.hpp`
+- Source files: `runtime/extract/ShaderExtract.hpp`, `runtime/extract/ShaderOptions.hpp`, `runtime/events/ShaderSystem.hpp`, `runtime/extract/ShaderUniformVocabulary.hpp`, `runtime/extract/ShaderBindingPlan.hpp`, `runtime/extract/RenderItem.hpp`, `runtime/extract/X3DFieldValue.hpp`
 - PoC consumer: `examples/poc_renderer/main.cpp`, `examples/poc_renderer/shaders/pbr.frag`

@@ -144,7 +144,7 @@ evidence, not whole-component proofs.
 | [DIS](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html) / 2 | Implement transport, PDU encode/decode, entity mapping and network-driven events in the host. | `runtime/scene/ViewDependentSystem.hpp` has local PDU state only; NSN-10 | Partial |
 | [Scripting](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/scripting.html) / 1 | Resolve Full-profile Java support; audit ECMAScript binding and every SAI service independently of Script lifecycle tests. | `runtime/script/ScriptSystem.hpp`, `EcmaScriptBackend.cpp`, `QuickJsBackend.cpp`; REQ-JAVA | Partial |
 | [EventUtilities](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html) / 1 | Sign off filters, sequencers and triggers across boundary values, timestamps and ROUTE feedback. | `runtime/events/EventUtilitySystem.hpp`, `runtime/events/tests/event_utility_test.cpp`, `event_utility_output_admission_test.cpp`, `runtime/extract/tests/interactive_profile_test.cpp`; IACC-2/3 fixed | Unverified |
-| [Shaders](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html) / 1 | Wire authored programs and lifecycle feedback; demonstrate one supported shading language and its binding obligations. | `SceneExtractor::shaderProgram`, `runtime/extract/tests/shader_binding_plan_test.cpp`, `runtime/codecs/tests/xml_composed_shader_test.cpp`; REQ-SHADER | Partial |
+| [Shaders](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html) / 1 | Bind texture and array uniforms; run geometry/tessellation stages in a host that links them. | `runtime/extract/ShaderExtract.hpp`, `runtime/events/ShaderSystem.hpp`, `runtime/extract/tests/shader_selection_test.cpp`, cpu_raster `author_shader_test`, PoC `author_shader_gl_test.py`; REQ-SHADER fixed, REQ-SHADER-2 | Partial |
 | [CADGeometry](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html) / 2 | Verify CAD hierarchy, face placement, visibility, quad geometry and live edits; generic traversal alone is insufficient evidence. | `SceneExtractor.hpp`, `TransformSystem.hpp`, `runtime/extract/tests/scene_extractor_audit_test.cpp` | Unverified |
 | [Texturing3D](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html) / 2 | Supply 3D image/pixel/composed textures, coordinates, transforms, sampling and updates. | `MaterialSystem::refOf` has no 3D path; T3D-1 | Partial |
 | [CubeMapTexturing](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html) / 3 | Implement image/generated cubes and consume cube descriptors as environment maps. | `MaterialSystem::refOf`, `runtime/extract/tests/background_desc_test.cpp`; REQ-CUBE | Partial |
@@ -1546,3 +1546,29 @@ Optional Annex C fields remain stored and evented without user-interface use:
 NavigationInfo `avatarSize`, `speed` (used by FLY) and `visibilityLimit`,
 Viewpoint `description` and `retainUserOffsets`. Inline `load` is optional in
 the profile and is not part of this acceptance.
+
+## Shader selection and execution (2026-10-10)
+
+Step 3 of the completion order starts with shader execution (REQ-SHADER). The
+SDK now selects each Appearance's program and the reference hosts run it.
+
+| Requirement | Concrete implementation and acceptance evidence |
+|---|---|
+| §31.2.2.3 selection | `ShaderExtract.hpp::selectShader` takes the first ComposedShader or ProgramShader in `Appearance.shaders` whose language is GLSL and whose program is valid. HLSL/Cg candidates and PackagedShader are skipped and stay inert; later candidates are not evaluated. No valid candidate leaves `RenderItem::shaderProgram` empty and the material draws. |
+| §31.2.4 / §31.4 sources | Inline CDATA (`ShaderPart` and `ShaderProgram` `sourceCode`), then the first resolving url: `data:` urls (percent-encoded or base64) decode in the SDK, other urls go to `ShaderOptions::resolver` with `AssetKind::Shader`. A Pending url defers validity and the System retries each tick. |
+| §31.3.2 outputs | `ShaderSystem` emits `isValid` when a candidate is first evaluated, when its validity changes and after each `activate` TRUE, and `isSelected` when the selection changes. The host's compiler decides validity through `ShaderOptions::validator` (default: a VERTEX and a FRAGMENT part). |
+| Live uniforms and edits | Author `<field>` values (SF scalar, vector, colour, rotation and matrix types) are copied onto `ShaderProgramDesc::fields`. Uniform events, url/sourceCode edits and `activate` reach the incremental delta as `updatedMaterial`. |
+| Reference hosts | cpu_raster runs the selected fragment stage in its GLSL interpreter and validates with that interpreter (`author_shader_test`: uniform colour on screen, uniform event, fall-through past a program that does not compile, material fallback). The OpenGL PoC validates by compiling and linking in its context and uploads every SF uniform type (`author_shader_gl_test.py`, the same cases under Xvfb). |
+
+Interpretations recorded with this acceptance:
+
+- Edits to `parts`, `programs`, a part's `url`, `load`, `sourceCode` or `type`
+  take effect immediately. `activate` TRUE re-resolves urls and re-runs the
+  validator, so a host can reload a changed file. §31.3.2 leaves the
+  activation conditions to each language binding.
+- `isValid` is reported only for candidates the selection evaluated. A shader
+  after the selected one in the list sends nothing.
+
+REQ-SHADER-2 records what is still ignored: SFNode texture uniforms and MF
+array uniforms carry no value, the PoC links only the vertex and fragment
+stages, and the CPU host interprets only the fragment stage.
