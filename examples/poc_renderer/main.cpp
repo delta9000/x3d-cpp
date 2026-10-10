@@ -1871,14 +1871,26 @@ int main(int argc, char **argv) {
       };
 
       // §24.4.2: the bound Fog, world-scaled by the extractor. visibilityRange
-      // 0 disables fog (the shaders no-op). Uploaded per program bind.
+      // 0 disables fog (the shaders no-op). §24.4.3: an item inside a
+      // LocalFog's grouping scope is fogged by that LocalFog instead (the
+      // extractor tags the nearest enabled one), so fog is uploaded per draw.
       const ex::FogDesc fogDesc = extractor.fog();
-      const int fogType = (fogDesc.fogType == ex::FogDesc::Type::Exponential) ? 1 : 0;
-      auto uploadFog = [&](GLint locColor, GLint locType, GLint locRange) {
-        if (locColor >= 0)
-          glUniform3f(locColor, fogDesc.color.r, fogDesc.color.g, fogDesc.color.b);
-        if (locType >= 0) glUniform1i(locType, fogType);
-        if (locRange >= 0) glUniform1f(locRange, fogDesc.visibilityRange);
+      auto uploadFog = [&](const ex::RenderItem &item, GLint locColor, GLint locType,
+                           GLint locRange) {
+        SFColor color = fogDesc.color;
+        ex::FogDesc::Type type = fogDesc.fogType;
+        float range = fogDesc.visibilityRange;
+        const auto &locals = extractor.snapshotLocalFogs();
+        if (item.localFog >= 0 && item.localFog < static_cast<int>(locals.size())) {
+          const ex::LocalFogDesc &lf = locals[item.localFog];
+          color = lf.color;
+          type = lf.fogType;
+          range = lf.visibilityRange;
+        }
+        if (locColor >= 0) glUniform3f(locColor, color.r, color.g, color.b);
+        if (locType >= 0)
+          glUniform1i(locType, type == ex::FogDesc::Type::Exponential ? 1 : 0);
+        if (locRange >= 0) glUniform1f(locRange, range);
       };
 
       // Helper: per-draw culling from mesh winding/solidity.
@@ -1967,10 +1979,10 @@ int main(int argc, char **argv) {
             glUseProgram(unlitProg);
             glUniformMatrix4fv(uUnlitView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uUnlitProj, 1, GL_FALSE, proj.m.data());
-            uploadFog(uUnlitFogColor, uUnlitFogType, uUnlitFogRange);
             boundProg = unlitProg;
           }
           glUniformMatrix4fv(uUnlitModel, 1, GL_FALSE, it.worldTransform.m.data());
+          uploadFog(it, uUnlitFogColor, uUnlitFogType, uUnlitFogRange);
           glUniform4f(uUnlitBaseColor, c.r, c.g, c.b, c.a);
           glUniform1i(uUnlitHasColors, g.hasColors ? 1 : 0);
           // SEAM-LINEPOINT: §12.4.8 PointProperties → gl_PointSize (unlit.vert).
@@ -2005,11 +2017,11 @@ int main(int argc, char **argv) {
             glUniformMatrix4fv(uView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uProj, 1, GL_FALSE, proj.m.data());
             uploadLights(phongProg, uNumLights, uLightDirEye, uLightColor, uLightAmbient);
-            uploadFog(uFogColor, uFogType, uFogRange);
             boundProg = phongProg;
           }
           // Per-path model + eye-space normal matrix.
           glUniformMatrix4fv(uModel, 1, GL_FALSE, it.worldTransform.m.data());
+          uploadFog(it, uFogColor, uFogType, uFogRange);
           std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
           glUniformMatrix3fv(uNormalMat, 1, GL_FALSE, nrm.data());
           uploadLitPointSize(phongProg);
@@ -2084,10 +2096,10 @@ int main(int argc, char **argv) {
             glUniformMatrix4fv(uPbrView, 1, GL_FALSE, view.m.data());
             glUniformMatrix4fv(uPbrProj, 1, GL_FALSE, proj.m.data());
             uploadLights(pbrProg, uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
-            uploadFog(uPbrFogColor, uPbrFogType, uPbrFogRange);
             boundProg = pbrProg;
           }
           glUniformMatrix4fv(uPbrModel, 1, GL_FALSE, it.worldTransform.m.data());
+          uploadFog(it, uPbrFogColor, uPbrFogType, uPbrFogRange);
           std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
           glUniformMatrix3fv(uPbrNormalMat, 1, GL_FALSE, nrm.data());
           uploadLitPointSize(pbrProg);

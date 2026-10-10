@@ -145,6 +145,10 @@ python3 examples/poc_renderer/tests/texgen_gl_test.py "$POC"
 echo "== poc ClipPlane gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/clip_plane_gl_test.py "$POC"
 
+# ---- ENVIRONMENTAL EFFECTS LocalFog GL pixel regression (REQ-LOCALFOG) -----
+echo "== poc LocalFog gate under Xvfb (software GL) =="
+python3 examples/poc_renderer/tests/local_fog_gl_test.py "$POC"
+
 # ---- SHADERS scene-authored program GL pixel regression (REQ-SHADER) -------
 echo "== poc author-shader selection gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/author_shader_gl_test.py "$POC"

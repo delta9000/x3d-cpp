@@ -71,6 +71,9 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **LocalFog in the OpenGL PoC (REQ-LOCALFOG).** Phong, PBR and unlit draws
+  now use the item's in-scope `LocalFog` (`RenderItem::localFog`) instead of
+  always the bound global `Fog`. New Xvfb pixel gate `local_fog_gl_test.py`.
 - **ClipPlane in the OpenGL PoC (REQ-CLIP).** The built-in Phong, PBR and
   unlit programs now clip with `gl_ClipDistance` against each item's planes in
   eye space, and author programs receive them as the `numClipPlanes` /
