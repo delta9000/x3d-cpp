@@ -1233,8 +1233,8 @@
   clause: "18.4.8"
   severity: major
   status: open
-  summary: The CPU reference host implements all TextureCoordinateGenerator modes; the OpenGL PoC still implements a subset.
-  note: "CPU unlit, Phong and PBR select coordinates independently for each texture stage and material slot. All eleven Table 18.6 modes consume local/eye positions and normals, noise scale/translation and refraction parameters; generated coordinates receive the matching TextureTransform. Deterministic 3D Perlin noise and refract-based mapping are documented implementation choices where the published table is underspecified. Tests: texcoord_gen_test and interchange_test. The PoC still handles four camera-space modes per vertex, has the reversed reflection eye vector, and maps the other modes to authored UVs. This finding remains open for that consumer. (2026-10-02)"
+  summary: The CPU reference host implements all TextureCoordinateGenerator modes; the OpenGL PoC still lacks the local, noise and refraction modes.
+  note: "CPU unlit, Phong and PBR select coordinates independently for each texture stage and material slot. All eleven Table 18.6 modes consume local/eye positions and normals, noise scale/translation and refraction parameters; generated coordinates receive the matching TextureTransform. Deterministic 3D Perlin noise and refract-based mapping are documented implementation choices where the published table is underspecified. Tests: texcoord_gen_test and interchange_test. The PoC handles the four camera-space modes plus COORD-EYE per vertex and maps the other modes to authored UVs. Its COORD-EYE fallback and reversed reflection eye vector were fixed for issue #140 and are covered by examples/poc_renderer/tests/texgen_gl_test.py (run by validate-examples). This finding remains open for the PoC's local, noise and refraction modes. (2026-10-10)"
 - id: TXF-4
   nodes: [TextureCoordinateGenerator]
   component: Texturing
@@ -2743,8 +2743,8 @@
   clause: "4.3.6; 7.2.5.5"
   severity: major
   status: open
-  summary: Runtime applies UNIT factors to explicitly authored known dimensional values at initialization; field coverage and conversion-aware writing remain incomplete.
-  note: "Runtime entry normalizes explicitly authored known dimensional fields to initial/SI units, while generated built-in defaults remain canonical. Focused tests: `UNIT runtime: equivalent authored length and angle geometry`, `UNIT runtime: routed motion, defaults, and subsequent writes use initial units`, `UNIT runtime: Inline and EXTERNPROTO use their source units`, `UNIT runtime: PhysicsSystem receives kilograms and newtons`, and `UNIT runtime: custom PROTO values convert independently at dimensional IS targets`. TextureTransform.rotation now also converts authored angle units, including dimensional IS targets; two TextureTransform UNIT regressions retain dimensionless UV center/translation/scale, defaults, idempotent initialization and subsequent radian writes. Coverage demonstrates equivalent degree/radian geometry, routed updates, length, mass, force and torque, source-specific Inline/EXTERNPROTO factors, dimensional IS targets, and codec round-trip preservation before runtime. REQ-UNIT remains open: the field-dimension map and its range are incomplete, and serialization after runtime conversion does not yet preserve authoring units. Background and TextureBackground skyAngle/groundAngle now normalize authored angle units, with an idempotence regression. Resolve the published Core wording on external UNIT declarations separately from the demonstrated runtime behavior."
+  summary: Runtime applies UNIT factors to explicitly authored known dimensional values at initialization; components beyond Interactive and conversion-aware writing remain incomplete.
+  note: "Runtime entry normalizes explicitly authored known dimensional fields to initial/SI units, while generated built-in defaults remain canonical. Focused tests: `UNIT runtime: equivalent authored length and angle geometry`, `UNIT runtime: routed motion, defaults, and subsequent writes use initial units`, `UNIT runtime: Inline and EXTERNPROTO use their source units`, `UNIT runtime: PhysicsSystem receives kilograms and newtons`, and `UNIT runtime: custom PROTO values convert independently at dimensional IS targets`. TextureTransform.rotation now also converts authored angle units, including dimensional IS targets; two TextureTransform UNIT regressions retain dimensionless UV center/translation/scale, defaults, idempotent initialization and subsequent radian writes. Coverage demonstrates equivalent degree/radian geometry, routed updates, length, mass, force and torque, source-specific Inline/EXTERNPROTO factors, dimensional IS targets, and codec round-trip preservation before runtime. REQ-UNIT remains open: the field-dimension map and its range are incomplete, and serialization after runtime conversion does not yet preserve authoring units. Background and TextureBackground skyAngle/groundAngle now normalize authored angle units, with an idempotence regression. Every length/angle field of the Interactive profile's nodes is now mapped: X3DBoundedObject bboxCenter/bboxSize on every node (the -1 -1 -1 bboxSize sentinel is kept), PlaneSensor axisRotation, and PointLight/SpotLight attenuation, whose linear and quadratic coefficients scale by 1/length and 1/length^2 so falloff is equivalent at the same physical distance (`UNIT runtime: Interactive-profile bounds, sensor and light fields`). Still open: fields of components beyond Interactive that are not in the map (for example TextureCoordinateGenerator SPHERE-REFLECT-LOCAL eye parameters) and serialization in authoring units after runtime conversion. Resolve the published Core wording on external UNIT declarations separately from the demonstrated runtime behavior."
 - id: REQ-CLIP
   nodes: [ClipPlane]
   component: Rendering
@@ -3055,3 +3055,40 @@
     parser and Script tests. This is a concrete source/ABI migration with no
     singleton or TLS fallback, not full Script/PROTO/SAI conformance. The separate
     Geo projection selector and local-file parse operation context remain.
+
+# Interactive profile (Annex C) reference host acceptance, 2026-10-10.
+# runtime/extract/tests/interactive_profile_test.cpp drives an XML scene through
+# RuntimeSession's public input seam; these are the gaps it found or confirmed.
+- id: IACC-1
+  nodes: [CylinderSensor]
+  component: PointingDeviceSensor
+  clause: "20.4.1"
+  severity: major
+  status: fixed
+  summary: CylinderSensor rotation_changed turned the opposite way to the drag.
+  note: "The disk and cylinder angle used cross(ref, cur).y with the wrong sign, so dragging from +Z toward +X produced a negative rotation about +Y; §20.4.1 specifies the right-handed rotation from the original intersection. A routed Transform therefore spun against the pointer, and minAngle/maxAngle clamped the wrong side. drag/CylinderDrag.hpp now uses ref.z*cur.x - ref.x*cur.z; drag_math_test pins the right-handed sign and interactive_profile_test covers cylinder and disk drags end to end, including clamp and autoOffset."
+- id: IACC-2
+  nodes: [BooleanToggle]
+  component: EventUtilities
+  clause: "30.4.3"
+  severity: minor
+  status: fixed
+  summary: Two TRUE set_boolean events in one cascade both computed the toggle from the same stored value.
+  note: "Each TRUE now flips the stored state at once and schedules one re-read publication per cascade, so N TRUE inputs flip N times and storage, observers and ROUTEs agree on one toggle_changed with the final value. FALSE stays a no-op and set_toggle is ordinary inputOutput delivery. If set_toggle and a later TRUE both arrive in one cascade, state and observers follow both while the outgoing ROUTE keeps the legacy one-delivery-per-timestamp cap shared by every inputOutput field. Tests: event_utility_output_admission_test (BooleanToggle cases) and interactive_profile_test's routed click state machine."
+- id: IACC-3
+  nodes: [BooleanSequencer, IntegerSequencer]
+  component: EventUtilities
+  clause: "30.2.4"
+  severity: minor
+  status: fixed
+  summary: Sequencers emitted value_changed for every set_fraction, not once per key interval.
+  note: "SequencerSystem remembers the key interval of the last fraction that emitted and stays silent while later fractions remain in it. next/previous and key/keyValue edits forget that interval, so the following fraction emits even in the same interval. Per-cascade output admission is unchanged: a fraction suppressed by admission still selects its interval. Tests: event_utility_output_admission_test (`sequencer emits one value_changed per key interval across timestamps`) and interactive_profile_test's TimeSensor-driven sequencers."
+- id: IACC-4
+  nodes: [Anchor]
+  component: Networking
+  clause: "9.4.1"
+  severity: minor
+  status: fixed
+  summary: A RuntimeSession host could not receive Anchor activations whose url is not an in-scene viewpoint.
+  note: "AnchorSystem already bound \"#Name\" viewpoints and called an optional handler for other urls, but attachInteractive created the system without exposing it. SessionOptions::anchorHandler (and an attachInteractive parameter) now install the handler, which receives the url and parameter lists. The headless runtime still loads nothing itself. Test: interactive_profile_test Anchor case."
+

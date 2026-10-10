@@ -152,9 +152,9 @@ All math runs in the sensor-local frame. The `sensorFrame` matrix is `worldOf(se
 
 Key implementation details:
 
-- **PlaneSensor**: tracking plane is `z = p0Local.z` in the sensor frame; delta relative to the activation hit is clamped per-component (`min > max` → unclamped; `min == max` → line sensor locked to that value).
+- **PlaneSensor**: tracking plane is `z = p0Local.z` in the sensor frame; delta relative to the activation hit is clamped per-component (`min > max` → unclamped; `min == max` → line sensor locked to that value). `translation_changed` and `trackPoint_changed` are expressed in the local sensor coordinate system that `axisRotation` creates (§20.4.2), so with a 90° `axisRotation` about Z a vertical drag reports translation along sensor X. That is our reading of the published text, which never names the output frame explicitly.
 - **SphereSensor**: virtual sphere of radius `|p0Local|`; relative rotation from `p0_hat` to `p_hat` composed as `q_rel * q_offset` (offset is the base, drag on top).
-- **CylinderSensor**: mode (disk vs cylinder) decided once at activation from the acute angle between the activation bearing direction and the sensor +Y axis versus `diskAngle`; disk mode uses the `y = 0` plane of the sensor frame (not the activation hit's Y — conformance finding DS-1); cylinder mode uses the infinite cylinder `x² + z² = r²`; angle clamped between `minAngle` and `maxAngle` when `minAngle <= maxAngle`.
+- **CylinderSensor**: mode (disk vs cylinder) decided once at activation from the acute angle between the activation bearing direction and the sensor +Y axis versus `diskAngle`; disk mode uses the `y = 0` plane of the sensor frame (not the activation hit's Y — conformance finding DS-1); cylinder mode uses the infinite cylinder `x² + z² = r²`; the angle is the right-handed rotation about +Y from the activation point to the current one (a drag from +Z toward +X is positive, IACC-1); angle clamped between `minAngle` and `maxAngle` when `minAngle <= maxAngle`.
 
 On a degenerate intersection (bearing parallel to plane, missed sphere/cylinder) each function returns a `valid=false` result holding the last valid value, so the system can emit a continuous output stream (spec-allowed behavior).
 
@@ -175,10 +175,15 @@ pointer, so navigation does not also drag or LOOKAT. The url list is tried in
 order: `"#Name"` binds the viewpoint DEF'd `Name` (`set_bind` TRUE); any other
 url is passed with the `parameter` list to the embedder's
 `AnchorSystem::setAnchorHandler` callback, which loads a replacement world or
-opens a window (cases b/c). With no handler, a non-fragment url does nothing: the
+opens a window (cases b/c). A `RuntimeSession` host installs it through
+`SessionOptions::anchorHandler`; `attachInteractive` takes the same handler as
+an optional argument. With no handler, a non-fragment url does nothing: the
 runtime is headless.
 
 ## How it is tested
+
+- `ctest --preset dev -R x3d_extract_tests` (doctest suite: `Interactive profile acceptance`) — Annex C acceptance through `RuntimeSession`: XML scenes driven only by the pointer seam. Covers TouchSensor local hit point/normal/texture coordinate under a scaled Transform, touchTime only on release over the geometry, lowest/sibling/disabled sensor resolution, PlaneSensor clamp per axis, axisRotation and autoOffset, CylinderSensor cylinder and disk drags (right-handed sign, clamp, offset), SphereSensor rotation and offset, and Anchor `#Viewpoint` binding plus `SessionOptions::anchorHandler`.
+  Source: `runtime/extract/tests/interactive_profile_test.cpp`
 
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `events_misc_test`) — Anchor: a click on a `#Far` Anchor binds that viewpoint; a non-fragment url reaches the handler with url + parameter; releasing off the Anchor does not activate it.
 
@@ -187,7 +192,7 @@ Two dedicated ctest targets cover this subsystem:
 - `ctest --preset dev -R x3d_events_tests` (doctest case: `pointing_sensor_test`) — integration tests for the full `PointingSensorSystem` over in-code scene graphs. Covers: `isOver` enter/leave and no-event-when-revision-unchanged (§20.4.4); lowest-sensor-wins on nested groups (§20.2.1); nearest-geometry selection (§20.2.3); `hitPoint_changed` and `hitNormal_changed` in the sensor local frame under translated and rotated `Transform` ancestors; `hitTexCoord_changed` for both analytic primitives (Box §13.3.1) and barycentric-interpolated mesh geometry; `isActive` + `touchTime` click semantics (down-over → up-over fires; up-after-leave does not); grab exclusivity (second sensor receives nothing during an active grab); `enabled=FALSE` causes the disabled sensor to be skipped and the next outer enabled sensor to resolve; `PlaneSensor` drag dispatch + `autoOffset` accumulation; `PlaneSensor` offset accumulation + per-component min/max clamp including the line-sensor (min==max) case; `enabled=FALSE` mid-drag (DS-2 deactivation).
   Source: `runtime/events/tests/pointing_sensor_test.cpp`
 
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `drag_math_test`) — unit tests for the three pure drag-math functions in isolation (no node, no context). Hand-computed expected geometry for: PlaneSensor unclamped translation, offset pass-through (including `offset.z`), both-axes clamp, line-sensor (Y locked), `axisRotation` reorientation; SphereSensor trackpoint on sphere surface, 90° rotation axis/angle, identity on no-motion, offset composition; CylinderSensor cylinder mode, disk mode, DS-1 disk-plane-at-Y=0 invariant, `theta0 == diskAngle` boundary (selects cylinder), min/max clamp, offset addition.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `drag_math_test`) — unit tests for the three pure drag-math functions in isolation (no node, no context). Hand-computed expected geometry for: PlaneSensor unclamped translation, offset pass-through (including `offset.z`), both-axes clamp, line-sensor (Y locked), `axisRotation` reorientation; SphereSensor trackpoint on sphere surface, 90° rotation axis/angle, identity on no-motion, offset composition; CylinderSensor cylinder mode, disk mode (both with the right-handed sign), DS-1 disk-plane-at-Y=0 invariant, `theta0 == diskAngle` boundary (selects cylinder), min/max clamp, offset addition.
   Source: `runtime/events/tests/drag_math_test.cpp`
 
 - `ctest --preset dev -R x3d_geometry_scene` (doctest cases: `pick_index_*`) — `runtime/scene/tests/pick_index_equivalence_test.cpp` locks the index's result equivalence to the old reflective walk (multi-mesh closest, DEF/USE per-path instancing, an animated Transform changed between picks, and a view-dependent Billboard), and `runtime/scene/tests/pick_index_perf_test.cpp` asserts the per-pick graph walk drops to zero on an unchanged scene (O(candidate leaves) instead of O(nodes)) and that a transform-revision bump forces a refit.

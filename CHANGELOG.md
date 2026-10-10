@@ -8,6 +8,13 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Interactive profile (Annex C) acceptance suite.**
+  `runtime/extract/tests/interactive_profile_test.cpp` drives XML scenes
+  through `RuntimeSession` and the public input seam: pointing, key-device and
+  environmental sensors, viewpoint binding and transitions, EXAMINE/FLY/LOOKAT,
+  event utilities and Anchor activation.
+- **`SessionOptions::anchorHandler`** (and an optional `attachInteractive`
+  argument) delivers Anchor activations whose url is not an in-scene viewpoint.
 - **Zero-copy reflection reads.** `FieldInfo::view` returns a type-tagged
   pointer to a generated field's stored member. `runtime/FieldRead.hpp` adds
   `fieldPtr<T>`, `FieldRef<T>` (borrows when it can, boxes through `get` for
@@ -52,6 +59,17 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   installed imported-target set.
 
 ### Fixed
+
+- **CylinderSensor rotated against the drag.** Disk and cylinder drags now
+  report the right-handed rotation about +Y (§20.4.1); `minAngle`/`maxAngle`
+  clamp the correct side.
+- **BooleanToggle** flips once per TRUE input even when several arrive in one
+  cascade, publishing one `toggle_changed` with the final state.
+- **Sequencers** send one `value_changed` per key interval (§30.2.4).
+- **OpenGL PoC texture generation** (#140): COORD-EYE uses camera-space
+  positions and CAMERASPACEREFLECTIONVECTOR uses the position-to-eye vector.
+- **UNIT** now converts bounding boxes, PlaneSensor `axisRotation` and light
+  `attenuation`.
 
 - **Codec string/value hardening** — seven encoding findings closed in one
   sweep (regression-tested end-to-end in `codec_string_hardening_test`):
