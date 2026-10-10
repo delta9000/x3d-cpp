@@ -32,15 +32,27 @@ bindings define but whose handlers were never wired to a `System`:
 | `IntegerTrigger` | §30.4.6 | `set_boolean=TRUE` → emits `triggerValue=integerKey`; FALSE ignored. Writing `integerKey` (even to the same value) also emits `triggerValue` with that value (TRIG-4), via a field-write listener |
 | `TimeTrigger` | §30.4.7 | Any `set_boolean` (value irrelevant) → emits `triggerTime=now` |
 | `BooleanFilter` | §30.4.1 | Routes `inputTrue`/`inputFalse` by value; always emits `inputNegate` |
-| `BooleanToggle` | §30.4.3 | `set_boolean=TRUE` flips `toggle`; FALSE is a no-op |
-| `BooleanSequencer` | §30.4.2 | Stepwise `value_changed` (SFBool) on `set_fraction`; `next`/`previous` step with wrap |
-| `IntegerSequencer` | §30.4.5 | Stepwise `value_changed` (SFInt32) on `set_fraction`; `next`/`previous` step with wrap |
+| `BooleanToggle` | §30.4.3 | Each `set_boolean=TRUE` flips `toggle`; FALSE is a no-op; one `toggle_changed` per cascade carries the final state |
+| `BooleanSequencer` | §30.4.2 | Stepwise `value_changed` (SFBool) on `set_fraction`, once per key interval; `next`/`previous` step with wrap |
+| `IntegerSequencer` | §30.4.5 | Stepwise `value_changed` (SFInt32) on `set_fraction`, once per key interval; `next`/`previous` step with wrap |
 
 All seven are event-driven: they register input handlers in `attach()` and
 leave `update()` a no-op. The six nodes with outputOnly fields use
 `ctx.postOutputEvent(...)`; admission precedes source storage, observers and
-ROUTEs. BooleanToggle retains legacy inputOutput delivery and is excluded from
-this admission slice.
+ROUTEs. BooleanToggle's `toggle` is inputOutput, so it has its own contract:
+each TRUE flips the stored state immediately (a second TRUE in the same cascade
+flips the first one's result), and one re-read seed per cascade publishes the
+state as it stands when drained. Storage, observers and ROUTEs therefore agree
+on one `toggle_changed` with the final value (IACC-2). An explicit `set_toggle`
+is ordinary inputOutput delivery; when it and a later TRUE land in one cascade,
+the outgoing ROUTE keeps the per-timestamp cap every inputOutput field has.
+
+Sequencers send one `value_changed` per key interval (§30.2.4, IACC-3). The
+system remembers the interval of the last fraction that emitted; a later
+fraction in the same interval is silent. `next`/`previous` and edits to `key` or
+`keyValue` forget that interval, so the next fraction emits even if it lands in
+the same interval again. A fraction whose output loses per-cascade admission
+still selects its interval and private index.
 
 The sequencer stepwise-selection rule (`sequencerStepIndex`) deserves explicit
 notation: it is the largest index `i` such that `key[i] <= t`, boundary-clamped
@@ -113,7 +125,7 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
   field in a logical cascade reaches storage, observers and ROUTEs. All incoming
   inputOnly occurrences still run their handlers. This is the existing native
   selection policy, not a uniquely prescribed ordering for simultaneous events.
-  `postEvent` remains external ingress and BooleanToggle's legacy inputOutput path.
+  `postEvent` remains external ingress and BooleanToggle's inputOutput path.
 
 - **`ctx.now()`** — `TimeTriggerSystem` reads this to stamp `triggerTime`. The
   clock is advanced by `ctx.tick(now)` before systems run, so `now()` is the
@@ -158,6 +170,18 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
   - Production wiring (`attachEventUtilities`) is smoke-tested end-to-end
     via a `BooleanToggle` and `IntegerSequencer` exercised through the cascade.
 
+- **`ctest --preset dev -R x3d_events_tests`** (doctest suite: `event utility output admission`)
+  — `runtime/events/tests/event_utility_output_admission_test.cpp` also covers
+  IACC-2 (repeated TRUE flips in one cascade, FALSE no-ops, explicit
+  `set_toggle`, routed fan-in) and IACC-3 (one `value_changed` per key interval
+  across timestamps, re-emission after `next` and after a `keyValue` edit).
+
+- **`ctest --preset dev -R x3d_extract_tests`** (doctest suite: `Interactive profile acceptance`)
+  — XML scenes through `RuntimeSession`: a TouchSensor → BooleanFilter →
+  BooleanToggle → IntegerTrigger → Switch click state machine with
+  BooleanTrigger/TimeTrigger, and TimeSensor-driven sequencers counted per
+  interval.
+
 - **Golden regression** — the wave-3 fix was verified byte-identical against the
   committed golden files; ctest advanced to 129/129 at ship. The golden gate
   continues to guard against inadvertent output changes.
@@ -179,13 +203,6 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
 
 This outputOnly migration does not complete the component:
 
-- BooleanToggle's `toggle` is inputOutput. Its deferred toggle/reset state and
-  output-side admission need a separate contract; two queued TRUE inputs can
-  currently compute from the same old stored value.
-- [§30.2.4](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html#SequencingSingleFieldEvents)
-  requires sequencer suppression within a key interval. The current fraction
-  handler still emits across later ticks in the same interval. That distinct
-  interval-state gap is not fixed or treated as normative by the admission tests.
 - IntegerTrigger's key-write listener is implemented and participates in checked
   `triggerValue` admission. Its `integerKey` inputOutput writes/notifications
   retain their existing behavior; this slice does not generalize inputOutput

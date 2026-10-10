@@ -78,6 +78,11 @@ struct SessionOptions {
   /// neither. Access the NavigationSystem afterwards via navigation().
   bool interactive = false;
 
+  /// With `interactive`: receives each activated Anchor whose url is not an
+  /// in-scene "#Viewpoint" (§9.4.1), with its url and parameter lists. The
+  /// headless session loads nothing itself; null ignores such activations.
+  AnchorSystem::AnchorHandler anchorHandler;
+
   /// Forwarded verbatim to SceneExtractor, defaulted identically. The session
   /// introduces no hidden I/O: with the default resolver the SDK decodes nothing.
   extract::MeshBuildOptions meshOptions{};
@@ -176,7 +181,8 @@ private:
       attachStandardRuntime(doc_.scene, ctx_, std::move(options.assetResolver),
                             std::move(options.inlineResolver),
                             std::move(options.baseUrl));
-    if (options.interactive) nav_ = attachInteractive(doc_.scene, ctx_);
+    if (options.interactive)
+      nav_ = attachInteractive(doc_.scene, ctx_, std::move(options.anchorHandler));
   }
 
   X3DDocument doc_;

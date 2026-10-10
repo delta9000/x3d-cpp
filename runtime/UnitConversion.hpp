@@ -33,6 +33,9 @@ inline bool includes(std::string_view words, std::string_view word) {
 // animation, navigation and physics systems. Numeric types alone imply no unit
 // (e.g. normals, colors, scale, fractions, texture coordinates, generic scalars).
 inline Dimension dimension(std::string_view node, std::string_view field) {
+  // X3DBoundedObject hints (grouping nodes, Shape, Inline, ...) are lengths on
+  // every node that has them. bboxSize's -1 -1 -1 sentinel is kept by normalize.
+  if (field == "bboxCenter" || field == "bboxSize") return {1};
   struct Entry { std::string_view nodes, fields; Dimension units; };
   static constexpr Entry entries[] = {
     {"Transform CADPart HAnimHumanoid HAnimJoint HAnimSite", "translation center", {1}},
@@ -73,6 +76,7 @@ inline Dimension dimension(std::string_view node, std::string_view field) {
     {"ProximitySensor VisibilitySensor TransformSensor", "center size", {1}},
     {"LOD", "center range", {1}},
     {"PlaneSensor", "minPosition maxPosition offset", {1}},
+    {"PlaneSensor", "axisRotation", {0,1}},
     {"CylinderSensor SphereSensor", "offset axisRotation", {0,1}},
     {"CylinderSensor", "diskAngle minAngle maxAngle", {0,1}},
     {"CollisionSpace", "bboxCenter bboxSize", {1}},
@@ -93,6 +97,12 @@ inline Dimension dimension(std::string_view node, std::string_view field) {
     if (includes(entry.nodes, node) && includes(entry.fields, field))
       return entry.units;
   return {};
+}
+
+// Light attenuation mixes dimensions per component (constant, 1/length,
+// 1/length^2), so it is converted by its own rule rather than one factor.
+inline bool isAttenuation(std::string_view node, std::string_view field) {
+  return field == "attenuation" && (node == "PointLight" || node == "SpotLight");
 }
 
 inline double factor(const std::vector<Unit> &units, Dimension d) {
@@ -143,7 +153,9 @@ inline void normalize(Scene &scene, std::unordered_set<const X3DNode *> &seen) {
       if (!field.isNode() && field.get && field.set &&
           scene.authoredScalarFields.contains(node, field.x3dName) &&
           !scene.normalizedUnitFields.contains(node, field.x3dName)) {
-        const auto d = dimension(node->nodeTypeName(), field.x3dName);
+        const bool attenuation = isAttenuation(node->nodeTypeName(), field.x3dName);
+        const auto d = attenuation ? Dimension{1}
+                                   : dimension(node->nodeTypeName(), field.x3dName);
         if (d.length == 0 && d.angle == 0 && d.mass == 0 && d.force == 0)
           continue;
         auto source = scene.unitFieldSources.find(node);
@@ -155,11 +167,23 @@ inline void normalize(Scene &scene, std::unordered_set<const X3DNode *> &seen) {
         const double f = factor(*units, d);
         if (f != 1) {
           auto value = field.get(*node);
-          if (convert<float>(value, f) || convert<double>(value, f) ||
-              convert<SFVec2f>(value, f) || convert<SFVec2d>(value, f) ||
-              convert<SFVec3f>(value, f) || convert<SFVec3d>(value, f) ||
-              convert<SFRotation>(value, f) || convert<SFMatrix3f>(value, f))
+          if (attenuation) {
+            // 1 / (a0 + a1 r + a2 r^2): a1 is per length, a2 per length squared.
+            if (auto *v = std::any_cast<SFVec3f>(&value)) {
+              v->y = static_cast<float>(v->y / f);
+              v->z = static_cast<float>(v->z / (f * f));
+              field.set(*node, value);
+            }
+          } else if (auto *box = std::any_cast<SFVec3f>(&value);
+                     box && field.x3dName == "bboxSize" &&
+                     box->x == -1 && box->y == -1 && box->z == -1) {
+            // "not specified" sentinel, not a length.
+          } else if (convert<float>(value, f) || convert<double>(value, f) ||
+                     convert<SFVec2f>(value, f) || convert<SFVec2d>(value, f) ||
+                     convert<SFVec3f>(value, f) || convert<SFVec3d>(value, f) ||
+                     convert<SFRotation>(value, f) || convert<SFMatrix3f>(value, f)) {
             field.set(*node, value);
+          }
         }
         scene.normalizedUnitFields.record(node, field.x3dName);
       }

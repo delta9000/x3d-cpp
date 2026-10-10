@@ -125,8 +125,7 @@ void sequencerFractions(Value first, Value middle, Value last) {
     ctx.tick(11);
     CHECK(inputs.count("next") == 1);
     output.expect({first, identical ? middle : last});
-    // Deliberately no same-interval fraction assertion across timestamps:
-    // that separate sequencer normative gap is outside output admission.
+    // Same-interval fractions across timestamps: see the §30.2.4 interval cases.
   }
 }
 
@@ -457,6 +456,131 @@ TEST_CASE("BooleanFilter fan-in and loop preserve inputs while capping outputs a
     }
     noA.expect({}); noB.expect({}); noC.expect({});
   }
+}
+
+// §30.2.4: one value_changed per key interval, across timestamps.
+template <class Node, class Value>
+void sequencerIntervals(Value first, Value middle, Value last) {
+  Utilities fixture;
+  auto node = fixture.add<Node>();
+  initialize(*node);
+  fixture.attach();
+  auto &ctx = fixture.ctx;
+  InputTrace inputs(ctx, *node);
+  OutputTrace<Value> output(ctx, *node, "value_changed");
+  double now = 10;
+  auto fraction = [&](float f) {
+    ctx.postEvent(node.get(), "set_fraction", SFFloat{f});
+    ctx.tick(now++);
+  };
+  fraction(.1f);
+  output.expect({first});
+  fraction(.2f); // still key[0] interval
+  fraction(.4f);
+  CHECK(inputs.count("set_fraction") == 3);
+  output.expect({first});
+  fraction(.5f); // key[1] boundary enters the next interval
+  output.expect({first, middle});
+  fraction(.9f);
+  output.expect({first, middle});
+  fraction(1.f);
+  fraction(1.5f); // beyond the last key stays in the final interval
+  output.expect({first, middle, last});
+  fraction(.0f); // backwards into key[0] is a new interval
+  output.expect({first, middle, last, first});
+
+  // A step leaves the fraction interval: the same interval emits again.
+  ctx.postEvent(node.get(), "next", SFBool{true});
+  ctx.tick(now++);
+  output.expect({first, middle, last, first, middle});
+  fraction(.1f);
+  output.expect({first, middle, last, first, middle, first});
+  fraction(.2f);
+  output.expect({first, middle, last, first, middle, first});
+
+  // Editing keyValue forgets the interval: the same index may hold a new value.
+  node->setKeyValue({last, middle, first});
+  CHECK(ctx.writeField(node.get(), "keyValue", std::any(node->getKeyValue())) ==
+        FieldWriteResult::Ok);
+  fraction(.2f);
+  output.expect({first, middle, last, first, middle, first, last});
+}
+
+TEST_CASE("sequencer emits one value_changed per key interval across timestamps") {
+  SUBCASE("BooleanSequencer") { sequencerIntervals<BooleanSequencer>(false, false, true); }
+  SUBCASE("IntegerSequencer") { sequencerIntervals<IntegerSequencer>(10, 20, 30); }
+}
+
+TEST_CASE("BooleanToggle flips once per TRUE and publishes one toggle per cascade") {
+  Utilities fixture;
+  auto node = fixture.add<BooleanToggle>();
+  fixture.attach();
+  auto &ctx = fixture.ctx;
+  InputTrace inputs(ctx, *node);
+  OutputTrace<SFBool> toggle(ctx, *node, "toggle");
+
+  ctx.postEvent(node.get(), "set_boolean", SFBool{true});
+  ctx.tick(10);
+  toggle.expect({true});
+
+  // Two TRUE inputs in one cascade flip twice. Each flip reads the previous
+  // flip's state; storage, observers and the ROUTE agree on the final value.
+  ctx.postEvent(node.get(), "set_boolean", SFBool{true});
+  ctx.postEvent(node.get(), "set_boolean", SFBool{true});
+  ctx.tick(11);
+  CHECK(inputs.count("set_boolean") == 3);
+  toggle.expect({true, true});
+
+  // Three TRUE inputs and interleaved FALSE no-ops: odd count flips once.
+  ctx.postEvent(node.get(), "set_boolean", SFBool{true});
+  ctx.postEvent(node.get(), "set_boolean", SFBool{false});
+  ctx.postEvent(node.get(), "set_boolean", SFBool{true});
+  ctx.postEvent(node.get(), "set_boolean", SFBool{true});
+  ctx.tick(12);
+  CHECK(inputs.count("set_boolean") == 7);
+  toggle.expect({true, true, false});
+
+  // FALSE alone produces nothing.
+  ctx.postEvent(node.get(), "set_boolean", SFBool{false});
+  ctx.tick(13);
+  toggle.expect({true, true, false});
+
+  // An explicit set_toggle is ordinary inputOutput delivery, and a later TRUE
+  // flips from the set value.
+  ctx.postEvent(node.get(), "set_toggle", SFBool{true});
+  ctx.tick(14);
+  toggle.expect({true, true, false, true});
+  ctx.postEvent(node.get(), "set_boolean", SFBool{true});
+  ctx.tick(15);
+  toggle.expect({true, true, false, true, false});
+
+  // In one cascade, set_toggle and a later TRUE are two inputOutput deliveries.
+  // State and observers follow both; the ROUTE keeps its legacy one-delivery
+  // cap per timestamp, as for any inputOutput field written twice.
+  ctx.postEvent(node.get(), "set_toggle", SFBool{true});
+  ctx.postEvent(node.get(), "set_boolean", SFBool{true});
+  ctx.tick(16);
+  CHECK(toggle.observed == std::vector<SFBool>{true, true, false, true, false, true, false});
+  CHECK(node->getToggle() == false);
+}
+
+TEST_CASE("BooleanToggle routed fan-in flips per arrival") {
+  Utilities fixture;
+  auto a = fixture.add<BooleanFilter>();
+  auto b = fixture.add<BooleanFilter>();
+  auto node = fixture.add<BooleanToggle>();
+  fixture.attach();
+  auto &ctx = fixture.ctx;
+  OutputTrace<SFBool> toggle(ctx, *node, "toggle");
+  ctx.addRoute({a.get(), "inputTrue"}, {node.get(), "set_boolean"});
+  ctx.addRoute({b.get(), "inputTrue"}, {node.get(), "set_boolean"});
+  ctx.postEvent(a.get(), "set_boolean", SFBool{true});
+  ctx.tick(10);
+  toggle.expect({true});
+  ctx.postEvent(a.get(), "set_boolean", SFBool{true});
+  ctx.postEvent(b.get(), "set_boolean", SFBool{true});
+  ctx.tick(11);
+  toggle.expect({true, true});
 }
 
 } // TEST_SUITE

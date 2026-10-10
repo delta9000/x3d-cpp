@@ -56,7 +56,8 @@ uniform vec3 uPointAttenuation;
 uniform float uPointSizeMin;
 uniform float uPointSizeMax;
 // TXF-2: §18.4.8 TextureCoordinateGenerator mode. 0 = off (use the authored
-// aTexCoord); 1 = SPHERE, 2 = CAMERASPACENORMAL, 3 = CAMERASPACEPOSITION,
+// aTexCoord); 1 = SPHERE, 2 = CAMERASPACENORMAL, 3 = CAMERASPACEPOSITION
+// (also COORD-EYE, which uses the same camera-space vertex coordinates),
 // 4 = CAMERASPACEREFLECTIONVECTOR — the view-dependent modes, computed here from
 // eye-space state (matches cpu_raster MaterialShader.hpp detail::texCoordGenUv).
 uniform int  uTexCoordGenMode;
@@ -81,8 +82,9 @@ void main() {
         else if (uTexCoordGenMode == 2)  vTexCoord = Neye.xy;             // CAMERASPACENORMAL
         else if (uTexCoordGenMode == 3)  vTexCoord = posEye.xy;           // CAMERASPACEPOSITION
         else {                                                            // REFLECTIONVECTOR
-            vec3 V = normalize(posEye.xyz);   // eye -> vertex
-            vec3 R = reflect(-V, Neye);       // = 2*dot(V,N)*N - V
+            // Table 18.6: E points from the position to the eye (the origin).
+            vec3 E = normalize(-posEye.xyz);
+            vec3 R = reflect(-E, Neye);       // = 2*dot(E,N)*N - E
             vTexCoord = R.xy;
         }
     } else {

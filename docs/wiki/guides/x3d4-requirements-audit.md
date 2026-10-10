@@ -133,7 +133,7 @@ evidence, not whole-component proofs.
 | [Lighting](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/lighting.html) / 3 | Consume shadow controls; verify light scope, attenuation, material interaction and the required simultaneous-light capacity. | `runtime/extract/LightSystem.hpp`, `examples/cpu_raster/cpuraster/MaterialShader.hpp`; REQ-SHADOW | Partial |
 | [Texturing](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html) / 4 | Execute MultiTexture combiners; verify MovieTexture presentation, sampler requirements and all coordinate-generation modes in the selected host. | `MaterialSystem.hpp`, `TextureExtract.hpp`, PoC `MovieState`, `runtime/io/plmpeg/tests/movie_decoder_tests.cpp`; REQ-MULTITEXTURE | Partial |
 | [Interpolation](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html) / 5 | Sign off all interpolation families, endpoint/duplicate-key rules, output sizes and numeric tolerances. | `runtime/events/InterpolatorRegistration.hpp`, `runtime/events/tests/interpolator_conformance_test.cpp` | Unverified |
-| [PointingDeviceSensor](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html) / 1 | Verify shared/instanced sensors, scope, dragging, deactivation and transformed hits in an interactive host. | `runtime/events/PointingSensorSystem.hpp`, `runtime/events/tests/pointing_sensor_test.cpp`, `drag_math_test.cpp` | Unverified |
+| [PointingDeviceSensor](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html) / 1 | Verify shared/instanced sensors, scope, dragging, deactivation and transformed hits in an interactive host. | `runtime/events/PointingSensorSystem.hpp`, `runtime/events/tests/pointing_sensor_test.cpp`, `drag_math_test.cpp`, `runtime/extract/tests/interactive_profile_test.cpp`; IACC-1 fixed | Unverified |
 | [KeyDeviceSensor](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/keyDeviceSensor.html) / 2 | Verify host key mapping, focus, modifiers, Unicode input and StringSensor deletion/termination. | `runtime/events/KeyDeviceSensorSystem.hpp`, `runtime/events/tests/key_device_sensor_test.cpp` | Unverified |
 | [EnvironmentalSensor](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalSensor.html) / 3 | Sign off instanced activation regions, exit outputs and transformed target/sensor combinations; apply permitted visibility latitude. | `runtime/scene/ViewDependentSystem.hpp`, `runtime/scene/tests/view_dependent_test.cpp` | Unverified |
 | [Navigation](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html) / 3 | Verify avatar-volume clearance and all specified mode/transition combinations. Existing collision probes omit sideways clearance; this needs a normative behavioral oracle. | `runtime/events/NavigationSystem.hpp::resolveMove`, `runtime/events/tests/collision_test.cpp`, `navigation_test.cpp` | Unverified |
@@ -143,7 +143,7 @@ evidence, not whole-component proofs.
 | [NURBS](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html) / 4 | Implement the trimmed surface and authored NURBS texture coordinates (swept/swung surfaces shipped, NRB-3); verify order/control-point/contour minima and weight convention. | `runtime/extract/NurbsEval.hpp`, `MeshBuilder.cpp`, `runtime/events/NurbsInterpolatorSystem.hpp`; NRB-3/NRB-4 | Partial |
 | [DIS](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html) / 2 | Implement transport, PDU encode/decode, entity mapping and network-driven events in the host. | `runtime/scene/ViewDependentSystem.hpp` has local PDU state only; NSN-10 | Partial |
 | [Scripting](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/scripting.html) / 1 | Resolve Full-profile Java support; audit ECMAScript binding and every SAI service independently of Script lifecycle tests. | `runtime/script/ScriptSystem.hpp`, `EcmaScriptBackend.cpp`, `QuickJsBackend.cpp`; REQ-JAVA | Partial |
-| [EventUtilities](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html) / 1 | Sign off filters, sequencers and triggers across boundary values, timestamps and ROUTE feedback. | `runtime/events/EventUtilitySystem.hpp`, `runtime/events/tests/event_utility_test.cpp` | Unverified |
+| [EventUtilities](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html) / 1 | Sign off filters, sequencers and triggers across boundary values, timestamps and ROUTE feedback. | `runtime/events/EventUtilitySystem.hpp`, `runtime/events/tests/event_utility_test.cpp`, `event_utility_output_admission_test.cpp`, `runtime/extract/tests/interactive_profile_test.cpp`; IACC-2/3 fixed | Unverified |
 | [Shaders](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html) / 1 | Wire authored programs and lifecycle feedback; demonstrate one supported shading language and its binding obligations. | `SceneExtractor::shaderProgram`, `runtime/extract/tests/shader_binding_plan_test.cpp`, `runtime/codecs/tests/xml_composed_shader_test.cpp`; REQ-SHADER | Partial |
 | [CADGeometry](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html) / 2 | Verify CAD hierarchy, face placement, visibility, quad geometry and live edits; generic traversal alone is insufficient evidence. | `SceneExtractor.hpp`, `TransformSystem.hpp`, `runtime/extract/tests/scene_extractor_audit_test.cpp` | Unverified |
 | [Texturing3D](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html) / 2 | Supply 3D image/pixel/composed textures, coordinates, transforms, sampling and updates. | `MaterialSystem::refOf` has no 3D path; T3D-1 | Partial |
@@ -1493,3 +1493,56 @@ for writing a scene after runtime normalization while preserving authoring
 units. This host acceptance covers reading and presentation; it does not make
 an authoring, JSON, ClassicVRML, SAI or Full-profile claim. FTP was incorrectly
 classified as Full-only in the earlier audit; Annex B.6 requires it too.
+
+## Interactive reference host acceptance (2026-10-10)
+
+The closeout target is the headless runtime host for Annex C: an X3D 4.0 XML
+scene loaded into `RuntimeSession` with the standard runtime and
+`SessionOptions::interactive`, driven only through the public input seam
+(pointer ray, button and normalized screen position, navigation keys,
+key-device events and bind events). The suite is
+`runtime/extract/tests/interactive_profile_test.cpp`, run by
+`ctest --preset dev -R x3d_extract_tests` and therefore by `mise run ci`. The
+Interchange host acceptance above still covers the presentation minima the
+two profiles share. This is implementation acceptance against Annex C of
+ISO/IEC 19775-1:2023; no external certification is asserted.
+
+| Requirement | Concrete implementation and acceptance evidence |
+|---|---|
+| Pointing device sensor 1 | TouchSensor under a scaled Transform reports sensor-local hitPoint, hitNormal and hitTexCoord, isOver/isActive, and touchTime only for a release over the geometry; disabled sensors are silent. The lowest sensors on the hit path win and sibling sensors fire together; disabling them hands the hit to the next enabled ancestor. PlaneSensor clamps per axis (unclamped where min > max), reports the unclamped trackPoint, honors axisRotation and stores autoOffset. CylinderSensor covers cylinder and disk drags, minAngle/maxAngle and offset. SphereSensor covers both drag axes and offset. |
+| Key device sensor 1 | KeySensor keyPress/keyRelease, actionKeyPress/Release, shiftKey and isActive; disabled sensors ignore input. StringSensor enteredText with deletion, finalText on termination and isActive. |
+| Environmental sensor 1 | ProximitySensor under a translated Transform reports enterTime, isActive, sensor-local position_changed and orientation_changed, updates while the viewer moves inside, and sends exitTime on leaving. VisibilitySensor reports a region in view; disabled sensors send nothing. Annex C would also accept an always-visible implementation. |
+| Navigation 1 | Viewpoint bind stack with isBound/bindTime, orientation, animated transitions with transitionComplete, and jump FALSE keeping the view. NavigationInfo EXAMINE orbits about centerOfRotation, FLY moves at `speed` along the view, LOOKAT animates toward the picked object and sets centerOfRotation. ANY resolves to EXAMINE, and `NavigationSystem::setForcedMode` is the host's mode switch. |
+| Event utilities 1 | A routed TouchSensor → BooleanFilter → BooleanToggle → IntegerTrigger → Switch state machine with BooleanTrigger and TimeTrigger outputs, and TimeSensor-driven Integer/BooleanSequencers that step once per key interval. |
+| Networking 2 / Anchor | A click binds the first resolvable `#Viewpoint` url; other urls reach `SessionOptions::anchorHandler` with their parameter list. The headless host loads no replacement world itself. |
+
+Gaps the suite found and this change fixed:
+
+- CylinderSensor rotated the wrong way: dragging from +Z toward +X produced a
+  negative rotation about +Y, so routed geometry turned against the pointer and
+  the angle clamp acted on the wrong side (IACC-1).
+- BooleanToggle computed two TRUE inputs in one cascade from the same stored
+  value, and sequencers emitted on every fraction instead of once per key
+  interval (IACC-2, IACC-3; carried over from #163).
+- A `RuntimeSession` host had no way to receive Anchor activations for
+  non-fragment urls (IACC-4).
+
+The same change extends REQ-UNIT to every length and angle field of the
+Interactive profile's nodes (bounding boxes, PlaneSensor axisRotation, light
+attenuation) and fixes the OpenGL PoC's COORD-EYE and reflection-vector texture
+coordinate generation from issue #140.
+
+Interpretations recorded with this acceptance:
+
+- PlaneSensor `translation_changed` and `trackPoint_changed` are expressed in
+  the local sensor coordinate system that `axisRotation` creates. §20.4.2
+  defines the tracking plane and sign in that system but never names the
+  output frame explicitly.
+- Light attenuation coefficients convert under UNIT by 1/length (linear) and
+  1/length² (quadratic) so the falloff is unchanged at the same physical
+  distance. Clause 4.3.6 does not list per-field dimensions.
+
+Optional Annex C fields remain stored and evented without user-interface use:
+NavigationInfo `avatarSize`, `speed` (used by FLY) and `visibilityLimit`,
+Viewpoint `description` and `retainUserOffsets`. Inline `load` is optional in
+the profile and is not part of this acceptance.

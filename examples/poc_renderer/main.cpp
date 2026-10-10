@@ -685,9 +685,10 @@ const ex::TextureRef *findTexSlot(const ex::MaterialDesc &mat,
 }
 
 // TXF-2: §18.4.8 TextureCoordinateGenerator mode for lit.vert, encoded as the int
-// the shader switches on: 0 = off (authored UVs), else (TexCoordGenMode + 1).
-// Only the view-dependent modes the vertex shader implements are surfaced; any
-// other authored mode falls back to 0 (authored UVs), matching cpu_raster.
+// the shader switches on: 0 = off (authored UVs), 1..4 = the four camera-space
+// modes. COORD-EYE shares CAMERASPACEPOSITION's input (Table 18.6). The other
+// local, noise and refraction modes fall back to 0 (authored UVs); the CPU
+// reference host implements them (TXF-2).
 int texCoordGenModeUniform(const ex::MaterialDesc &mat) {
   for (const ex::TextureRef &t : mat.textures) {
     if (!t.hasTexCoordGen) continue;
@@ -695,6 +696,7 @@ int texCoordGenModeUniform(const ex::MaterialDesc &mat) {
       case ex::TexCoordGenMode::Sphere:                     return 1;
       case ex::TexCoordGenMode::CameraSpaceNormal:          return 2;
       case ex::TexCoordGenMode::CameraSpacePosition:        return 3;
+      case ex::TexCoordGenMode::CoordEye:                   return 3; // same §18.4.8 input
       case ex::TexCoordGenMode::CameraSpaceReflectionVector: return 4;
       default:                                              return 0;
     }

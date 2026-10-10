@@ -4,7 +4,7 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, NSN-11, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
+| Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, IACC-4, NSN-11, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
 | Inline | 2 | ✓ | — | — | ASSET-LOADER-TRANSITIVE-POLICY, AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, NATIVE-AUTHOR-FIELD-OWNERSHIP, NSN-12, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DUrlObject |
 | LoadSensor | 3 | ✓ | — | ? | AUD-NET-3, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9, ROUTE-IO-ALIAS | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 
@@ -37,4 +37,6 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
   - Closed by wireInlineImports (runtime/InlineExpand.hpp), called from parseDocument after expandInlines: each Import{inlineDEF, importedDEF, AS} resolves the imported name against the named Inline's retained child scene (its <EXPORT AS> alias first, else a child DEF) and registers the local alias in scene.defs before re-running resolveRoutes, so a ROUTE to/from the AS name binds. Regression: x3d_parse_tests core_diagnostics_test (import_export_wire_route_to_imported_as_name).
 - **AUD-NET-3** [minor/CLOSED] — §9.4.3: LoadSensor counts an Anchor's target Viewpoint as loaded before it is bound.
   - LoadSensor now waits until the Anchor's #Viewpoint target is actually bound, and ignores Anchor.load as required by §9.4.1. Regression: events_misc_test checks unbound then bound target with load FALSE.
+- **IACC-4** [minor/FIXED] — §9.4.1: A RuntimeSession host could not receive Anchor activations whose url is not an in-scene viewpoint.
+  - AnchorSystem already bound "#Name" viewpoints and called an optional handler for other urls, but attachInteractive created the system without exposing it. SessionOptions::anchorHandler (and an attachInteractive parameter) now install the handler, which receives the url and parameter lists. The headless runtime still loads nothing itself. Test: interactive_profile_test Anchor case.
 

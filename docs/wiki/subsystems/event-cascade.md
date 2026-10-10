@@ -210,7 +210,8 @@ to BooleanTrigger, IntegerTrigger, TimeTrigger, BooleanFilter and both sequencer
 production registration. It counts all input deliveries, independently caps each
 filter output, and verifies private sequencer advancement despite suppressed
 outputs. False/no-op and empty-data guards leave admission available for later
-valid work. BooleanToggle and sequencer interval suppression remain separate.
+valid work. BooleanToggle state and sequencer interval suppression are covered
+by their own cases in the same file (IACC-2, IACC-3).
 
 The provider-neutral paired gate checks the portable rule: all input occurrences
 are handled, with bounded generated output and matching readback/ROUTE values.
@@ -226,10 +227,10 @@ It does not require every conforming implementation to choose the first value.
   `isActive=true` and `isActive=false`; changing this mechanically to first-wins
   would leave its final stored state active. Its state transition/output selection
   needs separate reconciliation, not queue-only deduplication.
-- Followers, BooleanToggle, binding, key/pointing sensors and other producers
+- Followers, binding, key/pointing sensors and other producers
   still need review, especially emitter-before-post sites. Their state changes
   cannot be migrated by mechanically changing the queue call.
-- Sequencer per-key-interval suppression across ticks remains distinct from
+- Sequencer per-key-interval suppression across ticks is separate state from
   per-cascade output admission; see [Event Utilities](system-eventutility.md).
 - Author-declared outputOnly fields have no reflection setter thunk and are
   rejected by `postOutputEvent`; their storage path needs a separate migration.

@@ -5,10 +5,10 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | BooleanFilter | 1 | ✓ | — | ? | EUF-1, EUF-4, EUF-5, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS | X3DChildNode |
-| BooleanSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
-| BooleanToggle | 1 | ✓ | — | ? | EUF-2, EUF-5, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS | X3DChildNode |
+| BooleanSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, IACC-3, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
+| BooleanToggle | 1 | ✓ | — | ? | EUF-2, EUF-5, IACC-2, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS | X3DChildNode |
 | BooleanTrigger | 1 | ✓ | — | ? | NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, TRIG-1, TRIG-6 | X3DChildNode, X3DTriggerNode |
-| IntegerSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
+| IntegerSequencer | 1 | ✓ | — | ? | AUD-SEQ-1, IACC-3, NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, SEQ-1, SEQ-2, SEQ-3, SEQ-4, SEQ-5, SEQ-7, SEQ-8 | X3DChildNode, X3DSequencerNode |
 | IntegerTrigger | 1 | ✓ | — | ? | NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, TRIG-2, TRIG-4, TRIG-6 | X3DChildNode, X3DTriggerNode |
 | TimeTrigger | 1 | ✓ | — | ? | NATIVE-CALLBACK-RETIREMENT, ROUTE-IO-ALIAS, TRIG-3, TRIG-5, TRIG-6 | X3DChildNode, X3DTriggerNode |
 
@@ -39,4 +39,8 @@ _Generated. Levels 1 · 7 nodes · profiles: Interactive, Immersive, Full._
 - **TRIG-5** [minor/CLOSED `47c0714`] — §30.4.7: TimeTrigger must fire on FALSE as well as TRUE (boolean value ignored) — relevant once TRIG-3 is implemented.
 - **AUD-SEQ-1** [minor/CLOSED] — §30.2.4: With a duplicated final key, the sequencer returns the last keyValue instead of the first.
   - The final-key clamp walks backward over equal final keys, including for fractions beyond the key range. Regression: integer_sequencer_duplicate_last_key_uses_first_value.
+- **IACC-2** [minor/FIXED] — §30.4.3: Two TRUE set_boolean events in one cascade both computed the toggle from the same stored value.
+  - Each TRUE now flips the stored state at once and schedules one re-read publication per cascade, so N TRUE inputs flip N times and storage, observers and ROUTEs agree on one toggle_changed with the final value. FALSE stays a no-op and set_toggle is ordinary inputOutput delivery. If set_toggle and a later TRUE both arrive in one cascade, state and observers follow both while the outgoing ROUTE keeps the legacy one-delivery-per-timestamp cap shared by every inputOutput field. Tests: event_utility_output_admission_test (BooleanToggle cases) and interactive_profile_test's routed click state machine.
+- **IACC-3** [minor/FIXED] — §30.2.4: Sequencers emitted value_changed for every set_fraction, not once per key interval.
+  - SequencerSystem remembers the key interval of the last fraction that emitted and stays silent while later fractions remain in it. next/previous and key/keyValue edits forget that interval, so the following fraction emits even in the same interval. Per-cascade output admission is unchanged: a fraction suppressed by admission still selects its interval. Tests: event_utility_output_admission_test (`sequencer emits one value_changed per key interval across timestamps`) and interactive_profile_test's TimeSensor-driven sequencers.
 

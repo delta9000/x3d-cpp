@@ -481,6 +481,56 @@ groundAngle='45' groundColor='0 1 0 1 1 0'/></Scene></X3D>)");
         doctest::Approx(1.5707963267948966));
 }
 
+TEST_CASE("UNIT runtime: Interactive-profile bounds, sensor and light fields") {
+  auto doc = x3d::codec::parseDocument(R"(<X3D profile='Interactive' version='4.0'><head>
+<unit category='length' name='cm' conversionFactor='0.01'/>
+<unit category='angle' name='degree' conversionFactor='0.017453292519943295'/>
+</head><Scene>
+<Group DEF='G' bboxCenter='100 0 0' bboxSize='200 400 600'/>
+<Switch DEF='Unset' bboxCenter='0 0 0' bboxSize='-1 -1 -1'/>
+<Anchor DEF='A' bboxSize='100 100 100'/>
+<Shape DEF='S' bboxCenter='0 50 0'><Box/></Shape>
+<Transform bboxCenter='10 0 0'><PlaneSensor DEF='P' axisRotation='0 1 0 90'
+  minPosition='-100 -100' maxPosition='100 100' offset='50 0 0'/></Transform>
+<PointLight DEF='L' location='100 0 0' radius='1000' attenuation='1 2 4'/>
+<SpotLight DEF='Spot' attenuation='0 1 0' beamWidth='45' cutOffAngle='90'/>
+</Scene></X3D>)");
+  auto session = RuntimeSession::create(std::move(doc));
+  auto get = [&](const char *def, const char *field) {
+    auto n = session->scene().resolve(def);
+    REQUIRE(n);
+    return findField(*n, field)->get(*n);
+  };
+  auto vec = [&](const char *def, const char *field) {
+    return std::any_cast<SFVec3f>(get(def, field));
+  };
+  CHECK(vec("G", "bboxCenter").x == doctest::Approx(1));
+  CHECK(vec("G", "bboxSize").z == doctest::Approx(6));
+  // -1 -1 -1 means "not specified", not a length.
+  CHECK(vec("Unset", "bboxSize").x == -1);
+  CHECK(vec("A", "bboxSize").y == doctest::Approx(1));
+  CHECK(vec("S", "bboxCenter").y == doctest::Approx(0.5));
+  CHECK(std::any_cast<SFRotation>(get("P", "axisRotation")).angle ==
+        doctest::Approx(1.5707963267948966));
+  CHECK(std::any_cast<SFVec2f>(get("P", "maxPosition")).x == doctest::Approx(1));
+  CHECK(vec("P", "offset").x == doctest::Approx(0.5));
+  CHECK(vec("L", "location").x == doctest::Approx(1));
+  CHECK(std::any_cast<SFFloat>(get("L", "radius")) == doctest::Approx(10));
+  // 1/(a0 + a1 r + a2 r^2) at the same physical distance: a1 per cm becomes
+  // per metre (x100), a2 per cm^2 becomes per m^2 (x10000).
+  const auto a = vec("L", "attenuation");
+  CHECK(a.x == doctest::Approx(1));
+  CHECK(a.y == doctest::Approx(200));
+  CHECK(a.z == doctest::Approx(40000));
+  CHECK(vec("Spot", "attenuation").y == doctest::Approx(100));
+  CHECK(std::any_cast<SFFloat>(get("Spot", "cutOffAngle")) ==
+        doctest::Approx(1.5707963267948966));
+  // Idempotent: a second normalization leaves runtime values alone.
+  normalizeRuntimeUnits(session->scene());
+  CHECK(vec("L", "attenuation").z == doctest::Approx(40000));
+  CHECK(vec("G", "bboxSize").z == doctest::Approx(6));
+}
+
 TEST_CASE("Interchange: live texture transforms update baked UVs") {
   auto session = RuntimeSession::create(x3d::codec::parseDocument(R"(
 <X3D profile='Interchange' version='4.0'><Scene><Shape><Appearance>
