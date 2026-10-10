@@ -63,6 +63,7 @@ set(CPURASTER_TESTS
     clip_plane_test
     material_shader_test
     multi_texture_test
+    cube_map_test
     fog_shader_test
     glsl_interp_test
     render_smoke_test

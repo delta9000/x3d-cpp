@@ -773,11 +773,10 @@ GLuint uploadGlTexture(const unsigned char *rgba, int w, int h, bool repeatS,
 // Decode an inline X3D SFImage (1..4 components, row-major, BOTTOM-UP per the
 // X3D convention so it matches GL with NO flip) into a GL texture. Returns 0 on
 // a malformed image.
-GLuint uploadInlineSFImage(const SFImage &img, bool repeatS, bool repeatT,
-                           bool mipmap) {
+std::vector<unsigned char> sfImageRGBA(const SFImage &img) {
   const int w = img.width, h = img.height, nc = img.numComponents;
-  if (w <= 0 || h <= 0 || nc < 1 || nc > 4) return 0;
-  if (img.data.size() < static_cast<std::size_t>(w) * h * nc) return 0;
+  if (w <= 0 || h <= 0 || nc < 1 || nc > 4) return {};
+  if (img.data.size() < static_cast<std::size_t>(w) * h * nc) return {};
   std::vector<unsigned char> rgba(static_cast<std::size_t>(w) * h * 4);
   for (int i = 0; i < w * h; ++i) {
     const unsigned char *p = img.data.data() + static_cast<std::size_t>(i) * nc;
@@ -791,7 +790,14 @@ GLuint uploadInlineSFImage(const SFImage &img, bool repeatS, bool repeatT,
     rgba[i * 4 + 0] = r; rgba[i * 4 + 1] = g;
     rgba[i * 4 + 2] = b; rgba[i * 4 + 3] = a;
   }
-  return uploadGlTexture(rgba.data(), w, h, repeatS, repeatT, mipmap);
+  return rgba;
+}
+
+GLuint uploadInlineSFImage(const SFImage &img, bool repeatS, bool repeatT,
+                           bool mipmap) {
+  const std::vector<unsigned char> rgba = sfImageRGBA(img);
+  if (rgba.empty()) return 0;
+  return uploadGlTexture(rgba.data(), img.width, img.height, repeatS, repeatT, mipmap);
 }
 
 // A GL texture cache. Source::Url entries key on the URL string (upload-once
@@ -806,6 +812,7 @@ GLuint uploadInlineSFImage(const SFImage &img, bool repeatS, bool repeatT,
 struct TextureCacheFormat {
   std::unordered_map<std::string, GLuint> byUrl;          // 0 = failed (no retry).
   std::unordered_map<const void *, GLuint> byInlineNode;  // keyed by SFImage addr.
+  std::unordered_map<std::string, GLuint> byCube;         // keyed by face keys.
 };
 struct TextureCache {
   TextureCacheFormat linear, srgb;
@@ -857,7 +864,8 @@ bool needsStageCombiner(const std::vector<const ex::TextureRef *> &stages) {
   if (stages.empty()) return false;
   const ex::TextureRef &t = *stages.front();
   return t.multiMode != "MODULATE" || !t.multiSource.empty() ||
-         !t.multiFunction.empty() || t.channel != 0;
+         !t.multiFunction.empty() || t.channel != 0 ||
+         t.source == ex::TextureRef::Source::Cube; // §34: cube stages sample there.
 }
 
 // multitexture.glsl mode code for one §18.4.3 mode token (Table 18.3).
@@ -1014,6 +1022,100 @@ GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &caches,
     return tex;
   }
   return 0;
+}
+
+// Decoded RGBA8 for one 2D face of a cube map: inline pixels, the SDK's
+// resolved pixels, or the asset resolver plus stb_image. Sets `pending` when
+// the resolver has not delivered yet.
+bool decodeFacePixels(const ex::TextureRef &ref, const ex::AssetResolver &resolver,
+                      int &w, int &h, std::vector<unsigned char> &rgba, bool &pending) {
+  if (ref.source == ex::TextureRef::Source::Inline) {
+    rgba = sfImageRGBA(ref.inlinePixels);
+    w = ref.inlinePixels.width;
+    h = ref.inlinePixels.height;
+    return !rgba.empty();
+  }
+  if (ref.source != ex::TextureRef::Source::Url) return false;
+  if (ref.resolvedPixels.ready() && !ref.resolvedPixels.pixels->rgba.empty()) {
+    const ex::TexturePixels &p = *ref.resolvedPixels.pixels;
+    w = static_cast<int>(p.width);
+    h = static_cast<int>(p.height);
+    rgba.assign(p.rgba.begin(), p.rgba.end());
+    return true;
+  }
+  if (ref.resolvedPixels.pending()) { pending = true; return false; }
+  for (const std::string &url : ref.url) {
+    if (url.empty() || !resolver) continue;
+    ex::AssetResult res = resolver(url, ex::AssetKind::Texture);
+    if (res.pending()) { pending = true; return false; }
+    if (res.failed() || res.bytes.empty()) continue;
+    int comp = 0;
+    stbi_set_flip_vertically_on_load(0);
+    unsigned char *px = stbi_load_from_memory(res.bytes.data(),
+                                              static_cast<int>(res.bytes.size()),
+                                              &w, &h, &comp, 4);
+    if (!px) continue;
+    rgba.assign(px, px + static_cast<std::size_t>(w) * h * 4);
+    stbi_image_free(px);
+    return true;
+  }
+  return false;
+}
+
+// §34.4.1 ComposedCubeMapTexture as a six-layer GL_TEXTURE_2D_ARRAY in
+// TextureRef::cubeFaces order (front, back, left, right, top, bottom), which
+// multitexture.glsl sampleCubeFaces indexes by direction. §34.2.2 requires
+// equal square faces; a face of another size is resampled (nearest) to the
+// largest, and a missing or undecodable face is white. Faces are clamped
+// (§34.4.1 ignores repeatS/T). Returns 0 while a face is pending.
+GLuint resolveCubeTex(const ex::TextureRef &cube, TextureCache &caches,
+                      const ex::AssetResolver &resolver, bool srgb) {
+  if (cube.source != ex::TextureRef::Source::Cube) return 0;
+  TextureCacheFormat &cache = caches.format(srgb);
+  std::string key;
+  for (const ex::TextureRef &face : cube.cubeFaces) {
+    if (face.source == ex::TextureRef::Source::Inline)
+      key += std::to_string(reinterpret_cast<std::uintptr_t>(&face.inlinePixels));
+    else if (!face.url.empty())
+      key += face.url.front();
+    key += '|';
+  }
+  if (auto it = cache.byCube.find(key); it != cache.byCube.end()) return it->second;
+  struct Face { int w = 0, h = 0; std::vector<unsigned char> rgba; };
+  Face faces[6];
+  int size = 1;
+  for (std::size_t i = 0; i < 6 && i < cube.cubeFaces.size(); ++i) {
+    bool pending = false;
+    if (!decodeFacePixels(cube.cubeFaces[i], resolver, faces[i].w, faces[i].h,
+                          faces[i].rgba, pending)) {
+      if (pending) return 0; // retry next frame, uncached.
+      faces[i] = {};
+    }
+    size = std::max({size, faces[i].w, faces[i].h});
+  }
+  std::vector<unsigned char> layers(static_cast<std::size_t>(size) * size * 4 * 6, 255);
+  for (int f = 0; f < 6; ++f) {
+    if (faces[f].rgba.empty()) continue;
+    for (int y = 0; y < size; ++y)
+      for (int x = 0; x < size; ++x) {
+        const int sx = x * faces[f].w / size, sy = y * faces[f].h / size;
+        std::copy_n(&faces[f].rgba[(static_cast<std::size_t>(sy) * faces[f].w + sx) * 4], 4,
+                    &layers[((static_cast<std::size_t>(f) * size + y) * size + x) * 4]);
+      }
+  }
+  GLuint tex = 0;
+  glGenTextures(1, &tex);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8, size, size,
+               6, 0, GL_RGBA, GL_UNSIGNED_BYTE, layers.data());
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+  cache.byCube[key] = tex;
+  return tex;
 }
 
 // Read the current framebuffer back and write a binary PPM (P6). Used by the
@@ -1505,6 +1607,12 @@ int main(int argc, char **argv) {
     if (loc < 0) continue;
     glUseProgram(p);
     glUniform1i(loc, 5);
+  }
+  for (GLuint p : {unlitProg, phongProg, pbrProg}) {
+    const GLint loc = p ? glGetUniformLocation(p, "uStageCube") : -1;
+    if (loc < 0) continue;
+    glUseProgram(p);
+    glUniform1i(loc, 12); // multitexture.glsl's cube-map stage.
   }
   glUseProgram(0);
   constexpr int kShadowSize = 1024;
@@ -2107,7 +2215,11 @@ int main(int argc, char **argv) {
         if (locNum < 0) return;
         const ex::MaterialDesc &m = item.material;
         std::vector<const ex::TextureRef *> stages = baseStageRefs(m);
-        if (!mesh.hasTexcoords || mesh.isGlyphMesh || !needsStageCombiner(stages))
+        const bool anyCube = std::any_of(stages.begin(), stages.end(), [](auto *t) {
+          return t->source == ex::TextureRef::Source::Cube;
+        });
+        if ((!mesh.hasTexcoords && !anyCube) || mesh.isGlyphMesh ||
+            !needsStageCombiner(stages))
           stages.clear();
         constexpr int kMaxStages = 4; // multitexture.glsl; extra stages are ignored.
         const int n = std::min(static_cast<int>(stages.size()), kMaxStages);
@@ -2117,14 +2229,23 @@ int main(int argc, char **argv) {
         for (const ex::TextureRef &t : m.textures)
           if (t.hasTexCoordGen) { generated = &t; break; }
         const bool genActive = generated && texCoordGenModeUniform(m) != 0;
+        GLuint cubeTex = 0;
         for (int i = 0; i < n; ++i) {
           const ex::TextureRef &t = *stages[i];
           auto loc = [&](const char *name) {
             return glGetUniformLocation(
                 program, (std::string(name) + "[" + std::to_string(i) + "]").c_str());
           };
+          const bool isCube = t.source == ex::TextureRef::Source::Cube;
           bindTex(8 + i, loc("uStageTex"), loc("uStageHasTex"),
-                  resolveTexRef(&t, texCache, assetResolver, srgb, &movieState));
+                  isCube ? 0 : resolveTexRef(&t, texCache, assetResolver, srgb, &movieState));
+          if (isCube && !cubeTex) { // one cube map per material (unit 12).
+            cubeTex = resolveCubeTex(t, texCache, assetResolver, srgb);
+            glActiveTexture(GL_TEXTURE12);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, cubeTex);
+          }
+          // A pending cube samples white, like any unresolved stage.
+          glUniform1i(loc("uStageIsCube"), isCube && cubeTex ? 1 : 0);
           const auto comma = t.multiMode.find(',');
           const int rgbMode = multiTextureModeCode(t.multiMode.substr(0, comma));
           const int alphaMode = comma == std::string::npos

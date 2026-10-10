@@ -203,12 +203,14 @@ inline float perlinNoise(glsl::vec3 p, unsigned seed) {
 // §18.4.8 Table 18.6. Local modes use geometry coordinates, independently
 // of the placement/camera. Refraction follows Snell's law (eta is the authored
 // ratio); absent eta defaults to 1. Total internal reflection returns zero.
-inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode,
-                                const glsl::vec3 &posEye,
-                                const glsl::vec3 &normalEye, bool frontFacing,
-                                const glsl::vec3 &posLocal = {},
-                                const glsl::vec3 &normalLocal = {0, 0, 1},
-                                const std::vector<float> &parameters = {}) {
+// The full (s, t, r) vector: 2D textures use (s, t); §34.2.2 environment
+// textures look up the direction (s, t, r).
+inline glsl::vec3 texCoordGenVec(ex::TexCoordGenMode mode,
+                                 const glsl::vec3 &posEye,
+                                 const glsl::vec3 &normalEye, bool frontFacing,
+                                 const glsl::vec3 &posLocal = {},
+                                 const glsl::vec3 &normalLocal = {0, 0, 1},
+                                 const std::vector<float> &parameters = {}) {
   using Mode = ex::TexCoordGenMode;
   glsl::vec3 n = glsl::normalize(normalEye);
   if (!frontFacing) n = -n;
@@ -220,15 +222,15 @@ inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode,
     nl = -nl;
   switch (mode) {
   case Mode::SphereLocal:
-    return {nl.x * 0.5f + 0.5f, nl.y * 0.5f + 0.5f};
+    return nl * 0.5f + glsl::vec3(0.5f);
   case Mode::Coord:
-    return {posLocal.x, posLocal.y};
+    return posLocal;
   case Mode::Noise:
   case Mode::NoiseEye: {
     glsl::vec3 p = mode == Mode::Noise ? posLocal : posEye;
     p = p * glsl::vec3{parameter(0, 1), parameter(1, 1), parameter(2, 1)} +
         glsl::vec3{parameter(3, 0), parameter(4, 0), parameter(5, 0)};
-    return {perlinNoise(p, 0), perlinNoise(p, 1013)};
+    return {perlinNoise(p, 0), perlinNoise(p, 1013), perlinNoise(p, 2026)};
   }
   case Mode::SphereReflect:
   case Mode::SphereReflectLocal: {
@@ -240,26 +242,31 @@ inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode,
     glsl::vec3 normal = -(local ? nl : n);
     float eta = parameter(0, 1), d = glsl::dot(normal, incident);
     float k = 1 - eta * eta * (1 - d * d);
-    glsl::vec3 v = k < 0 ? glsl::vec3{}
-                         : incident * eta - normal * (eta * d + std::sqrt(k));
-    return {v.x, v.y};
+    return k < 0 ? glsl::vec3{}
+                 : incident * eta - normal * (eta * d + std::sqrt(k));
   }
-
-    case Mode::Sphere:
-      return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f};
-    case Mode::CameraSpaceNormal:
-      return glsl::vec2{n.x, n.y};
-    case Mode::CameraSpacePosition:
-    case Mode::CoordEye:
-      return glsl::vec2{posEye.x, posEye.y};
-    case Mode::CameraSpaceReflectionVector: {
-      const glsl::vec3 E = glsl::normalize(-posEye);
-      const glsl::vec3 R = glsl::reflect(-E, n);
-      return glsl::vec2{R.x, R.y};
-    }
-    default:
-      return glsl::vec2{n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f}; // SPHERE default.
+  case Mode::CameraSpaceNormal:
+    return n;
+  case Mode::CameraSpacePosition:
+  case Mode::CoordEye:
+    return posEye;
+  case Mode::CameraSpaceReflectionVector: {
+    const glsl::vec3 E = glsl::normalize(-posEye);
+    return glsl::reflect(-E, n);
   }
+  default:
+    return n * 0.5f + glsl::vec3(0.5f); // SPHERE, the default.
+  }
+}
+inline glsl::vec2 texCoordGenUv(ex::TexCoordGenMode mode,
+                                const glsl::vec3 &posEye,
+                                const glsl::vec3 &normalEye, bool frontFacing,
+                                const glsl::vec3 &posLocal = {},
+                                const glsl::vec3 &normalLocal = {0, 0, 1},
+                                const std::vector<float> &parameters = {}) {
+  const glsl::vec3 v = texCoordGenVec(mode, posEye, normalEye, frontFacing,
+                                      posLocal, normalLocal, parameters);
+  return {v.x, v.y};
 }
 } // namespace detail
 
@@ -416,6 +423,19 @@ textureCoordinates(const TextureCoordinates &source, const FragmentInput &f) {
   }
   return {stageUv, stageDx, stageDy};
 }
+// §34.2.2: an environment texture is indexed by the (s, t, r) direction its
+// TextureCoordinateGenerator produces; with none, by the camera-space
+// reflection vector (CAMERASPACEREFLECTIONVECTOR, the usual environment-map
+// generator). Generated-coordinate TextureTransforms are 2D and do not apply.
+inline glsl::vec3 environmentDirection(const TextureCoordinates &source,
+                                       const FragmentInput &f) {
+  if (source.hasGenerator)
+    return texCoordGenVec(source.generator.mode, f.posEye, f.normalEye,
+                          f.frontFacing, f.posLocal, f.normalLocal,
+                          source.generator.parameter);
+  return texCoordGenVec(ex::TexCoordGenMode::CameraSpaceReflectionVector,
+                        f.posEye, f.normalEye, f.frontFacing);
+}
 inline TextureSampleCoordinates textureCoordinates(const MaterialTextures &tx,
                                                    ex::TextureRef::Slot slot,
                                                    const FragmentInput &f) {
@@ -439,9 +459,13 @@ inline glsl::vec4 combineBaseStages(const MaterialTextures &tx,
   glsl::vec4 acc = initial;
   for (const auto &st : tx.baseStages) {
     // An unresolved/multisource stage samples white, so MODULATE is a no-op.
-    const auto coordinates = textureCoordinates(st.coordinates, f);
-    const auto texel =
-        st.tex.sample(coordinates.uv, coordinates.dx, coordinates.dy);
+    glsl::vec4 texel;
+    if (st.tex.isCube()) {
+      texel = st.tex.sampleCube(environmentDirection(st.coordinates, f));
+    } else {
+      const auto coordinates = textureCoordinates(st.coordinates, f);
+      texel = st.tex.sample(coordinates.uv, coordinates.dx, coordinates.dy);
+    }
     const auto arg2 = multiArg2(st, acc, diffuse, specular, initial.w);
     const auto comma = st.mode.find(',');
     if (comma == std::string::npos)
