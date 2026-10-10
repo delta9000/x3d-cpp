@@ -99,10 +99,12 @@ uniform vec3 uLightAttenuation[kMaxLights];
 uniform float uLightRadius[kMaxLights];
 uniform vec2 uLightCone[kMaxLights]; // beamWidth, cutOffAngle in radians.
 
+#include "shadow.glsl"
+
 bool resolveLight(int i, vec3 posEye, out vec3 L, out float atten) {
     if (uLightType[i] == 0) {
         L = normalize(-uLightDirEye[i]);
-        atten = 1.0;
+        atten = shadowVisibility(i, posEye);
         return true;
     }
     vec3 toLight = uLightPosEye[i] - posEye;
@@ -117,6 +119,7 @@ bool resolveLight(int i, vec3 posEye, out vec3 L, out float atten) {
         if (ang > uLightCone[i].x && uLightCone[i].y > uLightCone[i].x)
             atten *= (uLightCone[i].y - ang) / (uLightCone[i].y - uLightCone[i].x);
     }
+    atten *= shadowVisibility(i, posEye);
     return true;
 }
 
