@@ -202,6 +202,9 @@ int main(int argc, char **argv) {
   opt.width = width;
   opt.height = height;
   opt.glyphAtlas = &font.atlas;
+  // §34.4.2: generated cube faces persist across --animate frames.
+  cr::GeneratedCubeCache generatedCubes;
+  opt.generatedCubes = &generatedCubes;
 
   // Skybox: the bound Background's six panorama faces from the extraction
   // seam (BackgroundDesc: Background *Url lists or TextureBackground face

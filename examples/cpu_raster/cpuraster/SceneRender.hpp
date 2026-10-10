@@ -30,6 +30,8 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -40,6 +42,13 @@ using namespace x3d::nodes; // X3DNode (ADR-0039 namespaces)
 namespace rt = x3d::runtime;
 
 namespace render_detail { struct SkyboxTextures; } // defined below.
+
+// §34.4.2 GeneratedCubeMapTexture faces, keyed by TextureRef::generatedCube.node
+// (six RGBA8 layers, front, back, left, right, top, bottom). Kept across frames
+// by the caller: a cube whose update is NONE shows the faces last rendered.
+struct GeneratedCubeCache {
+  std::unordered_map<const void *, rt::extract::TexturePixelsRef> faces;
+};
 
 struct RenderOptions {
   int width = 800;
@@ -59,6 +68,9 @@ struct RenderOptions {
   // Optional skybox: six resolved panorama faces (Background *Url fields). Null
   // => no skybox; faces composite over the sky/ground gradient by alpha.
   const render_detail::SkyboxTextures *skybox = nullptr;
+  // Optional persistent GeneratedCubeMapTexture cache. Null => a per-call cache,
+  // so only cubes whose update is not NONE are drawn (NONE leaves them white).
+  GeneratedCubeCache *generatedCubes = nullptr;
 };
 
 namespace render_detail {
@@ -248,15 +260,42 @@ inline glsl::vec3 centroid(const rt::extract::MeshData &m) {
   return c / static_cast<float>(m.positions.size());
 }
 
-} // namespace render_detail
+// Each TextureRef reachable from a material (MultiTexture stages and cube
+// faces included); `Refs` is a const or mutable TextureRef vector.
+template <typename Refs, typename F> void forEachTextureRef(Refs &refs, F &&f) {
+  for (auto &r : refs) {
+    f(r);
+    forEachTextureRef(r.multiStages, f);
+    forEachTextureRef(r.cubeFaces, f);
+  }
+}
 
-inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
-                               rt::extract::SceneExtractor &extractor,
-                               const RenderOptions &opt) {
+inline bool usesGeneratedCube(const rt::extract::RenderItem &it,
+                              const void *node) {
+  if (!node) return false;
+  bool uses = false;
+  auto check = [&](const rt::extract::TextureRef &r) {
+    uses = uses || r.generatedCube.node == node;
+  };
+  forEachTextureRef(it.material.textures, check);
+  if (it.material.backMaterial)
+    forEachTextureRef(it.material.backMaterial->textures, check);
+  return uses;
+}
+
+// Draw the scene from one camera into a width x height framebuffer. Items
+// whose material uses the GeneratedCubeMapTexture `exclude` are skipped (a
+// generated cube does not see the geometry it is applied to); generated cube
+// refs sample their faces from `cubes`.
+inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
+                              rt::extract::SceneExtractor &extractor,
+                              const RenderOptions &opt, const rt::Mat4 &viewRT,
+                              const rt::Mat4 &projRT, int width, int height,
+                              const void *exclude,
+                              const GeneratedCubeCache &cubes) {
   namespace ex = rt::extract;
-  using namespace render_detail;
 
-  Framebuffer fb(opt.width, opt.height);
+  Framebuffer fb(width, height);
 
   // ---- Background flat clear (bound Background's first skyColor) -------------
   // The full sky/ground gradient is painted per-pixel below once the camera is
@@ -268,43 +307,9 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
     if (!sky.empty()) clear = glsl::vec3(sky[0]);
   }
   fb.clear(clear);
-
   if (extractor.itemCount() == 0) return fb;
 
-  // ---- Camera: bound Viewpoint, else a view-all fit of the scene bounds -----
   const rt::Aabb bounds = extractor.sceneWorldBounds();
-  ex::CameraDesc cam = extractor.camera();
-  const bool noViewpoint = (ctx.boundViewpoint() == nullptr);
-  rt::Mat4 viewRT = cam.viewMatrix;
-  if (noViewpoint && !bounds.empty) {
-    glsl::vec3 c{(bounds.min.x + bounds.max.x) * 0.5f,
-                 (bounds.min.y + bounds.max.y) * 0.5f,
-                 (bounds.min.z + bounds.max.z) * 0.5f};
-    SFVec3f sz = bounds.size();
-    float radius = 0.5f * std::sqrt(sz.x * sz.x + sz.y * sz.y + sz.z * sz.z);
-    float fov = cam.fieldOfView;
-    float dist = radius / std::sin(glsl::maxf(0.1f, fov) * 0.5f) * 1.25f;
-    glsl::vec3 dir = v3norm(glsl::vec3{0.45f, 0.35f, 1.0f});
-    glsl::vec3 eye = c + dir * dist;
-    viewRT = lookAt(eye, c, glsl::vec3{0, 1, 0});
-  }
-
-  const float aspect = static_cast<float>(opt.width) / static_cast<float>(opt.height);
-  float zNear = 0.1f, zFar = 10000.0f;
-  if (!bounds.empty) {
-    SFVec3f sz = bounds.size();
-    float diag = std::hypot(sz.x, sz.y, sz.z);
-    if (diag > 0.0f) {
-      const auto center =
-          viewRT.transformPoint({(bounds.min.x + bounds.max.x) * 0.5f,
-                                 (bounds.min.y + bounds.max.y) * 0.5f,
-                                 (bounds.min.z + bounds.max.z) * 0.5f});
-      zFar = std::max(diag * 100.0f,
-                      std::hypot(center.x, center.y, center.z) + diag);
-      zNear = std::max(std::numeric_limits<float>::min(), diag * 0.001f);
-    }
-  }
-  const rt::Mat4 projRT = perspective(cam.fieldOfView, aspect, zNear, zFar);
   const glsl::mat4 viewG(viewRT), projG(projRT);
 
   // ---- Background sky/ground gradient (overwrites the flat clear) -----------
@@ -320,10 +325,10 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
     if (skyC.size() > 1 || !grC.empty() || hasSkybox) {
       const rt::Mat4 invView = viewRT.inverse();
       const float p0 = projRT.m[0], p5 = projRT.m[5];
-      for (int y = 0; y < opt.height; ++y) {
-        for (int x = 0; x < opt.width; ++x) {
-          const float xn = 2.0f * (x + 0.5f) / opt.width - 1.0f;
-          const float yn = 2.0f * (y + 0.5f) / opt.height - 1.0f; // fb is bottom-up
+      for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+          const float xn = 2.0f * (x + 0.5f) / width - 1.0f;
+          const float yn = 2.0f * (y + 0.5f) / height - 1.0f; // fb is bottom-up
           const SFVec3f wd =
               invView.transformDirection(SFVec3f{xn / p0, yn / p5, -1.0f});
           const glsl::vec3 d = v3norm(glsl::vec3(wd));
@@ -352,7 +357,8 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
     auto triangles = std::make_shared<std::vector<std::array<SFVec3f, 3>>>();
     for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
       const auto &it = extractor.item(id);
-      if (!it.castShadow || it.mesh->topology != ex::Topology::Triangles)
+      if (!it.castShadow || it.mesh->topology != ex::Topology::Triangles ||
+          usesGeneratedCube(it, exclude))
         continue;
       const ex::MeshData deformed =
           it.skin ? extractor.deformedMesh(id) : ex::MeshData{};
@@ -426,7 +432,33 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
             [](const auto &a, const auto &b) { return a.first < b.first; });
 
   auto drawOne = [&](ex::RenderItemId id, BlendMode blend) {
-    const ex::RenderItem &it = extractor.item(id);
+    const ex::RenderItem *source = &extractor.item(id);
+    // §34.4.2: give generated cube refs their rendered faces, as if decoded
+    // from a six-layer image (Texture::fromCubeRef).
+    ex::RenderItem withFaces;
+    bool generated = false;
+    auto scan = [&](const ex::TextureRef &r) {
+      generated = generated || r.generatedCube.node;
+    };
+    forEachTextureRef(source->material.textures, scan);
+    if (source->material.backMaterial)
+      forEachTextureRef(source->material.backMaterial->textures, scan);
+    if (generated) {
+      if (usesGeneratedCube(*source, exclude)) return;
+      withFaces = *source;
+      auto patch = [&](ex::TextureRef &r) {
+        if (!r.generatedCube.node) return;
+        auto found = cubes.faces.find(r.generatedCube.node);
+        r.resolvedPixels = found == cubes.faces.end()
+                               ? ex::TexturePixelResult::makeFailed()
+                               : ex::TexturePixelResult::makeReady(found->second);
+      };
+      forEachTextureRef(withFaces.material.textures, patch);
+      if (withFaces.material.backMaterial)
+        forEachTextureRef(withFaces.material.backMaterial->textures, patch);
+      source = &withFaces;
+    }
+    const ex::RenderItem &it = *source;
 
     // §24.4.3: an item inside a LocalFog's grouping scope is fogged by that
     // LocalFog (nearest wins); otherwise the bound global Fog applies.
@@ -519,6 +551,118 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
   for (const auto &kv : blended) drawOne(kv.second, BlendMode::Blend);
 
   return fb;
+}
+
+} // namespace render_detail
+
+inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
+                               rt::extract::SceneExtractor &extractor,
+                               const RenderOptions &opt) {
+  namespace ex = rt::extract;
+  using namespace render_detail;
+
+  if (extractor.itemCount() == 0) {
+    GeneratedCubeCache none;
+    return renderView(ctx, extractor, opt, rt::Mat4{}, rt::Mat4{}, opt.width,
+                      opt.height, nullptr, none);
+  }
+
+  // ---- Camera: bound Viewpoint, else a view-all fit of the scene bounds -----
+  const rt::Aabb bounds = extractor.sceneWorldBounds();
+  ex::CameraDesc cam = extractor.camera();
+  const bool noViewpoint = (ctx.boundViewpoint() == nullptr);
+  rt::Mat4 viewRT = cam.viewMatrix;
+  if (noViewpoint && !bounds.empty) {
+    glsl::vec3 c{(bounds.min.x + bounds.max.x) * 0.5f,
+                 (bounds.min.y + bounds.max.y) * 0.5f,
+                 (bounds.min.z + bounds.max.z) * 0.5f};
+    SFVec3f sz = bounds.size();
+    float radius = 0.5f * std::sqrt(sz.x * sz.x + sz.y * sz.y + sz.z * sz.z);
+    float fov = cam.fieldOfView;
+    float dist = radius / std::sin(glsl::maxf(0.1f, fov) * 0.5f) * 1.25f;
+    glsl::vec3 dir = v3norm(glsl::vec3{0.45f, 0.35f, 1.0f});
+    glsl::vec3 eye = c + dir * dist;
+    viewRT = lookAt(eye, c, glsl::vec3{0, 1, 0});
+  }
+
+  const float aspect = static_cast<float>(opt.width) / static_cast<float>(opt.height);
+  float zNear = 0.1f, zFar = 10000.0f;
+  if (!bounds.empty) {
+    SFVec3f sz = bounds.size();
+    float diag = std::hypot(sz.x, sz.y, sz.z);
+    if (diag > 0.0f) {
+      const auto center =
+          viewRT.transformPoint({(bounds.min.x + bounds.max.x) * 0.5f,
+                                 (bounds.min.y + bounds.max.y) * 0.5f,
+                                 (bounds.min.z + bounds.max.z) * 0.5f});
+      zFar = std::max(diag * 100.0f,
+                      std::hypot(center.x, center.y, center.z) + diag);
+      zNear = std::max(std::numeric_limits<float>::min(), diag * 0.001f);
+    }
+  }
+  const rt::Mat4 projRT = perspective(cam.fieldOfView, aspect, zNear, zFar);
+
+  // ---- §34.4.2 GeneratedCubeMapTexture faces ---------------------------------
+  // Each cube whose update is not NONE is re-rendered before the frame: six
+  // size x size views with a pi/2 field of view from the local origin of the
+  // first Shape using it, along that Shape's local axes (ADR-0060), in Figure
+  // 34.1 face order. Faces of other generated cubes come from the cache as it
+  // was before this frame.
+  GeneratedCubeCache frameCache;
+  GeneratedCubeCache &cache = opt.generatedCubes ? *opt.generatedCubes : frameCache;
+  struct PendingCube {
+    const void *node;
+    int size;
+    rt::Mat4 world;
+  };
+  std::vector<PendingCube> pending;
+  for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
+    const ex::RenderItem &it = extractor.item(id);
+    forEachTextureRef(it.material.textures, [&](const ex::TextureRef &r) {
+      const auto &g = r.generatedCube;
+      if (!g.node || g.update == "NONE") return;
+      for (const auto &p : pending)
+        if (p.node == g.node) return;
+      pending.push_back({g.node, g.size, it.worldTransform});
+    });
+  }
+  if (!pending.empty()) {
+    const GeneratedCubeCache previous = cache;
+    for (const auto &p : pending) {
+      const glsl::vec3 origin(p.world.transformPoint({0, 0, 0}));
+      auto axis = [&](float x, float y, float z) {
+        return v3norm(glsl::vec3(p.world.transformDirection({x, y, z})));
+      };
+      // front -Z, back +Z, left -X, right +X, top +Y, bottom -Y: (look, up).
+      const std::array<std::array<glsl::vec3, 2>, 6> faces{{
+          {axis(0, 0, -1), axis(0, 1, 0)},
+          {axis(0, 0, 1), axis(0, 1, 0)},
+          {axis(-1, 0, 0), axis(0, 1, 0)},
+          {axis(1, 0, 0), axis(0, 1, 0)},
+          {axis(0, 1, 0), axis(0, 0, 1)},
+          {axis(0, -1, 0), axis(0, 0, -1)},
+      }};
+      const rt::Mat4 faceProj =
+          perspective(1.57079632679f, 1.0f, zNear, zFar);
+      ex::TexturePixels pixels;
+      pixels.width = pixels.height = static_cast<std::uint32_t>(p.size);
+      pixels.layers = 6;
+      for (const auto &[look, up] : faces) {
+        const Framebuffer face =
+            renderView(ctx, extractor, opt, lookAt(origin, origin + look, up),
+                       faceProj, p.size, p.size, p.node, previous);
+        pixels.rgba.insert(pixels.rgba.end(), face.pixels().begin(),
+                           face.pixels().end());
+      }
+      for (std::size_t i = 3; i < pixels.rgba.size(); i += 4)
+        pixels.rgba[i] = 255; // an environment is opaque.
+      cache.faces[p.node] =
+          std::make_shared<const ex::TexturePixels>(std::move(pixels));
+    }
+  }
+
+  return renderView(ctx, extractor, opt, viewRT, projRT, opt.width, opt.height,
+                    nullptr, cache);
 }
 
 } // namespace x3d::cpuraster

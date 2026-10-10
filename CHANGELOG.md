@@ -71,6 +71,15 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **GeneratedCubeMapTexture (REQ-CUBE, ADR-0060).** The SDK surfaces it as a
+  cube ref the consumer renders (`TextureRef::generatedCube`), and the new
+  `GeneratedCubeMapSystem` resets `update` NEXT_FRAME_ONLY to NONE at the start
+  of the next frame. cpu_raster and the OpenGL PoC render its six faces from
+  the geometry's local origin without the Shapes that use it, and keep them
+  while `update` is NONE. Previously it drew white.
+- **Cube maps turn with their geometry (ADR-0060).** Both reference hosts now
+  look cube maps up in the geometry's local frame; before, a rotated Shape's
+  cube stayed fixed to the camera.
 - **ImageCubeMapTexture (REQ-CUBE).** The SDK extracts it as a url cube ref
   and the texture decode seam returns a cube image as six layers
   (`TexturePixels::layers`, ADR-0059). The stb and wuffs backends, and the GL

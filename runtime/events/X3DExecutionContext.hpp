@@ -480,6 +480,8 @@ public:
    * a paused, fixed-timestep, or replayed clock, where now() repeats.
    */
   std::uint64_t tickGeneration() const { return tickGeneration_; }
+  /// True while tick() runs (systems, cascade drains, post-cascade hooks).
+  bool ticking() const { return ticking_; }
 
   const EventGraph &graph() const { return graph_; }
 

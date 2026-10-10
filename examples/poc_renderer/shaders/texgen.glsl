@@ -96,8 +96,17 @@ vec2 generatedUv(int mode, vec3 posEye, vec3 normalEye) {
 // §34.2.2: the direction an environment (cube map) texture is sampled with:
 // the generator's (s, t, r), or with no generator the camera-space reflection
 // vector. Generated-coordinate TextureTransforms are 2D and do not apply.
+// The cube is fixed to the geometry's local frame (ADR-0060): eye-space modes
+// (CAMERASPACENORMAL/POSITION/REFLECTIONVECTOR, COORD-EYE, NOISE-EYE,
+// SPHERE-REFLECT) are carried there by uEyeToLocal, the inverse of the upper
+// 3x3 of view * model; local modes and the biased SPHERE are used as is.
+uniform mat3 uEyeToLocal;
 vec3 envDirection(vec3 posEye, vec3 normalEye) {
-    return generatedVec(uTexCoordGenMode > 0 ? uTexCoordGenMode : 4, posEye, normalEye);
+    int mode = uTexCoordGenMode > 0 ? uTexCoordGenMode : 4;
+    vec3 v = generatedVec(mode, posEye, normalEye);
+    bool eyeSpace = mode == 2 || mode == 3 || mode == 4 || mode == 7 ||
+                    mode == 9 || mode == 10;
+    return eyeSpace ? uEyeToLocal * v : v;
 }
 
 // The coordinates the material's texture slots sample.

@@ -114,6 +114,13 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
     for (const char *face : {"frontTexture", "backTexture", "leftTexture", "rightTexture",
                              "topTexture", "bottomTexture"})
       ref.cubeFaces.push_back(refOf(geombounds::getNode(*texNode, face), slot));
+  } else if (t == "GeneratedCubeMapTexture") {
+    // §34.4.2: rendered at run time by the consumer (TextureRef::generatedCube).
+    ref.source = TextureRef::Source::Cube;
+    ref.generatedCube.node = texNode.get();
+    ref.generatedCube.update = ::x3d::runtime::enumToken(*texNode, "update", "NONE");
+    ref.generatedCube.size =
+        std::max<int>(1, geombounds::getField<SFInt32>(*texNode, "size", 128));
   } else if (t == "ImageCubeMapTexture") {
     // §34.4.3: one image file holds all six faces (e.g. a DDS cube map). A
     // Source::Cube ref with a url and no cubeFaces; the TextureResolver decodes

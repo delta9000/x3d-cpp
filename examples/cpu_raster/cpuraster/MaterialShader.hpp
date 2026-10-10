@@ -427,14 +427,26 @@ textureCoordinates(const TextureCoordinates &source, const FragmentInput &f) {
 // TextureCoordinateGenerator produces; with none, by the camera-space
 // reflection vector (CAMERASPACEREFLECTIONVECTOR, the usual environment-map
 // generator). Generated-coordinate TextureTransforms are 2D and do not apply.
+// The cube is fixed to the geometry's local frame (the Figure 34.1 axes read
+// as local axes; ADR-0060), so eye-space directions are carried into that
+// frame. Local-frame modes and the biased SPHERE coordinates are used as is.
+inline bool eyeSpaceDirection(ex::TexCoordGenMode mode) {
+  using Mode = ex::TexCoordGenMode;
+  return mode == Mode::CameraSpaceNormal || mode == Mode::CameraSpacePosition ||
+         mode == Mode::CameraSpaceReflectionVector || mode == Mode::CoordEye ||
+         mode == Mode::NoiseEye || mode == Mode::SphereReflect;
+}
 inline glsl::vec3 environmentDirection(const TextureCoordinates &source,
                                        const FragmentInput &f) {
-  if (source.hasGenerator)
-    return texCoordGenVec(source.generator.mode, f.posEye, f.normalEye,
-                          f.frontFacing, f.posLocal, f.normalLocal,
-                          source.generator.parameter);
-  return texCoordGenVec(ex::TexCoordGenMode::CameraSpaceReflectionVector,
-                        f.posEye, f.normalEye, f.frontFacing);
+  const ex::TexCoordGenMode mode =
+      source.hasGenerator ? source.generator.mode
+                          : ex::TexCoordGenMode::CameraSpaceReflectionVector;
+  const glsl::vec3 v =
+      source.hasGenerator
+          ? texCoordGenVec(mode, f.posEye, f.normalEye, f.frontFacing,
+                           f.posLocal, f.normalLocal, source.generator.parameter)
+          : texCoordGenVec(mode, f.posEye, f.normalEye, f.frontFacing);
+  return f.eyeToLocal && eyeSpaceDirection(mode) ? *f.eyeToLocal * v : v;
 }
 inline TextureSampleCoordinates textureCoordinates(const MaterialTextures &tx,
                                                    ex::TextureRef::Slot slot,

@@ -10,6 +10,9 @@
 //     45 degrees right, left, up or down the reflection runs along that axis.
 //   * CAMERASPACEPOSITION: the direction to the fragment (-Z, front face).
 //   * CAMERASPACENORMAL: the normal (+Z at the centre, +X on the right).
+//   * The cube is fixed to the geometry's local frame (ADR-0060): under a
+//     Transform rotated 90 degrees about +Y the eye-space +Z reflection is
+//     the local -X direction (left face), and +X is local +Z (back face).
 //   * Inside a MultiTexture, a cube stage combines like any other stage.
 //   * §34.4.3 ImageCubeMapTexture: a DDS cube file with the same six colours
 //     decodes (x3d_stb) to the same faces.
@@ -80,13 +83,14 @@ static std::string sphere(const std::string &generator) {
 }
 
 static Framebuffer render(const std::string &texture,
-                          const std::string &generator = "") {
+                          const std::string &generator = "",
+                          const std::string &rotation = "0 1 0 0") {
   const std::string scene =
       "<X3D profile='Full' version='4.0'><Scene>"
       "<Viewpoint position='0 0 10'/><NavigationInfo headlight='false'/>"
-      "<Shape><Appearance>" +
-      texture + "</Appearance>" + sphere(generator) +
-      "</Shape></Scene></X3D>";
+      "<Transform rotation='" +
+      rotation + "'><Shape><Appearance>" + texture + "</Appearance>" +
+      sphere(generator) + "</Shape></Transform></Scene></X3D>";
   rt::SessionOptions options;
   options.textureResolver = x3d::runtime::io::stb::makeStbTextureResolver();
   auto session =
@@ -134,6 +138,12 @@ int main() {
     CHECK(face(fb, c - o, c) == 'L');
     CHECK(face(fb, c, c + o) == 'T'); // row 0 is the bottom (GL origin)
     CHECK(face(fb, c, c - o) == 'D');
+  }
+  {  // Rotated geometry rotates its cube with it.
+    auto fb = render(kCube, "", "0 1 0 1.5707963");
+    CHECK(face(fb, c, c) == 'L');
+    CHECK(face(fb, c + o, c) == 'B');
+    CHECK(face(fb, c, c + o) == 'T');
   }
   {  // An explicit generator decides the direction.
     auto position = render(kCube, generator("CAMERASPACEPOSITION"));

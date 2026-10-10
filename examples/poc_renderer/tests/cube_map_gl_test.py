@@ -10,7 +10,9 @@ camera on +Z. Its six 1x1 faces have distinct colours, so a pixel names the
 face its lookup direction pierced. The same scenes and expectations are pinned
 for the CPU reference host by examples/cpu_raster/tests/cube_map_test.cpp.
 An ImageCubeMapTexture (§34.4.3) naming a DDS cube with the same colours must
-match the composed cube.
+match the composed cube. The cube is fixed to the geometry's local frame
+(ADR-0060): rotated 90 degrees about +Y, the eye-space +Z reflection is local
+-X (left face) and +X is local +Z (back face).
 """
 import math
 import pathlib
@@ -77,12 +79,13 @@ def dds_cube(path):
     path.write_bytes(bytes(header) + pixels)
 
 
-def render(tmp, name, appearance, generator=''):
+def render(tmp, name, appearance, generator='', rotation='0 1 0 0'):
     scene = tmp / f'{name}.x3d'
     output = tmp / f'{name}.ppm'
     scene.write_text(f'''<X3D profile="Full" version="4.0"><Scene>
 <Background skyColor="0 0 0"/><Viewpoint position="0 0 {DISTANCE}"/>
-<Shape><Appearance>{appearance}</Appearance>{sphere(generator)}</Shape>
+<Transform rotation="{rotation}"><Shape><Appearance>{appearance}</Appearance>
+{sphere(generator)}</Shape></Transform>
 </Scene></X3D>''')
     result = subprocess.run([
         'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
@@ -136,6 +139,14 @@ with tempfile.TemporaryDirectory() as directory:
                 got = pixel(x, y)
                 assert face(got) == want, (name, gen, (x, y), want, got)
                 checked += 1
+
+    # The cube turns with the geometry's local frame.
+    for name, material in MATERIALS.items():
+        pixel = render(tmp, f'{name}-rotated', material + CUBE, '', '0 1 0 1.5707963')
+        for (x, y), want in (((0, 0), 'L'), ((R45, 0), 'B'), ((0, R45), 'T')):
+            got = pixel(x, y)
+            assert face(got) == want, (name, 'rotated', (x, y), want, got)
+            checked += 1
 
     # ImageCubeMapTexture: the DDS cube decodes to the same faces.
     dds = tmp / 'cube.dds'

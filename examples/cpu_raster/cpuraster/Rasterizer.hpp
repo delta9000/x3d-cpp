@@ -47,6 +47,10 @@ struct FragmentInput {
   glsl::vec2 dTexDx{0, 0}, dTexDy{0, 0};             // dFdx/dFdy(vTexCoord)
   bool frontFacing = true;       // gl_FrontFacing
   bool hatch = false;            // FillProperties overlay at this window pixel
+  // Eye-to-local direction transform of the draw: inverse of the upper 3x3 of
+  // view * model (§34.2.2 environment lookups happen in the local frame).
+  // Null for lines, points and direct shader calls (treated as identity).
+  const glsl::mat3 *eyeToLocal = nullptr;
 };
 
 // Returns false to DISCARD the fragment; otherwise writes `out` (final color,
@@ -81,6 +85,10 @@ public:
                      const std::vector<glsl::vec4> &clipPlanesEye = {}) {
     const glsl::mat4 mv = view * model;
     const glsl::mat4 mvp = proj * mv;
+    const runtime::Mat4 mvInverse = runtime::Mat4{mv.m}.inverse();
+    for (int c = 0; c < 3; ++c)
+      for (int r = 0; r < 3; ++r)
+        eyeToLocal_.m[c * 3 + r] = mvInverse.m[c * 4 + r];
     const auto &m = model.m;
     const float det = m[0] * (m[5] * m[10] - m[6] * m[9]) -
                       m[4] * (m[1] * m[10] - m[2] * m[9]) +
@@ -333,6 +341,7 @@ private:
             f.texcoordSets.push_back(
                 pc2(a.texcoordSets[i], b.texcoordSets[i], c.texcoordSets[i]));
           f.frontFacing = frontFacing;
+          f.eyeToLocal = &eyeToLocal_;
         }
 
         // Coarse screen-space derivatives (one pair per quad, as GL coarse mode):
@@ -443,6 +452,7 @@ private:
   }
 
   Framebuffer &fb_;
+  glsl::mat3 eyeToLocal_ = glsl::mat3::identity(); // of the current drawTriangles.
 };
 
 } // namespace x3d::cpuraster
