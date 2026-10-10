@@ -188,3 +188,8 @@ add_test(NAME x3d_poc_skin_gl
 add_test(NAME x3d_poc_positional_light_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/positional_light_gl_test.py"
             $<TARGET_FILE:x3d_poc_renderer>)
+
+# Real GL regression: eye-space texture coordinate generation (issue #140).
+add_test(NAME x3d_poc_texgen_gl
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/texgen_gl_test.py"
+            $<TARGET_FILE:x3d_poc_renderer>)

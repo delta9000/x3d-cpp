@@ -137,6 +137,10 @@ xvfb-run -a env \
   LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIBRARY_NAME=mesa \
   python3 scripts/check_poc_fill_properties.py "$POC"
 
+# ---- TEXTURING eye-space texgen GL pixel regression (issue #140) -----------
+echo "== poc eye-space TextureCoordinateGenerator gate under Xvfb (software GL) =="
+python3 examples/poc_renderer/tests/texgen_gl_test.py "$POC"
+
 echo "== build asset_import (cgltf default, no assimp) =="
 cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
 cmake --build build-asset-import --target x3d_asset_import x3d_assetimport_cgltf
