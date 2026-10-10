@@ -146,6 +146,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0055-hanim-skinning-descriptor.md` | H-Anim skinning: immutable SkinBinding (CSR influences, inverse bind, displacers) + per-tick SkinPose palette; descriptor + palette delta for GPU renderers, reference CPU skinner for everyone else; v2 binding fields or v1 rest pose; no write-back into skinCoord | `runtime/hanim/HAnimSkin.hpp` |
 | covered | `decisions/0056-prototype-instance-default-templates.md` | Declaration-only node templates preserve direct PROTO default identity; expansion materializes selected defaults before IS forwarding | `runtime/X3DProto.hpp`; `runtime/X3DProtoExpand.hpp` |
 | covered | `decisions/0057-scene-owned-author-fields.md` | Explicit Scene/declaration owners, shared Inline entry views, safe tracked reflection and scoped clone factories | `scene_author_field_ownership_test.cpp`, migrated Script/codec/cascade tests |
+| covered | `decisions/0058-context-owned-geo-projection.md` | Each execution context fixes its geospatial backend at construction and retains it; no process-wide selector | `geo_projection_ownership_test.cpp`; `runtime/events/X3DExecutionContext.hpp` |
 
 ## 3. Guides
 
