@@ -168,7 +168,7 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
 
 - `event_utility_output_admission_test.cpp` uses production registration and
   real aliased ROUTE sinks for all six scoped types and eight output fields.
-  Eleven focused cases pass 454 assertions: equal/distinct input occurrences,
+  It covers equal/distinct input occurrences,
   independent BooleanFilter branch/negation admission, nested drains and loops,
   both IntegerTrigger producer paths, valid sequencer transitions despite
   suppressed output, FALSE no-ops where required, wraparound and same-cascade

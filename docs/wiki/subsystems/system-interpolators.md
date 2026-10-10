@@ -145,7 +145,7 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 
 - `interpolator_output_admission_test.cpp` covers all nine Spline/Squad/Ease,
   NURBS and GeoPosition types and their eleven output fields through ordinary
-  registration. Five focused cases pass 984 assertions for equal/distinct input
+  registration. It covers equal/distinct input
   occurrences, source/observer/ROUTE agreement, silent initialization,
   next-tick progress, existing rejection paths and paired-output reentrancy.
   First-admitted is the native selection policy; the standard does not prescribe

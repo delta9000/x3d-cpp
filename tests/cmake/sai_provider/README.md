@@ -33,8 +33,6 @@ Box nodes, with named roots and nested renderable geometry. There is no native
 production fixture bootstrap API or separate hosted public service. Native-only
 extraction inspection is an explicit extension outside the portable contract.
 
-See `adapters/sai_provider/README.md` for capability restrictions and
-`adapters/sai_provider/tests/coverage-ledger.md` for the retained baseline
-assertions and intentional initializeOnly authoring capability expansion.
+See `adapters/sai_provider/README.md` for capability restrictions.
 `native_authoring_fixture.hpp` is a test-only convenience wrapper over the final
 service, never installed and never an additional application API.

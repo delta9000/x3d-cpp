@@ -79,8 +79,7 @@ Run `scripts/verify_sai_provider.sh /path/to/x3d-sai /empty/work/directory`.
 Set X3D_CPP_SHARED_NODES=ON or OFF for shared/static native node packages.
 The harness checks common authoring/live conformance, native storage/containment
 and runtime evidence, cross-backend report parity, reference-free native link
-commands, source builds and relocated installed consumers. See
-`tests/coverage-ledger.md` for assertion migration details.
+commands, source builds and relocated installed consumers.
 
 ## Owned presentation feed
 

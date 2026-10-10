@@ -13,9 +13,7 @@ related:
 
 ## Status
 
-Accepted ownership decision; supersedes the process-wide selector in ADR-0053.
-The early implementation checkpoint passes focused ownership tests. Full native
-regression, package and exact-head CI results are tracked in the draft PR.
+Accepted; supersedes the process-wide selector in ADR-0053.
 
 ## Problem
 
@@ -81,18 +79,16 @@ author-field binding behavior is preserved.
 
 ## Evidence and limits
 
-The new eight-case ownership regression exercises interleaved worlds, backend
+`geo_projection_ownership_test` exercises interleaved worlds, backend
 retention/destruction, full/delta and dirty geometry, transforms/bounds/picking,
-camera, initial and callback interpolation, geographic sensors/navigation,
-delayed Inline/GeoLOD enrollment, HAnim walks, escaped callback retirement and
-independent owner threads. It passes 1,204 assertions at this checkpoint. Existing
-test migrations preserve their assertions and numerical expectations.
+camera and interpolation, geographic sensors/navigation, delayed Inline/GeoLOD
+enrollment, HAnim walks, escaped callback retirement and independent owner
+threads. Existing test migrations
+preserve their assertions and numerical expectations.
 
 Operations within one mutable world remain serialized. Custom backends must
 provide stable conversion behavior; implementations shared across threads must
 synchronize their internal caches. `const` ownership does not prevent arbitrary
-external mutation of a custom implementation. Shared mutable native graphs,
-concurrent world destruction and existing unsupported sensor modes remain
-outside this isolation guarantee. No I/O or backend dependency is enabled by
-default. The portable SAI provider's advertised four-node slice is unchanged;
-this work is not a claim of complete Geospatial, SAI or CAVEOS conformance.
+external mutation of a custom implementation. Shared mutable native graphs and
+concurrent world destruction remain outside this isolation guarantee. No I/O or
+backend dependency is enabled by default.
