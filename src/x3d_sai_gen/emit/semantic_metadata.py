@@ -56,7 +56,7 @@ def gen_semantic_metadata_header() -> str:
 // Auto-generated: owning, instance-free X3D semantic descriptors.
 #pragma once
 
-#include "x3d/core/X3DReflection.hpp"
+#include "x3d_sai/detail/metadata_types.hpp"
 
 #include <optional>
 #include <span>
@@ -64,7 +64,7 @@ def gen_semantic_metadata_header() -> str:
 #include <string_view>
 #include <vector>
 
-namespace x3d::nodes {
+namespace x3d::sai::experimental::detail {
 
 struct SemanticNumericRange {
     std::optional<double> minimum{};
@@ -75,12 +75,13 @@ struct SemanticNumericRange {
 
 struct SemanticFieldDescriptor {
     std::string name;
-    x3d::core::X3DFieldType type;
-    x3d::core::AccessType access;
+    x3d::sai::experimental::detail::X3DFieldType type;
+    x3d::sai::experimental::detail::AccessType access;
     std::optional<std::string> defaultValue;
     std::vector<std::string> acceptableNodeTypes;
     std::optional<std::string> unitCategory;
     SemanticNumericRange range{};
+    bool uniqueNonNullNodes = false;
 };
 
 struct SemanticNodeDescriptor {
@@ -102,7 +103,7 @@ public:
     static const SemanticNodeDescriptor* find(const std::string& name);
 };
 
-} // namespace x3d::nodes
+} // namespace x3d::sai::experimental::detail
 """
 
 
@@ -115,13 +116,13 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
     lines: List[str] = [
         "// X3DSemanticMetadataRegistry.cpp",
         "// Auto-generated: owning semantic descriptor catalog.",
-        '#include "x3d/nodes/X3DSemanticMetadataRegistry.hpp"',
+        '#include "x3d_sai/detail/X3DSemanticMetadataRegistry.hpp"',
         "",
         "#include <algorithm>",
         "",
-        "namespace x3d::nodes {",
-        "using x3d::core::AccessType;",
-        "using x3d::core::X3DFieldType;",
+        "namespace x3d::sai::experimental::detail {",
+        "using x3d::sai::experimental::detail::AccessType;",
+        "using x3d::sai::experimental::detail::X3DFieldType;",
         "namespace {",
         "const std::vector<SemanticNodeDescriptor>& catalog() {",
         "    static const std::vector<SemanticNodeDescriptor> value = {",
@@ -156,6 +157,7 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
                 "max_inclusive": field.max_inclusive,
                 "min_exclusive": field.min_exclusive,
                 "max_exclusive": field.max_exclusive,
+                "unique_non_null_nodes": descriptor.unique_non_null_nodes,
             })
             lines.append(
                 "                SemanticFieldDescriptor{"
@@ -167,7 +169,9 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
                 f"{_optional(unit)}"
                 + (f", {_numeric_range(field)}" if any(bound is not None for bound in
                    (field.min_inclusive, field.max_inclusive,
-                    field.min_exclusive, field.max_exclusive)) else "")
+                    field.min_exclusive, field.max_exclusive))
+                   or descriptor.unique_non_null_nodes else "")
+                + (", true" if descriptor.unique_non_null_nodes else "")
                 + "},")
         lines.extend(["            },", "        },"])
         semantic_model.append({
@@ -218,7 +222,7 @@ def gen_semantic_metadata_source(nodes: Dict[str, X3DNode], graph,
         "    return found != values.end() && found->name == name ? &*found : nullptr;",
         "}",
         "",
-        "} // namespace x3d::nodes",
+        "} // namespace x3d::sai::experimental::detail",
         "",
     ])
     return "\n".join(lines)

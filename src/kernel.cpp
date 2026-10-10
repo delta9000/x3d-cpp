@@ -1,4 +1,6 @@
 #include "x3d/sai/experimental/kernel.hpp"
+#include "x3d/sai/experimental/value_constraints.hpp"
+#include "browser_service_state.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -51,6 +53,8 @@ bool valid_image(const image &candidate) {
   if (candidate.width < 0 || candidate.height < 0 || candidate.components < 0 ||
       candidate.components > 4)
     return false;
+  if (candidate.width != 0 && candidate.height != 0 && candidate.components == 0)
+    return false;
   const auto bytes = static_cast<std::uint64_t>(candidate.width) *
                      static_cast<std::uint64_t>(candidate.height) *
                      static_cast<std::uint64_t>(candidate.components);
@@ -87,6 +91,10 @@ bool value_is_well_formed(const value &candidate) {
                            std::is_same_v<T, color4f_list>)
           return std::ranges::all_of(
               stored, [](const auto &color) { return valid_color(color); });
+        else if constexpr (std::is_same_v<T, rotation>)
+          return detail::valid_rotation_axis(stored);
+        else if constexpr (std::is_same_v<T, rotation_list>)
+          return std::ranges::all_of(stored, detail::valid_rotation_axis);
         else
           return true;
       },
@@ -458,6 +466,11 @@ result<void> type_registry::define(node_type_descriptor descriptor) {
                               "with its value kind: " +
                                   field.name);
     }
+    if (field.unique_non_null_nodes && field.kind != value_kind::mf_node) {
+      return descriptor_error(
+          error_code::invalid_descriptor, "type_registry.define",
+          "unique non-NULL nodes constraint requires MFNode: " + field.name);
+    }
     if (field.containment && field.kind != value_kind::sf_node &&
         field.kind != value_kind::mf_node) {
       return descriptor_error(
@@ -557,7 +570,12 @@ struct context_control {
   std::optional<event_time> last_event_time;
   std::shared_ptr<const runtime_factory> factory;
   bool processing = false;
+  bool construction_closed = false;
   std::vector<import_dependent_record> import_dependents;
+  // Identity associations deliberately live outside revisioned scene_state.
+  // Keep them for the entire context lifetime, including retained history.
+  // Field keys use canonical names; the empty name identifies the node itself.
+  std::map<std::pair<std::uint64_t, std::string>, user_data_value> user_data;
 };
 
 struct browser_control {
@@ -567,6 +585,8 @@ struct browser_control {
   };
 
   mutable std::mutex mutex;
+  // Immutable ownership; the sidecar serializes its own immediate services.
+  std::shared_ptr<browser_service_state> services;
   capability_set capabilities;
   type_registry registry;
   generation_id next_generation = 2;
@@ -641,6 +661,105 @@ find_descriptor(const detail::context_control &context,
   return nullptr;
 }
 
+struct live_node_view {
+  std::shared_ptr<detail::context_control> context;
+  std::shared_ptr<const detail::scene_state> state;
+};
+
+// Keep the published state alive after releasing the context lock. These
+// services never borrow an edit's staged state or silently realize a node.
+result<live_node_view> capture_live_node(
+    const std::weak_ptr<detail::context_control> &weak,
+    generation_id generation, node_id id, bool disposed,
+    const char *operation, std::string field = {}) {
+  if (disposed || id.value == 0 || weak.expired()) {
+    sai_error error;
+    error.code = disposed ? error_code::disposed : error_code::stale_handle;
+    error.operation = operation;
+    error.message = disposed ? "client reference has been disposed"
+                             : "node reference is null or expired";
+    error.generation = generation;
+    error.node = id;
+    error.field = std::move(field);
+    return failure(std::move(error));
+  }
+  auto context = weak.lock();
+  if (!context) {
+    sai_error error;
+    error.code = error_code::stale_handle;
+    error.operation = operation;
+    error.message = "node reference has expired";
+    error.generation = generation;
+    error.node = id;
+    error.field = std::move(field);
+    return failure(std::move(error));
+  }
+  std::lock_guard lock(context->mutex);
+  if (!context->active || generation != context->generation) {
+    return edit_error(error_code::stale_handle, operation, *context,
+                      context->state->revision,
+                      "execution context is no longer active", id,
+                      std::move(field));
+  }
+  if (!context->state->nodes.contains(id.value)) {
+    return edit_error(error_code::unknown_node, operation, *context,
+                      context->state->revision,
+                      "node is not present in the currently published scene",
+                      id, std::move(field));
+  }
+  return live_node_view{context, context->state};
+}
+
+// The optional replacement is owned by the caller, outside this lock's scope.
+// Only noexcept shared-ownership swaps publish a change; allocation failure
+// leaves every existing association untouched. No user payload is destroyed
+// while either this service's context lock or an enclosing browser lock is held.
+result<user_data_value> access_user_data(
+    const std::weak_ptr<detail::context_control> &weak,
+    generation_id generation, node_id id, bool disposed,
+    const char *operation, const std::string &field, bool field_target,
+    user_data_value *replacement = nullptr) {
+  auto live = capture_live_node(weak, generation, id, disposed, operation, field);
+  if (!live)
+    return failure(live.error());
+  auto &context = *live->context;
+  std::lock_guard lock(context.mutex);
+  // Capture and access are separate critical sections: revalidate retirement
+  // and removal against the state at this operation's linearization point.
+  if (!context.active || generation != context.generation) {
+    return edit_error(error_code::stale_handle, operation, context,
+                      context.state->revision,
+                      "execution context is no longer active", id, field);
+  }
+  const auto record = context.state->nodes.find(id.value);
+  if (record == context.state->nodes.end()) {
+    return edit_error(error_code::unknown_node, operation, context,
+                      context.state->revision,
+                      "node is not present in the currently published scene",
+                      id, field);
+  }
+  if (field_target && !find_descriptor(context, record->second, field)) {
+    return edit_error(error_code::unknown_field, operation, context,
+                      context.state->revision, "unknown field: " + field,
+                      id, field);
+  }
+  const auto key = std::pair{id.value, field};
+  auto found = context.user_data.find(key);
+  if (!replacement)
+    return found == context.user_data.end() ? user_data_value{} : found->second;
+  if (found != context.user_data.end()) {
+    found->second.swap(*replacement);
+    if (!found->second.has_value())
+      context.user_data.erase(found); // empty payload; no user destructor
+  } else if (replacement->has_value()) {
+    // Insert an empty slot before taking ownership. If allocation throws, the
+    // supplied payload remains outside the lock and is destroyed after unlock.
+    auto slot = context.user_data.try_emplace(key).first;
+    slot->second.swap(*replacement);
+  }
+  return user_data_value{};
+}
+
 bool accepts_node_type(const detail::context_control &context,
                        const field_descriptor &field,
                        const detail::scene_state::node_record &candidate) {
@@ -683,9 +802,89 @@ node_payload_issue(const detail::context_control &context,
   if (field.kind == value_kind::sf_node)
     return check(std::get<node_id>(payload));
   if (field.kind == value_kind::mf_node) {
+    std::unordered_set<std::uint64_t> seen;
     for (const node_id id : std::get<node_list>(payload)) {
       if (const auto issue = check(id))
         return issue;
+      if (field.unique_non_null_nodes && id.value != 0 &&
+          !seen.insert(id.value).second)
+        return error_code::invalid_value;
+    }
+  }
+  return std::nullopt;
+}
+
+// A resumable descriptor/element cursor keeps depth-first traversal on the
+// heap while preserving field and MFNode order. NULL and non-containment
+// references are deliberately excluded; ordinary graph-reference cycles are
+// permitted and must not become containment failures.
+struct containment_cursor {
+  std::uint64_t node = 0;
+  std::size_t field = 0;
+  std::size_t element = 0;
+};
+
+struct containment_edge {
+  node_id child;
+  const std::string *field = nullptr;
+  std::size_t index = 0;
+};
+
+std::optional<containment_edge> next_containment_edge(
+    const detail::context_control &context, const detail::scene_state &state,
+    containment_cursor &cursor) {
+  const auto &record = state.nodes.at(cursor.node);
+  const auto &fields = context.registry.find(record.type_name)->fields;
+  while (cursor.field < fields.size()) {
+    const auto &field = fields[cursor.field];
+    if (field.containment && field.kind == value_kind::sf_node) {
+      const auto child = std::get<node_id>(record.fields.at(field.name));
+      ++cursor.field;
+      cursor.element = 0;
+      if (child.value != 0)
+        return containment_edge{child, &field.name, 0};
+    } else if (field.containment && field.kind == value_kind::mf_node) {
+      const auto &children = std::get<node_list>(record.fields.at(field.name));
+      while (cursor.element < children.size()) {
+        const auto index = cursor.element++;
+        if (children[index].value != 0)
+          return containment_edge{children[index], &field.name, index};
+      }
+      ++cursor.field;
+      cursor.element = 0;
+    } else {
+      ++cursor.field;
+      cursor.element = 0;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<std::pair<node_id, std::string>> find_containment_cycle(
+    const detail::context_control &context, const detail::scene_state &state,
+    std::span<const std::uint64_t> node_ids) {
+  std::unordered_map<std::uint64_t, int> colors;
+  std::vector<containment_cursor> pending;
+  for (const auto id : node_ids) {
+    if (id == 0 || colors[id] == 2)
+      continue;
+    colors[id] = 1;
+    pending.push_back(containment_cursor{id});
+    while (!pending.empty()) {
+      auto &cursor = pending.back();
+      const auto edge = next_containment_edge(context, state, cursor);
+      if (!edge) {
+        colors[cursor.node] = 2;
+        pending.pop_back();
+        continue;
+      }
+      const auto color = colors[edge->child.value];
+      if (color == 1)
+        return std::pair{node_id{cursor.node}, *edge->field};
+      if (color == 2)
+        continue;
+      colors[edge->child.value] = 1;
+      pending.push_back(containment_cursor{edge->child.value});
     }
   }
   return std::nullopt;
@@ -709,50 +908,15 @@ result<void> validate_candidate_graph(const detail::context_control &context,
       if (const auto issue = node_payload_issue(context, state, record, field,
                                                 record.fields.at(field.name))) {
         return edit_error(*issue, operation, context, base_revision,
-                          "node reference violates type or declaration scope",
+                          "node reference violates type, declaration scope, or uniqueness",
                           node_id{id}, field.name);
       }
     }
   }
-  std::unordered_map<std::uint64_t, int> colors;
-  std::optional<std::pair<node_id, std::string>> cycle;
-  std::function<bool(std::uint64_t)> visit = [&](std::uint64_t id) {
-    if (id == 0 || colors[id] == 2)
-      return true;
-    if (colors[id] == 1)
-      return false;
-    colors[id] = 1;
-    const auto &record = state.nodes.at(id);
-    const auto *type = context.registry.find(record.type_name);
-    for (const auto &field : type->fields) {
-      if (!field.containment)
-        continue;
-      const auto &payload = record.fields.at(field.name);
-      const auto follow = [&](node_id child) {
-        if (visit(child.value))
-          return true;
-        if (!cycle)
-          cycle.emplace(node_id{id}, field.name);
-        return false;
-      };
-      if (field.kind == value_kind::sf_node) {
-        if (!follow(std::get<node_id>(payload)))
-          return false;
-      } else if (field.kind == value_kind::mf_node) {
-        for (node_id child : std::get<node_list>(payload)) {
-          if (!follow(child))
-            return false;
-        }
-      }
-    }
-    colors[id] = 2;
-    return true;
-  };
-  for (const auto id : node_ids) {
-    if (!visit(id))
-      return edit_error(error_code::containment_cycle, operation, context,
-                        base_revision, "containment graph contains a cycle",
-                        cycle->first, cycle->second);
+  if (const auto cycle = find_containment_cycle(context, state, node_ids)) {
+    return edit_error(error_code::containment_cycle, operation, context,
+                      base_revision, "containment graph contains a cycle",
+                      cycle->first, cycle->second);
   }
   return {};
 }
@@ -1201,11 +1365,114 @@ inline constexpr bool is_std_vector_v = is_std_vector<T>::value;
 
 } // namespace
 
+result<user_data_value> node::user_data() const {
+  return access_user_data(context_, generation_, id_, disposed_,
+                          "node.user_data", {}, false);
+}
+
+result<void> node::set_user_data(user_data_value data) const {
+  auto stored = access_user_data(context_, generation_, id_, disposed_,
+                                 "node.set_user_data", {}, false, &data);
+  if (!stored)
+    return failure(stored.error());
+  return {};
+}
+
+result<user_data_value> dynamic_field::user_data() const {
+  return access_user_data(context_, generation_, node_, disposed_,
+                          "dynamic_field.user_data", name_, true);
+}
+
+result<void> dynamic_field::set_user_data(user_data_value data) const {
+  auto stored = access_user_data(context_, generation_, node_, disposed_,
+                                 "dynamic_field.set_user_data", name_, true, &data);
+  if (!stored)
+    return failure(stored.error());
+  return {};
+}
+
+result<std::string> node::get_type_name() const {
+  auto live = capture_live_node(context_, generation_, id_, disposed_,
+                                "node.get_type_name");
+  if (!live)
+    return failure(live.error());
+  return live->state->nodes.at(id_.value).type_name;
+}
+
+result<std::vector<field_descriptor>> node::get_field_definitions() const {
+  auto live = capture_live_node(context_, generation_, id_, disposed_,
+                                "node.get_field_definitions");
+  if (!live)
+    return failure(live.error());
+  const auto &record = live->state->nodes.at(id_.value);
+  const auto *descriptor = live->context->registry.find(record.type_name);
+  if (!descriptor) {
+    return edit_error(error_code::unknown_type, "node.get_field_definitions",
+                      *live->context, live->state->revision,
+                      "node type is absent from the context registry", id_);
+  }
+  return descriptor->fields;
+}
+
+result<dynamic_field> node::get_field(const std::string &name) const {
+  auto live = capture_live_node(context_, generation_, id_, disposed_,
+                                "node.get_field", name);
+  if (!live)
+    return failure(live.error());
+  const auto &record = live->state->nodes.at(id_.value);
+  const auto *descriptor = find_descriptor(*live->context, record, name);
+  if (!descriptor) {
+    // Abstract SAI 6.6.4 permits both event-name aliases for inputOutput.
+    // Prefer an explicitly declared field; aliases retain canonical identity.
+    const auto input_output = [&](const std::string &canonical) {
+      const auto *candidate = find_descriptor(*live->context, record, canonical);
+      return candidate && candidate->access == access_type::input_output
+                 ? candidate
+                 : nullptr;
+    };
+    if (name.starts_with("set_"))
+      descriptor = input_output(name.substr(4));
+    if (!descriptor && name.ends_with("_changed"))
+      descriptor = input_output(name.substr(0, name.size() - 8));
+  }
+  if (!descriptor) {
+    return edit_error(error_code::unknown_field, "node.get_field",
+                      *live->context, live->state->revision,
+                      "unknown field: " + name, id_, name);
+  }
+  return dynamic_field{live->context, generation_, id_, descriptor->name,
+                       descriptor->kind, descriptor->access};
+}
+
+result<bool> node::is_realized() const {
+  auto live = capture_live_node(context_, generation_, id_, disposed_,
+                                "node.is_realized");
+  if (!live)
+    return failure(live.error());
+  return live->state->nodes.at(id_.value).realized;
+}
+
+result<field_descriptor> dynamic_field::get_definition() const {
+  auto live = capture_live_node(context_, generation_, node_, disposed_,
+                                "dynamic_field.get_definition", name_);
+  if (!live)
+    return failure(live.error());
+  const auto &record = live->state->nodes.at(node_.value);
+  const auto *descriptor = find_descriptor(*live->context, record, name_);
+  if (!descriptor) {
+    return edit_error(error_code::unknown_field, "dynamic_field.get_definition",
+                      *live->context, live->state->revision,
+                      "unknown field: " + name_, node_, name_);
+  }
+  return *descriptor;
+}
+
 struct detail::scene_edit_control {
   std::shared_ptr<detail::context_control> context;
   std::shared_ptr<const detail::scene_state> base;
   detail::scene_state staged;
   bool changed = false;
+  bool construction = false;
   std::optional<unexpected> poison;
   std::vector<semantic_change> changes;
   std::unordered_set<std::uint64_t> removed_nodes;
@@ -1216,6 +1483,7 @@ struct event_batch::impl {
   std::shared_ptr<detail::context_control> context;
   std::shared_ptr<const detail::scene_state> base;
   event_time time;
+  bool logical_turn = false;
   std::optional<unexpected> poison;
   std::vector<event_delivery> seeds;
   write_intent intent = write_intent::event_input;
@@ -2163,8 +2431,10 @@ result<void> dynamic_multi_field_edit::set(std::size_t index,
                    .before = *before,
                    .after = authorized,
                    .index = index});
-  realize_nodes(*edit.value()->context, edit.value()->staged, authorized,
-                edit.value()->changes);
+  if (!edit.value()->construction ||
+      edit.value()->staged.nodes.at(target_.node().value).realized)
+    realize_nodes(*edit.value()->context, edit.value()->staged, authorized,
+                  edit.value()->changes);
   return {};
 }
 
@@ -2272,8 +2542,10 @@ result<void> dynamic_multi_field_edit::insert(std::size_t index,
                    .before = std::monostate{},
                    .after = authorized,
                    .index = index});
-  realize_nodes(*edit.value()->context, edit.value()->staged, authorized,
-                edit.value()->changes);
+  if (!edit.value()->construction ||
+      edit.value()->staged.nodes.at(target_.node().value).realized)
+    realize_nodes(*edit.value()->context, edit.value()->staged, authorized,
+                  edit.value()->changes);
   return {};
 }
 
@@ -2484,13 +2756,21 @@ dynamic_multi_field_edit::replace(std::span<const node> replacement) {
                    .before = before,
                    .after = *sequence,
                    .index = 0});
-  realize_nodes(*edit.value()->context, edit.value()->staged, *sequence,
-                edit.value()->changes);
+  if (!edit.value()->construction ||
+      edit.value()->staged.nodes.at(target_.node().value).realized)
+    realize_nodes(*edit.value()->context, edit.value()->staged, *sequence,
+                  edit.value()->changes);
   return {};
 }
 
 result<void> scene_edit::set(const dynamic_field &target, value new_value) {
   return set_value(target, std::move(new_value), false);
+}
+
+result<void> scene_edit::initialize_output(const dynamic_field &target,
+                                            value initial_value) {
+  return set_value(target, std::move(initial_value), false,
+                   value_space::canonical, true);
 }
 
 result<void> scene_edit::set(const dynamic_field &target, value new_value,
@@ -2549,7 +2829,7 @@ result<void> scene_edit::set(const dynamic_field &target,
 
 result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                    bool node_authority_checked,
-                                   value_space space) {
+                                   value_space space, bool output_initialization) {
   if (impl_->poison)
     return *impl_->poison;
   auto found = impl_->staged.nodes.find(target.node_.value);
@@ -2571,7 +2851,27 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                    target.node_, target.name_);
     return *impl_->poison;
   }
-  if (!retained_write_allowed(descriptor->access, !found->second.realized)) {
+  if (output_initialization &&
+      (!impl_->construction || found->second.realized ||
+       descriptor->access != access_type::output_only)) {
+    impl_->poison = edit_error(error_code::access_denied,
+                               "scene_edit.initialize_output", *impl_->context,
+                               impl_->base->revision,
+                               "output initialization requires an unrealized construction target",
+                               target.node_, target.name_);
+    return *impl_->poison;
+  }
+  if (output_initialization &&
+      (descriptor->kind == value_kind::sf_node || descriptor->kind == value_kind::mf_node)) {
+    impl_->poison = edit_error(error_code::unsupported_field_type,
+                               "scene_edit.initialize_output", *impl_->context,
+                               impl_->base->revision,
+                               "node-valued output initialization is not supported",
+                               target.node_, target.name_);
+    return *impl_->poison;
+  }
+  if (!output_initialization &&
+      !retained_write_allowed(descriptor->access, !found->second.realized)) {
     impl_->poison = edit_error(error_code::access_denied, "scene_edit.set",
                                *impl_->context, impl_->base->revision,
                                "field is not author-writable in this lifecycle "
@@ -2676,7 +2976,8 @@ result<void> scene_edit::set_value(const dynamic_field &target, value new_value,
                                         .before = before,
                                         .after = stored,
                                         .index = 0});
-  realize_nodes(*impl_->context, impl_->staged, stored, impl_->changes);
+  if (!impl_->construction || found->second.realized)
+    realize_nodes(*impl_->context, impl_->staged, stored, impl_->changes);
   return {};
 }
 
@@ -3047,34 +3348,9 @@ result<void> scene_edit::claim_declaration_nodes(declaration_id owner,
     }
   }
 
-  std::unordered_map<std::uint64_t, int> colors;
-  std::function<bool(std::uint64_t)> acyclic = [&](std::uint64_t current) {
-    if (colors[current] == 1)
-      return false;
-    if (colors[current] == 2)
-      return true;
-    colors[current] = 1;
-    const auto &record = impl_->staged.nodes.at(current);
-    const auto *type = impl_->context->registry.find(record.type_name);
-    for (const field_descriptor &field : type->fields) {
-      if (!field.containment)
-        continue;
-      const value &stored = record.fields.at(field.name);
-      if (const auto *single = std::get_if<node_id>(&stored)) {
-        if (single->value != 0 && !acyclic(single->value))
-          return false;
-      } else if (const auto *many = std::get_if<node_list>(&stored)) {
-        for (node_id child : *many) {
-          if (child.value != 0 && !acyclic(child.value))
-            return false;
-        }
-      }
-    }
-    colors[current] = 2;
-    return true;
-  };
-  if (std::ranges::any_of(closure,
-                          [&](std::uint64_t node) { return !acyclic(node); })) {
+  std::vector<std::uint64_t> node_ids{closure.begin(), closure.end()};
+  std::ranges::sort(node_ids);
+  if (find_containment_cycle(*impl_->context, impl_->staged, node_ids)) {
     impl_->poison = edit_error(error_code::containment_cycle, operation,
                                *impl_->context, impl_->base->revision,
                                "template body contains a containment cycle");
@@ -3805,6 +4081,10 @@ result<edit_admission> validate_edit(const detail::scene_edit_control &edit,
   for (const auto &context : lock_order)
     locks.emplace_back(context->mutex);
 
+  if (edit.construction && edit.context->construction_closed)
+    return edit_error(error_code::access_denied, operation, *edit.context,
+                      edit.base->revision,
+                      "construction edits cannot publish after world activation");
   if (edit.context->processing) {
     return edit_error(error_code::operation_in_progress, operation,
                       *edit.context, edit.base->revision,
@@ -4148,7 +4428,7 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
           *impl_->context, *impl_->base, found->second, *descriptor, payload)) {
     impl_->poison = edit_error(*issue, impl_->send_operation(), *impl_->context,
                                impl_->base->revision,
-                               "node event violates type or declaration scope",
+                               "node event violates type, declaration scope, or uniqueness",
                                target.node_, target.name_);
     return *impl_->poison;
   }
@@ -4157,7 +4437,13 @@ result<void> event_batch::send_value(const dynamic_field &target, value payload,
                                         return seed.target == target.node_ &&
                                                seed.field == target.name_;
                                       });
-  if (duplicate != impl_->seeds.end()) {
+  // Proposal policy for host-driven turns: external inputOnly calls are
+  // occurrences, including identical repeats, rather than retained writes.
+  // Strict events() and runtime-output seed suppression remain unchanged.
+  const bool repeated_external_input =
+      impl_->logical_turn && impl_->intent == write_intent::event_input &&
+      descriptor->access == access_type::input_only;
+  if (duplicate != impl_->seeds.end() && !repeated_external_input) {
     if (impl_->intent == write_intent::runtime_output)
       return {}; // validation precedes per-field loop suppression
     impl_->poison =
@@ -4203,11 +4489,15 @@ result<event_result> event_batch::commit() {
                         *impl_->context, impl_->base->revision,
                         "event batch base revision is stale");
     factory = impl_->context->factory;
-    if ((!impl_->seeds.empty() || factory) && impl_->context->last_event_time &&
-        !(impl_->context->last_event_time->seconds < impl_->time.seconds))
+    if ((impl_->logical_turn || !impl_->seeds.empty() || factory) &&
+        impl_->context->last_event_time &&
+        (impl_->logical_turn
+             ? impl_->time.seconds < impl_->context->last_event_time->seconds
+             : !(impl_->context->last_event_time->seconds < impl_->time.seconds)))
       return edit_error(error_code::event_time_regression, "event_batch.commit",
                         *impl_->context, impl_->base->revision,
-                        "event time must strictly advance");
+                        impl_->logical_turn ? "logical turn time must not decrease"
+                                            : "event time must strictly advance");
     impl_->context->processing = true;
     reservation.armed = true;
   }
@@ -4375,7 +4665,7 @@ result<event_result> event_batch::commit() {
             return edit_error(
                 *issue, "event_batch.commit", *impl_->context,
                 impl_->base->revision,
-                "routed node event violates type or declaration scope",
+                "routed node event violates type, declaration scope, or uniqueness",
                 candidate.sink, candidate.sink_field);
           route_fired[route_index] = true;
           work.push_back(event_delivery{.time = impl_->time,
@@ -4485,7 +4775,7 @@ result<event_result> event_batch::commit() {
     }
     impl_->context->pending.splice(impl_->context->pending.end(),
                                    notifications);
-    if (!result.deliveries.empty() || factory)
+    if (impl_->logical_turn || !result.deliveries.empty() || factory)
       impl_->context->last_event_time = impl_->time;
   }
   return result;
@@ -4548,48 +4838,41 @@ const std::vector<node_id> &scene_snapshot::roots() const noexcept {
 
 std::vector<occurrence> scene_snapshot::occurrences() const {
   std::vector<occurrence> result;
-  std::function<void(node_id, std::optional<std::size_t>, std::string,
-                     std::size_t, std::vector<std::size_t>)>
-      walk = [&](node_id id, std::optional<std::size_t> parent,
-                 std::string container, std::size_t index,
-                 std::vector<std::size_t> path) {
-        const std::size_t occurrence_index = result.size();
-        result.push_back(occurrence{.node = id,
-                                    .parent_occurrence = parent,
-                                    .container_field = std::move(container),
-                                    .index = index,
-                                    .path = path});
-        const auto &record = state_->nodes.at(id.value);
-        const auto *type = context_->registry.find(record.type_name);
-        for (const auto &descriptor : type->fields) {
-          if (!descriptor.containment)
-            continue;
-          const auto &field_value = record.fields.at(descriptor.name);
-          if (descriptor.kind == value_kind::sf_node) {
-            const node_id child = std::get<node_id>(field_value);
-            if (child.value != 0) {
-              auto child_path = path;
-              child_path.push_back(0);
-              walk(child, occurrence_index, descriptor.name, 0,
-                   std::move(child_path));
-            }
-          } else if (descriptor.kind == value_kind::mf_node) {
-            const auto &children = std::get<node_list>(field_value);
-            for (std::size_t child_index = 0; child_index < children.size();
-                 ++child_index) {
-              if (children[child_index].value == 0)
-                continue;
-              auto child_path = path;
-              child_path.push_back(child_index);
-              walk(children[child_index], occurrence_index, descriptor.name,
-                   child_index, std::move(child_path));
-            }
-          }
-        }
-      };
+  struct occurrence_cursor {
+    containment_cursor children;
+    std::size_t occurrence_index = 0;
+  };
+  std::vector<occurrence_cursor> pending;
   for (std::size_t root_index = 0; root_index < state_->roots.size();
        ++root_index) {
-    walk(state_->roots[root_index], std::nullopt, {}, root_index, {root_index});
+    const auto root = state_->roots[root_index];
+    const auto root_occurrence = result.size();
+    result.push_back(occurrence{.node = root,
+                                .parent_occurrence = std::nullopt,
+                                .container_field = {},
+                                .index = root_index,
+                                .path = {root_index}});
+    pending.push_back({containment_cursor{root.value}, root_occurrence});
+    while (!pending.empty()) {
+      auto &cursor = pending.back();
+      const auto edge =
+          next_containment_edge(*context_, *state_, cursor.children);
+      if (!edge) {
+        pending.pop_back();
+        continue;
+      }
+      const auto parent = cursor.occurrence_index;
+      auto path = result[parent].path;
+      path.push_back(edge->index);
+      const auto child_occurrence = result.size();
+      result.push_back(occurrence{.node = edge->child,
+                                  .parent_occurrence = parent,
+                                  .container_field = *edge->field,
+                                  .index = edge->index,
+                                  .path = std::move(path)});
+      pending.push_back(
+          {containment_cursor{edge->child.value}, child_occurrence});
+    }
   }
   return result;
 }
@@ -5134,6 +5417,21 @@ generation_id execution_context::generation() const noexcept {
   return control_->generation;
 }
 
+result<void> execution_context::validate() const {
+  if (!control_) {
+    return descriptor_error(error_code::stale_handle,
+                            "execution_context.validate",
+                            "execution context reference is empty");
+  }
+  std::lock_guard lock(control_->mutex);
+  if (!control_->active) {
+    return edit_error(error_code::stale_handle, "execution_context.validate",
+                      *control_, control_->state->revision,
+                      "execution context is no longer active");
+  }
+  return {};
+}
+
 scene_snapshot execution_context::snapshot() const {
   std::shared_ptr<const detail::scene_state> state;
   {
@@ -5152,6 +5450,22 @@ scene_edit execution_context::edit() const {
   return scene_edit{std::move(implementation)};
 }
 
+scene_edit execution_context::construction_edit() const {
+  std::lock_guard lock(control_->mutex);
+  auto implementation = std::make_shared<detail::scene_edit_control>();
+  implementation->context = control_;
+  implementation->base = control_->state;
+  implementation->staged = *control_->state;
+  implementation->construction = true;
+  if (control_->construction_closed ||
+      std::any_of(control_->state->nodes.begin(), control_->state->nodes.end(),
+                  [](const auto &entry) { return entry.second.realized; }))
+    implementation->poison = edit_error(
+        error_code::access_denied, "execution_context.construction_edit", *control_,
+        control_->state->revision, "construction edits require an unrealized inactive scene");
+  return scene_edit{std::move(implementation)};
+}
+
 event_batch execution_context::events(event_time time) const {
   std::lock_guard lock(control_->mutex);
   auto implementation = std::make_unique<event_batch::impl>();
@@ -5164,6 +5478,14 @@ event_batch execution_context::events(event_time time) const {
         control_->state->revision, "event time must be finite");
   }
   return event_batch{std::move(implementation)};
+}
+
+event_batch execution_context::logical_turn(event_time time) const {
+  auto batch = events(time);
+  batch.impl_->logical_turn = true;
+  if (batch.impl_->poison)
+    batch.impl_->poison->value().operation = "execution_context.logical_turn";
+  return batch;
 }
 
 subscription execution_context::observe(observer callback) const {
@@ -5311,13 +5633,120 @@ dispatch_report execution_context::drain() const {
 }
 
 browser::browser(type_registry registry)
+    : browser(std::move(registry), browser_configuration{}) {}
+
+browser::browser(type_registry registry, browser_configuration configuration)
     : control_(std::make_shared<detail::browser_control>()) {
+  control_->services =
+      std::make_shared<detail::browser_service_state>(std::move(configuration));
   control_->registry = registry;
   auto context = std::make_shared<detail::context_control>();
   context->owner = control_;
   context->generation = 1;
+  context->construction_closed = true;
   context->registry = std::move(registry);
   control_->current = std::move(context);
+}
+
+result<std::optional<std::string>> browser::get_name() const {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.get_name",
+                            "browser reference is empty or moved from");
+  return control_->services->get_name();
+}
+
+result<std::optional<std::string>> browser::get_version() const {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.get_version",
+                            "browser reference is empty or moved from");
+  return control_->services->get_version();
+}
+
+result<float> browser::get_current_speed() const {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.get_current_speed",
+                            "browser reference is empty or moved from");
+  std::lock_guard lock(control_->mutex);
+  return control_->services->get_current_speed(control_->current->generation);
+}
+
+result<float> browser::get_current_frame_rate() const {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.get_current_frame_rate",
+                            "browser reference is empty or moved from");
+  std::lock_guard lock(control_->mutex);
+  return control_->services->get_current_frame_rate(control_->current->generation);
+}
+
+result<void> browser::publish_metrics(const execution_context &current_world,
+                                      browser_metrics metrics) {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.publish_metrics",
+                            "browser reference is empty or moved from");
+  std::lock_guard lock(control_->mutex);
+  if (current_world.control_ != control_->current)
+    return descriptor_error(error_code::invalid_context,
+                            "browser.publish_metrics",
+                            "measurements require this browser's current world");
+  return control_->services->publish_metrics(control_->current->generation,
+                                             metrics);
+}
+
+result<std::string> browser::description() const {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.description",
+                            "browser reference is empty or moved from");
+  return control_->services->description();
+}
+
+result<void> browser::set_description(std::string description) {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.set_description",
+                            "browser reference is empty or moved from");
+  return control_->services->set_description(std::move(description));
+}
+
+result<browser_property_map> browser::get_rendering_properties() const {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.get_rendering_properties",
+                            "browser reference is empty or moved from");
+  return control_->services->get_rendering_properties();
+}
+
+result<void>
+browser::publish_rendering_properties(browser_property_map properties) {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.publish_rendering_properties",
+                            "browser reference is empty or moved from");
+  return control_->services->publish_rendering_properties(std::move(properties));
+}
+
+result<browser_property_map> browser::get_browser_properties() const {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.get_browser_properties",
+                            "browser reference is empty or moved from");
+  return control_->services->get_browser_properties();
+}
+
+result<void>
+browser::set_browser_option_handler(browser_option_handler handler) {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.set_browser_option_handler",
+                            "browser reference is empty or moved from");
+  // Pin service state across destruction of replaced application resources.
+  const auto services = control_->services;
+  return services->set_browser_option_handler(std::move(handler));
+}
+
+result<bool> browser::set_browser_option(std::string name,
+                                         browser_property_value value) {
+  if (!control_)
+    return descriptor_error(error_code::stale_handle, "browser.set_browser_option",
+                            "browser reference is empty or moved from");
+  // The callback is allowed to destroy this wrapper. No access to this or the
+  // browser control is required after entering application code.
+  const auto services = control_->services;
+  return services->set_browser_option(std::move(name), std::move(value));
 }
 
 capability_set browser::capabilities() const noexcept {
@@ -5422,6 +5851,7 @@ result<void> replace_world_locked(
   retired.pending.swap(current->pending);
   retired.factory.swap(current->factory);
   retired.context = current;
+  replacement->construction_closed = true;
   browser->current = replacement;
   ++browser->world_epoch;
   return {};

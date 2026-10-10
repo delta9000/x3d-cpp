@@ -1,0 +1,32 @@
+#pragma once
+
+// Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
+#include "x3d/sai/experimental/schema.hpp"
+
+namespace x3d::sai::experimental::bindings {
+
+struct X3DShaderNode {
+  static constexpr std::string_view x3d_name = "X3DShaderNode";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
+  inline static constexpr field_key<X3DShaderNode, bool> activate{
+      "activate", access_type::input_only};
+  inline static constexpr field_key<X3DShaderNode, bool> isSelected{
+      "isSelected", access_type::output_only};
+  inline static constexpr field_key<X3DShaderNode, bool> isValid{
+      "isValid", access_type::output_only};
+  inline static constexpr field_key<X3DShaderNode, std::string> language{
+      "language", access_type::initialize_only};
+  inline static constexpr field_key<X3DShaderNode,
+                                    ::x3d::sai::experimental::node_id>
+      metadata{"metadata", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 5> field_keys{{
+      {activate.name(), activate.kind, activate.access()},
+      {isSelected.name(), isSelected.kind, isSelected.access()},
+      {isValid.name(), isValid.kind, isValid.access()},
+      {language.name(), language.kind, language.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+  }};
+};
+
+} // namespace x3d::sai::experimental::bindings

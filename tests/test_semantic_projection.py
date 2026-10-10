@@ -72,3 +72,47 @@ def test_raw_uom_retains_encoding_and_host_facts(model):
     nodes, _ = model
     raw = {field.x3d_name for field in nodes["Transform"].fields}
     assert {"DEF", "USE", "IS", "class", "id", "style"} <= raw
+
+
+@pytest.mark.parametrize("name", [
+    "X3DGroupingNode", "X3DViewportNode", "Transform", "Group", "CADPart",
+    "LayoutGroup", "Viewport",
+])
+def test_grouping_children_resolve_explicit_uniqueness(model, name):
+    nodes, graph = model
+    fields = resolved_node_fields(nodes[name], nodes, graph)
+    assert {field.x3d_name for field in fields if field.unique_non_null_nodes} == {
+        "children"
+    }
+    assert next(f for f in fields if f.x3d_name == "children").runtime_field_type == "MFNode"
+
+
+@pytest.mark.parametrize("name", ["Contour2D", "MetadataSet", "Layer", "Analyser"])
+def test_node_lists_do_not_infer_uniqueness_from_name_or_containment(model, name):
+    nodes, graph = model
+    fields = resolved_node_fields(nodes[name], nodes, graph)
+    assert any(f.runtime_field_type == "MFNode" for f in fields)
+    assert not any(f.unique_non_null_nodes for f in fields)
+
+
+def test_semantic_fingerprint_includes_resolved_uniqueness(model, monkeypatch):
+    import re
+    from x3d_sai_gen.emit import semantic_metadata
+
+    nodes, graph = model
+    baseline = gen_semantic_metadata_source(nodes, graph, "4.0")
+
+    def without_uniqueness(*args, **kwargs):
+        fields = resolved_node_fields(*args, **kwargs)
+        for field in fields:
+            field.unique_non_null_nodes = False
+        return fields
+
+    # Change only the resolved constraint, leaving fields and ancestry intact.
+    monkeypatch.setattr(semantic_metadata, "resolved_node_fields", without_uniqueness)
+    unconstrained = gen_semantic_metadata_source(nodes, graph, "4.0")
+    fingerprint = r'return "([a-f0-9]{64})";'
+    assert re.search(fingerprint, baseline).group(1) != re.search(
+        fingerprint, unconstrained).group(1)
+    assert 'SemanticNumericRange{std::nullopt, std::nullopt, true, true}, true}' in baseline
+    assert 'SemanticNumericRange{std::nullopt, std::nullopt, true, true}, true}' not in unconstrained

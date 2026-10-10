@@ -1,6 +1,6 @@
 #include "x3d/sai/experimental/metadata.hpp"
 
-#include "x3d/nodes/X3DSemanticMetadataRegistry.hpp"
+#include "x3d_sai/detail/X3DSemanticMetadataRegistry.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -16,8 +16,8 @@ namespace {
 
 // This translation unit is the only bridge from generated schema vocabulary
 // into the runtime-independent experimental SAI descriptor vocabulary.
-using x3d::core::AccessType;
-using x3d::core::X3DFieldType;
+using detail::AccessType;
+using detail::X3DFieldType;
 
 unexpected metadata_error(error_code code, std::string message,
                           std::string field = {}) {
@@ -544,14 +544,14 @@ result<value> default_value_for(const schema_field_descriptor &field) {
 metadata_catalog generated_metadata_catalog() {
   metadata_catalog adapted;
   adapted.specification_version =
-      x3d::nodes::X3DSemanticMetadataRegistry::specificationVersion();
+      detail::X3DSemanticMetadataRegistry::specificationVersion();
   adapted.model_fingerprint =
-      x3d::nodes::X3DSemanticMetadataRegistry::modelFingerprint();
+      detail::X3DSemanticMetadataRegistry::modelFingerprint();
   adapted.generator_version =
-      x3d::nodes::X3DSemanticMetadataRegistry::generatorVersion();
+      detail::X3DSemanticMetadataRegistry::generatorVersion();
   adapted.unit_categories_complete =
-      x3d::nodes::X3DSemanticMetadataRegistry::unitCategoriesComplete();
-  const auto generated = x3d::nodes::X3DSemanticMetadataRegistry::nodes();
+      detail::X3DSemanticMetadataRegistry::unitCategoriesComplete();
+  const auto generated = detail::X3DSemanticMetadataRegistry::nodes();
   adapted.nodes.reserve(generated.size());
   for (const auto &node : generated) {
     schema_node_descriptor adapted_node{
@@ -580,6 +580,7 @@ metadata_catalog generated_metadata_catalog() {
                     .maximum = field.range.maximum,
                     .minimum_inclusive = field.range.minimumInclusive,
                     .maximum_inclusive = field.range.maximumInclusive},
+          .unique_non_null_nodes = field.uniqueNonNullNodes,
       });
     }
     adapted.nodes.push_back(std::move(adapted_node));
@@ -630,6 +631,7 @@ generated_type_registry(std::span<const std::string_view> node_types) {
           .accepted_node_types = field.accepted_node_types,
           .unit_category = field.unit_category,
           .range = field.range,
+          .unique_non_null_nodes = field.unique_non_null_nodes,
       });
     }
     if (auto defined = registry.define(std::move(adapted)); !defined)

@@ -1,7 +1,9 @@
 #ifndef X3D_SAI_EXPERIMENTAL_KERNEL_HPP
 #define X3D_SAI_EXPERIMENTAL_KERNEL_HPP
 
-#include "types.hpp"
+#include "browser_services.hpp"
+#include "schema.hpp"
+#include "user_data.hpp"
 
 #include <any>
 #include <concepts>
@@ -13,6 +15,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <typeinfo>
 #include <utility>
 #include <vector>
 
@@ -58,35 +61,7 @@ result<std::shared_ptr<const State>> runtime_state_as(const std::any &stored,
 } // namespace detail
 
 class execution_context;
-template <class Tag> class typed_node;
-
-template <class Owner, class T> class field_key {
-public:
-  constexpr std::string_view name() const noexcept { return name_; }
-  static constexpr value_kind kind = value_traits<T>::kind;
-  constexpr access_type access() const noexcept { return access_; }
-
-private:
-  constexpr field_key(std::string_view name, access_type access)
-      : name_(name), access_(access) {}
-
-  std::string_view name_;
-  access_type access_;
-  friend Owner;
-  template <class> friend class typed_node;
-};
-
-struct field_key_descriptor {
-  std::string_view name;
-  value_kind kind = value_kind::sf_string;
-  access_type access = access_type::input_output;
-};
-
-struct node_key_descriptor {
-  std::string_view name;
-  std::string_view schema_fingerprint;
-  std::span<const field_key_descriptor> fields;
-};
+class dynamic_field;
 
 class load_ticket {
 public:
@@ -125,6 +100,21 @@ public:
     context_.reset();
     disposed_ = true;
   }
+
+  // Live services inspect the currently published scene, unlike an immutable
+  // snapshot or a staged edit. They reject disposed, expired and retired
+  // references. Unpublished/removed nodes are absent from that live scene.
+  // Identity/diagnostic accessors and idempotent local dispose() above are
+  // C++ extensions, not the published binding's post-disposal node methods.
+  result<std::string> get_type_name() const;
+  result<std::vector<field_descriptor>> get_field_definitions() const;
+  // inputOutput set_/_changed aliases resolve to one canonical field identity.
+  result<dynamic_field> get_field(const std::string &name) const;
+  result<bool> is_realized() const;
+  // Context-identity metadata: immediate, shared by aliases, and independent
+  // of scene values, edit/event buffering, revisions and wrapper disposal.
+  result<user_data_value> user_data() const;
+  result<void> set_user_data(user_data_value data) const;
 
 private:
   node(std::weak_ptr<detail::context_control> context, generation_id generation,
@@ -273,6 +263,18 @@ public:
   const std::string &name() const noexcept { return name_; }
   value_kind kind() const noexcept { return kind_; }
   access_type access() const noexcept { return access_; }
+  bool disposed() const noexcept { return disposed_; }
+  // Revoke only this client wrapper. Existing copies and the containing node
+  // remain usable; this immediate extension is not buffered SAI disposal.
+  void dispose() noexcept {
+    context_.reset();
+    disposed_ = true;
+  }
+  // Live metadata query; raw identity/descriptor accessors above are diagnostic
+  // extensions that remain available after local disposal.
+  result<field_descriptor> get_definition() const;
+  result<user_data_value> user_data() const;
+  result<void> set_user_data(user_data_value data) const;
 
   template <class T> result<field<T>> as() const;
 
@@ -289,6 +291,8 @@ private:
   std::string name_;
   value_kind kind_ = value_kind::sf_string;
   access_type access_ = access_type::input_output;
+  bool disposed_ = false;
+  friend class node;
   friend class scene_edit;
   friend class dynamic_multi_field_edit;
   friend class scene_snapshot;
@@ -303,6 +307,15 @@ public:
   node_id node() const noexcept { return dynamic_.node(); }
   const std::string &name() const noexcept { return dynamic_.name(); }
   const dynamic_field &dynamic() const noexcept { return dynamic_; }
+  bool disposed() const noexcept { return dynamic_.disposed(); }
+  void dispose() noexcept { dynamic_.dispose(); }
+  result<field_descriptor> get_definition() const {
+    return dynamic_.get_definition();
+  }
+  result<user_data_value> user_data() const { return dynamic_.user_data(); }
+  result<void> set_user_data(user_data_value data) const {
+    return dynamic_.set_user_data(std::move(data));
+  }
 
 private:
   explicit field(dynamic_field dynamic) : dynamic_(std::move(dynamic)) {}
@@ -320,7 +333,28 @@ public:
   const node &dynamic() const noexcept { return dynamic_; }
   bool disposed() const noexcept { return dynamic_.disposed(); }
   void dispose() noexcept { dynamic_.dispose(); }
+  result<std::string> get_type_name() const { return dynamic_.get_type_name(); }
+  result<std::vector<field_descriptor>> get_field_definitions() const {
+    return dynamic_.get_field_definitions();
+  }
+  result<dynamic_field> get_field(const std::string &name) const {
+    return dynamic_.get_field(name);
+  }
+  template <class T>
+  result<experimental::field<T>> get_field(const field_key<Tag, T> &key) const {
+    auto dynamic = dynamic_.get_field(std::string{key.name_});
+    if (!dynamic)
+      return failure(dynamic.error());
+    return dynamic->template as<T>();
+  }
+  result<bool> is_realized() const { return dynamic_.is_realized(); }
+  result<user_data_value> user_data() const { return dynamic_.user_data(); }
+  result<void> set_user_data(user_data_value data) const {
+    return dynamic_.set_user_data(std::move(data));
+  }
 
+  // Unchecked generated-key projection for authoring; use get_field() for a
+  // result-returning service against the live, currently published node.
   template <class T>
   experimental::field<T> field(const field_key<Tag, T> &key) const {
     return experimental::field<T>{dynamic_field{
@@ -337,6 +371,16 @@ private:
 };
 
 template <class T> result<field<T>> dynamic_field::as() const {
+  if (disposed_) {
+    sai_error error;
+    error.code = error_code::disposed;
+    error.operation = "dynamic_field.as";
+    error.message = "field reference has been disposed";
+    error.generation = generation_;
+    error.node = node_;
+    error.field = name_;
+    return failure(std::move(error));
+  }
   if (kind_ == value_traits<T>::kind)
     return field<T>{*this};
   sai_error error;
@@ -355,12 +399,6 @@ struct occurrence {
   std::string container_field;
   std::size_t index = 0;
   std::vector<std::size_t> path;
-};
-
-struct metadata_entry {
-  std::string key;
-  std::string value;
-  friend bool operator==(const metadata_entry &, const metadata_entry &) = default;
 };
 
 enum class metadata_change_kind { updated };
@@ -716,6 +754,11 @@ public:
     return multi_field_edit<Sequence>{std::move(dynamic).value()};
   }
   result<void> set(const dynamic_field &target, value new_value);
+  // Reference-only construction initialization of a non-node outputOnly field.
+  // This stores a derived initial value without an event, ROUTE or clock tick.
+  // Requires construction_edit() and an unrealized target; ordinary set() and
+  // all active-scene authoring retain their normal outputOnly access denial.
+  result<void> initialize_output(const dynamic_field &target, value initial_value);
   result<void> set(const dynamic_field &target, value new_value,
                    value_space space);
   result<void> set(const dynamic_field &target, const node &new_value);
@@ -816,7 +859,8 @@ private:
   result<void> require_schema_fingerprint(std::string_view expected);
   result<void> set_value(const dynamic_field &target, value new_value,
                          bool node_authority_checked,
-                         value_space space = value_space::canonical);
+                         value_space space = value_space::canonical,
+                         bool output_initialization = false);
   explicit scene_edit(
       std::shared_ptr<detail::scene_edit_control> implementation);
   std::shared_ptr<detail::scene_edit_control> impl_;
@@ -1184,9 +1228,25 @@ public:
   using event_observer = std::function<void(const event_delivery &)>;
 
   generation_id generation() const noexcept;
+  // Check live context authority without acquiring a node or creating an edit.
+  // Historical snapshot inspection intentionally does not use this check.
+  result<void> validate() const;
   scene_snapshot snapshot() const;
   scene_edit edit() const;
+  // Reference-only setup extension for a never-activated, unrealized scene.
+  // Node-valued assignments retain normal validation without realizing their
+  // targets. Root installation/explicit realization still realizes the graph.
+  // Publication is rejected if the scene is activated in the meantime.
+  scene_edit construction_edit() const;
   event_batch events(event_time time) const;
+  // Explicit host-driven turn: finite time may equal the last committed turn,
+  // but may not decrease. Shares the admission clock with strict events() and
+  // external_session calls; each commit has independent cascade suppression.
+  // Even an empty logical turn advances that clock. Failed turns never do.
+  // Unlike strict events(), external inputOnly seeds may repeat and each is
+  // delivered in call order, including identical payloads. This modern host
+  // policy does not reset per-turn output or ROUTE loop suppression.
+  event_batch logical_turn(event_time time) const;
   subscription observe(observer callback) const;
   template <class Callback>
     requires detail::owned_callback<Callback, void, const change_set &>
@@ -1230,6 +1290,43 @@ private:
 class browser {
 public:
   explicit browser(type_registry registry);
+  browser(type_registry registry, browser_configuration configuration);
+
+  // Immediate owning browser-service results. No query/update here joins a
+  // scene edit, field-event cascade or external-session update gate. Identity
+  // is immutable; aliases share description, measurements and host handlers.
+  // These result services reject moved-from wrappers with stale_handle.
+  result<std::optional<std::string>> get_name() const;
+  result<std::optional<std::string>> get_version() const;
+  result<float> get_current_speed() const;
+  result<float> get_current_frame_rate() const;
+  result<std::string> description() const;
+  result<void> set_description(std::string description);
+  result<browser_property_map> get_rendering_properties() const;
+  result<browser_property_map> get_browser_properties() const;
+  result<bool> set_browser_option(std::string name, browser_property_value value);
+
+  // Host publication extensions, not synthetic renderer/navigation behavior.
+  // Samples must belong to the current world; replacement invalidates them.
+  // Rendering reports replace the complete map atomically after validation.
+  result<void> publish_metrics(const execution_context &current_world,
+                               browser_metrics metrics);
+  result<void> publish_rendering_properties(browser_property_map properties);
+  // An empty handler means no dynamic options are supported. Calls execute
+  // unlocked, one at a time; concurrent/reentrant option calls fail with
+  // operation_in_progress. Handler replacement and all metadata remain usable
+  // from inside the callback. Application resources are destroyed unlocked.
+  result<void> set_browser_option_handler(browser_option_handler handler);
+  template <class Callback>
+    requires detail::owned_callback<Callback, result<bool>,
+                                     const std::string &,
+                                     const browser_property_value &>
+  result<void> set_browser_option_handler(Callback &&handler) {
+    return set_browser_option_handler(
+        detail::own_callback<result<bool>(const std::string &,
+                                          const browser_property_value &)>(
+            std::forward<Callback>(handler)));
+  }
 
   capability_set capabilities() const noexcept;
   execution_context current_scene() const;

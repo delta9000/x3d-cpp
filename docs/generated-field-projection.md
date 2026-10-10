@@ -80,3 +80,28 @@ legacy DEF keys on retained-edit and event paths without publishing a revision.
 The raw parsed UOM still retains the excluded attributes for future document
 work. These tests do not certify ISO SAI conformance or the pending constraint
 items above.
+
+## Grouping-child uniqueness
+
+The resolved semantic field model explicitly marks `children` on
+`X3DGroupingNode` and its transitive derived types with
+`unique_non_null_nodes=true`. This implements the same-list restriction in
+[ISO/IEC 19775-1:2023, 10.2.1](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html#GroupingAndChildrenNodes).
+The constraint is emitted in the semantic catalog, included in its fingerprint,
+and exposed by schema and live descriptor discovery. It is not inferred from a
+field name or the adapter's provisional containment classification at runtime.
+
+A repeated non-NULL identity is rejected with `invalid_value`. Retained edits,
+including MF editors and containment append, admit the complete staged graph at
+`validate()` and `commit()`. Direct events, runtime outputs, and ROUTE destinations
+share the same node-payload admission. A rejected operation does not publish a
+revision or notifications. Multiple NULL positions and sharing a child across
+distinct parents remain legal. Handwritten unflagged MFNode descriptors retain
+ordinary duplicate-preserving sequence semantics, even if named `children` or
+marked as containment. The existing graph-cycle check still rejects ancestry
+cycles, including detached ones.
+
+This narrow constraint is not a claim that every field named `children`, every
+non-grouping node with grouping-like behavior, or `addChildren`/`removeChildren`
+operation semantics has been audited. Nor does it complete the reference versus
+containment classification described above.

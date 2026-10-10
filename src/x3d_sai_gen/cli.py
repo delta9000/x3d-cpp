@@ -102,12 +102,12 @@ def _generate(out_dir: str, clang_format: str) -> None:
     written = []
     to_format = []
 
-    core_dir = os.path.join(out_dir, "x3d", "core")
+    core_dir = os.path.join(out_dir, "private", "x3d_sai", "detail")
     os.makedirs(core_dir, exist_ok=True)
     written.append(_write(
-        os.path.join(core_dir, "X3DReflection.hpp"), gen_reflection_header()))
+        os.path.join(core_dir, "metadata_types.hpp"), gen_reflection_header()))
 
-    nodes_dir = os.path.join(out_dir, "x3d", "nodes")
+    nodes_dir = core_dir
     os.makedirs(nodes_dir, exist_ok=True)
     written.append(_write(
         os.path.join(nodes_dir, "X3DSemanticMetadataRegistry.hpp"),
@@ -117,7 +117,7 @@ def _generate(out_dir: str, clang_format: str) -> None:
     written.append(_write(
         os.path.join(nodes_dir, "X3DSemanticMetadataRegistry.cpp"), metadata))
 
-    root = os.path.join(out_dir, "x3d", "sai", "experimental")
+    root = os.path.join(out_dir, "public", "x3d", "sai", "experimental")
     bindings_dir = os.path.join(root, "bindings")
     os.makedirs(bindings_dir, exist_ok=True)
     for name in sorted(nodes):

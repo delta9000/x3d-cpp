@@ -1,3 +1,4 @@
+#include "x3d/sai/experimental/kernel.hpp"
 #include "x3d/sai/experimental/metadata.hpp"
 
 #include "x3d/sai/experimental/bindings/Appearance.hpp"

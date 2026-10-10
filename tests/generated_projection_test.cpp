@@ -160,3 +160,231 @@ TEST_CASE("font style remains a semantic field rather than CSS") {
   CHECK(context.snapshot().read(screen_style).value() ==
         std::string{"PLAIN"});
 }
+
+TEST_CASE("generated grouping children expose their explicit uniqueness constraint") {
+  const auto catalog = sai::generated_metadata_catalog();
+  for (const auto name : {"X3DGroupingNode", "X3DViewportNode", "Transform",
+                          "Group", "CADPart", "LayoutGroup", "Viewport"}) {
+    CAPTURE(name);
+    const auto type = std::ranges::find(catalog.nodes, name,
+                                        &sai::schema_node_descriptor::name);
+    REQUIRE(type != catalog.nodes.end());
+    for (const auto &field : type->fields)
+      CHECK(field.unique_non_null_nodes == (field.name == "children"));
+  }
+  for (const auto name : {"Contour2D", "MetadataSet", "Layer", "Analyser"}) {
+    const auto type = std::ranges::find(catalog.nodes, name,
+                                        &sai::schema_node_descriptor::name);
+    REQUIRE(type != catalog.nodes.end());
+    for (const auto &field : type->fields)
+      CHECK_FALSE(field.unique_non_null_nodes);
+  }
+  auto registry = sai::generated_type_registry_for<sai::bindings::Transform>();
+  REQUIRE(registry);
+  sai::browser host{std::move(*registry)};
+  auto edit = host.current_scene().edit();
+  const auto node = edit.create<sai::bindings::Transform>().value();
+  REQUIRE(edit.commit());
+  const auto described = host.current_scene().snapshot().describe(node.dynamic());
+  REQUIRE(described);
+  for (const auto &field : described->fields)
+    CHECK(field.unique_non_null_nodes == (field.name == "children"));
+}
+
+TEST_CASE("generated grouping duplicate children reject whole values and MF edits") {
+  for (bool typed : {false, true}) {
+    for (int operation = 0; operation < 6; ++operation) {
+      CAPTURE(typed);
+      CAPTURE(operation);
+      auto registry = sai::generated_type_registry_for<sai::bindings::Transform>();
+      REQUIRE(registry);
+      sai::browser host{std::move(*registry)};
+      auto context = host.current_scene();
+      auto setup = context.edit();
+      const auto parent = setup.create<sai::bindings::Transform>().value();
+      const auto first = setup.create<sai::bindings::Transform>().value();
+      const auto second = setup.create<sai::bindings::Transform>().value();
+      const auto children = parent.field(sai::bindings::Transform::children);
+      const auto guard = parent.field(sai::bindings::Transform::translation);
+      const std::array initial{first.dynamic(), second.dynamic()};
+      REQUIRE(setup.set(children, std::span<const sai::node>{initial}));
+      REQUIRE(setup.commit());
+      const auto before = context.snapshot();
+      int notifications = 0;
+      auto observer = context.observe([&](const auto &) { ++notifications; });
+      auto edit = context.edit();
+      REQUIRE(edit.set(guard, sai::vec3f{7, 8, 9}));
+      const std::array duplicate{first.dynamic(), sai::node{}, first.dynamic()};
+      if (operation == 0) {
+        if (typed)
+          REQUIRE(edit.set(children, std::span<const sai::node>{duplicate}));
+        else
+          REQUIRE(edit.set(children.dynamic(), std::span<const sai::node>{duplicate}));
+      } else if (operation == 5) {
+        REQUIRE(edit.append(parent.dynamic(), "children", first.dynamic()));
+      } else {
+        const auto mutate = [&](auto range) {
+          switch (operation) {
+          case 1: return range.set(1, first.dynamic());
+          case 2: return range.insert(1, first.dynamic());
+          case 3: return range.append(first.dynamic());
+          default: return range.replace(std::span<const sai::node>{duplicate});
+          }
+        };
+        if (typed)
+          REQUIRE(mutate(edit.multi(children).value()));
+        else
+          REQUIRE(mutate(edit.multi(children.dynamic()).value()));
+      }
+      const auto validation = edit.validate();
+      REQUIRE_FALSE(validation);
+      CHECK(validation.error().code == sai::error_code::invalid_value);
+      CHECK(validation.error().node == parent.id());
+      CHECK(validation.error().field == "children");
+      const auto committed = edit.commit();
+      REQUIRE_FALSE(committed);
+      CHECK(committed.error().code == sai::error_code::invalid_value);
+      CHECK(context.snapshot().revision() == before.revision());
+      CHECK(context.snapshot().read(children).value() == before.read(children).value());
+      CHECK(context.snapshot().read(guard).value() == sai::vec3f{});
+      CHECK(context.drain().delivered == 0);
+      CHECK(notifications == 0);
+    }
+  }
+}
+
+TEST_CASE("generated grouping children preserve NULL positions and cross-parent sharing") {
+  auto registry = sai::generated_type_registry_for<sai::bindings::Transform>();
+  REQUIRE(registry);
+  sai::browser host{std::move(*registry)};
+  auto context = host.current_scene();
+  auto edit = context.edit();
+  const auto first = edit.create<sai::bindings::Transform>().value();
+  const auto second = edit.create<sai::bindings::Transform>().value();
+  const auto child = edit.create<sai::bindings::Transform>().value();
+  const auto first_children = first.field(sai::bindings::Transform::children);
+  const auto second_children = second.field(sai::bindings::Transform::children);
+  const std::array payload{sai::node{}, child.dynamic(), sai::node{}, sai::node{}};
+  REQUIRE(edit.set(first_children, std::span<const sai::node>{payload}));
+  REQUIRE(edit.set(second_children, std::span<const sai::node>{payload}));
+  REQUIRE(edit.append_root(first.dynamic()));
+  REQUIRE(edit.append_root(second.dynamic()));
+  REQUIRE(edit.validate());
+  REQUIRE(edit.commit());
+  const sai::node_list expected{sai::node_id{}, child.id(), sai::node_id{}, sai::node_id{}};
+  CHECK(context.snapshot().read(first_children).value() == expected);
+  CHECK(context.snapshot().read(second_children).value() == expected);
+  auto events = context.events({1});
+  REQUIRE(events.send(first_children, std::span<const sai::node>{payload}));
+  REQUIRE(events.commit());
+  CHECK(context.snapshot().read(first_children).value() == expected);
+
+  const auto before = context.snapshot();
+  auto cycle = context.edit();
+  REQUIRE(cycle.append(child.dynamic(), "children", first.dynamic()));
+  const auto rejected = cycle.commit();
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::containment_cycle);
+  CHECK(context.snapshot().revision() == before.revision());
+}
+
+TEST_CASE("generated grouping uniqueness rejects direct and runtime node events") {
+  for (bool runtime : {false, true}) {
+    for (bool typed : {false, true}) {
+      CAPTURE(runtime);
+      CAPTURE(typed);
+      auto registry = sai::generated_type_registry_for<sai::bindings::Transform>();
+      REQUIRE(registry);
+      sai::browser host{std::move(*registry)};
+      auto context = host.current_scene();
+      auto setup = context.edit();
+      const auto parent = setup.create<sai::bindings::Transform>().value();
+      const auto child = setup.create<sai::bindings::Transform>().value();
+      const auto children = parent.field(sai::bindings::Transform::children);
+      const auto guard = parent.field(sai::bindings::Transform::translation);
+      REQUIRE(setup.commit());
+      const auto before = context.snapshot();
+      const std::array duplicate{child.dynamic(), sai::node{}, child.dynamic()};
+      int notifications = 0;
+      auto observer = context.observe([&](const auto &) { ++notifications; });
+      if (runtime) {
+        REQUIRE(host.set_runtime_processor(context, [&](sai::runtime_step &step) {
+          if (step.input())
+            return sai::result<void>{};
+          REQUIRE(step.emit(guard, sai::vec3f{1, 2, 3}));
+          // The frame must still be poisoned even if a processor ignores it.
+          const auto rejected = typed
+              ? step.emit(children, std::span<const sai::node>{duplicate})
+              : step.emit(children.dynamic(), std::span<const sai::node>{duplicate});
+          REQUIRE_FALSE(rejected);
+          CHECK(rejected.error().code == sai::error_code::invalid_value);
+          return sai::result<void>{};
+        }));
+      }
+      auto events = context.events({1});
+      if (!runtime) {
+        REQUIRE(events.send(guard, sai::vec3f{1, 2, 3}));
+        const auto rejected = typed
+            ? events.send(children, std::span<const sai::node>{duplicate})
+            : events.send(children.dynamic(), std::span<const sai::node>{duplicate});
+        REQUIRE_FALSE(rejected);
+        CHECK(rejected.error().code == sai::error_code::invalid_value);
+      }
+      CHECK_FALSE(events.commit());
+      CHECK(context.snapshot().revision() == before.revision());
+      CHECK(context.snapshot().read(children).value().empty());
+      CHECK(context.snapshot().read(guard).value() == sai::vec3f{});
+      CHECK(context.drain().delivered == 0);
+      CHECK(notifications == 0);
+    }
+  }
+}
+
+TEST_CASE("generated grouping uniqueness rejects a permissive routed source") {
+  for (bool runtime : {false, true}) {
+    auto registry = sai::generated_type_registry_for<sai::bindings::Transform>();
+    REQUIRE(registry);
+    sai::node_type_descriptor source_type;
+    source_type.name = "Source";
+    sai::field_descriptor source_field;
+    source_field.name = "nodes";
+    source_field.kind = sai::value_kind::mf_node;
+    source_field.default_value = sai::node_list{};
+    source_type.fields.push_back(source_field);
+    REQUIRE(registry->define(source_type));
+    sai::browser host{std::move(*registry)};
+    auto context = host.current_scene();
+    auto setup = context.edit();
+    const auto source = setup.create_node("Source").value();
+    const auto parent = setup.create_node("Transform").value();
+    const auto child = setup.create_node("Transform").value();
+    const auto output = setup.field(source, "nodes").value();
+    const auto children = setup.field(parent, "children").value();
+    REQUIRE(setup.add_route(output, children));
+    REQUIRE(setup.commit());
+    const auto before = context.snapshot();
+    const std::array duplicate{child, sai::node{}, child};
+    int notifications = 0;
+    auto observer = context.observe([&](const auto &) { ++notifications; });
+    if (runtime) {
+      REQUIRE(host.set_runtime_processor(context, [&](sai::runtime_step &step) {
+        if (step.input())
+          return sai::result<void>{};
+        return step.emit(output, std::span<const sai::node>{duplicate});
+      }));
+    }
+    auto events = context.events({1});
+    if (!runtime)
+      REQUIRE(events.send(output, std::span<const sai::node>{duplicate}));
+    const auto rejected = events.commit();
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::invalid_value);
+    CHECK(rejected.error().node == parent.id());
+    CHECK(rejected.error().field == "children");
+    CHECK(context.snapshot().revision() == before.revision());
+    CHECK(context.snapshot().read(output).value() == sai::value{sai::node_list{}});
+    CHECK(context.snapshot().read(children).value() == sai::value{sai::node_list{}});
+    CHECK(context.drain().delivered == 0);
+    CHECK(notifications == 0);
+  }
+}

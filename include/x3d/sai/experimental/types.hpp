@@ -318,6 +318,13 @@ struct unit_declaration {
                          const unit_declaration &) = default;
 };
 
+// Owning scene-level META entry, distinct from node metadata fields and user data.
+struct metadata_entry {
+  std::string key;
+  std::string value;
+  friend bool operator==(const metadata_entry &, const metadata_entry &) = default;
+};
+
 enum class default_source {
   field_type,
   schema,
@@ -402,6 +409,12 @@ enum class error_code {
   unsupported_field_type,
   abstract_type,
   operation_in_progress,
+  unsupported_operation,
+  wrong_thread,
+  // An explicit client-reference disposal, distinct from expired authority.
+  disposed,
+  // Explicit modern admission-policy capacity, not a running operation.
+  resource_limit,
 };
 
 struct sai_error {
@@ -444,6 +457,8 @@ struct field_descriptor {
   std::vector<std::string> accepted_node_types;
   std::optional<std::string> unit_category;
   numeric_range range{};
+  // Reject repeated non-NULL identities within this MFNode value only.
+  bool unique_non_null_nodes = false;
 };
 
 struct node_type_descriptor {

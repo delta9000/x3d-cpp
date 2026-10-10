@@ -10,12 +10,15 @@ find_package(Threads REQUIRED)
 
 set(_sai_generated "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings")
 
-# Firewalled modern-C++ SAI proposal. The kernel uses the C++ standard runtime
-# and platform threading; it has no dependency on x3d-cpp's generated objects.
-add_library(x3d_sai_experimental STATIC "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel.cpp")
-add_library(x3d::sai ALIAS x3d_sai_experimental)
+# Optional reference-only kernel extensions. Normal portable clients link
+# x3d::sai below, not this snapshot/editor implementation.
+add_library(x3d_sai_experimental STATIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/session.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/browser_services.cpp")
+add_library(x3d::sai_reference_kernel ALIAS x3d_sai_experimental)
 set_target_properties(x3d_sai_experimental PROPERTIES
-    EXPORT_NAME sai POSITION_INDEPENDENT_CODE ON)
+    EXPORT_NAME sai_reference_kernel POSITION_INDEPENDENT_CODE ON)
 target_include_directories(x3d_sai_experimental PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third_party>"
@@ -28,24 +31,53 @@ target_link_libraries(x3d_sai_experimental PUBLIC Threads::Threads)
 # catalog.
 add_library(x3d_sai_experimental_metadata STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/metadata.cpp"
-    "${_sai_generated}/x3d/nodes/X3DSemanticMetadataRegistry.cpp")
-add_library(x3d::sai_metadata ALIAS x3d_sai_experimental_metadata)
+    "${_sai_generated}/private/x3d_sai/detail/X3DSemanticMetadataRegistry.cpp")
+add_library(x3d::sai_reference_metadata ALIAS x3d_sai_experimental_metadata)
 set_target_properties(x3d_sai_experimental_metadata PROPERTIES
-    EXPORT_NAME sai_metadata POSITION_INDEPENDENT_CODE ON)
-target_include_directories(x3d_sai_experimental_metadata PUBLIC
-    "$<BUILD_INTERFACE:${_sai_generated}>")
+    EXPORT_NAME sai_reference_metadata POSITION_INDEPENDENT_CODE ON)
+target_include_directories(x3d_sai_experimental_metadata
+    PUBLIC "$<BUILD_INTERFACE:${_sai_generated}/public>"
+    PRIVATE "${_sai_generated}/private")
 target_link_libraries(x3d_sai_experimental_metadata PUBLIC x3d_sai_experimental)
 target_compile_features(x3d_sai_experimental_metadata PUBLIC cxx_std_20)
+
+# One provider-neutral compiled contract, with no reference-kernel or native
+# runtime dependency. Backend composition controls storage and execution.
+add_library(x3d_sai_provider STATIC src/provider.cpp)
+add_library(x3d::sai ALIAS x3d_sai_provider)
+add_library(x3d::sai_provider ALIAS x3d_sai_provider)
+set_target_properties(x3d_sai_provider PROPERTIES
+    EXPORT_NAME sai POSITION_INDEPENDENT_CODE ON)
+target_include_directories(x3d_sai_provider PUBLIC
+    "$<BUILD_INTERFACE:${_sai_generated}/public>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third_party>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+target_compile_features(x3d_sai_provider PUBLIC cxx_std_20)
+target_link_libraries(x3d_sai_provider PUBLIC Threads::Threads)
+
+add_library(x3d_sai_provider_fixture INTERFACE)
+add_library(x3d::sai_provider_fixture ALIAS x3d_sai_provider_fixture)
+set_target_properties(x3d_sai_provider_fixture PROPERTIES EXPORT_NAME sai_provider_fixture)
+target_link_libraries(x3d_sai_provider_fixture INTERFACE x3d_sai_provider)
+
+add_library(x3d_sai_reference_provider STATIC src/reference_provider.cpp)
+add_library(x3d::sai_reference_provider ALIAS x3d_sai_reference_provider)
+set_target_properties(x3d_sai_reference_provider PROPERTIES
+    EXPORT_NAME sai_reference_provider POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(x3d_sai_reference_provider PUBLIC
+    x3d_sai_provider PRIVATE x3d_sai_experimental_metadata)
 
 # The same target names and usage requirements work in a source checkout and
 # an installed SDK. Install only the public SAI headers; the catalog's generated
 # reflection support stays inside the compiled metadata bridge.
 set(_sai_package_dir "${CMAKE_INSTALL_LIBDIR}/cmake/x3d_sai")
 install(TARGETS x3d_sai_experimental x3d_sai_experimental_metadata
+    x3d_sai_provider x3d_sai_provider_fixture x3d_sai_reference_provider
     EXPORT x3d_saiTargets ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 install(DIRECTORY include/x3d/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d"
     FILES_MATCHING PATTERN "*.hpp")
-install(DIRECTORY "${_sai_generated}/x3d/sai/"
+install(DIRECTORY "${_sai_generated}/public/x3d/sai/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d/sai"
     FILES_MATCHING PATTERN "*.hpp")
 install(FILES third_party/tl/expected.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/tl")
@@ -88,6 +120,9 @@ add_executable(x3d_sai_experimental_tests
 target_link_libraries(x3d_sai_experimental_tests PRIVATE
     x3d_sai_experimental_metadata x3d_sai_doctest_main)
 target_compile_features(x3d_sai_experimental_tests PRIVATE cxx_std_20)
+# This parity test intentionally inspects private catalog facts; consumers do not.
+target_include_directories(x3d_sai_experimental_tests PRIVATE
+    "${_sai_generated}/private")
 
 add_executable(x3d_sai_generated_projection_tests
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/generated_projection_test.cpp")
@@ -464,7 +499,10 @@ add_test(NAME sai_package_consumer COMMAND "${CMAKE_COMMAND}"
     "-DSAI_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
     "-DSAI_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}"
     -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_consumer.cmake")
-set_tests_properties(sai_package_consumer PROPERTIES TIMEOUT 300)
+# This integration test compiles ordinary consumers twice, including a clean
+# embedded SDK build. RelWithDebInfo metadata compilation can exceed five
+# minutes on shared CI runners; keep a finite budget for the complete build.
+set_tests_properties(sai_package_consumer PROPERTIES TIMEOUT 900)
 
 add_test(NAME sai_field_unit_validation COMMAND x3d_sai_experimental_tests
     "--test-case=unit representation preserves validation priority*")
@@ -546,3 +584,103 @@ target_link_libraries(x3d_sai_async_world_tests PRIVATE
     x3d_sai_experimental x3d_sai_doctest_main Threads::Threads)
 add_test(NAME sai_async_world_installation COMMAND x3d_sai_async_world_tests)
 set_tests_properties(sai_async_world_installation PROPERTIES TIMEOUT 60)
+
+add_executable(x3d_sai_provider_reference_tests tests/provider_reference_test.cpp)
+target_link_libraries(x3d_sai_provider_reference_tests PRIVATE
+    x3d_sai_reference_provider x3d_sai_provider_fixture)
+add_test(NAME sai_provider_reference COMMAND x3d_sai_provider_reference_tests)
+set_tests_properties(sai_provider_reference PROPERTIES TIMEOUT 15)
+
+# Compile the complete generated key catalog and provider oracle without the
+# reference kernel. The source checks include guards and malformed dispatch.
+add_executable(x3d_sai_provider_schema_tests tests/provider_schema_test.cpp)
+target_link_libraries(x3d_sai_provider_schema_tests PRIVATE x3d_sai_provider_fixture)
+add_test(NAME sai_provider_schema COMMAND x3d_sai_provider_schema_tests)
+set_tests_properties(sai_provider_schema PROPERTIES TIMEOUT 15)
+
+# Live service lifetime and external per-client update-control conformance slices.
+add_executable(x3d_sai_lifecycle_service_tests tests/live_lifecycle_services_test.cpp)
+target_link_libraries(x3d_sai_lifecycle_service_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_live_lifecycle_services COMMAND x3d_sai_lifecycle_service_tests)
+set_tests_properties(sai_live_lifecycle_services PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_session_tests tests/session_test.cpp)
+target_link_libraries(x3d_sai_session_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_external_session COMMAND x3d_sai_session_tests)
+set_tests_properties(sai_external_session PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_image_tests tests/image_operations_test.cpp)
+target_link_libraries(x3d_sai_image_tests PRIVATE
+    x3d_sai_provider x3d_sai_doctest_main)
+add_test(NAME sai_image_operations COMMAND x3d_sai_image_tests)
+set_tests_properties(sai_image_operations PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_iterative_graph_tests tests/iterative_containment_test.cpp)
+target_link_libraries(x3d_sai_iterative_graph_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_iterative_graph COMMAND x3d_sai_iterative_graph_tests)
+set_tests_properties(sai_iterative_graph PROPERTIES TIMEOUT 60)
+
+add_executable(x3d_sai_rotation_constraint_tests tests/rotation_constraints_test.cpp)
+target_link_libraries(x3d_sai_rotation_constraint_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_rotation_constraints COMMAND x3d_sai_rotation_constraint_tests)
+set_tests_properties(sai_rotation_constraints PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_image_validation_tests tests/image_validation_test.cpp)
+target_link_libraries(x3d_sai_image_validation_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_image_validation COMMAND x3d_sai_image_validation_tests)
+set_tests_properties(sai_image_validation PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_matrix_tests tests/matrix_operations_test.cpp)
+target_link_libraries(x3d_sai_matrix_tests PRIVATE
+    x3d_sai_provider x3d_sai_doctest_main)
+add_test(NAME sai_matrix_operations COMMAND x3d_sai_matrix_tests)
+set_tests_properties(sai_matrix_operations PROPERTIES TIMEOUT 30)
+
+# Isolate this fixture's allocation-failure hook from unrelated test binaries.
+add_executable(x3d_sai_user_data_tests tests/user_data_services_test.cpp)
+target_link_libraries(x3d_sai_user_data_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_user_data_services COMMAND x3d_sai_user_data_tests)
+set_tests_properties(sai_user_data_services PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_browser_service_tests tests/browser_services_test.cpp)
+target_link_libraries(x3d_sai_browser_service_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_browser_services COMMAND x3d_sai_browser_service_tests)
+set_tests_properties(sai_browser_services PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_hosted_logical_turn_tests tests/hosted_logical_turn_test.cpp)
+target_link_libraries(x3d_sai_hosted_logical_turn_tests PRIVATE
+    x3d_sai_experimental x3d_sai_doctest_main)
+add_test(NAME sai_hosted_logical_turn COMMAND x3d_sai_hosted_logical_turn_tests)
+set_tests_properties(sai_hosted_logical_turn PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_hosted_reference_tests tests/hosted_reference_test.cpp)
+target_link_libraries(x3d_sai_hosted_reference_tests PRIVATE
+    x3d_sai_reference_provider x3d_sai_provider_fixture x3d_sai_doctest_main)
+add_test(NAME sai_hosted_reference COMMAND x3d_sai_hosted_reference_tests)
+set_tests_properties(sai_hosted_reference PROPERTIES TIMEOUT 30)
+
+add_executable(x3d_sai_hosted_callback_tests tests/hosted_callback_test.cpp)
+target_link_libraries(x3d_sai_hosted_callback_tests PRIVATE
+    x3d_sai_reference_provider x3d_sai_doctest_main)
+add_test(NAME sai_hosted_callback COMMAND x3d_sai_hosted_callback_tests)
+set_tests_properties(sai_hosted_callback PROPERTIES TIMEOUT 30)
+
+# This allocation-accounting fixture must remain in a separate process.
+add_executable(x3d_sai_hosted_resource_tests tests/hosted_resource_test.cpp)
+target_link_libraries(x3d_sai_hosted_resource_tests PRIVATE
+    x3d_sai_provider x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_hosted_resources COMMAND x3d_sai_hosted_resource_tests)
+set_tests_properties(sai_hosted_resources PROPERTIES TIMEOUT 60)
+
+add_executable(x3d_sai_provider_contract_tests tests/provider_contract_test.cpp)
+target_link_libraries(x3d_sai_provider_contract_tests PRIVATE
+    x3d_sai_provider x3d_sai_doctest_main Threads::Threads)
+add_test(NAME sai_provider_contract COMMAND x3d_sai_provider_contract_tests)
+set_tests_properties(sai_provider_contract PROPERTIES TIMEOUT 60)

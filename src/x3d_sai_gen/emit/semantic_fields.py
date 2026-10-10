@@ -51,4 +51,13 @@ def resolved_node_fields(node, nodes, graph, enum_defs=None):
         ancestors=seen,
         enum_defs=enum_defs,
     )
+    # ISO/IEC 19775-1, 10.2.1: grouping children cannot repeat a non-NULL
+    # node. Resolve this from actual grouping ancestry, never from the field
+    # spelling alone or the adapter's provisional containment classification.
+    grouping = node.name == "X3DGroupingNode" or "X3DGroupingNode" in seen
+    for field in descriptors:
+        field.unique_non_null_nodes = (
+            grouping and field.x3d_name == "children"
+            and field.runtime_field_type == "MFNode"
+        )
     return [field for field in descriptors if is_runtime_field(node, field)]

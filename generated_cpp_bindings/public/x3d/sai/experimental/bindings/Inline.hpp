@@ -1,0 +1,53 @@
+#pragma once
+
+// Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
+#include "x3d/sai/experimental/schema.hpp"
+
+namespace x3d::sai::experimental::bindings {
+
+struct Inline {
+  static constexpr std::string_view x3d_name = "Inline";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
+  inline static constexpr field_key<Inline,
+                                    ::x3d::sai::experimental::time_value>
+      autoRefresh{"autoRefresh", access_type::input_output};
+  inline static constexpr field_key<Inline,
+                                    ::x3d::sai::experimental::time_value>
+      autoRefreshTimeLimit{"autoRefreshTimeLimit", access_type::input_output};
+  inline static constexpr field_key<Inline, ::x3d::sai::experimental::vec3f>
+      bboxCenter{"bboxCenter", access_type::initialize_only};
+  inline static constexpr field_key<Inline, bool> bboxDisplay{
+      "bboxDisplay", access_type::input_output};
+  inline static constexpr field_key<Inline, ::x3d::sai::experimental::vec3f>
+      bboxSize{"bboxSize", access_type::initialize_only};
+  inline static constexpr field_key<Inline, std::string> description{
+      "description", access_type::input_output};
+  inline static constexpr field_key<Inline, bool> global{
+      "global", access_type::input_output};
+  inline static constexpr field_key<Inline, bool> load{
+      "load", access_type::input_output};
+  inline static constexpr field_key<Inline, ::x3d::sai::experimental::node_id>
+      metadata{"metadata", access_type::input_output};
+  inline static constexpr field_key<Inline,
+                                    ::x3d::sai::experimental::string_list>
+      url{"url", access_type::input_output};
+  inline static constexpr field_key<Inline, bool> visible{
+      "visible", access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 11> field_keys{{
+      {autoRefresh.name(), autoRefresh.kind, autoRefresh.access()},
+      {autoRefreshTimeLimit.name(), autoRefreshTimeLimit.kind,
+       autoRefreshTimeLimit.access()},
+      {bboxCenter.name(), bboxCenter.kind, bboxCenter.access()},
+      {bboxDisplay.name(), bboxDisplay.kind, bboxDisplay.access()},
+      {bboxSize.name(), bboxSize.kind, bboxSize.access()},
+      {description.name(), description.kind, description.access()},
+      {global.name(), global.kind, global.access()},
+      {load.name(), load.kind, load.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {url.name(), url.kind, url.access()},
+      {visible.name(), visible.kind, visible.access()},
+  }};
+};
+
+} // namespace x3d::sai::experimental::bindings

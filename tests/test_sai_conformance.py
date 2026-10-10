@@ -179,6 +179,19 @@ def test_strict_mode_rejects_placeholder_public_symbol_even_if_marked_implemente
     assert any("has no public symbol" in error for error in errors)
 
 
+def test_strict_mode_rejects_mixed_executable_and_planned_evidence():
+    services, invariants = registries()
+    services["services"][0]["support"] = "implemented"
+    services["services"][0]["tests"] = ["sai_field_read", "planned:sai_field_error"]
+    invariants["invariants"][0]["falsification_tests"] = [
+        "sai_identity", "planned:sai_stale_identity"
+    ]
+    assert sai.validate_registries(services, invariants) == []
+    errors = sai.validate_registries(services, invariants, strict=True)
+    assert "SVC-FIELD-READ: unresolved service test planned:sai_field_error" in errors
+    assert "INV-ID-1: unresolved falsification test planned:sai_stale_identity" in errors
+
+
 def test_repository_gate_rejects_unknown_executable_test_mapping():
     services, invariants = registries()
     errors = sai.validate_registries(
@@ -255,6 +268,40 @@ def test_strict_gate_fails_closed_while_cpp_binding_audit_is_incomplete():
     assert any("C++ binding catalog audit is incomplete" in error for error in errors)
 
 
+def test_historical_cpp_inventory_cannot_be_promoted_to_published_audit():
+    catalog = sai.load_catalog(REPO / "docs" / "conformance")
+    catalog["cpp_binding"]["audit_status"] = "complete"
+    _, _, errors = sai.catalog_cpp_binding(catalog)
+    assert any("complete audit requires reconciled published clauses" in e for e in errors)
+
+
+def test_published_review_keeps_historical_ids_and_explicit_assessments():
+    catalog = sai.load_catalog(REPO / "docs" / "conformance")
+    binding = catalog["cpp_binding"]
+    assert set(binding["published_review"]) == set(binding["obligations"])
+    assert binding["published_review"]["CPP-4.3.1.2-CALLBACK-ROBUSTNESS"]["clause"] == "4.3.1.3"
+    assert binding["audit_status"] == "incomplete"
+    assert binding["current_published_standard"]["clause_mapping_status"] == "partial"
+    binding["published_review"]["CPP-NOT-IN-CATALOG"] = {"status": "complete"}
+    _, _, errors = sai.catalog_cpp_binding(catalog)
+    assert any("unknown published review ID" in e for e in errors)
+    assert any("invalid published review status" in e for e in errors)
+
+
+@pytest.mark.parametrize("remove_reviews", [False, True])
+def test_complete_published_audit_needs_coverage_and_resolved_decisions(remove_reviews):
+    catalog = sai.load_catalog(REPO / "docs" / "conformance")
+    binding = catalog["cpp_binding"]
+    binding["audit_status"] = "complete"
+    binding["source_status"] = "official_web3d_designated_IS_copy"
+    binding["current_published_standard"]["clause_mapping_status"] = "complete"
+    if remove_reviews:
+        binding["published_review"] = {}
+    _, _, errors = sai.catalog_cpp_binding(catalog)
+    expected = "coverage for every obligation" if remove_reviews else "unresolved published decision"
+    assert any(expected in error for error in errors)
+
+
 def test_baseline_report_is_deterministic_and_exposes_gaps():
     services, invariants = registries()
     services["services"].append(
@@ -312,3 +359,11 @@ def test_ci_requires_register_health_without_claiming_full_conformance():
     assert "mise run sai-invariants" in steps
     assert "mise run sai-conformance" not in steps
     assert "--strict" in tasks["sai-conformance"]["run"]
+
+
+def test_published_2015_catalog_includes_browser_option_service():
+    catalog = sai.load_catalog(REPO / "docs" / "conformance")
+    clauses, errors = sai.catalog_services(catalog)
+    assert errors == []
+    assert clauses["6.3.26"] == "setBrowserOption"
+    assert len(clauses) == 91

@@ -9,7 +9,7 @@
 #include "x3d/sai/experimental/bindings/Transform.hpp"
 #include "x3d/sai/experimental/bindings/WorldInfo.hpp"
 
-#include "x3d/nodes/X3DSemanticMetadataRegistry.hpp"
+#include "x3d_sai/detail/X3DSemanticMetadataRegistry.hpp"
 
 #include "doctest/doctest.h"
 
@@ -556,14 +556,14 @@ TEST_CASE("generated metadata authors without runtime node identity") {
 
 TEST_CASE(
     "generated metadata adapter has exhaustive ordered descriptor parity") {
-  const auto source = x3d::nodes::X3DSemanticMetadataRegistry::nodes();
+  const auto source = sai::detail::X3DSemanticMetadataRegistry::nodes();
   const auto adapted = sai::generated_metadata_catalog();
   CHECK(adapted.specification_version == "4.0");
   CHECK(adapted.model_fingerprint ==
-        x3d::nodes::X3DSemanticMetadataRegistry::modelFingerprint());
+        sai::detail::X3DSemanticMetadataRegistry::modelFingerprint());
   CHECK(adapted.model_fingerprint.size() == 64);
   CHECK(adapted.generator_version ==
-        x3d::nodes::X3DSemanticMetadataRegistry::generatorVersion());
+        sai::detail::X3DSemanticMetadataRegistry::generatorVersion());
   CHECK_FALSE(adapted.generator_version.empty());
   CHECK_FALSE(adapted.unit_categories_complete);
   REQUIRE(adapted.nodes.size() == source.size());
@@ -591,6 +591,7 @@ TEST_CASE(
       CHECK(adapted_field.accepted_node_types ==
             source_field.acceptableNodeTypes);
       CHECK(adapted_field.unit_category == source_field.unitCategory);
+      CHECK(adapted_field.unique_non_null_nodes == source_field.uniqueNonNullNodes);
       CHECK(adapted_field.range.minimum == source_field.range.minimum);
       CHECK(adapted_field.range.maximum == source_field.range.maximum);
       CHECK(adapted_field.range.minimum_inclusive == source_field.range.minimumInclusive);
@@ -6031,4 +6032,51 @@ TEST_CASE("unpublished declaration handles never alias committed declarations") 
   CHECK_FALSE(context.snapshot().describe(*unpublished));
   auto mutation = context.edit();
   CHECK_FALSE(mutation.rename_declaration(*unpublished, "MustNotRename"));
+}
+
+TEST_CASE("node uniqueness requires an explicit MFNode descriptor constraint") {
+  const std::array invalid_fields{
+      std::pair{sai::value_kind::sf_node, sai::value{sai::node_id{}}},
+      std::pair{sai::value_kind::sf_float, sai::value{0.f}},
+      std::pair{sai::value_kind::mf_float, sai::value{sai::float_list{}}}};
+  for (const auto &[kind, initial] : invalid_fields) {
+    auto descriptor = test_field("children", kind,
+                                 sai::access_type::input_output, initial);
+    descriptor.unique_non_null_nodes = true;
+    sai::type_registry registry;
+    const auto rejected = registry.define(test_node_type("Invalid", {descriptor}));
+    REQUIRE_FALSE(rejected);
+    CHECK(rejected.error().code == sai::error_code::invalid_descriptor);
+  }
+  auto unique = test_field("links", sai::value_kind::mf_node,
+                           sai::access_type::input_output,
+                           sai::node_list{sai::node_id{}, sai::node_id{}});
+  unique.unique_non_null_nodes = true;
+  auto generic = test_field("children", sai::value_kind::mf_node,
+                            sai::access_type::input_output, sai::node_list{}, true);
+  CHECK_FALSE(generic.unique_non_null_nodes);
+  sai::type_registry registry;
+  REQUIRE(registry.define(test_node_type("Lists", {unique, generic})));
+  sai::browser host{std::move(registry)};
+  auto context = host.current_scene();
+  auto setup = context.edit();
+  const auto parent = setup.create_node("Lists").value();
+  const auto child = setup.create_node("Lists").value();
+  REQUIRE(setup.append(parent, "children", child));
+  REQUIRE(setup.append(parent, "children", child));
+  REQUIRE(setup.commit());
+  const auto snapshot = context.snapshot();
+  const auto generic_field = snapshot.field(parent, "children").value();
+  CHECK(snapshot.read(generic_field).value() ==
+        sai::value{sai::node_list{child.id(), child.id()}});
+  const auto links = snapshot.field(parent, "links").value();
+  CHECK(snapshot.read(links).value() ==
+        sai::value{sai::node_list{sai::node_id{}, sai::node_id{}}});
+  auto edit = context.edit();
+  const std::array duplicates{child, child};
+  REQUIRE(edit.set(links, std::span<const sai::node>{duplicates}));
+  const auto rejected = edit.commit();
+  REQUIRE_FALSE(rejected);
+  CHECK(rejected.error().code == sai::error_code::invalid_value);
+  CHECK(context.snapshot().revision() == snapshot.revision());
 }

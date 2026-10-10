@@ -128,6 +128,19 @@ def catalog_cpp_binding(
     if audit_status not in {"incomplete", "complete"}:
         errors.append("catalog cpp_binding: audit_status must be incomplete or complete")
         audit_status = "invalid"
+    # A completed historical inventory is not a completed audit of the current
+    # publication. Keep the two claims independent when publication metadata is
+    # present; generic fixture catalogs need not invent publication evidence.
+    published = binding.get("current_published_standard")
+    if audit_status == "complete" and (
+        binding.get("source_status") == "historical_committee_draft"
+        or isinstance(published, dict)
+        and published.get("clause_mapping_status") != "complete"
+    ):
+        errors.append(
+            "catalog cpp_binding: complete audit requires reconciled published "
+            "clauses, not a historical draft inventory"
+        )
     obligations = binding.get("obligations")
     if not isinstance(obligations, dict) or not obligations:
         return {}, audit_status, errors + [
@@ -148,6 +161,27 @@ def catalog_cpp_binding(
             )
             continue
         result[obligation_id] = statement
+    published_review = binding.get("published_review", {})
+    if not isinstance(published_review, dict):
+        errors.append("catalog cpp_binding: published_review must be a mapping")
+    else:
+        for obligation_id, review in published_review.items():
+            if obligation_id not in result:
+                errors.append(f"catalog cpp_binding: unknown published review ID {obligation_id}")
+            if not isinstance(review, dict):
+                errors.append(f"catalog cpp_binding {obligation_id}: published review must be a mapping")
+                continue
+            for key in ("clause", "source_url", "assessment"):
+                if not isinstance(review.get(key), str) or not review[key].strip():
+                    errors.append(f"catalog cpp_binding {obligation_id}: published review {key} must not be empty")
+            if review.get("status") not in {"match", "changed", "needs-decision"}:
+                errors.append(f"catalog cpp_binding {obligation_id}: invalid published review status")
+        if audit_status == "complete" and isinstance(published, dict):
+            if set(published_review) != set(result):
+                errors.append("catalog cpp_binding: complete audit requires published review coverage for every obligation")
+            for obligation_id, review in published_review.items():
+                if isinstance(review, dict) and review.get("status") == "needs-decision":
+                    errors.append(f"catalog cpp_binding {obligation_id}: complete audit has an unresolved published decision")
     return result, audit_status, errors
 
 
@@ -283,6 +317,10 @@ def validate_registries(
                         errors.append(f"{invariant_id}: test {test} is an unknown CTest")
             if strict and not _has_executable_test(invariant.get("falsification_tests")):
                 errors.append(f"{invariant_id}: has no executable falsification test")
+            if strict:
+                for test in invariant.get("falsification_tests", []):
+                    if isinstance(test, str) and test.startswith("planned:"):
+                        errors.append(f"{invariant_id}: unresolved falsification test {test}")
 
     preserved_ids: set[str] = set()
     if isinstance(services, list):
@@ -343,6 +381,10 @@ def validate_registries(
                 errors.append(f"{service_id}: has no public symbol")
             if strict and not _has_executable_test(service.get("tests")):
                 errors.append(f"{service_id}: has no executable test")
+            if strict:
+                for test in service.get("tests", []):
+                    if isinstance(test, str) and test.startswith("planned:"):
+                        errors.append(f"{service_id}: unresolved service test {test}")
     for invariant_id in sorted(invariant_ids - preserved_ids):
         errors.append(f"{invariant_id}: has no preserving service")
     if strict and catalog:

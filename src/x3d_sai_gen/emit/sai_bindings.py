@@ -90,7 +90,7 @@ def gen_sai_node_binding(node, nodes, graph):
         "",
         "// Auto-generated experimental SAI schema binding.",
         '#include "x3d/sai/experimental/X3DSAIBindings.hpp"',
-        '#include "x3d/sai/experimental/kernel.hpp"',
+        '#include "x3d/sai/experimental/schema.hpp"',
         "",
         "namespace x3d::sai::experimental::bindings {",
         "",

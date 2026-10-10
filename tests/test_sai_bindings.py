@@ -42,6 +42,8 @@ def test_transform_binding_uses_owner_typed_keys(model):
     assert "struct Transform" in generated
     assert 'static constexpr std::string_view x3d_name = "Transform";' in generated
     assert "X3DSAIBindings.hpp" in generated
+    assert '"x3d/sai/experimental/schema.hpp"' in generated
+    assert "kernel.hpp" not in generated
     assert "schema_fingerprint = model_fingerprint" in generated
     assert "field_key<Transform, ::x3d::sai::experimental::vec3f>" in generated
     assert "translation{" in generated
@@ -137,6 +139,50 @@ def test_duplicate_sanitized_field_identifier_fails_closed(model):
 
 def test_emission_is_byte_deterministic(model):
     assert emit("Transform", model) == emit("Transform", model)
+
+
+def test_generated_support_has_an_independent_private_vocabulary(model):
+    from x3d_sai_gen.emit.reflection import gen_reflection_header
+    from x3d_sai_gen.emit.semantic_metadata import (
+        gen_semantic_metadata_header, gen_semantic_metadata_source,
+    )
+
+    nodes, graph, _ = model
+    support = gen_reflection_header()
+    header = gen_semantic_metadata_header()
+    source = gen_semantic_metadata_source(nodes, graph, "4.0")
+    for generated in (support, header, source):
+        assert "namespace x3d::sai::experimental::detail" in generated
+        assert "x3d::core" not in generated
+        assert "x3d::nodes" not in generated
+        assert '"x3d/core/' not in generated
+        assert '"x3d/nodes/' not in generated
+    assert '"x3d_sai/detail/metadata_types.hpp"' in header
+    assert '"x3d_sai/detail/X3DSemanticMetadataRegistry.hpp"' in source
+    for runtime_type in ("FieldInfo", "FieldTable", "NodeVisitor", "X3DNode"):
+        assert runtime_type not in support
+
+
+def test_generated_tree_separates_support_from_public_bindings(tmp_path):
+    from x3d_sai_gen.cli import _generate
+
+    # Formatting is tested independently; inspect the emitter's layout without
+    # requiring a formatter in this structural regression.
+    _generate(str(tmp_path), "x3d-sai-test-no-formatter")
+    assert not (tmp_path / "x3d").exists()
+    private = tmp_path / "private/x3d_sai/detail"
+    assert {path.name for path in private.iterdir()} == {
+        "metadata_types.hpp", "X3DSemanticMetadataRegistry.hpp",
+        "X3DSemanticMetadataRegistry.cpp",
+    }
+    public = tmp_path / "public"
+    assert (public / "x3d/sai/experimental/bindings/Transform.hpp").is_file()
+    for path in public.rglob("*.hpp"):
+        content = path.read_text()
+        assert "x3d_sai/detail/" not in content
+        assert "kernel.hpp" not in content
+        assert "x3d::core" not in content
+        assert "x3d::nodes" not in content
 
 
 def test_transform_fields_match_the_abstract_node_interface(model):
