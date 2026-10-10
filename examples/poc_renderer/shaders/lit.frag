@@ -36,6 +36,8 @@ in vec3 vPosEye;
 in vec4 vColor;
 in vec2 vTexCoord;
 
+#include "multitexture.glsl"
+
 uniform vec4 uDiffuse;       // rgb = diffuse/base, a = 1 - transparency.
 uniform vec3 uEmissive;      // added unlit (augmented by emissive texture).
 uniform vec3 uAmbientColor;  // material ambientIntensity (broadcast); §17 multiplies it by base.
@@ -153,6 +155,11 @@ void main() {
         // Font atlas: single-channel coverage in .r. Keep the material color and
         // alpha-test on coverage (no blending in the PoC's opaque depth pass).
         if (texture(uTexture, vTexCoord).r < 0.5) discard;
+    } else if (uNumStages > 0) {
+        // §18.4.3 MultiTexture: DIFFUSE is the material/vertex diffuse colour.
+        vec4 c = applyMultiTexture(vec4(base, alpha), base, uSpecular, vTexCoord);
+        base  = c.rgb;
+        alpha = c.a;
     } else if (uHasTexture != 0) {
         vec4 texel = texture(uTexture, vTexCoord);
         base  *= texel.rgb;

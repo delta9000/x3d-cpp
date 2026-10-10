@@ -149,6 +149,10 @@ python3 examples/poc_renderer/tests/clip_plane_gl_test.py "$POC"
 echo "== poc LocalFog gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/local_fog_gl_test.py "$POC"
 
+# ---- TEXTURING MultiTexture GL pixel regression (REQ-MULTITEXTURE) ---------
+echo "== poc MultiTexture gate under Xvfb (software GL) =="
+python3 examples/poc_renderer/tests/multitexture_gl_test.py "$POC"
+
 # ---- SHADERS scene-authored program GL pixel regression (REQ-SHADER) -------
 echo "== poc author-shader selection gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/author_shader_gl_test.py "$POC"

@@ -2814,9 +2814,17 @@
   component: Texturing
   clause: "18.2.4; 18.4.3-18.4.5"
   severity: major
+  status: fixed
+  summary: Both reference hosts combine MultiTexture stages with their modes, source/function controls and independent stage coordinates.
+  note: "CPU implements all Table 18.3 modes, separate RGB/alpha mode tokens, Table 18.4 source selection of Arg2, and Table 18.5 post-operation functions. Each stage selects its MultiTextureCoordinate channel or named mapping and matching MultiTextureTransform, including generators. A single TextureTransform applies to every channel. Live transform and nested coordinate edits refresh baked meshes and coordinate-generation descriptors through the existing dependency indices; RuntimeSession regressions cover both channels. Tests: multi_texture_test and interchange_test, including rendering two stages with distinct transformed UVs and a material-free Appearance. The published table contradicts itself for REPLACE and SELECTARG2: REPLACE selects the stage texture (Arg1), SELECTARG2 selects the previous result (Arg2), following the respective operation meanings. The OpenGL PoC combines the base-colour stages in its unlit, Phong and PBR programs (examples/poc_renderer/shaders/multitexture.glsl, the same operators and interpretations as the CPU) with UV sets 0-3 as vertex attributes; examples/poc_renderer/tests/multitexture_gl_test.py (run by validate-examples) checks stage modes, UV channels and FACTOR source in each program (2026-10-10). Its remaining limits are REQ-MULTITEXTURE-2. Annex B explicitly includes MultiTexture despite its component level exceeding Texturing 2; the conformance view and CLI preserve that node-table exception. (2026-10-02)"
+- id: REQ-MULTITEXTURE-2
+  nodes: [MultiTexture, MultiTextureCoordinate]
+  component: Texturing
+  clause: "18.4.3; 18.4.4"
+  severity: minor
   status: open
-  summary: The CPU reference host combines all MultiTexture modes with independent stage coordinates; the OpenGL PoC still binds only the first matching slot.
-  note: "CPU implements all Table 18.3 modes, separate RGB/alpha mode tokens, Table 18.4 source selection of Arg2, and Table 18.5 post-operation functions. Each stage selects its MultiTextureCoordinate channel or named mapping and matching MultiTextureTransform, including generators. A single TextureTransform applies to every channel. Live transform and nested coordinate edits refresh baked meshes and coordinate-generation descriptors through the existing dependency indices; RuntimeSession regressions cover both channels. Tests: multi_texture_test and interchange_test, including rendering two stages with distinct transformed UVs and a material-free Appearance. The published table contradicts itself for REPLACE and SELECTARG2: REPLACE selects the stage texture (Arg1), SELECTARG2 selects the previous result (Arg2), following the respective operation meanings. The OpenGL PoC has no stage combiner; this finding remains open for it. Annex B explicitly includes MultiTexture despite its component level exceeding Texturing 2; the conformance view and CLI preserve that node-table exception. (2026-10-02)"
+  summary: The OpenGL PoC combines at most four MultiTexture stages over four UV sets and generates coordinates for one stage only.
+  note: "The CPU reference host has none of these limits. In the PoC (examples/poc_renderer), stages after the fourth are ignored; a channel beyond UV set 3 samples set 3; only the material's first TextureCoordinateGenerator is evaluated (lit.vert), so another stage's generator falls back to its authored UV set, and unlit.vert evaluates none. Acceptance: the GL host matches cpu_raster for more stages, more UV sets and per-stage generators. (2026-10-10)"
 - id: REQ-PROJECTION
   nodes: [TextureProjector, TextureProjectorParallel]
   component: TextureProjection

@@ -131,7 +131,7 @@ evidence, not whole-component proofs.
 | [Text](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/text.html) / 1 | Prove required character repertoire and actual glyph presentation; review language/direction/style rules and minima. | `TextExtract.hpp`, `TextLayout.hpp`, `runtime/io/stbtt/StbttGlyphAtlas.cpp`, `examples/cpu_raster/tests/text_render_test.cpp` | Unverified |
 | [Sound](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html) / 3 | Finish sources/processors, channel routing, HRTF/Doppler, tails, custom waveforms and backend bypass; check destination fields omitted by broad findings. | `runtime/sound/SoundSystem.hpp`, `AudioBackend.hpp`, `runtime/sound/tests/sound_immersive_test.cpp`; SND-1/3/4/5/6/8/9 | Partial |
 | [Lighting](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/lighting.html) / 3 | Consume shadow controls; verify light scope, attenuation, material interaction and the required simultaneous-light capacity. | `runtime/extract/LightSystem.hpp`, `examples/cpu_raster/cpuraster/MaterialShader.hpp`; REQ-SHADOW | Partial |
-| [Texturing](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html) / 4 | Execute MultiTexture combiners; verify MovieTexture presentation, sampler requirements and all coordinate-generation modes in the selected host. | `MaterialSystem.hpp`, `TextureExtract.hpp`, PoC `MovieState`, `runtime/io/plmpeg/tests/movie_decoder_tests.cpp`; REQ-MULTITEXTURE | Partial |
+| [Texturing](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html) / 4 | Verify MovieTexture presentation, sampler requirements and all coordinate-generation modes in the selected host. MultiTexture combiners run in both reference hosts (the PoC caps stages and UV sets at four). | `MaterialSystem.hpp`, `TextureExtract.hpp`, PoC `MovieState`, `multitexture_gl_test.py`, `runtime/io/plmpeg/tests/movie_decoder_tests.cpp`; REQ-MULTITEXTURE fixed, REQ-MULTITEXTURE-2 | Partial |
 | [Interpolation](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/interpolators.html) / 5 | Sign off all interpolation families, endpoint/duplicate-key rules, output sizes and numeric tolerances. | `runtime/events/InterpolatorRegistration.hpp`, `runtime/events/tests/interpolator_conformance_test.cpp` | Unverified |
 | [PointingDeviceSensor](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/pointingDeviceSensor.html) / 1 | Verify shared/instanced sensors, scope, dragging, deactivation and transformed hits in an interactive host. | `runtime/events/PointingSensorSystem.hpp`, `runtime/events/tests/pointing_sensor_test.cpp`, `drag_math_test.cpp`, `runtime/extract/tests/interactive_profile_test.cpp`; IACC-1 fixed | Unverified |
 | [KeyDeviceSensor](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/keyDeviceSensor.html) / 2 | Verify host key mapping, focus, modifiers, Unicode input and StringSensor deletion/termination. | `runtime/events/KeyDeviceSensorSystem.hpp`, `runtime/events/tests/key_device_sensor_test.cpp` | Unverified |
@@ -1486,8 +1486,9 @@ contradictory MultiTexture entries, REPLACE selects the stage texture and
 SELECTARG2 selects the previous result. These interpretations are tested and
 recorded in the ledger; they should accompany interoperability reports.
 
-Open global findings TXF-2, REQ-MULTITEXTURE and REQ-SHADOW now describe the
-OpenGL PoC's remaining gaps. They do not negate the CPU implementations above.
+Open global findings TXF-2, REQ-MULTITEXTURE-2 and REQ-SHADOW now describe the
+OpenGL PoC's remaining gaps (REQ-MULTITEXTURE itself was fixed in the PoC on
+2026-10-10). They do not negate the CPU implementations above.
 REQ-UNIT remains open for dimensional fields outside this checked profile and
 for writing a scene after runtime normalization while preserving authoring
 units. This host acceptance covers reading and presentation; it does not make

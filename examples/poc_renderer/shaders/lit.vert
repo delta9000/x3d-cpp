@@ -14,6 +14,10 @@ layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec4 aColor;
 layout(location = 3) in vec2 aTexCoord; // B8: X3D LOCAL (bottom-left = GL); no flip.
+// §18.4.3 MultiTexture: UV sets 1..3 (set 0 is aTexCoord); stages pick by channel.
+layout(location = 5) in vec2 aTexCoord1;
+layout(location = 6) in vec2 aTexCoord2;
+layout(location = 7) in vec2 aTexCoord3;
 
 layout(location = 4) in uvec2 aSkinRange;
 uniform bool uSkinEnabled;
@@ -71,6 +75,7 @@ out vec3 vNormalEye;        // shading normal in eye space (not yet normalized).
 out vec3 vPosEye;           // vertex position in eye space (for Blinn-Phong view dir).
 out vec4 vColor;            // per-vertex Color (only consulted when uHasColors).
 out vec2 vTexCoord;         // B8: passed through un-flipped for the sampler.
+out vec2 vTexSet[4];        // §18.4.3 UV sets for MultiTexture stages.
 
 void main() {
     vec4 posEye = uView * uModel * vec4(skinPosition(aPos), 1.0);
@@ -81,6 +86,10 @@ void main() {
     vNormalEye = uNormalMatrix * skinNormal(aNormal);
     vPosEye = posEye.xyz;
     vColor = aColor;
+    vTexSet[0] = aTexCoord;
+    vTexSet[1] = aTexCoord1;
+    vTexSet[2] = aTexCoord2;
+    vTexSet[3] = aTexCoord3;
     vec3 Neye = normalize(vNormalEye);
     if (uTexCoordGenMode > 0) {
         if (uTexCoordGenMode == 1)       vTexCoord = Neye.xy * 0.5 + 0.5; // SPHERE

@@ -35,6 +35,8 @@ in vec3 vPosEye;
 in vec4 vColor;
 in vec2 vTexCoord;
 
+#include "multitexture.glsl"
+
 // ---- Material params (physical model) --------------------------------------
 uniform vec4  uBaseColor;    // rgb = baseColor, a = 1 - transparency.
 uniform float uMetallic;     // [0,1].
@@ -172,7 +174,10 @@ void main() {
     // ---- Base color ---------------------------------------------------------
     vec4 baseCol = uBaseColor;
     if (uHasColors != 0) baseCol.rgb = vColor.rgb;
-    if (uHasBaseColorTex != 0) {
+    if (uNumStages > 0) {
+        // §18.4.3 MultiTexture over the base colour (stages uploaded sRGB).
+        baseCol = applyMultiTexture(baseCol, baseCol.rgb, vec3(1.0), vTexCoord);
+    } else if (uHasBaseColorTex != 0) {
         // Base-color textures are uploaded as GL_SRGB8_ALPHA8, so the GPU already
         // linearizes on sample — do NOT pow(2.2) again here (that double-decodes
         // and darkens). Matches lit.frag, which also trusts the hardware decode.
