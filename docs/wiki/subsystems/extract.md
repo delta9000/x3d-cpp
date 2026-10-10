@@ -224,7 +224,7 @@ unrelated TRS, coalesced edits, and camera-only/shared-empty Billboard clip
 scopes with independent expected world-plane values. Shared enclosing LocalFog
 groups also have explicit expected per-placement ranges before and after ancestor
 scale changes. This establishes delta/snapshot consistency and those snapshot
-semantics; it does not add clip/local-fog rendering to the OpenGL example.
+semantics. The OpenGL example clips with these planes (`clip_plane_gl_test.py`); it does not render LocalFog.
 
 ### Optional visibility-limit hints
 

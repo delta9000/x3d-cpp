@@ -194,6 +194,11 @@ add_test(NAME x3d_poc_texgen_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/texgen_gl_test.py"
             $<TARGET_FILE:x3d_poc_renderer>)
 
+# Real GL regression: ClipPlane cuts every built-in program (REQ-CLIP).
+add_test(NAME x3d_poc_clip_plane_gl
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/clip_plane_gl_test.py"
+            $<TARGET_FILE:x3d_poc_renderer>)
+
 # Real GL regression: scene-authored shaders select, bind uniforms, fall back.
 add_test(NAME x3d_poc_author_shader_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/author_shader_gl_test.py"

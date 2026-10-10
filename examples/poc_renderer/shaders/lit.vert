@@ -50,6 +50,11 @@ vec3 skinNormal(vec3 bindNormal) {
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
+// REQ-CLIP (§11.4.1): the item's enabled ClipPlanes in EYE space. The host
+// enables GL_CLIP_DISTANCE0..n-1; a point with a*x + b*y + c*z + d < 0 is cut.
+uniform int uNumClipPlanes;
+uniform vec4 uClipPlane[6];
+out float gl_ClipDistance[6];
 uniform mat3 uNormalMatrix; // inverse-transpose of (view*model) 3x3, eye space.
 uniform float uPointSizeScale;
 uniform vec3 uPointAttenuation;
@@ -91,4 +96,6 @@ void main() {
         vTexCoord = aTexCoord;
     }
     gl_Position = uProjection * posEye;
+    for (int i = 0; i < 6; ++i)
+        gl_ClipDistance[i] = i < uNumClipPlanes ? dot(uClipPlane[i], posEye) : 1.0;
 }

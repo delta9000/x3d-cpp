@@ -143,7 +143,7 @@ yet (finding REQ-SHADER-2).
 | Texture presence flags | `hasBaseColorTex`, `hasDiffuseTex`, `hasNormalTex`, … |
 | Environment / IBL slots | `envDiffuse`, `envSpecular`, `envSH`, `brdfLUT`, `envIntensity`, `envRotation` (**reserved in the vocabulary; EnvironmentLight / IBL is deferred — see below**) |
 | Fog | `fogColor`, `fogType`, `fogVisibilityRange` |
-| Clip planes | `numClipPlanes`, `clipPlane[]` |
+| Clip planes | `numClipPlanes`, `clipPlane[]` (eye space; bound by the PoC for author programs, which clip themselves) |
 | Per-frame | `time`, `viewportSize`, `nearFar` |
 
 The vocabulary is intentionally a superset of what the PoC consumer binds today.  New names are added here first; consumers pick up semantics without SDK changes.
