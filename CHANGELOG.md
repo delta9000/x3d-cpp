@@ -71,6 +71,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **All TextureCoordinateGenerator modes in the OpenGL PoC (TXF-2).** The
+  unlit, Phong and PBR programs evaluate every Table 18.6 mode per fragment
+  (`shaders/texgen.glsl`), including SPHERE-LOCAL, COORD, NOISE, NOISE-EYE
+  and the SPHERE-REFLECT modes, and apply the TextureTransform to generated
+  coordinates. Previously those modes fell back to authored UVs. New Xvfb
+  pixel gate `texgen_local_gl_test.py`.
 - **MultiTexture in the OpenGL PoC (REQ-MULTITEXTURE).** The unlit, Phong and
   PBR programs combine up to four base-colour stages with every §18.4.3 mode,
   source and function (`shaders/multitexture.glsl`), each stage sampling the

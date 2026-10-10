@@ -64,11 +64,12 @@ uniform float uPointSizeScale;
 uniform vec3 uPointAttenuation;
 uniform float uPointSizeMin;
 uniform float uPointSizeMax;
-// TXF-2: §18.4.8 TextureCoordinateGenerator mode. 0 = off (use the authored
-// aTexCoord); 1 = SPHERE, 2 = CAMERASPACENORMAL, 3 = CAMERASPACEPOSITION
-// (also COORD-EYE, which uses the same camera-space vertex coordinates),
-// 4 = CAMERASPACEREFLECTIONVECTOR — the view-dependent modes, computed here from
-// eye-space state (matches cpu_raster MaterialShader.hpp detail::texCoordGenUv).
+// TXF-2: §18.4.8 TextureCoordinateGenerator mode, TexCoordGenMode + 1 (0 = off,
+// use the authored aTexCoord). lit.frag/pbr.frag recompute every mode per
+// fragment (texgen.glsl); vTexCoord carries the per-vertex camera-space modes
+// (1 SPHERE, 2 CAMERASPACENORMAL, 3 CAMERASPACEPOSITION, 4 REFLECTIONVECTOR,
+// 7 COORD-EYE) for a fragment shader without texgen.glsl, and authored UVs
+// otherwise.
 uniform int  uTexCoordGenMode;
 
 out vec3 vNormalEye;        // shading normal in eye space (not yet normalized).
@@ -76,14 +77,18 @@ out vec3 vPosEye;           // vertex position in eye space (for Blinn-Phong vie
 out vec4 vColor;            // per-vertex Color (only consulted when uHasColors).
 out vec2 vTexCoord;         // B8: passed through un-flipped for the sampler.
 out vec2 vTexSet[4];        // §18.4.3 UV sets for MultiTexture stages.
+out vec3 vPosLocal;         // §18.4.8 local-coordinate generator inputs.
+out vec3 vNormalLocal;
 
 void main() {
-    vec4 posEye = uView * uModel * vec4(skinPosition(aPos), 1.0);
+    vPosLocal = skinPosition(aPos);
+    vNormalLocal = skinNormal(aNormal);
+    vec4 posEye = uView * uModel * vec4(vPosLocal, 1.0);
     float d = length(posEye.xyz);
     gl_PointSize = clamp((uPointAttenuation.x + uPointAttenuation.y * d +
                           uPointAttenuation.z * d * d) * uPointSizeScale,
                          uPointSizeMin, uPointSizeMax);
-    vNormalEye = uNormalMatrix * skinNormal(aNormal);
+    vNormalEye = uNormalMatrix * vNormalLocal;
     vPosEye = posEye.xyz;
     vColor = aColor;
     vTexSet[0] = aTexCoord;
@@ -91,10 +96,10 @@ void main() {
     vTexSet[2] = aTexCoord2;
     vTexSet[3] = aTexCoord3;
     vec3 Neye = normalize(vNormalEye);
-    if (uTexCoordGenMode > 0) {
+    if (uTexCoordGenMode >= 1 && uTexCoordGenMode <= 4 || uTexCoordGenMode == 7) {
         if (uTexCoordGenMode == 1)       vTexCoord = Neye.xy * 0.5 + 0.5; // SPHERE
         else if (uTexCoordGenMode == 2)  vTexCoord = Neye.xy;             // CAMERASPACENORMAL
-        else if (uTexCoordGenMode == 3)  vTexCoord = posEye.xy;           // CAMERASPACEPOSITION
+        else if (uTexCoordGenMode != 4)  vTexCoord = posEye.xy;           // CAMERASPACEPOSITION, COORD-EYE
         else {                                                            // REFLECTIONVECTOR
             // Table 18.6: E points from the position to the eye (the origin).
             vec3 E = normalize(-posEye.xyz);

@@ -6,7 +6,7 @@
 // explicit unlit selector the B4 consumer contract names. The per-vertex Color
 // (aColor) is forwarded; the fragment shader picks vColor vs uBaseColor.
 layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aNormal; // present in the shared layout; unused here.
+layout(location = 1) in vec3 aNormal; // only the §18.4.8 generators read it.
 layout(location = 2) in vec4 aColor;
 layout(location = 3) in vec2 aTexCoord; // X3D LOCAL (bottom-left = GL); no flip.
 // §18.4.3 MultiTexture: UV sets 1..3 (set 0 is aTexCoord); stages pick by channel.
@@ -51,6 +51,9 @@ uniform float uPointSizeMax;
 out vec4 vColor;
 out vec2 vTexCoord;        // passed through un-flipped for the sampler.
 out vec2 vTexSet[4];       // §18.4.3 UV sets for MultiTexture stages.
+out vec3 vPosLocal;        // §18.4.8 generator inputs (texgen.glsl).
+out vec3 vNormalLocal;
+out vec3 vNormalEye;
 out vec3 vPosEye;          // eye-space position (for the §17 fog distance).
 
 void main() {
@@ -60,7 +63,10 @@ void main() {
     vTexSet[1] = aTexCoord1;
     vTexSet[2] = aTexCoord2;
     vTexSet[3] = aTexCoord3;
-    vec4 posEye = uView * uModel * vec4(skinPosition(aPos), 1.0);
+    vPosLocal = skinPosition(aPos);
+    vNormalLocal = aNormal;
+    vNormalEye = transpose(inverse(mat3(uView * uModel))) * aNormal;
+    vec4 posEye = uView * uModel * vec4(vPosLocal, 1.0);
     vPosEye = posEye.xyz;
     float d = length(posEye.xyz);
     float size = (uPointAttenuation.x + uPointAttenuation.y * d +

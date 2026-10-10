@@ -141,6 +141,9 @@ xvfb-run -a env \
 echo "== poc eye-space TextureCoordinateGenerator gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/texgen_gl_test.py "$POC"
 
+echo "== poc local/noise/refraction TextureCoordinateGenerator gate under Xvfb (software GL) =="
+python3 examples/poc_renderer/tests/texgen_local_gl_test.py "$POC"
+
 # ---- RENDERING ClipPlane GL pixel regression (REQ-CLIP) --------------------
 echo "== poc ClipPlane gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/clip_plane_gl_test.py "$POC"

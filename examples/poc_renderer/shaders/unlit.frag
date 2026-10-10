@@ -15,7 +15,9 @@ in vec4 vColor;
 in vec2 vTexCoord;
 
 #include "multitexture.glsl"
+#include "texgen.glsl"
 in vec3 vPosEye;
+in vec3 vNormalEye;
 
 uniform vec4 uBaseColor; // rgb = unlit surface color, a = 1 - transparency.
 uniform int  uHasColors; // 1 => per-vertex vColor overrides uBaseColor.rgb.
@@ -62,17 +64,19 @@ vec3 applyFog(vec3 color, float d) {
 }
 
 void main() {
+    // §18.4.8: the texture samples the generated coordinates, if any.
+    vec2 uv = texGenUv(vTexCoord, vPosEye, vNormalEye);
     bool hatch = (uFillMode & 2) != 0 && hatchPixel();
     if ((uFillMode & 1) == 0 && !hatch) discard;
     vec3 rgb = (uHasColors != 0) ? vColor.rgb : uBaseColor.rgb;
     float a  = (uHasColors != 0) ? vColor.a   : uBaseColor.a;
     if (uNumStages > 0) {
         // §18.4.3 MultiTexture over the unlit surface colour.
-        vec4 c = applyMultiTexture(vec4(rgb, a), rgb, vec3(1.0), vTexCoord);
+        vec4 c = applyMultiTexture(vec4(rgb, a), rgb, vec3(1.0), uv);
         rgb = c.rgb;
         a   = c.a;
     } else if (uHasTexture != 0) {
-        vec4 tx = texture(uTexture, vTexCoord);
+        vec4 tx = texture(uTexture, uv);
         rgb *= tx.rgb;
         a   *= tx.a;
     }

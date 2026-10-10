@@ -778,24 +778,19 @@ const ex::TextureRef *findTexSlot(const ex::MaterialDesc &mat,
   return nullptr;
 }
 
-// TXF-2: §18.4.8 TextureCoordinateGenerator mode for lit.vert, encoded as the int
-// the shader switches on: 0 = off (authored UVs), 1..4 = the four camera-space
-// modes. COORD-EYE shares CAMERASPACEPOSITION's input (Table 18.6). The other
-// local, noise and refraction modes fall back to 0 (authored UVs); the CPU
-// reference host implements them (TXF-2).
+// TXF-2: the material's §18.4.8 TextureCoordinateGenerator (the first texture
+// that carries one), or null. Every slot samples its coordinates.
+const ex::TextureRef *texCoordGenRef(const ex::MaterialDesc &mat) {
+  for (const ex::TextureRef &t : mat.textures)
+    if (t.hasTexCoordGen) return &t;
+  return nullptr;
+}
+
+// The shaders' uTexCoordGenMode: TexCoordGenMode + 1 (Table 18.6 order, see
+// texgen.glsl), 0 when no generator applies.
 int texCoordGenModeUniform(const ex::MaterialDesc &mat) {
-  for (const ex::TextureRef &t : mat.textures) {
-    if (!t.hasTexCoordGen) continue;
-    switch (t.texCoordGen.mode) {
-      case ex::TexCoordGenMode::Sphere:                     return 1;
-      case ex::TexCoordGenMode::CameraSpaceNormal:          return 2;
-      case ex::TexCoordGenMode::CameraSpacePosition:        return 3;
-      case ex::TexCoordGenMode::CoordEye:                   return 3; // same §18.4.8 input
-      case ex::TexCoordGenMode::CameraSpaceReflectionVector: return 4;
-      default:                                              return 0;
-    }
-  }
-  return 0;
+  const ex::TextureRef *t = texCoordGenRef(mat);
+  return t ? static_cast<int>(t->texCoordGen.mode) + 1 : 0;
 }
 
 // §18.4.3 MultiTexture: the base-colour stages in authored order. The SDK
@@ -1396,8 +1391,6 @@ int main(int argc, char **argv) {
   const GLint uFogColor       = phongProg ? glGetUniformLocation(phongProg, "uFogColor") : -1;
   const GLint uFogType        = phongProg ? glGetUniformLocation(phongProg, "uFogType") : -1;
   const GLint uFogRange       = phongProg ? glGetUniformLocation(phongProg, "uFogVisibilityRange") : -1;
-  // TXF-2: §18.4.8 TextureCoordinateGenerator mode (lit.vert).
-  const GLint uTexCoordGenMode = phongProg ? glGetUniformLocation(phongProg, "uTexCoordGenMode") : -1;
 
   // ---- B4 UNLIT program — lines/points/normal-less meshes ------------------
   GLuint uvs = compileShader(GL_VERTEX_SHADER,
@@ -1466,8 +1459,6 @@ int main(int argc, char **argv) {
   const GLint uPbrFogColor     = pbrProg ? glGetUniformLocation(pbrProg, "uFogColor") : -1;
   const GLint uPbrFogType      = pbrProg ? glGetUniformLocation(pbrProg, "uFogType") : -1;
   const GLint uPbrFogRange     = pbrProg ? glGetUniformLocation(pbrProg, "uFogVisibilityRange") : -1;
-  // TXF-2: §18.4.8 TextureCoordinateGenerator mode (lit.vert, shared with PBR).
-  const GLint uPbrTexCoordGenMode = pbrProg ? glGetUniformLocation(pbrProg, "uTexCoordGenMode") : -1;
   // PBR texture slots (unit 0=baseColor, 1=normal, 2=emissive, 3=metallicRoughness, 4=occlusion).
   const GLint uPbrBaseColorTex = pbrProg ? glGetUniformLocation(pbrProg, "uBaseColorTex") : -1;
   const GLint uPbrNormalTex    = pbrProg ? glGetUniformLocation(pbrProg, "uNormalTex") : -1;
@@ -1938,7 +1929,7 @@ int main(int argc, char **argv) {
         constexpr int kMaxStages = 4; // multitexture.glsl; extra stages are ignored.
         const int n = std::min(static_cast<int>(stages.size()), kMaxStages);
         glUniform1i(locNum, n);
-        // The vertex stage generates coordinates for the first generator only.
+        // texgen.glsl evaluates the material's first generator only.
         const ex::TextureRef *generated = nullptr;
         for (const ex::TextureRef &t : m.textures)
           if (t.hasTexCoordGen) { generated = &t; break; }
@@ -1970,6 +1961,24 @@ int main(int argc, char **argv) {
                       genActive && &t == generated ? -1 : std::max(t.channel, 0));
         }
         glActiveTexture(GL_TEXTURE0);
+      };
+
+      // TXF-2 (texgen.glsl): the generator's mode, parameters and the
+      // TextureTransform applied to generated coordinates.
+      auto uploadTexGen = [&](GLuint program, const ex::MaterialDesc &m) {
+        const GLint locMode = glGetUniformLocation(program, "uTexCoordGenMode");
+        if (locMode < 0) return;
+        glUniform1i(locMode, texCoordGenModeUniform(m));
+        const ex::TextureRef *t = texCoordGenRef(m);
+        if (!t) return;
+        const auto &param = t->texCoordGen.parameter;
+        const int count = static_cast<int>(std::min<std::size_t>(param.size(), 6));
+        if (count > 0)
+          glUniform1fv(glGetUniformLocation(program, "uTexGenParam"), count, param.data());
+        glUniform1i(glGetUniformLocation(program, "uTexGenParamCount"), count);
+        const std::array<float, 9> tt = ex::makeTextureTransform3x3(t->generatedTransform);
+        glUniformMatrix3fv(glGetUniformLocation(program, "uTexGenTransform"), 1,
+                           GL_TRUE, tt.data()); // row-major
       };
 
       // Helper: upload standard eye-space lights to a program (already bound).
@@ -2125,6 +2134,7 @@ int main(int argc, char **argv) {
             bindTex(0, uUnlitTexture, uUnlitHasTexture, 0);
           }
           uploadStages(unlitProg, it, g, /*srgb=*/false);
+          uploadTexGen(unlitProg, mat);
           glDisable(GL_CULL_FACE); // lines/points/normal-less always double-sided.
 
         // ----------------------------------------------------------------
@@ -2153,9 +2163,8 @@ int main(int argc, char **argv) {
           // shader multiplies by the textured/vertex-coloured base itself.
           glUniform3f(uAmbientColor, ai, ai, ai);
           glUniform1i(uHasColors, g.hasColors ? 1 : 0);
-          // TXF-2: §18.4.8 TextureCoordinateGenerator mode for lit.vert.
-          if (uTexCoordGenMode >= 0)
-            glUniform1i(uTexCoordGenMode, texCoordGenModeUniform(mat));
+          // TXF-2: §18.4.8 TextureCoordinateGenerator (texgen.glsl).
+          uploadTexGen(phongProg, mat);
 
           // Blinn-Phong specular + alpha-mask.
           glUniform3f(uSpecular, mat.phong.specular.r, mat.phong.specular.g,
@@ -2237,8 +2246,7 @@ int main(int argc, char **argv) {
           if (uPbrAlphaMode   >= 0) glUniform1i(uPbrAlphaMode, static_cast<int>(mat.alphaMode));
           if (uPbrAlphaCutoff >= 0) glUniform1f(uPbrAlphaCutoff, mat.alphaCutoff);
           if (uPbrHasColors   >= 0) glUniform1i(uPbrHasColors, g.hasColors ? 1 : 0);
-          if (uPbrTexCoordGenMode >= 0)
-            glUniform1i(uPbrTexCoordGenMode, texCoordGenModeUniform(mat));
+          uploadTexGen(pbrProg, mat);
           if (uPbrNormalScale >= 0) glUniform1f(uPbrNormalScale, mat.normalScale);
           if (uPbrOcclusionStrength >= 0)
             glUniform1f(uPbrOcclusionStrength, ph.occlusionStrength);

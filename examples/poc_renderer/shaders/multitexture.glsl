@@ -21,7 +21,7 @@ uniform ivec2     uStageMode[kMaxStages];    // (rgb, alpha) mode codes, below.
 uniform int       uStageSource[kMaxStages];  // 0 previous, 1 DIFFUSE, 2 SPECULAR, 3 FACTOR.
 uniform int       uStageFunction[kMaxStages]; // 0 none, 1 COMPLEMENT, 2 ALPHAREPLICATE.
 uniform vec4      uStageFactor[kMaxStages];  // MultiTexture color.rgb + alpha.
-uniform int       uStageChannel[kMaxStages]; // UV set; -1 = the generated vTexCoord.
+uniform int       uStageChannel[kMaxStages]; // UV set; -1 = the generated coordinates (texgen.glsl).
 
 // Mode codes (main.cpp multiTextureModeCode):
 //  0 MODULATE  1 REPLACE/SELECTARG1  2 SELECTARG2  3 MODULATE2X  4 MODULATE4X

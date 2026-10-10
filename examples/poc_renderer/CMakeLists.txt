@@ -204,6 +204,11 @@ add_test(NAME x3d_poc_local_fog_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/local_fog_gl_test.py"
             $<TARGET_FILE:x3d_poc_renderer>)
 
+# Real GL regression: local, noise and refraction texture-coordinate generators.
+add_test(NAME x3d_poc_texgen_local_gl
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/texgen_local_gl_test.py"
+            $<TARGET_FILE:x3d_poc_renderer>)
+
 # Real GL regression: MultiTexture stages combine with their modes and UV sets.
 add_test(NAME x3d_poc_multitexture_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/multitexture_gl_test.py"
