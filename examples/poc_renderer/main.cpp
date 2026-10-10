@@ -166,6 +166,50 @@ Mat4 lookAt(const SFVec3f &eye, const SFVec3f &center, const SFVec3f &up) {
   return m;
 }
 
+// Orthographic projection over [-r,r]^2 and [zNear,zFar] (GL clip-z [-1,1]).
+Mat4 orthographic(float r, float zNear, float zFar) {
+  Mat4 m = Mat4::identity();
+  m.m[0] = 1.0f / r;
+  m.m[5] = 1.0f / r;
+  m.m[10] = -2.0f / (zFar - zNear);
+  m.m[14] = -(zFar + zNear) / (zFar - zNear);
+  return m;
+}
+
+// §17.3.1 shadows (shadow.glsl): the world view-projection of each depth-map
+// layer for one shadow-enabled light, framed on the scene's bounding sphere.
+// A DirectionalLight gets one orthographic layer; a SpotLight one perspective
+// layer over its cone (or the six cube faces when the cone is too wide for a
+// single frustum); a PointLight six 92-degree faces (slight overlap, so every
+// direction lands in one).
+std::vector<Mat4> shadowLayers(const ex::LightDesc &L, const SFVec3f &center,
+                               float radius) {
+  const auto upFor = [](const SFVec3f &d) {
+    return std::fabs(d.y) > 0.99f ? SFVec3f{1, 0, 0} : SFVec3f{0, 1, 0};
+  };
+  if (L.type == ex::LightDesc::Type::Directional) {
+    const SFVec3f dir = v3norm(L.worldDirection);
+    const SFVec3f eye = v3sub(center, v3mul(dir, 2.0f * radius));
+    return {orthographic(radius, 0.5f * radius, 3.5f * radius) *
+            lookAt(eye, center, upFor(dir))};
+  }
+  const SFVec3f at = L.worldLocation;
+  const float zFar = std::sqrt(v3dot(v3sub(at, center), v3sub(at, center))) +
+                     radius * 1.01f;
+  const float zNear = (std::max)(zFar * 1e-3f, 1e-4f);
+  if (L.type == ex::LightDesc::Type::Spot && L.cutOffAngle < 1.4f) {
+    const SFVec3f dir = v3norm(L.worldDirection);
+    return {perspective(2.0f * L.cutOffAngle + 0.02f, 1.0f, zNear, zFar) *
+            lookAt(at, v3add(at, dir), upFor(dir))};
+  }
+  const Mat4 proj = perspective(92.0f * 3.14159265f / 180.0f, 1.0f, zNear, zFar);
+  const SFVec3f axes[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0},
+                           {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+  std::vector<Mat4> out;
+  for (const SFVec3f &a : axes) out.push_back(proj * lookAt(at, v3add(at, a), upFor(a)));
+  return out;
+}
+
 // Reads a shader source. A line `#include "name"` is replaced by the file
 // `name` beside it (one level; the PoC shares multitexture.glsl this way).
 std::string readTextFile(const std::string &path) {
@@ -1440,6 +1484,33 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "[poc] PBR shader unavailable; PhysicalMaterial will "
                          "fall back to Phong\n");
   }
+
+  // §17.3.1 shadows (shadow.glsl): the light depth pass reuses unlit.vert
+  // (skinning, model/view/projection) with a depth-only fragment stage. The
+  // depth array texture grows on demand. The lit programs sample it on unit 5,
+  // set once so the sampler never aliases unit 0's sampler2D.
+  GLuint shadowProg = 0;
+  {
+    GLuint svs = compileShader(GL_VERTEX_SHADER, readTextFile(shaderDir + "/unlit.vert"),
+                               "unlit.vert(shadow)");
+    GLuint sfs = compileShader(GL_FRAGMENT_SHADER,
+                               readTextFile(shaderDir + "/shadow_depth.frag"),
+                               "shadow_depth.frag");
+    shadowProg = (svs && sfs) ? linkProgram(svs, sfs) : 0;
+    if (svs) glDeleteShader(svs);
+    if (sfs) glDeleteShader(sfs);
+  }
+  for (GLuint p : {phongProg, pbrProg}) {
+    const GLint loc = p ? glGetUniformLocation(p, "uShadowMaps") : -1;
+    if (loc < 0) continue;
+    glUseProgram(p);
+    glUniform1i(loc, 5);
+  }
+  glUseProgram(0);
+  constexpr int kShadowSize = 1024;
+  constexpr int kMaxShadowLayers = 24; // shadow.glsl
+  GLuint shadowTex = 0, shadowFbo = 0;
+  int shadowLayersAllocated = 0;
   const GLint uPbrModel        = pbrProg ? glGetUniformLocation(pbrProg, "uModel") : -1;
   const GLint uPbrView         = pbrProg ? glGetUniformLocation(pbrProg, "uView") : -1;
   const GLint uPbrProj         = pbrProg ? glGetUniformLocation(pbrProg, "uProjection") : -1;
@@ -1904,6 +1975,118 @@ int main(int argc, char **argv) {
         lightCone[i * 2 + 1] = eyeLights[i].cutOffAngle;
       }
 
+      // §17.3.1 shadows: render each shadow-enabled scene light's depth
+      // layers (shadowLayers) before the scene pass. Shapes with castShadow
+      // TRUE occlude, as in the CPU host; the headlight casts none.
+      int shadowBase[kMaxLights], shadowCount[kMaxLights];
+      float shadowIntensity[kMaxLights];
+      std::fill(std::begin(shadowBase), std::end(shadowBase), -1);
+      std::fill(std::begin(shadowCount), std::end(shadowCount), 0);
+      std::fill(std::begin(shadowIntensity), std::end(shadowIntensity), 0.0f);
+      std::vector<float> shadowMatrices; // 16 per layer: eye -> light clip.
+      const Aabb shadowBounds = extractor.sceneWorldBounds();
+      if (shadowProg && !shadowBounds.empty) {
+        const SFVec3f c{(shadowBounds.min.x + shadowBounds.max.x) * 0.5f,
+                        (shadowBounds.min.y + shadowBounds.max.y) * 0.5f,
+                        (shadowBounds.min.z + shadowBounds.max.z) * 0.5f};
+        const SFVec3f sz = shadowBounds.size();
+        const float radius =
+            (std::max)(0.5f * std::sqrt(v3dot(sz, sz)), 1e-3f) * 1.01f;
+        const int sceneLights = numLights - (headlightOn ? 1 : 0);
+        std::vector<Mat4> layers;
+        for (int i = 0; i < sceneLights && i < static_cast<int>(lights.size()); ++i) {
+          if (!lights[i].shadows) continue;
+          std::vector<Mat4> mine = shadowLayers(lights[i], c, radius);
+          if (layers.size() + mine.size() > kMaxShadowLayers) break;
+          shadowBase[i] = static_cast<int>(layers.size());
+          shadowCount[i] = static_cast<int>(mine.size());
+          shadowIntensity[i] = std::clamp(lights[i].shadowIntensity, 0.0f, 1.0f);
+          layers.insert(layers.end(), mine.begin(), mine.end());
+        }
+        if (!layers.empty()) {
+          const int n = static_cast<int>(layers.size());
+          if (n > shadowLayersAllocated) {
+            if (shadowTex) glDeleteTextures(1, &shadowTex);
+            glGenTextures(1, &shadowTex);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowTex);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24, kShadowSize,
+                         kShadowSize, n, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE,
+                            GL_COMPARE_REF_TO_TEXTURE);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+            shadowLayersAllocated = n;
+          }
+          if (!shadowFbo) glGenFramebuffers(1, &shadowFbo);
+          GLint previousFbo = 0;
+          glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFbo);
+          glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo);
+          glDrawBuffer(GL_NONE);
+          glReadBuffer(GL_NONE);
+          glViewport(0, 0, kShadowSize, kShadowSize);
+          glUseProgram(shadowProg);
+          glEnable(GL_DEPTH_TEST);
+          glDepthMask(GL_TRUE);
+          glDisable(GL_BLEND);
+          glDisable(GL_CULL_FACE);
+          glEnable(GL_POLYGON_OFFSET_FILL);
+          glPolygonOffset(2.0f, 4.0f);
+          for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci)
+            glDisable(GL_CLIP_DISTANCE0 + ci);
+          glUniform1i(glGetUniformLocation(shadowProg, "uNumClipPlanes"), 0);
+          glUniform1i(glGetUniformLocation(shadowProg, "uInfluences"), 6);
+          glUniform1i(glGetUniformLocation(shadowProg, "uPalette"), 7);
+          glUniform1i(glGetUniformLocation(shadowProg, "uTexture"), 0);
+          const GLint locModel = glGetUniformLocation(shadowProg, "uModel");
+          const GLint locView = glGetUniformLocation(shadowProg, "uView");
+          const GLint locProj = glGetUniformLocation(shadowProg, "uProjection");
+          const GLint locSkin = glGetUniformLocation(shadowProg, "uSkinEnabled");
+          const Mat4 identity = Mat4::identity();
+          const Mat4 invView = view.inverse();
+          for (int layer = 0; layer < n; ++layer) {
+            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowTex, 0,
+                                      layer);
+            glClear(GL_DEPTH_BUFFER_BIT);
+            glUniformMatrix4fv(locView, 1, GL_FALSE, identity.m.data());
+            glUniformMatrix4fv(locProj, 1, GL_FALSE, layers[layer].m.data());
+            const Mat4 eyeToLight = layers[layer] * invView;
+            shadowMatrices.insert(shadowMatrices.end(), eyeToLight.m.begin(),
+                                  eyeToLight.m.end());
+            for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
+              const ex::RenderItem &item = extractor.item(id);
+              if (!item.castShadow) continue;
+              auto mit = gpuMeshes.find(item.geometry);
+              if (mit == gpuMeshes.end()) continue;
+              auto sit = gpuSkins.find(id);
+              const GpuMesh &mesh = sit == gpuSkins.end() ? mit->second : sit->second.mesh;
+              if (mesh.topology != ex::Topology::Triangles) continue;
+              const bool skinned = sit != gpuSkins.end() && !sit->second.cpuFallback;
+              if (locSkin >= 0) glUniform1i(locSkin, skinned ? 1 : 0);
+              if (skinned) {
+                glActiveTexture(GL_TEXTURE6);
+                glBindTexture(GL_TEXTURE_BUFFER, sit->second.influences);
+                glActiveTexture(GL_TEXTURE7);
+                glBindTexture(GL_TEXTURE_BUFFER, sit->second.palette);
+                glActiveTexture(GL_TEXTURE0);
+              }
+              glUniformMatrix4fv(locModel, 1, GL_FALSE, item.worldTransform.m.data());
+              glBindVertexArray(mesh.vao);
+              glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+            }
+          }
+          glDisable(GL_POLYGON_OFFSET_FILL);
+          glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(previousFbo));
+          glViewport(0, 0, w, h);
+          glUseProgram(0);
+          glActiveTexture(GL_TEXTURE5);
+          glBindTexture(GL_TEXTURE_2D_ARRAY, shadowTex);
+          glActiveTexture(GL_TEXTURE0);
+        }
+      }
+
       // Helper: bind a texture on the given unit; fall back to whiteTex if tex==0.
       // Keeps every sampler unit complete (no "no base level" GL warnings).
       auto bindTex = [&](int unit, GLint samplerLoc, GLint hasLoc, GLuint tex) {
@@ -1995,6 +2178,17 @@ int main(int argc, char **argv) {
           glUniform1fv(glGetUniformLocation(program, "uLightRadius"), numLights, lightRadius);
           glUniform2fv(glGetUniformLocation(program, "uLightCone"), numLights, lightCone);
         }
+        // shadow.glsl: every slot is written, so unused ones read base -1.
+        const GLint locBase = glGetUniformLocation(program, "uLightShadowBase");
+        if (locBase < 0) return;
+        glUniform1iv(locBase, kMaxLights, shadowBase);
+        glUniform1iv(glGetUniformLocation(program, "uLightShadowCount"), kMaxLights, shadowCount);
+        glUniform1fv(glGetUniformLocation(program, "uLightShadowIntensity"), kMaxLights,
+                     shadowIntensity);
+        if (!shadowMatrices.empty())
+          glUniformMatrix4fv(glGetUniformLocation(program, "uShadowMatrix"),
+                             static_cast<GLsizei>(shadowMatrices.size() / 16), GL_FALSE,
+                             shadowMatrices.data());
       };
 
       // §24.4.2: the bound Fog, world-scaled by the extractor. visibilityRange

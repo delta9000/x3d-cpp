@@ -85,7 +85,7 @@ breadth. Each is tracked as a card in the
 | VisibilitySensor uses a forward cone, not a 6-plane frustum | Conservative (over-reports visible, never wrongly culls); consumers can supply planes. |
 | `MaterialDesc::textures[]` is descriptor-only in the first PoC | Populated but the SDK does not itself consume it; the consumer binds. |
 | `RenderDelta` unsupported-geometry push channel not wired | Use the `skippedGeometryCounts()` pull accessor instead. |
-| Per-light shadows | CPU reference host applies triangle occlusion, `shadows`, `shadowIntensity`, `castShadow` and visibility, with scale-normalized ray queries. The GL PoC remains unobstructed (REQ-SHADOW). |
+| Per-light shadows | CPU reference host applies triangle occlusion, `shadows`, `shadowIntensity`, `castShadow` and visibility, with scale-normalized ray queries. The GL PoC uses per-light depth maps (up to 24 layers per frame; REQ-SHADOW fixed). |
 | `FogCoordinate` per-vertex depths are ignored | `MeshBuilder` never reads a geometry's `fogCoord` and `MeshData` carries no fog-depth array, so authored depths do not replace the computed eye-space distance. Reference renderers fog by distance only. `LocalFog` scope IS wired (see the render feed above) and both reference renderers draw it. |
 
 ## v1 gate record

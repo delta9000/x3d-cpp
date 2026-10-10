@@ -2838,9 +2838,9 @@
   component: Lighting
   clause: "17.2.2.8; 17.3.1"
   severity: major
-  status: open
-  summary: The CPU reference host applies per-light occlusion and shadowIntensity; the OpenGL PoC has no shadow query.
-  note: "CPU renderScene collects visible triangle occluders with castShadow TRUE and traces each shadow-enabled light in normalized scene coordinates. Visibility multiplies the light contribution by 1-shadowIntensity for an occluded fragment. Tests exercise enabled/disabled shadows, intermediate intensity, hidden and non-casting occluders, and equivalent very small/large scenes. Soft-shadow fidelity is optional. The OpenGL PoC still uses unobstructed visibility; this finding remains open for it. (2026-10-02)"
+  status: fixed
+  summary: Both reference hosts apply per-light occlusion by castShadow shapes and shadowIntensity.
+  note: "CPU renderScene collects visible triangle occluders with castShadow TRUE and traces each shadow-enabled light in normalized scene coordinates. Visibility multiplies the light contribution by 1-shadowIntensity for an occluded fragment. Tests exercise enabled/disabled shadows, intermediate intensity, hidden and non-casting occluders, and equivalent very small/large scenes. Soft-shadow fidelity is optional. The OpenGL PoC renders a 1024x1024 depth map per shadow-enabled light before the scene pass (one orthographic layer over the scene bounds for DirectionalLight, one perspective layer over the cone for SpotLight with cutOffAngle below 1.4 rad, six 92-degree cube faces for PointLight and wider spots) from castShadow triangle shapes; its Phong and PBR programs scale the light reaching an occluded fragment by 1-shadowIntensity (examples/poc_renderer/shaders/shadow.glsl). Limits: at most 24 depth layers per frame (lights past that are unshadowed), shadow-map resolution and bilinear depth comparison rather than an exact ray query, and the headlight never shadows. examples/poc_renderer/tests/shadow_gl_test.py (run by validate-examples) checks all three light types in both programs, shadowIntensity 0.5, castShadow FALSE and shadows FALSE. (2026-10-10)"
 - id: REQ-JAVA
   nodes: [Script]
   component: Scripting

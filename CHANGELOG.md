@@ -71,6 +71,11 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Light shadows in the OpenGL PoC (REQ-SHADOW).** Lights with `shadows`
+  TRUE now cast shadows from `castShadow` shapes in the Phong and PBR
+  programs, scaled by `shadowIntensity`: a depth map per directional or spot
+  light and a six-face cube per point light (`shaders/shadow.glsl`). New Xvfb
+  pixel gate `shadow_gl_test.py`.
 - **All TextureCoordinateGenerator modes in the OpenGL PoC (TXF-2).** The
   unlit, Phong and PBR programs evaluate every Table 18.6 mode per fragment
   (`shaders/texgen.glsl`), including SPHERE-LOCAL, COORD, NOISE, NOISE-EYE
