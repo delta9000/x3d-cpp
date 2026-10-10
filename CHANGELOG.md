@@ -71,6 +71,11 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **ClipPlane in the OpenGL PoC (REQ-CLIP).** The built-in Phong, PBR and
+  unlit programs now clip with `gl_ClipDistance` against each item's planes in
+  eye space, and author programs receive them as the `numClipPlanes` /
+  `clipPlane[]` vocabulary uniforms. New Xvfb pixel gate
+  `clip_plane_gl_test.py`.
 - **CylinderSensor rotated against the drag.** Disk and cylinder drags now
   report the right-handed rotation about +Y (§20.4.1); `minAngle`/`maxAngle`
   clamp the correct side.

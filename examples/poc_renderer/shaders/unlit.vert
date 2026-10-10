@@ -31,6 +31,11 @@ vec3 skinPosition(vec3 bindPos) {
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
+// REQ-CLIP (§11.4.1): the item's enabled ClipPlanes in EYE space. The host
+// enables GL_CLIP_DISTANCE0..n-1; a point with a*x + b*y + c*z + d < 0 is cut.
+uniform int uNumClipPlanes;
+uniform vec4 uClipPlane[6];
+out float gl_ClipDistance[6];
 // TXF-2/SEAM-LINEPOINT: §12.4.8 PointProperties. Point size = (A + B·d + C·d²)·
 // scale clamped to [min,max] with d the eye-space distance; defaults (scale 1,
 // atten (1,0,0), min=max=1) reproduce the historic fixed size.
@@ -53,4 +58,6 @@ void main() {
                   uPointAttenuation.z * d * d) * uPointSizeScale;
     gl_PointSize = clamp(size, uPointSizeMin, uPointSizeMax);
     gl_Position = uProjection * posEye;
+    for (int i = 0; i < 6; ++i)
+        gl_ClipDistance[i] = i < uNumClipPlanes ? dot(uClipPlane[i], posEye) : 1.0;
 }

@@ -1915,6 +1915,15 @@ int main(int argc, char **argv) {
         auto skinIt = gpuSkins.find(id);
         const GpuMesh &g = skinIt == gpuSkins.end() ? mit->second : skinIt->second.mesh;
         const ex::MaterialDesc &mat = it.material;
+        // REQ-CLIP (§11.4.1): the extractor carries WORLD planes; the shaders
+        // and the vocabulary's `clipPlane` uniform take them in eye space.
+        const int numClips = static_cast<int>(it.clipPlanes.size);
+        std::array<float, 4 * ex::ClipPlaneList::kMaxClipPlanes> clipEye{};
+        for (int ci = 0; ci < numClips; ++ci) {
+          const SFVec4f q = x3d::runtime::transformPlane(view, it.clipPlanes.items[ci].planeWorld);
+          clipEye[4 * ci] = q.x; clipEye[4 * ci + 1] = q.y;
+          clipEye[4 * ci + 2] = q.z; clipEye[4 * ci + 3] = q.w;
+        }
         // FillProperties covers polygonal areas. With neither component enabled,
         // issue no draw so neither color nor depth is written, including on the
         // author-shader path.
@@ -2266,6 +2275,11 @@ int main(int argc, char **argv) {
                 glUniform1i(loc, static_cast<int>(mat.alphaMode)); break;
               case S::AlphaCutoff:
                 glUniform1f(loc, mat.alphaCutoff); break;
+              case S::NumClipPlanes:
+                glUniform1i(loc, numClips); break;
+              case S::ClipPlane:
+                if (numClips > 0) glUniform4fv(loc, numClips, clipEye.data());
+                break;
               default: break; // EnvDiffuse/IBL etc. left unbound (Phase 4 deferred)
             }
             // Author <field> values.
@@ -2336,6 +2350,24 @@ int main(int argc, char **argv) {
             glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.palette);
           }
         }
+        // REQ-CLIP: the built-in vertex shaders write gl_ClipDistance; an
+        // author program receives the planes as `clipPlane`/`numClipPlanes`
+        // and clips itself, so its clip distances stay disabled.
+        const bool builtinProgram =
+            activeProgram != 0 &&
+            (static_cast<GLuint>(activeProgram) == unlitProg ||
+             static_cast<GLuint>(activeProgram) == phongProg ||
+             static_cast<GLuint>(activeProgram) == pbrProg);
+        if (builtinProgram) {
+          const GLuint prog = static_cast<GLuint>(activeProgram);
+          glUniform1i(glGetUniformLocation(prog, "uNumClipPlanes"), numClips);
+          if (numClips > 0)
+            glUniform4fv(glGetUniformLocation(prog, "uClipPlane"), numClips, clipEye.data());
+        }
+        for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci) {
+          if (builtinProgram && ci < numClips) glEnable(GL_CLIP_DISTANCE0 + ci);
+          else glDisable(GL_CLIP_DISTANCE0 + ci);
+        }
         glBindVertexArray(g.vao);
         glDrawElements(mode, g.indexCount, GL_UNSIGNED_INT, nullptr);
       };
@@ -2398,6 +2430,8 @@ int main(int argc, char **argv) {
 
       glBindVertexArray(0);
       glDisable(GL_CULL_FACE); // leave a clean default for the next frame.
+      for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci)
+        glDisable(GL_CLIP_DISTANCE0 + ci); // background/ImGui draw unclipped.
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // keep ImGui/textured quads solid.
     }
 
