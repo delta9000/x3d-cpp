@@ -22,6 +22,32 @@ uniform int       uStageSource[kMaxStages];  // 0 previous, 1 DIFFUSE, 2 SPECULA
 uniform int       uStageFunction[kMaxStages]; // 0 none, 1 COMPLEMENT, 2 ALPHAREPLICATE.
 uniform vec4      uStageFactor[kMaxStages];  // MultiTexture color.rgb + alpha.
 uniform int       uStageChannel[kMaxStages]; // UV set; -1 = the generated coordinates (texgen.glsl).
+// §34 environment texture: a stage with uStageIsCube set samples the six faces
+// in uStageCube (layers front, back, left, right, top, bottom) by direction.
+// One cube map per material (main.cpp binds the first cube stage).
+uniform int            uStageIsCube[kMaxStages];
+uniform sampler2DArray uStageCube;
+
+// The face a direction pierces and the in-face UV, as cpu_raster cubeFaceUv
+// (Texture.hpp): front -Z, back +Z, left -X, right +X, top +Y, bottom -Y, each
+// image upright as seen from the cube's centre (Figure 34.1).
+vec4 sampleCubeFaces(vec3 d) {
+    vec3 a = abs(d);
+    if (a.x + a.y + a.z == 0.0) return vec4(1.0);
+    vec2 uv;
+    float layer;
+    if (a.z >= a.x && a.z >= a.y) {
+        uv = d.z < 0.0 ? vec2(d.x, d.y) / a.z : vec2(-d.x, d.y) / a.z;
+        layer = d.z < 0.0 ? 0.0 : 1.0;
+    } else if (a.x >= a.y) {
+        uv = d.x > 0.0 ? vec2(d.z, d.y) / a.x : vec2(-d.z, d.y) / a.x;
+        layer = d.x > 0.0 ? 3.0 : 2.0;
+    } else {
+        uv = d.y > 0.0 ? vec2(d.x, d.z) / a.y : vec2(d.x, -d.z) / a.y;
+        layer = d.y > 0.0 ? 4.0 : 5.0;
+    }
+    return texture(uStageCube, vec3(uv * 0.5 + 0.5, layer));
+}
 
 // Mode codes (main.cpp multiTextureModeCode):
 //  0 MODULATE  1 REPLACE/SELECTARG1  2 SELECTARG2  3 MODULATE2X  4 MODULATE4X
@@ -63,8 +89,9 @@ vec2 mtUv(int i, vec2 generated) {
 }
 
 vec4 mtStage(int i, vec4 texel, vec4 acc, vec3 diffuse, vec3 specular,
-             float alpha0) {
-    if (uStageHasTex[i] == 0) texel = vec4(1.0);
+             float alpha0, vec3 envDir) {
+    if (uStageIsCube[i] != 0) texel = sampleCubeFaces(envDir);
+    else if (uStageHasTex[i] == 0) texel = vec4(1.0);
     int s = uStageSource[i];
     vec4 arg2 = s == 3 ? uStageFactor[i]
               : s == 2 ? vec4(specular, alpha0)
@@ -76,17 +103,19 @@ vec4 mtStage(int i, vec4 texel, vec4 acc, vec3 diffuse, vec3 specular,
 }
 
 // Fold the stages into `initial` (the surface colour). Samplers are indexed
-// with constants only, as GLSL 3.30 requires.
-vec4 applyMultiTexture(vec4 initial, vec3 diffuse, vec3 specular, vec2 generated) {
+// with constants only, as GLSL 3.30 requires. `envDir` is texgen.glsl
+// envDirection, for cube stages.
+vec4 applyMultiTexture(vec4 initial, vec3 diffuse, vec3 specular, vec2 generated,
+                       vec3 envDir) {
     vec4 acc = initial;
     float a0 = initial.a;
     if (uNumStages > 0)
-        acc = mtStage(0, texture(uStageTex[0], mtUv(0, generated)), acc, diffuse, specular, a0);
+        acc = mtStage(0, texture(uStageTex[0], mtUv(0, generated)), acc, diffuse, specular, a0, envDir);
     if (uNumStages > 1)
-        acc = mtStage(1, texture(uStageTex[1], mtUv(1, generated)), acc, diffuse, specular, a0);
+        acc = mtStage(1, texture(uStageTex[1], mtUv(1, generated)), acc, diffuse, specular, a0, envDir);
     if (uNumStages > 2)
-        acc = mtStage(2, texture(uStageTex[2], mtUv(2, generated)), acc, diffuse, specular, a0);
+        acc = mtStage(2, texture(uStageTex[2], mtUv(2, generated)), acc, diffuse, specular, a0, envDir);
     if (uNumStages > 3)
-        acc = mtStage(3, texture(uStageTex[3], mtUv(3, generated)), acc, diffuse, specular, a0);
+        acc = mtStage(3, texture(uStageTex[3], mtUv(3, generated)), acc, diffuse, specular, a0, envDir);
     return acc;
 }

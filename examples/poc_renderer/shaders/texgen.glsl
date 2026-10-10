@@ -55,23 +55,25 @@ float perlinNoise(vec3 p, uint seed) {
     return mix(a[0], a[1], texGenFade(f.z));
 }
 
-vec2 generatedUv(int mode, vec3 posEye, vec3 normalEye) {
+// The full (s, t, r) vector; 2D textures use (s, t), §34.2.2 environment
+// textures look up the direction (s, t, r).
+vec3 generatedVec(int mode, vec3 posEye, vec3 normalEye) {
     vec3 n = normalize(normalEye);
     vec3 nl = normalize(vNormalLocal);
     if (!gl_FrontFacing) { n = -n; nl = -nl; }
-    if (mode == 1) return n.xy * 0.5 + 0.5;
-    if (mode == 2) return n.xy;
-    if (mode == 3 || mode == 7) return posEye.xy;
-    if (mode == 4) return reflect(normalize(posEye), n).xy; // E points to the eye.
-    if (mode == 5) return nl.xy * 0.5 + 0.5;
-    if (mode == 6) return vPosLocal.xy;
+    if (mode == 1) return n * 0.5 + 0.5;
+    if (mode == 2) return n;
+    if (mode == 3 || mode == 7) return posEye;
+    if (mode == 4) return reflect(normalize(posEye), n); // E points to the eye.
+    if (mode == 5) return nl * 0.5 + 0.5;
+    if (mode == 6) return vPosLocal;
     if (mode == 8 || mode == 9) {
         vec3 p = (mode == 8 ? vPosLocal : posEye) *
                      vec3(texGenParameter(0, 1.0), texGenParameter(1, 1.0),
                           texGenParameter(2, 1.0)) +
                  vec3(texGenParameter(3, 0.0), texGenParameter(4, 0.0),
                       texGenParameter(5, 0.0));
-        return vec2(perlinNoise(p, 0u), perlinNoise(p, 1013u));
+        return vec3(perlinNoise(p, 0u), perlinNoise(p, 1013u), perlinNoise(p, 2026u));
     }
     if (mode == 10 || mode == 11) {
         bool local = mode == 11;
@@ -82,9 +84,20 @@ vec2 generatedUv(int mode, vec3 posEye, vec3 normalEye) {
         float eta = texGenParameter(0, 1.0);
         float d = dot(normal, incident);
         float k = 1.0 - eta * eta * (1.0 - d * d);
-        return k < 0.0 ? vec2(0.0) : (incident * eta - normal * (eta * d + sqrt(k))).xy;
+        return k < 0.0 ? vec3(0.0) : incident * eta - normal * (eta * d + sqrt(k));
     }
-    return n.xy * 0.5 + 0.5; // SPHERE, the default.
+    return n * 0.5 + 0.5; // SPHERE, the default.
+}
+
+vec2 generatedUv(int mode, vec3 posEye, vec3 normalEye) {
+    return generatedVec(mode, posEye, normalEye).xy;
+}
+
+// §34.2.2: the direction an environment (cube map) texture is sampled with:
+// the generator's (s, t, r), or with no generator the camera-space reflection
+// vector. Generated-coordinate TextureTransforms are 2D and do not apply.
+vec3 envDirection(vec3 posEye, vec3 normalEye) {
+    return generatedVec(uTexCoordGenMode > 0 ? uTexCoordGenMode : 4, posEye, normalEye);
 }
 
 // The coordinates the material's texture slots sample.

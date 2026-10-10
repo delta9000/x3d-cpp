@@ -209,6 +209,11 @@ add_test(NAME x3d_poc_shadow_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/shadow_gl_test.py"
             $<TARGET_FILE:x3d_poc_renderer>)
 
+# Real GL regression: ComposedCubeMapTexture environment mapping.
+add_test(NAME x3d_poc_cube_map_gl
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/cube_map_gl_test.py"
+            $<TARGET_FILE:x3d_poc_renderer>)
+
 # Real GL regression: local, noise and refraction texture-coordinate generators.
 add_test(NAME x3d_poc_texgen_local_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/texgen_local_gl_test.py"

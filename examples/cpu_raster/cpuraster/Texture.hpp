@@ -28,13 +28,43 @@
 #include "RenderItem.hpp" // ex::TextureRef / SFImage / TexturePixels
 #include "glsl.hpp"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace x3d::cpuraster {
 using namespace x3d::core; // SFImage etc. (ADR-0039 moved core types into x3d::core)
 namespace ex = x3d::runtime::extract;
+
+enum class CubeFace { Front, Back, Right, Left, Top, Bottom };
+struct FaceSample { CubeFace face; glsl::vec2 uv; };
+
+// Pick the cube face a direction pierces and the in-face UV. Faces (from the
+// origin): front=-Z, back=+Z, right=+X, left=-X, top=+Y, bottom=-Y. UV
+// orientation matches "image displayed normally in 2D" viewed from the origin
+// (§Background). Background panoramas and §34 environment textures (Figure
+// 34.1 uses the same six sides) share it. Pinned by skybox_test.
+inline FaceSample cubeFaceUv(const glsl::vec3 &dir) {
+  const float ax = std::fabs(dir.x), ay = std::fabs(dir.y), az = std::fabs(dir.z);
+  auto remap = [](float a, float b) { // [-1,1] -> [0,1]
+    return glsl::vec2{a * 0.5f + 0.5f, b * 0.5f + 0.5f};
+  };
+  if (az >= ax && az >= ay) {
+    const float u = dir.x / az, v = dir.y / az;
+    return dir.z < 0.0f ? FaceSample{CubeFace::Front, remap(u, v)}    // -Z
+                        : FaceSample{CubeFace::Back, remap(-u, v)};   // +Z
+  }
+  if (ax >= ay) {
+    const float u = -dir.z / ax, v = dir.y / ax;
+    return dir.x > 0.0f ? FaceSample{CubeFace::Right, remap(-u, v)}   // +X
+                        : FaceSample{CubeFace::Left, remap(u, v)};    // -X
+  }
+  const float u = dir.x / ay, v = -dir.z / ay;
+  return dir.y > 0.0f ? FaceSample{CubeFace::Top, remap(u, -v)}       // +Y
+                      : FaceSample{CubeFace::Bottom, remap(u, v)};    // -Y
+}
 
 class Texture {
 public:
@@ -52,6 +82,8 @@ public:
   Texture() = default;
 
   bool valid() const { return w_ > 0 && h_ > 0; }
+  // §34 environment texture: six 2D faces sampled by direction (sampleCube).
+  bool isCube() const { return cube_ != nullptr; }
   int width() const { return w_; }
   int height() const { return h_; }
 
@@ -157,6 +189,7 @@ public:
     // a 3D texture cannot be sampled as a sampler2D — fall back to the flat
     // material color (T3D-1; no 3D samplers in this renderer).
     if (ref.source == Src::Tex3D) return {};
+    if (ref.source == Src::Cube) return fromCubeRef(ref, srgb);
     if (ref.source == Src::Url && ref.resolvedPixels.ready() &&
         !ref.resolvedPixels.pixels->rgba.empty()) {
       const auto &p = *ref.resolvedPixels.pixels;
@@ -164,6 +197,33 @@ public:
                        static_cast<int>(p.height), s, srgb);
     }
     return {};
+  }
+
+  // §34.4.1 ComposedCubeMapTexture: each face resolves like a 2D texture.
+  // TextureRef::cubeFaces is front, back, left, right, top, bottom; stored in
+  // CubeFace order. Faces are clamped (§34.4.1 ignores repeatS/T).
+  static Texture fromCubeRef(const ex::TextureRef &ref, bool srgb) {
+    static constexpr CubeFace order[] = {CubeFace::Front, CubeFace::Back,
+                                         CubeFace::Left,  CubeFace::Right,
+                                         CubeFace::Top,   CubeFace::Bottom};
+    auto faces = std::make_shared<std::array<Texture, 6>>();
+    for (std::size_t i = 0; i < ref.cubeFaces.size() && i < 6; ++i) {
+      ex::TextureRef face = ref.cubeFaces[i];
+      face.extSampler.boundaryModeS = face.extSampler.boundaryModeT =
+          ex::BoundaryMode::ClampToEdge;
+      (*faces)[static_cast<std::size_t>(order[i])] = fromRef(face, srgb);
+    }
+    Texture t;
+    t.cube_ = std::move(faces);
+    return t;
+  }
+
+  // GLSL texture(samplerCube, dir): the face `dir` pierces, bilinear within
+  // it. An unresolved face samples white, like an unresolved 2D texture.
+  glsl::vec4 sampleCube(const glsl::vec3 &dir) const {
+    if (!cube_ || (dir.x == 0 && dir.y == 0 && dir.z == 0)) return {1, 1, 1, 1};
+    const FaceSample fs = cubeFaceUv(dir);
+    return (*cube_)[static_cast<std::size_t>(fs.face)].sample(fs.uv);
   }
 
   // GLSL texture(sampler2D, vec2) — wrapped, filtered, sRGB-decoded if color.
@@ -334,6 +394,7 @@ private:
   Sampler sampler_;
   std::vector<Texture> mipmaps_;
   std::vector<std::uint8_t> data_; // RGBA8, bottom-left origin.
+  std::shared_ptr<const std::array<Texture, 6>> cube_; // CubeFace order.
 };
 
 } // namespace x3d::cpuraster

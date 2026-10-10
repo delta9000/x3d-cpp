@@ -71,6 +71,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Cube-map environment textures (REQ-CUBE, ComposedCubeMapTexture).** cpu_raster
+  and the OpenGL PoC sample a ComposedCubeMapTexture (base-colour slot or
+  MultiTexture stage) by the camera-space reflection vector, or by the
+  geometry's TextureCoordinateGenerator direction, with the Figure 34.1 face
+  layout. Previously it drew white. New tests `cube_map_test` (cpu_raster) and
+  `cube_map_gl_test.py` (Xvfb). Image and generated cube maps remain open.
 - **Light shadows in the OpenGL PoC (REQ-SHADOW).** Lights with `shadows`
   TRUE now cast shadows from `castShadow` shapes in the Phong and PBR
   programs, scaled by `shadowIntensity`: a depth map per directional or spot

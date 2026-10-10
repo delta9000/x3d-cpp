@@ -102,32 +102,11 @@ inline glsl::vec3 colorRamp(float ang, const std::vector<SFColor> &cols,
   return glsl::vec3(cols.back());
 }
 
-enum class CubeFace { Front, Back, Right, Left, Top, Bottom };
-struct FaceSample { CubeFace face; glsl::vec2 uv; };
-
-// Pick the cube face a world-space direction pierces and the in-face UV.
-// Faces (from the origin): front=-Z, back=+Z, right=+X, left=-X, top=+Y,
-// bottom=-Y. UV orientation matches "image displayed normally in 2D" viewed
-// from the origin (§Background). Pinned by skybox_test.
-inline FaceSample cubeFaceUv(const glsl::vec3 &dir) {
-  const float ax = std::fabs(dir.x), ay = std::fabs(dir.y), az = std::fabs(dir.z);
-  auto remap = [](float a, float b) { // [-1,1] -> [0,1]
-    return glsl::vec2{a * 0.5f + 0.5f, b * 0.5f + 0.5f};
-  };
-  if (az >= ax && az >= ay) {
-    const float u = dir.x / az, v = dir.y / az;
-    return dir.z < 0.0f ? FaceSample{CubeFace::Front, remap(u, v)}    // -Z
-                        : FaceSample{CubeFace::Back, remap(-u, v)};   // +Z
-  }
-  if (ax >= ay) {
-    const float u = -dir.z / ax, v = dir.y / ax;
-    return dir.x > 0.0f ? FaceSample{CubeFace::Right, remap(-u, v)}   // +X
-                        : FaceSample{CubeFace::Left, remap(u, v)};    // -X
-  }
-  const float u = dir.x / ay, v = -dir.z / ay;
-  return dir.y > 0.0f ? FaceSample{CubeFace::Top, remap(u, -v)}       // +Y
-                      : FaceSample{CubeFace::Bottom, remap(u, v)};    // -Y
-}
+// The panorama cube shares the environment-texture face convention
+// (Texture.hpp cubeFaceUv).
+using x3d::cpuraster::CubeFace;
+using x3d::cpuraster::FaceSample;
+using x3d::cpuraster::cubeFaceUv;
 
 // Six resolved panorama faces (X3D Background *Url fields).
 struct SkyboxTextures {

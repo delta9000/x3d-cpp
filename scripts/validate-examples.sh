@@ -148,6 +148,10 @@ python3 examples/poc_renderer/tests/texgen_local_gl_test.py "$POC"
 echo "== poc light shadow gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/shadow_gl_test.py "$POC"
 
+# ---- CUBE MAP environment texture GL pixel regression (REQ-CUBE) -----------
+echo "== poc ComposedCubeMapTexture gate under Xvfb (software GL) =="
+python3 examples/poc_renderer/tests/cube_map_gl_test.py "$POC"
+
 # ---- RENDERING ClipPlane GL pixel regression (REQ-CLIP) --------------------
 echo "== poc ClipPlane gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/clip_plane_gl_test.py "$POC"

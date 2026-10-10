@@ -182,7 +182,8 @@ void main() {
     if (uHasColors != 0) baseCol.rgb = vColor.rgb;
     if (uNumStages > 0) {
         // §18.4.3 MultiTexture over the base colour (stages uploaded sRGB).
-        baseCol = applyMultiTexture(baseCol, baseCol.rgb, vec3(1.0), uv);
+        baseCol = applyMultiTexture(baseCol, baseCol.rgb, vec3(1.0), uv,
+                                   envDirection(vPosEye, vNormalEye));
     } else if (uHasBaseColorTex != 0) {
         // Base-color textures are uploaded as GL_SRGB8_ALPHA8, so the GPU already
         // linearizes on sample — do NOT pow(2.2) again here (that double-decodes

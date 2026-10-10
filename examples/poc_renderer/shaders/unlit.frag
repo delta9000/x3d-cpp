@@ -72,7 +72,8 @@ void main() {
     float a  = (uHasColors != 0) ? vColor.a   : uBaseColor.a;
     if (uNumStages > 0) {
         // §18.4.3 MultiTexture over the unlit surface colour.
-        vec4 c = applyMultiTexture(vec4(rgb, a), rgb, vec3(1.0), uv);
+        vec4 c = applyMultiTexture(vec4(rgb, a), rgb, vec3(1.0), uv,
+                                   envDirection(vPosEye, vNormalEye));
         rgb = c.rgb;
         a   = c.a;
     } else if (uHasTexture != 0) {

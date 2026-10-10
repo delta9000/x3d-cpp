@@ -163,7 +163,8 @@ void main() {
         if (texture(uTexture, uv).r < 0.5) discard;
     } else if (uNumStages > 0) {
         // §18.4.3 MultiTexture: DIFFUSE is the material/vertex diffuse colour.
-        vec4 c = applyMultiTexture(vec4(base, alpha), base, uSpecular, uv);
+        vec4 c = applyMultiTexture(vec4(base, alpha), base, uSpecular, uv,
+                                   envDirection(vPosEye, vNormalEye));
         base  = c.rgb;
         alpha = c.a;
     } else if (uHasTexture != 0) {
