@@ -199,11 +199,10 @@ void testCylinder() {
     CylinderDragResult r =
         cylinderDrag(frame, p0, bearingDir, ray, diskAngle, 0.0f, 0.0f, -1.0f);
     check(r.mode == CylinderMode::Cylinder, "cylinder mode selected (perp bearing)");
-    // zero_vec +X, curr_vec at (0,0,2)->+Z. angle from +X to +Z about +Y:
-    // atan2(cross2D(+X,+Z), dot) ; cross2D(ref,cur)=ref.x*cur.z-ref.z*cur.x=1*1-0*0=1
-    // dot=0 -> atan2(1,0)=+pi/2
-    check(feq(r.rotation.angle, static_cast<float>(std::numbers::pi) / 2.0f),
-          "cylinder rotation +90deg about Y");
+    // zero_vec +X, curr_vec at (0,0,2)->+Z. A right-handed rotation about +Y
+    // carries +X to -Z, so +X to +Z is -pi/2 (cross(+X,+Z).y = -1).
+    check(feq(r.rotation.angle, -static_cast<float>(std::numbers::pi) / 2.0f),
+          "cylinder rotation -90deg about Y (right-handed)");
     check(feq(r.rotation.x, 0) && feq(r.rotation.y, 1) && feq(r.rotation.z, 0),
           "cylinder rotation axis +Y");
   }
@@ -219,9 +218,9 @@ void testCylinder() {
     CylinderDragResult r =
         cylinderDrag(frame, p0, bearingDir, ray, diskAngle, 0.0f, 0.0f, -1.0f);
     check(r.mode == CylinderMode::Disk, "disk mode selected (parallel bearing)");
-    // ref=+X(1,0,0), cur at (0,0,1)->+Z. angle +pi/2 about Y (same as above)
-    check(feq(r.rotation.angle, static_cast<float>(std::numbers::pi) / 2.0f),
-          "disk rotation +90deg about Y");
+    // ref=+X(1,0,0), cur at (0,0,1)->+Z. angle -pi/2 about Y (same as above)
+    check(feq(r.rotation.angle, -static_cast<float>(std::numbers::pi) / 2.0f),
+          "disk rotation -90deg about Y (right-handed)");
   }
 
   // --- DS-1: the disk lies in the Y=0 plane of the local sensor frame, NOT a
@@ -254,20 +253,20 @@ void testCylinder() {
     check(r.mode == CylinderMode::Cylinder, "boundary theta0==diskAngle -> cylinder");
   }
 
-  // --- min/max clamp in cylinder mode: clamp +90deg to maxAngle = +0.5 rad.
+  // --- min/max clamp in cylinder mode: clamp -90deg to minAngle = -0.5 rad.
   {
     SFVec3f p0{2.0f, 0.0f, 0.0f};
     SFVec3f bearingDir{0.0f, 0.0f, -1.0f};
     Ray ray;
     ray.origin = SFVec3f{0.0f, 0.0f, 10.0f};
     ray.direction = SFVec3f{0.0f, 0.0f, -1.0f};
-    // minAngle=-0.5, maxAngle=0.5 (min<max -> clamp). raw +pi/2 -> clamp to 0.5
+    // minAngle=-0.5, maxAngle=0.5 (min<max -> clamp). raw -pi/2 -> clamp to -0.5
     CylinderDragResult r =
         cylinderDrag(frame, p0, bearingDir, ray, diskAngle, 0.0f, -0.5f, 0.5f);
-    check(feq(r.rotation.angle, 0.5f), "cylinder rotation clamped to maxAngle");
+    check(feq(r.rotation.angle, -0.5f), "cylinder rotation clamped to minAngle");
   }
 
-  // --- offset add (cylinder): offset 0.1 added to +pi/2, unclamped default.
+  // --- offset add (cylinder): offset 0.1 added to -pi/2, unclamped default.
   {
     SFVec3f p0{2.0f, 0.0f, 0.0f};
     SFVec3f bearingDir{0.0f, 0.0f, -1.0f};
@@ -276,7 +275,7 @@ void testCylinder() {
     ray.direction = SFVec3f{0.0f, 0.0f, -1.0f};
     CylinderDragResult r =
         cylinderDrag(frame, p0, bearingDir, ray, diskAngle, 0.1f, 0.0f, -1.0f);
-    check(feq(r.rotation.angle, static_cast<float>(std::numbers::pi) / 2.0f + 0.1f),
+    check(feq(r.rotation.angle, -static_cast<float>(std::numbers::pi) / 2.0f + 0.1f),
           "cylinder offset added to angle");
   }
 }

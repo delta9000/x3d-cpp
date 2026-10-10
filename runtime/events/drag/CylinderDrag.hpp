@@ -133,9 +133,10 @@ cylinderDrag(const Mat4 &sensorFrame, const SFVec3f &p0Local,
   SFVec3f cur = (curLen > 1e-9f) ? SFVec3f{Q.x / curLen, 0.0f, Q.z / curLen}
                                  : ref;
 
-  // Right-handed angle about +Y from ref to cur:
-  //   cross2D(ref,cur) about +Y = ref.x*cur.z - ref.z*cur.x.
-  const float cross2d = ref.x * cur.z - ref.z * cur.x;
+  // Right-handed angle about +Y from ref to cur: the Y component of
+  // cross(ref, cur) = ref.z*cur.x - ref.x*cur.z. A positive rotation about +Y
+  // carries +Z toward +X (and +X toward -Z).
+  const float cross2d = ref.z * cur.x - ref.x * cur.z;
   const float dot2d = ref.x * cur.x + ref.z * cur.z;
   const float dAngle = std::atan2(cross2d, dot2d);
 

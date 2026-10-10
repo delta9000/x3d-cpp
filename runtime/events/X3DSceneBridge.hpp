@@ -505,12 +505,15 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
  *          PointingSensorSystem FIRST so a sensor grab claims the pointer before
  *          NavigationSystem reads it the same tick. Returns the NavigationSystem
  *          so the embedder can call setForcedMode (the dev mode-cycle key).
+ *          `anchorHandler` receives activated Anchors whose url is not an
+ *          in-scene "#Viewpoint" (load a world, open a window, or ignore).
  *          NavigationSystem/PointingSensorSystem both resolve their targets live
  *          from the input seam each tick, so neither needs per-node attach.
  *          Call after `buildSceneGraph(scene)`.
  */
 inline std::shared_ptr<NavigationSystem>
-attachInteractive(Scene &scene, X3DExecutionContext &ctx) {
+attachInteractive(Scene &scene, X3DExecutionContext &ctx,
+                  AnchorSystem::AnchorHandler anchorHandler = {}) {
   auto pss = std::make_shared<PointingSensorSystem>();
   // One-time inventory pass: lets the system skip the per-tick whole-scene pick
   // when the scene holds no pointing-device sensors (the common static-exhibit
@@ -518,6 +521,7 @@ attachInteractive(Scene &scene, X3DExecutionContext &ctx) {
   detail::forEachNode(scene, [&](X3DNode *n) { pss->attach(n, ctx); });
   ctx.addSystem(pss); // claims pointer first
   auto anchors = std::make_shared<AnchorSystem>(); // §9.4.1 Anchor activation
+  anchors->setAnchorHandler(std::move(anchorHandler)); // non-"#Name" urls
   detail::forEachNode(scene, [&](X3DNode *n) { anchors->attach(n, ctx); });
   ctx.addSystem(anchors); // after the sensors, before navigation
   auto nav = std::make_shared<NavigationSystem>();
