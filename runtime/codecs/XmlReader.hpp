@@ -27,6 +27,7 @@
 #include "ProtoNameMaps.hpp"
 #include "x3d/nodes/Script.hpp"
 #include "x3d/nodes/ShaderPart.hpp"
+#include "x3d/nodes/ShaderProgram.hpp"
 #include "x3d/nodes/X3DProgrammableShaderObject.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
@@ -249,6 +250,10 @@ private:
     if (auto *part = dynamic_cast<x3d::nodes::ShaderPart *>(node.get())) {
       if (!el.text.empty())
         part->setSourceCode(el.text);
+    } else if (auto *program = dynamic_cast<x3d::nodes::ShaderProgram *>(node.get())) {
+      // ProgramShader's ShaderProgram children carry the same CDATA body.
+      if (!el.text.empty())
+        program->setSourceCode(el.text);
     }
 
     // Recurse children into node fields by containerField.

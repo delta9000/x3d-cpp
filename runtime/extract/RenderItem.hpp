@@ -566,10 +566,12 @@ inline SFColorRGBA MaterialDesc::unlitGeometryRGBA() const {
 
 // ---------------------------------------------------------------------------
 // Shader descriptors — ComposedShader / ShaderProgram introspection surface.
-// ShaderProgramDesc is authored by ComposedShader; each stage carries its GLSL
-// source. ShaderFieldBinding describes one author-declared <field> on the shader.
-// ShaderProgramDesc on a RenderItem means the renderer should bind this program
-// instead of the fixed-function material path.
+// ShaderProgramDesc is assembled from the Appearance's selected ComposedShader
+// or ProgramShader (ShaderExtract.hpp, §31.2.2.3); each stage carries its
+// resolved GLSL source. ShaderFieldBinding describes one author-declared
+// <field> on the shader with its current value. ShaderProgramDesc on a
+// RenderItem means the renderer should bind this program instead of the
+// fixed-function material path.
 // ---------------------------------------------------------------------------
 struct ShaderStageDesc {
   enum class Stage { Vertex, Fragment, Geometry, TessControl, TessEval, Compute };
@@ -592,6 +594,7 @@ struct ShaderProgramDesc {
   bool isValid = false;
   std::string lastError;
   std::vector<std::string> attributeBindings;
+  std::string language; // the selected shader's language ("GLSL")
 };
 
 // ---------------------------------------------------------------------------

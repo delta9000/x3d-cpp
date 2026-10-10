@@ -69,6 +69,7 @@
 #include "PackedMesh.hpp"          // PackedMesh (Phase 1 binary geometry)
 #include "RecursionLimits.hpp"     // MEM-1: kMaxNestingDepth (walk DoS guard)
 #include "RenderItem.hpp"          // RenderItem descriptors + RenderDelta
+#include "ShaderExtract.hpp"       // §31 shader selection (selectShader)
 #include "TextExtract.hpp"         // buildTextMesh + outputOnly metrics
 #include "TextureExtract.hpp"      // T-TEX: TextureTransform bake + resolver + sampler enrich
 #include "TextureResolver.hpp"     // TextureResolver seam (embedder-supplied decode)
@@ -208,6 +209,8 @@ public:
     segmentMeshCache_.clear();
     bakedMeshCache_.clear();
     textureMemo_.clear();
+    shaderMemo_.clear();
+    ++shaderEpoch_; // re-select every Appearance's shader on this walk.
 
     // #21: one node-visit budget shared across this snapshot's light collection
     // and geometry walk, bounding an acyclic "doubling DAG" fan-out.
@@ -357,6 +360,7 @@ public:
     visibility_ = visibility;
 
     lastDeltaGen_ = gen;
+    ++shaderEpoch_; // a refreshed Appearance re-selects once per delta.
     const auto changedSkins = syncSkinChanges();
 
     // #21: fresh node-visit budget for this tick's incremental re-walks (a dirty
@@ -954,6 +958,20 @@ private:
     if (placements.empty()) unplacedGeometry_.erase(pending);
   }
 
+  // §31.2.2.3: the Appearance's selected shader program, or nullopt for the
+  // fixed-function path. Memoized per Appearance for one walk/delta: a shared
+  // Appearance is selected (and validated) once, not once per placement.
+  std::optional<ShaderProgramDesc> shaderFor(const X3DNode *appearance) {
+    if (!appearance) return std::nullopt;
+    auto &memo = shaderMemo_[appearance];
+    if (memo.epoch != shaderEpoch_) {
+      memo.epoch = shaderEpoch_;
+      memo.program =
+          selectShader(appearance, scene_.authorFields.get(), meshOptions_.shaders).program;
+    }
+    return memo.program;
+  }
+
   // Re-read the MaterialDesc for an item from its Shape's Appearance. The Shape
   // is the LAST node on the stored PathKey (emission is anchored on the Shape).
   void refreshMaterial(RenderItemId id) {
@@ -962,6 +980,9 @@ private:
     const X3DNode *shape = rec.path.back();
     auto appearance = geombounds::getNode(*shape, "appearance");
     rec.material = materialOf(appearance ? appearance.get() : nullptr);
+    // §31: shader parts, urls and author-field uniforms are appearance-subtree
+    // fields, so a change to any of them re-selects and re-assembles here.
+    rec.shaderProgram = shaderFor(appearance.get());
     // SFNode/MFNode edits take the replacementSnapshot path before this scalar
     // refresh. The appearance-subtree edges cannot change here, so preserve the
     // reverse index instead of erasing/re-adding this id across every dependency.
@@ -1290,6 +1311,7 @@ private:
       rec.worldTransform = worldM;
       rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
       rec.material = std::move(material);
+      rec.shaderProgram = shaderFor(appearance.get());
       rec.mesh = std::move(mesh);
       rec.beyondVisibilityLimit = beyond;
       rec.castShadow = castShadow;
@@ -1302,6 +1324,7 @@ private:
       rec.worldTransform = worldM;
       rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
       rec.material = std::move(material);
+      rec.shaderProgram = shaderFor(appearance.get());
       rec.mesh = std::move(mesh);
       rec.beyondVisibilityLimit = beyond;
       rec.castShadow = castShadow;
@@ -1358,6 +1381,7 @@ private:
       rec.worldTransform = worldM;
       rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
+      rec.shaderProgram = shaderFor(appearance.get());
       rec.mesh = emptyMeshRef(); // Packed items retain the never-null AoS channel.
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
@@ -1370,6 +1394,7 @@ private:
       rec.worldTransform = worldM;
       rec.geometry = GeomId{geom, geomVersions_[geom]};
       rec.material = std::move(material);
+      rec.shaderProgram = shaderFor(appearance.get());
       rec.mesh = emptyMeshRef();
       rec.geometry_ext.kind = Geometry::Kind::Packed;
       rec.geometry_ext.packed = std::move(packed);
@@ -1743,6 +1768,12 @@ private:
   std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> lodPlacements_;
   DepMap geomDeps_;
   DepMap materialDeps_;
+  struct ShaderMemo {
+    std::uint64_t epoch = 0;
+    std::optional<ShaderProgramDesc> program;
+  };
+  std::unordered_map<const X3DNode *, ShaderMemo> shaderMemo_;
+  std::uint64_t shaderEpoch_ = 0;
   // Shape-level descriptors and scoped ClipPlane/LocalFog sources + frames.
   // These cannot be delivered by the existing narrow incremental channels.
   // Scoped dependencies are collected before checking enabled/mesh emission so

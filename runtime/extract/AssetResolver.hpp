@@ -54,6 +54,7 @@ enum class AssetKind {
   ExternProto,   // EXTERNPROTO url — contract (B), parse-time SYNC.
   ExternalGeometry, // external mesh blob for an ExternalGeometry node — contract (A), lazy materialize.
   Audio,         // AudioClip url — contract (A); decoded app-side via AudioDecoder.
+  Shader,        // ShaderPart / ShaderProgram url — contract (A): Pending retries.
 };
 
 // The lifecycle state of a resolve. Pending is ONLY legal on the render-time
