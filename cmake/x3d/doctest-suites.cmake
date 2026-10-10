@@ -138,6 +138,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_visibility_delta_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_session_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/interactive_profile_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/shader_selection_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_callback_retirement_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_diagnostic_counters_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_diagnostic_counter_test.cpp"

@@ -37,9 +37,11 @@ build/golden/ctest path never compiles any of it.
      same sRGB encode, same texture-slot semantics, including `dFdx`/`dFdy` via
      a real **2×2-quad** rasterizer (helper invocations, like a GPU).
   2. A **GLSL-subset interpreter** (`GlslInterpreter.hpp`) that *executes* author
-     `ComposedShader` fragment source on the CPU — the path you reach with
-     `--frag`. When the SDK wires `RenderItem::shaderProgram`, the same machinery
-     binds it automatically.
+     `ComposedShader`/`ProgramShader` fragment source on the CPU. Each item's
+     selected program (`RenderItem::shaderProgram`) runs automatically, with
+     its author `<field>`s as uniforms (`AuthorShader.hpp`); a program the
+     interpreter cannot compile is invalid, so the SDK falls through to the
+     next shader or the material. `--frag` forces one shader onto every item.
 - **Textures** via a `TextureResolver`: `ImageTexture url="proc:<name>"`
   synthesizes a test texture (`checker`, `uvgrid`, `gradient`, `brick`, `bars`)
   on the fly and `url="foo.ppm"` decodes a binary PPM with no decoder at all;

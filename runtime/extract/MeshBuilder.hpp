@@ -81,6 +81,7 @@
 #include "PackedMesh.hpp"      // PackedMesh (Phase 1 binary geometry)
 #include "RecursionLimits.hpp" // #21: kMaxGraphWalkVisits (walk budget default)
 #include "RenderItem.hpp"      // MeshData
+#include "ShaderOptions.hpp"   // §31 shader seams (extractor option bag)
 #include "x3d/core/X3Dtypes.hpp"
 
 #include <atomic>
@@ -138,6 +139,12 @@ struct MeshBuildOptions {
   // tessellate to the same shape those browsers render. Set to Euclidean for the
   // literal textbook/spec-formula reading. weight==1 content is identical either way.
   nurbs::NurbsWeightMode nurbsWeightMode = nurbs::NurbsWeightMode::Premultiplied;
+
+  // §31 shaders: the url resolver for ShaderPart/ShaderProgram sources and the
+  // host's compile check. SceneExtractor uses these to select each
+  // Appearance's shader (ShaderExtract.hpp); RuntimeSession hands the same
+  // options to ShaderSystem so its isSelected/isValid events agree.
+  ShaderOptions shaders{};
 };
 
 namespace mesh_detail {

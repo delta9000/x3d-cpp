@@ -47,6 +47,11 @@ and (by default) `attachStandardRuntime`. That last step is required to drive
 authored TimeSensor/interpolator ROUTEs; resolving ROUTEs alone is insufficient.
 `interactive` defaults to false so pointer navigation is not silently installed.
 Scripts, physics, audio, and other optional backends require explicit wiring.
+A host that runs scene-authored shaders sets `meshOptions.shaders`: a
+`validator` that compiles each candidate with the host's own compiler (so an
+invalid program falls through to the next shader or the material) and a
+`resolver` for ShaderPart urls. The session gives both the extractor and the
+shader event system the same options.
 
 Drive a session from one host thread:
 

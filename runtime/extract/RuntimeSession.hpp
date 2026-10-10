@@ -63,7 +63,8 @@ struct SessionOptions {
 
   /// Attach the standard behavior systems: §8 TimeSensor, §19 interpolators,
   /// §39 followers, §30 event utilities, §22/§23 LOD/Billboard/Proximity/
-  /// Visibility, §21 key-device sensors, §9 LoadSensor, §23.3.1 viewpoint bind.
+  /// Visibility, §21 key-device sensors, §9 LoadSensor, §23.3.1 viewpoint bind,
+  /// §31 shader selection events (with meshOptions.shaders).
   ///
   /// Default ON, and this is NOT the session smuggling in policy: without these
   /// the ROUTEs resolve but nothing drives them, so an authored scene loads,
@@ -169,7 +170,7 @@ private:
       // reference). Declaration order below fixes this; do not reorder.
       : doc_(std::move(doc)),
         ctx_(doc_.scene.authorFields, std::move(options.geoProjection)),
-        extractor_(ctx_, doc_.scene, std::move(options.meshOptions),
+        extractor_(ctx_, doc_.scene, options.meshOptions,
                    std::move(options.textureResolver)) {
     ctx_.buildSceneGraph(doc_.scene);
     bridge_ = ctx_.buildFrom(doc_.scene);
@@ -180,7 +181,10 @@ private:
     if (options.standardRuntime)
       attachStandardRuntime(doc_.scene, ctx_, std::move(options.assetResolver),
                             std::move(options.inlineResolver),
-                            std::move(options.baseUrl));
+                            std::move(options.baseUrl),
+                            // The extractor's copy selects the bound program;
+                            // this one drives the matching §31 events.
+                            options.meshOptions.shaders);
     if (options.interactive)
       nav_ = attachInteractive(doc_.scene, ctx_, std::move(options.anchorHandler));
   }

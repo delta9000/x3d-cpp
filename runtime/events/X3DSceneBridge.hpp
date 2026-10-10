@@ -19,6 +19,7 @@
 #include "AnchorSystem.hpp"
 #include "MediaTimeSystem.hpp"
 #include "SoundTimeSystem.hpp"
+#include "ShaderSystem.hpp"
 #include "NavigationSystem.hpp"
 #include "PickSensorSystem.hpp"
 #include "PointingSensorSystem.hpp"
@@ -439,13 +440,29 @@ attachLoadSensors(Scene &scene, X3DExecutionContext &ctx,
 }
 
 /**
+ * @brief §31 shader selection events: one ShaderSystem over every Appearance,
+ *        shader and part in `scene`, emitting isSelected/isValid and honoring
+ *        activate. Pass the same ShaderOptions the extractor uses
+ *        (MeshBuildOptions::shaders) so both agree on the selection.
+ */
+inline std::shared_ptr<ShaderSystem>
+attachShaders(Scene &scene, X3DExecutionContext &ctx,
+              extract::ShaderOptions options = {}) {
+  auto sys = std::make_shared<ShaderSystem>(std::move(options));
+  detail::forEachNode(scene, [&](X3DNode *n) { sys->attach(n, ctx); });
+  ctx.addSystem(sys);
+  return sys;
+}
+
+/**
  * @brief Production wiring: attach the full STANDARD behavior runtime — every
  *        system an X3D browser runs, MINUS the embedder-plugged seams (Script
  *        needs a JS backend; Physics needs an engine). After this call an
  *        authored `TimeSensor → Interpolator → Transform` chain animates out of
  *        the box, view-dependent nodes track the camera, key sensors fire,
  *        LoadSensors report their watched children's load state, and the
- *        viewpoint bind stack is live. `assetResolver` is the byte oracle
+ *        viewpoint bind stack is live, and shaders report isSelected/isValid
+ *        (`shaderOptions`, normally MeshBuildOptions::shaders). `assetResolver` is the byte oracle
  *        LoadSensor resolves through (null → the IO-free null stub; an app
  *        injects a concrete backend, e.g. the CLI's confined local-file
  *        resolver).
@@ -466,7 +483,8 @@ attachLoadSensors(Scene &scene, X3DExecutionContext &ctx,
 inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
                                   extract::AssetResolver assetResolver = nullptr,
                                   InlineResolver inlineResolver = {},
-                                  std::string baseUrl = {}) {
+                                  std::string baseUrl = {},
+                                  extract::ShaderOptions shaderOptions = {}) {
   auto tss = std::make_shared<TimeSensorSystem>();        // §8 Time — the clock
   detail::forEachNode(scene, [&](X3DNode *n) { tss->attach(n, ctx); });
   ctx.addSystem(tss);
@@ -488,6 +506,7 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   detail::forEachNode(scene, [&](X3DNode *n) { picks->attach(n, ctx); });
   ctx.addSystem(picks);
   attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
+  attachShaders(scene, ctx, std::move(shaderOptions)); // §31 isSelected/isValid
   if (inlineResolver) {
     auto inlines = std::make_shared<InlineRuntimeSystem>(
         scene, std::move(inlineResolver), std::move(baseUrl));

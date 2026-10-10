@@ -43,6 +43,8 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <type_traits>
+#include <variant>
 #include <vector>
 
 namespace x3d::cpuraster {
@@ -1059,17 +1061,53 @@ seedUniforms(const x3d::runtime::extract::MaterialDesc &m,
   return u;
 }
 
+// An author <field> value as an interpreter uniform. SFMatrix values keep
+// their stored element order (the order glUniformMatrix*fv receives them);
+// strings and empty values have no GLSL form (Void).
+inline Value uniformValue(const x3d::runtime::extract::X3DFieldValue &v) {
+  using namespace x3d::core;
+  return std::visit(
+      [](const auto &x) -> Value {
+        using T = std::decay_t<decltype(x)>;
+        if constexpr (std::is_same_v<T, float>) return Value::flt(x);
+        else if constexpr (std::is_same_v<T, int>) return Value::integer(x);
+        else if constexpr (std::is_same_v<T, bool>) return Value::boolean(x);
+        else if constexpr (std::is_same_v<T, SFColor>) return Value::v3({x.r, x.g, x.b});
+        else if constexpr (std::is_same_v<T, SFColorRGBA>) return Value::v4({x.r, x.g, x.b, x.a});
+        else if constexpr (std::is_same_v<T, SFVec2f>) return Value::v2({x.x, x.y});
+        else if constexpr (std::is_same_v<T, SFVec3f>) return Value::v3({x.x, x.y, x.z});
+        else if constexpr (std::is_same_v<T, SFVec4f>) return Value::v4({x.x, x.y, x.z, x.w});
+        else if constexpr (std::is_same_v<T, SFMatrix3f> || std::is_same_v<T, SFMatrix4f>) {
+          constexpr int n = std::is_same_v<T, SFMatrix3f> ? 3 : 4;
+          Value r;
+          r.t = n == 3 ? VT::Mat3 : VT::Mat4;
+          for (int i = 0; i < n; ++i)
+            for (int j = 0; j < n; ++j) r.f[i * n + j] = x.matrix[i][j];
+          return r;
+        } else return Value{};
+      },
+      v.value);
+}
+
 // Make a FragmentShader that interprets `prog` per fragment. Captures the seeded
-// uniforms + textures by value so the closure is self-contained.
+// uniforms + textures by value so the closure is self-contained. `fields` (the
+// item's ShaderProgramDesc uniforms) override seeded names they share.
 inline FragmentShader
 makeInterpretedShader(const InterpretedProgram &prog,
                       const x3d::runtime::extract::MaterialDesc &material,
-                      const std::vector<EyeLight> &lights, bool hasColors) {
+                      const std::vector<EyeLight> &lights, bool hasColors,
+                      const std::vector<x3d::runtime::extract::ShaderFieldBinding> *fields =
+                          nullptr) {
   // Author shaders (usd_preview_surface, author_lambert) encode their own
   // output, so they sample colour textures sRGB-decoded (linear workflow).
   auto tx = std::make_shared<MaterialTextures>(buildTextures(material, /*linearWorkflow=*/true));
   auto base = std::make_shared<std::unordered_map<std::string, Value>>(
       seedUniforms(material, lights, *tx));
+  if (fields)
+    for (const auto &f : *fields) {
+      Value v = uniformValue(f.value);
+      if (v.t != VT::Void) (*base)[f.name] = v;
+    }
   const InterpretedProgram *pp = &prog;
   glsl::vec4 fallback = glsl::vec4(material.toRGBA());
 

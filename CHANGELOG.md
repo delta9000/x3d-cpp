@@ -13,6 +13,17 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   through `RuntimeSession` and the public input seam: pointing, key-device and
   environmental sensors, viewpoint binding and transitions, EXAMINE/FLY/LOOKAT,
   event utilities and Anchor activation.
+- **Scene-authored shaders (§31, REQ-SHADER).** `selectShader()`
+  (`runtime/extract/ShaderExtract.hpp`) picks each Appearance's first valid
+  GLSL ComposedShader/ProgramShader, resolving part sources from CDATA,
+  `data:` urls or `ShaderOptions::resolver`, and `SceneExtractor` now sets
+  `RenderItem::shaderProgram` with the author fields' current values. The new
+  `ShaderSystem` emits `isSelected`/`isValid` and handles `activate`.
+  `MeshBuildOptions::shaders` carries the url resolver and the host's compile
+  check (`ShaderOptions::validator`); `attachStandardRuntime` takes the same
+  options. `AssetKind::Shader` and `ShaderProgramDesc::language` are new.
+  cpu_raster runs the selected fragment stage in its GLSL interpreter and the
+  GL PoC validates programs with its compiler and uploads every SF uniform type.
 - **`SessionOptions::anchorHandler`** (and an optional `attachInteractive`
   argument) delivers Anchor activations whose url is not an in-scene viewpoint.
 - **Zero-copy reflection reads.** `FieldInfo::view` returns a type-tagged

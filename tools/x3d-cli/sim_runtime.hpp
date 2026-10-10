@@ -171,6 +171,10 @@ inline RuntimeWiring attachFullRuntime(x3d::runtime::Scene &scene,
   //    local files out of the box.
   attachLoadSensors(scene, ctx, io::file::makeFileResolver());
 
+  // ── ShaderSystem (§31) — isSelected/isValid over each Appearance's shaders
+  //    (structural validation; `sim` compiles nothing).
+  attachShaders(scene, ctx);
+
   // ── ViewpointBindSystem (§23.3.1) — post-cascade hook driving set_bind
   //    jump/retainUserOffsets + bind-stack transitions (scene-agnostic: it reads
   //    the bound viewpoint each post-cascade pass).
