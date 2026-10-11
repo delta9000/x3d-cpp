@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <map>
+#include <type_traits>
 
 namespace x3d::sai::experimental {
 namespace {
@@ -179,6 +180,13 @@ private:
     auto edit = (*stored)->scene.edit();
     auto created = edit.create_node(std::string(type));
     if (!created) return failure(created.error());
+    // Complete owner tracking allocation before publishing the kernel node.
+    auto &nodes = (*stored)->nodes;
+    if (nodes.size() == nodes.capacity())
+      nodes.reserve(nodes.size() < nodes.max_size() / 2
+                        ? std::max<std::size_t>(1, nodes.size() * 2)
+                        : nodes.size() + 1);
+    static_assert(std::is_nothrow_copy_constructible_v<experimental::node>);
     if (auto committed = edit.commit(); !committed) return failure(committed.error());
     (*stored)->nodes.push_back(*created);
     return created->id().value;
