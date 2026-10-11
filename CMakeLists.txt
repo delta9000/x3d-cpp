@@ -228,6 +228,8 @@ add_test(NAME sai_decl_mutation_duals COMMAND x3d_sai_experimental_tests
     "--test-case=declaration query and mutation operations are identity duals")
 add_test(NAME sai_decl_snapshot_history COMMAND x3d_sai_experimental_tests
     "--test-case=declaration query and mutation operations are identity duals")
+add_test(NAME sai_decl_field_annotations COMMAND x3d_sai_experimental_tests
+    "--test-case=declaration field annotations own history without changing resolution")
 add_test(NAME sai_decl_update_intent COMMAND x3d_sai_experimental_tests
     "--test-case=declaration updates preserve kind and separate rename intent")
 add_test(NAME sai_decl_change_order COMMAND x3d_sai_experimental_tests
@@ -590,6 +592,10 @@ target_link_libraries(x3d_sai_provider_reference_tests PRIVATE
     x3d_sai_reference_provider x3d_sai_provider_fixture)
 add_test(NAME sai_provider_reference COMMAND x3d_sai_provider_reference_tests)
 set_tests_properties(sai_provider_reference PROPERTIES TIMEOUT 15)
+
+add_executable(x3d_sai_provider_scene examples/provider_scene.cpp)
+target_link_libraries(x3d_sai_provider_scene PRIVATE x3d::sai_reference_provider)
+add_test(NAME sai_provider_scene COMMAND x3d_sai_provider_scene)
 
 # Compile the complete generated key catalog and provider oracle without the
 # reference kernel. The source checks include guards and malformed dispatch.

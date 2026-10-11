@@ -21,7 +21,15 @@ cmake --build build-sdk --parallel 1
 cmake --install build-sdk --prefix /path/to/sdk
 ```
 
-For the reference backend:
+Run the ordinary provider example from this checkout with `mise run hello`.
+It creates a Transform containing a Shape and Box, routes a PositionInterpolator
+into the transform, pumps one input, and drains its notification. The task builds
+only the example and its dependencies, using one compile job by default.
+[The example](examples/provider_scene.cpp) keeps application operations in a
+function accepting `provider::service &`; backend selection happens in `main`.
+
+For an installed reference backend, configure your application with
+`-DCMAKE_PREFIX_PATH=/path/to/sdk` and use:
 
 ```cmake
 find_package(x3d_sai CONFIG REQUIRED)
@@ -31,13 +39,14 @@ target_link_libraries(application PRIVATE x3d::sai_reference_provider)
 
 `make_reference_provider(resource_limits = {})` returns an owning
 `provider::service`. A native application instead uses the optional
-[x3d-cpp companion](https://github.com/delta9000/x3d-cpp/tree/fix/sai-package-boundary/adapters/sai_provider),
+[x3d-cpp companion](https://github.com/delta9000/x3d-cpp/tree/main/adapters/sai_provider),
 `find_package(x3d_cpp_sai CONFIG REQUIRED)`, and `x3d_cpp::sai_provider`.
-Its factory is `native::make_service(resource_limits = {})`; subsequent ordinary
+Its header is `<x3d/sai_provider.hpp>` and its factory is
+`x3d::sai::experimental::native::make_service(resource_limits = {})`. Subsequent
 scene, field and event operations use the same provider contract.
 The native-only `make_presented_scene()` factory additionally binds one ordinary
 scene to an owned mesh/transform feed. Its
-[headless host example](https://github.com/delta9000/x3d-cpp/tree/fix/sai-package-boundary/examples/sai_host)
+[headless host example](https://github.com/delta9000/x3d-cpp/tree/main/examples/sai_host)
 replays explicit local input and retains immutable frames through shutdown; it
 does not add a renderer or event loop to the portable service.
 
@@ -50,8 +59,10 @@ Public targets:
 - `x3d::sai_reference_kernel` and `x3d::sai_reference_metadata`: explicit
   reference-only snapshot/editor/runtime extensions
 
-Embedding with `add_subdirectory` uses the same targets. Installed packages are
-relocatable and carry C++20/thread requirements. The ordinary x3d-cpp SDK remains
+To consume a source checkout, replace `find_package` with
+`add_subdirectory(path/to/x3d-sai sdk EXCLUDE_FROM_ALL)` and keep the same link
+target. CMake then builds the SDK dependencies selected by your application.
+Installed packages are relocatable and carry C++20/thread requirements. The ordinary x3d-cpp SDK remains
 independent: only its explicit companion depends on this package. Existing
 experimental offline/hosted adapter APIs and targets have been consolidated,
 not retained as additional application interfaces.

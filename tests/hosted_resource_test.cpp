@@ -10,8 +10,15 @@
 
 // This dedicated executable measures outstanding ordinary allocations, rather
 // than relying on a wall-clock threshold or a production diagnostic history.
-namespace { std::atomic<std::size_t> allocations{0}; }
+namespace {
+std::atomic<std::size_t> allocations{0};
+thread_local int allocations_before_failure = -1;
+}
 void *operator new(std::size_t size) {
+  if (allocations_before_failure >= 0 && allocations_before_failure-- == 0) {
+    allocations_before_failure = -1;
+    throw std::bad_alloc();
+  }
   if (auto *p = std::malloc(size ? size : 1)) { ++allocations; return p; }
   throw std::bad_alloc();
 }
@@ -27,17 +34,17 @@ namespace {
 struct counters {
   std::size_t turns = 0, retired = 0;
   float current = 0;
-  bool fail = false;
+  bool fail = false, reuse_scene_ids = false;
 };
 class minimal_backend final : public h::backend {
 public:
   explicit minimal_backend(std::shared_ptr<counters> state) : counters_(std::move(state)) {}
   h::capabilities supported() const override {
-    return {"resource-probe",1,{{h::service_id::scene_authoring,1},{h::service_id::host_turns,1}},
+    return {"resource-probe",1,{{h::service_id::scene_authoring,1},{h::service_id::host_turns,1},{h::service_id::notifications,1}},
       {{"Probe","Test",1}},{s::value_kind::sf_float,s::value_kind::mf_float}};
   }
 protected:
-  s::result<std::uint64_t> do_create_scene() override { return next_scene_++; }
+  s::result<std::uint64_t> do_create_scene() override { return counters_->reuse_scene_ids ? 1 : next_scene_++; }
   s::result<std::uint64_t> do_create_node(std::uint64_t,std::string_view) override { return 1; }
   s::result<void> do_append_root(const address &) override { return {}; }
   s::result<void> do_define_name(const address &,std::string_view) override { return {}; }
@@ -57,7 +64,10 @@ protected:
   s::result<void> do_activate(std::uint64_t) override { return {}; }
   backend_result do_turn(std::uint64_t, s::event_time, const std::vector<admitted_write> &writes) override {
     ++counters_->turns;
-    for (const auto &w : writes) if (const auto *v = std::get_if<float>(&w.value)) counters_->current = *v;
+    for (const auto &w : writes) {
+      if (const auto *v = std::get_if<float>(&w.value)) counters_->current = *v;
+      record_event(w.target, w.value);
+    }
     if (counters_->fail) return tl::make_unexpected(backend_failure{
         error(s::error_code::callback_failed, "probe.turn", "partial native effect").value(),
         h::failure_effect::partial_or_unknown});
@@ -127,6 +137,124 @@ TEST_CASE("provider byte accounting checks products and sums without overflow") 
   h::detail::byte_budget booleans(2);
   CHECK(h::detail::account_dynamic(booleans, s::bool_list{false,true}));
   CHECK(booleans.remaining() == 0);
+}
+
+TEST_CASE("provider observer cleanup preserves live registrations when allocation fails") {
+  bool reached_success = false;
+  std::size_t failures = 0;
+  for (int allocation = 0; allocation < 32 && !reached_success; ++allocation) {
+    minimal host;
+    world w(host);
+    std::size_t calls = 0;
+    auto live = host.api.observe(w.active, w.input, [&](const auto &) { ++calls; }).value();
+    auto cancelled = host.api.observe(w.active, w.input, [](const auto &) {
+      FAIL("cancelled callback was delivered");
+    }).value();
+    cancelled.cancel();
+
+    allocations_before_failure = allocation;
+    try {
+      reached_success = host.api.pump(w.active, {0}).has_value();
+    } catch (const std::bad_alloc &) {
+      ++failures;
+    }
+    allocations_before_failure = -1;
+
+    INFO("cleanup allocation index " << allocation);
+    REQUIRE(host.api.enqueue(w.client, {{w.input, 1.f}}));
+    REQUIRE(host.api.pump(w.active, {0}));
+    CHECK(host.api.dispatch_notifications().value() == 1);
+    CHECK(calls == 1);
+    REQUIRE(host.api.close());
+  }
+  CHECK(failures > 0);
+  CHECK(reached_success);
+}
+
+TEST_CASE("provider retirement allocation failure cannot transfer metadata to reused identities") {
+  bool reached_success = false;
+  std::size_t failures = 0;
+  for (int allocation = 0; allocation < 32 && !reached_success; ++allocation) {
+    minimal host;
+    host.counters_->reuse_scene_ids = true;
+    world original(host);
+    REQUIRE(host.api.set_user_data(original.input, s::user_data_value::make<int>(42)));
+
+    allocations_before_failure = allocation;
+    try {
+      reached_success = host.api.retire(original.scene).has_value();
+    } catch (const std::bad_alloc &) {
+      ++failures;
+    }
+    allocations_before_failure = -1;
+
+    INFO("retirement allocation index " << allocation);
+    if (host.api.state(original.scene).value() != h::activation_state::retired) {
+      CHECK(*host.api.user_data(original.input).value().as<int>().value() == 42);
+      REQUIRE(host.api.retire(original.scene));
+    }
+    world replacement(host);
+    CHECK_FALSE(host.api.user_data(replacement.input).value().has_value());
+    REQUIRE(host.api.close());
+  }
+  CHECK(failures > 0);
+  CHECK(reached_success);
+}
+
+TEST_CASE("provider failed notification detachment permits a later dispatch") {
+  bool reached_success = false;
+  for (int allocation = 0; allocation < 32 && !reached_success; ++allocation) {
+    minimal host;
+    world w(host);
+    std::size_t calls = 0;
+    auto live = host.api.observe(w.active, w.input, [&](const auto &) { ++calls; }).value();
+    REQUIRE(host.api.enqueue(w.client, {{w.input, 1.f}}));
+    REQUIRE(host.api.pump(w.active, {0}));
+
+    allocations_before_failure = allocation;
+    try {
+      reached_success = host.api.dispatch_notifications().has_value();
+    } catch (const std::bad_alloc &) {
+    }
+    allocations_before_failure = -1;
+
+    INFO("dispatch allocation index " << allocation);
+    REQUIRE(host.api.dispatch_notifications());
+    CHECK(calls == 1);
+    REQUIRE(host.api.close());
+  }
+  CHECK(reached_success);
+}
+
+TEST_CASE("provider close remains retryable when notification detachment allocation fails") {
+  bool reached_success = false;
+  std::size_t failures = 0;
+  for (int allocation = 0; allocation < 32 && !reached_success; ++allocation) {
+    minimal host;
+    world w(host);
+    auto pending = host.api.enqueue(w.client, {{w.input, 1.f}}).value();
+    const auto authority = w.scene;
+
+    allocations_before_failure = allocation;
+    try {
+      reached_success = host.api.close().has_value();
+    } catch (const std::bad_alloc &) {
+      ++failures;
+    }
+    allocations_before_failure = -1;
+
+    INFO("close allocation index " << allocation);
+    if (!reached_success) {
+      CHECK_FALSE(authority.expired());
+      CHECK(pending.status()->state == h::request_state::submitted);
+    }
+    REQUIRE(host.api.close());
+    CHECK(host.retired == 1);
+    CHECK(authority.expired());
+    CHECK(pending.status()->state == h::request_state::cancelled);
+  }
+  CHECK(failures > 0);
+  CHECK(reached_success);
 }
 
 TEST_CASE("provider payload budget includes empty writes and recovers exactly") {
