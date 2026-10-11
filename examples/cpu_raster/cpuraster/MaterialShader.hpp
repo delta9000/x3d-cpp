@@ -64,6 +64,9 @@ struct EyeLight {
   float cutOffAngle = 0.7854f;
   std::function<float(const glsl::vec3 &)> shadowVisibility;
   float intensity = 1; // Direct emission; ambientIntensity is independent.
+  // §42 texture projector (ADR-0061): the texel filtering the light colour at
+  // an eye-space point; false outside the projection volume. Empty for lights.
+  std::function<bool(const glsl::vec3 &, glsl::vec3 &)> projected;
 };
 
 // The bound Fog reduced to what the fragment shaders consume (§24.4.2). The
@@ -121,6 +124,17 @@ inline bool resolveLight(const EyeLight &Lt, const glsl::vec3 &posEye,
   }
   if (Lt.shadowVisibility)
     atten *= Lt.shadowVisibility(posEye);
+  return true;
+}
+// The light's colour at a fragment: its colour, filtered by the projected
+// texel for a texture projector (false outside the projection volume).
+inline bool lightColorAt(const EyeLight &Lt, const glsl::vec3 &posEye,
+                         glsl::vec3 &color) {
+  color = Lt.color;
+  if (!Lt.projected) return true;
+  glsl::vec3 texel;
+  if (!Lt.projected(posEye, texel)) return false;
+  color = color * texel;
   return true;
 }
 } // namespace detail
@@ -641,21 +655,23 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
     for (const EyeLight &Lt : lights) {
       glsl::vec3 L;
       float atten;
-      if (!detail::resolveLight(Lt, f.posEye, L, atten))
+      glsl::vec3 lc;
+      if (!detail::resolveLight(Lt, f.posEye, L, atten) ||
+          !detail::lightColorAt(Lt, f.posEye, lc))
         continue;
       // §17 ambient: light.ambientIntensity × ambientParameter, where
       // ambientParameter = material ambientIntensity × diffuseParameter (the
       // textured/vertex-coloured base) — linear in diffuse (ADR-0027). Gated by
       // attenuation/spot like the light's other terms.
-      lit = lit + (base * ai * textureAmbient) * Lt.color *
+      lit = lit + (base * ai * textureAmbient) * lc *
                       (Lt.ambientIntensity * atten);
       float ndl = glsl::maxf(glsl::dot(N, L), 0.0f);
-      lit = lit + base * Lt.color * (Lt.intensity * ndl * atten);
+      lit = lit + base * lc * (Lt.intensity * ndl * atten);
       if (ndl > 0.0f) {
         glsl::vec3 H = glsl::normalize(L + V);
         float ndh = glsl::maxf(glsl::dot(N, H), 0.0f);
         lit = lit +
-              specCol * Lt.color * (Lt.intensity * std::pow(ndh, expo) * atten);
+              specCol * lc * (Lt.intensity * std::pow(ndh, expo) * atten);
       }
     }
     // §17: fog is the final step, in the shader's output (display) space.
@@ -747,12 +763,14 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
     for (const EyeLight &Lt : lights) {
       glsl::vec3 L;
       float atten;
-      if (!detail::resolveLight(Lt, f.posEye, L, atten))
+      glsl::vec3 lc;
+      if (!detail::resolveLight(Lt, f.posEye, L, atten) ||
+          !detail::lightColorAt(Lt, f.posEye, lc))
         continue;
       // §17.2.2.4 per-light ambient (normal-independent, so applied before the
       // NdL gate below). PhysicalMaterial has no ambientIntensity field, so the
       // ambient surface is diffColor; gated by attenuation/spot like the rest.
-      color = color + diffColor * Lt.color * (Lt.ambientIntensity * atten);
+      color = color + diffColor * lc * (Lt.ambientIntensity * atten);
       float NdL = glsl::maxf(glsl::dot(N, L), 0.0f);
       if (NdL <= 0.0f)
         continue;
@@ -764,7 +782,7 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
       glsl::vec3 F = detail::F_Schlick(VdH, F0);
       glsl::vec3 spec = D * Vis * F;
       glsl::vec3 kD = (glsl::vec3(1.0f) - F) * (1.0f - metallic);
-      color = color + (kD * diffColor / detail::kPI + spec) * Lt.color *
+      color = color + (kD * diffColor / detail::kPI + spec) * lc *
                           (Lt.intensity * NdL * atten);
     }
     color = color + 0.03f * diffColor * ao; // small ambient term (pbr.frag).

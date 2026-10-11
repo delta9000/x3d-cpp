@@ -20,6 +20,7 @@
 #include "MediaTimeSystem.hpp"
 #include "SoundTimeSystem.hpp"
 #include "GeneratedCubeMapSystem.hpp"
+#include "TextureProjectorSystem.hpp"
 #include "ShaderSystem.hpp"
 #include "NavigationSystem.hpp"
 #include "PickSensorSystem.hpp"
@@ -456,6 +457,17 @@ attachShaders(Scene &scene, X3DExecutionContext &ctx,
 }
 
 /**
+ * @brief §42 texture projectors: emit aspectRatio for PixelTexture images.
+ */
+inline std::shared_ptr<TextureProjectorSystem>
+attachTextureProjectors(Scene &scene, X3DExecutionContext &ctx) {
+  auto sys = std::make_shared<TextureProjectorSystem>();
+  detail::forEachNode(scene, [&](X3DNode *n) { sys->attach(n, ctx); });
+  ctx.addSystem(sys);
+  return sys;
+}
+
+/**
  * @brief §34.4.2 GeneratedCubeMapTexture: reset `update` NEXT_FRAME_ONLY to
  *        NONE at the start of the frame after the one that rendered it.
  */
@@ -477,7 +489,8 @@ attachGeneratedCubeMaps(Scene &scene, X3DExecutionContext &ctx) {
  *        viewpoint bind stack is live, shaders report isSelected/isValid
  *        (`shaderOptions`, normally MeshBuildOptions::shaders), and a
  *        GeneratedCubeMapTexture's NEXT_FRAME_ONLY resets to NONE after one
- *        frame. `assetResolver` is the byte oracle
+ *        frame, and texture projectors report a PixelTexture's aspectRatio.
+ *        `assetResolver` is the byte oracle
  *        LoadSensor resolves through (null → the IO-free null stub; an app
  *        injects a concrete backend, e.g. the CLI's confined local-file
  *        resolver).
@@ -523,6 +536,7 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
   attachShaders(scene, ctx, std::move(shaderOptions)); // §31 isSelected/isValid
   attachGeneratedCubeMaps(scene, ctx); // §34.4.2 NEXT_FRAME_ONLY reset
+  attachTextureProjectors(scene, ctx); // §42 aspectRatio
   if (inlineResolver) {
     auto inlines = std::make_shared<InlineRuntimeSystem>(
         scene, std::move(inlineResolver), std::move(baseUrl));

@@ -32,6 +32,7 @@
 #include "RenderItem.hpp"      // LightDesc
 #include "TransformSystem.hpp" // localMatrix (static; per-path re-accumulation)
 #include "LODSelection.hpp" // traversedChild (§10.4.3 / §23.4.3)
+#include "MaterialSystem.hpp" // matsys::refOf (projector textures)
 #include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
@@ -75,12 +76,43 @@ public:
                                 const geo::GeoProjection &projection,
                                 WalkBudget &budget, const SFVec3f &eyeWorld) {
     std::vector<LightDesc> out;
+    auto leaf = [&](const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot) {
+      bool isLight = false;
+      LightDesc::Type type = lightType(n->nodeTypeName(), isLight);
+      if (!isLight) return false;
+      // on==true gate (spec default true) — skip disabled lights entirely.
+      if (geombounds::getField<bool>(*n, "on", true))
+        out.push_back(makeLight(*n, type, worldM, scopeRoot));
+      return true; // a light bears no children; nothing below it to scope.
+    };
     for (const auto &root : scene.rootNodes) {
       if (!root) continue;
       // A root light has no enclosing grouping node => scopeRoot null.
-      walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, out, budget,
+      walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, leaf, budget,
            eyeWorld, projection);
     }
+    return out;
+  }
+
+  // §42 texture projectors (TextureProjector, TextureProjectorParallel): the
+  // same walk, world resolution and scoping as lights; on==false skipped. The
+  // texture ref is extracted but not resolved (SceneExtractor::projectors()).
+  std::vector<ProjectorDesc> collectProjectors(const Scene &scene,
+                                               const geo::GeoProjection &projection,
+                                               WalkBudget &budget,
+                                               const SFVec3f &eyeWorld) {
+    std::vector<ProjectorDesc> out;
+    auto leaf = [&](const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot) {
+      const std::string t = n->nodeTypeName();
+      if (t != "TextureProjector" && t != "TextureProjectorParallel") return false;
+      if (geombounds::getField<bool>(*n, "on", true))
+        out.push_back(makeProjector(*n, t == "TextureProjectorParallel", worldM,
+                                    scopeRoot));
+      return true;
+    };
+    for (const auto &root : scene.rootNodes)
+      if (root)
+        walk(root.get(), Mat4::identity(), nullptr, leaf, budget, eyeWorld, projection);
     return out;
   }
 
@@ -113,8 +145,11 @@ private:
     return SFVec3f{v.x / len, v.y / len, v.z / len};
   }
 
+  // `leaf(node, world, scopeRoot)` collects a light-like node and returns true
+  // to stop the descent there.
+  template <typename Leaf>
   void walk(const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
-            std::vector<LightDesc> &out, WalkBudget &budget,
+            Leaf &leaf, WalkBudget &budget,
             const SFVec3f &eyeWorld,
             const geo::GeoProjection &projection,
             std::size_t depth = 0) {
@@ -130,15 +165,7 @@ private:
     Mat4 here = isTransform(n)
         ? worldM * TransformSystem::localMatrix(n, projection) : worldM;
 
-    bool isLight = false;
-    LightDesc::Type type = lightType(n->nodeTypeName(), isLight);
-    if (isLight) {
-      // on==true gate (spec default true) — skip disabled lights entirely.
-      if (geombounds::getField<bool>(*n, "on", true))
-        out.push_back(makeLight(*n, type, here, scopeRoot));
-      // A light bears no children; nothing below it to scope.
-      return;
-    }
+    if (leaf(n, here, scopeRoot)) return;
 
     // Descend. The scopeRoot handed to children is THIS node when it is a
     // grouping node, else the inherited one (a non-grouping passthrough keeps
@@ -147,12 +174,12 @@ private:
     const std::string typeName = n->nodeTypeName();
     if (typeName == "Switch" || typeName == "LOD") {
       if (auto child = traversedChild(*n, here, eyeWorld))
-        walk(child.get(), here, childScope, out, budget, eyeWorld, projection,
+        walk(child.get(), here, childScope, leaf, budget, eyeWorld, projection,
              depth + 1);
       return;
     }
     forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      walk(c.get(), here, childScope, out, budget, eyeWorld, projection, depth + 1);
+      walk(c.get(), here, childScope, leaf, budget, eyeWorld, projection, depth + 1);
     });
   }
 
@@ -208,6 +235,83 @@ private:
       L.cutOffAngle = geombounds::getField<float>(n, "cutOffAngle", 0.7854f);
     }
     return L;
+  }
+
+  static SFVec3f cross(const SFVec3f &a, const SFVec3f &b) {
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+  }
+  static float length(const SFVec3f &v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
+
+  // §42.4: the projector frame is location/direction/upVector in the node's
+  // local frame (ADR-0061). upVector (perspective only; parallel has none)
+  // falls back to +Y, then +Z, when it is parallel to the direction, as the
+  // defaults (direction 0 0 1, upVector 0 0 1) are. Distances and the parallel
+  // extents scale with the local frame along their own axes.
+  static ProjectorDesc makeProjector(const X3DNode &n, bool parallel,
+                                     const Mat4 &worldM, const X3DNode *scopeRoot) {
+    ProjectorDesc P;
+    P.type = parallel ? ProjectorDesc::Type::Parallel : ProjectorDesc::Type::Perspective;
+    P.color = geombounds::getField<SFColor>(n, "color", SFColor{1, 1, 1});
+    P.intensity = geombounds::getField<float>(n, "intensity", 1.0f);
+    P.ambientIntensity = geombounds::getField<float>(n, "ambientIntensity", 0.0f);
+    P.shadows = geombounds::getField<bool>(n, "shadows", false);
+    P.shadowIntensity = geombounds::getField<float>(n, "shadowIntensity", 1.0f);
+    P.global = geombounds::getField<bool>(n, "global", true);
+    P.scopeRoot = scopeRoot;
+
+    SFVec3f dir = normalize(geombounds::getField<SFVec3f>(n, "direction", SFVec3f{0, 0, 1}));
+    if (length(dir) <= 1e-6f) dir = {0, 0, 1};
+    SFVec3f up = parallel ? SFVec3f{0, 1, 0}
+                          : geombounds::getField<SFVec3f>(n, "upVector", SFVec3f{0, 0, 1});
+    for (const SFVec3f &candidate : {up, SFVec3f{0, 1, 0}, SFVec3f{0, 0, 1}}) {
+      up = candidate;
+      if (length(cross(dir, up)) > 1e-4f * std::max(length(up), 1e-6f)) break;
+    }
+    const SFVec3f right = normalize(cross(dir, up));
+    const SFVec3f trueUp = cross(right, dir);
+
+    const SFVec3f loc = geombounds::getField<SFVec3f>(n, "location", SFVec3f{0, 0, 0});
+    P.worldLocation = worldM.transformPoint(loc);
+    const SFVec3f wd = worldM.transformDirection(dir);
+    const SFVec3f wu = worldM.transformDirection(trueUp);
+    const SFVec3f wr = worldM.transformDirection(right);
+    const float depthScale = length(wd), upScale = length(wu), rightScale = length(wr);
+    P.worldDirection = normalize(wd);
+    const SFVec3f r = normalize(cross(P.worldDirection, wu));
+    P.worldUp = cross(r, P.worldDirection);
+
+    const float nearD = geombounds::getField<float>(n, "nearDistance", -1.0f);
+    const float farD = geombounds::getField<float>(n, "farDistance", -1.0f);
+    P.nearDistance = nearD > 0.0f ? nearD * depthScale : -1.0f;
+    P.farDistance = farD > 0.0f ? farD * depthScale : -1.0f;
+
+    // view: rows right, up, -direction; translation moves the location to 0.
+    const SFVec3f &f = P.worldDirection, &u = P.worldUp, &o = P.worldLocation;
+    Mat4 v = Mat4::identity();
+    v.m[0] = r.x; v.m[4] = r.y; v.m[8] = r.z;
+    v.m[1] = u.x; v.m[5] = u.y; v.m[9] = u.z;
+    v.m[2] = -f.x; v.m[6] = -f.y; v.m[10] = -f.z;
+    v.m[12] = -(r.x * o.x + r.y * o.y + r.z * o.z);
+    v.m[13] = -(u.x * o.x + u.y * o.y + u.z * o.z);
+    v.m[14] = f.x * o.x + f.y * o.y + f.z * o.z;
+    P.view = v;
+
+    P.texture = matsys::refOf(geombounds::getNode(n, "texture"), TextureRef::Slot::BaseColor);
+    if (P.texture.source == TextureRef::Source::Inline &&
+        P.texture.inlinePixels.width > 0 && P.texture.inlinePixels.height > 0)
+      P.aspectRatio = static_cast<float>(P.texture.inlinePixels.width) /
+                      static_cast<float>(P.texture.inlinePixels.height);
+
+    if (parallel) {
+      // fieldOfView (minX, minY, maxX, maxY) in the projector's local frame.
+      const SFVec4f fov = geombounds::getField<SFVec4f>(n, "fieldOfView", SFVec4f{-1, -1, 1, 1});
+      P.parallelFieldOfView = {fov.x * rightScale, fov.y * upScale, fov.z * rightScale,
+                               fov.w * upScale};
+    } else {
+      P.fieldOfView = geombounds::getField<float>(n, "fieldOfView", 0.7854f);
+    }
+    P.updateProjection();
+    return P;
   }
 };
 

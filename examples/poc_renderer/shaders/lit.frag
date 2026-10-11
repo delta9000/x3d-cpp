@@ -96,6 +96,7 @@ uniform float uLightRadius[kMaxLights];
 uniform vec2 uLightCone[kMaxLights]; // beamWidth, cutOffAngle in radians.
 
 #include "shadow.glsl"
+#include "projector.glsl"
 
 bool resolveLight(int i, vec3 posEye, out vec3 L, out float atten) {
     if (uLightType[i] == 0) {
@@ -227,8 +228,10 @@ void main() {
         // Normal-independent, applied before ndl.
         vec3 L;
         float atten;
-        if (!resolveLight(i, vPosEye, L, atten)) continue;
-        vec3 lightColor = uLightColor[i] * atten;
+        vec3 projected;
+        if (!resolveLight(i, vPosEye, L, atten) || !projectorColor(i, vPosEye, projected))
+            continue;
+        vec3 lightColor = uLightColor[i] * atten * projected;
         lit += (uAmbientColor * base) * lightColor * uLightAmbient[i];
         float ndl = max(dot(N, L), 0.0);
         lit      += base * lightColor * ndl;

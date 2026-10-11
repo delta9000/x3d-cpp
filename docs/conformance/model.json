@@ -11168,10 +11168,10 @@
         "TextureProjector",
         "TextureProjectorParallel"
       ],
-      "note": "LightSystem::lightType accepts only DirectionalLight, PointLight and SpotLight; RenderItem/LightDesc carry no projected texture or projector matrix. Acceptance: perspective and parallel projected textures, clipping/range, on/global scope, transforms, and aspectRatio updates. Published chapter URL is components/textureProjection.html; the Full-profile link and UOM spelling currently return 404.",
-      "severity": "major",
+      "note": "Texture projectors (2026-10-11, ADR-0061): SceneExtractor::projectors() returns a world-resolved ProjectorDesc per active TextureProjector/TextureProjectorParallel (LightSystem::collectProjectors, same Switch/LOD selection and per-path transforms as lights; on FALSE skipped). It carries color, intensity, ambientIntensity, location, direction, the up vector (perspective upVector, parallel +Y; falls back to +Y then +Z when parallel to direction), near/far and parallel extents scaled by the local frame, fieldOfView (covering the shorter image side), aspectRatio from the resolved image, view/projection matrices, the texture as a TextureRef resolved through the session TextureResolver, and global/scopeRoot (projectorApplies). ProjectorDesc::project() maps a world point to (s, t) or rejects it outside the volume, behind the projector, or outside nearDistance/farDistance. Both hosts treat a projector as a light without attenuation (perspective: positional at location; parallel: directional) whose colour is filtered by the projected texel rgb x alpha inside the volume and is zero outside, in Phong and PBR (cpu_raster MaterialShader EyeLight::projected; GL PoC shaders/projector.glsl, up to 3 projectors on units 13-15 sharing the 8 light slots after ordinary lights). The spec does not define how the projected texture combines with lighting (\u00a717 has no projector term), so that combination is an implementation choice. TextureProjectorSystem (attachStandardRuntime) emits aspectRatio for PixelTexture textures on load and when the texture or its image changes. Not wired: shadows and shadowIntensity (carried in ProjectorDesc, not rendered), MultiTexture as a projector texture (no texture), projectors in author shaders, aspectRatio output for url textures (the runtime does not decode images; ProjectorDesc.aspectRatio has the resolved value), and in the GL PoC more than 3 projectors or more than the light slots left after ordinary lights. Tests: texture_projector_test (doctest: volume, coordinates, range, local scale, scope, up fallback, url aspect, aspectRatio output), texture_projector_test (cpu_raster) and texture_projector_gl_test.py (perspective and parallel quadrants in Phong and PBR, scope, nearDistance). Acceptance for the rest: projector shadows, MultiTexture textures, author-shader access, url aspectRatio output.",
+      "severity": "minor",
       "status": "open",
-      "summary": "Texture projectors have bindings and validation aliases but no projection or light extraction path."
+      "summary": "Both reference hosts light the scene through perspective and parallel texture projectors (ADR-0061); projector shadows, MultiTexture projector textures, author shaders and the aspectRatio output for url images are not wired."
     },
     {
       "clause": "17.2.2.8; 17.3.1",
@@ -11690,6 +11690,7 @@
       "X3DRigidJointNode",
       "X3DSensorNode",
       "X3DShaderNode",
+      "X3DTextureProjectorNode",
       "X3DTimeDependentNode",
       "X3DUrlObject",
       "X3DViewpointNode"
@@ -11703,8 +11704,8 @@
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 16,
-      "minor": 15
+      "major": 15,
+      "minor": 16
     }
   },
   "unresolved_findings": []

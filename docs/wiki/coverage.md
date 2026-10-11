@@ -149,6 +149,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0058-context-owned-geo-projection.md` | Each execution context fixes its geospatial backend at construction and retains it; no process-wide selector | `geo_projection_ownership_test.cpp`; `runtime/events/X3DExecutionContext.hpp` |
 | covered | `decisions/0059-cube-map-images-through-texture-decode.md` | ImageCubeMapTexture is a url cube ref; the TextureResolver decodes it to six layers (`TexturePixels::layers`) with a std-only DDS decoder shared by the stb and wuffs backends | `runtime/io/dds/DdsDecode.hpp`; `runtime/io/tests/texture_decode_tests.cpp`; `background_desc_test.cpp` |
 | covered | `decisions/0060-generated-cube-maps-local-frame.md` | GeneratedCubeMapTexture is a consumer-rendered cube ref (`TextureRef::generatedCube`) with GeneratedCubeMapSystem resetting NEXT_FRAME_ONLY; every cube map is looked up in its geometry's local frame | `runtime/events/GeneratedCubeMapSystem.hpp`; `runtime/extract/tests/generated_cube_map_test.cpp`; `examples/cpu_raster/tests/generated_cube_map_test.cpp` |
+| covered | `decisions/0061-texture-projectors-as-lights.md` | TextureProjector/TextureProjectorParallel surface as world-resolved `ProjectorDesc` values; both hosts light the scene through them as unattenuated lights filtered by the projected texel | `runtime/events/TextureProjectorSystem.hpp`; `runtime/extract/tests/texture_projector_test.cpp`; `examples/cpu_raster/tests/texture_projector_test.cpp` |
 
 ## 3. Guides
 
