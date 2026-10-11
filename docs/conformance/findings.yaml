@@ -2030,13 +2030,18 @@
   interfaces: [X3DPrototypeInstance]
   clause: "ISO 19776-2; 19775-1 4.4.4"
   severity: minor
-  status: open
-  summary: ProtoDeclare/ExternProtoDeclare and field `appinfo`/`documentation` survive XML and JSON, but are not representable in ClassicVRML and are lost on that hop.
+  status: fixed
+  summary: Declaration and interface-field appinfo/documentation round-trip through XML, canonical XML, JSON and ClassicVRML using an x3d-cpp comment convention.
   note: >-
-    XML and JSON readers/writers preserve declaration and field metadata. Regression:
-    proto_appinfo_json_roundtrip_test. ISO/IEC 19776-2 ClassicVRML PROTO/EXTERNPROTO/interface
-    syntax has no appinfo or documentation production; comments are not a semantic metadata slot.
-    ClassicVRML conversion therefore remains lossy for these attributes.
+    ProtoDeclaration, ExternProtoDeclaration and ProtoField own both strings. All XML
+    writers and JsonWriter serialize them; CanonicalXmlWriter now includes interface-field
+    attributes. ClassicVRML uses the versioned x3d-cpp:proto-metadata-v1 comment convention
+    (ADR-0062): a two-string JSON array before PROTO, EXTERNPROTO or an interface access token.
+    ClassicVrmlReader restores the strings; standard-only consumers may discard these comments.
+    This closes SDK round-trip loss, not a claim that ISO 19776-2 defines metadata attributes.
+    Regression: proto_appinfo_json_roundtrip_test covers canonical and Classic hops, nested
+    declarations, external event fields, scalar/node defaults, escaping, idempotence and
+    metadata-comment scoping. Unknown comment versions and invalid payloads are ignored.
 
 - id: ENC-PROTO-CONNECT
   nodes: [ProtoBody, connect]

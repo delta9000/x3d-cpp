@@ -352,6 +352,10 @@ CanonicalXmlWriter::writeProtoFieldElement(const runtime::ProtoField &f) {
   auto fe = std::make_unique<xml::Element>();
   fe->name = "field";
   fe->setAttr("accessType", accessTypeName(f.access));
+  if (!f.appinfo.empty())
+    fe->setAttr("appinfo", f.appinfo);
+  if (!f.documentation.empty())
+    fe->setAttr("documentation", f.documentation);
   if (!f.nodeDefault.empty()) {
     for (const auto &n : f.nodeDefault) {
       auto ce = writeNodeElement(n, "");

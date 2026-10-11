@@ -160,6 +160,7 @@ nav:
       - "ADR-0059: Cube-Map Images Through the Texture Decode Seam": decisions/0059-cube-map-images-through-texture-decode.md
       - "ADR-0060: Generated Cube Maps and the Local Cube Frame": decisions/0060-generated-cube-maps-local-frame.md
       - "ADR-0061: Texture Projectors as Textured Lights": decisions/0061-texture-projectors-as-lights.md
+      - "ADR-0062: ClassicVRML prototype metadata comments": decisions/0062-classic-prototype-metadata-comments.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
