@@ -1111,6 +1111,9 @@ result<void> service::close() {
     return error(error_code::operation_in_progress, "provider.close", "backend turn is in progress");
   if (p_->closed) return {};
   auto state = p_;
+  // A deque move may allocate its replacement storage. Finish that before
+  // publishing closed state so failure leaves the service available to retry.
+  auto notices = std::move(state->notices);
   state->closed = true;
   for (auto &[id, s] : state->scenes) state->cancel_all(s.submitted);
   for (auto &[id, c] : state->clients) state->cancel_all(c.accepted);
@@ -1118,7 +1121,6 @@ result<void> service::close() {
   state->authority.reset();
   for (auto &o : state->observers) o->live->store(false);
   auto metadata = std::move(state->metadata);
-  auto notices = std::move(state->notices);
   auto observers = std::move(state->observers);
   state->notices.clear(); state->observers.clear();
   state->notification_bytes = 0;

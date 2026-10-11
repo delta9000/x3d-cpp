@@ -226,6 +226,37 @@ TEST_CASE("provider failed notification detachment permits a later dispatch") {
   CHECK(reached_success);
 }
 
+TEST_CASE("provider close remains retryable when notification detachment allocation fails") {
+  bool reached_success = false;
+  std::size_t failures = 0;
+  for (int allocation = 0; allocation < 32 && !reached_success; ++allocation) {
+    minimal host;
+    world w(host);
+    auto pending = host.api.enqueue(w.client, {{w.input, 1.f}}).value();
+    const auto authority = w.scene;
+
+    allocations_before_failure = allocation;
+    try {
+      reached_success = host.api.close().has_value();
+    } catch (const std::bad_alloc &) {
+      ++failures;
+    }
+    allocations_before_failure = -1;
+
+    INFO("close allocation index " << allocation);
+    if (!reached_success) {
+      CHECK_FALSE(authority.expired());
+      CHECK(pending.status()->state == h::request_state::submitted);
+    }
+    REQUIRE(host.api.close());
+    CHECK(host.retired == 1);
+    CHECK(authority.expired());
+    CHECK(pending.status()->state == h::request_state::cancelled);
+  }
+  CHECK(failures > 0);
+  CHECK(reached_success);
+}
+
 TEST_CASE("provider payload budget includes empty writes and recovers exactly") {
   SUBCASE("zero request capacity") {
     minimal host({0, std::numeric_limits<std::size_t>::max()}); world w(host);
