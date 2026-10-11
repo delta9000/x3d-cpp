@@ -18,13 +18,13 @@ generator reads a vendored, SHA-pinned copy of the Web3D Consortium's X3D Unifie
 Object Model directly, so both projects are independent consumers of the same
 upstream specification.
 
-The intended endgame is for x3d-cpp to consume the proposed SAI vocabulary through
-an explicit adapter. The [provider pilot](provider-pilot.md) now defines a
-bounded offline dispatch seam for that experiment; it does not adapt the full
-existing kernel API. The strict convergence gate,
-`mise run sai-conformance`, is a necessary inventory/evidence check for that work;
-it is expected to fail while the register remains incomplete. A green gate alone
-would not prove backend substitutability or ISO conformance.
+The optional x3d-cpp companion implements the [portable provider
+contract](portable-contract.md), sharing setup and live operations with the
+reference backend. The kernel extensions described here remain separate from
+that bounded contract. The strict convergence gate, `mise run sai-conformance`,
+checks the service and evidence inventory; it is expected to fail while the
+register remains incomplete. A green gate alone would not prove backend
+substitutability or ISO conformance.
 
 Commit history before the seed commits of 2026-07-19 is provenance, not a buildable
 sequence. Those commits predate this repository's build system, so `git bisect` does
@@ -59,11 +59,12 @@ C++20 requirement, include directories, and platform thread support. The
 installed SDK includes the pinned `tl::expected` header and its license;
 Python and the generator are not needed to build an application.
 Both SDK archives use position-independent code, so shared libraries and
-renderer plugins can link the same targets. The separate `x3d::sai_provider`
-target exports the experimental header-only offline contract and the same
-generated field keys, without including or linking the kernel;
-`x3d::sai_reference_provider` implements that subset with this kernel. See the
-[provider contract](provider-pilot.md) for its exact support and limitations.
+renderer plugins can link the same targets. `x3d::sai` supplies the compiled
+provider-neutral frontend and generated field keys without linking the kernel.
+`x3d::sai_provider` is an alias of that target. Applications select the reference
+backend by linking `x3d::sai_reference_provider`, or use the separately installed
+native companion. See the [provider contract](portable-contract.md) for the
+shared setup and live operations, supported subset, and limitations.
 
 Embedding the checkout uses the same targets:
 
@@ -88,13 +89,14 @@ support lives under `generated_cpp_bindings/private/x3d_sai/detail/`; it is not 
 consumer include root and is not installed. The installed `<x3d/sai/...>` include
 spellings are unchanged.
 
-This is a source/package boundary, not yet a replaceable implementation boundary.
-The public handles, transactions, snapshots, and runtime callbacks still use the
-concrete reference kernel. Atomic edits, retained snapshot revisions, deterministic
-event traces, and host checkpoint publication are explicit experimental policies,
-not general requirements imposed on every SAI implementation. The runtime examples
-exercise different hosts of this same kernel. Independent-provider evidence is
-separately bounded by the [provider pilot](provider-pilot.md). x3d-cpp's
+The portable `provider::service` owns a backend by composition. Reference and
+native backends use the same public scene, context, node, and field handles for
+setup and live operations. The kernel transactions, snapshots, and runtime
+callbacks described in this guide remain concrete reference extensions. Their
+atomic edits, retained revisions, deterministic event traces, and checkpoint
+publication policies apply to that kernel. The kernel runtime examples exercise
+different hosts of the same reference implementation; independent-provider
+evidence is bounded by the [portable contract](portable-contract.md). x3d-cpp's
 legacy Script `SaiContext` is not an adapter for this SDK.
 
 ## The proposal
@@ -107,7 +109,7 @@ thread support, and does not modify or depend on x3d-cpp's runtime. Its C++20
 (CC0-1.0), providing `and_then`, `transform`, `transform_error`, and `or_else`
 without a configure-time dependency or a homegrown expected implementation.
 
-An optional `x3d_sai_experimental_metadata` bridge copies node and field facts
+The optional `x3d::sai_reference_metadata` bridge copies node and field facts
 from an instance-free catalog generated from the UOM. The core kernel requires
 only the C++ standard runtime and platform thread support; generated runtime
 node objects never participate in SAI identity. The adapter currently fails closed for field types not yet present in

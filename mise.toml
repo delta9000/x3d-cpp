@@ -9,6 +9,14 @@ run = 'cmake -S . -B "${X3D_SAI_BUILD_DIR:-build}" -DCMAKE_BUILD_TYPE=RelWithDeb
 description = "Run the SAI falsification suite."
 run = 'python scripts/check_ctest_selection.py "${X3D_SAI_BUILD_DIR:-build}" && ctest --test-dir "${X3D_SAI_BUILD_DIR:-build}" --output-on-failure'
 
+[tasks.hello]
+description = "Build and run an ordinary provider application."
+run = """
+cmake -S . -B "${X3D_SAI_BUILD_DIR:-build}" -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build "${X3D_SAI_BUILD_DIR:-build}" --target x3d_sai_provider_scene --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
+"${X3D_SAI_BUILD_DIR:-build}/x3d_sai_provider_scene"
+"""
+
 [tasks.sai-baseline]
 description = "Regenerate the SAI service/invariant baseline from the editable YAML registers."
 run = "uv run python scripts/sai_conformance.py generate"

@@ -593,6 +593,10 @@ target_link_libraries(x3d_sai_provider_reference_tests PRIVATE
 add_test(NAME sai_provider_reference COMMAND x3d_sai_provider_reference_tests)
 set_tests_properties(sai_provider_reference PROPERTIES TIMEOUT 15)
 
+add_executable(x3d_sai_provider_scene examples/provider_scene.cpp)
+target_link_libraries(x3d_sai_provider_scene PRIVATE x3d::sai_reference_provider)
+add_test(NAME sai_provider_scene COMMAND x3d_sai_provider_scene)
+
 # Compile the complete generated key catalog and provider oracle without the
 # reference kernel. The source checks include guards and malformed dispatch.
 add_executable(x3d_sai_provider_schema_tests tests/provider_schema_test.cpp)

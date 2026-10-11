@@ -8,11 +8,11 @@ file(MAKE_DIRECTORY "${work}/consumer")
 file(COPY "${SAI_SOURCE_DIR}/tests/package_consumer/CMakeLists.txt"
     "${SAI_SOURCE_DIR}/tests/package_consumer/shared.cpp"
     "${SAI_SOURCE_DIR}/tests/package_consumer/shared_main.cpp"
-    "${SAI_SOURCE_DIR}/tests/package_consumer/hosted_consumer.cpp"
     "${SAI_SOURCE_DIR}/tests/provider_reference_test.cpp"
     "${SAI_SOURCE_DIR}/tests/provider_schema_test.cpp"
     "${SAI_SOURCE_DIR}/examples/author_inspect.cpp"
     "${SAI_SOURCE_DIR}/examples/generated_author_inspect.cpp"
+    "${SAI_SOURCE_DIR}/examples/provider_scene.cpp"
     DESTINATION "${work}/consumer")
 
 function(run)
