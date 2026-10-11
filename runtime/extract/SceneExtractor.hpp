@@ -1004,7 +1004,14 @@ private:
       memo.program =
           selectShader(appearance, scene_.authorFields.get(), meshOptions_.shaders).program;
     }
-    return memo.program;
+    // Texture fields resolve like material textures (memoized per url), on
+    // every call so a texture still loading arrives on a later refresh.
+    std::optional<ShaderProgramDesc> program = memo.program;
+    if (program)
+      for (auto &f : program->fields)
+        if (!f.textures.empty())
+          resolveTextureRefs(f.textures, textureResolver_, &textureMemo_);
+    return program;
   }
 
   // Re-read the MaterialDesc for an item from its Shape's Appearance. The Shape
@@ -1601,6 +1608,16 @@ private:
                      [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
                        collectMaterialSubtree(c.get(), id, seen);
                      });
+    // §31 shader author fields hold nodes too (texture uniforms), so an edit
+    // inside one refreshes the program like any appearance-subtree edit.
+    if (const auto *store = scene_.authorFields.get())
+      for (const FieldInfo &f : store->authorFields(*n)) {
+        const std::any v = store->getValue(*n, f.x3dName);
+        if (const auto *c = std::any_cast<SFNode>(&v))
+          collectMaterialSubtree(c->get(), id, seen);
+        else if (const auto *m = std::any_cast<MFNode>(&v))
+          for (const auto &c : *m) collectMaterialSubtree(c.get(), id, seen);
+      }
   }
 
   // -------------------------------------------------------------------------

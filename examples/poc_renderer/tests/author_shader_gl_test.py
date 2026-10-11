@@ -2,7 +2,8 @@
 
 The SDK selects each Appearance's shader against the PoC's GL compiler and
 hands the program over on RenderItem::shaderProgram. A selected program draws
-with its author <field> uniforms; one that does not compile is skipped for the
+with its author <field> uniforms (SF values, MF arrays and texture
+samplers); one that does not compile is skipped for the
 next shader, or for the fixed-function material when none is left.
 """
 import pathlib
@@ -75,4 +76,27 @@ with tempfile.TemporaryDirectory() as directory:
 
     invalid = center(tmp, 'invalid', composed('FragColor = vec4(uColor, 1.0) +;'))
     assert near(invalid, (0, 0, 255)), invalid
-    print('GL author shaders: selection, uniforms and fallback OK')
+
+    # REQ-SHADER-2: SFNode -> sampler2D, MFNode -> sampler2D[], MF -> arrays.
+    arrays = center(tmp, 'arrays', f'''<ComposedShader language="GLSL">
+<field name="uTex" type="SFNode" accessType="inputOutput">
+<PixelTexture image="1 1 3 0x00FF00"/></field>
+<field name="uLayers" type="MFNode" accessType="inputOutput">
+<PixelTexture image="1 1 3 0xFF0000"/><PixelTexture image="1 1 3 0x0000FF"/></field>
+<field name="uW" type="MFFloat" accessType="inputOutput" value="0 0 0.5"/>
+<field name="uP" type="MFVec3f" accessType="inputOutput" value="0 0 0 0.25 0 0"/>
+<ShaderPart type="VERTEX"><![CDATA[{VERT}]]></ShaderPart>
+<ShaderPart type="FRAGMENT"><![CDATA[#version 330 core
+uniform sampler2D uTex;
+uniform sampler2D uLayers[2];
+uniform float uW[3];
+uniform vec3 uP[2];
+out vec4 FragColor;
+void main() {{
+  FragColor = vec4(texture(uTex, vec2(0.5)).g * uW[2],
+                   texture(uLayers[1], vec2(0.5)).b, uP[1].x, 1.0);
+}}]]></ShaderPart>
+</ComposedShader>''')
+    assert near(arrays, (128, 255, 64)), arrays
+    print('GL author shaders: selection, uniforms, texture and array fields, and '
+          'fallback OK')

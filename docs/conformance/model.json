@@ -5277,7 +5277,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); F.5 Table F.3 (Script); 29.2.8; 29.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; 4.4.4; 9.2; 29.2 (native ownership and host integration)",
+          "clause": "29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); 31.2.2; 31.2.4; F.5 Table F.3 (Script); 29.2.8; 29.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; 4.4.4; 9.2; 29.2 (native ownership and host integration)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5287,6 +5287,7 @@
             "NATIVE-AUTHOR-FIELD-OWNERSHIP",
             "REQ-FTP",
             "REQ-JAVA",
+            "REQ-SHADER-3",
             "ROUTE-IO-ALIAS",
             "SCR-001",
             "SCR-002",
@@ -5327,6 +5328,7 @@
       "findings": [
         "REQ-SHADER",
         "REQ-SHADER-2",
+        "REQ-SHADER-3",
         "SHDR-1"
       ],
       "levels": [
@@ -5337,12 +5339,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; 31.2.4; 31.4",
+          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; 31.2.4; 31.4; 31.2.2; 31.2.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "REQ-SHADER",
             "REQ-SHADER-2",
+            "REQ-SHADER-3",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -5452,12 +5455,13 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; 31.2.4; 31.4",
+          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; 31.2.4; 31.4; 31.2.2; 31.2.4",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "REQ-SHADER",
             "REQ-SHADER-2",
+            "REQ-SHADER-3",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -5497,13 +5501,14 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; 31.2.4; 31.4; B.6 Table B.4; F.6 Table F.4; 9.2.1",
+          "clause": "4.4.2.2, 4.4.8.2; 31.2.2.3; 31.2.4; 31.3.2; 31.4; 31.2.4; 31.4; 31.2.2; 31.2.4; B.6 Table B.4; F.6 Table F.4; 9.2.1",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "REQ-FTP",
             "REQ-SHADER",
             "REQ-SHADER-2",
+            "REQ-SHADER-3",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -11114,10 +11119,25 @@
         "ProgramShader",
         "ShaderProgram"
       ],
-      "note": "ShaderFieldBinding carries an X3DFieldValue, which has no texture or array alternative, so an SFNode field naming an X3DTextureNode, or an MFFloat/MFVec3f uniform array, is listed with an empty value and neither reference host binds it. Also ignored: geometry and tessellation stages are assembled but the GL PoC links only VERTEX+FRAGMENT, and the CPU host interprets only the FRAGMENT stage (its rasterizer supplies the varyings). Acceptance: texture uniforms resolve to TextureRefs a host can bind to sampler uniforms, and MF uniforms reach array uniforms, both with live updates.",
+      "note": "Fixed (2026-10-11): ShaderFieldBinding::elements carries an MF field with a GLSL array form (MFFloat, MFInt32, MFBool, MFVec2/3/4f and d, MFColor, MFColorRGBA, MFRotation, MFMatrix3/4f and d, MFDouble, MFTime) as one SF value per element, and ShaderFieldBinding::textures carries the X3DTextureNodes of an SFNode/MFNode field as TextureRefs (non-texture nodes skipped), resolved through the session TextureResolver (SceneExtractor::shaderFor). Nodes held by author fields join the appearance dependency index, so a write to the field or an edit inside its texture reaches the next delta as updatedMaterial. The XML reader now reads SFNode/MFNode author-field defaults from child elements (USE included) for Script and every programmable shader, and the XML writer re-emits a Script's node fields as children. buildBindingPlan matches a reported `name[0]` array uniform to the field `name`. Hosts: cpu_raster's interpreter binds sampler2D and sampler2D[] (sRGB-decoded) and GLSL arrays; the GL PoC binds samplers on up to nine units (0-4, 8-11; later textures are skipped) and uploads arrays with glUniform*v. Tests: shader_selection_test (MF elements and events; SFNode/MFNode textures, url resolution, in-place edit and replacement), xml_script_field_test (node-typed fields parse, write and reparse), cpuraster author_shader_test and poc author_shader_gl_test.py (pixels from texture and array fields). The rest moves to REQ-SHADER-3.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "Texture (SFNode/MFNode) and array (MF) author-field uniforms reach the program descriptor and both reference hosts bind them."
+    },
+    {
+      "clause": "31.2.2; 31.2.4",
+      "component": "Shaders",
+      "id": "REQ-SHADER-3",
+      "nodes": [
+        "ComposedShader",
+        "ProgramShader",
+        "ShaderProgram",
+        "Script"
+      ],
+      "note": "Geometry and tessellation stages are assembled into ShaderProgramDesc, but the GL PoC links only VERTEX+FRAGMENT and the CPU host interprets only the FRAGMENT stage (its rasterizer supplies the varyings). Texture fields are bound as sampler2D only: cube-map and 3D texture nodes reach ShaderFieldBinding::textures but neither host binds samplerCube or sampler3D. SFImage, MFImage and MFString fields have no GLSL form. Codecs: the JSON reader leaves SFNode/MFNode author-field defaults empty, the ClassicVRML reader captures author fields only on Script, and the XML writer re-emits author fields only for Script (ComposedShader/ShaderProgram fields are dropped on write). Acceptance: geometry/tessellation stages linked where the host supports them, samplerCube/sampler3D bindings, and node-valued author fields in every encoding.",
       "severity": "minor",
       "status": "open",
-      "summary": "Texture (SFNode) and array (MF) author-field uniforms reach the program descriptor without a value."
+      "summary": "Geometry and tessellation stages are not linked, cube and 3D textures do not reach sampler uniforms, and node-valued author fields are read only from XML."
     },
     {
       "clause": "34.2; 34.4.1-34.4.3",
@@ -11697,10 +11717,10 @@
     ]
   },
   "summary": {
-    "closed_count": 277,
+    "closed_count": 278,
     "component_count": 36,
     "deferred_count": 21,
-    "finding_count": 310,
+    "finding_count": 311,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

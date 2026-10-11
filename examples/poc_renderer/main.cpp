@@ -565,6 +565,38 @@ struct EyeLight {
   float cutOffAngle = 0.7854f;
 };
 
+// §31 MF author fields as a uniform array (REQ-SHADER-2): the elements share
+// one type, flattened in the element order the SF uploads use.
+void uploadAuthorArray(GLint loc, const std::vector<ex::X3DFieldValue> &elements) {
+  std::vector<float> f;
+  std::vector<GLint> i;
+  for (const auto &e : elements)
+    std::visit([&](const auto &x) {
+      using T = std::decay_t<decltype(x)>;
+      if constexpr (std::is_same_v<T, float>) f.push_back(x);
+      else if constexpr (std::is_same_v<T, int>) i.push_back(x);
+      else if constexpr (std::is_same_v<T, bool>) i.push_back(x ? 1 : 0);
+      else if constexpr (std::is_same_v<T, SFColor>) f.insert(f.end(), {x.r, x.g, x.b});
+      else if constexpr (std::is_same_v<T, SFColorRGBA>) f.insert(f.end(), {x.r, x.g, x.b, x.a});
+      else if constexpr (std::is_same_v<T, SFVec2f>) f.insert(f.end(), {x.x, x.y});
+      else if constexpr (std::is_same_v<T, SFVec3f>) f.insert(f.end(), {x.x, x.y, x.z});
+      else if constexpr (std::is_same_v<T, SFVec4f>) f.insert(f.end(), {x.x, x.y, x.z, x.w});
+      else if constexpr (std::is_same_v<T, SFMatrix3f> || std::is_same_v<T, SFMatrix4f>)
+        f.insert(f.end(), &x.matrix[0][0], &x.matrix[0][0] + sizeof(x.matrix) / sizeof(float));
+    }, e.value);
+  const auto n = static_cast<GLsizei>(elements.size());
+  if (!i.empty()) { glUniform1iv(loc, n, i.data()); return; }
+  if (f.empty()) return;
+  const auto &first = elements.front().value;
+  auto is = [&](auto tag) { return std::holds_alternative<decltype(tag)>(first); };
+  if (is(float{})) glUniform1fv(loc, n, f.data());
+  else if (is(SFVec2f{})) glUniform2fv(loc, n, f.data());
+  else if (is(SFColor{}) || is(SFVec3f{})) glUniform3fv(loc, n, f.data());
+  else if (is(SFColorRGBA{}) || is(SFVec4f{})) glUniform4fv(loc, n, f.data());
+  else if (is(SFMatrix3f{})) glUniformMatrix3fv(loc, n, GL_FALSE, f.data());
+  else if (is(SFMatrix4f{})) glUniformMatrix4fv(loc, n, GL_FALSE, f.data());
+}
+
 inline constexpr int kMaxLights = 8;
 
 // #39: max sky/ground color bands the background gradient shader (bg.frag)
@@ -2805,6 +2837,10 @@ int main(int argc, char **argv) {
                 std::fprintf(stderr, "[poc] author-shader diag: %s\n", d.c_str());
             }
 
+            // Texture units for author sampler fields: the material and
+            // multitexture units, which every built-in draw rebinds.
+            static constexpr std::array<int, 9> kAuthorUnits{0, 1, 2, 3, 4, 8, 9, 10, 11};
+            int authorUnit = 0;
             // Upload each vocab entry the author declared.
             Mat4 viewModel = view * it.worldTransform;
             std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
@@ -2868,8 +2904,30 @@ int main(int argc, char **argv) {
               if (e.isAuthorField) {
                 for (const auto &f : it.shaderProgram->fields) {
                   if (f.name != e.declaredName) continue;
-                  // Every SF value the descriptor carries (SFNode/MF fields
-                  // arrive empty and stay unbound).
+                  if (!f.textures.empty()) {
+                    // SFNode -> sampler2D, MFNode -> sampler2D[]: one texture
+                    // unit each (sRGB-decoded, like the CPU host), white while
+                    // a texture is unresolved. Units left over are skipped.
+                    std::vector<GLint> units;
+                    for (const auto &ref : f.textures) {
+                      if (authorUnit >= static_cast<int>(kAuthorUnits.size())) break;
+                      const int unit = kAuthorUnits[authorUnit++];
+                      const GLuint tex = resolveTexRef(&ref, texCache, assetResolver,
+                                                       /*srgb=*/true, &movieState);
+                      glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + unit));
+                      glBindTexture(GL_TEXTURE_2D, tex ? tex : whiteTex);
+                      units.push_back(unit);
+                    }
+                    glActiveTexture(GL_TEXTURE0);
+                    if (!units.empty())
+                      glUniform1iv(loc, static_cast<GLsizei>(units.size()), units.data());
+                    break;
+                  }
+                  if (!f.elements.empty()) {
+                    uploadAuthorArray(loc, f.elements);
+                    break;
+                  }
+                  // Every SF value the descriptor carries.
                   std::visit([&](const auto &x) {
                     using T = std::decay_t<decltype(x)>;
                     if constexpr (std::is_same_v<T, float>) glUniform1f(loc, x);

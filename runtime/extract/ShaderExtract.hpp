@@ -30,6 +30,7 @@
 #define X3D_RUNTIME_EXTRACT_SHADER_EXTRACT_HPP
 
 #include "AssetResolver.hpp"
+#include "MaterialSystem.hpp" // matsys::refOf for texture fields
 #include "DynamicField.hpp"
 #include "RenderItem.hpp"
 #include "ShaderOptions.hpp"
@@ -39,6 +40,7 @@
 #include "x3d/nodes/ShaderPart.hpp"
 #include "x3d/nodes/ShaderProgram.hpp"
 #include "x3d/nodes/X3DShaderNode.hpp"
+#include "x3d/nodes/X3DTextureNode.hpp"
 #include "x3d/nodes/X3DUrlObject.hpp"
 
 #include <any>
@@ -237,6 +239,57 @@ inline X3DFieldValue fieldValueOf(X3DFieldType type, const std::any &v) {
   return out;
 }
 
+// The elements of an MF field with a GLSL array form, each as fieldValueOf
+// reads the matching SF type. Other types give none.
+inline std::vector<X3DFieldValue> elementsOf(X3DFieldType type, const std::any &v) {
+  std::vector<X3DFieldValue> out;
+  using T = X3DFieldType;
+  auto each = [&](auto tag, T sfType) {
+    using MF = decltype(tag);
+    if (auto *p = std::any_cast<MF>(&v))
+      for (const auto &e : *p)
+        out.push_back(fieldValueOf(sfType, std::any(typename MF::value_type(e))));
+  };
+  switch (type) {
+    case T::MFFloat: each(MFFloat{}, T::SFFloat); break;
+    case T::MFDouble: each(MFDouble{}, T::SFDouble); break;
+    case T::MFTime: each(MFTime{}, T::SFTime); break;
+    case T::MFInt32: each(MFInt32{}, T::SFInt32); break;
+    case T::MFBool: each(MFBool{}, T::SFBool); break;
+    case T::MFColor: each(MFColor{}, T::SFColor); break;
+    case T::MFColorRGBA: each(MFColorRGBA{}, T::SFColorRGBA); break;
+    case T::MFVec2f: each(MFVec2f{}, T::SFVec2f); break;
+    case T::MFVec3f: each(MFVec3f{}, T::SFVec3f); break;
+    case T::MFVec4f: each(MFVec4f{}, T::SFVec4f); break;
+    case T::MFVec2d: each(MFVec2d{}, T::SFVec2d); break;
+    case T::MFVec3d: each(MFVec3d{}, T::SFVec3d); break;
+    case T::MFVec4d: each(MFVec4d{}, T::SFVec4d); break;
+    case T::MFRotation: each(MFRotation{}, T::SFRotation); break;
+    case T::MFMatrix3f: each(MFMatrix3f{}, T::SFMatrix3f); break;
+    case T::MFMatrix4f: each(MFMatrix4f{}, T::SFMatrix4f); break;
+    case T::MFMatrix3d: each(MFMatrix3d{}, T::SFMatrix3d); break;
+    case T::MFMatrix4d: each(MFMatrix4d{}, T::SFMatrix4d); break;
+    default: break;
+  }
+  return out;
+}
+
+// The X3DTextureNodes of an SFNode/MFNode field as TextureRefs (unresolved).
+inline std::vector<TextureRef> texturesOf(X3DFieldType type, const std::any &v) {
+  std::vector<TextureRef> out;
+  auto add = [&](const std::shared_ptr<X3DNode> &n) {
+    if (dynamic_cast<const x3d::nodes::X3DTextureNode *>(n.get()))
+      out.push_back(matsys::refOf(n, TextureRef::Slot::BaseColor));
+  };
+  if (type == X3DFieldType::SFNode) {
+    if (auto *p = std::any_cast<SFNode>(&v)) add(*p);
+  } else if (type == X3DFieldType::MFNode) {
+    if (auto *p = std::any_cast<MFNode>(&v))
+      for (const auto &n : *p) add(n);
+  }
+  return out;
+}
+
 inline void appendFields(const X3DNode &node, const DynamicFieldStore *store,
                          std::vector<ShaderFieldBinding> &out) {
   if (!store) return;
@@ -245,7 +298,10 @@ inline void appendFields(const X3DNode &node, const DynamicFieldStore *store,
     b.name = f.x3dName;
     b.type = f.type;
     b.access = f.access;
-    b.value = fieldValueOf(f.type, store->getValue(node, f.x3dName));
+    const std::any v = store->getValue(node, f.x3dName);
+    b.value = fieldValueOf(f.type, v);
+    b.elements = elementsOf(f.type, v);
+    b.textures = texturesOf(f.type, v);
     out.push_back(std::move(b));
   }
 }
