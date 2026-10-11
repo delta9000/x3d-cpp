@@ -210,6 +210,7 @@ struct service::impl {
     });
     std::vector<std::shared_ptr<observer>> retained, released;
     retained.reserve(observers.size());
+    released.reserve(observers.size());
     for (auto &entry : observers)
       (entry->live->load() ? retained : released).push_back(std::move(entry));
     observers = std::move(retained);
@@ -767,6 +768,9 @@ result<void> service::retire(const scene &s) {
   if (auto ok = validate(s); !ok) return ok;
   auto state = p_;
   const auto sid = s.scene_;
+  std::vector<user_data_value> released;
+  released.reserve(std::count_if(state->metadata.begin(), state->metadata.end(),
+      [sid](const auto &entry) { return std::get<0>(entry.first) == sid; }));
   state->scenes.at(sid).state = activation_state::retired;
   state->cancel_scene(sid);
   std::erase_if(state->clients, [sid](const auto &entry) {
@@ -775,7 +779,6 @@ result<void> service::retire(const scene &s) {
   for (auto &o : state->observers) if (o->world.scene_.scene_ == sid) *o->live = false;
   state->implementation->do_retire(sid);
   state->scenes.erase(sid);
-  std::vector<user_data_value> released;
   for (auto it = state->metadata.begin(); it != state->metadata.end();) {
     if (std::get<0>(it->first) == sid) {
       released.push_back(std::move(it->second));
@@ -1077,10 +1080,10 @@ result<std::size_t> service::dispatch_notifications() {
   if (auto ok = check(); !ok) return failure(ok.error());
   auto state = p_;
   if (state->dispatching) return error(error_code::operation_in_progress, "provider.dispatch", "recursive dispatch is not supported");
-  state->dispatching = true;
   // Pin detached delivery/state. An application callback may close or destroy
   // the service, so there is intentionally no access through this from here.
   auto notices = std::move(state->notices); state->notices.clear();
+  state->dispatching = true;
   state->notification_bytes = 0;
   std::size_t delivered = 0; bool threw = false;
   for (auto &n : notices) {
