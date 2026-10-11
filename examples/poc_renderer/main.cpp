@@ -211,8 +211,18 @@ std::vector<Mat4> shadowLayers(const ex::LightDesc &L, const SFVec3f &center,
   return out;
 }
 
+// §18.4.3 MultiTexture stages the programs combine (texgen.glsl
+// POC_MAX_STAGES): eight on units 8-11 and 16-19, or four when the context
+// has fewer than 20 fragment texture image units. Set once the context exists.
+int gMaxStages = 8;
+
+// Texture unit of MultiTexture stage i (units 12-15 hold the cube and the
+// projectors).
+int stageUnit(int i) { return i < 4 ? 8 + i : 16 + (i - 4); }
+
 // Reads a shader source. A line `#include "name"` is replaced by the file
 // `name` beside it (one level; the PoC shares multitexture.glsl this way).
+// Below eight stages, POC_MAX_STAGES is defined after the #version line.
 std::string readTextFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
   if (!in) {
@@ -222,6 +232,10 @@ std::string readTextFile(const std::string &path) {
   const std::string dir = path.substr(0, path.find_last_of('/') + 1);
   std::ostringstream ss;
   for (std::string line; std::getline(in, line);) {
+    if (line.compare(0, 8, "#version") == 0 && gMaxStages != 8) {
+      ss << line << "\n#define POC_MAX_STAGES " << gMaxStages << '\n';
+      continue;
+    }
     const std::string directive = "#include \"";
     if (line.compare(0, directive.size(), directive) == 0 && line.back() == '"') {
       std::ifstream part(dir + line.substr(directive.size(),
@@ -358,9 +372,10 @@ struct GpuVertex {
   SFVec3f normal;
   SFColorRGBA color;
   SFVec2f texcoord; // B8: X3D LOCAL origin = bottom-left = GL; NO v-flip here.
-  // §18.4.3 MultiTexture: UV sets 1..3 (aTexCoord1..3); a missing set repeats
-  // set 0, so a stage whose channel exceeds the authored sets still samples.
-  SFVec2f texcoordSet[3];
+  // §18.4.3 MultiTexture: UV sets 1..7 (aTexCoord1..7); a missing set repeats
+  // the last authored set, so a channel beyond them samples that set, as
+  // cpu_raster clamps it.
+  SFVec2f texcoordSet[7];
 };
 
 struct GpuMesh {
@@ -499,9 +514,10 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
     // GL convention; NO v-flip). Default (0,0) when the mesh has none.
     verts[i].texcoord =
         (i < m.texcoords.size()) ? m.texcoords[i] : SFVec2f{0.0f, 0.0f};
-    for (std::size_t s = 0; s < 3; ++s) {
-      const auto *set = s + 1 < m.texcoordSets.size() ? &m.texcoordSets[s + 1]
-                                                       : nullptr;
+    const std::size_t lastSet = m.texcoordSets.empty() ? 0 : m.texcoordSets.size() - 1;
+    for (std::size_t s = 0; s < 7; ++s) {
+      const std::size_t index = std::min(s + 1, lastSet);
+      const auto *set = index > 0 ? &m.texcoordSets[index] : nullptr;
       verts[i].texcoordSet[s] =
           set && i < set->size() ? (*set)[i] : verts[i].texcoord;
     }
@@ -529,9 +545,10 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
   glEnableVertexAttribArray(3); // aTexCoord (B8)
   glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
                         reinterpret_cast<void *>(offsetof(GpuVertex, texcoord)));
-  for (GLuint s = 0; s < 3; ++s) { // aTexCoord1..3 (§18.4.3 UV sets)
-    glEnableVertexAttribArray(5 + s);
-    glVertexAttribPointer(5 + s, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
+  for (GLuint s = 0; s < 7; ++s) { // aTexCoord1..7 (§18.4.3 UV sets)
+    const GLuint location = s < 3 ? 5 + s : 8 + (s - 3);
+    glEnableVertexAttribArray(location);
+    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
                           reinterpret_cast<void *>(offsetof(GpuVertex, texcoordSet) +
                                                    s * sizeof(SFVec2f)));
   }
@@ -867,8 +884,9 @@ const ex::TextureRef *findTexSlot(const ex::MaterialDesc &mat,
   return nullptr;
 }
 
-// TXF-2: the material's §18.4.8 TextureCoordinateGenerator (the first texture
-// that carries one), or null. Every slot samples its coordinates.
+// TXF-2: the material's first §18.4.8 TextureCoordinateGenerator, or null.
+// Only the vertex shaders' per-vertex vTexCoord fallback uses it; texgen.glsl
+// gives each texture its own mapping.
 const ex::TextureRef *texCoordGenRef(const ex::MaterialDesc &mat) {
   for (const ex::TextureRef &t : mat.textures)
     if (t.hasTexCoordGen) return &t;
@@ -1508,6 +1526,11 @@ int main(int argc, char **argv) {
     return 1;
   }
   *glReady = true; // author shaders now validate by compiling.
+  {
+    GLint units = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &units);
+    if (units < 20) gMaxStages = 4;
+  }
   std::fprintf(stderr, "[poc] GL_VERSION  : %s\n", glGetString(GL_VERSION));
   std::fprintf(stderr, "[poc] GL_RENDERER : %s\n", glGetString(GL_RENDERER));
 
@@ -2323,9 +2346,34 @@ int main(int argc, char **argv) {
           if (hasLoc >= 0) glUniform1i(hasLoc, tex ? 1 : 0);
         };
 
+        // §18.4.3/§18.4.8 (texgen.glsl): mapping k samples texture t's UV set
+        // (its channel) or, when t carries a TextureCoordinateGenerator, the
+        // generated coordinates with their TextureTransform. Null t is UV set 0.
+        auto uploadMapping = [&](GLuint program, int k, const ex::TextureRef *t) {
+          auto loc = [&](const char *name) {
+            return glGetUniformLocation(
+                program, (std::string(name) + "[" + std::to_string(k) + "]").c_str());
+          };
+          const GLint locInfo = loc("uMapInfo");
+          if (locInfo < 0) return;
+          const bool generated = t && t->hasTexCoordGen;
+          const auto *param = generated ? &t->texCoordGen.parameter : nullptr;
+          const int count =
+              param ? static_cast<int>(std::min<std::size_t>(param->size(), 6)) : 0;
+          glUniform3i(locInfo, t ? std::max(t->channel, 0) : 0,
+                      generated ? static_cast<int>(t->texCoordGen.mode) + 1 : 0, count);
+          if (!generated) return;
+          std::array<float, 6> p{};
+          std::copy_n(param->begin(), count, p.begin());
+          glUniform3f(loc("uMapParamA"), p[0], p[1], p[2]);
+          glUniform3f(loc("uMapParamB"), p[3], p[4], p[5]);
+          const std::array<float, 9> tt = ex::makeTextureTransform3x3(t->generatedTransform);
+          glUniformMatrix3fv(loc("uMapTransform"), 1, GL_TRUE, tt.data()); // row-major
+        };
+
         // §18.4.3 MultiTexture (multitexture.glsl): bind each base-colour stage
-        // on unit 8+i (6/7 hold the skin buffers) with its mode/source/function/
-        // factor/channel. Sets
+        // on stageUnit(i) (6/7 hold the skin buffers) with its mode/source/
+        // function/factor and its own coordinate mapping (5+i). Sets
         // uNumStages 0 (the plain single-texture path) when no combiner is
         // needed, the mesh has no UVs, or the program lacks the combiner.
         auto uploadStages = [&](GLuint program, const ex::RenderItem &item,
@@ -2340,14 +2388,9 @@ int main(int argc, char **argv) {
           if ((!mesh.hasTexcoords && !anyCube) || mesh.isGlyphMesh ||
               !needsStageCombiner(stages))
             stages.clear();
-          constexpr int kMaxStages = 4; // multitexture.glsl; extra stages are ignored.
-          const int n = std::min(static_cast<int>(stages.size()), kMaxStages);
+          // Stages past gMaxStages are ignored (REQ-MULTITEXTURE-2).
+          const int n = std::min(static_cast<int>(stages.size()), gMaxStages);
           glUniform1i(locNum, n);
-          // texgen.glsl evaluates the material's first generator only.
-          const ex::TextureRef *generated = nullptr;
-          for (const ex::TextureRef &t : m.textures)
-            if (t.hasTexCoordGen) { generated = &t; break; }
-          const bool genActive = generated && texCoordGenModeUniform(m) != 0;
           GLuint cubeTex = 0;
           for (int i = 0; i < n; ++i) {
             const ex::TextureRef &t = *stages[i];
@@ -2356,7 +2399,7 @@ int main(int argc, char **argv) {
                   program, (std::string(name) + "[" + std::to_string(i) + "]").c_str());
             };
             const bool isCube = t.source == ex::TextureRef::Source::Cube;
-            bindTex(8 + i, loc("uStageTex"), loc("uStageHasTex"),
+            bindTex(stageUnit(i), loc("uStageTex"), loc("uStageHasTex"),
                     isCube ? 0 : resolveTexRef(&t, texCache, assetResolver, srgb, &movieState));
             if (isCube && !cubeTex) { // one cube map per material (unit 12).
               cubeTex = t.generatedCube.node ? generatedCubeTex(t.generatedCube.node)
@@ -2381,33 +2424,23 @@ int main(int argc, char **argv) {
                                                                                       : 0);
             glUniform4f(loc("uStageFactor"), t.multiColor.r, t.multiColor.g,
                         t.multiColor.b, t.multiAlpha);
-            glUniform1i(loc("uStageChannel"),
-                        genActive && &t == generated ? -1 : std::max(t.channel, 0));
+            uploadMapping(program, 5 + i, &t);
           }
           glActiveTexture(GL_TEXTURE0);
         };
 
-        // TXF-2 (texgen.glsl): the generator's mode, parameters and the
-        // TextureTransform applied to generated coordinates, and the eye-to-local
-        // rotation cube lookups use.
-        auto uploadTexGen = [&](GLuint program, const ex::RenderItem &item) {
+        // TXF-2 (texgen.glsl): the vertex shaders' first-generator fallback,
+        // the eye-to-local rotation cube lookups use, and the mappings of the
+        // material slots on units 0-4 (`slots`, null where nothing is bound).
+        auto uploadTexGen = [&](GLuint program, const ex::RenderItem &item,
+                                const std::array<const ex::TextureRef *, 5> &slots) {
           const ex::MaterialDesc &m = item.material;
           const GLint locMode = glGetUniformLocation(program, "uTexCoordGenMode");
-          if (locMode < 0) return;
-          glUniform1i(locMode, texCoordGenModeUniform(m));
+          if (locMode >= 0) glUniform1i(locMode, texCoordGenModeUniform(m));
           const std::array<float, 9> eyeToLocal = poc::eyeToLocal3(view, item.worldTransform);
           glUniformMatrix3fv(glGetUniformLocation(program, "uEyeToLocal"), 1, GL_FALSE,
                              eyeToLocal.data());
-          const ex::TextureRef *t = texCoordGenRef(m);
-          if (!t) return;
-          const auto &param = t->texCoordGen.parameter;
-          const int count = static_cast<int>(std::min<std::size_t>(param.size(), 6));
-          if (count > 0)
-            glUniform1fv(glGetUniformLocation(program, "uTexGenParam"), count, param.data());
-          glUniform1i(glGetUniformLocation(program, "uTexGenParamCount"), count);
-          const std::array<float, 9> tt = ex::makeTextureTransform3x3(t->generatedTransform);
-          glUniformMatrix3fv(glGetUniformLocation(program, "uTexGenTransform"), 1,
-                             GL_TRUE, tt.data()); // row-major
+          for (int k = 0; k < 5; ++k) uploadMapping(program, k, slots[k]);
         };
 
         // Helper: upload standard eye-space lights to a program (already bound).
@@ -2605,7 +2638,12 @@ int main(int argc, char **argv) {
               bindTex(0, uUnlitTexture, uUnlitHasTexture, 0);
             }
             uploadStages(unlitProg, it, g, /*srgb=*/false);
-            uploadTexGen(unlitProg, it);
+            uploadTexGen(unlitProg, it,
+                         {g.isGlyphMesh ? nullptr
+                                        : findTexSlot(mat, {ex::TextureRef::Slot::Emissive,
+                                                            ex::TextureRef::Slot::BaseColor,
+                                                            ex::TextureRef::Slot::Diffuse}),
+                          nullptr, nullptr, nullptr, nullptr});
             glDisable(GL_CULL_FACE); // lines/points/normal-less always double-sided.
 
           // ----------------------------------------------------------------
@@ -2636,7 +2674,15 @@ int main(int argc, char **argv) {
             glUniform3f(uAmbientColor, ai, ai, ai);
             glUniform1i(uHasColors, g.hasColors ? 1 : 0);
             // TXF-2: §18.4.8 TextureCoordinateGenerator (texgen.glsl).
-            uploadTexGen(phongProg, it);
+            if (g.isGlyphMesh)
+              uploadTexGen(phongProg, it, {});
+            else
+              uploadTexGen(phongProg, it,
+                           {findTexSlot(mat, {ex::TextureRef::Slot::Diffuse,
+                                              ex::TextureRef::Slot::BaseColor}),
+                            findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
+                            findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
+                            findTexSlot(mat, {ex::TextureRef::Slot::Specular}), nullptr});
 
             // Blinn-Phong specular + alpha-mask.
             glUniform3f(uSpecular, mat.phong.specular.r, mat.phong.specular.g,
@@ -2719,7 +2765,12 @@ int main(int argc, char **argv) {
             if (uPbrAlphaMode   >= 0) glUniform1i(uPbrAlphaMode, static_cast<int>(mat.alphaMode));
             if (uPbrAlphaCutoff >= 0) glUniform1f(uPbrAlphaCutoff, mat.alphaCutoff);
             if (uPbrHasColors   >= 0) glUniform1i(uPbrHasColors, g.hasColors ? 1 : 0);
-            uploadTexGen(pbrProg, it);
+            uploadTexGen(pbrProg, it,
+                         {findTexSlot(mat, {ex::TextureRef::Slot::BaseColor}),
+                          findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
+                          findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
+                          findTexSlot(mat, {ex::TextureRef::Slot::MetallicRoughness}),
+                          findTexSlot(mat, {ex::TextureRef::Slot::Occlusion})});
             if (uPbrNormalScale >= 0) glUniform1f(uPbrNormalScale, mat.normalScale);
             if (uPbrOcclusionStrength >= 0)
               glUniform1f(uPbrOcclusionStrength, ph.occlusionStrength);

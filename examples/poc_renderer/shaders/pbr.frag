@@ -35,8 +35,8 @@ in vec3 vPosEye;
 in vec4 vColor;
 in vec2 vTexCoord;
 
-#include "multitexture.glsl"
 #include "texgen.glsl"
+#include "multitexture.glsl"
 
 // ---- Material params (physical model) --------------------------------------
 uniform vec4  uBaseColor;    // rgb = baseColor, a = 1 - transparency.
@@ -174,8 +174,8 @@ vec3 applyFog(vec3 color, float d) {
 }
 
 void main() {
-    // §18.4.8: every texture slot samples the generated coordinates, if any.
-    vec2 uv = texGenUv(vTexCoord, vPosEye, vNormalEye);
+    // §18.4.3/§18.4.8: each slot samples its own mapping (texgen.glsl).
+    vec2 uv = mapUv(0, vPosEye, vNormalEye);
     bool hatch = (uFillMode & 2) != 0 && hatchPixel();
     if ((uFillMode & 1) == 0 && !hatch) discard;
     // ---- Base color ---------------------------------------------------------
@@ -183,8 +183,8 @@ void main() {
     if (uHasColors != 0) baseCol.rgb = vColor.rgb;
     if (uNumStages > 0) {
         // §18.4.3 MultiTexture over the base colour (stages uploaded sRGB).
-        baseCol = applyMultiTexture(baseCol, baseCol.rgb, vec3(1.0), uv,
-                                   envDirection(vPosEye, vNormalEye));
+        baseCol = applyMultiTexture(baseCol, baseCol.rgb, vec3(1.0), vPosEye,
+                                   vNormalEye);
     } else if (uHasBaseColorTex != 0) {
         // Base-color textures are uploaded as GL_SRGB8_ALPHA8, so the GPU already
         // linearizes on sample — do NOT pow(2.2) again here (that double-decodes
@@ -198,7 +198,7 @@ void main() {
     float metallic  = uMetallic;
     float roughness = uRoughness;
     if (uHasMetallicRoughnessTex != 0) {
-        vec3 orm = texture(uMetallicRoughnessTex, uv).rgb;
+        vec3 orm = texture(uMetallicRoughnessTex, mapUv(3, vPosEye, vNormalEye)).rgb;
         // glTF: G = roughness, B = metallic (R unused — occlusion is separate).
         roughness *= orm.g;
         metallic  *= orm.b;
@@ -213,7 +213,7 @@ void main() {
     // explicitly ORM-packed (the extractor emits no such marker).
     float ao = 1.0;
     if (uHasOcclusionTex != 0) {
-        ao = texture(uOcclusionTex, uv).r;
+        ao = texture(uOcclusionTex, mapUv(4, vPosEye, vNormalEye)).r;
     }
     ao = mix(1.0, ao, uOcclusionStrength);
 
@@ -224,13 +224,14 @@ void main() {
     // ---- Normal mapping (same derivative-TBN approach as lit.frag) ----------
     vec3 N = Ngeo;
     if (uHasNormalTex != 0) {
-        vec3 tsN = texture(uNormalTex, uv).rgb * 2.0 - 1.0;
+        vec2 nuv = mapUv(1, vPosEye, vNormalEye);
+        vec3 tsN = texture(uNormalTex, nuv).rgb * 2.0 - 1.0;
         tsN.xy *= uNormalScale;
         tsN = normalize(tsN);
         vec3 dPdx  = dFdx(vPosEye);
         vec3 dPdy  = dFdy(vPosEye);
-        vec2 dUVdx = dFdx(uv);
-        vec2 dUVdy = dFdy(uv);
+        vec2 dUVdx = dFdx(nuv);
+        vec2 dUVdy = dFdy(nuv);
         float det  = dUVdx.x * dUVdy.y - dUVdx.y * dUVdy.x;
         if (abs(det) > 1e-6) {
             vec3 T = normalize((dPdx * dUVdy.y - dPdy * dUVdx.y) / det);
@@ -253,7 +254,7 @@ void main() {
     if (uHasEmissiveTex != 0) {
         // Emissive textures are uploaded sRGB (GL_SRGB8_ALPHA8) → GPU linearizes
         // on sample; no shader pow(2.2) (would double-decode). Matches lit.frag.
-        vec3 et = texture(uEmissiveTex, uv).rgb;
+        vec3 et = texture(uEmissiveTex, mapUv(2, vPosEye, vNormalEye)).rgb;
         emissive *= et;
     }
 

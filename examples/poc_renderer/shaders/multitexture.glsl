@@ -3,16 +3,15 @@
 //
 // The host sets uNumStages > 0 only when the base-colour slot holds a
 // MultiTexture (or a stage with non-default controls); otherwise the shader's
-// single-texture multiply applies unchanged. Stage i samples unit 8+i with the
-// UV set its channel selects. The mode names are the OpenGL / D3D
+// single-texture multiply applies unchanged. Stage i samples unit 8+i (16+i-4
+// from the fifth stage) through mapping 5+i of texgen.glsl: its own UV set or
+// generator. texgen.glsl must be included first. The mode names are the OpenGL / D3D
 // fixed-function texture-environment operators: arg1 = the stage texture,
 // arg2 = the previous result (seeded with the surface colour) or the colour the
 // stage's source selects. Each stage output is clamped to [0,1]. This mirrors
 // examples/cpu_raster/cpuraster/MaterialShader.hpp detail::combineBaseStages.
 
-const int kMaxStages = 4;
-
-in vec2 vTexSet[kMaxStages]; // UV sets 0..3 (texture transforms already baked).
+const int kMaxStages = POC_MAX_STAGES; // texgen.glsl; 8 unless the host lowers it.
 
 uniform int       uNumStages;
 uniform sampler2D uStageTex[kMaxStages];
@@ -21,10 +20,10 @@ uniform ivec2     uStageMode[kMaxStages];    // (rgb, alpha) mode codes, below.
 uniform int       uStageSource[kMaxStages];  // 0 previous, 1 DIFFUSE, 2 SPECULAR, 3 FACTOR.
 uniform int       uStageFunction[kMaxStages]; // 0 none, 1 COMPLEMENT, 2 ALPHAREPLICATE.
 uniform vec4      uStageFactor[kMaxStages];  // MultiTexture color.rgb + alpha.
-uniform int       uStageChannel[kMaxStages]; // UV set; -1 = the generated coordinates (texgen.glsl).
 // §34 environment texture: a stage with uStageIsCube set samples the six faces
-// in uStageCube (layers front, back, left, right, top, bottom) by direction.
-// One cube map per material (main.cpp binds the first cube stage).
+// in uStageCube (layers front, back, left, right, top, bottom) by the direction
+// its mapping generates. One cube map per material (main.cpp binds the first
+// cube stage).
 uniform int            uStageIsCube[kMaxStages];
 uniform sampler2DArray uStageCube;
 
@@ -83,14 +82,9 @@ vec4 mtCombine(int mode, int func, vec4 a1, vec4 a2, float diffuseAlpha,
     return clamp(r, 0.0, 1.0);
 }
 
-vec2 mtUv(int i, vec2 generated) {
-    int c = uStageChannel[i];
-    return c < 0 ? generated : vTexSet[min(c, kMaxStages - 1)];
-}
-
 vec4 mtStage(int i, vec4 texel, vec4 acc, vec3 diffuse, vec3 specular,
-             float alpha0, vec3 envDir) {
-    if (uStageIsCube[i] != 0) texel = sampleCubeFaces(envDir);
+             float alpha0, vec3 posEye, vec3 normalEye) {
+    if (uStageIsCube[i] != 0) texel = sampleCubeFaces(envDirection(5 + i, posEye, normalEye));
     else if (uStageHasTex[i] == 0) texel = vec4(1.0);
     int s = uStageSource[i];
     vec4 arg2 = s == 3 ? uStageFactor[i]
@@ -103,19 +97,25 @@ vec4 mtStage(int i, vec4 texel, vec4 acc, vec3 diffuse, vec3 specular,
 }
 
 // Fold the stages into `initial` (the surface colour). Samplers are indexed
-// with constants only, as GLSL 3.30 requires. `envDir` is texgen.glsl
-// envDirection, for cube stages.
-vec4 applyMultiTexture(vec4 initial, vec3 diffuse, vec3 specular, vec2 generated,
-                       vec3 envDir) {
+// with constants only, as GLSL 3.30 requires.
+#define MT_STAGE(i) \
+    if (uNumStages > i) \
+        acc = mtStage(i, texture(uStageTex[i], mapUv(5 + i, posEye, normalEye)), acc, \
+                      diffuse, specular, a0, posEye, normalEye);
+vec4 applyMultiTexture(vec4 initial, vec3 diffuse, vec3 specular, vec3 posEye,
+                       vec3 normalEye) {
     vec4 acc = initial;
     float a0 = initial.a;
-    if (uNumStages > 0)
-        acc = mtStage(0, texture(uStageTex[0], mtUv(0, generated)), acc, diffuse, specular, a0, envDir);
-    if (uNumStages > 1)
-        acc = mtStage(1, texture(uStageTex[1], mtUv(1, generated)), acc, diffuse, specular, a0, envDir);
-    if (uNumStages > 2)
-        acc = mtStage(2, texture(uStageTex[2], mtUv(2, generated)), acc, diffuse, specular, a0, envDir);
-    if (uNumStages > 3)
-        acc = mtStage(3, texture(uStageTex[3], mtUv(3, generated)), acc, diffuse, specular, a0, envDir);
+    MT_STAGE(0)
+    MT_STAGE(1)
+    MT_STAGE(2)
+    MT_STAGE(3)
+#if POC_MAX_STAGES > 4
+    MT_STAGE(4)
+    MT_STAGE(5)
+    MT_STAGE(6)
+    MT_STAGE(7)
+#endif
     return acc;
 }
+#undef MT_STAGE

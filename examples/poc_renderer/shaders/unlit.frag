@@ -14,8 +14,8 @@ out vec4 FragColor;
 in vec4 vColor;
 in vec2 vTexCoord;
 
-#include "multitexture.glsl"
 #include "texgen.glsl"
+#include "multitexture.glsl"
 in vec3 vPosEye;
 in vec3 vNormalEye;
 
@@ -64,16 +64,15 @@ vec3 applyFog(vec3 color, float d) {
 }
 
 void main() {
-    // §18.4.8: the texture samples the generated coordinates, if any.
-    vec2 uv = texGenUv(vTexCoord, vPosEye, vNormalEye);
+    // §18.4.3/§18.4.8: the texture samples its own mapping (texgen.glsl).
+    vec2 uv = mapUv(0, vPosEye, vNormalEye);
     bool hatch = (uFillMode & 2) != 0 && hatchPixel();
     if ((uFillMode & 1) == 0 && !hatch) discard;
     vec3 rgb = (uHasColors != 0) ? vColor.rgb : uBaseColor.rgb;
     float a  = (uHasColors != 0) ? vColor.a   : uBaseColor.a;
     if (uNumStages > 0) {
         // §18.4.3 MultiTexture over the unlit surface colour.
-        vec4 c = applyMultiTexture(vec4(rgb, a), rgb, vec3(1.0), uv,
-                                   envDirection(vPosEye, vNormalEye));
+        vec4 c = applyMultiTexture(vec4(rgb, a), rgb, vec3(1.0), vPosEye, vNormalEye);
         rgb = c.rgb;
         a   = c.a;
     } else if (uHasTexture != 0) {

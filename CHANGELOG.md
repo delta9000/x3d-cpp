@@ -39,6 +39,13 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Changed
 
+- **OpenGL PoC MultiTexture limits lifted (REQ-MULTITEXTURE-2).** The unlit,
+  Phong and PBR programs combine eight stages (was four) over eight UV sets
+  (was four), and each stage and material texture slot samples its own UV set
+  or `TextureCoordinateGenerator` (`shaders/texgen.glsl` mappings) instead of
+  the material's first generator. Contexts with fewer than 20 fragment texture
+  units keep four stages. `multitexture_gl_test.py` gains the three cases.
+
 - **Every generated getter returns `const T&` to its member** (previously only
   `MFNode` getters did). Reading an MF field, a string or an `SFNode` no longer
   copies it or bumps a refcount. `auto x = node.getX();` still copies. A
