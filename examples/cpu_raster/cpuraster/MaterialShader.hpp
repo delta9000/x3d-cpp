@@ -94,6 +94,18 @@ inline glsl::vec3 applyFog(const glsl::vec3 &color, float d,
     f = (fog.type == 1) ? std::exp(-d / (V - d)) : (V - d) / V;
   return color * f + fog.color * (1.0f - f);
 }
+// The fog step of every model. §24.4.3: an authored FogCoordinate depth (the
+// interpolated per-vertex value, in [0,1]) replaces the depth derived from the
+// viewer distance and visibilityRange: the fragment is blended `depth` of the
+// way to the fog colour, whatever the fog type. Fog with a non-positive
+// visibilityRange stays disabled.
+inline glsl::vec3 applyFog(const glsl::vec3 &color, const FragmentInput &f,
+                           const FogParams &fog) {
+  if (f.fogDepth < 0.0f) return applyFog(color, glsl::length(f.posEye), fog);
+  if (fog.visibilityRange <= 0.0f) return color;
+  const float depth = std::min(f.fogDepth, 1.0f);
+  return color * (1.0f - depth) + fog.color * depth;
+}
 // Resolve a light at a fragment: returns false when the light does not reach it
 // (beyond `radius`, or outside the spot `cutOffAngle`). On success sets `L` (unit
 // vector from the fragment toward the light) and `atten` (the scalar multiplier
@@ -577,7 +589,7 @@ inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors,
       a = c.w;
     }
     // §17: fog is the final step, applied to unlit output too.
-    rgb = detail::applyFog(rgb, glsl::length(f.posEye), fog);
+    rgb = detail::applyFog(rgb, f, fog);
     out = glsl::vec4(rgb, a);
     return true;
   };
@@ -675,7 +687,7 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
       }
     }
     // §17: fog is the final step, in the shader's output (display) space.
-    lit = detail::applyFog(lit, glsl::length(f.posEye), fog);
+    lit = detail::applyFog(lit, f, fog);
     out = glsl::vec4(lit, alpha); // display space: no encode (ADR-0027).
     return true;
   };
@@ -789,7 +801,7 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
     color = glsl::linearToSRGB(color);
     // §17: fog is the final step, in the shader's output (display) space,
     // matching lit.frag/unlit.frag.
-    color = detail::applyFog(color, glsl::length(f.posEye), fog);
+    color = detail::applyFog(color, f, fog);
     out = glsl::vec4(color, alpha);
     return true;
   };
@@ -842,7 +854,7 @@ inline FragmentShader withFillProperties(FragmentShader shader,
     if (!shader(f, out)) return false;
     if (f.hatch) {
       glsl::vec3 color{fill.hatchColor.r, fill.hatchColor.g, fill.hatchColor.b};
-      color = detail::applyFog(color, glsl::length(f.posEye), fog);
+      color = detail::applyFog(color, f, fog);
       out.x = color.x; out.y = color.y; out.z = color.z;
     }
     return true;

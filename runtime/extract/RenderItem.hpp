@@ -164,6 +164,12 @@ struct MeshData {
   std::vector<SFVec2f> texcoords;
   std::vector<std::vector<SFVec2f>> texcoordSets;
   std::vector<SFColorRGBA> colors;
+  // §24.4.3 FogCoordinate: the authored fog depth of each emitted position, in
+  // [0,1] (0 = unfogged, 1 = the fog colour), replacing the depth derived from
+  // the viewer distance and visibilityRange. Parallel to `positions` when the
+  // geometry's fogCoord holds depths; EMPTY otherwise. A short list repeats
+  // its last value; extra values are ignored.
+  std::vector<float> fogDepths;
 
   // X3D §31.4.2 custom per-vertex streams. Values are vertex-major, with
   // `components` floats per emitted position; `name` is the shader attribute

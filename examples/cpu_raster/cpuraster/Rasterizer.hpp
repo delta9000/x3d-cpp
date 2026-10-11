@@ -39,6 +39,7 @@ struct FragmentInput {
   glsl::vec3 posEye{0, 0, 0};   // vPosEye
   glsl::vec3 normalEye{0, 0, 1}; // vNormalEye (not yet normalized, like GLSL)
   glsl::vec4 color{1, 1, 1, 1};  // vColor (per-vertex Color)
+  float fogDepth = -1.0f;        // §24.4.3 FogCoordinate depth; < 0 = none.
   std::vector<glsl::vec2> texcoordSets, dTexSetsDx, dTexSetsDy;
   glsl::vec3 dPosLocalDx{}, dPosLocalDy{}, dNormalEyeDx{}, dNormalEyeDy{},
       dNormalLocalDx{}, dNormalLocalDy{};
@@ -64,6 +65,7 @@ struct Vertex {
   glsl::vec4 color{1, 1, 1, 1};
   glsl::vec2 texcoord{0, 0};
   std::vector<glsl::vec2> texcoordSets;
+  float fogDepth = -1.0f; // §24.4.3 FogCoordinate depth; < 0 = none.
 };
 
 enum class BlendMode { Opaque, Blend };
@@ -105,6 +107,7 @@ public:
         cv.posEye = (mv * glsl::vec4(v.pos, 1.0f)).xyz();
         cv.normalEye = normalMat * v.normal;
         cv.color = v.color;
+        cv.fogDepth = v.fogDepth;
         cv.texcoord = v.texcoord;
         cv.texcoordSets = v.texcoordSets;
         tri[k] = cv;
@@ -143,6 +146,8 @@ public:
       fb.normalEye = normalMat * b.normal;
       fa.color = a.color;
       fb.color = b.color;
+      fa.fogDepth = a.fogDepth;
+      fb.fogDepth = b.fogDepth;
       drawLineNDC(ca, cb, hasColors ? a.color : baseColor,
                   hasColors ? b.color : baseColor, side, fs, fa, fb);
     }
@@ -182,6 +187,7 @@ public:
         f.posEye = (mv * glsl::vec4(v.pos, 1.0f)).xyz();
         f.normalEye = normalMat * v.normal;
         f.color = v.color;
+        f.fogDepth = v.fogDepth;
         if (!fs(f, shaded)) continue;
       }
       for (int dy = -half; dy <= side - 1 - half; ++dy)
@@ -206,6 +212,7 @@ private:
     glsl::vec4 color{1, 1, 1, 1};
     std::vector<glsl::vec2> texcoordSets;
     glsl::vec2 texcoord{0, 0};
+    float fogDepth = -1.0f;
   };
 
   static ClipVertex lerpCV(const ClipVertex &a, const ClipVertex &b, float t) {
@@ -219,6 +226,7 @@ private:
     r.posEye = L3(a.posEye, b.posEye);
     r.normalEye = L3(a.normalEye, b.normalEye);
     r.color = L4(a.color, b.color);
+    r.fogDepth = a.fogDepth + (b.fogDepth - a.fogDepth) * t;
     r.texcoord = L2(a.texcoord, b.texcoord);
     for (std::size_t i = 0;
          i < std::min(a.texcoordSets.size(), b.texcoordSets.size()); ++i)
@@ -333,6 +341,8 @@ private:
           f.posEye = pc3(a.posEye, b.posEye, c.posEye);
           f.normalEye = pc3(a.normalEye, b.normalEye, c.normalEye);
           f.color = pc4(a.color, b.color, c.color);
+          f.fogDepth = (a.fogDepth * (b0 * invw[0]) + b.fogDepth * (b1 * invw[1]) +
+                        c.fogDepth * (b2 * invw[2])) * rw;
           f.texcoord = pc2(a.texcoord, b.texcoord, c.texcoord);
           for (std::size_t i = 0;
                i < std::min({a.texcoordSets.size(), b.texcoordSets.size(),
@@ -436,6 +446,7 @@ private:
         f.posEye = fa.posEye + (fb.posEye - fa.posEye) * t;
         f.normalEye = fa.normalEye + (fb.normalEye - fa.normalEye) * t;
         f.color = fa.color + (fb.color - fa.color) * t;
+        f.fogDepth = fa.fogDepth + (fb.fogDepth - fa.fogDepth) * t;
         if (!fs(f, col)) continue;
       }
       for (int dy = -half; dy <= side - 1 - half; ++dy)

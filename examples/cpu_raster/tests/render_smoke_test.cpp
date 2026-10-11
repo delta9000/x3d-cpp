@@ -138,6 +138,50 @@ static cr::Framebuffer renderLocalFogShape(bool withLocalFog) {
   return cr::renderScene(ctx, extractor, opt);
 }
 
+// §24.4.3 FogCoordinate: a quad in front of the default viewpoint under a red
+// global Fog with a 100 m range is only a few percent fogged by distance. With authored
+// depths of 0.5 at every vertex it is half fogged, whatever the distance, in
+// each material model. `material` is the node type ("" = Appearance with no
+// material); its emissive colour is green and its diffuse/base colour black.
+static cr::Framebuffer renderFogCoordinateShape(const char *material, bool withDepths) {
+  using namespace x3d::core;
+  using namespace x3d::nodes;
+  auto coord = createX3DNode("Coordinate");
+  setF(coord, "point",
+       std::any(std::vector<SFVec3f>{{-1, -1, 0}, {1, -1, 0}, {1, 1, 0}, {-1, 1, 0}}));
+  auto geometry = createX3DNode("IndexedFaceSet");
+  setF(geometry, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
+  setF(geometry, "coordIndex", std::any(std::vector<int>{0, 1, 2, 3, -1}));
+  setF(geometry, "solid", std::any(false));
+  if (withDepths) {
+    auto depths = createX3DNode("FogCoordinate");
+    setF(depths, "depth", std::any(std::vector<float>{0.5f, 0.5f, 0.5f, 0.5f}));
+    setF(geometry, "fogCoord", std::any(std::shared_ptr<X3DNode>(depths)));
+  }
+  auto app = createX3DNode("Appearance");
+  auto mat = createX3DNode(material);
+  setF(mat, "emissiveColor", std::any(SFColor{0, 1, 0}));
+  setF(mat, "diffuseColor", std::any(SFColor{0, 0, 0}));
+  setF(mat, "baseColor", std::any(SFColor{0, 0, 0}));
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(geometry)));
+  setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
+  auto fog = createX3DNode("Fog");
+  setF(fog, "color", std::any(SFColor{1, 0, 0}));
+  setF(fog, "visibilityRange", std::any(100.0f));
+
+  x3d::runtime::Scene scene;
+  scene.addRootNode(fog);
+  scene.addRootNode(shape);
+  x3d::runtime::X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene); ctx.buildFrom(scene); ctx.tick(0.0);
+  ex::SceneExtractor extractor(ctx, scene); extractor.fullSnapshot();
+  cr::RenderOptions opt; opt.width = 96; opt.height = 96;
+  opt.clearColor = {0, 0, 0};
+  return cr::renderScene(ctx, extractor, opt);
+}
+
 int main() {
   const std::string scene =
       std::string(X3D_CPURASTER_ASSET_DIR) + "/raster_smoke.x3d";
@@ -214,6 +258,18 @@ int main() {
     const g::vec4 b = localFog.colorAt(48, 48); // centre of the LocalFog Box.
     CHECK(a.y > 0.5f && a.x < 0.2f);       // green material, no fog.
     CHECK(b.x > 0.5f && b.y < 0.2f);       // saturated to the red LocalFog.
+  }
+
+  // §24.4.3 authored FogCoordinate depths replace the distance-derived depth.
+  for (const char *material : {"UnlitMaterial", "Material", "PhysicalMaterial"}) {
+    const g::vec4 distance = renderFogCoordinateShape(material, false).colorAt(48, 48);
+    const g::vec4 authored = renderFogCoordinateShape(material, true).colorAt(48, 48);
+    std::fprintf(stderr, "fogCoord %s: distance (%.2f %.2f %.2f) authored (%.2f %.2f %.2f)\n",
+                 material, distance.x, distance.y, distance.z, authored.x, authored.y,
+                 authored.z);
+    CHECK(distance.x < 0.15f && distance.y > 0.8f); // little fog by distance.
+    CHECK(authored.x > 0.4f && authored.x < 0.6f);  // half fogged by depth.
+    CHECK(authored.y > 0.4f && authored.y < 0.6f);
   }
 
   if (failures) { std::fprintf(stderr, "render_smoke_test: %d failure(s)\n", failures); return 1; }

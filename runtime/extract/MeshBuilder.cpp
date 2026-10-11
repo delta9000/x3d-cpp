@@ -1343,9 +1343,43 @@ bool recognizedGeometryType(const std::string &t) {
       t == "TriangleSet2D";
 }
 
+namespace {
+// §24.4.3: one FogCoordinate depth per source vertex — the Coordinate point
+// for the composed, line and point sets, the height-grid vertex for
+// ElevationGrid — repeated onto each emitted corner. A short list repeats its
+// last value; depths are clamped to the field's [0,1] range.
+void applyFogCoordinate(const X3DNode &geom, MeshData &mesh) {
+  const auto fog = geombounds::getNode(geom, "fogCoord");
+  if (!fog || fog->nodeTypeName() != "FogCoordinate")
+    return;
+  const auto depth = geombounds::getField<MFFloat>(*fog, "depth", {});
+  const auto &source = geom.nodeTypeName() == "ElevationGrid" ? mesh.latticeIndex
+                                                               : mesh.sourceCoordIndex;
+  if (depth.empty() || mesh.positions.empty() || source.size() != mesh.positions.size())
+    return;
+  mesh.fogDepths.resize(mesh.positions.size());
+  for (std::size_t i = 0; i < source.size(); ++i)
+    mesh.fogDepths[i] =
+        std::clamp(depth[std::min<std::size_t>(source[i], depth.size() - 1)], 0.0f, 1.0f);
+}
+} // namespace
+
+static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
+                                       const geo::GeoProjection &projection,
+                                       const MeshBuildOptions &opt, bool *recognized);
+
 MeshData buildLocalMesh(const X3DNode *geom, const geo::GeoProjection &projection,
                         const MeshBuildOptions &opt,
                         bool *recognized) {
+  MeshData mesh = buildLocalMeshUnfogged(geom, projection, opt, recognized);
+  if (geom)
+    applyFogCoordinate(*geom, mesh);
+  return mesh;
+}
+
+static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
+                                       const geo::GeoProjection &projection,
+                                       const MeshBuildOptions &opt, bool *recognized) {
   using namespace mesh_detail;
   buildLocalMeshCalls_.fetch_add(1, std::memory_order_relaxed);
   MeshData mesh;
