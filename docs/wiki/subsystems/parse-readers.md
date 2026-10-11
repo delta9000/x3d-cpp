@@ -253,3 +253,14 @@ Test data fixtures (`.x3d`, `.x3dv`, `.wrl`, `.json`, `.gz` samples) live in `ru
 - Sibling subsystem: [Inline Expand](inline-expand.md) — Inline expansion pass invoked by `parseDocument` after PROTO expansion
 - Sibling subsystem: [Codecs Writers](codecs-writers.md) — the write side (the XML reader lives in `runtime/codecs/XmlReader.hpp` and is wrapped here by `XmlReaderAdapter`)
 - Sibling subsystem: [Scene Graph](scene-graph.md) — the `X3DDocument` / `Scene` / DEF-table types that parse readers populate
+
+## Prototype metadata comments in ClassicVRML
+
+`VrmlTokenizer` keeps the last `# x3d-cpp:proto-metadata-v1 ` comment before each
+token. `ClassicVrmlReader` consumes its two-string JSON payload only when that
+token starts a PROTO, EXTERNPROTO, or prototype-interface field. The strings
+populate the existing `appinfo` and `documentation` members. Ordinary comments,
+unknown versions, and invalid payloads have no metadata effect. A comment before
+an ordinary node cannot leak into the following declaration. See
+[ADR-0061](../decisions/0061-classic-prototype-metadata-comments.md) for the format
+and portability boundary.

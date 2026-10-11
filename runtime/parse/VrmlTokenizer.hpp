@@ -27,6 +27,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
 
 namespace x3d::codec {
 
@@ -40,6 +41,9 @@ struct VrmlToken {
   bool isString = false; // true only for Kind::String
   std::size_t line = 0;
   std::size_t col = 0;
+  // Payload of the last x3d-cpp metadata comment preceding this token. Ordinary
+  // comments stay trivia. Only PROTO/EXTERNPROTO/interface parsers consume it.
+  std::string prototypeMetadata{};
 
   bool isPunct(char c) const {
     return kind == Kind::Punct && text.size() == 1 && text[0] == c;
@@ -56,6 +60,8 @@ struct VrmlToken {
 /// the first physical line automatically).
 class VrmlTokenizer {
 public:
+  static constexpr std::string_view prototypeMetadataPrefix =
+      "# x3d-cpp:proto-metadata-v1 ";
   explicit VrmlTokenizer(std::string_view src, bool firstLineIsHeader = false)
       : src_(src) {
     if (firstLineIsHeader)
@@ -104,7 +110,8 @@ private:
     ++pos_;
   }
 
-  void skipTrivia() {
+  std::string skipTrivia() {
+    std::string metadata;
     for (;;) {
       while (pos_ < src_.size()) {
         char c = src_[pos_];
@@ -114,20 +121,25 @@ private:
           break;
       }
       if (pos_ < src_.size() && src_[pos_] == '#') {
+        const auto begin = pos_;
         while (pos_ < src_.size() && src_[pos_] != '\n')
           bump();
+        const auto comment = src_.substr(begin, pos_ - begin);
+        if (comment.substr(0, prototypeMetadataPrefix.size()) == prototypeMetadataPrefix)
+          metadata = comment.substr(prototypeMetadataPrefix.size());
         continue; // loop to eat trailing whitespace / further comments
       }
       break;
     }
+    return metadata;
   }
 
   // Lex the next token into `out`. Two buffered tokens (lookahead_/lookahead2_)
   // are kept so callers can `peek()` and `peek2()`; `next()` shifts them.
   void advance(VrmlToken &out) {
-    skipTrivia();
+    auto metadata = skipTrivia();
     if (pos_ >= src_.size()) {
-      out = VrmlToken{VrmlToken::Kind::End, "", false, line_, col_};
+      out = VrmlToken{VrmlToken::Kind::End, "", false, line_, col_, std::move(metadata)};
       return;
     }
     std::size_t startLine = line_, startCol = col_;
@@ -137,7 +149,7 @@ private:
     if (c == '{' || c == '}' || c == '[' || c == ']') {
       bump();
       out = VrmlToken{VrmlToken::Kind::Punct, std::string(1, c), false,
-                      startLine, startCol};
+                      startLine, startCol, std::move(metadata)};
       return;
     }
 
@@ -160,7 +172,7 @@ private:
       }
       if (pos_ < src_.size())
         bump(); // closing quote
-      out = VrmlToken{VrmlToken::Kind::String, str, true, startLine, startCol};
+      out = VrmlToken{VrmlToken::Kind::String, str, true, startLine, startCol, std::move(metadata)};
       return;
     }
 
@@ -176,7 +188,7 @@ private:
     std::string text(src_.substr(begin, pos_ - begin));
     VrmlToken::Kind kind = looksNumeric(text) ? VrmlToken::Kind::Number
                                               : VrmlToken::Kind::Identifier;
-    out = VrmlToken{kind, std::move(text), false, startLine, startCol};
+    out = VrmlToken{kind, std::move(text), false, startLine, startCol, std::move(metadata)};
   }
 
   static bool looksNumeric(std::string_view t) {

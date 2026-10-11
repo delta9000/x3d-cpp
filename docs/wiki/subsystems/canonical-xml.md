@@ -30,6 +30,14 @@ X3D files produced by different authoring tools vary arbitrarily in attribute or
 
 The output is idempotent: `canonicalize(canonicalize(x)) == canonicalize(x)` byte-for-byte. This property is the hard (100%-required) gate in the canon-gate test suite.
 
+`ProtoDeclare` and `ExternProtoDeclare` retain `appinfo` and `documentation`
+on both the declaration and each interface field. Scalar defaults, node defaults,
+and event fields use the same attribute writer. The regression in
+`runtime/codecs/tests/proto_appinfo_json_roundtrip_test.cpp` checks metadata through
+XML/JSON/canonical XML hops and canonical idempotence. The ClassicVRML hop uses
+an [SDK comment convention](../decisions/0061-classic-prototype-metadata-comments.md)
+because that encoding has no standard metadata slot.
+
 ## Key files
 
 | File | Role |

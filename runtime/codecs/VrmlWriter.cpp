@@ -1,4 +1,6 @@
 #include "VrmlWriter.hpp"
+#include "JsonString.hpp"
+#include "VrmlTokenizer.hpp"
 #include "X3DProtoFieldOrder.hpp"
 
 #include "DynamicField.hpp"
@@ -18,6 +20,14 @@ namespace x3d::codec {
 using x3d::nodes::X3DNodeFactory;
 
 namespace {
+
+void writePrototypeMetadata(std::ostringstream &os, const std::string &appinfo,
+                            const std::string &documentation) {
+  if (appinfo.empty() && documentation.empty()) return;
+  os << VrmlTokenizer::prototypeMetadataPrefix << "[" << json::quote(appinfo)
+     << ", " << json::quote(documentation) << "]\n";
+}
+
 
 std::string defaultVrmlValue(X3DFieldType type) {
   if (type == X3DFieldType::SFNode)
@@ -266,6 +276,7 @@ void VrmlWriter::writeVrmlNestedFor(std::ostringstream &os,
 
 void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
                                        const runtime::ProtoDeclaration &d) {
+  writePrototypeMetadata(os, d.appinfo, d.documentation);
   os << "PROTO " << d.name << " [\n";
   // One local DEF scope spans interface defaults and body nodes.
   VrmlWriter bodyWriter;
@@ -274,6 +285,7 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
   bodyWriter.bodyOrder_ = &d.body;
   bodyWriter.bodyNested_ = &d.body.nestedInstances;
   for (const auto &f : d.interface) {
+    writePrototypeMetadata(os, f.appinfo, f.documentation);
     os << "  " << accessTypeName(f.access) << " " << fieldTypeName(f.type)
        << " " << f.name;
     if (!f.nodeDefault.empty()) {
@@ -334,8 +346,10 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
 
 void VrmlWriter::writeVrmlExternProtoDeclare(
     std::ostringstream &os, const runtime::ExternProtoDeclaration &d) {
+  writePrototypeMetadata(os, d.appinfo, d.documentation);
   os << "EXTERNPROTO " << d.name << " [\n";
   for (const auto &f : d.interface) {
+    writePrototypeMetadata(os, f.appinfo, f.documentation);
     os << "  " << accessTypeName(f.access) << " " << fieldTypeName(f.type)
        << " " << f.name << "\n";
   }

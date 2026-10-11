@@ -3,6 +3,7 @@
 #include "DynamicField.hpp"
 #include "FieldAliases.hpp"
 #include "FieldValueIO.hpp"
+#include "JsonLite.hpp"
 #include "ProtoNameMaps.hpp"
 #include "NodeBuilder.hpp"
 #include "RecursionLimits.hpp"
@@ -11,6 +12,24 @@
 #include <charconv>
 
 namespace x3d::codec {
+namespace {
+// Application-specific comments, not ClassicVRML grammar. Invalid payloads are
+// ignored as comments; metadata is attached only to the immediately next token.
+template <typename Declaration>
+void applyPrototypeMetadata(const VrmlToken &token, Declaration &declaration) {
+  if (token.prototypeMetadata.empty()) return;
+  try {
+    auto values = json::parseComplete(token.prototypeMetadata);
+    if (!values->isArray() || values->array.size() != 2 ||
+        !values->array[0]->isString() || !values->array[1]->isString()) return;
+    declaration.appinfo = values->array[0]->str;
+    declaration.documentation = values->array[1]->str;
+  } catch (const std::runtime_error &) {
+    // Comments must not make an otherwise valid scene fail to parse.
+  }
+}
+} // namespace
+
 
 Encoding ClassicVrmlReader::encoding() const { return Encoding::ClassicVRML; }
 
@@ -681,8 +700,9 @@ ClassicVrmlReader::parseProto(VrmlTokenizer &tok, runtime::Scene &scene) {
     explicit CaptureScope(bool &f) : flag(f), previous(f) { flag = false; }
     ~CaptureScope() { flag = previous; }
   } capture(capturingProtoFieldValue_);
-  tok.next(); // PROTO
+  const auto keyword = tok.next(); // PROTO
   auto decl = std::make_shared<runtime::ProtoDeclaration>();
+  applyPrototypeMetadata(keyword, *decl);
   decl->name = expectWord(tok, "PROTO name");
   runtime::Scene local;
   local.protoDeclarations = scene.protoDeclarations;
@@ -708,8 +728,9 @@ ClassicVrmlReader::parseProto(VrmlTokenizer &tok, runtime::Scene &scene) {
 std::shared_ptr<runtime::ExternProtoDeclaration>
 ClassicVrmlReader::parseExternProto(VrmlTokenizer &tok,
                                          runtime::Scene &scene) {
-  tok.next(); // EXTERNPROTO
+  const auto keyword = tok.next(); // EXTERNPROTO
   auto decl = std::make_shared<runtime::ExternProtoDeclaration>();
+  applyPrototypeMetadata(keyword, *decl);
   decl->name = expectWord(tok, "EXTERNPROTO name");
   expectPunct(tok, '[', "EXTERNPROTO interface open");
   decl->interface = parseInterface(tok, /*allowDefaults=*/false);
@@ -733,8 +754,9 @@ ClassicVrmlReader::parseInterface(
     runtime::Scene *scope, runtime::ProtoBody *body) {
   std::vector<runtime::ProtoField> out;
   while (!tok.atEnd() && !tok.peek().isPunct(']')) {
-    std::string accessTok = expectWord(tok, "interface accessType");
     runtime::ProtoField field;
+    applyPrototypeMetadata(tok.peek(), field);
+    std::string accessTok = expectWord(tok, "interface accessType");
     field.access = accessTypeFromString(accessTok);
     std::string typeTok = expectWord(tok, "interface field type");
     field.type = fieldTypeFromString(typeTok);
