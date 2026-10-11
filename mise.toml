@@ -288,6 +288,14 @@ run = "uv run python scripts/conformance_view.py check"
 description = "SAI service register gate: validate docs/conformance/sai-services.yaml schema and that every cited CTest/doctest evidence name exists in the C++ test sources."
 run = "uv run python scripts/check_sai_services.py"
 
+[tasks.sai-coexistence]
+description = "Check independent source + relocated SAI/runtime consumers; pass the x3d-sai checkout and optional empty work directory."
+run = "bash scripts/verify_sai_coexistence.sh"
+
+[tasks.sai-provider]
+description = "Check native/reference provider behavior and relocated host; pass the x3d-sai checkout and optional empty work directory."
+run = "bash scripts/verify_sai_provider.sh"
+
 [tasks.corpus-fetch]
 description = "Fetch the X3D test corpus (curated subset + Inline/EXTERNPROTO deps) from web3d.org into .x3d-corpus/ (or $X3D_CORPUS_DIR). ~9MB, seconds. Makes the corpus gates runnable."
 run = "scripts/fetch_corpus.sh"

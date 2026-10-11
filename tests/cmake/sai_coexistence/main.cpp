@@ -10,6 +10,7 @@
 #endif
 // clang-format on
 
+#include <exception>
 #include <iostream>
 #include <type_traits>
 #include <utility>
@@ -64,6 +65,38 @@ int main() {
       runtime_transform.getTranslation().x != 1.0f) {
     std::cerr << "independent model readback failed\n";
     return 5;
+  }
+
+  // The ordinary portable service and explicit reference-only editor can
+  // coexist with the native SDK without sharing scene state or handle types.
+  // This also exercises every library installed by the current SAI package.
+  try {
+    auto service = sai::make_reference_provider().value();
+    const auto scene = service->create_scene().value();
+    const auto provider_context = service->root_context(scene).value();
+    const auto node = service->create_node(provider_context, "Transform").value();
+    const sai::vec3f provider_translation{7.0f, 8.0f, 9.0f};
+    if (!service->author(node, sai::bindings::Transform::translation,
+                         provider_translation) ||
+        !service->append_root(provider_context, node)) {
+      std::cerr << "portable service authoring failed\n";
+      return 6;
+    }
+    (void)service->activate(scene).value();
+    if (service->read(node, sai::bindings::Transform::translation).value() !=
+            provider_translation ||
+        context.snapshot().read(translation).value() != expected ||
+        runtime_transform.getTranslation().x != 1.0f) {
+      std::cerr << "portable service changed an independent scene\n";
+      return 7;
+    }
+    if (!service->close()) {
+      std::cerr << "portable service close failed\n";
+      return 8;
+    }
+  } catch (const std::exception &error) {
+    std::cerr << "portable service coexistence failed: " << error.what() << '\n';
+    return 9;
   }
   return 0;
 }
