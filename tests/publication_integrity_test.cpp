@@ -402,3 +402,64 @@ TEST_CASE("failed checkpoint publication releases host state outside locks") {
   }
   REQUIRE(reached_success);
 }
+
+TEST_CASE("declaration update allocation failure preserves staged payload and "
+          "journal") {
+  int failures = 0;
+  int successes = 0;
+  for (int budget = 0; budget != 32; ++budget) {
+    sai::browser host{registry()};
+    auto scene = host.current_scene();
+    auto setup = scene.edit();
+    sai::local_declaration_descriptor original;
+    original.name = "Declaration_with_an_owning_long_name";
+    original.appinfo =
+        "Original application information outside small string storage";
+    auto declaration = setup.add_local_declaration(original).value();
+    REQUIRE(setup.commit());
+    const auto before = scene.snapshot();
+    auto replacement = original;
+    replacement.appinfo =
+        "Replacement application information outside small string storage";
+    auto edit = scene.edit();
+    REQUIRE(edit.set_metadata("pending", "preserved"));
+    bool threw = false;
+    fail_after = budget;
+    try {
+      (void)edit.update_declaration(declaration, std::move(replacement));
+    } catch (const std::bad_alloc &) {
+      threw = true;
+    }
+    fail_after = -1;
+    const auto committed = edit.commit();
+    REQUIRE(committed);
+    const auto after = scene.snapshot();
+    const auto description = after.describe(declaration).value();
+    const auto &actual =
+        std::get<sai::local_declaration_descriptor>(description.payload);
+    if (threw) {
+      ++failures;
+      CHECK(after.revision() == before.revision() + 1);
+      CHECK(actual.appinfo == original.appinfo);
+      CHECK(committed->changes.size() == 1);
+      CHECK(after.metadata("pending").value() == "preserved");
+    } else {
+      ++successes;
+      CHECK(after.revision() == before.revision() + 1);
+      CHECK(actual.appinfo ==
+            "Replacement application information outside small string storage");
+      REQUIRE(committed->changes.size() == 2);
+      const auto *change =
+          sai::declaration_change_of(committed->changes.back());
+      REQUIRE(change);
+      REQUIRE(change->before);
+      REQUIRE(change->after);
+      CHECK(std::get<sai::local_declaration_descriptor>(change->before->payload)
+                .appinfo == original.appinfo);
+      CHECK(std::get<sai::local_declaration_descriptor>(change->after->payload)
+                .appinfo == actual.appinfo);
+    }
+  }
+  CHECK(failures > 0);
+  CHECK(successes > 0);
+}

@@ -3607,13 +3607,15 @@ result<void> scene_edit::rename_declaration(const declaration &target,
 void scene_edit::stage_declaration_update(declaration_id id,
                                           declaration_payload replacement) {
   auto &authored = impl_->staged.declarations.at(id.value);
-  const declaration_descriptor before = authored;
-  authored.payload = std::move(replacement);
-  impl_->changes.push_back(
-      declaration_change{.kind = declaration_change_kind::updated,
-                         .declaration = id,
-                         .before = before,
-                         .after = authored});
+  static_assert(std::is_nothrow_move_assignable_v<declaration_payload>);
+  declaration_descriptor after{.id = id, .payload = std::move(replacement)};
+  declaration_change change{.kind = declaration_change_kind::updated,
+                            .declaration = id,
+                            .before = authored,
+                            .after = after};
+  // Allocate the complete journal entry before modifying the staged payload.
+  impl_->changes.push_back(std::move(change));
+  authored.payload = std::move(after.payload);
   impl_->changed = true;
 }
 
