@@ -61,6 +61,15 @@ inline std::array<float, 9> normalMatrix3(const x3d::runtime::Mat4 &view,
           c02 * invDet, c12 * invDet, c22 * invDet};
 }
 
+// Eye-to-local direction transform: the inverse of (view * model)'s upper-left
+// 3x3, i.e. the transpose of normalMatrix3, packed column-major (§34.2.2 cube
+// lookups in the geometry's local frame, ADR-0060).
+inline std::array<float, 9> eyeToLocal3(const x3d::runtime::Mat4 &view,
+                                        const x3d::runtime::Mat4 &model) {
+  const std::array<float, 9> n = normalMatrix3(view, model);
+  return {n[0], n[3], n[6], n[1], n[4], n[7], n[2], n[5], n[8]};
+}
+
 } // namespace poc
 
 #endif // X3D_POC_RENDERER_DRAW_MATH_HPP

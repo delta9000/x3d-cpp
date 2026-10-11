@@ -157,6 +157,7 @@ nav:
       - "ADR-0057: Scene-Owned Author Fields and Scoped Clone Services": decisions/0057-scene-owned-author-fields.md
       - "ADR-0058: Context-Owned Immutable Geospatial Projection": decisions/0058-context-owned-geo-projection.md
       - "ADR-0059: Cube-Map Images Through the Texture Decode Seam": decisions/0059-cube-map-images-through-texture-decode.md
+      - "ADR-0060: Generated Cube Maps and the Local Cube Frame": decisions/0060-generated-cube-maps-local-frame.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

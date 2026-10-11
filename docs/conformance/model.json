@@ -11128,10 +11128,10 @@
         "ImageCubeMapTexture",
         "GeneratedCubeMapTexture"
       ],
-      "note": "GeneratedCubeMapTexture falls through MaterialSystem::refOf to an empty URL ref and does not render. ImageCubeMapTexture (2026-10-10, ADR-0059): refOf emits a url Source::Cube ref (load honoured); the TextureResolver decodes the file to six layers (TexturePixels::layers) in X3D face order. Both decode backends and the GL PoC's resolver read DDS through runtime/io/dds/DdsDecode.hpp: uncompressed 8/16/24/32-bit masks and BC1-BC3 (FourCC or DX10), first mip level, partial cubes with white missing faces; DDS +Z is the X3D front (z mirrored from DDS's left-handed layout). Other cube formats, mipmaps, autoRefresh and autoRefreshTimeLimit are not wired. ComposedCubeMapTexture (2026-10-10): cpu_raster (Texture::sampleCube, MaterialShader environmentDirection) and the OpenGL PoC (shaders/multitexture.glsl sampleCubeFaces, a six-layer texture array on unit 12) sample a cube ref in the base-colour slot or as a MultiTexture stage. The lookup direction is the full (s, t, r) vector of the geometry's TextureCoordinateGenerator (all Table 18.6 modes; NOISE adds a third noise channel), or with no generator the camera-space reflection vector; \u00a734.2.2 names CAMERASPACEREFLECTIONVECTOR as the usual generator but does not set a default, so that default is an implementation choice. Faces follow Figure 34.1 with the Background panorama convention (front -Z, back +Z, left -X, right +X, top +Y, bottom -Y, each upright seen from the centre). Tests: cube_map_test (cpu_raster) and cube_map_gl_test.py (validate-examples). Not wired: TextureCoordinate3D/4D explicit (s, t, r) coordinates, TextureTransform3D/Matrix3D on the direction, cube maps in slots other than base colour, and in the GL PoC more than one cube map per material (later cube stages reuse the first) and faces of unequal size (resampled to the largest). Tests for images: texture_decode_tests (texture_dds_cube_and_2d), background_desc_test, and the DDS cases in cube_map_test and cube_map_gl_test.py. Acceptance for the rest: generated update modes with the specified view and size.",
-      "severity": "major",
+      "note": "GeneratedCubeMapTexture (2026-10-10, ADR-0060): refOf emits a Source::Cube ref with TextureRef::generatedCube (node, update, size) and the consumer renders it. GeneratedCubeMapSystem (attachStandardRuntime) resets NEXT_FRAME_ONLY to NONE at the start of the tick after the frame that drew it, as an event (update_changed is routed). cpu_raster (SceneRender GeneratedCubeCache) and the GL PoC (a six-layer render target per node) re-render a cube whose update is not NONE: six size x size views, field of view pi/2, from the local origin of the first Shape using it along its local axes, without the Shapes that use it; faces persist, so NONE keeps the last ones and a never-rendered cube samples white. A cube shared by differently placed Shapes is drawn from the first; in the GL PoC its faces are stored for the first Shape's material model (sRGB for PBR). ImageCubeMapTexture (2026-10-10, ADR-0059): refOf emits a url Source::Cube ref (load honoured); the TextureResolver decodes the file to six layers (TexturePixels::layers) in X3D face order. Both decode backends and the GL PoC's resolver read DDS through runtime/io/dds/DdsDecode.hpp: uncompressed 8/16/24/32-bit masks and BC1-BC3 (FourCC or DX10), first mip level, partial cubes with white missing faces; DDS +Z is the X3D front (z mirrored from DDS's left-handed layout). Other cube formats, mipmaps, autoRefresh and autoRefreshTimeLimit are not wired. ComposedCubeMapTexture (2026-10-10): cpu_raster (Texture::sampleCube, MaterialShader environmentDirection) and the OpenGL PoC (shaders/multitexture.glsl sampleCubeFaces, a six-layer texture array on unit 12) sample a cube ref in the base-colour slot or as a MultiTexture stage. The lookup direction is the full (s, t, r) vector of the geometry's TextureCoordinateGenerator (all Table 18.6 modes; NOISE adds a third noise channel), or with no generator the camera-space reflection vector; eye-space directions are carried into the geometry's local frame (inverse of view * model), so the cube turns with the geometry (ADR-0060); \u00a734.2.2 names CAMERASPACEREFLECTIONVECTOR as the usual generator but does not set a default, so that default is an implementation choice. Faces follow Figure 34.1 with the Background panorama convention (front -Z, back +Z, left -X, right +X, top +Y, bottom -Y, each upright seen from the centre). Tests: cube_map_test (cpu_raster) and cube_map_gl_test.py (validate-examples). Not wired: TextureCoordinate3D/4D explicit (s, t, r) coordinates, TextureTransform3D/Matrix3D on the direction, cube maps in slots other than base colour, and in the GL PoC more than one cube map per material (later cube stages reuse the first) and faces of unequal size (resampled to the largest). Tests for images: texture_decode_tests (texture_dds_cube_and_2d), background_desc_test, and the DDS cases in cube_map_test and cube_map_gl_test.py. Tests for generated cubes: generated_cube_map_test (doctest: descriptor, NEXT_FRAME_ONLY reset and routing), generated_cube_map_test (cpu_raster: update modes, self-exclusion, local frame, cache) and generated_cube_map_gl_test.py; the rotated cases in cube_map_test and cube_map_gl_test.py pin the local frame. Acceptance for the rest: TextureCoordinate3D/4D directions, TextureTransform3D/Matrix3D, cube maps in other slots, autoRefresh.",
+      "severity": "minor",
       "status": "open",
-      "summary": "Both reference hosts sample ComposedCubeMapTexture and DDS ImageCubeMapTexture as environment maps; GeneratedCubeMapTexture is still absent."
+      "summary": "Both reference hosts render ComposedCubeMapTexture, DDS ImageCubeMapTexture and GeneratedCubeMapTexture as environment maps in the geometry's local frame; explicit 3D texture coordinates, 3D texture transforms, non-base slots and autoRefresh are not wired."
     },
     {
       "clause": "18.2.4; 18.4.3-18.4.5",
@@ -11600,6 +11600,7 @@
       "EaseInEaseOut",
       "Fog",
       "Gain",
+      "GeneratedCubeMapTexture",
       "GeoLOD",
       "GeoLocation",
       "GeoPositionInterpolator",
@@ -11702,8 +11703,8 @@
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 17,
-      "minor": 14
+      "major": 16,
+      "minor": 15
     }
   },
   "unresolved_findings": []

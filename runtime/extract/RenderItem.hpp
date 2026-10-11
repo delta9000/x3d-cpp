@@ -312,7 +312,9 @@ struct TextureRef {
     Multi,  // MultiTexture — stages in multiStages.
     Cube,   // ComposedCubeMapTexture (§34.4.1): six face refs in cubeFaces;
             // ImageCubeMapTexture (§34.4.3): url, no cubeFaces, and
-            // resolvedPixels with layers = 6 once decoded.
+            // resolvedPixels with layers = 6 once decoded;
+            // GeneratedCubeMapTexture (§34.4.2): generatedCube, rendered by
+            // the consumer.
     Buffer, // Phase 1 binary extension: raw bytes provided by the embedder.
             // bufferBytes carries the raw encoded bytes; mimeHint is a MIME
             // type hint ("image/png", "image/jpeg", etc.). The SDK does NOT
@@ -342,6 +344,20 @@ struct TextureRef {
   // Source::Cube only: the six face refs in the order front, back, left,
   // right, top, bottom (an unauthored face is a default Url ref, empty url).
   std::vector<TextureRef> cubeFaces;
+  // Source::Cube from a GeneratedCubeMapTexture (§34.4.2): the consumer
+  // renders the scene into the six faces (Figure 34.1 order) from the
+  // geometry's local origin, along its local axes, with a pi/2 field of view
+  // and size x size pixels per face, and does not draw the Shapes that use
+  // this texture into it (ADR-0060). `update` is the current NONE / NEXT_FRAME_ONLY /
+  // ALWAYS: re-render when it is not NONE, else keep the last faces.
+  // GeneratedCubeMapSystem resets NEXT_FRAME_ONLY to NONE at the start of the
+  // next frame. `node` identifies the texture across frames (the consumer's
+  // render-target cache key); null when this is not a generated cube.
+  struct GeneratedCube {
+    const X3DNode *node = nullptr;
+    SFString update = "NONE";
+    int size = 128;
+  } generatedCube;
 
   // §33 3D textures (T3D-1). repeatR is the third wrap axis (repeatS/T already
   // above; absent on 2D nodes, default true). Source::Tex3D carries either the

@@ -19,6 +19,7 @@
 #include "AnchorSystem.hpp"
 #include "MediaTimeSystem.hpp"
 #include "SoundTimeSystem.hpp"
+#include "GeneratedCubeMapSystem.hpp"
 #include "ShaderSystem.hpp"
 #include "NavigationSystem.hpp"
 #include "PickSensorSystem.hpp"
@@ -455,14 +456,28 @@ attachShaders(Scene &scene, X3DExecutionContext &ctx,
 }
 
 /**
+ * @brief §34.4.2 GeneratedCubeMapTexture: reset `update` NEXT_FRAME_ONLY to
+ *        NONE at the start of the frame after the one that rendered it.
+ */
+inline std::shared_ptr<GeneratedCubeMapSystem>
+attachGeneratedCubeMaps(Scene &scene, X3DExecutionContext &ctx) {
+  auto sys = std::make_shared<GeneratedCubeMapSystem>();
+  detail::forEachNode(scene, [&](X3DNode *n) { sys->attach(n, ctx); });
+  ctx.addSystem(sys);
+  return sys;
+}
+
+/**
  * @brief Production wiring: attach the full STANDARD behavior runtime — every
  *        system an X3D browser runs, MINUS the embedder-plugged seams (Script
  *        needs a JS backend; Physics needs an engine). After this call an
  *        authored `TimeSensor → Interpolator → Transform` chain animates out of
  *        the box, view-dependent nodes track the camera, key sensors fire,
  *        LoadSensors report their watched children's load state, and the
- *        viewpoint bind stack is live, and shaders report isSelected/isValid
- *        (`shaderOptions`, normally MeshBuildOptions::shaders). `assetResolver` is the byte oracle
+ *        viewpoint bind stack is live, shaders report isSelected/isValid
+ *        (`shaderOptions`, normally MeshBuildOptions::shaders), and a
+ *        GeneratedCubeMapTexture's NEXT_FRAME_ONLY resets to NONE after one
+ *        frame. `assetResolver` is the byte oracle
  *        LoadSensor resolves through (null → the IO-free null stub; an app
  *        injects a concrete backend, e.g. the CLI's confined local-file
  *        resolver).
@@ -507,6 +522,7 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   ctx.addSystem(picks);
   attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
   attachShaders(scene, ctx, std::move(shaderOptions)); // §31 isSelected/isValid
+  attachGeneratedCubeMaps(scene, ctx); // §34.4.2 NEXT_FRAME_ONLY reset
   if (inlineResolver) {
     auto inlines = std::make_shared<InlineRuntimeSystem>(
         scene, std::move(inlineResolver), std::move(baseUrl));

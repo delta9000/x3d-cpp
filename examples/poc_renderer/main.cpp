@@ -1084,6 +1084,31 @@ GLuint uploadCubeLayers(const unsigned char *layers, int w, int h, bool srgb) {
   return tex;
 }
 
+// Each TextureRef reachable from a material (MultiTexture stages and cube
+// faces included).
+template <typename F>
+void forEachTextureRef(const std::vector<ex::TextureRef> &refs, F &&f) {
+  for (const ex::TextureRef &r : refs) {
+    f(r);
+    forEachTextureRef(r.multiStages, f);
+    forEachTextureRef(r.cubeFaces, f);
+  }
+}
+template <typename F> void forEachTextureRef(const ex::MaterialDesc &m, F &&f) {
+  forEachTextureRef(m.textures, f);
+  if (m.backMaterial) forEachTextureRef(m.backMaterial->textures, f);
+}
+
+// §34.4.2: whether an item's material uses the GeneratedCubeMapTexture `node`.
+bool usesGeneratedCube(const ex::RenderItem &it, const void *node) {
+  if (!node) return false;
+  bool uses = false;
+  forEachTextureRef(it.material, [&](const ex::TextureRef &r) {
+    uses = uses || r.generatedCube.node == node;
+  });
+  return uses;
+}
+
 // A §34 cube map as a six-layer GL_TEXTURE_2D_ARRAY in TextureRef::cubeFaces
 // order (front, back, left, right, top, bottom), which multitexture.glsl
 // sampleCubeFaces indexes by direction. ImageCubeMapTexture (no cubeFaces):
@@ -1906,7 +1931,1009 @@ int main(int argc, char **argv) {
   bool showDiagnostics = true;
   bool showImGuiDemo = false;
   bool wireframe = false;
+  // §34.4.2 GeneratedCubeMapTexture: one six-layer render target per cube
+  // node (layers front, back, left, right, top, bottom, as resolveCubeTex),
+  // kept across frames so a cube whose update is NONE keeps its last faces.
+  // A cube never rendered has no texture and samples white.
+  struct GeneratedCube {
+    GLuint tex = 0;
+    int size = 0;
+    bool srgb = false;
+  };
+  std::unordered_map<const void *, GeneratedCube> generatedCubes;
+  GLuint generatedFbo = 0, generatedDepth = 0;
+  int generatedDepthSize = 0;
+  auto generatedCubeTex = [&](const void *node) -> GLuint {
+    auto found = generatedCubes.find(node);
+    return found == generatedCubes.end() ? 0 : found->second.tex;
+  };
+  // Re-render each cube whose update is not NONE: six size x size views with
+  // a pi/2 field of view from the local origin of the first Shape using it,
+  // along that Shape's local axes (ADR-0060), without the Shapes that use it.
+  // The faces are stored sRGB-decodable when that Shape is PBR-shaded.
+  auto renderGeneratedCubes = [&](auto &renderView, float zNear, float zFar) {
+    std::vector<const void *> done;
+    for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
+      const ex::RenderItem &it = extractor.item(id);
+      forEachTextureRef(it.material, [&](const ex::TextureRef &r) {
+        const auto &gen = r.generatedCube;
+        if (!gen.node || gen.update == "NONE" ||
+            std::find(done.begin(), done.end(), gen.node) != done.end())
+          return;
+        done.push_back(gen.node);
+        const bool srgb = it.material.model == ex::MaterialModel::Physical && pbrProg;
+        GeneratedCube &cube = generatedCubes[gen.node];
+        if (!cube.tex || cube.size != gen.size || cube.srgb != srgb) {
+          if (cube.tex) glDeleteTextures(1, &cube.tex);
+          glGenTextures(1, &cube.tex);
+          glBindTexture(GL_TEXTURE_2D_ARRAY, cube.tex);
+          glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8,
+                       gen.size, gen.size, 6, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+          glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+          glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+          glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+          glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+          cube.size = gen.size;
+          cube.srgb = srgb;
+        }
+        if (!generatedFbo) glGenFramebuffers(1, &generatedFbo);
+        if (!generatedDepth) glGenRenderbuffers(1, &generatedDepth);
+        glBindFramebuffer(GL_FRAMEBUFFER, generatedFbo);
+        if (generatedDepthSize < gen.size) {
+          glBindRenderbuffer(GL_RENDERBUFFER, generatedDepth);
+          glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, gen.size, gen.size);
+          glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
+                                    generatedDepth);
+          generatedDepthSize = gen.size;
+        }
+        // Never leave the target bound where a draw could sample it.
+        glActiveTexture(GL_TEXTURE12);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+        glActiveTexture(GL_TEXTURE0);
+        const SFVec3f origin = it.worldTransform.transformPoint({0, 0, 0});
+        auto axis = [&](float x, float y, float z) {
+          return v3norm(it.worldTransform.transformDirection({x, y, z}));
+        };
+        const std::array<std::array<SFVec3f, 2>, 6> faces{{
+            {axis(0, 0, -1), axis(0, 1, 0)}, // front
+            {axis(0, 0, 1), axis(0, 1, 0)},  // back
+            {axis(-1, 0, 0), axis(0, 1, 0)}, // left
+            {axis(1, 0, 0), axis(0, 1, 0)},  // right
+            {axis(0, 1, 0), axis(0, 0, 1)},  // top
+            {axis(0, -1, 0), axis(0, 0, -1)}, // bottom
+        }};
+        const Mat4 faceProj = perspective(1.57079632679f, 1.0f, zNear, zFar);
+        for (int layer = 0; layer < 6; ++layer) {
+          const SFVec3f look = faces[layer][0];
+          glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, cube.tex, 0,
+                                    layer);
+          glViewport(0, 0, gen.size, gen.size);
+          renderView(lookAt(origin,
+                            {origin.x + look.x, origin.y + look.y, origin.z + look.z},
+                            faces[layer][1]),
+                     faceProj, gen.size, gen.size, gen.node);
+        }
+      });
+    }
+  };
+
   while (!glfwWindowShouldClose(win)) {
+    // One scene pass from `view`/`proj` into the bound framebuffer (w x h):
+    // background, shadow maps, opaque then blended items. Items whose
+    // material uses the GeneratedCubeMapTexture `exclude` are skipped (§34.4.2:
+    // a generated cube does not see the geometry it is applied to).
+    auto renderView = [&](const Mat4 &view, const Mat4 &proj, int w, int h,
+                          const void *exclude) {
+      // Forced full-screen clear sanity step: if NOTHING else draws, the window
+      // is still the Background color, proving context + swap work (M0 gate).
+      glClearColor(clearR, clearG, clearB, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      // #39: paint the bound Background's full sky/ground gradient as a
+      // depth-test-disabled fullscreen dome, BEFORE scene geometry. A single
+      // skyColor (or no Background at all) is already exactly the flat clear
+      // above, so the shader pass only runs when there's a real ramp to paint
+      // (matches examples/cpu_raster's same "stay flat" fast path).
+      if (bgProg) {
+        if (const X3DNode *bg = ctx.boundBackground()) {
+          auto skyC = x3d::runtime::geombounds::getField<std::vector<SFColor>>(
+              *bg, "skyColor", {});
+          auto skyA = x3d::runtime::geombounds::getField<std::vector<float>>(
+              *bg, "skyAngle", {});
+          auto grC = x3d::runtime::geombounds::getField<std::vector<SFColor>>(
+              *bg, "groundColor", {});
+          auto grA = x3d::runtime::geombounds::getField<std::vector<float>>(
+              *bg, "groundAngle", {});
+          if (skyC.size() > 1 || !grC.empty()) {
+            glDisable(GL_DEPTH_TEST);
+            glUseProgram(bgProg);
+            const Mat4 invView = view.inverse();
+            glUniformMatrix4fv(uBgInvView, 1, GL_FALSE, invView.m.data());
+            glUniform1f(uBgInvP0, 1.0f / proj.m[0]);
+            glUniform1f(uBgInvP5, 1.0f / proj.m[5]);
+            auto uploadBand = [&](GLint locColor, GLint locAngle,
+                                  GLint locColorCount, GLint locAngleCount,
+                                  const std::vector<SFColor> &cols,
+                                  const std::vector<float> &angs) {
+              float colBuf[kMaxBgBands * 3] = {0};
+              float angBuf[kMaxBgBands - 1] = {0};
+              const int cn = (std::min)(static_cast<int>(cols.size()), kMaxBgBands);
+              const int an = (std::min)(static_cast<int>(angs.size()), kMaxBgBands - 1);
+              for (int i = 0; i < cn; ++i) {
+                colBuf[i * 3 + 0] = cols[i].r;
+                colBuf[i * 3 + 1] = cols[i].g;
+                colBuf[i * 3 + 2] = cols[i].b;
+              }
+              for (int i = 0; i < an; ++i) angBuf[i] = angs[i];
+              if (locColor >= 0) glUniform3fv(locColor, kMaxBgBands, colBuf);
+              if (locAngle >= 0) glUniform1fv(locAngle, kMaxBgBands - 1, angBuf);
+              if (locColorCount >= 0) glUniform1i(locColorCount, cn);
+              if (locAngleCount >= 0) glUniform1i(locAngleCount, an);
+            };
+            uploadBand(uBgSkyColor, uBgSkyAngle, uBgSkyColorCount,
+                       uBgSkyAngleCount, skyC, skyA);
+            uploadBand(uBgGroundColor, uBgGroundAngle, uBgGroundColorCount,
+                       uBgGroundAngleCount, grC, grA);
+            glBindVertexArray(bgVao);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glBindVertexArray(0);
+            glEnable(GL_DEPTH_TEST);
+          }
+        }
+      }
+
+      if ((phongProg || unlitProg || pbrProg) && !gpuMeshes.empty()) {
+        // Resolve the active lights to eye space (world-resolved LightDescs from
+        // the extractor + the §23.4.4 NavigationInfo headlight when headlight is on).
+        std::vector<ex::LightDesc> lights = extractor.lights();
+        std::vector<EyeLight> eyeLights =
+            buildEyeLights(lights, view, headlightOn);
+        const int numLights = static_cast<int>(eyeLights.size());
+        // Flatten into contiguous arrays for the uniform array upload.
+        float lightDir[kMaxLights * 3] = {0};
+        float lightCol[kMaxLights * 3] = {0};
+        float lightAmb[kMaxLights] = {0};
+        int lightType[kMaxLights] = {0}; // 0 directional, 1 point, 2 spot.
+        float lightPos[kMaxLights * 3] = {0};
+        float lightAtt[kMaxLights * 3] = {0};
+        float lightRadius[kMaxLights] = {0};
+        float lightCone[kMaxLights * 2] = {0};
+        for (int i = 0; i < numLights && i < kMaxLights; ++i) {
+          lightDir[i * 3 + 0] = eyeLights[i].dirEye.x;
+          lightDir[i * 3 + 1] = eyeLights[i].dirEye.y;
+          lightDir[i * 3 + 2] = eyeLights[i].dirEye.z;
+          lightCol[i * 3 + 0] = eyeLights[i].color.r;
+          lightCol[i * 3 + 1] = eyeLights[i].color.g;
+          lightCol[i * 3 + 2] = eyeLights[i].color.b;
+          lightAmb[i] = eyeLights[i].ambientIntensity;
+          lightType[i] = eyeLights[i].positional ? (eyeLights[i].spot ? 2 : 1) : 0;
+          lightPos[i * 3 + 0] = eyeLights[i].posEye.x;
+          lightPos[i * 3 + 1] = eyeLights[i].posEye.y;
+          lightPos[i * 3 + 2] = eyeLights[i].posEye.z;
+          lightAtt[i * 3 + 0] = eyeLights[i].attenuation.x;
+          lightAtt[i * 3 + 1] = eyeLights[i].attenuation.y;
+          lightAtt[i * 3 + 2] = eyeLights[i].attenuation.z;
+          lightRadius[i] = eyeLights[i].radius;
+          lightCone[i * 2 + 0] = eyeLights[i].beamWidth;
+          lightCone[i * 2 + 1] = eyeLights[i].cutOffAngle;
+        }
+
+        // §17.3.1 shadows: render each shadow-enabled scene light's depth
+        // layers (shadowLayers) before the scene pass. Shapes with castShadow
+        // TRUE occlude, as in the CPU host; the headlight casts none.
+        int shadowBase[kMaxLights], shadowCount[kMaxLights];
+        float shadowIntensity[kMaxLights];
+        std::fill(std::begin(shadowBase), std::end(shadowBase), -1);
+        std::fill(std::begin(shadowCount), std::end(shadowCount), 0);
+        std::fill(std::begin(shadowIntensity), std::end(shadowIntensity), 0.0f);
+        std::vector<float> shadowMatrices; // 16 per layer: eye -> light clip.
+        const Aabb shadowBounds = extractor.sceneWorldBounds();
+        if (shadowProg && !shadowBounds.empty) {
+          const SFVec3f c{(shadowBounds.min.x + shadowBounds.max.x) * 0.5f,
+                          (shadowBounds.min.y + shadowBounds.max.y) * 0.5f,
+                          (shadowBounds.min.z + shadowBounds.max.z) * 0.5f};
+          const SFVec3f sz = shadowBounds.size();
+          const float radius =
+              (std::max)(0.5f * std::sqrt(v3dot(sz, sz)), 1e-3f) * 1.01f;
+          const int sceneLights = numLights - (headlightOn ? 1 : 0);
+          std::vector<Mat4> layers;
+          for (int i = 0; i < sceneLights && i < static_cast<int>(lights.size()); ++i) {
+            if (!lights[i].shadows) continue;
+            std::vector<Mat4> mine = shadowLayers(lights[i], c, radius);
+            if (layers.size() + mine.size() > kMaxShadowLayers) break;
+            shadowBase[i] = static_cast<int>(layers.size());
+            shadowCount[i] = static_cast<int>(mine.size());
+            shadowIntensity[i] = std::clamp(lights[i].shadowIntensity, 0.0f, 1.0f);
+            layers.insert(layers.end(), mine.begin(), mine.end());
+          }
+          if (!layers.empty()) {
+            const int n = static_cast<int>(layers.size());
+            if (n > shadowLayersAllocated) {
+              if (shadowTex) glDeleteTextures(1, &shadowTex);
+              glGenTextures(1, &shadowTex);
+              glBindTexture(GL_TEXTURE_2D_ARRAY, shadowTex);
+              glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24, kShadowSize,
+                           kShadowSize, n, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+              glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+              glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+              glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+              glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+              glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE,
+                              GL_COMPARE_REF_TO_TEXTURE);
+              glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+              shadowLayersAllocated = n;
+            }
+            if (!shadowFbo) glGenFramebuffers(1, &shadowFbo);
+            GLint previousFbo = 0;
+            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFbo);
+            glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo);
+            glDrawBuffer(GL_NONE);
+            glReadBuffer(GL_NONE);
+            glViewport(0, 0, kShadowSize, kShadowSize);
+            glUseProgram(shadowProg);
+            glEnable(GL_DEPTH_TEST);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+            glDisable(GL_CULL_FACE);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(2.0f, 4.0f);
+            for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci)
+              glDisable(GL_CLIP_DISTANCE0 + ci);
+            glUniform1i(glGetUniformLocation(shadowProg, "uNumClipPlanes"), 0);
+            glUniform1i(glGetUniformLocation(shadowProg, "uInfluences"), 6);
+            glUniform1i(glGetUniformLocation(shadowProg, "uPalette"), 7);
+            glUniform1i(glGetUniformLocation(shadowProg, "uTexture"), 0);
+            const GLint locModel = glGetUniformLocation(shadowProg, "uModel");
+            const GLint locView = glGetUniformLocation(shadowProg, "uView");
+            const GLint locProj = glGetUniformLocation(shadowProg, "uProjection");
+            const GLint locSkin = glGetUniformLocation(shadowProg, "uSkinEnabled");
+            const Mat4 identity = Mat4::identity();
+            const Mat4 invView = view.inverse();
+            for (int layer = 0; layer < n; ++layer) {
+              glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowTex, 0,
+                                        layer);
+              glClear(GL_DEPTH_BUFFER_BIT);
+              glUniformMatrix4fv(locView, 1, GL_FALSE, identity.m.data());
+              glUniformMatrix4fv(locProj, 1, GL_FALSE, layers[layer].m.data());
+              const Mat4 eyeToLight = layers[layer] * invView;
+              shadowMatrices.insert(shadowMatrices.end(), eyeToLight.m.begin(),
+                                    eyeToLight.m.end());
+              for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
+                const ex::RenderItem &item = extractor.item(id);
+                if (!item.castShadow || usesGeneratedCube(item, exclude)) continue;
+                auto mit = gpuMeshes.find(item.geometry);
+                if (mit == gpuMeshes.end()) continue;
+                auto sit = gpuSkins.find(id);
+                const GpuMesh &mesh = sit == gpuSkins.end() ? mit->second : sit->second.mesh;
+                if (mesh.topology != ex::Topology::Triangles) continue;
+                const bool skinned = sit != gpuSkins.end() && !sit->second.cpuFallback;
+                if (locSkin >= 0) glUniform1i(locSkin, skinned ? 1 : 0);
+                if (skinned) {
+                  glActiveTexture(GL_TEXTURE6);
+                  glBindTexture(GL_TEXTURE_BUFFER, sit->second.influences);
+                  glActiveTexture(GL_TEXTURE7);
+                  glBindTexture(GL_TEXTURE_BUFFER, sit->second.palette);
+                  glActiveTexture(GL_TEXTURE0);
+                }
+                glUniformMatrix4fv(locModel, 1, GL_FALSE, item.worldTransform.m.data());
+                glBindVertexArray(mesh.vao);
+                glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+              }
+            }
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(previousFbo));
+            glViewport(0, 0, w, h);
+            glUseProgram(0);
+            glActiveTexture(GL_TEXTURE5);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowTex);
+            glActiveTexture(GL_TEXTURE0);
+          }
+        }
+
+        // Helper: bind a texture on the given unit; fall back to whiteTex if tex==0.
+        // Keeps every sampler unit complete (no "no base level" GL warnings).
+        auto bindTex = [&](int unit, GLint samplerLoc, GLint hasLoc, GLuint tex) {
+          glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + unit));
+          glBindTexture(GL_TEXTURE_2D, tex ? tex : whiteTex);
+          if (samplerLoc >= 0) glUniform1i(samplerLoc, unit);
+          if (hasLoc >= 0) glUniform1i(hasLoc, tex ? 1 : 0);
+        };
+
+        // §18.4.3 MultiTexture (multitexture.glsl): bind each base-colour stage
+        // on unit 8+i (6/7 hold the skin buffers) with its mode/source/function/
+        // factor/channel. Sets
+        // uNumStages 0 (the plain single-texture path) when no combiner is
+        // needed, the mesh has no UVs, or the program lacks the combiner.
+        auto uploadStages = [&](GLuint program, const ex::RenderItem &item,
+                                const GpuMesh &mesh, bool srgb) {
+          const GLint locNum = glGetUniformLocation(program, "uNumStages");
+          if (locNum < 0) return;
+          const ex::MaterialDesc &m = item.material;
+          std::vector<const ex::TextureRef *> stages = baseStageRefs(m);
+          const bool anyCube = std::any_of(stages.begin(), stages.end(), [](auto *t) {
+            return t->source == ex::TextureRef::Source::Cube;
+          });
+          if ((!mesh.hasTexcoords && !anyCube) || mesh.isGlyphMesh ||
+              !needsStageCombiner(stages))
+            stages.clear();
+          constexpr int kMaxStages = 4; // multitexture.glsl; extra stages are ignored.
+          const int n = std::min(static_cast<int>(stages.size()), kMaxStages);
+          glUniform1i(locNum, n);
+          // texgen.glsl evaluates the material's first generator only.
+          const ex::TextureRef *generated = nullptr;
+          for (const ex::TextureRef &t : m.textures)
+            if (t.hasTexCoordGen) { generated = &t; break; }
+          const bool genActive = generated && texCoordGenModeUniform(m) != 0;
+          GLuint cubeTex = 0;
+          for (int i = 0; i < n; ++i) {
+            const ex::TextureRef &t = *stages[i];
+            auto loc = [&](const char *name) {
+              return glGetUniformLocation(
+                  program, (std::string(name) + "[" + std::to_string(i) + "]").c_str());
+            };
+            const bool isCube = t.source == ex::TextureRef::Source::Cube;
+            bindTex(8 + i, loc("uStageTex"), loc("uStageHasTex"),
+                    isCube ? 0 : resolveTexRef(&t, texCache, assetResolver, srgb, &movieState));
+            if (isCube && !cubeTex) { // one cube map per material (unit 12).
+              cubeTex = t.generatedCube.node ? generatedCubeTex(t.generatedCube.node)
+                                           : resolveCubeTex(t, texCache, assetResolver, srgb);
+              glActiveTexture(GL_TEXTURE12);
+              glBindTexture(GL_TEXTURE_2D_ARRAY, cubeTex);
+            }
+            // A pending cube samples white, like any unresolved stage.
+            glUniform1i(loc("uStageIsCube"), isCube && cubeTex ? 1 : 0);
+            const auto comma = t.multiMode.find(',');
+            const int rgbMode = multiTextureModeCode(t.multiMode.substr(0, comma));
+            const int alphaMode = comma == std::string::npos
+                                      ? rgbMode
+                                      : multiTextureModeCode(t.multiMode.substr(comma + 1));
+            glUniform2i(loc("uStageMode"), rgbMode, alphaMode);
+            glUniform1i(loc("uStageSource"), t.multiSource == "DIFFUSE"    ? 1
+                                              : t.multiSource == "SPECULAR" ? 2
+                                              : t.multiSource == "FACTOR"   ? 3
+                                                                            : 0);
+            glUniform1i(loc("uStageFunction"), t.multiFunction == "COMPLEMENT"       ? 1
+                                                : t.multiFunction == "ALPHAREPLICATE" ? 2
+                                                                                      : 0);
+            glUniform4f(loc("uStageFactor"), t.multiColor.r, t.multiColor.g,
+                        t.multiColor.b, t.multiAlpha);
+            glUniform1i(loc("uStageChannel"),
+                        genActive && &t == generated ? -1 : std::max(t.channel, 0));
+          }
+          glActiveTexture(GL_TEXTURE0);
+        };
+
+        // TXF-2 (texgen.glsl): the generator's mode, parameters and the
+        // TextureTransform applied to generated coordinates, and the eye-to-local
+        // rotation cube lookups use.
+        auto uploadTexGen = [&](GLuint program, const ex::RenderItem &item) {
+          const ex::MaterialDesc &m = item.material;
+          const GLint locMode = glGetUniformLocation(program, "uTexCoordGenMode");
+          if (locMode < 0) return;
+          glUniform1i(locMode, texCoordGenModeUniform(m));
+          const std::array<float, 9> eyeToLocal = poc::eyeToLocal3(view, item.worldTransform);
+          glUniformMatrix3fv(glGetUniformLocation(program, "uEyeToLocal"), 1, GL_FALSE,
+                             eyeToLocal.data());
+          const ex::TextureRef *t = texCoordGenRef(m);
+          if (!t) return;
+          const auto &param = t->texCoordGen.parameter;
+          const int count = static_cast<int>(std::min<std::size_t>(param.size(), 6));
+          if (count > 0)
+            glUniform1fv(glGetUniformLocation(program, "uTexGenParam"), count, param.data());
+          glUniform1i(glGetUniformLocation(program, "uTexGenParamCount"), count);
+          const std::array<float, 9> tt = ex::makeTextureTransform3x3(t->generatedTransform);
+          glUniformMatrix3fv(glGetUniformLocation(program, "uTexGenTransform"), 1,
+                             GL_TRUE, tt.data()); // row-major
+        };
+
+        // Helper: upload standard eye-space lights to a program (already bound).
+        auto uploadLights = [&](GLuint program, GLint locNum, GLint locDir, GLint locCol,
+                                GLint locAmb) {
+          if (locNum >= 0) glUniform1i(locNum, numLights);
+          if (numLights > 0) {
+            if (locDir >= 0) glUniform3fv(locDir, numLights, lightDir);
+            if (locCol >= 0) glUniform3fv(locCol, numLights, lightCol);
+            if (locAmb >= 0) glUniform1fv(locAmb, numLights, lightAmb);
+            glUniform1iv(glGetUniformLocation(program, "uLightType"), numLights, lightType);
+            glUniform3fv(glGetUniformLocation(program, "uLightPosEye"), numLights, lightPos);
+            glUniform3fv(glGetUniformLocation(program, "uLightAttenuation"), numLights, lightAtt);
+            glUniform1fv(glGetUniformLocation(program, "uLightRadius"), numLights, lightRadius);
+            glUniform2fv(glGetUniformLocation(program, "uLightCone"), numLights, lightCone);
+          }
+          // shadow.glsl: every slot is written, so unused ones read base -1.
+          const GLint locBase = glGetUniformLocation(program, "uLightShadowBase");
+          if (locBase < 0) return;
+          glUniform1iv(locBase, kMaxLights, shadowBase);
+          glUniform1iv(glGetUniformLocation(program, "uLightShadowCount"), kMaxLights, shadowCount);
+          glUniform1fv(glGetUniformLocation(program, "uLightShadowIntensity"), kMaxLights,
+                       shadowIntensity);
+          if (!shadowMatrices.empty())
+            glUniformMatrix4fv(glGetUniformLocation(program, "uShadowMatrix"),
+                               static_cast<GLsizei>(shadowMatrices.size() / 16), GL_FALSE,
+                               shadowMatrices.data());
+        };
+
+        // §24.4.2: the bound Fog, world-scaled by the extractor. visibilityRange
+        // 0 disables fog (the shaders no-op). §24.4.3: an item inside a
+        // LocalFog's grouping scope is fogged by that LocalFog instead (the
+        // extractor tags the nearest enabled one), so fog is uploaded per draw.
+        const ex::FogDesc fogDesc = extractor.fog();
+        auto uploadFog = [&](const ex::RenderItem &item, GLint locColor, GLint locType,
+                             GLint locRange) {
+          SFColor color = fogDesc.color;
+          ex::FogDesc::Type type = fogDesc.fogType;
+          float range = fogDesc.visibilityRange;
+          const auto &locals = extractor.snapshotLocalFogs();
+          if (item.localFog >= 0 && item.localFog < static_cast<int>(locals.size())) {
+            const ex::LocalFogDesc &lf = locals[item.localFog];
+            color = lf.color;
+            type = lf.fogType;
+            range = lf.visibilityRange;
+          }
+          if (locColor >= 0) glUniform3f(locColor, color.r, color.g, color.b);
+          if (locType >= 0)
+            glUniform1i(locType, type == ex::FogDesc::Type::Exponential ? 1 : 0);
+          if (locRange >= 0) glUniform1f(locRange, range);
+        };
+
+        // Helper: per-draw culling from mesh winding/solidity.
+        auto applyCull = [&](const GpuMesh &g, const x3d::runtime::Mat4 &model) {
+          if (g.solid) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+            glFrontFace(poc::frontFaceCCW(g.ccw, model) ? GL_CCW : GL_CW);
+          } else {
+            glDisable(GL_CULL_FACE);
+          }
+        };
+
+        // Track which program is currently bound so we only re-upload the shared
+        // view/proj uniforms (and re-glUseProgram) when the path actually changes.
+        GLuint boundProg = 0;
+
+        // ------------------------------------------------------------------
+        // Phase 5.1: Per-program dispatch selector.
+        //   UNLIT  — topology!=Triangles OR !hasNormals OR model==Unlit.
+        //   PHONG  — model == Phong (or Physical fallback if pbrProg unavailable).
+        //   PBR    — model == Physical AND pbrProg compiled.
+        //   AUTHOR — it.shaderProgram.has_value() (overrides material model).
+        // ------------------------------------------------------------------
+
+        // Draw one render item under the current GL/pass state. Factored out of the
+        // loop so the B7 opaque pass and the back-to-front BLEND pass share exactly
+        // one code path; the only per-pass difference is GL_BLEND + depth-mask state
+        // set by the caller around each pass.
+        auto drawItem = [&](ex::RenderItemId id) {
+          const ex::RenderItem &it = extractor.item(id);
+          if (usesGeneratedCube(it, exclude)) return;
+          auto mit = gpuMeshes.find(it.geometry);
+          if (mit == gpuMeshes.end()) return;
+          auto skinIt = gpuSkins.find(id);
+          const GpuMesh &g = skinIt == gpuSkins.end() ? mit->second : skinIt->second.mesh;
+          const ex::MaterialDesc &mat = it.material;
+          // REQ-CLIP (§11.4.1): the extractor carries WORLD planes; the shaders
+          // and the vocabulary's `clipPlane` uniform take them in eye space.
+          const int numClips = static_cast<int>(it.clipPlanes.size);
+          std::array<float, 4 * ex::ClipPlaneList::kMaxClipPlanes> clipEye{};
+          for (int ci = 0; ci < numClips; ++ci) {
+            const SFVec4f q = x3d::runtime::transformPlane(view, it.clipPlanes.items[ci].planeWorld);
+            clipEye[4 * ci] = q.x; clipEye[4 * ci + 1] = q.y;
+            clipEye[4 * ci + 2] = q.z; clipEye[4 * ci + 3] = q.w;
+          }
+          // FillProperties covers polygonal areas. With neither component enabled,
+          // issue no draw so neither color nor depth is written, including on the
+          // author-shader path.
+          if (g.topology == ex::Topology::Triangles &&
+              !mat.fill.filled && !mat.fill.hatched) return;
+          SFColorRGBA c = mat.toRGBA();
+          if (g.topology != ex::Topology::Triangles && !g.hasNormals)
+            c = mat.unlitGeometryRGBA();
+
+          // ----------------------------------------------------------------
+          // Determine which shader path to take.
+          // ----------------------------------------------------------------
+          const bool forceUnlit = !g.hasNormals
+                                   || (mat.model == ex::MaterialModel::Unlit);
+          const bool hasAuthor = it.shaderProgram.has_value()
+                                  && it.shaderProgram->isValid;
+          const bool wantPbr   = !forceUnlit && !hasAuthor
+                                  && (mat.model == ex::MaterialModel::Physical)
+                                  && pbrProg;
+          const bool wantPhong = !forceUnlit && !hasAuthor && !wantPbr && phongProg;
+          const auto uploadLitPointSize = [&](GLuint program) {
+            if (g.topology != ex::Topology::Points) return;
+            const auto set1 = [&](const char *name, float value) {
+              const GLint loc = glGetUniformLocation(program, name);
+              if (loc >= 0) glUniform1f(loc, value);
+            };
+            set1("uPointSizeScale", mat.point.pointSizeScaleFactor);
+            set1("uPointSizeMin", mat.point.pointSizeMinValue);
+            set1("uPointSizeMax", mat.point.pointSizeMaxValue);
+            const GLint loc = glGetUniformLocation(program, "uPointAttenuation");
+            if (loc >= 0)
+              glUniform3f(loc, mat.point.attenuation.x, mat.point.attenuation.y,
+                          mat.point.attenuation.z);
+          };
+
+          // ----------------------------------------------------------------
+          // PATH 1: UNLIT — normal-less geometry / UnlitMaterial.
+          // ----------------------------------------------------------------
+          if ((forceUnlit || (!wantPbr && !wantPhong && !hasAuthor)) && unlitProg) {
+            if (boundProg != unlitProg) {
+              glUseProgram(unlitProg);
+              glUniformMatrix4fv(uUnlitView, 1, GL_FALSE, view.m.data());
+              glUniformMatrix4fv(uUnlitProj, 1, GL_FALSE, proj.m.data());
+              boundProg = unlitProg;
+            }
+            glUniformMatrix4fv(uUnlitModel, 1, GL_FALSE, it.worldTransform.m.data());
+            uploadFog(it, uUnlitFogColor, uUnlitFogType, uUnlitFogRange);
+            glUniform4f(uUnlitBaseColor, c.r, c.g, c.b, c.a);
+            glUniform1i(uUnlitHasColors, g.hasColors ? 1 : 0);
+            // SEAM-LINEPOINT: §12.4.8 PointProperties → gl_PointSize (unlit.vert).
+            if (uUnlitPointScale >= 0) glUniform1f(uUnlitPointScale, mat.point.pointSizeScaleFactor);
+            if (uUnlitPointAtten >= 0)
+              glUniform3f(uUnlitPointAtten, mat.point.attenuation.x,
+                          mat.point.attenuation.y, mat.point.attenuation.z);
+            if (uUnlitPointMin >= 0) glUniform1f(uUnlitPointMin, mat.point.pointSizeMinValue);
+            if (uUnlitPointMax >= 0) glUniform1f(uUnlitPointMax, mat.point.pointSizeMaxValue);
+            // A textured Appearance with NO Material is Unlit with the image on the
+            // Emissive slot (§12.2.5); also covers UnlitMaterial.emissiveTexture and
+            // any Diffuse/BaseColor texture that lands on the unlit path. srgb=false:
+            // raw passthrough to match unlit's no-gamma direct color output.
+            if (g.hasTexcoords && !g.isGlyphMesh) {
+              GLuint ut = resolveTexRef(
+                  findTexSlot(mat, {ex::TextureRef::Slot::Emissive,
+                                    ex::TextureRef::Slot::BaseColor,
+                                    ex::TextureRef::Slot::Diffuse}),
+                  texCache, assetResolver, /*srgb=*/false, &movieState);
+              bindTex(0, uUnlitTexture, uUnlitHasTexture, ut);
+            } else {
+              bindTex(0, uUnlitTexture, uUnlitHasTexture, 0);
+            }
+            uploadStages(unlitProg, it, g, /*srgb=*/false);
+            uploadTexGen(unlitProg, it);
+            glDisable(GL_CULL_FACE); // lines/points/normal-less always double-sided.
+
+          // ----------------------------------------------------------------
+          // PATH 2: PHONG (Blinn-Phong + textures + normal-map).
+          // ----------------------------------------------------------------
+          } else if (wantPhong) {
+            if (boundProg != phongProg) {
+              glUseProgram(phongProg);
+              glUniformMatrix4fv(uView, 1, GL_FALSE, view.m.data());
+              glUniformMatrix4fv(uProj, 1, GL_FALSE, proj.m.data());
+              uploadLights(phongProg, uNumLights, uLightDirEye, uLightColor, uLightAmbient);
+              boundProg = phongProg;
+            }
+            // Per-path model + eye-space normal matrix.
+            glUniformMatrix4fv(uModel, 1, GL_FALSE, it.worldTransform.m.data());
+            uploadFog(it, uFogColor, uFogType, uFogRange);
+            std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
+            glUniformMatrix3fv(uNormalMat, 1, GL_FALSE, nrm.data());
+            uploadLitPointSize(phongProg);
+
+            // Material: diffuse(rgb)+alpha, emissive, ambient.
+            glUniform4f(uDiffuse, c.r, c.g, c.b, c.a);
+            glUniform3f(uEmissive, mat.emissive.r, mat.emissive.g, mat.emissive.b);
+            const float ai = mat.phong.ambientIntensity;
+            // §17: ambientParameter = ambientIntensity × diffuseParameter; the
+            // shader multiplies by the textured/vertex-coloured base itself.
+            glUniform3f(uAmbientColor, ai, ai, ai);
+            glUniform1i(uHasColors, g.hasColors ? 1 : 0);
+            // TXF-2: §18.4.8 TextureCoordinateGenerator (texgen.glsl).
+            uploadTexGen(phongProg, it);
+
+            // Blinn-Phong specular + alpha-mask.
+            glUniform3f(uSpecular, mat.phong.specular.r, mat.phong.specular.g,
+                        mat.phong.specular.b);
+            glUniform1f(uShininess, mat.phong.shininess);
+            glUniform1i(uAlphaMode, static_cast<int>(mat.alphaMode));
+            glUniform1f(uAlphaCutoff, mat.alphaCutoff);
+            // ADR-0027: Phong shades in display space — no sRGB output encode.
+            if (uGammaOutput >= 0) glUniform1i(uGammaOutput, 0);
+            // Normal scale.
+            if (uNormalScale >= 0) glUniform1f(uNormalScale, mat.normalScale);
+
+            if (g.isGlyphMesh && glyphAtlasTex) {
+              // T-TEXT: texcoords index the font coverage atlas; bind it on unit 0
+              // and flag the shader to read .r as alpha-tested glyph coverage with
+              // the material color. No material texture slots apply to glyph meshes.
+              bindTex(0, uTexture, uHasTexture, glyphAtlasTex);
+              if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 1);
+              bindTex(1, uNormalTex,   uHasNormalTex,   0);
+              bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);
+              bindTex(3, uSpecularTex, uHasSpecularTex, 0);
+            } else if (g.hasTexcoords) {
+              if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 0);
+              // Unit 0: diffuse/base color — display space for Phong (ADR-0027):
+              // uploaded as GL_RGBA so the driver does not decode it.
+              GLuint t0 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Diffuse,
+                                                           ex::TextureRef::Slot::BaseColor}),
+                                        texCache, assetResolver, /*srgb=*/false, &movieState);
+              bindTex(0, uTexture, uHasTexture, t0);
+              // Unit 1: normal map (linear — data texture, no sRGB decode).
+              GLuint t1 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
+                                        texCache, assetResolver, /*srgb=*/false);
+              bindTex(1, uNormalTex, uHasNormalTex, t1);
+              // Unit 2: emissive texture (display space for Phong).
+              GLuint t2 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
+                                        texCache, assetResolver, /*srgb=*/false, &movieState);
+              bindTex(2, uEmissiveTex, uHasEmissiveTex, t2);
+              // Unit 3: specular texture (display space for Phong).
+              GLuint t3 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Specular}),
+                                        texCache, assetResolver, /*srgb=*/false);
+              bindTex(3, uSpecularTex, uHasSpecularTex, t3);
+            } else {
+              if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 0);
+              bindTex(0, uTexture,     uHasTexture,     0);
+              bindTex(1, uNormalTex,   uHasNormalTex,   0);
+              bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);
+              bindTex(3, uSpecularTex, uHasSpecularTex, 0);
+            }
+            uploadStages(phongProg, it, g, /*srgb=*/false);
+            applyCull(g, it.worldTransform);
+
+          // ----------------------------------------------------------------
+          // PATH 3: PBR — metallic-roughness analytic BRDF (no IBL: Phase 4 deferred).
+          // ----------------------------------------------------------------
+          } else if (wantPbr) {
+            if (boundProg != pbrProg) {
+              glUseProgram(pbrProg);
+              glUniformMatrix4fv(uPbrView, 1, GL_FALSE, view.m.data());
+              glUniformMatrix4fv(uPbrProj, 1, GL_FALSE, proj.m.data());
+              uploadLights(pbrProg, uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
+              boundProg = pbrProg;
+            }
+            glUniformMatrix4fv(uPbrModel, 1, GL_FALSE, it.worldTransform.m.data());
+            uploadFog(it, uPbrFogColor, uPbrFogType, uPbrFogRange);
+            std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
+            glUniformMatrix3fv(uPbrNormalMat, 1, GL_FALSE, nrm.data());
+            uploadLitPointSize(pbrProg);
+
+            // PBR material params.
+            const auto &ph = mat.physical;
+            if (uPbrBaseColor >= 0)
+              glUniform4f(uPbrBaseColor, ph.baseColor.r, ph.baseColor.g,
+                          ph.baseColor.b, 1.0f - mat.transparency);
+            if (uPbrMetallic  >= 0) glUniform1f(uPbrMetallic,  ph.metallic);
+            if (uPbrRoughness >= 0) glUniform1f(uPbrRoughness, ph.roughness);
+            if (uPbrEmissive  >= 0)
+              glUniform3f(uPbrEmissive,
+                          mat.emissive.r, mat.emissive.g, mat.emissive.b);
+            if (uPbrAlphaMode   >= 0) glUniform1i(uPbrAlphaMode, static_cast<int>(mat.alphaMode));
+            if (uPbrAlphaCutoff >= 0) glUniform1f(uPbrAlphaCutoff, mat.alphaCutoff);
+            if (uPbrHasColors   >= 0) glUniform1i(uPbrHasColors, g.hasColors ? 1 : 0);
+            uploadTexGen(pbrProg, it);
+            if (uPbrNormalScale >= 0) glUniform1f(uPbrNormalScale, mat.normalScale);
+            if (uPbrOcclusionStrength >= 0)
+              glUniform1f(uPbrOcclusionStrength, ph.occlusionStrength);
+
+            // UsdPreviewSurface fidelity defaults (host contract — see uUsdIor
+            // comment above). X3D PhysicalMaterial carries none of these, so we
+            // always bind the spec fallbacks: metallic workflow, ior=1.5 (->
+            // dielectric F0=0.04, matching pbr.frag's hardcoded 0.04), no
+            // clearcoat, opacityMode "transparent" (matches pbr.frag's plain
+            // alpha-out behavior). No-ops on pbr.frag (locations are -1).
+            if (uUsdUseSpecularWorkflow >= 0) glUniform1i(uUsdUseSpecularWorkflow, 0);
+            if (uUsdSpecularColor       >= 0) glUniform3f(uUsdSpecularColor, 0.0f, 0.0f, 0.0f);
+            if (uUsdIor                 >= 0) glUniform1f(uUsdIor, 1.5f);
+            if (uUsdClearcoat           >= 0) glUniform1f(uUsdClearcoat, 0.0f);
+            if (uUsdClearcoatRoughness  >= 0) glUniform1f(uUsdClearcoatRoughness, 0.01f);
+            if (uUsdOpacityMode         >= 0) glUniform1i(uUsdOpacityMode, 0);
+            if (uUsdOpacityThreshold    >= 0) glUniform1f(uUsdOpacityThreshold, mat.alphaCutoff);
+
+            if (g.hasTexcoords) {
+              // Unit 0: base color (sRGB; uploaded as GL_SRGB8_ALPHA8 so the
+              // driver linearises on sample; pbr.frag reads the linearised value
+              // directly — no double-decode).
+              GLuint t0 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::BaseColor}),
+                                        texCache, assetResolver, /*srgb=*/true, &movieState);
+              bindTex(0, uPbrBaseColorTex, uPbrHasBaseColorTex, t0);
+              // Unit 1: normal map (linear — data texture, no sRGB decode).
+              GLuint t1 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
+                                        texCache, assetResolver, /*srgb=*/false);
+              bindTex(1, uPbrNormalTex, uPbrHasNormalTex, t1);
+              // Unit 2: emissive (sRGB).
+              GLuint t2 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
+                                        texCache, assetResolver, /*srgb=*/true, &movieState);
+              bindTex(2, uPbrEmissiveTex, uPbrHasEmissiveTex, t2);
+              // Unit 3: ORM metallic-roughness (linear — no sRGB decode).
+              GLuint t3 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::MetallicRoughness}),
+                                        texCache, assetResolver, /*srgb=*/false);
+              bindTex(3, uPbrMRTex, uPbrHasMRTex, t3);
+              // Unit 4: occlusion (linear).
+              GLuint t4 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Occlusion}),
+                                        texCache, assetResolver, /*srgb=*/false);
+              bindTex(4, uPbrOcclusionTex, uPbrHasOcclusionTex, t4);
+            } else {
+              bindTex(0, uPbrBaseColorTex,   uPbrHasBaseColorTex,   0);
+              bindTex(1, uPbrNormalTex,      uPbrHasNormalTex,      0);
+              bindTex(2, uPbrEmissiveTex,    uPbrHasEmissiveTex,    0);
+              bindTex(3, uPbrMRTex,          uPbrHasMRTex,          0);
+              bindTex(4, uPbrOcclusionTex,   uPbrHasOcclusionTex,   0);
+            }
+            uploadStages(pbrProg, it, g, /*srgb=*/true);
+            applyCull(g, it.worldTransform);
+
+          // ----------------------------------------------------------------
+          // PATH 4: AUTHOR-SHADER (ComposedShader/ProgramShader via
+          // ShaderBindingPlan). The SDK selects each Appearance's shader
+          // (§31.2.2.3) against makeGlShaderValidator, so a program reaching here
+          // compiled in this context; an invalid one was skipped for the next
+          // shader or the material. A 0 entry in authorProgCache (a link that
+          // still failed) skips the draw.
+          } else if (hasAuthor) {
+            // Build a cache key from the combined stage sources.
+            std::string cacheKey;
+            for (const auto &stage : it.shaderProgram->stages)
+              cacheKey += stage.source + "\n---\n";
+
+            auto ait = authorProgCache.find(cacheKey);
+            if (ait == authorProgCache.end()) {
+              // Compile the author stages.
+              GLuint avs = 0, afs = 0;
+              for (const auto &stage : it.shaderProgram->stages) {
+                if (stage.stage == ex::ShaderStageDesc::Stage::Vertex)
+                  avs = compileShader(GL_VERTEX_SHADER, stage.source, "author.vert");
+                else if (stage.stage == ex::ShaderStageDesc::Stage::Fragment)
+                  afs = compileShader(GL_FRAGMENT_SHADER, stage.source, "author.frag");
+              }
+              GLuint ap = (avs && afs) ? linkProgram(avs, afs) : 0;
+              if (avs) glDeleteShader(avs);
+              if (afs) glDeleteShader(afs);
+              authorProgCache[cacheKey] = ap;
+              ait = authorProgCache.find(cacheKey);
+            }
+
+            GLuint ap = ait->second;
+            if (!ap) {
+              // Author shader failed to link; draw nothing for this item.
+              return;
+            }
+
+            if (boundProg != ap) {
+              glUseProgram(ap);
+              boundProg = ap;
+            }
+
+            // Collect declared uniforms via glGetActiveUniform + buildBindingPlan.
+            GLint numUniforms = 0;
+            glGetProgramiv(ap, GL_ACTIVE_UNIFORMS, &numUniforms);
+            std::vector<std::pair<std::string, int>> declaredUniforms;
+            for (GLint ui = 0; ui < numUniforms; ++ui) {
+              char nameBuf[256] = {};
+              GLsizei len = 0; GLint usize = 0; GLenum utype = 0;
+              glGetActiveUniform(ap, static_cast<GLuint>(ui), sizeof(nameBuf),
+                                 &len, &usize, &utype, nameBuf);
+              int loc = glGetUniformLocation(ap, nameBuf);
+              if (loc >= 0)
+                declaredUniforms.emplace_back(std::string(nameBuf), loc);
+            }
+
+            ex::ShaderBindingPlan plan = ex::buildBindingPlan(
+                declaredUniforms, *it.shaderProgram);
+
+            // Log diagnostics (once, on first use — keyed by ap).
+            static std::unordered_map<GLuint, bool> diagLogged;
+            if (!diagLogged[ap]) {
+              diagLogged[ap] = true;
+              for (const std::string &d : plan.diagnostics)
+                std::fprintf(stderr, "[poc] author-shader diag: %s\n", d.c_str());
+            }
+
+            // Upload each vocab entry the author declared.
+            Mat4 viewModel = view * it.worldTransform;
+            std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
+            for (const auto &e : plan.entries) {
+              if (e.unrecognized) continue; // already diagnosed above
+              const int loc = e.location;
+              using S = ex::vocab::UniformSource;
+              switch (e.source) {
+                case S::ModelViewMatrix: {
+                  Mat4 mv = viewModel;
+                  glUniformMatrix4fv(loc, 1, GL_FALSE, mv.m.data()); break; }
+                case S::ProjectionMatrix:
+                  glUniformMatrix4fv(loc, 1, GL_FALSE, proj.m.data()); break;
+                case S::NormalMatrix:
+                  glUniformMatrix3fv(loc, 1, GL_FALSE, nrm.data()); break;
+                case S::ModelMatrix:
+                  glUniformMatrix4fv(loc, 1, GL_FALSE,
+                                     it.worldTransform.m.data()); break;
+                case S::ViewMatrix:
+                  glUniformMatrix4fv(loc, 1, GL_FALSE, view.m.data()); break;
+                case S::NumLights:
+                  glUniform1i(loc, numLights); break;
+                case S::LightDirection:
+                  if (numLights > 0) glUniform3fv(loc, numLights, lightDir);
+                  break;
+                case S::LightColor:
+                  if (numLights > 0) glUniform3fv(loc, numLights, lightCol);
+                  break;
+                case S::DiffuseColor:
+                  glUniform3f(loc, mat.phong.diffuse.r, mat.phong.diffuse.g,
+                               mat.phong.diffuse.b); break;
+                case S::EmissiveColor:
+                  glUniform3f(loc, mat.emissive.r, mat.emissive.g,
+                               mat.emissive.b); break;
+                case S::BaseColor:
+                  glUniform3f(loc, mat.physical.baseColor.r,
+                               mat.physical.baseColor.g,
+                               mat.physical.baseColor.b); break;
+                case S::Metallic:
+                  glUniform1f(loc, mat.physical.metallic); break;
+                case S::Roughness:
+                  glUniform1f(loc, mat.physical.roughness); break;
+                case S::Shininess:
+                  glUniform1f(loc, mat.phong.shininess); break;
+                case S::AmbientIntensity:
+                  glUniform1f(loc, mat.phong.ambientIntensity); break;
+                case S::Transparency:
+                  glUniform1f(loc, mat.transparency); break;
+                case S::AlphaMode:
+                  glUniform1i(loc, static_cast<int>(mat.alphaMode)); break;
+                case S::AlphaCutoff:
+                  glUniform1f(loc, mat.alphaCutoff); break;
+                case S::NumClipPlanes:
+                  glUniform1i(loc, numClips); break;
+                case S::ClipPlane:
+                  if (numClips > 0) glUniform4fv(loc, numClips, clipEye.data());
+                  break;
+                default: break; // EnvDiffuse/IBL etc. left unbound (Phase 4 deferred)
+              }
+              // Author <field> values.
+              if (e.isAuthorField) {
+                for (const auto &f : it.shaderProgram->fields) {
+                  if (f.name != e.declaredName) continue;
+                  // Every SF value the descriptor carries (SFNode/MF fields
+                  // arrive empty and stay unbound).
+                  std::visit([&](const auto &x) {
+                    using T = std::decay_t<decltype(x)>;
+                    if constexpr (std::is_same_v<T, float>) glUniform1f(loc, x);
+                    else if constexpr (std::is_same_v<T, int>) glUniform1i(loc, x);
+                    else if constexpr (std::is_same_v<T, bool>) glUniform1i(loc, x ? 1 : 0);
+                    else if constexpr (std::is_same_v<T, SFColor>) glUniform3f(loc, x.r, x.g, x.b);
+                    else if constexpr (std::is_same_v<T, SFColorRGBA>) glUniform4f(loc, x.r, x.g, x.b, x.a);
+                    else if constexpr (std::is_same_v<T, SFVec2f>) glUniform2f(loc, x.x, x.y);
+                    else if constexpr (std::is_same_v<T, SFVec3f>) glUniform3f(loc, x.x, x.y, x.z);
+                    else if constexpr (std::is_same_v<T, SFVec4f>) glUniform4f(loc, x.x, x.y, x.z, x.w);
+                    else if constexpr (std::is_same_v<T, SFMatrix3f>) glUniformMatrix3fv(loc, 1, GL_FALSE, &x.matrix[0][0]);
+                    else if constexpr (std::is_same_v<T, SFMatrix4f>) glUniformMatrix4fv(loc, 1, GL_FALSE, &x.matrix[0][0]);
+                  }, f.value.value);
+                  break;
+                }
+              }
+            }
+            applyCull(g, it.worldTransform);
+          }
+
+          // The built-in fragment programs share the same FillProperties uniform
+          // contract. Always upload per draw: adjacent items can use different
+          // appearances while sharing a program. Lines and points stay filled.
+          if (boundProg != 0 &&
+              (boundProg == unlitProg || boundProg == phongProg || boundProg == pbrProg)) {
+            const int mode = g.topology == ex::Topology::Triangles
+                ? (mat.fill.filled ? 1 : 0) | (mat.fill.hatched ? 2 : 0)
+                : 1;
+            glUniform1i(glGetUniformLocation(boundProg, "uFillMode"), mode);
+            glUniform1i(glGetUniformLocation(boundProg, "uHatchStyle"), mat.fill.hatchStyle);
+            glUniform3f(glGetUniformLocation(boundProg, "uHatchColor"),
+                        mat.fill.hatchColor.r, mat.fill.hatchColor.g,
+                        mat.fill.hatchColor.b);
+          }
+
+          // §12.4.6: line width applies on both lit and unlit paths.
+          const float lineWidth = g.topology == ex::Topology::Lines &&
+                                          mat.line.applied &&
+                                          mat.line.linewidthScaleFactor > 0.0f
+                                      ? mat.line.linewidthScaleFactor : 1.0f;
+          glLineWidth(lineWidth);
+          // B4: branch the draw-call primitive on topology.
+          GLenum mode = (g.topology == ex::Topology::Lines)    ? GL_LINES
+                        : (g.topology == ex::Topology::Points) ? GL_POINTS
+                                                               : GL_TRIANGLES;
+          GLint activeProgram = 0;
+          glGetIntegerv(GL_CURRENT_PROGRAM, &activeProgram);
+          GLint skinLoc = glGetUniformLocation(static_cast<GLuint>(activeProgram), "uSkinEnabled");
+          if (skinLoc >= 0) {
+            bool enabled = skinIt != gpuSkins.end() && !skinIt->second.cpuFallback;
+            glUniform1i(skinLoc, enabled ? 1 : 0);
+            // Active sampler types must not alias the same texture unit, even
+            // when this draw takes the unskinned shader branch.
+            glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uInfluences"), 6);
+            glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uPalette"), 7);
+            if (enabled) {
+              glActiveTexture(GL_TEXTURE6);
+              glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.influences);
+              glActiveTexture(GL_TEXTURE7);
+              glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.palette);
+            }
+          }
+          // REQ-CLIP: the built-in vertex shaders write gl_ClipDistance; an
+          // author program receives the planes as `clipPlane`/`numClipPlanes`
+          // and clips itself, so its clip distances stay disabled.
+          const bool builtinProgram =
+              activeProgram != 0 &&
+              (static_cast<GLuint>(activeProgram) == unlitProg ||
+               static_cast<GLuint>(activeProgram) == phongProg ||
+               static_cast<GLuint>(activeProgram) == pbrProg);
+          if (builtinProgram) {
+            const GLuint prog = static_cast<GLuint>(activeProgram);
+            glUniform1i(glGetUniformLocation(prog, "uNumClipPlanes"), numClips);
+            if (numClips > 0)
+              glUniform4fv(glGetUniformLocation(prog, "uClipPlane"), numClips, clipEye.data());
+          }
+          for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci) {
+            if (builtinProgram && ci < numClips) glEnable(GL_CLIP_DISTANCE0 + ci);
+            else glDisable(GL_CLIP_DISTANCE0 + ci);
+          }
+          glBindVertexArray(g.vao);
+          glDrawElements(mode, g.indexCount, GL_UNSIGNED_INT, nullptr);
+        };
+
+        // ----------------------------------------------------------------------
+        // B7 TRANSPARENCY: partition items into OPAQUE vs BLENDED, draw opaque
+        // first (depth writes on, no blend), then sort the blended set back-to-
+        // front by world-space centroid depth and draw it with GL_BLEND (srcAlpha,
+        // oneMinusSrcAlpha) and the depth MASK off (depth TEST still on, so opaque
+        // geometry still occludes transparent surfaces behind it).
+        //
+        // An item is BLENDED when its material alphaMode == Blend OR transparency
+        // > 0. alphaMode == Mask stays in the OPAQUE pass — its cutoff discard in
+        // the fragment shader yields hard edges that need no blending or sorting.
+        //
+        // The centroid sort is exact for SEPARABLE/convex meshes; interpenetrating
+        // transparent surfaces (or large concave ones) show the usual sort
+        // artifacts — this is browser-parity (X3DOM/X_ITE behave the same), NOT
+        // order-independent transparency (OIT is out of scope for the PoC).
+        // ----------------------------------------------------------------------
+        std::vector<ex::RenderItemId> opaqueItems;
+        std::vector<std::pair<float, ex::RenderItemId>> blendedItems; // (depthEye, id)
+        for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
+          const ex::RenderItem &it = extractor.item(id);
+          auto mit = gpuMeshes.find(it.geometry);
+          if (mit == gpuMeshes.end()) continue;
+          const ex::MaterialDesc &mat = it.material;
+          const bool blended = (mat.alphaMode == ex::AlphaMode::Blend) ||
+                               (mat.transparency > 0.0f);
+          if (!blended) {
+            opaqueItems.push_back(id);
+          } else {
+            // World-space centroid -> eye space; sort key is its eye-space Z
+            // (more negative = farther down -Z in eye space). Back-to-front means
+            // farthest first => ascending Z (most negative first).
+            SFVec3f wc = it.worldTransform.transformPoint(mit->second.localCentroid);
+            SFVec3f ec = view.transformPoint(wc);
+            blendedItems.emplace_back(ec.z, id);
+          }
+        }
+        // Farthest (most negative eye Z) first.
+        std::sort(blendedItems.begin(), blendedItems.end(),
+                  [](const auto &a, const auto &b) { return a.first < b.first; });
+
+        // OPAQUE pass: depth writes on, blending off.
+        glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
+        glDisable(GL_BLEND);
+        glDepthMask(GL_TRUE);
+        for (ex::RenderItemId id : opaqueItems) drawItem(id);
+
+        // BLENDED pass: back-to-front, GL_BLEND on, depth-MASK off (test still on).
+        if (!blendedItems.empty()) {
+          glEnable(GL_BLEND);
+          glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+          glDepthMask(GL_FALSE);
+          for (const auto &kv : blendedItems) drawItem(kv.second);
+          glDepthMask(GL_TRUE);   // restore for the next frame's depth clear+opaque.
+          glDisable(GL_BLEND);
+        }
+
+        glBindVertexArray(0);
+        glDisable(GL_CULL_FACE); // leave a clean default for the next frame.
+        for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci)
+          glDisable(GL_CLIP_DISTANCE0 + ci); // background/ImGui draw unclipped.
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // keep ImGui/textured quads solid.
+      }
+    };
+
     // --animate advances time at a FIXED dt so the capture is deterministic and
     // loop-seamless (independent of the software-GL frame rate under Xvfb). Start
     // at +dt (not 0): the bring-up tick(0.0) already consumed t=0, and delta()
@@ -2015,907 +3042,12 @@ int main(int argc, char **argv) {
     lastView = view;
     lastProj = proj;
 
-    // Forced full-screen clear sanity step: if NOTHING else draws, the window
-    // is still the Background color, proving context + swap work (M0 gate).
-    glClearColor(clearR, clearG, clearB, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // #39: paint the bound Background's full sky/ground gradient as a
-    // depth-test-disabled fullscreen dome, BEFORE scene geometry. A single
-    // skyColor (or no Background at all) is already exactly the flat clear
-    // above, so the shader pass only runs when there's a real ramp to paint
-    // (matches examples/cpu_raster's same "stay flat" fast path).
-    if (bgProg) {
-      if (const X3DNode *bg = ctx.boundBackground()) {
-        auto skyC = x3d::runtime::geombounds::getField<std::vector<SFColor>>(
-            *bg, "skyColor", {});
-        auto skyA = x3d::runtime::geombounds::getField<std::vector<float>>(
-            *bg, "skyAngle", {});
-        auto grC = x3d::runtime::geombounds::getField<std::vector<SFColor>>(
-            *bg, "groundColor", {});
-        auto grA = x3d::runtime::geombounds::getField<std::vector<float>>(
-            *bg, "groundAngle", {});
-        if (skyC.size() > 1 || !grC.empty()) {
-          glDisable(GL_DEPTH_TEST);
-          glUseProgram(bgProg);
-          const Mat4 invView = view.inverse();
-          glUniformMatrix4fv(uBgInvView, 1, GL_FALSE, invView.m.data());
-          glUniform1f(uBgInvP0, 1.0f / proj.m[0]);
-          glUniform1f(uBgInvP5, 1.0f / proj.m[5]);
-          auto uploadBand = [&](GLint locColor, GLint locAngle,
-                                GLint locColorCount, GLint locAngleCount,
-                                const std::vector<SFColor> &cols,
-                                const std::vector<float> &angs) {
-            float colBuf[kMaxBgBands * 3] = {0};
-            float angBuf[kMaxBgBands - 1] = {0};
-            const int cn = (std::min)(static_cast<int>(cols.size()), kMaxBgBands);
-            const int an = (std::min)(static_cast<int>(angs.size()), kMaxBgBands - 1);
-            for (int i = 0; i < cn; ++i) {
-              colBuf[i * 3 + 0] = cols[i].r;
-              colBuf[i * 3 + 1] = cols[i].g;
-              colBuf[i * 3 + 2] = cols[i].b;
-            }
-            for (int i = 0; i < an; ++i) angBuf[i] = angs[i];
-            if (locColor >= 0) glUniform3fv(locColor, kMaxBgBands, colBuf);
-            if (locAngle >= 0) glUniform1fv(locAngle, kMaxBgBands - 1, angBuf);
-            if (locColorCount >= 0) glUniform1i(locColorCount, cn);
-            if (locAngleCount >= 0) glUniform1i(locAngleCount, an);
-          };
-          uploadBand(uBgSkyColor, uBgSkyAngle, uBgSkyColorCount,
-                     uBgSkyAngleCount, skyC, skyA);
-          uploadBand(uBgGroundColor, uBgGroundAngle, uBgGroundColorCount,
-                     uBgGroundAngleCount, grC, grA);
-          glBindVertexArray(bgVao);
-          glDrawArrays(GL_TRIANGLES, 0, 3);
-          glBindVertexArray(0);
-          glEnable(GL_DEPTH_TEST);
-        }
-      }
-    }
-
-    if ((phongProg || unlitProg || pbrProg) && !gpuMeshes.empty()) {
-      // Resolve the active lights to eye space (world-resolved LightDescs from
-      // the extractor + the §23.4.4 NavigationInfo headlight when headlight is on).
-      std::vector<ex::LightDesc> lights = extractor.lights();
-      std::vector<EyeLight> eyeLights =
-          buildEyeLights(lights, view, headlightOn);
-      const int numLights = static_cast<int>(eyeLights.size());
-      // Flatten into contiguous arrays for the uniform array upload.
-      float lightDir[kMaxLights * 3] = {0};
-      float lightCol[kMaxLights * 3] = {0};
-      float lightAmb[kMaxLights] = {0};
-      int lightType[kMaxLights] = {0}; // 0 directional, 1 point, 2 spot.
-      float lightPos[kMaxLights * 3] = {0};
-      float lightAtt[kMaxLights * 3] = {0};
-      float lightRadius[kMaxLights] = {0};
-      float lightCone[kMaxLights * 2] = {0};
-      for (int i = 0; i < numLights && i < kMaxLights; ++i) {
-        lightDir[i * 3 + 0] = eyeLights[i].dirEye.x;
-        lightDir[i * 3 + 1] = eyeLights[i].dirEye.y;
-        lightDir[i * 3 + 2] = eyeLights[i].dirEye.z;
-        lightCol[i * 3 + 0] = eyeLights[i].color.r;
-        lightCol[i * 3 + 1] = eyeLights[i].color.g;
-        lightCol[i * 3 + 2] = eyeLights[i].color.b;
-        lightAmb[i] = eyeLights[i].ambientIntensity;
-        lightType[i] = eyeLights[i].positional ? (eyeLights[i].spot ? 2 : 1) : 0;
-        lightPos[i * 3 + 0] = eyeLights[i].posEye.x;
-        lightPos[i * 3 + 1] = eyeLights[i].posEye.y;
-        lightPos[i * 3 + 2] = eyeLights[i].posEye.z;
-        lightAtt[i * 3 + 0] = eyeLights[i].attenuation.x;
-        lightAtt[i * 3 + 1] = eyeLights[i].attenuation.y;
-        lightAtt[i * 3 + 2] = eyeLights[i].attenuation.z;
-        lightRadius[i] = eyeLights[i].radius;
-        lightCone[i * 2 + 0] = eyeLights[i].beamWidth;
-        lightCone[i * 2 + 1] = eyeLights[i].cutOffAngle;
-      }
-
-      // §17.3.1 shadows: render each shadow-enabled scene light's depth
-      // layers (shadowLayers) before the scene pass. Shapes with castShadow
-      // TRUE occlude, as in the CPU host; the headlight casts none.
-      int shadowBase[kMaxLights], shadowCount[kMaxLights];
-      float shadowIntensity[kMaxLights];
-      std::fill(std::begin(shadowBase), std::end(shadowBase), -1);
-      std::fill(std::begin(shadowCount), std::end(shadowCount), 0);
-      std::fill(std::begin(shadowIntensity), std::end(shadowIntensity), 0.0f);
-      std::vector<float> shadowMatrices; // 16 per layer: eye -> light clip.
-      const Aabb shadowBounds = extractor.sceneWorldBounds();
-      if (shadowProg && !shadowBounds.empty) {
-        const SFVec3f c{(shadowBounds.min.x + shadowBounds.max.x) * 0.5f,
-                        (shadowBounds.min.y + shadowBounds.max.y) * 0.5f,
-                        (shadowBounds.min.z + shadowBounds.max.z) * 0.5f};
-        const SFVec3f sz = shadowBounds.size();
-        const float radius =
-            (std::max)(0.5f * std::sqrt(v3dot(sz, sz)), 1e-3f) * 1.01f;
-        const int sceneLights = numLights - (headlightOn ? 1 : 0);
-        std::vector<Mat4> layers;
-        for (int i = 0; i < sceneLights && i < static_cast<int>(lights.size()); ++i) {
-          if (!lights[i].shadows) continue;
-          std::vector<Mat4> mine = shadowLayers(lights[i], c, radius);
-          if (layers.size() + mine.size() > kMaxShadowLayers) break;
-          shadowBase[i] = static_cast<int>(layers.size());
-          shadowCount[i] = static_cast<int>(mine.size());
-          shadowIntensity[i] = std::clamp(lights[i].shadowIntensity, 0.0f, 1.0f);
-          layers.insert(layers.end(), mine.begin(), mine.end());
-        }
-        if (!layers.empty()) {
-          const int n = static_cast<int>(layers.size());
-          if (n > shadowLayersAllocated) {
-            if (shadowTex) glDeleteTextures(1, &shadowTex);
-            glGenTextures(1, &shadowTex);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, shadowTex);
-            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24, kShadowSize,
-                         kShadowSize, n, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE,
-                            GL_COMPARE_REF_TO_TEXTURE);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-            shadowLayersAllocated = n;
-          }
-          if (!shadowFbo) glGenFramebuffers(1, &shadowFbo);
-          GLint previousFbo = 0;
-          glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFbo);
-          glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo);
-          glDrawBuffer(GL_NONE);
-          glReadBuffer(GL_NONE);
-          glViewport(0, 0, kShadowSize, kShadowSize);
-          glUseProgram(shadowProg);
-          glEnable(GL_DEPTH_TEST);
-          glDepthMask(GL_TRUE);
-          glDisable(GL_BLEND);
-          glDisable(GL_CULL_FACE);
-          glEnable(GL_POLYGON_OFFSET_FILL);
-          glPolygonOffset(2.0f, 4.0f);
-          for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci)
-            glDisable(GL_CLIP_DISTANCE0 + ci);
-          glUniform1i(glGetUniformLocation(shadowProg, "uNumClipPlanes"), 0);
-          glUniform1i(glGetUniformLocation(shadowProg, "uInfluences"), 6);
-          glUniform1i(glGetUniformLocation(shadowProg, "uPalette"), 7);
-          glUniform1i(glGetUniformLocation(shadowProg, "uTexture"), 0);
-          const GLint locModel = glGetUniformLocation(shadowProg, "uModel");
-          const GLint locView = glGetUniformLocation(shadowProg, "uView");
-          const GLint locProj = glGetUniformLocation(shadowProg, "uProjection");
-          const GLint locSkin = glGetUniformLocation(shadowProg, "uSkinEnabled");
-          const Mat4 identity = Mat4::identity();
-          const Mat4 invView = view.inverse();
-          for (int layer = 0; layer < n; ++layer) {
-            glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowTex, 0,
-                                      layer);
-            glClear(GL_DEPTH_BUFFER_BIT);
-            glUniformMatrix4fv(locView, 1, GL_FALSE, identity.m.data());
-            glUniformMatrix4fv(locProj, 1, GL_FALSE, layers[layer].m.data());
-            const Mat4 eyeToLight = layers[layer] * invView;
-            shadowMatrices.insert(shadowMatrices.end(), eyeToLight.m.begin(),
-                                  eyeToLight.m.end());
-            for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
-              const ex::RenderItem &item = extractor.item(id);
-              if (!item.castShadow) continue;
-              auto mit = gpuMeshes.find(item.geometry);
-              if (mit == gpuMeshes.end()) continue;
-              auto sit = gpuSkins.find(id);
-              const GpuMesh &mesh = sit == gpuSkins.end() ? mit->second : sit->second.mesh;
-              if (mesh.topology != ex::Topology::Triangles) continue;
-              const bool skinned = sit != gpuSkins.end() && !sit->second.cpuFallback;
-              if (locSkin >= 0) glUniform1i(locSkin, skinned ? 1 : 0);
-              if (skinned) {
-                glActiveTexture(GL_TEXTURE6);
-                glBindTexture(GL_TEXTURE_BUFFER, sit->second.influences);
-                glActiveTexture(GL_TEXTURE7);
-                glBindTexture(GL_TEXTURE_BUFFER, sit->second.palette);
-                glActiveTexture(GL_TEXTURE0);
-              }
-              glUniformMatrix4fv(locModel, 1, GL_FALSE, item.worldTransform.m.data());
-              glBindVertexArray(mesh.vao);
-              glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
-            }
-          }
-          glDisable(GL_POLYGON_OFFSET_FILL);
-          glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(previousFbo));
-          glViewport(0, 0, w, h);
-          glUseProgram(0);
-          glActiveTexture(GL_TEXTURE5);
-          glBindTexture(GL_TEXTURE_2D_ARRAY, shadowTex);
-          glActiveTexture(GL_TEXTURE0);
-        }
-      }
-
-      // Helper: bind a texture on the given unit; fall back to whiteTex if tex==0.
-      // Keeps every sampler unit complete (no "no base level" GL warnings).
-      auto bindTex = [&](int unit, GLint samplerLoc, GLint hasLoc, GLuint tex) {
-        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + unit));
-        glBindTexture(GL_TEXTURE_2D, tex ? tex : whiteTex);
-        if (samplerLoc >= 0) glUniform1i(samplerLoc, unit);
-        if (hasLoc >= 0) glUniform1i(hasLoc, tex ? 1 : 0);
-      };
-
-      // §18.4.3 MultiTexture (multitexture.glsl): bind each base-colour stage
-      // on unit 8+i (6/7 hold the skin buffers) with its mode/source/function/
-      // factor/channel. Sets
-      // uNumStages 0 (the plain single-texture path) when no combiner is
-      // needed, the mesh has no UVs, or the program lacks the combiner.
-      auto uploadStages = [&](GLuint program, const ex::RenderItem &item,
-                              const GpuMesh &mesh, bool srgb) {
-        const GLint locNum = glGetUniformLocation(program, "uNumStages");
-        if (locNum < 0) return;
-        const ex::MaterialDesc &m = item.material;
-        std::vector<const ex::TextureRef *> stages = baseStageRefs(m);
-        const bool anyCube = std::any_of(stages.begin(), stages.end(), [](auto *t) {
-          return t->source == ex::TextureRef::Source::Cube;
-        });
-        if ((!mesh.hasTexcoords && !anyCube) || mesh.isGlyphMesh ||
-            !needsStageCombiner(stages))
-          stages.clear();
-        constexpr int kMaxStages = 4; // multitexture.glsl; extra stages are ignored.
-        const int n = std::min(static_cast<int>(stages.size()), kMaxStages);
-        glUniform1i(locNum, n);
-        // texgen.glsl evaluates the material's first generator only.
-        const ex::TextureRef *generated = nullptr;
-        for (const ex::TextureRef &t : m.textures)
-          if (t.hasTexCoordGen) { generated = &t; break; }
-        const bool genActive = generated && texCoordGenModeUniform(m) != 0;
-        GLuint cubeTex = 0;
-        for (int i = 0; i < n; ++i) {
-          const ex::TextureRef &t = *stages[i];
-          auto loc = [&](const char *name) {
-            return glGetUniformLocation(
-                program, (std::string(name) + "[" + std::to_string(i) + "]").c_str());
-          };
-          const bool isCube = t.source == ex::TextureRef::Source::Cube;
-          bindTex(8 + i, loc("uStageTex"), loc("uStageHasTex"),
-                  isCube ? 0 : resolveTexRef(&t, texCache, assetResolver, srgb, &movieState));
-          if (isCube && !cubeTex) { // one cube map per material (unit 12).
-            cubeTex = resolveCubeTex(t, texCache, assetResolver, srgb);
-            glActiveTexture(GL_TEXTURE12);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, cubeTex);
-          }
-          // A pending cube samples white, like any unresolved stage.
-          glUniform1i(loc("uStageIsCube"), isCube && cubeTex ? 1 : 0);
-          const auto comma = t.multiMode.find(',');
-          const int rgbMode = multiTextureModeCode(t.multiMode.substr(0, comma));
-          const int alphaMode = comma == std::string::npos
-                                    ? rgbMode
-                                    : multiTextureModeCode(t.multiMode.substr(comma + 1));
-          glUniform2i(loc("uStageMode"), rgbMode, alphaMode);
-          glUniform1i(loc("uStageSource"), t.multiSource == "DIFFUSE"    ? 1
-                                            : t.multiSource == "SPECULAR" ? 2
-                                            : t.multiSource == "FACTOR"   ? 3
-                                                                          : 0);
-          glUniform1i(loc("uStageFunction"), t.multiFunction == "COMPLEMENT"       ? 1
-                                              : t.multiFunction == "ALPHAREPLICATE" ? 2
-                                                                                    : 0);
-          glUniform4f(loc("uStageFactor"), t.multiColor.r, t.multiColor.g,
-                      t.multiColor.b, t.multiAlpha);
-          glUniform1i(loc("uStageChannel"),
-                      genActive && &t == generated ? -1 : std::max(t.channel, 0));
-        }
-        glActiveTexture(GL_TEXTURE0);
-      };
-
-      // TXF-2 (texgen.glsl): the generator's mode, parameters and the
-      // TextureTransform applied to generated coordinates.
-      auto uploadTexGen = [&](GLuint program, const ex::MaterialDesc &m) {
-        const GLint locMode = glGetUniformLocation(program, "uTexCoordGenMode");
-        if (locMode < 0) return;
-        glUniform1i(locMode, texCoordGenModeUniform(m));
-        const ex::TextureRef *t = texCoordGenRef(m);
-        if (!t) return;
-        const auto &param = t->texCoordGen.parameter;
-        const int count = static_cast<int>(std::min<std::size_t>(param.size(), 6));
-        if (count > 0)
-          glUniform1fv(glGetUniformLocation(program, "uTexGenParam"), count, param.data());
-        glUniform1i(glGetUniformLocation(program, "uTexGenParamCount"), count);
-        const std::array<float, 9> tt = ex::makeTextureTransform3x3(t->generatedTransform);
-        glUniformMatrix3fv(glGetUniformLocation(program, "uTexGenTransform"), 1,
-                           GL_TRUE, tt.data()); // row-major
-      };
-
-      // Helper: upload standard eye-space lights to a program (already bound).
-      auto uploadLights = [&](GLuint program, GLint locNum, GLint locDir, GLint locCol,
-                              GLint locAmb) {
-        if (locNum >= 0) glUniform1i(locNum, numLights);
-        if (numLights > 0) {
-          if (locDir >= 0) glUniform3fv(locDir, numLights, lightDir);
-          if (locCol >= 0) glUniform3fv(locCol, numLights, lightCol);
-          if (locAmb >= 0) glUniform1fv(locAmb, numLights, lightAmb);
-          glUniform1iv(glGetUniformLocation(program, "uLightType"), numLights, lightType);
-          glUniform3fv(glGetUniformLocation(program, "uLightPosEye"), numLights, lightPos);
-          glUniform3fv(glGetUniformLocation(program, "uLightAttenuation"), numLights, lightAtt);
-          glUniform1fv(glGetUniformLocation(program, "uLightRadius"), numLights, lightRadius);
-          glUniform2fv(glGetUniformLocation(program, "uLightCone"), numLights, lightCone);
-        }
-        // shadow.glsl: every slot is written, so unused ones read base -1.
-        const GLint locBase = glGetUniformLocation(program, "uLightShadowBase");
-        if (locBase < 0) return;
-        glUniform1iv(locBase, kMaxLights, shadowBase);
-        glUniform1iv(glGetUniformLocation(program, "uLightShadowCount"), kMaxLights, shadowCount);
-        glUniform1fv(glGetUniformLocation(program, "uLightShadowIntensity"), kMaxLights,
-                     shadowIntensity);
-        if (!shadowMatrices.empty())
-          glUniformMatrix4fv(glGetUniformLocation(program, "uShadowMatrix"),
-                             static_cast<GLsizei>(shadowMatrices.size() / 16), GL_FALSE,
-                             shadowMatrices.data());
-      };
-
-      // §24.4.2: the bound Fog, world-scaled by the extractor. visibilityRange
-      // 0 disables fog (the shaders no-op). §24.4.3: an item inside a
-      // LocalFog's grouping scope is fogged by that LocalFog instead (the
-      // extractor tags the nearest enabled one), so fog is uploaded per draw.
-      const ex::FogDesc fogDesc = extractor.fog();
-      auto uploadFog = [&](const ex::RenderItem &item, GLint locColor, GLint locType,
-                           GLint locRange) {
-        SFColor color = fogDesc.color;
-        ex::FogDesc::Type type = fogDesc.fogType;
-        float range = fogDesc.visibilityRange;
-        const auto &locals = extractor.snapshotLocalFogs();
-        if (item.localFog >= 0 && item.localFog < static_cast<int>(locals.size())) {
-          const ex::LocalFogDesc &lf = locals[item.localFog];
-          color = lf.color;
-          type = lf.fogType;
-          range = lf.visibilityRange;
-        }
-        if (locColor >= 0) glUniform3f(locColor, color.r, color.g, color.b);
-        if (locType >= 0)
-          glUniform1i(locType, type == ex::FogDesc::Type::Exponential ? 1 : 0);
-        if (locRange >= 0) glUniform1f(locRange, range);
-      };
-
-      // Helper: per-draw culling from mesh winding/solidity.
-      auto applyCull = [&](const GpuMesh &g, const x3d::runtime::Mat4 &model) {
-        if (g.solid) {
-          glEnable(GL_CULL_FACE);
-          glCullFace(GL_BACK);
-          glFrontFace(poc::frontFaceCCW(g.ccw, model) ? GL_CCW : GL_CW);
-        } else {
-          glDisable(GL_CULL_FACE);
-        }
-      };
-
-      // Track which program is currently bound so we only re-upload the shared
-      // view/proj uniforms (and re-glUseProgram) when the path actually changes.
-      GLuint boundProg = 0;
-
-      // ------------------------------------------------------------------
-      // Phase 5.1: Per-program dispatch selector.
-      //   UNLIT  — topology!=Triangles OR !hasNormals OR model==Unlit.
-      //   PHONG  — model == Phong (or Physical fallback if pbrProg unavailable).
-      //   PBR    — model == Physical AND pbrProg compiled.
-      //   AUTHOR — it.shaderProgram.has_value() (overrides material model).
-      // ------------------------------------------------------------------
-
-      // Draw one render item under the current GL/pass state. Factored out of the
-      // loop so the B7 opaque pass and the back-to-front BLEND pass share exactly
-      // one code path; the only per-pass difference is GL_BLEND + depth-mask state
-      // set by the caller around each pass.
-      auto drawItem = [&](ex::RenderItemId id) {
-        const ex::RenderItem &it = extractor.item(id);
-        auto mit = gpuMeshes.find(it.geometry);
-        if (mit == gpuMeshes.end()) return;
-        auto skinIt = gpuSkins.find(id);
-        const GpuMesh &g = skinIt == gpuSkins.end() ? mit->second : skinIt->second.mesh;
-        const ex::MaterialDesc &mat = it.material;
-        // REQ-CLIP (§11.4.1): the extractor carries WORLD planes; the shaders
-        // and the vocabulary's `clipPlane` uniform take them in eye space.
-        const int numClips = static_cast<int>(it.clipPlanes.size);
-        std::array<float, 4 * ex::ClipPlaneList::kMaxClipPlanes> clipEye{};
-        for (int ci = 0; ci < numClips; ++ci) {
-          const SFVec4f q = x3d::runtime::transformPlane(view, it.clipPlanes.items[ci].planeWorld);
-          clipEye[4 * ci] = q.x; clipEye[4 * ci + 1] = q.y;
-          clipEye[4 * ci + 2] = q.z; clipEye[4 * ci + 3] = q.w;
-        }
-        // FillProperties covers polygonal areas. With neither component enabled,
-        // issue no draw so neither color nor depth is written, including on the
-        // author-shader path.
-        if (g.topology == ex::Topology::Triangles &&
-            !mat.fill.filled && !mat.fill.hatched) return;
-        SFColorRGBA c = mat.toRGBA();
-        if (g.topology != ex::Topology::Triangles && !g.hasNormals)
-          c = mat.unlitGeometryRGBA();
-
-        // ----------------------------------------------------------------
-        // Determine which shader path to take.
-        // ----------------------------------------------------------------
-        const bool forceUnlit = !g.hasNormals
-                                 || (mat.model == ex::MaterialModel::Unlit);
-        const bool hasAuthor = it.shaderProgram.has_value()
-                                && it.shaderProgram->isValid;
-        const bool wantPbr   = !forceUnlit && !hasAuthor
-                                && (mat.model == ex::MaterialModel::Physical)
-                                && pbrProg;
-        const bool wantPhong = !forceUnlit && !hasAuthor && !wantPbr && phongProg;
-        const auto uploadLitPointSize = [&](GLuint program) {
-          if (g.topology != ex::Topology::Points) return;
-          const auto set1 = [&](const char *name, float value) {
-            const GLint loc = glGetUniformLocation(program, name);
-            if (loc >= 0) glUniform1f(loc, value);
-          };
-          set1("uPointSizeScale", mat.point.pointSizeScaleFactor);
-          set1("uPointSizeMin", mat.point.pointSizeMinValue);
-          set1("uPointSizeMax", mat.point.pointSizeMaxValue);
-          const GLint loc = glGetUniformLocation(program, "uPointAttenuation");
-          if (loc >= 0)
-            glUniform3f(loc, mat.point.attenuation.x, mat.point.attenuation.y,
-                        mat.point.attenuation.z);
-        };
-
-        // ----------------------------------------------------------------
-        // PATH 1: UNLIT — normal-less geometry / UnlitMaterial.
-        // ----------------------------------------------------------------
-        if ((forceUnlit || (!wantPbr && !wantPhong && !hasAuthor)) && unlitProg) {
-          if (boundProg != unlitProg) {
-            glUseProgram(unlitProg);
-            glUniformMatrix4fv(uUnlitView, 1, GL_FALSE, view.m.data());
-            glUniformMatrix4fv(uUnlitProj, 1, GL_FALSE, proj.m.data());
-            boundProg = unlitProg;
-          }
-          glUniformMatrix4fv(uUnlitModel, 1, GL_FALSE, it.worldTransform.m.data());
-          uploadFog(it, uUnlitFogColor, uUnlitFogType, uUnlitFogRange);
-          glUniform4f(uUnlitBaseColor, c.r, c.g, c.b, c.a);
-          glUniform1i(uUnlitHasColors, g.hasColors ? 1 : 0);
-          // SEAM-LINEPOINT: §12.4.8 PointProperties → gl_PointSize (unlit.vert).
-          if (uUnlitPointScale >= 0) glUniform1f(uUnlitPointScale, mat.point.pointSizeScaleFactor);
-          if (uUnlitPointAtten >= 0)
-            glUniform3f(uUnlitPointAtten, mat.point.attenuation.x,
-                        mat.point.attenuation.y, mat.point.attenuation.z);
-          if (uUnlitPointMin >= 0) glUniform1f(uUnlitPointMin, mat.point.pointSizeMinValue);
-          if (uUnlitPointMax >= 0) glUniform1f(uUnlitPointMax, mat.point.pointSizeMaxValue);
-          // A textured Appearance with NO Material is Unlit with the image on the
-          // Emissive slot (§12.2.5); also covers UnlitMaterial.emissiveTexture and
-          // any Diffuse/BaseColor texture that lands on the unlit path. srgb=false:
-          // raw passthrough to match unlit's no-gamma direct color output.
-          if (g.hasTexcoords && !g.isGlyphMesh) {
-            GLuint ut = resolveTexRef(
-                findTexSlot(mat, {ex::TextureRef::Slot::Emissive,
-                                  ex::TextureRef::Slot::BaseColor,
-                                  ex::TextureRef::Slot::Diffuse}),
-                texCache, assetResolver, /*srgb=*/false, &movieState);
-            bindTex(0, uUnlitTexture, uUnlitHasTexture, ut);
-          } else {
-            bindTex(0, uUnlitTexture, uUnlitHasTexture, 0);
-          }
-          uploadStages(unlitProg, it, g, /*srgb=*/false);
-          uploadTexGen(unlitProg, mat);
-          glDisable(GL_CULL_FACE); // lines/points/normal-less always double-sided.
-
-        // ----------------------------------------------------------------
-        // PATH 2: PHONG (Blinn-Phong + textures + normal-map).
-        // ----------------------------------------------------------------
-        } else if (wantPhong) {
-          if (boundProg != phongProg) {
-            glUseProgram(phongProg);
-            glUniformMatrix4fv(uView, 1, GL_FALSE, view.m.data());
-            glUniformMatrix4fv(uProj, 1, GL_FALSE, proj.m.data());
-            uploadLights(phongProg, uNumLights, uLightDirEye, uLightColor, uLightAmbient);
-            boundProg = phongProg;
-          }
-          // Per-path model + eye-space normal matrix.
-          glUniformMatrix4fv(uModel, 1, GL_FALSE, it.worldTransform.m.data());
-          uploadFog(it, uFogColor, uFogType, uFogRange);
-          std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
-          glUniformMatrix3fv(uNormalMat, 1, GL_FALSE, nrm.data());
-          uploadLitPointSize(phongProg);
-
-          // Material: diffuse(rgb)+alpha, emissive, ambient.
-          glUniform4f(uDiffuse, c.r, c.g, c.b, c.a);
-          glUniform3f(uEmissive, mat.emissive.r, mat.emissive.g, mat.emissive.b);
-          const float ai = mat.phong.ambientIntensity;
-          // §17: ambientParameter = ambientIntensity × diffuseParameter; the
-          // shader multiplies by the textured/vertex-coloured base itself.
-          glUniform3f(uAmbientColor, ai, ai, ai);
-          glUniform1i(uHasColors, g.hasColors ? 1 : 0);
-          // TXF-2: §18.4.8 TextureCoordinateGenerator (texgen.glsl).
-          uploadTexGen(phongProg, mat);
-
-          // Blinn-Phong specular + alpha-mask.
-          glUniform3f(uSpecular, mat.phong.specular.r, mat.phong.specular.g,
-                      mat.phong.specular.b);
-          glUniform1f(uShininess, mat.phong.shininess);
-          glUniform1i(uAlphaMode, static_cast<int>(mat.alphaMode));
-          glUniform1f(uAlphaCutoff, mat.alphaCutoff);
-          // ADR-0027: Phong shades in display space — no sRGB output encode.
-          if (uGammaOutput >= 0) glUniform1i(uGammaOutput, 0);
-          // Normal scale.
-          if (uNormalScale >= 0) glUniform1f(uNormalScale, mat.normalScale);
-
-          if (g.isGlyphMesh && glyphAtlasTex) {
-            // T-TEXT: texcoords index the font coverage atlas; bind it on unit 0
-            // and flag the shader to read .r as alpha-tested glyph coverage with
-            // the material color. No material texture slots apply to glyph meshes.
-            bindTex(0, uTexture, uHasTexture, glyphAtlasTex);
-            if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 1);
-            bindTex(1, uNormalTex,   uHasNormalTex,   0);
-            bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);
-            bindTex(3, uSpecularTex, uHasSpecularTex, 0);
-          } else if (g.hasTexcoords) {
-            if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 0);
-            // Unit 0: diffuse/base color — display space for Phong (ADR-0027):
-            // uploaded as GL_RGBA so the driver does not decode it.
-            GLuint t0 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Diffuse,
-                                                         ex::TextureRef::Slot::BaseColor}),
-                                      texCache, assetResolver, /*srgb=*/false, &movieState);
-            bindTex(0, uTexture, uHasTexture, t0);
-            // Unit 1: normal map (linear — data texture, no sRGB decode).
-            GLuint t1 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
-                                      texCache, assetResolver, /*srgb=*/false);
-            bindTex(1, uNormalTex, uHasNormalTex, t1);
-            // Unit 2: emissive texture (display space for Phong).
-            GLuint t2 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
-                                      texCache, assetResolver, /*srgb=*/false, &movieState);
-            bindTex(2, uEmissiveTex, uHasEmissiveTex, t2);
-            // Unit 3: specular texture (display space for Phong).
-            GLuint t3 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Specular}),
-                                      texCache, assetResolver, /*srgb=*/false);
-            bindTex(3, uSpecularTex, uHasSpecularTex, t3);
-          } else {
-            if (uGlyphAtlas >= 0) glUniform1i(uGlyphAtlas, 0);
-            bindTex(0, uTexture,     uHasTexture,     0);
-            bindTex(1, uNormalTex,   uHasNormalTex,   0);
-            bindTex(2, uEmissiveTex, uHasEmissiveTex, 0);
-            bindTex(3, uSpecularTex, uHasSpecularTex, 0);
-          }
-          uploadStages(phongProg, it, g, /*srgb=*/false);
-          applyCull(g, it.worldTransform);
-
-        // ----------------------------------------------------------------
-        // PATH 3: PBR — metallic-roughness analytic BRDF (no IBL: Phase 4 deferred).
-        // ----------------------------------------------------------------
-        } else if (wantPbr) {
-          if (boundProg != pbrProg) {
-            glUseProgram(pbrProg);
-            glUniformMatrix4fv(uPbrView, 1, GL_FALSE, view.m.data());
-            glUniformMatrix4fv(uPbrProj, 1, GL_FALSE, proj.m.data());
-            uploadLights(pbrProg, uPbrNumLights, uPbrLightDirEye, uPbrLightColor, uPbrLightAmbient);
-            boundProg = pbrProg;
-          }
-          glUniformMatrix4fv(uPbrModel, 1, GL_FALSE, it.worldTransform.m.data());
-          uploadFog(it, uPbrFogColor, uPbrFogType, uPbrFogRange);
-          std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
-          glUniformMatrix3fv(uPbrNormalMat, 1, GL_FALSE, nrm.data());
-          uploadLitPointSize(pbrProg);
-
-          // PBR material params.
-          const auto &ph = mat.physical;
-          if (uPbrBaseColor >= 0)
-            glUniform4f(uPbrBaseColor, ph.baseColor.r, ph.baseColor.g,
-                        ph.baseColor.b, 1.0f - mat.transparency);
-          if (uPbrMetallic  >= 0) glUniform1f(uPbrMetallic,  ph.metallic);
-          if (uPbrRoughness >= 0) glUniform1f(uPbrRoughness, ph.roughness);
-          if (uPbrEmissive  >= 0)
-            glUniform3f(uPbrEmissive,
-                        mat.emissive.r, mat.emissive.g, mat.emissive.b);
-          if (uPbrAlphaMode   >= 0) glUniform1i(uPbrAlphaMode, static_cast<int>(mat.alphaMode));
-          if (uPbrAlphaCutoff >= 0) glUniform1f(uPbrAlphaCutoff, mat.alphaCutoff);
-          if (uPbrHasColors   >= 0) glUniform1i(uPbrHasColors, g.hasColors ? 1 : 0);
-          uploadTexGen(pbrProg, mat);
-          if (uPbrNormalScale >= 0) glUniform1f(uPbrNormalScale, mat.normalScale);
-          if (uPbrOcclusionStrength >= 0)
-            glUniform1f(uPbrOcclusionStrength, ph.occlusionStrength);
-
-          // UsdPreviewSurface fidelity defaults (host contract — see uUsdIor
-          // comment above). X3D PhysicalMaterial carries none of these, so we
-          // always bind the spec fallbacks: metallic workflow, ior=1.5 (->
-          // dielectric F0=0.04, matching pbr.frag's hardcoded 0.04), no
-          // clearcoat, opacityMode "transparent" (matches pbr.frag's plain
-          // alpha-out behavior). No-ops on pbr.frag (locations are -1).
-          if (uUsdUseSpecularWorkflow >= 0) glUniform1i(uUsdUseSpecularWorkflow, 0);
-          if (uUsdSpecularColor       >= 0) glUniform3f(uUsdSpecularColor, 0.0f, 0.0f, 0.0f);
-          if (uUsdIor                 >= 0) glUniform1f(uUsdIor, 1.5f);
-          if (uUsdClearcoat           >= 0) glUniform1f(uUsdClearcoat, 0.0f);
-          if (uUsdClearcoatRoughness  >= 0) glUniform1f(uUsdClearcoatRoughness, 0.01f);
-          if (uUsdOpacityMode         >= 0) glUniform1i(uUsdOpacityMode, 0);
-          if (uUsdOpacityThreshold    >= 0) glUniform1f(uUsdOpacityThreshold, mat.alphaCutoff);
-
-          if (g.hasTexcoords) {
-            // Unit 0: base color (sRGB; uploaded as GL_SRGB8_ALPHA8 so the
-            // driver linearises on sample; pbr.frag reads the linearised value
-            // directly — no double-decode).
-            GLuint t0 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::BaseColor}),
-                                      texCache, assetResolver, /*srgb=*/true, &movieState);
-            bindTex(0, uPbrBaseColorTex, uPbrHasBaseColorTex, t0);
-            // Unit 1: normal map (linear — data texture, no sRGB decode).
-            GLuint t1 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Normal}),
-                                      texCache, assetResolver, /*srgb=*/false);
-            bindTex(1, uPbrNormalTex, uPbrHasNormalTex, t1);
-            // Unit 2: emissive (sRGB).
-            GLuint t2 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Emissive}),
-                                      texCache, assetResolver, /*srgb=*/true, &movieState);
-            bindTex(2, uPbrEmissiveTex, uPbrHasEmissiveTex, t2);
-            // Unit 3: ORM metallic-roughness (linear — no sRGB decode).
-            GLuint t3 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::MetallicRoughness}),
-                                      texCache, assetResolver, /*srgb=*/false);
-            bindTex(3, uPbrMRTex, uPbrHasMRTex, t3);
-            // Unit 4: occlusion (linear).
-            GLuint t4 = resolveTexRef(findTexSlot(mat, {ex::TextureRef::Slot::Occlusion}),
-                                      texCache, assetResolver, /*srgb=*/false);
-            bindTex(4, uPbrOcclusionTex, uPbrHasOcclusionTex, t4);
-          } else {
-            bindTex(0, uPbrBaseColorTex,   uPbrHasBaseColorTex,   0);
-            bindTex(1, uPbrNormalTex,      uPbrHasNormalTex,      0);
-            bindTex(2, uPbrEmissiveTex,    uPbrHasEmissiveTex,    0);
-            bindTex(3, uPbrMRTex,          uPbrHasMRTex,          0);
-            bindTex(4, uPbrOcclusionTex,   uPbrHasOcclusionTex,   0);
-          }
-          uploadStages(pbrProg, it, g, /*srgb=*/true);
-          applyCull(g, it.worldTransform);
-
-        // ----------------------------------------------------------------
-        // PATH 4: AUTHOR-SHADER (ComposedShader/ProgramShader via
-        // ShaderBindingPlan). The SDK selects each Appearance's shader
-        // (§31.2.2.3) against makeGlShaderValidator, so a program reaching here
-        // compiled in this context; an invalid one was skipped for the next
-        // shader or the material. A 0 entry in authorProgCache (a link that
-        // still failed) skips the draw.
-        } else if (hasAuthor) {
-          // Build a cache key from the combined stage sources.
-          std::string cacheKey;
-          for (const auto &stage : it.shaderProgram->stages)
-            cacheKey += stage.source + "\n---\n";
-
-          auto ait = authorProgCache.find(cacheKey);
-          if (ait == authorProgCache.end()) {
-            // Compile the author stages.
-            GLuint avs = 0, afs = 0;
-            for (const auto &stage : it.shaderProgram->stages) {
-              if (stage.stage == ex::ShaderStageDesc::Stage::Vertex)
-                avs = compileShader(GL_VERTEX_SHADER, stage.source, "author.vert");
-              else if (stage.stage == ex::ShaderStageDesc::Stage::Fragment)
-                afs = compileShader(GL_FRAGMENT_SHADER, stage.source, "author.frag");
-            }
-            GLuint ap = (avs && afs) ? linkProgram(avs, afs) : 0;
-            if (avs) glDeleteShader(avs);
-            if (afs) glDeleteShader(afs);
-            authorProgCache[cacheKey] = ap;
-            ait = authorProgCache.find(cacheKey);
-          }
-
-          GLuint ap = ait->second;
-          if (!ap) {
-            // Author shader failed to link; draw nothing for this item.
-            return;
-          }
-
-          if (boundProg != ap) {
-            glUseProgram(ap);
-            boundProg = ap;
-          }
-
-          // Collect declared uniforms via glGetActiveUniform + buildBindingPlan.
-          GLint numUniforms = 0;
-          glGetProgramiv(ap, GL_ACTIVE_UNIFORMS, &numUniforms);
-          std::vector<std::pair<std::string, int>> declaredUniforms;
-          for (GLint ui = 0; ui < numUniforms; ++ui) {
-            char nameBuf[256] = {};
-            GLsizei len = 0; GLint usize = 0; GLenum utype = 0;
-            glGetActiveUniform(ap, static_cast<GLuint>(ui), sizeof(nameBuf),
-                               &len, &usize, &utype, nameBuf);
-            int loc = glGetUniformLocation(ap, nameBuf);
-            if (loc >= 0)
-              declaredUniforms.emplace_back(std::string(nameBuf), loc);
-          }
-
-          ex::ShaderBindingPlan plan = ex::buildBindingPlan(
-              declaredUniforms, *it.shaderProgram);
-
-          // Log diagnostics (once, on first use — keyed by ap).
-          static std::unordered_map<GLuint, bool> diagLogged;
-          if (!diagLogged[ap]) {
-            diagLogged[ap] = true;
-            for (const std::string &d : plan.diagnostics)
-              std::fprintf(stderr, "[poc] author-shader diag: %s\n", d.c_str());
-          }
-
-          // Upload each vocab entry the author declared.
-          Mat4 viewModel = view * it.worldTransform;
-          std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
-          for (const auto &e : plan.entries) {
-            if (e.unrecognized) continue; // already diagnosed above
-            const int loc = e.location;
-            using S = ex::vocab::UniformSource;
-            switch (e.source) {
-              case S::ModelViewMatrix: {
-                Mat4 mv = viewModel;
-                glUniformMatrix4fv(loc, 1, GL_FALSE, mv.m.data()); break; }
-              case S::ProjectionMatrix:
-                glUniformMatrix4fv(loc, 1, GL_FALSE, proj.m.data()); break;
-              case S::NormalMatrix:
-                glUniformMatrix3fv(loc, 1, GL_FALSE, nrm.data()); break;
-              case S::ModelMatrix:
-                glUniformMatrix4fv(loc, 1, GL_FALSE,
-                                   it.worldTransform.m.data()); break;
-              case S::ViewMatrix:
-                glUniformMatrix4fv(loc, 1, GL_FALSE, view.m.data()); break;
-              case S::NumLights:
-                glUniform1i(loc, numLights); break;
-              case S::LightDirection:
-                if (numLights > 0) glUniform3fv(loc, numLights, lightDir);
-                break;
-              case S::LightColor:
-                if (numLights > 0) glUniform3fv(loc, numLights, lightCol);
-                break;
-              case S::DiffuseColor:
-                glUniform3f(loc, mat.phong.diffuse.r, mat.phong.diffuse.g,
-                             mat.phong.diffuse.b); break;
-              case S::EmissiveColor:
-                glUniform3f(loc, mat.emissive.r, mat.emissive.g,
-                             mat.emissive.b); break;
-              case S::BaseColor:
-                glUniform3f(loc, mat.physical.baseColor.r,
-                             mat.physical.baseColor.g,
-                             mat.physical.baseColor.b); break;
-              case S::Metallic:
-                glUniform1f(loc, mat.physical.metallic); break;
-              case S::Roughness:
-                glUniform1f(loc, mat.physical.roughness); break;
-              case S::Shininess:
-                glUniform1f(loc, mat.phong.shininess); break;
-              case S::AmbientIntensity:
-                glUniform1f(loc, mat.phong.ambientIntensity); break;
-              case S::Transparency:
-                glUniform1f(loc, mat.transparency); break;
-              case S::AlphaMode:
-                glUniform1i(loc, static_cast<int>(mat.alphaMode)); break;
-              case S::AlphaCutoff:
-                glUniform1f(loc, mat.alphaCutoff); break;
-              case S::NumClipPlanes:
-                glUniform1i(loc, numClips); break;
-              case S::ClipPlane:
-                if (numClips > 0) glUniform4fv(loc, numClips, clipEye.data());
-                break;
-              default: break; // EnvDiffuse/IBL etc. left unbound (Phase 4 deferred)
-            }
-            // Author <field> values.
-            if (e.isAuthorField) {
-              for (const auto &f : it.shaderProgram->fields) {
-                if (f.name != e.declaredName) continue;
-                // Every SF value the descriptor carries (SFNode/MF fields
-                // arrive empty and stay unbound).
-                std::visit([&](const auto &x) {
-                  using T = std::decay_t<decltype(x)>;
-                  if constexpr (std::is_same_v<T, float>) glUniform1f(loc, x);
-                  else if constexpr (std::is_same_v<T, int>) glUniform1i(loc, x);
-                  else if constexpr (std::is_same_v<T, bool>) glUniform1i(loc, x ? 1 : 0);
-                  else if constexpr (std::is_same_v<T, SFColor>) glUniform3f(loc, x.r, x.g, x.b);
-                  else if constexpr (std::is_same_v<T, SFColorRGBA>) glUniform4f(loc, x.r, x.g, x.b, x.a);
-                  else if constexpr (std::is_same_v<T, SFVec2f>) glUniform2f(loc, x.x, x.y);
-                  else if constexpr (std::is_same_v<T, SFVec3f>) glUniform3f(loc, x.x, x.y, x.z);
-                  else if constexpr (std::is_same_v<T, SFVec4f>) glUniform4f(loc, x.x, x.y, x.z, x.w);
-                  else if constexpr (std::is_same_v<T, SFMatrix3f>) glUniformMatrix3fv(loc, 1, GL_FALSE, &x.matrix[0][0]);
-                  else if constexpr (std::is_same_v<T, SFMatrix4f>) glUniformMatrix4fv(loc, 1, GL_FALSE, &x.matrix[0][0]);
-                }, f.value.value);
-                break;
-              }
-            }
-          }
-          applyCull(g, it.worldTransform);
-        }
-
-        // The built-in fragment programs share the same FillProperties uniform
-        // contract. Always upload per draw: adjacent items can use different
-        // appearances while sharing a program. Lines and points stay filled.
-        if (boundProg != 0 &&
-            (boundProg == unlitProg || boundProg == phongProg || boundProg == pbrProg)) {
-          const int mode = g.topology == ex::Topology::Triangles
-              ? (mat.fill.filled ? 1 : 0) | (mat.fill.hatched ? 2 : 0)
-              : 1;
-          glUniform1i(glGetUniformLocation(boundProg, "uFillMode"), mode);
-          glUniform1i(glGetUniformLocation(boundProg, "uHatchStyle"), mat.fill.hatchStyle);
-          glUniform3f(glGetUniformLocation(boundProg, "uHatchColor"),
-                      mat.fill.hatchColor.r, mat.fill.hatchColor.g,
-                      mat.fill.hatchColor.b);
-        }
-
-        // §12.4.6: line width applies on both lit and unlit paths.
-        const float lineWidth = g.topology == ex::Topology::Lines &&
-                                        mat.line.applied &&
-                                        mat.line.linewidthScaleFactor > 0.0f
-                                    ? mat.line.linewidthScaleFactor : 1.0f;
-        glLineWidth(lineWidth);
-        // B4: branch the draw-call primitive on topology.
-        GLenum mode = (g.topology == ex::Topology::Lines)    ? GL_LINES
-                      : (g.topology == ex::Topology::Points) ? GL_POINTS
-                                                             : GL_TRIANGLES;
-        GLint activeProgram = 0;
-        glGetIntegerv(GL_CURRENT_PROGRAM, &activeProgram);
-        GLint skinLoc = glGetUniformLocation(static_cast<GLuint>(activeProgram), "uSkinEnabled");
-        if (skinLoc >= 0) {
-          bool enabled = skinIt != gpuSkins.end() && !skinIt->second.cpuFallback;
-          glUniform1i(skinLoc, enabled ? 1 : 0);
-          // Active sampler types must not alias the same texture unit, even
-          // when this draw takes the unskinned shader branch.
-          glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uInfluences"), 6);
-          glUniform1i(glGetUniformLocation(static_cast<GLuint>(activeProgram), "uPalette"), 7);
-          if (enabled) {
-            glActiveTexture(GL_TEXTURE6);
-            glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.influences);
-            glActiveTexture(GL_TEXTURE7);
-            glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.palette);
-          }
-        }
-        // REQ-CLIP: the built-in vertex shaders write gl_ClipDistance; an
-        // author program receives the planes as `clipPlane`/`numClipPlanes`
-        // and clips itself, so its clip distances stay disabled.
-        const bool builtinProgram =
-            activeProgram != 0 &&
-            (static_cast<GLuint>(activeProgram) == unlitProg ||
-             static_cast<GLuint>(activeProgram) == phongProg ||
-             static_cast<GLuint>(activeProgram) == pbrProg);
-        if (builtinProgram) {
-          const GLuint prog = static_cast<GLuint>(activeProgram);
-          glUniform1i(glGetUniformLocation(prog, "uNumClipPlanes"), numClips);
-          if (numClips > 0)
-            glUniform4fv(glGetUniformLocation(prog, "uClipPlane"), numClips, clipEye.data());
-        }
-        for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci) {
-          if (builtinProgram && ci < numClips) glEnable(GL_CLIP_DISTANCE0 + ci);
-          else glDisable(GL_CLIP_DISTANCE0 + ci);
-        }
-        glBindVertexArray(g.vao);
-        glDrawElements(mode, g.indexCount, GL_UNSIGNED_INT, nullptr);
-      };
-
-      // ----------------------------------------------------------------------
-      // B7 TRANSPARENCY: partition items into OPAQUE vs BLENDED, draw opaque
-      // first (depth writes on, no blend), then sort the blended set back-to-
-      // front by world-space centroid depth and draw it with GL_BLEND (srcAlpha,
-      // oneMinusSrcAlpha) and the depth MASK off (depth TEST still on, so opaque
-      // geometry still occludes transparent surfaces behind it).
-      //
-      // An item is BLENDED when its material alphaMode == Blend OR transparency
-      // > 0. alphaMode == Mask stays in the OPAQUE pass — its cutoff discard in
-      // the fragment shader yields hard edges that need no blending or sorting.
-      //
-      // The centroid sort is exact for SEPARABLE/convex meshes; interpenetrating
-      // transparent surfaces (or large concave ones) show the usual sort
-      // artifacts — this is browser-parity (X3DOM/X_ITE behave the same), NOT
-      // order-independent transparency (OIT is out of scope for the PoC).
-      // ----------------------------------------------------------------------
-      std::vector<ex::RenderItemId> opaqueItems;
-      std::vector<std::pair<float, ex::RenderItemId>> blendedItems; // (depthEye, id)
-      for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
-        const ex::RenderItem &it = extractor.item(id);
-        auto mit = gpuMeshes.find(it.geometry);
-        if (mit == gpuMeshes.end()) continue;
-        const ex::MaterialDesc &mat = it.material;
-        const bool blended = (mat.alphaMode == ex::AlphaMode::Blend) ||
-                             (mat.transparency > 0.0f);
-        if (!blended) {
-          opaqueItems.push_back(id);
-        } else {
-          // World-space centroid -> eye space; sort key is its eye-space Z
-          // (more negative = farther down -Z in eye space). Back-to-front means
-          // farthest first => ascending Z (most negative first).
-          SFVec3f wc = it.worldTransform.transformPoint(mit->second.localCentroid);
-          SFVec3f ec = view.transformPoint(wc);
-          blendedItems.emplace_back(ec.z, id);
-        }
-      }
-      // Farthest (most negative eye Z) first.
-      std::sort(blendedItems.begin(), blendedItems.end(),
-                [](const auto &a, const auto &b) { return a.first < b.first; });
-
-      // OPAQUE pass: depth writes on, blending off.
-      glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
-      glDisable(GL_BLEND);
-      glDepthMask(GL_TRUE);
-      for (ex::RenderItemId id : opaqueItems) drawItem(id);
-
-      // BLENDED pass: back-to-front, GL_BLEND on, depth-MASK off (test still on).
-      if (!blendedItems.empty()) {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDepthMask(GL_FALSE);
-        for (const auto &kv : blendedItems) drawItem(kv.second);
-        glDepthMask(GL_TRUE);   // restore for the next frame's depth clear+opaque.
-        glDisable(GL_BLEND);
-      }
-
-      glBindVertexArray(0);
-      glDisable(GL_CULL_FACE); // leave a clean default for the next frame.
-      for (int ci = 0; ci < static_cast<int>(ex::ClipPlaneList::kMaxClipPlanes); ++ci)
-        glDisable(GL_CLIP_DISTANCE0 + ci); // background/ImGui draw unclipped.
-      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // keep ImGui/textured quads solid.
-    }
+    // §34.4.2 GeneratedCubeMapTexture: refresh every cube whose update is not
+    // NONE before the frame (renderGeneratedCubes), then draw the frame.
+    renderGeneratedCubes(renderView, zNear, zFar);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, w, h);
+    renderView(view, proj, w, h, nullptr);
 
     if (uiEnabled) {
       // F1 toggles the diagnostics panel (edge-triggered). F1 is not a nav key,

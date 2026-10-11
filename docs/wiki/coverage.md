@@ -148,6 +148,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0057-scene-owned-author-fields.md` | Explicit Scene/declaration owners, shared Inline entry views, safe tracked reflection and scoped clone factories | `scene_author_field_ownership_test.cpp`, migrated Script/codec/cascade tests |
 | covered | `decisions/0058-context-owned-geo-projection.md` | Each execution context fixes its geospatial backend at construction and retains it; no process-wide selector | `geo_projection_ownership_test.cpp`; `runtime/events/X3DExecutionContext.hpp` |
 | covered | `decisions/0059-cube-map-images-through-texture-decode.md` | ImageCubeMapTexture is a url cube ref; the TextureResolver decodes it to six layers (`TexturePixels::layers`) with a std-only DDS decoder shared by the stb and wuffs backends | `runtime/io/dds/DdsDecode.hpp`; `runtime/io/tests/texture_decode_tests.cpp`; `background_desc_test.cpp` |
+| covered | `decisions/0060-generated-cube-maps-local-frame.md` | GeneratedCubeMapTexture is a consumer-rendered cube ref (`TextureRef::generatedCube`) with GeneratedCubeMapSystem resetting NEXT_FRAME_ONLY; every cube map is looked up in its geometry's local frame | `runtime/events/GeneratedCubeMapSystem.hpp`; `runtime/extract/tests/generated_cube_map_test.cpp`; `examples/cpu_raster/tests/generated_cube_map_test.cpp` |
 
 ## 3. Guides
 
