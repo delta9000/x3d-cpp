@@ -2,7 +2,7 @@
 title: Viewpoint Binding System
 summary: Binding stacks for Viewpoint, NavigationInfo, Background, and Fog — ISO 19775-1 §23 bind semantics, bind-time offset rules, and animated viewpoint transitions.
 tags: [subsystem, viewpoint, binding-stack, navigation-info, background, fog]
-updated: 2026-06-20
+updated: 2026-10-10
 related:
   - ../architecture.md
   - ../subsystems/system-navigation.md
@@ -159,6 +159,28 @@ void attachViewpointBind(X3DExecutionContext &ctx);
   process-local (not serialized to the scene graph), so each CAVE wall process
   owns its own offset map and head pose while receiving the same authored
   viewpoint fields from the master. See `runtime/events/ViewpointOffset.hpp`.
+
+## Layering limitation (REQ-LAYER)
+
+Binding categories are independent; Layers are not. `BindingSystem::walk`
+traverses across Layer boundaries into the same category-keyed `stacks_` and
+`enrolled_` maps. With one Viewpoint in each of two Layers, `bindDefaults()`
+binds only the first Viewpoint. Binding the second then changes the same stack.
+`X3DExecutionContext::boundViewpoint()`, `boundNavigationInfo()` and
+`viewMatrix()` provide one scene-wide selection, which NavigationSystem
+uses without reading `LayerSet.activeLayer`.
+
+[ISO 19775-1 §35.2.3 and §35.4.2](https://www.web3d.org/documents/specifications/19775-1/V4.0/Part01/components/layering.html)
+require binding stacks within each layer and navigation in the layer selected
+by `activeLayer`. Layer ordinals start at zero; nodes outside a Layer belong to
+layer 0. A complete fix must preserve each layer's bound Viewpoint,
+NavigationInfo, Background and Fog through the extraction feed, with independent
+cameras and ordered composition (including repeated ordinals).
+
+The 2026-10-10 scope review stopped before runtime edits: the camera/feed work
+requires `runtime/extract/`, reserved for another agent in this work batch.
+`REQ-LAYER` stays open. Existing order-based traversal and pickable filtering
+do not establish layer-local binding or navigation.
 
 ## How it is tested
 
