@@ -77,6 +77,7 @@ nav:
           - Key-Device Sensor System: subsystems/system-keydevice.md
           - LoadSensor System: subsystems/system-loadsensor.md
           - Script / SAI Runtime: subsystems/system-script-sai.md
+          - Native SAI Provider: subsystems/sai-provider.md
           - Sensor Layer Overview: subsystems/sensors.md
           - Physics (RigidBody dynamics): subsystems/physics.md
           - Sound (§16 audio graph): subsystems/sound.md

@@ -15,13 +15,16 @@ X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_provider.sh /path/to/x3d-sai /a
 
 Each shared/static run builds source consumers, installs both projects and the
 companion, relocates the complete prefix, then configures copied standalone
-consumers with package registries disabled. Four executables run in each mode:
+consumers with package registries disabled. The following executables run in each mode:
 
 1. `sai_provider_reference`: common authoring + live oracle on reference backend
 2. `sai_provider_native`: same oracle plus native scalar/metadata/graph evidence
 3. `sai_provider_parity`: exact comparison of complete backend-blind reports
 4. `sai_provider_native_runtime`: common live oracle plus six native session,
    interpolation, ROUTE, world-transform, RenderDelta and failure-effect proofs
+5. `sai_provider_presentation`: immutable frames, ownership and lifetime
+6. `sai_provider_allocation_failure`: native registration remains consistent
+   after allocation failure; runs in its own process
 
 All checks remain active under Release/NDEBUG. Native-only link commands are
 checked for absence of reference-kernel and reference-metadata libraries; the

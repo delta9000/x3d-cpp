@@ -22,12 +22,17 @@ Record both repository commit IDs with the result, since this is a paired check.
 
 ## What is checked
 
-- Four source consumers use only `x3d_cpp::sdk` and `x3d::sai_metadata` usage
-  requirements: runtime-first and SAI-first headers, independently crossed with
-  runtime-first and SAI-first CMake link/include-search order
+- Four source consumers use `x3d_cpp::sdk`, `x3d::sai_reference_metadata`, and
+  `x3d::sai_reference_provider` usage requirements: runtime-first and SAI-first
+  headers, independently crossed with runtime-first and SAI-first CMake
+  link/include-search order
 - Each consumer includes the SDK and legacy `SaiContext` headers, constructs a
   runtime `Transform`, calls its compiled reflection, and separately creates,
   edits and reads a typed SAI `Transform` through the compiled metadata bridge
+- The same consumer creates and activates a third scene through the ordinary
+  portable `provider::service`, then checks its typed readback and the unchanged
+  independent scenes. Linking the reference provider also builds its portable
+  frontend dependency, so every installed SAI library is built before relocation
 - Private SAI metadata cannot be found on a downstream include path
 - Both packages install into one prefix without private SAI headers or absolute
   source/build paths in their CMake exports
@@ -37,7 +42,9 @@ Record both repository commit IDs with the result, since this is a paired check.
 
 These are eight build-and-run checks per runtime linkage mode. The scene models
 remain separate; the smoke test does not claim to translate runtime nodes into
-SAI handles, connect event models, or certify standards conformance.
+SAI handles, connect event models, or certify standards conformance. Native
+backend execution and presentation are covered by the separate
+[provider integration check](../sai_provider/README.md).
 
 ## Direct CMake use
 

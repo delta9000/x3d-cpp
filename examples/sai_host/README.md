@@ -11,7 +11,9 @@ synthetic integration evidence, not a claim to reproduce a real CAVEOS workload.
 The host creates two `Transform` placements of a shared `Shape`/`Box`, a second
 pre-authored `Box`, and a `PositionInterpolator` routed to the left placement.
 
-Installed build (the directory may be copied anywhere):
+First [build and install the native provider](../../adapters/sai_provider/README.md#build-and-use),
+or use the explicit source mode below. For an installed build, this directory
+may be copied anywhere:
 
 ```sh
 cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/relocated/prefix

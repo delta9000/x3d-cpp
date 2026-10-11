@@ -26,11 +26,13 @@ other. This SDK's `runtime/script/SaiContext.hpp` is its legacy Script-backend
 API, not an adapter to the proposal. An opt-in
 [combined consumer check](tests/cmake/sai_coexistence/README.md) verifies that
 the packages can coexist in source and relocated installed builds. The separate
-[optional native provider](tests/cmake/sai_provider/README.md) maps a bounded
-modern SAI offline contract to this SDK's authoritative Scene state, including
-owner-checked `Transform.children` lists with full registered-graph validation.
-It is a source-level interoperability experiment, not a full SAI implementation; normal
-SDK builds and installations do not acquire an SAI dependency.
+[optional native provider](adapters/sai_provider/README.md) implements the same
+portable service as SAI's reference backend. It owns native scene state through
+setup and live host-driven execution; handles do not change at activation.
+The [provider guide](docs/wiki/subsystems/sai-provider.md) explains ownership,
+package selection, the runnable host and the supported four-node subset.
+This remains an experimental source contract, not full SAI conformance or a
+stable binary ABI. Normal SDK builds do not acquire an SAI dependency.
 
 ## Gallery — real X3D, rendered headless
 

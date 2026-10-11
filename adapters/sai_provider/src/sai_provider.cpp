@@ -486,8 +486,15 @@ result<std::uint64_t> backend::do_create_node(std::uint64_t scene,
                  "known native node is outside provider capabilities");
   auto &f = *state_->scenes.at(scene);
   auto id = f.next_node++;
-  f.identities.emplace(node.get(), id);
-  f.nodes.emplace(id, std::move(node));
+  const auto identity = f.identities.emplace(node.get(), id).first;
+  try {
+    f.nodes.emplace(id, std::move(node));
+  } catch (...) {
+    // A failed owning insertion must not leave a raw address registered. A
+    // later node may reuse it and otherwise inherit the failed node's identity.
+    f.identities.erase(identity);
+    throw;
+  }
   return id;
 }
 result<void> backend::do_append_root(const address &a) {
@@ -498,11 +505,14 @@ result<void> backend::do_append_root(const address &a) {
 result<void> backend::do_define_name(const address &a, std::string_view name) {
   auto &f = *state_->scenes.at(a.scene);
   auto n = f.nodes.at(a.node);
-  if (!n->getDEF().empty() || f.scene().defs.contains(std::string(name)))
+  std::string owned_name(name);
+  if (!n->getDEF().empty() || f.scene().defs.contains(owned_name))
     return error(error_code::duplicate_name, "native.define_name",
                  "node or name already named");
-  f.scene().define(std::string(name), n);
-  n->setDEF(std::string(name));
+  // Prepare the node's owning name before publishing the lookup binding. The
+  // move setter cannot allocate after the scene's name index has changed.
+  f.scene().define(owned_name, n);
+  n->setDEF(std::move(owned_name));
   return {};
 }
 result<std::vector<std::uint64_t>>
