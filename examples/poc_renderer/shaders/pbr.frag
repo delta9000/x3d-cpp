@@ -161,12 +161,17 @@ vec3 linearToSRGB(vec3 lin) {
     return mix(upper, lower, cutoff);
 }
 
+in float vFogDepth; // §24.4.3 FogCoordinate depth; < 0 = none.
+
 // §17 fog: fogInterpolant(d) then blend with the fog colour. d = eye-space
 // distance to the viewer, V = visibilityRange. LINEAR f = (V-d)/V (d<V else 0);
 // EXPONENTIAL f = exp(-d/(V-d)) (d<V else 0). result = f*color + (1-f)*fogColor.
 vec3 applyFog(vec3 color, float d) {
     float V = uFogVisibilityRange;
     if (V <= 0.0) return color;       // fog disabled.
+    // §24.4.3 FogCoordinate: the authored depth (interpolated, in [0,1])
+    // replaces the distance-derived one, whatever the fog type.
+    if (vFogDepth >= 0.0) return mix(color, uFogColor, min(vFogDepth, 1.0));
     float f = 0.0;                    // d >= V => fully fogged.
     if (d < V)
         f = (uFogType == 1) ? exp(-d / (V - d)) : (V - d) / V;

@@ -8,6 +8,13 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Authored fog depths (`FogCoordinate`, §24.4.3, REQ-LOCALFOG).**
+  `MeshData::fogDepths` carries a geometry's `fogCoord` depth for every emitted
+  vertex (composed, line and point sets and `ElevationGrid`; a short list
+  repeats its last depth). cpu_raster and the GL PoC blend each fragment by its
+  interpolated depth toward the applicable Fog or LocalFog colour instead of
+  the distance-derived amount. Tests: `mesh_builder_fog_coordinate_test`,
+  `render_smoke_test`, `local_fog_gl_test.py`.
 - **Interactive profile (Annex C) acceptance suite.**
   `runtime/extract/tests/interactive_profile_test.cpp` drives XML scenes
   through `RuntimeSession` and the public input seam: pointing, key-device and

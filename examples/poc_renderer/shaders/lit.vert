@@ -22,6 +22,7 @@ layout(location = 8) in vec2 aTexCoord4;
 layout(location = 9) in vec2 aTexCoord5;
 layout(location = 10) in vec2 aTexCoord6;
 layout(location = 11) in vec2 aTexCoord7;
+layout(location = 12) in float aFogDepth; // §24.4.3 FogCoordinate; -1 = none.
 
 layout(location = 4) in uvec2 aSkinRange;
 uniform bool uSkinEnabled;
@@ -81,6 +82,7 @@ out vec3 vPosEye;           // vertex position in eye space (for Blinn-Phong vie
 out vec4 vColor;            // per-vertex Color (only consulted when uHasColors).
 out vec2 vTexCoord;         // B8: passed through un-flipped for the sampler.
 out vec4 vUvPairs[4];       // §18.4.3 UV sets 0..7, two per vector (texgen.glsl).
+out float vFogDepth;
 out vec3 vPosLocal;         // §18.4.8 local-coordinate generator inputs.
 out vec3 vNormalLocal;
 
@@ -95,6 +97,7 @@ void main() {
     vNormalEye = uNormalMatrix * vNormalLocal;
     vPosEye = posEye.xyz;
     vColor = aColor;
+    vFogDepth = aFogDepth;
     vUvPairs[0] = vec4(aTexCoord, aTexCoord1);
     vUvPairs[1] = vec4(aTexCoord2, aTexCoord3);
     vUvPairs[2] = vec4(aTexCoord4, aTexCoord5);

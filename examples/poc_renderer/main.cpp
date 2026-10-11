@@ -376,6 +376,7 @@ struct GpuVertex {
   // the last authored set, so a channel beyond them samples that set, as
   // cpu_raster clamps it.
   SFVec2f texcoordSet[7];
+  float fogDepth; // §24.4.3 FogCoordinate depth (aFogDepth); -1 = none.
 };
 
 struct GpuMesh {
@@ -521,6 +522,7 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
       verts[i].texcoordSet[s] =
           set && i < set->size() ? (*set)[i] : verts[i].texcoord;
     }
+    verts[i].fogDepth = i < m.fogDepths.size() ? m.fogDepths[i] : -1.0f;
   }
 
   glGenVertexArrays(1, &g.vao);
@@ -552,6 +554,9 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
                           reinterpret_cast<void *>(offsetof(GpuVertex, texcoordSet) +
                                                    s * sizeof(SFVec2f)));
   }
+  glEnableVertexAttribArray(12); // aFogDepth (§24.4.3)
+  glVertexAttribPointer(12, 1, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
+                        reinterpret_cast<void *>(offsetof(GpuVertex, fogDepth)));
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g.ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
@@ -1531,6 +1536,8 @@ int main(int argc, char **argv) {
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &units);
     if (units < 20) gMaxStages = 4;
   }
+  // aFogDepth's value wherever the attribute array is off: no authored depth.
+  glVertexAttrib1f(12, -1.0f);
   std::fprintf(stderr, "[poc] GL_VERSION  : %s\n", glGetString(GL_VERSION));
   std::fprintf(stderr, "[poc] GL_RENDERER : %s\n", glGetString(GL_RENDERER));
 

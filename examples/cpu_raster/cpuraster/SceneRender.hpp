@@ -284,6 +284,7 @@ inline std::vector<Vertex> toVertices(const rt::extract::MeshData &m) {
                      : glsl::vec4{1, 1, 1, 1};
     v[i].texcoord = (i < m.texcoords.size()) ? glsl::vec2(m.texcoords[i])
                                              : glsl::vec2{0, 0};
+    if (i < m.fogDepths.size()) v[i].fogDepth = m.fogDepths[i];
   }
   return v;
 }
