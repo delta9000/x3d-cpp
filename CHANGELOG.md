@@ -71,6 +71,13 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Texture projectors (REQ-PROJECTION, ADR-0061).** `SceneExtractor::projectors()`
+  surfaces TextureProjector and TextureProjectorParallel as world-resolved
+  `ProjectorDesc` values with their projection volume, range, scope and resolved
+  texture, and the new `TextureProjectorSystem` emits `aspectRatio` for a
+  PixelTexture. cpu_raster and the OpenGL PoC light the scene through them as
+  lights filtered by the projected texel, in Phong and PBR. Previously they were
+  ignored.
 - **GeneratedCubeMapTexture (REQ-CUBE, ADR-0060).** The SDK surfaces it as a
   cube ref the consumer renders (`TextureRef::generatedCube`), and the new
   `GeneratedCubeMapSystem` resets `update` NEXT_FRAME_ONLY to NONE at the start

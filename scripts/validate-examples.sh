@@ -153,6 +153,8 @@ echo "== poc ComposedCubeMapTexture gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/cube_map_gl_test.py "$POC"
 echo "== poc GeneratedCubeMapTexture gate under Xvfb (software GL) =="
 python3 examples/poc_renderer/tests/generated_cube_map_gl_test.py "$POC"
+echo "== poc TextureProjector gate under Xvfb (software GL) =="
+python3 examples/poc_renderer/tests/texture_projector_gl_test.py "$POC"
 
 # ---- RENDERING ClipPlane GL pixel regression (REQ-CLIP) --------------------
 echo "== poc ClipPlane gate under Xvfb (software GL) =="
