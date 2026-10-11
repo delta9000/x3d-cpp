@@ -2776,7 +2776,21 @@
   severity: major
   status: open
   summary: Layers share one binding stack per category and one camera; LayerSet.activeLayer does not select navigation.
-  note: "BindingSystem::stacks_ is keyed only by category, X3DExecutionContext owns one BindingSystem, and SceneExtractor exposes one camera/background/fog. activeLayer has no production runtime read. LayerSet.order traversal and Layer.pickable do not establish independent layers. Acceptance: two layers bind different viewpoints/backgrounds without affecting one another, activeLayer selects input/navigation, and later ordered layers appear above earlier ones, including repeated ordinals."
+  note: >-
+    Still open after scope review (2026-10-10). BindingSystem::stacks_ and enrolled_
+    are keyed only by category; walk crosses Layer boundaries and bindDefaults binds
+    only the first Viewpoint in the whole scene. X3DExecutionContext::boundViewpoint,
+    boundNavigationInfo and viewMatrix have no layer selector. NavigationSystem
+    consumes those global bindings, so LayerSet.activeLayer does not select navigation.
+    The render feed exposes one camera/background/fog; completing the requested camera
+    isolation requires runtime/extract/ changes, which are reserved for another agent
+    in this work batch. Runtime work stopped at that ownership boundary; no binding-only
+    fix is claimed. LayerSet.order traversal and Layer.pickable remain existing partial
+    support. Acceptance: each layer independently binds Viewpoint, NavigationInfo,
+    Background and Fog; activeLayer selects navigation using zero-based layers ordinals
+    (unlayered nodes belong to layer 0); extraction preserves each layer's camera and
+    bound environment; later ordered layers appear above earlier ones, including
+    repeated ordinals. See the Layering limitation in system-viewpointbind.md.
 - id: REQ-LAYOUT
   nodes: [Layout, LayoutGroup, LayoutLayer, ScreenGroup, ScreenFontStyle]
   component: Layout
