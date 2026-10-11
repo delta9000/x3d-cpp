@@ -237,7 +237,7 @@ private:
     // ecmascript:/javascript:/vrmlscript: scheme in `url` (read above as an
     // attribute) is left intact so ScriptSystem's url decode still applies.
     if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
-      captureScriptAuthorFields(el, node, *script, scene);
+      captureScriptAuthorFields(el, node, *script, scene, currentProtoBody);
 
     // Phase-3 ComposedShader: an X3DProgrammableShaderObject (ComposedShader,
     // ProgramShader, …) carries author <field> uniform declarations just like
@@ -246,7 +246,7 @@ private:
     // Element.text by XmlLite) is the source. Previously the XML reader captured
     // these only for Script, so ComposedShader reached the runtime sourceless.
     else if (dynamic_cast<x3d::nodes::X3DProgrammableShaderObject *>(node.get()))
-      captureAuthorFieldDecls(el, node, scene);
+      captureAuthorFieldDecls(el, node, scene, currentProtoBody);
     if (auto *part = dynamic_cast<x3d::nodes::ShaderPart *>(node.get())) {
       if (!el.text.empty())
         part->setSourceCode(el.text);
@@ -346,9 +346,10 @@ private:
   /// into the per-node DynamicFieldStore. Shared by every
   /// X3DProgrammableShaderObject (Script, ComposedShader, ProgramShader, …) so
   /// their author-declared uniforms/inputs resolve via effectiveFields.
-  static void captureAuthorFieldDecls(const xml::Element &el,
-                                      const std::shared_ptr<X3DNode> &node,
-                                      runtime::Scene &scene) {
+  void captureAuthorFieldDecls(const xml::Element &el,
+                               const std::shared_ptr<X3DNode> &node,
+                               runtime::Scene &scene,
+                               runtime::ProtoBody *currentProtoBody) {
     std::vector<runtime::AuthorFieldDecl> decls;
     for (const auto &c : el.children) {
       if (c->name != "field")
@@ -362,8 +363,19 @@ private:
       // Box the default only for fields that hold a persistent value.
       if ((d.access == AccessType::InitializeOnly ||
            d.access == AccessType::InputOutput)) {
-        if (const std::string *v = c->attr("value"))
+        if (d.type == X3DFieldType::SFNode || d.type == X3DFieldType::MFNode) {
+          // Node-typed default: the child element(s), USE references included.
+          MFNode nodes;
+          for (const auto &nc : c->children)
+            if (auto n = readNode(*nc, scene, currentProtoBody))
+              nodes.push_back(std::move(n));
+          if (d.type == X3DFieldType::MFNode)
+            d.initialValue = std::move(nodes);
+          else
+            d.initialValue = SFNode(nodes.empty() ? nullptr : nodes.front());
+        } else if (const std::string *v = c->attr("value")) {
           d.initialValue = parseValue(d.type, *v);
+        }
       }
       decls.push_back(std::move(d));
     }
@@ -371,10 +383,11 @@ private:
       scene.authorFields->addAuthorFields(node, decls);
   }
 
-  static void captureScriptAuthorFields(const xml::Element &el,
-                                        const std::shared_ptr<X3DNode> &node,
-                                        x3d::nodes::Script &script, runtime::Scene &scene) {
-    captureAuthorFieldDecls(el, node, scene);
+  void captureScriptAuthorFields(const xml::Element &el,
+                                 const std::shared_ptr<X3DNode> &node,
+                                 x3d::nodes::Script &script, runtime::Scene &scene,
+                                 runtime::ProtoBody *currentProtoBody) {
+    captureAuthorFieldDecls(el, node, scene, currentProtoBody);
 
     // CDATA body -> sourceCode, stored VERBATIM. The XML writer emits
     // sourceCode inside <![CDATA[...]]> with the surrounding indentation OUTSIDE

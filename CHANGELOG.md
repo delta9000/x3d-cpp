@@ -71,6 +71,13 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Shader texture and array uniforms (REQ-SHADER-2).** `ShaderFieldBinding`
+  now carries MF author fields as array `elements` and SFNode/MFNode texture
+  fields as resolved `textures`, refreshed when the field or its texture
+  changes. The XML reader reads node-valued author-field defaults (Script and
+  shaders), and the XML writer re-emits a Script's node fields. cpu_raster and
+  the OpenGL PoC bind them to `sampler2D`/`sampler2D[]` and uniform arrays.
+  Previously both arrived empty and stayed unbound.
 - **Texture projectors (REQ-PROJECTION, ADR-0061).** `SceneExtractor::projectors()`
   surfaces TextureProjector and TextureProjectorParallel as world-resolved
   `ProjectorDesc` values with their projection volume, range, scope and resolved

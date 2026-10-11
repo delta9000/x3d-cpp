@@ -602,8 +602,18 @@ struct ShaderStageDesc {
 struct ShaderFieldBinding {
   std::string name;
   X3DFieldType type = X3DFieldType::SFString;
-  X3DFieldValue value;
+  X3DFieldValue value; // SF fields; empty for MF and node fields.
   AccessType access = AccessType::InputOutput;
+  // MF fields with a GLSL array form (MFFloat, MFInt32, MFBool, MFVec*, MFColor*,
+  // MFRotation, MFMatrix*, MFDouble, MFTime): one SF value per element, in the
+  // same form `value` uses. Empty for an empty MF field. MFString and MFImage
+  // have no GLSL form and stay empty.
+  std::vector<X3DFieldValue> elements;
+  // SFNode/MFNode fields: one TextureRef per X3DTextureNode in the field, in
+  // order (an SFNode texture gives one), resolved like material textures, for
+  // a host to bind to a sampler uniform or sampler array. Non-texture nodes are
+  // skipped.
+  std::vector<TextureRef> textures;
 };
 
 struct ShaderProgramDesc {

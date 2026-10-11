@@ -72,8 +72,11 @@ is unchanged. The concrete runtime types require a rebuild and the global
 lifetime and cannot activate fields at a recycled node address.
 
 This migration preserves programmatically registered node-valued fields during
-cloning. It does not fill existing SFNode/MFNode author-default reader gaps or
-claim full author-field IS, Script-language or SAI conformance.
+cloning. The XML reader reads SFNode/MFNode author-field defaults from child
+elements (USE included) and the XML writer re-emits a Script's node fields as
+children; the JSON and ClassicVRML readers still leave them empty
+(REQ-SHADER-3). It does not claim full author-field IS, Script-language or SAI
+conformance.
 
 ## Key files
 

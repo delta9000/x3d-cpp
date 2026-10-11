@@ -96,10 +96,16 @@ inline ShaderBindingPlan buildBindingPlan(
       continue;
     }
 
-    // 2. Check author <field> declarations on the shader.
+    // 2. Check author <field> declarations on the shader. A uniform array is
+    // reported as `name[0]` (glGetActiveUniform); it matches the field `name`
+    // and the entry carries the field name.
+    std::string fieldName = name;
+    if (fieldName.size() > 3 && fieldName.compare(fieldName.size() - 3, 3, "[0]") == 0)
+      fieldName.resize(fieldName.size() - 3);
     for (const auto &f : program.fields) {
-      if (name == f.name) {
+      if (fieldName == f.name) {
         e.isAuthorField = true;
+        e.declaredName = fieldName;
         break;
       }
     }

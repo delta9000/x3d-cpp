@@ -6,6 +6,7 @@
 #include "RuntimeSession.hpp"
 #include "ShaderExtract.hpp"
 #include "X3DParse.hpp"
+#include "x3d/nodes/PixelTexture.hpp"
 #include "doctest/doctest.h"
 
 #include <algorithm>
@@ -192,6 +193,81 @@ TEST_CASE("Author field events update the uniform values on the next delta") {
   // A uniform write is not a re-validation: no new isValid/isSelected events.
   CHECK(h.events("S.isValid") == std::vector<bool>{true});
   CHECK(h.events("S.isSelected") == std::vector<bool>{true});
+}
+
+TEST_CASE("MF author fields reach the descriptor as array elements") {
+  Host h(shape("<ComposedShader DEF='S' language='GLSL'>"
+               "<field name='uWeights' type='MFFloat' accessType='inputOutput' value='1 2 3'/>"
+               "<field name='uPoints' type='MFVec3f' accessType='initializeOnly' "
+               "value='1 0 0 0 1 0'/>"
+               "<field name='uTurns' type='MFRotation' accessType='initializeOnly' "
+               "value='0 0 1 0.5'/>"
+               "<field name='uFlags' type='MFBool' accessType='initializeOnly' value='true false'/>"
+               "<field name='uNames' type='MFString' accessType='initializeOnly' value='\"a\"'/>" +
+               part("VERTEX", kVert) + part("FRAGMENT", kFrag) + "</ComposedShader>"));
+  REQUIRE(h.item().shaderProgram.has_value());
+  const auto &p = *h.item().shaderProgram;
+  const auto *weights = field(p, "uWeights");
+  REQUIRE(weights);
+  REQUIRE(weights->elements.size() == 3);
+  CHECK(std::get<float>(weights->elements[2].value) == doctest::Approx(3));
+  CHECK(weights->elements[2].type == X3DFieldType::SFFloat);
+  const auto *points = field(p, "uPoints");
+  REQUIRE(points->elements.size() == 2);
+  CHECK(std::get<SFVec3f>(points->elements[1].value) == SFVec3f{0, 1, 0});
+  REQUIRE(field(p, "uTurns")->elements.size() == 1);
+  CHECK(std::get<SFVec4f>(field(p, "uTurns")->elements[0].value).w == doctest::Approx(0.5f));
+  REQUIRE(field(p, "uFlags")->elements.size() == 2);
+  CHECK_FALSE(std::get<bool>(field(p, "uFlags")->elements[1].value));
+  CHECK(field(p, "uNames")->elements.empty()); // no GLSL form
+
+  // A write replaces the array on the next delta.
+  CHECK(updatedMaterial(h.post("S", "uWeights", std::any(MFFloat{4, 5}))));
+  const auto *updated = field(*h.item().shaderProgram, "uWeights");
+  REQUIRE(updated->elements.size() == 2);
+  CHECK(std::get<float>(updated->elements[0].value) == doctest::Approx(4));
+}
+
+TEST_CASE("Texture author fields reach the descriptor as resolved TextureRefs") {
+  SessionOptions options;
+  options.textureResolver = [](const std::string &) {
+    ex::TexturePixels pixels;
+    pixels.width = 2;
+    pixels.height = 2;
+    pixels.rgba.assign(16, 255);
+    return ex::TexturePixelResult::makeReady(std::move(pixels));
+  };
+  Host h(shape("<ComposedShader DEF='S' language='GLSL'>"
+               "<field name='uTex' type='SFNode' accessType='inputOutput'>"
+               "<PixelTexture DEF='P' image='1 1 3 0xFF0000'/></field>"
+               "<field name='uLayers' type='MFNode' accessType='initializeOnly'>"
+               "<ImageTexture url='\"a.png\"'/><Material/><PixelTexture image='1 1 1 0x80'/>"
+               "</field>"
+               "<field name='uNone' type='SFNode' accessType='inputOutput'/>" +
+               part("VERTEX", kVert) + part("FRAGMENT", kFrag) + "</ComposedShader>"),
+         std::move(options));
+  REQUIRE(h.item().shaderProgram.has_value());
+  const auto &p = *h.item().shaderProgram;
+  const auto *tex = field(p, "uTex");
+  REQUIRE(tex);
+  REQUIRE(tex->textures.size() == 1);
+  CHECK(tex->textures[0].source == ex::TextureRef::Source::Inline);
+  CHECK(tex->textures[0].inlinePixels.width == 1);
+  const auto *layers = field(p, "uLayers");
+  REQUIRE(layers->textures.size() == 2); // the Material is not a texture
+  CHECK(layers->textures[0].source == ex::TextureRef::Source::Url);
+  CHECK(layers->textures[0].resolvedPixels.ready());
+  CHECK(layers->textures[1].inlinePixels.numComponents == 1);
+  CHECK(field(p, "uNone")->textures.empty());
+
+  // Replacing the node, and editing the texture in place, both reach the
+  // descriptor on the next delta.
+  h.post("P", "image", std::any(SFImage{3, 1, 1, {0, 0, 0}}));
+  CHECK(field(*h.item().shaderProgram, "uTex")->textures.at(0).inlinePixels.width == 3);
+  auto blue = std::make_shared<x3d::nodes::PixelTexture>();
+  blue->setImage(SFImage{2, 1, 3, {0, 0, 255, 0, 0, 255}});
+  h.post("S", "uTex", std::any(SFNode(blue)));
+  CHECK(field(*h.item().shaderProgram, "uTex")->textures.at(0).inlinePixels.width == 2);
 }
 
 TEST_CASE("Part sources resolve from data: urls and the host resolver") {

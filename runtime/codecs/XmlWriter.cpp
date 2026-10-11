@@ -333,8 +333,18 @@ void XmlWriter::writeScriptAuthorFields(xml::Element &el,
     if (f.isReadable() && (f.access == AccessType::InitializeOnly ||
                            f.access == AccessType::InputOutput)) {
       std::any v = f.get(script);
-      if (v.has_value())
+      if (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode) {
+        // Node-typed default: the node(s) as child elements (USE once seen).
+        MFNode nodes;
+        if (auto *n = std::any_cast<SFNode>(&v); n && *n) nodes.push_back(*n);
+        if (auto *m = std::any_cast<MFNode>(&v)) nodes = *m;
+        for (const auto &n : nodes)
+          if (n)
+            if (auto child = writeNodeElement(n, ""))
+              fe->children.push_back(std::move(child));
+      } else if (v.has_value()) {
         fe->setAttr("value", formatValue(f.type, v));
+      }
     }
   }
   const std::string src = script.getSourceCode();

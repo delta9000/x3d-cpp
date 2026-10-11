@@ -9,7 +9,9 @@
 //   2. An inline ecmascript: scheme in `url` is still accepted as a source.
 //   3. read -> write -> reparse round-trips: the <field> children (with their
 //      accessType/type/value) and the CDATA body survive.
-//   4. An author-field ROUTE resolves (an endpoint on a Script author field
+//   4. SFNode/MFNode author fields read their child nodes (USE included)
+//      and are written back as children.
+//   5. An author-field ROUTE resolves (an endpoint on a Script author field
 //      wires through X3DSceneBridge, which resolves via effectiveFields).
 //
 // Exit code 0 on success; nonzero on any failed assertion.
@@ -196,6 +198,42 @@ int main() {
       check(authorField(*s, "on", *d.scene.authorFields, t) != nullptr,
             "author field present alongside url source");
     }
+  }
+
+  // ---- Node-typed author fields: child elements, USE included ----
+  {
+    const std::string nodeXml =
+        "<X3D profile=\"Immersive\" version=\"4.0\"><Scene>"
+        "<Transform DEF=\"T\"/>"
+        "<Script DEF=\"N\">"
+        "<field name=\"target\" accessType=\"initializeOnly\" type=\"SFNode\">"
+        "<Transform USE=\"T\"/></field>"
+        "<field name=\"list\" accessType=\"inputOutput\" type=\"MFNode\">"
+        "<Group/><Transform USE=\"T\"/></field>"
+        "<field name=\"none\" accessType=\"inputOutput\" type=\"SFNode\"/>"
+        "</Script></Scene></X3D>";
+    auto nodeChecks = [&](const runtime::X3DDocument &d, const std::string &phase) {
+      auto s = findScript(d.scene);
+      check(s != nullptr, phase + ": node-field Script parsed");
+      if (!s) return;
+      const auto &store = *d.scene.authorFields;
+      auto target = store.getValue(*s, "target");
+      auto *one = std::any_cast<SFNode>(&target);
+      check(one && *one == d.scene.resolve("T"), phase + ": SFNode field holds USE T");
+      auto list = store.getValue(*s, "list");
+      auto *many = std::any_cast<MFNode>(&list);
+      check(many && many->size() == 2 && (*many)[1] == d.scene.resolve("T"),
+            phase + ": MFNode field holds Group and USE T");
+      auto none = store.getValue(*s, "none");
+      auto *empty = std::any_cast<SFNode>(&none);
+      check(empty && !*empty, phase + ": empty SFNode field is NULL");
+    };
+    runtime::X3DDocument d = reader.readDocument(nodeXml);
+    nodeChecks(d, "parse");
+    const std::string written = writer.writeDocument(d);
+    check(written.find("value=\"\"") == std::string::npos,
+          "node fields are written as children, not empty values");
+    nodeChecks(reader.readDocument(written), "reparse");
   }
 
   if (failures) {

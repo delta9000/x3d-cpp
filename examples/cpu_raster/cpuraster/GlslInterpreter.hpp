@@ -39,6 +39,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -1103,9 +1104,29 @@ makeInterpretedShader(const InterpretedProgram &prog,
   auto tx = std::make_shared<MaterialTextures>(buildTextures(material, /*linearWorkflow=*/true));
   auto base = std::make_shared<std::unordered_map<std::string, Value>>(
       seedUniforms(material, lights, *tx));
+  // Texture fields sample through Textures kept alive with the closure; they
+  // are sRGB-decoded like the material textures above.
+  auto fieldTextures = std::make_shared<std::deque<Texture>>();
   if (fields)
     for (const auto &f : *fields) {
       Value v = uniformValue(f.value);
+      if (!f.textures.empty()) {
+        // SFNode -> sampler2D, MFNode -> sampler2D[].
+        auto arr = std::make_shared<std::vector<Value>>();
+        for (const auto &ref : f.textures) {
+          fieldTextures->push_back(Texture::fromRef(ref, /*srgb=*/true));
+          arr->push_back(Value::samp(&fieldTextures->back()));
+        }
+        if (f.type == x3d::core::X3DFieldType::SFNode) v = arr->front();
+        else { v = Value{}; v.t = VT::Array; v.arr = arr; }
+      } else if (!f.elements.empty()) {
+        // MF fields -> GLSL arrays of the element type.
+        auto arr = std::make_shared<std::vector<Value>>();
+        for (const auto &e : f.elements) arr->push_back(uniformValue(e));
+        v = Value{};
+        v.t = VT::Array;
+        v.arr = arr;
+      }
       if (v.t != VT::Void) (*base)[f.name] = v;
     }
   const InterpretedProgram *pp = &prog;
@@ -1116,9 +1137,10 @@ makeInterpretedShader(const InterpretedProgram &prog,
   Interpreter interp(pp->functions());
   for (const auto &kv : *base) interp.defineGlobal(kv.first, kv.second);
 
-  return [pp, tx, hasColors, fallback, interp](const FragmentInput &f,
+  return [pp, tx, fieldTextures, hasColors, fallback, interp](const FragmentInput &f,
                                              glsl::vec4 &out) mutable -> bool {
     (void)tx; // keep the sampler texture storage alive for interp's pointers.
+    (void)fieldTextures;
     interp.beginFragment(f);
     interp.defineGlobal("vPosEye", Value::v3(f.posEye));
     interp.defineGlobal("vNormalEye", Value::v3(f.normalEye));

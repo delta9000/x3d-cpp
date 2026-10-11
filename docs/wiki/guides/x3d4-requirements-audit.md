@@ -144,7 +144,7 @@ evidence, not whole-component proofs.
 | [DIS](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html) / 2 | Implement transport, PDU encode/decode, entity mapping and network-driven events in the host. | `runtime/scene/ViewDependentSystem.hpp` has local PDU state only; NSN-10 | Partial |
 | [Scripting](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/scripting.html) / 1 | Resolve Full-profile Java support; audit ECMAScript binding and every SAI service independently of Script lifecycle tests. | `runtime/script/ScriptSystem.hpp`, `EcmaScriptBackend.cpp`, `QuickJsBackend.cpp`; REQ-JAVA | Partial |
 | [EventUtilities](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/eventUtilities.html) / 1 | Sign off filters, sequencers and triggers across boundary values, timestamps and ROUTE feedback. | `runtime/events/EventUtilitySystem.hpp`, `runtime/events/tests/event_utility_test.cpp`, `event_utility_output_admission_test.cpp`, `runtime/extract/tests/interactive_profile_test.cpp`; IACC-2/3 fixed | Unverified |
-| [Shaders](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html) / 1 | Bind texture and array uniforms; run geometry/tessellation stages in a host that links them. | `runtime/extract/ShaderExtract.hpp`, `runtime/events/ShaderSystem.hpp`, `runtime/extract/tests/shader_selection_test.cpp`, cpu_raster `author_shader_test`, PoC `author_shader_gl_test.py`; REQ-SHADER fixed, REQ-SHADER-2 | Partial |
+| [Shaders](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html) / 1 | Bind cube and 3D sampler uniforms; run geometry/tessellation stages in a host that links them; read node-valued author fields outside XML. Texture and array uniforms are bound in both hosts. | `runtime/extract/ShaderExtract.hpp`, `runtime/events/ShaderSystem.hpp`, `runtime/extract/tests/shader_selection_test.cpp`, cpu_raster `author_shader_test`, PoC `author_shader_gl_test.py`; REQ-SHADER and REQ-SHADER-2 fixed, REQ-SHADER-3 | Partial |
 | [CADGeometry](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/CADGeometry.html) / 2 | Verify CAD hierarchy, face placement, visibility, quad geometry and live edits; generic traversal alone is insufficient evidence. | `SceneExtractor.hpp`, `TransformSystem.hpp`, `runtime/extract/tests/scene_extractor_audit_test.cpp` | Unverified |
 | [Texturing3D](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html) / 2 | Supply 3D image/pixel/composed textures, coordinates, transforms, sampling and updates. | `MaterialSystem::refOf` has no 3D path; T3D-1 | Partial |
 | [CubeMapTexturing](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html) / 3 | Wire explicit 3D texture coordinates and transforms. Both hosts sample ComposedCubeMapTexture, DDS ImageCubeMapTexture and GeneratedCubeMapTexture (all update modes) as environment maps in the geometry's local frame. | `MaterialSystem::refOf`, `GeneratedCubeMapSystem`, `runtime/extract/tests/generated_cube_map_test.cpp`, `examples/cpu_raster/tests/cube_map_test.cpp`, `examples/cpu_raster/tests/generated_cube_map_test.cpp`, `examples/poc_renderer/tests/generated_cube_map_gl_test.py`; REQ-CUBE | Partial |
@@ -1570,6 +1570,8 @@ Interpretations recorded with this acceptance:
 - `isValid` is reported only for candidates the selection evaluated. A shader
   after the selected one in the list sends nothing.
 
-REQ-SHADER-2 records what is still ignored: SFNode texture uniforms and MF
-array uniforms carry no value, the PoC links only the vertex and fragment
-stages, and the CPU host interprets only the fragment stage.
+REQ-SHADER-2 (fixed) binds texture (SFNode/MFNode) and array (MF) uniforms in
+both hosts. REQ-SHADER-3 records what is still ignored: cube and 3D sampler
+uniforms, the PoC links only the vertex and fragment stages, the CPU host
+interprets only the fragment stage, and node-valued author fields are read
+only from XML.

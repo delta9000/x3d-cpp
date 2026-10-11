@@ -105,8 +105,10 @@ struct ShaderStageDesc {
 struct ShaderFieldBinding {
   std::string name;        // uniform name matching the <field> name attribute
   X3DFieldType type;       // the declared X3D field type
-  X3DFieldValue value;     // typed value from the DynamicFieldStore
+  X3DFieldValue value;     // typed value from the DynamicFieldStore (SF fields)
   AccessType access;       // inputOutput / initializeOnly / ...
+  std::vector<X3DFieldValue> elements; // MF fields: one SF value per array element
+  std::vector<TextureRef> textures;    // SFNode/MFNode fields: the texture nodes, resolved
 };
 
 struct ShaderProgramDesc {
@@ -124,9 +126,17 @@ A non-null `ShaderProgramDesc` on a `RenderItem` signals the consumer to bind th
 
 Field values: SF scalar, vector, colour and matrix types map directly;
 SFDouble/SFTime narrow to float, SFRotation becomes `(x, y, z, angle)` and the
-double vectors/matrices narrow to float. SFNode (texture) and MF (array)
-fields are listed with an empty value: `X3DFieldValue` has no channel for them
-yet (finding REQ-SHADER-2).
+double vectors/matrices narrow to float. MF fields with a GLSL array form
+(numeric, vector, colour, rotation and matrix types) fill `elements`, one value
+per array element in the same form. SFNode/MFNode fields fill `textures` with
+their X3DTextureNodes (other nodes are skipped), resolved through the session
+`TextureResolver` like material textures, for a `sampler2D` or `sampler2D[]`
+uniform. Nodes held by author fields are part of the appearance's dependency
+index, so a write to the field or an edit inside its texture refreshes the
+program on the next delta. `buildBindingPlan` matches an array uniform reported
+as `name[0]` to the field `name`. Both reference hosts bind all of these
+(REQ-SHADER-2). Cube and 3D sampler uniforms, geometry/tessellation stages and
+node-valued fields outside XML are open (REQ-SHADER-3).
 
 ## ShaderUniformVocabulary
 

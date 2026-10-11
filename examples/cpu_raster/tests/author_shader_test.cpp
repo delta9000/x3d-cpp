@@ -1,6 +1,7 @@
 // author_shader_test.cpp — REQ-SHADER observable output: a scene-authored
 // ComposedShader selected by the SDK (RenderItem::shaderProgram) runs in the
-// CPU reference host, its author <field> uniforms reach the pixels, a uniform
+// CPU reference host, its author <field> uniforms (SF values, MF arrays and
+// texture samplers) reach the pixels, a uniform
 // event changes the next frame, and a program the host cannot compile falls
 // through to the next shader or to the fixed-function material (§31.2.2.3).
 #include "RuntimeSession.hpp"
@@ -97,6 +98,31 @@ int main() {
                                    std::any(x3d::core::SFColor{0, 1, 0}));
     h.tick();
     CHECK(near(h.center(), 0, 1, 0));
+  }
+
+  // REQ-SHADER-2: texture (SFNode -> sampler2D, MFNode -> sampler2D[]) and
+  // array (MF -> float[] / vec3[]) fields reach the program; an MF event too.
+  {
+    const std::string frag =
+        "uniform sampler2D uTex; uniform sampler2D uLayers[2];"
+        "uniform float uW[3]; uniform vec3 uP[2];"
+        "void main(){ FragColor = vec4(texture(uTex, vec2(0.5)).g * uW[2],"
+        " texture(uLayers[1], vec2(0.5)).b, uP[1].x, 1.0); }";
+    const std::string fields =
+        "<field name='uTex' type='SFNode' accessType='inputOutput'>"
+        "<PixelTexture image='1 1 3 0x00FF00'/></field>"
+        "<field name='uLayers' type='MFNode' accessType='inputOutput'>"
+        "<PixelTexture image='1 1 3 0xFF0000'/><PixelTexture image='1 1 3 0x0000FF'/>"
+        "</field>"
+        "<field name='uW' type='MFFloat' accessType='inputOutput' value='0 0 0.5'/>"
+        "<field name='uP' type='MFVec3f' accessType='inputOutput' value='0 0 0 0.25 0 0'/>";
+    Host h(composed("T", frag, fields));
+    CHECK(h.flag("T", "isSelected"));
+    CHECK(near(h.center(), 0.5f, 1, 0.25f));
+    h.session->context().postEvent(h.session->scene().resolve("T").get(), "uW",
+                                   std::any(x3d::core::MFFloat{0, 0, 1}));
+    h.tick();
+    CHECK(near(h.center(), 1, 1, 0.25f));
   }
 
   // A program this host cannot compile is invalid: selection moves on.
