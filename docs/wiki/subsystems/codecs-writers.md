@@ -19,6 +19,12 @@ The writers sit between the runtime document model and any consumer that needs a
 
 PROTO serialization preserves `IS/connect` mappings and node-valued interface defaults across XML, JSON, and ClassicVRML. ClassicVRML output supplies type-default values when initializeOnly/inputOutput PROTO interface or node author-field declarations have no stored value, as required by the encoding grammar; EXTERNPROTO interface declarations carry no values. Declaration and field `appinfo`/`documentation` are preserved in XML and JSON. ISO/IEC 19776-2 ClassicVRML provides no semantic metadata slot in PROTO, EXTERNPROTO, or interface-field syntax, so conversion through ClassicVRML loses those attributes; comments cannot preserve them as machine-readable metadata.
 
+ClassicVRML can serialize a declaration that splits one node field after an
+ordinary node prefix by moving the declaration before that prefix. It preserves
+child order and sharing, and refuses this rewrite when the prefix contains a
+prototype instance or declaration. See [PROTO expansion](proto-expand.md) for
+the remaining cross-encoding ordering limits.
+
 ## Key files
 
 | File | Role |
