@@ -1,5 +1,5 @@
 ---
-title: "ADR-0061: ClassicVRML prototype metadata comments"
+title: "ADR-0062: ClassicVRML prototype metadata comments"
 summary: Preserve prototype and interface-field metadata across ClassicVRML conversions with a versioned application comment.
 tags: [adr, codecs, proto, metadata]
 updated: 2026-10-10
@@ -8,7 +8,7 @@ related:
   - ../subsystems/parse-readers.md
 ---
 
-# ADR-0061: ClassicVRML prototype metadata comments
+# ADR-0062: ClassicVRML prototype metadata comments
 
 Accepted. The [ClassicVRML grammar](https://www.web3d.org/documents/specifications/19776-2/V3.3/Part02/grammar.html)
 has no `appinfo` or `documentation` production for prototype declarations or

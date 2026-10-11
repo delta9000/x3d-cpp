@@ -65,6 +65,7 @@ set(CPURASTER_TESTS
     multi_texture_test
     cube_map_test
     generated_cube_map_test
+    texture_projector_test
     fog_shader_test
     glsl_interp_test
     render_smoke_test

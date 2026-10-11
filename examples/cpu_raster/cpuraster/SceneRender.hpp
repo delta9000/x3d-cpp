@@ -233,6 +233,41 @@ buildEyeLights(const std::vector<rt::extract::LightDesc> &lights,
   return out;
 }
 
+// §42 texture projectors as eye-space lights (ADR-0061): a perspective one at
+// its location, a parallel one along its direction, no attenuation, its colour
+// filtered by the texel it projects (rgb x alpha, as authored, white when the
+// texture is unresolved) and zero outside the projection volume.
+inline std::vector<EyeLight>
+buildProjectorLights(const std::vector<rt::extract::ProjectorDesc> &projectors,
+                     const rt::Mat4 &view) {
+  std::vector<EyeLight> out;
+  const rt::Mat4 invView = view.inverse();
+  for (const auto &P : projectors) {
+    EyeLight e;
+    e.color = glsl::vec3{P.color.r, P.color.g, P.color.b};
+    e.intensity = P.intensity;
+    e.ambientIntensity = P.ambientIntensity;
+    if (P.type == rt::extract::ProjectorDesc::Type::Perspective) {
+      e.positional = true;
+      e.posEye = view.transformPoint(P.worldLocation);
+      e.radius = std::numeric_limits<float>::infinity();
+    } else {
+      e.dirEye = view.transformDirection(P.worldDirection);
+    }
+    auto desc = std::make_shared<const rt::extract::ProjectorDesc>(P);
+    auto texture = std::make_shared<const Texture>(Texture::fromRef(P.texture, false));
+    e.projected = [desc, texture, invView](const glsl::vec3 &posEye, glsl::vec3 &rgb) {
+      float s = 0, t = 0;
+      if (!desc->project(invView.transformPoint(posEye.toSF()), s, t)) return false;
+      const glsl::vec4 texel = texture->sample(glsl::vec2{s, t});
+      rgb = texel.xyz() * texel.w;
+      return true;
+    };
+    out.push_back(std::move(e));
+  }
+  return out;
+}
+
 // MeshData -> rasterizer Vertex array (defaults fill missing normal/color/uv).
 inline std::vector<Vertex> toVertices(const rt::extract::MeshData &m) {
   std::vector<Vertex> v(m.positions.size());
@@ -347,6 +382,9 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
     headlightOn = rt::geombounds::getField<bool>(*nav, "headlight", true);
   const std::vector<ex::LightDesc> lights = extractor.lights();
   std::vector<EyeLight> eyeLights = buildEyeLights(lights, viewRT, headlightOn);
+  const std::vector<ex::ProjectorDesc> projectors = extractor.projectors();
+  const std::vector<EyeLight> projectorLights =
+      buildProjectorLights(projectors, viewRT);
   // §17.2.2 shadowTest: only visible Shapes with castShadow TRUE occlude.
   // Build eye-space triangles once, shared by every shadow-enabled light.
   if (std::any_of(lights.begin(), lights.end(),
@@ -459,6 +497,11 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
       source = &withFaces;
     }
     const ex::RenderItem &it = *source;
+    // §42: the texture projectors in scope join the built-in shaders' lights
+    // (author shaders see only eyeLights).
+    std::vector<EyeLight> itemLights = eyeLights;
+    for (std::size_t p = 0; p < projectors.size(); ++p)
+      if (ex::projectorApplies(projectors[p], it)) itemLights.push_back(projectorLights[p]);
 
     // §24.4.3: an item inside a LocalFog's grouping scope is fogged by that
     // LocalFog (nearest wins); otherwise the bound global Fog applies.
@@ -513,7 +556,7 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
     const glsl::vec4 linePointColor =
         glsl::vec4(it.material.unlitGeometryRGBA());
     const FragmentShader linePointShader = mesh.hasNormals
-        ? makeMaterialShader(it.material, eyeLights, mesh.hasColors, false, fog)
+        ? makeMaterialShader(it.material, itemLights, mesh.hasColors, false, fog)
         : FragmentShader{};
     if (mesh.topology == ex::Topology::Lines) {
       // §12.4.6 LineProperties.linewidthScaleFactor (0/absent => default width).
@@ -540,7 +583,7 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
     FragmentShader fs;
     if (opt.authorShaderFor) fs = opt.authorShaderFor(it, eyeLights, mesh.hasColors);
     if (!fs)
-      fs = makeMaterialShader(it.material, eyeLights, mesh.hasColors, forceUnlit,
+      fs = makeMaterialShader(it.material, itemLights, mesh.hasColors, forceUnlit,
                               fog);
     raster.drawTriangles(verts, mesh.indices, modelG, viewG, projG, normalMat,
                          mesh.ccw, mesh.solid, blend,

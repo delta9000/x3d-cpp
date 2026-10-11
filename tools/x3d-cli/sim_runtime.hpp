@@ -177,6 +177,7 @@ inline RuntimeWiring attachFullRuntime(x3d::runtime::Scene &scene,
 
   // ── GeneratedCubeMapSystem (§34.4.2) — update NEXT_FRAME_ONLY -> NONE.
   attachGeneratedCubeMaps(scene, ctx);
+  attachTextureProjectors(scene, ctx);
 
   // ── ViewpointBindSystem (§23.3.1) — post-cascade hook driving set_bind
   //    jump/retainUserOffsets + bind-stack transitions (scene-agnostic: it reads

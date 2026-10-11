@@ -623,6 +623,55 @@ static void nodeContainedInterleavedFieldTest() {
   assert(rejected);
 }
 
+// Classic declarations cannot occur inside an MFNode list. A literal prefix
+// can move after them without changing prototype lookup or child order.
+static void literalPrefixDeclarationRoundTripTest() {
+  auto original = x3d::codec::parseDocument(R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Wrap'><ProtoBody><Group>
+<Group DEF='Before'><Shape/></Group>
+<ProtoDeclare name='Leaf'><ProtoBody><Transform/></ProtoBody></ProtoDeclare>
+<ExternProtoDeclare name='Unused' url='"missing.x3d#Unused"'/>
+<ProtoInstance name='Leaf'/><Group USE='Before'/>
+</Group></ProtoBody></ProtoDeclare><ProtoInstance name='Wrap'/>
+</Scene></X3D>)");
+  const auto classic = x3d::codec::VrmlWriter().writeDocument(original);
+  auto parsed = x3d::codec::parseDocument(classic, x3d::codec::Encoding::ClassicVRML);
+  for (const auto &text : {x3d::codec::XmlWriter().writeDocument(parsed),
+                          x3d::codec::CanonicalXmlWriter().writeDocument(parsed)}) {
+    auto again = x3d::codec::parseDocument(text);
+    auto json = x3d::codec::JsonWriter().writeDocument(again);
+    again = x3d::codec::parseDocument(json, x3d::codec::Encoding::JSON);
+    assert(again.protoWarnings.empty());
+    auto group = std::dynamic_pointer_cast<x3d::nodes::Group>(again.scene.rootNodes.at(0));
+    assert(group && group->getChildren().size() == 3);
+    assert(group->getChildren()[0]->nodeTypeName() == "Group");
+    assert(group->getChildren()[1]->nodeTypeName() == "Transform");
+    assert(group->getChildren()[0] == group->getChildren()[2]);
+    const auto &body = again.scene.protoDeclarations.at(0)->body;
+    const auto &sequence = body.nodeStatements.at(body.nodes.at(0));
+    assert(sequence.size() == 5);
+    assert(sequence[0].proto && sequence[0].proto->name == "Leaf");
+    assert(sequence[1].externProto && sequence[1].externProto->name == "Unused");
+  }
+}
+
+static void descendantPrototypeHoistGuardTest() {
+  auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><Scene>
+<ProtoDeclare name='Leaf'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>
+<ProtoDeclare name='Wrap'><ProtoBody><Group>
+<Group><ProtoInstance name='Leaf'/></Group>
+<ProtoDeclare name='Leaf'><ProtoBody><Transform/></ProtoBody></ProtoDeclare>
+<ProtoInstance name='Leaf'/>
+</Group></ProtoBody></ProtoDeclare></Scene></X3D>)");
+  bool rejected = false;
+  try {
+    (void)x3d::codec::VrmlWriter().writeDocument(doc);
+  } catch (const std::runtime_error &e) {
+    rejected = std::string(e.what()).find("cannot currently preserve") != std::string::npos;
+  }
+  assert(rejected); // Hoisting would rebind the descendant to Transform.
+}
+
 static void nodeContainedMutationTest() {
   const char *xml =
       "<X3D version='4.0'><Scene><ProtoDeclare name='P'><ProtoBody><Group>"
@@ -1493,6 +1542,8 @@ int main(int argc, char **argv) {
   declarationAliasWriteTest();
   nodeContainedDeclarationPlacementTest();
   nodeContainedInterleavedFieldTest();
+  literalPrefixDeclarationRoundTripTest();
+  descendantPrototypeHoistGuardTest();
   nodeContainedMutationTest();
   nodeContainedReorderTest();
   repeatedNodeFieldJsonGuardTest();

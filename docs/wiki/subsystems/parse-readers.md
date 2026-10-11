@@ -262,5 +262,5 @@ token starts a PROTO, EXTERNPROTO, or prototype-interface field. The strings
 populate the existing `appinfo` and `documentation` members. Ordinary comments,
 unknown versions, and invalid payloads have no metadata effect. A comment before
 an ordinary node cannot leak into the following declaration. See
-[ADR-0061](../decisions/0061-classic-prototype-metadata-comments.md) for the format
+[ADR-0062](../decisions/0062-classic-prototype-metadata-comments.md) for the format
 and portability boundary.

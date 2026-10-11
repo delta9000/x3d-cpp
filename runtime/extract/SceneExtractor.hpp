@@ -159,6 +159,16 @@ struct RenderItem {
   bool castShadow = true;
 };
 
+// §42 texture projector scope (ADR-0061): a global projector lights every
+// placement; a scoped one only placements whose path passes through its
+// enclosing grouping node (a root-level projector lights the whole scene).
+inline bool projectorApplies(const ProjectorDesc &p, const RenderItem &item) {
+  if (p.global || !p.scopeRoot) return true;
+  for (const X3DNode *n : item.path)
+    if (n == p.scopeRoot) return true;
+  return false;
+}
+
 class SceneExtractor {
 public:
   // Holds the ctx (camera/dirty pull surface) and the scene (root traversal).
@@ -584,6 +594,31 @@ public:
   std::vector<LightDesc> lights() const {
     LightSystem ls;
     return ls.collect(scene_, ctx_.geoProjection(), ctx_.cameraWorldPosition());
+  }
+
+  // projectors — the active §42 texture projectors, world-resolved like
+  // lights() and recollected on each call. Each texture is resolved through
+  // the TextureResolver (sharing the material texture memo), and aspectRatio
+  // and the projection follow the resolved image's width / height. Scope with
+  // projectorApplies(). Not tagged per RenderItem.
+  std::vector<ProjectorDesc> projectors() {
+    LightSystem ls;
+    WalkBudget budget(meshOptions_.maxWalkVisits);
+    std::vector<ProjectorDesc> out = ls.collectProjectors(
+        scene_, ctx_.geoProjection(), budget, ctx_.cameraWorldPosition());
+    for (ProjectorDesc &p : out) {
+      std::vector<TextureRef> refs{std::move(p.texture)};
+      resolveTextureRefs(refs, textureResolver_, &textureMemo_);
+      p.texture = std::move(refs.front());
+      if (p.texture.resolvedPixels.ready()) {
+        const TexturePixels &px = *p.texture.resolvedPixels.pixels;
+        if (px.width > 0 && px.height > 0) {
+          p.aspectRatio = static_cast<float>(px.width) / static_cast<float>(px.height);
+          p.updateProjection();
+        }
+      }
+    }
+    return out;
   }
 
   // background — the bound Background's sky/ground gradient, read reflection-

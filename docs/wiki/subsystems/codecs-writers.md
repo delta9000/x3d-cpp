@@ -17,7 +17,13 @@ The codec writers subsystem converts an in-memory `x3d::runtime::X3DDocument` (o
 
 The writers sit between the runtime document model and any consumer that needs a serialized representation — the `x3d convert` CLI command, the round-trip conformance auditor, golden-file regression fixtures, and the canonical-form differencer.
 
-PROTO serialization preserves `IS/connect` mappings and node-valued interface defaults across XML, JSON, and ClassicVRML. ClassicVRML output supplies type-default values when initializeOnly/inputOutput PROTO interface or node author-field declarations have no stored value, as required by the encoding grammar; EXTERNPROTO interface declarations carry no values. Declaration and field `appinfo`/`documentation` are stored on `ProtoDeclaration`, `ExternProtoDeclaration`, and `ProtoField`, and preserved in XML, canonical XML, and JSON. ClassicVRML carries them in the versioned x3d-cpp comment convention from [ADR-0061](../decisions/0061-classic-prototype-metadata-comments.md). Standard-only consumers may discard those comments; this is an SDK round-trip convention, not an ISO metadata production.
+PROTO serialization preserves `IS/connect` mappings and node-valued interface defaults across XML, JSON, and ClassicVRML. ClassicVRML output supplies type-default values when initializeOnly/inputOutput PROTO interface or node author-field declarations have no stored value, as required by the encoding grammar; EXTERNPROTO interface declarations carry no values. Declaration and field `appinfo`/`documentation` are stored on `ProtoDeclaration`, `ExternProtoDeclaration`, and `ProtoField`, and preserved in XML, canonical XML, and JSON. ClassicVRML carries them in the versioned x3d-cpp comment convention from [ADR-0062](../decisions/0062-classic-prototype-metadata-comments.md). Standard-only consumers may discard those comments; this is an SDK round-trip convention, not an ISO metadata production.
+
+ClassicVRML can serialize a declaration that splits one node field after an
+ordinary node prefix by moving the declaration before that prefix. It preserves
+child order and sharing, and refuses this rewrite when the prefix contains a
+prototype instance or declaration. See [PROTO expansion](proto-expand.md) for
+the remaining cross-encoding ordering limits.
 
 ## Key files
 
