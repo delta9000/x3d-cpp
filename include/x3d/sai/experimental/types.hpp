@@ -480,6 +480,8 @@ struct interface_field_descriptor {
   std::optional<value> default_value;
   std::vector<std::string> accepted_node_types;
   std::optional<std::string> unit_category;
+  std::string appinfo;
+  std::string documentation;
 };
 
 struct local_declaration_descriptor {

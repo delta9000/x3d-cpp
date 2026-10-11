@@ -228,6 +228,8 @@ add_test(NAME sai_decl_mutation_duals COMMAND x3d_sai_experimental_tests
     "--test-case=declaration query and mutation operations are identity duals")
 add_test(NAME sai_decl_snapshot_history COMMAND x3d_sai_experimental_tests
     "--test-case=declaration query and mutation operations are identity duals")
+add_test(NAME sai_decl_field_annotations COMMAND x3d_sai_experimental_tests
+    "--test-case=declaration field annotations own history without changing resolution")
 add_test(NAME sai_decl_update_intent COMMAND x3d_sai_experimental_tests
     "--test-case=declaration updates preserve kind and separate rename intent")
 add_test(NAME sai_decl_change_order COMMAND x3d_sai_experimental_tests

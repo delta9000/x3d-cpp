@@ -230,10 +230,17 @@ The proposal makes these design choices executable:
   remain inspection data and cannot author non-null defaults.
   PROTO and EXTERNPROTO interfaces cannot redeclare the inherited `metadata`
   field.
+  Each interface field owns `appinfo` and `documentation` strings, matching
+  x3d-cpp's `ProtoField` annotations. Declaration edits retain those strings
+  in snapshots and before/after change records. They do not affect external
+  resolution compatibility. If preparing the change record throws
+  `std::bad_alloc`, the previous declaration stays staged and an unrelated
+  pending edit can still commit. These annotations belong to the reference
+  declaration API; the portable provider contract has no PROTO service yet.
   EXTERNPROTO interfaces have no authored defaults. Their by-name kind/access
   fields must be compatible with the resolved local declaration; omitted
-  optional annotations are unconstrained. A resolved target remains retained
-  while the exposed interface fields are compatible. Resolve with
+  node-type and unit constraints are unconstrained. A resolved target remains
+  retained while the exposed interface fields are compatible. Resolve with
   `edit.resolve_external_declaration(external, local)` using declaration handles;
   `update_declaration` may edit metadata or reset load state, but cannot assign
   a new resolved target from a bare ID.

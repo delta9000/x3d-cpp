@@ -1626,6 +1626,71 @@ TEST_CASE("declaration query and mutation operations are identity duals") {
   CHECK(recreated->id().value > local->id().value);
 }
 
+TEST_CASE("declaration field annotations own history without changing resolution") {
+  sai::browser host{graph_registry()};
+  auto context = host.current_scene();
+  auto local_field = test_interface_field("label");
+  local_field.appinfo = "café & \"quoted\"\nsecond line";
+  local_field.documentation = "https://example.test/local?a=1&b=2";
+  auto external_field = local_field;
+  external_field.appinfo = "external annotation";
+  external_field.documentation = "https://example.test/external";
+  auto author = context.edit();
+  auto local = author.add_local_declaration(
+      test_local_declaration("Local", {local_field})).value();
+  auto external = author.add_external_declaration(
+      test_external_declaration("Remote", {"remote.x3d#Local"},
+                                {external_field})).value();
+  REQUIRE(author.resolve_external_declaration(external, local));
+  REQUIRE(author.commit());
+  const auto historical = context.snapshot();
+  const auto annotation = [](const sai::declaration_descriptor &descriptor) {
+    return std::visit([](const auto &payload) {
+      return std::pair{payload.interface.at(0).appinfo,
+                       payload.interface.at(0).documentation};
+    }, descriptor.payload);
+  };
+  const std::array targets{local, external};
+  const std::array expected{
+      std::pair{local_field.appinfo, local_field.documentation},
+      std::pair{external_field.appinfo, external_field.documentation}};
+  local_field.appinfo.clear();
+  external_field.documentation.clear();
+  auto edit = context.edit();
+  for (const auto &target : targets) {
+    auto replacement = historical.describe(target).value().payload;
+    std::visit([](auto &payload) {
+      payload.interface[0].appinfo = "edited annotation";
+      payload.interface[0].documentation.clear();
+    }, replacement);
+    REQUIRE(edit.update_declaration(target, replacement));
+    std::visit([](auto &payload) {
+      payload.interface[0].appinfo = "unpublished caller mutation";
+    }, replacement);
+  }
+  auto committed = edit.commit();
+  REQUIRE(committed);
+  REQUIRE(committed->changes.size() == 2);
+  const auto current = context.snapshot();
+  for (std::size_t i = 0; i < targets.size(); ++i) {
+    const auto *change = sai::declaration_change_of(committed->changes[i]);
+    REQUIRE(change);
+    REQUIRE(change->before);
+    REQUIRE(change->after);
+    CHECK(change->declaration == targets[i].id());
+    CHECK(annotation(*change->before) == expected[i]);
+    CHECK(annotation(*change->after) ==
+          std::pair{std::string{"edited annotation"}, std::string{}});
+    CHECK(annotation(historical.describe(targets[i]).value()) == expected[i]);
+    CHECK(annotation(current.describe(targets[i]).value()) ==
+          annotation(*change->after));
+  }
+  const auto resolved = std::get<sai::external_declaration_descriptor>(
+      current.describe(external).value().payload);
+  CHECK(resolved.load_state == sai::external_load_state::resolved);
+  CHECK(resolved.resolved_declaration == local.id());
+}
+
 TEST_CASE("declaration updates preserve kind and separate rename intent") {
   sai::browser host{graph_registry()};
   auto context = host.current_scene();

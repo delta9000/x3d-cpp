@@ -31,13 +31,13 @@ target_link_libraries(application PRIVATE x3d::sai_reference_provider)
 
 `make_reference_provider(resource_limits = {})` returns an owning
 `provider::service`. A native application instead uses the optional
-[x3d-cpp companion](https://github.com/delta9000/x3d-cpp/tree/fix/sai-package-boundary/adapters/sai_provider),
+[x3d-cpp companion](https://github.com/delta9000/x3d-cpp/tree/main/adapters/sai_provider),
 `find_package(x3d_cpp_sai CONFIG REQUIRED)`, and `x3d_cpp::sai_provider`.
 Its factory is `native::make_service(resource_limits = {})`; subsequent ordinary
 scene, field and event operations use the same provider contract.
 The native-only `make_presented_scene()` factory additionally binds one ordinary
 scene to an owned mesh/transform feed. Its
-[headless host example](https://github.com/delta9000/x3d-cpp/tree/fix/sai-package-boundary/examples/sai_host)
+[headless host example](https://github.com/delta9000/x3d-cpp/tree/main/examples/sai_host)
 replays explicit local input and retains immutable frames through shutdown; it
 does not add a renderer or event loop to the portable service.
 
