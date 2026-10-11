@@ -37,9 +37,11 @@ foreach(_headers IN ITEMS runtime_first sai_first)
             target_compile_definitions(${_target} PRIVATE SAI_HEADERS_FIRST=1)
         endif()
         if(_links STREQUAL "sai_first")
-            target_link_libraries(${_target} PRIVATE x3d::sai_metadata x3d_cpp::sdk)
+            target_link_libraries(${_target} PRIVATE
+                x3d::sai_reference_metadata x3d::sai_reference_provider x3d_cpp::sdk)
         else()
-            target_link_libraries(${_target} PRIVATE x3d_cpp::sdk x3d::sai_metadata)
+            target_link_libraries(${_target} PRIVATE
+                x3d_cpp::sdk x3d::sai_reference_metadata x3d::sai_reference_provider)
         endif()
         add_test(NAME ${_target} COMMAND ${_target})
         list(APPEND _consumers ${_target})

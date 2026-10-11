@@ -16,6 +16,47 @@ Detached nodes remain absent from render roots while supported live inputs and
 ROUTEs stay valid. A future per-node realization model is outside this slice.
 There is no mirrored reference scene, hidden event loop, clock, renderer or I/O.
 
+## Build and use
+
+Use the current x3d-sai provider contract with targets `x3d::sai` and
+`x3d::sai_reference_provider`. Older checkouts exposing only `x3d::sai_metadata`
+or separate offline/hosted frontends are incompatible. Keep both repository
+revisions with your build; this experimental source contract has no stable ABI.
+
+From the x3d-cpp root, build each package into one prefix with the same compiler:
+
+```sh
+sai_source=/path/to/x3d-sai
+sai_prefix="$PWD/install-sai"
+cmake -S "$sai_source" -B build/sai-package -G Ninja \
+  -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX="$sai_prefix"
+cmake --build build/sai-package --parallel 2
+cmake --install build/sai-package
+cmake -S . -B build/native-package -G Ninja \
+  -DX3D_CPP_BUILD_TESTS=OFF -DX3D_CPP_ENABLE_DEV_TOOLING=OFF \
+  -DCMAKE_INSTALL_PREFIX="$sai_prefix"
+cmake --build build/native-package --parallel 2
+cmake --install build/native-package
+cmake -S adapters/sai_provider -B build/sai-adapter -G Ninja \
+  -DCMAKE_PREFIX_PATH="$sai_prefix" -DCMAKE_INSTALL_PREFIX="$sai_prefix"
+cmake --build build/sai-adapter --parallel 2
+cmake --install build/sai-adapter
+```
+
+An installed application links one companion target:
+
+```cmake
+find_package(x3d_cpp_sai CONFIG REQUIRED)
+target_link_libraries(my_host PRIVATE x3d_cpp::sai_provider)
+```
+
+Include `<x3d/sai_provider.hpp>` and call `native::make_service()`; ordinary work
+then uses `provider::service`. The [host example](../../examples/sai_host/README.md)
+shows a complete run and an alternative source build using explicit paths to
+both checkouts. It also demonstrates the optional native presentation feed.
+For backend-independent lifecycle rules, use the SAI
+[portable contract](https://github.com/delta9000/x3d-sai/blob/main/docs/portable-contract.md).
+
 ## Bounded capabilities
 
 - Transform: seven inputOutput scalars, setup bounding-box fields, children and
@@ -64,6 +105,14 @@ routes are runtime authoring objects: codec serialization and PROTO-clone
 endpoint remapping are not supported by this provider extension. An expired
 weak direct endpoint is never rebound through a reused DEF name.
 
+Setup can propagate allocation failures. Native node registration rolls back an
+incomplete identity entry, and name registration prepares its owning string
+before publishing the lookup binding. A retry cannot inherit a failed node's
+identity or give one node two canonical DEF names. This is consistency of those
+registrations, not a general rollback guarantee for all setup operations. The
+isolated `sai_provider_allocation_failure` executable injects allocation failures
+through the ordinary service interface.
+
 ## Native extension and validation
 
 `native::backend::native_scene(storage_id)` is an explicit setup-only native
@@ -75,7 +124,8 @@ interpolation, world-transform and render-delta evidence; neither extension is
 part of normative SAI. Applications use the final portable service for ordinary
 work, not an additional native general-purpose service API.
 
-Run `scripts/verify_sai_provider.sh /path/to/x3d-sai /empty/work/directory`.
+Run `mise run sai-provider /path/to/x3d-sai /empty/work/directory` from the
+x3d-cpp root (the task invokes `scripts/verify_sai_provider.sh`).
 Set X3D_CPP_SHARED_NODES=ON or OFF for shared/static native node packages.
 The harness checks common authoring/live conformance, native storage/containment
 and runtime evidence, cross-backend report parity, reference-free native link

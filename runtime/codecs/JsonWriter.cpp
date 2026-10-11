@@ -1,4 +1,5 @@
 #include "JsonWriter.hpp"
+#include "JsonString.hpp"
 #include "X3DProtoFieldOrder.hpp"
 
 #include "DynamicField.hpp"
@@ -12,7 +13,6 @@
 
 #include <algorithm>
 #include <any>
-#include <cstdio>
 #include <sstream>
 #include <utility>
 
@@ -61,42 +61,7 @@ void JsonWriter::pad(std::ostringstream &os, int depth) {
     os << "  ";
 }
 
-std::string JsonWriter::jstr(const std::string &s) {
-  std::string out = "\"";
-  for (char c : s) {
-    switch (c) {
-    case '"':
-      out += "\\\"";
-      break;
-    case '\\':
-      out += "\\\\";
-      break;
-    case '\n':
-      out += "\\n";
-      break;
-    case '\t':
-      out += "\\t";
-      break;
-    case '\r':
-      out += "\\r";
-      break;
-    default:
-      if (static_cast<unsigned char>(c) < 0x20) {
-        // RFC 8259: control characters MUST be escaped; strict consumers
-        // (and X3DJSAIL's JSON path) reject raw bytes here (ENC-JSON-CTRL).
-        char buf[8];
-        std::snprintf(buf, sizeof buf, "\\u%04x",
-                      static_cast<unsigned>(static_cast<unsigned char>(c)));
-        out += buf;
-      } else {
-        out += c;
-      }
-      break;
-    }
-  }
-  out += "\"";
-  return out;
-}
+std::string JsonWriter::jstr(const std::string &s) { return json::quote(s); }
 
 void JsonWriter::writeHead(std::ostringstream &os, const runtime::Head &head,
                            int depth) {

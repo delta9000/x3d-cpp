@@ -79,6 +79,12 @@ public:
     return v;
   }
 
+  std::unique_ptr<Value> parseComplete() {
+    auto value = parse();
+    if (i_ != s_.size()) fail("trailing content after JSON value");
+    return value;
+  }
+
 private:
   const std::string &s_;
   std::size_t i_ = 0;
@@ -367,6 +373,12 @@ private:
 inline std::unique_ptr<Value> parse(const std::string &text) {
   detail::Parser p(text);
   return p.parse();
+}
+
+// For embedded metadata payloads that must contain exactly one JSON value.
+inline std::unique_ptr<Value> parseComplete(const std::string &text) {
+  detail::Parser p(text);
+  return p.parseComplete();
 }
 
 } // namespace x3d::json

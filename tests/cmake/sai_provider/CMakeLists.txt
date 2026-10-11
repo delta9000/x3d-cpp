@@ -54,6 +54,19 @@ add_test(NAME sai_provider_native_runtime COMMAND sai_provider_native_runtime)
 set_tests_properties(sai_provider_native_runtime PROPERTIES TIMEOUT 30)
 add_dependencies(sai_provider_all sai_provider_native_runtime)
 
+# Allocation injection has a process-wide operator new override. Keep it out of
+# the ordinary native fixtures and verify both source and relocated packages.
+if(SAI_PROVIDER_INSTALLED)
+  set(_allocation "${CMAKE_CURRENT_LIST_DIR}/allocation_failure_test.cpp")
+else()
+  set(_allocation "${X3D_CPP_SOURCE_DIR}/adapters/sai_provider/tests/allocation_failure_test.cpp")
+endif()
+add_executable(sai_provider_allocation_failure "${_allocation}")
+target_link_libraries(sai_provider_allocation_failure PRIVATE x3d_cpp::sai_provider)
+add_test(NAME sai_provider_allocation_failure COMMAND sai_provider_allocation_failure)
+set_tests_properties(sai_provider_allocation_failure PROPERTIES TIMEOUT 30)
+add_dependencies(sai_provider_all sai_provider_allocation_failure)
+
 # Owned native presentation is an optional backend extension. Keep this
 # consumer separate from parity to prove that no reference backend supplies it.
 if(SAI_PROVIDER_INSTALLED)

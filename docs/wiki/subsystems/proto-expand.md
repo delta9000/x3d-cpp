@@ -156,7 +156,14 @@ have the same caller maintenance requirement as direct records.
 Expansion rebuilds affected MFNode slots in this order, preserving USE aliases.
 
 XML and canonical XML replay the merged order. Classic declarations must fall
-between complete field assignments; its writer rejects repeated field groups.
+between complete field assignments. When declarations split a node field after
+an ordinary node prefix, the Classic writer moves them before that prefix and
+writes one field assignment. It checks the whole prefix graph and refuses to
+cross prototype instances or declarations, which could change lexical lookup.
+Child order and DEF/USE identity remain intact; the in-memory ledger is unchanged.
+Other repeated field groups still fail explicitly (PROTO-NESTED-WRITE).
+`literalPrefixDeclarationRoundTripTest` exercises Classic, XML/canonical XML, and
+JSON hops with local and unused external declarations.
 JSON likewise rejects repeated slot groups rather than emitting duplicate keys.
 These are current implementation limits. JSON round trips demonstrate repository
 compatibility, not ISO encoding conformance. Ordinary interface-default graphs use the same capture and writer context, so

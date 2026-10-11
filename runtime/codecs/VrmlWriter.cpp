@@ -1,4 +1,6 @@
 #include "VrmlWriter.hpp"
+#include "JsonString.hpp"
+#include "VrmlTokenizer.hpp"
 #include "X3DProtoFieldOrder.hpp"
 
 #include "DynamicField.hpp"
@@ -18,6 +20,14 @@ namespace x3d::codec {
 using x3d::nodes::X3DNodeFactory;
 
 namespace {
+
+void writePrototypeMetadata(std::ostringstream &os, const std::string &appinfo,
+                            const std::string &documentation) {
+  if (appinfo.empty() && documentation.empty()) return;
+  os << VrmlTokenizer::prototypeMetadataPrefix << "[" << json::quote(appinfo)
+     << ", " << json::quote(documentation) << "]\n";
+}
+
 
 std::string defaultVrmlValue(X3DFieldType type) {
   if (type == X3DFieldType::SFNode)
@@ -266,6 +276,7 @@ void VrmlWriter::writeVrmlNestedFor(std::ostringstream &os,
 
 void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
                                        const runtime::ProtoDeclaration &d) {
+  writePrototypeMetadata(os, d.appinfo, d.documentation);
   os << "PROTO " << d.name << " [\n";
   // One local DEF scope spans interface defaults and body nodes.
   VrmlWriter bodyWriter;
@@ -274,6 +285,7 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
   bodyWriter.bodyOrder_ = &d.body;
   bodyWriter.bodyNested_ = &d.body.nestedInstances;
   for (const auto &f : d.interface) {
+    writePrototypeMetadata(os, f.appinfo, f.documentation);
     os << "  " << accessTypeName(f.access) << " " << fieldTypeName(f.type)
        << " " << f.name;
     if (!f.nodeDefault.empty()) {
@@ -334,8 +346,10 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
 
 void VrmlWriter::writeVrmlExternProtoDeclare(
     std::ostringstream &os, const runtime::ExternProtoDeclaration &d) {
+  writePrototypeMetadata(os, d.appinfo, d.documentation);
   os << "EXTERNPROTO " << d.name << " [\n";
   for (const auto &f : d.interface) {
+    writePrototypeMetadata(os, f.appinfo, f.documentation);
     os << "  " << accessTypeName(f.access) << " " << fieldTypeName(f.type)
        << " " << f.name << "\n";
   }
@@ -442,7 +456,45 @@ void VrmlWriter::writeNode(std::ostringstream &os,
   const bool hasOrder = bodyOrder_ &&
       bodyOrder_->nodeStatements.contains(std::weak_ptr<X3DNode>(node));
   if (hasOrder) {
-    const auto entries = runtime::orderedNodeStatements(*bodyOrder_, node);
+    auto entries = runtime::orderedNodeStatements(*bodyOrder_, node);
+    // A declaration splitting one field can precede its literal prefix. Only
+    // cross ordinary node graphs: moving it across a prototype use/declaration
+    // could change lexical lookup (including in descendants or defaults).
+    using Kind = runtime::ProtoBodyStatement::Kind;
+    const auto isDeclaration = [](const auto &entry) {
+      return entry.kind == Kind::Proto || entry.kind == Kind::ExternProto;
+    };
+    std::unordered_set<const X3DNode *> visited;
+    const auto literal = [&](const auto &self, const auto &entry) -> bool {
+      if (entry.kind != Kind::Node ||
+          std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(entry.node) ||
+          (entry.node && authorFields_ && authorFields_->hasAuthorFields(*entry.node)))
+        return false;
+      if (!visited.insert(entry.node.get()).second) return true;
+      for (const auto &child : runtime::orderedNodeStatements(*bodyOrder_, entry.node))
+        if (!self(self, child)) return false;
+      return true;
+    };
+    for (std::size_t i = 1; i < entries.size(); ++i) {
+      if (!isDeclaration(entries[i]) || isDeclaration(entries[i - 1])) continue;
+      std::size_t end = i + 1;
+      while (end < entries.size() && isDeclaration(entries[end])) ++end;
+      const auto &slot = entries[i - 1].field;
+      if (end == entries.size() || entries[end].field != slot) continue;
+      const auto fields = node->fields();
+      if (std::none_of(fields.begin(), fields.end(), [&](const FieldInfo &field) {
+            return field.x3dName == slot && field.type == X3DFieldType::MFNode;
+          })) continue;
+      std::size_t begin = i - 1;
+      while (begin > 0 && entries[begin - 1].field == slot) --begin;
+      visited.clear();
+      bool safe = true;
+      for (std::size_t j = begin; j < i && safe; ++j)
+        safe = literal(literal, entries[j]);
+      if (safe)
+        std::rotate(entries.begin() + begin, entries.begin() + i, entries.begin() + end);
+      i = end - 1;
+    }
     std::unordered_set<std::string> emittedFields;
     for (std::size_t i = 0; i < entries.size();) {
       const auto &entry = entries[i];

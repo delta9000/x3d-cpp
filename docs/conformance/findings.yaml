@@ -2030,13 +2030,18 @@
   interfaces: [X3DPrototypeInstance]
   clause: "ISO 19776-2; 19775-1 4.4.4"
   severity: minor
-  status: open
-  summary: ProtoDeclare/ExternProtoDeclare and field `appinfo`/`documentation` survive XML and JSON, but are not representable in ClassicVRML and are lost on that hop.
+  status: fixed
+  summary: Declaration and interface-field appinfo/documentation round-trip through XML, canonical XML, JSON and ClassicVRML using an x3d-cpp comment convention.
   note: >-
-    XML and JSON readers/writers preserve declaration and field metadata. Regression:
-    proto_appinfo_json_roundtrip_test. ISO/IEC 19776-2 ClassicVRML PROTO/EXTERNPROTO/interface
-    syntax has no appinfo or documentation production; comments are not a semantic metadata slot.
-    ClassicVRML conversion therefore remains lossy for these attributes.
+    ProtoDeclaration, ExternProtoDeclaration and ProtoField own both strings. All XML
+    writers and JsonWriter serialize them; CanonicalXmlWriter now includes interface-field
+    attributes. ClassicVRML uses the versioned x3d-cpp:proto-metadata-v1 comment convention
+    (ADR-0062): a two-string JSON array before PROTO, EXTERNPROTO or an interface access token.
+    ClassicVrmlReader restores the strings; standard-only consumers may discard these comments.
+    This closes SDK round-trip loss, not a claim that ISO 19776-2 defines metadata attributes.
+    Regression: proto_appinfo_json_roundtrip_test covers canonical and Classic hops, nested
+    declarations, external event fields, scalar/node defaults, escaping, idempotence and
+    metadata-comment scoping. Unknown comment versions and invalid payloads are ignored.
 
 - id: ENC-PROTO-CONNECT
   nodes: [ProtoBody, connect]
@@ -2776,7 +2781,21 @@
   severity: major
   status: open
   summary: Layers share one binding stack per category and one camera; LayerSet.activeLayer does not select navigation.
-  note: "BindingSystem::stacks_ is keyed only by category, X3DExecutionContext owns one BindingSystem, and SceneExtractor exposes one camera/background/fog. activeLayer has no production runtime read. LayerSet.order traversal and Layer.pickable do not establish independent layers. Acceptance: two layers bind different viewpoints/backgrounds without affecting one another, activeLayer selects input/navigation, and later ordered layers appear above earlier ones, including repeated ordinals."
+  note: >-
+    Still open after scope review (2026-10-10). BindingSystem::stacks_ and enrolled_
+    are keyed only by category; walk crosses Layer boundaries and bindDefaults binds
+    only the first Viewpoint in the whole scene. X3DExecutionContext::boundViewpoint,
+    boundNavigationInfo and viewMatrix have no layer selector. NavigationSystem
+    consumes those global bindings, so LayerSet.activeLayer does not select navigation.
+    The render feed exposes one camera/background/fog; completing the requested camera
+    isolation requires runtime/extract/ changes, which are reserved for another agent
+    in this work batch. Runtime work stopped at that ownership boundary; no binding-only
+    fix is claimed. LayerSet.order traversal and Layer.pickable remain existing partial
+    support. Acceptance: each layer independently binds Viewpoint, NavigationInfo,
+    Background and Fog; activeLayer selects navigation using zero-based layers ordinals
+    (unlayered nodes belong to layer 0); extraction preserves each layer's camera and
+    bound environment; later ordered layers appear above earlier ones, including
+    repeated ordinals. See the Layering limitation in system-viewpointbind.md.
 - id: REQ-LAYOUT
   nodes: [Layout, LayoutGroup, LayoutLayer, ScreenGroup, ScreenFontStyle]
   component: Layout
@@ -2893,7 +2912,18 @@
   severity: major
   status: open
   summary: "Some cross-encoding declaration orders remain unsupported."
-  note: "Direct ProtoBody statements now retain local/extern declarations and lexical node/instance order, including unused declarations and names shadowing inherited declarations. All four writers replay that order; directNestedDeclarationWriteTest verifies three readers by four writers, unused nested declarations, source UNIT snapshots and programmatic node removal/addition. A weak-parent nodeStatements ledger now retains declarations among ordinary body-node children. XML/canonical XML replay the order; Classic writes declarations between complete field assignments and rejects repeated field groups, while JSON rejects repeated slot groups. These are current writer limits, not claims that semantic rewriting is impossible. Ordinary interface-default graphs now share the same capture and writer context, including their contained declarations and instances. interfaceDefaultContainedProtoTest covers these graphs and per-outer-instance expansion. Direct ProtoInstance defaults now use declaration-only templates (PROTO-DIRECT-DEFAULT). nodeContainedDeclarationPlacementTest, nodeContainedInterleavedFieldTest, nodeContainedMutationTest and repeatedNodeFieldJsonGuardTest cover the new paths; JSON checks establish repository compatibility, not ISO encoding conformance."
+  note: >-
+    Remaining: Classic repeated field groups with intervening other fields or prefixes
+    containing prototype instances/declarations (including descendants/default templates
+    and author fields), and JSON repeated slot groups. They still fail explicitly; supporting them needs binding-aware scope
+    rewriting and cross-field ordering. Classic now moves intervening local/extern
+    declarations before an ordinary node prefix of the same field, preserving child order,
+    expansion and DEF/USE identity (literalPrefixDeclarationRoundTripTest). The declaration
+    ledger is not mutated. Direct body order and XML/canonical XML node-child order already
+    round-trip. Existing nodeContainedInterleavedFieldTest retains the shadowing rejection;
+    repeatedNodeFieldJsonGuardTest retains the JSON duplicate-slot guard. JSON checks
+    establish repository compatibility, not ISO encoding conformance.
+
 - id: PROTO-WRITE-DEF-SCOPE
   interfaces: [X3DPrototypeInstance]
   nodes: [ProtoInstance]
