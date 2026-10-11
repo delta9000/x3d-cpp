@@ -224,6 +224,11 @@ add_test(NAME x3d_poc_generated_cube_map_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/generated_cube_map_gl_test.py"
             $<TARGET_FILE:x3d_poc_renderer>)
 
+# Real GL regression: texture projectors light the scene through their texture.
+add_test(NAME x3d_poc_texture_projector_gl
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/texture_projector_gl_test.py"
+            $<TARGET_FILE:x3d_poc_renderer>)
+
 # Real GL regression: local, noise and refraction texture-coordinate generators.
 add_test(NAME x3d_poc_texgen_local_gl
     COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/tests/texgen_local_gl_test.py"

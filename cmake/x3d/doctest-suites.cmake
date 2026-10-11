@@ -169,6 +169,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_clip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/background_desc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/generated_cube_map_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_projector_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t8_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_b2_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_col2_test.cpp"

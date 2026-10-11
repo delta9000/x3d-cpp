@@ -2088,6 +2088,58 @@ int main(int argc, char **argv) {
         std::vector<ex::LightDesc> lights = extractor.lights();
         std::vector<EyeLight> eyeLights =
             buildEyeLights(lights, view, headlightOn);
+        const int litLightCount = static_cast<int>(eyeLights.size());
+        // §42 texture projectors (ADR-0061, projector.glsl): each joins the
+        // light arrays as a positional (perspective) or directional (parallel)
+        // light with no attenuation; uLightProjector names its projector slot,
+        // whose matrices gate the volume and whose texture (units 13-15) filters
+        // the light colour. Scope is a per-draw mask (uProjectorMask).
+        constexpr int kMaxProjectors = 3;
+        const std::vector<ex::ProjectorDesc> projectors = extractor.projectors();
+        std::vector<int> projectorSlot(projectors.size(), -1);
+        int lightProjector[kMaxLights] = {0};
+        float projectorMatrix[kMaxProjectors * 16] = {0};
+        float projectorProjection[kMaxProjectors * 16] = {0};
+        float projectorRange[kMaxProjectors * 2] = {0};
+        int projectorParallel[kMaxProjectors] = {0};
+        int projectorHasTex[kMaxProjectors] = {0};
+        {
+          const Mat4 invView = view.inverse();
+          int slot = 0;
+          for (std::size_t p = 0; p < projectors.size() && slot < kMaxProjectors &&
+                                  eyeLights.size() < static_cast<std::size_t>(kMaxLights);
+               ++p) {
+            const ex::ProjectorDesc &P = projectors[p];
+            EyeLight e;
+            if (P.type == ex::ProjectorDesc::Type::Perspective) {
+              e.positional = true;
+              e.posEye = view.transformPoint(P.worldLocation);
+              e.radius = 1e30f;
+            } else {
+              e.dirEye = toEyeDir(view, P.worldDirection);
+            }
+            e.color = SFColor{P.color.r * P.intensity, P.color.g * P.intensity,
+                              P.color.b * P.intensity};
+            e.ambientIntensity = P.ambientIntensity;
+            lightProjector[eyeLights.size()] = slot + 1;
+            eyeLights.push_back(e);
+            const Mat4 eyeToProjector = P.view * invView;
+            std::copy(eyeToProjector.m.begin(), eyeToProjector.m.end(),
+                      projectorMatrix + slot * 16);
+            std::copy(P.projection.m.begin(), P.projection.m.end(),
+                      projectorProjection + slot * 16);
+            projectorRange[slot * 2] = P.nearDistance;
+            projectorRange[slot * 2 + 1] = P.farDistance;
+            projectorParallel[slot] = P.type == ex::ProjectorDesc::Type::Parallel ? 1 : 0;
+            const GLuint tex = resolveTexRef(&P.texture, texCache, assetResolver,
+                                             /*srgb=*/false, &movieState);
+            projectorHasTex[slot] = tex ? 1 : 0;
+            glActiveTexture(static_cast<GLenum>(GL_TEXTURE13 + slot));
+            glBindTexture(GL_TEXTURE_2D, tex ? tex : whiteTex);
+            projectorSlot[p] = slot++;
+          }
+          glActiveTexture(GL_TEXTURE0);
+        }
         const int numLights = static_cast<int>(eyeLights.size());
         // Flatten into contiguous arrays for the uniform array upload.
         float lightDir[kMaxLights * 3] = {0};
@@ -2135,7 +2187,7 @@ int main(int argc, char **argv) {
           const SFVec3f sz = shadowBounds.size();
           const float radius =
               (std::max)(0.5f * std::sqrt(v3dot(sz, sz)), 1e-3f) * 1.01f;
-          const int sceneLights = numLights - (headlightOn ? 1 : 0);
+          const int sceneLights = litLightCount - (headlightOn ? 1 : 0);
           std::vector<Mat4> layers;
           for (int i = 0; i < sceneLights && i < static_cast<int>(lights.size()); ++i) {
             if (!lights[i].shadows) continue;
@@ -2340,6 +2392,25 @@ int main(int argc, char **argv) {
             glUniform1fv(glGetUniformLocation(program, "uLightRadius"), numLights, lightRadius);
             glUniform2fv(glGetUniformLocation(program, "uLightCone"), numLights, lightCone);
           }
+          // projector.glsl: every slot is written, so ordinary lights read 0.
+          if (const GLint locProjector = glGetUniformLocation(program, "uLightProjector");
+              locProjector >= 0) {
+            glUniform1iv(locProjector, kMaxLights, lightProjector);
+            glUniformMatrix4fv(glGetUniformLocation(program, "uProjectorMatrix"),
+                               kMaxProjectors, GL_FALSE, projectorMatrix);
+            glUniformMatrix4fv(glGetUniformLocation(program, "uProjectorProjection"),
+                               kMaxProjectors, GL_FALSE, projectorProjection);
+            glUniform2fv(glGetUniformLocation(program, "uProjectorRange"), kMaxProjectors,
+                         projectorRange);
+            glUniform1iv(glGetUniformLocation(program, "uProjectorParallel"),
+                         kMaxProjectors, projectorParallel);
+            glUniform1iv(glGetUniformLocation(program, "uProjectorHasTex"), kMaxProjectors,
+                         projectorHasTex);
+            for (int slot = 0; slot < kMaxProjectors; ++slot)
+              glUniform1i(glGetUniformLocation(
+                              program, ("uProjectorTex" + std::to_string(slot)).c_str()),
+                          13 + slot);
+          }
           // shadow.glsl: every slot is written, so unused ones read base -1.
           const GLint locBase = glGetUniformLocation(program, "uLightShadowBase");
           if (locBase < 0) return;
@@ -2351,6 +2422,17 @@ int main(int argc, char **argv) {
             glUniformMatrix4fv(glGetUniformLocation(program, "uShadowMatrix"),
                                static_cast<GLsizei>(shadowMatrices.size() / 16), GL_FALSE,
                                shadowMatrices.data());
+        };
+
+        // §42 scope: the projectors that light this draw, as a slot bit mask.
+        auto uploadProjectorMask = [&](GLuint program, const ex::RenderItem &item) {
+          const GLint loc = glGetUniformLocation(program, "uProjectorMask");
+          if (loc < 0) return;
+          int mask = 0;
+          for (std::size_t p = 0; p < projectors.size(); ++p)
+            if (projectorSlot[p] >= 0 && ex::projectorApplies(projectors[p], item))
+              mask |= 1 << projectorSlot[p];
+          glUniform1i(loc, mask);
         };
 
         // §24.4.2: the bound Fog, world-scaled by the extractor. visibilityRange
@@ -2508,6 +2590,7 @@ int main(int argc, char **argv) {
             // Per-path model + eye-space normal matrix.
             glUniformMatrix4fv(uModel, 1, GL_FALSE, it.worldTransform.m.data());
             uploadFog(it, uFogColor, uFogType, uFogRange);
+            uploadProjectorMask(phongProg, it);
             std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
             glUniformMatrix3fv(uNormalMat, 1, GL_FALSE, nrm.data());
             uploadLitPointSize(phongProg);
@@ -2586,6 +2669,7 @@ int main(int argc, char **argv) {
             }
             glUniformMatrix4fv(uPbrModel, 1, GL_FALSE, it.worldTransform.m.data());
             uploadFog(it, uPbrFogColor, uPbrFogType, uPbrFogRange);
+            uploadProjectorMask(pbrProg, it);
             std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
             glUniformMatrix3fv(uPbrNormalMat, 1, GL_FALSE, nrm.data());
             uploadLitPointSize(pbrProg);

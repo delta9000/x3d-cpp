@@ -46,6 +46,7 @@
 #include "x3d/core/X3Dtypes.hpp"        // SFVec2f, SFVec3f, SFColor, SFColorRGBA, SFImage, MF*
 #include "X3DFieldValue.hpp"   // X3DFieldValue discriminated union (Phase 3)
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -647,6 +648,101 @@ struct LightDesc {
 
   bool global = false;                 // authored; carried not promoted.
   const X3DNode *scopeRoot = nullptr;  // enclosing grouping node for scoping.
+};
+
+// ---------------------------------------------------------------------------
+// ProjectorDesc — one active §42 texture projector (TextureProjector or
+// TextureProjectorParallel), world-resolved like a LightDesc (ADR-0061).
+//
+// A projector is a light whose colour is filtered by its texture: inside the
+// projection volume it contributes like a light of colour
+// color x texel.rgb x texel.a with the authored intensity and ambientIntensity
+// and no attenuation; outside it contributes nothing. A perspective projector
+// lights from worldLocation (L = toward it); a parallel one along
+// worldDirection (L = -worldDirection).
+//
+// The volume and the texture coordinate come from view/projection: p_eye =
+// view * p_world, d = -p_eye.z (distance along the projection direction); the
+// point is inside when d > 0 (d >= 0 for parallel), nearDistance <= d when
+// nearDistance > 0, d <= farDistance when farDistance > 0, and the clip-space
+// x, y of projection * p_eye fall within [-w, w]. (s, t) = ndc * 0.5 + 0.5,
+// t up along the projector's up vector. project() implements exactly that.
+// ---------------------------------------------------------------------------
+struct ProjectorDesc {
+  enum class Type { Perspective, Parallel };
+
+  Type type = Type::Perspective;
+  SFColor color{1.0f, 1.0f, 1.0f};
+  float intensity = 1.0f;
+  float ambientIntensity = 0.0f;
+  bool shadows = false;          // carried; not rendered (REQ-PROJECTION).
+  float shadowIntensity = 1.0f;
+
+  SFVec3f worldLocation{0.0f, 0.0f, 0.0f};
+  SFVec3f worldDirection{0.0f, 0.0f, 1.0f}; // normalized, world frame.
+  SFVec3f worldUp{0.0f, 1.0f, 0.0f};        // orthonormal to worldDirection.
+  float nearDistance = -1.0f;               // world units; <= 0: no near bound.
+  float farDistance = -1.0f;                // world units; <= 0: no far bound.
+  // Image width / height of the resolved texture (1 when not known yet); the
+  // perspective fieldOfView spans the shorter side, as for a Viewpoint.
+  float aspectRatio = 1.0f;
+
+  // TextureProjector: the fieldOfView (radians) of the shorter image side.
+  float fieldOfView = 0.7854f;
+  // TextureProjectorParallel: fieldOfView (minX, minY, maxX, maxY), world units
+  // across the projector's right and up axes.
+  SFVec4f parallelFieldOfView{-1.0f, -1.0f, 1.0f, 1.0f};
+
+  Mat4 view = Mat4::identity();       // world -> projector eye (looks down -Z).
+  Mat4 projection = Mat4::identity(); // projector eye -> clip (x, y and w only).
+
+  // Rebuild `projection` from the field of view and aspectRatio.
+  void updateProjection() {
+    Mat4 p{};
+    if (type == Type::Parallel) {
+      const SFVec4f &e = parallelFieldOfView;
+      const float w = e.z - e.x, h = e.w - e.y;
+      p.m[0] = w != 0.0f ? 2.0f / w : 0.0f;
+      p.m[5] = h != 0.0f ? 2.0f / h : 0.0f;
+      p.m[12] = w != 0.0f ? -(e.z + e.x) / w : 0.0f;
+      p.m[13] = h != 0.0f ? -(e.w + e.y) / h : 0.0f;
+      p.m[10] = -1.0f;
+      p.m[15] = 1.0f;
+    } else {
+      const float aspect = aspectRatio > 0.0f ? aspectRatio : 1.0f;
+      const float half = std::tan(fieldOfView * 0.5f);
+      // The shorter side spans fieldOfView: half-extents at unit distance.
+      const float halfX = aspect >= 1.0f ? half * aspect : half;
+      const float halfY = aspect >= 1.0f ? half : half / aspect;
+      p.m[0] = 1.0f / halfX;
+      p.m[5] = 1.0f / halfY;
+      p.m[10] = -1.0f;
+      p.m[11] = -1.0f;
+    }
+    projection = p;
+  }
+
+  TextureRef texture;                 // resolved like a material texture.
+
+  bool global = true;                 // authored (default TRUE for projectors).
+  const X3DNode *scopeRoot = nullptr; // enclosing grouping node (scoping).
+
+  // (s, t) of a world point, false outside the projection volume.
+  bool project(const SFVec3f &world, float &s, float &t) const {
+    const SFVec3f e = view.transformPoint(world);
+    const float d = -e.z;
+    if (type == Type::Perspective ? d <= 0.0f : d < 0.0f) return false;
+    if (nearDistance > 0.0f && d < nearDistance) return false;
+    if (farDistance > 0.0f && d > farDistance) return false;
+    const auto &m = projection.m;
+    const float x = m[0] * e.x + m[4] * e.y + m[8] * e.z + m[12];
+    const float y = m[1] * e.x + m[5] * e.y + m[9] * e.z + m[13];
+    const float w = m[3] * e.x + m[7] * e.y + m[11] * e.z + m[15];
+    if (w <= 0.0f || x < -w || x > w || y < -w || y > w) return false;
+    s = x / w * 0.5f + 0.5f;
+    t = y / w * 0.5f + 0.5f;
+    return true;
+  }
 };
 
 // ---------------------------------------------------------------------------
