@@ -36,8 +36,8 @@ in vec3 vPosEye;
 in vec4 vColor;
 in vec2 vTexCoord;
 
-#include "multitexture.glsl"
 #include "texgen.glsl"
+#include "multitexture.glsl"
 
 uniform vec4 uDiffuse;       // rgb = diffuse/base, a = 1 - transparency.
 uniform vec3 uEmissive;      // added unlit (augmented by emissive texture).
@@ -151,8 +151,8 @@ vec3 applyFog(vec3 color, float d) {
 }
 
 void main() {
-    // §18.4.8: every texture slot samples the generated coordinates, if any.
-    vec2 uv = texGenUv(vTexCoord, vPosEye, vNormalEye);
+    // §18.4.3/§18.4.8: each slot samples its own mapping (texgen.glsl).
+    vec2 uv = mapUv(0, vPosEye, vNormalEye);
     bool hatch = (uFillMode & 2) != 0 && hatchPixel();
     if ((uFillMode & 1) == 0 && !hatch) discard;
     // ---- Base color from diffuse slot ± per-vertex Color -------------------
@@ -161,11 +161,11 @@ void main() {
     if (uGlyphAtlas != 0) {
         // Font atlas: single-channel coverage in .r. Keep the material color and
         // alpha-test on coverage (no blending in the PoC's opaque depth pass).
-        if (texture(uTexture, uv).r < 0.5) discard;
+        if (texture(uTexture, vTexCoord).r < 0.5) discard;
     } else if (uNumStages > 0) {
         // §18.4.3 MultiTexture: DIFFUSE is the material/vertex diffuse colour.
-        vec4 c = applyMultiTexture(vec4(base, alpha), base, uSpecular, uv,
-                                   envDirection(vPosEye, vNormalEye));
+        vec4 c = applyMultiTexture(vec4(base, alpha), base, uSpecular, vPosEye,
+                                   vNormalEye);
         base  = c.rgb;
         alpha = c.a;
     } else if (uHasTexture != 0) {
@@ -185,7 +185,8 @@ void main() {
     vec3 N = Ngeo;
     if (uHasNormalTex != 0) {
         // Decode tangent-space normal: [0,1]^3 -> [-1,1]^3.
-        vec3 tsN = texture(uNormalTex, uv).rgb * 2.0 - 1.0;
+        vec2 nuv = mapUv(1, vPosEye, vNormalEye);
+        vec3 tsN = texture(uNormalTex, nuv).rgb * 2.0 - 1.0;
         tsN.xy  *= uNormalScale;
         tsN = normalize(tsN);
 
@@ -193,8 +194,8 @@ void main() {
         // This is the "derivative TBN" (no precomputed tangent attribute needed).
         vec3 dPdx  = dFdx(vPosEye);
         vec3 dPdy  = dFdy(vPosEye);
-        vec2 dUVdx = dFdx(uv);
-        vec2 dUVdy = dFdy(uv);
+        vec2 dUVdx = dFdx(nuv);
+        vec2 dUVdy = dFdy(nuv);
         float det  = dUVdx.x * dUVdy.y - dUVdx.y * dUVdy.x;
         if (abs(det) > 1e-6) {
             vec3 T = normalize((dPdx * dUVdy.y - dPdy * dUVdx.y) / det);
@@ -209,12 +210,12 @@ void main() {
     // ---- Emissive: material emissive modulated by emissive texture ----------
     vec3 emissive = uEmissive;
     if (uHasEmissiveTex != 0)
-        emissive *= texture(uEmissiveTex, uv).rgb;
+        emissive *= texture(uEmissiveTex, mapUv(2, vPosEye, vNormalEye)).rgb;
 
     // ---- Specular color: material specular ± specular texture ---------------
     vec3 specCol = uSpecular;
     if (uHasSpecularTex != 0)
-        specCol *= texture(uSpecularTex, uv).rgb;
+        specCol *= texture(uSpecularTex, mapUv(3, vPosEye, vNormalEye)).rgb;
 
     // ---- Lighting accumulation (Blinn-Phong) --------------------------------
     vec3 V       = normalize(-vPosEye);

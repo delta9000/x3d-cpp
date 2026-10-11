@@ -9,10 +9,14 @@ layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal; // only the §18.4.8 generators read it.
 layout(location = 2) in vec4 aColor;
 layout(location = 3) in vec2 aTexCoord; // X3D LOCAL (bottom-left = GL); no flip.
-// §18.4.3 MultiTexture: UV sets 1..3 (set 0 is aTexCoord); stages pick by channel.
+// §18.4.3 MultiTexture: UV sets 1..7 (set 0 is aTexCoord); stages pick by channel.
 layout(location = 5) in vec2 aTexCoord1;
 layout(location = 6) in vec2 aTexCoord2;
 layout(location = 7) in vec2 aTexCoord3;
+layout(location = 8) in vec2 aTexCoord4;
+layout(location = 9) in vec2 aTexCoord5;
+layout(location = 10) in vec2 aTexCoord6;
+layout(location = 11) in vec2 aTexCoord7;
 
 layout(location = 4) in uvec2 aSkinRange;
 uniform bool uSkinEnabled;
@@ -50,7 +54,7 @@ uniform float uPointSizeMax;
 
 out vec4 vColor;
 out vec2 vTexCoord;        // passed through un-flipped for the sampler.
-out vec2 vTexSet[4];       // §18.4.3 UV sets for MultiTexture stages.
+out vec4 vUvPairs[4];       // §18.4.3 UV sets 0..7, two per vector (texgen.glsl).
 out vec3 vPosLocal;        // §18.4.8 generator inputs (texgen.glsl).
 out vec3 vNormalLocal;
 out vec3 vNormalEye;
@@ -59,10 +63,10 @@ out vec3 vPosEye;          // eye-space position (for the §17 fog distance).
 void main() {
     vColor = aColor;
     vTexCoord = aTexCoord;
-    vTexSet[0] = aTexCoord;
-    vTexSet[1] = aTexCoord1;
-    vTexSet[2] = aTexCoord2;
-    vTexSet[3] = aTexCoord3;
+    vUvPairs[0] = vec4(aTexCoord, aTexCoord1);
+    vUvPairs[1] = vec4(aTexCoord2, aTexCoord3);
+    vUvPairs[2] = vec4(aTexCoord4, aTexCoord5);
+    vUvPairs[3] = vec4(aTexCoord6, aTexCoord7);
     vPosLocal = skinPosition(aPos);
     vNormalLocal = aNormal;
     vNormalEye = transpose(inverse(mat3(uView * uModel))) * aNormal;
